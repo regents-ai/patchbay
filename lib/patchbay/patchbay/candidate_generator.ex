@@ -7,6 +7,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   labeled in the returned metadata and warning text.
   """
 
+  alias Patchbay.Config
   alias Patchbay.Patchbay.{CanonicalJSON, CandidateCache, Digest, Fixtures, Frontmatter}
   alias Patchbay.Patchbay.OpenAI.Client
 
@@ -74,6 +75,23 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
   @spec fallback_warning() :: String.t()
   def fallback_warning, do: @fallback_warning
+
+  @doc """
+  Classifies the characters Patchbay refuses in Skill text.
+
+  A NUL byte cannot be stored and the Unicode tag range (U+E0000..U+E007F) is
+  invisible on screen, so text carrying either is refused whether it arrives
+  from a person or comes back from a model. Callers check `String.valid?/1`
+  first; this walks the text as UTF-8.
+  """
+  @spec unsupported_characters(binary()) :: :nul | :hidden_unicode | nil
+  def unsupported_characters(text) when is_binary(text) do
+    cond do
+      String.contains?(text, <<0>>) -> :nul
+      text |> String.to_charlist() |> Enum.any?(&(&1 in 0xE0000..0xE007F)) -> :hidden_unicode
+      true -> nil
+    end
+  end
 
   defp generate_variant(
          source,
@@ -272,10 +290,10 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       Digest.validate_artifact(candidate) != :ok ->
         {:error, :candidate_too_large}
 
-      String.contains?(candidate, <<0>>) ->
+      unsupported_characters(candidate) == :nul ->
         {:error, :candidate_contains_nul}
 
-      String.to_charlist(candidate) |> Enum.any?(&(&1 in 0xE0000..0xE007F)) ->
+      unsupported_characters(candidate) == :hidden_unicode ->
         {:error, :candidate_contains_hidden_unicode}
 
       not Frontmatter.valid?(candidate) ->
@@ -341,13 +359,13 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   end
 
   defp fallback_enabled?(opts) do
-    Keyword.get(opts, :fallback, false) or
-      Application.get_env(:patchbay, :demo_fallback, false) or
-      System.get_env("PATCHBAY_DEMO_FALLBACK") in ["true", "1"]
+    Keyword.get(opts, :fallback, false) or Config.demo_fallback?()
   end
 
   defp api_key_available?(opts) do
-    key = Keyword.get(opts, :api_key) || System.get_env("OPENAI_API_KEY")
-    is_binary(key) and key != ""
+    case Keyword.get(opts, :api_key) do
+      nil -> Config.live_inference_configured?()
+      key -> is_binary(key) and key != ""
+    end
   end
 end

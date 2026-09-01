@@ -3,8 +3,9 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias Patchbay.Config
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.{Digest, Fixtures}
+  alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures}
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
 
   setup %{conn: conn} do
@@ -280,6 +281,67 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       assert html =~ "The candidate was not presented as a successful completion."
       assert Domain.get_invocation!(invocation.id).effective_status == :errored
       assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
+    end)
+  end
+
+  # The health probe, the candidate generator, and this room all decide the
+  # generation mode through Patchbay.Config, so flipping the switch has to move
+  # all three of them together. The second half leaves the application setting
+  # off, so the environment flag alone is what all three of them read.
+  test "the demo fallback switch moves the health probe, the generator, and the room together",
+       %{conn: conn, room: room} do
+    without_live_inference(fn ->
+      refute Config.demo_fallback?()
+
+      assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["demo_fallback_enabled"] ==
+               false
+
+      assert {:error, {:model_generation_failed, :api_key_missing}} =
+               CandidateGenerator.generate(room.source_markdown, %{
+                 "instructions" => "uplift with the switch off"
+               })
+
+      {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+      session = bootstrap(view, room)
+      revision = desired_revision(room)
+
+      render_hook(view, "webmcp_invocation_begin", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
+        "request_uuid" => Ash.UUID.generate(),
+        "tool_name" => revision.name,
+        "contract_sha256" => revision.contract_sha256,
+        "arguments" => %{"instructions" => "uplift with the switch off"}
+      })
+
+      render_hook(view, "webmcp_execute", %{
+        "invocation_id" => latest_invocation(room).id,
+        "invocation_epoch" => invocation_epoch(view)
+      })
+
+      assert render_async(view, 2_000) =~ "Live inference failed"
+
+      System.put_env("PATCHBAY_DEMO_FALLBACK", "true")
+
+      assert Config.demo_fallback?()
+
+      assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["demo_fallback_enabled"] ==
+               true
+
+      assert {:ok, %{fallback_used: true}} =
+               CandidateGenerator.generate(room.source_markdown, %{
+                 "instructions" => "uplift with the switch on"
+               })
+
+      render_click(view, "reset_demo")
+      invoke_v1(view, room, bootstrap(view, room))
+
+      assert has_element?(
+               view,
+               "#patchbay-fallback-warning",
+               "Demo fallback used because live inference was unavailable."
+             )
     end)
   end
 

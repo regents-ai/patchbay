@@ -12,10 +12,12 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   import PatchbayWeb.WebMCP.RoomLive.Presenter
 
+  alias Patchbay.Config
   alias Patchbay.Patchbay, as: Domain
 
   alias Patchbay.Patchbay.{
     BrowserSession,
+    CandidateGenerator,
     DemoReset,
     Digest,
     Fixtures,
@@ -232,7 +234,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       if invocation.effective_status == :started do
         epoch = room.invocation_epoch
         key = {:invocation, epoch, invocation.request_uuid}
-        fallback? = demo_fallback?()
+        fallback? = Config.demo_fallback?()
 
         socket =
           if MapSet.member?(socket.assigns.invocation_keys, key) do
@@ -365,7 +367,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          start_async(socket, {:repair, repair_token}, fn ->
            result =
              try do
-               {:ok, RepairPlanner.propose!(invocation, fallback: demo_fallback?())}
+               {:ok, RepairPlanner.propose!(invocation, fallback: Config.demo_fallback?())}
              rescue
                error -> {:error, error}
              catch
@@ -674,21 +676,17 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       not String.valid?(source) ->
         {:error, "That Skill text is not readable. Use plain Markdown saved as UTF-8."}
 
-      String.contains?(source, <<0>>) ->
+      CandidateGenerator.unsupported_characters(source) == :nul ->
         {:error,
          "That Skill text contains characters Patchbay cannot store. Remove them and try again."}
 
-      hidden_tag_characters?(source) ->
+      CandidateGenerator.unsupported_characters(source) == :hidden_unicode ->
         {:error,
          "That Skill text contains hidden characters that do not show on screen. Remove them and try again."}
 
       true ->
         {:ok, source}
     end
-  end
-
-  defp hidden_tag_characters?(source) do
-    source |> String.to_charlist() |> Enum.any?(&(&1 in 0xE0000..0xE007F))
   end
 
   # The uploaded file feeds the same source update as pasting, so the digest and
@@ -1283,11 +1281,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     do: Map.get(params, key, Map.get(params, String.to_atom(key), default))
 
   defp value(_params, _key, default), do: default
-
-  defp demo_fallback? do
-    Application.get_env(:patchbay, :demo_fallback, false) or
-      System.get_env("PATCHBAY_DEMO_FALLBACK") in ["true", "1"]
-  end
 
   defp invalidate_repair(socket) do
     case socket.assigns[:repair_token] do
