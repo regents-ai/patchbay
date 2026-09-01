@@ -1,4 +1,5 @@
-import {executeRevision, errorResult} from "./invocation_bridge.js";
+import {executeRevision} from "./invocation_bridge.js";
+import {verifyUpliftGoal} from "./goal_verifier.js";
 import {captureRoomState, readRoomMetadata, sha256Hex} from "./state_snapshot.js";
 import {singleFlight} from "./webmcpify.js";
 
@@ -11,6 +12,7 @@ export function buildPermanentTools(hook) {
   return [
     {
       name: "get_patchbay_room_state",
+      title: "Read Patchbay room state",
       description: "Read the active Patchbay goal, visible editor state, current tool generation, last verification, and whether an owner-approved repair is available.",
       inputSchema: emptySchema(),
       annotations: {readOnlyHint: true, untrustedContentHint: false},
@@ -38,26 +40,25 @@ export function buildPermanentTools(hook) {
     },
     {
       name: "verify_skill_uplift_goal",
+      title: "Verify the visible Skill uplift",
       description: "Verify whether the visible Candidate editor contains a structurally valid revision of the current Source Skill and whether the page-side goal was completed.",
       inputSchema: emptySchema(),
       annotations: {readOnlyHint: true, untrustedContentHint: true},
       execute: singleFlight(async () => {
-        const state = await captureRoomState(hook.el?.ownerDocument ?? document);
-        const metadata = readRoomMetadata(hook.el?.ownerDocument ?? document);
-        const passed = metadata.status === "verified";
-
-        if (!passed) {
-          return errorResult("the visible goal is not verified yet; inspect the room evidence and retry after approval");
+        try {
+          return boundedJson(await verifyUpliftGoal(hook.el?.ownerDocument ?? document));
+        } catch (error) {
+          // A verification that cannot run is reported in the same shape as one
+          // that ran and failed, so the agent never has to parse a bare error.
+          return boundedJson({
+            passed: false,
+            checks: null,
+            failure_code: "VERIFICATION_UNAVAILABLE",
+            detail: String(error?.message ?? "the visible room could not be verified").slice(0, 200),
+            observed_generation: null,
+            ui_revision: null,
+          });
         }
-        return boundedJson({
-          passed: true,
-          status: metadata.status,
-          candidate: state.candidate,
-          last_verification: {
-            passed: metadata.verificationPassed,
-            failure_code: metadata.failureCode,
-          },
-        });
       }),
     },
   ];
@@ -66,6 +67,7 @@ export function buildPermanentTools(hook) {
 export function buildRevisionTool(hook, revision) {
   const tool = {
     name: revision.name,
+    title: revision.title,
     description: revision.description,
     inputSchema: revision.input_schema ?? revision.inputSchema ?? emptySchema(),
     annotations: revision.annotations ?? {readOnlyHint: false, untrustedContentHint: true},
@@ -74,13 +76,120 @@ export function buildRevisionTool(hook, revision) {
   return tool;
 }
 
+const ANNOTATION_KEYS = ["readOnlyHint", "untrustedContentHint"];
+
+/** The fields of a tool that make up its contract, in a comparable shape. */
+export function toolContract(tool) {
+  return {
+    name: tool?.name ?? null,
+    description: tool?.description ?? null,
+    inputSchema: parseInputSchema(tool?.inputSchema),
+    annotations: normalizeAnnotations(tool?.annotations),
+  };
+}
+
 export async function toolContractDigest(tool) {
-  return sha256Hex(stableStringify({
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema,
-    annotations: tool.annotations,
-  }));
+  return sha256Hex(stableStringify(toolContract(tool)));
+}
+
+/**
+ * Digest a tool the browser enumerated so it can be held against the contract
+ * Patchbay registered. Browsers are free to omit fields they do not model and to
+ * canonicalize the ones they do, so only the fields the enumerated tool actually
+ * carries are compared; anything else is filled in from the local registration
+ * and named in `unverifiable`. A field a browser never reports is an observation
+ * gap, not evidence that the contract changed.
+ *
+ * @returns {Promise<{digest: string, unverifiable: string[]}>}
+ */
+export async function observedContractDigest(observed, contract) {
+  const unverifiable = [];
+  const effective = {
+    name: contract.name,
+    description: hasField(observed, "description") ? observed.description : missing(contract.description, "description", unverifiable),
+    inputSchema: observedSchema(observed, contract, unverifiable),
+    annotations: observedAnnotations(observed, contract, unverifiable),
+  };
+  return {digest: await sha256Hex(stableStringify(effective)), unverifiable};
+}
+
+function observedSchema(observed, contract, unverifiable) {
+  if (!hasField(observed, "inputSchema")) return missing(contract.inputSchema, "inputSchema", unverifiable);
+
+  const parsed = parseInputSchema(observed.inputSchema);
+  if (parsed === null) return missing(contract.inputSchema, "inputSchema", unverifiable);
+  return projectOntoContract(parsed, contract.inputSchema, unverifiable, "inputSchema");
+}
+
+function observedAnnotations(observed, contract, unverifiable) {
+  if (!hasField(observed, "annotations") || !isPlainObject(observed.annotations)) {
+    return missing(contract.annotations, "annotations", unverifiable);
+  }
+
+  const annotations = {};
+  for (const key of ANNOTATION_KEYS) {
+    annotations[key] = hasField(observed.annotations, key)
+      ? observed.annotations[key] === true
+      : missing(contract.annotations[key], `annotations.${key}`, unverifiable);
+  }
+  return annotations;
+}
+
+/**
+ * Keep only what Patchbay itself declared: keys the browser added are ignored,
+ * and keys it dropped are restored from the registered contract and recorded.
+ */
+function projectOntoContract(observed, contract, unverifiable, path) {
+  if (isPlainObject(contract)) {
+    if (!isPlainObject(observed)) return missing(contract, path, unverifiable);
+
+    const projected = {};
+    for (const key of Object.keys(contract)) {
+      projected[key] = hasField(observed, key)
+        ? projectOntoContract(observed[key], contract[key], unverifiable, `${path}.${key}`)
+        : missing(contract[key], `${path}.${key}`, unverifiable);
+    }
+    return projected;
+  }
+
+  if (Array.isArray(contract) && !Array.isArray(observed)) return missing(contract, path, unverifiable);
+  return observed;
+}
+
+function missing(contractValue, path, unverifiable) {
+  unverifiable.push(path);
+  return contractValue;
+}
+
+/**
+ * A browser is free to expose an enumerated tool's fields as accessors on a
+ * prototype, so presence is tested with `in` rather than own-property checks:
+ * treating an inherited field as unreported would leave a replaced contract
+ * looking healthy.
+ */
+function hasField(value, key) {
+  return value !== null && typeof value === "object" && key in value && value[key] !== undefined;
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseInputSchema(inputSchema) {
+  if (typeof inputSchema !== "string") return inputSchema ?? null;
+  try {
+    const parsed = JSON.parse(inputSchema);
+    return parsed ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAnnotations(annotations) {
+  return {
+    readOnlyHint: annotations?.readOnlyHint === true,
+    untrustedContentHint: annotations?.untrustedContentHint === true,
+  };
 }
 
 export function emptySchema() {
@@ -91,14 +200,49 @@ export function isPatchbayToolName(name) {
   return PERMANENT_TOOL_NAMES.includes(name) || /^uplift_current_skill_v\d+$/.test(name);
 }
 
+/**
+ * Bound a tool result without ever handing the agent something it cannot parse:
+ * oversized results keep their structure and lose only the tails of long text
+ * values, flagged with `truncated: true`.
+ */
 export function boundedJson(value, limit = 1100) {
-  let serialized;
-  try {
-    serialized = JSON.stringify(value);
-  } catch {
-    serialized = "{}";
+  const exact = serialize(value);
+  if (exact !== null && exact.length <= limit) return exact;
+
+  for (const maxTextLength of [256, 128, 64, 32, 16]) {
+    const serialized = serialize(markTruncated(truncateText(value, maxTextLength)));
+    if (serialized !== null && serialized.length <= limit) return serialized;
   }
-  return serialized.length <= limit ? serialized : `${serialized.slice(0, limit - 1)}…`;
+
+  return JSON.stringify({truncated: true, error: "the result was too large to report"});
+}
+
+function serialize(value) {
+  try {
+    const serialized = JSON.stringify(value);
+    return typeof serialized === "string" ? serialized : null;
+  } catch {
+    return null;
+  }
+}
+
+function truncateText(value, maxTextLength) {
+  if (typeof value === "string") {
+    return value.length <= maxTextLength ? value : `${value.slice(0, maxTextLength)}…`;
+  }
+  if (Array.isArray(value)) return value.map(entry => truncateText(entry, maxTextLength));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, truncateText(entry, maxTextLength)]),
+    );
+  }
+  return value;
+}
+
+function markTruncated(value) {
+  // Never overwrite a `truncated` field the result itself carries.
+  if (isPlainObject(value) && !Object.hasOwn(value, "truncated")) return {...value, truncated: true};
+  return {truncated: true, value};
 }
 
 export function stableStringify(value) {

@@ -45,11 +45,17 @@ export function readRoomMetadata(root = document) {
       null,
     ),
     observedGeneration: numberValue(stateElement?.dataset?.observedGeneration, null),
+    candidateSha256: stateElement?.dataset?.candidateSha256 || null,
     verificationPassed: stateElement?.dataset?.verificationPassed === "true",
     failureCode: stateElement?.dataset?.failureCode || null,
     repairStatus: stateElement?.dataset?.repairStatus || null,
     repairApproved: stateElement?.dataset?.repairApproved === "true",
   };
+}
+
+/** The text the person can actually see in one of the room's editors. */
+export function readVisibleText(root = document, selector) {
+  return readValue(find(root, selector));
 }
 
 export async function sha256Hex(value) {
