@@ -30,10 +30,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
     case generate_variant(
            source,
-           arguments,
            generation_key,
            input_sha256,
-           opts,
            live_variant,
            fn -> live_generate(source, arguments, opts) end
          ) do
@@ -51,12 +49,10 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
           generate_variant(
             source,
-            arguments,
             generation_key,
             input_sha256,
-            opts,
             fallback_variant,
-            fn -> {:ok, fallback_result(source, arguments, live_reason)} end
+            fn -> {:ok, fallback_result(source, live_reason)} end
           )
         else
           {:error, {:model_generation_failed, live_reason}}
@@ -81,10 +77,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
   defp generate_variant(
          source,
-         _arguments,
          generation_key,
          input_sha256,
-         _opts,
          cache_variant,
          generator
        ) do
@@ -238,7 +232,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   defp normalize_generator_result({:error, reason}), do: {:error, reason}
   defp normalize_generator_result(_), do: {:error, :generator_result_invalid}
 
-  defp fallback_result(source, arguments, reason) do
+  defp fallback_result(source, reason) do
     candidate = fallback_candidate(source)
 
     %{
@@ -249,8 +243,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       model_response_id: "demo-fallback-#{Digest.sha256(inspect(reason))}",
       prompt_version: @prompt_version,
       fallback_used: true,
-      fallback_reason: reason,
-      instructions: arguments
+      fallback_reason: reason
     }
   end
 

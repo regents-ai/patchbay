@@ -64,8 +64,6 @@ const PatchbayWebMCP = {
     retireAllRevisions(this);
     this.permanentScope?.();
     this.permanentScope = null;
-    this.waiters.forEach(waiter => waiter.abort?.());
-    this.waiters.clear();
   },
 };
 
@@ -80,7 +78,6 @@ export function initialise(hook) {
   hook.controllers = new Map();
   hook.registeredDigests = new Map();
   hook.pendingRegistrations = new Map();
-  hook.waiters = new Map();
   hook.permanentScope = null;
   hook.destroyedFlag = false;
   hook.lifecycle = 0;
@@ -364,14 +361,12 @@ export async function reconcileRegistry(hook, generation = hook.desiredGeneratio
     observed_tool_names: entries.names,
     observed_contracts: entries.contracts,
   });
-  hook.lastRegistry = entries;
   return reply;
 }
 
 async function reportToolChange(hook) {
   const entries = await readOwnedTools(hook);
   if (hook.destroyedFlag) return;
-  hook.lastRegistry = entries;
   await push(hook, "webmcp_toolchange_observed", {
     room_id: hook.roomId,
     browser_session_id: hook.browserSessionId,

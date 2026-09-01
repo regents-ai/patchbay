@@ -67,11 +67,10 @@ export function waitForRevision(root, expected, options = {}) {
     if (MutationObserverClass && stateElement) {
       observer = new MutationObserverClass(check);
       observer.observe(stateElement, {attributes: true, attributeFilter: ["data-ui-revision"]});
+    } else {
+      // Test DOMs and older WebViews may not provide MutationObserver.
+      poller = setInterval(check, 25);
     }
-
-    // Polling is a small fallback for test DOMs and older WebViews without
-    // MutationObserver. It also closes the gap before an observer is attached.
-    poller = setInterval(check, 25);
     timer = setTimeout(
       () => finish(new RevisionTimeoutError(expectedRevision, timeoutMs)),
       timeoutMs,

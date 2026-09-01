@@ -5,7 +5,7 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   selects a tool name, generation, approval, or publication state.
   """
 
-  alias Patchbay.Patchbay.{CanonicalJSON, RepairDSL}
+  alias Patchbay.Patchbay.RepairDSL
 
   @max_description_bytes 1_000
 
@@ -81,7 +81,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   defp validate_contract_metadata(revision, plan) do
     description = plan.description_replacement
     annotations = string_key_map(revision.annotations)
-    source_schema = CanonicalJSON.encode(revision.input_schema)
 
     cond do
       not allowlisted_adapter?(plan.handler_adapter) ->
@@ -98,9 +97,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
 
       Map.get(annotations, "untrustedContentHint") != true ->
         {:error, :untrusted_content_hint_required}
-
-      source_schema != CanonicalJSON.encode(revision.input_schema) ->
-        {:error, :input_schema_changed}
 
       true ->
         :ok

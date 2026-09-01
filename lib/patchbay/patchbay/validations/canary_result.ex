@@ -24,10 +24,6 @@ defmodule Patchbay.Patchbay.Validations.CanaryResult do
     if passed == true and is_map(checks) and
          Enum.all?(
            @required_checks,
-           &(Map.get(checks, &1, Map.get(checks, String.to_existing_atom(&1))) == true)
-         ) and
-         Enum.all?(
-           @required_checks,
            &(Map.get(checks, &1) == true or Map.get(checks, key_atom(&1)) == true)
          ) do
       :ok

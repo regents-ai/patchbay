@@ -145,15 +145,17 @@ defmodule Patchbay.Patchbay.VerificationService do
   end
 
   defp active_revision(room, opts) do
-    revisions =
-      Domain.list_tool_revisions!(
-        Keyword.put(read_opts(opts), :query,
-          filter: [room_id: room.id, status: :desired],
-          sort: [generation: :asc]
-        )
+    Domain.list_tool_revisions!(
+      Keyword.put(read_opts(opts), :query,
+        filter: [
+          room_id: room.id,
+          status: :desired,
+          generation: room.desired_tool_generation
+        ],
+        limit: 1
       )
-
-    Enum.find(revisions, &(&1.generation == room.desired_tool_generation))
+    )
+    |> List.first()
   end
 
   defp persist_invocation_result!(invocation, result, verified_at, opts) do

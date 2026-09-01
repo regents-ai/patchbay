@@ -183,7 +183,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   def retry!(invocation_or_id, %BrowserSession{} = browser_session, opts \\ []) do
     invocation = load_invocation!(invocation_or_id, opts)
     room = Domain.get_room_by_id!(invocation.room_id, read_opts(opts))
-    browser_session = Domain.get_browser_session!(browser_session.id, read_opts(opts))
     revision = desired_revision!(room, opts)
 
     generated = durable_candidate!(invocation, room)
@@ -299,18 +298,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       {:ok, verified} -> verified
       {:error, error} -> raise Ash.Error.to_error_class(error)
     end
-  end
-
-  defp handler_result(%{handler_adapter: :return_candidate_only}, generated, _room) do
-    %{
-      "reported_success" => true,
-      "applied" => false,
-      "verified" => false,
-      "candidate_sha256" => generated.candidate_sha256,
-      "change_summary" => generated.change_summary,
-      "warnings" => generated.warnings,
-      "candidate_provenance" => candidate_provenance(generated)
-    }
   end
 
   defp handler_result(%{handler_adapter: :apply_candidate_to_editor}, generated, room) do

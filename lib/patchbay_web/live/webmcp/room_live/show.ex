@@ -472,19 +472,16 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   end
 
   defp assigns_for(%Room{} = room, browser_session) do
-    revision = desired_revision!(room)
     invocation = latest_invocation(room)
     proposal = latest_proposal(room)
 
     %{
       room: room,
-      revision: revision,
       browser_session: browser_session,
       invocation: invocation,
       invocation_revision: invocation_revision(invocation),
       proposal: proposal,
       timeline: RoomTimeline.list!(room.id),
-      verification: latest_verification(invocation),
       source_bytes: Digest.artifact_size(room.source_markdown),
       candidate_bytes:
         if(is_binary(room.candidate_markdown),
@@ -527,8 +524,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     case Domain.list_tool_revisions!(
            query: [filter: [room_id: room.id, status: :desired], limit: 1]
          ) do
-      [revision | _] ->
-        if revision.generation == room.desired_tool_generation, do: room, else: room
+      [_revision | _] ->
+        room
 
       [] ->
         Fixtures.revision_attributes(room.id)
@@ -609,17 +606,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
           [proposal | _] -> proposal
           [] -> nil
         end
-    end
-  rescue
-    _ -> nil
-  end
-
-  defp latest_verification(nil), do: nil
-
-  defp latest_verification(%Invocation{id: invocation_id}) do
-    case Domain.list_verifications!(query: [filter: [invocation_id: invocation_id], limit: 1]) do
-      [verification | _] -> verification
-      [] -> nil
     end
   rescue
     _ -> nil

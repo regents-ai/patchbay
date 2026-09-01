@@ -13,11 +13,9 @@ defmodule Patchbay.Patchbay.Frontmatter do
 
   @spec parse(binary()) :: {:ok, map()} | {:error, atom()}
   def parse(markdown) when is_binary(markdown) do
-    with :ok <- size_check(markdown),
-         {:ok, frontmatter, _body} <- split(markdown),
-         :ok <- frontmatter_size_check(frontmatter),
-         {:ok, metadata} <- parse_lines(frontmatter) do
-      {:ok, metadata}
+    case extract(markdown) do
+      {:ok, metadata, _body} -> {:ok, metadata}
+      {:error, reason} -> {:error, reason}
     end
   end
 
