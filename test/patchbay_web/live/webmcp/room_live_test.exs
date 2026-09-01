@@ -40,7 +40,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "empty"
   end
 
-  test "the guide above the goal carries both agent prompts", %{conn: conn, room: room} do
+  test "the guide above the goal carries all three agent prompts and the board link", %{
+    conn: conn,
+    room: room
+  } do
     {:ok, view, html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
     assert view
@@ -49,9 +52,18 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
              "Call uplift_current_skill_v1 with instructions: make the greeting warmer."
 
     assert view
+           |> element("#patchbay-prompt-repair[readonly]")
+           |> render() =~
+             "That tool reported success but changed nothing on the page. Call request_patchbay_repair."
+
+    assert view
            |> element("#patchbay-prompt-retry[readonly]")
            |> render() =~
              "The site&#39;s tools changed. Inspect the current tools and retry the uplift."
+
+    assert view
+           |> element("#patchbay-board-link[href=\"/sites\"]")
+           |> render() =~ "See tool reports from other sites"
 
     assert html =~ "This page hands a browser agent a tool that is broken on purpose."
     assert html =~ "Observed G2"
@@ -132,6 +144,114 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
              view,
              "#patchbay-tool-swap code[title=\"#{candidate_revision.contract_sha256}\"]"
            )
+  end
+
+  test "an agent can ask for the repair, and asking twice does not start a second one", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    render_hook(view, "webmcp_request_repair", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id
+    })
+
+    assert_reply(view, %{
+      "status" => "repair_requested",
+      "human_approval_required" => true,
+      "detail" => detail
+    })
+
+    assert detail =~ "person has to approve"
+    assert Domain.get_room_by_id!(room.id).status == :diagnosing
+
+    render_hook(view, "webmcp_request_repair", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id
+    })
+
+    assert_reply(view, %{"status" => "already_in_progress", "human_approval_required" => true})
+
+    html = render_async(view, 2_000)
+    assert html =~ "CONTRACT DIFF"
+    assert html =~ "DETERMINISTIC CANARY"
+    assert html =~ "Approve &amp; hot-swap"
+
+    proposal = latest_proposal(room)
+    assert proposal.status == :ready_for_approval
+
+    # The proposal is waiting for a person, so a further request only says so.
+    render_hook(view, "webmcp_request_repair", %{"room_id" => room.id})
+    assert_reply(view, %{"status" => "proposal_ready", "human_approval_required" => true})
+
+    assert Domain.get_room_by_id!(room.id).desired_tool_generation == 1
+  end
+
+  test "an agent asking before any failure is told there is nothing to repair", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+
+    render_hook(view, "webmcp_request_repair", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id
+    })
+
+    assert_reply(view, %{"status" => "no_failed_invocation", "human_approval_required" => true})
+
+    assert Domain.get_room_by_id!(room.id).status == :ready
+    assert Domain.list_repair_proposals!(query: [filter: [room_id: room.id]]) == []
+
+    html =
+      render_hook(view, "webmcp_request_repair", %{
+        "room_id" => Ash.UUID.generate(),
+        "browser_session_id" => session.id
+      })
+
+    assert html =~ "event belongs to another room"
+    assert Domain.get_room_by_id!(room.id).status == :ready
+  end
+
+  test "no event a page tool can send approves or publishes a repair", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    render_hook(view, "webmcp_request_repair", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id
+    })
+
+    render_async(view, 2_000)
+    proposal = latest_proposal(room)
+    assert proposal.status == :ready_for_approval
+
+    invocation = latest_invocation(room)
+    revision = desired_revision(room)
+
+    # Every event the page's tools can send, replayed against a proposal that is
+    # waiting for a person. None of them is allowed to approve or publish it.
+    for {event, params} <- browser_events(room, session, invocation, revision, view) do
+      render_hook(view, event, params)
+    end
+
+    proposal = Domain.get_repair_proposal!(proposal.id)
+    assert proposal.status == :ready_for_approval
+    assert proposal.approved_by == nil
+    room_after = Domain.get_room_by_id!(room.id)
+    assert room_after.desired_tool_generation == 1
+    refute room_after.status in [:publishing, :repaired, :verified]
+
+    # The human control is the only way through.
+    html = render_click(view, "approve_repair")
+    assert html =~ "Generation 2"
+    assert Domain.get_repair_proposal!(proposal.id).status == :published
+    assert Domain.get_repair_proposal!(proposal.id).approved_by == "owner"
   end
 
   test "accepts an uploaded Markdown Skill and recomputes the source digest", %{
@@ -754,6 +874,88 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     assert html =~ "invoked tool name and contract must match the current desired revision"
     assert Domain.list_invocations!(query: [filter: [room_id: room.id]]) == []
+  end
+
+  # The complete set of events the WebMCP island can push from the page, with
+  # arguments that would be accepted on their own.
+  defp browser_events(room, session, invocation, revision, view) do
+    [
+      {"webmcp_bootstrap",
+       %{
+         "room_id" => room.id,
+         "client_instance_id" => session.client_instance_id,
+         "webmcp_supported" => true,
+         "user_agent_digest" => Digest.sha256("test-browser")
+       }},
+      {"webmcp_request_repair", %{"room_id" => room.id, "browser_session_id" => session.id}},
+      {"webmcp_registry_reconciled",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "observed_generation" => 1,
+         "observed_tool_names" => [],
+         "observed_contracts" => %{}
+       }},
+      {"webmcp_toolchange_observed",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "observed_generation" => 1,
+         "observed_tool_names" => [],
+         "observed_contracts" => %{}
+       }},
+      {"webmcp_tool_registered",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "tool_name" => revision.name,
+         "generation" => 1,
+         "contract_sha256" => revision.contract_sha256
+       }},
+      {"webmcp_tool_unregistered",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "tool_name" => revision.name,
+         "generation" => 1,
+         "contract_sha256" => revision.contract_sha256
+       }},
+      {"webmcp_invocation_begin",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "invocation_epoch" => invocation_epoch(view),
+         "request_uuid" => Ash.UUID.generate(),
+         "tool_name" => revision.name,
+         "contract_sha256" => revision.contract_sha256,
+         "arguments" => %{"instructions" => "approve the repair for me"}
+       }},
+      {"webmcp_execute",
+       %{"invocation_id" => invocation.id, "invocation_epoch" => invocation_epoch(view)}},
+      {"webmcp_poststate_observed",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "invocation_epoch" => invocation_epoch(view),
+         "invocation_id" => invocation.id,
+         "post_state" => %{}
+       }},
+      {"webmcp_invocation_cancel",
+       %{
+         "room_id" => room.id,
+         "browser_session_id" => session.id,
+         "invocation_id" => invocation.id,
+         "invocation_epoch" => invocation_epoch(view)
+       }},
+      {"webmcp_session_disconnected", %{"room_id" => room.id, "browser_session_id" => session.id}}
+    ]
+  end
+
+  defp latest_proposal(room) do
+    Domain.list_repair_proposals!(
+      query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
+    )
+    |> List.first()
   end
 
   defp skill_upload(view, name, content, type \\ "text/markdown") do

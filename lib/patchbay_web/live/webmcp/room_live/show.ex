@@ -4,8 +4,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   This LiveView is deliberately small: Phoenix owns the durable room state and
   the WebMCP island reports browser observations back through the event names
-  below. Human repair approval remains a normal LiveView action; no browser
-  tool can approve or publish a repair.
+  below. A browser tool can ask for a diagnosis, which runs the same path as the
+  owner's button. Human repair approval remains a normal LiveView action; no
+  browser tool can approve or publish a repair.
   """
 
   use PatchbayWeb, :live_view
@@ -24,13 +25,19 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     InvocationRunner,
     RepairApprovalService,
     RepairPlanner,
+    RepairProposal,
     Room,
     RoomTimeline
   }
 
   require Ash.Query
 
-  @permanent_tool_names ["get_patchbay_room_state", "verify_skill_uplift_goal"]
+  @permanent_tool_names [
+    "get_patchbay_room_state",
+    "verify_skill_uplift_goal",
+    "request_patchbay_repair"
+  ]
+  @max_observed_tool_names length(@permanent_tool_names) + 1
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
 
   @impl true
@@ -348,38 +355,31 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   @impl true
   def handle_event("request_repair", _params, socket) do
-    with {:ok, invocation} <- latest_failed_invocation(socket.assigns.room) do
-      try do
-        Domain.begin_diagnosis!(socket.assigns.room)
-        repair_token = Ash.UUID.generate()
+    case start_repair(socket) do
+      {:repair_requested, _detail, socket} -> {:noreply, socket}
+      {_status, detail, socket} -> {:noreply, assign(socket, error_message: detail)}
+    end
+  end
 
-        socket =
-          socket
-          |> refresh(socket.assigns.browser_session)
-          |> assign(
-            error_message: nil,
-            pending_operation: :repair,
-            repair_token: repair_token
-          )
+  @impl true
+  def handle_event("webmcp_request_repair", params, socket) do
+    case valid_room_event?(params, socket.assigns.room) do
+      :ok ->
+        case start_repair(socket) do
+          {:error, message, socket} ->
+            {:reply, %{"error" => message}, assign(socket, error_message: message)}
 
-        {:noreply,
-         start_async(socket, {:repair, repair_token}, fn ->
-           result =
-             try do
-               {:ok, RepairPlanner.propose!(invocation, fallback: Config.demo_fallback?())}
-             rescue
-               error -> {:error, error}
-             catch
-               kind, reason -> {:error, {kind, reason}}
-             end
+          {status, detail, socket} ->
+            {:reply,
+             %{
+               "status" => to_string(status),
+               "detail" => detail,
+               "human_approval_required" => true
+             }, socket}
+        end
 
-           {:repair_result, repair_token, result}
-         end)}
-      rescue
-        error -> {:noreply, assign(socket, error_message: readable_error(error))}
-      end
-    else
-      {:error, message} -> {:noreply, assign(socket, error_message: message)}
+      {:error, message} ->
+        {:reply, %{"error" => message}, assign(socket, error_message: message)}
     end
   end
 
@@ -622,6 +622,65 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   @impl true
   def handle_async(_key, _result, socket), do: {:noreply, socket}
+
+  # The owner's button and the agent's request both come through here, so a room
+  # can only ever have one diagnosis running, and the spend limits inside
+  # RepairPlanner apply to a tool-triggered request exactly as to a click.
+  # Neither caller can approve or publish: this only produces a proposal.
+  defp start_repair(socket) do
+    proposal = socket.assigns.proposal
+
+    cond do
+      socket.assigns.pending_operation == :repair or socket.assigns.room.status == :diagnosing ->
+        {:already_in_progress, "Patchbay is already working out a repair for this room.", socket}
+
+      match?(%RepairProposal{status: :ready_for_approval}, proposal) ->
+        {:proposal_ready, "A repair is already proposed and waiting for a person to approve it.",
+         socket}
+
+      is_nil(proposal) and socket.assigns.room.status == :failed ->
+        case latest_failed_invocation(socket.assigns.room) do
+          {:ok, invocation} -> begin_repair(socket, invocation)
+          {:error, detail} -> {:no_failed_invocation, detail, socket}
+        end
+
+      socket.assigns.room.status == :error ->
+        {:no_failed_invocation,
+         "The last repair attempt did not complete. A person has to reset the demo before another repair can be asked for.",
+         socket}
+
+      true ->
+        {:no_failed_invocation, "This room has no failed tool call waiting for a repair.", socket}
+    end
+  end
+
+  defp begin_repair(socket, invocation) do
+    Domain.begin_diagnosis!(socket.assigns.room)
+    repair_token = Ash.UUID.generate()
+
+    socket =
+      socket
+      |> refresh(socket.assigns.browser_session)
+      |> assign(error_message: nil, pending_operation: :repair, repair_token: repair_token)
+      |> start_async({:repair, repair_token}, fn ->
+        result =
+          try do
+            {:ok, RepairPlanner.propose!(invocation, fallback: Config.demo_fallback?())}
+          rescue
+            error -> {:error, error}
+          catch
+            kind, reason -> {:error, {kind, reason}}
+          end
+
+        {:repair_result, repair_token, result}
+      end)
+
+    {:repair_requested,
+     "Patchbay is working out a repair. A person has to approve it before the replacement is published.",
+     socket}
+  rescue
+    error -> {:error, readable_error(error), socket}
+  end
 
   defp handle_repair_failure(socket, message) do
     socket =
@@ -979,7 +1038,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       observed_generation != room.desired_tool_generation ->
         {:error, "observed_generation must match the room's desired generation"}
 
-      not is_list(names) or Enum.any?(names, &(not is_binary(&1))) or length(names) > 3 ->
+      not is_list(names) or Enum.any?(names, &(not is_binary(&1))) or
+          length(names) > @max_observed_tool_names ->
         {:error, "observed_tool_names must be a list of names"}
 
       length(names) != MapSet.size(observed_names) ->
@@ -1150,7 +1210,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     push_event(socket, "patchbay:#{room.id}:desired_toolset", %{
       "room_id" => room.id,
       "generation" => room.desired_tool_generation,
-      "permanent_tools" => ["get_patchbay_room_state", "verify_skill_uplift_goal"],
+      "permanent_tools" => @permanent_tool_names,
       "revisions" => [revision_payload(revision)]
     })
   rescue

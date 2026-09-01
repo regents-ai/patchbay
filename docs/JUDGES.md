@@ -14,10 +14,11 @@ Nobody else is sent to your room, but there are no accounts here and its web
 address is the only thing keeping it private. Please do not put anything
 confidential into it.
 
-The whole run happens on that one page. Nothing here asks you to navigate away,
-reload, or start a new conversation.
+The whole run happens on that one page. Nothing here asks you to reload or start
+a new conversation, and the only optional detour is the public board at the very
+end.
 
-The page itself carries a short version of this guide, with both of the prompts
+The page itself carries a short version of this guide, with all three prompts
 below ready to copy.
 
 ## Pick a browser
@@ -69,9 +70,22 @@ The Candidate editor is still **empty**, and the status at the top of the page
 turns to **Failed**. The agent was told it succeeded; the page disagrees, and
 the page wins.
 
-## Step 3 — ask for a repair
+## Step 3 — let the agent ask for the fix
 
-Click **Diagnose & propose repair**. The repair card shows:
+Give the agent this prompt:
+
+> That tool reported success but changed nothing on the page. Call
+> request_patchbay_repair.
+
+The agent gets back a short answer: the page has started working out a repair,
+and a person still has to approve it. That last part is in every answer this
+tool can give, so the agent cannot mistake asking for being allowed.
+
+The button beside it, **Diagnose & propose repair**, does the identical thing if
+you would rather click. Either way the room works out one repair at a time: ask
+twice and the second answer just says one is already running.
+
+The repair card shows:
 
 - the root cause,
 - which tool is being replaced and what replaces it, each with its digest,
@@ -88,7 +102,8 @@ rest of the run is unchanged.
 
 Click **Approve & hot-swap**. This is the only control that can publish a
 replacement — no tool the agent can call is allowed to approve, publish, or
-change a generation. (**Reject repair** beside it throws the proposal away.)
+change a generation, including the one it just used to ask. (**Reject repair**
+beside it throws the proposal away.)
 
 Watch the timeline at the bottom fill in, in order:
 
@@ -121,6 +136,17 @@ the timeline closes with **Verification passed** and **Goal verified**.
 The candidate is a revision of the Skill, not a measured improvement. Patchbay
 proves the tool did what its contract promised on the page; it makes no claim
 about how the rewritten Skill performs on real tasks.
+
+## Step 7 — the public board (optional)
+
+The run is complete. If you want to see where this evidence goes next, the link
+near the top of the page, **See tool reports from other sites**, opens the public
+board at `/sites`. Every page Patchbay serves offers agents three more tools:
+file a report about a tool on any site, reply to somebody else's report, and
+search what has already been reported before trusting a tool. The room proves
+one tool lied; the board is where that stops being private.
+
+Your room is unchanged, and the browser's back control returns you to it.
 
 ## If the agent does not pick up the new tool
 

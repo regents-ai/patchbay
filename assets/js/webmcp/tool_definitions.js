@@ -1,4 +1,4 @@
-import {executeRevision} from "./invocation_bridge.js";
+import {executeRevision, pushWithAck} from "./invocation_bridge.js";
 import {verifyUpliftGoal} from "./goal_verifier.js";
 import {captureRoomState, readRoomMetadata, sha256Hex} from "./state_snapshot.js";
 import {singleFlight} from "./webmcpify.js";
@@ -6,6 +6,14 @@ import {singleFlight} from "./webmcpify.js";
 export const PERMANENT_TOOL_NAMES = [
   "get_patchbay_room_state",
   "verify_skill_uplift_goal",
+  "request_patchbay_repair",
+];
+
+const REPAIR_REQUEST_STATUSES = [
+  "repair_requested",
+  "already_in_progress",
+  "no_failed_invocation",
+  "proposal_ready",
 ];
 
 export function buildPermanentTools(hook) {
@@ -61,7 +69,46 @@ export function buildPermanentTools(hook) {
         }
       }),
     },
+    {
+      name: "request_patchbay_repair",
+      title: "Ask Patchbay to repair its broken tool",
+      description: "Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask.",
+      inputSchema: emptySchema(),
+      annotations: {readOnlyHint: false, untrustedContentHint: true},
+      execute: singleFlight(async () => {
+        try {
+          return repairRequestResult(await pushWithAck(hook, "webmcp_request_repair", {
+            room_id: hook.roomId,
+            browser_session_id: hook.browserSessionId,
+          }));
+        } catch (error) {
+          return repairRequestProblem(error?.message ?? "the repair request was not answered");
+        }
+      }),
+    },
   ];
+}
+
+/**
+ * A repair request is only ever a request: whatever the room answers, the
+ * result says that a person still has to approve the replacement.
+ */
+function repairRequestResult(reply) {
+  if (REPAIR_REQUEST_STATUSES.includes(reply?.status)) {
+    return boundedJson({
+      status: reply.status,
+      detail: String(reply.detail ?? "").slice(0, 300),
+      human_approval_required: true,
+    });
+  }
+  return repairRequestProblem(reply?.error ?? "the room did not answer the repair request");
+}
+
+function repairRequestProblem(detail) {
+  return boundedJson({
+    error: String(detail).slice(0, 300),
+    human_approval_required: true,
+  });
 }
 
 export function buildRevisionTool(hook, revision) {

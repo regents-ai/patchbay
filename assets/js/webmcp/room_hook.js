@@ -1,4 +1,5 @@
 import {
+  PERMANENT_TOOL_NAMES,
   buildPermanentTools,
   buildRevisionTool,
   isPatchbayToolName,
@@ -212,8 +213,7 @@ function invalidateBootstrap(hook) {
   if (unfinishedBootstrap && hook.permanentScope) {
     hook.permanentScope();
     hook.permanentScope = null;
-    hook.registeredDigests.delete("get_patchbay_room_state");
-    hook.registeredDigests.delete("verify_skill_uplift_goal");
+    for (const name of PERMANENT_TOOL_NAMES) hook.registeredDigests.delete(name);
   }
 }
 

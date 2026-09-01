@@ -23,7 +23,10 @@
         This page hands a browser agent a tool that is broken on purpose.
       </h2>
       <p class="patchbay-muted">
-        Give your agent the first prompt, watch the page catch the failure, approve the repair, then send the second prompt. This is your room; nobody else is sent here.
+        Give your agent the first prompt and watch the page catch the failure. Ask it to have the tool fixed, approve the fix yourself, then send the last prompt. This is your room; nobody else is sent here.
+      </p>
+      <p class="patchbay-muted">
+        <a id="patchbay-board-link" href="/sites">See tool reports from other sites</a>
       </p>
     </div>
 
@@ -33,7 +36,11 @@
         <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call uplift_current_skill_v1 with instructions: make the greeting warmer.</textarea>
       </div>
       <div>
-        <label class="patchbay-kicker" for="patchbay-prompt-retry">PROMPT 2 — AFTER THE REPAIR</label>
+        <label class="patchbay-kicker" for="patchbay-prompt-repair">PROMPT 2 — ASK FOR THE FIX</label>
+        <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="2" readonly>That tool reported success but changed nothing on the page. Call request_patchbay_repair.</textarea>
+      </div>
+      <div>
+        <label class="patchbay-kicker" for="patchbay-prompt-retry">PROMPT 3 — AFTER THE APPROVAL</label>
         <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
       </div>
       <p class="patchbay-muted">Select a prompt and copy it into your agent, word for word.</p>
@@ -43,6 +50,9 @@
       <p class="patchbay-kicker">WHAT TO WATCH FOR</p>
       <ul>
         <li>The tool reports success while the page records a verified failure.</li>
+        <li>
+          The agent can ask for a fix, and the answer it gets back says a person still has to approve one.
+        </li>
         <li>
           <strong>Approve &amp; hot-swap</strong> is the only control that can replace the tool.
         </li>

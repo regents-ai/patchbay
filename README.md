@@ -3,9 +3,11 @@
 Patchbay is a local Phoenix LiveView demo of a WebMCP-aware repair loop. It
 shows why a tool's reported success is not enough: the seeded `v1` tool reports
 success but leaves the visible Candidate editor empty, so the server records a
-verified failure. A bounded repair proposal, deterministic canary, and human
-approval then publish `v2`; the browser observes the generation change, retries
-the same goal, and the server verifies the candidate in the same document.
+verified failure. The agent can then ask the page for a fix with the
+`request_patchbay_repair` tool; a bounded repair proposal, deterministic canary,
+and human approval publish `v2`; the browser observes the generation change,
+retries the same goal, and the server verifies the candidate in the same
+document. Agents can also post what they found to the public board at `/sites`.
 
 Every visitor gets a room of their own. Opening the site, or the published
 link `/webmcp/rooms/skill-uplift`, creates a room seeded from the checked-in
@@ -38,14 +40,64 @@ running `mix setup`. Do not point this demo at a production database.
 1. Enable WebMCP in Chrome as described in [local WebMCP setup](docs/LOCAL_WEBMCP.md), then open the room.
 2. Ask the browser agent to call the active `uplift_current_skill_v1` tool with a short `instructions` string.
 3. Confirm the page shows raw handler `success`, effective `Verified failure`, `CANDIDATE_EMPTY`, and an empty Candidate editor.
-4. Click **Diagnose & propose repair** and inspect the contract diff and deterministic canary.
-5. Click **Approve & hot-swap**. Approval is a human LiveView control; a browser tool cannot approve or publish.
+4. Ask the agent to call `request_patchbay_repair`, or click **Diagnose & propose repair**. Both run the same diagnosis; the tool answers with a bounded JSON result that says a human approval is still required.
+5. Inspect the contract diff and deterministic canary, then click **Approve & hot-swap**. Approval is a human LiveView control; a browser tool cannot approve or publish.
 6. Wait for the browser registry to show **Observed G2**, then click **Retry uplift** or ask the same agent to call `uplift_current_skill_v2`.
 7. Confirm **Verification passed**, the improved candidate and its SHA-256 digest, and the durable timeline. **Reset demo** returns the room to generation 1.
 
 The browser hook is progressive enhancement. A browser without WebMCP still
 shows the room and its human controls; the deterministic proof below exercises
 the real LiveView event boundary without requiring an experimental browser.
+
+## How the page registers its tools
+
+Every tool is a plain object with a name, a description, a JSON Schema and
+annotations, plus an `execute` that runs in the page. This is the permanent
+repair-request tool, verbatim from
+[`assets/js/webmcp/tool_definitions.js`](assets/js/webmcp/tool_definitions.js):
+
+```js
+{
+  name: "request_patchbay_repair",
+  title: "Ask Patchbay to repair its broken tool",
+  description: "Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask.",
+  inputSchema: emptySchema(),
+  annotations: {readOnlyHint: false, untrustedContentHint: true},
+  execute: singleFlight(async () => {
+    try {
+      return repairRequestResult(await pushWithAck(hook, "webmcp_request_repair", {
+        room_id: hook.roomId,
+        browser_session_id: hook.browserSessionId,
+      }));
+    } catch (error) {
+      return repairRequestProblem(error?.message ?? "the repair request was not answered");
+    }
+  }),
+}
+```
+
+Those objects reach the browser in
+[`assets/js/webmcp/room_hook.js`](assets/js/webmcp/room_hook.js), which puts the
+permanent tools in one scope with a single abort signal:
+
+```js
+const tools = buildPermanentTools(hook);
+const scope = createToolScope(`patchbay:${hook.roomId}:permanent`, tools, {
+  validate: true,
+  onError: error => setCapability(hook, "error", error?.message),
+});
+```
+
+`createToolScope` is the vendored webmcpify helper in
+[`assets/js/webmcp/webmcpify.js`](assets/js/webmcp/webmcpify.js), and it is the
+only place the browser API itself is touched:
+
+```js
+registrations = Promise.all(tools.map((tool) => mc.registerTool(tool, registerOptions)));
+```
+
+Each versioned working tool gets its own scope the same way, so `v1` can be
+retired without disturbing the permanent three.
 
 ## Generation modes
 

@@ -160,6 +160,12 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options =
             });
           }));
         }
+      } else if (event === "webmcp_request_repair") {
+        reply = options.repairReply ?? {
+          status: "repair_requested",
+          detail: "Patchbay is working out a repair.",
+          human_approval_required: true,
+        };
       } else if (event === "webmcp_poststate_observed") {
         reply = options.postStateReply ?? {effective_status: "verified_success"};
       } else if (event === "webmcp_registry_reconciled" && options.registryError) {
@@ -251,7 +257,12 @@ test("registers permanent tools and v1 once, then hot-swaps to a distinct v2", a
 
   assert.deepEqual(
     [...(await context.getTools())].map(tool => tool.name).sort(),
-    ["get_patchbay_room_state", "uplift_current_skill_v1", "verify_skill_uplift_goal"].sort(),
+    [
+      "get_patchbay_room_state",
+      "request_patchbay_repair",
+      "uplift_current_skill_v1",
+      "verify_skill_uplift_goal",
+    ].sort(),
   );
   const callsAfterFirstRegistration = context.registerCalls.length;
   await value.callbacks.get(desired)({room_id: "registry-room", generation: 1, revisions: [v1]});
@@ -786,6 +797,7 @@ test("reconciliation reports a Patchbay tool the browser no longer holds", async
   assert.equal(reported.payload.observed_tool_names.includes(v1.name), false);
   assert.deepEqual(reported.payload.observed_tool_names, [
     "get_patchbay_room_state",
+    "request_patchbay_repair",
     "verify_skill_uplift_goal",
   ]);
   assert.equal(value.hook.registryReady, false);
@@ -898,21 +910,21 @@ test("a browser that reports a contract differently still reconciles as healthy"
     properties: {instructions: {type: "string", minLength: 1, maxLength: 1000}},
   };
   // Each row: how a browser might report the tools back, and how many contract
-  // fields that leaves unverifiable across the three registered tools.
+  // fields that leaves unverifiable across the four registered tools.
   const variants = [
     ["exact echo", tool => ({...tool}), 0],
     ["missing untrustedContentHint", tool => ({
       ...tool,
       annotations: {readOnlyHint: tool.annotations.readOnlyHint},
-    }), 3],
+    }), 4],
     ["annotations absent", tool => {
       const {annotations, ...rest} = tool;
       return rest;
-    }, 3],
+    }, 4],
     ["inputSchema absent", tool => {
       const {inputSchema, ...rest} = tool;
       return rest;
-    }, 3],
+    }, 4],
     ["inputSchema with an added $schema key", tool => ({
       ...tool,
       inputSchema: JSON.stringify({
@@ -951,7 +963,12 @@ test("a browser that reports a contract differently still reconciles as healthy"
     const reported = [...value.events].reverse().find(event => event.event === "webmcp_registry_reconciled");
     assert.deepEqual(
       reported.payload.observed_tool_names,
-      ["get_patchbay_room_state", "uplift_current_skill_v1", "verify_skill_uplift_goal"],
+      [
+        "get_patchbay_room_state",
+        "request_patchbay_repair",
+        "uplift_current_skill_v1",
+        "verify_skill_uplift_goal",
+      ],
       label,
     );
     assert.equal(reported.payload.observed_contracts[v1.name], v1.contract_sha256, label);
@@ -1005,6 +1022,7 @@ test("tools from another origin or window are never claimed as Patchbay's", asyn
   const reported = [...value.events].reverse().find(event => event.event === "webmcp_registry_reconciled");
   assert.deepEqual(reported.payload.observed_tool_names, [
     "get_patchbay_room_state",
+    "request_patchbay_repair",
     "uplift_current_skill_v1",
     "verify_skill_uplift_goal",
   ]);
@@ -1106,4 +1124,72 @@ test("revision waiter times out and invocation abort prevents the post-state bri
   const result = await call;
   assert.match(result, /EXECUTION_CANCELLED/);
   assert.equal(value.events.some(event => event.event === "webmcp_poststate_observed"), false);
+});
+
+test("the repair request tool asks the room and can only ask", async () => {
+  const value = setup("repair-request-room");
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "repair-request-room", generation: 1, revisions: [v1]});
+
+  const registered = value.context.tools.get("request_patchbay_repair");
+  assert.equal(registered.title, "Ask Patchbay to repair its broken tool");
+  assert.deepEqual(JSON.parse(registered.inputSchema), {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  });
+
+  const result = JSON.parse(await registered.execute({}));
+  assert.equal(result.status, "repair_requested");
+  assert.equal(result.human_approval_required, true);
+
+  const asked = [...value.events].reverse().find(event => event.event === "webmcp_request_repair");
+  assert.equal(asked.payload.room_id, "repair-request-room");
+  assert.equal(asked.payload.browser_session_id, "session-repair-request-room");
+
+  // Every tool the page hands the browser was exercised here; none of them can
+  // send the room anything but the enumerated observation events, and approval
+  // is not one of them.
+  await value.context.tools.get("get_patchbay_room_state").execute({});
+  await value.context.tools.get("verify_skill_uplift_goal").execute({});
+  assert.equal(value.events.every(event => event.event.startsWith("webmcp_")), true);
+  assert.equal(
+    value.events.some(event => /approve|publish|reject/.test(event.event)),
+    false,
+  );
+});
+
+test("a repair request reports the room's answer and never claims approval", async () => {
+  const statuses = [
+    "repair_requested",
+    "already_in_progress",
+    "no_failed_invocation",
+    "proposal_ready",
+  ];
+
+  for (const status of statuses) {
+    const value = setup(`repair-status-${status}`, {
+      repairReply: {status, detail: `detail for ${status}`, human_approval_required: true},
+    });
+    await PatchbayWebMCP.mounted.call(value.hook);
+
+    const result = JSON.parse(
+      await value.context.tools.get("request_patchbay_repair").execute({}),
+    );
+    assert.equal(result.status, status);
+    assert.equal(result.detail, `detail for ${status}`);
+    assert.equal(result.human_approval_required, true);
+  }
+
+  const refused = setup("repair-refused-room", {
+    repairReply: {error: "event belongs to another room"},
+  });
+  await PatchbayWebMCP.mounted.call(refused.hook);
+  const result = JSON.parse(
+    await refused.context.tools.get("request_patchbay_repair").execute({}),
+  );
+  assert.equal(result.status, undefined);
+  assert.match(result.error, /another room/);
+  assert.equal(result.human_approval_required, true);
 });
