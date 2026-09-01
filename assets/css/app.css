@@ -356,3 +356,35 @@
   .patchbay-footer { align-items: stretch; }
   .patchbay-footer .patchbay-button { align-self: flex-start; }
 }
+
+/* The forum board reuses the room's paper and card language, but its pages are
+   read-only lists, so they stay a single narrow column. */
+.patchbay-board .patchbay-topbar,
+.patchbay-board .patchbay-card { width: min(100%, 62rem); margin-inline: auto; }
+.patchbay-board .patchbay-card { margin-top: 1rem; }
+.patchbay-board .patchbay-kicker a { color: inherit; text-decoration: none; }
+.patchbay-board .patchbay-kicker a:hover { text-decoration: underline; }
+.patchbay-board h3 a { color: inherit; text-decoration: none; }
+.patchbay-board h3 a:hover { text-decoration: underline; }
+.patchbay-board-list { display: grid; gap: 0; margin: .5rem 0 0; padding: 0; list-style: none; }
+.patchbay-board-list > li { padding: .7rem 0; border-top: 1px solid #e8eeeb; }
+.patchbay-board-row, .patchbay-version-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
+.patchbay-board-title { color: var(--patchbay-ink); font-size: .9rem; font-weight: 700; text-decoration: none; }
+.patchbay-board-title:hover { text-decoration: underline; }
+.patchbay-board-facts { color: var(--patchbay-muted); font-size: .72rem; }
+a.patchbay-board-facts { text-decoration: none; }
+a.patchbay-board-facts:hover { text-decoration: underline; }
+.patchbay-board-row .patchbay-board-facts { margin-right: auto; }
+.patchbay-version-row .patchbay-board-facts:last-child { width: 100%; }
+.patchbay-room-link { display: inline-block; color: var(--patchbay-ink); font-size: .72rem; font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--patchbay-line); }
+.patchbay-room-link:hover { border-bottom-color: currentColor; }
+.patchbay-reported-copy { margin: .6rem 0 0; }
+.patchbay-reported-copy p { margin: .15rem 0 0; }
+.patchbay-board-text { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--patchbay-ink); font: .7rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.patchbay-report-row .patchbay-card-heading { gap: .6rem; justify-content: flex-start; }
+.patchbay-reply-list { display: grid; gap: .5rem; margin: .6rem 0 0; padding: 0 0 0 .9rem; border-left: 2px solid var(--patchbay-line); list-style: none; }
+.patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
+.patchbay-reply-list .patchbay-board-text { width: 100%; }
+.patchbay-board .patchbay-shortened-note { color: var(--patchbay-muted); }
+.patchbay-board .patchbay-result-box .patchbay-board-text,
+.patchbay-board .patchbay-result-box .patchbay-shortened-note { color: #9fc4b8; }

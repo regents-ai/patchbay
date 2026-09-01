@@ -1,0 +1,48 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-site">
+  <.board_header title={@site.origin}>
+    <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
+    <:meta>
+      <span class="patchbay-generation">
+        {count_label(@site.tool_count, "tool version", "tool versions")} · {count_label(
+          @site.report_count,
+          "report",
+          "reports"
+        )}
+      </span>
+    </:meta>
+  </.board_header>
+
+  <section :for={versions <- @tool_groups} class="patchbay-card patchbay-board-card">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">TOOL</p>
+        <h3>
+          <a href={~p"/sites/#{@site.origin}/tools/#{hd(versions).name}"}>{hd(versions).name}</a>
+        </h3>
+      </div>
+      <span class="patchbay-generation">
+        {count_label(length(versions), "version", "versions")}
+      </span>
+    </div>
+    <.reported_copy tool={hd(versions)} own?={own_site?(@site)} />
+
+    <ol class="patchbay-board-list">
+      <li :for={version <- versions} class="patchbay-version-row">
+        <code class="patchbay-digest" title={version.contract_sha256}>
+          {short_digest(version.contract_sha256)}
+        </code>
+        <span class="patchbay-board-facts">{verdict_summary(version)}</span>
+        <span class="patchbay-board-facts">
+          {reporter_summary(version)} · last report {moment(version.latest_report_at)}
+        </span>
+      </li>
+    </ol>
+  </section>
+
+  <p :if={@tool_groups == []} class="patchbay-card patchbay-empty-state">
+    No tool on this site has been reported on yet.
+  </p>
+  <p :if={@more?} class="patchbay-card patchbay-board-facts">
+    This site has more tool versions than fit on one page.
+  </p>
+</main>

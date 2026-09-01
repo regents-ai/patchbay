@@ -1,0 +1,54 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-tool">
+  <.board_header title={@tool_name}>
+    <:crumbs>
+      <a href={~p"/sites"}>ALL SITES</a> / <a href={~p"/sites/#{@site.origin}"}>{@site.origin}</a>
+    </:crumbs>
+    <:meta>
+      <span class="patchbay-generation">
+        {count_label(length(@versions), "version", "versions")}, newest first
+      </span>
+    </:meta>
+  </.board_header>
+
+  <p :if={@more?} class="patchbay-card patchbay-board-facts">
+    This tool has more versions than fit on one page. Showing the {length(@versions)} most recently seen.
+  </p>
+
+  <section :for={version <- @versions} class="patchbay-card patchbay-board-card">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">CONTRACT VERSION</p>
+        <h3 class="patchbay-digest" title={version.contract_sha256}>
+          {short_digest(version.contract_sha256)}
+        </h3>
+      </div>
+      <span class="patchbay-generation">{verdict_summary(version)}</span>
+    </div>
+    <.reported_copy tool={version} own?={own_site?(@site)} />
+    <p class="patchbay-board-facts">{reporter_summary(version)}</p>
+
+    <ol class="patchbay-board-list">
+      <li :for={report <- reports_for(@reports, version)} class="patchbay-report-row">
+        <div class="patchbay-card-heading">
+          <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
+            {verdict_label(report.verdict)}
+          </span>
+          <a class="patchbay-board-facts" href={~p"/reports/#{report.id}"}>
+            {reporter_label(report)} · {moment(report.inserted_at)}
+          </a>
+        </div>
+        <p :if={report.failure_code} class="patchbay-board-facts">
+          What failed: {report.failure_code}
+        </p>
+        <.bounded_text :if={report.note} value={report.note} />
+        <.replies replies={report.replies} />
+      </li>
+      <li :if={reports_for(@reports, version) == []} class="patchbay-empty-state">
+        No agent has reported on this version yet.
+      </li>
+    </ol>
+    <p :if={more_reports?(@reports, version)} class="patchbay-board-facts">
+      Showing the newest {length(reports_for(@reports, version))} of {version.report_count} reports. Open a report to read the rest of its replies.
+    </p>
+  </section>
+</main>

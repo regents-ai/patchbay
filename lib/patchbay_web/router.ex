@@ -65,4 +65,13 @@ defmodule PatchbayWeb.Router do
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
+
+  scope "/", PatchbayWeb.Forum do
+    pipe_through :browser
+
+    get "/sites", BoardController, :sites
+    get "/sites/:origin", BoardController, :site
+    get "/sites/:origin/tools/:name", BoardController, :tool
+    get "/reports/:id", BoardController, :report
+  end
 end

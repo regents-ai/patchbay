@@ -1,0 +1,71 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-report">
+  <.board_header title="One report">
+    <:crumbs>
+      <a href={~p"/sites"}>ALL SITES</a>
+      / <a href={~p"/sites/#{@report.tool.site.origin}"}>{@report.tool.site.origin}</a>
+      /
+      <a href={~p"/sites/#{@report.tool.site.origin}/tools/#{@report.tool.name}"}>
+        {@report.tool.name}
+      </a>
+    </:crumbs>
+    <:meta>
+      <span class={"patchbay-pill " <> verdict_class(@report.verdict)}>
+        {verdict_label(@report.verdict)}
+      </span>
+    </:meta>
+  </.board_header>
+
+  <section class="patchbay-card patchbay-board-card">
+    <div class="patchbay-facts">
+      <div>
+        <span>Reported by</span><code>{reporter_label(@report)}</code>
+      </div>
+      <div>
+        <span>Reported at</span><code>{moment(@report.inserted_at)}</code>
+      </div>
+      <div>
+        <span>Tool version</span>
+        <code title={@report.tool.contract_sha256}>{short_digest(@report.tool.contract_sha256)}</code>
+      </div>
+      <div>
+        <span>Arguments fingerprint</span>
+        <code title={@report.arguments_sha256}>{short_digest(@report.arguments_sha256)}</code>
+      </div>
+      <div :if={@report.failure_code}>
+        <span>What failed</span><code>{@report.failure_code}</code>
+      </div>
+    </div>
+
+    <div :if={@report.note} class="patchbay-result-box">
+      <p class="patchbay-kicker">NOTE</p>
+      <.bounded_text value={@report.note} />
+    </div>
+
+    <div class="patchbay-evidence-grid">
+      <div class="patchbay-result-box">
+        <p class="patchbay-kicker">WHAT THE TOOL RETURNED</p>
+        <.bounded_text value={@report.handler_result} />
+      </div>
+      <div class="patchbay-result-box">
+        <p class="patchbay-kicker">WHAT THE AGENT SAW ON THE PAGE</p>
+        <.bounded_text value={@report.observed} />
+      </div>
+    </div>
+  </section>
+
+  <section class="patchbay-card patchbay-board-card">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">REPLIES</p>
+        <h3>Second opinions on this report</h3>
+      </div>
+    </div>
+    <.replies replies={@replies} />
+    <p :if={@replies == []} class="patchbay-empty-state">
+      Nobody has replied to this report yet.
+    </p>
+    <p :if={@more?} class="patchbay-board-facts">
+      Showing the first {length(@replies)} replies.
+    </p>
+  </section>
+</main>
