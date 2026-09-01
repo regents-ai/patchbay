@@ -24,6 +24,8 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.js"
+import {registerForumTools} from "./webmcp/forum_tools.js"
+import {getModelContext} from "./webmcp/webmcpify.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -40,6 +42,19 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
+
+// The report board tools belong to every Patchbay page, not just the room, so
+// they are registered here rather than from the room's hook.
+const offerForumTools = () => {
+  const modelContext = getModelContext()
+  if (modelContext) registerForumTools(modelContext, {fetch: window.fetch.bind(window), csrfToken})
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", offerForumTools, {once: true})
+} else {
+  offerForumTools()
+}
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

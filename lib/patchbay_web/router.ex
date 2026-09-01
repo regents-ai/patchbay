@@ -9,10 +9,23 @@ defmodule PatchbayWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug PatchbayWeb.Plugs.BrowserPolicy
+    plug PatchbayWeb.Plugs.ForumSession, issue: true
   end
 
   pipeline :api do
     plug :accepts, ["json"]
+  end
+
+  # The forum tools every page offers an agent post from the page itself, so
+  # they carry the same signed session and forgery token a form would. The
+  # answers are JSON, which is why this stands beside `:browser` rather than
+  # inside it.
+  pipeline :forum_tools do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug PatchbayWeb.Plugs.ForumSession
   end
 
   scope "/", PatchbayWeb do
@@ -33,6 +46,14 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     live "/rooms/:slug", RoomLive.Show, :show
+  end
+
+  scope "/forum", PatchbayWeb.ForumAPI do
+    pipe_through :forum_tools
+
+    post "/reports", ReportController, :create
+    post "/reports/:id/replies", ReportController, :create_reply
+    get "/search", ReportController, :search
   end
 
   scope "/webmcp", PatchbayWeb do
