@@ -46,10 +46,16 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
      |> assign(
        page_title: room.title,
        error_message: nil,
+       upload_error: nil,
        pending_operation: nil,
        repair_token: nil,
        invocation_epoch: room.invocation_epoch,
        invocation_keys: MapSet.new()
+     )
+     |> allow_upload(:skill,
+       accept: ~w(.md .markdown),
+       max_entries: 1,
+       max_file_size: Digest.max_artifact_bytes()
      )}
   end
 
@@ -320,18 +326,22 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     source = value(params, "source_markdown") || value(params, "source")
 
     if is_binary(source) do
-      try do
-        room = Domain.update_source!(socket.assigns.room, source)
-
-        {:noreply,
-         socket
-         |> refresh(socket.assigns.browser_session)
-         |> assign(room: room, error_message: nil)}
-      rescue
-        error -> {:noreply, assign(socket, error_message: readable_error(error))}
-      end
+      put_source(socket, source)
     else
       {:noreply, assign(socket, error_message: "Source Skill text is required")}
+    end
+  end
+
+  @impl true
+  def handle_event("validate_skill_upload", _params, socket) do
+    {:noreply, assign(socket, upload_error: nil)}
+  end
+
+  @impl true
+  def handle_event("upload_skill", _params, socket) do
+    case consume_skill_upload(socket) do
+      {:ok, source} -> put_source(assign(socket, upload_error: nil), source)
+      {:error, message} -> {:noreply, assign(socket, upload_error: message)}
     end
   end
 
@@ -625,6 +635,52 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     {:noreply, assign(socket, pending_operation: nil, repair_token: nil, error_message: message)}
   end
 
+  defp put_source(socket, source) do
+    room = Domain.update_source!(socket.assigns.room, source)
+
+    {:noreply,
+     socket
+     |> refresh(socket.assigns.browser_session)
+     |> assign(room: room, error_message: nil)}
+  rescue
+    error -> {:noreply, assign(socket, error_message: readable_error(error))}
+  end
+
+  # The uploaded file feeds the same source update as pasting, so the digest and
+  # the timeline event are produced by exactly one path.
+  defp consume_skill_upload(socket) do
+    case uploaded_entries(socket, :skill) do
+      {[_entry], []} ->
+        socket
+        |> consume_uploaded_entries(:skill, fn %{path: path}, _entry ->
+          {:ok, readable_markdown(File.read(path))}
+        end)
+        |> List.first()
+
+      {[], []} ->
+        {:error, "Choose a Markdown Skill file before uploading."}
+
+      {_done, [_ | _]} ->
+        {:error, "That file was not accepted. Upload one Markdown Skill of 64 KB or less."}
+    end
+  end
+
+  defp readable_markdown({:ok, content}) do
+    cond do
+      not String.valid?(content) ->
+        {:error, "That file is not readable text. Upload a Markdown Skill saved as UTF-8."}
+
+      String.trim(content) == "" ->
+        {:error, "That file is empty. Upload a Markdown Skill with content in it."}
+
+      true ->
+        {:ok, content}
+    end
+  end
+
+  defp readable_markdown({:error, _reason}),
+    do: {:error, "That file could not be read. Try uploading it again."}
+
   defp assigns_for(%Room{} = room, browser_session) do
     invocation = latest_invocation(room)
     proposal = latest_proposal(room)
@@ -634,7 +690,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       browser_session: browser_session,
       invocation: invocation,
       invocation_revision: invocation_revision(invocation),
+      active_tool: active_tool(room),
       proposal: proposal,
+      proposal_source_revision: proposal_revision(proposal, room, :source_tool_revision_id),
+      proposal_candidate_revision: proposal_revision(proposal, room, :candidate_tool_revision_id),
       timeline: RoomTimeline.list!(room.id),
       source_bytes: Digest.artifact_size(room.source_markdown),
       candidate_bytes:
@@ -726,6 +785,27 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp invocation_revision(%Invocation{tool_revision_id: revision_id, room_id: room_id}) do
     revision = Domain.get_tool_revision!(revision_id)
     if revision.room_id == room_id, do: revision, else: nil
+  rescue
+    _ -> nil
+  end
+
+  defp active_tool(%Room{} = room) do
+    desired_revision!(room)
+  rescue
+    _ -> nil
+  end
+
+  defp proposal_revision(nil, _room, _field), do: nil
+
+  defp proposal_revision(proposal, %Room{} = room, field) do
+    case Map.fetch!(proposal, field) do
+      id when is_binary(id) ->
+        revision = Domain.get_tool_revision!(id)
+        if revision.room_id == room.id, do: revision, else: nil
+
+      _ ->
+        nil
+    end
   rescue
     _ -> nil
   end
@@ -1186,6 +1266,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     |> refresh(browser_session)
     |> assign(
       error_message: nil,
+      upload_error: nil,
       pending_operation: nil,
       repair_token: nil,
       invocation_epoch: epoch

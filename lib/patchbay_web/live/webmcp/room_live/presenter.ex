@@ -103,6 +103,25 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   def canary_checks(_), do: []
 
+  def upload_problems(%Phoenix.LiveView.UploadConfig{errors: errors}) do
+    errors
+    |> Enum.map(fn {_ref, reason} -> upload_problem(reason) end)
+    |> Enum.uniq()
+  end
+
+  def upload_problems(_), do: []
+
+  defp upload_problem(:too_large),
+    do: "That file is larger than 64 KB. Upload a smaller Markdown Skill."
+
+  defp upload_problem(:not_accepted),
+    do: "Only Markdown Skill files ending in .md or .markdown can be uploaded."
+
+  defp upload_problem(:too_many_files), do: "Upload one Markdown Skill file at a time."
+
+  defp upload_problem(_reason),
+    do: "That file could not be read. Upload a Markdown Skill saved as UTF-8 text."
+
   def event_label(kind) do
     %{
       room_reset: "Room reset",

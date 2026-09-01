@@ -8,6 +8,9 @@
       </div>
     </div>
     <div class="patchbay-topbar-meta">
+      <span :if={@active_tool} id="patchbay-active-tool" class="patchbay-generation">
+        Active: {@active_tool.name}
+      </span>
       <span class="patchbay-generation">Generation {@room.desired_tool_generation}</span>
       <span class={"patchbay-pill " <> status_class(@room.status)}>{status_label(@room.status)}</span>
     </div>
@@ -19,6 +22,9 @@
       <h2 id="patchbay-goal-title">{@room.goal_text}</h2>
       <p class="patchbay-muted">
         One page. One browser session. A handler can say success; Patchbay only accepts visible proof.
+      </p>
+      <p id="patchbay-openai-disclosure" class="patchbay-disclosure">
+        When you or an agent asks for an uplift, the Source Skill below is sent to OpenAI to draft the candidate.
       </p>
     </div>
     <div class="patchbay-registry-summary" aria-label="Browser registry status">
@@ -74,6 +80,35 @@
             disabled={@room.status != :ready}
           >Save source</button>
         </div>
+      </form>
+
+      <form
+        id="patchbay-skill-upload-form"
+        class="patchbay-upload"
+        phx-change="validate_skill_upload"
+        phx-submit="upload_skill"
+      >
+        <div class="patchbay-upload-row">
+          <label for={@uploads.skill.ref}>
+            Or upload a Markdown Skill file — .md or .markdown, up to 64 KB
+          </label>
+          <.live_file_input upload={@uploads.skill} />
+          <button
+            id="patchbay-skill-upload-button"
+            class="patchbay-button patchbay-button-quiet"
+            type="submit"
+            disabled={@room.status != :ready}
+          >Upload file</button>
+        </div>
+        <p
+          :for={message <- upload_problems(@uploads.skill)}
+          class="patchbay-upload-problem"
+        >
+          {message}
+        </p>
+        <p :if={@upload_error} id="patchbay-upload-error" class="patchbay-upload-problem">
+          {@upload_error}
+        </p>
       </form>
     </article>
 
@@ -180,9 +215,15 @@
         </div>
       </div>
 
-      <div :if={@invocation} class="patchbay-result-box">
-        <p class="patchbay-kicker">HANDLER RESPONSE</p>
-        <pre>{format_map(@invocation.handler_result)}</pre>
+      <div :if={@invocation} class="patchbay-evidence-grid">
+        <div class="patchbay-result-box" id="patchbay-invocation-arguments">
+          <p class="patchbay-kicker">ARGUMENTS</p>
+          <pre>{format_map(@invocation.arguments)}</pre>
+        </div>
+        <div class="patchbay-result-box" id="patchbay-handler-response">
+          <p class="patchbay-kicker">HANDLER RESPONSE</p>
+          <pre>{format_map(@invocation.handler_result)}</pre>
+        </div>
       </div>
 
       <div :if={@invocation} class="patchbay-state-grid">
@@ -205,8 +246,10 @@
         id="patchbay-fallback-warning"
         class="patchbay-alert patchbay-alert-warn"
       >
-        <strong>Demo fallback used</strong>
-        <span>Live inference was unavailable. The checked-in candidate is labeled and has not been task-evaluated.</span>
+        <strong>Demo fallback</strong>
+        <span>
+          Demo fallback used because live inference was unavailable. This candidate has not been evaluated on real tasks.
+        </span>
       </div>
       <p
         :if={@invocation && @invocation.effective_status == :errored}
@@ -255,6 +298,25 @@
           <span><b>Response</b> {short_id(@proposal.model_response_id)}</span>
         </div>
 
+        <div class="patchbay-facts" id="patchbay-tool-swap">
+          <div :if={@proposal_source_revision}>
+            <span>Current tool</span>
+            <code title={@proposal_source_revision.contract_sha256}>
+              {@proposal_source_revision.name} · sha256:{short_digest(
+                @proposal_source_revision.contract_sha256
+              )}
+            </code>
+          </div>
+          <div :if={@proposal_candidate_revision}>
+            <span>Replacement tool</span>
+            <code title={@proposal_candidate_revision.contract_sha256}>
+              {@proposal_candidate_revision.name} · sha256:{short_digest(
+                @proposal_candidate_revision.contract_sha256
+              )}
+            </code>
+          </div>
+        </div>
+
         <div class="patchbay-diff" id="patchbay-contract-diff">
           <span class="patchbay-kicker">CONTRACT DIFF</span>
           <div
@@ -285,8 +347,10 @@
         </div>
 
         <div :if={proposal_fallback?(@proposal)} class="patchbay-alert patchbay-alert-warn">
-          <strong>Demo fallback used</strong>
-          <span>Repair provenance is visible because live inference was unavailable.</span>
+          <strong>Demo fallback</strong>
+          <span>
+            Demo fallback used because live inference was unavailable. The repair details above come from the built-in demo plan.
+          </span>
         </div>
 
         <div :if={@proposal.risk_notes != []} class="patchbay-risk-notes">

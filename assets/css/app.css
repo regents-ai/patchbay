@@ -236,6 +236,13 @@
 .patchbay-editor-footer { justify-content: space-between; gap: .8rem; margin-top: .6rem; }
 .patchbay-digest { min-width: 0; overflow: hidden; color: var(--patchbay-muted); font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
 
+.patchbay-disclosure { margin: .7rem 0 0; color: var(--patchbay-muted); font-size: .72rem; line-height: 1.45; }
+.patchbay-upload { margin-top: .85rem; border-top: 1px dashed #dde5e2; padding-top: .75rem; }
+.patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; }
+.patchbay-upload-row label { flex: 1 1 100%; color: var(--patchbay-muted); font-size: .7rem; }
+.patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: #40565a; font-size: .7rem; }
+.patchbay-upload-problem { margin: .5rem 0 0; color: #8d382c; font-size: .71rem; line-height: 1.45; }
+
 .patchbay-button { cursor: pointer; border: 0; border-radius: .62rem; padding: .63rem .86rem; color: #fff; background: var(--patchbay-coral); font-size: .76rem; font-weight: 800; transition: transform .15s ease, filter .15s ease; }
 .patchbay-button:hover { filter: brightness(.95); transform: translateY(-1px); }
 .patchbay-button:focus-visible { outline: 3px solid rgba(23,140,139,.35); outline-offset: 2px; }
@@ -253,6 +260,8 @@
 .patchbay-positive { color: #0b7867; }
 .patchbay-negative { color: #ad4434; }
 .patchbay-result-box { margin-top: 1rem; border-radius: .65rem; padding: .72rem; background: #17282b; color: #d8f0e8; }
+.patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.patchbay-evidence-grid > .patchbay-result-box { min-width: 0; }
 .patchbay-result-box .patchbay-kicker { color: #f1c75b; }
 .patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: .67rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .65rem; }
@@ -313,7 +322,7 @@
   .patchbay-hero { gap: 1.1rem; }
   .patchbay-registry-summary { width: 100%; }
   .patchbay-editors, .patchbay-workbench { grid-template-columns: 1fr; }
-  .patchbay-state-grid { grid-template-columns: 1fr; }
+  .patchbay-state-grid, .patchbay-evidence-grid { grid-template-columns: 1fr; }
   .patchbay-editor { min-height: 15rem; }
   .patchbay-footer { align-items: stretch; }
   .patchbay-footer .patchbay-button { align-self: flex-start; }

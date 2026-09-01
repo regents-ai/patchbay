@@ -39,6 +39,191 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "empty"
   end
 
+  test "names the active tool and discloses that the Source Skill is sent to OpenAI", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, html} = live(conn, "/webmcp/rooms/skill-uplift")
+
+    assert has_element?(view, "#patchbay-active-tool", desired_revision(room).name)
+
+    assert html =~
+             "When you or an agent asks for an uplift, the Source Skill below is sent to OpenAI to draft the candidate."
+  end
+
+  test "shows the invocation arguments beside the raw handler result", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    assert has_element?(view, "#patchbay-invocation-arguments", "instructions")
+    assert has_element?(view, "#patchbay-invocation-arguments", "clarify the workflow")
+    assert has_element?(view, "#patchbay-handler-response", "reported_success")
+  end
+
+  test "states the demo fallback sentence required by the specification", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    assert has_element?(
+             view,
+             "#patchbay-fallback-warning",
+             "Demo fallback used because live inference was unavailable."
+           )
+
+    assert render(view) =~ "This candidate has not been evaluated on real tasks."
+  end
+
+  test "shows both tool names and contract digests before human approval", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    render_click(view, "request_repair")
+    render_async(view)
+
+    proposal =
+      Domain.list_repair_proposals!(
+        query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
+      )
+      |> List.first()
+
+    source_revision = Domain.get_tool_revision!(proposal.source_tool_revision_id)
+    candidate_revision = Domain.get_tool_revision!(proposal.candidate_tool_revision_id)
+
+    assert has_element?(view, "#patchbay-tool-swap", source_revision.name)
+    assert has_element?(view, "#patchbay-tool-swap", candidate_revision.name)
+
+    assert has_element?(
+             view,
+             "#patchbay-tool-swap code[title=\"#{source_revision.contract_sha256}\"]"
+           )
+
+    assert has_element?(
+             view,
+             "#patchbay-tool-swap code[title=\"#{candidate_revision.contract_sha256}\"]"
+           )
+  end
+
+  test "accepts an uploaded Markdown Skill and recomputes the source digest", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    source = room.source_markdown <> "\n\n## Uploaded note\n"
+
+    upload = skill_upload(view, "skill.md", source)
+    assert render_upload(upload, "skill.md") =~ "Upload file"
+
+    html = render_submit(view |> form("#patchbay-skill-upload-form"))
+
+    assert html =~ Digest.sha256(source)
+    assert Domain.get_room_by_id!(room.id).source_sha256 == Digest.sha256(source)
+    assert Domain.get_room_by_id!(room.id).source_markdown == source
+  end
+
+  test "rejects a file that is not a Markdown Skill", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    original = Domain.get_room_by_id!(room.id).source_sha256
+
+    upload = skill_upload(view, "skill.zip", "PK\x03\x04 not markdown", "application/zip")
+
+    assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, "skill.zip")
+
+    assert render(view) =~
+             "Only Markdown Skill files ending in .md or .markdown can be uploaded."
+
+    assert Domain.get_room_by_id!(room.id).source_sha256 == original
+  end
+
+  test "rejects a Markdown file over the Skill size limit", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    original = Domain.get_room_by_id!(room.id).source_sha256
+    oversize = String.duplicate("a", Digest.max_artifact_bytes() + 1)
+
+    upload = skill_upload(view, "huge.md", oversize)
+
+    assert {:error, [[_ref, :too_large]]} = render_upload(upload, "huge.md")
+
+    assert render(view) =~ "That file is larger than 64 KB. Upload a smaller Markdown Skill."
+    assert Domain.get_room_by_id!(room.id).source_sha256 == original
+  end
+
+  test "rejects a Markdown file that is not readable text", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    original = Domain.get_room_by_id!(room.id).source_sha256
+
+    upload = skill_upload(view, "binary.md", <<0xFF, 0xFE, 0x00, 0xFF>>)
+    render_upload(upload, "binary.md")
+
+    html = render_submit(view |> form("#patchbay-skill-upload-form"))
+
+    assert html =~ "That file is not readable text. Upload a Markdown Skill saved as UTF-8."
+    assert Domain.get_room_by_id!(room.id).source_sha256 == original
+  end
+
+  test "rejects an empty Markdown file", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    original = Domain.get_room_by_id!(room.id).source_sha256
+
+    # The upload test client cannot chunk a zero-byte file, so this stands in for
+    # a file with no Skill content in it.
+    upload = skill_upload(view, "empty.md", "\n   \n")
+    render_upload(upload, "empty.md")
+
+    html = render_submit(view |> form("#patchbay-skill-upload-form"))
+
+    assert html =~ "That file is empty. Upload a Markdown Skill with content in it."
+    assert Domain.get_room_by_id!(room.id).source_sha256 == original
+  end
+
+  test "asks for a file when the upload control is submitted empty", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+
+    html = render_submit(view |> form("#patchbay-skill-upload-form"))
+
+    assert html =~ "Choose a Markdown Skill file before uploading."
+  end
+
+  test "shows a visible failure when live inference is unavailable", %{conn: conn, room: room} do
+    without_live_inference(fn ->
+      {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+      session = bootstrap(view, room)
+      revision = desired_revision(room)
+
+      render_hook(view, "webmcp_invocation_begin", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
+        "request_uuid" => Ash.UUID.generate(),
+        "tool_name" => revision.name,
+        "contract_sha256" => revision.contract_sha256,
+        "arguments" => %{"instructions" => "uplift without a model"}
+      })
+
+      invocation = latest_invocation(room)
+
+      render_hook(view, "webmcp_execute", %{
+        "invocation_id" => invocation.id,
+        "invocation_epoch" => invocation_epoch(view)
+      })
+
+      html = render_async(view)
+
+      assert html =~ "Live inference failed"
+      assert html =~ "The candidate was not presented as a successful completion."
+      assert Domain.get_invocation!(invocation.id).effective_status == :errored
+      assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
+    end)
+  end
+
   test "updates source digest through the same room page", %{conn: conn, room: room} do
     {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
     source = room.source_markdown <> "\n\n## Local note\n"
@@ -432,6 +617,35 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "invoked tool name and contract must match the current desired revision"
     assert Domain.list_invocations!(query: [filter: [room_id: room.id]]) == []
   end
+
+  defp skill_upload(view, name, content, type \\ "text/markdown") do
+    file_input(view, "#patchbay-skill-upload-form", :skill, [
+      %{name: name, content: content, type: type, last_modified: 1_700_000_000_000}
+    ])
+  end
+
+  # The room reads its live-inference settings at execution time, so the flags are
+  # swapped for the duration of the block and restored afterwards.
+  defp without_live_inference(fun) do
+    previous_setting = Application.get_env(:patchbay, :demo_fallback)
+    previous_flag = System.get_env("PATCHBAY_DEMO_FALLBACK")
+    previous_key = System.get_env("OPENAI_API_KEY")
+
+    Application.put_env(:patchbay, :demo_fallback, false)
+    System.delete_env("PATCHBAY_DEMO_FALLBACK")
+    System.delete_env("OPENAI_API_KEY")
+
+    try do
+      fun.()
+    after
+      Application.put_env(:patchbay, :demo_fallback, previous_setting)
+      restore_env("PATCHBAY_DEMO_FALLBACK", previous_flag)
+      restore_env("OPENAI_API_KEY", previous_key)
+    end
+  end
+
+  defp restore_env(_name, nil), do: :ok
+  defp restore_env(name, value), do: System.put_env(name, value)
 
   defp bootstrap(view, room) do
     client_instance_id = Ash.UUID.generate()
