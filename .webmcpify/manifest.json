@@ -9,7 +9,7 @@
     "authFixtures": {}
   },
   "pipeline": {
-    "phase": "verify",
+    "phase": "done",
     "setup": {
       "runtimeVendored": [
         "assets/js/webmcp/webmcpify.js"
@@ -17,7 +17,9 @@
       "harnessInstalled": [
         "assets/test/webmcp/room_hook.test.js"
       ],
-      "originTrialNoted": []
+      "originTrialNoted": [
+        "docs/LOCAL_WEBMCP.md"
+      ]
     },
     "baselineSha": "8cf005db0bbfee37d531ad24d357c9221adcb34f",
     "baselineDirty": [],
@@ -231,6 +233,7 @@
     "2026-09-01 heal: adversarial review found that a fast reconnect could reuse a doomed bootstrap promise; lifecycle invalidation and stale-attempt guards now force a clean replacement attempt.",
     "2026-09-01 heal: adversarial review found two later stale-work races; lifecycle-aware queues, reconcile epochs, originating-lifecycle checks, and unfinished permanent-scope cleanup now prevent old work from poisoning or downgrading a reconnected registry.",
     "2026-09-01 audit: independent race/lifecycle and security reviews accepted the repaired WebMCP diff with no remaining P1/P2 blocker.",
-    "2026-09-01 verify: live browser proved get-state, initial failed verification, v1 verified failure, owner-approved v1-to-v2 hot-swap, v2 verified success, and final verifier pass in one document."
+    "2026-09-01 verify: live browser proved get-state, initial failed verification, v1 verified failure, owner-approved v1-to-v2 hot-swap, v2 verified success, and final verifier pass in one document.",
+    "2026-09-01 done: official Chrome 149 origin-trial, local testing flag, origin-isolation, and tools Permissions Policy requirements are documented in docs/LOCAL_WEBMCP.md."
   ]
 }

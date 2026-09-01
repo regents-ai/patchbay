@@ -81,6 +81,14 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     room: room
   } do
     {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+
+    html = render_click(view, "reset_demo")
+    assert html =~ "Generation 1"
+    assert html =~ "Candidate editor"
+    assert html =~ "empty"
+    assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
+    assert Domain.get_room_by_id!(room.id).status == :ready
+
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
 
@@ -301,7 +309,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
         "arguments" => %{"instructions" => "clarify the workflow"}
       })
 
+    assert html =~ "Raw handler result"
+    assert html =~ "success"
     assert html =~ "Visible postcondition failed"
+    assert html =~ "CANDIDATE_EMPTY"
+    assert Domain.get_room_by_id!(room.id).status == :failed
+    assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
   end
 
   defp desired_revision(room) do
