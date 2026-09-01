@@ -115,4 +115,5 @@ deliberately local and public for the demo.
 
 See [HACKATHON.md](HACKATHON.md) for the product story and
 [NEW_SINCE_2026-08-25.md](NEW_SINCE_2026-08-25.md) for the current change
-summary. Licensing and the vendored runtime notice are in [LICENSE](LICENSE).
+summary. The license is in [LICENSE](LICENSE) (MIT) and the vendored runtime notice is in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
