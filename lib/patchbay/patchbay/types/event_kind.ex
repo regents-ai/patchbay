@@ -19,7 +19,6 @@ defmodule Patchbay.Patchbay.Types.EventKind do
       :approval_granted,
       :approval_rejected,
       :publication_requested,
-      :tool_revision_observed,
       :goal_verified,
       :platform_error
     ]

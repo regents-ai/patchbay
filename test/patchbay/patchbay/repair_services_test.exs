@@ -149,12 +149,38 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert system.text == Prompts.repair_system()
   end
 
-  test "proposal records the repair-plan token usage", %{
+  test "candidate and repair-plan token usage both reach the proposal", %{
     room: room,
     revision: revision,
     browser_session: browser_session
   } do
-    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "usage"})
+    generator = fn _source, _arguments ->
+      %{
+        candidate_markdown: Fixtures.improved_markdown(),
+        change_summary: ["clarified the workflow"],
+        warnings: [],
+        model: "usage-test",
+        model_response_id: "resp_candidate_usage",
+        prompt_version: "usage-v1",
+        usage: %{"input_tokens" => 31, "output_tokens" => 12, "total_tokens" => 43}
+      }
+    end
+
+    invocation =
+      room
+      |> InvocationRunner.invoke!(browser_session, revision, %{"instructions" => "usage"},
+        request_uuid: Ash.UUID.generate(),
+        generator: generator
+      )
+      |> verify_visible!(room.id)
+
+    assert invocation.effective_status == :verified_failure
+
+    assert invocation.handler_result["candidate_provenance"]["usage"] == %{
+             "input_tokens" => 31,
+             "output_tokens" => 12,
+             "total_tokens" => 43
+           }
 
     request = fn _payload, _opts, _endpoint ->
       {:ok,
@@ -170,7 +196,11 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert proposal.model_response_id == "resp_repair_usage"
 
     assert proposal.usage == %{
-             "candidate" => %{},
+             "candidate" => %{
+               "input_tokens" => 31,
+               "output_tokens" => 12,
+               "total_tokens" => 43
+             },
              "repair_plan" => %{"input_tokens" => 5, "output_tokens" => 7, "total_tokens" => 12}
            }
   end

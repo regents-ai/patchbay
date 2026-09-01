@@ -20,8 +20,11 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     RepairProposal,
     Room,
     RoomTimeline,
+    Telemetry,
     ToolRevision
   }
+
+  alias Patchbay.Patchbay.OpenAI.Client
 
   require Ash.Query
 
@@ -37,7 +40,9 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     # room, proposal, or revision mutation. A rejected response therefore
     # cannot strand the room in :diagnosing or leave an orphan revision.
     candidate = candidate_for!(invocation, room)
+    model_started_at = System.monotonic_time()
     {plan, plan_metadata} = plan_for!(invocation, room, source_revision, opts)
+    emit_model_stop(model_started_at, room, invocation, plan_metadata)
 
     {:ok, revision_attrs} = RepairPolicy.revision_attributes(plan, source_revision)
 
@@ -72,8 +77,12 @@ defmodule Patchbay.Patchbay.RepairPlanner do
                |> Map.delete(:contract_sha256)
                |> Domain.create_tool_revision!(action_opts)
 
+             canary_started_at = System.monotonic_time()
+
              canary =
                CanaryRunner.run(room.source_markdown, candidate.candidate_markdown, revision)
+
+             canary_duration = System.monotonic_time() - canary_started_at
 
              proposal =
                Domain.create_repair_proposal!(
@@ -93,8 +102,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
                    prompt_version: plan_metadata[:prompt_version] || plan_prompt_version(opts),
                    usage: %{
                      "candidate" => candidate.usage,
-                     "repair_plan" =>
-                       Patchbay.Patchbay.OpenAI.Client.normalize_usage(plan_metadata[:usage])
+                     "repair_plan" => Client.normalize_usage(plan_metadata[:usage])
                    },
                    input_sha256: candidate.generation_key
                  },
@@ -112,52 +120,89 @@ defmodule Patchbay.Patchbay.RepairPlanner do
                action_opts
              )
 
-             if canary.passed do
-               revision = Domain.mark_tool_revision_canary_passed!(revision, action_opts)
-               _revision = Domain.mark_tool_revision_ready_for_approval!(revision, action_opts)
+             proposal =
+               if canary.passed do
+                 revision = Domain.mark_tool_revision_canary_passed!(revision, action_opts)
+                 _revision = Domain.mark_tool_revision_ready_for_approval!(revision, action_opts)
 
-               proposal =
-                 Domain.mark_canary_passed!(proposal, %{canary_result: canary}, action_opts)
+                 proposal =
+                   Domain.mark_canary_passed!(proposal, %{canary_result: canary}, action_opts)
 
-               room = Domain.mark_repair_ready!(room, action_opts)
-               room = Domain.await_repair_approval!(room, action_opts)
-               _room = Domain.set_active_repair_proposal!(room, proposal.id, action_opts)
+                 room = Domain.mark_repair_ready!(room, action_opts)
+                 room = Domain.await_repair_approval!(room, action_opts)
+                 _room = Domain.set_active_repair_proposal!(room, proposal.id, action_opts)
 
-               RoomTimeline.append!(
-                 room,
-                 :repair_proposed,
-                 %{"proposal_id" => proposal.id},
-                 action_opts
-               )
+                 RoomTimeline.append!(
+                   room,
+                   :repair_proposed,
+                   %{"proposal_id" => proposal.id},
+                   action_opts
+                 )
 
-               proposal
-             else
-               proposal =
-                 Domain.mark_canary_failed!(proposal, %{canary_result: canary}, action_opts)
+                 proposal
+               else
+                 proposal =
+                   Domain.mark_canary_failed!(proposal, %{canary_result: canary}, action_opts)
 
-               room = Domain.mark_repair_failed!(room, action_opts)
-               _room = Domain.set_active_repair_proposal!(room, nil, action_opts)
+                 room = Domain.mark_repair_failed!(room, action_opts)
+                 _room = Domain.set_active_repair_proposal!(room, nil, action_opts)
 
-               RoomTimeline.append!(
-                 room,
-                 :platform_error,
-                 %{
-                   "proposal_id" => proposal.id,
-                   "revision_id" => revision.id,
-                   "failure" => "CANARY_FAILED",
-                   "failure_code" => canary.failure_code
-                 },
-                 action_opts
-               )
+                 RoomTimeline.append!(
+                   room,
+                   :platform_error,
+                   %{
+                     "proposal_id" => proposal.id,
+                     "revision_id" => revision.id,
+                     "failure" => "CANARY_FAILED",
+                     "failure_code" => canary.failure_code
+                   },
+                   action_opts
+                 )
 
-               proposal
-             end
+                 proposal
+               end
+
+             {proposal, revision.id, canary, canary_duration}
            end,
            Keyword.take(opts, [:timeout])
          ) do
-      {:ok, proposal} -> proposal
-      {:error, error} -> raise Ash.Error.to_error_class(error)
+      {:ok, {proposal, revision_id, canary, canary_duration}} ->
+        emit_canary_stop(canary_duration, proposal, revision_id, canary)
+        proposal
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
     end
+  end
+
+  defp emit_model_stop(started_at, room, invocation, plan_metadata) do
+    usage = Client.normalize_usage(plan_metadata[:usage])
+
+    Telemetry.repair_model_stop(
+      %{
+        duration: System.monotonic_time() - started_at,
+        input_tokens: Map.get(usage, "input_tokens"),
+        output_tokens: Map.get(usage, "output_tokens")
+      },
+      %{
+        room_id: room.id,
+        invocation_id: invocation.id,
+        fallback_used: Map.get(plan_metadata, :fallback_used, false)
+      }
+    )
+  end
+
+  defp emit_canary_stop(duration, proposal, revision_id, canary) do
+    Telemetry.repair_canary_stop(
+      %{duration: duration},
+      %{
+        room_id: proposal.room_id,
+        invocation_id: proposal.source_invocation_id,
+        tool_revision_id: revision_id,
+        passed: canary.passed,
+        failure_code: canary.failure_code
+      }
+    )
   end
 
   @doc "Validates a plan without writing a proposal or revision."
@@ -190,7 +235,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
         prompt_version: fetch(provenance, :prompt_version),
         fallback_used: fetch(provenance, :fallback_used),
         fallback_reason: fetch(provenance, :fallback_reason),
-        usage: Patchbay.Patchbay.OpenAI.Client.normalize_usage(fetch(provenance, :usage))
+        usage: Client.normalize_usage(fetch(provenance, :usage))
       }
 
       case CandidateGenerator.validate_provenance(
@@ -218,19 +263,20 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   defp plan_for!(invocation, room, source_revision, opts) do
     cond do
       Keyword.has_key?(opts, :plan) ->
-        parse_plan!(Keyword.fetch!(opts, :plan), %{model: "provided-plan"})
+        parse_plan!(Keyword.fetch!(opts, :plan), %{model: "provided-plan", fallback_used: false})
 
       Keyword.get(opts, :fallback, false) ->
         parse_plan!(Fixtures.repair_plan(), %{
           model: "patchbay-demo-fallback",
           model_response_id: "demo-repair-fallback",
-          prompt_version: "patchbay-repair-v1"
+          prompt_version: "patchbay-repair-v1",
+          fallback_used: true
         })
 
       true ->
         input = repair_input(invocation, room, source_revision)
 
-        case Patchbay.Patchbay.OpenAI.Client.repair_plan(input, opts) do
+        case Client.repair_plan(input, opts) do
           {:ok, %{plan: plan} = metadata} ->
             parse_plan!(plan, metadata)
 

@@ -7,12 +7,14 @@ defmodule Patchbay.Patchbay.ToolPublisher do
   """
 
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.{Room, ToolRevision}
+  alias Patchbay.Patchbay.{Room, Telemetry, ToolRevision}
 
   require Ash.Query
 
   @spec publish!(ToolRevision.t(), keyword()) :: ToolRevision.t()
   def publish!(%ToolRevision{} = revision, opts \\ []) do
+    started_at = System.monotonic_time()
+
     case Ash.transact(
            [Room, ToolRevision],
            fn ->
@@ -25,8 +27,20 @@ defmodule Patchbay.Patchbay.ToolPublisher do
            end,
            Keyword.take(opts, [:timeout])
          ) do
-      {:ok, revision} -> revision
-      {:error, error} -> raise Ash.Error.to_error_class(error)
+      {:ok, revision} ->
+        Telemetry.publication_stop(
+          %{duration: System.monotonic_time() - started_at},
+          %{
+            room_id: revision.room_id,
+            tool_revision_id: revision.id,
+            tool_generation: revision.generation
+          }
+        )
+
+        revision
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
     end
   end
 

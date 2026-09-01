@@ -18,9 +18,12 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     Invocation,
     Room,
     RoomTimeline,
+    Telemetry,
     ToolRevision,
     VerificationService
   }
+
+  alias Patchbay.Patchbay.OpenAI.Client
 
   require Ash.Query
 
@@ -224,13 +227,66 @@ defmodule Patchbay.Patchbay.InvocationRunner do
        ) do
     invocation = begin_execution!(invocation, room, browser_session, revision, opts)
 
+    Telemetry.invocation_start(%{
+      room_id: room.id,
+      browser_session_id: browser_session.id,
+      invocation_id: invocation.id,
+      tool_generation: revision.generation
+    })
+
+    started_at = System.monotonic_time()
+
     case generated_for_invocation(room, arguments, opts) do
       {:ok, generated} ->
-        commit_generated!(invocation, revision, generated, opts)
+        committed = commit_generated!(invocation, revision, generated, opts)
+
+        emit_handler_stop(started_at, room, browser_session, revision, committed, generated, nil)
+
+        committed
 
       {:error, reason} ->
-        commit_generation_error!(invocation, reason, opts)
+        committed = commit_generation_error!(invocation, reason, opts)
+
+        emit_handler_stop(
+          started_at,
+          room,
+          browser_session,
+          revision,
+          committed,
+          nil,
+          :MODEL_GENERATION_FAILED
+        )
+
+        committed
     end
+  end
+
+  defp emit_handler_stop(
+         started_at,
+         room,
+         browser_session,
+         revision,
+         invocation,
+         generated,
+         failure_code
+       ) do
+    usage = Client.normalize_usage(generated && Map.get(generated, :usage))
+
+    Telemetry.invocation_handler_stop(
+      %{
+        duration: System.monotonic_time() - started_at,
+        input_tokens: Map.get(usage, "input_tokens"),
+        output_tokens: Map.get(usage, "output_tokens")
+      },
+      %{
+        room_id: room.id,
+        browser_session_id: browser_session.id,
+        invocation_id: invocation.id,
+        tool_generation: revision.generation,
+        fallback_used: (generated && Map.get(generated, :fallback_used)) || false,
+        failure_code: failure_code
+      }
+    )
   end
 
   defp begin_execution!(invocation, room, browser_session, revision, opts) do
@@ -469,8 +525,19 @@ defmodule Patchbay.Patchbay.InvocationRunner do
            end,
            Keyword.take(opts, [:timeout])
          ) do
-      {:ok, verified} -> verified
-      {:error, error} -> raise Ash.Error.to_error_class(error)
+      {:ok, verified} ->
+        if verified.effective_status == :verified_success do
+          Telemetry.goal_verified(%{
+            room_id: verified.room_id,
+            invocation_id: verified.id,
+            tool_generation: room.desired_tool_generation
+          })
+        end
+
+        verified
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
     end
   end
 
@@ -563,7 +630,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       "model_response_id" => generated.model_response_id,
       "prompt_version" => generated.prompt_version,
       "fallback_used" => generated.fallback_used,
-      "fallback_reason" => generated.fallback_reason
+      "fallback_reason" => generated.fallback_reason,
+      "usage" => Client.normalize_usage(Map.get(generated, :usage))
     }
   end
 
@@ -735,7 +803,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       model_response_id: fetch(provenance, :model_response_id),
       prompt_version: fetch(provenance, :prompt_version),
       fallback_used: fetch(provenance, :fallback_used),
-      fallback_reason: fetch(provenance, :fallback_reason)
+      fallback_reason: fetch(provenance, :fallback_reason),
+      usage: Client.normalize_usage(fetch(provenance, :usage))
     }
 
     cond do

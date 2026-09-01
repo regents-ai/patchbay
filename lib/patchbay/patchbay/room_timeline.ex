@@ -4,7 +4,7 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   """
 
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.{Room, RoomEvent}
+  alias Patchbay.Patchbay.{Room, RoomEvent, Telemetry}
 
   require Ash.Query
 
@@ -34,8 +34,12 @@ defmodule Patchbay.Patchbay.RoomTimeline do
            end,
            Keyword.take(opts, [:timeout])
          ) do
-      {:ok, event} -> event
-      {:error, error} -> raise Ash.Error.to_error_class(error)
+      {:ok, event} ->
+        emit_webmcp_telemetry(event)
+        event
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
     end
   end
 
@@ -52,6 +56,32 @@ defmodule Patchbay.Patchbay.RoomTimeline do
       Keyword.merge(opts, query: [filter: [room_id: room_id], sort: [sequence: :asc]])
     )
   end
+
+  # The registry lifecycle only ever reaches the server as a timeline event, so
+  # keying the WebMCP telemetry off the durable event keeps the page free of any
+  # separate instrumentation path.
+  defp emit_webmcp_telemetry(%RoomEvent{kind: kind} = event)
+       when kind in [:tool_registered, :tool_unregistered, :toolchange_observed] do
+    metadata = %{
+      room_id: event.room_id,
+      browser_session_id: event.browser_session_id,
+      tool_generation: payload_value(event.payload, "generation", :generation),
+      contract_sha256: payload_value(event.payload, "contract_sha256", :contract_sha256)
+    }
+
+    case kind do
+      :tool_registered -> Telemetry.webmcp_registered(metadata)
+      :tool_unregistered -> Telemetry.webmcp_unregistered(metadata)
+      :toolchange_observed -> Telemetry.webmcp_toolchange(metadata)
+    end
+  end
+
+  defp emit_webmcp_telemetry(_event), do: :ok
+
+  defp payload_value(payload, key, atom_key) when is_map(payload),
+    do: Map.get(payload, key) || Map.get(payload, atom_key)
+
+  defp payload_value(_payload, _key, _atom_key), do: nil
 
   defp lock_room!(room_id, opts) do
     query_opts = Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])

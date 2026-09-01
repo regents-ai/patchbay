@@ -16,6 +16,7 @@ defmodule Patchbay.Patchbay.VerificationService do
     Invocation,
     PostconditionVerifier,
     Room,
+    Telemetry,
     Verification
   }
 
@@ -23,6 +24,8 @@ defmodule Patchbay.Patchbay.VerificationService do
 
   @spec verify_invocation!(Invocation.t() | binary(), map(), keyword()) :: Invocation.t()
   def verify_invocation!(invocation_or_id, attrs \\ %{}, opts \\ []) when is_map(attrs) do
+    started_at = System.monotonic_time()
+
     case Ash.transact(
            [Room, Invocation, Patchbay.Patchbay.Verification],
            fn ->
@@ -65,10 +68,39 @@ defmodule Patchbay.Patchbay.VerificationService do
            end,
            Keyword.take(opts, [:timeout])
          ) do
-      {:ok, invocation} -> invocation
-      {:error, error} -> raise Ash.Error.to_error_class(error)
+      {:ok, invocation} ->
+        emit_verification_stop(started_at, invocation)
+        invocation
+
+      {:error, error} ->
+        raise Ash.Error.to_error_class(error)
     end
   end
+
+  defp emit_verification_stop(started_at, invocation) do
+    Telemetry.verification_stop(
+      %{
+        duration: System.monotonic_time() - started_at,
+        ui_commit_ms: ui_commit_ms(invocation)
+      },
+      %{
+        room_id: invocation.room_id,
+        invocation_id: invocation.id,
+        passed: invocation.effective_status == :verified_success,
+        failure_code: invocation.failure_code
+      }
+    )
+  end
+
+  # The gap between the handler returning and the visible state being verified
+  # is the only UI commit latency the invocation record already carries.
+  defp ui_commit_ms(%Invocation{
+         handler_returned_at: %DateTime{} = returned,
+         verified_at: %DateTime{} = verified
+       }),
+       do: DateTime.diff(verified, returned, :millisecond)
+
+  defp ui_commit_ms(_invocation), do: nil
 
   @doc false
   @spec derive_result(Invocation.t(), map(), keyword()) :: map()
