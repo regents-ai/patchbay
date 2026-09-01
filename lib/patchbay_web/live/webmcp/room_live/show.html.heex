@@ -1,0 +1,373 @@
+<main class="patchbay-shell" id="patchbay-room" data-room-slug={@room.slug}>
+  <header class="patchbay-topbar">
+    <div class="patchbay-brand">
+      <span class="patchbay-mark" aria-hidden="true">✦</span>
+      <div>
+        <p class="patchbay-kicker">PATCHBAY / WEBMCP</p>
+        <h1>{@room.title}</h1>
+      </div>
+    </div>
+    <div class="patchbay-topbar-meta">
+      <span class="patchbay-generation">Generation {@room.desired_tool_generation}</span>
+      <span class={"patchbay-pill " <> status_class(@room.status)}>{status_label(@room.status)}</span>
+    </div>
+  </header>
+
+  <section class="patchbay-hero" aria-labelledby="patchbay-goal-title">
+    <div>
+      <p class="patchbay-kicker">ORIGINAL GOAL</p>
+      <h2 id="patchbay-goal-title">{@room.goal_text}</h2>
+      <p class="patchbay-muted">
+        One page. One browser session. A handler can say success; Patchbay only accepts visible proof.
+      </p>
+    </div>
+    <div class="patchbay-registry-summary" aria-label="Browser registry status">
+      <span class={"patchbay-status-dot " <> if(@browser_session && @browser_session.webmcp_supported, do: "is-live", else: "")}></span>
+      <div>
+        <strong>{if(@browser_session && @browser_session.webmcp_supported,
+          do: "WebMCP connected",
+          else: "Waiting for browser"
+        )}</strong>
+        <span>
+          Desired G{@room.desired_tool_generation} · Observed {observed_generation(
+            @browser_session
+          )}
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <p
+    :if={@error_message}
+    id="patchbay-platform-error"
+    class="patchbay-alert patchbay-alert-error"
+    role="alert"
+  >
+    <strong>Platform error</strong>
+    <span>{@error_message}</span>
+  </p>
+
+  <section class="patchbay-editors" aria-label="Skill editors">
+    <article class="patchbay-card patchbay-editor-card">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">SOURCE SKILL</p>
+          <h3>What the browser agent is reading</h3>
+        </div>
+        <span class="patchbay-mono">{@source_bytes} bytes</span>
+      </div>
+      <form id="patchbay-source-form" phx-submit="update_source">
+        <label class="sr-only" for="patchbay-source-editor">Source Skill Markdown</label>
+        <textarea
+          id="patchbay-source-editor"
+          name="source_markdown"
+          class="patchbay-editor"
+          spellcheck="false"
+          aria-describedby="patchbay-source-digest"
+        >{@room.source_markdown}</textarea>
+        <div class="patchbay-editor-footer">
+          <span id="patchbay-source-digest" class="patchbay-digest">sha256:{@room.source_sha256}</span>
+          <button class="patchbay-button patchbay-button-quiet" type="submit">Save source</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="patchbay-card patchbay-editor-card" id="patchbay-candidate-panel">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">CANDIDATE EDITOR</p>
+          <h3>Visible output from the tool</h3>
+        </div>
+        <span class={"patchbay-state-label " <> if(@room.candidate_markdown, do: "is-ready", else: "is-empty")}>
+          {if(@room.candidate_markdown, do: "ready", else: "empty")}
+        </span>
+      </div>
+      <label class="sr-only" for="patchbay-candidate-editor">Candidate Skill Markdown</label>
+      <textarea
+        id="patchbay-candidate-editor"
+        class="patchbay-editor"
+        readonly
+        spellcheck="false"
+        aria-describedby="patchbay-candidate-digest"
+      >{if(@room.candidate_markdown, do: @room.candidate_markdown, else: "")}</textarea>
+      <div class="patchbay-editor-footer">
+        <span id="patchbay-candidate-digest" class="patchbay-digest">
+          {if(@room.candidate_sha256,
+            do: "sha256:" <> @room.candidate_sha256,
+            else: "No candidate committed"
+          )}
+        </span>
+        <span class="patchbay-mono">{@candidate_bytes} bytes</span>
+      </div>
+    </article>
+  </section>
+
+  <div
+    id="patchbay-room-state"
+    data-room-id={@room.id}
+    data-ui-revision={@room.ui_revision}
+    data-source-sha256={@room.source_sha256}
+    data-candidate-sha256={@room.candidate_sha256 || ""}
+    data-status={@room.status}
+    aria-hidden="true"
+  >
+  </div>
+
+  <section class="patchbay-workbench">
+    <article class="patchbay-card patchbay-evidence-card" id="patchbay-invocation-evidence">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">INVOCATION EVIDENCE</p>
+          <h3>Raw handler ≠ visible proof</h3>
+        </div>
+        <span
+          :if={@invocation}
+          class={"patchbay-pill " <> invocation_status_class(@invocation.effective_status)}
+        >
+          {status_label(@invocation.effective_status)}
+        </span>
+      </div>
+
+      <div :if={@invocation} class="patchbay-facts">
+        <div>
+          <span>Tool revision</span>
+          <code>{if(@invocation_revision, do: @invocation_revision.name, else: "unknown")}</code>
+        </div>
+        <div><span>Request</span><code>{short_id(@invocation.request_uuid)}</code></div>
+        <div>
+          <span>Raw handler result</span><strong class={
+            if(@invocation.handler_reported_success,
+              do: "patchbay-positive",
+              else: "patchbay-negative"
+            )
+          }>{if(@invocation.handler_reported_success, do: "success", else: "error")}</strong>
+        </div>
+        <div>
+          <span>Effective result</span><strong class={
+            if(@invocation.effective_status == :verified_success,
+              do: "patchbay-positive",
+              else: "patchbay-negative"
+            )
+          }>{status_label(@invocation.effective_status)}</strong>
+        </div>
+        <div :if={@invocation.failure_code}>
+          <span>Failed postcondition</span><code>{@invocation.failure_code}</code>
+        </div>
+        <div>
+          <span>Contract digest</span><code>sha256:{short_digest(@invocation.tool_contract_sha256)}</code>
+        </div>
+      </div>
+
+      <div :if={@invocation} class="patchbay-result-box">
+        <p class="patchbay-kicker">HANDLER RESPONSE</p>
+        <pre>{format_map(@invocation.handler_result)}</pre>
+      </div>
+
+      <div :if={@invocation} class="patchbay-state-grid">
+        <div>
+          <p class="patchbay-kicker">PRE-STATE</p>
+          <pre>{format_map(@invocation.pre_state)}</pre>
+        </div>
+        <div>
+          <p class="patchbay-kicker">OBSERVED POST-STATE</p>
+          <pre>{format_map(@invocation.post_state)}</pre>
+        </div>
+      </div>
+
+      <p :if={!@invocation} class="patchbay-empty-state">
+        Invoke the active tool from the browser agent to capture evidence here.
+      </p>
+
+      <div
+        :if={@invocation && fallback_used?(@invocation)}
+        id="patchbay-fallback-warning"
+        class="patchbay-alert patchbay-alert-warn"
+      >
+        <strong>Demo fallback used</strong>
+        <span>Live inference was unavailable. The checked-in candidate is labeled and has not been task-evaluated.</span>
+      </div>
+      <p
+        :if={@invocation && @invocation.effective_status == :errored}
+        class="patchbay-alert patchbay-alert-error"
+      >
+        <strong>Live inference failed</strong>
+        <span>The candidate was not presented as a successful completion.</span>
+      </p>
+    </article>
+
+    <article class="patchbay-card patchbay-repair-card" id="patchbay-repair">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">BOUNDED REPAIR</p>
+          <h3>Owner review before hot-swap</h3>
+        </div>
+        <span :if={@proposal} class={"patchbay-pill " <> proposal_status_class(@proposal.status)}>{status_label(
+          @proposal.status
+        )}</span>
+      </div>
+
+      <div :if={!@proposal && @room.status == :failed} class="patchbay-repair-cta">
+        <p>
+          The page saw a failed visible postcondition even though the handler reported success.
+        </p>
+        <button
+          id="patchbay-diagnose"
+          class="patchbay-button"
+          type="button"
+          phx-click="request_repair"
+          disabled={@pending_operation == :repair}
+        >
+          {if(@pending_operation == :repair, do: "Diagnosing…", else: "Diagnose & propose repair")}
+        </button>
+      </div>
+
+      <div :if={@proposal} class="patchbay-repair-details">
+        <div class="patchbay-root-cause">
+          <span class="patchbay-kicker">ROOT CAUSE</span>
+          <p>{@proposal.root_cause}</p>
+        </div>
+
+        <div class="patchbay-provenance" id="patchbay-repair-provenance">
+          <span><b>Model</b> {@proposal.model}</span>
+          <span><b>Prompt</b> {@proposal.prompt_version}</span>
+          <span><b>Response</b> {short_id(@proposal.model_response_id)}</span>
+        </div>
+
+        <div class="patchbay-diff" id="patchbay-contract-diff">
+          <span class="patchbay-kicker">CONTRACT DIFF</span>
+          <div
+            :for={{field, diff} <- diff_entries(@proposal.contract_diff)}
+            class="patchbay-diff-row"
+          >
+            <code>{field}</code>
+            <span class="patchbay-diff-old">− {format_value(diff_from(diff))}</span>
+            <span class="patchbay-diff-new">+ {format_value(diff_to(diff))}</span>
+          </div>
+        </div>
+
+        <div class="patchbay-canary" id="patchbay-canary">
+          <span class="patchbay-kicker">DETERMINISTIC CANARY</span>
+          <strong class={
+            if(canary_passed?(@proposal), do: "patchbay-positive", else: "patchbay-negative")
+          }>
+            {if(canary_passed?(@proposal), do: "passed", else: "failed")}
+          </strong>
+          <div :if={is_map(@proposal.canary_result)} class="patchbay-checks">
+            <span
+              :for={{name, passed} <- canary_checks(@proposal.canary_result)}
+              class={if(passed, do: "is-pass", else: "is-fail")}
+            >
+              <span aria-hidden="true">{if(passed, do: "✓", else: "×")}</span> {name}
+            </span>
+          </div>
+        </div>
+
+        <div :if={proposal_fallback?(@proposal)} class="patchbay-alert patchbay-alert-warn">
+          <strong>Demo fallback used</strong>
+          <span>Repair provenance is visible because live inference was unavailable.</span>
+        </div>
+
+        <div :if={@proposal.risk_notes != []} class="patchbay-risk-notes">
+          <span class="patchbay-kicker">RISK NOTES</span>
+          <ul>
+            <li :for={note <- @proposal.risk_notes}>{note}</li>
+          </ul>
+        </div>
+
+        <div :if={@proposal.status == :ready_for_approval} class="patchbay-approval-actions">
+          <p>Only this human control can approve and publish the replacement.</p>
+          <div>
+            <button
+              id="patchbay-approve"
+              class="patchbay-button"
+              type="button"
+              phx-click="approve_repair"
+            >Approve &amp; hot-swap</button>
+            <button
+              id="patchbay-reject"
+              class="patchbay-button patchbay-button-quiet"
+              type="button"
+              phx-click="reject_repair"
+            >Reject repair</button>
+          </div>
+        </div>
+      </div>
+
+      <p :if={!@proposal && @room.status != :failed} class="patchbay-empty-state">
+        A repair card appears after Patchbay proves the seeded failure.
+      </p>
+    </article>
+  </section>
+
+  <section
+    :if={
+      @room.status in [:repaired, :verified] ||
+        (@invocation && @invocation.effective_status == :verified_success)
+    }
+    class="patchbay-card patchbay-retry-card"
+    id="patchbay-retry"
+  >
+    <div>
+      <p class="patchbay-kicker">RETRY ORIGINAL GOAL</p>
+      <h3>The replacement is ready in the same document.</h3>
+      <p class="patchbay-muted">
+        Ask the same browser agent to inspect the current tools, then retry without navigating away.
+      </p>
+    </div>
+    <button
+      id="patchbay-retry-button"
+      class="patchbay-button"
+      type="button"
+      phx-click="retry_original_goal"
+    >Retry uplift</button>
+  </section>
+
+  <section
+    class="patchbay-card patchbay-timeline-card"
+    id="patchbay-timeline"
+    aria-labelledby="patchbay-timeline-title"
+  >
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">DURABLE TIMELINE</p>
+        <h3 id="patchbay-timeline-title">Every transition, in order</h3>
+      </div>
+      <span class="patchbay-mono">{@room.ui_revision} UI revision</span>
+    </div>
+    <ol class="patchbay-timeline">
+      <li :for={event <- @timeline}>
+        <span class="patchbay-timeline-sequence">{event.sequence}</span>
+        <div>
+          <strong>{event_label(event.kind)}</strong>
+          <span>{timeline_detail(event)}</span>
+        </div>
+        <time datetime={DateTime.to_iso8601(event.inserted_at)}>{relative_time(event.inserted_at)}</time>
+      </li>
+      <li :if={@timeline == []} class="patchbay-empty-state">
+        The room timeline is ready for its first browser observation.
+      </li>
+    </ol>
+  </section>
+
+  <footer class="patchbay-footer">
+    <div
+      id={"patchbay-webmcp-#{@room.id}"}
+      data-room-id={@room.id}
+    >
+    </div>
+    <div>
+      <p class="patchbay-kicker">ROOM STATE</p>
+      <p>
+        Desired <strong>G{@room.desired_tool_generation}</strong>
+        · Observed <strong>{observed_generation(@browser_session)}</strong>
+        · Session <code>{session_label(@browser_session)}</code>
+      </p>
+    </div>
+    <button
+      id="patchbay-reset"
+      class="patchbay-button patchbay-button-danger"
+      type="button"
+      phx-click="reset_demo"
+    >Reset demo</button>
+  </footer>
+</main>

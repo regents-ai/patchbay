@@ -103,3 +103,218 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* Patchbay's room is intentionally compact: the evidence should stay in view
+   while a judge walks the failure-to-repair loop. */
+.patchbay-shell {
+  --patchbay-ink: #172126;
+  --patchbay-muted: #69777a;
+  --patchbay-line: #d9e1df;
+  --patchbay-paper: #f6f8f5;
+  --patchbay-card: #ffffff;
+  --patchbay-coral: #db674e;
+  --patchbay-cyan: #178c8b;
+  --patchbay-yellow: #f1c75b;
+  min-height: 100vh;
+  color: var(--patchbay-ink);
+  background:
+    radial-gradient(circle at 92% 6%, rgba(241, 199, 91, .23), transparent 22rem),
+    linear-gradient(145deg, #f7faf6 0%, #eef4f1 100%);
+  padding: 1.2rem clamp(1rem, 3vw, 3.5rem) 3rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.patchbay-topbar,
+.patchbay-hero,
+.patchbay-editors,
+.patchbay-workbench,
+.patchbay-footer {
+  width: min(100%, 92rem);
+  margin-inline: auto;
+}
+
+.patchbay-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--patchbay-line);
+  padding-block: .65rem 1.15rem;
+}
+
+.patchbay-brand,
+.patchbay-topbar-meta,
+.patchbay-registry-summary,
+.patchbay-card-heading,
+.patchbay-editor-footer,
+.patchbay-approval-actions > div,
+.patchbay-footer {
+  display: flex;
+  align-items: center;
+}
+
+.patchbay-brand { gap: .8rem; }
+.patchbay-brand h1 { margin: 0; font-size: 1.03rem; letter-spacing: -.02em; }
+.patchbay-mark {
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: .72rem;
+  color: #fff9e7;
+  background: var(--patchbay-coral);
+  box-shadow: .28rem .28rem 0 rgba(23, 140, 139, .24);
+  font-size: 1.3rem;
+}
+
+.patchbay-kicker {
+  margin: 0 0 .32rem;
+  color: var(--patchbay-cyan);
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.patchbay-topbar-meta { gap: .65rem; }
+.patchbay-generation,
+.patchbay-mono,
+.patchbay-digest,
+.patchbay-facts code,
+.patchbay-result-box pre,
+.patchbay-footer code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.patchbay-generation { color: var(--patchbay-muted); font-size: .77rem; }
+.patchbay-pill,
+.patchbay-state-label {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--patchbay-line);
+  border-radius: 999px;
+  padding: .26rem .58rem;
+  font-size: .67rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.patchbay-pill.is-good, .patchbay-state-label.is-ready { color: #0b6b5e; background: #e1f3e9; border-color: #b6ded0; }
+.patchbay-pill.is-bad { color: #9c382b; background: #fbe6df; border-color: #efb7aa; }
+.patchbay-pill.is-warn { color: #7a5a0b; background: #fff3ce; border-color: #ecd38a; }
+.patchbay-pill.is-neutral { color: #506064; background: #edf1ef; }
+.patchbay-state-label.is-empty { color: #9c382b; background: #fbe6df; border-color: #efb7aa; }
+
+.patchbay-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-block: clamp(2rem, 5vw, 4rem) 1.6rem;
+}
+.patchbay-hero h2 { max-width: 48rem; margin: 0; font-size: clamp(1.65rem, 3.4vw, 3.15rem); line-height: 1.03; letter-spacing: -.055em; }
+.patchbay-muted { color: var(--patchbay-muted); font-size: .84rem; line-height: 1.5; }
+.patchbay-registry-summary { min-width: 13rem; gap: .65rem; padding: .72rem .9rem; border: 1px solid var(--patchbay-line); border-radius: .8rem; background: rgba(255,255,255,.68); }
+.patchbay-registry-summary strong, .patchbay-registry-summary span { display: block; }
+.patchbay-registry-summary strong { font-size: .78rem; }
+.patchbay-registry-summary span { color: var(--patchbay-muted); font-size: .69rem; margin-top: .16rem; }
+.patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: #adb8b7; }
+.patchbay-status-dot.is-live { background: var(--patchbay-cyan); box-shadow: 0 0 0 .23rem rgba(23,140,139,.14); }
+
+.patchbay-editors,
+.patchbay-workbench { display: grid; gap: 1rem; }
+.patchbay-editors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.patchbay-workbench { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); margin-top: 1rem; }
+.patchbay-card { border: 1px solid var(--patchbay-line); border-radius: 1rem; background: var(--patchbay-card); box-shadow: 0 .75rem 2rem rgba(27, 53, 53, .06); }
+.patchbay-editor-card { min-width: 0; padding: 1rem; }
+.patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: .8rem; margin-bottom: .8rem; }
+.patchbay-card-heading h3 { margin: 0; font-size: .98rem; letter-spacing: -.025em; }
+.patchbay-mono { color: var(--patchbay-muted); font-size: .67rem; white-space: nowrap; }
+.patchbay-editor { display: block; width: 100%; min-height: 20rem; resize: vertical; border: 1px solid #d8e1de; border-radius: .65rem; padding: .85rem; color: #263438; background: #f7faf8; font: .74rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+.patchbay-editor:focus { outline: 2px solid rgba(23,140,139,.35); outline-offset: 1px; border-color: var(--patchbay-cyan); }
+.patchbay-editor[readonly] { background: #f4f1eb; }
+.patchbay-editor-footer { justify-content: space-between; gap: .8rem; margin-top: .6rem; }
+.patchbay-digest { min-width: 0; overflow: hidden; color: var(--patchbay-muted); font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.patchbay-button { cursor: pointer; border: 0; border-radius: .62rem; padding: .63rem .86rem; color: #fff; background: var(--patchbay-coral); font-size: .76rem; font-weight: 800; transition: transform .15s ease, filter .15s ease; }
+.patchbay-button:hover { filter: brightness(.95); transform: translateY(-1px); }
+.patchbay-button:focus-visible { outline: 3px solid rgba(23,140,139,.35); outline-offset: 2px; }
+.patchbay-button:disabled { cursor: wait; filter: grayscale(.4); opacity: .65; transform: none; }
+.patchbay-button-quiet { color: #496064; background: #edf2ef; }
+.patchbay-button-danger { color: #8f392d; background: #fbe6df; }
+
+.patchbay-workbench { margin-top: 1rem; }
+.patchbay-evidence-card, .patchbay-repair-card, .patchbay-retry-card, .patchbay-timeline-card { padding: 1rem; }
+.patchbay-facts { display: grid; gap: .55rem; }
+.patchbay-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; border-bottom: 1px dashed #e0e7e3; padding-bottom: .43rem; }
+.patchbay-facts span { color: var(--patchbay-muted); font-size: .69rem; }
+.patchbay-facts strong { font-size: .76rem; }
+.patchbay-facts code { color: #33484d; font-size: .67rem; text-align: right; overflow-wrap: anywhere; }
+.patchbay-positive { color: #0b7867; }
+.patchbay-negative { color: #ad4434; }
+.patchbay-result-box { margin-top: 1rem; border-radius: .65rem; padding: .72rem; background: #17282b; color: #d8f0e8; }
+.patchbay-result-box .patchbay-kicker { color: #f1c75b; }
+.patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: .67rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .65rem; }
+.patchbay-state-grid > div { min-width: 0; border: 1px solid #e0e7e3; border-radius: .6rem; padding: .6rem; background: #fbfcfa; }
+.patchbay-state-grid .patchbay-kicker { margin-bottom: .35rem; font-size: .58rem; }
+.patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: #496064; font: .62rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.patchbay-empty-state { margin: .6rem 0; color: var(--patchbay-muted); font-size: .78rem; line-height: 1.5; }
+.patchbay-alert { display: flex; gap: .6rem; align-items: baseline; margin-top: .9rem; border-radius: .65rem; padding: .65rem .75rem; font-size: .72rem; line-height: 1.45; }
+.patchbay-alert strong { white-space: nowrap; }
+.patchbay-alert-error { color: #8d382c; background: #fce7e1; border: 1px solid #efbeb2; }
+.patchbay-alert-warn { color: #785a10; background: #fff4d3; border: 1px solid #edd58f; }
+#patchbay-platform-error { width: min(100%, 92rem); margin-inline: auto; }
+
+.patchbay-repair-cta p { color: var(--patchbay-muted); font-size: .78rem; line-height: 1.5; }
+.patchbay-repair-details { display: grid; gap: 1rem; }
+.patchbay-root-cause p { margin: .38rem 0 0; font-size: .82rem; line-height: 1.45; }
+.patchbay-provenance { display: flex; flex-wrap: wrap; gap: .35rem .75rem; color: var(--patchbay-muted); font-size: .67rem; }
+.patchbay-provenance b { color: #40565a; font-weight: 700; }
+.patchbay-diff { border: 1px solid #e0e7e3; border-radius: .7rem; overflow: hidden; }
+.patchbay-diff > .patchbay-kicker { padding: .7rem .75rem .35rem; }
+.patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: .45rem .8rem; padding: .45rem .75rem; border-top: 1px solid #e9eeeb; font-size: .69rem; }
+.patchbay-diff-row code { grid-row: span 2; color: #455b60; font-weight: 700; overflow-wrap: anywhere; }
+.patchbay-diff-old, .patchbay-diff-new { overflow-wrap: anywhere; white-space: pre-wrap; }
+.patchbay-diff-old { color: #ad4434; }
+.patchbay-diff-new { color: #0b7867; }
+.patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; align-items: center; }
+.patchbay-canary .patchbay-kicker { margin: 0; }
+.patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .6rem; }
+.patchbay-checks span { color: #718080; font-size: .67rem; }
+.patchbay-checks .is-pass { color: #0b7867; }
+.patchbay-checks .is-fail { color: #ad4434; }
+.patchbay-risk-notes ul { margin: .35rem 0 0; padding-left: 1rem; color: #765f27; font-size: .7rem; line-height: 1.5; }
+.patchbay-approval-actions { border-top: 1px solid var(--patchbay-line); padding-top: .9rem; }
+.patchbay-approval-actions p { color: var(--patchbay-muted); font-size: .71rem; }
+.patchbay-approval-actions > div { flex-wrap: wrap; gap: .5rem; }
+
+.patchbay-retry-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; border-color: #b6ded0; background: #f3fbf7; }
+.patchbay-retry-card h3 { margin: 0; font-size: .96rem; }
+.patchbay-retry-card p { margin-bottom: 0; }
+.patchbay-timeline-card { margin-top: 1rem; }
+.patchbay-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.patchbay-timeline li { display: grid; grid-template-columns: 1.8rem minmax(0,1fr) auto; gap: .65rem; align-items: start; padding: .65rem 0; border-top: 1px solid #e8eeeb; }
+.patchbay-timeline-sequence { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: .45rem; color: #fff; background: #35666a; font: .65rem ui-monospace, monospace; }
+.patchbay-timeline strong, .patchbay-timeline span { display: block; }
+.patchbay-timeline strong { font-size: .73rem; }
+.patchbay-timeline li div span { margin-top: .15rem; color: var(--patchbay-muted); font-size: .67rem; }
+.patchbay-timeline time { color: var(--patchbay-muted); font-size: .65rem; white-space: nowrap; }
+.patchbay-footer { justify-content: space-between; gap: 1rem; margin-top: 1.2rem; color: var(--patchbay-muted); font-size: .7rem; }
+.patchbay-footer p { margin: 0; }
+.patchbay-footer strong { color: var(--patchbay-ink); }
+.patchbay-footer code { font-size: .65rem; }
+.patchbay-footer > div:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 760px) {
+  .patchbay-topbar, .patchbay-hero, .patchbay-footer { align-items: flex-start; flex-direction: column; }
+  .patchbay-topbar-meta { width: 100%; justify-content: space-between; }
+  .patchbay-hero { gap: 1.1rem; }
+  .patchbay-registry-summary { width: 100%; }
+  .patchbay-editors, .patchbay-workbench { grid-template-columns: 1fr; }
+  .patchbay-state-grid { grid-template-columns: 1fr; }
+  .patchbay-editor { min-height: 15rem; }
+  .patchbay-footer { align-items: stretch; }
+  .patchbay-footer .patchbay-button { align-self: flex-start; }
+}

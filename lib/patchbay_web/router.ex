@@ -20,6 +20,12 @@ defmodule PatchbayWeb.Router do
     get "/", PageController, :home
   end
 
+  scope "/webmcp", PatchbayWeb.WebMCP do
+    pipe_through :browser
+
+    live "/rooms/:slug", RoomLive.Show, :show
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", PatchbayWeb do
   #   pipe_through :api
