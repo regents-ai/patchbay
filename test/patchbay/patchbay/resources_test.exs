@@ -666,7 +666,23 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     assert_raise Ash.Error.Invalid, fn -> Patchbay.publish_repair_proposal!(proposal) end
 
-    proposal = Patchbay.mark_canary_passed!(proposal, %{canary_result: %{"passed" => true}})
+    canary_checks = %{
+      "adapter_allowlisted" => true,
+      "postcondition_allowlisted" => true,
+      "candidate_present" => true,
+      "source_unchanged" => true,
+      "candidate_digest_changed" => true,
+      "frontmatter_valid" => true,
+      "identity_preserved" => true,
+      "output_contract_valid" => true,
+      "ui_revision_advanced" => true
+    }
+
+    proposal =
+      Patchbay.mark_canary_passed!(proposal, %{
+        canary_result: %{"passed" => true, "checks" => canary_checks}
+      })
+
     proposal = Patchbay.approve_repair_proposal!(proposal, "founder")
     assert Patchbay.publish_repair_proposal!(proposal).status == :published
   end

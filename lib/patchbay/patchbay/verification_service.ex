@@ -247,10 +247,10 @@ defmodule Patchbay.Patchbay.VerificationService do
 
   defp query_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
 
-  defp read_opts(opts), do: Keyword.drop(opts, [:query])
+  defp read_opts(opts), do: Keyword.drop(opts, [:query, :post_state, :timeout])
 
   defp execution_opts(opts),
-    do: Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query])
+    do: Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query, :post_state, :timeout])
 
   defp changeset_opts(opts) do
     opts

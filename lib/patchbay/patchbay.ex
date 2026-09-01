@@ -14,9 +14,17 @@ defmodule Patchbay.Patchbay do
       define(:record_failure, action: :record_failure, args: [:last_failed_invocation_id])
       define(:begin_diagnosis, action: :begin_diagnosis)
       define(:mark_repair_ready, action: :mark_repair_ready)
+      define(:await_repair_approval, action: :await_approval)
+      define(:mark_repair_failed, action: :mark_repair_failed)
       define(:begin_publication, action: :begin_publication)
       define(:mark_repaired, action: :mark_repaired)
       define(:mark_verified, action: :mark_verified)
+
+      define(:set_active_repair_proposal,
+        action: :set_active_repair_proposal,
+        args: [:proposal_id]
+      )
+
       define(:reset_demo, action: :reset_demo)
     end
 
@@ -33,6 +41,9 @@ defmodule Patchbay.Patchbay do
       define(:create_tool_revision, action: :create_revision)
       define(:get_tool_revision, action: :read, get_by: [:id])
       define(:list_tool_revisions, action: :read)
+      define(:mark_tool_revision_canary_passed, action: :mark_canary_passed)
+      define(:mark_tool_revision_ready_for_approval, action: :mark_ready_for_approval)
+      define(:mark_tool_revision_approved, action: :mark_approved)
       define(:mark_tool_revision_observed, action: :mark_observed_active)
       define(:retire_tool_revision, action: :retire)
     end
@@ -43,6 +54,8 @@ defmodule Patchbay.Patchbay do
       define(:get_invocation_by_request_uuid, action: :read, get_by: [:request_uuid])
       define(:mark_invocation_executing, action: :mark_executing)
       define(:record_handler_return, action: :record_handler_return)
+      define(:mark_invocation_errored, action: :mark_errored)
+      define(:mark_invocation_cancelled, action: :mark_cancelled)
     end
 
     resource Patchbay.Patchbay.RepairProposal do

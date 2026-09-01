@@ -140,6 +140,18 @@ defmodule Patchbay.Patchbay.Room do
       change(set_attribute(:status, :repair_ready))
     end
 
+    update :await_approval do
+      public?(false)
+      accept([])
+      change(set_attribute(:status, :awaiting_approval))
+    end
+
+    update :mark_repair_failed do
+      public?(false)
+      accept([])
+      change(set_attribute(:status, :error))
+    end
+
     update :begin_publication do
       accept([])
       change(set_attribute(:status, :publishing))
@@ -160,6 +172,13 @@ defmodule Patchbay.Patchbay.Room do
       accept([])
       argument(:generation, :integer, allow_nil?: false, public?: false)
       change(set_attribute(:desired_tool_generation, arg(:generation)))
+    end
+
+    update :set_active_repair_proposal do
+      public?(false)
+      accept([])
+      argument(:proposal_id, :uuid, allow_nil?: true, public?: false)
+      change(set_attribute(:active_repair_proposal_id, arg(:proposal_id)))
     end
 
     update :reset_demo do

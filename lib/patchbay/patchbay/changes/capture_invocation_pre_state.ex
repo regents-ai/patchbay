@@ -16,14 +16,14 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
 
     case supplied_pre_state(changeset) do
       :missing ->
-        Ash.Changeset.force_change_attribute(changeset, :pre_state, pre_state)
+        capture(changeset, pre_state, room)
 
       {:supplied, nil} ->
-        Ash.Changeset.force_change_attribute(changeset, :pre_state, pre_state)
+        capture(changeset, pre_state, room)
 
       {:supplied, supplied_pre_state} ->
         if same_state?(supplied_pre_state, pre_state) do
-          Ash.Changeset.force_change_attribute(changeset, :pre_state, pre_state)
+          capture(changeset, pre_state, room)
         else
           Ash.Changeset.add_error(
             changeset,
@@ -32,6 +32,20 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
           )
         end
     end
+  end
+
+  defp capture(changeset, pre_state, room) do
+    arguments =
+      Ash.Changeset.get_argument(changeset, :arguments) ||
+        Ash.Changeset.get_attribute(changeset, :arguments) || %{}
+
+    changeset
+    |> Ash.Changeset.force_change_attribute(:pre_state, pre_state)
+    |> Ash.Changeset.force_change_attribute(:arguments_sha256, Digest.arguments_sha256(arguments))
+    |> Ash.Changeset.force_change_attribute(
+      :generation_key,
+      Digest.generation_key(room.source_sha256, arguments)
+    )
   end
 
   defp supplied_pre_state(changeset) do

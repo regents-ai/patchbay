@@ -18,6 +18,7 @@ defmodule Patchbay.Patchbay.ToolPublisher do
            fn ->
              revision = load_revision!(revision.id, opts)
              room = lock_room!(revision.room_id, opts)
+             retire_existing_desired!(room, revision, opts)
              revision = set_revision_desired!(revision, opts)
              _room = set_room_generation!(room, revision.generation, opts)
              revision
@@ -55,6 +56,21 @@ defmodule Patchbay.Patchbay.ToolPublisher do
     Domain.get_tool_revision!(revision_id, Keyword.drop(opts, [:query]))
   end
 
+  defp retire_existing_desired!(room, revision, opts) do
+    revisions =
+      Domain.list_tool_revisions!(
+        Keyword.merge(Keyword.drop(opts, [:query]),
+          query: [filter: [room_id: room.id, status: :desired]]
+        )
+      )
+
+    Enum.each(revisions, fn current ->
+      if current.id != revision.id do
+        Domain.retire_tool_revision!(current, action_opts(opts))
+      end
+    end)
+  end
+
   defp lock_room!(room_id, opts) do
     query_opts = Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
     execution_opts = Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query])
@@ -79,6 +95,8 @@ defmodule Patchbay.Patchbay.ToolPublisher do
     )
     |> Ash.update!(Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope]))
   end
+
+  defp action_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
 
   defp set_room_generation!(room, generation, opts) do
     room

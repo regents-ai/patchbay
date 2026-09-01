@@ -101,6 +101,24 @@ defmodule Patchbay.Patchbay.ToolRevision do
       change(Patchbay.Patchbay.Changes.SyncDesiredRevision)
     end
 
+    update :mark_canary_passed do
+      public?(false)
+      accept([])
+      change(set_attribute(:status, :canary_passed))
+    end
+
+    update :mark_ready_for_approval do
+      public?(false)
+      accept([])
+      change(set_attribute(:status, :ready_for_approval))
+    end
+
+    update :mark_approved do
+      public?(false)
+      accept([])
+      change(set_attribute(:status, :approved))
+    end
+
     update :mark_observed_active do
       accept([])
       change(set_attribute(:status, :observed_active))

@@ -85,6 +85,8 @@ defmodule Patchbay.Patchbay.RepairProposal do
 
     update :mark_canary_passed do
       accept([:canary_result])
+      require_atomic?(false)
+      validate(Patchbay.Patchbay.Validations.CanaryResult)
       change(set_attribute(:status, :ready_for_approval))
     end
 

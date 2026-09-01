@@ -64,7 +64,10 @@ defmodule Patchbay.Patchbay.Invocation do
   end
 
   identities do
-    identity(:unique_request_uuid, [:request_uuid], eager_check?: true)
+    # The service uses the database unique index as the serialization point for
+    # duplicate deliveries. An eager read would reintroduce a check-then-insert
+    # race under concurrent requests.
+    identity(:unique_request_uuid, [:request_uuid], eager_check?: false)
     identity(:unique_id_per_room, [:id, :room_id], eager_check?: false)
   end
 
@@ -128,6 +131,18 @@ defmodule Patchbay.Patchbay.Invocation do
       change(set_attribute(:effective_status, :handler_returned))
       change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)
       require_atomic?(false)
+    end
+
+    update :mark_errored do
+      public?(false)
+      accept([])
+      change(set_attribute(:effective_status, :errored))
+    end
+
+    update :mark_cancelled do
+      public?(false)
+      accept([])
+      change(set_attribute(:effective_status, :cancelled))
     end
 
     update :record_verification do

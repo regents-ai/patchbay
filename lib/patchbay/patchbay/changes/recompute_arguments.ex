@@ -13,7 +13,11 @@ defmodule Patchbay.Patchbay.Changes.RecomputeArguments do
       Ash.Changeset.get_argument(changeset, :pre_state) ||
         Ash.Changeset.get_attribute(changeset, :pre_state) || %{}
 
-    source_sha256 = Map.get(pre_state, "source_sha256") || Map.get(pre_state, :source_sha256)
+    source_sha256 =
+      Map.get(pre_state, "source_sha256") ||
+        Map.get(pre_state, :source_sha256) ||
+        get_in(pre_state, ["source", "sha256"]) ||
+        get_in(pre_state, [:source, :sha256])
 
     changeset =
       Ash.Changeset.change_attribute(
