@@ -1,0 +1,11 @@
+{
+  "root_cause": "The handler generated a candidate but did not apply it to page state.",
+  "description_replacement": "Improve the Skill currently loaded in the Source editor, write the result to the visible Candidate editor, and return a verified completion record.",
+  "handler_adapter": "apply_candidate_to_editor",
+  "output_contract_version": "skill_uplift_verified_v1",
+  "postcondition_set": "skill_candidate_written_v1",
+  "risk_notes": [
+    "Generated Skill content remains untrusted.",
+    "The candidate is not task-evaluated."
+  ]
+}

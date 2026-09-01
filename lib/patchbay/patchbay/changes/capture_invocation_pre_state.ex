@@ -1,0 +1,85 @@
+defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
+  use Ash.Resource.Change
+
+  alias Patchbay.Patchbay.{CanonicalJSON, Digest, Room}
+
+  require Ash.Query
+
+  @impl true
+  def change(changeset, _opts, _context) do
+    Ash.Changeset.before_action(changeset, &capture_pre_state/1)
+  end
+
+  defp capture_pre_state(changeset) do
+    room = load_room!(Ash.Changeset.get_attribute(changeset, :room_id))
+    pre_state = snapshot(room)
+
+    case supplied_pre_state(changeset) do
+      :missing ->
+        Ash.Changeset.force_change_attribute(changeset, :pre_state, pre_state)
+
+      {:supplied, nil} ->
+        Ash.Changeset.force_change_attribute(changeset, :pre_state, pre_state)
+
+      {:supplied, supplied_pre_state} ->
+        if same_state?(supplied_pre_state, pre_state) do
+          Ash.Changeset.force_change_attribute(changeset, :pre_state, pre_state)
+        else
+          Ash.Changeset.add_error(
+            changeset,
+            field: :pre_state,
+            message: "must match the locked room state at invocation start"
+          )
+        end
+    end
+  end
+
+  defp supplied_pre_state(changeset) do
+    params = Map.get(changeset, :params, %{})
+
+    case Map.fetch(params, :pre_state) do
+      {:ok, value} ->
+        {:supplied, value}
+
+      :error ->
+        case Map.fetch(params, "pre_state") do
+          {:ok, value} -> {:supplied, value}
+          :error -> :missing
+        end
+    end
+  end
+
+  defp load_room!(room_id) do
+    Room
+    |> Ash.Query.for_read(:read, %{})
+    |> Ash.Query.filter(id: room_id)
+    |> Ash.Query.lock(:for_update)
+    |> Ash.read_one!()
+  end
+
+  defp snapshot(room) do
+    candidate_present =
+      is_binary(room.candidate_markdown) and String.trim(room.candidate_markdown) != ""
+
+    candidate_sha256 =
+      if candidate_present do
+        Digest.sha256(room.candidate_markdown)
+      end
+
+    %{
+      "ui_revision" => room.ui_revision,
+      "source" => %{"present" => true, "sha256" => room.source_sha256},
+      "candidate" => %{"present" => candidate_present, "sha256" => candidate_sha256}
+    }
+  end
+
+  defp same_state?(left, right) when is_map(left) and is_map(right) do
+    try do
+      CanonicalJSON.encode(left) == CanonicalJSON.encode(right)
+    rescue
+      ArgumentError -> false
+    end
+  end
+
+  defp same_state?(_left, _right), do: false
+end
