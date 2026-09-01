@@ -15,6 +15,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     Digest,
     Fixtures,
     Invocation,
+    ModelBudget,
     RepairDSL,
     RepairPolicy,
     RepairProposal,
@@ -274,14 +275,23 @@ defmodule Patchbay.Patchbay.RepairPlanner do
         })
 
       true ->
-        input = repair_input(invocation, room, source_revision)
+        # The spend limits are checked here rather than around the whole clause
+        # so a plan supplied by the caller and the checked-in demo plan stay
+        # free of them: neither calls a model.
+        case ModelBudget.allow(room.id, :repair) do
+          :ok ->
+            input = repair_input(invocation, room, source_revision)
 
-        case Client.repair_plan(input, opts) do
-          {:ok, %{plan: plan} = metadata} ->
-            parse_plan!(plan, metadata)
+            case Client.repair_plan(input, opts) do
+              {:ok, %{plan: plan} = metadata} ->
+                parse_plan!(plan, metadata)
 
-          {:error, reason} ->
-            raise ArgumentError, "repair plan generation failed: #{inspect(reason)}"
+              {:error, reason} ->
+                raise ArgumentError, "repair plan generation failed: #{inspect(reason)}"
+            end
+
+          {:error, message} ->
+            raise ArgumentError, message
         end
     end
   end

@@ -544,7 +544,11 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp generated_for_invocation(room, arguments, opts) do
     case Keyword.get(opts, :durable_candidate) do
       nil ->
-        CandidateGenerator.generate(room.source_markdown, arguments, opts)
+        CandidateGenerator.generate(
+          room.source_markdown,
+          arguments,
+          Keyword.put(opts, :room_id, room.id)
+        )
 
       generated ->
         case CandidateGenerator.validate_generated(generated, room.source_markdown, arguments) do

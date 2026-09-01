@@ -88,6 +88,39 @@ demo is meant to show live inference.
 Check what is set at any time with `fly secrets list --app patchbay-regents`;
 values are never displayed.
 
+### Spend limits
+
+The room is public and needs no sign-in, so anyone with the link can ask for a
+model call, and every call is billed to the key above. Three limits bound that,
+and all three have working defaults that need no configuration:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `PATCHBAY_ROOM_COOLDOWN_SECONDS` | `20` | Shortest gap between two candidate generations in one room |
+| `PATCHBAY_ROOM_DAILY_MODEL_CALLS` | `30` | Model calls one room may make in any rolling 24 hours |
+| `PATCHBAY_DAILY_MODEL_CALLS` | `300` | Model calls the whole deployment may make in that window |
+
+Candidate generations and repair plans both count. Repeats of a request that
+was already answered are served from the cache and cost nothing, so they are
+not counted and never refused. When a limit is reached the room says the call
+was refused and why, and no candidate is produced.
+
+Lower them for a walkthrough that should stay cheap:
+
+```sh
+fly secrets set --app patchbay-regents \
+  PATCHBAY_DAILY_MODEL_CALLS=100 \
+  PATCHBAY_ROOM_DAILY_MODEL_CALLS=10
+```
+
+A value that is not a whole number is ignored and the default stands, so read
+the value back with `fly secrets list` after changing one.
+
+These limits protect the demo from a burst of traffic; they are not a billing
+guarantee. Also set a hard monthly spend limit on the OpenAI project that
+issued `OPENAI_API_KEY`, so a mistake anywhere in this stack cannot run up an
+unbounded bill.
+
 ## 4. Deploy
 
 ```sh

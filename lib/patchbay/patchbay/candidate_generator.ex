@@ -5,10 +5,16 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   Live Responses API inference is optional for the demo. A deterministic
   checked-in fallback is available only when explicitly enabled and is always
   labeled in the returned metadata and warning text.
+
+  A live call is asked for only after the cache misses, so a repeat of the same
+  request is served without spending anything and without consulting the spend
+  limits in `Patchbay.Patchbay.ModelBudget`. Pass `:room_id` so those limits can
+  pace the room the call belongs to.
   """
 
   alias Patchbay.Config
   alias Patchbay.Patchbay.{CanonicalJSON, CandidateCache, Digest, Fixtures, Frontmatter}
+  alias Patchbay.Patchbay.ModelBudget
   alias Patchbay.Patchbay.OpenAI.Client
 
   @prompt_version "patchbay-candidate-v1"
@@ -34,7 +40,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
            generation_key,
            input_sha256,
            live_variant,
-           fn -> live_generate(source, arguments, opts) end
+           fn -> budgeted_live_generate(source, arguments, opts) end
          ) do
       {:ok, generated} ->
         {:ok, generated}
@@ -224,6 +230,12 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
         "prompt_version" => prompt_version
       })
     )
+  end
+
+  defp budgeted_live_generate(source, arguments, opts) do
+    with :ok <- ModelBudget.allow(Keyword.get(opts, :room_id), :candidate) do
+      live_generate(source, arguments, opts)
+    end
   end
 
   defp live_generate(source, arguments, opts) do
