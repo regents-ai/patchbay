@@ -10,7 +10,7 @@ import Config
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
-  ash_domains: [Patchbay.Patchbay]
+  ash_domains: [Patchbay.Forum, Patchbay.Patchbay]
 
 # Configure the endpoint
 config :patchbay, PatchbayWeb.Endpoint,
