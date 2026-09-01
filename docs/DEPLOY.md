@@ -142,6 +142,36 @@ is still pending, which is also what the platform health check in `fly.toml`
 polls, so a bad release is taken out of rotation instead of serving errors. The
 API key itself is never included in the response.
 
+## 5. Custom domain (patchbay.help)
+
+The app serves whichever hostname `PHX_HOST` names, so the domain change is
+two steps. First tell Fly about the hostname and read back the records it
+wants:
+
+```sh
+fly certs add patchbay.help --app patchbay-regents
+fly certs show patchbay.help --app patchbay-regents
+```
+
+Create those records where the domain's DNS is managed (for a domain held at
+Vercel, in the Vercel Domains DNS panel): the `A` and `AAAA` records pointing
+at the app's IPv4 and IPv6 addresses from `fly ips list --app patchbay-regents`,
+plus the `_acme-challenge` CNAME that `fly certs show` prints. Fly issues the
+certificate once the records resolve; `fly certs check patchbay.help` reports
+progress.
+
+Then switch the app to the new hostname and let it restart:
+
+```sh
+fly secrets set --app patchbay-regents PHX_HOST="patchbay.help"
+```
+
+Until `PHX_HOST` changes, the page loads on the new domain but its live
+connection is refused, so do both steps together. The `fly.dev` hostname keeps
+working afterwards only if `PHX_HOST` still names it, so give judges the final
+domain only after this step is verified with `curl -sI https://patchbay.help/`
+returning the `302` to the room.
+
 Then open the room. The bare domain redirects to it, so either URL works:
 
 ```sh
