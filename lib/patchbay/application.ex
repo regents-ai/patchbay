@@ -7,6 +7,9 @@ defmodule Patchbay.Application do
 
   @impl true
   def start(_type, _args) do
+    # Attached before the endpoint so the first browser event of a boot is logged.
+    :ok = Patchbay.Patchbay.TelemetryLogger.attach()
+
     children = [
       PatchbayWeb.Telemetry,
       Patchbay.Repo,

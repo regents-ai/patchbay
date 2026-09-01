@@ -231,7 +231,10 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       room_id: room.id,
       browser_session_id: browser_session.id,
       invocation_id: invocation.id,
-      tool_generation: revision.generation
+      tool_generation: revision.generation,
+      tool_name: revision.name,
+      contract_sha256: invocation.tool_contract_sha256,
+      arguments_sha256: invocation.arguments_sha256
     })
 
     started_at = System.monotonic_time()
@@ -283,6 +286,9 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         browser_session_id: browser_session.id,
         invocation_id: invocation.id,
         tool_generation: revision.generation,
+        tool_name: revision.name,
+        contract_sha256: invocation.tool_contract_sha256,
+        arguments_sha256: invocation.arguments_sha256,
         fallback_used: (generated && Map.get(generated, :fallback_used)) || false,
         failure_code: failure_code
       }

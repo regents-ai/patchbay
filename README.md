@@ -112,6 +112,8 @@ local PostgreSQL administrator if desired.
 The public room runs as a Phoenix release on Fly.io behind HTTPS, with all
 state in Postgres. The exact steps are in [docs/DEPLOY.md](docs/DEPLOY.md).
 
+Once it is live, [docs/TESTING.md](docs/TESTING.md) walks through checking the deployed room from a browser and from the server log.
+
 ## Scope and non-goals
 
 Patchbay is a bounded hackathon prototype, not a hosted service. It does not

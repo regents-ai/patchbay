@@ -14,7 +14,15 @@ defmodule Patchbay.Patchbay.Telemetry do
   """
 
   @webmcp_metadata [:room_id, :browser_session_id, :tool_generation, :contract_sha256]
-  @invocation_metadata [:room_id, :browser_session_id, :invocation_id, :tool_generation]
+  @invocation_metadata [
+    :room_id,
+    :browser_session_id,
+    :invocation_id,
+    :tool_generation,
+    :tool_name,
+    :contract_sha256,
+    :arguments_sha256
+  ]
   @handler_stop_metadata @invocation_metadata ++ [:fallback_used, :failure_code]
   @verification_metadata [:room_id, :invocation_id, :passed, :failure_code]
   @repair_model_metadata [:room_id, :invocation_id, :fallback_used]

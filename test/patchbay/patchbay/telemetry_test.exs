@@ -37,13 +37,19 @@ defmodule Patchbay.Patchbay.TelemetryTest do
       :room_id,
       :browser_session_id,
       :invocation_id,
-      :tool_generation
+      :tool_generation,
+      :tool_name,
+      :contract_sha256,
+      :arguments_sha256
     ],
     [:patchbay, :invocation, :handler_stop] => [
       :room_id,
       :browser_session_id,
       :invocation_id,
       :tool_generation,
+      :tool_name,
+      :contract_sha256,
+      :arguments_sha256,
       :fallback_used,
       :failure_code
     ],
