@@ -91,7 +91,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     invoke_v1(view, room, session)
 
     render_click(view, "request_repair")
-    render_async(view)
+    render_async(view, 2_000)
 
     proposal =
       Domain.list_repair_proposals!(
@@ -274,7 +274,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
         "invocation_epoch" => invocation_epoch(view)
       })
 
-      html = render_async(view)
+      html = render_async(view, 2_000)
 
       assert html =~ "Live inference failed"
       assert html =~ "The candidate was not presented as a successful completion."
@@ -334,7 +334,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       "invocation_epoch" => invocation_epoch(view)
     })
 
-    awaiting_html = render_async(view)
+    awaiting_html = render_async(view, 2_000)
     assert awaiting_html =~ "Awaiting Visible State"
     html = observe_latest_poststate(view, room, session)
 
@@ -365,7 +365,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     invoke_v1(view, room, session)
 
     render_click(view, "request_repair")
-    html = render_async(view)
+    html = render_async(view, 2_000)
 
     assert html =~ "CONTRACT DIFF"
     assert html =~ "DETERMINISTIC CANARY"
@@ -746,7 +746,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       "invocation_epoch" => invocation_epoch(view)
     })
 
-    awaiting_html = render_async(view)
+    awaiting_html = render_async(view, 2_000)
     assert awaiting_html =~ "Awaiting Visible State"
     html = observe_latest_poststate(view, room, session)
 
