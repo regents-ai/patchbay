@@ -26,6 +26,22 @@ defmodule Patchbay.Config do
   @default_daily_model_calls 300
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
+  @default_max_rooms 2000
+  @default_room_idle_hours 6
+
+  @doc """
+  How many demo rooms may exist at once.
+  """
+  def max_rooms do
+    whole_number(:max_rooms, "PATCHBAY_MAX_ROOMS", @default_max_rooms)
+  end
+
+  @doc """
+  How long an untouched room with no invocations is kept before it is reaped.
+  """
+  def room_idle_hours do
+    whole_number(:room_idle_hours, "PATCHBAY_ROOM_IDLE_HOURS", @default_room_idle_hours)
+  end
 
   @doc """
   How many live model calls the whole deployment may make in 24 hours.

@@ -12,8 +12,9 @@ defmodule Patchbay.Patchbay.Invocation do
     repo(Patchbay.Repo)
 
     references do
-      reference(:browser_session, match_with: [room_id: :room_id])
-      reference(:tool_revision, match_with: [room_id: :room_id])
+      reference(:room, on_delete: :delete)
+      reference(:browser_session, match_with: [room_id: :room_id], on_delete: :delete)
+      reference(:tool_revision, match_with: [room_id: :room_id], on_delete: :delete)
     end
   end
 

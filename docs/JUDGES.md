@@ -5,8 +5,20 @@ below takes about three minutes and needs no account, no key and no setup.
 
 Open: LIVE_URL_PLACEHOLDER
 
+The link gives you a room of your own, so you always start from an untouched
+Skill no matter who else is trying it at the same time. Your browser remembers
+the room, so opening the link again brings you back to where you left off, and
+**Reset demo** at the bottom of the page restarts it from the beginning.
+
+Nobody else is sent to your room, but there are no accounts here and its web
+address is the only thing keeping it private. Please do not put anything
+confidential into it.
+
 The whole run happens on that one page. Nothing here asks you to navigate away,
 reload, or start a new conversation.
+
+The page itself carries a short version of this guide, with both of the prompts
+below ready to copy.
 
 ## Pick a browser
 
@@ -31,8 +43,9 @@ instead, follow the quick start in [README.md](../README.md).
 The top of the page should read **Active: uplift_current_skill_v1**,
 **Generation 1**, and **WebMCP connected**, with **Desired G1 · Observed G1**
 beside it once the browser has offered the tools. The Candidate editor on the
-right is marked **empty** and says *No candidate committed*. If it is not
-empty, click **Reset demo** at the bottom of the page first.
+right is marked **empty** and says *No candidate committed*. If you have run
+the demo here before and it is not empty, click **Reset demo** at the bottom of
+the page first.
 
 If the page says *Waiting for browser*, the browser has not offered the page's
 tools yet. Give it a few seconds, then reload once.
@@ -124,8 +137,12 @@ finish the run.
 ## Starting over
 
 **Reset demo**, at the bottom of the page, restores the original Skill, empties
-the Candidate editor, drops the browser session evidence and returns the room
-to generation 1. Anyone can run the demo again straight afterwards.
+the Candidate editor, drops the browser session evidence and returns your room
+to generation 1. You can run the whole thing again straight afterwards, and it
+only ever touches your own room.
+
+A room nobody uses is cleared away a few hours later, so a link you leave for
+days may hand you a fresh room rather than the one you left.
 
 ## If you cannot run a browser agent
 

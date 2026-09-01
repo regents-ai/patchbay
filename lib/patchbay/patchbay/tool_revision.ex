@@ -19,7 +19,8 @@ defmodule Patchbay.Patchbay.ToolRevision do
     )
 
     references do
-      reference(:parent_revision, match_with: [room_id: :room_id])
+      reference(:room, on_delete: :delete)
+      reference(:parent_revision, match_with: [room_id: :room_id], on_delete: :delete)
     end
   end
 

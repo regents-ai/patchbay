@@ -5,10 +5,12 @@ defmodule Patchbay.Patchbay do
 
   resources do
     resource Patchbay.Patchbay.Room do
-      define(:create_seeded_room, action: :create_seeded_room)
+      define(:create_seeded_room, action: :create_seeded_room, args: [:slug])
       define(:get_room_by_slug, action: :read, get_by: [:slug])
       define(:get_room_by_id, action: :read, get_by: [:id])
       define(:list_rooms, action: :read)
+      define(:list_idle_unused_rooms, action: :idle_and_unused, args: [:untouched_since])
+      define(:discard_room, action: :destroy)
       define(:update_source, action: :update_source, args: [:source_markdown])
       define(:apply_candidate, action: :apply_candidate, args: [:candidate_markdown])
       define(:record_failure, action: :record_failure, args: [:last_failed_invocation_id])

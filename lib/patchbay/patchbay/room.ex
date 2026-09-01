@@ -22,7 +22,7 @@ defmodule Patchbay.Patchbay.Room do
     attribute :slug, :string do
       allow_nil?(false)
       public?(true)
-      constraints(min_length: 1, max_length: 100)
+      constraints(min_length: 1, max_length: 100, match: ~r/\A[A-Za-z0-9_-]+\z/)
     end
 
     attribute :title, :string do
@@ -99,11 +99,48 @@ defmodule Patchbay.Patchbay.Room do
   end
 
   actions do
-    defaults([:read])
+    defaults([:read, :destroy])
+
+    # Rooms nobody used are reaped so a crawler or a retry loop cannot fill the
+    # database. A room that holds an invocation is somebody's evidence and is
+    # never swept up by this, and neither is a room whose visitor has been seen
+    # inside the window: reading a room does not touch the room row itself.
+    read :idle_and_unused do
+      argument(:untouched_since, :utc_datetime_usec, allow_nil?: false)
+
+      filter(
+        expr(
+          updated_at < ^arg(:untouched_since) and
+            not exists(invocations, true) and
+            not exists(browser_sessions, last_seen_at >= ^arg(:untouched_since))
+        )
+      )
+    end
 
     create :create_seeded_room do
       accept([])
+
+      # Each visitor gets their own room, so the caller names it. Everything
+      # else about the room comes from the checked-in fixture.
+      argument :slug, :string do
+        allow_nil?(false)
+        constraints(min_length: 1, max_length: 100, match: ~r/\A[A-Za-z0-9_-]+\z/)
+      end
+
       change({Patchbay.Patchbay.Changes.SeedRoom, []})
+      change(set_attribute(:slug, arg(:slug)))
+
+      # The room and the generation-1 tool it offers are one unit; a room that
+      # exists without its tool would render as a broken page.
+      change(
+        after_action(fn _changeset, room, context ->
+          Patchbay.Patchbay.Fixtures.revision_attributes(room.id)
+          |> Map.delete(:contract_sha256)
+          |> Patchbay.Patchbay.create_tool_revision!(Ash.Context.to_opts(context))
+
+          {:ok, room}
+        end)
+      )
     end
 
     update :update_source do

@@ -12,7 +12,8 @@ defmodule Patchbay.Patchbay.Verification do
     repo(Patchbay.Repo)
 
     references do
-      reference(:invocation, match_with: [room_id: :room_id])
+      reference(:room, on_delete: :delete)
+      reference(:invocation, match_with: [room_id: :room_id], on_delete: :delete)
     end
   end
 

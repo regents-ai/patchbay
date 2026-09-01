@@ -9,11 +9,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
 
   setup %{conn: conn} do
-    room = Domain.create_seeded_room!()
-
-    Fixtures.revision_attributes(room.id)
-    |> Map.delete(:contract_sha256)
-    |> Domain.create_tool_revision!()
+    room = Domain.create_seeded_room!("room-#{System.unique_integer([:positive])}")
 
     previous_fallback = Application.get_env(:patchbay, :demo_fallback)
     Application.put_env(:patchbay, :demo_fallback, true)
@@ -29,8 +25,11 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     %{conn: conn, room: room}
   end
 
-  test "renders the seeded room with stable editor and state identifiers", %{conn: conn} do
-    {:ok, view, html} = live(conn, "/webmcp/rooms/skill-uplift")
+  test "renders the seeded room with stable editor and state identifiers", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
     assert html =~ "Skill Uplift Studio"
     assert has_element?(view, "#patchbay-source-editor")
@@ -41,11 +40,29 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "empty"
   end
 
+  test "the guide above the goal carries both agent prompts", %{conn: conn, room: room} do
+    {:ok, view, html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert view
+           |> element("#patchbay-prompt-uplift[readonly]")
+           |> render() =~
+             "Call uplift_current_skill_v1 with instructions: make the greeting warmer."
+
+    assert view
+           |> element("#patchbay-prompt-retry[readonly]")
+           |> render() =~
+             "The site&#39;s tools changed. Inspect the current tools and retry the uplift."
+
+    assert html =~ "This page hands a browser agent a tool that is broken on purpose."
+    assert html =~ "Observed G2"
+    assert :binary.match(html, "patchbay-guide") < :binary.match(html, "patchbay-goal-title")
+  end
+
   test "names the active tool and discloses that the Source Skill is sent to OpenAI", %{
     conn: conn,
     room: room
   } do
-    {:ok, view, html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
     assert has_element?(view, "#patchbay-active-tool", desired_revision(room).name)
 
@@ -57,7 +74,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "shows the invocation arguments beside the raw handler result", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
 
@@ -70,7 +87,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
 
@@ -87,7 +104,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
 
@@ -121,7 +138,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     source = room.source_markdown <> "\n\n## Uploaded note\n"
 
     upload = skill_upload(view, "skill.md", source)
@@ -135,7 +152,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "rejects a file that is not a Markdown Skill", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     original = Domain.get_room_by_id!(room.id).source_sha256
 
     upload = skill_upload(view, "skill.zip", "PK\x03\x04 not markdown", "application/zip")
@@ -149,7 +166,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "rejects a Markdown file over the Skill size limit", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     original = Domain.get_room_by_id!(room.id).source_sha256
     oversize = String.duplicate("a", Digest.max_artifact_bytes() + 1)
 
@@ -162,7 +179,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "rejects a Markdown file that is not readable text", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     original = Domain.get_room_by_id!(room.id).source_sha256
 
     upload = skill_upload(view, "binary.md", <<0xFF, 0xFE, 0x00, 0xFF>>)
@@ -175,7 +192,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "rejects an empty Markdown file", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     original = Domain.get_room_by_id!(room.id).source_sha256
 
     # The upload test client cannot chunk a zero-byte file, so this stands in for
@@ -193,7 +210,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
 
@@ -215,7 +232,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     original = Domain.get_room_by_id!(room.id).source_sha256
 
     html =
@@ -244,8 +261,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert byte_size(html) < 5_000
   end
 
-  test "asks for a file when the upload control is submitted empty", %{conn: conn} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+  test "asks for a file when the upload control is submitted empty", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
     html = render_submit(view |> form("#patchbay-skill-upload-form"))
 
@@ -254,7 +271,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "shows a visible failure when live inference is unavailable", %{conn: conn, room: room} do
     without_live_inference(fn ->
-      {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+      {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
       session = bootstrap(view, room)
       revision = desired_revision(room)
 
@@ -301,7 +318,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
                  "instructions" => "uplift with the switch off"
                })
 
-      {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+      {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
       session = bootstrap(view, room)
       revision = desired_revision(room)
 
@@ -346,7 +363,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "updates source digest through the same room page", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     source = room.source_markdown <> "\n\n## Local note\n"
 
     html = render_submit(view |> form("#patchbay-source-form"), %{"source_markdown" => source})
@@ -356,7 +373,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "locks the source once invocation evidence exists", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
     original_source = Domain.get_room_by_id!(room.id).source_markdown
@@ -374,7 +391,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     revision = desired_revision(room)
 
@@ -413,7 +430,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
     html = render_click(view, "reset_demo")
     assert html =~ "Generation 1"
@@ -504,7 +521,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "reset invalidates a stale repair callback", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     invoke_v1(view, room, session)
 
@@ -533,8 +550,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert callback_socket.assigns.repair_token == nil
   end
 
-  test "reset fences a stale invocation completion", %{conn: conn} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+  test "reset fences a stale invocation completion", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     request_uuid = Ash.UUID.generate()
 
     render_click(view, "reset_demo")
@@ -558,8 +575,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, reset_view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
-    {:ok, stale_view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, reset_view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    {:ok, stale_view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(stale_view, room)
     revision = desired_revision(room)
     request_uuid = Ash.UUID.generate()
@@ -593,7 +610,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "begin failures return an error without terminating the room", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     revision = desired_revision(room)
     request_uuid = Ash.UUID.generate()
@@ -621,7 +638,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "the browser can durably cancel a begun invocation", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
     revision = desired_revision(room)
 
@@ -651,7 +668,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
     html =
       render_hook(view, "webmcp_registry_reconciled", %{
@@ -669,7 +686,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
 
     html =
@@ -691,7 +708,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     conn: conn,
     room: room
   } do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     first_session = bootstrap(view, room)
     invoke_v1(view, room, first_session)
 
@@ -721,7 +738,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   test "rejects a stale or forged tool revision before invocation", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
 
     html =

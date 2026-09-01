@@ -1,6 +1,6 @@
 defmodule Patchbay.Patchbay.DemoReset do
   @moduledoc """
-  Restores the one public Skill Uplift room to its checked-in generation-1
+  Restores a visitor's Skill Uplift room to its checked-in generation-1
   fixture without restarting Phoenix or relying on page reload state.
 
   All reset writes happen while the room row is locked. This keeps revision
@@ -24,7 +24,7 @@ defmodule Patchbay.Patchbay.DemoReset do
   require Ash.Query
 
   @spec reset!(Room.t() | String.t(), keyword()) :: Room.t()
-  def reset!(room_or_slug \\ Fixtures.slug(), opts \\ []) do
+  def reset!(room_or_slug, opts \\ []) do
     room = find_room!(room_or_slug, opts)
     action_opts = Keyword.drop(opts, [:query])
 

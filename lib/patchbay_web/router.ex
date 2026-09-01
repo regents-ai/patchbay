@@ -18,7 +18,15 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/", RoomController, :enter
+  end
+
+  scope "/webmcp", PatchbayWeb do
+    pipe_through :browser
+
+    # The published demo link. It hands the visitor their own room rather than
+    # opening a shared one, so it must be matched before the room route below.
+    get "/rooms/skill-uplift", RoomController, :enter
   end
 
   scope "/webmcp", PatchbayWeb.WebMCP do

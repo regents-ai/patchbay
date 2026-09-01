@@ -8,6 +8,10 @@ defmodule Patchbay.Patchbay.BrowserSession do
   postgres do
     table("browser_sessions")
     repo(Patchbay.Repo)
+
+    references do
+      reference(:room, on_delete: :delete)
+    end
   end
 
   attributes do

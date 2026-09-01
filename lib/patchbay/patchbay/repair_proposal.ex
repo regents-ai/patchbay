@@ -12,9 +12,10 @@ defmodule Patchbay.Patchbay.RepairProposal do
     repo(Patchbay.Repo)
 
     references do
-      reference(:source_invocation, match_with: [room_id: :room_id])
-      reference(:source_tool_revision, match_with: [room_id: :room_id])
-      reference(:candidate_tool_revision, match_with: [room_id: :room_id])
+      reference(:room, on_delete: :delete)
+      reference(:source_invocation, match_with: [room_id: :room_id], on_delete: :delete)
+      reference(:source_tool_revision, match_with: [room_id: :room_id], on_delete: :delete)
+      reference(:candidate_tool_revision, match_with: [room_id: :room_id], on_delete: :delete)
     end
   end
 

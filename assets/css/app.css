@@ -125,6 +125,7 @@
 }
 
 .patchbay-topbar,
+.patchbay-guide,
 .patchbay-hero,
 .patchbay-editors,
 .patchbay-workbench,
@@ -132,6 +133,29 @@
   width: min(100%, 92rem);
   margin-inline: auto;
 }
+.patchbay-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: 1.1rem 1.6rem;
+  margin-top: 1.4rem;
+  border: 1px solid var(--patchbay-line);
+  border-radius: 1rem;
+  padding: 1.05rem 1.15rem;
+  background: rgba(255, 255, 255, .68);
+}
+.patchbay-guide h2 { margin: .28rem 0 0; font-size: 1.02rem; line-height: 1.3; letter-spacing: -.025em; }
+.patchbay-guide .patchbay-muted { margin: .45rem 0 0; font-size: .74rem; }
+.patchbay-guide-prompts { display: grid; align-content: start; gap: .6rem; }
+.patchbay-guide-prompts label { display: block; margin-bottom: .25rem; }
+.patchbay-prompt { display: block; width: 100%; border: 1px solid #d8e1de; border-radius: .55rem; padding: .5rem .6rem; color: #263438; background: #f7faf8; font: .7rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: none; }
+.patchbay-prompt:focus { outline: 2px solid rgba(23,140,139,.35); outline-offset: 1px; border-color: var(--patchbay-cyan); }
+.patchbay-guide-watch ul { margin: .4rem 0 0; padding-left: 1rem; color: var(--patchbay-muted); font-size: .73rem; line-height: 1.5; }
+.patchbay-guide-watch li + li { margin-top: .3rem; }
+.patchbay-guide-watch strong { color: var(--patchbay-ink); }
+
+.patchbay-notice { width: min(100%, 34rem); margin: 18vh auto 0; border: 1px solid var(--patchbay-line); border-radius: 1rem; padding: 1.6rem; background: var(--patchbay-card); }
+.patchbay-notice h1 { margin: .3rem 0 0; font-size: 1.35rem; line-height: 1.25; letter-spacing: -.03em; }
+.patchbay-notice .patchbay-muted { margin: .6rem 0 0; }
 
 .patchbay-topbar {
   display: flex;
@@ -242,6 +266,7 @@
 .patchbay-upload-row label { flex: 1 1 100%; color: var(--patchbay-muted); font-size: .7rem; }
 .patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: #40565a; font-size: .7rem; }
 .patchbay-upload-problem { margin: .5rem 0 0; color: #8d382c; font-size: .71rem; line-height: 1.45; }
+.patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--patchbay-muted); font-size: .68rem; line-height: 1.45; }
 
 .patchbay-button { cursor: pointer; border: 0; border-radius: .62rem; padding: .63rem .86rem; color: #fff; background: var(--patchbay-coral); font-size: .76rem; font-weight: 800; transition: transform .15s ease, filter .15s ease; }
 .patchbay-button:hover { filter: brightness(.95); transform: translateY(-1px); }
@@ -321,6 +346,7 @@
 
 @media (max-width: 760px) {
   .patchbay-topbar, .patchbay-hero, .patchbay-footer { align-items: flex-start; flex-direction: column; }
+  .patchbay-guide { grid-template-columns: 1fr; }
   .patchbay-topbar-meta { width: 100%; justify-content: space-between; }
   .patchbay-hero { gap: 1.1rem; }
   .patchbay-registry-summary { width: 100%; }

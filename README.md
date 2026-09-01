@@ -7,8 +7,10 @@ verified failure. A bounded repair proposal, deterministic canary, and human
 approval then publish `v2`; the browser observes the generation change, retries
 the same goal, and the server verifies the candidate in the same document.
 
-The demo is intentionally local and has one public room:
-`/webmcp/rooms/skill-uplift`.
+Every visitor gets a room of their own. Opening the site, or the published
+link `/webmcp/rooms/skill-uplift`, creates a room seeded from the checked-in
+Skill and remembers it in the browser session, so two people trying the demo at
+once never share a Skill. **Reset demo** in the page restarts your own room.
 
 ## Quick start
 

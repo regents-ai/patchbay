@@ -16,6 +16,43 @@
     </div>
   </header>
 
+  <section class="patchbay-guide" id="patchbay-guide" aria-labelledby="patchbay-guide-title">
+    <div class="patchbay-guide-intro">
+      <p class="patchbay-kicker">HOW TO TRY THIS</p>
+      <h2 id="patchbay-guide-title">
+        This page hands a browser agent a tool that is broken on purpose.
+      </h2>
+      <p class="patchbay-muted">
+        Give your agent the first prompt, watch the page catch the failure, approve the repair, then send the second prompt. This is your room; nobody else is sent here.
+      </p>
+    </div>
+
+    <div class="patchbay-guide-prompts">
+      <div>
+        <label class="patchbay-kicker" for="patchbay-prompt-uplift">PROMPT 1 — ASK FOR THE UPLIFT</label>
+        <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call uplift_current_skill_v1 with instructions: make the greeting warmer.</textarea>
+      </div>
+      <div>
+        <label class="patchbay-kicker" for="patchbay-prompt-retry">PROMPT 2 — AFTER THE REPAIR</label>
+        <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
+      </div>
+      <p class="patchbay-muted">Select a prompt and copy it into your agent, word for word.</p>
+    </div>
+
+    <div class="patchbay-guide-watch">
+      <p class="patchbay-kicker">WHAT TO WATCH FOR</p>
+      <ul>
+        <li>The tool reports success while the page records a verified failure.</li>
+        <li>
+          <strong>Approve &amp; hot-swap</strong> is the only control that can replace the tool.
+        </li>
+        <li>
+          The header turns to <strong>Observed G2</strong>, and then the improved candidate appears.
+        </li>
+      </ul>
+    </div>
+  </section>
+
   <section class="patchbay-hero" aria-labelledby="patchbay-goal-title">
     <div>
       <p class="patchbay-kicker">ORIGINAL GOAL</p>
@@ -96,6 +133,9 @@
           <label for={@uploads.skill.ref}>
             Or upload a Markdown Skill file — .md or .markdown, up to 64 KB
           </label>
+          <p id="patchbay-upload-privacy" class="patchbay-upload-privacy">
+            Please do not upload anything private. This demo has no accounts, and anyone with your room's web address can read what is in it.
+          </p>
           <.live_file_input upload={@uploads.skill} />
           <button
             id="patchbay-skill-upload-button"

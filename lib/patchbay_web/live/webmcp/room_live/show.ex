@@ -20,7 +20,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     CandidateGenerator,
     DemoReset,
     Digest,
-    Fixtures,
     Invocation,
     InvocationRunner,
     RepairApprovalService,
@@ -761,32 +760,13 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     _ -> nil
   end
 
+  # Rooms are created by PatchbayWeb.RoomController when a visitor arrives,
+  # already offering their generation-1 tool. A slug that resolves to nothing is
+  # simply not a room; any other failure is a real error and stays visible.
   defp load_room!(slug) do
-    room = Domain.get_room_by_slug!(slug)
-    ensure_seed_revision!(room)
-  rescue
-    _error in [Ash.Error.Invalid, Ash.Error.Query.NotFound] ->
-      if slug == Fixtures.slug() do
-        room = Domain.create_seeded_room!()
-        ensure_seed_revision!(room)
-      else
-        raise Ash.Error.Query.NotFound.exception(resource: Room)
-      end
-  end
-
-  defp ensure_seed_revision!(room) do
-    case Domain.list_tool_revisions!(
-           query: [filter: [room_id: room.id, status: :desired], limit: 1]
-         ) do
-      [_revision | _] ->
-        room
-
-      [] ->
-        Fixtures.revision_attributes(room.id)
-        |> Map.delete(:contract_sha256)
-        |> Domain.create_tool_revision!()
-
-        Domain.get_room_by_id!(room.id)
+    case Domain.get_room_by_slug!(slug, not_found_error?: false) do
+      %Room{} = room -> room
+      nil -> raise Ash.Error.Query.NotFound.exception(resource: Room)
     end
   end
 

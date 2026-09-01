@@ -100,6 +100,18 @@ and all three have working defaults that need no configuration:
 | `PATCHBAY_ROOM_DAILY_MODEL_CALLS` | `30` | Model calls one room may make in any rolling 24 hours |
 | `PATCHBAY_DAILY_MODEL_CALLS` | `300` | Model calls the whole deployment may make in that window |
 
+Rooms are created on demand, so two more limits bound how many can exist:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `PATCHBAY_MAX_ROOMS` | `2000` | Rooms that may exist at once |
+| `PATCHBAY_ROOM_IDLE_HOURS` | `6` | How long an untouched room with no tool calls is kept |
+
+Asking for a room first sweeps away rooms nobody used past that window, which
+is what keeps crawlers and uptime checks from filling the database. If the
+deployment is still full afterwards, the visitor is asked to come back in a few
+minutes rather than being given a room.
+
 Candidate generations and repair plans both count. Repeats of a request that
 was already answered are served from the cache and cost nothing, so they are
 not counted and never refused. When a limit is reached the room says the call
@@ -203,18 +215,20 @@ Until `PHX_HOST` changes, the page loads on the new domain but its live
 connection is refused, so do both steps together. The `fly.dev` hostname keeps
 working afterwards only if `PHX_HOST` still names it, so give judges the final
 domain only after this step is verified with `curl -sI https://patchbay.help/`
-returning the `302` to the room.
+returning a `302` to a room.
 
-Then open the room. The bare domain redirects to it, so either URL works:
+Then open the site. The bare domain and the published
+`/webmcp/rooms/skill-uplift` link both hand the visitor a room, so either URL
+works:
 
 ```sh
 fly open --app patchbay-regents
 ```
 
-The seeded room and its `v1` revision are created on the first visit to
-`/webmcp/rooms/skill-uplift`, so there is no seeding command to run after a
-deploy. The **Reset demo** control in the page returns the room to generation 1
-between walkthroughs.
+Each browser session gets its own room; the room and its `v1` revision are
+created together on first visit, so there is no seeding command to run after a
+deploy. The **Reset demo** control in the page returns that visitor's room to
+generation 1 between walkthroughs.
 
 Useful follow-ups:
 

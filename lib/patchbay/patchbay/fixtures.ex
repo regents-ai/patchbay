@@ -1,12 +1,10 @@
 defmodule Patchbay.Patchbay.Fixtures do
   @moduledoc """
-  Checked-in seed data for the single public Skill Uplift room.
+  Checked-in seed data every Skill Uplift room starts from.
   """
 
-  @slug "skill-uplift"
   @seed_version "skill-uplift-v1"
 
-  def slug, do: @slug
   def seed_version, do: @seed_version
 
   def source_markdown do
@@ -25,7 +23,6 @@ defmodule Patchbay.Patchbay.Fixtures do
     source = source_markdown()
 
     %{
-      slug: @slug,
       title: "Skill Uplift Studio",
       goal_kind: :skill_uplift,
       goal_text: "Place an improved candidate in the visible Candidate editor.",

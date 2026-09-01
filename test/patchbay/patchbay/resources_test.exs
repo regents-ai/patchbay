@@ -18,12 +18,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
   }
 
   setup do
-    room = Patchbay.create_seeded_room!()
+    room = Patchbay.create_seeded_room!("room-#{System.unique_integer([:positive])}")
 
-    revision =
-      Fixtures.revision_attributes(room.id)
-      |> Map.delete(:contract_sha256)
-      |> Patchbay.create_tool_revision!()
+    revision = seeded_revision!(room)
 
     %{room: room, revision: revision}
   end
@@ -60,7 +57,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
   end
 
   test "room slug and browser client instance identities are unique", %{room: room} do
-    assert_raise Ash.Error.Invalid, fn -> Patchbay.create_seeded_room!() end
+    assert_raise Ash.Error.Invalid, fn -> Patchbay.create_seeded_room!(room.slug) end
 
     client_instance_id = Ash.UUID.generate()
 
@@ -916,5 +913,11 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         "sha256" => room.candidate_sha256
       }
     }
+  end
+
+  # Every room is created already offering its generation-1 tool.
+  defp seeded_revision!(room) do
+    Patchbay.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
+    |> List.first()
   end
 end

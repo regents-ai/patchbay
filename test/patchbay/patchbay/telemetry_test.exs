@@ -70,12 +70,9 @@ defmodule Patchbay.Patchbay.TelemetryTest do
   }
 
   setup do
-    room = Patchbay.create_seeded_room!()
+    room = Patchbay.create_seeded_room!("room-#{System.unique_integer([:positive])}")
 
-    revision =
-      Fixtures.revision_attributes(room.id)
-      |> Map.delete(:contract_sha256)
-      |> Patchbay.create_tool_revision!()
+    revision = seeded_revision!(room)
 
     browser_session =
       Patchbay.register_browser_session!(%{
@@ -285,5 +282,11 @@ defmodule Patchbay.Patchbay.TelemetryTest do
         "sha256" => room.candidate_sha256
       }
     })
+  end
+
+  # Every room is created already offering its generation-1 tool.
+  defp seeded_revision!(room) do
+    Patchbay.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
+    |> List.first()
   end
 end
