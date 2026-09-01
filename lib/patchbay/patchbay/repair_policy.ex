@@ -5,7 +5,7 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   selects a tool name, generation, approval, or publication state.
   """
 
-  alias Patchbay.Patchbay.RepairDSL
+  alias Patchbay.Patchbay.{CanonicalJSON, RepairDSL}
 
   @max_description_bytes 1_000
 
@@ -14,10 +14,29 @@ defmodule Patchbay.Patchbay.RepairPolicy do
     with {:ok, plan} <- RepairDSL.parse(plan),
          :ok <- validate_revision(source_revision),
          :ok <- validate_generation(source_revision, opts),
+         :ok <-
+           validate_input_schema(proposed_input_schema(source_revision, opts), source_revision),
          :ok <- validate_contract_metadata(source_revision, plan) do
       :ok
     end
   end
+
+  @doc """
+  Fails closed unless the candidate carries the source revision's input schema
+  byte for byte. A repair may narrow behaviour behind the same contract; it may
+  never restate, reorder, or widen what the tool accepts.
+  """
+  @spec validate_input_schema(term(), struct()) :: :ok | {:error, atom()}
+  def validate_input_schema(proposed, %{input_schema: source}) when is_map(proposed) do
+    if CanonicalJSON.encode(proposed) == CanonicalJSON.encode(source),
+      do: :ok,
+      else: {:error, :input_schema_must_not_change}
+  rescue
+    ArgumentError -> {:error, :input_schema_must_not_change}
+  end
+
+  def validate_input_schema(_proposed, _source_revision),
+    do: {:error, :input_schema_must_not_change}
 
   @spec revision_attributes(map() | binary(), struct(), keyword()) ::
           {:ok, map()} | {:error, atom() | tuple()}
@@ -37,7 +56,7 @@ defmodule Patchbay.Patchbay.RepairPolicy do
          name: "uplift_current_skill_v#{generation}",
          title: source_revision.title,
          description: plan.description_replacement,
-         input_schema: source_revision.input_schema,
+         input_schema: proposed_input_schema(source_revision, opts),
          annotations: annotations,
          handler_adapter: plan.handler_adapter,
          output_contract: output_contract(),
@@ -69,6 +88,13 @@ defmodule Patchbay.Patchbay.RepairPolicy do
        do: :ok
 
   defp validate_revision(_), do: {:error, :invalid_source_revision}
+
+  # The schema a repair would publish. It is the source schema unless a caller
+  # names one, which is the only seam through which a change could arrive.
+  defp proposed_input_schema(%{input_schema: schema}, opts),
+    do: Keyword.get(opts, :input_schema, schema)
+
+  defp proposed_input_schema(_revision, opts), do: Keyword.get(opts, :input_schema)
 
   defp validate_generation(revision, opts) do
     expected = Keyword.get(opts, :generation, revision.generation + 1)

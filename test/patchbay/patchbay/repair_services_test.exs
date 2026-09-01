@@ -20,6 +20,8 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     ToolRevision
   }
 
+  alias Elixir.Patchbay.Patchbay.OpenAI.{Client, Prompts}
+
   setup do
     room = Patchbay.create_seeded_room!()
 
@@ -60,6 +62,117 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
              )
 
     assert {:error, _} = RepairDSL.parse(Map.put(valid, "handler_adapter", "run_javascript"))
+  end
+
+  test "prompt bytes are pinned so the model contract cannot drift silently" do
+    assert Digest.sha256(Prompts.candidate_system()) ==
+             "29e4a03ed3883b3d94c72fb49f3e76d108a390c755b8a883294f80ada905b1b6"
+
+    assert Digest.sha256(Prompts.repair_system()) ==
+             "2100d7c15a436222c826b9296553de921577ecb1203abfe6be3cbc7af9ebcbdc"
+
+    assert Digest.sha256(Prompts.candidate_user("INSTRUCTIONS", "SOURCE")) ==
+             "c1475c52004902dd4d53b1e9dc54fca8e7a063198692785fcbb06b25797af43c"
+  end
+
+  test "candidate call sends low reasoning effort with no tools and records usage", %{room: room} do
+    parent = self()
+
+    request = fn payload, _opts, endpoint ->
+      send(parent, {:payload, payload, endpoint})
+
+      {:ok,
+       %{
+         "id" => "resp_candidate_1",
+         "output_text" =>
+           Jason.encode!(%{
+             "improved_skill_markdown" => Fixtures.improved_markdown(),
+             "change_summary" => ["clarified the workflow"],
+             "warnings" => []
+           }),
+         "usage" => %{
+           "input_tokens" => 11,
+           "output_tokens" => 22,
+           "total_tokens" => 33,
+           "input_tokens_details" => %{"cached_tokens" => 4}
+         }
+       }}
+    end
+
+    assert {:ok, generated} =
+             CandidateGenerator.generate(room.source_markdown, %{"instructions" => "tighten"},
+               request: request
+             )
+
+    assert generated.usage == %{"input_tokens" => 11, "output_tokens" => 22, "total_tokens" => 33}
+    assert generated.model_response_id == "resp_candidate_1"
+
+    assert_received {:payload, payload, "https://api.openai.com/v1/responses"}
+    assert payload.model == "gpt-5.6-terra"
+    assert payload.tools == []
+    assert payload.reasoning == %{effort: "low"}
+    assert payload.text.format.type == "json_schema"
+    assert payload.text.format.strict == true
+
+    assert [%{role: "system", content: [system]}, %{role: "user", content: [user]}] =
+             payload.input
+
+    assert system.text == Prompts.candidate_system()
+    assert user.text == Prompts.candidate_user("tighten", room.source_markdown)
+  end
+
+  test "repair-plan call sends low reasoning effort and keeps only bounded token counters" do
+    parent = self()
+
+    request = fn payload, _opts, _endpoint ->
+      send(parent, {:payload, payload})
+
+      {:ok,
+       %{
+         "id" => "resp_repair_1",
+         "output_text" => Jason.encode!(Fixtures.repair_plan()),
+         "usage" => %{"input_tokens" => 5, "output_tokens" => 7}
+       }}
+    end
+
+    assert {:ok, result} = Client.repair_plan(%{"goal" => "test"}, request: request)
+
+    assert result.usage == %{"input_tokens" => 5, "output_tokens" => 7}
+    assert Client.normalize_usage(%{"input_tokens" => -1, "output_tokens" => "many"}) == %{}
+    assert Client.normalize_usage(nil) == %{}
+
+    assert_received {:payload, payload}
+    assert payload.reasoning == %{effort: "low"}
+    assert payload.tools == []
+    assert payload.text.format.strict == true
+    assert [%{content: [system]} | _] = payload.input
+    assert system.text == Prompts.repair_system()
+  end
+
+  test "proposal records the repair-plan token usage", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "usage"})
+
+    request = fn _payload, _opts, _endpoint ->
+      {:ok,
+       %{
+         "id" => "resp_repair_usage",
+         "output_text" => Jason.encode!(Fixtures.repair_plan()),
+         "usage" => %{"input_tokens" => 5, "output_tokens" => 7, "total_tokens" => 12}
+       }}
+    end
+
+    proposal = RepairPlanner.propose!(invocation, request: request)
+
+    assert proposal.model_response_id == "resp_repair_usage"
+
+    assert proposal.usage == %{
+             "candidate" => %{},
+             "repair_plan" => %{"input_tokens" => 5, "output_tokens" => 7, "total_tokens" => 12}
+           }
   end
 
   test "candidate fallback is explicitly labeled and cache keys are exact", %{room: room} do

@@ -91,6 +91,11 @@ defmodule Patchbay.Patchbay.RepairPlanner do
                    model_response_id:
                      plan_metadata[:model_response_id] || candidate.model_response_id,
                    prompt_version: plan_metadata[:prompt_version] || plan_prompt_version(opts),
+                   usage: %{
+                     "candidate" => candidate.usage,
+                     "repair_plan" =>
+                       Patchbay.Patchbay.OpenAI.Client.normalize_usage(plan_metadata[:usage])
+                   },
                    input_sha256: candidate.generation_key
                  },
                  action_opts
@@ -184,7 +189,8 @@ defmodule Patchbay.Patchbay.RepairPlanner do
         model_response_id: fetch(provenance, :model_response_id),
         prompt_version: fetch(provenance, :prompt_version),
         fallback_used: fetch(provenance, :fallback_used),
-        fallback_reason: fetch(provenance, :fallback_reason)
+        fallback_reason: fetch(provenance, :fallback_reason),
+        usage: Patchbay.Patchbay.OpenAI.Client.normalize_usage(fetch(provenance, :usage))
       }
 
       case CandidateGenerator.validate_provenance(

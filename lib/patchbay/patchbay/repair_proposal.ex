@@ -31,6 +31,11 @@ defmodule Patchbay.Patchbay.RepairProposal do
     attribute(:model, :string, allow_nil?: false, public?: true)
     attribute(:model_response_id, :string, allow_nil?: false, public?: true)
     attribute(:prompt_version, :string, allow_nil?: false, public?: true)
+
+    # Bounded token counters from the candidate-generation and repair-plan
+    # calls. Never any response text.
+    attribute(:usage, :map, allow_nil?: false, public?: true, default: %{})
+
     attribute(:input_sha256, :string, allow_nil?: false, public?: true)
     attribute(:approved_by, :string, allow_nil?: true, public?: true)
     attribute(:approved_at, :utc_datetime_usec, allow_nil?: true, public?: true)
@@ -70,6 +75,7 @@ defmodule Patchbay.Patchbay.RepairProposal do
         :model,
         :model_response_id,
         :prompt_version,
+        :usage,
         :input_sha256
       ])
 

@@ -317,7 +317,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
            result[:model_response_id] || result["model_response_id"] || "unknown-response",
          prompt_version: result[:prompt_version] || result["prompt_version"] || @prompt_version,
          fallback_used: result[:fallback_used] || result["fallback_used"] || false,
-         fallback_reason: result[:fallback_reason] || result["fallback_reason"]
+         fallback_reason: result[:fallback_reason] || result["fallback_reason"],
+         usage: Client.normalize_usage(result[:usage] || result["usage"])
        }}
     end
   end
