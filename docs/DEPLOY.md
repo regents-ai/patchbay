@@ -195,8 +195,11 @@ fly deploy --app patchbay-regents --image registry.fly.io/patchbay-regents:deplo
 ```
 
 A rollback replays no migrations. If the bad release migrated the database,
-roll the schema back first with the migration version from
-`priv/repo/migrations`:
+redeploy the previous image first, then roll the schema back with the
+migration version from `priv/repo/migrations`. Keep that order: a running
+machine caches its migration status for its lifetime, so rolling the schema
+back under the newer image would leave it reporting healthy while its code is
+ahead of the database:
 
 ```sh
 fly ssh console --app patchbay-regents \
