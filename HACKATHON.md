@@ -4,7 +4,7 @@ Patchbay is a website that catches its own broken agent tool, proves the
 failure from what you can see on the page, and lets the site owner approve a
 fix while the agent waits in the same conversation.
 
-Built for the WebMCP Challenge.
+Built by Regents Labs for the OpenAI WebMCP Challenge.
 
 - Try it: LIVE_URL_PLACEHOLDER
 - Step-by-step testing: [docs/JUDGES.md](docs/JUDGES.md)
