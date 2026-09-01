@@ -352,7 +352,11 @@
   <footer class="patchbay-footer">
     <div
       id={"patchbay-webmcp-#{@room.id}"}
+      phx-hook="PatchbayWebMCP"
+      phx-update="ignore"
       data-room-id={@room.id}
+      data-webmcp-status="connecting"
+      aria-live="polite"
     >
     </div>
     <div>

@@ -28,6 +28,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   require Ash.Query
 
+  @permanent_tool_names ["get_patchbay_room_state", "verify_skill_uplift_goal"]
+  @sha256_regex ~r/\A[0-9a-f]{64}\z/
+
   @impl true
   def mount(%{"slug" => slug}, _session, socket) do
     room = load_room!(slug)
@@ -71,7 +74,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
        %{
          "browser_session_id" => browser_session.id,
          "client_instance_id" => browser_session.client_instance_id,
-         "desired_generation" => socket.assigns.room.desired_tool_generation
+         "desired_generation" => socket.assigns.room.desired_tool_generation,
+         "revisions" => [revision_payload(desired_revision!(socket.assigns.room))]
        }, socket}
     else
       {:error, message} -> {:reply, %{"error" => message}, assign(socket, error_message: message)}
@@ -82,7 +86,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   def handle_event("webmcp_registry_reconciled", params, socket) do
     with :ok <- valid_room_event?(params, socket.assigns.room),
          {:ok, browser_session} <- browser_session_for(params, socket),
-         {:ok, attrs} <- registry_attributes(params, socket.assigns.room) do
+         {:ok, attrs} <- registry_attributes(params, socket.assigns.room, :reconciled) do
       browser_session = Domain.observe_browser_session!(browser_session, attrs)
 
       append_event(
@@ -111,7 +115,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   def handle_event("webmcp_toolchange_observed", params, socket) do
     with :ok <- valid_room_event?(params, socket.assigns.room),
          {:ok, browser_session} <- browser_session_for(params, socket),
-         {:ok, attrs} <- registry_attributes(params, socket.assigns.room) do
+         {:ok, attrs} <- registry_attributes(params, socket.assigns.room, :toolchange) do
       attrs = Map.put(attrs, :toolchange_count, browser_session.toolchange_count + 1)
       browser_session = Domain.observe_browser_session!(browser_session, attrs)
 
@@ -165,6 +169,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     with :ok <- valid_room_event?(params, room),
          {:ok, browser_session} <- browser_session_for(params, socket),
          {:ok, revision} <- desired_revision_for(room),
+         :ok <- invocation_revision_matches?(params, revision),
          {:ok, arguments} <- invocation_arguments(params) do
       request_uuid = value(params, "request_uuid") || Ash.UUID.generate()
 
@@ -705,26 +710,44 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp invocation_browser_session_matches?(_invocation, _browser_session),
     do: {:error, "post-state observation must come from the invocation browser session"}
 
-  defp registry_attributes(params, room) do
+  defp registry_attributes(params, room, mode) do
     observed_generation = value(params, "observed_generation")
     names = value(params, "observed_tool_names") || []
     contracts = value(params, "observed_contracts") || %{}
+    revision = desired_revision!(room)
+    expected_names = MapSet.new(@permanent_tool_names ++ [revision.name])
+    observed_names = if is_list(names), do: MapSet.new(names), else: MapSet.new()
+    contract_names = if is_map(contracts), do: MapSet.new(Map.keys(contracts)), else: MapSet.new()
 
     cond do
-      not is_integer(observed_generation) or observed_generation < 1 ->
-        {:error, "observed_generation must be a positive integer"}
+      observed_generation != room.desired_tool_generation ->
+        {:error, "observed_generation must match the room's desired generation"}
 
-      not is_list(names) or Enum.any?(names, &(not is_binary(&1))) ->
+      not is_list(names) or Enum.any?(names, &(not is_binary(&1))) or length(names) > 3 ->
         {:error, "observed_tool_names must be a list of names"}
+
+      length(names) != MapSet.size(observed_names) ->
+        {:error, "observed_tool_names must not contain duplicates"}
 
       not is_map(contracts) or
           Enum.any?(contracts, fn {name, digest} ->
-            not is_binary(name) or not is_binary(digest)
+            not is_binary(name) or not is_binary(digest) or
+                not Regex.match?(@sha256_regex, digest)
           end) ->
-        {:error, "observed_contracts must be a map of tool names to digests"}
+        {:error, "observed_contracts must map tool names to SHA-256 digests"}
 
-      observed_generation > room.desired_tool_generation + 1 ->
-        {:error, "observed tool generation is ahead of the room"}
+      contract_names != observed_names ->
+        {:error, "observed contracts must exactly cover the observed tool names"}
+
+      not MapSet.subset?(observed_names, expected_names) ->
+        {:error, "observed registry contains a tool Patchbay does not own"}
+
+      mode == :reconciled and observed_names != expected_names ->
+        {:error, "reconciled registry must contain the complete desired Patchbay toolset"}
+
+      MapSet.member?(observed_names, revision.name) and
+          Map.get(contracts, revision.name) != revision.contract_sha256 ->
+        {:error, "observed tool contract does not match the desired revision"}
 
       true ->
         {:ok,
@@ -732,10 +755,19 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
            webmcp_supported: true,
            desired_generation: room.desired_tool_generation,
            observed_generation: observed_generation,
-           observed_tool_names: Enum.take(names, 20),
-           observed_contracts: Map.take(contracts, Enum.take(names, 20)),
+           observed_tool_names: names,
+           observed_contracts: contracts,
            last_seen_at: DateTime.utc_now()
          }}
+    end
+  end
+
+  defp invocation_revision_matches?(params, revision) do
+    if value(params, "tool_name") == revision.name and
+         value(params, "contract_sha256") == revision.contract_sha256 do
+      :ok
+    else
+      {:error, "invoked tool name and contract must match the current desired revision"}
     end
   end
 
@@ -913,7 +945,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   defp value(_params, _key, default), do: default
 
-  defp demo_fallback?, do: Application.get_env(:patchbay, :demo_fallback, false)
+  defp demo_fallback? do
+    Application.get_env(:patchbay, :demo_fallback, false) or
+      System.get_env("PATCHBAY_DEMO_FALLBACK") in ["true", "1"]
+  end
 
   defp invalidate_repair(socket) do
     case socket.assigns[:repair_token] do

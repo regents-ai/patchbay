@@ -55,12 +55,15 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   } do
     {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
     session = bootstrap(view, room)
+    revision = desired_revision(room)
 
     html =
       render_hook(view, "webmcp_invocation_begin", %{
         "room_id" => room.id,
         "browser_session_id" => session.id,
         "request_uuid" => Ash.UUID.generate(),
+        "tool_name" => revision.name,
+        "contract_sha256" => revision.contract_sha256,
         "arguments" => %{"instructions" => "clarify the workflow"}
       })
 
@@ -193,6 +196,28 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.list_room_events!(query: [filter: [room_id: room.id], limit: 1]) == []
   end
 
+  test "rejects registry claims outside the current server-owned toolset", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+
+    html =
+      render_hook(view, "webmcp_registry_reconciled", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "observed_generation" => 1,
+        "observed_tool_names" => ["foreign_tool"],
+        "observed_contracts" => %{"foreign_tool" => String.duplicate("f", 64)}
+      })
+
+    assert html =~ "observed registry contains a tool Patchbay does not own"
+    observed = Domain.get_browser_session!(session.id)
+    assert observed.observed_tool_names == []
+    assert observed.observed_contracts == %{}
+  end
+
   test "rejects post-state evidence from a different browser session", %{
     conn: conn,
     room: room
@@ -226,6 +251,24 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
              length(events_before)
   end
 
+  test "rejects a stale or forged tool revision before invocation", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+
+    html =
+      render_hook(view, "webmcp_invocation_begin", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "request_uuid" => Ash.UUID.generate(),
+        "tool_name" => "uplift_current_skill_v2",
+        "contract_sha256" => String.duplicate("0", 64),
+        "arguments" => %{"instructions" => "bypass the current revision"}
+      })
+
+    assert html =~ "invoked tool name and contract must match the current desired revision"
+    assert Domain.list_invocations!(query: [filter: [room_id: room.id]]) == []
+  end
+
   defp bootstrap(view, room) do
     client_instance_id = Ash.UUID.generate()
 
@@ -246,14 +289,28 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   end
 
   defp invoke_v1(view, room, session) do
+    revision = desired_revision(room)
+
     html =
       render_hook(view, "webmcp_invocation_begin", %{
         "room_id" => room.id,
         "browser_session_id" => session.id,
         "request_uuid" => Ash.UUID.generate(),
+        "tool_name" => revision.name,
+        "contract_sha256" => revision.contract_sha256,
         "arguments" => %{"instructions" => "clarify the workflow"}
       })
 
     assert html =~ "Visible postcondition failed"
+  end
+
+  defp desired_revision(room) do
+    Domain.list_tool_revisions!(
+      query: [
+        filter: [room_id: room.id, generation: room.desired_tool_generation, status: :desired],
+        limit: 1
+      ]
+    )
+    |> List.first()
   end
 end

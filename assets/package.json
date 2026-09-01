@@ -1,0 +1,7 @@
+{
+  "name": "patchbay-assets",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/webmcp/*.test.js"
+  }
+}

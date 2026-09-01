@@ -1,0 +1,236 @@
+{
+  "webmcpify": 3,
+  "app": {
+    "stack": "phoenix-liveview",
+    "typescript": false,
+    "entry": "assets/js/app.js",
+    "baseUrl": "http://localhost:4000",
+    "startCommand": "mix phx.server",
+    "authFixtures": {}
+  },
+  "pipeline": {
+    "phase": "verify",
+    "setup": {
+      "runtimeVendored": [
+        "assets/js/webmcp/webmcpify.js"
+      ],
+      "harnessInstalled": [
+        "assets/test/webmcp/room_hook.test.js"
+      ],
+      "originTrialNoted": []
+    },
+    "baselineSha": "8cf005db0bbfee37d531ad24d357c9221adcb34f",
+    "baselineDirty": [],
+    "commitPolicy": "no-commit",
+    "commitWebmcpifyDir": true,
+    "blockers": []
+  },
+  "areas": [
+    {
+      "id": "skill-uplift-room",
+      "paths": [
+        "assets/js/",
+        "lib/patchbay_web/live/webmcp/room_live/"
+      ],
+      "status": "verified"
+    }
+  ],
+  "tools": [
+    {
+      "id": "get_patchbay_room_state",
+      "area": "skill-uplift-room",
+      "kind": "imperative",
+      "mutating": false,
+      "priority": 1,
+      "description": "Read the active Patchbay goal, visible editor state, current tool generation, last verification, and whether an owner-approved repair is available.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": false
+      },
+      "source": [
+        "lib/patchbay_web/live/webmcp/room_live/show.html.heex"
+      ],
+      "route": "/webmcp/rooms/skill-uplift",
+      "auth": "none",
+      "examples": {
+        "valid": {},
+        "invalid": null
+      },
+      "expect": {
+        "result": "skill-uplift",
+        "navigation": null,
+        "ui": "Room state remains unchanged"
+      },
+      "cleanup": null,
+      "status": "verified",
+      "approval": null,
+      "attempts": 1,
+      "batchCommit": null,
+      "notes": "Always registered and reads a bounded DOM snapshot."
+    },
+    {
+      "id": "verify_skill_uplift_goal",
+      "area": "skill-uplift-room",
+      "kind": "imperative",
+      "mutating": false,
+      "priority": 1,
+      "description": "Verify whether the visible Candidate editor contains a structurally valid revision of the current Source Skill and whether the page-side goal was completed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": true
+      },
+      "source": [
+        "lib/patchbay_web/live/webmcp/room_live/show.ex",
+        "lib/patchbay_web/live/webmcp/room_live/show.html.heex"
+      ],
+      "route": "/webmcp/rooms/skill-uplift",
+      "auth": "none",
+      "examples": {
+        "valid": {},
+        "invalid": null
+      },
+      "expect": {
+        "result": "passed",
+        "navigation": null,
+        "ui": "Verification state is visible without changing editor content"
+      },
+      "cleanup": null,
+      "status": "verified",
+      "approval": null,
+      "attempts": 1,
+      "batchCommit": null,
+      "notes": "Returns visible user-authored Skill state and is marked untrusted."
+    },
+    {
+      "id": "uplift_current_skill_v1",
+      "area": "skill-uplift-room",
+      "kind": "imperative",
+      "mutating": "server",
+      "priority": 1,
+      "description": "Improve the Skill currently loaded in the Source editor while preserving its identity frontmatter, and place the revision in the visible Candidate editor.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "instructions"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "instructions": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "A bounded description of what should be clarified or improved."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "untrustedContentHint": true
+      },
+      "source": [
+        "lib/patchbay_web/live/webmcp/room_live/show.ex"
+      ],
+      "route": "/webmcp/rooms/skill-uplift",
+      "auth": "none",
+      "examples": {
+        "valid": {
+          "instructions": "Clarify the workflow while preserving the Skill identity."
+        },
+        "invalid": {
+          "instructions": ""
+        }
+      },
+      "expect": {
+        "result": "verified_failure",
+        "navigation": null,
+        "ui": "Raw handler success and failed visible postcondition are both shown"
+      },
+      "cleanup": "Click Reset demo to restore the seeded room and retire transient evidence.",
+      "status": "verified",
+      "approval": {
+        "note": "Approved by the user's request to implement the attached Patchbay v0 specification.",
+        "at": "2026-09-01",
+        "productionSideEffect": null
+      },
+      "attempts": 1,
+      "batchCommit": null,
+      "notes": "Deliberately defective seeded revision; records evidence but does not write the candidate editor."
+    },
+    {
+      "id": "uplift_current_skill_v2",
+      "area": "skill-uplift-room",
+      "kind": "imperative",
+      "mutating": "server",
+      "priority": 1,
+      "description": "Improve the Skill currently loaded in the Source editor and apply the owner-approved revision to the visible Candidate editor.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "instructions"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "instructions": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "A bounded description of what should be clarified or improved."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "untrustedContentHint": true
+      },
+      "source": [
+        "lib/patchbay_web/live/webmcp/room_live/show.ex"
+      ],
+      "route": "/webmcp/rooms/skill-uplift",
+      "auth": "none",
+      "examples": {
+        "valid": {
+          "instructions": "Clarify the workflow while preserving the Skill identity."
+        },
+        "invalid": {
+          "instructions": ""
+        }
+      },
+      "expect": {
+        "result": "verified_success",
+        "navigation": null,
+        "ui": "The visible Candidate editor contains the verified improved Skill"
+      },
+      "cleanup": "Click Reset demo to restore the seeded room and return the registry to generation 1.",
+      "status": "verified",
+      "approval": {
+        "note": "Approved by the user's request to implement the attached Patchbay v0 specification.",
+        "at": "2026-09-01",
+        "productionSideEffect": null
+      },
+      "attempts": 1,
+      "batchCommit": null,
+      "notes": "Registered only after the human approval path publishes generation 2."
+    }
+  ],
+  "log": [
+    "2026-09-01 detect: Phoenix LiveView app, no authentication, one local room route, clean baseline 8cf005d.",
+    "2026-09-01 inventory: one bounded area and four specification-defined imperative tools.",
+    "2026-09-01 gate: user request approved both server-mutating uplift tools; no production side effects; no-commit integration policy with committed evidence directory.",
+    "2026-09-01 integrate: vendored the WebMCP compatibility runtime, added a lifecycle-owned LiveView hook, and bound all registry observations to server-owned tool names and exact contract digests.",
+    "2026-09-01 verify: 12 Node lifecycle tests and 9 LiveView bridge tests passed, including dropped acknowledgements, fast reconnect during bootstrap, stale reconcile and stale bootstrap suppression, rejected registration, stale revision rejection, foreign registry rejection, and untrusted evidence.",
+    "2026-09-01 heal: adversarial review found that a fast reconnect could reuse a doomed bootstrap promise; lifecycle invalidation and stale-attempt guards now force a clean replacement attempt.",
+    "2026-09-01 heal: adversarial review found two later stale-work races; lifecycle-aware queues, reconcile epochs, originating-lifecycle checks, and unfinished permanent-scope cleanup now prevent old work from poisoning or downgrading a reconnected registry.",
+    "2026-09-01 audit: independent race/lifecycle and security reviews accepted the repaired WebMCP diff with no remaining P1/P2 blocker.",
+    "2026-09-01 verify: live browser proved get-state, initial failed verification, v1 verified failure, owner-approved v1-to-v2 hot-swap, v2 verified success, and final verifier pass in one document."
+  ]
+}
