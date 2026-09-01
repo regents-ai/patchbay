@@ -3,6 +3,12 @@
 These notes describe the browser requirements used by this prototype. WebMCP
 is experimental and the API may change.
 
+## ChatGPT's in-app browser
+
+The in-app browser in ChatGPT offers a page's WebMCP tools to the assistant
+without any flag or token. Open the room there, keep the chat and the page both
+in view, and follow [JUDGES.md](JUDGES.md).
+
 ## Chrome requirements (checked 2026-09-01)
 
 Chrome's current WebMCP documentation describes WebMCP as a proposed standard.
@@ -11,7 +17,8 @@ Chrome documents a flag that avoids needing an origin-trial token:
 
 1. Open `chrome://flags/#enable-webmcp-testing`.
 2. Set **WebMCP** to **Enabled**.
-3. Relaunch Chrome and open the local room at <http://localhost:4000/webmcp/rooms/skill-uplift>.
+3. Relaunch Chrome and open the room — the published one, or the local one at
+   <http://localhost:4000/webmcp/rooms/skill-uplift>.
 
 For a real origin-trial deployment, request a token for the exact origin and
 deliver it as an `Origin-Trial` response header or HTML meta tag. Do not put a
@@ -55,5 +62,4 @@ Authoritative references:
   fixture for demonstration, not an evaluation of model quality or task
   success.
 
-Never commit API keys, origin-trial tokens, or production data. This repository
-does not include a live deployment endpoint or recorded video.
+Never commit API keys, origin-trial tokens, or production data.
