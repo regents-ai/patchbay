@@ -34,7 +34,9 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :patchbay, Patchbay.Repo,
-    # ssl: true,
+    # No TLS: docs/DEPLOY.md targets an unmanaged `fly postgres create` cluster,
+    # which is reached only over the app's private IPv6 network. A managed or
+    # off-platform database needs `ssl: true` here.
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`
@@ -53,7 +55,18 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host =
+    System.get_env("PHX_HOST") ||
+      raise """
+      environment variable PHX_HOST is missing.
+      It must be the public hostname the room is served from, for example:
+      patchbay-regents.fly.dev
+      """
+
+  # Live inference and the deterministic demo fallback are read directly from
+  # the environment by the generation path (OPENAI_API_KEY and
+  # PATCHBAY_DEMO_FALLBACK), so they need no configuration here. Both are
+  # optional; see docs/DEPLOY.md.
 
   config :patchbay, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

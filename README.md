@@ -105,13 +105,17 @@ documented real-browser walkthrough. It never calls a live model and does not
 drop databases. Its temporary test partitions can be removed later by the
 local PostgreSQL administrator if desired.
 
+## Deployment
+
+The public room runs as a Phoenix release on Fly.io behind HTTPS, with all
+state in Postgres. The exact steps are in [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Scope and non-goals
 
 Patchbay is a bounded hackathon prototype, not a hosted service. It does not
-provide authentication, multi-tenant isolation, production deployment,
-production OpenAI policy, arbitrary code execution, automatic repair
-approval, or a public live URL/video. The route and owner control are
-deliberately local and public for the demo.
+provide authentication, multi-tenant isolation, production OpenAI policy,
+arbitrary code execution, automatic repair approval, or a demo video. The
+single room and its owner controls are deliberately public for the demo.
 
 See [HACKATHON.md](HACKATHON.md) for the product story and
 [NEW_SINCE_2026-08-25.md](NEW_SINCE_2026-08-25.md) for the current change

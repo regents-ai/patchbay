@@ -8,6 +8,7 @@ defmodule PatchbayWeb.Router do
     plug :put_root_layout, html: {PatchbayWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug PatchbayWeb.Plugs.BrowserPolicy
   end
 
   pipeline :api do
@@ -24,6 +25,12 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     live "/rooms/:slug", RoomLive.Show, :show
+  end
+
+  scope "/webmcp", PatchbayWeb do
+    pipe_through :api
+
+    get "/health", HealthController, :show
   end
 
   # Other scopes may use custom stacks.
@@ -43,7 +50,10 @@ defmodule PatchbayWeb.Router do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: PatchbayWeb.Telemetry
+      live_dashboard "/dashboard",
+        metrics: PatchbayWeb.Telemetry,
+        csp_nonce_assign_key: :csp_nonce
+
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end

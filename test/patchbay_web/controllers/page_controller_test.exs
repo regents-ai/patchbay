@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.PageControllerTest do
   use PatchbayWeb.ConnCase
 
-  test "GET /", %{conn: conn} do
+  test "GET / sends visitors to the public room", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert html_response(conn, 200) =~ "Peace of mind from prototype to production"
+
+    assert redirected_to(conn, 302) == ~p"/webmcp/rooms/skill-uplift"
   end
 end

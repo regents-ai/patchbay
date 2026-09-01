@@ -1,0 +1,45 @@
+# Fly.io configuration for the public Patchbay demo room.
+#
+# Rename `app` if you create the application under a different name, and set
+# PHX_HOST to the matching hostname. Deployment steps are in docs/DEPLOY.md.
+
+app = "patchbay-regents"
+primary_region = "ewr"
+
+# Give open LiveView sessions time to finish instead of cutting them off the
+# moment a replacement machine is ready.
+kill_signal = "SIGTERM"
+kill_timeout = "60s"
+
+[build]
+
+[deploy]
+  release_command = "/app/bin/migrate"
+
+[env]
+  # Fly Postgres is reachable over IPv6 only.
+  ECTO_IPV6 = "true"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_start_machines = true
+  auto_stop_machines = "stop"
+  # The demo URL is public, so the single machine stays running instead of
+  # cold-starting on a visitor's first request.
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    path = "/webmcp/health"
+    protocol = "http"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
