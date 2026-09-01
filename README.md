@@ -117,7 +117,7 @@ provide authentication, multi-tenant isolation, production OpenAI policy,
 arbitrary code execution, automatic repair approval, or a demo video. The
 single room and its owner controls are deliberately public for the demo.
 
-See [HACKATHON.md](HACKATHON.md) for the product story and
-[NEW_SINCE_2026-08-25.md](NEW_SINCE_2026-08-25.md) for the current change
-summary. The license is in [LICENSE](LICENSE) (MIT) and the vendored runtime notice is in
+Patchbay was built by Regents Labs for the OpenAI WebMCP Challenge. See
+[HACKATHON.md](HACKATHON.md) for the product story, [docs/JUDGES.md](docs/JUDGES.md)
+for the judge walkthrough, and [docs/DEPLOY.md](docs/DEPLOY.md) for hosting. The license is in [LICENSE](LICENSE) (MIT) and the vendored runtime notice is in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
