@@ -12,6 +12,8 @@ defmodule Patchbay.Patchbay.DemoReset do
   alias Patchbay.Patchbay.{
     BrowserSession,
     Fixtures,
+    Invocation,
+    InvocationRunner,
     RepairProposal,
     Room,
     RoomEvent,
@@ -27,10 +29,11 @@ defmodule Patchbay.Patchbay.DemoReset do
     action_opts = Keyword.drop(opts, [:query])
 
     case Ash.transact(
-           [Room, BrowserSession, ToolRevision, RepairProposal, RoomEvent],
+           [Room, BrowserSession, ToolRevision, Invocation, RepairProposal, RoomEvent],
            fn ->
              room = lock_room!(room.id, opts)
              room = Domain.reset_demo!(room, action_opts)
+             InvocationRunner.cancel_open!(room, action_opts)
              reset_browser_sessions!(room, opts, action_opts)
              revisions = list_revisions!(room, opts)
 
@@ -49,6 +52,7 @@ defmodule Patchbay.Patchbay.DemoReset do
                    |> Map.delete(:contract_sha256)
                    |> Map.put(:status, :candidate)
                    |> then(&Domain.create_tool_revision!(&1, action_opts))
+                   |> then(&ToolPublisher.publish!(&1, action_opts))
 
                  %ToolRevision{status: :desired} = revision ->
                    revision
@@ -72,10 +76,9 @@ defmodule Patchbay.Patchbay.DemoReset do
   defp find_room!(%Room{} = room, _opts), do: room
 
   defp find_room!(slug, opts) when is_binary(slug) do
-    case Domain.list_rooms!(Keyword.merge(opts, query: [filter: [slug: slug], limit: 1])) do
-      [room | _] -> room
-      [] -> raise Ash.Error.Query.NotFound.exception(resource: Room)
-    end
+    Domain.get_room_by_slug!(slug, Keyword.drop(opts, [:query]))
+  rescue
+    Ash.Error.Invalid -> raise Ash.Error.Query.NotFound.exception(resource: Room)
   end
 
   defp lock_room!(room_id, opts) do

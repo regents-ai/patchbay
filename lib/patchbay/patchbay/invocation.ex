@@ -21,6 +21,7 @@ defmodule Patchbay.Patchbay.Invocation do
     uuid_primary_key(:id)
 
     attribute(:request_uuid, :uuid, allow_nil?: false, public?: true)
+    attribute(:invocation_epoch, :integer, allow_nil?: false, public?: true, default: 0)
     attribute(:tool_contract_sha256, :string, allow_nil?: false, public?: true)
     attribute(:arguments, :map, allow_nil?: false, public?: true, default: %{})
     attribute(:arguments_sha256, :string, allow_nil?: false, public?: true)
@@ -89,6 +90,7 @@ defmodule Patchbay.Patchbay.Invocation do
 
       accept([
         :request_uuid,
+        :invocation_epoch,
         :room_id,
         :browser_session_id,
         :tool_revision_id,
@@ -131,6 +133,12 @@ defmodule Patchbay.Patchbay.Invocation do
       change(set_attribute(:effective_status, :handler_returned))
       change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)
       require_atomic?(false)
+    end
+
+    update :mark_awaiting_visible_state do
+      public?(false)
+      accept([])
+      change(set_attribute(:effective_status, :awaiting_visible_state))
     end
 
     update :mark_errored do

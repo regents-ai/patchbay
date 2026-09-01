@@ -4,6 +4,7 @@ import test from "node:test";
 import {captureRoomState, sha256Hex} from "../../js/webmcp/state_snapshot.js";
 import {waitForRevision} from "../../js/webmcp/revision_waiter.js";
 import {buildPermanentTools, buildRevisionTool} from "../../js/webmcp/tool_definitions.js";
+import {validateArguments} from "../../js/webmcp/invocation_bridge.js";
 import {PatchbayWebMCP} from "../../js/webmcp/room_hook.js";
 
 class Element extends EventTarget {
@@ -103,6 +104,7 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options =
   marker.ownerDocument = document;
   const events = [];
   const callbacks = new Map();
+  let pendingRequestUuid;
   const hook = {
     el: marker,
     pushEvent(event, payload, callback) {
@@ -113,20 +115,45 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options =
         if (options.dropBootstrapReply) return 1;
         reply = {
           browser_session_id: `session-${roomId}`,
+          invocation_epoch: 0,
           desired_generation: options.bootstrapGeneration ?? 1,
           revisions: options.bootstrapRevisions ?? [],
         };
         if (options.bootstrapError) reply = {error: options.bootstrapError};
       } else if (event === "webmcp_invocation_begin") {
-        document.querySelector("#patchbay-room-state").dataset.uiRevision = "1";
-        reply = {
+        pendingRequestUuid = payload.request_uuid;
+        options.onInvocationBegin?.(payload, document);
+        if (!options.onInvocationBegin) {
+          document.querySelector("#patchbay-room-state").dataset.uiRevision = "1";
+        }
+        reply = options.invocationReply ?? {
           invocation_id: "invocation-1",
-          expected_ui_revision: 1,
-          ui_commit_required: true,
-          effective_status: "verified_success",
+          request_uuid: payload.request_uuid,
+          effective_status: "started",
         };
+      } else if (event === "webmcp_execute") {
+        reply = options.executeReply ?? {
+          accepted: true,
+          invocation_id: payload.invocation_id,
+          request_uuid: pendingRequestUuid,
+        };
+        if (!options.deferInvocationResult && reply.ui_commit_required === undefined) {
+          queueMicrotask(() => queueMicrotask(() => {
+            callbacks.get(`patchbay:${roomId}:invocation_result`)?.({
+              invocation_id: payload.invocation_id,
+              request_uuid: pendingRequestUuid,
+              invocation_epoch: hook.invocationEpoch,
+              expected_ui_revision: 1,
+              ui_commit_required: true,
+              effective_status: "awaiting_visible_state",
+              handler_result: {reported_success: true},
+            });
+          }));
+        }
       } else if (event === "webmcp_poststate_observed") {
-        reply = {effective_status: "verified_success"};
+        reply = options.postStateReply ?? {effective_status: "verified_success"};
+      } else if (event === "webmcp_registry_reconciled" && options.registryError) {
+        reply = {error: options.registryError};
       } else {
         reply = {ok: true};
       }
@@ -155,6 +182,18 @@ function revision(name, generation, digest) {
     },
     annotations: {readOnlyHint: false, untrustedContentHint: true},
   };
+}
+
+async function waitFor(predicate, timeoutMs = 1000) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const result = predicate();
+    if (result) return result;
+    await new Promise(resolve => setTimeout(resolve, 1));
+  }
+
+  throw new Error("timed out waiting for test condition");
 }
 
 async function reconcileTo(setupValue, payload) {
@@ -204,6 +243,178 @@ test("registers permanent tools and v1 once, then hot-swaps to a distinct v2", a
   const registryEvent = [...value.events].reverse().find(event => event.event === "webmcp_registry_reconciled");
   assert.equal(registryEvent.payload.observed_contracts[v2.name], v2.contract_sha256);
   assert.equal(registryEvent.payload.observed_tool_names.includes(v1.name), false);
+});
+
+test("keeps the registry disconnected when reconciliation is rejected", async () => {
+  const value = setup("registry-rejected-room", {registryError: "registry mismatch"});
+  await PatchbayWebMCP.mounted.call(value.hook);
+
+  assert.equal(value.hook.registryReady, false);
+  assert.equal(value.hook.el.dataset.webmcpStatus, "error");
+  assert.match(value.hook.el.textContent, /registry mismatch/);
+});
+
+test("validates the JSON Schema instruction character limit", () => {
+  assert.equal(validateArguments({instructions: "a".repeat(1000)}), null);
+  assert.equal(validateArguments({instructions: "é".repeat(1000)}), null);
+  assert.match(validateArguments({instructions: "é".repeat(1001)}), /1000 characters/);
+});
+
+test("executes the two-phase bridge against the committed DOM state", async () => {
+  const candidate = "---\nname: visible\n---\n\n# Visible candidate\n";
+  const value = setup("two-phase-room", {
+    onInvocationBegin(_payload, document) {
+      document.querySelector("#patchbay-candidate-editor").value = candidate;
+      document.querySelector("#patchbay-room-state").dataset.uiRevision = "1";
+    },
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v2 = revision("uplift_current_skill_v2", 2, "2".repeat(64));
+  await reconcileTo(value, {room_id: "two-phase-room", generation: 2, revisions: [v2]});
+
+  const result = await value.context.tools.get(v2.name).execute({instructions: "make it visible"});
+  const begin = value.events.find(event => event.event === "webmcp_invocation_begin");
+  const observed = value.events.find(event => event.event === "webmcp_poststate_observed");
+
+  assert.equal(JSON.parse(result).effective_status, "verified_success");
+  assert.equal(begin.payload.tool_name, v2.name);
+  assert.equal(observed.payload.invocation_id, "invocation-1");
+  assert.equal(observed.payload.post_state.ui_revision, 1);
+  assert.equal(observed.payload.post_state.candidate.sha256, await sha256Hex(candidate));
+  assert.equal(
+    observed.payload.post_state.source.sha256,
+    await sha256Hex(value.document.querySelector("#patchbay-source-editor").value),
+  );
+});
+
+test("waits for an asynchronous LiveView invocation result", async () => {
+  const value = setup("async-invocation-room", {
+    asyncInvocation: true,
+    onInvocationBegin(_payload, document) {
+      document.querySelector("#patchbay-room-state").dataset.uiRevision = "1";
+    },
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "async-invocation-room", generation: 1, revisions: [v1]});
+
+  const result = JSON.parse(
+    await value.context.tools.get(v1.name).execute({instructions: "run asynchronously"}),
+  );
+
+  assert.equal(result.effective_status, "verified_success");
+  assert.equal(result.reported_result.reported_success, true);
+  assert.equal(value.hook.pendingInvocations.size, 0);
+});
+
+test("a dropped execute acknowledgement durably cancels the begun invocation", async () => {
+  const value = setup("cancel-invocation-room", {
+    asyncInvocation: true,
+    dropReplies: new Set(["webmcp_execute"]),
+    pushTimeoutMs: 10,
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "cancel-invocation-room", generation: 1, revisions: [v1]});
+
+  const result = await value.context.tools.get(v1.name).execute({instructions: "drop execute"});
+  const cancellation = await waitFor(
+    () => value.events.find(event => event.event === "webmcp_invocation_cancel"),
+  );
+
+  assert.match(result, /^ERROR:/);
+  assert.equal(cancellation.payload.invocation_id, "invocation-1");
+  assert.equal(cancellation.payload.invocation_epoch, 0);
+});
+
+test("reset rejects pending invocation work and ignores its stale result", async () => {
+  const value = setup("reset-invocation-room", {
+    asyncInvocation: true,
+    deferInvocationResult: true,
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "reset-invocation-room", generation: 1, revisions: [v1]});
+
+  const call = value.context.tools.get(v1.name).execute({instructions: "remain pending"});
+  const beginEvent = await waitFor(
+    () => value.events.find(event => event.event === "webmcp_invocation_begin"),
+  );
+  const requestUuid = beginEvent.payload.request_uuid;
+  assert.equal(value.hook.pendingInvocations.size, 1);
+
+  await value.callbacks.get("patchbay:reset-invocation-room:reset_browser_registry")({
+    room_id: "reset-invocation-room",
+    invocation_epoch: 1,
+  });
+  assert.match(await call, /^ERROR: Patchbay reset/);
+
+  value.callbacks.get("patchbay:reset-invocation-room:invocation_result")({
+    request_uuid: requestUuid,
+    invocation_epoch: 0,
+    invocation_id: "stale-invocation",
+  });
+  assert.equal(value.hook.pendingInvocations.size, 0);
+});
+
+test("a UI revision timeout still records visible failed proof", async () => {
+  const value = setup("revision-timeout-room", {
+    onInvocationBegin() {},
+    postStateReply: {
+      effective_status: "verified_failure",
+      failure_code: "UI_REVISION_NOT_APPLIED",
+    },
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v2 = revision("uplift_current_skill_v2", 2, "2".repeat(64));
+  await reconcileTo(value, {room_id: "revision-timeout-room", generation: 2, revisions: [v2]});
+
+  const result = JSON.parse(
+    await value.context.tools.get(v2.name).execute(
+      {instructions: "time out visibly"},
+      {revisionTimeoutMs: 10},
+    ),
+  );
+
+  assert.equal(result.effective_status, "verified_failure");
+  assert.equal(result.failure_code, "UI_REVISION_NOT_APPLIED");
+  assert.equal(
+    value.events.some(event => event.event === "webmcp_poststate_observed"),
+    true,
+  );
+});
+
+test("reset retires v2 and rebuilds v1 without touching foreign tools", async () => {
+  const value = setup("reset-room");
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v2 = revision("uplift_current_skill_v2", 2, "2".repeat(64));
+  await reconcileTo(value, {room_id: "reset-room", generation: 2, revisions: [v2]});
+  const v2Signal = value.context.signals.get(v2.name);
+  const foreignController = new AbortController();
+  value.context.tools.set("foreign_tool", {name: "foreign_tool"});
+  value.context.signals.set("foreign_tool", foreignController.signal);
+  const eventCountBeforeReset = value.events.length;
+
+  await value.callbacks.get("patchbay:reset-room:reset_browser_registry")({room_id: "reset-room"});
+  await value.hook.reconcileQueue;
+  assert.equal(value.hook.registryReady, false);
+  assert.equal(
+    value.events.slice(eventCountBeforeReset).some(event =>
+      event.event === "webmcp_registry_reconciled" &&
+      event.payload.observed_generation === 1 &&
+      !event.payload.observed_tool_names.includes("uplift_current_skill_v1")
+    ),
+    false,
+  );
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "reset-room", generation: 1, revisions: [v1]});
+
+  assert.equal(v2Signal.aborted, true);
+  assert.equal(value.context.tools.has(v2.name), false);
+  assert.equal(value.context.tools.has(v1.name), true);
+  assert.equal(value.context.tools.has("foreign_tool"), true);
+  assert.equal(foreignController.signal.aborted, false);
+  assert.equal(value.hook.registryReady, true);
 });
 
 test("registers the desired revision from the callback-based bootstrap reply", async () => {

@@ -12,7 +12,11 @@ defmodule Patchbay.Patchbay.ToolRevision do
   postgres do
     table("tool_revisions")
     repo(Patchbay.Repo)
-    identity_wheres_to_sql(unique_desired_revision_per_room: "status = 'desired'")
+
+    identity_wheres_to_sql(
+      unique_active_generation_per_room: "status <> 'retired'",
+      unique_desired_revision_per_room: "status = 'desired'"
+    )
 
     references do
       reference(:parent_revision, match_with: [room_id: :room_id])
@@ -49,11 +53,15 @@ defmodule Patchbay.Patchbay.ToolRevision do
   end
 
   identities do
-    identity(:unique_generation_per_room, [:room_id, :generation], eager_check?: true)
+    identity(:unique_active_generation_per_room, [:room_id, :generation],
+      where: expr(status != :retired),
+      eager_check?: false
+    )
+
     identity(:unique_id_per_room, [:id, :room_id], eager_check?: false)
     # Ash's eager identity query cannot apply a partial identity's `where`
     # clause. Let the generated PostgreSQL partial index enforce this invariant
-    # so retiring a desired revision permits the next generation.
+    # so retiring a desired revision permits a later demo run to reuse it.
     identity(:unique_desired_revision_per_room, [:room_id],
       where: expr(status == :desired),
       eager_check?: false

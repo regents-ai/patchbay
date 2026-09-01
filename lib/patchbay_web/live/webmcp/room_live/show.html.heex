@@ -64,10 +64,15 @@
           class="patchbay-editor"
           spellcheck="false"
           aria-describedby="patchbay-source-digest"
+          readonly={@room.status != :ready}
         >{@room.source_markdown}</textarea>
         <div class="patchbay-editor-footer">
           <span id="patchbay-source-digest" class="patchbay-digest">sha256:{@room.source_sha256}</span>
-          <button class="patchbay-button patchbay-button-quiet" type="submit">Save source</button>
+          <button
+            class="patchbay-button patchbay-button-quiet"
+            type="submit"
+            disabled={@room.status != :ready}
+          >Save source</button>
         </div>
       </form>
     </article>
@@ -109,6 +114,23 @@
     data-source-sha256={@room.source_sha256}
     data-candidate-sha256={@room.candidate_sha256 || ""}
     data-status={@room.status}
+    data-desired-generation={@room.desired_tool_generation}
+    data-observed-generation={
+      if(@browser_session, do: @browser_session.observed_generation, else: "")
+    }
+    data-verification-passed={
+      if(@invocation && @invocation.effective_status == :verified_success,
+        do: "true",
+        else: "false"
+      )
+    }
+    data-failure-code={
+      if(@invocation && @invocation.failure_code, do: @invocation.failure_code, else: "")
+    }
+    data-repair-status={if(@proposal, do: @proposal.status, else: "")}
+    data-repair-approved={
+      if(@proposal && @proposal.status in [:approved, :published], do: "true", else: "false")
+    }
     aria-hidden="true"
   >
   </div>
@@ -319,6 +341,7 @@
       class="patchbay-button"
       type="button"
       phx-click="retry_original_goal"
+      disabled={@room.status != :repaired}
     >Retry uplift</button>
   </section>
 

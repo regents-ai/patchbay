@@ -9,6 +9,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     CandidateCache,
     CandidateGenerator,
     CanaryRunner,
+    DemoReset,
     Digest,
     Fixtures,
     InvocationRunner,
@@ -73,7 +74,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert generated.fallback_used
     assert generated.model == "patchbay-demo-fallback"
     assert Enum.any?(generated.warnings, &String.contains?(&1, "fallback"))
-    assert {:ok, ^generated} = CandidateCache.fetch(generated.generation_key, fn -> generated end)
+    assert {:ok, ^generated} = CandidateCache.get(generated.generation_key)
     assert {:error, :generation_key_required} = CandidateCache.get(nil)
     assert {:error, :generation_key_required} = CandidateCache.put("", generated)
   end
@@ -85,11 +86,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
   } do
     arguments = %{"instructions" => "clarify the workflow"}
 
-    v1 =
-      InvocationRunner.invoke!(room, browser_session, revision, arguments,
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
+    v1 = invoke_failed!(room, browser_session, revision, arguments)
 
     assert v1.handler_result["reported_success"]
     assert v1.handler_result["applied"] == false
@@ -119,10 +116,38 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
 
     retried = InvocationRunner.retry!(v1, browser_session, fallback: true)
 
+    assert_raise ArgumentError, ~r/room is not ready/, fn ->
+      InvocationRunner.retry!(v1, browser_session, fallback: true)
+    end
+
+    retried = verify_visible!(retried, room.id)
+
     assert retried.handler_result["reported_success"]
     assert retried.handler_result["applied"]
     assert retried.effective_status == :verified_success
     assert Patchbay.get_room_by_id!(room.id).candidate_markdown == Fixtures.improved_markdown()
+  end
+
+  test "rejection retires the candidate and restores a recoverable failure", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation =
+      invoke_failed!(room, browser_session, revision, %{"instructions" => "reject once"})
+
+    proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
+    candidate_id = proposal.candidate_tool_revision_id
+
+    rejected = RepairApprovalService.reject!(proposal)
+    recovered_room = Patchbay.get_room_by_id!(room.id)
+
+    assert rejected.status == :rejected
+    assert Patchbay.get_tool_revision!(candidate_id).status == :retired
+    assert recovered_room.status == :failed
+    assert recovered_room.active_repair_proposal_id == nil
+
+    assert DemoReset.reset!(room).status == :ready
   end
 
   test "invocation request UUID replay is idempotent", %{
@@ -169,11 +194,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
          revision: revision,
          browser_session: browser_session
        } do
-    invocation =
-      InvocationRunner.invoke!(room, browser_session, revision, %{"instructions" => "tighten"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
+    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "tighten"})
 
     proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
 
@@ -228,6 +249,106 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert Enum.count(events, &(&1.kind == :invocation_started)) == 1
   end
 
+  test "reset cancellation wins against a late generator result", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation =
+      InvocationRunner.begin!(
+        room,
+        browser_session,
+        revision,
+        %{"instructions" => "finish after reset"}
+      )
+
+    parent = self()
+
+    worker =
+      spawn(fn ->
+        result =
+          try do
+            {:ok,
+             InvocationRunner.execute!(invocation,
+               generator: fn _source, _arguments ->
+                 send(parent, :generation_started)
+                 receive do: (:release_generation -> :ok)
+
+                 %{
+                   candidate_markdown: Fixtures.improved_markdown(),
+                   model: "race-test",
+                   prompt_version: "race-v1",
+                   change_summary: ["late result"],
+                   warnings: []
+                 }
+               end
+             )}
+          rescue
+            error -> {:error, error}
+          end
+
+        send(parent, {:execution_finished, result})
+      end)
+
+    assert_receive :generation_started, 1_000
+    DemoReset.reset!(room)
+    send(worker, :release_generation)
+
+    assert_receive {:execution_finished, {:error, error}}, 1_000
+    assert Exception.message(error) =~ "earlier room lifecycle"
+    assert Patchbay.get_invocation!(invocation.id).effective_status == :cancelled
+
+    reset_room = Patchbay.get_room_by_id!(room.id)
+    assert reset_room.status == :ready
+    assert reset_room.candidate_markdown == nil
+
+    assert RoomTimeline.list!(room.id) |> List.last() |> Map.fetch!(:kind) == :room_reset
+  end
+
+  test "a stale begin cannot create work after reset", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    DemoReset.reset!(room)
+
+    assert_raise ArgumentError, ~r/earlier room lifecycle/, fn ->
+      InvocationRunner.begin!(
+        room,
+        browser_session,
+        revision,
+        %{"instructions" => "stale begin"},
+        invocation_epoch: room.invocation_epoch
+      )
+    end
+
+    assert Patchbay.list_invocations!(query: [filter: [room_id: room.id]]) == []
+  end
+
+  test "cancelled work rejects late visible proof", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation =
+      InvocationRunner.invoke!(
+        room,
+        browser_session,
+        revision,
+        %{"instructions" => "cancel before proof"},
+        fallback: true
+      )
+
+    assert invocation.effective_status == :awaiting_visible_state
+    assert InvocationRunner.cancel!(invocation).effective_status == :cancelled
+
+    assert_raise ArgumentError, ~r/no longer awaiting visible proof/, fn ->
+      InvocationRunner.verify!(invocation, %{})
+    end
+
+    assert Patchbay.list_verifications!(query: [filter: [invocation_id: invocation.id]]) == []
+  end
+
   test "live candidate generation cannot reuse a fallback variant", %{room: room} do
     arguments = %{"instructions" => "separate providers"}
 
@@ -260,11 +381,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     revision: revision,
     browser_session: browser_session
   } do
-    invocation =
-      InvocationRunner.invoke!(room, browser_session, revision, %{"instructions" => "durable"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
+    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "durable"})
 
     proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
     published = RepairApprovalService.approve_and_publish!(proposal, "owner")
@@ -293,6 +410,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     })
 
     retried = InvocationRunner.retry!(invocation, browser_session)
+    retried = verify_visible!(retried, room.id)
 
     assert retried.effective_status == :verified_success
     assert Patchbay.get_room_by_id!(room.id).candidate_markdown == Fixtures.improved_markdown()
@@ -303,11 +421,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     revision: revision,
     browser_session: browser_session
   } do
-    invocation =
-      InvocationRunner.invoke!(room, browser_session, revision, %{"instructions" => "bad plan"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
+    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "bad plan"})
 
     before_revisions = Patchbay.list_tool_revisions!(query: [filter: [room_id: room.id]])
     before_events = RoomTimeline.list!(room.id)
@@ -334,10 +448,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     browser_session: browser_session
   } do
     invocation =
-      InvocationRunner.invoke!(room, browser_session, revision, %{"instructions" => "bad canary"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
+      invoke_failed!(room, browser_session, revision, %{"instructions" => "bad canary"})
 
     Repo.query!(
       "UPDATE invocations SET generated_candidate = $1, generated_candidate_sha256 = $2 WHERE id = $3",
@@ -358,11 +469,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     revision: revision,
     browser_session: browser_session
   } do
-    invocation =
-      InvocationRunner.invoke!(room, browser_session, revision, %{"instructions" => "stale"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
+    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "stale"})
 
     proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
     published = RepairApprovalService.approve_and_publish!(proposal, "owner")
@@ -386,5 +493,27 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert after_room.candidate_markdown == before.candidate_markdown
     assert after_room.ui_revision == before.ui_revision
     assert v2.status == :desired
+  end
+
+  defp invoke_failed!(room, browser_session, revision, arguments) do
+    room
+    |> InvocationRunner.invoke!(browser_session, revision, arguments,
+      request_uuid: Ash.UUID.generate(),
+      fallback: true
+    )
+    |> verify_visible!(room.id)
+  end
+
+  defp verify_visible!(invocation, room_id) do
+    room = Patchbay.get_room_by_id!(room_id)
+
+    InvocationRunner.verify!(invocation, %{
+      "ui_revision" => room.ui_revision,
+      "source" => %{"present" => true, "sha256" => room.source_sha256},
+      "candidate" => %{
+        "present" => is_binary(room.candidate_markdown),
+        "sha256" => room.candidate_sha256
+      }
+    })
   end
 end

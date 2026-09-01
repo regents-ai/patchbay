@@ -97,16 +97,38 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
   def reject!(proposal_or_id, opts \\ []) do
     opts = normalize_opts(opts)
     proposal = load_proposal!(proposal_or_id, opts)
-    proposal = Domain.reject_repair_proposal!(proposal, action_opts(opts))
+    action_opts = action_opts(opts)
 
-    RoomTimeline.append!(
-      proposal.room_id,
-      :approval_rejected,
-      %{"proposal_id" => proposal.id},
-      action_opts(opts)
-    )
+    case Ash.transact(
+           [Room, RepairProposal, ToolRevision],
+           fn ->
+             proposal = lock_proposal!(proposal.id, opts)
+             room = lock_room!(proposal.room_id, opts)
+             candidate_revision = lock_candidate_revision!(proposal, opts)
 
-    proposal
+             if proposal.status != :ready_for_approval do
+               raise ArgumentError, "proposal is not ready for rejection"
+             end
+
+             proposal = Domain.reject_repair_proposal!(proposal, action_opts)
+             Domain.retire_tool_revision!(candidate_revision, action_opts)
+             room = Domain.set_active_repair_proposal!(room, nil, action_opts)
+             _room = Domain.record_failure!(room, room.last_failed_invocation_id, action_opts)
+
+             RoomTimeline.append!(
+               room,
+               :approval_rejected,
+               %{"proposal_id" => proposal.id},
+               action_opts
+             )
+
+             proposal
+           end,
+           Keyword.take(opts, [:timeout])
+         ) do
+      {:ok, proposal} -> proposal
+      {:error, error} -> raise Ash.Error.to_error_class(error)
+    end
   end
 
   defp validate_fresh!(proposal, room, invocation, source_revision, candidate_revision) do

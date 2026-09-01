@@ -72,6 +72,7 @@ defmodule Patchbay.Patchbay.Room do
     end
 
     attribute(:ui_revision, :integer, allow_nil?: false, public?: true, default: 0)
+    attribute(:invocation_epoch, :integer, allow_nil?: false, public?: true, default: 0)
     attribute(:desired_tool_generation, :integer, allow_nil?: false, public?: true, default: 1)
     attribute(:seed_version, :string, allow_nil?: false, public?: true)
     attribute(:last_failed_invocation_id, :uuid, allow_nil?: true, public?: true)
@@ -108,6 +109,7 @@ defmodule Patchbay.Patchbay.Room do
     update :update_source do
       accept([:source_markdown])
       require_atomic?(false)
+      validate(attribute_equals(:status, :ready))
 
       change(
         {Patchbay.Patchbay.Changes.RecomputeDigest,
@@ -160,6 +162,11 @@ defmodule Patchbay.Patchbay.Room do
     update :mark_repaired do
       accept([])
       change(set_attribute(:status, :repaired))
+    end
+
+    update :begin_retry do
+      accept([])
+      change(set_attribute(:status, :retrying))
     end
 
     update :mark_verified do

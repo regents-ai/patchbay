@@ -17,14 +17,23 @@ export function buildPermanentTools(hook) {
       execute: singleFlight(async () => {
         const state = await captureRoomState(hook.el?.ownerDocument ?? document);
         const metadata = readRoomMetadata(hook.el?.ownerDocument ?? document);
-        return `skill-uplift state: ${boundedJson({
-          room_id: state.room_id,
-          room_slug: metadata.roomSlug,
+        return boundedJson({
+          room: metadata.roomSlug,
+          goal: "Place an improved candidate in the visible Candidate editor.",
           status: metadata.status,
-          generation: hook.desiredGeneration,
-          source: state.source,
-          candidate: state.candidate,
-        })}`;
+          desired_tool_generation: metadata.generation ?? hook.desiredGeneration,
+          observed_tool_generation: metadata.observedGeneration,
+          source_sha256: state.source.sha256,
+          candidate_sha256: state.candidate.sha256,
+          last_verification: {
+            passed: metadata.verificationPassed,
+            failure_code: metadata.failureCode,
+          },
+          repair: {
+            status: metadata.repairStatus,
+            owner_approved: metadata.repairApproved,
+          },
+        });
       }),
     },
     {
@@ -40,7 +49,15 @@ export function buildPermanentTools(hook) {
         if (!passed) {
           return errorResult("the visible goal is not verified yet; inspect the room evidence and retry after approval");
         }
-        return `passed: ${boundedJson({status: metadata.status, candidate: state.candidate})}`;
+        return boundedJson({
+          passed: true,
+          status: metadata.status,
+          candidate: state.candidate,
+          last_verification: {
+            passed: metadata.verificationPassed,
+            failure_code: metadata.failureCode,
+          },
+        });
       }),
     },
   ];

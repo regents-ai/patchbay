@@ -1,7 +1,7 @@
 import {captureRoomState} from "./state_snapshot.js";
 import {ExecutionAbortedError, waitForRevision} from "./revision_waiter.js";
 
-const MAX_RESULT_LENGTH = 1400;
+const MAX_RESULT_LENGTH = 6000;
 
 export async function executeRevision(hook, revision, input, options = {}) {
   const signal = options.signal;
@@ -14,51 +14,66 @@ export async function executeRevision(hook, revision, input, options = {}) {
   const validationError = validateArguments(input);
   if (validationError) return errorResult(validationError);
 
+  let begunInvocationId;
+  let operationEpoch;
+
   try {
     const preState = await captureRoomState(hook.el?.ownerDocument ?? document);
     if (signal?.aborted) throw new ExecutionAbortedError();
 
     const requestUuid = createRequestUuid();
-    const start = await raceWithAbort(
-      hook.pushEvent("webmcp_invocation_begin", {
-        room_id: hook.roomId,
-        browser_session_id: hook.browserSessionId,
-        request_uuid: requestUuid,
-        tool_name: revision.name,
-        contract_sha256: revision.contract_sha256,
-        arguments: input,
-        pre_state: preState,
-      }),
-      signal,
-    );
-
-    if (!start || start.error) return errorResult(start?.error ?? "the server did not start the invocation");
-    if (!start.invocation_id) return errorResult("the server did not return an invocation id");
-
-    if (start.ui_commit_required) {
-      await waitForRevision(hook.el?.ownerDocument ?? document, start.expected_ui_revision, {
-        timeoutMs: options.revisionTimeoutMs ?? 2500,
+    operationEpoch = hook.invocationEpoch;
+    const waiter = invocationResultWaiter(hook, requestUuid, signal);
+    let start;
+    try {
+      const begin = await raceWithAbort(
+        pushWithAck(hook, "webmcp_invocation_begin", {
+          room_id: hook.roomId,
+          browser_session_id: hook.browserSessionId,
+          invocation_epoch: operationEpoch,
+          request_uuid: requestUuid,
+          tool_name: revision.name,
+          contract_sha256: revision.contract_sha256,
+          arguments: input,
+          pre_state: preState,
+        }),
         signal,
-      });
+      );
+
+      if (!begin || begin.error) {
+        return errorResult(begin?.error ?? "the server did not start the invocation");
+      }
+
+      if (begin.invocation_id) {
+        begunInvocationId = begin.invocation_id;
+        if (signal?.aborted) throw new ExecutionAbortedError();
+        const execution = await raceWithAbort(
+          pushWithAck(hook, "webmcp_execute", {
+            invocation_id: begin.invocation_id,
+            invocation_epoch: operationEpoch,
+          }),
+          signal,
+        );
+
+        if (!execution || execution.error) {
+          cancelBegunInvocation(hook, begunInvocationId, operationEpoch);
+          return errorResult(execution?.error ?? "the server did not execute the invocation");
+        }
+        start = execution.ui_commit_required === undefined ? await waiter.promise : execution;
+      } else {
+        start = await waiter.promise;
+      }
+    } finally {
+      waiter.cancel();
     }
 
-    if (signal?.aborted) throw new ExecutionAbortedError();
-    const postState = await captureRoomState(hook.el?.ownerDocument ?? document);
-    if (signal?.aborted) throw new ExecutionAbortedError();
+    if (!start || start.error) return errorResult(start?.error ?? "the server did not finish the invocation");
+    if (!start.invocation_id) return errorResult("the server did not return an invocation id");
 
-    const verified = await raceWithAbort(
-      hook.pushEvent("webmcp_poststate_observed", {
-        room_id: hook.roomId,
-        browser_session_id: hook.browserSessionId,
-        invocation_id: start.invocation_id,
-        post_state: postState,
-      }),
-      signal,
-    );
-
-    if (!verified || verified.error) return errorResult(verified?.error ?? "the server could not record visible proof");
-    return statusResult(verified.effective_status ?? start.effective_status, verified.failure_code);
+    return await completeInvocation(hook, start, options);
   } catch (error) {
+    cancelBegunInvocation(hook, begunInvocationId, operationEpoch);
+
     if (error instanceof ExecutionAbortedError || error?.code === "EXECUTION_CANCELLED") {
       return errorResult("EXECUTION_CANCELLED: invocation cancelled before visible proof completed.");
     }
@@ -67,6 +82,164 @@ export async function executeRevision(hook, revision, input, options = {}) {
     }
     return errorResult(error?.message ?? "invocation failed before visible proof completed");
   }
+}
+
+function cancelBegunInvocation(hook, invocationId, invocationEpoch) {
+  if (!invocationId) return;
+
+  void pushWithAck(
+    hook,
+    "webmcp_invocation_cancel",
+    {
+      room_id: hook.roomId,
+      browser_session_id: hook.browserSessionId,
+      invocation_id: invocationId,
+      invocation_epoch: invocationEpoch,
+    },
+    1000,
+  ).catch(() => {});
+}
+
+function invocationResultWaiter(hook, requestUuid, signal) {
+  hook.pendingInvocations ??= new Map();
+  let settled = false;
+  let timer;
+  let onAbort;
+
+  const cleanup = () => {
+    clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener("abort", onAbort);
+    if (hook.pendingInvocations.get(requestUuid)?.promise === promise) {
+      hook.pendingInvocations.delete(requestUuid);
+    }
+  };
+
+  let resolvePromise;
+  let rejectPromise;
+  const promise = new Promise((resolve, reject) => {
+    resolvePromise = resolve;
+    rejectPromise = reject;
+  });
+  const record = {
+    promise,
+    resolve(value) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolvePromise(value);
+    },
+    reject(error) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      rejectPromise(error);
+    },
+  };
+  hook.pendingInvocations.set(requestUuid, record);
+  timer = setTimeout(
+    () => record.reject(new Error("the server did not finish the invocation in time")),
+    30000,
+  );
+  onAbort = () => record.reject(new ExecutionAbortedError());
+  signal?.addEventListener("abort", onAbort, {once: true});
+
+  return {promise, cancel: cleanup};
+}
+
+export async function completeInvocation(hook, start, options = {}) {
+  const signal = options.signal;
+  if (!start?.invocation_id) return errorResult("the server did not return an invocation id");
+
+  let revisionTimedOut = false;
+  if (start.ui_commit_required) {
+    try {
+      await waitForRevision(hook.el?.ownerDocument ?? document, start.expected_ui_revision, {
+        timeoutMs: options.revisionTimeoutMs ?? 2500,
+        signal,
+      });
+    } catch (error) {
+      if (error?.code !== "UI_REVISION_TIMEOUT") throw error;
+      revisionTimedOut = true;
+    }
+  }
+
+  if (signal?.aborted) throw new ExecutionAbortedError();
+  const postState = await captureRoomState(hook.el?.ownerDocument ?? document);
+  if (signal?.aborted) throw new ExecutionAbortedError();
+
+  const verified = await raceWithAbort(
+    pushWithAck(hook, "webmcp_poststate_observed", {
+      room_id: hook.roomId,
+      browser_session_id: hook.browserSessionId,
+      invocation_epoch: hook.invocationEpoch,
+      invocation_id: start.invocation_id,
+      post_state: postState,
+    }),
+    signal,
+  );
+
+  if (!verified || verified.error) {
+    return errorResult(verified?.error ?? "the server could not record visible proof");
+  }
+  if (revisionTimedOut && verified.effective_status === "verified_success") {
+    return errorResult("UI_REVISION_TIMEOUT: the server accepted proof before the expected UI revision appeared.");
+  }
+  return invocationResult(verified, start);
+}
+
+function invocationResult(verified, start) {
+  const payload = {
+    reported_result: verified.handler_result ?? start.handler_result ?? null,
+    patchbay_verification: verified.patchbay_verification ?? null,
+    effective_status: verified.effective_status ?? start.effective_status ?? "unknown",
+    failure_code: verified.failure_code ?? null,
+    next_action: verified.next_action ?? null,
+  };
+  const serialized = JSON.stringify(payload);
+  if (serialized.length <= MAX_RESULT_LENGTH) return serialized;
+
+  return JSON.stringify({
+    reported_result: payload.reported_result,
+    patchbay_verification: {
+      passed: payload.patchbay_verification?.passed ?? false,
+      failure_code: payload.patchbay_verification?.failure_code ?? payload.failure_code,
+      checks: payload.patchbay_verification?.checks ?? null,
+      details_truncated: true,
+    },
+    effective_status: payload.effective_status,
+    failure_code: payload.failure_code,
+    next_action: payload.next_action,
+  });
+}
+
+export function pushWithAck(hook, event, payload, timeoutMs) {
+  if (hook.destroyedFlag || typeof hook.pushEvent !== "function") return Promise.resolve({});
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(
+      () => finish(reject, new Error(`${event} did not receive a LiveView acknowledgement`)),
+      timeoutMs ?? (event === "webmcp_invocation_begin" ? 30000 : (hook.pushTimeoutMs ?? 5000)),
+    );
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      callback(value);
+    };
+    const onReply = reply => finish(resolve, reply ?? {});
+
+    let returned;
+    try {
+      returned = hook.pushEvent(event, payload, onReply);
+    } catch (error) {
+      finish(reject, error);
+      return;
+    }
+    if (returned && typeof returned.then === "function") {
+      returned.then(value => finish(resolve, value ?? {}), error => finish(reject, error));
+    }
+  });
 }
 
 export function validateArguments(input) {
@@ -79,7 +252,9 @@ export function validateArguments(input) {
   if (typeof input.instructions !== "string" || input.instructions.trim().length === 0) {
     return "instructions must be a non-empty string";
   }
-  if (input.instructions.length > 1000) return "instructions must be 1000 characters or fewer";
+  if (Array.from(input.instructions).length > 1000) {
+    return "instructions must be 1000 characters or fewer";
+  }
   return null;
 }
 

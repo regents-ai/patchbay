@@ -44,6 +44,11 @@ export function readRoomMetadata(root = document) {
       stateElement?.dataset?.desiredGeneration ?? roomElement?.dataset?.generation,
       null,
     ),
+    observedGeneration: numberValue(stateElement?.dataset?.observedGeneration, null),
+    verificationPassed: stateElement?.dataset?.verificationPassed === "true",
+    failureCode: stateElement?.dataset?.failureCode || null,
+    repairStatus: stateElement?.dataset?.repairStatus || null,
+    repairApproved: stateElement?.dataset?.repairApproved === "true",
   };
 }
 

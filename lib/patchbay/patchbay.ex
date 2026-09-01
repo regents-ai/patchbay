@@ -18,6 +18,7 @@ defmodule Patchbay.Patchbay do
       define(:mark_repair_failed, action: :mark_repair_failed)
       define(:begin_publication, action: :begin_publication)
       define(:mark_repaired, action: :mark_repaired)
+      define(:begin_retry, action: :begin_retry)
       define(:mark_verified, action: :mark_verified)
 
       define(:set_active_repair_proposal,
@@ -55,6 +56,7 @@ defmodule Patchbay.Patchbay do
       define(:list_invocations, action: :read)
       define(:mark_invocation_executing, action: :mark_executing)
       define(:record_handler_return, action: :record_handler_return)
+      define(:mark_invocation_awaiting_visible_state, action: :mark_awaiting_visible_state)
       define(:mark_invocation_errored, action: :mark_errored)
       define(:mark_invocation_cancelled, action: :mark_cancelled)
     end

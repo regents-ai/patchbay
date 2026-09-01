@@ -5,6 +5,7 @@ import {
   toolContractDigest,
 } from "./tool_definitions.js";
 import {createToolScope, getModelContext} from "./webmcpify.js";
+import {completeInvocation, pushWithAck} from "./invocation_bridge.js";
 import {readRoomMetadata, sha256Hex} from "./state_snapshot.js";
 
 const SESSION_KEY_PREFIX = "patchbay:webmcp:client:";
@@ -26,12 +27,29 @@ const PatchbayWebMCP = {
     });
     this.handleEvent(`${eventPrefix(this)}:reset_browser_registry`, payload => {
       if (payload?.room_id && payload.room_id !== this.roomId) return;
+      this.invocationEpoch = Number.isInteger(payload?.invocation_epoch)
+        ? payload.invocation_epoch
+        : this.invocationEpoch + 1;
+      abortInvocationWork(this, "Patchbay reset before invocation completion");
       retireAllRevisions(this);
-      void enqueue(this, () => reconcile(this, {
-        room_id: this.roomId,
-        generation: 1,
-        revisions: [],
-      }));
+      this.registryReady = false;
+      setCapability(this, "connecting");
+    });
+    this.handleEvent(`${eventPrefix(this)}:ui_retry_started`, payload => {
+      if (payload?.invocation_epoch !== this.invocationEpoch) return;
+      const controller = new AbortController();
+      this.retryControllers.add(controller);
+      void completeInvocation(this, payload, {signal: controller.signal})
+        .catch(error => {
+          if (!this.destroyedFlag && !controller.signal.aborted) {
+            setCapability(this, "error", error?.message);
+          }
+        })
+        .finally(() => this.retryControllers.delete(controller));
+    });
+    this.handleEvent(`${eventPrefix(this)}:invocation_result`, payload => {
+      if (payload?.invocation_epoch !== this.invocationEpoch) return;
+      this.pendingInvocations?.get(payload?.request_uuid)?.resolve(payload);
     });
 
     if (this.modelContext?.addEventListener) {
@@ -48,6 +66,7 @@ const PatchbayWebMCP = {
   disconnected() {
     if (this.destroyedFlag) return;
     const browserSessionId = this.browserSessionId;
+    abortInvocationWork(this, "WebMCP disconnected before invocation completion");
     invalidateBootstrap(this);
     if (!browserSessionId) return;
     void push(this, "webmcp_session_disconnected", {
@@ -62,6 +81,7 @@ const PatchbayWebMCP = {
     this.onToolChange?.abort?.();
     this.modelContext?.removeEventListener?.("toolchange", this.onToolChange);
     retireAllRevisions(this);
+    abortInvocationWork(this, "WebMCP hook was destroyed before invocation completion");
     this.permanentScope?.();
     this.permanentScope = null;
   },
@@ -85,6 +105,9 @@ export function initialise(hook) {
   hook.reconcileEpoch = 0;
   hook.desiredRevisions = new Map();
   hook.pendingDesired = null;
+  hook.pendingInvocations = new Map();
+  hook.retryControllers = new Set();
+  hook.invocationEpoch = 0;
   hook.bootstrapped = false;
   hook.bootstrapping = false;
   hook.registryReady = false;
@@ -142,6 +165,7 @@ export async function bootstrap(hook) {
       return;
     }
     hook.browserSessionId = reply?.browser_session_id ?? hook.browserSessionId;
+    if (Number.isInteger(reply?.invocation_epoch)) hook.invocationEpoch = reply.invocation_epoch;
     if (Number.isInteger(reply?.desired_generation)) hook.desiredGeneration = reply.desired_generation;
     if (!hook.permanentScope) {
       const ready = await registerPermanentTools(hook, lifecycle);
@@ -270,8 +294,9 @@ export async function reconcile(hook, payload = {}, expectedLifecycle = hook.lif
     hook.reconciling = false;
     return;
   }
-  await reconcileRegistry(hook, generation);
+  const reply = await reconcileRegistry(hook, generation);
   if (hook.destroyedFlag || lifecycle !== hook.lifecycle || epoch !== hook.reconcileEpoch) return;
+  if (reply?.error) throw new Error(reply.error);
   hook.reconciling = false;
   hook.registryReady = true;
   if (hook.toolchangePending) {
@@ -351,6 +376,15 @@ export function retireAllRevisions(hook) {
   for (const name of names) retireRevision(hook, name);
 }
 
+function abortInvocationWork(hook, message) {
+  for (const pending of hook.pendingInvocations?.values() ?? []) {
+    pending.reject(new Error(message));
+  }
+  hook.pendingInvocations?.clear();
+  for (const controller of hook.retryControllers ?? []) controller.abort();
+  hook.retryControllers?.clear();
+}
+
 export async function reconcileRegistry(hook, generation = hook.desiredGeneration) {
   if (hook.destroyedFlag || !hook.modelContext) return null;
   const entries = await readOwnedTools(hook);
@@ -398,33 +432,7 @@ function setCapability(hook, status, detail) {
 }
 
 function push(hook, event, payload) {
-  if (hook.destroyedFlag || typeof hook.pushEvent !== "function") return Promise.resolve({});
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const timeoutMs = event === "webmcp_invocation_begin" ? 30000 :
-      (hook.pushTimeoutMs ?? 5000);
-    const timer = setTimeout(
-      () => finish(reject, new Error(`${event} did not receive a LiveView acknowledgement`)),
-      timeoutMs,
-    );
-    const finish = (callback, value) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      callback(value);
-    };
-    const onReply = reply => finish(resolve, reply ?? {});
-    let returned;
-    try {
-      returned = hook.pushEvent(event, payload, onReply);
-    } catch (error) {
-      finish(reject, error);
-      return;
-    }
-    if (returned && typeof returned.then === "function") {
-      returned.then(value => finish(resolve, value ?? {}), error => finish(reject, error));
-    }
-  });
+  return pushWithAck(hook, event, payload);
 }
 
 function eventPrefix(hook) {

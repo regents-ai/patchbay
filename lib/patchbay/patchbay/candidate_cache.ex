@@ -114,29 +114,6 @@ defmodule Patchbay.Patchbay.CandidateCache do
     end
   end
 
-  @doc "Compatibility helper for callers that do not need provenance selection."
-  @spec fetch(term(), (-> term())) :: {:ok, term()} | {:error, term()}
-  def fetch(key, generator) when is_function(generator, 0) do
-    case get(key) do
-      {:ok, value} ->
-        {:ok, value}
-
-      {:error, :not_found} ->
-        try do
-          value = generator.()
-          put(key, value)
-          {:ok, value}
-        rescue
-          error -> {:error, error}
-        catch
-          kind, reason -> {:error, {kind, reason}}
-        end
-
-      error ->
-        error
-    end
-  end
-
   @spec clear() :: :ok
   def clear do
     :ets.delete_all_objects(table())

@@ -24,6 +24,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   require Ash.Query
 
+  @open_statuses [:started, :executing, :handler_returned, :awaiting_visible_state]
+
   @spec invoke!(Room.t(), BrowserSession.t(), ToolRevision.t(), map(), keyword()) ::
           Invocation.t()
   def invoke!(
@@ -33,6 +35,92 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         arguments,
         opts \\ []
       ) do
+    case begin_result!(room, browser_session, revision, arguments, opts) do
+      {:replay, invocation} -> invocation
+      {:new, invocation} -> execute!(invocation, opts)
+    end
+  end
+
+  @doc "Validates a request and creates its durable invocation row without running the handler."
+  @spec begin!(Room.t(), BrowserSession.t(), ToolRevision.t(), map(), keyword()) :: Invocation.t()
+  def begin!(
+        %Room{} = room,
+        %BrowserSession{} = browser_session,
+        %ToolRevision{} = revision,
+        arguments,
+        opts \\ []
+      ) do
+    {_delivery, invocation} = begin_result!(room, browser_session, revision, arguments, opts)
+    invocation
+  end
+
+  @doc "Runs the handler for a previously begun invocation."
+  @spec execute!(Invocation.t() | binary(), keyword()) :: Invocation.t()
+  def execute!(invocation_or_id, opts \\ []) do
+    invocation = load_invocation!(invocation_or_id, opts)
+
+    if invocation.effective_status == :started do
+      room = Domain.get_room_by_id!(invocation.room_id, read_opts(opts))
+
+      browser_session =
+        Domain.get_browser_session!(invocation.browser_session_id, read_opts(opts))
+
+      revision = Domain.get_tool_revision!(invocation.tool_revision_id, read_opts(opts))
+      action_opts = action_opts(opts)
+
+      try do
+        ensure_invocation_epoch_current!(invocation, room)
+        ensure_current_revision!(room, browser_session, revision)
+        ensure_apply_session_current!(room, browser_session, revision)
+
+        execute_new_invocation!(
+          invocation,
+          room,
+          browser_session,
+          revision,
+          invocation.arguments,
+          opts
+        )
+      rescue
+        error ->
+          terminalize_failed_invocation(invocation, room, browser_session, error, action_opts)
+          reraise(error, __STACKTRACE__)
+      end
+    else
+      invocation
+    end
+  end
+
+  @doc "Durably cancels an invocation that has not reached a terminal state."
+  @spec cancel!(Invocation.t(), keyword()) :: Invocation.t()
+  def cancel!(%Invocation{} = invocation, opts \\ []) do
+    if invocation.effective_status in @open_statuses do
+      Domain.mark_invocation_cancelled!(invocation, action_opts(opts))
+    else
+      invocation
+    end
+  end
+
+  @doc "Cancels unfinished work for a room, optionally scoped to one browser lifecycle."
+  @spec cancel_open!(Room.t(), keyword()) :: [Invocation.t()]
+  def cancel_open!(%Room{} = room, opts \\ []) do
+    browser_session_id = Keyword.get(opts, :browser_session_id)
+    invocation_epoch = Keyword.get(opts, :invocation_epoch)
+
+    query =
+      Invocation
+      |> Ash.Query.for_read(:read)
+      |> Ash.Query.filter(room_id == ^room.id and effective_status in ^@open_statuses)
+      |> maybe_filter_browser_session(browser_session_id)
+      |> maybe_filter_invocation_epoch(invocation_epoch)
+      |> Ash.Query.lock(:for_update)
+
+    query
+    |> Ash.read!(read_opts(opts))
+    |> Enum.map(&cancel!(&1, opts))
+  end
+
+  defp begin_result!(room, browser_session, revision, arguments, opts) do
     arguments = normalize_arguments!(arguments)
     request_uuid = Keyword.get(opts, :request_uuid, Ash.UUID.generate())
     action_opts = action_opts(opts)
@@ -43,46 +131,86 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     case find_by_request_uuid(request_uuid, opts) do
       %Invocation{} = existing ->
         ensure_idempotent_replay!(existing, room, browser_session, revision, arguments)
-        existing
+        {:replay, existing}
 
       nil ->
-        ensure_current_revision!(room, browser_session, revision)
-        validate_arguments!(revision.input_schema, arguments)
-        ensure_apply_session_current!(room, browser_session, revision)
+        begin_new_locked!(
+          room,
+          browser_session,
+          revision,
+          arguments,
+          request_uuid,
+          action_opts,
+          opts
+        )
+    end
+  end
 
-        attrs = %{
-          request_uuid: request_uuid,
-          room_id: room.id,
-          browser_session_id: browser_session.id,
-          tool_revision_id: revision.id,
-          tool_contract_sha256: revision.contract_sha256,
-          arguments: arguments
-        }
+  defp begin_new_locked!(
+         room,
+         browser_session,
+         revision,
+         arguments,
+         request_uuid,
+         action_opts,
+         opts
+       ) do
+    expected_epoch = Keyword.get(opts, :invocation_epoch, room.invocation_epoch)
 
-        case create_or_replay!(
-               attrs,
-               request_uuid,
-               room,
-               browser_session,
-               revision,
-               arguments,
-               action_opts,
-               opts
-             ) do
-          {:replay, invocation} ->
-            invocation
+    case Ash.transact(
+           [Room, BrowserSession, ToolRevision, Invocation],
+           fn ->
+             room = lock_room!(room.id, opts)
+             browser_session = lock_browser_session!(browser_session.id, opts)
+             revision = lock_revision!(revision.id, opts)
 
-          {:new, invocation} ->
-            execute_new_invocation!(
-              invocation,
-              room,
-              browser_session,
-              revision,
-              arguments,
-              opts,
-              action_opts
-            )
-        end
+             case find_by_request_uuid(request_uuid, opts) do
+               %Invocation{} = existing ->
+                 ensure_idempotent_replay!(
+                   existing,
+                   room,
+                   browser_session,
+                   revision,
+                   arguments
+                 )
+
+                 {:replay, existing}
+
+               nil ->
+                 if expected_epoch != room.invocation_epoch do
+                   raise ArgumentError, "invocation belongs to an earlier room lifecycle"
+                 end
+
+                 ensure_current_revision!(room, browser_session, revision)
+                 validate_arguments!(revision.input_schema, arguments)
+                 ensure_apply_session_current!(room, browser_session, revision)
+
+                 attrs = %{
+                   request_uuid: request_uuid,
+                   invocation_epoch: room.invocation_epoch,
+                   room_id: room.id,
+                   browser_session_id: browser_session.id,
+                   tool_revision_id: revision.id,
+                   tool_contract_sha256: revision.contract_sha256,
+                   arguments: arguments
+                 }
+
+                 create_or_replay!(
+                   attrs,
+                   request_uuid,
+                   room,
+                   browser_session,
+                   revision,
+                   arguments,
+                   action_opts,
+                   opts
+                 )
+             end
+           end,
+           Keyword.take(opts, [:timeout])
+         ) do
+      {:ok, result} -> result
+      {:error, error} -> raise Ash.Error.to_error_class(error)
     end
   end
 
@@ -92,89 +220,157 @@ defmodule Patchbay.Patchbay.InvocationRunner do
          browser_session,
          revision,
          arguments,
-         opts,
-         action_opts
+         opts
        ) do
-    RoomTimeline.append!(
-      room,
-      :invocation_started,
-      %{
-        "invocation_id" => invocation.id,
-        "tool_revision_id" => revision.id,
-        "generation" => revision.generation
-      },
-      Keyword.put(action_opts, :browser_session_id, browser_session.id)
-    )
-
-    invocation = Domain.mark_invocation_executing!(invocation, action_opts)
+    invocation = begin_execution!(invocation, room, browser_session, revision, opts)
 
     case generated_for_invocation(room, arguments, opts) do
       {:ok, generated} ->
-        invocation =
+        commit_generated!(invocation, revision, generated, opts)
+
+      {:error, reason} ->
+        commit_generation_error!(invocation, reason, opts)
+    end
+  end
+
+  defp begin_execution!(invocation, room, browser_session, revision, opts) do
+    transact_invocation!(
+      invocation,
+      opts,
+      fn current, locked_room, locked_session, locked_revision ->
+        ensure_invocation_epoch_current!(current, locked_room)
+        ensure_invocation_status!(current, :started)
+        ensure_current_revision!(locked_room, locked_session, locked_revision)
+        ensure_apply_session_current!(locked_room, locked_session, locked_revision)
+
+        current = Domain.mark_invocation_executing!(current, action_opts(opts))
+
+        RoomTimeline.append!(
+          locked_room,
+          :invocation_started,
+          %{
+            "invocation_id" => current.id,
+            "tool_revision_id" => locked_revision.id,
+            "generation" => locked_revision.generation
+          },
+          Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
+        )
+
+        current
+      end,
+      room: room,
+      browser_session: browser_session,
+      revision: revision
+    )
+  end
+
+  defp commit_generated!(invocation, revision, generated, opts) do
+    transact_invocation!(
+      invocation,
+      opts,
+      fn current, room, browser_session, locked_revision ->
+        ensure_invocation_epoch_current!(current, room)
+        ensure_invocation_status!(current, :executing)
+        ensure_current_revision!(room, browser_session, locked_revision)
+        ensure_apply_session_current!(room, browser_session, locked_revision)
+
+        current =
           Domain.record_handler_return!(
-            invocation,
+            current,
             %{
-              handler_result: handler_result(revision, generated, room),
+              handler_result: handler_result(locked_revision, generated, room),
               handler_reported_success: true,
               generated_candidate: generated.candidate_markdown,
               handler_returned_at: DateTime.utc_now()
             },
-            action_opts
+            action_opts(opts)
           )
 
         RoomTimeline.append!(
           room,
           :handler_returned,
           %{
-            "invocation_id" => invocation.id,
+            "invocation_id" => current.id,
             "reported_success" => true,
-            "applied" => revision.handler_adapter == :apply_candidate_to_editor,
+            "applied" => locked_revision.handler_adapter == :apply_candidate_to_editor,
             "fallback_used" => generated.fallback_used
           },
-          Keyword.put(action_opts, :browser_session_id, browser_session.id)
+          Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
         )
 
-        if revision.handler_adapter == :apply_candidate_to_editor do
-          apply_and_verify_locked!(
-            invocation,
-            revision,
-            generated,
-            action_opts
-          )
-        else
-          room = Domain.get_room_by_id!(room.id, read_opts(opts))
-          verify_and_update_room!(invocation, room, browser_session, action_opts)
+        if locked_revision.handler_adapter == :apply_candidate_to_editor do
+          ensure_room_ready_for_retry!(room)
+          room = Domain.begin_retry!(room, action_opts(opts))
+          Domain.apply_candidate!(room, generated.candidate_markdown, action_opts(opts))
         end
 
-      {:error, reason} ->
-        invocation =
-          Domain.record_handler_return!(
-            invocation,
-            %{
-              handler_result: %{
-                "reported_success" => false,
-                "applied" => false,
-                "error" => inspect(reason)
-              },
-              handler_reported_success: false,
-              handler_returned_at: DateTime.utc_now()
-            },
-            action_opts
-          )
+        Domain.mark_invocation_awaiting_visible_state!(current, action_opts(opts))
+      end,
+      revision: revision
+    )
+  end
 
-        errored = Domain.mark_invocation_errored!(invocation, action_opts)
+  defp commit_generation_error!(invocation, reason, opts) do
+    transact_invocation!(invocation, opts, fn current, room, browser_session, _revision ->
+      ensure_invocation_epoch_current!(current, room)
+      ensure_invocation_status!(current, :executing)
+
+      current =
+        Domain.record_handler_return!(
+          current,
+          %{
+            handler_result: %{
+              "reported_success" => false,
+              "applied" => false,
+              "error" => inspect(reason)
+            },
+            handler_reported_success: false,
+            handler_returned_at: DateTime.utc_now()
+          },
+          action_opts(opts)
+        )
+
+      current = Domain.mark_invocation_errored!(current, action_opts(opts))
+
+      RoomTimeline.append!(
+        room,
+        :platform_error,
+        %{
+          "invocation_id" => current.id,
+          "failure" => "MODEL_GENERATION_FAILED"
+        },
+        Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
+      )
+
+      current
+    end)
+  end
+
+  defp terminalize_failed_invocation(invocation, room, browser_session, error, action_opts) do
+    try do
+      invocation = Domain.get_invocation!(invocation.id)
+
+      unless invocation.effective_status in [
+               :verified_failure,
+               :verified_success,
+               :errored,
+               :cancelled
+             ] do
+        Domain.mark_invocation_errored!(invocation, action_opts)
 
         RoomTimeline.append!(
           room,
           :platform_error,
           %{
             "invocation_id" => invocation.id,
-            "failure" => "MODEL_GENERATION_FAILED"
+            "failure" => "INVOCATION_TRANSITION_FAILED",
+            "error" => Exception.message(error)
           },
           Keyword.put(action_opts, :browser_session_id, browser_session.id)
         )
-
-        errored
+      end
+    rescue
+      _ -> :ok
     end
   end
 
@@ -215,51 +411,67 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   end
 
   defp verify_and_update_room!(invocation, room, browser_session, opts) do
-    post_state = Keyword.get(opts, :post_state, visible_state(room))
+    case Ash.transact(
+           [Room, Invocation, Patchbay.Patchbay.Verification, Patchbay.Patchbay.RoomEvent],
+           fn ->
+             room = lock_room!(room.id, opts)
+             invocation = lock_invocation!(invocation.id, opts)
+             ensure_invocation_epoch_current!(invocation, room)
+             ensure_verifiable_status!(invocation)
+             post_state = Keyword.get(opts, :post_state, visible_state(room))
 
-    verified = VerificationService.verify_invocation!(invocation, %{post_state: post_state}, opts)
+             verified =
+               VerificationService.verify_invocation!(
+                 invocation,
+                 %{post_state: post_state},
+                 opts
+               )
 
-    RoomTimeline.append!(
-      room,
-      :visible_state_observed,
-      %{
-        "invocation_id" => verified.id,
-        "ui_revision" => get_in(verified.post_state, ["ui_revision"])
-      },
-      Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
-    )
+             RoomTimeline.append!(
+               room,
+               :visible_state_observed,
+               %{
+                 "invocation_id" => verified.id,
+                 "ui_revision" => get_in(verified.post_state, ["ui_revision"])
+               },
+               Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
+             )
 
-    event_kind =
-      if verified.effective_status == :verified_success,
-        do: :verification_passed,
-        else: :verification_failed
+             event_kind =
+               if verified.effective_status == :verified_success,
+                 do: :verification_passed,
+                 else: :verification_failed
 
-    RoomTimeline.append!(
-      room,
-      event_kind,
-      %{
-        "invocation_id" => verified.id,
-        "failure_code" => verified.failure_code
-      },
-      Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
-    )
+             RoomTimeline.append!(
+               room,
+               event_kind,
+               %{
+                 "invocation_id" => verified.id,
+                 "failure_code" => verified.failure_code
+               },
+               Keyword.put(action_opts(opts), :browser_session_id, browser_session.id)
+             )
 
-    room = Domain.get_room_by_id!(room.id, read_opts(opts))
+             if verified.effective_status == :verified_success do
+               Domain.mark_verified!(room, action_opts(opts))
 
-    if verified.effective_status == :verified_success do
-      Domain.mark_verified!(room, action_opts(opts))
+               RoomTimeline.append!(
+                 room,
+                 :goal_verified,
+                 %{"invocation_id" => verified.id},
+                 action_opts(opts)
+               )
+             else
+               Domain.record_failure!(room, verified.id, action_opts(opts))
+             end
 
-      RoomTimeline.append!(
-        room,
-        :goal_verified,
-        %{"invocation_id" => verified.id},
-        action_opts(opts)
-      )
-    else
-      Domain.record_failure!(room, verified.id, action_opts(opts))
+             verified
+           end,
+           Keyword.take(opts, [:timeout])
+         ) do
+      {:ok, verified} -> verified
+      {:error, error} -> raise Ash.Error.to_error_class(error)
     end
-
-    verified
   end
 
   defp generated_for_invocation(room, arguments, opts) do
@@ -275,29 +487,47 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     end
   end
 
-  defp apply_and_verify_locked!(invocation, revision, generated, opts) do
+  defp transact_invocation!(invocation, opts, fun, records \\ []) do
     case Ash.transact(
-           [Room, BrowserSession, Invocation, Patchbay.Patchbay.Verification],
+           [
+             Room,
+             BrowserSession,
+             ToolRevision,
+             Invocation,
+             Patchbay.Patchbay.Verification,
+             Patchbay.Patchbay.RoomEvent
+           ],
            fn ->
              room = lock_room!(invocation.room_id, opts)
-             browser_session = lock_browser_session!(invocation.browser_session_id, opts)
-             revision = lock_revision!(revision.id, opts)
-             ensure_current_revision!(room, browser_session, revision)
-             ensure_apply_session_current!(room, browser_session, revision)
-             room = Domain.apply_candidate!(room, generated.candidate_markdown, action_opts(opts))
+             invocation = lock_invocation!(invocation.id, opts)
 
-             verify_and_update_room!(
-               invocation,
-               room,
-               browser_session,
-               Keyword.put(opts, :post_state, visible_state(room))
-             )
+             browser_session_id =
+               case Keyword.get(records, :browser_session) do
+                 %BrowserSession{id: id} -> id
+                 _ -> invocation.browser_session_id
+               end
+
+             revision_id =
+               case Keyword.get(records, :revision) do
+                 %ToolRevision{id: id} -> id
+                 _ -> invocation.tool_revision_id
+               end
+
+             browser_session = lock_browser_session!(browser_session_id, opts)
+             revision = lock_revision!(revision_id, opts)
+             fun.(invocation, room, browser_session, revision)
            end,
            Keyword.take(opts, [:timeout])
          ) do
-      {:ok, verified} -> verified
+      {:ok, result} -> result
       {:error, error} -> raise Ash.Error.to_error_class(error)
     end
+  end
+
+  defp ensure_room_ready_for_retry!(%Room{status: :repaired}), do: :ok
+
+  defp ensure_room_ready_for_retry!(_room) do
+    raise ArgumentError, "room is not ready for a retry"
   end
 
   defp handler_result(%{handler_adapter: :apply_candidate_to_editor}, generated, room) do
@@ -386,6 +616,28 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     end
   end
 
+  defp ensure_invocation_epoch_current!(invocation, room) do
+    if invocation.invocation_epoch == room.invocation_epoch do
+      :ok
+    else
+      raise ArgumentError, "invocation belongs to an earlier room lifecycle"
+    end
+  end
+
+  defp ensure_invocation_status!(%Invocation{effective_status: expected}, expected), do: :ok
+
+  defp ensure_invocation_status!(_invocation, expected) do
+    raise ArgumentError, "invocation is no longer #{expected}"
+  end
+
+  defp ensure_verifiable_status!(%Invocation{effective_status: status})
+       when status in [:awaiting_visible_state, :verified_failure, :verified_success],
+       do: :ok
+
+  defp ensure_verifiable_status!(_invocation) do
+    raise ArgumentError, "invocation is no longer awaiting visible proof"
+  end
+
   defp ensure_apply_session_current!(room, browser_session, revision) do
     if revision.handler_adapter == :apply_candidate_to_editor do
       observed_contract = fetch(browser_session.observed_contracts, revision.name)
@@ -417,6 +669,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   defp ensure_idempotent_replay!(existing, room, browser_session, revision, arguments) do
     if existing.room_id != room.id or existing.browser_session_id != browser_session.id or
+         existing.invocation_epoch != room.invocation_epoch or
          existing.tool_revision_id != revision.id or
          existing.arguments_sha256 != Digest.arguments_sha256(arguments) do
       raise ArgumentError, "request UUID is already bound to different invocation evidence"
@@ -453,6 +706,16 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp fetch(map, key) when is_map(map) and is_binary(key), do: Map.get(map, key)
 
   defp fetch(_map, _key), do: nil
+
+  defp maybe_filter_browser_session(query, nil), do: query
+
+  defp maybe_filter_browser_session(query, browser_session_id),
+    do: Ash.Query.filter(query, browser_session_id == ^browser_session_id)
+
+  defp maybe_filter_invocation_epoch(query, nil), do: query
+
+  defp maybe_filter_invocation_epoch(query, invocation_epoch),
+    do: Ash.Query.filter(query, invocation_epoch == ^invocation_epoch)
 
   defp durable_candidate!(invocation, room) do
     candidate = invocation.generated_candidate
@@ -564,7 +827,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         raise ArgumentError, "unknown invocation argument"
 
       not valid_instruction?(arguments) ->
-        raise ArgumentError, "instructions must be a non-empty string of at most 1000 bytes"
+        raise ArgumentError, "instructions must be a non-empty string of at most 1000 characters"
 
       true ->
         :ok
@@ -576,7 +839,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   defp valid_instruction?(arguments) do
     value = Map.get(arguments, "instructions", Map.get(arguments, :instructions))
-    is_binary(value) and String.trim(value) != "" and byte_size(value) <= 1_000
+    is_binary(value) and String.trim(value) != "" and length(String.codepoints(value)) <= 1_000
   end
 
   defp atom_key(map, key) when is_binary(key) do
@@ -612,6 +875,14 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   defp lock_room!(id, opts) do
     Room
+    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
+    |> Ash.Query.filter(id: id)
+    |> Ash.Query.lock(:for_update)
+    |> Ash.read_one!(execution_opts(opts))
+  end
+
+  defp lock_invocation!(id, opts) do
+    Invocation
     |> Ash.Query.for_read(:read, %{}, query_opts(opts))
     |> Ash.Query.filter(id: id)
     |> Ash.Query.lock(:for_update)
@@ -655,6 +926,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         :api_key,
         :model,
         :request_uuid,
+        :browser_session_id,
+        :invocation_epoch,
         :durable_candidate
       ])
 end

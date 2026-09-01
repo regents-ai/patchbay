@@ -128,7 +128,10 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
       case Req.post(endpoint,
              json: payload,
              headers: [{"authorization", "Bearer " <> api_key}],
-             receive_timeout: receive_timeout
+             receive_timeout: receive_timeout,
+             request_timeout: receive_timeout,
+             connect_options: [timeout: min(receive_timeout, 5_000)],
+             retry: false
            ) do
         {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
         {:ok, %{status: status}} -> {:error, {:http_status, status}}

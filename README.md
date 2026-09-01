@@ -82,7 +82,7 @@ mix ash.codegen --check
 mix assets.build
 ```
 
-The focused LiveView proof is:
+The focused server-side LiveView proof is:
 
 ```sh
 MIX_TEST_PARTITION=patchbay_zde5_e2e mix test test/patchbay_web/live/webmcp/room_live_test.exs
@@ -90,16 +90,20 @@ MIX_TEST_PARTITION=patchbay_zde5_e2e mix test test/patchbay_web/live/webmcp/room
 
 It starts with the real reset action and proves reset → v1 false success →
 visible failure → repair → approval → generation hot-swap → v2 retry →
-verified candidate, then resets the room again. To repeat that clean proof ten
-times in isolated local test databases:
+verified candidate, then resets the room again. The Node suite separately runs
+the built JavaScript lifecycle against a fake `document.modelContext`, including
+the actual two-phase DOM snapshot bridge, registry rejection, reset, abort, and
+reconnect races. To repeat both deterministic integration layers ten times in
+isolated local test databases:
 
 ```sh
 bash script/deterministic_e2e.sh
 ```
 
-The script never calls a live model and does not drop databases. Its temporary
-test partitions can be removed later by the local PostgreSQL administrator if
-desired.
+The script is deterministic integration evidence, not a substitute for the
+documented real-browser walkthrough. It never calls a live model and does not
+drop databases. Its temporary test partitions can be removed later by the
+local PostgreSQL administrator if desired.
 
 ## Scope and non-goals
 

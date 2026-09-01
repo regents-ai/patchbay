@@ -10,6 +10,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   use PatchbayWeb, :live_view
 
+  import PatchbayWeb.WebMCP.RoomLive.Presenter
+
   alias Patchbay.Patchbay, as: Domain
 
   alias Patchbay.Patchbay.{
@@ -22,7 +24,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     RepairApprovalService,
     RepairPlanner,
     Room,
-    RoomEvent,
     RoomTimeline
   }
 
@@ -35,6 +36,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   def mount(%{"slug" => slug}, _session, socket) do
     room = load_room!(slug)
 
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Patchbay.PubSub, room_topic(room.id))
+    end
+
     {:ok,
      socket
      |> assign(assigns_for(room, nil))
@@ -42,18 +47,20 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
        page_title: room.title,
        error_message: nil,
        pending_operation: nil,
-       repair_token: nil
+       repair_token: nil,
+       invocation_epoch: room.invocation_epoch,
+       invocation_keys: MapSet.new()
      )}
   end
 
   @impl true
   def handle_event("webmcp_bootstrap", params, socket) do
-    with :ok <- valid_room_event?(params, socket.assigns.room),
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
+
+    with :ok <- valid_room_event?(params, room),
          {:ok, client_instance_id} <- client_instance_id(params),
          {:ok, browser_session} <-
-           register_browser_session(socket.assigns.room, params, client_instance_id) do
-      room = socket.assigns.room
-
+           register_browser_session(room, params, client_instance_id) do
       append_event(
         room,
         :webmcp_supported,
@@ -67,6 +74,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       socket =
         socket
         |> refresh(browser_session)
+        |> assign(invocation_epoch: room.invocation_epoch)
         |> push_desired_toolset()
         |> assign(error_message: nil)
 
@@ -74,6 +82,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
        %{
          "browser_session_id" => browser_session.id,
          "client_instance_id" => browser_session.client_instance_id,
+         "invocation_epoch" => socket.assigns.invocation_epoch,
          "desired_generation" => socket.assigns.room.desired_tool_generation,
          "revisions" => [revision_payload(desired_revision!(socket.assigns.room))]
        }, socket}
@@ -153,10 +162,19 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   def handle_event("webmcp_session_disconnected", params, socket) do
     with :ok <- valid_room_event?(params, socket.assigns.room),
          {:ok, browser_session} <- browser_session_for(params, socket) do
+      InvocationRunner.cancel_open!(socket.assigns.room,
+        browser_session_id: browser_session.id,
+        invocation_epoch: socket.assigns.room.invocation_epoch
+      )
+
       browser_session =
         Domain.disconnect_browser_session!(browser_session, %{disconnected_at: DateTime.utc_now()})
 
-      {:noreply, socket |> refresh(browser_session) |> assign(error_message: nil)}
+      {:noreply,
+       socket
+       |> cancel_invocations(:disconnected)
+       |> refresh(browser_session)
+       |> assign(error_message: nil)}
     else
       {:error, message} -> {:noreply, assign(socket, error_message: message)}
     end
@@ -164,29 +182,30 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   @impl true
   def handle_event("webmcp_invocation_begin", params, socket) do
-    room = socket.assigns.room
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
 
     with :ok <- valid_room_event?(params, room),
          {:ok, browser_session} <- browser_session_for(params, socket),
+         :ok <- browser_session_connected?(browser_session),
          {:ok, revision} <- desired_revision_for(room),
          :ok <- invocation_revision_matches?(params, revision),
+         :ok <- invocation_epoch_matches?(params, room),
          {:ok, arguments} <- invocation_arguments(params) do
       request_uuid = value(params, "request_uuid") || Ash.UUID.generate()
 
       try do
         invocation =
-          InvocationRunner.invoke!(room, browser_session, revision, arguments,
+          InvocationRunner.begin!(room, browser_session, revision, arguments,
             request_uuid: request_uuid,
-            fallback: demo_fallback?()
+            invocation_epoch: room.invocation_epoch
           )
 
-        socket =
-          socket
-          |> refresh(browser_session)
-          |> assign(error_message: nil)
-          |> push_invocation_result(invocation, revision)
-
-        {:reply, invocation_reply(invocation, revision, socket.assigns.room), socket}
+        {:reply,
+         %{
+           "invocation_id" => invocation.id,
+           "request_uuid" => invocation.request_uuid,
+           "effective_status" => to_string(invocation.effective_status)
+         }, socket}
       rescue
         error ->
           message = readable_error(error)
@@ -198,13 +217,45 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   end
 
   @impl true
-  def handle_event("webmcp_execute", %{"invocation_id" => invocation_id}, socket) do
-    case fetch_invocation(invocation_id, socket.assigns.room) do
-      {:ok, invocation} ->
-        revision = desired_revision!(socket.assigns.room)
-        socket = push_invocation_result(socket, invocation, revision)
-        {:reply, invocation_reply(invocation, revision, socket.assigns.room), socket}
+  def handle_event("webmcp_execute", %{"invocation_id" => invocation_id} = params, socket) do
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
 
+    with {:ok, invocation} <- fetch_invocation(invocation_id, room),
+         :ok <- invocation_epoch_matches?(params, room),
+         :ok <- invocation_epoch_matches?(invocation, room) do
+      if invocation.effective_status == :started do
+        epoch = room.invocation_epoch
+        key = {:invocation, epoch, invocation.request_uuid}
+        fallback? = demo_fallback?()
+
+        socket =
+          if MapSet.member?(socket.assigns.invocation_keys, key) do
+            socket
+          else
+            socket
+            |> update(:invocation_keys, &MapSet.put(&1, key))
+            |> start_async(key, fn ->
+              try do
+                {:ok, InvocationRunner.execute!(invocation, fallback: fallback?)}
+              rescue
+                error -> {:error, error}
+              catch
+                kind, reason -> {:error, {kind, reason}}
+              end
+            end)
+          end
+
+        {:reply,
+         %{
+           "accepted" => true,
+           "invocation_id" => invocation.id,
+           "request_uuid" => invocation.request_uuid
+         }, socket}
+      else
+        revision = Domain.get_tool_revision!(invocation.tool_revision_id)
+        {:reply, invocation_reply(invocation, revision, socket.assigns.room), socket}
+      end
+    else
       {:error, message} ->
         {:reply, %{"error" => message}, assign(socket, error_message: message)}
     end
@@ -216,12 +267,33 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
        assign(socket, error_message: "invocation_id is required")}
 
   @impl true
-  def handle_event("webmcp_poststate_observed", params, socket) do
-    with :ok <- valid_room_event?(params, socket.assigns.room),
-         {:ok, invocation} <-
-           fetch_invocation(value(params, "invocation_id"), socket.assigns.room),
+  def handle_event("webmcp_invocation_cancel", params, socket) do
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
+
+    with {:ok, invocation} <- fetch_invocation(value(params, "invocation_id"), room),
          {:ok, browser_session} <- browser_session_for(params, socket),
          :ok <- invocation_browser_session_matches?(invocation, browser_session),
+         :ok <- invocation_epoch_matches?(params, room),
+         :ok <- invocation_epoch_matches?(invocation, room) do
+      invocation = InvocationRunner.cancel!(invocation)
+      {:reply, %{"effective_status" => to_string(invocation.effective_status)}, socket}
+    else
+      {:error, message} -> {:reply, %{"error" => message}, assign(socket, error_message: message)}
+    end
+  end
+
+  @impl true
+  def handle_event("webmcp_poststate_observed", params, socket) do
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
+
+    with :ok <- valid_room_event?(params, room),
+         {:ok, invocation} <-
+           fetch_invocation(value(params, "invocation_id"), room),
+         {:ok, browser_session} <- browser_session_for(params, socket),
+         :ok <- browser_session_connected?(browser_session),
+         :ok <- invocation_browser_session_matches?(invocation, browser_session),
+         :ok <- invocation_epoch_matches?(params, room),
+         :ok <- invocation_epoch_matches?(invocation, room),
          {:ok, post_state} <- post_state(params) do
       invocation =
         if invocation.effective_status in [:verified_failure, :verified_success] do
@@ -350,7 +422,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
           socket
           |> refresh(browser_session)
           |> assign(error_message: nil)
-          |> push_invocation_result(retried, desired_revision!(socket.assigns.room))
+          |> push_ui_retry_started(retried, desired_revision!(socket.assigns.room))
 
         {:noreply, socket}
       rescue
@@ -398,17 +470,22 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   @impl true
   def handle_event("reset_demo", _params, socket) do
     {socket, repair_key} = invalidate_repair(socket)
+    socket = cancel_invocations(socket, :reset)
 
     try do
       room = DemoReset.reset!(socket.assigns.room)
-      browser_session = reload_browser_session(socket.assigns.browser_session)
+
+      :ok =
+        Phoenix.PubSub.broadcast_from(
+          Patchbay.PubSub,
+          self(),
+          room_topic(room.id),
+          {:patchbay_room_reset, room.id, room.invocation_epoch}
+        )
 
       socket =
         socket
-        |> refresh(browser_session)
-        |> assign(error_message: nil, pending_operation: nil, repair_token: nil)
-        |> push_event("patchbay:#{room.id}:reset_browser_registry", %{"room_id" => room.id})
-        |> push_desired_toolset()
+        |> apply_room_reset(room, room.invocation_epoch)
         |> cancel_repair(repair_key)
 
       {:noreply, socket}
@@ -419,6 +496,36 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          |> cancel_repair(repair_key)
          |> assign(error_message: readable_error(error))}
     end
+  end
+
+  @impl true
+  def handle_info({:patchbay_room_reset, room_id, epoch}, socket)
+      when room_id == socket.assigns.room.id do
+    room = Domain.get_room_by_id!(room_id)
+
+    {:noreply,
+     socket
+     |> invalidate_repair_for_reset()
+     |> cancel_invocations(:reset)
+     |> apply_room_reset(room, epoch)}
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    case socket.assigns[:browser_session] do
+      %BrowserSession{} = browser_session ->
+        InvocationRunner.cancel_open!(socket.assigns.room,
+          browser_session_id: browser_session.id,
+          invocation_epoch: socket.assigns.room.invocation_epoch
+        )
+
+      _ ->
+        :ok
+    end
+
+    :ok
+  rescue
+    _ -> :ok
   end
 
   @impl true
@@ -450,6 +557,53 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   def handle_async({:repair, token}, {:exit, reason}, socket) do
     if repair_current?(socket, token) do
       handle_repair_failure(socket, readable_error(reason))
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_async({:invocation, epoch, request_uuid} = key, {:ok, {:ok, invocation}}, socket) do
+    if invocation_current?(socket, key, epoch) do
+      browser_session = Domain.get_browser_session!(invocation.browser_session_id)
+      revision = Domain.get_tool_revision!(invocation.tool_revision_id)
+
+      {:noreply,
+       socket
+       |> finish_invocation(key)
+       |> refresh(browser_session)
+       |> assign(error_message: nil)
+       |> push_invocation_result(invocation, revision, request_uuid, epoch)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_async({:invocation, epoch, request_uuid} = key, {:ok, {:error, reason}}, socket) do
+    if invocation_current?(socket, key, epoch) do
+      message = readable_error(reason)
+
+      {:noreply,
+       socket
+       |> finish_invocation(key)
+       |> assign(error_message: message)
+       |> push_invocation_error(request_uuid, message, epoch)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_async({:invocation, epoch, request_uuid} = key, {:exit, reason}, socket) do
+    if invocation_current?(socket, key, epoch) do
+      message = readable_error(reason)
+
+      {:noreply,
+       socket
+       |> finish_invocation(key)
+       |> assign(error_message: message)
+       |> push_invocation_error(request_uuid, message, epoch)}
     else
       {:noreply, socket}
     end
@@ -506,18 +660,16 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   end
 
   defp load_room!(slug) do
-    case Domain.list_rooms!(query: [filter: [slug: slug], limit: 1]) do
-      [room | _] ->
+    room = Domain.get_room_by_slug!(slug)
+    ensure_seed_revision!(room)
+  rescue
+    _error in [Ash.Error.Invalid, Ash.Error.Query.NotFound] ->
+      if slug == Fixtures.slug() do
+        room = Domain.create_seeded_room!()
         ensure_seed_revision!(room)
-
-      [] ->
-        if slug == Fixtures.slug() do
-          room = Domain.create_seeded_room!()
-          ensure_seed_revision!(room)
-        else
-          raise Ash.Error.Query.NotFound.exception(resource: Room)
-        end
-    end
+      else
+        raise Ash.Error.Query.NotFound.exception(resource: Room)
+      end
   end
 
   defp ensure_seed_revision!(room) do
@@ -600,11 +752,21 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       proposal
     else
       _ ->
-        case Domain.list_repair_proposals!(
-               query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
-             ) do
-          [proposal | _] -> proposal
-          [] -> nil
+        if room.status in [
+             :diagnosing,
+             :repair_ready,
+             :awaiting_approval,
+             :publishing,
+             :repaired,
+             :retrying,
+             :verified
+           ] do
+          case Domain.list_repair_proposals!(
+                 query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
+               ) do
+            [proposal | _] -> proposal
+            [] -> nil
+          end
         end
     end
   rescue
@@ -696,6 +858,11 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp invocation_browser_session_matches?(_invocation, _browser_session),
     do: {:error, "post-state observation must come from the invocation browser session"}
 
+  defp browser_session_connected?(%BrowserSession{disconnected_at: nil}), do: :ok
+
+  defp browser_session_connected?(_browser_session),
+    do: {:error, "browser session is disconnected"}
+
   defp registry_attributes(params, room, mode) do
     observed_generation = value(params, "observed_generation")
     names = value(params, "observed_tool_names") || []
@@ -757,6 +924,20 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     end
   end
 
+  defp invocation_epoch_matches?(%Invocation{invocation_epoch: epoch}, room) do
+    if epoch == room.invocation_epoch,
+      do: :ok,
+      else: {:error, "invocation belongs to an earlier room lifecycle"}
+  end
+
+  defp invocation_epoch_matches?(params, room) do
+    case value(params, "invocation_epoch") do
+      nil when room.invocation_epoch == 0 -> :ok
+      epoch when epoch == room.invocation_epoch -> :ok
+      _ -> {:error, "invocation belongs to an earlier room lifecycle"}
+    end
+  end
+
   defp invocation_arguments(params) do
     arguments = value(params, "arguments") || %{}
 
@@ -788,16 +969,63 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       "failure_code" => if(invocation.failure_code, do: to_string(invocation.failure_code)),
       "handler_reported_success" => invocation.handler_reported_success,
       "handler_result" => invocation.handler_result,
+      "patchbay_verification" => verification_reply(invocation),
+      "next_action" => invocation_next_action(invocation),
       "expected_ui_revision" => room.ui_revision,
       "ui_commit_required" => revision.handler_adapter == :apply_candidate_to_editor
     }
   end
 
-  defp push_invocation_result(socket, invocation, revision) do
+  defp verification_reply(invocation) do
+    case Domain.list_verifications!(query: [filter: [invocation_id: invocation.id], limit: 1]) do
+      [verification | _] ->
+        %{
+          "passed" => verification.passed,
+          "failure_code" =>
+            if(verification.failure_code, do: to_string(verification.failure_code)),
+          "checks" => verification.checks,
+          "expected" => verification.expected_state,
+          "observed" => verification.observed_state
+        }
+
+      [] ->
+        nil
+    end
+  end
+
+  defp invocation_next_action(%Invocation{effective_status: :verified_failure}),
+    do: "The site owner may review a proposed repair."
+
+  defp invocation_next_action(%Invocation{effective_status: :verified_success}),
+    do: "The visible goal is verified."
+
+  defp invocation_next_action(_invocation), do: "Wait for visible-state verification."
+
+  defp push_invocation_result(socket, invocation, revision, request_uuid, epoch) do
     push_event(
       socket,
       "patchbay:#{socket.assigns.room.id}:invocation_result",
+      invocation
+      |> invocation_reply(revision, socket.assigns.room)
+      |> Map.put("request_uuid", request_uuid)
+      |> Map.put("invocation_epoch", epoch)
+    )
+  end
+
+  defp push_invocation_error(socket, request_uuid, message, epoch) do
+    push_event(socket, "patchbay:#{socket.assigns.room.id}:invocation_result", %{
+      "request_uuid" => request_uuid,
+      "invocation_epoch" => epoch,
+      "error" => message
+    })
+  end
+
+  defp push_ui_retry_started(socket, invocation, revision) do
+    push_event(
+      socket,
+      "patchbay:#{socket.assigns.room.id}:ui_retry_started",
       invocation_reply(invocation, revision, socket.assigns.room)
+      |> Map.put("invocation_epoch", socket.assigns.invocation_epoch)
     )
   end
 
@@ -946,8 +1174,53 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     end
   end
 
+  defp invalidate_repair_for_reset(socket) do
+    {socket, repair_key} = invalidate_repair(socket)
+    cancel_repair(socket, repair_key)
+  end
+
+  defp apply_room_reset(socket, room, epoch) do
+    browser_session = reload_browser_session(socket.assigns.browser_session)
+
+    socket
+    |> refresh(browser_session)
+    |> assign(
+      error_message: nil,
+      pending_operation: nil,
+      repair_token: nil,
+      invocation_epoch: epoch
+    )
+    |> push_event("patchbay:#{room.id}:reset_browser_registry", %{
+      "room_id" => room.id,
+      "invocation_epoch" => epoch
+    })
+    |> push_desired_toolset()
+  end
+
+  defp room_topic(room_id), do: "patchbay:room:#{room_id}"
+
   defp cancel_repair(socket, nil), do: socket
   defp cancel_repair(socket, key), do: cancel_async(socket, key, {:shutdown, :reset})
+
+  defp cancel_invocations(socket, reason) do
+    socket.assigns.invocation_keys
+    |> Enum.reduce(socket, fn key, current ->
+      cancel_async(current, key, {:shutdown, reason})
+    end)
+    |> assign(invocation_keys: MapSet.new())
+  end
+
+  defp invocation_current?(socket, key, epoch) do
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
+
+    epoch == room.invocation_epoch and
+      epoch == socket.assigns.invocation_epoch and
+      MapSet.member?(socket.assigns.invocation_keys, key)
+  end
+
+  defp finish_invocation(socket, key) do
+    update(socket, :invocation_keys, &MapSet.delete(&1, key))
+  end
 
   defp repair_current?(socket, token) do
     socket.assigns[:pending_operation] == :repair and socket.assigns[:repair_token] == token
@@ -957,200 +1230,4 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp readable_error({:shutdown, reason}), do: readable_error(reason)
   defp readable_error(reason) when is_binary(reason), do: reason
   defp readable_error(reason), do: inspect(reason)
-
-  defp status_key(status) when is_atom(status), do: Atom.to_string(status)
-  defp status_key(status) when is_binary(status), do: status
-  defp status_key(status), do: inspect(status)
-
-  defp status_label(status) do
-    status
-    |> status_key()
-    |> String.replace("_", " ")
-    |> String.split()
-    |> Enum.map_join(" ", &String.capitalize/1)
-  end
-
-  defp status_class(status) do
-    case status_key(status) do
-      value when value in ["verified", "repaired"] ->
-        "is-good"
-
-      value when value in ["failed", "error", "rejected", "canary_failed"] ->
-        "is-bad"
-
-      value when value in ["awaiting_approval", "repair_ready", "diagnosing", "publishing"] ->
-        "is-warn"
-
-      _ ->
-        "is-neutral"
-    end
-  end
-
-  defp invocation_status_class(status) do
-    case status_key(status) do
-      "verified_success" -> "is-good"
-      value when value in ["verified_failure", "errored", "cancelled"] -> "is-bad"
-      _ -> "is-neutral"
-    end
-  end
-
-  defp proposal_status_class(status) do
-    case status_key(status) do
-      value when value in ["published", "approved"] -> "is-good"
-      value when value in ["rejected", "failed", "canary_failed"] -> "is-bad"
-      _ -> "is-warn"
-    end
-  end
-
-  defp observed_generation(nil), do: "—"
-  defp observed_generation(%BrowserSession{observed_generation: nil}), do: "—"
-  defp observed_generation(%BrowserSession{observed_generation: generation}), do: "G#{generation}"
-
-  defp session_label(nil), do: "not connected"
-  defp session_label(%BrowserSession{id: id}), do: short_id(id)
-
-  defp short_id(value) when is_binary(value) do
-    if byte_size(value) > 12, do: String.slice(value, 0, 8) <> "…", else: value
-  end
-
-  defp short_id(value), do: inspect(value)
-
-  defp short_digest(value) when is_binary(value) do
-    if byte_size(value) > 16, do: String.slice(value, 0, 12) <> "…", else: value
-  end
-
-  defp short_digest(_), do: "—"
-
-  defp fallback_used?(%Invocation{handler_result: result}) when is_map(result) do
-    provenance = map_value(result, :candidate_provenance, %{})
-    map_value(provenance, :fallback_used, false) == true
-  end
-
-  defp fallback_used?(_), do: false
-
-  defp proposal_fallback?(proposal) do
-    is_binary(proposal.model) and String.contains?(String.downcase(proposal.model), "fallback")
-  end
-
-  defp diff_entries(diff) when is_map(diff) do
-    diff
-    |> Enum.sort_by(fn {field, _value} -> to_string(field) end)
-  end
-
-  defp diff_entries(_), do: []
-
-  defp diff_from(diff) when is_map(diff), do: map_value(diff, :from, nil)
-  defp diff_from(_), do: nil
-
-  defp diff_to(diff) when is_map(diff), do: map_value(diff, :to, nil)
-  defp diff_to(_), do: nil
-
-  defp format_value(value) when is_binary(value), do: value
-  defp format_value(nil), do: "—"
-  defp format_value(value) when is_atom(value), do: Atom.to_string(value)
-
-  defp format_value(value) do
-    value
-    |> printable_value()
-    |> Jason.encode!(pretty: true)
-  rescue
-    _ -> inspect(value)
-  end
-
-  defp format_map(value) when is_map(value), do: format_value(value)
-  defp format_map(value), do: inspect(value)
-
-  defp printable_value(value) when is_atom(value), do: Atom.to_string(value)
-  defp printable_value(value) when is_list(value), do: Enum.map(value, &printable_value/1)
-
-  defp printable_value(value) when is_map(value) do
-    Map.new(value, fn {key, item} -> {to_string(key), printable_value(item)} end)
-  end
-
-  defp printable_value(value), do: value
-
-  defp canary_passed?(proposal) do
-    map_value(proposal.canary_result, :passed, false) == true
-  end
-
-  defp canary_checks(result) when is_map(result) do
-    result
-    |> map_value(:checks, %{})
-    |> Enum.sort_by(fn {name, _passed} -> to_string(name) end)
-  end
-
-  defp canary_checks(_), do: []
-
-  defp event_label(kind) do
-    %{
-      room_reset: "Room reset",
-      webmcp_supported: "WebMCP capability reported",
-      tool_registered: "Tool registered",
-      tool_unregistered: "Tool unregistered",
-      toolchange_observed: "toolchange observed",
-      registry_reconciled: "Browser registry reconciled",
-      invocation_started: "Invocation started",
-      handler_returned: "Handler returned",
-      visible_state_observed: "Visible state observed",
-      verification_passed: "Verification passed",
-      verification_failed: "Visible postcondition failed",
-      repair_requested: "Repair requested",
-      repair_proposed: "Repair proposed",
-      canary_passed: "Canary passed",
-      canary_failed: "Canary failed",
-      approval_granted: "Human approval granted",
-      approval_rejected: "Repair rejected",
-      publication_requested: "Publication requested",
-      tool_revision_observed: "Tool revision observed",
-      goal_verified: "Goal verified",
-      platform_error: "Platform error"
-    }
-    |> Map.get(kind, status_label(kind))
-  end
-
-  defp timeline_detail(%RoomEvent{payload: payload}) when is_map(payload) do
-    cond do
-      is_binary(map_value(payload, :failure_code, nil)) ->
-        map_value(payload, :failure_code, "")
-
-      is_binary(map_value(payload, :failure, nil)) ->
-        map_value(payload, :failure, "")
-
-      is_integer(map_value(payload, :generation, nil)) ->
-        "Generation #{map_value(payload, :generation, 0)}"
-
-      is_boolean(map_value(payload, :reported_success, nil)) ->
-        if(map_value(payload, :reported_success, false),
-          do: "reported success",
-          else: "reported error"
-        )
-
-      true ->
-        "Recorded in room evidence"
-    end
-  end
-
-  defp timeline_detail(_), do: "Recorded in room evidence"
-
-  defp relative_time(%DateTime{} = inserted_at) do
-    seconds = DateTime.diff(DateTime.utc_now(), inserted_at, :second)
-
-    cond do
-      seconds < 5 -> "just now"
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-      true -> Calendar.strftime(inserted_at, "%H:%M:%S")
-    end
-  end
-
-  defp relative_time(_), do: ""
-
-  defp map_value(map, key, default) when is_map(map) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> value
-      :error -> Map.get(map, Atom.to_string(key), default)
-    end
-  end
-
-  defp map_value(_map, _key, default), do: default
 end

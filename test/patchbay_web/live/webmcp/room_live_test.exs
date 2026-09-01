@@ -49,6 +49,21 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).source_sha256 == Digest.sha256(source)
   end
 
+  test "locks the source once invocation evidence exists", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+    original_source = Domain.get_room_by_id!(room.id).source_markdown
+
+    html =
+      render_submit(view |> form("#patchbay-source-form"), %{
+        "source_markdown" => original_source <> "\nchanged"
+      })
+
+    assert html =~ "Platform error"
+    assert Domain.get_room_by_id!(room.id).source_markdown == original_source
+  end
+
   test "shows raw success beside effective visible failure and fallback provenance", %{
     conn: conn,
     room: room
@@ -57,15 +72,27 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     session = bootstrap(view, room)
     revision = desired_revision(room)
 
-    html =
+    _accepted_html =
       render_hook(view, "webmcp_invocation_begin", %{
         "room_id" => room.id,
         "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
         "request_uuid" => Ash.UUID.generate(),
         "tool_name" => revision.name,
         "contract_sha256" => revision.contract_sha256,
         "arguments" => %{"instructions" => "clarify the workflow"}
       })
+
+    invocation = latest_invocation(room)
+
+    render_hook(view, "webmcp_execute", %{
+      "invocation_id" => invocation.id,
+      "invocation_epoch" => invocation_epoch(view)
+    })
+
+    awaiting_html = render_async(view)
+    assert awaiting_html =~ "Awaiting Visible State"
+    html = observe_latest_poststate(view, room, session)
 
     assert html =~ "Raw handler result"
     assert html =~ "success"
@@ -86,6 +113,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "Generation 1"
     assert html =~ "Candidate editor"
     assert html =~ "empty"
+    refute html =~ ">Published<"
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
     assert Domain.get_room_by_id!(room.id).status == :ready
 
@@ -138,17 +166,30 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "toolchange observed"
     assert html =~ "Observed G2"
 
-    html = render_click(view, "retry_original_goal")
+    awaiting_html = render_click(view, "retry_original_goal")
+    assert awaiting_html =~ "Awaiting Visible State"
+
+    retry_event = "patchbay:#{room.id}:ui_retry_started"
+    assert_push_event(view, ^retry_event, %{"invocation_id" => _invocation_id})
+
+    html = observe_latest_poststate(view, room, session)
 
     assert html =~ "Verification passed"
     assert html =~ Digest.sha256(Fixtures.improved_markdown())
     assert html =~ "ready"
+
+    assert has_element?(
+             view,
+             "#patchbay-room-state[data-verification-passed=\"true\"][data-repair-approved=\"true\"]"
+           )
+
     assert Domain.get_room_by_id!(room.id).status == :verified
 
     html = render_click(view, "reset_demo")
     assert html =~ "Generation 1"
     assert html =~ "Candidate editor"
     assert html =~ "empty"
+    refute html =~ ">Published<"
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
     assert Domain.get_room_by_id!(room.id).status == :ready
     reset_event = "patchbay:#{room.id}:reset_browser_registry"
@@ -184,6 +225,120 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert callback_socket.assigns.room.status == :ready
     assert callback_socket.assigns.pending_operation == nil
     assert callback_socket.assigns.repair_token == nil
+  end
+
+  test "reset fences a stale invocation completion", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    request_uuid = Ash.UUID.generate()
+
+    render_click(view, "reset_demo")
+    {:ok, reset_socket} = Phoenix.LiveView.Debug.socket(view.pid)
+
+    assert reset_socket.assigns.invocation_epoch == 1
+    assert reset_socket.assigns.invocation_keys == MapSet.new()
+
+    assert {:noreply, callback_socket} =
+             PatchbayWeb.WebMCP.RoomLive.Show.handle_async(
+               {:invocation, 0, request_uuid},
+               {:ok, {:error, :late_result}},
+               reset_socket
+             )
+
+    assert callback_socket.assigns.invocation_epoch == 1
+    assert callback_socket.assigns.error_message == nil
+  end
+
+  test "reset broadcasts its epoch and cancels work begun in another tab", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, reset_view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    {:ok, stale_view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(stale_view, room)
+    revision = desired_revision(room)
+    request_uuid = Ash.UUID.generate()
+
+    render_hook(stale_view, "webmcp_invocation_begin", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "invocation_epoch" => 0,
+      "request_uuid" => request_uuid,
+      "tool_name" => revision.name,
+      "contract_sha256" => revision.contract_sha256,
+      "arguments" => %{"instructions" => "wait across reset"}
+    })
+
+    invocation = latest_invocation(room)
+    assert invocation.effective_status == :started
+
+    render_click(reset_view, "reset_demo")
+    reset_event = "patchbay:#{room.id}:reset_browser_registry"
+    assert_push_event(stale_view, ^reset_event, %{"invocation_epoch" => 1})
+
+    html =
+      render_hook(stale_view, "webmcp_execute", %{
+        "invocation_id" => invocation.id,
+        "invocation_epoch" => 0
+      })
+
+    assert html =~ "invocation belongs to an earlier room lifecycle"
+    assert invocation_epoch(stale_view) == 1
+    assert Domain.get_invocation!(invocation.id).effective_status == :cancelled
+  end
+
+  test "begin failures return an error without terminating the room", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    revision = desired_revision(room)
+    request_uuid = Ash.UUID.generate()
+
+    params = %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "invocation_epoch" => invocation_epoch(view),
+      "request_uuid" => request_uuid,
+      "tool_name" => revision.name,
+      "contract_sha256" => revision.contract_sha256,
+      "arguments" => %{"instructions" => "first request"}
+    }
+
+    render_hook(view, "webmcp_invocation_begin", params)
+
+    html =
+      render_hook(view, "webmcp_invocation_begin", %{
+        params
+        | "arguments" => %{"instructions" => "conflicting replay"}
+      })
+
+    assert html =~ "request UUID is already bound to different invocation evidence"
+    assert render(view) =~ "Skill Uplift Studio"
+  end
+
+  test "the browser can durably cancel a begun invocation", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    revision = desired_revision(room)
+
+    render_hook(view, "webmcp_invocation_begin", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "invocation_epoch" => invocation_epoch(view),
+      "request_uuid" => Ash.UUID.generate(),
+      "tool_name" => revision.name,
+      "contract_sha256" => revision.contract_sha256,
+      "arguments" => %{"instructions" => "cancel me"}
+    })
+
+    invocation = latest_invocation(room)
+
+    render_hook(view, "webmcp_invocation_cancel", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "invocation_epoch" => invocation_epoch(view),
+      "invocation_id" => invocation.id
+    })
+
+    assert Domain.get_invocation!(invocation.id).effective_status == :cancelled
   end
 
   test "discloses a browser registry error instead of accepting a forged room event", %{
@@ -267,6 +422,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       render_hook(view, "webmcp_invocation_begin", %{
         "room_id" => room.id,
         "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
         "request_uuid" => Ash.UUID.generate(),
         "tool_name" => "uplift_current_skill_v2",
         "contract_sha256" => String.duplicate("0", 64),
@@ -299,15 +455,27 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   defp invoke_v1(view, room, session) do
     revision = desired_revision(room)
 
-    html =
+    _accepted_html =
       render_hook(view, "webmcp_invocation_begin", %{
         "room_id" => room.id,
         "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
         "request_uuid" => Ash.UUID.generate(),
         "tool_name" => revision.name,
         "contract_sha256" => revision.contract_sha256,
         "arguments" => %{"instructions" => "clarify the workflow"}
       })
+
+    invocation = latest_invocation(room)
+
+    render_hook(view, "webmcp_execute", %{
+      "invocation_id" => invocation.id,
+      "invocation_epoch" => invocation_epoch(view)
+    })
+
+    awaiting_html = render_async(view)
+    assert awaiting_html =~ "Awaiting Visible State"
+    html = observe_latest_poststate(view, room, session)
 
     assert html =~ "Raw handler result"
     assert html =~ "success"
@@ -315,6 +483,31 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "CANDIDATE_EMPTY"
     assert Domain.get_room_by_id!(room.id).status == :failed
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
+  end
+
+  defp observe_latest_poststate(view, room, session) do
+    room = Domain.get_room_by_id!(room.id)
+
+    invocation =
+      Domain.list_invocations!(
+        query: [filter: [room_id: room.id], sort: [started_at: :desc], limit: 1]
+      )
+      |> List.first()
+
+    render_hook(view, "webmcp_poststate_observed", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "invocation_epoch" => invocation_epoch(view),
+      "invocation_id" => invocation.id,
+      "post_state" => %{
+        "ui_revision" => room.ui_revision,
+        "source" => %{"present" => true, "sha256" => room.source_sha256},
+        "candidate" => %{
+          "present" => is_binary(room.candidate_markdown),
+          "sha256" => room.candidate_sha256
+        }
+      }
+    })
   end
 
   defp desired_revision(room) do
@@ -325,5 +518,17 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       ]
     )
     |> List.first()
+  end
+
+  defp latest_invocation(room) do
+    Domain.list_invocations!(
+      query: [filter: [room_id: room.id], sort: [started_at: :desc], limit: 1]
+    )
+    |> List.first()
+  end
+
+  defp invocation_epoch(view) do
+    {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)
+    socket.assigns.invocation_epoch
   end
 end

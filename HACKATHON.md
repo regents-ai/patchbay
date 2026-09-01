@@ -45,9 +45,11 @@ Use the deterministic local walkthrough in [README.md](README.md), then run:
 bash script/deterministic_e2e.sh
 ```
 
-This repeats the focused LiveView lifecycle ten times across isolated local
-test partitions. The proof uses no live model, no external browser service and
-no public endpoint. The full command/evidence matrix is in the README.
+This repeats the focused LiveView lifecycle and the fake-WebMCP JavaScript
+lifecycle ten times across isolated local test partitions. It is deterministic
+integration evidence; the real-browser walkthrough remains a separate check.
+The proof uses no live model, external browser service, or public endpoint. The
+full command/evidence matrix is in the README.
 
 ## Boundaries
 

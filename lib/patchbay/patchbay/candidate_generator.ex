@@ -311,7 +311,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
          input_sha256: input_sha256,
          cache_variant: cache_variant,
          change_summary: change_summary,
-         warnings: Enum.take(Enum.uniq(warnings), 3) ++ [@task_warning],
+         warnings: Enum.take(Enum.uniq(warnings ++ [@task_warning]), 4),
          model: result[:model] || result["model"] || "unknown-model",
          model_response_id:
            result[:model_response_id] || result["model_response_id"] || "unknown-response",

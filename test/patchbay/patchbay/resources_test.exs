@@ -410,7 +410,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     failed =
       VerificationService.verify_invocation!(invocation, %{
-        post_state: %{"candidate" => %{"present" => true}}
+        post_state:
+          visible_post_state(room)
+          |> put_in(["candidate", "present"], true)
       })
 
     assert failed.effective_status == :verified_failure
@@ -435,26 +437,17 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     verified =
       VerificationService.verify_invocation!(successful_invocation, %{
-        post_state: %{
-          candidate: %{
-            present: true,
-            sha256: room.candidate_sha256
-          }
-        }
+        post_state: visible_post_state(room)
       })
 
     assert verified.effective_status == :verified_success
 
     retried =
       VerificationService.verify_invocation!(successful_invocation, %{
-        post_state: %{
-          candidate: %{
-            present: true,
-            sha256: room.candidate_sha256
-          },
-          tool_contract_sha256: "caller-forged",
-          browser_session_id: Ash.UUID.generate()
-        }
+        post_state:
+          visible_post_state(room)
+          |> Map.put("tool_contract_sha256", "caller-forged")
+          |> Map.put("browser_session_id", Ash.UUID.generate())
       })
 
     assert retried.effective_status == :verified_success
@@ -514,7 +507,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     verified =
       VerificationService.verify_invocation!(forged, %{
-        post_state: %{candidate: %{present: true, sha256: room.candidate_sha256}}
+        post_state: visible_post_state(room)
       })
 
     assert verified.id == invocation.id
@@ -551,7 +544,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     room = Patchbay.apply_candidate!(room, Fixtures.improved_markdown())
 
-    post_state = %{candidate: %{present: true, sha256: room.candidate_sha256}}
+    post_state = visible_post_state(room)
     result = VerificationService.derive_result(invocation, post_state)
 
     verification =
@@ -616,11 +609,10 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     verified =
       VerificationService.verify_invocation!(invocation, %{
-        post_state: %{
-          candidate: %{present: true, sha256: room.candidate_sha256},
-          tool_contract_sha256: revision.contract_sha256,
-          browser_session_id: browser_session.id
-        }
+        post_state:
+          visible_post_state(room)
+          |> Map.put("tool_contract_sha256", revision.contract_sha256)
+          |> Map.put("browser_session_id", browser_session.id)
       })
 
     assert verified.effective_status == :verified_failure
@@ -721,6 +713,22 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     assert revision.status == :desired
     assert Patchbay.get_room_by_slug!(room.slug).desired_tool_generation == 2
+  end
+
+  test "a retired generation can be recreated for a later demo run", %{
+    room: room,
+    revision: revision
+  } do
+    assert Patchbay.retire_tool_revision!(revision).status == :retired
+
+    recreated =
+      Fixtures.revision_attributes(room.id)
+      |> Map.delete(:contract_sha256)
+      |> Patchbay.create_tool_revision!()
+
+    assert recreated.generation == revision.generation
+    assert recreated.id != revision.id
+    assert recreated.status == :desired
   end
 
   test "tool publication updates the room desired generation with the revision", %{
@@ -827,6 +835,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     assert reset.status == :ready
     assert reset.ui_revision == 0
+    assert reset.invocation_epoch == room.invocation_epoch + 1
     assert reset.candidate_markdown == nil
     assert reset.candidate_sha256 == nil
     assert reset.desired_tool_generation == 1
@@ -862,6 +871,25 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert %RoomEvent{kind: :room_reset, sequence: 1} = event
   end
 
+  test "demo reset recreates and publishes a missing generation-one revision", %{
+    room: room,
+    revision: revision
+  } do
+    revision_id = Ecto.UUID.dump!(revision.id)
+
+    assert %{num_rows: 1} =
+             Repo.query!("DELETE FROM tool_revisions WHERE id = $1", [revision_id])
+
+    reset = DemoReset.reset!(room)
+
+    assert [recreated] =
+             Patchbay.list_tool_revisions!(
+               query: [filter: [room_id: reset.id, generation: 1], limit: 1]
+             )
+
+    assert recreated.status == :desired
+  end
+
   defp insert_room!(slug) do
     attrs =
       Fixtures.room_attributes()
@@ -877,5 +905,16 @@ defmodule Patchbay.Patchbay.ResourcesTest do
   defp create_verification!(attrs) do
     Ash.Changeset.for_create(Verification, :record_verification, attrs)
     |> Ash.create!()
+  end
+
+  defp visible_post_state(room) do
+    %{
+      "ui_revision" => room.ui_revision,
+      "source" => %{"present" => true, "sha256" => room.source_sha256},
+      "candidate" => %{
+        "present" => is_binary(room.candidate_markdown),
+        "sha256" => room.candidate_sha256
+      }
+    }
   end
 end

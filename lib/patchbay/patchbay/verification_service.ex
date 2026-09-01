@@ -30,6 +30,14 @@ defmodule Patchbay.Patchbay.VerificationService do
              room = lock_room!(invocation.room_id, opts)
              invocation = lock_invocation!(invocation.id, opts)
 
+             if invocation.invocation_epoch != room.invocation_epoch do
+               raise ArgumentError, "invocation belongs to an earlier room lifecycle"
+             end
+
+             if invocation.effective_status in [:cancelled, :errored] do
+               raise ArgumentError, "invocation is no longer awaiting visible proof"
+             end
+
              case existing_verification(invocation.id, opts) do
                %Verification{} = verification ->
                  result = durable_result!(verification)
@@ -85,8 +93,6 @@ defmodule Patchbay.Patchbay.VerificationService do
 
     observed_state =
       post_state
-      |> Map.put(:ui_revision, room.ui_revision)
-      |> Map.put(:source, %{present: true, sha256: room.source_sha256})
       |> Map.put(:tool_contract_sha256, browser_observation.observed_contract_sha256)
       |> Map.put(:browser_session_id, browser_observation.observed_browser_session_id)
 
