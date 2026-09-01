@@ -24,7 +24,7 @@
         One page. One browser session. A handler can say success; Patchbay only accepts visible proof.
       </p>
       <p id="patchbay-openai-disclosure" class="patchbay-disclosure">
-        When you or an agent asks for an uplift, the Source Skill below is sent to OpenAI to draft the candidate.
+        When you or an agent asks for an uplift, Patchbay sends the Source Skill below and the request instructions to OpenAI. Asking for a repair also sends the tool's contract, what the handler returned, and the short fingerprints of what this page was showing.
       </p>
     </div>
     <div class="patchbay-registry-summary" aria-label="Browser registry status">
@@ -73,7 +73,11 @@
           readonly={@room.status != :ready}
         >{@room.source_markdown}</textarea>
         <div class="patchbay-editor-footer">
-          <span id="patchbay-source-digest" class="patchbay-digest">sha256:{@room.source_sha256}</span>
+          <span
+            id="patchbay-source-digest"
+            class="patchbay-digest"
+            title={@room.source_sha256}
+          >Fingerprint {short_digest(@room.source_sha256)}</span>
           <button
             class="patchbay-button patchbay-button-quiet"
             type="submit"
@@ -103,10 +107,16 @@
         <p
           :for={message <- upload_problems(@uploads.skill)}
           class="patchbay-upload-problem"
+          role="alert"
         >
           {message}
         </p>
-        <p :if={@upload_error} id="patchbay-upload-error" class="patchbay-upload-problem">
+        <p
+          :if={@upload_error}
+          id="patchbay-upload-error"
+          class="patchbay-upload-problem"
+          role="alert"
+        >
           {@upload_error}
         </p>
       </form>
@@ -131,9 +141,13 @@
         aria-describedby="patchbay-candidate-digest"
       >{if(@room.candidate_markdown, do: @room.candidate_markdown, else: "")}</textarea>
       <div class="patchbay-editor-footer">
-        <span id="patchbay-candidate-digest" class="patchbay-digest">
+        <span
+          id="patchbay-candidate-digest"
+          class="patchbay-digest"
+          title={@room.candidate_sha256}
+        >
           {if(@room.candidate_sha256,
-            do: "sha256:" <> @room.candidate_sha256,
+            do: "Fingerprint " <> short_digest(@room.candidate_sha256),
             else: "No candidate committed"
           )}
         </span>
@@ -211,29 +225,31 @@
           <span>Failed postcondition</span><code>{@invocation.failure_code}</code>
         </div>
         <div>
-          <span>Contract digest</span><code>sha256:{short_digest(@invocation.tool_contract_sha256)}</code>
+          <span>Contract fingerprint</span><code title={@invocation.tool_contract_sha256}>{short_digest(
+            @invocation.tool_contract_sha256
+          )}</code>
         </div>
       </div>
 
       <div :if={@invocation} class="patchbay-evidence-grid">
         <div class="patchbay-result-box" id="patchbay-invocation-arguments">
           <p class="patchbay-kicker">ARGUMENTS</p>
-          <pre>{format_map(@invocation.arguments)}</pre>
+          <.evidence_text value={@invocation.arguments} />
         </div>
         <div class="patchbay-result-box" id="patchbay-handler-response">
           <p class="patchbay-kicker">HANDLER RESPONSE</p>
-          <pre>{format_map(@invocation.handler_result)}</pre>
+          <.evidence_text value={@invocation.handler_result} />
         </div>
       </div>
 
       <div :if={@invocation} class="patchbay-state-grid">
         <div>
           <p class="patchbay-kicker">PRE-STATE</p>
-          <pre>{format_map(@invocation.pre_state)}</pre>
+          <.evidence_text value={@invocation.pre_state} />
         </div>
         <div>
           <p class="patchbay-kicker">OBSERVED POST-STATE</p>
-          <pre>{format_map(@invocation.post_state)}</pre>
+          <.evidence_text value={@invocation.post_state} />
         </div>
       </div>
 
@@ -302,7 +318,7 @@
           <div :if={@proposal_source_revision}>
             <span>Current tool</span>
             <code title={@proposal_source_revision.contract_sha256}>
-              {@proposal_source_revision.name} · sha256:{short_digest(
+              {@proposal_source_revision.name} · fingerprint {short_digest(
                 @proposal_source_revision.contract_sha256
               )}
             </code>
@@ -310,7 +326,7 @@
           <div :if={@proposal_candidate_revision}>
             <span>Replacement tool</span>
             <code title={@proposal_candidate_revision.contract_sha256}>
-              {@proposal_candidate_revision.name} · sha256:{short_digest(
+              {@proposal_candidate_revision.name} · fingerprint {short_digest(
                 @proposal_candidate_revision.contract_sha256
               )}
             </code>

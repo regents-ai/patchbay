@@ -5,6 +5,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Digest, Fixtures}
+  alias PatchbayWeb.WebMCP.RoomLive.Presenter
 
   setup %{conn: conn} do
     room = Domain.create_seeded_room!()
@@ -48,7 +49,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert has_element?(view, "#patchbay-active-tool", desired_revision(room).name)
 
     assert html =~
-             "When you or an agent asks for an uplift, the Source Skill below is sent to OpenAI to draft the candidate."
+             "When you or an agent asks for an uplift, Patchbay sends the Source Skill below and the request instructions to OpenAI."
+
+    assert html =~
+             "contract, what the handler returned, and the short fingerprints of what this page was showing."
   end
 
   test "shows the invocation arguments beside the raw handler result", %{conn: conn, room: room} do
@@ -182,6 +186,61 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     assert html =~ "That file is empty. Upload a Markdown Skill with content in it."
     assert Domain.get_room_by_id!(room.id).source_sha256 == original
+  end
+
+  test "a forged upload event cannot change the Source Skill while the room is working", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    locked = Domain.get_room_by_id!(room.id)
+    assert locked.status != :ready
+
+    upload = skill_upload(view, "forged.md", locked.source_markdown <> "\n\n## Forged note\n")
+    render_upload(upload, "forged.md")
+
+    html = render_hook(view, "upload_skill", %{})
+
+    assert html =~ "The Source Skill is locked while this room is working."
+    assert has_element?(view, "#patchbay-upload-error[role=\"alert\"]")
+    refute has_element?(view, "#patchbay-platform-error")
+    assert Domain.get_room_by_id!(room.id).source_sha256 == locked.source_sha256
+  end
+
+  test "refuses Source Skill text that carries unstorable or hidden characters", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, "/webmcp/rooms/skill-uplift")
+    original = Domain.get_room_by_id!(room.id).source_sha256
+
+    html =
+      render_submit(view |> form("#patchbay-source-form"), %{
+        "source_markdown" => room.source_markdown <> "\n\n## Note\0\n"
+      })
+
+    assert html =~ "That Skill text contains characters Patchbay cannot store."
+
+    html =
+      render_submit(view |> form("#patchbay-source-form"), %{
+        "source_markdown" => room.source_markdown <> "\n\n## Note " <> <<0xE0041::utf8>> <> "\n"
+      })
+
+    assert html =~ "That Skill text contains hidden characters that do not show on screen."
+    assert Domain.get_room_by_id!(room.id).source_sha256 == original
+  end
+
+  test "shortens an oversized evidence record before it reaches the page" do
+    value = %{"instructions" => String.duplicate("a", 9_000)}
+
+    html = render_component(&Presenter.evidence_text/1, value: value)
+
+    assert html =~ "Shortened for display."
+    refute html =~ String.duplicate("a", 9_000)
+    assert byte_size(html) < 5_000
   end
 
   test "asks for a file when the upload control is submitted empty", %{conn: conn} do

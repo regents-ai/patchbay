@@ -326,7 +326,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     source = value(params, "source_markdown") || value(params, "source")
 
     if is_binary(source) do
-      put_source(socket, source)
+      put_source(socket, source, :editor)
     else
       {:noreply, assign(socket, error_message: "Source Skill text is required")}
     end
@@ -340,7 +340,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   @impl true
   def handle_event("upload_skill", _params, socket) do
     case consume_skill_upload(socket) do
-      {:ok, source} -> put_source(assign(socket, upload_error: nil), source)
+      {:ok, source} -> put_source(assign(socket, upload_error: nil), source, :upload)
       {:error, message} -> {:noreply, assign(socket, upload_error: message)}
     end
   end
@@ -635,15 +635,60 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     {:noreply, assign(socket, pending_operation: nil, repair_token: nil, error_message: message)}
   end
 
-  defp put_source(socket, source) do
+  defp put_source(socket, source, origin) do
+    case accepted_source(socket, source) do
+      {:ok, source} -> commit_source(socket, source, origin)
+      {:error, message} -> {:noreply, report_source_problem(socket, origin, message)}
+    end
+  end
+
+  defp commit_source(socket, source, origin) do
     room = Domain.update_source!(socket.assigns.room, source)
 
     {:noreply,
      socket
      |> refresh(socket.assigns.browser_session)
-     |> assign(room: room, error_message: nil)}
+     |> assign(room: room, error_message: nil, upload_error: nil)}
   rescue
-    error -> {:noreply, assign(socket, error_message: readable_error(error))}
+    error -> {:noreply, report_source_problem(socket, origin, readable_error(error))}
+  end
+
+  # An uploaded file is rejected beside the upload control; pasted text is
+  # rejected in the page banner above the editors.
+  defp report_source_problem(socket, :upload, message),
+    do: assign(socket, upload_error: message)
+
+  defp report_source_problem(socket, :editor, message),
+    do: assign(socket, error_message: message)
+
+  # The room only accepts Skill text while it is ready, and the same characters
+  # Patchbay refuses in a generated candidate are refused on the way in. Both
+  # controls are disabled outside the ready state, so this is what a forged
+  # event meets.
+  defp accepted_source(socket, source) do
+    cond do
+      socket.assigns.room.status != :ready ->
+        {:error,
+         "The Source Skill is locked while this room is working. Reset the demo to edit it again."}
+
+      not String.valid?(source) ->
+        {:error, "That Skill text is not readable. Use plain Markdown saved as UTF-8."}
+
+      String.contains?(source, <<0>>) ->
+        {:error,
+         "That Skill text contains characters Patchbay cannot store. Remove them and try again."}
+
+      hidden_tag_characters?(source) ->
+        {:error,
+         "That Skill text contains hidden characters that do not show on screen. Remove them and try again."}
+
+      true ->
+        {:ok, source}
+    end
+  end
+
+  defp hidden_tag_characters?(source) do
+    source |> String.to_charlist() |> Enum.any?(&(&1 in 0xE0000..0xE007F))
   end
 
   # The uploaded file feeds the same source update as pasting, so the digest and

@@ -1,7 +1,13 @@
 defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   @moduledoc false
 
+  use Phoenix.Component
+
   alias Patchbay.Patchbay.{BrowserSession, Invocation, RoomEvent}
+
+  # Arguments, handler responses, and observed state all arrive from the browser,
+  # so the rendered text is capped before it can reach the LiveView diff.
+  @display_bytes 4_000
 
   def status_label(status) do
     status
@@ -92,8 +98,45 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     _ -> inspect(value)
   end
 
-  def format_map(value) when is_map(value), do: format_value(value)
-  def format_map(value), do: inspect(value)
+  attr(:value, :any, required: true)
+
+  def evidence_text(assigns) do
+    {text, shortened?} = bounded_text(assigns.value)
+    assigns = assign(assigns, text: text, shortened?: shortened?)
+
+    ~H"""
+    <pre>{@text}</pre>
+    <p :if={@shortened?} class="patchbay-shortened-note">
+      Shortened for display. The whole record is kept in the room evidence.
+    </p>
+    """
+  end
+
+  defp bounded_text(value) do
+    text = format_map(value)
+
+    if byte_size(text) > @display_bytes do
+      {truncate_bytes(text, @display_bytes), true}
+    else
+      {text, false}
+    end
+  end
+
+  defp truncate_bytes(text, limit) do
+    <<chunk::binary-size(limit), _rest::binary>> = text
+    trim_to_text(chunk)
+  end
+
+  # A byte cut can land inside a multi-byte character, so drop trailing bytes
+  # until what is left is printable text again.
+  defp trim_to_text(chunk) do
+    if String.valid?(chunk),
+      do: chunk,
+      else: trim_to_text(binary_part(chunk, 0, byte_size(chunk) - 1))
+  end
+
+  defp format_map(value) when is_map(value), do: format_value(value)
+  defp format_map(value), do: inspect(value)
 
   def canary_passed?(proposal), do: map_value(proposal.canary_result, :passed, false) == true
 
@@ -142,7 +185,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
       approval_granted: "Human approval granted",
       approval_rejected: "Repair rejected",
       publication_requested: "Publication requested",
-      tool_revision_observed: "Tool revision observed",
       goal_verified: "Goal verified",
       platform_error: "Platform error"
     }
