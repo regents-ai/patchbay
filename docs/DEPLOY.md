@@ -22,7 +22,7 @@ no Fly volume is created or attached.
 ## 1. Create the app
 
 ```sh
-fly apps create patchbay-regents --org personal
+fly apps create patchbay-regents --org regents
 ```
 
 Replace `personal` with the organisation from `fly orgs list`.
@@ -41,7 +41,7 @@ out. Do not mix the two.
 ```sh
 fly postgres create \
   --name patchbay-regents-db \
-  --org personal \
+  --org regents \
   --region ewr \
   --initial-cluster-size 1 \
   --vm-size shared-cpu-1x \
