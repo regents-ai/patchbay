@@ -251,6 +251,14 @@ Required public demo URL:
 /webmcp/rooms/skill-uplift
 ```
 
+**Amended 2026-09-01.** That address is an entrance rather than a room. It
+creates or reopens the visitor's own room, remembers it for that browser, and
+sends the visitor to `/webmcp/rooms/<generated address>`; an address that names
+no room is not found. The number of rooms that can exist at once is bounded,
+empty rooms that have sat idle are cleared away, and a visitor who arrives when
+no room is free is asked to come back in a few minutes. Everything else in this
+specification describes a single room and still holds room by room.
+
 Optional diagnostic endpoint:
 
 ```text
@@ -287,7 +295,9 @@ Expose a small code interface rather than calling generic Ash actions from LiveV
 
 ### 8.1 `Room`
 
-Represents one shared human-agent repair room.
+Represents one human-agent repair room. Amended 2026-09-01: a room belongs to
+the browser session that opened it rather than being shared by everyone; see
+the amendment in section 6.
 
 ```text
 id                         UUID primary key

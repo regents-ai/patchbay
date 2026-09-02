@@ -6,7 +6,7 @@ is experimental and the API may change.
 ## ChatGPT's in-app browser
 
 The in-app browser in ChatGPT offers a page's WebMCP tools to the assistant
-without any flag or token. Open the room there, keep the chat and the page both
+without any flag or token. Open Patchbay there, keep the chat and the page both
 in view, and follow [JUDGES.md](JUDGES.md).
 
 ## Chrome requirements (checked 2026-09-01)
@@ -17,8 +17,13 @@ Chrome documents a flag that avoids needing an origin-trial token:
 
 1. Open `chrome://flags/#enable-webmcp-testing`.
 2. Set **WebMCP** to **Enabled**.
-3. Relaunch Chrome and open the room — the published one, or the local one at
+3. Relaunch Chrome and open Patchbay — the published link, or the local one at
    <http://localhost:4000/webmcp/rooms/skill-uplift>.
+
+That address hands you a room of your own rather than one everybody shares, and
+your browser remembers it, so reloading returns you to the same room. Only so
+many rooms can exist at once; rooms nobody is using are cleared away after a
+while, and if none is free you are asked to come back in a few minutes.
 
 For a real origin-trial deployment, request a token for the exact origin and
 deliver it as an `Origin-Trial` response header or HTML meta tag. Do not put a
