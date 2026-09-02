@@ -19,6 +19,9 @@ kill_timeout = "60s"
 [env]
   # Fly Postgres is reachable over IPv6 only.
   ECTO_IPV6 = "true"
+  # The database runs on one small machine, so the single app machine keeps
+  # five connections open instead of the default ten.
+  POOL_SIZE = "5"
 
 [http_service]
   internal_port = 4000
