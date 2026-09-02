@@ -622,8 +622,12 @@
       </div>
       <span class="patchbay-mono">{@room.ui_revision} UI revision</span>
     </div>
-    <ol class="patchbay-timeline">
-      <li :for={event <- @timeline} class={"patchbay-timeline-entry " <> event_class(event.kind)}>
+    <ol class="patchbay-timeline" id="patchbay-timeline-entries" phx-update="stream">
+      <li
+        :for={{dom_id, event} <- @streams.timeline}
+        id={dom_id}
+        class={"patchbay-timeline-entry " <> event_class(event.kind)}
+      >
         <span class="patchbay-timeline-dot" aria-hidden="true"></span>
         <div class="patchbay-timeline-body">
           <strong>{event_label(event.kind)}</strong>
@@ -634,10 +638,10 @@
           <span class="patchbay-timeline-sequence">#{event.sequence}</span>
         </div>
       </li>
-      <li :if={@timeline == []} class="patchbay-empty-state">
-        Nothing has happened in this room yet. Send prompt 1, "Ask for the uplift", and every step lands here in order.
-      </li>
     </ol>
+    <p :if={@timeline_count == 0} class="patchbay-empty-state">
+      Nothing has happened in this room yet. Send prompt 1, "Ask for the uplift", and every step lands here in order.
+    </p>
   </section>
 
   <section

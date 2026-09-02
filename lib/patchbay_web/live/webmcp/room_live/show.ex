@@ -35,6 +35,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     RepairPlanner,
     RepairProposal,
     Room,
+    RoomEvent,
     RoomTimeline
   }
 
@@ -69,6 +70,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     {:ok,
      socket
      |> assign(assigns_for(room, nil))
+     |> stream_timeline(room)
      |> assign(
        page_title: room.title,
        # The identity this browser posts to the board under. A receipt this room
@@ -102,22 +104,22 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
              client_instance_id,
              socket.assigns.forum_session_id
            ) do
-      append_event(
-        room,
-        :webmcp_supported,
-        %{
-          "supported" => browser_session.webmcp_supported,
-          "client_instance_id" => client_instance_id
-        },
-        browser_session
-      )
-
       socket =
         socket
-        |> refresh_observation(browser_session)
-        |> assign(invocation_epoch: room.invocation_epoch)
+        |> append_event(
+          :webmcp_supported,
+          %{
+            "supported" => browser_session.webmcp_supported,
+            "client_instance_id" => client_instance_id
+          },
+          browser_session
+        )
+        |> assign(
+          browser_session: browser_session,
+          invocation_epoch: room.invocation_epoch,
+          error_message: nil
+        )
         |> push_desired_toolset()
-        |> assign(error_message: nil)
 
       {:reply,
        %{
@@ -142,21 +144,18 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          {:ok, attrs} <- registry_attributes(params, socket.assigns, :reconciled) do
       browser_session = Domain.observe_browser_session!(browser_session, attrs)
 
-      append_event(
-        socket.assigns.room,
-        :registry_reconciled,
-        %{
-          "generation" => browser_session.observed_generation,
-          "tool_names" => browser_session.observed_tool_names,
-          "contracts" => browser_session.observed_contracts
-        },
-        browser_session
-      )
-
       socket =
         socket
-        |> refresh_observation(browser_session)
-        |> assign(error_message: nil)
+        |> append_event(
+          :registry_reconciled,
+          %{
+            "generation" => browser_session.observed_generation,
+            "tool_names" => browser_session.observed_tool_names,
+            "contracts" => browser_session.observed_contracts
+          },
+          browser_session
+        )
+        |> assign(browser_session: browser_session, error_message: nil)
 
       {:reply, %{"ok" => true}, socket}
     else
@@ -172,21 +171,18 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       attrs = Map.put(attrs, :toolchange_count, browser_session.toolchange_count + 1)
       browser_session = Domain.observe_browser_session!(browser_session, attrs)
 
-      append_event(
-        socket.assigns.room,
-        :toolchange_observed,
-        %{
-          "generation" => browser_session.observed_generation,
-          "tool_names" => browser_session.observed_tool_names,
-          "contracts" => browser_session.observed_contracts
-        },
-        browser_session
-      )
-
       socket =
         socket
-        |> refresh_observation(browser_session)
-        |> assign(error_message: nil)
+        |> append_event(
+          :toolchange_observed,
+          %{
+            "generation" => browser_session.observed_generation,
+            "tool_names" => browser_session.observed_tool_names,
+            "contracts" => browser_session.observed_contracts
+          },
+          browser_session
+        )
+        |> assign(browser_session: browser_session, error_message: nil)
 
       {:reply, %{"ok" => true}, socket}
     else
@@ -776,9 +772,11 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp handle_repair_failure(socket, message) do
     socket =
       try do
-        room = Domain.mark_repair_failed!(socket.assigns.room)
-        append_event(room, :platform_error, %{"operation" => "repair", "error" => message})
-        refresh(socket, socket.assigns.browser_session)
+        Domain.mark_repair_failed!(socket.assigns.room)
+
+        socket
+        |> append_event(:platform_error, %{"operation" => "repair", "error" => message})
+        |> refresh(socket.assigns.browser_session)
       rescue
         _ -> socket
       end
@@ -883,7 +881,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     %{
       room: room,
       browser_session: browser_session,
-      timeline: RoomTimeline.list!(room.id),
       source_bytes: Digest.artifact_size(room.source_markdown),
       candidate_bytes:
         if(is_binary(room.candidate_markdown),
@@ -919,17 +916,21 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   defp refresh(socket, browser_session) do
     room = Domain.get_room_by_id!(socket.assigns.room.id, load: @page_loads)
-    assign(socket, assigns_for(room, reload_browser_session(browser_session)))
+
+    socket
+    |> assign(assigns_for(room, reload_browser_session(browser_session)))
+    |> stream_timeline(room)
   end
 
-  # A browser reporting which tools it is offering moves the session it reported
-  # from and the one timeline entry it appended, and nothing else, so that is
-  # all these re-read.
-  defp refresh_observation(socket, browser_session) do
-    assign(socket,
-      browser_session: browser_session,
-      timeline: RoomTimeline.list!(socket.assigns.room.id)
-    )
+  # Work that happens away from this page — a repair the Patchbay Agent ran, a
+  # call the runner recorded — writes its own entries, so a room re-read starts
+  # the timeline again from the page the database hands back.
+  defp stream_timeline(socket, %Room{} = room) do
+    events = RoomTimeline.list!(room.id)
+
+    socket
+    |> stream(:timeline, events, reset: true, limit: -RoomEvent.page_size())
+    |> assign(timeline_count: length(events))
   end
 
   defp reload_browser_session(nil), do: nil
@@ -1278,23 +1279,35 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     }
   end
 
-  defp append_event(room, kind, payload, browser_session \\ nil)
+  # An entry this page writes is put straight into the timeline, so an open room
+  # is sent the one new line rather than its history over again.
+  defp append_event(socket, kind, payload, browser_session \\ nil)
 
-  defp append_event(room, kind, payload, %BrowserSession{id: id}),
-    do: RoomTimeline.append!(room, kind, payload, browser_session_id: id)
+  defp append_event(socket, kind, payload, %BrowserSession{id: id}) do
+    event =
+      RoomTimeline.append!(socket.assigns.room, kind, payload, browser_session_id: id)
 
-  defp append_event(room, kind, payload, _), do: RoomTimeline.append!(room, kind, payload)
+    stream_event(socket, event)
+  end
+
+  defp append_event(socket, kind, payload, _browser_session) do
+    stream_event(socket, RoomTimeline.append!(socket.assigns.room, kind, payload))
+  end
+
+  defp stream_event(socket, event) do
+    socket
+    |> stream_insert(:timeline, event, limit: -RoomEvent.page_size())
+    |> update(:timeline_count, &min(&1 + 1, RoomEvent.page_size()))
+  end
 
   defp handle_registry_lifecycle(kind, params, socket) do
     with :ok <- valid_room_event?(params, socket.assigns.room),
          {:ok, browser_session} <- browser_session_for(params, socket),
          {:ok, payload} <- lifecycle_payload(params) do
-      append_event(socket.assigns.room, kind, payload, browser_session)
-
       socket =
         socket
-        |> refresh_observation(browser_session)
-        |> assign(error_message: nil)
+        |> append_event(kind, payload, browser_session)
+        |> assign(browser_session: browser_session, error_message: nil)
 
       {:reply, %{"ok" => true}, socket}
     else

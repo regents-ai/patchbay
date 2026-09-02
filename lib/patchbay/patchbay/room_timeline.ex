@@ -44,15 +44,15 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   def append!(_room_or_id, _kind, _payload, _opts),
     do: raise(ArgumentError, "timeline payload must be a map")
 
-  @spec list!(Room.t() | binary(), keyword()) :: [RoomEvent.t()]
-  def list!(room_or_id, opts \\ []) do
+  # The bounded read hands back the newest events first, and the room shows its
+  # history oldest first, so the page it returns is turned around here.
+  @spec list!(Room.t() | binary()) :: [RoomEvent.t()]
+  def list!(room_or_id) do
     room_id = if match?(%Room{}, room_or_id), do: room_or_id.id, else: room_or_id
 
-    opts = Keyword.delete(opts, :browser_session_id)
-
-    Domain.list_room_events!(
-      Keyword.merge(opts, query: [filter: [room_id: room_id], sort: [sequence: :asc]])
-    )
+    room_id
+    |> Domain.list_recent_room_events!()
+    |> Enum.reverse()
   end
 
   # The registry lifecycle only ever reaches the server as a timeline event, so

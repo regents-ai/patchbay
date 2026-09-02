@@ -7,6 +7,10 @@ defmodule Patchbay.Patchbay.RoomEvent do
 
   alias Patchbay.Patchbay.Types.EventKind
 
+  # How much of a room's history the page carries. A room that stays open all
+  # day keeps appending, and the page only ever needs the recent end of it.
+  @page_size 200
+
   postgres do
     table("room_events")
     repo(Patchbay.Repo)
@@ -39,6 +43,16 @@ defmodule Patchbay.Patchbay.RoomEvent do
   actions do
     defaults([:read])
 
+    # The newest page of one room's events, newest first, so the read itself
+    # decides how much history leaves the database.
+    read :recent_for_room do
+      argument(:room_id, :uuid, allow_nil?: false)
+
+      filter(expr(room_id == ^arg(:room_id)))
+
+      prepare(build(sort: [sequence: :desc], limit: @page_size))
+    end
+
     create :append do
       accept([:room_id, :browser_session_id, :sequence, :kind, :payload])
     end
@@ -50,4 +64,8 @@ defmodule Patchbay.Patchbay.RoomEvent do
       authorize_if(always())
     end
   end
+
+  @doc "How many of a room's most recent events a page of the timeline holds."
+  @spec page_size() :: pos_integer()
+  def page_size, do: @page_size
 end

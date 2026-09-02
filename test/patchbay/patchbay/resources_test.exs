@@ -11,6 +11,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     Fixtures,
     Invocation,
     RoomEvent,
+    RoomTimeline,
     ToolPublisher,
     ToolRevision,
     Verification,
@@ -976,6 +977,28 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       )
 
     assert %RoomEvent{kind: :room_reset, sequence: 1} = event
+  end
+
+  test "the timeline read hands back one page of a room's newest events", %{room: room} do
+    page_size = RoomEvent.page_size()
+    overflow = 3
+
+    Ash.bulk_create!(
+      for sequence <- 1..(page_size + overflow) do
+        %{room_id: room.id, sequence: sequence, kind: :room_reset, payload: %{}}
+      end,
+      RoomEvent,
+      :append
+    )
+
+    recent = Patchbay.list_recent_room_events!(room.id)
+
+    assert length(recent) == page_size
+    assert List.first(recent).sequence == page_size + overflow
+    assert List.last(recent).sequence == overflow + 1
+
+    assert Enum.map(RoomTimeline.list!(room.id), & &1.sequence) ==
+             Enum.to_list((overflow + 1)..(page_size + overflow))
   end
 
   test "demo reset recreates and publishes a missing generation-one revision", %{

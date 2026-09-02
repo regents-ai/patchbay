@@ -7,7 +7,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.PatchbayAgent
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures}
+  alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures, RoomEvent}
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
 
   # What a repair writes into the timeline, so the room's other entries can be
@@ -213,6 +213,54 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            )
 
     assert has_element?(view, ".patchbay-timeline-sequence", "#1")
+  end
+
+  test "a browser observation adds its own timeline entry to an open room", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert timeline_sequences(view) == []
+    assert has_element?(view, "#patchbay-timeline .patchbay-empty-state")
+
+    session = bootstrap(view, room)
+
+    assert timeline_sequences(view) == [1]
+    refute has_element?(view, "#patchbay-timeline .patchbay-empty-state")
+
+    revision = desired_revision(room)
+
+    render_hook(view, "webmcp_tool_registered", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "tool_name" => revision.name,
+      "generation" => 1,
+      "contract_sha256" => revision.contract_sha256
+    })
+
+    assert timeline_sequences(view) == [1, 2]
+  end
+
+  test "a room with more history than a page shows the newest page of it", %{
+    conn: conn,
+    room: room
+  } do
+    page_size = RoomEvent.page_size()
+    overflow = 3
+
+    Ash.bulk_create!(
+      for sequence <- 1..(page_size + overflow) do
+        %{room_id: room.id, sequence: sequence, kind: :room_reset, payload: %{}}
+      end,
+      RoomEvent,
+      :append
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert timeline_sequences(view) == Enum.to_list((overflow + 1)..(page_size + overflow))
+    refute has_element?(view, "#patchbay-timeline .patchbay-empty-state")
   end
 
   test "names the active tool and discloses that the Source Skill is sent to OpenAI", %{
@@ -1336,6 +1384,18 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     assert report.verified
     report
+  end
+
+  # The sequence numbers the timeline is showing, in the order they are on the
+  # page, so a test can say which part of a room's history reached the browser.
+  defp timeline_sequences(view) do
+    view
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#patchbay-timeline .patchbay-timeline-sequence")
+    |> Enum.map(fn node ->
+      node |> LazyHTML.text() |> String.trim_leading("#") |> String.to_integer()
+    end)
   end
 
   # The steps of a repair the room has kept, in the order they happened.
