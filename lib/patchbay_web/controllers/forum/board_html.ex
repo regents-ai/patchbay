@@ -13,6 +13,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
+  alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.RelativeTime
   alias PatchbayWeb.Forum.VersionDiff
 
@@ -63,8 +64,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def reports_for(reports, %Tool{id: id}), do: Map.get(reports, id, [])
 
-  def more_reports?(reports, %Tool{} = tool),
-    do: length(reports_for(reports, tool)) < tool.report_count
+  def more_reports?(%Tool{} = tool), do: tool.report_count > Board.reports_per_version()
 
   # The reporter's identifier is chosen and sent by the reporting browser and is
   # never checked, so the page never presents it as a count of real people.

@@ -68,7 +68,7 @@
           <.replies replies={report.replies} />
         </li>
       </ol>
-      <p :if={more_reports?(@reports, version)} class="patchbay-board-facts">
+      <p :if={more_reports?(version)} class="patchbay-board-facts">
         Showing the newest {length(reports_for(@reports, version))} of {version.report_count} reports. Open a report to read the rest of its replies.
       </p>
     </li>

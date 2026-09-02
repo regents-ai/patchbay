@@ -6,19 +6,17 @@ defmodule PatchbayWeb.Forum.BoardController do
   Every page here is plain HTML. Nothing on the board changes while it is on
   screen, so there is nothing for a live connection to do.
 
-  Patchbay's own entry is refreshed as its pages are opened, which is what puts
-  this deployment's tool and its published versions on the board without the
-  studio needing to know the board exists.
+  Opening a page here writes nothing. Patchbay's own entry is recorded when a
+  studio starts offering a contract, so a visit only reads what is already on
+  the board.
   """
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Forum.RoomMirror
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
   def sites(conn, _params) do
-    RoomMirror.mirror!()
     {sites, more?} = Board.list_sites()
 
     render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
@@ -75,16 +73,10 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp site!(origin) do
     with {:ok, host} <- Board.normalize_origin(origin),
-         :ok <- refresh_own_board(host),
          {:ok, site} <- Board.fetch_site(host) do
       site
     else
       :error -> raise NotFoundError
     end
-  end
-
-  defp refresh_own_board(host) do
-    if host == RoomMirror.origin(), do: RoomMirror.mirror!()
-    :ok
   end
 end

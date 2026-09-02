@@ -12,8 +12,6 @@ defmodule Patchbay.Patchbay.RoomCapacity do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.Room
 
-  require Ash.Query
-
   # Any fixed key works; it only has to be the same for every room creation.
   @capacity_lock 4711
 
@@ -25,19 +23,24 @@ defmodule Patchbay.Patchbay.RoomCapacity do
   """
   @spec create_room(String.t()) :: {:ok, Room.t()} | {:error, :at_capacity}
   def create_room(slug) when is_binary(slug) do
-    # The sweep, the count and the insert run under one advisory lock so a
-    # burst of first visits cannot all read the same count and all proceed;
-    # without it the ceiling is only advisory.
-    Patchbay.Repo.transaction(fn ->
-      Patchbay.Repo.query!("SELECT pg_advisory_xact_lock($1)", [@capacity_lock])
-      reap_unused_rooms()
+    case Ash.transact(Room, fn -> sweep_then_create(slug) end) do
+      {:ok, :at_capacity} -> {:error, :at_capacity}
+      {:ok, %Room{} = room} -> {:ok, room}
+    end
+  end
 
-      if room_count() >= Config.max_rooms() do
-        Patchbay.Repo.rollback(:at_capacity)
-      else
-        Domain.create_seeded_room!(slug)
-      end
-    end)
+  # The sweep, the count and the insert run under one advisory lock so a burst
+  # of first visits cannot all read the same count and all proceed; without it
+  # the ceiling is only advisory. A deployment that is still full after the
+  # sweep keeps the sweep: it freed what it could, and refusing is an answer
+  # rather than a failed write.
+  defp sweep_then_create(slug) do
+    Patchbay.Repo.query!("SELECT pg_advisory_xact_lock($1)", [@capacity_lock])
+    reap_unused_rooms()
+
+    if room_count() >= Config.max_rooms(),
+      do: :at_capacity,
+      else: Domain.create_seeded_room!(slug)
   end
 
   @doc """

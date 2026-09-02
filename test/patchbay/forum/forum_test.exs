@@ -283,7 +283,8 @@ defmodule Patchbay.ForumTest do
       assert action_names(Report) ==
                Enum.sort([
                  {:read, :read},
-                 {:for_tool, :read},
+                 {:for_tools, :read},
+                 {:for_invocation, :read},
                  {:verified_awaiting_repair, :read},
                  {:file_report, :create}
                ])
@@ -410,7 +411,9 @@ defmodule Patchbay.ForumTest do
 
       Forum.add_reply!(reply_attrs(older, %{note: "seen it too"}))
 
-      assert [first, second] = results(Forum.list_reports_for_tool!(tool.id, load: [:replies]))
+      assert [first, second] =
+               results(Forum.list_reports_for_tools!([tool.id], load: [:replies]))
+
       assert first.id == newer.id
       assert second.id == older.id
       assert first.replies == []

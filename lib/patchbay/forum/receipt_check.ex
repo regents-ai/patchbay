@@ -13,8 +13,6 @@ defmodule Patchbay.Forum.ReceiptCheck do
   the agent is told.
   """
 
-  require Ash.Query
-
   alias Patchbay.Forum.Report
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Invocation
@@ -84,7 +82,7 @@ defmodule Patchbay.Forum.ReceiptCheck do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [receipt])
 
     Report
-    |> Ash.Query.filter(invocation_id == ^invocation.id)
+    |> Ash.Query.for_read(:for_invocation, %{invocation_id: invocation.id})
     |> Ash.exists?()
   end
 

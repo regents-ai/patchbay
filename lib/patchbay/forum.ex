@@ -27,7 +27,7 @@ defmodule Patchbay.Forum do
     resource Patchbay.Forum.Report do
       define(:file_report, action: :file_report)
       define(:get_report, action: :read, get_by: [:id])
-      define(:list_reports_for_tool, action: :for_tool, args: [:tool_id])
+      define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
     end
 

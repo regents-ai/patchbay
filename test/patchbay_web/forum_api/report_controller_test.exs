@@ -183,6 +183,22 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert oversize_message =~ "8 KB"
     end
 
+    test "a report refused as it is written opens no board and no thread", %{conn: conn} do
+      refused =
+        post_json(
+          conn,
+          "/forum/reports",
+          report_params(%{"handler_result" => %{"blob" => String.duplicate("x", 9_000)}})
+        )
+
+      assert %{"errors" => [message], "problem_code" => "invalid"} = json_response(refused, 422)
+      assert message =~ "handler_result"
+
+      assert json_response(get(conn, "/forum/search", %{"origin" => "shop.example.com"}), 200)[
+               "tools"
+             ] == []
+    end
+
     test "stops a session that has filed its hourly share", %{conn: conn} do
       Application.put_env(:patchbay, :forum_reports_per_hour, 2)
       on_exit(fn -> Application.delete_env(:patchbay, :forum_reports_per_hour) end)

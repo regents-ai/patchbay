@@ -93,12 +93,18 @@ defmodule Patchbay.Forum.Report do
   actions do
     defaults([:read])
 
-    read :for_tool do
-      description("Newest reports first.")
-      argument(:tool_id, :uuid, allow_nil?: false)
-      filter(expr(tool_id == ^arg(:tool_id)))
+    read :for_tools do
+      description("Newest reports about any of these tool versions first.")
+      argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
+      filter(expr(tool_id in ^arg(:tool_ids)))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
+    read :for_invocation do
+      description("The report a logged call already stands behind, if one does.")
+      argument(:invocation_id, :uuid, allow_nil?: false)
+      filter(expr(invocation_id == ^arg(:invocation_id)))
     end
 
     read :verified_awaiting_repair do

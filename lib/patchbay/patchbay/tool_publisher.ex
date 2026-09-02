@@ -3,9 +3,11 @@ defmodule Patchbay.Patchbay.ToolPublisher do
   Publishes a tool revision and its room pointer as one locked transaction.
 
   The underlying lifecycle actions are private to this service so callers
-  cannot move a revision to `:desired` without updating the room projection.
+  cannot move a revision to `:desired` without updating the room projection,
+  and without the contract it now offers reaching the public board.
   """
 
+  alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Room, Telemetry, ToolRevision}
 
@@ -60,6 +62,7 @@ defmodule Patchbay.Patchbay.ToolPublisher do
     room = Domain.get_room_for_update!(revision.room_id)
 
     ensure_desired!(revision)
+    RoomMirror.record!(revision)
     set_room_generation!(room, revision.generation)
   end
 

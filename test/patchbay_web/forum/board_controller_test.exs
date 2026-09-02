@@ -46,10 +46,19 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /sites" do
-    test "opens with Patchbay's own tool even before a repair room has been opened", %{conn: conn} do
+    test "says plainly that nothing has been reported yet", %{conn: conn} do
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert body =~ "patchbay.help"
+      assert body =~ "Nothing has been reported yet"
+      refute body =~ ~s(href="/sites/patchbay.help")
+    end
+
+    test "carries Patchbay's own tool as soon as a repair room offers it", %{conn: conn} do
+      Rooms.create_seeded_room!("room-one")
+
+      body = conn |> get(~p"/sites") |> html_response(200)
+
+      assert body =~ ~s(href="/sites/patchbay.help")
       assert body =~ "1 tool version · 0 reports"
       refute body =~ "Nothing has been reported yet"
     end
@@ -75,6 +84,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
 
     test "puts Patchbay's own site first however busy the others are", %{conn: conn} do
+      Rooms.create_seeded_room!("room-one")
       busy = site!("busy.example")
       busy_tool = tool!(busy)
       report!(busy_tool)
@@ -82,10 +92,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert :binary.match(body, "patchbay.help") < :binary.match(body, "busy.example")
+      assert :binary.match(body, ~s(href="/sites/patchbay.help")) <
+               :binary.match(body, ~s(href="/sites/busy.example"))
     end
 
-    test "records the contract a repair room is currently offering", %{conn: conn} do
+    test "carries the contract a repair room is currently offering", %{conn: conn} do
       room = Rooms.create_seeded_room!("room-one")
       [v1] = Rooms.list_tool_revisions!(query: [filter: [room_id: room.id]])
       Rooms.retire_tool_revision!(v1)
@@ -148,6 +159,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "marks which card is this site, and offers a card with nothing on it a way in", %{
       conn: conn
     } do
+      Rooms.create_seeded_room!("room-one")
       site!("quiet.example")
 
       body = conn |> get(~p"/sites") |> html_response(200)

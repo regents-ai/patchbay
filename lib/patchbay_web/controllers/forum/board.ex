@@ -137,15 +137,22 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec reports_by_version([Tool.t()]) :: %{optional(Ash.UUID.t()) => [Report.t()]}
   def reports_by_version(versions) do
-    Map.new(versions, fn version ->
-      page =
-        Forum.list_reports_for_tool!(version.id,
-          query: [load: [replies: first_replies()]],
-          page: [limit: @reports_per_version]
-        )
+    versions
+    |> Ash.load!(reports: newest_reports())
+    |> Map.new(&{&1.id, &1.reports})
+  end
 
-      {version.id, page.results}
-    end)
+  @doc "How many reports a version shows before it says there are more."
+  @spec reports_per_version() :: pos_integer()
+  def reports_per_version, do: @reports_per_version
+
+  # Anyone can file a report, so a version listed among many others carries only
+  # its newest few, cut down alongside the versions themselves in one read.
+  defp newest_reports do
+    Report
+    |> Ash.Query.sort(inserted_at: :desc, id: :desc)
+    |> Ash.Query.limit(@reports_per_version)
+    |> Ash.Query.load(replies: first_replies())
   end
 
   @doc """
