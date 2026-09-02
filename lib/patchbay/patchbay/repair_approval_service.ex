@@ -27,11 +27,7 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
 
   @spec approve_and_publish!(RepairProposal.t() | binary(), binary(), keyword()) ::
           RepairProposal.t()
-  def approve_and_publish!(proposal_or_id, approved_by, opts \\ [])
-
-  def approve_and_publish!(proposal_or_id, approved_by, opts) when is_binary(approved_by) do
-    if String.trim(approved_by) == "", do: raise(ArgumentError, "human approver is required")
-
+  def approve_and_publish!(proposal_or_id, approved_by, opts \\ []) do
     proposal = load_proposal!(proposal_or_id)
 
     [Room, RepairProposal, ToolRevision, Invocation]
@@ -41,9 +37,6 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
     )
     |> unwrap!()
   end
-
-  def approve_and_publish!(_proposal, _approved_by, _opts),
-    do: raise(ArgumentError, "human approver is required")
 
   @spec reject!(RepairProposal.t() | binary(), keyword()) :: RepairProposal.t()
   def reject!(proposal_or_id, opts \\ []) do

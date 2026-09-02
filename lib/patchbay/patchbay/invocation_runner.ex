@@ -270,7 +270,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     transact_invocation!(
       invocation,
       opts,
-      fn current, locked_room, _locked_session, locked_revision ->
+      fn current, locked_room, locked_session, locked_revision ->
         current = Domain.mark_invocation_executing!(current)
 
         RoomTimeline.append!(
@@ -281,7 +281,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
             "tool_revision_id" => locked_revision.id,
             "generation" => locked_revision.generation
           },
-          browser_session_id: browser_session.id
+          browser_session_id: locked_session.id
         )
 
         current
@@ -441,7 +441,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp verify_locked!(invocation_id, room_id, browser_session_id, opts) do
     room = Domain.get_room_for_update!(room_id)
     invocation = Domain.get_invocation_for_update!(invocation_id)
-    ensure_verifiable_status!(invocation)
     post_state = Keyword.get(opts, :post_state, visible_state(room))
 
     verified = VerificationService.verify_invocation!(invocation, %{post_state: post_state}, opts)
@@ -500,6 +499,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     end
   end
 
+  # Every step of a call takes the same four locks in the same order, whether or
+  # not the step reads all four, so two calls on one room can never deadlock.
   defp transact_invocation!(invocation, opts, fun, records \\ []) do
     case Ash.transact(
            [
@@ -592,13 +593,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       }
     }
   end
-
-  defp ensure_verifiable_status!(%Invocation{effective_status: status})
-       when status in [:awaiting_visible_state, :verified_failure, :verified_success],
-       do: :ok
-
-  defp ensure_verifiable_status!(_invocation),
-    do: refuse!(:effective_status, "invocation is no longer awaiting visible proof")
 
   defp ensure_retryable!(%Invocation{effective_status: :verified_failure}), do: :ok
 

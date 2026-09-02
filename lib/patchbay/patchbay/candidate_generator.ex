@@ -15,6 +15,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   or rebuilt here.
   """
 
+  alias Ash.Error.Changes.InvalidAttribute
   alias Patchbay.Config
 
   alias Patchbay.Patchbay.{
@@ -114,7 +115,12 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
         generated
 
       {:error, reason} ->
-        raise ArgumentError, "durable candidate evidence is invalid: #{inspect(reason)}"
+        raise Ash.Error.to_error_class(
+                InvalidAttribute.exception(
+                  field: :generated_candidate,
+                  message: "durable candidate evidence is invalid: #{inspect(reason)}"
+                )
+              )
     end
   end
 

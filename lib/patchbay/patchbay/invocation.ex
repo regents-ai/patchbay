@@ -13,6 +13,9 @@ defmodule Patchbay.Patchbay.Invocation do
   # or a platform decision closed it.
   @open_statuses [:started, :executing, :handler_returned, :awaiting_visible_state]
 
+  # The statuses a visible-state report may be recorded against.
+  @verifiable_statuses [:awaiting_visible_state, :verified_failure, :verified_success]
+
   postgres do
     table("invocations")
     repo(Patchbay.Repo)
@@ -223,13 +226,11 @@ defmodule Patchbay.Patchbay.Invocation do
       accept([])
       require_atomic?(false)
 
-      # A cancelled or errored call is closed: the platform decided its outcome,
-      # and what a browser saw afterwards cannot reopen it.
-      validate attribute_does_not_equal(:effective_status, :cancelled) do
-        message("invocation is no longer awaiting visible proof")
-      end
-
-      validate attribute_does_not_equal(:effective_status, :errored) do
+      # Visible proof is only asked for once the handler has returned, and a
+      # call the platform closed cannot be reopened by what a browser saw
+      # afterwards. Re-reporting an already judged call is allowed, because the
+      # durable verification answers it rather than re-judging it.
+      validate one_of(:effective_status, @verifiable_statuses) do
         message("invocation is no longer awaiting visible proof")
       end
 

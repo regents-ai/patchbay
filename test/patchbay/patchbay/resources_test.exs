@@ -505,6 +505,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         tool_contract_sha256: revision.contract_sha256,
         arguments: %{}
       })
+      |> awaiting_visible_state!()
 
     failed =
       VerificationService.verify_invocation!(invocation, %{
@@ -525,6 +526,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         arguments: %{},
         generated_candidate: Fixtures.improved_markdown()
       })
+      |> awaiting_visible_state!()
 
     Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
@@ -587,6 +589,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         arguments: %{},
         generated_candidate: Fixtures.improved_markdown()
       })
+      |> awaiting_visible_state!()
 
     Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
@@ -636,6 +639,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         arguments: %{},
         generated_candidate: Fixtures.improved_markdown()
       })
+      |> awaiting_visible_state!()
 
     Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
@@ -657,7 +661,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     stale_verified_at = DateTime.add(verification.inserted_at, -60, :second)
 
     # The durable verification exists while its invocation projection is stale.
-    assert invocation.effective_status == :started
+    assert invocation.effective_status == :awaiting_visible_state
 
     reconciled = VerificationService.verify_invocation!(invocation, %{post_state: post_state})
 
@@ -694,6 +698,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         },
         generated_candidate: Fixtures.improved_markdown()
       })
+      |> awaiting_visible_state!()
 
     Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
@@ -761,6 +766,12 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       Patchbay.mark_canary_passed!(proposal, %{
         canary_result: %{passed: true, checks: canary_checks}
       })
+
+    # The name a repair is approved under is caller input, so the action is what
+    # refuses a blank one, whitespace included.
+    assert_raise Ash.Error.Invalid, ~r/approved_by is required/, fn ->
+      Patchbay.approve_repair_proposal!(proposal, "   ")
+    end
 
     # Approval also requires the repair to still answer the room's current
     # verified failure, which this hand-built proposal never did.
@@ -916,6 +927,12 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     revision: revision
   } do
     invocation = started_invocation!(room, revision)
+
+    # Visible proof is only asked for after the handler has returned, so a call
+    # that has not got there yet has nothing to record it against.
+    assert_raise Ash.Error.Invalid, ~r/no longer awaiting visible proof/, fn ->
+      VerificationService.verify_invocation!(invocation, %{post_state: visible_post_state(room)})
+    end
 
     assert_raise Ash.Error.Invalid, ~r/no longer executing/, fn ->
       Patchbay.record_handler_return!(invocation, %{})
@@ -1431,6 +1448,19 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       tool_contract_sha256: revision.contract_sha256,
       arguments: %{}
     })
+  end
+
+  # Visible proof is only ever asked for once a handler has returned, so a call
+  # that a test is about to verify is walked there the way the runner walks it.
+  defp awaiting_visible_state!(invocation) do
+    invocation
+    |> Patchbay.mark_invocation_executing!()
+    |> Patchbay.record_handler_return!(%{
+      handler_result: %{"reported_success" => true, "applied" => false},
+      handler_reported_success: true,
+      handler_returned_at: DateTime.utc_now()
+    })
+    |> Patchbay.mark_invocation_awaiting_visible_state!()
   end
 
   defp seeded_revision!(room) do

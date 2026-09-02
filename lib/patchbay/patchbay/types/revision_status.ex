@@ -6,8 +6,6 @@ defmodule Patchbay.Patchbay.Types.RevisionStatus do
       :ready_for_approval,
       :approved,
       :desired,
-      :retired,
-      :rejected,
-      :failed
+      :retired
     ]
 end

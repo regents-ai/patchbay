@@ -179,6 +179,8 @@ defmodule Patchbay.Patchbay.RepairProposal do
 
     update :approve do
       accept([])
+      # A string argument is trimmed and an empty one becomes nil, so naming an
+      # approver is what `allow_nil?: false` asks for: no blank name gets through.
       argument(:approved_by, :string, allow_nil?: false)
       require_atomic?(false)
       validate(attribute_equals(:status, :ready_for_approval))
