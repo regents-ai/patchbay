@@ -12,6 +12,9 @@ import {completeInvocation, pushWithAck} from "./invocation_bridge.js";
 import {readRoomMetadata, sha256Hex} from "./state_snapshot.js";
 
 const SESSION_KEY_PREFIX = "patchbay:webmcp:client:";
+const LOG_PREFIX = "Patchbay WebMCP:";
+const WEBMCP_FLAG_HINT =
+  "In Chrome, turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload this page; the room and its controls work without it.";
 
 const PatchbayWebMCP = {
   async mounted() {
@@ -149,6 +152,7 @@ export async function bootstrap(hook) {
     hook.modelContext = getModelContext();
     if (!hook.modelContext || typeof hook.modelContext.registerTool !== "function") {
       setCapability(hook, "unsupported");
+      console.info(`${LOG_PREFIX} this browser exposes no WebMCP tool registry. ${WEBMCP_FLAG_HINT}`);
       await push(hook, "webmcp_bootstrap", {
         room_id: hook.roomId,
         client_instance_id: hook.clientInstanceId,
@@ -191,6 +195,7 @@ export async function bootstrap(hook) {
     await reconcile(hook, desired, lifecycle);
     if (hook.destroyedFlag || lifecycle !== hook.lifecycle) return;
     hook.bootstrapped = true;
+    logRegisteredTools(hook);
     setRegistryCapability(hook);
   })().catch(error => {
     if (!hook.destroyedFlag && lifecycle === hook.lifecycle) {
@@ -202,6 +207,19 @@ export async function bootstrap(hook) {
   });
   hook.bootstrapPromise = attempt;
   return hook.bootstrapPromise;
+}
+
+/**
+ * One line naming what this page put in the browser's tool registry and the
+ * contract digest each tool was registered under, so a person watching the
+ * console can hold the agent's view of the page against Patchbay's own.
+ */
+function logRegisteredTools(hook) {
+  const registered = [...hook.registeredDigests.entries()]
+    .map(([name, record]) => `${name}@${record.reported}`)
+    .sort();
+
+  console.info(`${LOG_PREFIX} registered ${registered.length} tools — ${registered.join(", ")}`);
 }
 
 function invalidateBootstrap(hook) {

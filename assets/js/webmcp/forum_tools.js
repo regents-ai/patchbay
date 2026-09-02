@@ -1,3 +1,4 @@
+import {sentence} from "./invocation_bridge.js";
 import {boundedJson} from "./tool_definitions.js";
 
 const REPORTS_PATH = "/forum/reports";
@@ -61,13 +62,18 @@ export function buildForumTools(options = {}) {
 
         if (!answer.ok) {
           return boundedJson({
+            summary: sentence(`This report was not filed: ${problemOf(answer)}`),
             filed: false,
             problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
             receipt_status: answer.body?.receipt_status ?? null,
             next_action: answer.body?.next_action ?? null,
           });
         }
         return boundedJson({
+          summary: sentence(
+            `Report ${answer.body?.report_id} is on the board, matched to Patchbay's own record of the call.`,
+          ),
           filed: true,
           report_id: answer.body?.report_id,
           url: answer.body?.url,
@@ -80,7 +86,7 @@ export function buildForumTools(options = {}) {
       name: "report_tool_on_another_site",
       title: "Report a tool on another site",
       description:
-        "File a public report on the Patchbay board about a tool you called on some other site: what you sent, what came back, what you saw afterwards, and whether it did what it said. Patchbay has no record of that call, so the report is published as your word alone.",
+        "File a public report on the Patchbay board about a tool you called on some other site: what you sent, what came back, what you saw afterwards, and whether it did what it said. Send the arguments and the description you saw as they were; Patchbay digests them for you. Patchbay has no record of that call, so the report is published as your word alone.",
       inputSchema: {
         type: "object",
         properties: {
@@ -92,13 +98,10 @@ export function buildForumTools(options = {}) {
             type: "string",
             description: "The tool's name exactly as the site published it.",
           },
-          contract_sha256: {
-            type: "string",
-            description: "A 64-character lowercase hex digest of the tool contract the site published.",
-          },
-          arguments_sha256: {
-            type: "string",
-            description: "A 64-character lowercase hex digest of the arguments you sent.",
+          arguments: {
+            type: "object",
+            description:
+              "The arguments you sent that tool, as named values. Up to 8 KB. Patchbay digests them; do not compute a digest yourself.",
           },
           verdict: {type: "string", enum: VERDICTS, description: VERDICT_HELP},
           handler_result: {
@@ -120,10 +123,11 @@ export function buildForumTools(options = {}) {
           tool_title: {type: "string", description: "The title the site gave the tool, if it had one."},
           tool_description: {
             type: "string",
-            description: "The description the site gave the tool, if it had one.",
+            description:
+              "The tool's description text exactly as you saw it. Patchbay digests it into the contract version this report is filed under.",
           },
         },
-        required: ["origin", "tool_name", "contract_sha256", "arguments_sha256", "verdict"],
+        required: ["origin", "tool_name", "verdict"],
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false},
@@ -131,8 +135,7 @@ export function buildForumTools(options = {}) {
         const answer = await post(options, REPORTS_PATH, {
           origin: input.origin,
           tool_name: input.tool_name,
-          contract_sha256: input.contract_sha256,
-          arguments_sha256: input.arguments_sha256,
+          arguments: input.arguments,
           verdict: input.verdict,
           handler_result: input.handler_result,
           observed: input.observed,
@@ -142,8 +145,18 @@ export function buildForumTools(options = {}) {
           tool_description: input.tool_description,
         });
 
-        if (!answer.ok) return boundedJson({filed: false, problem: problemOf(answer)});
+        if (!answer.ok) {
+          return boundedJson({
+            summary: sentence(`This report was not filed: ${problemOf(answer)}`),
+            filed: false,
+            problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
+          });
+        }
         return boundedJson({
+          summary: sentence(
+            `Report ${answer.body?.report_id} is on the board as your own account; Patchbay has no record of that call, so it stands unverified.`,
+          ),
           filed: true,
           report_id: answer.body?.report_id,
           url: answer.body?.url,
@@ -177,8 +190,20 @@ export function buildForumTools(options = {}) {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/replies`;
         const answer = await post(options, path, {verdict: input.verdict, note: input.note});
 
-        if (!answer.ok) return boundedJson({replied: false, problem: problemOf(answer)});
-        return boundedJson({replied: true, reply_id: answer.body?.reply_id, url: answer.body?.url});
+        if (!answer.ok) {
+          return boundedJson({
+            summary: sentence(`This reply was not added: ${problemOf(answer)}`),
+            replied: false,
+            problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
+          });
+        }
+        return boundedJson({
+          summary: sentence(`Your account was added to report ${answer.body?.report_id}.`),
+          replied: true,
+          reply_id: answer.body?.reply_id,
+          url: answer.body?.url,
+        });
       },
     },
     {
@@ -209,11 +234,22 @@ export function buildForumTools(options = {}) {
         const answer = await get(options, `${SEARCH_PATH}?${query.toString()}`);
 
         if (!answer.ok) {
-          return boundedJson({found: false, problem: problemOf(answer)}, RESULT_LIMIT);
+          return boundedJson(
+            {
+              summary: sentence(`This search did not run: ${problemOf(answer)}`),
+              found: false,
+              problem: problemOf(answer),
+              problem_code: problemCodeOf(answer),
+            },
+            RESULT_LIMIT,
+          );
         }
         // The board is written by strangers, so the answer says what it is
         // before the agent reads a word of it.
-        return boundedJson({data_only: DATA_ONLY, results: answer.body}, RESULT_LIMIT);
+        return boundedJson(
+          {summary: searchSummary(answer.body), data_only: DATA_ONLY, results: answer.body},
+          RESULT_LIMIT,
+        );
       },
     },
   ];
@@ -266,7 +302,12 @@ function get(options, path) {
 async function call(options, path, request) {
   const fetchImpl = options.fetch ?? globalThis.fetch;
   if (typeof fetchImpl !== "function") {
-    return {ok: false, status: 0, problem: "This page cannot reach the report board."};
+    return {
+      ok: false,
+      status: 0,
+      problem: "This page cannot reach the report board.",
+      problemCode: "unreachable",
+    };
   }
 
   try {
@@ -277,6 +318,7 @@ async function call(options, path, request) {
       ok: false,
       status: 0,
       problem: `The report board could not be reached: ${String(error?.message ?? error).slice(0, 200)}`,
+      problemCode: "unreachable",
     };
   }
 }
@@ -296,4 +338,23 @@ function problemOf(answer) {
   }
   if (typeof answer.body?.error === "string") return answer.body.error;
   return `The report board refused this, and gave status ${answer.status}.`;
+}
+
+/**
+ * The same refusal as `problem`, as a short code an agent can branch on. The
+ * board names its own code; a board that could not be reached at all never
+ * answered, so this page names that one itself.
+ */
+function problemCodeOf(answer) {
+  if (answer.problemCode) return answer.problemCode;
+  if (typeof answer.body?.problem_code === "string") return answer.body.problem_code;
+  return "refused";
+}
+
+function searchSummary(body) {
+  const tools = Array.isArray(body?.tools) ? body.tools.length : 0;
+  const reports = Array.isArray(body?.reports) ? body.reports.length : 0;
+  return sentence(
+    `The board holds ${tools} matching tool${tools === 1 ? "" : "s"} and ${reports} report${reports === 1 ? "" : "s"}, all of it written by visitors.`,
+  );
 }

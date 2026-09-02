@@ -109,6 +109,27 @@ defmodule Patchbay.Patchbay.RepairPolicyTest do
              RepairPolicy.validate(plan, revision)
   end
 
+  test "publishes the model's wording followed by Patchbay's own sentence", %{
+    revision: revision,
+    plan: plan
+  } do
+    assert {:ok, attributes} = RepairPolicy.revision_attributes(plan, revision)
+
+    assert String.starts_with?(attributes.description, plan["description_replacement"])
+    assert String.ends_with?(attributes.description, RepairPolicy.verified_reporting_note())
+    assert attributes.description =~ "report_tool_problem"
+  end
+
+  test "measures the published description, not just the model's half", %{
+    revision: revision,
+    plan: plan
+  } do
+    note_length = byte_size(RepairPolicy.verified_reporting_note())
+    plan = Map.put(plan, "description_replacement", String.duplicate("a", 1_000 - note_length))
+
+    assert {:error, :description_too_long} = RepairPolicy.validate(plan, revision)
+  end
+
   test "requires the candidate to keep untrustedContentHint true", %{
     revision: revision,
     plan: plan

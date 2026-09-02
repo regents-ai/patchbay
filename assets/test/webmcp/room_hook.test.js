@@ -432,12 +432,18 @@ test("a dropped execute acknowledgement durably cancels the begun invocation", a
   const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
   await reconcileTo(value, {room_id: "cancel-invocation-room", generation: 1, revisions: [v1]});
 
-  const result = await value.context.tools.get(v1.name).execute({instructions: "drop execute"});
+  const result = JSON.parse(
+    await value.context.tools.get(v1.name).execute({instructions: "drop execute"}),
+  );
   const cancellation = await waitFor(
     () => value.events.find(event => event.event === "webmcp_invocation_cancel"),
   );
 
-  assert.match(result, /^ERROR:/);
+  // A failure arrives in the same shape as a success: a sentence, then a code.
+  assert.equal(result.error_code, "INVOCATION_FAILED");
+  assert.equal(result.retryable, true);
+  assert.match(result.summary, /did not complete/);
+  assert.match(result.next_action, /get_patchbay_room_state/);
   assert.equal(cancellation.payload.invocation_id, "invocation-1");
   assert.equal(cancellation.payload.invocation_epoch, 0);
 });
@@ -462,7 +468,9 @@ test("reset rejects pending invocation work and ignores its stale result", async
     room_id: "reset-invocation-room",
     invocation_epoch: 1,
   });
-  assert.match(await call, /^ERROR: Patchbay reset/);
+  const reset = JSON.parse(await call);
+  assert.equal(reset.error_code, "INVOCATION_FAILED");
+  assert.match(reset.detail, /^Patchbay reset/);
 
   value.callbacks.get("patchbay:reset-invocation-room:invocation_result")({
     request_uuid: requestUuid,
@@ -1258,6 +1266,7 @@ test("a repair request reports the room's answer and never claims approval", asy
     assert.equal(result.status, status);
     assert.equal(result.detail, `detail for ${status}`);
     assert.equal(result.tool_can_publish, false);
+    assert.match(result.summary, new RegExp(`${status}`));
   }
 
   const refused = setup("repair-refused-room", {
@@ -1268,6 +1277,134 @@ test("a repair request reports the room's answer and never claims approval", asy
     await refused.context.tools.get("request_patchbay_repair").execute({}),
   );
   assert.equal(result.status, undefined);
-  assert.match(result.error, /another room/);
-  assert.equal(result.tool_can_publish, false);
+  assert.equal(result.error_code, "REPAIR_REQUEST_FAILED");
+  assert.match(result.detail, /another room/);
+});
+
+/** Run `body` with console.info captured, and hand back what it logged. */
+async function withCapturedInfo(body) {
+  const original = console.info;
+  const lines = [];
+  console.info = (...args) => lines.push(args.join(" "));
+  try {
+    await body();
+  } finally {
+    console.info = original;
+  }
+  return lines;
+}
+
+test("the console names every registered tool and the digest it went up under", async () => {
+  const value = setup("console-room");
+  const lines = await withCapturedInfo(() => PatchbayWebMCP.mounted.call(value.hook));
+
+  assert.equal(lines.length, 1);
+  const [line] = lines;
+  assert.match(line, /registered 3 tools/);
+
+  for (const name of ["get_patchbay_room_state", "verify_skill_uplift_goal", "request_patchbay_repair"]) {
+    const digest = value.hook.registeredDigests.get(name).reported;
+    assert.ok(line.includes(`${name}@${digest}`), `${name} and its digest are named`);
+  }
+});
+
+test("a browser without WebMCP is told where to turn it on", async () => {
+  const value = setup("no-webmcp-room");
+  value.document.modelContext = undefined;
+
+  const lines = await withCapturedInfo(() => PatchbayWebMCP.mounted.call(value.hook));
+
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /chrome:\/\/flags\/#enable-webmcp-testing/);
+  assert.equal(value.hook.el.dataset.webmcpStatus, "unsupported");
+});
+
+test("every permanent tool opens its result with one sentence about the outcome", async () => {
+  const value = setup("summary-room");
+  await PatchbayWebMCP.mounted.call(value.hook);
+
+  for (const name of ["get_patchbay_room_state", "verify_skill_uplift_goal"]) {
+    const raw = await value.context.tools.get(name).execute({});
+    const result = JSON.parse(raw);
+
+    assert.equal(typeof result.summary, "string");
+    assert.ok(result.summary.length > 0 && result.summary.length <= 200);
+    // The sentence comes first, before any of the structure it describes.
+    assert.ok(raw.startsWith('{"summary":'));
+  }
+});
+
+test("every permanent description names the check and the way to report a mismatch", async () => {
+  const value = setup("description-room");
+  await PatchbayWebMCP.mounted.call(value.hook);
+
+  for (const name of value.hook.registeredDigests.keys()) {
+    const {description} = value.context.tools.get(name);
+
+    assert.match(description, /verifies tool results against what is visible on screen/);
+    assert.match(description, /report_tool_problem using the receipt/);
+    // Still inside the budget webmcpify validates every contract against.
+    assert.ok(description.length <= 500);
+    assert.equal(/[<>`]/.test(description), false);
+  }
+});
+
+test("a second call while one is in flight is refused in the error shape", async () => {
+  const value = setup("busy-room", {asyncInvocation: true, deferInvocationResult: true});
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "busy-room", generation: 1, revisions: [v1]});
+
+  const tool = value.context.tools.get(v1.name);
+  const first = tool.execute({instructions: "hold the line"});
+  const second = JSON.parse(await tool.execute({instructions: "cut in"}));
+
+  assert.equal(second.error_code, "BUSY");
+  assert.equal(second.retryable, true);
+  assert.match(second.next_action, /Wait for the call already in flight/);
+
+  await value.callbacks.get("patchbay:busy-room:reset_browser_registry")({
+    room_id: "busy-room",
+    invocation_epoch: 1,
+  });
+  await first;
+});
+
+test("arguments the tool does not accept are refused with the rule they broke", async () => {
+  const value = setup("invalid-arguments-room");
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "invalid-arguments-room", generation: 1, revisions: [v1]});
+
+  const result = JSON.parse(
+    await value.context.tools.get(v1.name).execute({instructions: "", extra: true}),
+  );
+
+  assert.equal(result.error_code, "INVALID_ARGUMENTS");
+  assert.match(result.next_action, /instructions field/);
+  assert.equal(
+    value.events.some(event => event.event === "webmcp_invocation_begin"),
+    false,
+  );
+});
+
+test("a verified failure summarises the outcome and points at the receipt", async () => {
+  const value = setup("summary-failure-room", {
+    postStateReply: {
+      effective_status: "verified_failure",
+      failure_code: "CANDIDATE_EMPTY",
+      patchbay_receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
+    },
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "summary-failure-room", generation: 1, revisions: [v1]});
+
+  const result = JSON.parse(
+    await value.context.tools.get(v1.name).execute({instructions: "make it warmer"}),
+  );
+
+  assert.match(result.summary, /CANDIDATE_EMPTY/);
+  assert.match(result.summary, /report_tool_problem/);
+  assert.ok(result.summary.length <= 200);
 });

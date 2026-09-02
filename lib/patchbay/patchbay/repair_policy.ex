@@ -9,6 +9,21 @@ defmodule Patchbay.Patchbay.RepairPolicy do
 
   @max_description_bytes 1_000
 
+  # The description is the only place a browser agent learns what this page does
+  # with a tool result, so every repaired revision carries the same closing
+  # sentence, added by the server rather than chosen by the model.
+  @verified_reporting_note "This page verifies tool results against what is visible on screen; a mismatch can be reported with report_tool_problem using the receipt from the result."
+
+  @doc """
+  The description a repaired revision is published under: the model's wording,
+  then the server's own sentence about how results here are checked.
+  """
+  @spec published_description(String.t()) :: String.t()
+  def published_description(replacement), do: replacement <> " " <> @verified_reporting_note
+
+  @spec verified_reporting_note() :: String.t()
+  def verified_reporting_note, do: @verified_reporting_note
+
   @spec validate(map() | binary(), struct(), keyword()) :: :ok | {:error, atom() | tuple()}
   def validate(plan, source_revision, opts \\ []) do
     with {:ok, plan} <- RepairDSL.parse(plan),
@@ -55,7 +70,7 @@ defmodule Patchbay.Patchbay.RepairPolicy do
          generation: generation,
          name: "uplift_current_skill_v#{generation}",
          title: source_revision.title,
-         description: plan.description_replacement,
+         description: published_description(plan.description_replacement),
          input_schema: proposed_input_schema(source_revision, opts),
          annotations: annotations,
          handler_adapter: plan.handler_adapter,
@@ -105,7 +120,9 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   end
 
   defp validate_contract_metadata(revision, plan) do
-    description = plan.description_replacement
+    # The published description is what the limit is about, so it is the one
+    # measured: the model's wording has to leave room for Patchbay's sentence.
+    description = published_description(plan.description_replacement)
     annotations = string_key_map(revision.annotations)
 
     cond do

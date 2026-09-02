@@ -8,11 +8,22 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Rooms
+  alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
   alias Patchbay.Patchbay.InvocationRunner
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("b", 64)
+
+  # What the controller digests a report about another site's tool under: the
+  # words the agent says it saw, and the arguments it says it sent.
+  @observed_contract Digest.sha256(
+                       CanonicalJSON.encode(%{
+                         "name" => "add_to_cart",
+                         "title" => "Add to cart",
+                         "description" => "Puts the shown item in the basket."
+                       })
+                     )
 
   describe "filing a report" do
     test "records the site, the tool contract and the report", %{conn: conn} do
@@ -26,7 +37,10 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert report.tool.site.origin == "shop.example.com"
       assert report.tool.name == "add_to_cart"
       assert report.tool.title == "Add to cart"
-      assert report.tool.contract_sha256 == @contract
+      # No digest was sent: the server hashed the description the agent saw and
+      # the arguments it says it passed.
+      assert report.tool.contract_sha256 == @observed_contract
+      assert report.arguments_sha256 == Digest.arguments_sha256(%{"sku" => "A-1"})
       assert report.verdict == :verified_failure
       assert report.failure_code == "NO_CART_CHANGE"
       assert report.observed == %{"cart_count" => 0}
@@ -97,6 +111,48 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert "verdict: must be one of verified_success, verified_failure, errored, unknown" in errors
     end
 
+    test "digests the arguments the agent sends rather than asking it for one", %{conn: conn} do
+      conn =
+        post_json(conn, "/forum/reports", report_params(%{"arguments" => %{"b" => 2, "a" => 1}}))
+
+      assert %{"report_id" => report_id} = json_response(conn, 201)
+
+      # Key order cannot change the digest: it is canonical JSON, then SHA-256.
+      assert Ash.get!(Report, report_id).arguments_sha256 ==
+               Digest.arguments_sha256(%{"a" => 1, "b" => 2})
+    end
+
+    test "a tool described differently opens its own thread", %{conn: conn} do
+      assert json_response(post_json(conn, "/forum/reports", report_params()), 201)
+
+      second =
+        post_json(
+          conn,
+          "/forum/reports",
+          report_params(%{"tool_description" => "Puts the shown item somewhere else."})
+        )
+
+      assert %{"report_id" => id} = json_response(second, 201)
+      refute Ash.get!(Report, id, load: :tool).tool.contract_sha256 == @observed_contract
+    end
+
+    test "refuses arguments that are not named values, and oversized ones", %{conn: conn} do
+      conn = post_json(conn, "/forum/reports", report_params(%{"arguments" => "sku=A-1"}))
+
+      assert %{"errors" => [message], "problem_code" => "invalid"} = json_response(conn, 422)
+      assert message =~ "arguments: must be an object"
+
+      oversized =
+        post_json(
+          conn,
+          "/forum/reports",
+          report_params(%{"arguments" => %{"blob" => String.duplicate("x", 9_000)}})
+        )
+
+      assert %{"errors" => [oversize_message]} = json_response(oversized, 422)
+      assert oversize_message =~ "8 KB"
+    end
+
     test "stops a session that has filed its hourly share", %{conn: conn} do
       Application.put_env(:patchbay, :forum_reports_per_hour, 2)
       on_exit(fn -> Application.delete_env(:patchbay, :forum_reports_per_hour) end)
@@ -108,7 +164,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert json_response(conn, 201)
 
       conn = post_json(conn, "/forum/reports", report_params())
-      assert %{"error" => error} = json_response(conn, 429)
+      assert %{"error" => error, "problem_code" => "rate_limited"} = json_response(conn, 429)
       assert error =~ "past hour"
     end
   end
@@ -258,8 +314,12 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       conn = post_json(context.conn, "/forum/reports", params)
 
-      assert %{"receipt_status" => "spent", "next_action" => next_action, "error" => error} =
-               json_response(conn, 422)
+      assert %{
+               "receipt_status" => "spent",
+               "problem_code" => "receipt_spent",
+               "next_action" => next_action,
+               "error" => error
+             } = json_response(conn, 422)
 
       assert error == "This receipt already backs a report."
       assert next_action =~ "reply to it"
@@ -277,7 +337,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         |> put_req_header("content-type", "application/json")
         |> post("/forum/reports", Jason.encode!(report_params()))
 
-      assert %{"error" => "Open a Patchbay page first" <> _} = json_response(conn, 403)
+      assert %{"error" => "Open a Patchbay page first" <> _, "problem_code" => "no_session"} =
+               json_response(conn, 403)
     end
 
     test "a post without the page's forgery token is refused", %{conn: conn} do
@@ -318,7 +379,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       unknown = Ash.UUID.generate()
       conn = post_json(conn, "/forum/reports/#{unknown}/replies", %{"verdict" => "unknown"})
 
-      assert %{"error" => error} = json_response(conn, 404)
+      assert %{"error" => error, "problem_code" => "not_found"} = json_response(conn, 404)
       assert error =~ "no report"
     end
 
@@ -426,8 +487,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         "tool_name" => "add_to_cart",
         "tool_title" => "Add to cart",
         "tool_description" => "Puts the shown item in the basket.",
-        "contract_sha256" => @contract,
-        "arguments_sha256" => @arguments,
+        "arguments" => %{"sku" => "A-1"},
         "verdict" => "verified_failure",
         "handler_result" => %{"ok" => true},
         "observed" => %{"cart_count" => 0},

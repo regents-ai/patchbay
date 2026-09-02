@@ -640,6 +640,7 @@ Returns:
 
 ```json
 {
+  "summary": "Room skill-uplift is failed at tool generation 1, and its last verification failed with VISIBLE_POSTCONDITION_NOT_MET.",
   "room": "skill-uplift",
   "goal": "Place an improved candidate in the visible Candidate editor.",
   "status": "failed",
@@ -653,6 +654,49 @@ Returns:
   }
 }
 ```
+
+**Amended 2026-09-02.** The tool surface is what teaches a browser agent this
+loop, so three things hold across every tool in this section and section 13.
+
+Every result opens with a `summary`: one sentence, under 200 characters, saying
+what happened, before any of the structure it describes. The example above shows
+it; the other tools' results carry one in the same position.
+
+Every description ends with the same sentence — "This page verifies tool results
+against what is visible on screen; a mismatch can be reported with
+report_tool_problem using the receipt from the result." — added by the page for
+the permanent tools and by `RepairPolicy` for a repaired revision, which
+measures the published description against its 1000-byte limit rather than the
+model's half of it. The seeded `v1` description in 9.3 keeps its unqualified
+promise: that promise is the defect the demo is about.
+
+A failure is shaped like a success rather than a bare string:
+
+```json
+{
+  "summary": "This call did not complete: this tool revision is no longer the one the page offers",
+  "error_code": "REVISION_NOT_ACTIVE",
+  "detail": "this tool revision is no longer the one the page offers",
+  "retryable": true,
+  "next_action": "Call get_patchbay_room_state to read the active tool, then call that one."
+}
+```
+
+`error_code` is one of `BUSY`, `EXECUTION_CANCELLED`, `REVISION_NOT_ACTIVE`,
+`INVALID_ARGUMENTS`, `UI_REVISION_TIMEOUT`, `PROOF_NOT_RECORDED`,
+`INVOCATION_FAILED`, `SERVER_REFUSED`, `REPAIR_REQUEST_FAILED` or
+`VERIFICATION_UNAVAILABLE`. A refusal from the report board instead carries
+`problem_code` beside its plain `problem` text — `rate_limited`, `no_session`,
+`invalid`, `not_found`, `unreachable`, or `receipt_missing`, `receipt_unknown`,
+`receipt_wrong_identity`, `receipt_stale`, `receipt_spent` — named by the server
+except `unreachable`, which is what the page says when the board never answered.
+
+`report_tool_on_another_site` no longer asks for `contract_sha256` or
+`arguments_sha256`. The agent sends the raw `arguments` object it passed, up to
+8 KB, and the `tool_description` text it saw; the server digests both with
+canonical JSON and SHA-256 and stores the results. A model cannot compute a
+digest, and an invented one would be worthless. Reports about other sites remain
+unverified by design.
 
 ### 9.2 `verify_skill_uplift_goal`
 
@@ -1120,19 +1164,22 @@ Representative tool result:
 
 ```json
 {
+  "summary": "The tool reported an outcome the visible room does not show (VISIBLE_POSTCONDITION_NOT_MET); the patchbay_receipt in this result is what report_tool_problem needs.",
   "reported_result": {
     "success": true,
     "applied": false,
     "candidate_sha256": "..."
   },
+  "patchbay_receipt": "Ab3xQ7pL-t2ZmR4nS_1wCg",
+  "report_this_call": {"receipt": "Ab3xQ7pL-t2ZmR4nS_1wCg"},
   "patchbay_verification": {
     "passed": false,
     "failure_code": "VISIBLE_POSTCONDITION_NOT_MET",
     "expected": "Candidate editor contains the generated revision.",
     "observed": "Candidate editor is empty."
   },
-  "effective_status": "failed",
-  "next_action": "The site owner may review a proposed repair."
+  "effective_status": "verified_failure",
+  "next_action": "Call report_tool_problem with receipt set to the patchbay_receipt value in this result."
 }
 ```
 

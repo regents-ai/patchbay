@@ -1,4 +1,4 @@
-import {executeRevision, pushWithAck} from "./invocation_bridge.js";
+import {BUSY_RESULT, errorResult, executeRevision, pushWithAck, sentence} from "./invocation_bridge.js";
 import {verifyUpliftGoal} from "./goal_verifier.js";
 import {captureRoomState, readRoomMetadata, sha256Hex} from "./state_snapshot.js";
 import {singleFlight} from "./webmcpify.js";
@@ -8,6 +8,19 @@ export const PERMANENT_TOOL_NAMES = [
   "verify_skill_uplift_goal",
   "request_patchbay_repair",
 ];
+
+/**
+ * The one sentence every Patchbay tool description ends with. A description is
+ * the only place an agent learns the loop this page is for, so each tool says
+ * that results here are checked against the screen and names the way to report
+ * a mismatch.
+ */
+export const VERIFIED_REPORTING_NOTE =
+  "This page verifies tool results against what is visible on screen; a mismatch can be reported with report_tool_problem using the receipt from the result.";
+
+export function withReportingNote(description) {
+  return `${description} ${VERIFIED_REPORTING_NOTE}`;
+}
 
 const REPAIR_REQUEST_STATUSES = [
   "repair_requested",
@@ -21,13 +34,14 @@ export function buildPermanentTools(hook) {
     {
       name: "get_patchbay_room_state",
       title: "Read Patchbay room state",
-      description: "Read the active Patchbay goal, visible editor state, current tool generation, last verification, and whether an owner-approved repair is available.",
+      description: withReportingNote("Read the active Patchbay goal, visible editor state, current tool generation, last verification, and whether an owner-approved repair is available."),
       inputSchema: emptySchema(),
       annotations: {readOnlyHint: true, untrustedContentHint: false},
       execute: singleFlight(async () => {
         const state = await captureRoomState(hook.el?.ownerDocument ?? document);
         const metadata = readRoomMetadata(hook.el?.ownerDocument ?? document);
         return boundedJson({
+          summary: roomStateSummary(metadata),
           room: metadata.roomSlug,
           goal: "Place an improved candidate in the visible Candidate editor.",
           status: metadata.status,
@@ -48,35 +62,37 @@ export function buildPermanentTools(hook) {
             owner_approved: metadata.repairApproved,
           },
         });
-      }),
+      }, BUSY_RESULT),
     },
     {
       name: "verify_skill_uplift_goal",
       title: "Verify the visible Skill uplift",
-      description: "Verify whether the visible Candidate editor contains a structurally valid revision of the current Source Skill and whether the page-side goal was completed.",
+      description: withReportingNote("Verify whether the visible Candidate editor contains a structurally valid revision of the current Source Skill and whether the page-side goal was completed."),
       inputSchema: emptySchema(),
       annotations: {readOnlyHint: true, untrustedContentHint: true},
       execute: singleFlight(async () => {
         try {
-          return boundedJson(await verifyUpliftGoal(hook.el?.ownerDocument ?? document));
+          const verification = await verifyUpliftGoal(hook.el?.ownerDocument ?? document);
+          return boundedJson({summary: verificationSummary(verification), ...verification});
         } catch (error) {
           // A verification that cannot run is reported in the same shape as one
           // that ran and failed, so the agent never has to parse a bare error.
           return boundedJson({
+            summary: "The visible room could not be verified, so nothing is claimed either way.",
             passed: false,
             checks: null,
             failure_code: "VERIFICATION_UNAVAILABLE",
-            detail: String(error?.message ?? "the visible room could not be verified").slice(0, 200),
+            detail: sentence(error?.message ?? "the visible room could not be verified"),
             observed_generation: null,
             ui_revision: null,
           });
         }
-      }),
+      }, BUSY_RESULT),
     },
     {
       name: "request_patchbay_repair",
       title: "Ask Patchbay to repair its broken tool",
-      description: "Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask.",
+      description: withReportingNote("Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask."),
       inputSchema: emptySchema(),
       annotations: {readOnlyHint: false, untrustedContentHint: true},
       execute: singleFlight(async () => {
@@ -86,11 +102,33 @@ export function buildPermanentTools(hook) {
             browser_session_id: hook.browserSessionId,
           }));
         } catch (error) {
-          return repairRequestProblem(error?.message ?? "the repair request was not answered");
+          return errorResult("REPAIR_REQUEST_FAILED", error?.message ?? "the repair request was not answered");
         }
-      }),
+      }, BUSY_RESULT),
     },
   ];
+}
+
+/** What the room is, in one sentence, before the fields it is read from. */
+function roomStateSummary(metadata) {
+  return sentence(
+    `Room ${metadata.roomSlug} is ${metadata.status} at tool generation ${metadata.generation}, and ${lastVerification(metadata)}.`,
+  );
+}
+
+function lastVerification(metadata) {
+  if (metadata.verificationPassed) return "its last verification passed";
+  if (metadata.failureCode) return `its last verification failed with ${metadata.failureCode}`;
+  return "nothing has been verified yet";
+}
+
+function verificationSummary(verification) {
+  if (verification.passed) {
+    return sentence("The visible room satisfies the uplift goal.");
+  }
+  return sentence(
+    `The visible room does not satisfy the uplift goal (${verification.failure_code}).`,
+  );
 }
 
 /** The tool this page is offering right now, as the board records it. */
@@ -113,19 +151,18 @@ function activeTool(hook) {
 function repairRequestResult(reply) {
   if (REPAIR_REQUEST_STATUSES.includes(reply?.status)) {
     return boundedJson({
+      summary: sentence(
+        `Patchbay answered the repair request with ${reply.status}; publishing a replacement is not something a tool can do.`,
+      ),
       status: reply.status,
-      detail: String(reply.detail ?? "").slice(0, 300),
+      detail: sentence(reply.detail ?? "", 300),
       tool_can_publish: false,
     });
   }
-  return repairRequestProblem(reply?.error ?? "the room did not answer the repair request");
-}
-
-function repairRequestProblem(detail) {
-  return boundedJson({
-    error: String(detail).slice(0, 300),
-    tool_can_publish: false,
-  });
+  return errorResult(
+    "REPAIR_REQUEST_FAILED",
+    reply?.error ?? "the room did not answer the repair request",
+  );
 }
 
 export function buildRevisionTool(hook, revision) {
@@ -135,7 +172,10 @@ export function buildRevisionTool(hook, revision) {
     description: revision.description,
     inputSchema: revision.input_schema ?? revision.inputSchema ?? emptySchema(),
     annotations: revision.annotations ?? {readOnlyHint: false, untrustedContentHint: true},
-    execute: singleFlight((input, options = {}) => executeRevision(hook, revision, input, options)),
+    execute: singleFlight(
+      (input, options = {}) => executeRevision(hook, revision, input, options),
+      BUSY_RESULT,
+    ),
   };
   return tool;
 }

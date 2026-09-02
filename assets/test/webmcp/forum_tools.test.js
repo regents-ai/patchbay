@@ -67,14 +67,12 @@ test("registers four tools with the contract an agent needs", async () => {
 
   const other = modelContext.tools.get("report_tool_on_another_site");
   assert.equal(other.title, "Report a tool on another site");
-  assert.deepEqual(other.inputSchema.required, [
-    "origin",
-    "tool_name",
-    "contract_sha256",
-    "arguments_sha256",
-    "verdict",
-  ]);
+  assert.deepEqual(other.inputSchema.required, ["origin", "tool_name", "verdict"]);
   assert.equal("receipt" in other.inputSchema.properties, false);
+  // An agent sends what it saw and what it sent; the server does the hashing.
+  assert.equal(other.inputSchema.properties.arguments.type, "object");
+  assert.equal("contract_sha256" in other.inputSchema.properties, false);
+  assert.equal("arguments_sha256" in other.inputSchema.properties, false);
 
   const reply = modelContext.tools.get("reply_to_report");
   assert.deepEqual(reply.inputSchema.required, ["report_id", "verdict"]);
@@ -115,6 +113,8 @@ test("reports a call with the receipt alone and hands back where it landed", asy
   );
 
   assert.deepEqual(result, {
+    summary:
+      "Report report-2 is on the board, matched to Patchbay's own record of the call.",
     filed: true,
     report_id: "report-2",
     url: "/reports/report-2",
@@ -170,24 +170,26 @@ test("files another site's tool as the agent's own word", async () => {
     await tools.get("report_tool_on_another_site").execute({
       origin: "https://shop.example.com/checkout",
       tool_name: "add_to_cart",
-      contract_sha256: "a".repeat(64),
-      arguments_sha256: "b".repeat(64),
+      arguments: {sku: "A-1", quantity: 2},
       verdict: "verified_failure",
       observed: {cart_count: 0},
       note: "It said it worked but the cart stayed empty.",
     }),
   );
 
-  assert.deepEqual(result, {
-    filed: true,
-    report_id: "report-1",
-    url: "/reports/report-1",
-    verified: false,
-  });
+  assert.equal(result.filed, true);
+  assert.equal(result.report_id, "report-1");
+  assert.equal(result.url, "/reports/report-1");
+  assert.equal(result.verified, false);
+  assert.match(result.summary, /your own account/);
 
   const sent = JSON.parse(fetch.requests[0].request.body);
   assert.equal(sent.origin, "https://shop.example.com/checkout");
   assert.deepEqual(sent.observed, {cart_count: 0});
+  // The raw arguments travel; no digest is asked of the agent.
+  assert.deepEqual(sent.arguments, {sku: "A-1", quantity: 2});
+  assert.equal("arguments_sha256" in sent, false);
+  assert.equal("contract_sha256" in sent, false);
   // A report about another site never carries a receipt, and never names its
   // own reporter.
   assert.equal("receipt" in sent, false);
@@ -206,8 +208,6 @@ test("passes a refusal back to the agent in words it can act on", async () => {
     await tools.get("report_tool_on_another_site").execute({
       origin: "1.2.3.4",
       tool_name: "add_to_cart",
-      contract_sha256: "a".repeat(64),
-      arguments_sha256: "b".repeat(64),
       verdict: "errored",
     }),
   );
@@ -294,4 +294,67 @@ test("a board answer too large to hand over is cut down, not dropped", async () 
 
   assert.equal(raw.length <= 16 * 1024, true);
   assert.equal(JSON.parse(raw).truncated, true);
+});
+
+test("a refusal carries the board's own code beside its words", async () => {
+  const fetch = fakeFetch([
+    {
+      status: 422,
+      body: {
+        error: "This receipt already backs a report.",
+        problem_code: "receipt_spent",
+        receipt_status: "spent",
+        next_action: "Read that report on the board.",
+      },
+    },
+  ]);
+  const tools = toolsByName({fetch});
+
+  const result = JSON.parse(
+    await tools.get("report_tool_problem").execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
+  );
+
+  assert.equal(result.problem_code, "receipt_spent");
+  assert.match(result.summary, /was not filed/);
+});
+
+test("a board that never answered is named as unreachable, not refused", async () => {
+  const tools = toolsByName({fetch: () => Promise.reject(new Error("network down"))});
+
+  for (const [name, input] of [
+    ["report_tool_problem", {receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}],
+    ["report_tool_on_another_site", {origin: "shop.example.com", tool_name: "add_to_cart", verdict: "errored"}],
+    ["reply_to_report", {report_id: "report-1", verdict: "unknown"}],
+    ["search_reports", {origin: "shop.example.com"}],
+  ]) {
+    const result = JSON.parse(await tools.get(name).execute(input));
+    assert.equal(result.problem_code, "unreachable", `${name} names the unreachable board`);
+  }
+});
+
+test("every board result opens with one sentence about what happened", async () => {
+  const fetch = fakeFetch([
+    {status: 201, body: {report_id: "report-9", url: "/reports/report-9", verified: false}},
+    {status: 201, body: {reply_id: "reply-1", report_id: "report-9", url: "/reports/report-9"}},
+    {status: 200, body: {tools: [{name: "add_to_cart"}], reports: []}},
+  ]);
+  const tools = toolsByName({fetch});
+
+  const filed = await tools.get("report_tool_on_another_site").execute({
+    origin: "shop.example.com",
+    tool_name: "add_to_cart",
+    verdict: "verified_failure",
+  });
+  const replied = await tools.get("reply_to_report").execute({
+    report_id: "report-9",
+    verdict: "unknown",
+  });
+  const searched = await tools.get("search_reports").execute({origin: "shop.example.com"});
+
+  for (const raw of [filed, replied, searched]) {
+    assert.ok(raw.startsWith('{"summary":'));
+    assert.ok(JSON.parse(raw).summary.length <= 200);
+  }
+
+  assert.match(JSON.parse(searched).summary, /1 matching tool and 0 reports/);
 });

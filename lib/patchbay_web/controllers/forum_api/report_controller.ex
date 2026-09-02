@@ -13,9 +13,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   A report comes one of two ways. A report about a tool on this page quotes the
   receipt Patchbay handed back for that call and carries nothing else: the site,
   the tool, its contract version and the arguments are all read from Patchbay's
-  own record of the call, because a language model cannot compute a digest and
-  an invented one would be worthless anyway. A report about a tool on any other
-  site names that site and tool itself, and is published as one agent's word.
+  own record of the call. A report about a tool on any other site names that
+  site and tool itself and sends the arguments and the description text it saw
+  as they were; this module digests them. No caller ever computes a digest,
+  because a language model cannot, and an invented one would be worthless.
   """
 
   use PatchbayWeb, :controller
@@ -29,6 +30,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Tool
+  alias Patchbay.Patchbay.CanonicalJSON
+  alias Patchbay.Patchbay.Digest
 
   @default_reports_per_hour 10
   @default_replies_per_hour 30
@@ -135,16 +138,38 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp file_report(session_id, params) do
-    under_session_lock(session_id, fn ->
-      with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
-           {:ok, site, from_site} <-
-             Forum.register_site(params["origin"], return_notifications?: true),
-           {:ok, tool, from_tool} <- observe_tool(site, params),
-           {:ok, report, from_report} <- store_report(tool, session_id, params) do
-        {:ok, {report, from_site ++ from_tool ++ from_report}}
-      end
-    end)
+    with {:ok, arguments} <- reported_arguments(params["arguments"]) do
+      under_session_lock(session_id, fn ->
+        with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
+             {:ok, site, from_site} <-
+               Forum.register_site(params["origin"], return_notifications?: true),
+             {:ok, tool, from_tool} <- observe_tool(site, params),
+             {:ok, report, from_report} <- store_report(tool, session_id, arguments, params) do
+          {:ok, {report, from_site ++ from_tool ++ from_report}}
+        end
+      end)
+    end
   end
+
+  # The arguments an agent says it sent to somebody else's tool. They are
+  # digested here rather than by the caller, and bounded before anything is
+  # hashed so an enormous object cannot be turned into work.
+  @max_arguments_bytes 8 * 1024
+
+  defp reported_arguments(nil), do: {:ok, %{}}
+
+  defp reported_arguments(arguments) when is_map(arguments) do
+    encoded = CanonicalJSON.encode(arguments)
+
+    if byte_size(encoded) <= @max_arguments_bytes,
+      do: {:ok, arguments},
+      else: {:error, {:invalid, ["arguments: must be 8 KB or less once encoded"]}}
+  rescue
+    ArgumentError -> {:error, {:invalid, ["arguments: must be plain named values"]}}
+  end
+
+  defp reported_arguments(_arguments),
+    do: {:error, {:invalid, ["arguments: must be an object of named values"]}}
 
   # The whole of a receipt-backed report. Anything else a caller sends is a fact
   # it would be claiming about a call Patchbay already holds the record of, so
@@ -241,7 +266,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       %{
         site_id: site.id,
         name: params["tool_name"],
-        contract_sha256: params["contract_sha256"],
+        contract_sha256: observed_contract_sha256(params),
         title: params["tool_title"],
         description: params["tool_description"]
       },
@@ -249,12 +274,25 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     )
   end
 
-  defp store_report(tool, session_id, params) do
+  # The version of somebody else's tool this report is filed under. Patchbay
+  # never saw that contract, so the digest covers exactly what the agent says it
+  # read: the tool's name and the words the site published it with.
+  defp observed_contract_sha256(params) do
+    %{
+      "name" => params["tool_name"],
+      "title" => params["tool_title"],
+      "description" => params["tool_description"]
+    }
+    |> CanonicalJSON.encode()
+    |> Digest.sha256()
+  end
+
+  defp store_report(tool, session_id, arguments, params) do
     Forum.file_report(
       %{
         tool_id: tool.id,
         browser_session_id: session_id,
-        arguments_sha256: params["arguments_sha256"],
+        arguments_sha256: Digest.arguments_sha256(arguments),
         handler_result: params["handler_result"] || %{},
         observed: params["observed"] || %{},
         verdict: params["verdict"],
@@ -457,12 +495,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Answers
 
+  # Every refusal carries a short `problem_code` beside its words, so a browser
+  # agent can branch on the reason without reading English.
   defp send_failure(conn, {:rate_limited, message}) do
-    conn |> put_status(:too_many_requests) |> json(%{error: message})
+    conn
+    |> put_status(:too_many_requests)
+    |> json(%{error: message, problem_code: "rate_limited"})
   end
 
   defp send_failure(conn, {:invalid, messages}) do
-    conn |> put_status(:unprocessable_entity) |> json(%{errors: messages})
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{errors: messages, problem_code: "invalid"})
   end
 
   # A receipt that does not hold up is answered with the reason and the one
@@ -472,6 +516,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> put_status(:unprocessable_entity)
     |> json(%{
       error: receipt_problem(status),
+      problem_code: "receipt_#{status}",
       receipt_status: status,
       next_action: receipt_next_action(status)
     })
@@ -480,11 +525,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp send_failure(conn, :no_session) do
     conn
     |> put_status(:forbidden)
-    |> json(%{error: "Open a Patchbay page first, then use the tools it offers."})
+    |> json(%{
+      error: "Open a Patchbay page first, then use the tools it offers.",
+      problem_code: "no_session"
+    })
   end
 
   defp send_failure(conn, :not_found) do
-    conn |> put_status(:not_found) |> json(%{error: "There is no report with that id."})
+    conn
+    |> put_status(:not_found)
+    |> json(%{error: "There is no report with that id.", problem_code: "not_found"})
   end
 
   defp send_failure(conn, error) do

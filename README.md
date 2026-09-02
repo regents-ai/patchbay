@@ -48,7 +48,7 @@ running `mix setup`. Do not point this demo at a production database.
 1. Enable WebMCP in Chrome as described in [local WebMCP setup](docs/LOCAL_WEBMCP.md), then open the room.
 2. Ask the browser agent to call the active `uplift_current_skill_v1` tool with a short `instructions` string.
 3. Confirm the page shows raw handler `success`, effective `Verified failure`, `CANDIDATE_EMPTY`, and an empty Candidate editor.
-4. Ask the agent to call `report_tool_problem` about that tool, passing the `patchbay_receipt` from the result as `receipt`. Confirm the report is filed as verified.
+4. Ask the agent to call `report_tool_problem`, passing the `patchbay_receipt` from that result as `receipt`. The receipt alone files a verified report: it is the only field the tool needs, and Patchbay reads the site, the tool, its version and the arguments from its own record of the call. Confirm the report is filed as verified.
 5. Wait. Within `PATCHBAY_AGENT_POLL_SECONDS` (default 15) the worker claims the report, proposes a repair, reproduces the recorded failure against the live revision, publishes `v2` as **Patchbay Agent**, and replies on the report. The open page hot-swaps without a reload; **Reports about this room's tool** at the bottom shows the exchange.
 6. Confirm the browser registry shows **Observed G2**, then click **Retry uplift** or ask the same agent to call `uplift_current_skill_v2`.
 7. Confirm **Verification passed**, the improved candidate and its SHA-256 digest, and the durable timeline. **Reset demo** returns the room to generation 1.
@@ -98,7 +98,7 @@ repair-request tool, verbatim from
 {
   name: "request_patchbay_repair",
   title: "Ask Patchbay to repair its broken tool",
-  description: "Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask.",
+  description: withReportingNote("Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask."),
   inputSchema: emptySchema(),
   annotations: {readOnlyHint: false, untrustedContentHint: true},
   execute: singleFlight(async () => {
@@ -108,11 +108,20 @@ repair-request tool, verbatim from
         browser_session_id: hook.browserSessionId,
       }));
     } catch (error) {
-      return repairRequestProblem(error?.message ?? "the repair request was not answered");
+      return errorResult("REPAIR_REQUEST_FAILED", error?.message ?? "the repair request was not answered");
     }
-  }),
+  }, BUSY_RESULT),
 }
 ```
+
+`withReportingNote` ends every Patchbay description with the same sentence —
+that this page checks tool results against what is on screen, and that a
+mismatch is reported with `report_tool_problem` using the receipt from the
+result. A description is the only place an agent learns the loop before it calls
+anything, so each tool says it. Results are shaped to match: every one opens
+with a one-sentence `summary`, and a failure is a JSON object with an
+`error_code`, the `detail` behind it, whether calling again could help, and the
+one thing to do next — never a bare error string.
 
 Those objects reach the browser in
 [`assets/js/webmcp/room_hook.js`](assets/js/webmcp/room_hook.js), which puts the
