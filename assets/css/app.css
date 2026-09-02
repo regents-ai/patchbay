@@ -110,62 +110,6 @@
    gold-and-green gradient belongs to the Patchbay Agent alone. Every Patchbay
    page reads these, so the room, the board, and the landing page stay one
    system. */
-:root {
-  --pb-ink: #16211f;
-  --pb-ink-soft: #22322e;
-  --pb-canvas: #f6f3ec;
-  --pb-canvas-deep: #efeade;
-  --pb-surface: #fffdf8;
-  --pb-surface-sunk: #f3efe5;
-  --pb-line: #e2dbcd;
-  --pb-line-strong: #cdc3b0;
-
-  --pb-accent: #0e6b63;
-  --pb-accent-deep: #0a4f49;
-  --pb-accent-wash: #e2efec;
-  --pb-amber: #9c6206;
-  --pb-amber-wash: #fbedcf;
-  --pb-green: #0f6b4a;
-  --pb-green-wash: #dcefe2;
-  --pb-red: #a03a29;
-  --pb-red-wash: #f9e2db;
-  --pb-gold: #d3a022;
-  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
-
-  --pb-text: #16211f;
-  --pb-text-muted: #626f69;
-  --pb-text-faint: #737e79;
-  --pb-text-on-ink: #f3f0e6;
-  --pb-text-on-ink-muted: #a7b6af;
-
-  --pb-space-1: .35rem;
-  --pb-space-2: .6rem;
-  --pb-space-3: .95rem;
-  --pb-space-4: 1.4rem;
-  --pb-space-5: 2.1rem;
-  --pb-space-6: clamp(2.4rem, 4vw, 3.4rem);
-
-  --pb-fs-micro: .66rem;
-  --pb-fs-xs: .73rem;
-  --pb-fs-sm: .8rem;
-  --pb-fs-md: .92rem;
-  --pb-fs-lg: 1.08rem;
-  --pb-fs-xl: clamp(1.15rem, 2vw, 1.5rem);
-
-  --pb-radius-sm: .5rem;
-  --pb-radius: .8rem;
-  --pb-radius-lg: 1.1rem;
-
-  --pb-shadow-sm: 0 1px 2px rgba(22, 33, 31, .06);
-  --pb-shadow: 0 .55rem 1.5rem rgba(22, 33, 31, .07);
-  --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 33, 31, .12);
-
-  --pb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  --pb-ease-out: cubic-bezier(.23, 1, .32, 1);
-  --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
-}
-
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
@@ -709,6 +653,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 @media (prefers-reduced-motion: reduce) {
   .patchbay-button:hover { transform: none; }
+}
 
 /* ==========================================================================
    FORUM BOARD — regent-4il
@@ -945,6 +890,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .pb-site-grid { grid-template-columns: 1fr; }
   .pb-version-chips .pb-chip-facts:last-child { margin-left: 0; }
 
+}
+
+/* ==========================================================================
    Landing page and the not-found page (ticket regent-6h5).
    Provisional palette tokens: the canonical --pb-* set belongs at the top of
    this file. They are scoped to the two page roots below so this block cannot
@@ -952,35 +900,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
    lands.
    ========================================================================== */
 
-.pb-page,
-.pb-error {
-  --pb-ink: #14201f;
-  --pb-canvas: #f4f1ea;
-  --pb-surface: #fffdf8;
-  --pb-accent: #bf4a2d;
-  --pb-amber: #e0a325;
-  --pb-green: #1f7a5c;
-  --pb-gold: #f1c75b;
-  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
-
-  --pb-accent-deep: #9e3b23;
-  --pb-amber-deep: #8c5a11;
-  --pb-line: #ddd6c7;
-  --pb-muted: #5b6a66;
-  --pb-ink-soft: #ece7dc;
-  --pb-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --pb-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --pb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --pb-gutter: clamp(1.15rem, 5vw, 4rem);
-  --pb-measure: min(100%, 70rem);
-
-  color: var(--pb-ink);
-  font-family: var(--pb-sans);
-  background:
-    radial-gradient(circle at 88% 0%, rgba(241, 199, 91, .3), transparent 30rem),
-    radial-gradient(circle at 0% 62%, rgba(191, 74, 45, .07), transparent 34rem),
-    var(--pb-canvas);
-}
 
 .pb-page { min-height: 100vh; display: flex; flex-direction: column; }
 .pb-main { flex: 1; }
