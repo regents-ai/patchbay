@@ -118,6 +118,15 @@ defmodule PatchbayWeb.RoomControllerTest do
     assert html_response(conn, 503) =~ "Patchbay is busy, try again in a few minutes."
   end
 
+  test "the come-back-later page names itself in the browser tab", %{conn: conn} do
+    Domain.create_seeded_room!("occupied-room")
+    Application.put_env(:patchbay, :max_rooms, 1)
+
+    conn = get(conn, ~p"/")
+
+    assert html_response(conn, 503) =~ ~r{<title[^>]*>\s*All rooms are busy\s*· Patchbay</title>}
+  end
+
   defp redirected_room_slug(conn) do
     "/webmcp/rooms/" <> slug = redirected_to(conn, 302)
     slug
