@@ -50,8 +50,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  def short_digest(value) when is_binary(value), do: String.slice(value, 0, 12) <> "…"
-
   def count_label(count, singular, plural),
     do: "#{count} #{if count == 1, do: singular, else: plural}"
 

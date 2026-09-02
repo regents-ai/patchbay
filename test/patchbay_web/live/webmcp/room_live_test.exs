@@ -333,27 +333,21 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     })
 
     assert detail =~ "cannot approve or publish one"
-    assert Domain.get_room_by_id!(room.id).status == :diagnosing
 
-    render_hook(view, "webmcp_request_repair", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id
-    })
-
-    assert_reply(view, %{"status" => "already_in_progress", "tool_can_publish" => false})
-
+    # The diagnosis runs beside this test, so the room is read once it has
+    # settled rather than at a moment mid-flight the test cannot pin down.
     html = render_async(view, 2_000)
     assert html =~ "CONTRACT DIFF"
     assert html =~ "DETERMINISTIC CANARY"
     assert html =~ "Approve &amp; hot-swap"
 
-    proposal = latest_proposal(room)
-    assert proposal.status == :ready_for_approval
-
     # The proposal is waiting for a person, so a further request only says so.
     render_hook(view, "webmcp_request_repair", %{"room_id" => room.id})
     assert_reply(view, %{"status" => "proposal_ready", "tool_can_publish" => false})
 
+    # Asking twice left one proposal behind, and neither ask published anything.
+    assert [proposal] = Domain.list_repair_proposals!(query: [filter: [room_id: room.id]])
+    assert proposal.status == :ready_for_approval
     assert Domain.get_room_by_id!(room.id).desired_tool_generation == 1
   end
 

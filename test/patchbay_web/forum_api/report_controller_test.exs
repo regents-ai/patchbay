@@ -54,7 +54,15 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     test "files under the session the server issued, not one the caller names", %{conn: conn} do
       claimed = "00000000-0000-0000-0000-000000000000"
 
-      first = post_json(conn, "/forum/reports", report_params(%{"browser_session_id" => claimed}))
+      # A caller that names its own reporter is refused outright, so the only
+      # identity a report can ever be filed under is the one this server issued.
+      refused =
+        post_json(conn, "/forum/reports", report_params(%{"browser_session_id" => claimed}))
+
+      assert %{"errors" => [error], "problem_code" => "invalid"} = json_response(refused, 422)
+      assert error =~ "browser_session_id: a report about a tool on another site does not take"
+
+      first = post_json(refused, "/forum/reports", report_params())
       assert %{"report_id" => first_id} = json_response(first, 201)
 
       second = post_json(first, "/forum/reports", report_params(%{"note" => "Same again."}))
@@ -68,6 +76,28 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       refute session_id == claimed
       assert session_of(second_id) == session_id
       refute session_of(other_id) == session_id
+    end
+
+    test "refuses a report that brings fields this endpoint does not have", %{conn: conn} do
+      conn =
+        post_json(
+          conn,
+          "/forum/reports",
+          report_params(%{"contract_sha256" => @contract, "arguments_sha256" => @arguments})
+        )
+
+      assert %{"errors" => errors, "problem_code" => "invalid"} = json_response(conn, 422)
+
+      assert Enum.map(errors, &(String.split(&1, ":") |> hd())) ==
+               ["arguments_sha256", "contract_sha256"]
+
+      assert Enum.all?(errors, &String.contains?(&1, "does not take"))
+      assert Enum.all?(errors, &String.contains?(&1, "It takes origin, tool_name"))
+
+      # A refused report opens no board and no thread.
+      assert json_response(get(conn, "/forum/search", %{"origin" => "shop.example.com"}), 200)[
+               "tools"
+             ] == []
     end
 
     test "refuses an origin that is not a public site", %{conn: conn} do

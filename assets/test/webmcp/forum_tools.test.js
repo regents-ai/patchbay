@@ -198,6 +198,44 @@ test("files another site's tool as the agent's own word", async () => {
   assert.equal("failure_code" in sent, false);
 });
 
+test("sends only the fields the board takes, whatever else the agent adds", async () => {
+  const fetch = fakeFetch([{status: 201, body: {report_id: "report-3"}}]);
+  const tools = toolsByName({fetch});
+
+  await tools.get("report_tool_on_another_site").execute({
+    origin: "shop.example.com",
+    tool_name: "add_to_cart",
+    tool_title: "Add to cart",
+    tool_description: "Puts the shown item in the basket.",
+    arguments: {sku: "A-1"},
+    handler_result: {ok: true},
+    observed: {cart_count: 0},
+    verdict: "verified_failure",
+    failure_code: "NO_CART_CHANGE",
+    note: "The cart stayed empty.",
+    // The board refuses a report carrying anything else, so none of this leaves
+    // the page.
+    receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
+    browser_session_id: "00000000-0000-0000-0000-000000000000",
+    contract_sha256: "a".repeat(64),
+  });
+
+  const sent = JSON.parse(fetch.requests[0].request.body);
+
+  assert.deepEqual(Object.keys(sent).sort(), [
+    "arguments",
+    "failure_code",
+    "handler_result",
+    "note",
+    "observed",
+    "origin",
+    "tool_description",
+    "tool_name",
+    "tool_title",
+    "verdict",
+  ]);
+});
+
 test("passes a refusal back to the agent in words it can act on", async () => {
   const fetch = fakeFetch([
     {status: 422, body: {errors: ["origin: must be a domain name, not an IP address"]}},

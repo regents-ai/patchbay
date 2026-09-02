@@ -138,7 +138,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp file_report(session_id, params) do
-    with {:ok, arguments} <- reported_arguments(params["arguments"]) do
+    with :ok <- other_site_report_fields_only(params),
+         {:ok, arguments} <- reported_arguments(params["arguments"]) do
       under_session_lock(session_id, fn ->
         with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
              {:ok, site, from_site} <-
@@ -176,16 +177,34 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # it is refused rather than quietly dropped.
   @receipt_report_fields ~w(receipt verdict note)
 
-  defp receipt_report_fields_only(params) do
-    case params |> Map.keys() |> Kernel.--(@receipt_report_fields) |> Enum.sort() do
+  # The whole of a report about somebody else's tool. Anything else is a field
+  # this endpoint does not have, and a caller that sends one is working from a
+  # contract that is not this one, so it is told rather than half-obeyed.
+  @other_site_report_fields ~w(origin tool_name tool_title tool_description arguments
+                               handler_result observed verdict failure_code note)
+
+  defp receipt_report_fields_only(params),
+    do: fields_only(params, @receipt_report_fields, &unknown_with_receipt/1)
+
+  defp other_site_report_fields_only(params),
+    do: fields_only(params, @other_site_report_fields, &unknown_on_another_site/1)
+
+  defp fields_only(params, allowed, explain) do
+    case params |> Map.keys() |> Kernel.--(allowed) |> Enum.sort() do
       [] -> :ok
-      unknown -> {:error, {:invalid, Enum.map(unknown, &unknown_with_receipt/1)}}
+      unknown -> {:error, {:invalid, Enum.map(unknown, explain)}}
     end
   end
 
   defp unknown_with_receipt(field) do
     "#{field}: a report that quotes a receipt does not take #{field}. " <>
       "Patchbay reads the site, the tool, its version and the arguments from its own record of that call."
+  end
+
+  defp unknown_on_another_site(field) do
+    "#{field}: a report about a tool on another site does not take #{field}. " <>
+      "It takes origin, tool_name, tool_title, tool_description, arguments, handler_result, " <>
+      "observed, verdict, failure_code and note."
   end
 
   defp reported_call(receipt, session_id) do
@@ -297,8 +316,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         observed: params["observed"] || %{},
         verdict: params["verdict"],
         failure_code: params["failure_code"],
-        note: params["note"],
-        receipt: params["receipt"]
+        note: params["note"]
       },
       return_notifications?: true
     )
