@@ -264,6 +264,23 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         payload: %{}
       })
     end
+
+    assert_raise Ash.Error.Invalid, fn ->
+      Patchbay.create_repair_proposal!(%{
+        room_id: room.id,
+        source_invocation_id: invocation.id,
+        source_tool_revision_id: other_revision.id,
+        root_cause: "test",
+        repair_plan: %{},
+        contract_diff: %{},
+        canary_result: %{},
+        risk_notes: [],
+        model: "fixture",
+        model_response_id: "fixture-response",
+        prompt_version: "v1",
+        input_sha256: Digest.sha256("proposal")
+      })
+    end
   end
 
   test "generated candidate digest is recomputed and size bounded", %{

@@ -14,14 +14,11 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
 
     pre_state = snapshot(room)
 
-    case supplied_pre_state(changeset) do
-      :missing ->
+    case Ash.Changeset.get_argument(changeset, :pre_state) do
+      nil ->
         capture(changeset, pre_state, room)
 
-      {:supplied, nil} ->
-        capture(changeset, pre_state, room)
-
-      {:supplied, supplied_pre_state} ->
+      supplied_pre_state ->
         if same_state?(supplied_pre_state, pre_state) do
           capture(changeset, pre_state, room)
         else
@@ -35,9 +32,7 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
   end
 
   defp capture(changeset, pre_state, room) do
-    arguments =
-      Ash.Changeset.get_argument(changeset, :arguments) ||
-        Ash.Changeset.get_attribute(changeset, :arguments) || %{}
+    arguments = Ash.Changeset.get_attribute(changeset, :arguments)
 
     changeset
     |> Ash.Changeset.force_change_attribute(:pre_state, pre_state)
@@ -46,21 +41,6 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
       :generation_key,
       Digest.generation_key(room.source_sha256, arguments)
     )
-  end
-
-  defp supplied_pre_state(changeset) do
-    params = Map.get(changeset, :params, %{})
-
-    case Map.fetch(params, :pre_state) do
-      {:ok, value} ->
-        {:supplied, value}
-
-      :error ->
-        case Map.fetch(params, "pre_state") do
-          {:ok, value} -> {:supplied, value}
-          :error -> :missing
-        end
-    end
   end
 
   defp snapshot(room) do

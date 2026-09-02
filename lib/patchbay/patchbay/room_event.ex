@@ -41,11 +41,6 @@ defmodule Patchbay.Patchbay.RoomEvent do
 
     create :append do
       accept([:room_id, :browser_session_id, :sequence, :kind, :payload])
-
-      validate(
-        {Patchbay.Patchbay.Validations.RelationshipsSameRoom,
-         relationships: [browser_session_id: Patchbay.Patchbay.BrowserSession]}
-      )
     end
   end
 

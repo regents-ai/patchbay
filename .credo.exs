@@ -89,7 +89,6 @@
                  "lib/patchbay/patchbay/candidate_generator.ex",
                  # Structural refactor pending under regent-tb2.13.
                  "lib/patchbay/patchbay/postcondition_verifier.ex",
-                 "lib/patchbay/patchbay/validations/relationships_same_room.ex",
                  # Structural refactor pending under regent-tb2.14.
                  "lib/patchbay/patchbay/frontmatter.ex",
                  "lib/patchbay/patchbay/openai/client.ex",
@@ -144,10 +143,7 @@
                  "lib/patchbay/patchbay/candidate_cache.ex",
                  "lib/patchbay/patchbay/candidate_generator.ex",
                  # Structural refactor pending under regent-tb2.12.
-                 "lib/patchbay/patchbay/changes/approve_proposal.ex",
-                 "lib/patchbay/patchbay/changes/recompute_arguments.ex",
-                 "lib/patchbay/patchbay/repair_approval_service.ex",
-                 "lib/patchbay/patchbay/validations/publishable_proposal.ex"
+                 "lib/patchbay/patchbay/repair_approval_service.ex"
                ]
              }
            ]},

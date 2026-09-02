@@ -60,11 +60,6 @@ defmodule Patchbay.Patchbay.Verification do
         :observed_state
       ])
 
-      validate(
-        {Patchbay.Patchbay.Validations.RelationshipsSameRoom,
-         relationships: [invocation_id: Patchbay.Patchbay.Invocation]}
-      )
-
       validate(Patchbay.Patchbay.Validations.VerificationResult)
     end
   end

@@ -162,14 +162,18 @@ defmodule Patchbay.Patchbay.Room do
       accept([:candidate_markdown])
       require_atomic?(false)
       validate(present(:candidate_markdown))
-      change(Patchbay.Patchbay.Changes.ApplyCandidate)
+      validate(match(:candidate_markdown, ~r/\S/))
+
+      change(
+        {Patchbay.Patchbay.Changes.RecomputeDigest,
+         source_attribute: :candidate_markdown, digest_attribute: :candidate_sha256}
+      )
+
       change(optimistic_lock(:ui_revision))
     end
 
     update :record_failure do
       accept([:last_failed_invocation_id])
-      require_atomic?(false)
-      validate(Patchbay.Patchbay.Validations.LastFailedInvocationSameRoom)
       change(set_attribute(:status, :failed))
     end
 

@@ -83,15 +83,6 @@ defmodule Patchbay.Patchbay.RepairProposal do
         :usage,
         :input_sha256
       ])
-
-      validate(
-        {Patchbay.Patchbay.Validations.RelationshipsSameRoom,
-         relationships: [
-           source_invocation_id: Patchbay.Patchbay.Invocation,
-           source_tool_revision_id: Patchbay.Patchbay.ToolRevision,
-           candidate_tool_revision_id: Patchbay.Patchbay.ToolRevision
-         ]}
-      )
     end
 
     update :mark_canary_passed do
@@ -110,7 +101,11 @@ defmodule Patchbay.Patchbay.RepairProposal do
       accept([])
       argument(:approved_by, :string, allow_nil?: false)
       require_atomic?(false)
-      change(Patchbay.Patchbay.Changes.ApproveProposal)
+      validate(attribute_equals(:status, :ready_for_approval))
+      validate(Patchbay.Patchbay.Validations.CanaryPassed)
+      change(set_attribute(:status, :approved))
+      change(set_attribute(:approved_by, arg(:approved_by)))
+      change(set_attribute(:approved_at, &DateTime.utc_now/0))
     end
 
     update :reject do
@@ -123,7 +118,7 @@ defmodule Patchbay.Patchbay.RepairProposal do
       accept([])
       require_atomic?(false)
       validate(attribute_equals(:status, :approved))
-      validate(Patchbay.Patchbay.Validations.PublishableProposal)
+      validate(Patchbay.Patchbay.Validations.CanaryPassed)
       change(set_attribute(:status, :published))
       change(set_attribute(:published_at, &DateTime.utc_now/0))
     end

@@ -122,7 +122,6 @@ defmodule Patchbay.Patchbay.Invocation do
         :tool_revision_id,
         :tool_contract_sha256,
         :arguments,
-        :pre_state,
         :handler_result,
         :handler_reported_success,
         :generated_candidate,
@@ -130,17 +129,12 @@ defmodule Patchbay.Patchbay.Invocation do
         :started_at
       ])
 
-      change(Patchbay.Patchbay.Changes.CaptureInvocationPreState)
-      change(Patchbay.Patchbay.Changes.RecomputeArguments)
-      change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)
+      # The room lock is what decides the recorded pre-state. A caller may say
+      # which state it believes it acted on, and is turned away if it disagrees.
+      argument(:pre_state, :map)
 
-      validate(
-        {Patchbay.Patchbay.Validations.RelationshipsSameRoom,
-         relationships: [
-           browser_session_id: Patchbay.Patchbay.BrowserSession,
-           tool_revision_id: Patchbay.Patchbay.ToolRevision
-         ]}
-      )
+      change(Patchbay.Patchbay.Changes.CaptureInvocationPreState)
+      change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)
     end
 
     update :mark_executing do
