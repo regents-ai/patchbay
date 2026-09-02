@@ -487,7 +487,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
   } do
     DemoReset.reset!(room)
 
-    assert_raise ArgumentError, ~r/earlier room lifecycle/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/earlier room lifecycle/, fn ->
       InvocationRunner.begin!(
         room,
         browser_session,
@@ -557,7 +557,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert invocation.effective_status == :awaiting_visible_state
     assert InvocationRunner.cancel!(invocation).effective_status == :cancelled
 
-    assert_raise ArgumentError, ~r/no longer awaiting visible proof/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/no longer awaiting visible proof/, fn ->
       InvocationRunner.verify!(invocation, %{})
     end
 
@@ -696,7 +696,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
 
     before = Patchbay.get_room_by_id!(room.id)
 
-    assert_raise ArgumentError, ~r/browser session/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/browser session/, fn ->
       InvocationRunner.retry!(invocation, browser_session)
     end
 

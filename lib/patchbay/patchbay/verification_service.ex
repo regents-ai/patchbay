@@ -44,36 +44,22 @@ defmodule Patchbay.Patchbay.VerificationService do
 
   defp verify_locked!(invocation_or_id, attrs) do
     invocation = load_invocation!(invocation_or_id)
-    room = Domain.get_room_for_update!(invocation.room_id, load: :desired_tool_revision)
+    # Everything that writes a room and one of its calls takes the room lock
+    # first, so a concurrent verification and reset cannot deadlock.
+    _room = Domain.get_room_for_update!(invocation.room_id)
     invocation = Domain.get_invocation_for_update!(invocation.id)
-
-    ensure_current_epoch!(invocation, room)
-    ensure_awaiting_proof!(invocation)
 
     # The verification row is the durable verdict, so a call that has already
     # been verified is projected back onto the invocation rather than re-judged.
-    verification =
-      case existing_verification(invocation.id) do
-        %Verification{} = verification -> verification
-        nil -> persist_verification!(invocation, Map.get(attrs, :post_state, %{}))
-      end
+    ensure_verification!(invocation, Map.get(attrs, :post_state, %{}))
 
-    persist_invocation_result!(
-      invocation,
-      durable_result!(verification),
-      verification.inserted_at || DateTime.utc_now()
-    )
+    persist_invocation_result!(invocation)
   end
 
-  defp ensure_current_epoch!(invocation, room) do
-    if invocation.invocation_epoch != room.invocation_epoch do
-      raise ArgumentError, "invocation belongs to an earlier room lifecycle"
-    end
-  end
-
-  defp ensure_awaiting_proof!(invocation) do
-    if invocation.effective_status in [:cancelled, :errored] do
-      raise ArgumentError, "invocation is no longer awaiting visible proof"
+  defp ensure_verification!(invocation, observed_state) do
+    case existing_verification(invocation.id) do
+      %Verification{} = verification -> verification
+      nil -> persist_verification!(invocation, observed_state)
     end
   end
 
@@ -125,10 +111,6 @@ defmodule Patchbay.Patchbay.VerificationService do
     tool_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
     browser_session = Domain.get_browser_session!(invocation.browser_session_id)
     active_revision = room.desired_tool_revision
-
-    if tool_revision.room_id != room.id or browser_session.room_id != room.id do
-      raise ArgumentError, "invocation evidence relationships must belong to the same room"
-    end
 
     observation = browser_observation(browser_session, room, active_revision)
 
@@ -190,18 +172,9 @@ defmodule Patchbay.Patchbay.VerificationService do
     }
   end
 
-  defp persist_invocation_result!(invocation, result, verified_at) do
+  defp persist_invocation_result!(invocation) do
     invocation
-    |> Ash.Changeset.for_update(
-      :record_verification,
-      %{
-        post_state: result.observed_state,
-        failure_code: result.failure_code,
-        verified_at: verified_at
-      },
-      domain: Domain
-    )
-    |> Ash.Changeset.set_context(%{trusted_verification_result: result})
+    |> Ash.Changeset.for_update(:record_verification, %{}, domain: Domain)
     |> Ash.update!()
   end
 
@@ -223,22 +196,6 @@ defmodule Patchbay.Patchbay.VerificationService do
     |> Ash.Query.filter(invocation_id: invocation_id)
     |> Ash.read!()
     |> List.first()
-  end
-
-  defp durable_result!(%Verification{} = verification) do
-    result = %{
-      passed: verification.passed,
-      checks: verification.checks,
-      failure_code: verification.failure_code,
-      expected_state: verification.expected_state,
-      observed_state: verification.observed_state
-    }
-
-    if PostconditionVerifier.valid_result?(result) do
-      result
-    else
-      raise ArgumentError, "persisted verification result is invalid"
-    end
   end
 
   defp load_invocation!(%Invocation{} = invocation),

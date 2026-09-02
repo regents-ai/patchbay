@@ -870,6 +870,72 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert_raise Ash.Error.Invalid, fn -> Patchbay.retire_tool_revision!(retired) end
   end
 
+  test "invocation transitions only accept their legal prior status", %{
+    room: room,
+    revision: revision
+  } do
+    invocation = started_invocation!(room, revision)
+
+    assert_raise Ash.Error.Invalid, ~r/no longer executing/, fn ->
+      Patchbay.record_handler_return!(invocation, %{})
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/no longer handler_returned/, fn ->
+      Patchbay.mark_invocation_awaiting_visible_state!(invocation)
+    end
+
+    executing = Patchbay.mark_invocation_executing!(invocation)
+
+    assert_raise Ash.Error.Invalid, ~r/no longer started/, fn ->
+      Patchbay.mark_invocation_executing!(executing)
+    end
+
+    cancelled = Patchbay.mark_invocation_cancelled!(executing)
+    assert cancelled.effective_status == :cancelled
+
+    # A closed call keeps the outcome it was given.
+    assert_raise Ash.Error.Invalid, fn -> Patchbay.mark_invocation_errored!(cancelled) end
+
+    assert_raise Ash.Error.Invalid, ~r/no longer awaiting visible proof/, fn ->
+      VerificationService.verify_invocation!(cancelled, %{post_state: visible_post_state(room)})
+    end
+  end
+
+  test "a call may only move while the tool it named is the one the room offers", %{
+    room: room,
+    revision: revision
+  } do
+    reporting_failure = Patchbay.mark_invocation_executing!(started_invocation!(room, revision))
+    reporting_success = Patchbay.mark_invocation_executing!(started_invocation!(room, revision))
+    not_yet_running = started_invocation!(room, revision)
+
+    Patchbay.retire_tool_revision!(revision)
+
+    # A handler that reports a failure changes nothing on the page, so it is
+    # recorded whatever the room has moved on to.
+    assert Patchbay.record_handler_return!(reporting_failure, %{
+             handler_result: %{"reported_success" => false},
+             handler_reported_success: false,
+             handler_returned_at: DateTime.utc_now()
+           }).effective_status == :handler_returned
+
+    assert_raise Ash.Error.Invalid, ~r/tool revision is not desired/, fn ->
+      Patchbay.record_handler_return!(reporting_success, %{
+        handler_result: %{"reported_success" => true},
+        handler_reported_success: true,
+        handler_returned_at: DateTime.utc_now()
+      })
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/tool revision is not desired/, fn ->
+      Patchbay.mark_invocation_executing!(not_yet_running)
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/tool revision is not desired/, fn ->
+      started_invocation!(room, revision)
+    end
+  end
+
   test "unknown reset slugs return not found", %{room: _room} do
     assert_raise Ash.Error.Query.NotFound, fn -> DemoReset.reset!("does-not-exist") end
   end
@@ -899,7 +965,6 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     # walked to the status the move expects and is then refused for the policy.
     diagnosing = room |> Patchbay.record_failure!(invocation.id) |> Patchbay.begin_diagnosis!()
 
-    assert {:error, %Ash.Error.Forbidden{}} = Patchbay.mark_repair_failed(diagnosing)
     assert {:error, %Ash.Error.Forbidden{}} = Patchbay.discard_room(diagnosing)
 
     assert {:error, %Ash.Error.Forbidden{}} =
@@ -918,14 +983,16 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     ready = Patchbay.mark_repair_ready!(diagnosing)
     assert {:error, %Ash.Error.Forbidden{}} = Patchbay.await_repair_approval(ready)
 
-    # The planner and the page reach the two moves deliberately, and still can.
+    # The planner reaches that move deliberately, and still can.
     waiting = Patchbay.await_repair_approval!(ready, authorize?: false)
     assert waiting.status == :awaiting_approval
 
+    # Declaring a repair a failure is named, so the planner and the page reach
+    # it the ordinary way.
     diagnosing_again =
       waiting |> Patchbay.record_failure!(invocation.id) |> Patchbay.begin_diagnosis!()
 
-    assert Patchbay.mark_repair_failed!(diagnosing_again, authorize?: false).status == :error
+    assert Patchbay.mark_repair_failed!(diagnosing_again).status == :error
   end
 
   test "tool revisions expose only lifecycle updates, leaving contracts immutable", %{
@@ -988,7 +1055,10 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       |> Map.delete(:contract_sha256)
       |> Patchbay.create_tool_revision!()
 
-    assert_raise ArgumentError, fn -> ToolPublisher.sync_room_generation!(candidate) end
+    assert_raise Ash.Error.Invalid, ~r/only a desired revision/, fn ->
+      ToolPublisher.sync_room_generation!(candidate)
+    end
+
     assert Patchbay.get_room_by_slug!(room.slug).desired_tool_generation == 1
 
     published = ToolPublisher.publish!(candidate)
@@ -1304,6 +1374,24 @@ defmodule Patchbay.Patchbay.ResourcesTest do
   end
 
   # Every room is created already offering its generation-1 tool.
+  defp started_invocation!(room, revision) do
+    browser_session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        user_agent_digest: Digest.sha256("test-agent")
+      })
+
+    Patchbay.record_invocation!(%{
+      request_uuid: Ash.UUID.generate(),
+      room_id: room.id,
+      browser_session_id: browser_session.id,
+      tool_revision_id: revision.id,
+      tool_contract_sha256: revision.contract_sha256,
+      arguments: %{}
+    })
+  end
+
   defp seeded_revision!(room) do
     Patchbay.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
     |> List.first()

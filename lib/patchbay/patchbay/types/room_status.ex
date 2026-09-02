@@ -2,7 +2,6 @@ defmodule Patchbay.Patchbay.Types.RoomStatus do
   use Ash.Type.Enum,
     values: [
       :ready,
-      :invoking,
       :failed,
       :diagnosing,
       :repair_ready,
@@ -11,7 +10,6 @@ defmodule Patchbay.Patchbay.Types.RoomStatus do
       :repaired,
       :retrying,
       :verified,
-      :resetting,
       :error
     ]
 end

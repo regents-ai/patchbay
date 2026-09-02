@@ -7,6 +7,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   revision and proposal ready for human approval.
   """
 
+  alias Ash.Error.Changes.InvalidAttribute
   alias Patchbay.Patchbay, as: Domain
 
   alias Patchbay.Patchbay.{
@@ -143,7 +144,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   defp ensure_candidate_unchanged!(current, candidate) do
     if current.candidate_sha256 != candidate.candidate_sha256 or
          current.generation_key != candidate.generation_key do
-      raise ArgumentError, "repair candidate changed during planning"
+      refuse!(:generated_candidate_sha256, "repair candidate changed during planning")
     end
   end
 
@@ -180,9 +181,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   defp finalize_proposal!(proposal, room, revision, canary) do
     proposal = Domain.mark_canary_failed!(proposal, %{canary_result: canary})
 
-    # Declaring a repair a failure is named by no policy: only the planner and
-    # the room page, which both watched the attempt, may say so.
-    room = Domain.mark_repair_failed!(room, authorize?: false)
+    room = Domain.mark_repair_failed!(room)
 
     # Clearing the pointer belongs to the same decision, so it is reached the
     # same way.
@@ -315,8 +314,14 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   defp ensure_failed_latest!(%Invocation{} = invocation, %Room{} = room) do
     if room.last_failed_invocation_id != invocation.id or
          invocation.effective_status != :verified_failure do
-      raise ArgumentError, "repair requires the room's latest verified failure"
+      refuse!(:source_invocation_id, "repair requires the room's latest verified failure")
     end
+  end
+
+  # State rules the planner owns are refusals a caller can match on, the same
+  # way a refusal from a resource action is.
+  defp refuse!(field, message) do
+    raise Ash.Error.to_error_class(InvalidAttribute.exception(field: field, message: message))
   end
 
   defp contract_diff(source, candidate) do

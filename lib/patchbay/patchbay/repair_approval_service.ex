@@ -140,8 +140,14 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
   defp unwrap!({:ok, proposal}), do: proposal
   defp unwrap!({:error, error}), do: raise(Ash.Error.to_error_class(error))
 
-  defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: nil}),
-    do: raise(ArgumentError, "proposal has no candidate revision")
+  defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: nil}) do
+    raise Ash.Error.to_error_class(
+            InvalidAttribute.exception(
+              field: :candidate_tool_revision_id,
+              message: "proposal has no candidate revision"
+            )
+          )
+  end
 
   defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: id}),
     do: Domain.get_tool_revision_for_update!(id)

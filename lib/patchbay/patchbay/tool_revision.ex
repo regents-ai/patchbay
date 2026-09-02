@@ -139,12 +139,6 @@ defmodule Patchbay.Patchbay.ToolRevision do
       change(set_attribute(:status, :approved))
     end
 
-    update :mark_observed_active do
-      accept([])
-      validate(attribute_equals(:status, :desired))
-      change(set_attribute(:status, :observed_active))
-    end
-
     update :retire do
       accept([])
       validate(attribute_does_not_equal(:status, :retired))

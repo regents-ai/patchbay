@@ -7,6 +7,11 @@ defmodule Patchbay.Patchbay.Invocation do
 
   alias Patchbay.Patchbay.Receipt
   alias Patchbay.Patchbay.Types.{FailureCode, InvocationStatus, VisibleState}
+  alias Patchbay.Patchbay.Validations
+
+  # The statuses a call can still be moved out of: everything before a verdict
+  # or a platform decision closed it.
+  @open_statuses [:started, :executing, :handler_returned, :awaiting_visible_state]
 
   postgres do
     table("invocations")
@@ -133,12 +138,26 @@ defmodule Patchbay.Patchbay.Invocation do
       # which state it believes it acted on, and is turned away if it disagrees.
       argument(:pre_state, VisibleState)
 
+      validate(Validations.InvocationEpochIsCurrent)
+      validate(Validations.CallEvidenceIsCurrent)
+      validate(Validations.BrowserSessionCanApply)
+
       change(Patchbay.Patchbay.Changes.CaptureInvocationPreState)
       change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)
     end
 
     update :mark_executing do
       accept([])
+      require_atomic?(false)
+
+      validate attribute_equals(:effective_status, :started) do
+        message("invocation is no longer started")
+      end
+
+      validate(Validations.InvocationEpochIsCurrent)
+      validate(Validations.CallEvidenceIsCurrent)
+      validate(Validations.BrowserSessionCanApply)
+
       change(set_attribute(:effective_status, :executing))
     end
 
@@ -150,36 +169,73 @@ defmodule Patchbay.Patchbay.Invocation do
         :handler_returned_at
       ])
 
+      require_atomic?(false)
+
+      validate attribute_equals(:effective_status, :executing) do
+        message("invocation is no longer executing")
+      end
+
+      validate(Validations.InvocationEpochIsCurrent)
+
+      # A handler that reports success is about to have its candidate applied to
+      # the page, so the tool and the browser it named must still be the room's
+      # own. A handler that reports a failure changes nothing and is recorded
+      # whatever the room has moved on to.
+      validate Validations.CallEvidenceIsCurrent do
+        where(attribute_equals(:handler_reported_success, true))
+      end
+
+      validate Validations.BrowserSessionCanApply do
+        where(attribute_equals(:handler_reported_success, true))
+      end
+
       change(set_attribute(:effective_status, :handler_returned))
       change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)
-      require_atomic?(false)
     end
 
     update :mark_awaiting_visible_state do
       public?(false)
       accept([])
+
+      validate attribute_equals(:effective_status, :handler_returned) do
+        message("invocation is no longer handler_returned")
+      end
+
       change(set_attribute(:effective_status, :awaiting_visible_state))
     end
 
     update :mark_errored do
       public?(false)
       accept([])
+      validate(one_of(:effective_status, @open_statuses))
       change(set_attribute(:effective_status, :errored))
     end
 
     update :mark_cancelled do
       public?(false)
       accept([])
+      validate(one_of(:effective_status, @open_statuses))
       change(set_attribute(:effective_status, :cancelled))
     end
 
     update :record_verification do
       public?(false)
-      accept([:post_state, :failure_code, :verified_at])
+      accept([])
+      require_atomic?(false)
+
+      # A cancelled or errored call is closed: the platform decided its outcome,
+      # and what a browser saw afterwards cannot reopen it.
+      validate attribute_does_not_equal(:effective_status, :cancelled) do
+        message("invocation is no longer awaiting visible proof")
+      end
+
+      validate attribute_does_not_equal(:effective_status, :errored) do
+        message("invocation is no longer awaiting visible proof")
+      end
+
+      validate(Validations.InvocationEpochIsCurrent)
 
       change(Patchbay.Patchbay.Changes.RecordVerification)
-
-      require_atomic?(false)
     end
   end
 
@@ -203,4 +259,8 @@ defmodule Patchbay.Patchbay.Invocation do
       authorize_if(always())
     end
   end
+
+  @doc "The statuses a call can still be moved out of."
+  @spec open_statuses() :: [atom()]
+  def open_statuses, do: @open_statuses
 end

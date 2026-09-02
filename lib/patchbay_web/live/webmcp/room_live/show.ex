@@ -705,12 +705,11 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     kind, reason -> {:error, {kind, reason}}
   end
 
-  # Declaring a repair a failure is named by no policy, so the page says so
-  # deliberately: it watched the attempt it is reporting on. A room that has
-  # already moved on refuses the move, and the page still says what went wrong.
+  # A room that has already moved on refuses the move, and the page still says
+  # what went wrong.
   defp handle_repair_failure(socket, message) do
     socket =
-      case Domain.mark_repair_failed(socket.assigns.room, authorize?: false) do
+      case Domain.mark_repair_failed(socket.assigns.room) do
         {:ok, _room} ->
           socket
           |> append_event(:platform_error, %{"operation" => "repair", "error" => message})

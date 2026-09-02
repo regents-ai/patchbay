@@ -1,77 +1,46 @@
 defmodule Patchbay.Patchbay.Changes.RecordVerification do
+  @moduledoc """
+  Projects a call's durable verification onto the call itself.
+
+  The verification row is the only verdict there is: the status, the failure
+  code, the observed state and the moment of judgement are all read from it,
+  never re-derived and never taken from the caller.
+  """
+
   use Ash.Resource.Change
 
-  alias Patchbay.Patchbay.{PostconditionVerifier, VerificationService}
+  alias Patchbay.Patchbay, as: Domain
+  alias Patchbay.Patchbay.PostconditionVerifier
+
+  @result_fields [:passed, :checks, :failure_code, :expected_state, :observed_state]
 
   @impl true
   def change(changeset, _opts, _context) do
-    invocation = changeset.data
-    post_state = Ash.Changeset.get_attribute(changeset, :post_state) || %{}
-    result = trusted_or_derived_result(changeset, invocation, post_state)
+    verification = Domain.get_invocation_verification!(changeset.data.id)
 
+    apply_verdict(changeset, verification, Map.take(verification, @result_fields))
+  end
+
+  # A successful verdict carries no failure code, so the row's own value is
+  # right for both outcomes.
+  defp apply_verdict(changeset, verification, result) do
+    cond do
+      PostconditionVerifier.successful_result?(result) ->
+        record(changeset, verification, :verified_success)
+
+      PostconditionVerifier.valid_result?(result) ->
+        record(changeset, verification, :verified_failure)
+
+      true ->
+        Ash.Changeset.add_error(changeset, "persisted verification result is invalid")
+    end
+  end
+
+  defp record(changeset, verification, status) do
     changeset
-    |> reject_failure_code_mismatch(result)
-    |> apply_result(result)
-  end
-
-  defp trusted_or_derived_result(changeset, invocation, post_state) do
-    case changeset.context[:trusted_verification_result] do
-      result when is_map(result) ->
-        if PostconditionVerifier.valid_result?(result) do
-          result
-        else
-          VerificationService.derive_result(invocation, post_state)
-        end
-
-      _ ->
-        VerificationService.derive_result(invocation, post_state)
-    end
-  end
-
-  defp reject_failure_code_mismatch(changeset, %{failure_code: failure_code}) do
-    case Ash.Changeset.fetch_change(changeset, :failure_code) do
-      :error ->
-        changeset
-
-      {:ok, ^failure_code} ->
-        changeset
-
-      {:ok, _supplied_failure_code} ->
-        Ash.Changeset.add_error(
-          changeset,
-          "failure code must match the PostconditionVerifier result"
-        )
-    end
-  end
-
-  defp apply_result(changeset, %{passed: true} = result) do
-    if PostconditionVerifier.successful_result?(result) do
-      changeset
-      |> Ash.Changeset.change_attribute(:post_state, result.observed_state)
-      |> Ash.Changeset.change_attribute(:failure_code, nil)
-      |> Ash.Changeset.change_attribute(:effective_status, :verified_success)
-      |> maybe_set_verified_at()
-    else
-      Ash.Changeset.add_error(
-        changeset,
-        "passed verification requires a complete successful PostconditionVerifier result"
-      )
-    end
-  end
-
-  defp apply_result(changeset, %{passed: false, failure_code: failure_code} = result) do
-    changeset
-    |> Ash.Changeset.change_attribute(:post_state, result.observed_state)
-    |> Ash.Changeset.change_attribute(:failure_code, failure_code)
-    |> Ash.Changeset.change_attribute(:effective_status, :verified_failure)
-    |> maybe_set_verified_at()
-  end
-
-  defp maybe_set_verified_at(changeset) do
-    if is_nil(Ash.Changeset.get_attribute(changeset, :verified_at)) do
-      Ash.Changeset.change_attribute(changeset, :verified_at, DateTime.utc_now())
-    else
-      changeset
-    end
+    |> Ash.Changeset.change_attribute(:post_state, verification.observed_state)
+    |> Ash.Changeset.change_attribute(:failure_code, verification.failure_code)
+    |> Ash.Changeset.change_attribute(:effective_status, status)
+    |> Ash.Changeset.change_attribute(:verified_at, verification.inserted_at)
   end
 end

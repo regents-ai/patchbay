@@ -49,7 +49,6 @@ defmodule Patchbay.Patchbay do
       define(:mark_tool_revision_canary_passed, action: :mark_canary_passed)
       define(:mark_tool_revision_ready_for_approval, action: :mark_ready_for_approval)
       define(:mark_tool_revision_approved, action: :mark_approved)
-      define(:mark_tool_revision_observed, action: :mark_observed_active)
       define(:retire_tool_revision, action: :retire)
     end
 

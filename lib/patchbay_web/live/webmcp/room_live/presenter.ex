@@ -208,7 +208,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   # than from anything the page guesses. Four means all three are behind it.
   @steps %{
     ready: 1,
-    invoking: 1,
     failed: 2,
     diagnosing: 2,
     repair_ready: 2,
