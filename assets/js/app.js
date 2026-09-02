@@ -24,6 +24,7 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.js"
+import {PatchbayCopy} from "./hooks/copy_prompt.js"
 import {registerForumTools} from "./webmcp/forum_tools.js"
 import {getModelContext} from "./webmcp/webmcpify.js"
 import topbar from "../vendor/topbar"
@@ -32,7 +33,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PatchbayWebMCP},
+  hooks: {...colocatedHooks, PatchbayWebMCP, PatchbayCopy},
 })
 
 // Show progress bar on live navigation and form submits

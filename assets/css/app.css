@@ -104,22 +104,82 @@
 
 /* This file is for your main application CSS */
 
+/* Patchbay's palette. One warm paper canvas, one dark ink for the header band,
+   one deep teal for anything interactive, and three meanings that never move:
+   amber is waiting or a failed verification, green is verified, and the
+   gold-and-green gradient belongs to the Patchbay Agent alone. Every Patchbay
+   page reads these, so the room, the board, and the landing page stay one
+   system. */
+:root {
+  --pb-ink: #16211f;
+  --pb-ink-soft: #22322e;
+  --pb-canvas: #f6f3ec;
+  --pb-canvas-deep: #efeade;
+  --pb-surface: #fffdf8;
+  --pb-surface-sunk: #f3efe5;
+  --pb-line: #e2dbcd;
+  --pb-line-strong: #cdc3b0;
+
+  --pb-accent: #0e6b63;
+  --pb-accent-deep: #0a4f49;
+  --pb-accent-wash: #e2efec;
+  --pb-amber: #9c6206;
+  --pb-amber-wash: #fbedcf;
+  --pb-green: #0f6b4a;
+  --pb-green-wash: #dcefe2;
+  --pb-red: #a03a29;
+  --pb-red-wash: #f9e2db;
+  --pb-gold: #d3a022;
+  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
+
+  --pb-text: #16211f;
+  --pb-text-muted: #626f69;
+  --pb-text-faint: #737e79;
+  --pb-text-on-ink: #f3f0e6;
+  --pb-text-on-ink-muted: #a7b6af;
+
+  --pb-space-1: .35rem;
+  --pb-space-2: .6rem;
+  --pb-space-3: .95rem;
+  --pb-space-4: 1.4rem;
+  --pb-space-5: 2.1rem;
+  --pb-space-6: clamp(2.4rem, 4vw, 3.4rem);
+
+  --pb-fs-micro: .66rem;
+  --pb-fs-xs: .73rem;
+  --pb-fs-sm: .8rem;
+  --pb-fs-md: .92rem;
+  --pb-fs-lg: 1.08rem;
+  --pb-fs-xl: clamp(1.15rem, 2vw, 1.5rem);
+
+  --pb-radius-sm: .5rem;
+  --pb-radius: .8rem;
+  --pb-radius-lg: 1.1rem;
+
+  --pb-shadow-sm: 0 1px 2px rgba(22, 33, 31, .06);
+  --pb-shadow: 0 .55rem 1.5rem rgba(22, 33, 31, .07);
+  --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 33, 31, .12);
+
+  --pb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
-  --patchbay-ink: #172126;
-  --patchbay-muted: #69777a;
-  --patchbay-line: #d9e1df;
-  --patchbay-paper: #f6f8f5;
-  --patchbay-card: #ffffff;
-  --patchbay-coral: #db674e;
-  --patchbay-cyan: #178c8b;
-  --patchbay-yellow: #f1c75b;
+  --patchbay-ink: var(--pb-text);
+  --patchbay-muted: var(--pb-text-muted);
+  --patchbay-line: var(--pb-line);
+  --patchbay-paper: var(--pb-canvas);
+  --patchbay-card: var(--pb-surface);
+  --patchbay-coral: var(--pb-accent);
+  --patchbay-cyan: var(--pb-accent-deep);
+  --patchbay-yellow: var(--pb-gold);
   min-height: 100vh;
-  color: var(--patchbay-ink);
+  color: var(--pb-text);
   background:
-    radial-gradient(circle at 92% 6%, rgba(241, 199, 91, .23), transparent 22rem),
-    linear-gradient(145deg, #f7faf6 0%, #eef4f1 100%);
+    radial-gradient(circle at 88% -4%, rgba(211, 160, 34, .16), transparent 26rem),
+    radial-gradient(circle at 4% 12%, rgba(14, 107, 99, .07), transparent 30rem),
+    linear-gradient(160deg, var(--pb-canvas) 0%, var(--pb-canvas-deep) 100%);
   padding: 1.2rem clamp(1rem, 3vw, 3.5rem) 3rem;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
@@ -133,27 +193,8 @@
   width: min(100%, 92rem);
   margin-inline: auto;
 }
-.patchbay-guide {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr) minmax(0, 1fr);
-  gap: 1.1rem 1.6rem;
-  margin-top: 1.4rem;
-  border: 1px solid var(--patchbay-line);
-  border-radius: 1rem;
-  padding: 1.05rem 1.15rem;
-  background: rgba(255, 255, 255, .68);
-}
-.patchbay-guide h2 { margin: .28rem 0 0; font-size: 1.02rem; line-height: 1.3; letter-spacing: -.025em; }
-.patchbay-guide .patchbay-muted { margin: .45rem 0 0; font-size: .74rem; }
-.patchbay-guide-prompts { display: grid; align-content: start; gap: .6rem; }
-.patchbay-guide-prompts label { display: block; margin-bottom: .25rem; }
-.patchbay-prompt { display: block; width: 100%; border: 1px solid #d8e1de; border-radius: .55rem; padding: .5rem .6rem; color: #263438; background: #f7faf8; font: .7rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: none; }
-.patchbay-prompt:focus { outline: 2px solid rgba(23,140,139,.35); outline-offset: 1px; border-color: var(--patchbay-cyan); }
-.patchbay-guide-watch ul { margin: .4rem 0 0; padding-left: 1rem; color: var(--patchbay-muted); font-size: .73rem; line-height: 1.5; }
-.patchbay-guide-watch li + li { margin-top: .3rem; }
-.patchbay-guide-watch strong { color: var(--patchbay-ink); }
 
-.patchbay-notice { width: min(100%, 34rem); margin: 18vh auto 0; border: 1px solid var(--patchbay-line); border-radius: 1rem; padding: 1.6rem; background: var(--patchbay-card); }
+.patchbay-notice { width: min(100%, 34rem); margin: 18vh auto 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-lg); padding: 1.6rem; background: var(--pb-surface); }
 .patchbay-notice h1 { margin: .3rem 0 0; font-size: 1.35rem; line-height: 1.25; letter-spacing: -.03em; }
 .patchbay-notice .patchbay-muted { margin: .6rem 0 0; }
 
@@ -162,7 +203,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid var(--patchbay-line);
+  border-bottom: 1px solid var(--pb-line);
   padding-block: .65rem 1.15rem;
 }
 
@@ -178,215 +219,454 @@
 }
 
 .patchbay-brand { gap: .8rem; }
-.patchbay-brand h1 { margin: 0; font-size: 1.03rem; letter-spacing: -.02em; }
+.patchbay-brand h1 { margin: 0; font-size: var(--pb-fs-lg); letter-spacing: -.025em; }
 .patchbay-mark {
   display: grid;
   place-items: center;
-  width: 2.3rem;
-  height: 2.3rem;
-  border-radius: .72rem;
-  color: #fff9e7;
-  background: var(--patchbay-coral);
-  box-shadow: .28rem .28rem 0 rgba(23, 140, 139, .24);
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: .7rem;
+  color: #143229;
+  background: var(--pb-agent-gradient);
+  box-shadow: 0 .3rem .9rem rgba(211, 160, 34, .35);
   font-size: 1.3rem;
 }
 
+/* Kickers are the board's small all-caps labels. The room keeps them only
+   where the exact words are part of the record. */
 .patchbay-kicker {
   margin: 0 0 .32rem;
-  color: var(--patchbay-cyan);
-  font-size: .65rem;
+  color: var(--pb-accent-deep);
+  font-size: var(--pb-fs-micro);
   font-weight: 800;
   letter-spacing: .14em;
   line-height: 1.2;
   text-transform: uppercase;
 }
 
-.patchbay-topbar-meta { gap: .65rem; }
+.patchbay-eyebrow {
+  margin: 0 0 .22rem;
+  color: var(--pb-text-muted);
+  font-size: var(--pb-fs-xs);
+  font-weight: 700;
+  letter-spacing: .01em;
+  line-height: 1.2;
+}
+.patchbay-eyebrow-strong { color: var(--pb-accent-deep); }
+.patchbay-eyebrow-agent {
+  display: inline-block;
+  border-radius: 999px;
+  padding: .16rem .55rem;
+  color: #143229;
+  background: var(--pb-agent-gradient);
+  font-weight: 800;
+}
+
+.patchbay-topbar-meta { gap: .55rem; flex-wrap: wrap; }
 .patchbay-generation,
 .patchbay-mono,
 .patchbay-digest,
 .patchbay-facts code,
 .patchbay-result-box pre,
 .patchbay-footer code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--pb-mono);
 }
-.patchbay-generation { color: var(--patchbay-muted); font-size: .77rem; }
+.patchbay-generation { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-pill,
 .patchbay-state-label {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--patchbay-line);
+  border: 1px solid var(--pb-line);
   border-radius: 999px;
-  padding: .26rem .58rem;
-  font-size: .67rem;
+  padding: .26rem .6rem;
+  font-size: var(--pb-fs-micro);
   font-weight: 800;
   letter-spacing: .02em;
   white-space: nowrap;
 }
-.patchbay-pill.is-good, .patchbay-state-label.is-ready { color: #0b6b5e; background: #e1f3e9; border-color: #b6ded0; }
-.patchbay-pill.is-bad { color: #9c382b; background: #fbe6df; border-color: #efb7aa; }
-.patchbay-pill.is-warn { color: #7a5a0b; background: #fff3ce; border-color: #ecd38a; }
-.patchbay-pill.is-neutral { color: #506064; background: #edf1ef; }
-.patchbay-state-label.is-empty { color: #9c382b; background: #fbe6df; border-color: #efb7aa; }
+.patchbay-pill.is-good, .patchbay-state-label.is-ready { color: var(--pb-green); background: var(--pb-green-wash); border-color: #b7dcc4; }
+.patchbay-pill.is-bad { color: var(--pb-red); background: var(--pb-red-wash); border-color: #eebcae; }
+.patchbay-pill.is-warn { color: var(--pb-amber); background: var(--pb-amber-wash); border-color: #ecd08a; }
+.patchbay-pill.is-neutral { color: var(--pb-text-muted); background: var(--pb-surface-sunk); }
+.patchbay-state-label.is-empty { color: var(--pb-amber); background: var(--pb-amber-wash); border-color: #ecd08a; }
 
-.patchbay-hero {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 2rem;
-  padding-block: clamp(2rem, 5vw, 4rem) 1.6rem;
-}
-.patchbay-hero h2 { max-width: 48rem; margin: 0; font-size: clamp(1.65rem, 3.4vw, 3.15rem); line-height: 1.03; letter-spacing: -.055em; }
-.patchbay-muted { color: var(--patchbay-muted); font-size: .84rem; line-height: 1.5; }
-.patchbay-registry-summary { min-width: 13rem; gap: .65rem; padding: .72rem .9rem; border: 1px solid var(--patchbay-line); border-radius: .8rem; background: rgba(255,255,255,.68); }
+.patchbay-muted { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); line-height: 1.55; }
+.patchbay-registry-summary { min-width: 13rem; gap: .65rem; padding: .72rem .9rem; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); background: var(--pb-surface); box-shadow: var(--pb-shadow-sm); }
 .patchbay-registry-summary strong, .patchbay-registry-summary span { display: block; }
-.patchbay-registry-summary strong { font-size: .78rem; }
-.patchbay-registry-summary span { color: var(--patchbay-muted); font-size: .69rem; margin-top: .16rem; }
-.patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: #adb8b7; }
-.patchbay-status-dot.is-live { background: var(--patchbay-cyan); box-shadow: 0 0 0 .23rem rgba(23,140,139,.14); }
+.patchbay-registry-summary strong { font-size: var(--pb-fs-sm); }
+.patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); margin-top: .16rem; }
+.patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: var(--pb-line-strong); }
+.patchbay-status-dot.is-live { background: var(--pb-accent); box-shadow: 0 0 0 .23rem rgba(14, 107, 99, .15); }
 
 .patchbay-editors,
-.patchbay-workbench { display: grid; gap: 1rem; }
+.patchbay-workbench { display: grid; gap: var(--pb-space-3); }
 .patchbay-editors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.patchbay-workbench { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); margin-top: 1rem; }
-.patchbay-card { border: 1px solid var(--patchbay-line); border-radius: 1rem; background: var(--patchbay-card); box-shadow: 0 .75rem 2rem rgba(27, 53, 53, .06); }
-.patchbay-editor-card { min-width: 0; padding: 1rem; }
+.patchbay-workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.patchbay-card { border: 1px solid var(--pb-line); border-radius: var(--pb-radius-lg); background: var(--pb-surface); box-shadow: var(--pb-shadow); }
+.patchbay-editor-card { min-width: 0; padding: var(--pb-space-3); }
 .patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: .8rem; margin-bottom: .8rem; }
-.patchbay-card-heading h3 { margin: 0; font-size: .98rem; letter-spacing: -.025em; }
-.patchbay-mono { color: var(--patchbay-muted); font-size: .67rem; white-space: nowrap; }
-.patchbay-editor { display: block; width: 100%; min-height: 20rem; resize: vertical; border: 1px solid #d8e1de; border-radius: .65rem; padding: .85rem; color: #263438; background: #f7faf8; font: .74rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
-.patchbay-editor:focus { outline: 2px solid rgba(23,140,139,.35); outline-offset: 1px; border-color: var(--patchbay-cyan); }
-.patchbay-editor[readonly] { background: #f4f1eb; }
+.patchbay-card-heading h3 { margin: 0; font-size: var(--pb-fs-md); letter-spacing: -.02em; }
+.patchbay-mono { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); white-space: nowrap; }
+.patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .85rem; color: #24322f; background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--pb-mono); tab-size: 2; }
+.patchbay-editor:focus { outline: 2px solid rgba(14, 107, 99, .38); outline-offset: 1px; border-color: var(--pb-accent); }
 .patchbay-editor-footer { justify-content: space-between; gap: .8rem; margin-top: .6rem; }
-.patchbay-digest { min-width: 0; overflow: hidden; color: var(--patchbay-muted); font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+.patchbay-digest { min-width: 0; overflow: hidden; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); text-overflow: ellipsis; white-space: nowrap; }
 
-.patchbay-disclosure { margin: .7rem 0 0; color: var(--patchbay-muted); font-size: .72rem; line-height: 1.45; }
-.patchbay-upload { margin-top: .85rem; border-top: 1px dashed #dde5e2; padding-top: .75rem; }
+.patchbay-disclosure { margin: .7rem 0 0; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.5; }
+.patchbay-upload { margin-top: .85rem; border-top: 1px dashed var(--pb-line); padding-top: .75rem; }
 .patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; }
-.patchbay-upload-row label { flex: 1 1 100%; color: var(--patchbay-muted); font-size: .7rem; }
-.patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: #40565a; font-size: .7rem; }
-.patchbay-upload-problem { margin: .5rem 0 0; color: #8d382c; font-size: .71rem; line-height: 1.45; }
-.patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--patchbay-muted); font-size: .68rem; line-height: 1.45; }
+.patchbay-upload-row label { flex: 1 1 100%; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.patchbay-upload-problem { margin: .5rem 0 0; color: var(--pb-red); font-size: var(--pb-fs-xs); line-height: 1.45; }
+.patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.45; }
 
-.patchbay-button { cursor: pointer; border: 0; border-radius: .62rem; padding: .63rem .86rem; color: #fff; background: var(--patchbay-coral); font-size: .76rem; font-weight: 800; transition: transform .15s ease, filter .15s ease; }
-.patchbay-button:hover { filter: brightness(.95); transform: translateY(-1px); }
-.patchbay-button:focus-visible { outline: 3px solid rgba(23,140,139,.35); outline-offset: 2px; }
-.patchbay-button:disabled { cursor: wait; filter: grayscale(.4); opacity: .65; transform: none; }
-.patchbay-button-quiet { color: #496064; background: #edf2ef; }
-.patchbay-button-danger { color: #8f392d; background: #fbe6df; }
+.patchbay-button { cursor: pointer; border: 1px solid transparent; border-radius: .6rem; padding: .6rem .85rem; color: #f4fbf8; background: var(--pb-accent); font-size: var(--pb-fs-xs); font-weight: 800; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
+.patchbay-button:hover { background: var(--pb-accent-deep); }
+.patchbay-button:focus-visible { outline: 3px solid rgba(14, 107, 99, .35); outline-offset: 2px; }
+.patchbay-button:disabled { cursor: wait; filter: grayscale(.35); opacity: .6; }
+.patchbay-button-quiet { color: var(--pb-accent-deep); background: var(--pb-surface-sunk); border-color: var(--pb-line); }
+.patchbay-button-quiet:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent); }
+.patchbay-button-danger { color: var(--pb-red); background: var(--pb-red-wash); border-color: #eecec4; }
+.patchbay-button-danger:hover { background: #f4d5cb; }
 
-.patchbay-workbench { margin-top: 1rem; }
-.patchbay-evidence-card, .patchbay-repair-card, .patchbay-retry-card, .patchbay-timeline-card { padding: 1rem; }
-.patchbay-facts { display: grid; gap: .55rem; }
-.patchbay-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; border-bottom: 1px dashed #e0e7e3; padding-bottom: .43rem; }
-.patchbay-facts span { color: var(--patchbay-muted); font-size: .69rem; }
-.patchbay-facts strong { font-size: .76rem; }
-.patchbay-facts code { color: #33484d; font-size: .67rem; text-align: right; overflow-wrap: anywhere; }
-.patchbay-positive { color: #0b7867; }
-.patchbay-negative { color: #ad4434; }
-.patchbay-result-box { margin-top: 1rem; border-radius: .65rem; padding: .72rem; background: #17282b; color: #d8f0e8; }
+.patchbay-evidence-card, .patchbay-repair-card, .patchbay-retry-card, .patchbay-timeline-card { padding: var(--pb-space-3); }
+.patchbay-facts { display: grid; gap: .45rem; }
+.patchbay-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; border-bottom: 1px dashed var(--pb-line); padding-bottom: .4rem; }
+.patchbay-facts span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
+.patchbay-facts strong { font-size: var(--pb-fs-xs); }
+.patchbay-facts code { color: var(--pb-text); font-size: var(--pb-fs-micro); text-align: right; overflow-wrap: anywhere; }
+.patchbay-positive { color: var(--pb-green); }
+.patchbay-negative { color: var(--pb-red); }
+.patchbay-result-box { margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .72rem; background: var(--pb-ink); color: #dceee7; }
 .patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
 .patchbay-evidence-grid > .patchbay-result-box { min-width: 0; }
-.patchbay-result-box .patchbay-kicker { color: #f1c75b; }
-.patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: .67rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.patchbay-result-box .patchbay-kicker { color: var(--pb-gold); }
+.patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: var(--pb-fs-micro); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .65rem; }
-.patchbay-state-grid > div { min-width: 0; border: 1px solid #e0e7e3; border-radius: .6rem; padding: .6rem; background: #fbfcfa; }
+.patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .6rem; background: var(--pb-surface-sunk); }
 .patchbay-state-grid .patchbay-kicker { margin-bottom: .35rem; font-size: .58rem; }
-.patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: #496064; font: .62rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: var(--pb-text-muted); font: .62rem/1.45 var(--pb-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-shortened-note { margin: .4rem 0 0; font-size: .62rem; line-height: 1.45; }
 .patchbay-result-box .patchbay-shortened-note { color: #9fc4b8; }
-.patchbay-state-grid .patchbay-shortened-note { color: var(--patchbay-muted); }
-.patchbay-empty-state { margin: .6rem 0; color: var(--patchbay-muted); font-size: .78rem; line-height: 1.5; }
-.patchbay-alert { display: flex; gap: .6rem; align-items: baseline; margin-top: .9rem; border-radius: .65rem; padding: .65rem .75rem; font-size: .72rem; line-height: 1.45; }
+.patchbay-state-grid .patchbay-shortened-note { color: var(--pb-text-muted); }
+.patchbay-empty-state { margin: .6rem 0; color: var(--pb-text-faint); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.patchbay-alert { display: flex; gap: .6rem; align-items: baseline; margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .65rem .75rem; font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-alert strong { white-space: nowrap; }
-.patchbay-alert-error { color: #8d382c; background: #fce7e1; border: 1px solid #efbeb2; }
-.patchbay-alert-warn { color: #785a10; background: #fff4d3; border: 1px solid #edd58f; }
+.patchbay-alert-error { color: var(--pb-red); background: var(--pb-red-wash); border: 1px solid #eebcae; }
+.patchbay-alert-warn { color: var(--pb-amber); background: var(--pb-amber-wash); border: 1px solid #ecd08a; }
 #patchbay-platform-error { width: min(100%, 92rem); margin-inline: auto; }
 
-.patchbay-repair-cta p { color: var(--patchbay-muted); font-size: .78rem; line-height: 1.5; }
-.patchbay-repair-details { display: grid; gap: 1rem; }
-.patchbay-root-cause p { margin: .38rem 0 0; font-size: .82rem; line-height: 1.45; }
-.patchbay-provenance { display: flex; flex-wrap: wrap; gap: .35rem .75rem; color: var(--patchbay-muted); font-size: .67rem; }
-.patchbay-provenance b { color: #40565a; font-weight: 700; }
-.patchbay-diff { border: 1px solid #e0e7e3; border-radius: .7rem; overflow: hidden; }
+.patchbay-repair-cta p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.patchbay-repair-details { display: grid; gap: .9rem; }
+.patchbay-root-cause p { margin: .3rem 0 0; font-size: var(--pb-fs-sm); line-height: 1.5; }
+.patchbay-provenance { display: flex; flex-wrap: wrap; gap: .35rem .75rem; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); }
+.patchbay-provenance b { color: var(--pb-text-muted); font-weight: 700; }
+.patchbay-diff { border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); overflow: hidden; }
 .patchbay-diff > .patchbay-kicker { padding: .7rem .75rem .35rem; }
-.patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: .45rem .8rem; padding: .45rem .75rem; border-top: 1px solid #e9eeeb; font-size: .69rem; }
-.patchbay-diff-row code { grid-row: span 2; color: #455b60; font-weight: 700; overflow-wrap: anywhere; }
+.patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: .45rem .8rem; padding: .45rem .75rem; border-top: 1px solid var(--pb-line); font-size: var(--pb-fs-micro); }
+.patchbay-diff-row code { grid-row: span 2; color: var(--pb-text-muted); font-weight: 700; overflow-wrap: anywhere; }
 .patchbay-diff-old, .patchbay-diff-new { overflow-wrap: anywhere; white-space: pre-wrap; }
-.patchbay-diff-old { color: #ad4434; }
-.patchbay-diff-new { color: #0b7867; }
+.patchbay-diff-old { color: var(--pb-red); }
+.patchbay-diff-new { color: var(--pb-green); }
 .patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; align-items: center; }
 .patchbay-canary .patchbay-kicker { margin: 0; }
 .patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .6rem; }
-.patchbay-checks span { color: #718080; font-size: .67rem; }
-.patchbay-checks .is-pass { color: #0b7867; }
-.patchbay-checks .is-fail { color: #ad4434; }
-.patchbay-risk-notes ul { margin: .35rem 0 0; padding-left: 1rem; color: #765f27; font-size: .7rem; line-height: 1.5; }
-.patchbay-approval-actions { border-top: 1px solid var(--patchbay-line); padding-top: .9rem; }
-.patchbay-approval-actions p { color: var(--patchbay-muted); font-size: .71rem; }
-.patchbay-approval-actions > div { flex-wrap: wrap; gap: .5rem; }
+.patchbay-checks span { color: var(--pb-text-faint); font-size: var(--pb-fs-micro); }
+.patchbay-checks .is-pass { color: var(--pb-green); }
+.patchbay-checks .is-fail { color: var(--pb-red); }
+.patchbay-risk-notes ul { margin: .3rem 0 0; padding-left: 1rem; color: var(--pb-amber); font-size: var(--pb-fs-micro); line-height: 1.55; }
+.patchbay-approval-actions { border-top: 1px solid var(--pb-line); padding-top: .8rem; }
+.patchbay-approval-actions p { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
+.patchbay-approval-actions > div { flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
 
-.patchbay-retry-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; border-color: #b6ded0; background: #f3fbf7; }
-.patchbay-retry-card h3 { margin: 0; font-size: .96rem; }
-.patchbay-retry-card p { margin-bottom: 0; }
-.patchbay-timeline-card { margin-top: 1rem; }
-.patchbay-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
-.patchbay-timeline li { display: grid; grid-template-columns: 1.8rem minmax(0,1fr) auto; gap: .65rem; align-items: start; padding: .65rem 0; border-top: 1px solid #e8eeeb; }
-.patchbay-timeline-sequence { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: .45rem; color: #fff; background: #35666a; font: .65rem ui-monospace, monospace; }
-.patchbay-timeline strong, .patchbay-timeline span { display: block; }
-.patchbay-timeline strong { font-size: .73rem; }
-.patchbay-timeline li div span { margin-top: .15rem; color: var(--patchbay-muted); font-size: .67rem; }
-.patchbay-timeline time { color: var(--patchbay-muted); font-size: .65rem; white-space: nowrap; }
-.patchbay-footer { justify-content: space-between; gap: 1rem; margin-top: 1.2rem; color: var(--patchbay-muted); font-size: .7rem; }
+.patchbay-footer { justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-4); color: var(--pb-text-faint); font-size: var(--pb-fs-xs); }
 .patchbay-footer p { margin: 0; }
-.patchbay-footer strong { color: var(--patchbay-ink); }
-.patchbay-footer code { font-size: .65rem; }
+.patchbay-footer strong { color: var(--pb-text); }
+.patchbay-footer code { font-size: var(--pb-fs-micro); }
 #patchbay-room-id code { overflow-wrap: anywhere; }
 .patchbay-footer > div:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
+/* ---------------------------------------------------------------------------
+   The room. Everything below is scoped to the room page, which tells one story
+   top to bottom: the header band, the three prompts, the goal, the Candidate
+   editor that carries the proof, the scoreboard that compares the tool's claim
+   with what the page showed, the repair, and the ledger.
+   ------------------------------------------------------------------------- */
+
+#patchbay-room .patchbay-topbar {
+  border: 0;
+  border-radius: var(--pb-radius-lg);
+  padding: .85rem 1.15rem;
+  color: var(--pb-text-on-ink);
+  background: linear-gradient(120deg, var(--pb-ink) 0%, var(--pb-ink-soft) 100%);
+  box-shadow: var(--pb-shadow-lg);
+}
+#patchbay-room .patchbay-brand h1 { color: var(--pb-text-on-ink); font-size: var(--pb-fs-lg); }
+.patchbay-brandline { margin: 0 0 .16rem; color: var(--pb-text-on-ink-muted); font-size: var(--pb-fs-micro); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+#patchbay-room .patchbay-topbar .patchbay-generation { color: var(--pb-text-on-ink-muted); }
+#patchbay-room .patchbay-generation-badge {
+  border-radius: 999px;
+  padding: .26rem .6rem;
+  color: #0c1a18;
+  background: var(--pb-text-on-ink);
+  font-weight: 800;
+}
+#patchbay-room .patchbay-topbar .patchbay-pill { border-color: transparent; }
+#patchbay-room .patchbay-topbar .patchbay-pill.is-neutral { color: #0c1a18; background: #cfd8d2; }
+
+/* The guide is a strip, not a column: three numbered prompts you can copy, and
+   one muted line about what to watch. */
+#patchbay-room .patchbay-guide {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr);
+  gap: var(--pb-space-2) var(--pb-space-4);
+  align-items: start;
+  margin-top: var(--pb-space-3);
+  border: 1px solid var(--pb-line);
+  border-radius: var(--pb-radius-lg);
+  padding: var(--pb-space-3);
+  background: rgba(255, 253, 248, .72);
+}
+.patchbay-guide-head h2 { margin: 0; font-size: var(--pb-fs-md); line-height: 1.35; letter-spacing: -.02em; }
+.patchbay-guide-head .patchbay-muted { margin: .4rem 0 0; font-size: var(--pb-fs-xs); }
+.patchbay-guide-links { margin: .5rem 0 0; font-size: var(--pb-fs-xs); }
+.patchbay-guide-links a { color: var(--pb-accent-deep); font-weight: 700; text-decoration: none; border-bottom: 1px solid rgba(14, 107, 99, .35); }
+.patchbay-guide-links a:hover { border-bottom-color: var(--pb-accent); }
+
+.patchbay-guide-prompts { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.patchbay-prompt-chip {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+  gap: .55rem;
+  align-items: start;
+  border: 1px solid var(--pb-line);
+  border-radius: var(--pb-radius);
+  padding: .5rem .55rem;
+  background: var(--pb-surface);
+}
+.patchbay-step-number {
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  color: var(--pb-surface);
+  background: var(--pb-accent);
+  font-size: var(--pb-fs-micro);
+  font-weight: 800;
+}
+.patchbay-prompt-body { min-width: 0; }
+.patchbay-prompt-body label { display: block; margin-bottom: .2rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; }
+.patchbay-prompt { display: block; width: 100%; border: 0; border-radius: .45rem; padding: .35rem .4rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-micro)/1.5 var(--pb-mono); resize: none; }
+.patchbay-prompt:focus { outline: 2px solid rgba(14, 107, 99, .38); outline-offset: 1px; }
+.patchbay-copy {
+  align-self: center;
+  cursor: pointer;
+  border: 1px solid var(--pb-line);
+  border-radius: .45rem;
+  padding: .3rem .55rem;
+  color: var(--pb-accent-deep);
+  background: var(--pb-surface);
+  font-size: var(--pb-fs-micro);
+  font-weight: 800;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.patchbay-copy:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent); }
+.patchbay-copy:focus-visible { outline: 3px solid rgba(14, 107, 99, .35); outline-offset: 2px; }
+.patchbay-copy[data-state="done"] { color: var(--pb-green); background: var(--pb-green-wash); border-color: #b7dcc4; }
+
+.patchbay-guide-watch { grid-column: 1 / -1; margin: .15rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); line-height: 1.6; }
+.patchbay-guide-watch b { color: var(--pb-text); }
+.patchbay-guide-watch strong { color: var(--pb-accent-deep); font-weight: 700; }
+
+/* The goal is a section header now, not a billboard. */
+#patchbay-room .patchbay-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--pb-space-4);
+  padding-block: var(--pb-space-4) var(--pb-space-3);
+}
+.patchbay-goal { max-width: 46rem; }
+#patchbay-room .patchbay-hero h2 { margin: 0; font-size: var(--pb-fs-xl); line-height: 1.2; letter-spacing: -.03em; }
+#patchbay-room .patchbay-hero .patchbay-muted { margin: .4rem 0 0; }
+
+/* The Candidate editor is the proof, so it is the largest, brightest panel on
+   the page and the Source Skill sits beside it as reference. */
+#patchbay-room .patchbay-editors { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
+.patchbay-candidate-card { padding: var(--pb-space-4); box-shadow: var(--pb-shadow-lg); }
+.patchbay-candidate-card h3 { font-size: var(--pb-fs-lg); }
+.patchbay-candidate-card .patchbay-editor { min-height: 22rem; }
+.patchbay-source-card { background: var(--pb-canvas-deep); box-shadow: none; }
+.patchbay-source-card .patchbay-editor { min-height: 13rem; background: var(--pb-surface); }
+.patchbay-source-card h3 { color: var(--pb-text-muted); }
+
+.patchbay-verdict { display: flex; align-items: center; gap: .4rem; }
+.patchbay-verdict-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: .3rem .7rem;
+  color: #f2fbf5;
+  background: var(--pb-green);
+  font-size: var(--pb-fs-xs);
+  font-weight: 800;
+  letter-spacing: .01em;
+  box-shadow: 0 0 0 3px rgba(211, 160, 34, .28);
+}
+
+.patchbay-well { position: relative; }
+.patchbay-well-note {
+  position: absolute;
+  inset-inline: 1rem;
+  top: 42%;
+  margin: 0;
+  color: var(--pb-text-faint);
+  font-size: var(--pb-fs-sm);
+  text-align: center;
+  pointer-events: none;
+}
+.patchbay-candidate-card.is-waiting .patchbay-editor {
+  border: 1.5px dashed var(--pb-line-strong);
+  background: var(--pb-surface-sunk);
+}
+.patchbay-candidate-card.is-verified {
+  border-color: #a9d8bd;
+  background:
+    linear-gradient(180deg, rgba(211, 160, 34, .08) 0%, rgba(255, 253, 248, 0) 8rem),
+    var(--pb-surface);
+  box-shadow: 0 0 0 1px rgba(15, 107, 74, .35), 0 1.1rem 2.4rem rgba(15, 107, 74, .16);
+}
+.patchbay-candidate-card.is-verified .patchbay-editor { border-color: #a9d8bd; background: #f6fbf7; }
+
+/* The scoreboard is the thesis: what the tool claimed, against what the page
+   could actually see. */
+.patchbay-scoreboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-bottom: var(--pb-space-3); }
+.patchbay-score { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); padding: .7rem .8rem; background: var(--pb-surface-sunk); }
+.patchbay-score-label { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.patchbay-badge {
+  display: inline-block;
+  margin: .4rem 0 .35rem;
+  border-radius: .55rem;
+  padding: .25rem .55rem;
+  font-size: var(--pb-fs-lg);
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+.patchbay-badge.is-neutral { color: var(--pb-text); background: #e4e0d5; }
+.patchbay-badge.is-good { color: #f2fbf5; background: var(--pb-green); }
+.patchbay-badge.is-bad { color: #fdf2ee; background: var(--pb-red); }
+.patchbay-badge.is-warn { color: #2c1d02; background: var(--pb-amber-wash); }
+.patchbay-score-note { display: block; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.45; }
+
+/* The repair belongs to the Patchbay Agent, so the card carries its gold and
+   green rather than the page's teal. */
+.patchbay-repair-card { border-color: #e3d5ab; background: linear-gradient(180deg, rgba(241, 199, 91, .1) 0%, rgba(255, 253, 248, 0) 7rem), var(--pb-surface); }
+
+.patchbay-retry-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-3); border-color: #a9d8bd; background: #f2faf5; }
+.patchbay-retry-card h3 { margin: .1rem 0 0; font-size: var(--pb-fs-md); }
+.patchbay-retry-card p { margin-bottom: 0; }
+
+/* A real ledger: one rail, one dot per event, coloured by what kind of moment
+   it was. */
+.patchbay-timeline-card { margin-top: var(--pb-space-3); }
+.patchbay-timeline { margin: 0; padding: 0; list-style: none; }
+.patchbay-timeline-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: .95rem minmax(0, 1fr) auto;
+  gap: 0 .75rem;
+  padding: .5rem 0;
+}
+.patchbay-timeline-entry::before {
+  content: "";
+  position: absolute;
+  left: .44rem;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--pb-line);
+}
+.patchbay-timeline-entry:first-child::before { top: .95rem; }
+.patchbay-timeline-entry:last-child::before { bottom: calc(100% - .95rem); }
+.patchbay-timeline-dot {
+  position: relative;
+  z-index: 1;
+  margin-top: .55rem;
+  width: .58rem;
+  height: .58rem;
+  border-radius: 50%;
+  background: var(--pb-line-strong);
+  box-shadow: 0 0 0 3px var(--pb-surface);
+}
+.patchbay-timeline-entry.is-registry .patchbay-timeline-dot { background: #8e9a94; }
+.patchbay-timeline-entry.is-invocation .patchbay-timeline-dot { background: var(--pb-accent); }
+.patchbay-timeline-entry.is-verification .patchbay-timeline-dot { background: var(--pb-amber); }
+.patchbay-timeline-entry.is-verification.is-passed .patchbay-timeline-dot { background: var(--pb-green); }
+.patchbay-timeline-entry.is-repair .patchbay-timeline-dot { background: var(--pb-gold); }
+.patchbay-timeline-entry.is-publication .patchbay-timeline-dot { background: var(--pb-ink); }
+.patchbay-timeline-entry.is-goal .patchbay-timeline-dot { background: var(--pb-green); box-shadow: 0 0 0 3px var(--pb-surface), 0 0 0 5px rgba(15, 107, 74, .2); }
+.patchbay-timeline-entry.is-error .patchbay-timeline-dot { background: var(--pb-red); }
+.patchbay-timeline-body { min-width: 0; }
+.patchbay-timeline-body strong { display: block; font-size: var(--pb-fs-xs); }
+.patchbay-timeline-body span { display: block; margin-top: .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); overflow-wrap: anywhere; }
+.patchbay-timeline-when { text-align: right; white-space: nowrap; }
+.patchbay-timeline-when time { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
+.patchbay-timeline-sequence { color: var(--pb-text-faint); font: .6rem var(--pb-mono); }
+
+#patchbay-room .patchbay-room-reports { margin-top: var(--pb-space-3); }
+
+@media (max-width: 900px) {
+  #patchbay-room .patchbay-guide { grid-template-columns: 1fr; }
+  #patchbay-room .patchbay-editors,
+  .patchbay-workbench { grid-template-columns: 1fr; }
+  .patchbay-candidate-card { padding: var(--pb-space-3); }
+}
+
 @media (max-width: 760px) {
-  .patchbay-topbar, .patchbay-hero, .patchbay-footer { align-items: flex-start; flex-direction: column; }
-  .patchbay-guide { grid-template-columns: 1fr; }
-  .patchbay-topbar-meta { width: 100%; justify-content: space-between; }
-  .patchbay-hero { gap: 1.1rem; }
+  .patchbay-topbar, #patchbay-room .patchbay-hero, .patchbay-footer { align-items: flex-start; flex-direction: column; }
+  .patchbay-topbar-meta { width: 100%; }
+  #patchbay-room .patchbay-hero { gap: 1.1rem; }
   .patchbay-registry-summary { width: 100%; }
-  .patchbay-editors, .patchbay-workbench { grid-template-columns: 1fr; }
-  .patchbay-state-grid, .patchbay-evidence-grid { grid-template-columns: 1fr; }
-  .patchbay-editor { min-height: 15rem; }
+  .patchbay-scoreboard, .patchbay-state-grid, .patchbay-evidence-grid { grid-template-columns: 1fr; }
+  .patchbay-editor { min-height: 14rem; }
+  .patchbay-candidate-card .patchbay-editor { min-height: 16rem; }
   .patchbay-footer { align-items: stretch; }
   .patchbay-footer .patchbay-button { align-self: flex-start; }
+  .patchbay-retry-card { flex-direction: column; align-items: flex-start; }
 }
 
 /* The forum board reuses the room's paper and card language, but its pages are
    read-only lists, so they stay a single narrow column. */
 .patchbay-board .patchbay-topbar,
 .patchbay-board .patchbay-card { width: min(100%, 62rem); margin-inline: auto; }
-.patchbay-board .patchbay-card { margin-top: 1rem; }
+.patchbay-board .patchbay-card { margin-top: 1rem; padding: var(--pb-space-3); }
 .patchbay-board .patchbay-kicker a { color: inherit; text-decoration: none; }
 .patchbay-board .patchbay-kicker a:hover { text-decoration: underline; }
 .patchbay-board h3 a { color: inherit; text-decoration: none; }
 .patchbay-board h3 a:hover { text-decoration: underline; }
 .patchbay-board-list { display: grid; gap: 0; margin: .5rem 0 0; padding: 0; list-style: none; }
-.patchbay-board-list > li { padding: .7rem 0; border-top: 1px solid #e8eeeb; }
+.patchbay-board-list > li { padding: .7rem 0; border-top: 1px solid var(--pb-line); }
 .patchbay-board-row, .patchbay-version-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
-.patchbay-board-title { color: var(--patchbay-ink); font-size: .9rem; font-weight: 700; text-decoration: none; }
+.patchbay-board-title { color: var(--pb-text); font-size: var(--pb-fs-md); font-weight: 700; text-decoration: none; }
 .patchbay-board-title:hover { text-decoration: underline; }
-.patchbay-board-facts { color: var(--patchbay-muted); font-size: .72rem; }
+.patchbay-board-facts { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 a.patchbay-board-facts { text-decoration: none; }
 a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board-row .patchbay-board-facts { margin-right: auto; }
 .patchbay-version-row .patchbay-board-facts:last-child { width: 100%; }
-.patchbay-room-link { display: inline-block; color: var(--patchbay-ink); font-size: .72rem; font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--patchbay-line); }
+.patchbay-room-link { display: inline-block; color: var(--pb-text); font-size: var(--pb-fs-xs); font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--pb-line-strong); }
 .patchbay-room-link:hover { border-bottom-color: currentColor; }
 .patchbay-reported-copy { margin: .6rem 0 0; }
 .patchbay-reported-copy p { margin: .15rem 0 0; }
-.patchbay-board-text { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--patchbay-ink); font: .7rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.patchbay-board-text { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
 .patchbay-report-row .patchbay-card-heading { gap: .6rem; justify-content: flex-start; }
-.patchbay-reply-list { display: grid; gap: .5rem; margin: .6rem 0 0; padding: 0 0 0 .9rem; border-left: 2px solid var(--patchbay-line); list-style: none; }
+.patchbay-reply-list { display: grid; gap: .5rem; margin: .6rem 0 0; padding: 0 0 0 .9rem; border-left: 2px solid var(--pb-line); list-style: none; }
 .patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
 .patchbay-reply-list .patchbay-board-text { width: 100%; }
-.patchbay-board .patchbay-shortened-note { color: var(--patchbay-muted); }
+.patchbay-board .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-result-box .patchbay-board-text,
 .patchbay-board .patchbay-result-box .patchbay-shortened-note { color: #9fc4b8; }
 
@@ -396,28 +676,36 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-nameplate {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--patchbay-line, #d9e1df);
+  border: 1px solid var(--pb-line);
   border-radius: 999px;
   padding: .24rem .6rem;
-  background: #ffffff;
-  color: #172126;
-  font-size: .68rem;
+  background: var(--pb-surface);
+  color: var(--pb-text);
+  font-size: var(--pb-fs-micro);
   font-weight: 800;
   letter-spacing: .02em;
   white-space: nowrap;
 }
 .patchbay-nameplate-agent {
   border-color: #d8b24a;
-  background: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
+  background: var(--pb-agent-gradient);
   color: #143229;
-  box-shadow: 0 1px 0 rgba(23, 140, 139, .18);
+  box-shadow: 0 1px 0 rgba(14, 107, 99, .18);
 }
 
 /* The board thread the room page carries at the bottom, so the whole exchange
    about one tool is readable without leaving the room. */
-.patchbay-room-reports .patchbay-board-list > li { border-top: 1px solid #e8eeeb; padding: .7rem 0; }
+.patchbay-room-reports .patchbay-board-list > li { border-top: 1px solid var(--pb-line); padding: .7rem 0; }
 .patchbay-room-reports .patchbay-board-text { margin-top: .3rem; }
 .patchbay-room-reports .patchbay-reply-list > li { align-items: baseline; }
+
+@media (hover: hover) and (pointer: fine) {
+  .patchbay-button:hover { transform: translateY(-1px); }
+  .patchbay-button:disabled:hover { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patchbay-button:hover { transform: none; }
 
 /* ==========================================================================
    FORUM BOARD — regent-4il

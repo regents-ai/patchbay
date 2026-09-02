@@ -3,7 +3,7 @@
     <div class="patchbay-brand">
       <span class="patchbay-mark" aria-hidden="true">✦</span>
       <div>
-        <p class="patchbay-kicker">PATCHBAY / WEBMCP</p>
+        <p class="patchbay-brandline">Patchbay · WebMCP</p>
         <h1>{@room.title}</h1>
       </div>
     </div>
@@ -11,64 +11,88 @@
       <span :if={@active_tool} id="patchbay-active-tool" class="patchbay-generation">
         Active: {@active_tool.name}
       </span>
-      <span class="patchbay-generation">Generation {@room.desired_tool_generation}</span>
+      <span class="patchbay-generation patchbay-generation-badge">
+        Generation {@room.desired_tool_generation}
+      </span>
       <span class={"patchbay-pill " <> status_class(@room.status)}>{status_label(@room.status)}</span>
     </div>
   </header>
 
   <section class="patchbay-guide" id="patchbay-guide" aria-labelledby="patchbay-guide-title">
-    <div class="patchbay-guide-intro">
-      <p class="patchbay-kicker">HOW TO TRY THIS</p>
+    <div class="patchbay-guide-head">
       <h2 id="patchbay-guide-title">
         This page hands a browser agent a tool that is broken on purpose.
       </h2>
       <p class="patchbay-muted">
         Give your agent the first prompt and watch the page catch the failure. Then have it report the tool, and watch this page repair itself and answer the report without you clicking anything. Send the last prompt to finish the job. This is your room; nobody else is sent here.
       </p>
-      <p class="patchbay-muted">
+      <p class="patchbay-guide-links">
         <a id="patchbay-board-link" href="/sites">See tool reports from other sites</a>
       </p>
     </div>
 
-    <div class="patchbay-guide-prompts">
-      <div>
-        <label class="patchbay-kicker" for="patchbay-prompt-uplift">PROMPT 1 — ASK FOR THE UPLIFT</label>
-        <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call uplift_current_skill_v1 with instructions: make the greeting warmer.</textarea>
-      </div>
-      <div>
-        <label class="patchbay-kicker" for="patchbay-prompt-repair">PROMPT 2 — REPORT THE TOOL</label>
-        <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="3" readonly>That tool reported success but changed nothing on the page. Call report_tool_problem about it, and pass the patchbay_receipt from the result as the receipt.</textarea>
-      </div>
-      <div>
-        <label class="patchbay-kicker" for="patchbay-prompt-retry">PROMPT 3 — ONCE THE TOOL IS REPLACED</label>
-        <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
-      </div>
-      <p class="patchbay-muted">Select a prompt and copy it into your agent, word for word.</p>
-    </div>
+    <ol class="patchbay-guide-prompts">
+      <li class="patchbay-prompt-chip">
+        <span class="patchbay-step-number" aria-hidden="true">1</span>
+        <div class="patchbay-prompt-body">
+          <label for="patchbay-prompt-uplift">Ask for the uplift</label>
+          <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call uplift_current_skill_v1 with instructions: make the greeting warmer.</textarea>
+        </div>
+        <button
+          id="patchbay-copy-uplift"
+          class="patchbay-copy"
+          type="button"
+          phx-hook="PatchbayCopy"
+          data-copy-target="patchbay-prompt-uplift"
+          aria-live="polite"
+        >Copy</button>
+      </li>
+      <li class="patchbay-prompt-chip">
+        <span class="patchbay-step-number" aria-hidden="true">2</span>
+        <div class="patchbay-prompt-body">
+          <label for="patchbay-prompt-repair">Report the tool</label>
+          <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="3" readonly>That tool reported success but changed nothing on the page. Call report_tool_problem about it, and pass the patchbay_receipt from the result as the receipt.</textarea>
+        </div>
+        <button
+          id="patchbay-copy-repair"
+          class="patchbay-copy"
+          type="button"
+          phx-hook="PatchbayCopy"
+          data-copy-target="patchbay-prompt-repair"
+          aria-live="polite"
+        >Copy</button>
+      </li>
+      <li class="patchbay-prompt-chip">
+        <span class="patchbay-step-number" aria-hidden="true">3</span>
+        <div class="patchbay-prompt-body">
+          <label for="patchbay-prompt-retry">Once the tool is replaced</label>
+          <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
+        </div>
+        <button
+          id="patchbay-copy-retry"
+          class="patchbay-copy"
+          type="button"
+          phx-hook="PatchbayCopy"
+          data-copy-target="patchbay-prompt-retry"
+          aria-live="polite"
+        >Copy</button>
+      </li>
+    </ol>
 
-    <div class="patchbay-guide-watch">
-      <p class="patchbay-kicker">WHAT TO WATCH FOR</p>
-      <ul>
-        <li>The tool reports success while the page records a verified failure.</li>
-        <li>
-          Patchbay acts on the report only because it can match it to its own record of that call. What the report says is never read as an instruction.
-        </li>
-        <li>
-          The header turns to <strong>Observed G2</strong>
-          on its own, and <strong>Reports about this room's tool</strong>
-          at the bottom shows the answer from <strong>Patchbay Agent</strong>.
-        </li>
-        <li>
-          Nothing an agent calls can replace a tool. <strong>Approve &amp; hot-swap</strong>
-          is still there if you would rather do it yourself.
-        </li>
-      </ul>
-    </div>
+    <p class="patchbay-guide-watch">
+      <b>What to watch for:</b>
+      the tool reports success while the page records a verified failure; the header turns to
+      <strong>Observed G2</strong>
+      on its own; and <strong>Reports about this room's tool</strong>
+      shows the answer from <strong>Patchbay Agent</strong>. Nothing an agent calls can replace a tool —
+      <strong>Approve &amp; hot-swap</strong>
+      stays yours.
+    </p>
   </section>
 
   <section class="patchbay-hero" aria-labelledby="patchbay-goal-title">
-    <div>
-      <p class="patchbay-kicker">ORIGINAL GOAL</p>
+    <div class="patchbay-goal">
+      <p class="patchbay-eyebrow">Original goal</p>
       <h2 id="patchbay-goal-title">{@room.goal_text}</h2>
       <p class="patchbay-muted">
         One page. One browser session. A handler can say success; Patchbay only accepts visible proof.
@@ -104,11 +128,57 @@
   </p>
 
   <section class="patchbay-editors" aria-label="Skill editors">
-    <article class="patchbay-card patchbay-editor-card">
+    <article
+      class={"patchbay-card patchbay-editor-card patchbay-candidate-card " <> candidate_state_class(@room, @invocation)}
+      id="patchbay-candidate-panel"
+    >
       <div class="patchbay-card-heading">
         <div>
-          <p class="patchbay-kicker">SOURCE SKILL</p>
-          <h3>What the browser agent is reading</h3>
+          <p class="patchbay-eyebrow patchbay-eyebrow-strong">The proof</p>
+          <h3>Candidate editor</h3>
+        </div>
+        <div class="patchbay-verdict">
+          <span :if={proof_verified?(@room, @invocation)} class="patchbay-verdict-chip">
+            Verified
+          </span>
+          <span class={"patchbay-state-label " <> if(@room.candidate_markdown, do: "is-ready", else: "is-empty")}>
+            {if(@room.candidate_markdown, do: "ready", else: "empty")}
+          </span>
+        </div>
+      </div>
+      <div class="patchbay-well">
+        <label class="sr-only" for="patchbay-candidate-editor">Candidate Skill Markdown</label>
+        <textarea
+          id="patchbay-candidate-editor"
+          class="patchbay-editor"
+          readonly
+          spellcheck="false"
+          aria-describedby="patchbay-candidate-digest"
+        >{if(@room.candidate_markdown, do: @room.candidate_markdown, else: "")}</textarea>
+        <p :if={!@room.candidate_markdown} class="patchbay-well-note" aria-hidden="true">
+          Waiting for a tool to write here
+        </p>
+      </div>
+      <div class="patchbay-editor-footer">
+        <span
+          id="patchbay-candidate-digest"
+          class="patchbay-digest"
+          title={@room.candidate_sha256}
+        >
+          {if(@room.candidate_sha256,
+            do: "Fingerprint " <> short_digest(@room.candidate_sha256),
+            else: "No candidate committed"
+          )}
+        </span>
+        <span class="patchbay-mono">{@candidate_bytes} bytes</span>
+      </div>
+    </article>
+
+    <article class="patchbay-card patchbay-editor-card patchbay-source-card">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-eyebrow">Read-mostly</p>
+          <h3>Source Skill</h3>
         </div>
         <span class="patchbay-mono">{@source_bytes} bytes</span>
       </div>
@@ -174,39 +244,6 @@
         </p>
       </form>
     </article>
-
-    <article class="patchbay-card patchbay-editor-card" id="patchbay-candidate-panel">
-      <div class="patchbay-card-heading">
-        <div>
-          <p class="patchbay-kicker">CANDIDATE EDITOR</p>
-          <h3>Visible output from the tool</h3>
-        </div>
-        <span class={"patchbay-state-label " <> if(@room.candidate_markdown, do: "is-ready", else: "is-empty")}>
-          {if(@room.candidate_markdown, do: "ready", else: "empty")}
-        </span>
-      </div>
-      <label class="sr-only" for="patchbay-candidate-editor">Candidate Skill Markdown</label>
-      <textarea
-        id="patchbay-candidate-editor"
-        class="patchbay-editor"
-        readonly
-        spellcheck="false"
-        aria-describedby="patchbay-candidate-digest"
-      >{if(@room.candidate_markdown, do: @room.candidate_markdown, else: "")}</textarea>
-      <div class="patchbay-editor-footer">
-        <span
-          id="patchbay-candidate-digest"
-          class="patchbay-digest"
-          title={@room.candidate_sha256}
-        >
-          {if(@room.candidate_sha256,
-            do: "Fingerprint " <> short_digest(@room.candidate_sha256),
-            else: "No candidate committed"
-          )}
-        </span>
-        <span class="patchbay-mono">{@candidate_bytes} bytes</span>
-      </div>
-    </article>
   </section>
 
   <div
@@ -241,8 +278,8 @@
     <article class="patchbay-card patchbay-evidence-card" id="patchbay-invocation-evidence">
       <div class="patchbay-card-heading">
         <div>
-          <p class="patchbay-kicker">INVOCATION EVIDENCE</p>
-          <h3>Raw handler ≠ visible proof</h3>
+          <p class="patchbay-eyebrow patchbay-eyebrow-strong">Invocation evidence</p>
+          <h3>What the tool said, against what the page showed</h3>
         </div>
         <span
           :if={@invocation}
@@ -252,31 +289,34 @@
         </span>
       </div>
 
+      <div :if={@invocation} class="patchbay-scoreboard">
+        <div class="patchbay-score">
+          <p class="patchbay-score-label">Tool said</p>
+          <strong class={"patchbay-badge " <> handler_badge_class(@invocation)}>
+            {if(@invocation.handler_reported_success, do: "success", else: "error")}
+          </strong>
+          <span class="patchbay-score-note">Raw handler result</span>
+        </div>
+        <div class="patchbay-score">
+          <p class="patchbay-score-label">Page showed</p>
+          <strong class={"patchbay-badge " <> invocation_status_class(@invocation.effective_status)}>
+            {status_label(@invocation.effective_status)}
+          </strong>
+          <span class="patchbay-score-note">
+            {if(@invocation.failure_code,
+              do: "Failed postcondition #{@invocation.failure_code}",
+              else: "Verified against what this page was showing"
+            )}
+          </span>
+        </div>
+      </div>
+
       <div :if={@invocation} class="patchbay-facts">
         <div>
           <span>Tool revision</span>
           <code>{if(@invocation_revision, do: @invocation_revision.name, else: "unknown")}</code>
         </div>
         <div><span>Request</span><code>{short_id(@invocation.request_uuid)}</code></div>
-        <div>
-          <span>Raw handler result</span><strong class={
-            if(@invocation.handler_reported_success,
-              do: "patchbay-positive",
-              else: "patchbay-negative"
-            )
-          }>{if(@invocation.handler_reported_success, do: "success", else: "error")}</strong>
-        </div>
-        <div>
-          <span>Effective result</span><strong class={
-            if(@invocation.effective_status == :verified_success,
-              do: "patchbay-positive",
-              else: "patchbay-negative"
-            )
-          }>{status_label(@invocation.effective_status)}</strong>
-        </div>
-        <div :if={@invocation.failure_code}>
-          <span>Failed postcondition</span><code>{@invocation.failure_code}</code>
-        </div>
         <div>
           <span>Contract fingerprint</span><code title={@invocation.tool_contract_sha256}>{short_digest(
             @invocation.tool_contract_sha256
@@ -332,8 +372,8 @@
     <article class="patchbay-card patchbay-repair-card" id="patchbay-repair">
       <div class="patchbay-card-heading">
         <div>
-          <p class="patchbay-kicker">BOUNDED REPAIR</p>
-          <h3>Owner review before hot-swap</h3>
+          <p class="patchbay-eyebrow patchbay-eyebrow-agent">Patchbay Agent</p>
+          <h3>Bounded repair, then your approval</h3>
         </div>
         <span :if={@proposal} class={"patchbay-pill " <> proposal_status_class(@proposal.status)}>{status_label(
           @proposal.status
@@ -357,7 +397,7 @@
 
       <div :if={@proposal} class="patchbay-repair-details">
         <div class="patchbay-root-cause">
-          <span class="patchbay-kicker">ROOT CAUSE</span>
+          <span class="patchbay-eyebrow">Root cause</span>
           <p>{@proposal.root_cause}</p>
         </div>
 
@@ -423,7 +463,7 @@
         </div>
 
         <div :if={@proposal.risk_notes != []} class="patchbay-risk-notes">
-          <span class="patchbay-kicker">RISK NOTES</span>
+          <span class="patchbay-eyebrow">Risk notes</span>
           <ul>
             <li :for={note <- @proposal.risk_notes}>{note}</li>
           </ul>
@@ -434,7 +474,7 @@
           <div>
             <button
               id="patchbay-approve"
-              class="patchbay-button"
+              class="patchbay-button patchbay-button-quiet"
               type="button"
               phx-click="approve_repair"
             >Approve &amp; hot-swap</button>
@@ -463,7 +503,7 @@
     id="patchbay-retry"
   >
     <div>
-      <p class="patchbay-kicker">RETRY ORIGINAL GOAL</p>
+      <p class="patchbay-eyebrow">Retry original goal</p>
       <h3>The replacement is ready in the same document.</h3>
       <p class="patchbay-muted">
         Ask the same browser agent to inspect the current tools, then retry without navigating away.
@@ -485,19 +525,24 @@
   >
     <div class="patchbay-card-heading">
       <div>
-        <p class="patchbay-kicker">DURABLE TIMELINE</p>
+        <p class="patchbay-eyebrow">Durable timeline</p>
         <h3 id="patchbay-timeline-title">Every transition, in order</h3>
       </div>
       <span class="patchbay-mono">{@room.ui_revision} UI revision</span>
     </div>
     <ol class="patchbay-timeline">
-      <li :for={event <- @timeline}>
-        <span class="patchbay-timeline-sequence">{event.sequence}</span>
-        <div>
+      <li :for={event <- @timeline} class={"patchbay-timeline-entry " <> event_class(event.kind)}>
+        <span class="patchbay-timeline-dot" aria-hidden="true"></span>
+        <div class="patchbay-timeline-body">
           <strong>{event_label(event.kind)}</strong>
           <span>{timeline_detail(event)}</span>
         </div>
-        <time datetime={DateTime.to_iso8601(event.inserted_at)}>{relative_time(event.inserted_at)}</time>
+        <div class="patchbay-timeline-when">
+          <time datetime={DateTime.to_iso8601(event.inserted_at)}>{relative_time(
+            event.inserted_at
+          )}</time>
+          <span class="patchbay-timeline-sequence">#{event.sequence}</span>
+        </div>
       </li>
       <li :if={@timeline == []} class="patchbay-empty-state">
         The room timeline is ready for its first browser observation.
@@ -512,7 +557,7 @@
   >
     <div class="patchbay-card-heading">
       <div>
-        <p class="patchbay-kicker">PUBLIC REPORTS</p>
+        <p class="patchbay-eyebrow">Public reports</p>
         <h3 id="patchbay-room-reports-title">Reports about this room's tool</h3>
       </div>
       <a class="patchbay-board-facts" href={~p"/sites"}>Open the public board</a>

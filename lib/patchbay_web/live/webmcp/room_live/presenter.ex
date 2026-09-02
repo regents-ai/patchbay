@@ -3,7 +3,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   use Phoenix.Component
 
-  alias Patchbay.Patchbay.{BrowserSession, Invocation, RoomEvent}
+  alias Patchbay.Patchbay.{BrowserSession, Invocation, Room, RoomEvent}
 
   # Arguments, handler responses, and observed state all arrive from the browser,
   # so the rendered text is capped before it can reach the LiveView diff.
@@ -46,6 +46,78 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
       value when value in ["published", "approved"] -> "is-good"
       value when value in ["rejected", "failed", "canary_failed"] -> "is-bad"
       _ -> "is-warn"
+    end
+  end
+
+  @doc """
+  The tool's own claim is never proof, so a reported success is only ever
+  neutral here. A reported error is the one thing worth colouring.
+  """
+  def handler_badge_class(%Invocation{handler_reported_success: true}), do: "is-neutral"
+  def handler_badge_class(_invocation), do: "is-warn"
+
+  @doc "Whether this page is showing a candidate the room itself proved."
+  def proof_verified?(%Room{status: :verified}, _invocation), do: true
+
+  def proof_verified?(_room, %Invocation{effective_status: :verified_success}), do: true
+
+  def proof_verified?(_room, _invocation), do: false
+
+  @doc """
+  The Candidate editor is the page's evidence, so its panel carries the state
+  it is in: waiting for a tool to write, holding an unproven candidate, or
+  holding one this room verified.
+  """
+  def candidate_state_class(room, invocation) do
+    cond do
+      proof_verified?(room, invocation) -> "is-verified"
+      is_binary(room.candidate_markdown) -> "is-filled"
+      true -> "is-waiting"
+    end
+  end
+
+  @doc "Which part of the loop a timeline entry belongs to, for its dot colour."
+  def event_class(kind) do
+    case kind do
+      kind
+      when kind in [
+             :room_reset,
+             :webmcp_supported,
+             :tool_registered,
+             :tool_unregistered,
+             :toolchange_observed,
+             :registry_reconciled
+           ] ->
+        "is-registry"
+
+      kind when kind in [:invocation_started, :handler_returned, :visible_state_observed] ->
+        "is-invocation"
+
+      :verification_passed ->
+        "is-verification is-passed"
+
+      :verification_failed ->
+        "is-verification"
+
+      kind
+      when kind in [
+             :repair_requested,
+             :repair_proposed,
+             :canary_passed,
+             :canary_failed,
+             :approval_granted,
+             :approval_rejected
+           ] ->
+        "is-repair"
+
+      :publication_requested ->
+        "is-publication"
+
+      :goal_verified ->
+        "is-goal"
+
+      _ ->
+        "is-error"
     end
   end
 
