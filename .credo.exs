@@ -138,9 +138,7 @@
                excluded: [
                  # Structural refactor pending under regent-tb2.11.
                  "lib/patchbay/patchbay/candidate_cache.ex",
-                 "lib/patchbay/patchbay/candidate_generator.ex",
-                 # Structural refactor pending under regent-tb2.12.
-                 "lib/patchbay/patchbay/repair_approval_service.ex"
+                 "lib/patchbay/patchbay/candidate_generator.ex"
                ]
              }
            ]},

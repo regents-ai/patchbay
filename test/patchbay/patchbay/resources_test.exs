@@ -628,7 +628,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert verified.failure_code == :STALE_BROWSER_SESSION
   end
 
-  test "proposal publication requires approval and a passed canary", %{
+  test "proposal publication requires approval, a passed canary, and current evidence", %{
     room: room,
     revision: revision
   } do
@@ -684,8 +684,106 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         canary_result: %{"passed" => true, "checks" => canary_checks}
       })
 
-    proposal = Patchbay.approve_repair_proposal!(proposal, "founder")
-    assert Patchbay.publish_repair_proposal!(proposal).status == :published
+    # Approval also requires the repair to still answer the room's current
+    # verified failure, which this hand-built proposal never did.
+    assert_raise Ash.Error.Invalid, ~r/moved on from this failed call/, fn ->
+      Patchbay.approve_repair_proposal!(proposal, "founder")
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :approved/, fn ->
+      Patchbay.publish_repair_proposal!(proposal)
+    end
+  end
+
+  test "room repair transitions only accept their legal prior status", %{
+    room: room,
+    revision: revision
+  } do
+    browser_session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        user_agent_digest: Digest.sha256("test-agent")
+      })
+
+    invocation =
+      Patchbay.record_invocation!(%{
+        request_uuid: Ash.UUID.generate(),
+        room_id: room.id,
+        browser_session_id: browser_session.id,
+        tool_revision_id: revision.id,
+        tool_contract_sha256: revision.contract_sha256,
+        arguments: %{}
+      })
+
+    assert room.status == :ready
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :diagnosing/, fn ->
+      Patchbay.mark_repair_ready!(room)
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :awaiting_approval/, fn ->
+      Patchbay.begin_publication!(room)
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :publishing/, fn ->
+      Patchbay.mark_repaired!(room)
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :repaired/, fn ->
+      Patchbay.begin_retry!(room)
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :retrying/, fn ->
+      Patchbay.mark_verified!(room)
+    end
+
+    assert_raise Ash.Error.Invalid, fn -> Patchbay.begin_diagnosis!(room) end
+
+    room = Patchbay.record_failure!(room, invocation.id)
+    assert room.status == :failed
+
+    # The page starts the diagnosis when the owner asks, and the planner starts
+    # it again once it holds the room, so the second one is legal.
+    room = room |> Patchbay.begin_diagnosis!() |> Patchbay.begin_diagnosis!()
+
+    room = room |> Patchbay.mark_repair_ready!() |> Patchbay.await_repair_approval!()
+    room = room |> Patchbay.begin_publication!() |> Patchbay.mark_repaired!()
+    room = Patchbay.begin_retry!(room)
+
+    assert Patchbay.mark_verified!(room).status == :verified
+  end
+
+  test "tool revision lifecycle actions only accept their legal prior status", %{
+    room: room,
+    revision: revision
+  } do
+    assert revision.status == :desired
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :candidate/, fn ->
+      Patchbay.mark_tool_revision_canary_passed!(revision)
+    end
+
+    candidate =
+      Fixtures.revision_attributes(room.id)
+      |> Map.merge(%{generation: 2, name: "uplift_current_skill_v2", status: :candidate})
+      |> Map.delete(:contract_sha256)
+      |> Patchbay.create_tool_revision!()
+
+    assert_raise Ash.Error.Invalid, ~r/must equal :ready_for_approval/, fn ->
+      Patchbay.mark_tool_revision_approved!(candidate)
+    end
+
+    candidate =
+      candidate
+      |> Patchbay.mark_tool_revision_canary_passed!()
+      |> Patchbay.mark_tool_revision_ready_for_approval!()
+      |> Patchbay.mark_tool_revision_approved!()
+
+    retired = Patchbay.retire_tool_revision!(candidate)
+    assert retired.status == :retired
+
+    assert_raise Ash.Error.Invalid, fn -> Patchbay.retire_tool_revision!(retired) end
   end
 
   test "unknown reset slugs return not found", %{room: _room} do

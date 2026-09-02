@@ -29,85 +29,46 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
   @spec propose!(Invocation.t() | binary(), keyword()) :: RepairProposal.t()
   def propose!(invocation_or_id, opts \\ []) do
+    {invocation, candidate, repair} = prepare_plan(invocation_or_id, opts)
+    commit_proposal!(invocation, candidate, repair, opts)
+  end
+
+  @doc """
+  Works out what the repair would be, without writing anything.
+
+  All external inference, parsing, and policy validation happen here, so a
+  rejected response cannot strand the room in `:diagnosing` or leave an orphan
+  revision behind.
+  """
+  @spec prepare_plan(Invocation.t() | binary(), keyword()) ::
+          {Invocation.t(), map(), map()}
+  def prepare_plan(invocation_or_id, opts \\ []) do
     invocation = load_invocation!(invocation_or_id)
     room = Domain.get_room_by_id!(invocation.room_id)
     source_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
 
     ensure_failed_latest!(invocation, room)
 
-    # All external inference, parsing, and policy validation happen before any
-    # room, proposal, or revision mutation. A rejected response therefore
-    # cannot strand the room in :diagnosing or leave an orphan revision.
     candidate = candidate_for!(invocation, room)
     model_started_at = System.monotonic_time()
     {plan, plan_metadata} = plan_for!(invocation, room, source_revision, opts)
     emit_model_stop(model_started_at, room, invocation, plan_metadata)
 
-    {:ok, revision_attrs} = RepairPolicy.revision_attributes(plan, source_revision)
+    {:ok, revision_attributes} = RepairPolicy.revision_attributes(plan, source_revision)
 
+    {invocation, candidate,
+     %{plan: plan, metadata: plan_metadata, revision_attributes: revision_attributes}}
+  end
+
+  @doc """
+  Writes the prepared repair: the candidate revision, its canary result, and
+  the proposal the owner is asked to approve, in one locked transaction.
+  """
+  @spec commit_proposal!(Invocation.t(), map(), map(), keyword()) :: RepairProposal.t()
+  def commit_proposal!(%Invocation{} = invocation, candidate, repair, opts \\ []) do
     case Ash.transact(
            [Room, Invocation, ToolRevision, RepairProposal],
-           fn ->
-             invocation = Domain.get_invocation_for_update!(invocation.id)
-             room = Domain.get_room_for_update!(room.id)
-             source_revision = Domain.get_tool_revision!(source_revision.id)
-
-             ensure_failed_latest!(invocation, room)
-
-             ensure_candidate_unchanged!(candidate_for!(invocation, room), candidate)
-
-             room = Domain.begin_diagnosis!(room)
-
-             RoomTimeline.append!(room, :repair_requested, %{"invocation_id" => invocation.id})
-
-             revision =
-               revision_attrs
-               |> Map.delete(:contract_sha256)
-               |> Domain.create_tool_revision!()
-
-             canary_started_at = System.monotonic_time()
-
-             canary =
-               CanaryRunner.run(room.source_markdown, candidate.candidate_markdown, revision)
-
-             canary_duration = System.monotonic_time() - canary_started_at
-
-             proposal =
-               Domain.create_repair_proposal!(%{
-                 room_id: room.id,
-                 source_invocation_id: invocation.id,
-                 source_tool_revision_id: source_revision.id,
-                 candidate_tool_revision_id: revision.id,
-                 root_cause: plan.root_cause,
-                 repair_plan: plan,
-                 contract_diff: contract_diff(source_revision, revision),
-                 canary_result: canary,
-                 risk_notes: plan.risk_notes,
-                 model: plan_metadata[:model] || candidate.model,
-                 model_response_id:
-                   plan_metadata[:model_response_id] || candidate.model_response_id,
-                 prompt_version: plan_metadata[:prompt_version] || plan_prompt_version(opts),
-                 usage: %{
-                   "candidate" => candidate.usage,
-                   "repair_plan" => Client.normalize_usage(plan_metadata[:usage])
-                 },
-                 input_sha256: candidate.generation_key
-               })
-
-             RoomTimeline.append!(
-               room,
-               canary_event(canary),
-               %{
-                 "proposal_id" => proposal.id,
-                 "revision_id" => revision.id,
-                 "passed" => canary.passed
-               }
-             )
-
-             proposal = finalize_proposal!(proposal, room, revision, canary)
-
-             {proposal, revision.id, canary, canary_duration}
-           end,
+           fn -> commit_locked!(invocation, candidate, repair, opts) end,
            Keyword.take(opts, [:timeout])
          ) do
       {:ok, {proposal, revision_id, canary, canary_duration}} ->
@@ -117,6 +78,63 @@ defmodule Patchbay.Patchbay.RepairPlanner do
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
     end
+  end
+
+  defp commit_locked!(invocation, candidate, repair, opts) do
+    invocation = Domain.get_invocation_for_update!(invocation.id)
+    room = Domain.get_room_for_update!(invocation.room_id)
+    source_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
+
+    ensure_failed_latest!(invocation, room)
+    ensure_candidate_unchanged!(candidate_for!(invocation, room), candidate)
+
+    room = Domain.begin_diagnosis!(room)
+
+    RoomTimeline.append!(room, :repair_requested, %{"invocation_id" => invocation.id})
+
+    revision =
+      repair.revision_attributes
+      |> Map.delete(:contract_sha256)
+      |> Domain.create_tool_revision!()
+
+    canary_started_at = System.monotonic_time()
+    canary = CanaryRunner.run(room.source_markdown, candidate.candidate_markdown, revision)
+    canary_duration = System.monotonic_time() - canary_started_at
+
+    proposal =
+      Domain.create_repair_proposal!(%{
+        room_id: room.id,
+        source_invocation_id: invocation.id,
+        source_tool_revision_id: source_revision.id,
+        candidate_tool_revision_id: revision.id,
+        root_cause: repair.plan.root_cause,
+        repair_plan: repair.plan,
+        contract_diff: contract_diff(source_revision, revision),
+        canary_result: canary,
+        risk_notes: repair.plan.risk_notes,
+        model: repair.metadata[:model] || candidate.model,
+        model_response_id: repair.metadata[:model_response_id] || candidate.model_response_id,
+        prompt_version: repair.metadata[:prompt_version] || plan_prompt_version(opts),
+        usage: %{
+          "candidate" => candidate.usage,
+          "repair_plan" => Client.normalize_usage(repair.metadata[:usage])
+        },
+        input_sha256: candidate.generation_key
+      })
+
+    RoomTimeline.append!(
+      room,
+      canary_event(canary),
+      %{
+        "proposal_id" => proposal.id,
+        "revision_id" => revision.id,
+        "passed" => canary.passed
+      }
+    )
+
+    proposal = finalize_proposal!(proposal, room, revision, canary)
+
+    {proposal, revision.id, canary, canary_duration}
   end
 
   defp ensure_candidate_unchanged!(current, candidate) do

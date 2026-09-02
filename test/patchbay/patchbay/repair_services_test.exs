@@ -255,7 +255,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
 
     retried = InvocationRunner.retry!(v1, browser_session, fallback: true)
 
-    assert_raise ArgumentError, ~r/room is not ready/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/must equal :repaired/, fn ->
       InvocationRunner.retry!(v1, browser_session, fallback: true)
     end
 
@@ -354,7 +354,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
       Ecto.UUID.dump!(invocation.id)
     ])
 
-    assert_raise ArgumentError, ~r/verified failure/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/verified failure/, fn ->
       RepairApprovalService.approve_and_publish!(proposal, "owner")
     end
 
@@ -367,9 +367,31 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
       [Digest.sha256("tampered"), Ecto.UUID.dump!(invocation.id)]
     )
 
-    assert_raise ArgumentError, ~r/candidate digest/, fn ->
+    assert_raise Ash.Error.Invalid, ~r/candidate digest/, fn ->
       RepairApprovalService.approve_and_publish!(proposal, "owner")
     end
+  end
+
+  test "approval refuses a repair the room has already moved on from", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation = invoke_failed!(room, browser_session, revision, %{"instructions" => "tighten"})
+
+    proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
+
+    _later_failure =
+      invoke_failed!(room, browser_session, revision, %{"instructions" => "tighten again"})
+
+    assert_raise Ash.Error.Invalid, ~r/moved on from this failed call/, fn ->
+      RepairApprovalService.approve_and_publish!(proposal, "owner")
+    end
+
+    assert Patchbay.get_repair_proposal!(proposal.id).status == :ready_for_approval
+
+    assert Patchbay.get_tool_revision!(proposal.candidate_tool_revision_id).status ==
+             :ready_for_approval
   end
 
   test "same request UUID is atomically idempotent under concurrent delivery", %{

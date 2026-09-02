@@ -92,12 +92,14 @@ defmodule Patchbay.Patchbay.RepairProposal do
     update :mark_canary_passed do
       accept([:canary_result])
       require_atomic?(false)
+      validate(attribute_equals(:status, :requested))
       validate(Patchbay.Patchbay.Validations.CanaryResult)
       change(set_attribute(:status, :ready_for_approval))
     end
 
     update :mark_canary_failed do
       accept([:canary_result])
+      validate(attribute_equals(:status, :requested))
       change(set_attribute(:status, :canary_failed))
     end
 
@@ -107,13 +109,18 @@ defmodule Patchbay.Patchbay.RepairProposal do
       require_atomic?(false)
       validate(attribute_equals(:status, :ready_for_approval))
       validate(Patchbay.Patchbay.Validations.CanaryPassed)
+      validate(Patchbay.Patchbay.Validations.RepairsCurrentFailure)
       change(set_attribute(:status, :approved))
       change(set_attribute(:approved_by, arg(:approved_by)))
       change(set_attribute(:approved_at, &DateTime.utc_now/0))
     end
 
+    # The owner rejects a repair that is waiting on them; a demo reset rejects
+    # whatever a run left behind, which is any proposal that never reached a
+    # terminal status.
     update :reject do
       accept([])
+      validate(one_of(:status, [:requested, :canary_failed, :ready_for_approval, :approved]))
       change(set_attribute(:status, :rejected))
       change(set_attribute(:rejected_at, &DateTime.utc_now/0))
     end

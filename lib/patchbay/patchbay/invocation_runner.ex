@@ -353,7 +353,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         )
 
         if locked_revision.handler_adapter == :apply_candidate_to_editor do
-          ensure_room_ready_for_retry!(room)
           room = Domain.begin_retry!(room)
           Domain.apply_candidate!(room, generated.candidate_markdown)
         end
@@ -582,12 +581,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   defp revision_id(%ToolRevision{id: id}, _invocation), do: id
   defp revision_id(_record, invocation), do: invocation.tool_revision_id
-
-  defp ensure_room_ready_for_retry!(%Room{status: :repaired}), do: :ok
-
-  defp ensure_room_ready_for_retry!(_room) do
-    raise ArgumentError, "room is not ready for a retry"
-  end
 
   defp handler_result(%{handler_adapter: :apply_candidate_to_editor}, generated, room) do
     %{

@@ -192,50 +192,78 @@ defmodule Patchbay.Patchbay.Room do
       change(optimistic_lock(:ui_revision))
     end
 
+    # A failure is recorded wherever a tool call's verification lands, so it
+    # names every status a call can be answered from. The repair statuses it
+    # leaves out are the ones the repair writes while it holds the room lock,
+    # where no verification can interleave.
     update :record_failure do
       accept([:last_failed_invocation_id])
+
+      validate(
+        one_of(:status, [
+          :ready,
+          :failed,
+          :diagnosing,
+          :awaiting_approval,
+          :repaired,
+          :retrying,
+          :verified,
+          :error
+        ])
+      )
+
       change(set_attribute(:status, :failed))
     end
 
+    # The page marks the room as diagnosing the moment the owner asks, and the
+    # planner marks it again once it holds the lock, so re-entry is legal.
     update :begin_diagnosis do
       accept([])
+      validate(one_of(:status, [:failed, :diagnosing]))
       change(set_attribute(:status, :diagnosing))
     end
 
     update :mark_repair_ready do
       accept([])
+      validate(attribute_equals(:status, :diagnosing))
       change(set_attribute(:status, :repair_ready))
     end
 
     update :await_approval do
       public?(false)
       accept([])
+      validate(attribute_equals(:status, :repair_ready))
       change(set_attribute(:status, :awaiting_approval))
     end
 
     update :mark_repair_failed do
       public?(false)
       accept([])
+      validate(attribute_equals(:status, :diagnosing))
       change(set_attribute(:status, :error))
     end
 
     update :begin_publication do
       accept([])
+      validate(attribute_equals(:status, :awaiting_approval))
       change(set_attribute(:status, :publishing))
     end
 
     update :mark_repaired do
       accept([])
+      validate(attribute_equals(:status, :publishing))
       change(set_attribute(:status, :repaired))
     end
 
     update :begin_retry do
       accept([])
+      validate(attribute_equals(:status, :repaired))
       change(set_attribute(:status, :retrying))
     end
 
     update :mark_verified do
       accept([])
+      validate(attribute_equals(:status, :retrying))
       change(set_attribute(:status, :verified))
     end
 

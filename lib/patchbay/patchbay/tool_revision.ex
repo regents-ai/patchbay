@@ -106,10 +106,14 @@ defmodule Patchbay.Patchbay.ToolRevision do
       change(Patchbay.Patchbay.Changes.SyncDesiredRevision)
     end
 
+    # A revision becomes the one the room offers straight from the seed
+    # (:candidate), from a repair the owner approved (:approved), or from the
+    # shelf when a demo reset puts the original tool back (:retired).
     update :set_desired do
       public?(false)
       accept([])
       require_atomic?(false)
+      validate(one_of(:status, [:candidate, :approved, :retired]))
       change(set_attribute(:status, :desired))
       change(Patchbay.Patchbay.Changes.SyncDesiredRevision)
     end
@@ -117,28 +121,33 @@ defmodule Patchbay.Patchbay.ToolRevision do
     update :mark_canary_passed do
       public?(false)
       accept([])
+      validate(attribute_equals(:status, :candidate))
       change(set_attribute(:status, :canary_passed))
     end
 
     update :mark_ready_for_approval do
       public?(false)
       accept([])
+      validate(attribute_equals(:status, :canary_passed))
       change(set_attribute(:status, :ready_for_approval))
     end
 
     update :mark_approved do
       public?(false)
       accept([])
+      validate(attribute_equals(:status, :ready_for_approval))
       change(set_attribute(:status, :approved))
     end
 
     update :mark_observed_active do
       accept([])
+      validate(attribute_equals(:status, :desired))
       change(set_attribute(:status, :observed_active))
     end
 
     update :retire do
       accept([])
+      validate(attribute_does_not_equal(:status, :retired))
       change(set_attribute(:status, :retired))
       change(set_attribute(:retired_at, &DateTime.utc_now/0))
     end
