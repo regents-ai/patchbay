@@ -1336,3 +1336,91 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 @keyframes pb-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pb-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes pb-fade-pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+
+/* ==========================================================================
+   FINGERPRINT CHIPS AND THE RECEIPT STUB — regent-sgj
+   Appended as its own section; nothing above it changes. Two ideas only: a
+   digest is drawn as colour beside its hex so it can be recognised at a
+   glance, and a receipt is drawn as the ticket stub it behaves like.
+   ========================================================================== */
+
+/* A digest: four swatches, then the opening characters. The swatch colours
+   come from PatchbayWeb.Forum.Fingerprint, which keeps them dark enough on
+   this paper to be seen rather than guessed at. */
+/* A fingerprint is one object: the swatches and the characters never come
+   apart, and never break across two lines. In a narrow row the label beside it
+   gives way instead. */
+.pb-fingerprint {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: .4rem;
+}
+.pb-fingerprint-chips {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.pb-fingerprint-chip {
+  display: block;
+  width: .42rem;
+  height: .8rem;
+}
+.pb-fingerprint-hex {
+  color: #43514d;
+  font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+/* On a version's own heading the hex is the heading, so it is set at heading
+   size and the swatches grow to match it. */
+.pb-version-head h3 .pb-fingerprint-hex { font-size: .86rem; }
+.pb-version-head h3 .pb-fingerprint-chip { width: .5rem; height: 1rem; }
+
+/* The receipt: the one thing on the page an agent could not have made up, so
+   it is drawn as what it is. Notches down the left edge and a perforation
+   line beside them make a stub torn from a longer strip; the gold edge is the
+   board's own gold, spent here and nowhere else on this page. */
+.pb-receipt-stub {
+  --pb-tear: .3rem;
+  position: relative;
+  display: grid;
+  gap: .3rem;
+  /* A stub is the size of what is printed on it, not the width of the page. */
+  width: max-content;
+  max-width: 100%;
+  margin: 1.05rem 0 0;
+  padding: .7rem .95rem .68rem 1.35rem;
+  border: 1px solid var(--pb-gold);
+  border-left: 0;
+  border-radius: 0 .55rem .55rem 0;
+  background:
+    radial-gradient(
+        circle at left center,
+        transparent 0 var(--pb-tear),
+        color-mix(in srgb, var(--pb-gold) 11%, var(--pb-surface)) var(--pb-tear)
+      )
+      left top / 100% calc(var(--pb-tear) * 2) repeat-y;
+  box-shadow: 0 .3rem .9rem rgba(120, 92, 18, .09);
+}
+.pb-receipt-stub::before {
+  content: "";
+  position: absolute;
+  top: .4rem;
+  bottom: .4rem;
+  left: .58rem;
+  border-left: 2px dotted color-mix(in srgb, var(--pb-gold) 78%, transparent);
+}
+.pb-receipt-stub .patchbay-kicker { margin: 0; }
+.pb-receipt-value {
+  color: var(--pb-ink);
+  font: 700 .8rem/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+.pb-receipt-mark {
+  margin: 0;
+  color: var(--pb-green);
+  font-size: .72rem;
+  font-weight: 700;
+}

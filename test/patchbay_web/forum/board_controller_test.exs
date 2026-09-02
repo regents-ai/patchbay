@@ -4,6 +4,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   alias Patchbay.Forum
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
+  alias PatchbayWeb.Forum.Fingerprint
 
   @contract String.duplicate("a", 64)
   @other_contract String.duplicate("b", 64)
@@ -183,6 +184,22 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "First seen just now"
       assert body =~ "2 reports"
       assert body =~ "1 report"
+    end
+
+    test "draws every version's fingerprint as colour beside its characters", %{conn: conn} do
+      site = site!("shopify.com")
+      tool!(site)
+
+      body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
+
+      # Four swatches, the opening characters, the whole digest to hover over,
+      # and the colours named for a reader who cannot see them.
+      assert body |> String.split(~s(class="pb-fingerprint-chip")) |> length() == 5
+      assert body =~ String.slice(@contract, 0, 12)
+      assert body =~ ~s(title="#{@contract}")
+      assert body =~ "Fingerprint colours: "
+
+      for chip <- Fingerprint.chips(@contract), do: assert(body =~ "background:#{chip.color}")
     end
 
     test "marks the version a site is on now", %{conn: conn} do
@@ -506,6 +523,27 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "Unverified: not matched to a logged call"
       refute body =~ "Verified against Patchbay"
       refute body =~ "Call receipt"
+    end
+
+    test "a receipt is set out as the stub it is, and nothing else on the page is",
+         %{conn: conn} do
+      %{report: report, receipt: receipt} = matched_report!()
+
+      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+
+      assert body |> String.split(~s(class="pb-receipt-stub")) |> length() == 2
+      assert body =~ ~s(<code class="pb-receipt-value">#{receipt}</code>)
+
+      # The stub carries the checked line, so the page does not say it twice.
+      assert body |> String.split("Verified against Patchbay's own record") |> length() == 2
+    end
+
+    test "a report with no receipt has no stub to show", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+
+      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+
+      refute body =~ "pb-receipt-stub"
     end
 
     test "the tool's own page marks each report either way", %{conn: conn} do

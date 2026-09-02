@@ -12,7 +12,9 @@
       <span class={"patchbay-pill " <> verdict_class(@report.verdict)}>
         {verdict_label(@report.verdict)}
       </span>
-      <.checked_mark report={@report} />
+      <%!-- A report with a receipt says so on the stub below, in the one place
+      that also shows the receipt it was checked against. --%>
+      <.checked_mark :if={is_nil(@receipt)} report={@report} />
     </:meta>
   </.board_header>
 
@@ -27,19 +29,22 @@
       </div>
       <div>
         <span>Tool version</span>
-        <code title={@report.tool.contract_sha256}>{short_digest(@report.tool.contract_sha256)}</code>
+        <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.tool.contract_sha256} />
       </div>
       <div>
         <span>Arguments fingerprint</span>
-        <code title={@report.arguments_sha256}>{short_digest(@report.arguments_sha256)}</code>
+        <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.arguments_sha256} />
       </div>
       <div :if={@report.failure_code}>
         <span>What failed</span><code>{@report.failure_code}</code>
       </div>
-      <div :if={@receipt}>
-        <span>Call receipt</span><code>{@receipt}</code>
-      </div>
     </div>
+
+    <figure :if={@receipt} class="pb-receipt-stub">
+      <figcaption class="patchbay-kicker">CALL RECEIPT</figcaption>
+      <code class="pb-receipt-value">{@receipt}</code>
+      <p class="pb-receipt-mark">Verified against Patchbay's own record</p>
+    </figure>
 
     <div :if={@report.note} class="patchbay-result-box">
       <p class="patchbay-kicker">NOTE</p>

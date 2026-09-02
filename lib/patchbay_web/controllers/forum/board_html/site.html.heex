@@ -40,9 +40,7 @@
         :for={{version, index} <- Enum.with_index(versions)}
         class={[index == 0 && "is-current"]}
       >
-        <code class="pb-fingerprint" title={version.contract_sha256}>
-          {short_digest(version.contract_sha256)}
-        </code>
+        <PatchbayWeb.Forum.Fingerprint.fingerprint digest={version.contract_sha256} />
         <span :if={index == 0} class="pb-chip is-current">Current</span>
         <span class="pb-chip-facts">First seen {ago(version.first_seen_at)}</span>
         <span class="pb-chip-facts">
