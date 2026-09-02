@@ -374,7 +374,7 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
     room = Rooms.get_room_by_id!(call.room.id)
     v2 = desired_revision(room)
 
-    Rooms.observe_browser_session!(call.browser_session, %{
+    Rooms.observe_browser_session!(call.browser_session, :toolchange, %{
       desired_generation: v2.generation,
       observed_generation: v2.generation,
       observed_tool_names: [v2.name],

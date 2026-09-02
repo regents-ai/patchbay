@@ -35,8 +35,9 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
         webmcp_supported: true
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256},
       webmcp_supported: true
     })
@@ -245,7 +246,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     v2 = Patchbay.get_tool_revision!(proposal.candidate_tool_revision_id)
     assert %ToolRevision{status: :desired, generation: 2} = v2
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       desired_generation: 2,
       observed_generation: 2,
       observed_tool_names: [v2.name],
@@ -512,8 +513,9 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
         webmcp_supported: true
       })
 
-    Patchbay.observe_browser_session!(other_session, %{
+    Patchbay.observe_browser_session!(other_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256},
       webmcp_supported: true
     })
@@ -600,7 +602,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     published = RepairApprovalService.approve_and_publish!(proposal, "owner")
     v2 = Patchbay.get_tool_revision!(published.candidate_tool_revision_id)
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       desired_generation: 2,
       observed_generation: 2,
       observed_tool_names: [v2.name],
@@ -691,14 +693,6 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
     published = RepairApprovalService.approve_and_publish!(proposal, "owner")
     v2 = Patchbay.get_tool_revision!(published.candidate_tool_revision_id)
-
-    Patchbay.observe_browser_session!(browser_session, %{
-      desired_generation: 1,
-      observed_generation: 1,
-      observed_tool_names: [revision.name],
-      observed_contracts: %{revision.name => revision.contract_sha256},
-      webmcp_supported: false
-    })
 
     before = Patchbay.get_room_by_id!(room.id)
 

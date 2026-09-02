@@ -29,8 +29,9 @@ defmodule Patchbay.Patchbay.ModelBudgetTest do
         webmcp_supported: true
       })
 
-    Domain.observe_browser_session!(browser_session, %{
+    Domain.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256},
       webmcp_supported: true
     })

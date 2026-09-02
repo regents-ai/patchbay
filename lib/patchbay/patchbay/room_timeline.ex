@@ -63,8 +63,8 @@ defmodule Patchbay.Patchbay.RoomTimeline do
     metadata = %{
       room_id: event.room_id,
       browser_session_id: event.browser_session_id,
-      tool_generation: payload_value(event.payload, "generation", :generation),
-      contract_sha256: payload_value(event.payload, "contract_sha256", :contract_sha256)
+      tool_generation: Map.get(event.payload, "generation"),
+      contract_sha256: Map.get(event.payload, "contract_sha256")
     }
 
     case kind do
@@ -75,11 +75,6 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   end
 
   defp emit_webmcp_telemetry(_event), do: :ok
-
-  defp payload_value(payload, key, atom_key) when is_map(payload),
-    do: Map.get(payload, key) || Map.get(payload, atom_key)
-
-  defp payload_value(_payload, _key, _atom_key), do: nil
 
   defp next_sequence!(room_id, opts) do
     events =

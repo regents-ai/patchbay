@@ -106,8 +106,9 @@ defmodule Patchbay.Patchbay.TelemetryTest do
         webmcp_supported: true
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256},
       webmcp_supported: true
     })
@@ -179,7 +180,7 @@ defmodule Patchbay.Patchbay.TelemetryTest do
     published = RepairApprovalService.approve_and_publish!(proposal, "owner")
     v2 = Patchbay.get_tool_revision!(published.candidate_tool_revision_id)
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       desired_generation: 2,
       observed_generation: 2,
       observed_tool_names: [v2.name],
@@ -293,21 +294,24 @@ defmodule Patchbay.Patchbay.TelemetryTest do
   end
 
   defp assert_documented!(events) do
-    Enum.each(events, fn {event, emissions} ->
-      Enum.each(emissions, fn {measurements, metadata} ->
-        assert Map.keys(metadata) |> Enum.sort() ==
-                 Enum.sort(Map.fetch!(@documented_metadata, event)),
-               "#{inspect(event)} metadata keys drifted: #{inspect(Map.keys(metadata))}"
+    for {event, emissions} <- events, {measurements, metadata} <- emissions do
+      assert_metadata_documented!(event, metadata)
+      assert_measurements_present!(event, measurements)
+      assert_no_content(event, measurements)
+      assert_no_content(event, metadata)
+    end
+  end
 
-        for key <- Map.get(@required_measurements, event, []) do
-          assert is_number(Map.get(measurements, key)),
-                 "#{inspect(event)} is missing the #{key} measurement"
-        end
+  defp assert_metadata_documented!(event, metadata) do
+    assert Enum.sort(Map.keys(metadata)) == Enum.sort(Map.fetch!(@documented_metadata, event)),
+           "#{inspect(event)} metadata keys drifted: #{inspect(Map.keys(metadata))}"
+  end
 
-        assert_no_content(event, measurements)
-        assert_no_content(event, metadata)
-      end)
-    end)
+  defp assert_measurements_present!(event, measurements) do
+    for key <- Map.get(@required_measurements, event, []) do
+      assert is_number(Map.get(measurements, key)),
+             "#{inspect(event)} is missing the #{key} measurement"
+    end
   end
 
   # One real failed call on a studio of this deployment, from a browser holding

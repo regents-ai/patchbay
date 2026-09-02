@@ -170,7 +170,13 @@ defmodule Patchbay.Patchbay.Room do
     update :update_source do
       accept([:source_markdown])
       require_atomic?(false)
-      validate(attribute_equals(:status, :ready))
+
+      validate attribute_equals(:status, :ready) do
+        message(
+          "The Source Skill is locked while this room is working. " <>
+            "Reset the demo to edit it again."
+        )
+      end
 
       change(
         {Patchbay.Patchbay.Changes.RecomputeDigest,

@@ -93,6 +93,9 @@ defmodule Patchbay.Patchbay.BrowserSession do
       ])
     end
 
+    # What a browser says its tool registry holds. A reconciliation reports the
+    # whole registry; a toolchange reports the one registration that has just
+    # happened, which is why only a reconciliation has to hold the full toolset.
     update :observe do
       touches_resources([Patchbay.Patchbay.Room])
       require_atomic?(false)
@@ -106,6 +109,20 @@ defmodule Patchbay.Patchbay.BrowserSession do
         :toolchange_count,
         :last_seen_at
       ])
+
+      argument(:observation, :atom, allow_nil?: false)
+
+      validate one_of(:observation, [:reconciled, :toolchange]) do
+        message("observation must be a reconciliation or a toolchange")
+      end
+
+      validate compare(:observed_generation, is_equal: :desired_generation, is_nil: false) do
+        message("observed_generation must match the room's desired generation")
+      end
+
+      validate Patchbay.Patchbay.Validations.ObservedRegistryIsRoomToolset do
+        only_when_valid?(true)
+      end
 
       change(Patchbay.Patchbay.Changes.ReestablishBrowserSession)
     end
@@ -140,4 +157,18 @@ defmodule Patchbay.Patchbay.BrowserSession do
       authorize_if(always())
     end
   end
+
+  @permanent_tool_names [
+    "get_patchbay_room_state",
+    "verify_skill_uplift_goal",
+    "request_patchbay_repair"
+  ]
+
+  @doc """
+  The tools every Patchbay room offers whatever its Skill tool of the moment is
+  called. A browser's registry holds these and the room's desired revision, and
+  nothing else.
+  """
+  @spec permanent_tool_names() :: [String.t()]
+  def permanent_tool_names, do: @permanent_tool_names
 end

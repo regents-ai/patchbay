@@ -36,7 +36,7 @@ defmodule Patchbay.Patchbay do
       define(:get_browser_session, action: :read, get_by: [:id])
       define(:get_browser_session_for_update, action: :for_update, get_by: [:id])
       define(:list_browser_sessions, action: :read)
-      define(:observe_browser_session, action: :observe)
+      define(:observe_browser_session, action: :observe, args: [:observation])
       define(:disconnect_browser_session, action: :disconnect)
       define(:reset_browser_session, action: :reset_demo)
     end
@@ -86,6 +86,11 @@ defmodule Patchbay.Patchbay do
 
     resource Patchbay.Patchbay.Verification do
       define(:get_verification, action: :read, get_by: [:id])
+
+      # A call is verified once, and the identity says so, so the verification
+      # for a call is a get rather than a one-row list.
+      define(:get_invocation_verification, action: :read, get_by: [:invocation_id])
+
       define(:list_verifications, action: :read)
     end
 

@@ -79,9 +79,7 @@
              files: %{
                excluded: [
                  # Structural refactor pending under regent-tb2.14.
-                 "lib/patchbay/patchbay/frontmatter.ex",
-                 # Structural refactor pending under regent-tb2.15.
-                 "test/patchbay/patchbay/telemetry_test.exs"
+                 "lib/patchbay/patchbay/frontmatter.ex"
                ]
              }
            ]},

@@ -6,6 +6,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
   alias Elixir.Patchbay.Patchbay
 
   alias Elixir.Patchbay.Patchbay.{
+    BrowserSession,
     DemoReset,
     Digest,
     Fixtures,
@@ -99,8 +100,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         webmcp_supported: true
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
@@ -120,21 +122,119 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert reset_session.observed_generation == nil
     assert reset_session.observed_contracts == %{}
 
-    Patchbay.observe_browser_session!(reset_session, %{
+    Patchbay.observe_browser_session!(reset_session, :toolchange, %{
       desired_generation: revision.generation + 1,
       observed_generation: revision.generation + 1,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
     assert Patchbay.get_browser_session!(browser_session.id).disconnected_at
 
-    Patchbay.observe_browser_session!(reset_session, %{
+    Patchbay.observe_browser_session!(reset_session, :toolchange, %{
       desired_generation: revision.generation,
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
     refute Patchbay.get_browser_session!(browser_session.id).disconnected_at
+  end
+
+  test "an observed registry has to be the room's own toolset", %{
+    room: room,
+    revision: revision
+  } do
+    session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        user_agent_digest: Digest.sha256("test-agent"),
+        webmcp_supported: true
+      })
+
+    names = [revision.name | BrowserSession.permanent_tool_names()]
+
+    contracts =
+      Map.new(names, fn name ->
+        {name, if(name == revision.name, do: revision.contract_sha256, else: Digest.sha256(name))}
+      end)
+
+    whole = %{
+      observed_generation: 1,
+      observed_tool_names: names,
+      observed_contracts: contracts
+    }
+
+    assert Patchbay.observe_browser_session!(session, :reconciled, whole).observed_tool_names ==
+             names
+
+    # A reconciliation reports the whole registry, so a partial one is refused.
+    # A toolchange reports the one registration that has just happened.
+    one_tool = %{
+      observed_generation: 1,
+      observed_tool_names: [revision.name],
+      observed_contracts: %{revision.name => revision.contract_sha256}
+    }
+
+    assert_raise Ash.Error.Invalid, ~r/complete desired Patchbay toolset/, fn ->
+      Patchbay.observe_browser_session!(session, :reconciled, one_tool)
+    end
+
+    assert Patchbay.observe_browser_session!(session, :toolchange, one_tool).observed_tool_names ==
+             [revision.name]
+
+    assert_raise Ash.Error.Invalid, ~r/reconciliation or a toolchange/, fn ->
+      Patchbay.observe_browser_session!(session, :guessed, whole)
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must match the room's desired generation/, fn ->
+      Patchbay.observe_browser_session!(session, :toolchange, %{observed_generation: 2})
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/must not contain duplicates/, fn ->
+      Patchbay.observe_browser_session!(session, :toolchange, %{
+        observed_generation: 1,
+        observed_tool_names: [revision.name, revision.name],
+        observed_contracts: %{revision.name => revision.contract_sha256}
+      })
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/SHA-256 digests/, fn ->
+      Patchbay.observe_browser_session!(session, :toolchange, %{
+        observed_generation: 1,
+        observed_tool_names: [revision.name],
+        observed_contracts: %{revision.name => "not-a-digest"}
+      })
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/exactly cover the observed tool names/, fn ->
+      Patchbay.observe_browser_session!(session, :toolchange, %{
+        observed_generation: 1,
+        observed_tool_names: [],
+        observed_contracts: %{revision.name => revision.contract_sha256}
+      })
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/Patchbay does not own/, fn ->
+      Patchbay.observe_browser_session!(session, :toolchange, %{
+        observed_generation: 1,
+        observed_tool_names: ["foreign_tool"],
+        observed_contracts: %{"foreign_tool" => String.duplicate("f", 64)}
+      })
+    end
+
+    assert_raise Ash.Error.Invalid, ~r/does not match the desired revision/, fn ->
+      Patchbay.observe_browser_session!(session, :toolchange, %{
+        observed_generation: 1,
+        observed_tool_names: [revision.name],
+        observed_contracts: %{revision.name => String.duplicate("a", 64)}
+      })
+    end
+
+    kept = Patchbay.get_browser_session!(session.id)
+    assert kept.observed_tool_names == [revision.name]
+    assert kept.observed_contracts == %{revision.name => revision.contract_sha256}
   end
 
   test "invocation pre-state capture is a transaction-bound before-action hook", %{
@@ -426,8 +526,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         generated_candidate: Fixtures.improved_markdown()
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
@@ -487,8 +588,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         generated_candidate: Fixtures.improved_markdown()
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
@@ -535,8 +637,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         generated_candidate: Fixtures.improved_markdown()
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
@@ -592,8 +695,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         generated_candidate: Fixtures.improved_markdown()
       })
 
-    Patchbay.observe_browser_session!(browser_session, %{
+    Patchbay.observe_browser_session!(browser_session, :toolchange, %{
       observed_generation: revision.generation,
+      observed_tool_names: [revision.name],
       observed_contracts: %{revision.name => revision.contract_sha256}
     })
 
@@ -959,8 +1063,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       })
 
     browser_session =
-      Patchbay.observe_browser_session!(browser_session, %{
+      Patchbay.observe_browser_session!(browser_session, :toolchange, %{
         observed_generation: revision.generation,
+        observed_tool_names: [revision.name],
         observed_contracts: %{revision.name => revision.contract_sha256},
         webmcp_supported: true,
         toolchange_count: 2
