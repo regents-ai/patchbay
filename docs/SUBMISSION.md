@@ -121,7 +121,7 @@ esbuild, Tailwind CSS.
 
 ## Testing instructions
 
-1. Open LIVE_URL_PLACEHOLDER in ChatGPT's in-app browser, or in Chrome 149 or
+1. Open https://patchbay.help in ChatGPT's in-app browser, or in Chrome 149 or
    later with WebMCP enabled at `chrome://flags/#enable-webmcp-testing`.
 2. Ask the agent: *Call uplift_current_skill_v1 with instructions: make the
    greeting warmer.*

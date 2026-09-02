@@ -5,7 +5,7 @@ watch the site catch its own lie, then repair itself and say so — without you
 clicking anything. The run below takes about three minutes and needs no account,
 no key and no setup.
 
-Open: LIVE_URL_PLACEHOLDER
+Open: https://patchbay.help
 
 The link gives you a room of your own, so you always start from an untouched
 Skill no matter who else is trying it at the same time. Your browser remembers

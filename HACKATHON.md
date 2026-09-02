@@ -10,7 +10,7 @@ again. Nobody clicks anything.
 
 Built by Regents Labs for the OpenAI WebMCP Challenge.
 
-- Try it: LIVE_URL_PLACEHOLDER
+- Try it: https://patchbay.help
 - Step-by-step testing: [docs/JUDGES.md](docs/JUDGES.md)
 - Run it locally: [README.md](README.md)
 
