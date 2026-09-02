@@ -40,6 +40,16 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "empty"
   end
 
+  test "the footer carries the room's full id so an operator can match it to a record", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert has_element?(view, "#patchbay-room-id", "ROOM ID")
+    assert has_element?(view, "#patchbay-room-id code", room.id)
+  end
+
   test "the guide above the goal carries all three agent prompts and the board link", %{
     conn: conn,
     room: room
