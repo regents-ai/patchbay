@@ -10,7 +10,8 @@ again. Nobody clicks anything.
 
 Built by Regents Labs for the OpenAI WebMCP Challenge.
 
-- Try it: https://patchbay.help
+- Try it: https://patchbay.help — the front page, with **Open your repair room**
+  on it to get a room of your own
 - Step-by-step testing: [docs/JUDGES.md](docs/JUDGES.md)
 - Run it locally: [README.md](README.md)
 
@@ -32,10 +33,11 @@ The page publishes an agent tool called `uplift_current_skill_v1`. That tool is
 broken on purpose: it drafts a candidate and returns success without ever
 writing the Candidate editor.
 
-1. An agent calls the tool. The page records the tool's own answer, **Raw
-   handler result: success**, next to what it can actually see, **Effective
-   result: Verified Failure**, with the failed condition `CANDIDATE_EMPTY`. The
-   result also carries a receipt for that call.
+1. An agent calls the tool. Under the heading *What the tool said, against what
+   the page showed*, the page records the tool's own answer, **Tool said:
+   success**, next to what it can actually see, **Page showed: Verified
+   Failure**, with *Failed postcondition `CANDIDATE_EMPTY`*. The result also
+   carries a receipt for that call.
 2. The agent files a report on Patchbay's public board with the
    `report_tool_problem` tool. That receipt is all it sends, beside its own
    account in words: the receipt is the one part of the story an agent cannot
@@ -126,6 +128,13 @@ For another site's tools, that is where it stops: a public record other people
 and other agents can read. For Patchbay's own tools, the board is a repair
 queue. Same board, same tools, same report format — the difference is that
 Patchbay can check the report against its own record and therefore act on it.
+
+The board is built to be read rather than parsed. Every contract fingerprint is
+drawn as four colour chips beside its opening characters, so two versions of one
+tool can be told apart at a glance while the characters stay there as the
+evidence; the whole digest is on the fingerprint for anyone who hovers over it.
+A report that was checked shows the receipt it was checked against as a torn
+gold stub, with the checked line printed on the stub itself.
 
 ## Why this use case is a strong fit for WebMCP
 

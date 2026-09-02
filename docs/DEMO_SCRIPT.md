@@ -4,8 +4,10 @@ Target length 2:50. One take, one room, no reloads, and — this is the point of
 the film — nobody clicks the approve button. The only move away from the room is
 a single glance at the public board at the very end. Record in ChatGPT's in-app
 browser, or in Chrome 149 or later with WebMCP enabled at
-`chrome://flags/#enable-webmcp-testing`. Keep the chat panel and the Patchbay
-page side by side for the whole take, and click **Reset demo** before rolling.
+`chrome://flags/#enable-webmcp-testing`. Open https://patchbay.help, click
+**Open your repair room** on the front page to get a room of your own, keep the
+chat panel and the Patchbay page side by side for the whole take, and click
+**Reset demo** before rolling.
 
 The middle of the take is hands-off. From 1:02 to 1:44 the cursor should be
 visibly parked, because the whole claim is that the site repaired itself.
@@ -29,9 +31,10 @@ agent finds the tool in the page and calls it."
 
 ## 0:26–0:44 — the false success
 
-**On screen:** the evidence card fills. Rest on *Raw handler result: success*
-next to *Effective result: Verified Failure*, and on CANDIDATE_EMPTY. The
-Candidate editor is still empty.
+**On screen:** the evidence card fills, headed *What the tool said, against what
+the page showed*. Rest on *Tool said: success* next to *Page showed: Verified
+Failure*, and on *Failed postcondition CANDIDATE_EMPTY*. The Candidate editor is
+still empty.
 
 **Say:** "The tool reported success. The page shows nothing. Patchbay compared
 the tool's claim against what you can actually see, and refused the false
@@ -40,15 +43,16 @@ completion."
 ## 0:44–1:02 — the agent files a report
 
 **On screen:** type into the agent — *That tool reported success but changed
-nothing on the page. Call report_tool_problem about it, and pass the
-patchbay_receipt from the result as the receipt.* Rest on the tool's answer in
-the chat showing the report filed and checked. **Then take your hands off the
-keyboard, visibly.**
+nothing on the page. Call report_tool_problem with receipt set to the
+patchbay_receipt value from that result; that is all it needs.* Rest on the
+tool's answer in the chat showing the report filed and checked. **Then take your
+hands off the keyboard, visibly.**
 
 **Say:** "The agent is the first to know something is wrong, so it writes the
-problem down on Patchbay's public board — and it quotes the receipt the page
-handed it for that call. That receipt is the one part of the story an agent
-can't make up. Now watch. I'm not going to touch anything."
+problem down on Patchbay's public board. All it sends is the receipt the page
+handed it for that call — Patchbay reads the site, the tool, its version and the
+fingerprints off its own record. That receipt is the one part of the story an
+agent can't make up. Now watch. I'm not going to touch anything."
 
 ## 1:02–1:24 — Patchbay repairs itself
 
@@ -95,8 +99,8 @@ finds the replacement the site built for it."
 
 ## 2:10–2:26 — the verified result
 
-**On screen:** the Candidate editor fills and turns *ready*; the digest appears
-beneath it; the evidence card reads Verified Success.
+**On screen:** the Candidate editor fills and turns *ready*; the *Fingerprint*
+line appears beneath it; the evidence card reads Verified Success.
 
 **Say:** "Now the candidate is in the editor you can see, and every condition
 passes — including the digest of the text on screen. It's a revision of the
@@ -113,8 +117,9 @@ repair, the hot-swap, the retry."
 
 **On screen:** click **See tool reports from other sites** at the top of the
 page. The public board appears, with the report from this run on it alongside
-reports about tools on other sites. Hold it, then cut to an end card with the
-address and the repository link.
+reports about tools on other sites. Every fingerprint carries four colour chips
+beside its characters, and this report's receipt sits on a torn gold stub. Hold
+it, then cut to an end card with the address and the repository link.
 
 **Say:** "One board, any site. For someone else's tool, a report is a public
 record. For its own, it's a repair queue. WebMCP puts the person, the agent and
