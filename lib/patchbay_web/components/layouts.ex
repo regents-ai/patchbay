@@ -1,8 +1,4 @@
 defmodule PatchbayWeb.Layouts do
-  @moduledoc """
-  This module holds layouts and related functionality
-  used by your application.
-  """
   use PatchbayWeb, :html
 
   # Embed all files in layouts/* within this module.

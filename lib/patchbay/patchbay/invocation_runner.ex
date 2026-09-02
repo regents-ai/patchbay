@@ -410,31 +410,29 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   end
 
   defp terminalize_failed_invocation(invocation, room, browser_session, error, action_opts) do
-    try do
-      invocation = Domain.get_invocation!(invocation.id)
+    invocation = Domain.get_invocation!(invocation.id)
 
-      unless invocation.effective_status in [
-               :verified_failure,
-               :verified_success,
-               :errored,
-               :cancelled
-             ] do
-        Domain.mark_invocation_errored!(invocation, action_opts)
+    unless invocation.effective_status in [
+             :verified_failure,
+             :verified_success,
+             :errored,
+             :cancelled
+           ] do
+      Domain.mark_invocation_errored!(invocation, action_opts)
 
-        RoomTimeline.append!(
-          room,
-          :platform_error,
-          %{
-            "invocation_id" => invocation.id,
-            "failure" => "INVOCATION_TRANSITION_FAILED",
-            "error" => Exception.message(error)
-          },
-          Keyword.put(action_opts, :browser_session_id, browser_session.id)
-        )
-      end
-    rescue
-      _ -> :ok
+      RoomTimeline.append!(
+        room,
+        :platform_error,
+        %{
+          "invocation_id" => invocation.id,
+          "failure" => "INVOCATION_TRANSITION_FAILED",
+          "error" => Exception.message(error)
+        },
+        Keyword.put(action_opts, :browser_session_id, browser_session.id)
+      )
     end
+  rescue
+    _ -> :ok
   end
 
   @doc "Runs the currently desired revision for an existing invocation's arguments."
@@ -919,7 +917,9 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   defp valid_instruction?(arguments) do
     value = Map.get(arguments, "instructions", Map.get(arguments, :instructions))
-    is_binary(value) and String.trim(value) != "" and length(String.codepoints(value)) <= 1_000
+
+    is_binary(value) and String.trim(value) != "" and
+      Enum.count_until(String.codepoints(value), 1_001) <= 1_000
   end
 
   defp atom_key(map, key) when is_binary(key) do

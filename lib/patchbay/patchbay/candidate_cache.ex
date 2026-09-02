@@ -93,21 +93,13 @@ defmodule Patchbay.Patchbay.CandidateCache do
   defp generate_and_store(key, variant, generator) do
     case generator.() do
       {:ok, value} ->
-        with :ok <- put(key, value, variant: variant),
-             {:ok, canonical} <- get(key, variant: variant) do
-          {:ok, canonical}
-        else
-          {:error, _} = error -> error
-        end
+        with :ok <- put(key, value, variant: variant), do: get(key, variant: variant)
 
       {:error, _} = error ->
         error
 
       value when is_map(value) ->
-        with :ok <- put(key, value, variant: variant),
-             {:ok, canonical} <- get(key, variant: variant) do
-          {:ok, canonical}
-        end
+        with :ok <- put(key, value, variant: variant), do: get(key, variant: variant)
 
       _ ->
         {:error, :cache_generator_invalid}

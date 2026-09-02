@@ -13,7 +13,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   """
 
   alias Patchbay.Config
-  alias Patchbay.Patchbay.{CanonicalJSON, CandidateCache, Digest, Fixtures, Frontmatter}
+  alias Patchbay.Patchbay.{CandidateCache, CanonicalJSON, Digest, Fixtures, Frontmatter}
   alias Patchbay.Patchbay.ModelBudget
   alias Patchbay.Patchbay.OpenAI.Client
 
@@ -120,16 +120,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
               )
               |> Map.put(:fallback_reason, result[:fallback_reason] || result["fallback_reason"])
 
-            with {:ok, candidate} <- validate_candidate(source, candidate_from(result)),
-                 {:ok, result} <-
-                   normalize_result(
-                     result,
-                     candidate,
-                     generation_key,
-                     input_sha256,
-                     cache_variant
-                   ) do
-              {:ok, result}
+            with {:ok, candidate} <- validate_candidate(source, candidate_from(result)) do
+              normalize_result(result, candidate, generation_key, input_sha256, cache_variant)
             end
 
           {:error, reason} ->

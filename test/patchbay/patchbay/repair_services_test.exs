@@ -6,9 +6,9 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
   alias Elixir.Patchbay.Patchbay
 
   alias Elixir.Patchbay.Patchbay.{
+    CanaryRunner,
     CandidateCache,
     CandidateGenerator,
-    CanaryRunner,
     DemoReset,
     Digest,
     Fixtures,

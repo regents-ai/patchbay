@@ -160,7 +160,7 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
           end
         end)
       end)
-      |> Enum.join("")
+      |> Enum.join()
 
     decode_output(text)
   end

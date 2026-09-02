@@ -124,16 +124,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # cannot disagree if only one of them is ever read.
   defp file_report(session_id, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
-      under_session_lock(session_id, fn ->
-        with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
-             {:ok, call} <- reported_call(receipt, session_id),
-             {:ok, site, from_site} <-
-               Forum.register_site(RoomMirror.origin(), return_notifications?: true),
-             {:ok, tool, from_tool} <- observe_called_tool(site, call),
-             {:ok, report, from_report} <- store_call_report(tool, session_id, call, params) do
-          {:ok, {report, from_site ++ from_tool ++ from_report}}
-        end
-      end)
+      under_session_lock(session_id, fn -> file_receipt_report(session_id, receipt, params) end)
     end
   end
 
@@ -141,13 +132,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     with :ok <- other_site_report_fields_only(params),
          {:ok, arguments} <- reported_arguments(params["arguments"]) do
       under_session_lock(session_id, fn ->
-        with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
-             {:ok, site, from_site} <-
-               Forum.register_site(params["origin"], return_notifications?: true),
-             {:ok, tool, from_tool} <- observe_tool(site, params),
-             {:ok, report, from_report} <- store_report(tool, session_id, arguments, params) do
-          {:ok, {report, from_site ++ from_tool ++ from_report}}
-        end
+        file_other_site_report(session_id, arguments, params)
       end)
     end
   end
@@ -171,6 +156,27 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp reported_arguments(_arguments),
     do: {:error, {:invalid, ["arguments: must be an object of named values"]}}
+
+  defp file_other_site_report(session_id, arguments, params) do
+    with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
+         {:ok, site, from_site} <-
+           Forum.register_site(params["origin"], return_notifications?: true),
+         {:ok, tool, from_tool} <- observe_tool(site, params),
+         {:ok, report, from_report} <- store_report(tool, session_id, arguments, params) do
+      {:ok, {report, from_site ++ from_tool ++ from_report}}
+    end
+  end
+
+  defp file_receipt_report(session_id, receipt, params) do
+    with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
+         {:ok, call} <- reported_call(receipt, session_id),
+         {:ok, site, from_site} <-
+           Forum.register_site(RoomMirror.origin(), return_notifications?: true),
+         {:ok, tool, from_tool} <- observe_called_tool(site, call),
+         {:ok, report, from_report} <- store_call_report(tool, session_id, call, params) do
+      {:ok, {report, from_site ++ from_tool ++ from_report}}
+    end
+  end
 
   # The whole of a receipt-backed report. Anything else a caller sends is a fact
   # it would be claiming about a call Patchbay already holds the record of, so

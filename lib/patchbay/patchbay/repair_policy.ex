@@ -30,9 +30,8 @@ defmodule Patchbay.Patchbay.RepairPolicy do
          :ok <- validate_revision(source_revision),
          :ok <- validate_generation(source_revision, opts),
          :ok <-
-           validate_input_schema(proposed_input_schema(source_revision, opts), source_revision),
-         :ok <- validate_contract_metadata(source_revision, plan) do
-      :ok
+           validate_input_schema(proposed_input_schema(source_revision, opts), source_revision) do
+      validate_contract_metadata(source_revision, plan)
     end
   end
 

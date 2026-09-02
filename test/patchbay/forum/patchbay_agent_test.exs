@@ -353,6 +353,7 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
   end
 
   defp attempts do
+    # No actor may read attempts; the test reads them the way the worker does.
     Forum.list_repair_attempts!(authorize?: false)
   end
 

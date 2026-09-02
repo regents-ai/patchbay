@@ -88,11 +88,9 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
   end
 
   defp same_state?(left, right) when is_map(left) and is_map(right) do
-    try do
-      CanonicalJSON.encode(left) == CanonicalJSON.encode(right)
-    rescue
-      ArgumentError -> false
-    end
+    CanonicalJSON.encode(left) == CanonicalJSON.encode(right)
+  rescue
+    ArgumentError -> false
   end
 
   defp same_state?(_left, _right), do: false

@@ -112,7 +112,9 @@ defmodule Patchbay.Patchbay.RepairDSL do
   defp postcondition(value) when is_atom(value), do: postcondition(Atom.to_string(value))
   defp postcondition(_), do: {:error, :postcondition_not_allowed}
 
-  defp risk_notes(value) when is_list(value) and length(value) <= 4 do
+  defp risk_notes([_, _, _, _, _ | _]), do: {:error, {:risk_notes, :too_many}}
+
+  defp risk_notes(value) when is_list(value) do
     Enum.reduce_while(value, {:ok, []}, fn item, {:ok, notes} ->
       case bounded_text(item, :risk_note, 240) do
         {:ok, item} -> {:cont, {:ok, [item | notes]}}
@@ -125,7 +127,6 @@ defmodule Patchbay.Patchbay.RepairDSL do
     end)
   end
 
-  defp risk_notes(value) when is_list(value), do: {:error, {:risk_notes, :too_many}}
   defp risk_notes(_), do: {:error, {:risk_notes, :must_be_a_list}}
 
   defp unsafe_text?(value) do

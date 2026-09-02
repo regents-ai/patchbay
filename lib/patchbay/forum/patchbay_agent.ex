@@ -179,6 +179,7 @@ defmodule Patchbay.Forum.PatchbayAgent do
   defp repair(report, invocation, room, proposal) do
     attempt = claim!(report, invocation)
     started_at = announce_start(report, invocation, attempt)
+    # The attempt is Patchbay's own bookkeeping and is reachable no other way.
     attempt = Forum.mark_repair_attempt_running!(attempt, %{}, authorize?: false)
 
     settle(attempt, report, invocation, work(invocation, room, proposal), started_at)

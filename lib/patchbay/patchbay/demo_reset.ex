@@ -78,7 +78,8 @@ defmodule Patchbay.Patchbay.DemoReset do
   defp find_room!(slug, opts) when is_binary(slug) do
     Domain.get_room_by_slug!(slug, Keyword.drop(opts, [:query]))
   rescue
-    Ash.Error.Invalid -> raise Ash.Error.Query.NotFound.exception(resource: Room)
+    Ash.Error.Invalid ->
+      reraise Ash.Error.Query.NotFound.exception(resource: Room), __STACKTRACE__
   end
 
   defp lock_room!(room_id, opts) do

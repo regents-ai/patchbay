@@ -10,8 +10,8 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   alias Patchbay.Patchbay, as: Domain
 
   alias Patchbay.Patchbay.{
-    CandidateGenerator,
     CanaryRunner,
+    CandidateGenerator,
     Digest,
     Fixtures,
     Invocation,

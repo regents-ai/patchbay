@@ -211,13 +211,8 @@ defmodule Patchbay.Patchbay.ResourcesTest do
   end
 
   test "evidence relationships must belong to their room", %{room: room, revision: revision} do
-    other_room = insert_room!("other-room")
-
-    other_revision =
-      Fixtures.revision_attributes(other_room.id)
-      |> Map.merge(%{generation: 1, status: :desired})
-      |> Map.delete(:contract_sha256)
-      |> Patchbay.create_tool_revision!()
+    other_room = Patchbay.create_seeded_room!("other-room")
+    other_revision = seeded_revision!(other_room)
 
     browser_session =
       Patchbay.register_browser_session!(%{
@@ -885,18 +880,6 @@ defmodule Patchbay.Patchbay.ResourcesTest do
              )
 
     assert recreated.status == :desired
-  end
-
-  defp insert_room!(slug) do
-    attrs =
-      Fixtures.room_attributes()
-      |> Map.put(:id, Ecto.UUID.dump!(Ash.UUID.generate()))
-      |> Map.put(:slug, slug)
-      |> Map.put(:status, "ready")
-      |> Map.put(:goal_kind, "skill_uplift")
-
-    {1, _} = Repo.insert_all("rooms", [attrs])
-    Patchbay.get_room_by_slug!(slug)
   end
 
   defp create_verification!(attrs) do

@@ -12,9 +12,9 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
   alias Patchbay.Patchbay, as: Domain
 
   alias Patchbay.Patchbay.{
+    CanaryRunner,
     Digest,
     Invocation,
-    CanaryRunner,
     RepairProposal,
     Room,
     RoomTimeline,

@@ -404,40 +404,44 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   @impl true
   def handle_event("approve_repair", _params, socket) do
-    with {:ok, proposal} <- active_proposal(socket.assigns.room) do
-      try do
-        published = RepairApprovalService.approve_and_publish!(proposal, "owner")
-        room = Domain.get_room_by_id!(socket.assigns.room.id)
+    case active_proposal(socket.assigns.room) do
+      {:ok, proposal} ->
+        try do
+          published = RepairApprovalService.approve_and_publish!(proposal, "owner")
+          room = Domain.get_room_by_id!(socket.assigns.room.id)
 
-        socket =
-          socket
-          |> refresh(socket.assigns.browser_session)
-          |> assign(error_message: nil)
-          |> push_publication_requested(published, room)
-          |> push_desired_toolset()
+          socket =
+            socket
+            |> refresh(socket.assigns.browser_session)
+            |> assign(error_message: nil)
+            |> push_publication_requested(published, room)
+            |> push_desired_toolset()
 
-        {:noreply, socket}
-      rescue
-        error -> {:noreply, assign(socket, error_message: readable_error(error))}
-      end
-    else
-      {:error, message} -> {:noreply, assign(socket, error_message: message)}
+          {:noreply, socket}
+        rescue
+          error -> {:noreply, assign(socket, error_message: readable_error(error))}
+        end
+
+      {:error, message} ->
+        {:noreply, assign(socket, error_message: message)}
     end
   end
 
   @impl true
   def handle_event("reject_repair", _params, socket) do
-    with {:ok, proposal} <- active_proposal(socket.assigns.room) do
-      try do
-        RepairApprovalService.reject!(proposal)
+    case active_proposal(socket.assigns.room) do
+      {:ok, proposal} ->
+        try do
+          RepairApprovalService.reject!(proposal)
 
-        {:noreply,
-         socket |> refresh(socket.assigns.browser_session) |> assign(error_message: nil)}
-      rescue
-        error -> {:noreply, assign(socket, error_message: readable_error(error))}
-      end
-    else
-      {:error, message} -> {:noreply, assign(socket, error_message: message)}
+          {:noreply,
+           socket |> refresh(socket.assigns.browser_session) |> assign(error_message: nil)}
+        rescue
+          error -> {:noreply, assign(socket, error_message: readable_error(error))}
+        end
+
+      {:error, message} ->
+        {:noreply, assign(socket, error_message: message)}
     end
   end
 
@@ -469,31 +473,32 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   end
 
   def handle_event("verify_goal", params, socket) do
-    with {:ok, invocation} <-
-           fetch_invocation(value(params, "invocation_id"), socket.assigns.room) do
-      try do
-        verified =
-          if invocation.effective_status in [:verified_failure, :verified_success] do
-            invocation
-          else
-            InvocationRunner.verify!(invocation, post_state_from_assigns(socket.assigns))
-          end
+    case fetch_invocation(value(params, "invocation_id"), socket.assigns.room) do
+      {:ok, invocation} ->
+        try do
+          verified =
+            if invocation.effective_status in [:verified_failure, :verified_success] do
+              invocation
+            else
+              InvocationRunner.verify!(invocation, post_state_from_assigns(socket.assigns))
+            end
 
-        {:noreply,
-         socket
-         |> refresh(socket.assigns.browser_session)
-         |> assign(
-           error_message:
-             if(verified.effective_status == :verified_success,
-               do: nil,
-               else: "Goal is not verified yet"
-             )
-         )}
-      rescue
-        error -> {:noreply, assign(socket, error_message: readable_error(error))}
-      end
-    else
-      {:error, message} -> {:noreply, assign(socket, error_message: message)}
+          {:noreply,
+           socket
+           |> refresh(socket.assigns.browser_session)
+           |> assign(
+             error_message:
+               if(verified.effective_status == :verified_success,
+                 do: nil,
+                 else: "Goal is not verified yet"
+               )
+           )}
+        rescue
+          error -> {:noreply, assign(socket, error_message: readable_error(error))}
+        end
+
+      {:error, message} ->
+        {:noreply, assign(socket, error_message: message)}
     end
   end
 
