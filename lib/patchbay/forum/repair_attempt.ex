@@ -7,15 +7,21 @@ defmodule Patchbay.Forum.RepairAttempt do
   report: claiming it is what stops the same report being worked twice, and its
   outcome is why a reply says what it says.
 
-  Nothing outside Patchbay's own worker reads or writes these rows.
+  The row also carries how far the work has got, so the room the report is about
+  can show the repair happening instead of only its result: `phase` moves
+  forward once per step and `phase_changed_at` says when it last moved. That is
+  the one thing anything outside Patchbay's own worker reads here, and only the
+  room the attempt was made for reads it.
   """
 
   use Ash.Resource,
     otp_app: :patchbay,
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
+  alias Patchbay.Forum.Types.RepairAttemptPhase
   alias Patchbay.Forum.Types.RepairAttemptStatus
 
   @max_detail_bytes 500
@@ -28,6 +34,17 @@ defmodule Patchbay.Forum.RepairAttempt do
     references do
       reference(:report, index?: true)
     end
+  end
+
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    # `Patchbay.Patchbay.Room.topic/1` is these same two parts joined the same
+    # way, so a step forward lands on the channel the open room page is already
+    # listening to. An attempt about a page that has since been cleared away has
+    # no room to name, and nothing is published for it.
+    publish(:mark_phase, ["patchbay:room", :room_id], transform: &__MODULE__.phase_message/1)
   end
 
   attributes do
@@ -45,6 +62,15 @@ defmodule Patchbay.Forum.RepairAttempt do
     attribute(:reply_id, :uuid, allow_nil?: true)
 
     attribute(:status, RepairAttemptStatus, allow_nil?: false, default: :queued)
+
+    # A page opened halfway through a repair reads these two and shows what a
+    # page that watched the whole repair is showing.
+    attribute(:phase, RepairAttemptPhase, allow_nil?: false, default: :queued)
+
+    attribute(:phase_changed_at, :utc_datetime_usec,
+      allow_nil?: false,
+      default: &DateTime.utc_now/0
+    )
 
     attribute :detail, :string do
       allow_nil?(true)
@@ -67,6 +93,20 @@ defmodule Patchbay.Forum.RepairAttempt do
   actions do
     defaults([:read])
 
+    read :latest_for_invocation do
+      description("""
+      The most recent repair Patchbay actually started on one recorded call. A
+      report it declined to work never left `:queued` and is not one of these.
+      """)
+
+      get?(true)
+
+      argument(:invocation_id, :uuid, allow_nil?: false)
+
+      filter(expr(invocation_id == ^arg(:invocation_id) and phase != :queued))
+      prepare(build(sort: [inserted_at: :desc, id: :desc], limit: 1))
+    end
+
     create :claim do
       description("Takes one report to work on, or fails because it is already taken.")
       accept([:report_id, :room_id, :invocation_id])
@@ -76,6 +116,16 @@ defmodule Patchbay.Forum.RepairAttempt do
       description("The repair for this report has started.")
       accept([])
       change(set_attribute(:status, :running))
+    end
+
+    update :mark_phase do
+      description("Moves the attempt on to the step the worker has just reached.")
+      accept([])
+
+      argument(:phase, RepairAttemptPhase, allow_nil?: false)
+
+      change(set_attribute(:phase, arg(:phase)))
+      change(set_attribute(:phase_changed_at, &DateTime.utc_now/0))
     end
 
     update :record_outcome do
@@ -92,6 +142,14 @@ defmodule Patchbay.Forum.RepairAttempt do
       forbid_if(always())
     end
   end
+
+  @doc """
+  What the room's channel carries when an attempt reaches its next step.
+  """
+  @spec phase_message(Ash.Notifier.Notification.t()) ::
+          {:patchbay_agent_progress, String.t() | nil, atom()}
+  def phase_message(%Ash.Notifier.Notification{data: attempt}),
+    do: {:patchbay_agent_progress, attempt.room_id, attempt.phase}
 
   @spec max_detail_bytes() :: pos_integer()
   def max_detail_bytes, do: @max_detail_bytes

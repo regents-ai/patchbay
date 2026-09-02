@@ -20,6 +20,10 @@ defmodule Patchbay.Patchbay.Types.EventKind do
       :approval_rejected,
       :publication_requested,
       :goal_verified,
+      :agent_reading_failure,
+      :agent_testing_replacement,
+      :agent_publishing_tool,
+      :agent_repair_finished,
       :platform_error
     ]
 end

@@ -431,13 +431,13 @@
       </div>
 
       <ol
-        :if={agent_at_work?(@room, @proposal)}
+        :if={agent_at_work?(@room, @proposal, @agent_attempt)}
         id="patchbay-agent-steps"
         class="patchbay-agent-steps"
         aria-live="polite"
       >
         <li
-          :for={step <- agent_steps(@room, @proposal)}
+          :for={step <- agent_steps(@room, @proposal, @agent_attempt)}
           class={"patchbay-agent-step is-" <> to_string(step.state)}
         >
           <span class="patchbay-agent-dot" aria-hidden="true"></span>
@@ -445,6 +445,14 @@
           <span class="patchbay-agent-state">{step.state}</span>
         </li>
       </ol>
+
+      <p
+        :if={agent_stop_reason(@agent_attempt)}
+        id="patchbay-agent-stopped"
+        class="patchbay-alert patchbay-alert-warn"
+      >
+        {agent_stop_reason(@agent_attempt)}
+      </p>
 
       <div :if={!@proposal && @room.status == :failed} class="patchbay-repair-cta">
         <p>
@@ -555,7 +563,10 @@
       </div>
 
       <p
-        :if={!@proposal && @room.status != :failed && !agent_at_work?(@room, @proposal)}
+        :if={
+          !@proposal && @room.status != :failed &&
+            !agent_at_work?(@room, @proposal, @agent_attempt)
+        }
         class="patchbay-empty-state"
       >
         Nothing to repair yet. Send prompt 1, "Ask for the uplift"; the moment the tool claims a success this page cannot see, the repair starts here.

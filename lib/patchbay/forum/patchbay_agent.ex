@@ -36,6 +36,7 @@ defmodule Patchbay.Forum.PatchbayAgent do
     RepairApprovalService,
     RepairPlanner,
     Room,
+    RoomTimeline,
     Telemetry
   }
 
@@ -182,7 +183,7 @@ defmodule Patchbay.Forum.PatchbayAgent do
     # The attempt is Patchbay's own bookkeeping and is reachable no other way.
     attempt = Forum.mark_repair_attempt_running!(attempt, %{}, authorize?: false)
 
-    settle(attempt, report, invocation, work(invocation, room, proposal), started_at)
+    settle(attempt, report, invocation, work(attempt, invocation, room, proposal), started_at)
   end
 
   defp refuse(report, invocation, detail) do
@@ -194,11 +195,12 @@ defmodule Patchbay.Forum.PatchbayAgent do
 
   # The whole repair, from the recorded call to the published replacement. The
   # report's own text takes no part in it.
-  defp work(invocation, room, proposal) do
+  defp work(attempt, invocation, room, proposal) do
+    advance(attempt, :reading)
     proposal = proposal || propose(invocation, room)
 
     if proposal.status == :ready_for_approval do
-      publish(invocation, room, proposal)
+      publish(attempt, invocation, room, proposal)
     else
       {:errored, "the replacement did not pass its checks"}
     end
@@ -215,13 +217,16 @@ defmodule Patchbay.Forum.PatchbayAgent do
 
   # Nothing is published on a report alone: the tool the page is offering now
   # has to still fail the way the record says it failed.
-  defp publish(invocation, room, proposal) do
+  defp publish(attempt, invocation, room, proposal) do
     revision = Rooms.get_tool_revision!(proposal.source_tool_revision_id)
+    advance(attempt, :testing)
 
     case FailureReproduction.check(invocation, room, revision) do
       :ok ->
+        advance(attempt, :publishing)
         published = RepairApprovalService.approve_and_publish!(proposal, @approver)
         revision = Rooms.get_tool_revision!(published.candidate_tool_revision_id)
+        advance(attempt, :done)
         {:published, published, revision}
 
       {:error, detail} ->
@@ -252,13 +257,16 @@ defmodule Patchbay.Forum.PatchbayAgent do
   end
 
   # Every attempt ends the same way: an answer on the report, a row saying what
-  # happened, and a nudge to whatever page is open on that room.
+  # happened, and a nudge to whatever page is open on that room. The work moved
+  # the row on as it went, so the ending is written onto the row as it stands
+  # now rather than as it stood when the work started.
   defp settle(attempt, report, invocation, outcome, started_at) do
     reply = answer(report, invocation, outcome)
 
     attempt =
-      Forum.record_repair_attempt_outcome!(
-        attempt,
+      attempt.id
+      |> Forum.get_repair_attempt!(authorize?: false)
+      |> Forum.record_repair_attempt_outcome!(
         %{
           status: status(outcome),
           proposal_id: proposal_id(outcome),
@@ -299,6 +307,23 @@ defmodule Patchbay.Forum.PatchbayAgent do
       Logger.error("[webmcp] the Patchbay Agent could not answer a report: #{inspect(error)}")
       nil
   end
+
+  # One step forward. The row is what a page opened halfway through reads, and
+  # the timeline entry is what the room still shows once the repair is over. The
+  # step reaches an already-open page from the resource itself, which publishes
+  # it on the room's own channel.
+  #
+  # The attempt is Patchbay's own bookkeeping and is reachable no other way.
+  defp advance(attempt, phase) do
+    Forum.mark_repair_attempt_phase!(attempt, phase, %{}, authorize?: false)
+    RoomTimeline.append!(attempt.room_id, phase_kind(phase), %{"attempt_id" => attempt.id})
+    :ok
+  end
+
+  defp phase_kind(:reading), do: :agent_reading_failure
+  defp phase_kind(:testing), do: :agent_testing_replacement
+  defp phase_kind(:publishing), do: :agent_publishing_tool
+  defp phase_kind(:done), do: :agent_repair_finished
 
   defp announce(nil, _report_id, _outcome), do: :ok
 

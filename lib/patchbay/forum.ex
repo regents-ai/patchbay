@@ -39,8 +39,16 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.RepairAttempt do
       define(:claim_repair_attempt, action: :claim)
+      define(:get_repair_attempt, action: :read, get_by: [:id])
       define(:list_repair_attempts, action: :read)
+
+      define(:latest_repair_attempt_for_call,
+        action: :latest_for_invocation,
+        args: [:invocation_id]
+      )
+
       define(:mark_repair_attempt_running, action: :mark_running)
+      define(:mark_repair_attempt_phase, action: :mark_phase, args: [:phase])
       define(:record_repair_attempt_outcome, action: :record_outcome)
     end
   end

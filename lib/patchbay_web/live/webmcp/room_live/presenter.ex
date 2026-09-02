@@ -3,6 +3,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   use Phoenix.Component
 
+  alias Patchbay.Forum.RepairAttempt
   alias Patchbay.Patchbay.{BrowserSession, Invocation, Room, RoomEvent}
   alias PatchbayWeb.Forum.BoardHTML
 
@@ -103,26 +104,72 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     end
   end
 
+  # The three moments of a repair, in the order they happen, and where each phase
+  # of a worker's repair sits in that order. `:queued` is a repair that has not
+  # started, and `:done` is one that is past every step.
+  @repair_steps [
+    {:reading, "Reading the failure"},
+    {:testing, "Testing the replacement"},
+    {:publishing, "Publishing the tool"}
+  ]
+
+  @phase_positions %{queued: 0, reading: 1, testing: 2, publishing: 3, done: 4}
+
   @doc """
   Whether the Patchbay Agent is somewhere in the repair it runs by itself, so
   the room can show its progress instead of an empty card.
   """
-  def agent_at_work?(room, proposal) do
-    proposal != nil or
+  def agent_at_work?(room, proposal, attempt) do
+    attempt != nil or proposal != nil or
       room.status in [:diagnosing, :repair_ready, :awaiting_approval, :publishing]
   end
 
   @doc """
-  The three moments of a repair, each one read from state the room actually
-  keeps: it is diagnosing, it has a proposal with a canary result, and it is
-  publishing. Nothing here is guessed while the room is silent.
+  The three moments of a repair and where it has got to.
+
+  A repair the worker ran on a report wrote down every step it reached, so those
+  steps are read straight off that record. A repair the owner asked for by hand
+  writes nothing down, so its steps are read from what the room itself keeps: it
+  is diagnosing, it has a proposal with a canary result, and it is publishing.
+  Nothing here is guessed while the room is silent.
   """
-  def agent_steps(room, proposal) do
-    [
-      %{label: "Reading the failure", state: diagnosis_state(room, proposal)},
-      %{label: "Testing the replacement", state: canary_state(proposal)},
-      %{label: "Publishing the tool", state: publication_state(room)}
-    ]
+  def agent_steps(room, proposal, attempt) do
+    Enum.map(@repair_steps, fn {step, label} ->
+      %{label: label, state: agent_step_state(step, room, proposal, attempt)}
+    end)
+  end
+
+  @doc """
+  Why a repair the worker ran stopped without replacing the tool, in the words
+  the reply on the report uses. A repair still running, or one that finished,
+  has nothing to say here.
+  """
+  def agent_stop_reason(%RepairAttempt{status: :errored}),
+    do: "Patchbay could not finish this repair, so a person will need to look at it."
+
+  def agent_stop_reason(%RepairAttempt{status: :not_reproduced, detail: detail})
+      when is_binary(detail),
+      do: "Patchbay did not replace the tool, because #{detail}."
+
+  def agent_stop_reason(_attempt), do: nil
+
+  defp agent_step_state(step, _room, _proposal, %RepairAttempt{} = attempt),
+    do: attempt_step_state(attempt, step)
+
+  defp agent_step_state(:reading, room, proposal, nil), do: diagnosis_state(room, proposal)
+  defp agent_step_state(:testing, _room, proposal, nil), do: canary_state(proposal)
+  defp agent_step_state(:publishing, room, _proposal, nil), do: publication_state(room)
+
+  # The phase is the furthest step the repair reached and the status is how it
+  # ended, so the two together say which step a stopped repair stopped on
+  # without either of them having to guess.
+  defp attempt_step_state(%RepairAttempt{phase: phase, status: status}, step) do
+    cond do
+      @phase_positions[phase] > @phase_positions[step] -> :done
+      @phase_positions[phase] < @phase_positions[step] -> :waiting
+      status in [:queued, :running] -> :working
+      true -> :failed
+    end
   end
 
   defp diagnosis_state(%Room{status: :diagnosing}, nil), do: :working
@@ -224,11 +271,14 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
              :canary_passed,
              :canary_failed,
              :approval_granted,
-             :approval_rejected
+             :approval_rejected,
+             :agent_reading_failure,
+             :agent_testing_replacement,
+             :agent_repair_finished
            ] ->
         "is-repair"
 
-      :publication_requested ->
+      kind when kind in [:publication_requested, :agent_publishing_tool] ->
         "is-publication"
 
       :goal_verified ->
@@ -381,6 +431,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
       approval_rejected: "Repair rejected",
       publication_requested: "Publication requested",
       goal_verified: "Goal verified",
+      agent_reading_failure: "Reading the failure",
+      agent_testing_replacement: "Testing the replacement",
+      agent_publishing_tool: "Publishing the tool",
+      agent_repair_finished: "Repair finished",
       platform_error: "Platform error"
     }
     |> Map.get(kind, status_label(kind))

@@ -12,6 +12,8 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
   alias Patchbay.Patchbay.Digest
   alias Patchbay.Patchbay.FailureReproduction
   alias Patchbay.Patchbay.InvocationRunner
+  alias Patchbay.Patchbay.Room
+  alias Patchbay.Patchbay.RoomTimeline
 
   setup do
     put_setting(:demo_fallback, true)
@@ -249,6 +251,77 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
     end
   end
 
+  describe "the steps of a repair" do
+    test "each step is written down, told to the room, and left in the room's timeline" do
+      call = failed_call()
+      Phoenix.PubSub.subscribe(Patchbay.PubSub, Room.topic(call.room.id))
+      _report = file_report!(call)
+
+      assert {:ok, attempt} = PatchbayAgent.sweep()
+      assert attempt.phase == :done
+      assert DateTime.compare(attempt.phase_changed_at, attempt.inserted_at) == :gt
+
+      room_id = call.room.id
+      assert_received({:patchbay_agent_progress, ^room_id, :reading})
+      assert_received({:patchbay_agent_progress, ^room_id, :testing})
+      assert_received({:patchbay_agent_progress, ^room_id, :publishing})
+      assert_received({:patchbay_agent_progress, ^room_id, :done})
+
+      assert agent_steps_in_timeline(room_id) == [
+               :agent_reading_failure,
+               :agent_testing_replacement,
+               :agent_publishing_tool,
+               :agent_repair_finished
+             ]
+    end
+
+    test "a repair that stops keeps the step it stopped on" do
+      call = failed_call()
+      _report = file_report!(call)
+
+      put_setting(:demo_fallback, false)
+      put_setting(:room_daily_model_calls, 0)
+
+      assert {:ok, attempt} = PatchbayAgent.sweep()
+      assert attempt.status == :errored
+      assert attempt.phase == :reading
+
+      assert agent_steps_in_timeline(call.room.id) == [:agent_reading_failure]
+    end
+
+    test "a report Patchbay declines to work claims no step at all" do
+      call = failed_call()
+      Rooms.reset_demo!(call.room)
+      Phoenix.PubSub.subscribe(Patchbay.PubSub, Room.topic(call.room.id))
+      _report = file_report!(call)
+
+      assert {:ok, attempt} = PatchbayAgent.sweep()
+      assert attempt.status == :refused
+      assert attempt.phase == :queued
+
+      refute_received({:patchbay_agent_progress, _room_id, _phase})
+      assert agent_steps_in_timeline(call.room.id) == []
+
+      # And a room asking for the repair of its own call is never shown one.
+      assert Forum.latest_repair_attempt_for_call!(call.invocation.id,
+               authorize?: false,
+               not_found_error?: false
+             ) == nil
+    end
+
+    test "moving an attempt on stamps the time itself" do
+      call = failed_call()
+      _report = file_report!(call)
+
+      assert {:ok, attempt} = PatchbayAgent.sweep()
+
+      moved = Forum.mark_repair_attempt_phase!(attempt, :reading, %{}, authorize?: false)
+
+      assert moved.phase == :reading
+      assert DateTime.compare(moved.phase_changed_at, attempt.phase_changed_at) == :gt
+    end
+  end
+
   describe "the running worker" do
     test "picks up a verified report on its own" do
       call = failed_call()
@@ -355,6 +428,13 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
   defp attempts do
     # No actor may read attempts; the test reads them the way the worker does.
     Forum.list_repair_attempts!(authorize?: false)
+  end
+
+  defp agent_steps_in_timeline(room_id) do
+    room_id
+    |> RoomTimeline.list!()
+    |> Enum.map(& &1.kind)
+    |> Enum.filter(&String.starts_with?(Atom.to_string(&1), "agent_"))
   end
 
   defp replies(report) do

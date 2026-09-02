@@ -19,6 +19,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   import PatchbayWeb.WebMCP.RoomLive.Presenter
 
   alias Patchbay.Config
+  alias Patchbay.Forum
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Domain
   alias PatchbayWeb.Forum.Board
@@ -574,6 +575,15 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     {:noreply, refresh(socket, socket.assigns.browser_session)}
   end
 
+  # Each step of a repair the worker is running arrives here while it is still
+  # running, so the card moves through the work instead of jumping from waiting
+  # straight to finished.
+  @impl true
+  def handle_info({:patchbay_agent_progress, room_id, _phase}, socket)
+      when room_id == socket.assigns.room.id do
+    {:noreply, refresh(socket, socket.assigns.browser_session)}
+  end
+
   @impl true
   def handle_info({:patchbay_room_reset, room_id, epoch}, socket)
       when room_id == socket.assigns.room.id do
@@ -883,8 +893,25 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       proposal: proposal,
       proposal_source_revision: proposal_revision(proposal, room, :source_tool_revision_id),
       proposal_candidate_revision: proposal_revision(proposal, room, :candidate_tool_revision_id),
+      agent_attempt: latest_agent_attempt(room),
       room_reports: Board.reports_for_room(room.id)
     }
+  end
+
+  # How far the Patchbay Agent has got with the repair of the call this room is
+  # waiting on. Keying it on the call rather than on the room is what keeps a
+  # finished repair off a room that has since been reset, because a reset clears
+  # the call.
+  defp latest_agent_attempt(%Room{last_failed_invocation_id: nil}), do: nil
+
+  defp latest_agent_attempt(%Room{last_failed_invocation_id: invocation_id}) do
+    # The record is Patchbay's own bookkeeping that no actor may read, and the
+    # room the call belongs to is the one place it is shown, so the read is made
+    # deliberately without an actor.
+    Forum.latest_repair_attempt_for_call!(invocation_id,
+      authorize?: false,
+      not_found_error?: false
+    )
   end
 
   defp refresh(socket, browser_session) do

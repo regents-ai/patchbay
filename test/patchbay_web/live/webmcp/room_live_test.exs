@@ -4,9 +4,20 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Config
+  alias Patchbay.Forum
+  alias Patchbay.Forum.PatchbayAgent
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures}
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
+
+  # What a repair writes into the timeline, so the room's other entries can be
+  # left out of the assertions about it.
+  @agent_step_labels [
+    "Reading the failure",
+    "Testing the replacement",
+    "Publishing the tool",
+    "Repair finished"
+  ]
 
   setup %{conn: conn} do
     room = Domain.create_seeded_room!("room-#{System.unique_integer([:positive])}")
@@ -878,6 +889,104 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert has_element?(view, "#patchbay-room-reports .patchbay-nameplate-agent")
   end
 
+  test "the card follows a repair the worker is still running", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    report = file_verified_report!(room, session)
+
+    # A repair claimed and stepped forward the way the worker steps it, so the
+    # page is watched part-way through instead of only after it has finished.
+    attempt =
+      Forum.claim_repair_attempt!(
+        %{
+          report_id: report.id,
+          room_id: room.id,
+          invocation_id: latest_invocation(room).id
+        },
+        authorize?: false
+      )
+
+    Forum.mark_repair_attempt_phase!(attempt, :reading, %{}, authorize?: false)
+    render(view)
+
+    assert has_element?(view, "#patchbay-agent-steps .is-working", "Reading the failure")
+    assert has_element?(view, "#patchbay-agent-steps .is-waiting", "Testing the replacement")
+    assert has_element?(view, "#patchbay-agent-steps .is-waiting", "Publishing the tool")
+
+    Forum.mark_repair_attempt_phase!(attempt, :publishing, %{}, authorize?: false)
+    render(view)
+
+    assert has_element?(view, "#patchbay-agent-steps .is-done", "Reading the failure")
+    assert has_element?(view, "#patchbay-agent-steps .is-done", "Testing the replacement")
+    assert has_element?(view, "#patchbay-agent-steps .is-working", "Publishing the tool")
+    refute has_element?(view, "#patchbay-agent-stopped")
+  end
+
+  test "a finished repair leaves every step behind it, in the timeline too", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    file_verified_report!(room, session)
+    assert {:ok, %{status: :published}} = PatchbayAgent.sweep()
+
+    render(view)
+
+    assert has_element?(view, "#patchbay-agent-steps .is-done", "Reading the failure")
+    assert has_element?(view, "#patchbay-agent-steps .is-done", "Testing the replacement")
+    assert has_element?(view, "#patchbay-agent-steps .is-done", "Publishing the tool")
+    refute has_element?(view, "#patchbay-agent-stopped")
+
+    assert timeline_entries(view) == [
+             "Reading the failure",
+             "Testing the replacement",
+             "Publishing the tool",
+             "Repair finished"
+           ]
+  end
+
+  test "the card says which step a repair stopped on, and why", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    file_verified_report!(room, session)
+
+    assert {:ok, %{status: :errored}} = without_repair_budget(&PatchbayAgent.sweep/0)
+
+    render(view)
+
+    assert has_element?(view, "#patchbay-agent-steps .is-failed", "Reading the failure")
+    assert has_element?(view, "#patchbay-agent-steps .is-waiting", "Testing the replacement")
+
+    assert has_element?(
+             view,
+             "#patchbay-agent-stopped",
+             "a person will need to look at it"
+           )
+
+    assert timeline_entries(view) == ["Reading the failure"]
+  end
+
+  test "a reset clears a finished repair off the card", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    file_verified_report!(room, session)
+    assert {:ok, %{status: :published}} = PatchbayAgent.sweep()
+
+    render_click(view, "reset_demo")
+
+    refute has_element?(view, "#patchbay-agent-steps")
+    refute has_element?(view, "#patchbay-agent-stopped")
+  end
+
   test "reset invalidates a stale repair callback", %{conn: conn, room: room} do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
@@ -1228,6 +1337,35 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert report.verified
     report
   end
+
+  # The steps of a repair the room has kept, in the order they happened.
+  defp timeline_entries(view) do
+    view
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query("#patchbay-timeline .patchbay-timeline-entry strong")
+    |> Enum.map(&LazyHTML.text/1)
+    |> Enum.filter(&(&1 in @agent_step_labels))
+  end
+
+  # No fallback plan and no room budget, so a repair cannot get past reading the
+  # failure. It is the deterministic way to watch one stop part-way.
+  defp without_repair_budget(fun) do
+    previous_calls = Application.get_env(:patchbay, :room_daily_model_calls)
+    Application.put_env(:patchbay, :room_daily_model_calls, 0)
+
+    try do
+      without_live_inference(fun)
+    after
+      restore_room_daily_model_calls(previous_calls)
+    end
+  end
+
+  defp restore_room_daily_model_calls(nil),
+    do: Application.delete_env(:patchbay, :room_daily_model_calls)
+
+  defp restore_room_daily_model_calls(value),
+    do: Application.put_env(:patchbay, :room_daily_model_calls, value)
 
   defp skill_upload(view, name, content, type \\ "text/markdown") do
     file_input(view, "#patchbay-skill-upload-form", :skill, [
