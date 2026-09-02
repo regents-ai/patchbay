@@ -17,7 +17,7 @@ defmodule PatchbayWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico favicon.svg robots.txt)
+  def static_paths, do: ~w(assets favicon.ico favicon.svg robots.txt)
 
   def router do
     quote do
@@ -39,8 +39,6 @@ defmodule PatchbayWeb do
   def controller do
     quote do
       use Phoenix.Controller, formats: [:html, :json]
-
-      use Gettext, backend: PatchbayWeb.Gettext
 
       import Plug.Conn
 
@@ -79,9 +77,6 @@ defmodule PatchbayWeb do
 
   defp html_helpers do
     quote do
-      # Translation
-      use Gettext, backend: PatchbayWeb.Gettext
-
       # HTML escaping functionality
       import Phoenix.HTML
 

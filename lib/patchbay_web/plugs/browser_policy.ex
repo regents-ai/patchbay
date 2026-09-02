@@ -6,9 +6,9 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
   same-origin, and a Content Security Policy without `unsafe-eval`, matching the
   rule that generated content is never executed.
 
-  The root layout's inline theme script is allowed through a per-request nonce
-  published as the `:csp_nonce` assign. `connect-src` names this page's own
-  origin over `ws`/`wss` so the LiveView socket connects and nothing else does.
+  A per-request nonce is published as the `:csp_nonce` assign. `connect-src`
+  names this page's own origin over `ws`/`wss` so the LiveView socket connects
+  and nothing else does.
   """
 
   @behaviour Plug

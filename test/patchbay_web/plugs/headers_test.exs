@@ -37,12 +37,4 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert [policy] = get_resp_header(conn, "content-security-policy")
     refute policy =~ "unsafe-eval"
   end
-
-  test "the inline theme script carries the nonce named by the policy", %{conn: conn, room: room} do
-    conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
-
-    assert [policy] = get_resp_header(conn, "content-security-policy")
-    assert [_, nonce] = Regex.run(~r/script-src 'self' 'nonce-([^']+)'/, policy)
-    assert html_response(conn, 200) =~ ~s(<script nonce="#{nonce}">)
-  end
 end
