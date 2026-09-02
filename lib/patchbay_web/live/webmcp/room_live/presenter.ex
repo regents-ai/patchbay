@@ -3,6 +3,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   use Phoenix.Component
 
+  alias Patchbay.BoundedText
   alias Patchbay.Forum.RepairAttempt
   alias Patchbay.Patchbay.{BrowserSession, Invocation, Room, RoomEvent}
   alias PatchbayWeb.Forum.BoardHTML
@@ -358,26 +359,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   end
 
   defp bounded_text(value) do
-    text = format_map(value)
-
-    if byte_size(text) > @display_bytes do
-      {truncate_bytes(text, @display_bytes), true}
-    else
-      {text, false}
-    end
-  end
-
-  defp truncate_bytes(text, limit) do
-    <<chunk::binary-size(limit), _rest::binary>> = text
-    trim_to_text(chunk)
-  end
-
-  # A byte cut can land inside a multi-byte character, so drop trailing bytes
-  # until what is left is printable text again.
-  defp trim_to_text(chunk) do
-    if String.valid?(chunk),
-      do: chunk,
-      else: trim_to_text(binary_part(chunk, 0, byte_size(chunk) - 1))
+    value |> format_map() |> BoundedText.take(@display_bytes)
   end
 
   defp format_map(value) when is_map(value), do: format_value(value)

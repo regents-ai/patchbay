@@ -25,6 +25,7 @@ defmodule Patchbay.Forum.PatchbayAgent do
   require Ash.Query
   require Logger
 
+  alias Patchbay.BoundedText
   alias Patchbay.Config
   alias Patchbay.Forum
   alias Patchbay.Forum.RepairAttempt
@@ -144,38 +145,39 @@ defmodule Patchbay.Forum.PatchbayAgent do
   defp consider(report) do
     invocation = invocation(report.invocation_id)
     room = invocation && room(invocation.room_id)
-    proposal = room && ready_proposal(room)
 
-    cond do
-      is_nil(invocation) ->
-        refuse(report, nil, "we no longer hold our record of that call")
-
-      is_nil(room) ->
-        refuse(report, invocation, "that page has since been cleared away")
-
-      invocation.effective_status != :verified_failure ->
-        refuse(report, invocation, "our own record of that call does not show it failing")
-
-      room.last_failed_invocation_id != invocation.id ->
-        refuse(report, invocation, "that page has already moved on from that call")
-
-      room.status == :diagnosing ->
-        :waiting_for_room
-
-      room.status in [:publishing, :repaired, :retrying, :verified] ->
-        refuse(report, invocation, "that tool has already been replaced")
-
-      room.status == :error ->
-        refuse(
-          report,
-          invocation,
-          "the last repair on that page did not finish, so a person has to look at it"
-        )
-
-      true ->
-        repair(report, invocation, room, proposal)
+    case decide(invocation, room) do
+      :repair -> repair(report, invocation, room, ready_proposal(room))
+      :waiting_for_room -> :waiting_for_room
+      {:refuse, detail} -> refuse(report, invocation, detail)
     end
   end
+
+  # What our own record says about the report, read in order: the call has to
+  # still be ours, it has to have failed, it has to be the failure the page is
+  # still on, and the page has to be waiting for a repair rather than already
+  # past one.
+  defp decide(nil, _room), do: {:refuse, "we no longer hold our record of that call"}
+  defp decide(_invocation, nil), do: {:refuse, "that page has since been cleared away"}
+
+  defp decide(%{effective_status: effective_status}, _room)
+       when effective_status != :verified_failure,
+       do: {:refuse, "our own record of that call does not show it failing"}
+
+  defp decide(%{id: invocation_id}, %{last_failed_invocation_id: last_failed_id})
+       when invocation_id != last_failed_id,
+       do: {:refuse, "that page has already moved on from that call"}
+
+  defp decide(_invocation, %{status: :diagnosing}), do: :waiting_for_room
+
+  defp decide(_invocation, %{status: status})
+       when status in [:publishing, :repaired, :retrying, :verified],
+       do: {:refuse, "that tool has already been replaced"}
+
+  defp decide(_invocation, %{status: :error}),
+    do: {:refuse, "the last repair on that page did not finish, so a person has to look at it"}
+
+  defp decide(_invocation, _room), do: :repair
 
   defp repair(report, invocation, room, proposal) do
     attempt = claim!(report, invocation)
@@ -424,14 +426,9 @@ defmodule Patchbay.Forum.PatchbayAgent do
   end
 
   defp clamp(text, limit) when is_binary(text) do
-    if byte_size(text) > limit, do: trim_to_text(binary_part(text, 0, limit)), else: text
+    {clamped, _shortened?} = BoundedText.take(text, limit)
+    clamped
   end
 
   defp clamp(_text, _limit), do: "something went wrong"
-
-  defp trim_to_text(chunk) do
-    if String.valid?(chunk),
-      do: chunk,
-      else: trim_to_text(binary_part(chunk, 0, byte_size(chunk) - 1))
-  end
 end

@@ -17,6 +17,7 @@ defmodule Patchbay.Patchbay.DemoReset do
     RepairProposal,
     Room,
     RoomEvent,
+    RoomTimeline,
     ToolPublisher,
     ToolRevision
   }
@@ -125,18 +126,13 @@ defmodule Patchbay.Patchbay.DemoReset do
     :ok
   end
 
+  # Safe under the room lock `reset!/2` is already holding: see
+  # `RoomTimeline.next_sequence!/2` for why the lock is what makes the number
+  # the caller's alone.
   defp append_reset_event!(room) do
-    sequence =
-      case Domain.list_room_events!(
-             query: [filter: [room_id: room.id], sort: [sequence: :desc], limit: 1]
-           ) do
-        [%RoomEvent{sequence: sequence} | _] -> sequence + 1
-        _ -> 1
-      end
-
     Domain.append_room_event!(%{
       room_id: room.id,
-      sequence: sequence,
+      sequence: RoomTimeline.next_sequence!(room.id),
       kind: :room_reset,
       payload: %{"seed_version" => Fixtures.seed_version()}
     })

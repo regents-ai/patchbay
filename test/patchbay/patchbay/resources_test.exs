@@ -1133,6 +1133,20 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert %RoomEvent{kind: :room_reset, sequence: 1} = event
   end
 
+  test "demo reset carries on the room's timeline instead of restarting it", %{room: room} do
+    RoomTimeline.append!(room, :webmcp_supported, %{"supported" => true})
+    RoomTimeline.append!(room, :visible_state_observed, %{"ui_revision" => 1})
+
+    reset = DemoReset.reset!(room)
+
+    [event | _] =
+      Patchbay.list_room_events!(
+        query: [filter: [room_id: reset.id], sort: [sequence: :desc], limit: 1]
+      )
+
+    assert %RoomEvent{kind: :room_reset, sequence: 3} = event
+  end
+
   test "the timeline read hands back one page of a room's newest events", %{room: room} do
     page_size = RoomEvent.page_size()
     overflow = 3

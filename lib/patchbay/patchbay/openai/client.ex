@@ -6,113 +6,104 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
   source Skill or model output. Tests may inject a `:request` function.
   """
 
-  alias Patchbay.Patchbay.OpenAI.{CandidateSchema, Prompts}
+  alias Patchbay.Patchbay.OpenAI.{CandidateSchema, Prompts, RepairSchema}
 
   @endpoint "https://api.openai.com/v1/responses"
+  @model "gpt-5.6-terra"
   @reasoning %{effort: "low"}
   @usage_keys ["input_tokens", "output_tokens", "total_tokens"]
 
   @spec generate_candidate(binary(), map(), keyword()) ::
           {:ok, map()} | {:error, term()}
   def generate_candidate(source, arguments, opts \\ []) do
-    request = Keyword.get(opts, :request, &request/3)
-    model = Keyword.get(opts, :model, "gpt-5.6-terra")
-    prompt_version = Keyword.get(opts, :prompt_version, "patchbay-candidate-v1")
-
-    payload = %{
-      model: model,
-      tools: [],
-      reasoning: @reasoning,
-      input: [
-        %{
-          role: "system",
-          content: [%{type: "input_text", text: Prompts.candidate_system()}]
-        },
-        %{
-          role: "user",
-          content: [
-            %{
-              type: "input_text",
-              text: Prompts.candidate_user(inspect_argument(arguments), source)
-            }
-          ]
-        }
-      ],
-      text: %{
-        format: %{
-          type: "json_schema",
-          name: "patchbay_candidate",
-          strict: true,
-          schema: CandidateSchema.schema()
-        }
-      }
-    }
-
-    case request.(payload, Keyword.put_new(opts, :receive_timeout, 20_000), @endpoint) do
-      {:ok, response} ->
-        with {:ok, output} <- extract_output(response),
-             :ok <- validate_shape(output) do
-          {:ok,
-           %{
-             candidate_markdown: output["improved_skill_markdown"],
-             change_summary: output["change_summary"],
-             warnings: output["warnings"],
-             model: model,
-             model_response_id: response_id(response),
-             prompt_version: prompt_version,
-             usage: usage(response)
-           }}
-        end
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    respond(
+      %{
+        system: Prompts.candidate_system(),
+        user: Prompts.candidate_user(inspect_argument(arguments), source),
+        schema_name: "patchbay_candidate",
+        schema: CandidateSchema.schema(),
+        receive_timeout: 20_000,
+        prompt_version: "patchbay-candidate-v1",
+        result: &candidate_result/1
+      },
+      opts
+    )
   end
 
   @spec repair_plan(map(), keyword()) :: {:ok, map()} | {:error, term()}
   def repair_plan(input, opts \\ []) when is_map(input) do
-    request = Keyword.get(opts, :request, &request/3)
-    model = Keyword.get(opts, :model, "gpt-5.6-terra")
-    prompt_version = Keyword.get(opts, :prompt_version, "patchbay-repair-v1")
+    respond(
+      %{
+        system: Prompts.repair_system(),
+        user: Jason.encode!(input),
+        schema_name: "patchbay_repair",
+        schema: RepairSchema.schema(),
+        receive_timeout: 12_000,
+        prompt_version: "patchbay-repair-v1",
+        result: &repair_result/1
+      },
+      opts
+    )
+  end
 
-    payload = %{
+  # Every call is the same envelope, sent the same way, and answered with the
+  # same provenance. Only the schema the model is held to and the fields read
+  # back out of its output differ, and both of those arrive with the request.
+  defp respond(parts, opts) do
+    request = Keyword.get(opts, :request, &request/3)
+    model = Keyword.get(opts, :model, @model)
+    prompt_version = Keyword.get(opts, :prompt_version, parts.prompt_version)
+
+    with {:ok, response} <-
+           request.(
+             payload(parts, model),
+             Keyword.put_new(opts, :receive_timeout, parts.receive_timeout),
+             @endpoint
+           ),
+         {:ok, output} <- extract_output(response),
+         {:ok, result} <- parts.result.(output) do
+      {:ok,
+       Map.merge(result, %{
+         model: model,
+         model_response_id: response_id(response),
+         prompt_version: prompt_version,
+         usage: usage(response)
+       })}
+    end
+  end
+
+  defp payload(parts, model) do
+    %{
       model: model,
       tools: [],
       reasoning: @reasoning,
       input: [
-        %{
-          role: "system",
-          content: [%{type: "input_text", text: Prompts.repair_system()}]
-        },
-        %{role: "user", content: [%{type: "input_text", text: Jason.encode!(input)}]}
+        %{role: "system", content: [%{type: "input_text", text: parts.system}]},
+        %{role: "user", content: [%{type: "input_text", text: parts.user}]}
       ],
       text: %{
         format: %{
           type: "json_schema",
-          name: "patchbay_repair",
+          name: parts.schema_name,
           strict: true,
-          schema: Patchbay.Patchbay.OpenAI.RepairSchema.schema()
+          schema: parts.schema
         }
       }
     }
+  end
 
-    case request.(payload, Keyword.put_new(opts, :receive_timeout, 12_000), @endpoint) do
-      {:ok, response} ->
-        with {:ok, output} <- extract_output(response) do
-          {:ok,
-           %{
-             plan: output,
-             model: model,
-             model_response_id: response_id(response),
-             prompt_version: prompt_version,
-             usage: usage(response)
-           }}
-        end
-
-      {:error, reason} ->
-        {:error, reason}
+  defp candidate_result(output) do
+    with :ok <- validate_shape(output) do
+      {:ok,
+       %{
+         candidate_markdown: output["improved_skill_markdown"],
+         change_summary: output["change_summary"],
+         warnings: output["warnings"]
+       }}
     end
   end
+
+  defp repair_result(output), do: {:ok, %{plan: output}}
 
   defp request(payload, opts, endpoint) do
     api_key = Keyword.get(opts, :api_key) || System.get_env("OPENAI_API_KEY")

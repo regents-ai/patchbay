@@ -54,18 +54,7 @@
           {Credo.Check.Readability.WithSingleClause, []},
           {Credo.Check.Refactor.Apply, []},
           {Credo.Check.Refactor.CondStatements, []},
-          {Credo.Check.Refactor.CyclomaticComplexity,
-           [
-             files: %{
-               excluded: [
-                 # Structural refactor pending under regent-tb2.13.
-                 "lib/patchbay/patchbay/canary_runner.ex",
-                 # Structural refactor pending under regent-tb2.14.
-                 "lib/patchbay/forum/patchbay_agent.ex",
-                 "lib/patchbay/patchbay/frontmatter.ex"
-               ]
-             }
-           ]},
+          {Credo.Check.Refactor.CyclomaticComplexity, []},
           {Credo.Check.Refactor.FilterCount, []},
           {Credo.Check.Refactor.FilterFilter, []},
           {Credo.Check.Refactor.FunctionArity, []},
@@ -74,15 +63,7 @@
           {Credo.Check.Refactor.MatchInCondition, []},
           {Credo.Check.Refactor.NegatedConditionsInUnless, []},
           {Credo.Check.Refactor.NegatedConditionsWithElse, []},
-          {Credo.Check.Refactor.Nesting,
-           [
-             files: %{
-               excluded: [
-                 # Structural refactor pending under regent-tb2.14.
-                 "lib/patchbay/patchbay/frontmatter.ex"
-               ]
-             }
-           ]},
+          {Credo.Check.Refactor.Nesting, []},
           {Credo.Check.Refactor.RedundantWithClauseResult, []},
           {Credo.Check.Refactor.RejectReject, []},
           {Credo.Check.Refactor.UnlessWithElse, []},

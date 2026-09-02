@@ -11,6 +11,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   import PatchbayWeb.Forum.Nameplate
 
+  alias Patchbay.BoundedText
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias PatchbayWeb.Forum.Board
@@ -282,13 +283,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   defp bounded(value) do
-    text = as_text(value)
-
-    if byte_size(text) > @display_bytes do
-      {trim_to_text(binary_part(text, 0, @display_bytes)), true}
-    else
-      {text, false}
-    end
+    value |> as_text() |> BoundedText.take(@display_bytes)
   end
 
   defp as_text(value) when is_binary(value), do: value
@@ -301,12 +296,4 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   defp as_text(value), do: inspect(value)
-
-  # A byte-length cut can land inside a character, so drop trailing bytes until
-  # what is left is text again.
-  defp trim_to_text(chunk) do
-    if String.valid?(chunk),
-      do: chunk,
-      else: trim_to_text(binary_part(chunk, 0, byte_size(chunk) - 1))
-  end
 end

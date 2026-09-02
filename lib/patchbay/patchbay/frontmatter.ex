@@ -11,6 +11,11 @@ defmodule Patchbay.Patchbay.Frontmatter do
   @max_frontmatter_bytes 8_192
   @key ~r/^[-A-Za-z0-9_]+$/
 
+  # Both fences may be written with either newline style, and the frontmatter is
+  # whatever the first closing fence stops.
+  @opening_fence ~r/\A---\r?\n/
+  @fenced ~r/\A---\r?\n(.*?)(?:\n|\r\n)---(?:\n|\r\n|\z)(.*)\z/s
+
   @spec parse(binary()) :: {:ok, map()} | {:error, atom()}
   def parse(markdown) when is_binary(markdown) do
     case extract(markdown) do
@@ -46,60 +51,64 @@ defmodule Patchbay.Patchbay.Frontmatter do
       else: {:error, :frontmatter_too_large}
   end
 
-  defp split(<<"---\n", rest::binary>>) do
-    case Regex.run(~r/\A(.*?)(?:\n|\r\n)---(?:\n|\r\n|\z)(.*)\z/s, rest, capture: :all_but_first) do
+  defp split(markdown) when is_binary(markdown) do
+    case Regex.run(@fenced, markdown, capture: :all_but_first) do
       [frontmatter, body] -> {:ok, frontmatter, body}
-      _ -> {:error, :frontmatter_missing_end}
+      nil -> {:error, missing_fence(markdown)}
     end
   end
 
-  defp split(<<"---\r\n", rest::binary>>) do
-    case Regex.run(~r/\A(.*?)(?:\n|\r\n)---(?:\n|\r\n|\z)(.*)\z/s, rest, capture: :all_but_first) do
-      [frontmatter, body] -> {:ok, frontmatter, body}
-      _ -> {:error, :frontmatter_missing_end}
-    end
+  defp missing_fence(markdown) do
+    if Regex.match?(@opening_fence, markdown),
+      do: :frontmatter_missing_end,
+      else: :frontmatter_missing_start
   end
-
-  defp split(_), do: {:error, :frontmatter_missing_start}
 
   defp parse_lines(frontmatter) do
     frontmatter
     |> String.split(~r/\r?\n/, trim: false)
-    |> Enum.reduce_while({:ok, %{}}, fn line, {:ok, metadata} ->
-      cond do
-        String.trim(line) == "" ->
-          {:cont, {:ok, metadata}}
+    |> Enum.reduce_while({:ok, %{}}, &take_line/2)
+  end
 
-        String.starts_with?(line, "#") ->
-          {:cont, {:ok, metadata}}
+  defp take_line(line, {:ok, metadata}) do
+    case entry(line, metadata) do
+      :ignored -> {:cont, {:ok, metadata}}
+      {:ok, key, value} -> {:cont, {:ok, Map.put(metadata, key, value)}}
+      {:error, reason} -> {:halt, {:error, reason}}
+    end
+  end
 
-        String.starts_with?(line, " ") or String.starts_with?(line, "\t") ->
-          {:halt, {:error, :frontmatter_nested}}
+  # Blank lines and comments carry nothing, an indented line is the nesting this
+  # parser refuses, and everything else has to read as one `key: value` pair.
+  defp entry(line, metadata) do
+    cond do
+      String.trim(line) == "" ->
+        :ignored
 
-        true ->
-          case String.split(line, ":", parts: 2) do
-            [key, value] ->
-              key = String.trim(key)
+      String.starts_with?(line, "#") ->
+        :ignored
 
-              cond do
-                not Regex.match?(@key, key) ->
-                  {:halt, {:error, :frontmatter_key_invalid}}
+      String.starts_with?(line, " ") or String.starts_with?(line, "\t") ->
+        {:error, :frontmatter_nested}
 
-                Map.has_key?(metadata, key) ->
-                  {:halt, {:error, :frontmatter_duplicate_key}}
+      true ->
+        pair(line, metadata)
+    end
+  end
 
-                true ->
-                  case parse_value(value) do
-                    {:ok, value} -> {:cont, {:ok, Map.put(metadata, key, value)}}
-                    {:error, reason} -> {:halt, {:error, reason}}
-                  end
-              end
+  defp pair(line, metadata) do
+    case String.split(line, ":", parts: 2) do
+      [key, value] -> entry_for(String.trim(key), value, metadata)
+      _ -> {:error, :frontmatter_line_invalid}
+    end
+  end
 
-            _ ->
-              {:halt, {:error, :frontmatter_line_invalid}}
-          end
-      end
-    end)
+  defp entry_for(key, value, metadata) do
+    cond do
+      not Regex.match?(@key, key) -> {:error, :frontmatter_key_invalid}
+      Map.has_key?(metadata, key) -> {:error, :frontmatter_duplicate_key}
+      true -> with {:ok, parsed} <- parse_value(value), do: {:ok, key, parsed}
+    end
   end
 
   defp parse_value(value) do

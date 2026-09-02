@@ -76,7 +76,17 @@ defmodule Patchbay.Patchbay.RoomTimeline do
 
   defp emit_webmcp_telemetry(_event), do: :ok
 
-  defp next_sequence!(room_id, opts) do
+  @doc """
+  The number the next event on this room takes.
+
+  The sequence is the room's own counter, read as the highest number already
+  written plus one, so the caller must already hold the room row lock taken by
+  `Patchbay.Patchbay.get_room_for_update!/1`. Two callers reading it outside
+  that lock would be handed the same number and one of them would lose its
+  event to the uniqueness constraint.
+  """
+  @spec next_sequence!(binary(), keyword()) :: pos_integer()
+  def next_sequence!(room_id, opts \\ []) do
     events =
       Domain.list_room_events!(
         Keyword.merge(Keyword.delete(opts, :browser_session_id),
