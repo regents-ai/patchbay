@@ -10,9 +10,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
 
-  A report may quote the receipt Patchbay handed back for the call it is about.
-  Whether that receipt holds up is decided by the forum's own write action, not
-  here; this module only carries the answer back to the agent.
+  A report comes one of two ways. A report about a tool on this page quotes the
+  receipt Patchbay handed back for that call and carries nothing else: the site,
+  the tool, its contract version and the arguments are all read from Patchbay's
+  own record of the call, because a language model cannot compute a digest and
+  an invented one would be worthless anyway. A report about a tool on any other
+  site names that site and tool itself, and is published as one agent's word.
   """
 
   use PatchbayWeb, :controller
@@ -21,8 +24,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Tool
 
   @default_reports_per_hour 10
@@ -111,6 +116,24 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # written together. Without that, a caller whose report is refused would still
   # have opened a board and a thread for it, and could open unlimited empty ones
   # by always sending a bad report.
+  #
+  # A receipt is offered instead of all of that, never alongside it: the two
+  # cannot disagree if only one of them is ever read.
+  defp file_report(session_id, %{"receipt" => receipt} = params) do
+    with :ok <- receipt_report_fields_only(params) do
+      under_session_lock(session_id, fn ->
+        with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
+             {:ok, call} <- reported_call(receipt, session_id),
+             {:ok, site, from_site} <-
+               Forum.register_site(RoomMirror.origin(), return_notifications?: true),
+             {:ok, tool, from_tool} <- observe_called_tool(site, call),
+             {:ok, report, from_report} <- store_call_report(tool, session_id, call, params) do
+          {:ok, {report, from_site ++ from_tool ++ from_report}}
+        end
+      end)
+    end
+  end
+
   defp file_report(session_id, params) do
     under_session_lock(session_id, fn ->
       with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
@@ -122,6 +145,63 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       end
     end)
   end
+
+  # The whole of a receipt-backed report. Anything else a caller sends is a fact
+  # it would be claiming about a call Patchbay already holds the record of, so
+  # it is refused rather than quietly dropped.
+  @receipt_report_fields ~w(receipt verdict note)
+
+  defp receipt_report_fields_only(params) do
+    case params |> Map.keys() |> Kernel.--(@receipt_report_fields) |> Enum.sort() do
+      [] -> :ok
+      unknown -> {:error, {:invalid, Enum.map(unknown, &unknown_with_receipt/1)}}
+    end
+  end
+
+  defp unknown_with_receipt(field) do
+    "#{field}: a report that quotes a receipt does not take #{field}. " <>
+      "Patchbay reads the site, the tool, its version and the arguments from its own record of that call."
+  end
+
+  defp reported_call(receipt, session_id) do
+    case ReceiptCheck.resolve(receipt, session_id) do
+      {:ok, invocation} -> {:ok, invocation}
+      {:error, status} -> {:error, {:receipt, status}}
+    end
+  end
+
+  defp observe_called_tool(site, call) do
+    Forum.observe_tool(
+      call.tool_revision
+      |> RoomMirror.board_contract()
+      |> Map.merge(%{site_id: site.id, contract_sha256: call.tool_contract_sha256}),
+      return_notifications?: true
+    )
+  end
+
+  # Only the words are the agent's. Every fact comes from the logged call, which
+  # the forum's own write action reads again before it stamps the report.
+  defp store_call_report(tool, session_id, call, params) do
+    Forum.file_report(
+      %{
+        tool_id: tool.id,
+        browser_session_id: session_id,
+        arguments_sha256: call.arguments_sha256,
+        handler_result: call.handler_result,
+        verdict: params["verdict"] || recorded_verdict(call),
+        failure_code: call.failure_code && to_string(call.failure_code),
+        note: params["note"],
+        receipt: call.receipt
+      },
+      return_notifications?: true
+    )
+  end
+
+  defp recorded_verdict(%{effective_status: status})
+       when status in [:verified_success, :verified_failure, :errored],
+       do: status
+
+  defp recorded_verdict(_call), do: :unknown
 
   defp file_reply(session_id, id, params) do
     under_session_lock(session_id, fn ->
@@ -385,6 +465,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     conn |> put_status(:unprocessable_entity) |> json(%{errors: messages})
   end
 
+  # A receipt that does not hold up is answered with the reason and the one
+  # thing to do about it, because an agent can only act on words.
+  defp send_failure(conn, {:receipt, status}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{
+      error: receipt_problem(status),
+      receipt_status: status,
+      next_action: receipt_next_action(status)
+    })
+  end
+
   defp send_failure(conn, :no_session) do
     conn
     |> put_status(:forbidden)
@@ -402,6 +494,31 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       send_failure(conn, {:invalid, messages(error)})
     end
   end
+
+  defp receipt_problem(:missing), do: "This report did not carry a receipt."
+  defp receipt_problem(:unknown), do: "That receipt does not name a call Patchbay ran."
+
+  defp receipt_problem(:wrong_identity),
+    do: "That receipt was handed to a different browser than the one reporting."
+
+  defp receipt_problem(:stale), do: "That call is more than a day old."
+  defp receipt_problem(:spent), do: "This receipt already backs a report."
+
+  defp receipt_next_action(:missing),
+    do: "Send the patchbay_receipt value exactly as it appeared in the tool result."
+
+  defp receipt_next_action(:unknown),
+    do:
+      "Send the patchbay_receipt value exactly as it appeared in the tool result, with nothing added or shortened."
+
+  defp receipt_next_action(:wrong_identity),
+    do: "Report the call from the same page and browser that made it."
+
+  defp receipt_next_action(:stale),
+    do: "Call the tool again on this page and report the receipt from that newer result."
+
+  defp receipt_next_action(:spent),
+    do: "Read that report on the board, and reply to it if you saw the same thing."
 
   defp messages(error) do
     error

@@ -98,6 +98,7 @@ export function initialise(hook) {
   hook.browserSessionId = null;
   hook.clientInstanceId = loadClientInstanceId(hook.roomId);
   hook.desiredGeneration = 1;
+  hook.siteOrigin = null;
   hook.controllers = new Map();
   hook.registeredDigests = new Map();
   hook.pendingRegistrations = new Map();
@@ -174,6 +175,7 @@ export async function bootstrap(hook) {
     hook.browserSessionId = reply?.browser_session_id ?? hook.browserSessionId;
     if (Number.isInteger(reply?.invocation_epoch)) hook.invocationEpoch = reply.invocation_epoch;
     if (Number.isInteger(reply?.desired_generation)) hook.desiredGeneration = reply.desired_generation;
+    if (typeof reply?.origin === "string") hook.siteOrigin = reply.origin;
     if (!hook.permanentScope) {
       const ready = await registerPermanentTools(hook, lifecycle);
       if (!ready) throw new Error("required Patchbay tools did not register");

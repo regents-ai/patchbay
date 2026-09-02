@@ -47,6 +47,25 @@ defmodule Patchbay.Forum.RoomMirror do
   end
 
   @doc """
+  One tool revision in the shape the board records it, with the studio's own
+  copy cut down to the lengths a board entry allows.
+  """
+  @spec board_contract(map()) :: %{
+          name: String.t(),
+          contract_sha256: String.t(),
+          title: String.t() | nil,
+          description: String.t() | nil
+        }
+  def board_contract(revision) do
+    %{
+      name: revision.name,
+      contract_sha256: revision.contract_sha256,
+      title: clamp(revision.title, @title_limit),
+      description: clamp(revision.description, @description_limit)
+    }
+  end
+
+  @doc """
   Registers this deployment's own site and records the seeded contract plus
   every contract a studio is currently offering as one entry each.
   """
@@ -75,7 +94,7 @@ defmodule Patchbay.Forum.RoomMirror do
   defp seeded_contract do
     # The fixture is the definition of the starting contract, so it can be read
     # without a studio existing. Only the contract itself is used here.
-    nil |> Fixtures.revision_attributes() |> contract()
+    nil |> Fixtures.revision_attributes() |> board_contract()
   end
 
   # Oldest first, so a newer contract ends up with the more recent "last seen"
@@ -89,16 +108,7 @@ defmodule Patchbay.Forum.RoomMirror do
       ]
     )
     |> Enum.reverse()
-    |> Enum.map(&contract/1)
-  end
-
-  defp contract(revision) do
-    %{
-      name: revision.name,
-      contract_sha256: revision.contract_sha256,
-      title: clamp(revision.title, @title_limit),
-      description: clamp(revision.description, @description_limit)
-    }
+    |> Enum.map(&board_contract/1)
   end
 
   # A studio's copy is written for the studio page, which allows longer text

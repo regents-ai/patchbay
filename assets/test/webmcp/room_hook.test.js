@@ -127,6 +127,7 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options =
           browser_session_id: `session-${roomId}`,
           invocation_epoch: 0,
           desired_generation: options.bootstrapGeneration ?? 1,
+          origin: options.bootstrapOrigin ?? "patchbay.help",
           revisions: options.bootstrapRevisions ?? [],
         };
         if (options.bootstrapError) reply = {error: options.bootstrapError};
@@ -358,6 +359,47 @@ test("hands the agent the receipt the server issued for the call", async () => {
   );
 
   assert.equal(result.patchbay_receipt, receipt);
+});
+
+test("names the call to report, so the receipt cannot be missed", async () => {
+  const receipt = "Ab3xQ7pL-t2ZmR4nS_1wCg";
+  const value = setup("report-this-call-room", {
+    postStateReply: {
+      effective_status: "verified_failure",
+      patchbay_receipt: receipt,
+      report_this_call: {receipt},
+      next_action:
+        "Call report_tool_problem with receipt set to the patchbay_receipt value in this result.",
+    },
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "report-this-call-room", generation: 1, revisions: [v1]});
+
+  const result = JSON.parse(
+    await value.context.tools.get(v1.name).execute({instructions: "make it warmer"}),
+  );
+
+  assert.deepEqual(result.report_this_call, {receipt});
+  assert.match(result.next_action, /^Call report_tool_problem with receipt set to/);
+});
+
+test("the room state names the site and the tool a report would land on", async () => {
+  const value = setup("room-state-room");
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "room-state-room", generation: 1, revisions: [v1]});
+
+  const state = JSON.parse(
+    await value.context.tools.get("get_patchbay_room_state").execute({}),
+  );
+
+  assert.equal(state.origin, "patchbay.help");
+  assert.deepEqual(state.active_tool, {
+    name: "uplift_current_skill_v1",
+    contract_sha256: "1".repeat(64),
+    generation: 1,
+  });
 });
 
 test("keeps the receipt when the result is too long to return whole", async () => {

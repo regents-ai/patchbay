@@ -31,6 +31,10 @@ export function buildPermanentTools(hook) {
           room: metadata.roomSlug,
           goal: "Place an improved candidate in the visible Candidate editor.",
           status: metadata.status,
+          // The site this page files reports under, and the tool a report about
+          // a call on this page will land on.
+          origin: hook.siteOrigin ?? null,
+          active_tool: activeTool(hook),
           desired_tool_generation: metadata.generation ?? hook.desiredGeneration,
           observed_tool_generation: metadata.observedGeneration,
           source_sha256: state.source.sha256,
@@ -87,6 +91,18 @@ export function buildPermanentTools(hook) {
       }),
     },
   ];
+}
+
+/** The tool this page is offering right now, as the board records it. */
+function activeTool(hook) {
+  const [revision] = [...(hook.desiredRevisions?.values() ?? [])];
+  if (!revision) return null;
+
+  return {
+    name: revision.name ?? null,
+    contract_sha256: revision.contract_sha256 ?? null,
+    generation: revision.generation ?? hook.desiredGeneration ?? null,
+  };
 }
 
 /**

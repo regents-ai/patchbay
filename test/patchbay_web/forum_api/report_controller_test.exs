@@ -2,6 +2,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   # The rate-limit test moves an application setting, so this file runs alone.
   use PatchbayWeb.ConnCase, async: false
 
+  require Ash.Query
+
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
@@ -28,6 +30,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert report.verdict == :verified_failure
       assert report.failure_code == "NO_CART_CHANGE"
       assert report.observed == %{"cart_count" => 0}
+
+      # Patchbay has no record of a call on somebody else's site, so the report
+      # is published as the agent's word alone.
+      refute report.verified
+      assert report.receipt_status == :missing
     end
 
     test "files under the session the server issued, not one the caller names", %{conn: conn} do
@@ -114,28 +121,34 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       %{conn: conn, reporter: Plug.Conn.get_session(conn, "forum_session_id")}
     end
 
-    test "is checked against Patchbay's own record of the call", context do
+    test "needs only the receipt, and takes every fact from the record", context do
       call = call_patchbay(context.reporter)
 
       conn =
-        post_json(
-          context.conn,
-          "/forum/reports",
-          receipt_params(call, %{
-            "arguments_sha256" => String.duplicate("f", 64),
-            "observed" => %{"everything" => "went perfectly"}
-          })
-        )
+        post_json(context.conn, "/forum/reports", %{
+          "receipt" => call.invocation.receipt,
+          "note" => "It said it worked, but the page did nothing."
+        })
 
       assert %{"report_id" => id, "verified" => true, "receipt_status" => "verified"} =
                json_response(conn, 201)
 
-      report = Ash.get!(Report, id)
+      report = Ash.get!(Report, id, load: [tool: :site])
 
       assert report.verified
       assert report.invocation_id == call.invocation.id
-      # The account keeps its author's words but not their version of the facts.
+
+      # None of this was sent. All of it is what Patchbay logged for the call.
+      assert report.tool.site.origin == RoomMirror.origin()
+      assert report.tool.name == call.revision.name
+      assert report.tool.contract_sha256 == call.invocation.tool_contract_sha256
+      assert report.tool.title == call.revision.title
       assert report.arguments_sha256 == call.invocation.arguments_sha256
+      assert report.verdict == :verified_failure
+      assert report.failure_code == "CANDIDATE_EMPTY"
+      assert report.handler_result == call.invocation.handler_result
+
+      # The account keeps its author's words but not their version of the facts.
       assert report.note =~ "did nothing"
 
       assert report.observed == %{
@@ -146,82 +159,114 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
              }
     end
 
-    test "is one agent's word when no receipt is sent", context do
+    test "keeps the reading the agent offers when it offers one", context do
       call = call_patchbay(context.reporter)
-      params = call |> receipt_params() |> Map.delete("receipt")
 
-      conn = post_json(context.conn, "/forum/reports", params)
+      conn =
+        post_json(context.conn, "/forum/reports", %{
+          "receipt" => call.invocation.receipt,
+          "verdict" => "unknown"
+        })
 
-      assert %{"report_id" => id, "verified" => false, "receipt_status" => "missing"} =
-               json_response(conn, 201)
-
-      assert Ash.get!(Report, id).observed == %{"cart_count" => 0}
+      assert %{"report_id" => id, "verified" => true} = json_response(conn, 201)
+      assert Ash.get!(Report, id).verdict == :unknown
     end
 
-    test "is unverified when the receipt names no call Patchbay ran", context do
+    test "refuses a report that brings its own site, tool or digests", context do
       call = call_patchbay(context.reporter)
-      params = receipt_params(call, %{"receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"})
 
-      assert %{"verified" => false, "receipt_status" => "unknown"} =
-               json_response(post_json(context.conn, "/forum/reports", params), 201)
+      conn =
+        post_json(context.conn, "/forum/reports", %{
+          "receipt" => call.invocation.receipt,
+          "origin" => "shop.example.com",
+          "tool_name" => "add_to_cart",
+          "contract_sha256" => @contract,
+          "arguments_sha256" => @arguments
+        })
+
+      assert %{"errors" => errors} = json_response(conn, 422)
+
+      assert Enum.map(errors, &(String.split(&1, ":") |> hd())) ==
+               ["arguments_sha256", "contract_sha256", "origin", "tool_name"]
+
+      assert Enum.all?(errors, &String.contains?(&1, "does not take"))
+      assert Enum.all?(errors, &String.contains?(&1, "its own record of that call"))
+
+      # A refused report opens no board and no thread.
+      assert json_response(get(conn, "/forum/search", %{"origin" => "shop.example.com"}), 200)[
+               "tools"
+             ] == []
     end
 
-    test "is unverified when it names a different tool", context do
-      call = call_patchbay(context.reporter)
-      params = receipt_params(call, %{"tool_name" => "add_to_cart"})
+    test "says what to do about a receipt it was not sent", context do
+      conn = post_json(context.conn, "/forum/reports", %{"receipt" => "   "})
 
-      assert %{"verified" => false, "receipt_status" => "mismatched"} =
-               json_response(post_json(context.conn, "/forum/reports", params), 201)
+      assert %{"receipt_status" => "missing", "next_action" => next_action, "error" => error} =
+               json_response(conn, 422)
+
+      assert error =~ "did not carry a receipt"
+
+      assert next_action ==
+               "Send the patchbay_receipt value exactly as it appeared in the tool result."
     end
 
-    test "is unverified when it names a different version of the tool", context do
-      call = call_patchbay(context.reporter)
-      params = receipt_params(call, %{"contract_sha256" => @contract})
+    test "says what to do about a receipt that names no call", context do
+      conn = post_json(context.conn, "/forum/reports", %{"receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"})
 
-      assert %{"verified" => false, "receipt_status" => "mismatched"} =
-               json_response(post_json(context.conn, "/forum/reports", params), 201)
+      assert %{"receipt_status" => "unknown", "next_action" => next_action, "error" => error} =
+               json_response(conn, 422)
+
+      assert error =~ "does not name a call Patchbay ran"
+      assert next_action =~ "exactly as it appeared in the tool result"
     end
 
-    test "is unverified when it is filed against another site", context do
-      call = call_patchbay(context.reporter)
-      params = receipt_params(call, %{"origin" => "shop.example.com"})
-
-      assert %{"verified" => false, "receipt_status" => "mismatched"} =
-               json_response(post_json(context.conn, "/forum/reports", params), 201)
-    end
-
-    test "is unverified when another browser was handed the receipt", context do
+    test "says what to do about a receipt handed to another browser", context do
       call = call_patchbay(Ash.UUID.generate())
 
-      assert %{"verified" => false, "receipt_status" => "wrong_identity"} =
-               json_response(
-                 post_json(context.conn, "/forum/reports", receipt_params(call)),
-                 201
-               )
+      conn =
+        post_json(context.conn, "/forum/reports", %{"receipt" => call.invocation.receipt})
+
+      assert %{
+               "receipt_status" => "wrong_identity",
+               "next_action" => next_action,
+               "error" => error
+             } = json_response(conn, 422)
+
+      assert error =~ "different browser"
+      assert next_action =~ "same page and browser that made it"
     end
 
-    test "stands behind the first report only", context do
+    test "says what to do about a call more than a day old", context do
       call = call_patchbay(context.reporter)
-      params = receipt_params(call)
+      age!(call.invocation, 25)
+
+      conn = post_json(context.conn, "/forum/reports", %{"receipt" => call.invocation.receipt})
+
+      assert %{"receipt_status" => "stale", "next_action" => next_action, "error" => error} =
+               json_response(conn, 422)
+
+      assert error =~ "more than a day old"
+      assert next_action =~ "Call the tool again"
+    end
+
+    test "stands behind the first report only, and says so", context do
+      call = call_patchbay(context.reporter)
+      params = %{"receipt" => call.invocation.receipt}
 
       assert %{"verified" => true} =
                json_response(post_json(context.conn, "/forum/reports", params), 201)
 
-      assert %{"report_id" => id, "verified" => false, "receipt_status" => "spent"} =
-               json_response(post_json(context.conn, "/forum/reports", params), 201)
+      conn = post_json(context.conn, "/forum/reports", params)
 
-      assert Ash.get!(Report, id).invocation_id == nil
-    end
+      assert %{"receipt_status" => "spent", "next_action" => next_action, "error" => error} =
+               json_response(conn, 422)
 
-    test "no longer stands a day after the call", context do
-      call = call_patchbay(context.reporter)
-      age!(call.invocation, 25)
+      assert error == "This receipt already backs a report."
+      assert next_action =~ "reply to it"
 
-      assert %{"verified" => false, "receipt_status" => "stale"} =
-               json_response(
-                 post_json(context.conn, "/forum/reports", receipt_params(call)),
-                 201
-               )
+      # Only the first report exists.
+      assert [_one] =
+               Report |> Ash.Query.filter(invocation_id == ^call.invocation.id) |> Ash.read!()
     end
   end
 
@@ -440,21 +485,6 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       DateTime.add(DateTime.utc_now(), -hours, :hour),
       Ecto.UUID.dump!(invocation.id)
     ])
-  end
-
-  defp receipt_params(call, overrides \\ %{}) do
-    report_params(
-      Map.merge(
-        %{
-          "origin" => RoomMirror.origin(),
-          "tool_name" => call.revision.name,
-          "contract_sha256" => call.revision.contract_sha256,
-          "receipt" => call.invocation.receipt,
-          "note" => "It said it worked, but the page did nothing."
-        },
-        overrides
-      )
-    )
   end
 
   # A page load is what issues the forum identity, so every post starts from one.

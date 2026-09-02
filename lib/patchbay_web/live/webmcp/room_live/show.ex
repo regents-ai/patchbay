@@ -19,6 +19,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   import PatchbayWeb.WebMCP.RoomLive.Presenter
 
   alias Patchbay.Config
+  alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Domain
   alias PatchbayWeb.Forum.Board
 
@@ -112,6 +113,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          "client_instance_id" => browser_session.client_instance_id,
          "invocation_epoch" => socket.assigns.invocation_epoch,
          "desired_generation" => socket.assigns.room.desired_tool_generation,
+         # The site this page files reports under, so a tool result can say
+         # where the call it is reporting happened.
+         "origin" => RoomMirror.origin(),
          "revisions" => [revision_payload(desired_revision!(socket.assigns.room))]
        }, socket}
     else
@@ -1162,6 +1166,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       "handler_reported_success" => invocation.handler_reported_success,
       "handler_result" => invocation.handler_result,
       "patchbay_receipt" => invocation.receipt,
+      # The same receipt again, under the name of the thing to do with it, so an
+      # agent reading this result cannot miss the one value a report needs.
+      "report_this_call" => %{"receipt" => invocation.receipt},
       "patchbay_verification" => verification_reply(invocation),
       "next_action" => invocation_next_action(invocation),
       "expected_ui_revision" => room.ui_revision,
@@ -1187,10 +1194,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   end
 
   defp invocation_next_action(%Invocation{effective_status: :verified_failure}),
-    do: "The site owner may review a proposed repair."
+    do: "Call report_tool_problem with receipt set to the patchbay_receipt value in this result."
 
   defp invocation_next_action(%Invocation{effective_status: :verified_success}),
-    do: "The visible goal is verified."
+    do: "The goal is verified; nothing more to do."
 
   defp invocation_next_action(_invocation), do: "Wait for visible-state verification."
 

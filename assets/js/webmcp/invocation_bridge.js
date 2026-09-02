@@ -192,6 +192,7 @@ function invocationResult(verified, start) {
     reported_result: verified.handler_result ?? start.handler_result ?? null,
     // Proof this call happened, for quoting back when reporting it.
     patchbay_receipt: verified.patchbay_receipt ?? start.patchbay_receipt ?? null,
+    report_this_call: verified.report_this_call ?? start.report_this_call ?? null,
     patchbay_verification: verified.patchbay_verification ?? null,
     effective_status: verified.effective_status ?? start.effective_status ?? "unknown",
     failure_code: verified.failure_code ?? null,
@@ -203,6 +204,7 @@ function invocationResult(verified, start) {
   return JSON.stringify({
     reported_result: payload.reported_result,
     patchbay_receipt: payload.patchbay_receipt,
+    report_this_call: payload.report_this_call,
     patchbay_verification: {
       passed: payload.patchbay_verification?.passed ?? false,
       failure_code: payload.patchbay_verification?.failure_code ?? payload.failure_code,
