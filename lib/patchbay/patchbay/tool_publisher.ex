@@ -11,6 +11,8 @@ defmodule Patchbay.Patchbay.ToolPublisher do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Room, Telemetry, ToolRevision}
 
+  require Ash.Query
+
   @spec publish!(ToolRevision.t(), keyword()) :: ToolRevision.t()
   def publish!(%ToolRevision{} = revision, opts \\ []) do
     started_at = System.monotonic_time()
@@ -72,14 +74,12 @@ defmodule Patchbay.Patchbay.ToolPublisher do
     do: raise(ArgumentError, "only a desired revision can update the room pointer")
 
   defp retire_existing_desired!(room, revision) do
-    revisions =
-      Domain.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired]])
+    ToolRevision
+    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(room_id == ^room.id and status == :desired and id != ^revision.id)
+    |> Domain.retire_tool_revision!(bulk_options: [strategy: [:atomic, :stream]])
 
-    Enum.each(revisions, fn current ->
-      if current.id != revision.id do
-        Domain.retire_tool_revision!(current)
-      end
-    end)
+    :ok
   end
 
   defp set_revision_desired!(revision) do

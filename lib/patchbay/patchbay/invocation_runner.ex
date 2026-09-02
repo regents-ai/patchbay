@@ -100,44 +100,27 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   end
 
   @doc "Cancels unfinished work for a room, optionally scoped to one browser lifecycle."
-  @spec cancel_open!(Room.t(), keyword()) :: [Invocation.t()]
+  @spec cancel_open!(Room.t(), keyword()) :: :ok
   def cancel_open!(%Room{} = room, opts \\ []) do
-    browser_session_id = Keyword.get(opts, :browser_session_id)
-    invocation_epoch = Keyword.get(opts, :invocation_epoch)
-
     Invocation
-    |> Ash.Query.for_read(:for_update)
+    |> Ash.Query.for_read(:read)
     |> Ash.Query.filter(room_id == ^room.id and effective_status in ^@open_statuses)
-    |> maybe_filter_browser_session(browser_session_id)
-    |> maybe_filter_invocation_epoch(invocation_epoch)
-    |> Ash.read!()
-    |> Enum.map(&cancel!/1)
+    |> maybe_filter_browser_session(Keyword.get(opts, :browser_session_id))
+    |> maybe_filter_invocation_epoch(Keyword.get(opts, :invocation_epoch))
+    |> Domain.mark_invocation_cancelled!(bulk_options: [strategy: [:atomic, :stream]])
+
+    :ok
   end
 
   defp begin_result!(room, browser_session, revision, arguments, opts) do
     arguments = normalize_arguments!(arguments)
     request_uuid = Keyword.get(opts, :request_uuid, Ash.UUID.generate())
-    room = Domain.get_room_by_id!(room.id)
-    browser_session = Domain.get_browser_session!(browser_session.id)
-    revision = Domain.get_tool_revision!(revision.id)
-
-    case find_by_request_uuid(request_uuid) do
-      %Invocation{} = existing ->
-        ensure_idempotent_replay!(existing, room, browser_session, revision, arguments)
-        {:replay, existing}
-
-      nil ->
-        begin_new_locked!(room, browser_session, revision, arguments, request_uuid, opts)
-    end
-  end
-
-  defp begin_new_locked!(room, browser_session, revision, arguments, request_uuid, opts) do
     expected_epoch = Keyword.get(opts, :invocation_epoch, room.invocation_epoch)
 
     case Ash.transact(
            [Room, BrowserSession, ToolRevision, Invocation],
            fn ->
-             begin_new_in_transaction!(
+             begin_locked!(
                room.id,
                browser_session.id,
                revision.id,
@@ -153,7 +136,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     end
   end
 
-  defp begin_new_in_transaction!(
+  defp begin_locked!(
          room_id,
          browser_session_id,
          revision_id,

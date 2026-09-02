@@ -48,7 +48,7 @@ defmodule Patchbay.Patchbay.DemoReset do
 
     revisions = list_revisions!(room)
 
-    retire_superseded_revisions!(revisions)
+    retire_superseded_revisions!(room)
     ensure_seed_revision_published!(room, revisions)
     reject_open_proposals!(room)
     append_reset_event!(room)
@@ -56,10 +56,13 @@ defmodule Patchbay.Patchbay.DemoReset do
     room
   end
 
-  defp retire_superseded_revisions!(revisions) do
-    revisions
-    |> Enum.reject(&(&1.generation == 1 or &1.status == :retired))
-    |> Enum.each(&Domain.retire_tool_revision!/1)
+  defp retire_superseded_revisions!(room) do
+    ToolRevision
+    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(room_id == ^room.id and generation != 1 and status != :retired)
+    |> Domain.retire_tool_revision!(bulk_options: [strategy: [:atomic, :stream]])
+
+    :ok
   end
 
   defp find_room!(%Room{} = room), do: room
@@ -93,26 +96,33 @@ defmodule Patchbay.Patchbay.DemoReset do
     end
   end
 
+  # The sessions are held under the room's lock because the reset rewrites what
+  # each one has observed while its page may still be reporting the old
+  # generation. A locked read cannot be folded into a single update statement,
+  # so the batch streams from it instead.
   defp reset_browser_sessions!(room) do
     BrowserSession
     |> Ash.Query.for_read(:for_update)
-    |> Ash.Query.filter(room_id: room.id)
-    |> Ash.read!()
-    |> Enum.each(&Domain.reset_browser_session!/1)
+    |> Ash.Query.filter(room_id == ^room.id)
+    |> Domain.reset_browser_session!(
+      bulk_options: [strategy: [:stream], allow_stream_with: :full_read]
+    )
+
+    :ok
   end
 
+  # The statuses named here are the ones the reject action accepts: every
+  # proposal a run left short of a terminal answer.
   defp reject_open_proposals!(room) do
-    room
-    |> list_proposals!()
-    |> Enum.each(fn proposal ->
-      if proposal.status not in [:rejected, :published, :failed] do
-        Domain.reject_repair_proposal!(proposal)
-      end
-    end)
-  end
+    RepairProposal
+    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(
+      room_id == ^room.id and
+        status in [:requested, :canary_failed, :ready_for_approval, :approved]
+    )
+    |> Domain.reject_repair_proposal!(bulk_options: [strategy: [:atomic, :stream]])
 
-  defp list_proposals!(room) do
-    Domain.list_repair_proposals!(query: [filter: [room_id: room.id], sort: [inserted_at: :desc]])
+    :ok
   end
 
   defp append_reset_event!(room) do

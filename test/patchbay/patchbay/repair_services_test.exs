@@ -499,6 +499,45 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert Patchbay.list_invocations!(query: [filter: [room_id: room.id]]) == []
   end
 
+  test "cancelling open work skips finished calls and can be scoped to one browser session", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    other_session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        user_agent_digest: Digest.sha256("other-agent"),
+        webmcp_supported: true
+      })
+
+    Patchbay.observe_browser_session!(other_session, %{
+      observed_generation: revision.generation,
+      observed_contracts: %{revision.name => revision.contract_sha256},
+      webmcp_supported: true
+    })
+
+    finished =
+      room
+      |> InvocationRunner.begin!(browser_session, revision, %{"instructions" => "finished"})
+      |> Patchbay.mark_invocation_errored!()
+
+    mine = InvocationRunner.begin!(room, browser_session, revision, %{"instructions" => "mine"})
+    theirs = InvocationRunner.begin!(room, other_session, revision, %{"instructions" => "theirs"})
+
+    assert :ok = InvocationRunner.cancel_open!(room, browser_session_id: browser_session.id)
+
+    assert Patchbay.get_invocation!(mine.id).effective_status == :cancelled
+    assert Patchbay.get_invocation!(theirs.id).effective_status == :started
+    assert Patchbay.get_invocation!(finished.id).effective_status == :errored
+
+    assert :ok = InvocationRunner.cancel_open!(room, invocation_epoch: room.invocation_epoch)
+
+    assert Patchbay.get_invocation!(theirs.id).effective_status == :cancelled
+    assert Patchbay.get_invocation!(finished.id).effective_status == :errored
+  end
+
   test "cancelled work rejects late visible proof", %{
     room: room,
     revision: revision,

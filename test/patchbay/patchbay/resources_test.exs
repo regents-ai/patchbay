@@ -892,6 +892,22 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert Patchbay.get_room_by_slug!(room.slug).desired_tool_generation == 2
   end
 
+  test "publishing a revision retires the one the room was still offering", %{
+    room: room,
+    revision: revision
+  } do
+    published =
+      Fixtures.revision_attributes(room.id)
+      |> Map.merge(%{generation: 2, name: "uplift_current_skill_v2", status: :candidate})
+      |> Map.delete(:contract_sha256)
+      |> Patchbay.create_tool_revision!()
+      |> ToolPublisher.publish!()
+
+    assert published.status == :desired
+    assert Patchbay.get_tool_revision!(revision.id).status == :retired
+    assert Patchbay.get_room_by_slug!(room.slug).desired_tool_generation == 2
+  end
+
   test "a proposal cannot be created in an approved state", %{room: room, revision: revision} do
     browser_session =
       Patchbay.register_browser_session!(%{
