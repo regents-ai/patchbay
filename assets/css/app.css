@@ -146,12 +146,9 @@
    single element rule: anything with a class can still say something different
    without a fight. pre is in the list because an evidence pane that is taller
    than its box becomes a scroll region, and a browser puts those in the tab
-   order; one that fits never matches and is left alone. A tabindex of -1 is
-   left out: it marks the places focus is sent by script or by the skip link,
-   never a stop on the keyboard's own walk, and the ring on the skip link's
-   target would be a frame around the whole page. On the dark surfaces the
-   same ring turns gold, because the teal disappears into the ink. */
-:where(a, button, input, textarea, select, summary, pre, [tabindex]:not([tabindex="-1"])):focus-visible {
+   order; one that fits never matches and is left alone. On the dark surfaces
+   the same ring turns gold, because the teal disappears into the ink. */
+:where(a, button, input, textarea, select, summary, pre, [tabindex]):focus-visible {
   outline: 3px solid var(--pb-accent-deep);
   outline-offset: 2px;
 }
@@ -180,6 +177,10 @@
   box-shadow: var(--pb-shadow-lg);
 }
 .pb-skip-link:focus { transform: none; }
+/* The content wrapper takes focus from the skip link so the next Tab starts
+   inside it. It is a region, not a control, and a ring on it would frame the
+   whole page, so it draws none, not even the browser's own. */
+#pb-content:focus { outline: none; }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
