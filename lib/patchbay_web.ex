@@ -84,8 +84,6 @@ defmodule PatchbayWeb do
 
       # HTML escaping functionality
       import Phoenix.HTML
-      # Core UI components
-      import PatchbayWeb.CoreComponents
 
       # Common modules used in templates
       alias PatchbayWeb.Layouts
