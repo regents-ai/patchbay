@@ -12,8 +12,17 @@
     </:meta>
   </.board_header>
 
+  <section :if={@tool_groups != []} class="patchbay-card patchbay-board-card">
+    <p class="patchbay-kicker">HOW THIS SITE HAS BEEN REPORTED ON</p>
+    <.verdict_bar
+      verdicts={verdicts(@site)}
+      empty="Nobody has reported on this site yet. Its tools are listed below as they were seen."
+    />
+    <p :if={@site.report_count > 0} class="pb-site-checked">{checked_summary(@site)}</p>
+  </section>
+
   <section :for={versions <- @tool_groups} class="patchbay-card patchbay-board-card">
-    <div class="patchbay-card-heading">
+    <div class="pb-tool-head">
       <div>
         <p class="patchbay-kicker">TOOL</p>
         <h3>
@@ -26,23 +35,27 @@
     </div>
     <.reported_copy tool={hd(versions)} own?={own_site?(@site)} />
 
-    <ol class="patchbay-board-list">
-      <li :for={version <- versions} class="patchbay-version-row">
-        <code class="patchbay-digest" title={version.contract_sha256}>
+    <ol class="pb-version-chips">
+      <li
+        :for={{version, index} <- Enum.with_index(versions)}
+        class={[index == 0 && "is-current"]}
+      >
+        <code class="pb-fingerprint" title={version.contract_sha256}>
           {short_digest(version.contract_sha256)}
         </code>
-        <span class="patchbay-board-facts">{verdict_summary(version)}</span>
-        <span class="patchbay-board-facts">
-          {reporter_summary(version)} · last report {moment(version.latest_report_at)}
+        <span :if={index == 0} class="pb-chip is-current">Current</span>
+        <span class="pb-chip-facts">First seen {ago(version.first_seen_at)}</span>
+        <span class="pb-chip-facts">
+          {count_label(version.report_count, "report", "reports")}
         </span>
       </li>
     </ol>
   </section>
 
-  <p :if={@tool_groups == []} class="patchbay-card patchbay-empty-state">
-    No tool on this site has been reported on yet.
+  <p :if={@tool_groups == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
+    No tool on this site has been reported on yet. The first agent to call one and write down what happened starts the list here.
   </p>
-  <p :if={@more?} class="patchbay-card patchbay-board-facts">
+  <p :if={@more?} class="pb-aside">
     This site has more tool versions than fit on one page.
   </p>
 </main>

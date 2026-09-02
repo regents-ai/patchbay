@@ -11,7 +11,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   import PatchbayWeb.Forum.Nameplate
 
+  alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
+  alias PatchbayWeb.Forum.RelativeTime
+  alias PatchbayWeb.Forum.VersionDiff
 
   embed_templates("board_html/*")
 
@@ -52,8 +55,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def count_label(count, singular, plural),
     do: "#{count} #{if count == 1, do: singular, else: plural}"
 
-  def moment(nil), do: "no reports yet"
   def moment(%DateTime{} = at), do: Calendar.strftime(at, "%-d %b %Y, %H:%M UTC")
+
+  @doc "How long ago something happened, for a row that is read at a glance."
+  def ago(at), do: RelativeTime.in_words(at)
+
+  @doc "Each version of a tool paired with what changed to produce it, newest first."
+  def version_changes(versions), do: VersionDiff.version_changes(versions)
 
   def reports_for(reports, %Tool{id: id}), do: Map.get(reports, id, [])
 
@@ -67,10 +75,132 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       " (nothing here is verified)"
   end
 
-  def verdict_summary(%Tool{} = tool) do
-    "#{tool.verified_success_count} worked · #{tool.verified_failure_count} did not · " <>
-      "#{tool.errored_count} errored · #{tool.unknown_count} unclear"
+  @doc """
+  How the reports on a whole site, or on one tool version, came out.
+
+  A site is counted alongside the row it is read with, and a version carries
+  the counts its own thread declares, so the two arrive differently and are
+  put into the same four numbers here. Everything downstream reads one shape.
+  """
+  def verdicts(%Site{aggregates: counted}), do: four_ways(counted)
+  def verdicts(%Tool{} = version), do: four_ways(version)
+
+  defp four_ways(counted) do
+    %{
+      worked: counted.verified_success_count,
+      did_not: counted.verified_failure_count,
+      errored: counted.errored_count,
+      unclear: counted.unknown_count
+    }
   end
+
+  @doc "The last thing anyone said about a site, or nothing if nobody has."
+  def last_report_at(%Site{aggregates: counted}), do: counted.latest_report_at
+
+  defp verdict_summary(verdicts) do
+    "#{verdicts.worked} worked · #{verdicts.did_not} did not · " <>
+      "#{verdicts.errored} errored · #{verdicts.unclear} unclear"
+  end
+
+  @verdict_bar [
+    {:worked, "is-worked"},
+    {:did_not, "is-failed"},
+    {:errored, "is-errored"},
+    {:unclear, "is-unclear"}
+  ]
+
+  @doc """
+  The four verdicts as one proportional strip, with the numbers spelled out
+  underneath. A strip nobody has reported on is replaced by a line saying so.
+  """
+  attr(:verdicts, :map, required: true)
+  attr(:empty, :string, required: true)
+
+  def verdict_bar(assigns) do
+    assigns = assign(assigns, parts: verdict_parts(assigns.verdicts))
+
+    ~H"""
+    <div class="pb-verdicts">
+      <p :if={@parts == []} class="patchbay-empty-state">{@empty}</p>
+      <div :if={@parts != []} class="pb-bar" role="img" aria-label={verdict_summary(@verdicts)}>
+        <span
+          :for={part <- @parts}
+          class={"pb-bar-part " <> part.class}
+          style={"width:#{part.width}%"}
+        ></span>
+      </div>
+      <p :if={@parts != []} class="pb-bar-legend" aria-hidden="true">{verdict_summary(@verdicts)}</p>
+    </div>
+    """
+  end
+
+  defp verdict_parts(verdicts) do
+    total = Enum.sum(Enum.map(@verdict_bar, fn {key, _class} -> Map.fetch!(verdicts, key) end))
+
+    if total == 0 do
+      []
+    else
+      for {key, class} <- @verdict_bar,
+          count = Map.fetch!(verdicts, key),
+          count > 0,
+          do: %{class: class, width: share(count, total)}
+    end
+  end
+
+  defp share(count, total), do: :erlang.float_to_binary(count * 100 / total, decimals: 1)
+
+  @doc """
+  How many of a site's reports Patchbay matched to a call in its own record.
+  Only reports about Patchbay's own tools can ever be matched, so on every
+  other site this reads as none.
+  """
+  def checked_summary(%Site{aggregates: counted}) do
+    case counted.verified_report_count do
+      0 -> "None checked against Patchbay's own record"
+      1 -> "1 report checked against Patchbay's own record"
+      many -> "#{many} reports checked against Patchbay's own record"
+    end
+  end
+
+  @doc """
+  What one version of a tool changed about the words it is described by,
+  against the version before it.
+  """
+  attr(:change, :any, required: true)
+
+  def what_changed(assigns) do
+    ~H"""
+    <div class="pb-changed">
+      <p class="patchbay-kicker">WHAT CHANGED</p>
+      <p :if={is_nil(@change)} class="patchbay-empty-state">
+        This is the earliest version of this tool the board has, so there is nothing before it to read against.
+      </p>
+      <p :if={@change && !@change.changed?} class="patchbay-empty-state">
+        The words did not change. Something else about the tool did, which is what gave this version a fingerprint of its own.
+      </p>
+      <p :if={@change && @change.title_changed?} class="pb-change-title">
+        <span class="pb-change-label">Title</span>
+        <s :if={@change.title_before}>{@change.title_before}</s>
+        <ins :if={@change.title_after}>{@change.title_after}</ins>
+        <span :if={is_nil(@change.title_after)} class="pb-chip-facts">No title any more</span>
+      </p>
+      <ul :if={@change && @change.description_changed?} class="pb-sentences">
+        <li :for={{kind, text} <- @change.sentences} class={"pb-sentence is-" <> to_string(kind)}>
+          <span class="pb-sentence-mark" aria-hidden="true">{sentence_mark(kind)}</span>
+          <span><span class="sr-only">{sentence_word(kind)}</span>{text}</span>
+        </li>
+      </ul>
+    </div>
+    """
+  end
+
+  defp sentence_mark(:added), do: "+"
+  defp sentence_mark(:removed), do: "−"
+  defp sentence_mark(:kept), do: "·"
+
+  defp sentence_word(:added), do: "Added: "
+  defp sentence_word(:removed), do: "Removed: "
+  defp sentence_word(:kept), do: "Unchanged: "
 
   @doc "The banner every board page opens with."
   attr(:title, :string, required: true)
@@ -127,7 +257,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           {verdict_label(reply.verdict)}
         </span>
         <.nameplate session_id={reply.browser_session_id} />
-        <span class="patchbay-board-facts">{moment(reply.inserted_at)}</span>
+        <span class="patchbay-board-facts" title={moment(reply.inserted_at)}>
+          {ago(reply.inserted_at)}
+        </span>
         <.bounded_text :if={reply.note} value={reply.note} />
       </li>
     </ol>

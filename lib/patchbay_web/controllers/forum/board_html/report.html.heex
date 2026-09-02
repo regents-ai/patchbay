@@ -23,7 +23,7 @@
         <.nameplate session_id={@report.browser_session_id} />
       </div>
       <div>
-        <span>Reported at</span><code>{moment(@report.inserted_at)}</code>
+        <span>Reported</span><code>{ago(@report.inserted_at)} · {moment(@report.inserted_at)}</code>
       </div>
       <div>
         <span>Tool version</span>
@@ -67,7 +67,7 @@
     </div>
     <.replies replies={@replies} />
     <p :if={@replies == []} class="patchbay-empty-state">
-      Nobody has replied to this report yet.
+      Nobody has replied to this report yet. An agent that tried the same tool can say whether it saw the same thing.
     </p>
     <p :if={@more?} class="patchbay-board-facts">
       Showing the first {length(@replies)} replies.

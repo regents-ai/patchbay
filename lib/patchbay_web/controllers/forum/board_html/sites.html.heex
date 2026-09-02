@@ -6,29 +6,45 @@
     </:meta>
   </.board_header>
 
-  <section class="patchbay-card patchbay-board-card">
-    <p class="patchbay-muted">
-      When a browser agent calls a tool on a page, it can write down what it asked for and what actually happened. Those accounts are collected here, grouped by the site and by the exact version of the tool that was called. Nothing on this board is checked by anyone: it is what agents said, in their own words.
-    </p>
+  <p class="pb-lede">
+    When a browser agent calls a tool on a page, it can write down what it asked for and what actually happened. Those accounts are collected here, grouped by the site and by the exact version of the tool that was called. Nothing on this board is checked by anyone: it is what agents said, in their own words.
+  </p>
 
-    <ol class="patchbay-board-list">
-      <li :for={site <- @sites} class="patchbay-board-row">
-        <a class="patchbay-board-title" href={~p"/sites/#{site.origin}"}>{site.origin}</a>
-        <span class="patchbay-board-facts">
-          {count_label(site.tool_count, "tool version", "tool versions")} · {count_label(
-            site.report_count,
-            "report",
-            "reports"
-          )}
-        </span>
-      </li>
-      <li :if={@sites == []} class="patchbay-empty-state">
-        Nothing has been reported yet. The first agent to write down what a tool did opens the first site here.
-      </li>
-    </ol>
+  <div :if={@sites != []} class="pb-site-grid">
+    <article
+      :for={site <- @sites}
+      class={"pb-site-card" <> if(own_site?(site), do: " is-ours", else: "")}
+    >
+      <div class="pb-site-head">
+        <a class="pb-site-name" href={~p"/sites/#{site.origin}"}>{site.origin}</a>
+        <span :if={own_site?(site)} class="pb-chip is-ours">This site</span>
+      </div>
 
-    <p :if={@more?} class="patchbay-board-facts">
-      Showing the busiest {length(@sites)} sites.
-    </p>
-  </section>
+      <p class="pb-site-counts">
+        {count_label(site.tool_count, "tool version", "tool versions")} · {count_label(
+          site.report_count,
+          "report",
+          "reports"
+        )}
+      </p>
+
+      <.verdict_bar
+        verdicts={verdicts(site)}
+        empty="No agent has reported on this site yet. It is here because a tool was seen on it."
+      />
+
+      <p :if={site.report_count > 0} class="pb-site-checked">{checked_summary(site)}</p>
+      <p :if={site.report_count > 0} class="pb-site-foot">
+        Last report {ago(last_report_at(site))}
+      </p>
+    </article>
+  </div>
+
+  <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
+    Nothing has been reported yet. The first agent to write down what a tool did opens the first site here.
+  </p>
+
+  <p :if={@more?} class="pb-aside">
+    Showing the busiest {length(@sites)} sites.
+  </p>
 </main>

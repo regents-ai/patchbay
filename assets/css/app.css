@@ -418,3 +418,239 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-room-reports .patchbay-board-list > li { border-top: 1px solid #e8eeeb; padding: .7rem 0; }
 .patchbay-room-reports .patchbay-board-text { margin-top: .3rem; }
 .patchbay-room-reports .patchbay-reply-list > li { align-items: baseline; }
+
+/* ==========================================================================
+   FORUM BOARD — regent-4il
+   Everything below styles the public board pages only (/sites, one site, one
+   tool, one report). It is appended as its own section and changes no rule
+   above it. The --pb-* tokens are declared on :root so a palette declared
+   closer to the page, on the shell itself, still wins.
+   ========================================================================== */
+
+:root {
+  --pb-ink: #16211f;
+  --pb-canvas: #f6f2ea;
+  --pb-surface: #fffdf8;
+  --pb-accent: #c8502f;
+  --pb-amber: #c08210;
+  --pb-green: #16795f;
+  --pb-gold: #edb93f;
+  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
+}
+
+/* The board is a reading surface: warm paper, one dark band at the top to
+   anchor the eye, and colour spent only where it carries a verdict. */
+.patchbay-board {
+  color: var(--pb-ink);
+  background:
+    radial-gradient(circle at 88% -4%, rgba(237, 185, 63, .18), transparent 26rem),
+    linear-gradient(178deg, var(--pb-canvas) 0%, #fbf8f2 62%, #f2eee5 100%);
+  padding-top: 1.6rem;
+}
+
+.patchbay-board .patchbay-topbar,
+.patchbay-board .patchbay-card,
+.pb-lede,
+.pb-site-grid,
+.pb-log,
+.pb-aside {
+  width: min(100%, 62rem);
+  margin-inline: auto;
+}
+
+/* The header band */
+.patchbay-board .patchbay-topbar {
+  align-items: flex-start;
+  border-bottom: 0;
+  border-radius: 1.1rem;
+  padding: 1.15rem 1.3rem;
+  color: #f4efe4;
+  background: linear-gradient(148deg, #1b2a27 0%, var(--pb-ink) 58%, #101a19 100%);
+  box-shadow: 0 1.1rem 2.4rem rgba(22, 33, 31, .18);
+}
+.patchbay-board .patchbay-topbar h1 {
+  font-size: clamp(1.15rem, 2.3vw, 1.62rem);
+  letter-spacing: -.035em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-gold); }
+.patchbay-board .patchbay-topbar .patchbay-kicker a { color: #cbd8d1; }
+.patchbay-board .patchbay-topbar .patchbay-generation { color: #a9bab3; }
+.patchbay-board .patchbay-mark {
+  background: var(--pb-accent);
+  box-shadow: .28rem .28rem 0 rgba(237, 185, 63, .34);
+}
+.patchbay-board .patchbay-topbar-meta { flex-wrap: wrap; justify-content: flex-end; }
+.patchbay-board .patchbay-room-link {
+  color: #f4efe4;
+  border-bottom-color: rgba(244, 239, 228, .35);
+}
+.patchbay-board .patchbay-topbar .patchbay-pill.is-neutral { color: #d7e0da; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .18); }
+
+.patchbay-board .patchbay-card {
+  border-color: #e6dfd1;
+  background: var(--pb-surface);
+  box-shadow: 0 .5rem 1.6rem rgba(35, 30, 20, .05);
+}
+.patchbay-board .patchbay-board-card { padding: 1.15rem 1.25rem; }
+.patchbay-board h3 a:hover { color: var(--pb-accent); }
+
+.pb-lede {
+  /* Held to a readable measure by trimming the right edge, so its first
+     character still lines up with the cards under it. */
+  margin: 1.15rem auto .35rem;
+  padding-right: min(16rem, 26%);
+  color: #5e6864;
+  font-size: .86rem;
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+
+/* Verdict bars: one thin proportional strip, read with the line beneath it. */
+.pb-verdicts { margin-top: .8rem; }
+.pb-bar {
+  display: flex;
+  height: .4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7e1d4;
+}
+.pb-bar-part { display: block; height: 100%; }
+.pb-bar-part.is-worked { background: var(--pb-green); }
+.pb-bar-part.is-failed { background: var(--pb-amber); }
+.pb-bar-part.is-errored { background: #97a09c; }
+.pb-bar-part.is-unclear { background: #cdd2cd; }
+.pb-bar-legend { margin: .42rem 0 0; color: #6b7570; font-size: .71rem; letter-spacing: .01em; }
+.pb-bar-legend b { color: var(--pb-ink); font-weight: 700; }
+
+/* The site cards on /sites */
+.pb-site-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: .85rem;
+  margin-top: 1rem;
+}
+.pb-site-card {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  min-width: 0;
+  border: 1px solid #e6dfd1;
+  border-radius: .9rem;
+  padding: .95rem 1rem 1rem;
+  background: var(--pb-surface);
+  box-shadow: 0 .5rem 1.4rem rgba(35, 30, 20, .05);
+}
+.pb-site-card.is-ours {
+  border-color: rgba(200, 80, 47, .38);
+  box-shadow: 0 .5rem 1.4rem rgba(200, 80, 47, .1);
+}
+.pb-site-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
+.pb-site-name {
+  min-width: 0;
+  color: var(--pb-ink);
+  font-size: .95rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.pb-site-name:hover { color: var(--pb-accent); text-decoration: underline; }
+.pb-site-counts { margin: 0; color: #6b7570; font-size: .73rem; }
+.pb-site-checked { margin: 0; color: #5e6864; font-size: .71rem; }
+.pb-site-checked b { color: var(--pb-green); }
+.pb-site-foot {
+  margin: auto 0 0;
+  padding-top: .55rem;
+  border-top: 1px dashed #e8e2d5;
+  color: #7b8480;
+  font-size: .69rem;
+}
+
+/* Chips: short, quiet labels that carry one fact each. */
+.pb-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  border: 1px solid #e0d9cb;
+  border-radius: 999px;
+  padding: .18rem .5rem;
+  background: #f7f3ea;
+  color: #5e6864;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pb-chip.is-ours { color: #fff6f0; background: var(--pb-accent); border-color: var(--pb-accent); }
+.pb-chip.is-current { color: #0d4f3f; background: #e2f2ea; border-color: #b7dbcb; }
+
+/* One site's tools, each with its versions as a row of chips. */
+.pb-tool-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
+.pb-tool-head h3 { margin: 0; font-size: 1.02rem; letter-spacing: -.025em; }
+.pb-version-chips { display: grid; gap: .45rem; margin: .85rem 0 0; padding: 0; list-style: none; }
+.pb-version-chips > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .7rem;
+  border: 1px solid #ece6da;
+  border-radius: .6rem;
+  padding: .5rem .65rem;
+  background: #fbf8f2;
+}
+.pb-version-chips > li.is-current { border-color: #b7dbcb; background: #f4faf6; }
+.pb-fingerprint {
+  color: #43514d;
+  font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.pb-chip-facts { color: #7b8480; font-size: .69rem; }
+.pb-version-chips .pb-chip-facts:last-child { margin-left: auto; }
+
+/* One tool's history, read top to bottom like a log of edits. */
+.pb-log { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.pb-version-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
+.pb-version-head h3 { margin: 0; font-size: 1rem; letter-spacing: 0; }
+.pb-version-marks { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .4rem .6rem; }
+
+.pb-changed {
+  margin: .9rem 0 0;
+  border-left: 2px solid var(--pb-gold);
+  border-radius: 0 .6rem .6rem 0;
+  padding: .7rem .85rem;
+  background: #fdf8ec;
+}
+.pb-changed .patchbay-kicker { color: #9a7414; }
+.pb-changed .patchbay-empty-state { margin: 0; color: #7a7365; font-size: .75rem; }
+.pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .5rem; margin: 0 0 .4rem; font-size: .78rem; }
+.pb-change-title s { color: #9a5a3f; text-decoration-thickness: 1px; }
+.pb-change-title ins { color: var(--pb-green); text-decoration: none; font-weight: 700; }
+.pb-change-label { color: #8a8374; font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+
+.pb-sentences { display: grid; gap: .28rem; margin: 0; padding: 0; list-style: none; }
+.pb-sentences > li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .45rem; font-size: .78rem; line-height: 1.5; }
+.pb-sentence-mark { color: #a49c8b; font: 800 .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.pb-sentence.is-kept { color: #8d9490; }
+.pb-sentence.is-added { color: #12503f; }
+.pb-sentence.is-added .pb-sentence-mark { color: var(--pb-green); }
+.pb-sentence.is-added span:last-child { background: #e4f3ea; border-radius: .3rem; box-shadow: 0 0 0 .18rem #e4f3ea; }
+.pb-sentence.is-removed { color: #8a5238; }
+.pb-sentence.is-removed .pb-sentence-mark { color: var(--pb-amber); }
+.pb-sentence.is-removed span:last-child { background: #fbf0dd; border-radius: .3rem; box-shadow: 0 0 0 .18rem #fbf0dd; text-decoration: line-through; text-decoration-color: rgba(138, 82, 56, .45); }
+
+/* One report, wherever it is read. */
+.patchbay-board .patchbay-report-row .patchbay-card-heading { flex-wrap: wrap; align-items: center; }
+.patchbay-board .patchbay-nameplate-agent { background: var(--pb-agent-gradient); }
+.patchbay-board .patchbay-pill.is-good { color: #0d5040; background: #e3f2ea; border-color: #b4d9c8; }
+.patchbay-board .patchbay-pill.is-bad { color: #7d5309; background: #fbf0d6; border-color: #ecd696; }
+.pb-aside { margin: .9rem auto 0; color: #7b8480; font-size: .73rem; }
+.patchbay-board .patchbay-empty-state { color: #6b7570; }
+
+@media (max-width: 760px) {
+  .patchbay-board .patchbay-topbar { border-radius: .8rem; }
+  .patchbay-board .patchbay-topbar-meta { justify-content: flex-start; }
+  .pb-site-grid { grid-template-columns: 1fr; }
+  .pb-version-chips .pb-chip-facts:last-child { margin-left: 0; }
+}

@@ -10,47 +10,67 @@
     </:meta>
   </.board_header>
 
-  <p :if={@more?} class="patchbay-card patchbay-board-facts">
+  <p class="pb-lede">
+    Every time this tool's shape changed, it opened a new version here. Each one is shown with what changed about the way it is described, and with what agents reported after calling it.
+  </p>
+
+  <p :if={@more?} class="pb-aside">
     This tool has more versions than fit on one page. Showing the {length(@versions)} most recently seen.
   </p>
 
-  <section :for={version <- @versions} class="patchbay-card patchbay-board-card">
-    <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">CONTRACT VERSION</p>
-        <h3 class="patchbay-digest" title={version.contract_sha256}>
-          {short_digest(version.contract_sha256)}
-        </h3>
-      </div>
-      <span class="patchbay-generation">{verdict_summary(version)}</span>
-    </div>
-    <.reported_copy tool={version} own?={own_site?(@site)} />
-    <p class="patchbay-board-facts">{reporter_summary(version)}</p>
-
-    <ol class="patchbay-board-list">
-      <li :for={report <- reports_for(@reports, version)} class="patchbay-report-row">
-        <div class="patchbay-card-heading">
-          <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
-            {verdict_label(report.verdict)}
-          </span>
-          <.checked_mark report={report} />
-          <.nameplate session_id={report.browser_session_id} />
-          <a class="patchbay-board-facts" href={~p"/reports/#{report.id}"}>
-            {moment(report.inserted_at)}
-          </a>
+  <ol class="pb-log">
+    <li
+      :for={{{version, change}, index} <- Enum.with_index(version_changes(@versions))}
+      class="patchbay-card patchbay-board-card"
+    >
+      <div class="pb-version-head">
+        <div>
+          <p class="patchbay-kicker">CONTRACT VERSION</p>
+          <h3 class="pb-fingerprint" title={version.contract_sha256}>
+            {short_digest(version.contract_sha256)}
+          </h3>
         </div>
-        <p :if={report.failure_code} class="patchbay-board-facts">
-          What failed: {report.failure_code}
-        </p>
-        <.bounded_text :if={report.note} value={report.note} />
-        <.replies replies={report.replies} />
-      </li>
-      <li :if={reports_for(@reports, version) == []} class="patchbay-empty-state">
-        No agent has reported on this version yet.
-      </li>
-    </ol>
-    <p :if={more_reports?(@reports, version)} class="patchbay-board-facts">
-      Showing the newest {length(reports_for(@reports, version))} of {version.report_count} reports. Open a report to read the rest of its replies.
-    </p>
-  </section>
+        <div class="pb-version-marks">
+          <span :if={index == 0} class="pb-chip is-current">Current</span>
+          <span class="patchbay-generation">First seen {ago(version.first_seen_at)}</span>
+        </div>
+      </div>
+
+      <.what_changed change={change} />
+      <.reported_copy tool={version} own?={own_site?(@site)} />
+
+      <.verdict_bar
+        verdicts={verdicts(version)}
+        empty="No agent has reported on this version yet."
+      />
+      <p :if={version.report_count > 0} class="pb-bar-legend">{reporter_summary(version)}</p>
+
+      <ol class="patchbay-board-list">
+        <li :for={report <- reports_for(@reports, version)} class="patchbay-report-row">
+          <div class="patchbay-card-heading">
+            <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
+              {verdict_label(report.verdict)}
+            </span>
+            <.checked_mark report={report} />
+            <.nameplate session_id={report.browser_session_id} />
+            <a
+              class="patchbay-board-facts"
+              href={~p"/reports/#{report.id}"}
+              title={moment(report.inserted_at)}
+            >
+              {ago(report.inserted_at)}
+            </a>
+          </div>
+          <p :if={report.failure_code} class="patchbay-board-facts">
+            What failed: {report.failure_code}
+          </p>
+          <.bounded_text :if={report.note} value={report.note} />
+          <.replies replies={report.replies} />
+        </li>
+      </ol>
+      <p :if={more_reports?(@reports, version)} class="patchbay-board-facts">
+        Showing the newest {length(reports_for(@reports, version))} of {version.report_count} reports. Open a report to read the rest of its replies.
+      </p>
+    </li>
+  </ol>
 </main>

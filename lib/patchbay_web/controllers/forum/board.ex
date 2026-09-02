@@ -15,6 +15,8 @@ defmodule PatchbayWeb.Forum.Board do
 
   require Ash.Query
 
+  import Ash.Expr
+
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Reply
@@ -48,8 +50,26 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "The busiest sites on the board, Patchbay's own first, and whether more remain."
   @spec list_sites() :: {[Site.t()], boolean()}
   def list_sites do
-    page = Forum.list_sites!(query: [load: @site_loads], page: [limit: @sites])
+    page = Forum.list_sites!(query: site_summary(), page: [limit: @sites])
     {home_first(page.results), page.more?}
+  end
+
+  # A site card carries the same summary wherever it is read: how much has been
+  # reported, how it broke down, and when the last word came in. All of it is
+  # counted alongside the site itself, so a page of cards is still one read.
+  defp site_summary do
+    Site
+    |> Ash.Query.load(@site_loads)
+    |> reports_counted(:verified_report_count, expr(verified == true))
+    |> reports_counted(:verified_success_count, expr(verdict == :verified_success))
+    |> reports_counted(:verified_failure_count, expr(verdict == :verified_failure))
+    |> reports_counted(:errored_count, expr(verdict == :errored))
+    |> reports_counted(:unknown_count, expr(verdict == :unknown))
+    |> Ash.Query.aggregate(:latest_report_at, :max, [:tools, :reports], field: :inserted_at)
+  end
+
+  defp reports_counted(query, name, filter) do
+    Ash.Query.aggregate(query, name, :count, [:tools, :reports], query: [filter: filter])
   end
 
   # Patchbay's own board is the one a visitor is standing on, so it leads the
@@ -72,7 +92,7 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "The site a host names, if the board has one."
   @spec fetch_site(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site(origin) do
-    case Forum.get_site_by_origin(origin, load: @site_loads) do
+    case Forum.get_site_by_origin(origin, query: site_summary()) do
       {:ok, site} -> {:ok, site}
       {:error, _no_such_site} -> :error
     end

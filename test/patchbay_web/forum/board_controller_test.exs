@@ -116,6 +116,45 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert tool_page =~ "1 version, newest first"
       assert tool_page =~ "Improve the Skill and say what changed."
     end
+
+    test "a card carries its counts, its strip and when it last heard anything", %{conn: conn} do
+      tool = "shopify.com" |> site!() |> tool!()
+
+      report!(tool)
+      report!(tool)
+      report!(tool, %{verdict: :verified_failure})
+      report!(tool, %{verdict: :errored})
+
+      body = conn |> get(~p"/sites") |> html_response(200)
+
+      assert body =~ "1 tool version · 4 reports"
+      assert body =~ "2 worked · 1 did not · 1 errored · 0 unclear"
+      assert body =~ ~s(<span class="pb-bar-part is-worked" style="width:50.0%")
+      assert body =~ ~s(<span class="pb-bar-part is-failed" style="width:25.0%")
+      assert body =~ ~s(<span class="pb-bar-part is-errored" style="width:25.0%")
+      assert body =~ "None checked against Patchbay"
+      assert body =~ "Last report just now"
+    end
+
+    test "a card counts the reports Patchbay matched to a call of its own", %{conn: conn} do
+      matched_report!()
+
+      body = conn |> get(~p"/sites") |> html_response(200)
+
+      assert body =~ "1 report checked against Patchbay"
+    end
+
+    test "marks which card is this site, and offers a card with nothing on it a way in", %{
+      conn: conn
+    } do
+      site!("quiet.example")
+
+      body = conn |> get(~p"/sites") |> html_response(200)
+
+      assert body =~ ~s(<span class="pb-chip is-ours">This site</span>)
+      assert body =~ "No agent has reported on this site yet."
+      refute body =~ "Last report never"
+    end
   end
 
   describe "GET /sites/:origin" do
@@ -135,10 +174,38 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "search"
       assert body =~ "2 versions"
       assert body =~ "1 version"
-      assert body =~ "1 worked · 0 did not · 0 errored · 0 unclear"
-      assert body =~ "0 worked · 1 did not · 1 errored · 0 unclear"
-      assert body =~ "2 claimed reporters (nothing here is verified)"
-      assert body =~ "no reports yet"
+
+      # One strip for the whole site, and a chip for every version underneath.
+      assert body =~ "1 worked · 1 did not · 1 errored · 0 unclear"
+      assert body =~ String.slice(@contract, 0, 12)
+      assert body =~ String.slice(@other_contract, 0, 12)
+      assert body =~ "Current"
+      assert body =~ "First seen just now"
+      assert body =~ "2 reports"
+      assert body =~ "1 report"
+    end
+
+    test "marks the version a site is on now", %{conn: conn} do
+      site = site!("shopify.com")
+      tool!(site)
+      tool!(site, %{contract_sha256: @other_contract})
+
+      body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
+
+      # The newest version leads its tool and is the only one marked current.
+      assert :binary.match(body, String.slice(@other_contract, 0, 12)) <
+               :binary.match(body, String.slice(@contract, 0, 12))
+
+      assert body |> String.split(~s(class="pb-chip is-current")) |> length() == 2
+    end
+
+    test "says so plainly when a site has nothing on it yet", %{conn: conn} do
+      site!("quiet.example")
+
+      body = conn |> get(~p"/sites/quiet.example") |> html_response(200)
+
+      assert body =~ "No tool on this site has been reported on yet."
+      assert body =~ "The first agent to call one and write down what happened"
     end
 
     test "presents a tool's copy as what an agent reported", %{conn: conn} do
@@ -197,6 +264,77 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ "I saw the same thing"
       assert body =~ "Did not work"
+    end
+
+    test "counts each version's verdicts and its claimed reporters", %{conn: conn} do
+      site = site!("shopify.com")
+      first = tool!(site)
+      second = tool!(site, %{contract_sha256: @other_contract})
+
+      report!(first)
+      report!(second, %{verdict: :verified_failure})
+      report!(second, %{verdict: :errored})
+
+      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+
+      assert body =~ "1 worked · 0 did not · 0 errored · 0 unclear"
+      assert body =~ "0 worked · 1 did not · 1 errored · 0 unclear"
+      assert body =~ "2 claimed reporters (nothing here is verified)"
+    end
+
+    test "says what changed in the words between two versions", %{conn: conn} do
+      site = site!("shopify.com")
+
+      tool!(site, %{
+        title: "Start checkout",
+        description: "Puts the cart through. It needs a postal address."
+      })
+
+      tool!(site, %{
+        contract_sha256: @other_contract,
+        title: "Begin checkout",
+        description: "Puts the cart through. It needs a card on file."
+      })
+
+      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+
+      assert body =~ "WHAT CHANGED"
+      assert body =~ ~s(<s>Start checkout</s>)
+      assert body =~ ~s(<ins>Begin checkout</ins>)
+
+      assert body =~ "pb-sentence is-added"
+      assert body =~ "It needs a card on file."
+      assert body =~ "pb-sentence is-removed"
+      assert body =~ "It needs a postal address."
+      assert body =~ "pb-sentence is-kept"
+      assert body =~ "Puts the cart through."
+
+      # The oldest version on the page has nothing behind it to read against.
+      assert body =~ "This is the earliest version of this tool the board has"
+    end
+
+    test "says so when only the shape of a version changed", %{conn: conn} do
+      site = site!("shopify.com")
+      tool!(site, %{title: "Start checkout", description: "Puts the cart through."})
+
+      tool!(site, %{
+        contract_sha256: @other_contract,
+        title: "Start checkout",
+        description: "Puts the cart through."
+      })
+
+      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+
+      assert body =~ "The words did not change."
+      refute body =~ "pb-sentence is-added"
+    end
+
+    test "says plainly when a version has no reports on it", %{conn: conn} do
+      "shopify.com" |> site!() |> tool!()
+
+      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+
+      assert body =~ "No agent has reported on this version yet."
     end
 
     test "marks Patchbay's own answer in a thread", %{conn: conn} do
@@ -283,6 +421,16 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "could not reproduce"
       assert body =~ "Did not work"
       assert body =~ "shopify.com"
+    end
+
+    test "invites a second opinion when nobody has replied", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+
+      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+
+      assert body =~ "Nobody has replied to this report yet."
+      assert body =~ "can say whether it saw the same thing"
+      assert body =~ "just now"
     end
 
     test "tells Patchbay's own answer apart from a visitor's", %{conn: conn} do
