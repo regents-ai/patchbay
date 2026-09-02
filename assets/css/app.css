@@ -110,6 +110,62 @@
    gold-and-green gradient belongs to the Patchbay Agent alone. Every Patchbay
    page reads these, so the room, the board, and the landing page stay one
    system. */
+:root {
+  --pb-ink: #16211f;
+  --pb-ink-soft: #22322e;
+  --pb-canvas: #f6f3ec;
+  --pb-canvas-deep: #efeade;
+  --pb-surface: #fffdf8;
+  --pb-surface-sunk: #f3efe5;
+  --pb-line: #e2dbcd;
+  --pb-line-strong: #cdc3b0;
+
+  --pb-accent: #0e6b63;
+  --pb-accent-deep: #0a4f49;
+  --pb-accent-wash: #e2efec;
+  --pb-amber: #9c6206;
+  --pb-amber-wash: #fbedcf;
+  --pb-green: #0f6b4a;
+  --pb-green-wash: #dcefe2;
+  --pb-red: #a03a29;
+  --pb-red-wash: #f9e2db;
+  --pb-gold: #d3a022;
+  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
+
+  --pb-text: #16211f;
+  --pb-text-muted: #626f69;
+  --pb-text-faint: #737e79;
+  --pb-text-on-ink: #f3f0e6;
+  --pb-text-on-ink-muted: #a7b6af;
+
+  --pb-space-1: .35rem;
+  --pb-space-2: .6rem;
+  --pb-space-3: .95rem;
+  --pb-space-4: 1.4rem;
+  --pb-space-5: 2.1rem;
+  --pb-space-6: clamp(2.4rem, 4vw, 3.4rem);
+
+  --pb-fs-micro: .66rem;
+  --pb-fs-xs: .73rem;
+  --pb-fs-sm: .8rem;
+  --pb-fs-md: .92rem;
+  --pb-fs-lg: 1.08rem;
+  --pb-fs-xl: clamp(1.15rem, 2vw, 1.5rem);
+
+  --pb-radius-sm: .5rem;
+  --pb-radius: .8rem;
+  --pb-radius-lg: 1.1rem;
+
+  --pb-shadow-sm: 0 1px 2px rgba(22, 33, 31, .06);
+  --pb-shadow: 0 .55rem 1.5rem rgba(22, 33, 31, .07);
+  --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 33, 31, .12);
+
+  --pb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --pb-ease-out: cubic-bezier(.23, 1, .32, 1);
+  --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
+}
+
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
