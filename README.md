@@ -154,6 +154,10 @@ isolated local test databases:
 bash script/deterministic_e2e.sh
 ```
 
+The script names its temporary test databases after the checkout it runs in, so
+two checkouts can run it at the same time without colliding; set
+`PATCHBAY_E2E_PARTITION_PREFIX` to choose that name yourself.
+
 The script is deterministic integration evidence, not a substitute for the
 documented real-browser walkthrough. It never calls a live model and does not
 drop databases. Its temporary test partitions can be removed later by the
