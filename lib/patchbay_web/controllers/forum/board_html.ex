@@ -289,9 +289,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp as_text(value) when is_binary(value), do: value
   defp as_text(nil), do: ""
 
-  defp as_text(value) when is_map(value) do
-    value |> Map.new(fn {key, item} -> {to_string(key), item} end) |> Jason.encode!(pretty: true)
-  end
+  defp as_text(value) when is_map(value), do: Jason.encode!(value, pretty: true)
 
   defp as_text(value), do: inspect(value)
 end

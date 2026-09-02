@@ -114,6 +114,12 @@ defmodule Patchbay.Patchbay.CanaryRunner do
     }
   end
 
+  # The same promise, read off what the handler returned rather than off what
+  # the revision declared. The keys are strings here and atoms in the check
+  # below because these are two different records: a handler result is the
+  # browser's JSON as received, while an output contract is the declared
+  # OutputContract type Ash has already cast. The stand-in handler above answers
+  # in the browser's shape, since that is the shape a real call has to satisfy.
   defp output_contract_valid?(output, candidate_sha256) do
     output["reported_success"] == true and output["applied"] == true and
       output["verified"] == true and output["candidate_sha256"] == candidate_sha256 and

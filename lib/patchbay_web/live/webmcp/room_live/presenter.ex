@@ -468,6 +468,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   defp status_key(status) when is_binary(status), do: status
   defp status_key(status), do: inspect(status)
 
+  # A JSON object needs string keys and a name-like atom has no JSON form, but
+  # true, false and nil are JSON values already and are left as they are.
+  defp printable_value(value) when is_boolean(value) or is_nil(value), do: value
   defp printable_value(value) when is_atom(value), do: Atom.to_string(value)
   defp printable_value(value) when is_list(value), do: Enum.map(value, &printable_value/1)
 
