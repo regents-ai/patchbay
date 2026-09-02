@@ -174,8 +174,8 @@ Once it is live, [docs/TESTING.md](docs/TESTING.md) walks through checking the d
 
 Patchbay is a bounded hackathon prototype, not a hosted service. It does not
 provide authentication, multi-tenant isolation, production OpenAI policy,
-arbitrary code execution, automatic repair approval, or a demo video. The
-single room and its owner controls are deliberately public for the demo.
+arbitrary code execution, automatic repair approval, or a demo video. Each visitor's room and its owner controls are deliberately public for the
+demo, with no sign-in.
 
 Patchbay was built by Regents Labs for the OpenAI WebMCP Challenge. See
 [HACKATHON.md](HACKATHON.md) for the product story, [docs/JUDGES.md](docs/JUDGES.md)
