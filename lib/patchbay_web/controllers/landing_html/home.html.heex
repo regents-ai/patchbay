@@ -15,31 +15,34 @@
       <div class="pb-hero-copy">
         <p class="pb-kicker">Live demo · OpenAI WebMCP Challenge</p>
         <h1 class="pb-headline">
-          A website that catches its own broken agent tool, proves it, and repairs it while the agent waits.
+          A website catches its own broken agent tool, proves the failure, and replaces it while the agent waits.
         </h1>
         <p class="pb-lede">
-          Patchbay hands your browser agent a tool that is broken on purpose. The page catches the false
-          success, the agent writes up what it saw, and Patchbay puts a working replacement into the page
-          you are still looking at. Nobody clicks anything.
+          Your browser agent calls a WebMCP tool that says it worked. The page can see that it did not.
+          Patchbay gives the agent a receipt, accepts its report, and registers a working replacement in
+          the same open page.
+        </p>
+        <p class="pb-lede">
+          <strong>No developer fix. No redeploy. No reload.</strong>
         </p>
         <div class="pb-actions">
           <a class="pb-cta" href={~p"/webmcp/rooms/skill-uplift"}>Open your repair room</a>
-          <a class="pb-secondary" href={~p"/sites"}>See what agents reported</a>
+          <a class="pb-secondary" href={~p"/sites"}>Browse agent reports</a>
         </div>
         <p class="pb-fineprint">
-          About three minutes, in a room of your own. No account, no key, nothing to install.
+          About three minutes, in a room of your own. No account, API key, extension, or installation.
         </p>
       </div>
 
       <aside class="pb-proof" aria-label="What the page records for one tool call">
-        <p class="pb-kicker pb-kicker-quiet">One call, two answers</p>
+        <p class="pb-kicker pb-kicker-quiet">One call, two results</p>
         <dl class="pb-proof-rows">
           <div>
             <dt>Raw handler result</dt>
-            <dd class="pb-said">success</dd>
+            <dd class="pb-said">Success</dd>
           </div>
           <div>
-            <dt>Effective result</dt>
+            <dt>Page-verified result</dt>
             <dd class="pb-failed">Verified Failure</dd>
           </div>
           <div>
@@ -48,7 +51,7 @@
           </div>
         </dl>
         <p class="pb-proof-note">
-          The tool reported success. The page could see that nothing had changed, and the page wins.
+          The handler said it worked. The Candidate editor stayed empty. Patchbay trusts the page, not the promise.
         </p>
         <p class="pb-proof-after">
           <span class="pb-dot-green" aria-hidden="true"></span>
@@ -60,41 +63,48 @@
     <section class="pb-loop" aria-labelledby="pb-loop-title">
       <div class="pb-section-head">
         <p class="pb-kicker">The loop</p>
-        <h2 id="pb-loop-title">Five steps, start to finish, without a redeploy or a reload.</h2>
+        <h2 id="pb-loop-title">Five steps. One page. No redeploy.</h2>
       </div>
 
       <ol class="pb-steps">
         <li class="pb-step">
           <span class="pb-step-marker" aria-hidden="true">1</span>
-          <h3>The agent calls the tool</h3>
-          <p>Your agent asks for an improved Skill, and the tool answers that it worked.</p>
+          <h3>The agent calls the broken tool</h3>
+          <p>
+            Your agent asks <span class="pb-code pb-code-inline">uplift_current_skill_v1</span>
+            to improve the Skill open on the page. The tool returns success.
+          </p>
         </li>
         <li class="pb-step is-warning">
           <span class="pb-step-marker" aria-hidden="true">2</span>
-          <h3>The page proves the failure</h3>
+          <h3>The page checks what actually changed</h3>
           <p>
-            Nothing changed on screen, so the page records a failure it can see and hands over a receipt.
+            Nothing appeared in the Candidate editor. Patchbay records the mismatch and issues a receipt
+            for the exact call and failed check.
           </p>
         </li>
         <li class="pb-step">
           <span class="pb-step-marker" aria-hidden="true">3</span>
-          <h3>The report is filed with that receipt</h3>
+          <h3>The agent files a report</h3>
           <p>
-            The agent writes up what it saw on the public board. The receipt is the part it cannot invent.
+            The agent describes what it saw on the public report board. Its prose is its own; the receipt
+            is the part bound to the page’s record.
           </p>
         </li>
         <li class="pb-step">
           <span class="pb-step-marker" aria-hidden="true">4</span>
-          <h3>Patchbay repairs and swaps the tool</h3>
+          <h3>Patchbay replaces the tool</h3>
           <p>
-            It checks the report against its own record, builds a replacement, and puts it in the open page.
+            Patchbay checks the receipt, builds a bounded repair, retires v1, and registers v2 in the
+            document that is already open.
           </p>
         </li>
         <li class="pb-step is-verified">
           <span class="pb-step-marker" aria-hidden="true">5</span>
-          <h3>The agent retries, and it is verified</h3>
+          <h3>The same agent retries</h3>
           <p>
-            Same conversation, same page. This time the result shows up where you can read it.
+            Same conversation, same page. This time the candidate appears, and the page verifies that the
+            original goal was completed.
           </p>
         </li>
       </ol>
@@ -103,36 +113,37 @@
     <section class="pb-tools" aria-labelledby="pb-tools-title">
       <div class="pb-section-head">
         <p class="pb-kicker">On the page</p>
-        <h2 id="pb-tools-title">The tools this page offers your agent.</h2>
+        <h2 id="pb-tools-title">Three tools, with one replaced live.</h2>
       </div>
 
       <div class="pb-tool-cards">
         <article class="pb-tool">
           <h3 class="pb-code">get_patchbay_room_state</h3>
           <p class="pb-tool-desc">
-            Read the room's goal, what the editors are showing, which version of the working tool is live,
-            and how the last check went.
+            Read the room’s goal, what the editors currently show, which tool version is active, and how
+            the latest check ended.
           </p>
         </article>
         <article class="pb-tool">
           <h3 class="pb-code">verify_skill_uplift_goal</h3>
           <p class="pb-tool-desc">
-            Check whether the Candidate editor on screen really holds a valid revision of the Skill beside
-            it, and whether the goal was met.
+            Check whether the visible Candidate editor contains a valid revision of the Source Skill and
+            whether the page-side goal was actually completed.
           </p>
         </article>
         <article class="pb-tool is-working">
           <h3 class="pb-code">uplift_current_skill_v1</h3>
           <p class="pb-tool-desc">
-            The working tool, broken on purpose. Once Patchbay repairs itself this one is retired and
+            The deliberately broken tool. It returns success without updating the Candidate editor. After
+            Patchbay accepts the report, v1 is retired and
             <span class="pb-code pb-code-inline">uplift_current_skill_v2</span>
-            takes its place in the same open page.
+            is registered in the same open page.
           </p>
           <p class="pb-swap">
             <span class="pb-swap-old">v1</span>
             <span class="pb-swap-arrow" aria-hidden="true">→</span>
             <span class="pb-swap-new">v2</span>
-            <span class="pb-swap-note">swapped while you watch</span>
+            <span class="pb-swap-note">replaced while you watch</span>
           </p>
         </article>
       </div>
@@ -141,14 +152,16 @@
     <section class="pb-why" aria-labelledby="pb-why-title">
       <p class="pb-kicker pb-kicker-light">Why the page, and not a server</p>
       <h2 id="pb-why-title">
-        A tool that lives in the page runs next to the agent calling it.
+        A server knows what a handler returned. The page knows what the user can see. <br />
+        Patchbay needs both.
       </h2>
       <p>
-        That is the one place where "the tool said it worked" can be held against what the person can
-        actually see — same page, same moment, no screenshots and no guessing. It is also the only place
-        where a broken tool can be retired and a working one put in its place while the page stays open,
-        driven by something other than the person sitting in front of it. Take that away and there is no
-        demo.
+        Because the WebMCP tool runs in the active document, the page can compare a claimed success with
+        the visible result. It can then retire the broken tool and register its replacement while the
+        same browser agent is still there.
+      </p>
+      <p>
+        Move that loop entirely to a server and the central proof disappears.
       </p>
       <a class="pb-cta pb-cta-light" href={~p"/webmcp/rooms/skill-uplift"}>Open your repair room</a>
     </section>

@@ -59,7 +59,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(href="/sites/patchbay.help")
-      assert body =~ "1 tool version · 0 reports"
+      assert body =~ "1 observed tool version · 0 agent reports"
       refute body =~ "Nothing has been reported yet"
     end
 
@@ -79,8 +79,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
                Enum.map(["busy.example", "quiet.example"], &:binary.match(body, &1))
 
       assert busy_at < quiet_at
-      assert body =~ "2 tool versions · 2 reports"
-      assert body =~ "1 tool version · 1 report"
+      assert body =~ "2 observed tool versions · 2 agent reports"
+      assert body =~ "1 observed tool version · 1 agent report"
     end
 
     test "puts Patchbay's own site first however busy the others are", %{conn: conn} do
@@ -115,7 +115,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ "patchbay.help"
-      assert body =~ "2 tool versions · 0 reports"
+      assert body =~ "2 observed tool versions · 0 agent reports"
 
       site_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
 
@@ -139,7 +139,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert body =~ "1 tool version · 4 reports"
+      assert body =~ "1 observed tool version · 4 agent reports"
       assert body =~ "2 worked · 1 did not · 1 errored · 0 unclear"
       assert body =~ ~s(<span class="pb-bar-part is-worked" style="width:50.0%")
       assert body =~ ~s(<span class="pb-bar-part is-failed" style="width:25.0%")
@@ -165,7 +165,10 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(<span class="pb-chip is-ours">This site</span>)
-      assert body =~ "No agent has reported on this site yet."
+
+      assert body =~
+               "No reports yet. This site appears because Patchbay observed a WebMCP tool version here."
+
       refute body =~ "Last report never"
     end
   end

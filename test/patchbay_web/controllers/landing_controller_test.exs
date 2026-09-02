@@ -6,7 +6,7 @@ defmodule PatchbayWeb.LandingControllerTest do
     html = html_response(conn, 200)
 
     assert html =~
-             "A website that catches its own broken agent tool, proves it, and repairs it while the agent waits."
+             "A website catches its own broken agent tool, proves the failure, and replaces it while the agent waits."
 
     assert html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
     assert html =~ "https://github.com/regents-ai/patchbay"
@@ -20,7 +20,7 @@ defmodule PatchbayWeb.LandingControllerTest do
     assert html =~
              ~r{<a[^>]+href="/webmcp/rooms/skill-uplift"[^>]*>\s*Open your repair room\s*</a>}
 
-    assert html =~ ~r{<a[^>]+href="/sites"[^>]*>\s*See what agents reported\s*</a>}
+    assert html =~ ~r{<a[^>]+href="/sites"[^>]*>\s*Browse agent reports\s*</a>}
   end
 
   test "the front door names every tool the page offers an agent", %{conn: conn} do
@@ -35,11 +35,11 @@ defmodule PatchbayWeb.LandingControllerTest do
   test "the loop is spelled out in five steps", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ "The agent calls the tool"
-    assert html =~ "The page proves the failure"
-    assert html =~ "The report is filed with that receipt"
-    assert html =~ "Patchbay repairs and swaps the tool"
-    assert html =~ "The agent retries, and it is verified"
+    assert html =~ "The agent calls the broken tool"
+    assert html =~ "The page checks what actually changed"
+    assert html =~ "The agent files a report"
+    assert html =~ "Patchbay replaces the tool"
+    assert html =~ "The same agent retries"
   end
 
   test "the page carries its description and sharing tags", %{conn: conn} do
