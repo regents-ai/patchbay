@@ -15,34 +15,35 @@
 
 /* daisyUI theme plugin. You can update this file by fetching the latest version with:
    curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
-   Patchbay is one warm sheet of paper, so this is its only theme. A dark one
-   under type that was drawn for paper took the quiet greys down to about
-   1.3:1 against it. */
+   Patchbay paints every element of every page itself. The one thing left to
+   this block is the sheet behind the page, which the landing page and the
+   not-found page sit straight on, so it is handed Patchbay's own tokens and
+   follows the palette into the dark. */
 @plugin "../vendor/daisyui-theme" {
   name: "light";
   default: true;
   prefersdark: false;
-  color-scheme: "light";
-  --color-base-100: oklch(98% 0 0);
-  --color-base-200: oklch(96% 0.001 286.375);
-  --color-base-300: oklch(92% 0.004 286.32);
-  --color-base-content: oklch(21% 0.006 285.885);
-  --color-primary: oklch(70% 0.213 47.604);
-  --color-primary-content: oklch(98% 0.016 73.684);
-  --color-secondary: oklch(55% 0.027 264.364);
-  --color-secondary-content: oklch(98% 0.002 247.839);
-  --color-accent: oklch(0% 0 0);
-  --color-accent-content: oklch(100% 0 0);
-  --color-neutral: oklch(44% 0.017 285.786);
-  --color-neutral-content: oklch(98% 0 0);
-  --color-info: oklch(62% 0.214 259.815);
-  --color-info-content: oklch(97% 0.014 254.604);
-  --color-success: oklch(70% 0.14 182.503);
-  --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(66% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
+  color-scheme: "light dark";
+  --color-base-100: var(--pb-canvas);
+  --color-base-200: var(--pb-canvas-deep);
+  --color-base-300: var(--pb-line);
+  --color-base-content: var(--pb-text);
+  --color-primary: var(--pb-accent);
+  --color-primary-content: var(--pb-accent-ink);
+  --color-secondary: var(--pb-good);
+  --color-secondary-content: var(--pb-surface);
+  --color-accent: var(--pb-ink);
+  --color-accent-content: var(--pb-text-on-ink);
+  --color-neutral: var(--pb-text-muted);
+  --color-neutral-content: var(--pb-surface);
+  --color-info: var(--pb-good);
+  --color-info-content: var(--pb-surface);
+  --color-success: var(--pb-good);
+  --color-success-content: var(--pb-surface);
+  --color-warning: var(--pb-accent);
+  --color-warning-content: var(--pb-accent-ink);
+  --color-error: var(--pb-bad);
+  --color-error-content: var(--pb-surface);
   --radius-selector: 0.25rem;
   --radius-field: 0.25rem;
   --radius-box: 0.5rem;
@@ -63,40 +64,46 @@
 
 /* This file is for your main application CSS */
 
-/* Patchbay's palette. One warm paper canvas, one dark ink for the header band,
-   one deep teal for anything interactive, and three meanings that never move:
-   amber is waiting or a failed verification, green is verified, and the
-   gold-and-green gradient belongs to the Patchbay Agent alone. Every Patchbay
-   page reads these, so the room, the board, and the landing page stay one
-   system. */
-:root {
-  --pb-ink: #16211f;
-  --pb-ink-soft: #22322e;
-  --pb-canvas: #f6f3ec;
-  --pb-canvas-deep: #efeade;
-  --pb-surface: #fffdf8;
-  --pb-surface-sunk: #f3efe5;
-  --pb-line: #e2dbcd;
-  --pb-line-strong: #cdc3b0;
+/* Patchbay's palette: titanium neutrals, and two accents spent on purpose.
+   One warm canvas, one near-black band, and meanings that never move. Orange
+   is attention — what you can act on now, and the states that are waiting for
+   you or have failed a check. Blue is the settled state: verified, connected,
+   proved. The burnt tone is something that broke. The quiet neutrals are idle
+   and unclear. The titanium-to-orange-to-blue gradient belongs to the Patchbay
+   Agent alone. Every Patchbay page reads these, so the room, the board, and
+   the landing page stay one system.
 
-  --pb-accent: #0e6b63;
-  --pb-accent-deep: #0a4f49;
-  --pb-accent-wash: #e2efec;
-  --pb-amber: #8f5a05;
-  --pb-amber-wash: #fbedcf;
-  --pb-green: #0f6b4a;
-  --pb-green-wash: #dcefe2;
-  --pb-red: #a03a29;
-  --pb-red-wash: #f9e2db;
-  --pb-gold: #d3a022;
-  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
+   Orange cannot carry small text on paper; against white it reaches only
+   3.1:1, so --pb-accent-deep is the orange that can, and --pb-accent-ink is
+   the near-black that sits on an orange fill. After dark the accent is already
+   bright enough against the page, so the deep tone lightens instead of
+   darkening, and text on a filled state chip becomes --pb-surface. */
+:root {
+  --pb-ink: #161616;
+  --pb-ink-soft: #262523;
+  --pb-canvas: #f6f4ea;
+  --pb-canvas-deep: #e5e3d2;
+  --pb-surface: #ffffff;
+  --pb-surface-sunk: #f1efe3;
+  --pb-line: #dad8c7;
+  --pb-line-strong: #cfcdbb;
+
+  --pb-accent: #ff5b19;
+  --pb-accent-deep: #a5410f;
+  --pb-accent-wash: #fce6da;
+  --pb-accent-ink: #161616;
+  --pb-good: #2f5c60;
+  --pb-good-wash: #e4eff0;
+  --pb-bad: #7a3113;
+  --pb-bad-wash: #f5e4dc;
+  --pb-agent-gradient: linear-gradient(100deg, #e5e3d2 0%, #ff7a45 44%, #aecacd 100%);
 
   /* One quiet tone, not two. Anything quieter than this stops clearing 4.5:1
      against the warm paper, so quieter is not a thing this palette offers. */
-  --pb-text: #16211f;
-  --pb-text-muted: #5d6a64;
-  --pb-text-on-ink: #f3f0e6;
-  --pb-text-on-ink-muted: #a7b6af;
+  --pb-text: #161616;
+  --pb-text-muted: #5b5a50;
+  --pb-text-on-ink: #e5e3d2;
+  --pb-text-on-ink-muted: #b9b7a6;
 
   --pb-space-1: .35rem;
   --pb-space-2: .6rem;
@@ -122,9 +129,9 @@
   --pb-radius: .8rem;
   --pb-radius-lg: 1.1rem;
 
-  --pb-shadow-sm: 0 1px 2px rgba(22, 33, 31, .06);
-  --pb-shadow: 0 .55rem 1.5rem rgba(22, 33, 31, .07);
-  --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 33, 31, .12);
+  --pb-shadow-sm: 0 1px 2px rgba(22, 22, 22, .07);
+  --pb-shadow: 0 .55rem 1.5rem rgba(22, 22, 22, .08);
+  --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 22, 22, .13);
 
   --pb-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --pb-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
@@ -134,13 +141,45 @@
   --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
 }
 
+/* The same palette after dark. Only colour is redeclared here; every size,
+   face and curve above still holds. The accent, the ink that sits on it, the
+   Agent's gradient and the two tones for type on a dark panel are the same in
+   both themes, so they are not repeated. The band inverts: on paper it is the
+   darkest thing on the page, after dark it is the one panel lifted off it. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pb-ink: #0f0f10;
+    --pb-ink-soft: #1b1c1e;
+    --pb-canvas: #0f0f10;
+    --pb-canvas-deep: #131315;
+    --pb-surface: #1b1c1e;
+    --pb-surface-sunk: #141517;
+    --pb-line: #2a2b2e;
+    --pb-line-strong: #3e4044;
+
+    --pb-accent-deep: #ff7e4c;
+    --pb-accent-wash: #2e1b13;
+    --pb-good: #aecacd;
+    --pb-good-wash: #101e20;
+    --pb-bad: #efa98c;
+    --pb-bad-wash: #2b211d;
+
+    --pb-text: #e5e3d2;
+    --pb-text-muted: #9c9a8b;
+
+    --pb-shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
+    --pb-shadow: 0 .55rem 1.5rem rgba(0, 0, 0, .55);
+    --pb-shadow-lg: 0 1.1rem 2.4rem rgba(0, 0, 0, .6);
+  }
+}
+
 /* One focus ring for the whole site, so a keyboard is never guessing where it
    is. The selector list is wrapped in :where() to keep it at the weight of a
    single element rule: anything with a class can still say something different
    without a fight. pre is in the list because an evidence pane that is taller
    than its box becomes a scroll region, and a browser puts those in the tab
-   order; one that fits never matches and is left alone. On the dark surfaces
-   the same ring turns gold, because the teal disappears into the ink. */
+   order; one that fits never matches and is left alone. On a dark panel the
+   ring switches to the accent itself, which the deep tone is too dark for. */
 :where(a, button, input, textarea, select, summary, pre, [tabindex]):focus-visible {
   outline: 3px solid var(--pb-accent-deep);
   outline-offset: 2px;
@@ -150,7 +189,7 @@
 .pb-skip-link:focus,
 .patchbay-board .patchbay-topbar :focus-visible,
 .patchbay-result-box :focus-visible {
-  outline-color: var(--pb-gold);
+  outline-color: var(--pb-accent);
 }
 
 /* Skip to the content: the first thing a keyboard reaches on every page, and
@@ -178,19 +217,11 @@
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
-  --patchbay-ink: var(--pb-text);
-  --patchbay-muted: var(--pb-text-muted);
-  --patchbay-line: var(--pb-line);
-  --patchbay-paper: var(--pb-canvas);
-  --patchbay-card: var(--pb-surface);
-  --patchbay-coral: var(--pb-accent);
-  --patchbay-cyan: var(--pb-accent-deep);
-  --patchbay-yellow: var(--pb-gold);
   min-height: 100vh;
   color: var(--pb-text);
   background:
-    radial-gradient(circle at 88% -4%, rgba(211, 160, 34, .16), transparent 26rem),
-    radial-gradient(circle at 4% 12%, rgba(14, 107, 99, .07), transparent 30rem),
+    radial-gradient(circle at 88% -4%, color-mix(in srgb, var(--pb-accent) 14%, transparent), transparent 26rem),
+    radial-gradient(circle at 4% 12%, color-mix(in srgb, var(--pb-good) 12%, transparent), transparent 30rem),
     linear-gradient(160deg, var(--pb-canvas) 0%, var(--pb-canvas-deep) 100%);
   padding: 1.2rem clamp(1rem, 3vw, 3.5rem) 3rem;
   font-family: ui-sans-serif, system-ui, sans-serif;
@@ -238,9 +269,9 @@
   width: 2.4rem;
   height: 2.4rem;
   border-radius: .7rem;
-  color: #143229;
+  color: var(--pb-accent-ink);
   background: var(--pb-agent-gradient);
-  box-shadow: 0 .3rem .9rem rgba(211, 160, 34, .35);
+  box-shadow: 0 .3rem .9rem color-mix(in srgb, var(--pb-accent) 30%, transparent);
   font-size: 1.3rem;
 }
 
@@ -269,7 +300,7 @@
   display: inline-block;
   border-radius: 999px;
   padding: .16rem .55rem;
-  color: #143229;
+  color: var(--pb-accent-ink);
   background: var(--pb-agent-gradient);
   font-weight: 800;
 }
@@ -296,11 +327,11 @@
   letter-spacing: .02em;
   white-space: nowrap;
 }
-.patchbay-pill.is-good, .patchbay-state-label.is-ready { color: var(--pb-green); background: var(--pb-green-wash); border-color: #b7dcc4; }
-.patchbay-pill.is-bad { color: var(--pb-red); background: var(--pb-red-wash); border-color: #eebcae; }
-.patchbay-pill.is-warn { color: var(--pb-amber); background: var(--pb-amber-wash); border-color: #ecd08a; }
+.patchbay-pill.is-good, .patchbay-state-label.is-ready { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
+.patchbay-pill.is-bad { color: var(--pb-bad); background: var(--pb-bad-wash); border-color: var(--pb-bad); }
+.patchbay-pill.is-warn { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
 .patchbay-pill.is-neutral { color: var(--pb-text-muted); background: var(--pb-surface-sunk); }
-.patchbay-state-label.is-empty { color: var(--pb-amber); background: var(--pb-amber-wash); border-color: #ecd08a; }
+.patchbay-state-label.is-empty { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
 
 .patchbay-muted { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); line-height: 1.55; }
 .patchbay-registry-summary { min-width: 13rem; max-width: 22rem; flex-direction: column; align-items: stretch; gap: .5rem; padding: .72rem .9rem; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); background: var(--pb-surface); box-shadow: var(--pb-shadow-sm); }
@@ -320,13 +351,13 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
-.patchbay-capability-line[data-webmcp-status="connected"] { color: var(--pb-accent-deep); }
+.patchbay-capability-line[data-webmcp-status="connected"] { color: var(--pb-good); }
 .patchbay-capability-line[data-webmcp-status="drift"],
 .patchbay-capability-line[data-webmcp-status="unverified"],
-.patchbay-capability-line[data-webmcp-status="unsupported"] { color: var(--pb-amber); }
-.patchbay-capability-line[data-webmcp-status="error"] { color: var(--pb-red); }
-.patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: var(--pb-line-strong); }
-.patchbay-status-dot.is-live { background: var(--pb-accent); box-shadow: 0 0 0 .23rem rgba(14, 107, 99, .15); }
+.patchbay-capability-line[data-webmcp-status="unsupported"] { color: var(--pb-accent-deep); }
+.patchbay-capability-line[data-webmcp-status="error"] { color: var(--pb-bad); }
+.patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: var(--pb-accent-deep); }
+.patchbay-status-dot.is-live { background: var(--pb-good); box-shadow: 0 0 0 .23rem color-mix(in srgb, var(--pb-good) 18%, transparent); }
 
 .patchbay-editors,
 .patchbay-workbench { display: grid; gap: var(--pb-space-3); }
@@ -337,7 +368,7 @@
 .patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: .8rem; margin-bottom: .8rem; }
 .patchbay-card-heading h3 { margin: 0; font-size: var(--pb-fs-md); letter-spacing: -.02em; }
 .patchbay-mono { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); white-space: nowrap; }
-.patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .85rem; color: #24322f; background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--pb-mono); tab-size: 2; }
+.patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .85rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--pb-mono); tab-size: 2; }
 .patchbay-editor:focus { border-color: var(--pb-accent); }
 .patchbay-editor-footer { justify-content: space-between; gap: .8rem; margin-top: .6rem; }
 .patchbay-digest { min-width: 0; overflow: hidden; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); text-overflow: ellipsis; white-space: nowrap; }
@@ -347,16 +378,18 @@
 .patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; }
 .patchbay-upload-row label { flex: 1 1 100%; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-upload-problem { margin: .5rem 0 0; color: var(--pb-red); font-size: var(--pb-fs-xs); line-height: 1.45; }
+.patchbay-upload-problem { margin: .5rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
-.patchbay-button { cursor: pointer; border: 1px solid transparent; border-radius: .6rem; padding: .6rem .85rem; color: #f4fbf8; background: var(--pb-accent); font-size: var(--pb-fs-xs); font-weight: 800; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
-.patchbay-button:hover { background: var(--pb-accent-deep); }
+.patchbay-button { cursor: pointer; border: 1px solid var(--pb-accent-deep); border-radius: .6rem; padding: .6rem .85rem; color: var(--pb-accent-ink); background: var(--pb-accent); font-size: var(--pb-fs-xs); font-weight: 800; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
+/* The fill darkens on hover by the smallest step that still leaves the label
+   above 4.5:1, so the label never has to change colour under the pointer. */
+.patchbay-button:hover { background: color-mix(in srgb, var(--pb-accent) 88%, var(--pb-accent-ink)); }
 .patchbay-button:disabled { cursor: wait; filter: grayscale(.35); opacity: .6; }
 .patchbay-button-quiet { color: var(--pb-accent-deep); background: var(--pb-surface-sunk); border-color: var(--pb-line); }
-.patchbay-button-quiet:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent); }
-.patchbay-button-danger { color: var(--pb-red); background: var(--pb-red-wash); border-color: #eecec4; }
-.patchbay-button-danger:hover { background: #f4d5cb; }
+.patchbay-button-quiet:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
+.patchbay-button-danger { color: var(--pb-bad); background: var(--pb-bad-wash); border-color: var(--pb-bad); }
+.patchbay-button-danger:hover { background: color-mix(in srgb, var(--pb-bad) 12%, var(--pb-bad-wash)); }
 
 .patchbay-evidence-card, .patchbay-repair-card, .patchbay-retry-card, .patchbay-timeline-card { padding: var(--pb-space-3); }
 .patchbay-facts { display: grid; gap: .45rem; }
@@ -364,25 +397,25 @@
 .patchbay-facts span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
 .patchbay-facts strong { font-size: var(--pb-fs-xs); }
 .patchbay-facts code { color: var(--pb-text); font-size: var(--pb-fs-micro); text-align: right; overflow-wrap: anywhere; }
-.patchbay-positive { color: var(--pb-green); }
-.patchbay-negative { color: var(--pb-red); }
-.patchbay-result-box { margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .72rem; background: var(--pb-ink); color: #dceee7; }
+.patchbay-positive { color: var(--pb-good); }
+.patchbay-negative { color: var(--pb-bad); }
+.patchbay-result-box { margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .72rem; background: var(--pb-ink); color: var(--pb-text-on-ink); }
 .patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
 .patchbay-evidence-grid > .patchbay-result-box { min-width: 0; }
-.patchbay-result-box .patchbay-kicker { color: var(--pb-gold); }
+.patchbay-result-box .patchbay-kicker { color: var(--pb-accent); }
 .patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: var(--pb-fs-micro); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .65rem; }
 .patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .6rem; background: var(--pb-surface-sunk); }
 .patchbay-state-grid .patchbay-kicker { margin-bottom: .35rem; font-size: .58rem; }
 .patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: var(--pb-text-muted); font: .62rem/1.45 var(--pb-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-shortened-note { margin: .4rem 0 0; font-size: var(--pb-fs-xs); line-height: 1.45; }
-.patchbay-result-box .patchbay-shortened-note { color: #9fc4b8; }
+.patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
 .patchbay-state-grid .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-empty-state { margin: .6rem 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .patchbay-alert { display: flex; gap: .6rem; align-items: baseline; margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .65rem .75rem; font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-alert strong { white-space: nowrap; }
-.patchbay-alert-error { color: var(--pb-red); background: var(--pb-red-wash); border: 1px solid #eebcae; }
-.patchbay-alert-warn { color: var(--pb-amber); background: var(--pb-amber-wash); border: 1px solid #ecd08a; }
+.patchbay-alert-error { color: var(--pb-bad); background: var(--pb-bad-wash); border: 1px solid var(--pb-bad); }
+.patchbay-alert-warn { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border: 1px solid var(--pb-accent-deep); }
 #patchbay-platform-error { width: min(100%, 92rem); margin-inline: auto; }
 
 .patchbay-repair-cta p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
@@ -395,15 +428,15 @@
 .patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: .45rem .8rem; padding: .45rem .75rem; border-top: 1px solid var(--pb-line); font-size: var(--pb-fs-micro); }
 .patchbay-diff-row code { grid-row: span 2; color: var(--pb-text-muted); font-weight: 700; overflow-wrap: anywhere; }
 .patchbay-diff-old, .patchbay-diff-new { overflow-wrap: anywhere; white-space: pre-wrap; }
-.patchbay-diff-old { color: var(--pb-red); }
-.patchbay-diff-new { color: var(--pb-green); }
+.patchbay-diff-old { color: var(--pb-bad); }
+.patchbay-diff-new { color: var(--pb-good); }
 .patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; align-items: center; }
 .patchbay-canary .patchbay-kicker { margin: 0; }
 .patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .6rem; }
 .patchbay-checks span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-checks .is-pass { color: var(--pb-green); }
-.patchbay-checks .is-fail { color: var(--pb-red); }
-.patchbay-risk-notes ul { margin: .3rem 0 0; padding-left: 1rem; color: var(--pb-amber); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.patchbay-checks .is-pass { color: var(--pb-good); }
+.patchbay-checks .is-fail { color: var(--pb-bad); }
+.patchbay-risk-notes ul { margin: .3rem 0 0; padding-left: 1rem; color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .patchbay-approval-actions { border-top: 1px solid var(--pb-line); padding-top: .8rem; }
 .patchbay-approval-actions p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-approval-actions > div { flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
@@ -427,11 +460,11 @@
 .patchbay-connection-lost {
   width: min(100%, 92rem);
   margin: 0 auto .7rem;
-  border: 1px solid #ecd08a;
+  border: 1px solid var(--pb-accent-deep);
   border-radius: var(--pb-radius);
   padding: .5rem .8rem;
-  color: var(--pb-amber);
-  background: var(--pb-amber-wash);
+  color: var(--pb-accent-deep);
+  background: var(--pb-accent-wash);
   font-size: var(--pb-fs-xs);
   font-weight: 700;
 }
@@ -451,12 +484,12 @@
 #patchbay-room .patchbay-generation-badge {
   border-radius: 999px;
   padding: .26rem .6rem;
-  color: #0c1a18;
+  color: var(--pb-ink);
   background: var(--pb-text-on-ink);
   font-weight: 800;
 }
 #patchbay-room .patchbay-topbar .patchbay-pill { border-color: transparent; }
-#patchbay-room .patchbay-topbar .patchbay-pill.is-neutral { color: #0c1a18; background: #cfd8d2; }
+#patchbay-room .patchbay-topbar .patchbay-pill.is-neutral { color: var(--pb-ink); background: var(--pb-text-on-ink-muted); }
 
 /* The guide is a strip, not a column: three numbered prompts you can copy, and
    one muted line about what to watch. */
@@ -469,13 +502,13 @@
   border: 1px solid var(--pb-line);
   border-radius: var(--pb-radius-lg);
   padding: var(--pb-space-3);
-  background: rgba(255, 253, 248, .72);
+  background: color-mix(in srgb, var(--pb-surface) 72%, transparent);
 }
 .patchbay-guide-head h2 { margin: 0; font-size: var(--pb-fs-md); line-height: 1.35; letter-spacing: -.02em; }
 .patchbay-guide-head .patchbay-muted { margin: .4rem 0 0; font-size: var(--pb-fs-xs); }
 .patchbay-guide-links { margin: .5rem 0 0; font-size: var(--pb-fs-xs); }
-.patchbay-guide-links a { color: var(--pb-accent-deep); font-weight: 700; text-decoration: none; border-bottom: 1px solid rgba(14, 107, 99, .35); }
-.patchbay-guide-links a:hover { border-bottom-color: var(--pb-accent); }
+.patchbay-guide-links a { color: var(--pb-accent-deep); font-weight: 700; text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--pb-accent-deep) 40%, transparent); }
+.patchbay-guide-links a:hover { border-bottom-color: var(--pb-accent-deep); }
 
 .patchbay-guide-prompts { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
 .patchbay-prompt-chip {
@@ -494,17 +527,17 @@
   width: 1.4rem;
   height: 1.4rem;
   border-radius: 50%;
-  color: var(--pb-surface);
+  color: var(--pb-accent-ink);
   background: var(--pb-accent);
   font-size: var(--pb-fs-micro);
   font-weight: 800;
 }
 /* Which prompt to send now is read off the room's own status, so the strip
    tracks the loop instead of asking a judge to keep their place in it. */
-.patchbay-prompt-chip.is-current { border-color: var(--pb-accent); box-shadow: 0 0 0 2px var(--pb-accent-wash); }
+.patchbay-prompt-chip.is-current { border-color: var(--pb-accent-deep); box-shadow: 0 0 0 2px var(--pb-accent-wash); }
 .patchbay-prompt-chip.is-waiting { opacity: .62; }
 .patchbay-prompt-chip.is-done .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-surface-sunk); border: 1px solid var(--pb-line); }
-.patchbay-prompt-chip.is-waiting .patchbay-step-number { background: var(--pb-line-strong); }
+.patchbay-prompt-chip.is-waiting .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-canvas-deep); }
 .patchbay-step-now {
   margin-left: .4rem;
   border-radius: 999px;
@@ -531,8 +564,8 @@
   font-weight: 800;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.patchbay-copy:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent); }
-.patchbay-copy[data-state="done"] { color: var(--pb-green); background: var(--pb-green-wash); border-color: #b7dcc4; }
+.patchbay-copy:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
+.patchbay-copy[data-state="done"] { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
 
 .patchbay-guide-watch { grid-column: 1 / -1; margin: .15rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.6; }
 .patchbay-guide-watch b { color: var(--pb-text); }
@@ -566,12 +599,12 @@
   align-items: center;
   border-radius: 999px;
   padding: .3rem .7rem;
-  color: #f2fbf5;
-  background: var(--pb-green);
+  color: var(--pb-surface);
+  background: var(--pb-good);
   font-size: var(--pb-fs-xs);
   font-weight: 800;
   letter-spacing: .01em;
-  box-shadow: 0 0 0 3px rgba(211, 160, 34, .28);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pb-accent) 32%, transparent);
 }
 
 .patchbay-well { position: relative; }
@@ -590,13 +623,13 @@
   background: var(--pb-surface-sunk);
 }
 .patchbay-candidate-card.is-verified {
-  border-color: #a9d8bd;
+  border-color: var(--pb-good);
   background:
-    linear-gradient(180deg, rgba(211, 160, 34, .08) 0%, rgba(255, 253, 248, 0) 8rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--pb-good) 12%, transparent) 0%, transparent 8rem),
     var(--pb-surface);
-  box-shadow: 0 0 0 1px rgba(15, 107, 74, .35), 0 1.1rem 2.4rem rgba(15, 107, 74, .16);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--pb-good) 40%, transparent), 0 1.1rem 2.4rem color-mix(in srgb, var(--pb-good) 18%, transparent);
 }
-.patchbay-candidate-card.is-verified .patchbay-editor { border-color: #a9d8bd; background: #f6fbf7; }
+.patchbay-candidate-card.is-verified .patchbay-editor { border-color: var(--pb-good); background: var(--pb-good-wash); }
 
 /* The scoreboard is the thesis: what the tool claimed, against what the page
    could actually see. */
@@ -613,17 +646,17 @@
   letter-spacing: -.02em;
   line-height: 1.15;
 }
-.patchbay-badge.is-neutral { color: var(--pb-text); background: #e4e0d5; }
-.patchbay-badge.is-good { color: #f2fbf5; background: var(--pb-green); }
-.patchbay-badge.is-bad { color: #fdf2ee; background: var(--pb-red); }
-.patchbay-badge.is-warn { color: #2c1d02; background: var(--pb-amber-wash); }
+.patchbay-badge.is-neutral { color: var(--pb-text); background: var(--pb-canvas-deep); }
+.patchbay-badge.is-good { color: var(--pb-surface); background: var(--pb-good); }
+.patchbay-badge.is-bad { color: var(--pb-surface); background: var(--pb-bad); }
+.patchbay-badge.is-warn { color: var(--pb-text); background: var(--pb-accent-wash); }
 .patchbay-score-note { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
-/* The repair belongs to the Patchbay Agent, so the card carries its gold and
-   green rather than the page's teal. */
-.patchbay-repair-card { border-color: #e3d5ab; background: linear-gradient(180deg, rgba(241, 199, 91, .1) 0%, rgba(255, 253, 248, 0) 7rem), var(--pb-surface); }
+/* The repair belongs to the Patchbay Agent, so the card carries the Agent's
+   warm end rather than the page's neutrals. */
+.patchbay-repair-card { border-color: color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line)); background: linear-gradient(180deg, color-mix(in srgb, var(--pb-accent) 10%, transparent) 0%, transparent 7rem), var(--pb-surface); }
 
-.patchbay-retry-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-3); border-color: #a9d8bd; background: #f2faf5; }
+.patchbay-retry-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-3); border-color: var(--pb-good); background: var(--pb-good-wash); }
 .patchbay-retry-card h3 { margin: .1rem 0 0; font-size: var(--pb-fs-md); }
 .patchbay-retry-card p { margin-bottom: 0; }
 .patchbay-retry-actions { display: grid; justify-items: end; gap: .35rem; max-width: 17rem; }
@@ -663,17 +696,16 @@
   width: .58rem;
   height: .58rem;
   border-radius: 50%;
-  background: var(--pb-line-strong);
+  background: var(--pb-text-muted);
   box-shadow: 0 0 0 3px var(--pb-surface);
 }
-.patchbay-timeline-entry.is-registry .patchbay-timeline-dot { background: #8e9a94; }
 .patchbay-timeline-entry.is-invocation .patchbay-timeline-dot { background: var(--pb-accent); }
-.patchbay-timeline-entry.is-verification .patchbay-timeline-dot { background: var(--pb-amber); }
-.patchbay-timeline-entry.is-verification.is-passed .patchbay-timeline-dot { background: var(--pb-green); }
-.patchbay-timeline-entry.is-repair .patchbay-timeline-dot { background: var(--pb-gold); }
-.patchbay-timeline-entry.is-publication .patchbay-timeline-dot { background: var(--pb-ink); }
-.patchbay-timeline-entry.is-goal .patchbay-timeline-dot { background: var(--pb-green); box-shadow: 0 0 0 3px var(--pb-surface), 0 0 0 5px rgba(15, 107, 74, .2); }
-.patchbay-timeline-entry.is-error .patchbay-timeline-dot { background: var(--pb-red); }
+.patchbay-timeline-entry.is-verification .patchbay-timeline-dot { background: var(--pb-accent-deep); }
+.patchbay-timeline-entry.is-verification.is-passed .patchbay-timeline-dot { background: var(--pb-good); }
+.patchbay-timeline-entry.is-repair .patchbay-timeline-dot { background: var(--pb-agent-gradient); }
+.patchbay-timeline-entry.is-publication .patchbay-timeline-dot { background: var(--pb-text); }
+.patchbay-timeline-entry.is-goal .patchbay-timeline-dot { background: var(--pb-good); box-shadow: 0 0 0 3px var(--pb-surface), 0 0 0 5px color-mix(in srgb, var(--pb-good) 22%, transparent); }
+.patchbay-timeline-entry.is-error .patchbay-timeline-dot { background: var(--pb-bad); }
 .patchbay-timeline-body { min-width: 0; }
 .patchbay-timeline-body strong { display: block; font-size: var(--pb-fs-xs); }
 .patchbay-timeline-body span { display: block; margin-top: .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
@@ -740,11 +772,11 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-reply-list .patchbay-board-text { width: 100%; }
 .patchbay-board .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-result-box .patchbay-board-text,
-.patchbay-board .patchbay-result-box .patchbay-shortened-note { color: #9fc4b8; }
+.patchbay-board .patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
 
 /* Who wrote a report or a reply. Every visitor is a stranger on a plain white
-   plate; Patchbay's own answers carry the one gold-and-green plate on the page,
-   so the site's own word is never mistaken for a visitor's. */
+   plate; Patchbay's own answers carry the one gradient plate on the page, so
+   the site's own word is never mistaken for a visitor's. */
 .patchbay-nameplate {
   display: inline-flex;
   align-items: center;
@@ -759,10 +791,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   white-space: nowrap;
 }
 .patchbay-nameplate-agent {
-  border-color: #d8b24a;
+  border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line));
   background: var(--pb-agent-gradient);
-  color: #143229;
-  box-shadow: 0 1px 0 rgba(14, 107, 99, .18);
+  color: var(--pb-accent-ink);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--pb-text) 18%, transparent);
 }
 
 /* The board thread the room page carries at the bottom, so the whole exchange
@@ -806,10 +838,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* The board is a reading surface: warm paper, one dark band at the top to
    anchor the eye, and colour spent only where it carries a verdict. */
 .patchbay-board {
-  color: var(--pb-ink);
+  color: var(--pb-text);
   background:
-    radial-gradient(circle at 88% -4%, rgba(237, 185, 63, .18), transparent 26rem),
-    linear-gradient(178deg, var(--pb-canvas) 0%, #fbf8f2 62%, #f2eee5 100%);
+    radial-gradient(circle at 88% -4%, color-mix(in srgb, var(--pb-accent) 14%, transparent), transparent 26rem),
+    linear-gradient(178deg, var(--pb-canvas) 0%, var(--pb-surface-sunk) 62%, var(--pb-canvas-deep) 100%);
   padding-top: 1.6rem;
 }
 
@@ -829,9 +861,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   border-bottom: 0;
   border-radius: 1.1rem;
   padding: 1.15rem 1.3rem;
-  color: #f4efe4;
-  background: linear-gradient(148deg, #1b2a27 0%, var(--pb-ink) 58%, #101a19 100%);
-  box-shadow: 0 1.1rem 2.4rem rgba(22, 33, 31, .18);
+  color: var(--pb-text-on-ink);
+  background: linear-gradient(148deg, var(--pb-ink-soft) 0%, var(--pb-ink) 100%);
+  box-shadow: var(--pb-shadow-lg);
 }
 .patchbay-board .patchbay-topbar h1 {
   font-size: clamp(1.15rem, 2.3vw, 1.62rem);
@@ -839,27 +871,27 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
-.patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-gold); }
-.patchbay-board .patchbay-topbar .patchbay-kicker a { color: #cbd8d1; }
-.patchbay-board .patchbay-topbar .patchbay-generation { color: #a9bab3; }
+.patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-accent); }
+.patchbay-board .patchbay-topbar .patchbay-kicker a { color: var(--pb-text-on-ink-muted); }
+.patchbay-board .patchbay-topbar .patchbay-generation { color: var(--pb-text-on-ink-muted); }
 .patchbay-board .patchbay-mark {
   background: var(--pb-accent);
-  box-shadow: .28rem .28rem 0 rgba(237, 185, 63, .34);
+  box-shadow: .28rem .28rem 0 color-mix(in srgb, var(--pb-good) 55%, transparent);
 }
 .patchbay-board .patchbay-topbar-meta { flex-wrap: wrap; justify-content: flex-end; }
 .patchbay-board .patchbay-room-link {
-  color: #f4efe4;
-  text-decoration-color: rgba(244, 239, 228, .55);
+  color: var(--pb-text-on-ink);
+  text-decoration-color: color-mix(in srgb, var(--pb-text-on-ink) 55%, transparent);
 }
-.patchbay-board .patchbay-topbar .patchbay-pill.is-neutral { color: #d7e0da; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .18); }
+.patchbay-board .patchbay-topbar .patchbay-pill.is-neutral { color: var(--pb-text-on-ink); background: color-mix(in srgb, var(--pb-text-on-ink) 10%, transparent); border-color: color-mix(in srgb, var(--pb-text-on-ink) 20%, transparent); }
 
 .patchbay-board .patchbay-card {
-  border-color: #e6dfd1;
+  border-color: var(--pb-line);
   background: var(--pb-surface);
-  box-shadow: 0 .5rem 1.6rem rgba(35, 30, 20, .05);
+  box-shadow: var(--pb-shadow);
 }
 .patchbay-board .patchbay-board-card { padding: 1.15rem 1.25rem; }
-.patchbay-board h3 a:hover { color: var(--pb-accent); }
+.patchbay-board h3 a:hover { color: var(--pb-accent-deep); }
 
 /* The board's lede and the landing page's lede are different paragraphs on
    different pages, so each is scoped to the page that owns it. */
@@ -881,15 +913,15 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   height: .4rem;
   overflow: hidden;
   border-radius: 999px;
-  background: #e7e1d4;
+  background: var(--pb-canvas-deep);
 }
 .pb-bar-part { display: block; height: 100%; }
-.pb-bar-part.is-worked { background: var(--pb-green); }
-.pb-bar-part.is-failed { background: var(--pb-amber); }
-.pb-bar-part.is-errored { background: #97a09c; }
-.pb-bar-part.is-unclear { background: #cdd2cd; }
+.pb-bar-part.is-worked { background: var(--pb-good); }
+.pb-bar-part.is-failed { background: var(--pb-accent); }
+.pb-bar-part.is-errored { background: var(--pb-bad); }
+.pb-bar-part.is-unclear { background: var(--pb-text-muted); }
 .pb-bar-legend { margin: .42rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; letter-spacing: .01em; }
-.pb-bar-legend b { color: var(--pb-ink); font-weight: 700; }
+.pb-bar-legend b { color: var(--pb-text); font-weight: 700; }
 
 /* The site cards on /sites */
 .pb-site-grid {
@@ -903,34 +935,34 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   flex-direction: column;
   gap: .55rem;
   min-width: 0;
-  border: 1px solid #e6dfd1;
+  border: 1px solid var(--pb-line);
   border-radius: .9rem;
   padding: .95rem 1rem 1rem;
   background: var(--pb-surface);
-  box-shadow: 0 .5rem 1.4rem rgba(35, 30, 20, .05);
+  box-shadow: var(--pb-shadow);
 }
 .pb-site-card.is-ours {
-  border-color: rgba(200, 80, 47, .38);
-  box-shadow: 0 .5rem 1.4rem rgba(200, 80, 47, .1);
+  border-color: color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line));
+  box-shadow: 0 .5rem 1.4rem color-mix(in srgb, var(--pb-accent) 12%, transparent);
 }
 .pb-site-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
 .pb-site-name {
   min-width: 0;
-  color: var(--pb-ink);
+  color: var(--pb-text);
   font-size: .95rem;
   font-weight: 800;
   letter-spacing: -.02em;
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.pb-site-name:hover { color: var(--pb-accent); text-decoration: underline; }
+.pb-site-name:hover { color: var(--pb-accent-deep); text-decoration: underline; }
 .pb-site-counts { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-site-checked { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-site-checked b { color: var(--pb-green); }
+.pb-site-checked b { color: var(--pb-good); }
 .pb-site-foot {
   margin: auto 0 0;
   padding-top: .55rem;
-  border-top: 1px dashed #e8e2d5;
+  border-top: 1px dashed var(--pb-line);
   color: var(--pb-text-muted);
   font-size: .8125rem;
 }
@@ -940,10 +972,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   display: inline-flex;
   align-items: center;
   flex: none;
-  border: 1px solid #e0d9cb;
+  border: 1px solid var(--pb-line);
   border-radius: 999px;
   padding: .18rem .5rem;
-  background: #f7f3ea;
+  background: var(--pb-surface-sunk);
   color: var(--pb-text-muted);
   font-size: .62rem;
   font-weight: 800;
@@ -951,8 +983,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   text-transform: uppercase;
   white-space: nowrap;
 }
-.pb-chip.is-ours { color: #fff6f0; background: var(--pb-accent); border-color: var(--pb-accent); }
-.pb-chip.is-current { color: #0d4f3f; background: #e2f2ea; border-color: #b7dbcb; }
+.pb-chip.is-ours { color: var(--pb-accent-ink); background: var(--pb-accent); border-color: var(--pb-accent-deep); }
+.pb-chip.is-current { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
 
 /* One site's tools, each with its versions as a row of chips. */
 .pb-tool-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
@@ -963,16 +995,12 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   flex-wrap: wrap;
   align-items: center;
   gap: .35rem .7rem;
-  border: 1px solid #ece6da;
+  border: 1px solid var(--pb-line);
   border-radius: .6rem;
   padding: .5rem .65rem;
-  background: #fbf8f2;
+  background: var(--pb-surface-sunk);
 }
-.pb-version-chips > li.is-current { border-color: #b7dbcb; background: #f4faf6; }
-.pb-fingerprint {
-  color: #43514d;
-  font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
+.pb-version-chips > li.is-current { border-color: var(--pb-good); background: var(--pb-good-wash); }
 .pb-chip-facts { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-version-chips .pb-chip-facts:last-child { margin-left: auto; }
 
@@ -984,34 +1012,32 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 .pb-changed {
   margin: .9rem 0 0;
-  border-left: 2px solid var(--pb-gold);
+  border-left: 2px solid var(--pb-accent);
   border-radius: 0 .6rem .6rem 0;
   padding: .7rem .85rem;
-  background: #fdf8ec;
+  background: var(--pb-accent-wash);
 }
-.pb-changed .patchbay-kicker { color: var(--pb-amber); }
+.pb-changed .patchbay-kicker { color: var(--pb-accent-deep); }
 .pb-changed .patchbay-empty-state { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .5rem; margin: 0 0 .4rem; font-size: .8125rem; }
-.pb-change-title s { color: #9a5a3f; text-decoration-thickness: 1px; }
-.pb-change-title ins { color: var(--pb-green); text-decoration: none; font-weight: 700; }
+.pb-change-title s { color: var(--pb-bad); text-decoration-thickness: 1px; }
+.pb-change-title ins { color: var(--pb-good); text-decoration: none; font-weight: 700; }
 .pb-change-label { color: var(--pb-text-muted); font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 
 .pb-sentences { display: grid; gap: .28rem; margin: 0; padding: 0; list-style: none; }
 .pb-sentences > li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .45rem; font-size: .8125rem; line-height: 1.5; }
 .pb-sentence-mark { color: var(--pb-text-muted); font: 800 .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .pb-sentence.is-kept { color: var(--pb-text-muted); }
-.pb-sentence.is-added { color: #12503f; }
-.pb-sentence.is-added .pb-sentence-mark { color: var(--pb-green); }
-.pb-sentence.is-added span:last-child { background: #e4f3ea; border-radius: .3rem; box-shadow: 0 0 0 .18rem #e4f3ea; }
-.pb-sentence.is-removed { color: #8a5238; }
-.pb-sentence.is-removed .pb-sentence-mark { color: var(--pb-amber); }
-.pb-sentence.is-removed span:last-child { background: #fbf0dd; border-radius: .3rem; box-shadow: 0 0 0 .18rem #fbf0dd; text-decoration: line-through; text-decoration-color: rgba(138, 82, 56, .45); }
+.pb-sentence.is-added { color: var(--pb-good); }
+.pb-sentence.is-added .pb-sentence-mark { color: var(--pb-good); }
+.pb-sentence.is-added span:last-child { background: var(--pb-good-wash); border-radius: .3rem; box-shadow: 0 0 0 .18rem var(--pb-good-wash); }
+.pb-sentence.is-removed { color: var(--pb-bad); }
+.pb-sentence.is-removed .pb-sentence-mark { color: var(--pb-bad); }
+.pb-sentence.is-removed span:last-child { background: var(--pb-bad-wash); border-radius: .3rem; box-shadow: 0 0 0 .18rem var(--pb-bad-wash); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pb-bad) 45%, transparent); }
 
 /* One report, wherever it is read. */
 .patchbay-board .patchbay-report-row .patchbay-card-heading { flex-wrap: wrap; align-items: center; }
 .patchbay-board .patchbay-nameplate-agent { background: var(--pb-agent-gradient); }
-.patchbay-board .patchbay-pill.is-good { color: #0d5040; background: #e3f2ea; border-color: #b4d9c8; }
-.patchbay-board .patchbay-pill.is-bad { color: #7d5309; background: #fbf0d6; border-color: #ecd696; }
 .pb-aside { margin: .9rem auto 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .patchbay-board .patchbay-empty-state { color: var(--pb-text-muted); }
 
@@ -1042,16 +1068,16 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   justify-content: space-between;
   gap: 1rem;
   padding: .85rem var(--pb-gutter);
-  background: var(--pb-ink);
+  background: var(--pb-ink-soft);
   color: var(--pb-text-on-ink);
 }
 .pb-brand { display: inline-flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none; }
 .pb-wordmark { font-size: 1.02rem; font-weight: 700; letter-spacing: -.015em; }
-.pb-mark { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: .5rem; color: var(--pb-gold); background: var(--pb-accent); }
+.pb-mark { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: .5rem; color: var(--pb-accent-ink); background: var(--pb-accent); }
 .pb-mark svg { width: 1.05rem; height: 1.05rem; }
 .pb-band-nav { display: flex; gap: 1.2rem; font-size: .8125rem; }
-.pb-band-nav a { display: inline-flex; align-items: center; color: #c7c1b4; padding-block: .2rem; text-decoration: none; }
-.pb-band-nav a:hover { color: var(--pb-text-on-ink); text-decoration: underline; text-decoration-color: var(--pb-gold); text-underline-offset: .3em; }
+.pb-band-nav a { display: inline-flex; align-items: center; color: var(--pb-text-on-ink-muted); padding-block: .2rem; text-decoration: none; }
+.pb-band-nav a:hover { color: var(--pb-text-on-ink); text-decoration: underline; text-decoration-color: var(--pb-accent); text-underline-offset: .3em; }
 
 .pb-kicker {
   margin: 0 0 .7rem;
@@ -1063,7 +1089,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   text-transform: uppercase;
 }
 .pb-kicker-quiet { color: var(--pb-text-muted); }
-.pb-kicker-light { color: var(--pb-gold); }
+.pb-kicker-light { color: var(--pb-accent); }
 
 /* Hero: the sentence on the left, and the evidence it is talking about on the
    right, so the claim and the proof arrive together. */
@@ -1094,22 +1120,24 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   align-items: center;
   border-radius: .6rem;
   padding: .82rem 1.35rem;
-  color: #fffaf3;
+  color: var(--pb-accent-ink);
   background: var(--pb-accent);
   font-size: .93rem;
   font-weight: 700;
   letter-spacing: -.005em;
   text-decoration: none;
-  box-shadow: 0 .6rem 1.4rem rgba(158, 59, 35, .22);
+  /* The first ring is the button's own edge: an orange fill alone clears only
+     2.8:1 against the paper it sits on, which is not enough to find. */
+  box-shadow: 0 0 0 1px var(--pb-accent-deep), 0 .6rem 1.4rem color-mix(in srgb, var(--pb-accent) 22%, transparent);
   transition: transform .25s cubic-bezier(.22, 1, .36, 1), background-color .25s ease;
 }
-.pb-cta:hover { background: var(--pb-accent-deep); transform: translateY(-2px); }
+.pb-cta:hover { background: color-mix(in srgb, var(--pb-accent) 88%, var(--pb-accent-ink)); transform: translateY(-2px); }
 /* The underline is drawn on the text rather than on the box, so the box is
    free to grow into a finger-sized target without the rule drifting away. */
 .pb-secondary {
   display: inline-flex;
   align-items: center;
-  color: var(--pb-ink);
+  color: var(--pb-text);
   font-size: .89rem;
   font-weight: 600;
   text-decoration: underline;
@@ -1117,26 +1145,26 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   text-decoration-thickness: 1.5px;
   text-underline-offset: .3em;
 }
-.pb-secondary:hover { color: var(--pb-accent-deep); text-decoration-color: var(--pb-ink); }
+.pb-secondary:hover { color: var(--pb-accent-deep); text-decoration-color: var(--pb-text); }
 .pb-fineprint { margin: 1.15rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; }
 
 .pb-proof {
   border: 1px solid var(--pb-line);
-  border-top: 3px solid var(--pb-amber);
+  border-top: 3px solid var(--pb-accent);
   border-radius: .9rem;
   padding: 1.15rem 1.25rem 1.05rem;
   background: var(--pb-surface);
-  box-shadow: 0 1.1rem 2.6rem rgba(20, 32, 31, .07);
+  box-shadow: var(--pb-shadow-lg);
 }
 .pb-proof-rows { display: grid; gap: .55rem; margin: 0; }
 .pb-proof-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed var(--pb-line); padding-bottom: .5rem; }
 .pb-proof-rows dt { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-proof-rows dd { margin: 0; font-size: .82rem; font-weight: 700; text-align: right; }
 .pb-said { color: var(--pb-text-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
-.pb-failed { color: var(--pb-amber); }
+.pb-failed { color: var(--pb-accent-deep); }
 .pb-proof-note { margin: .85rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.55; }
-.pb-proof-after { display: flex; align-items: center; gap: .45rem; margin: .8rem 0 0; color: var(--pb-green); font-size: .8125rem; font-weight: 700; }
-.pb-dot-green { width: .48rem; height: .48rem; border-radius: 50%; background: var(--pb-green); box-shadow: 0 0 0 .22rem rgba(31, 122, 92, .14); }
+.pb-proof-after { display: flex; align-items: center; gap: .45rem; margin: .8rem 0 0; color: var(--pb-good); font-size: .8125rem; font-weight: 700; }
+.pb-dot-green { width: .48rem; height: .48rem; border-radius: 50%; background: var(--pb-good); box-shadow: 0 0 0 .22rem color-mix(in srgb, var(--pb-good) 18%, transparent); }
 
 .pb-code { font-family: var(--pb-mono); }
 /* Inline code keeps the size of the sentence it sits in, so a name in the
@@ -1159,17 +1187,17 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   place-items: center;
   width: 1.7rem;
   height: 1.7rem;
-  border: 1px solid var(--pb-ink);
+  border: 1px solid var(--pb-ink-soft);
   border-radius: 50%;
   color: var(--pb-text-on-ink);
-  background: var(--pb-ink);
+  background: var(--pb-ink-soft);
   font-family: var(--pb-mono);
   font-size: .74rem;
 }
-.pb-step.is-warning { border-top-color: var(--pb-amber); }
-.pb-step.is-warning .pb-step-marker { border-color: var(--pb-amber); background: var(--pb-amber); color: var(--pb-text-on-ink); }
-.pb-step.is-verified { border-top-color: var(--pb-green); }
-.pb-step.is-verified .pb-step-marker { border-color: var(--pb-green); background: var(--pb-green); }
+.pb-step.is-warning { border-top-color: var(--pb-accent); }
+.pb-step.is-warning .pb-step-marker { border-color: var(--pb-accent); background: var(--pb-accent); color: var(--pb-accent-ink); }
+.pb-step.is-verified { border-top-color: var(--pb-good); }
+.pb-step.is-verified .pb-step-marker { border-color: var(--pb-good); background: var(--pb-good); color: var(--pb-surface); }
 .pb-step h3 { margin: 0 0 .45rem; font-size: .93rem; font-weight: 700; line-height: 1.28; letter-spacing: -.015em; }
 .pb-step p { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.55; }
 
@@ -1177,25 +1205,26 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-tool { border: 1px solid var(--pb-line); border-radius: .9rem; padding: 1.1rem 1.15rem; background: var(--pb-surface); }
 .pb-tool h3 { margin: 0 0 .55rem; color: var(--pb-accent-deep); font-size: .84rem; font-weight: 700; overflow-wrap: anywhere; }
 .pb-tool-desc { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.6; }
-.pb-tool.is-working { border-color: #e6cfa4; background: linear-gradient(180deg, #fffaee 0%, var(--pb-surface) 60%); }
+.pb-tool.is-working { border-color: color-mix(in srgb, var(--pb-accent) 40%, var(--pb-line)); background: linear-gradient(180deg, var(--pb-accent-wash) 0%, var(--pb-surface) 60%); }
 .pb-swap { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem; margin: .85rem 0 0; font-family: var(--pb-mono); font-size: .8125rem; }
 .pb-swap-old { color: var(--pb-text-muted); text-decoration: line-through; }
-.pb-swap-arrow { color: var(--pb-amber); }
-.pb-swap-new { color: var(--pb-green); font-weight: 700; }
+.pb-swap-arrow { color: var(--pb-accent-deep); }
+.pb-swap-new { color: var(--pb-good); font-weight: 700; }
 .pb-swap-note { font-family: var(--pb-sans); font-size: .8125rem; color: var(--pb-text-muted); }
 
 /* The second dark anchor. The argument for building this in the page at all
    gets the weight of a full band rather than a paragraph in a card. */
 .pb-why {
   padding: clamp(2.5rem, 6vw, 4.25rem) var(--pb-gutter);
-  background: var(--pb-ink);
+  background: var(--pb-ink-soft);
   color: var(--pb-text-on-ink);
 }
 .pb-why > * { width: min(100%, 46rem); margin-inline: auto; }
 .pb-why h2 { margin: 0 0 1.1rem; font-family: var(--pb-display); font-size: clamp(1.45rem, 3vw, 2.25rem); font-weight: 600; line-height: 1.14; letter-spacing: -.025em; }
-.pb-why p { margin: 0; color: #c7c1b4; font-size: clamp(.92rem, 1.3vw, 1.02rem); line-height: 1.68; }
-.pb-cta-light { margin-top: 1.9rem; background: var(--pb-gold); color: #2f2405; box-shadow: none; }
-.pb-cta-light:hover { background: #f7dc93; }
+.pb-why p { margin: 0; color: var(--pb-text-on-ink-muted); font-size: clamp(.92rem, 1.3vw, 1.02rem); line-height: 1.68; }
+/* The one button that sits on a dark panel, so it inverts: paper on ink. */
+.pb-cta-light { margin-top: 1.9rem; background: var(--pb-text-on-ink); color: var(--pb-ink); box-shadow: none; }
+.pb-cta-light:hover { background: color-mix(in srgb, var(--pb-text-on-ink) 85%, var(--pb-accent)); }
 
 .pb-footer {
   display: flex;
@@ -1210,8 +1239,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   font-size: .8125rem;
 }
 .pb-footer p { margin: 0; }
-.pb-footer a { color: var(--pb-ink); font-family: var(--pb-mono); font-size: .8125rem; text-decoration: none; border-bottom: 1px solid var(--pb-line); }
-.pb-footer a:hover { border-bottom-color: var(--pb-accent); }
+.pb-footer a { color: var(--pb-text); font-family: var(--pb-mono); font-size: .8125rem; text-decoration: none; border-bottom: 1px solid var(--pb-line); }
+.pb-footer a:hover { border-bottom-color: var(--pb-accent-deep); }
 
 /* The not-found page: the same paper, one way back. */
 .pb-error { min-height: 100vh; display: grid; place-items: center; padding: 2rem var(--pb-gutter); }
@@ -1253,8 +1282,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .pb-step { border-top: 0; border-left: 1px solid var(--pb-line); padding: 0 0 1.4rem 1.6rem; }
   .pb-step:last-child { padding-bottom: 0; }
   .pb-step-marker { top: -.1rem; left: -.85rem; }
-  .pb-step.is-warning { border-top: 0; border-left-color: var(--pb-amber); }
-  .pb-step.is-verified { border-top: 0; border-left-color: var(--pb-green); }
+  .pb-step.is-warning { border-top: 0; border-left-color: var(--pb-accent); }
+  .pb-step.is-verified { border-top: 0; border-left-color: var(--pb-good); }
   .pb-footer { flex-direction: column; align-items: flex-start; }
 }
 
@@ -1273,12 +1302,12 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   gap: .15rem;
   margin: 0 0 var(--pb-space-3);
   border: 1px dashed var(--pb-line-strong);
-  border-left: 3px solid var(--pb-gold);
+  border-left: 3px solid var(--pb-accent);
   border-radius: .5rem;
   padding: .5rem .7rem;
   background: var(--pb-surface-sunk);
 }
-.patchbay-receipt-label { color: var(--pb-amber); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.patchbay-receipt-label { color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .patchbay-receipt code { color: var(--pb-text); font: var(--pb-fs-xs)/1.4 var(--pb-mono); overflow-wrap: anywhere; }
 .patchbay-receipt-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
@@ -1294,17 +1323,17 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   font-size: var(--pb-fs-xs);
   transition: background-color .2s ease;
 }
-.patchbay-agent-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pb-line-strong); }
+.patchbay-agent-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pb-text-muted); }
 .patchbay-agent-label { color: var(--pb-text-muted); }
 .patchbay-agent-state { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .02em; }
-.patchbay-agent-step.is-working { background: linear-gradient(100deg, rgba(241, 199, 91, .3) 0%, rgba(111, 195, 161, .26) 100%); }
+.patchbay-agent-step.is-working { background: linear-gradient(100deg, color-mix(in srgb, var(--pb-accent) 22%, transparent) 0%, color-mix(in srgb, var(--pb-good) 26%, transparent) 100%); }
 .patchbay-agent-step.is-working .patchbay-agent-label { color: var(--pb-text); font-weight: 700; }
-.patchbay-agent-step.is-working .patchbay-agent-state { color: var(--pb-amber); }
-.patchbay-agent-step.is-working .patchbay-agent-dot { background: var(--pb-gold); animation: pb-agent-pulse 1.5s ease-in-out infinite; }
-.patchbay-agent-step.is-done .patchbay-agent-dot { background: var(--pb-green); }
-.patchbay-agent-step.is-done .patchbay-agent-state { color: var(--pb-green); }
-.patchbay-agent-step.is-failed .patchbay-agent-dot { background: var(--pb-red); }
-.patchbay-agent-step.is-failed .patchbay-agent-state { color: var(--pb-red); }
+.patchbay-agent-step.is-working .patchbay-agent-state { color: var(--pb-accent-deep); }
+.patchbay-agent-step.is-working .patchbay-agent-dot { background: var(--pb-accent); animation: pb-agent-pulse 1.5s ease-in-out infinite; }
+.patchbay-agent-step.is-done .patchbay-agent-dot { background: var(--pb-good); }
+.patchbay-agent-step.is-done .patchbay-agent-state { color: var(--pb-good); }
+.patchbay-agent-step.is-failed .patchbay-agent-dot { background: var(--pb-bad); }
+.patchbay-agent-step.is-failed .patchbay-agent-state { color: var(--pb-bad); }
 
 @keyframes pb-agent-pulse {
   0%, 100% { opacity: .45; transform: scale(.8); }
@@ -1333,7 +1362,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 
 /* The one moment worth celebrating: a candidate this room proved. The well
-   catches a single gold-and-green pass, and the spark turns once. */
+   catches a single pass of the verified blue, and the spark turns once. */
 .patchbay-candidate-card.is-verified .patchbay-well::after {
   content: "";
   position: absolute;
@@ -1343,9 +1372,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   background: linear-gradient(
     100deg,
     transparent 32%,
-    rgba(241, 199, 91, .5) 46%,
-    rgba(111, 195, 161, .45) 58%,
-    transparent 72%
+    color-mix(in srgb, var(--pb-good) 45%, transparent) 50%,
+    transparent 68%
   );
   animation: pb-verified-sweep 1s var(--pb-ease-out) both;
 }
@@ -1378,7 +1406,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .patchbay-mark.is-verified { animation: none; }
   .patchbay-agent-step.is-working .patchbay-agent-dot { animation: pb-fade-pulse 1.8s ease-in-out infinite; }
   .patchbay-candidate-card.is-verified .patchbay-well::after {
-    background: linear-gradient(100deg, rgba(241, 199, 91, .3), rgba(111, 195, 161, .28));
+    background: linear-gradient(100deg, color-mix(in srgb, var(--pb-good) 30%, transparent), color-mix(in srgb, var(--pb-good) 12%, transparent));
     animation: pb-fade-out 900ms ease both;
   }
 }
@@ -1394,9 +1422,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
    glance, and a receipt is drawn as the ticket stub it behaves like.
    ========================================================================== */
 
-/* A digest: four swatches, then the opening characters. The swatch colours
-   come from PatchbayWeb.Forum.Fingerprint, which keeps them dark enough on
-   this paper to be seen rather than guessed at. */
+/* A digest: four swatches, then the opening characters. Each swatch carries
+   both of its colours, from PatchbayWeb.Forum.Fingerprint: one deep enough to
+   be seen on paper, one light enough to be seen after dark. */
 /* A fingerprint is one object: the swatches and the characters never come
    apart, and never break across two lines. In a narrow row the label beside it
    gives way instead. */
@@ -1417,9 +1445,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   display: block;
   width: .42rem;
   height: .8rem;
+  background-color: light-dark(var(--pb-chip-light), var(--pb-chip-dark));
 }
 .pb-fingerprint-hex {
-  color: #43514d;
+  color: var(--pb-text-muted);
   font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   white-space: nowrap;
 }
@@ -1430,8 +1459,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 /* The receipt: the one thing on the page an agent could not have made up, so
    it is drawn as what it is. Notches down the left edge and a perforation
-   line beside them make a stub torn from a longer strip; the gold edge is the
-   board's own gold, spent here and nowhere else on this page. */
+   line beside them make a stub torn from a longer strip; the edge is the
+   board's own accent, spent here and nowhere else on this page. */
 .pb-receipt-stub {
   --pb-tear: .3rem;
   position: relative;
@@ -1442,17 +1471,17 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   max-width: 100%;
   margin: 1.05rem 0 0;
   padding: .7rem .95rem .68rem 1.35rem;
-  border: 1px solid var(--pb-gold);
+  border: 1px solid var(--pb-accent);
   border-left: 0;
   border-radius: 0 .55rem .55rem 0;
   background:
     radial-gradient(
         circle at left center,
         transparent 0 var(--pb-tear),
-        color-mix(in srgb, var(--pb-gold) 11%, var(--pb-surface)) var(--pb-tear)
+        color-mix(in srgb, var(--pb-accent) 11%, var(--pb-surface)) var(--pb-tear)
       )
       left top / 100% calc(var(--pb-tear) * 2) repeat-y;
-  box-shadow: 0 .3rem .9rem rgba(120, 92, 18, .09);
+  box-shadow: 0 .3rem .9rem color-mix(in srgb, var(--pb-accent) 14%, transparent);
 }
 .pb-receipt-stub::before {
   content: "";
@@ -1460,17 +1489,17 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   top: .4rem;
   bottom: .4rem;
   left: .58rem;
-  border-left: 2px dotted color-mix(in srgb, var(--pb-gold) 78%, transparent);
+  border-left: 2px dotted color-mix(in srgb, var(--pb-accent) 78%, transparent);
 }
 .pb-receipt-stub .patchbay-kicker { margin: 0; }
 .pb-receipt-value {
-  color: var(--pb-ink);
+  color: var(--pb-text);
   font: 700 .8rem/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   overflow-wrap: anywhere;
 }
 .pb-receipt-mark {
   margin: 0;
-  color: var(--pb-green);
+  color: var(--pb-good);
   font-size: var(--pb-fs-xs);
   font-weight: 700;
 }

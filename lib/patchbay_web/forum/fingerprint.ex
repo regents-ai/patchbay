@@ -9,10 +9,12 @@ defmodule PatchbayWeb.Forum.Fingerprint do
   length, the same version looks the same on every page, and the hex is still
   there beside the colours whenever the exact value is the point.
 
-  The palette is deliberately narrow. Every colour is a deep tone on the
-  board's warm paper, dark enough that a small swatch keeps at least 3:1
-  against `--pb-surface`, so the chips are legible rather than decorative. Hue
-  carries most of the difference between two digests and lightness the rest.
+  The palette is deliberately narrow, and every chip is drawn twice: a deep
+  tone for the board's warm paper and a pale one for the same board after
+  dark, each far enough from the surface behind it to keep at least 3:1, so
+  the chips are legible rather than decorative on either. Hue is the same in
+  both and carries most of the difference between two digests; lightness
+  carries the rest and is the only thing the two tones disagree about.
 
   A digest is the canonical 64-character lowercase hex the board stores.
   """
@@ -24,19 +26,21 @@ defmodule PatchbayWeb.Forum.Fingerprint do
   @hex_per_chip 4
 
   @saturation 55
-  # The readable band. The brightest hue this palette can reach still holds 3.6:1
-  # against the board's paper at the top of it; below it everything is darker
-  # still. `test/patchbay_web/forum/fingerprint_test.exs` checks every colour the
+  # The two readable bands, one per theme, the same width apart from where they
+  # start: below the light one everything is darker than the paper it sits on,
+  # above the dark one everything is paler than the panel it sits on.
+  # `test/patchbay_web/forum/fingerprint_test.exs` checks every colour either
   # band can produce rather than trusting the arithmetic here.
   @lightness_floor 22
+  @dark_lightness_floor 60
   @lightness_span 13
 
   @hue_names ~w(red orange amber lime green teal cyan blue indigo violet magenta rose)
 
   @short_length 12
 
-  @typedoc "One swatch: the colour to paint, and the word for it."
-  @type chip :: %{color: String.t(), name: String.t()}
+  @typedoc "One swatch: the colour to paint in each theme, and the word for it."
+  @type chip :: %{light: String.t(), dark: String.t(), name: String.t()}
 
   @doc """
   The four colours a digest is drawn as, in order.
@@ -52,14 +56,11 @@ defmodule PatchbayWeb.Forum.Fingerprint do
         |> Base.decode16!(case: :lower)
 
       hue = div(hue_byte * 360, 256)
+      step = div(lightness_byte * @lightness_span, 256)
 
       %{
-        color:
-          hex_color(
-            hue,
-            @saturation,
-            @lightness_floor + div(lightness_byte * @lightness_span, 256)
-          ),
+        light: hex_color(hue, @saturation, @lightness_floor + step),
+        dark: hex_color(hue, @saturation, @dark_lightness_floor + step),
         name: hue_name(hue)
       }
     end)
@@ -84,7 +85,8 @@ defmodule PatchbayWeb.Forum.Fingerprint do
 
   The colours are the glance and the characters are the evidence, so both are
   always shown; the whole digest is on the element for anyone who hovers over
-  it or copies it out.
+  it or copies it out. Each swatch carries both of its tones and the stylesheet
+  picks the one the reader's theme calls for.
   """
   attr(:digest, :string, required: true)
 
@@ -97,7 +99,7 @@ defmodule PatchbayWeb.Forum.Fingerprint do
         <span
           :for={chip <- @chips}
           class="pb-fingerprint-chip"
-          style={"background:" <> chip.color}
+          style={"--pb-chip-light:#{chip.light};--pb-chip-dark:#{chip.dark}"}
         ></span>
       </span>
       <code class="pb-fingerprint-hex">{short(@digest)}</code>

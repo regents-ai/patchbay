@@ -214,7 +214,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ ~s(title="#{@contract}")
       assert body =~ "Fingerprint colours: "
 
-      for chip <- Fingerprint.chips(@contract), do: assert(body =~ "background:#{chip.color}")
+      for chip <- Fingerprint.chips(@contract),
+          do: assert(body =~ "--pb-chip-light:#{chip.light};--pb-chip-dark:#{chip.dark}")
     end
 
     test "marks the version a site is on now", %{conn: conn} do

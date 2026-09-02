@@ -3,10 +3,11 @@ defmodule PatchbayWeb.Forum.FingerprintTest do
 
   alias PatchbayWeb.Forum.Fingerprint
 
-  # The paper a chip is read against, and the warmer paper a version row sits
-  # on. A chip has to hold up on both.
-  @surface "#fffdf8"
-  @version_row "#fbf8f2"
+  # The papers a chip is read against on the light theme: a card, a version
+  # row, and the row of the version being read. After dark, the same three
+  # panels. A chip has to hold up on all of them.
+  @light_papers ["#ffffff", "#f1efe3", "#e4eff0"]
+  @dark_panels ["#1b1c1e", "#141517", "#101e20"]
 
   # Graphics that carry meaning have to reach 3:1 against what is behind them.
   @readable 3.0
@@ -19,7 +20,8 @@ defmodule PatchbayWeb.Forum.FingerprintTest do
 
       assert length(chips) == 4
       assert chips == Fingerprint.chips(digest("checkout"))
-      assert Enum.all?(chips, &(&1.color =~ ~r/\A#[0-9a-f]{6}\z/))
+      assert Enum.all?(chips, &(&1.light =~ ~r/\A#[0-9a-f]{6}\z/))
+      assert Enum.all?(chips, &(&1.dark =~ ~r/\A#[0-9a-f]{6}\z/))
     end
 
     test "two digests that differ in their opening bytes are drawn differently" do
@@ -53,27 +55,43 @@ defmodule PatchbayWeb.Forum.FingerprintTest do
       # There are 65,536 of them: one for each hue byte against each lightness
       # byte. Checking all of them is cheap, and it makes the band a fact
       # rather than an intention.
-      readings =
-        for hue_byte <- 0..255, lightness_byte <- 0..255 do
-          [chip | _rest] = Fingerprint.chips(opening(hue_byte, lightness_byte))
-          {min(contrast(chip.color, @surface), contrast(chip.color, @version_row)), chip.color}
-        end
-
-      {ratio, color} = Enum.min(readings)
+      {ratio, color} = worst_reading(& &1.light, @light_papers)
 
       assert ratio >= @readable,
              "#{color} only reaches #{Float.round(ratio, 2)}:1 against the board's paper"
     end
 
-    test "even the darkest colours still carry a hue rather than reading as black" do
-      # Four near-black swatches would be readable and useless: the run has to
-      # tell one digest from another, which takes visible colour.
-      for hue_byte <- 0..255 do
-        channels = channels_of(hd(Fingerprint.chips(opening(hue_byte, 0x00))).color)
+    test "and every colour the dark band could produce stays readable after dark" do
+      {ratio, color} = worst_reading(& &1.dark, @dark_panels)
 
-        assert Enum.max(channels) - Enum.min(channels) >= 0x30
+      assert ratio >= @readable,
+             "#{color} only reaches #{Float.round(ratio, 2)}:1 against the board's dark panels"
+    end
+
+    test "even the flattest colours still carry a hue rather than reading as grey" do
+      # Four near-black or near-white swatches would be readable and useless:
+      # the run has to tell one digest from another, which takes visible
+      # colour. The ends of each band are where a hue has the least room.
+      for hue_byte <- 0..255, lightness_byte <- [0x00, 0xFF] do
+        [chip | _rest] = Fingerprint.chips(opening(hue_byte, lightness_byte))
+
+        for color <- [chip.light, chip.dark] do
+          channels = channels_of(color)
+
+          assert Enum.max(channels) - Enum.min(channels) >= 0x30,
+                 "#{color} has no hue left in it"
+        end
       end
     end
+  end
+
+  defp worst_reading(tone, backgrounds) do
+    for hue_byte <- 0..255, lightness_byte <- 0..255 do
+      color = tone.(hd(Fingerprint.chips(opening(hue_byte, lightness_byte))))
+
+      {backgrounds |> Enum.map(&contrast(color, &1)) |> Enum.min(), color}
+    end
+    |> Enum.min()
   end
 
   defp opening(hue_byte, lightness_byte) do
