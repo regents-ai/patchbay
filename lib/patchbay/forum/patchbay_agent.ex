@@ -36,7 +36,6 @@ defmodule Patchbay.Forum.PatchbayAgent do
     FailureReproduction,
     RepairApprovalService,
     RepairPlanner,
-    Room,
     RoomTimeline,
     Telemetry
   }
@@ -258,10 +257,10 @@ defmodule Patchbay.Forum.PatchbayAgent do
     System.monotonic_time()
   end
 
-  # Every attempt ends the same way: an answer on the report, a row saying what
-  # happened, and a nudge to whatever page is open on that room. The work moved
-  # the row on as it went, so the ending is written onto the row as it stands
-  # now rather than as it stood when the work started.
+  # Every attempt ends the same way: an answer on the report and a row saying
+  # what happened, which is what tells whatever page is open on that room. The
+  # work moved the row on as it went, so the ending is written onto the row as
+  # it stands now rather than as it stood when the work started.
   defp settle(attempt, report, invocation, outcome, started_at) do
     reply = answer(report, invocation, outcome)
 
@@ -277,8 +276,6 @@ defmodule Patchbay.Forum.PatchbayAgent do
         },
         authorize?: false
       )
-
-    announce(attempt.room_id, report.id, outcome)
 
     Telemetry.agent_repair_stop(
       %{duration: System.monotonic_time() - started_at},
@@ -326,24 +323,6 @@ defmodule Patchbay.Forum.PatchbayAgent do
   defp phase_kind(:testing), do: :agent_testing_replacement
   defp phase_kind(:publishing), do: :agent_publishing_tool
   defp phase_kind(:done), do: :agent_repair_finished
-
-  defp announce(nil, _report_id, _outcome), do: :ok
-
-  defp announce(room_id, report_id, outcome) do
-    case outcome do
-      {:published, proposal, _revision} ->
-        broadcast(room_id, {:patchbay_agent_published, room_id, proposal.id})
-
-      _other ->
-        :ok
-    end
-
-    broadcast(room_id, {:patchbay_agent_replied, room_id, report_id})
-  end
-
-  defp broadcast(room_id, message) do
-    Phoenix.PubSub.broadcast(Patchbay.PubSub, Room.topic(room_id), message)
-  end
 
   defp status({:published, _proposal, _revision}), do: :published
   defp status({status, _detail}), do: status

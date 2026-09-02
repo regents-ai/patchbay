@@ -41,10 +41,15 @@ defmodule Patchbay.Forum.RepairAttempt do
     name(Patchbay.PubSub)
 
     # `Patchbay.Patchbay.Room.topic/1` is these same two parts joined the same
-    # way, so a step forward lands on the channel the open room page is already
-    # listening to. An attempt about a page that has since been cleared away has
-    # no room to name, and nothing is published for it.
+    # way, so a step forward and the answer that ends the work both land on the
+    # channel the open room page is already listening to. An attempt about a
+    # page that has since been cleared away has no room to name, and nothing is
+    # published for it.
     publish(:mark_phase, ["patchbay:room", :room_id], transform: &__MODULE__.phase_message/1)
+
+    publish(:record_outcome, ["patchbay:room", :room_id],
+      transform: &__MODULE__.replied_message/1
+    )
   end
 
   attributes do
@@ -150,6 +155,15 @@ defmodule Patchbay.Forum.RepairAttempt do
           {:patchbay_agent_progress, String.t() | nil, atom()}
   def phase_message(%Ash.Notifier.Notification{data: attempt}),
     do: {:patchbay_agent_progress, attempt.room_id, attempt.phase}
+
+  @doc """
+  What the room's channel carries when the report an attempt was made about has
+  been answered.
+  """
+  @spec replied_message(Ash.Notifier.Notification.t()) ::
+          {:patchbay_agent_replied, String.t() | nil, Ash.UUID.t()}
+  def replied_message(%Ash.Notifier.Notification{data: attempt}),
+    do: {:patchbay_agent_replied, attempt.room_id, attempt.report_id}
 
   @spec max_detail_bytes() :: pos_integer()
   def max_detail_bytes, do: @max_detail_bytes

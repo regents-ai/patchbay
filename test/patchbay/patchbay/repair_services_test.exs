@@ -16,6 +16,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     RepairApprovalService,
     RepairDSL,
     RepairPlanner,
+    Room,
     RoomTimeline,
     ToolRevision
   }
@@ -301,6 +302,39 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert recovered_room.active_repair_proposal_id == nil
 
     assert DemoReset.reset!(room).status == :ready
+  end
+
+  # Both writes below happen inside a transaction of their own, so these also
+  # say that the room hears about them when that transaction commits rather
+  # than having them dropped.
+  test "a publication is told to the room it was published into", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation =
+      invoke_failed!(room, browser_session, revision, %{"instructions" => "tell the room"})
+
+    proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
+
+    Phoenix.PubSub.subscribe(Elixir.Patchbay.PubSub, Room.topic(room.id))
+
+    published = RepairApprovalService.approve_and_publish!(proposal, "owner")
+
+    room_id = room.id
+    proposal_id = published.id
+    assert_received {:patchbay_agent_published, ^room_id, ^proposal_id}
+  end
+
+  test "a reset is told to the room, with the lifecycle it moved to", %{room: room} do
+    Phoenix.PubSub.subscribe(Elixir.Patchbay.PubSub, Room.topic(room.id))
+
+    reset = DemoReset.reset!(room)
+
+    room_id = room.id
+    epoch = reset.invocation_epoch
+    assert epoch == room.invocation_epoch + 1
+    assert_received {:patchbay_room_reset, ^room_id, ^epoch}
   end
 
   test "invocation request UUID replay is idempotent", %{

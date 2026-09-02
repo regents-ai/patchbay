@@ -322,6 +322,29 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
       assert moved.phase == :reading
       assert DateTime.compare(moved.phase_changed_at, attempt.phase_changed_at) == :gt
     end
+
+    test "the answer that ends an attempt is told to the room" do
+      call = failed_call()
+      report = file_report!(call)
+
+      attempt =
+        Forum.claim_repair_attempt!(
+          %{report_id: report.id, room_id: call.room.id, invocation_id: call.invocation.id},
+          authorize?: false
+        )
+
+      Phoenix.PubSub.subscribe(Patchbay.PubSub, Room.topic(call.room.id))
+
+      Forum.record_repair_attempt_outcome!(
+        attempt,
+        %{status: :refused, detail: "nothing was replaced"},
+        authorize?: false
+      )
+
+      room_id = call.room.id
+      report_id = report.id
+      assert_received {:patchbay_agent_replied, ^room_id, ^report_id}
+    end
   end
 
   describe "the running worker" do

@@ -7,10 +7,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   below. A browser tool can ask for a diagnosis, which runs the same path as the
   owner's button. No browser tool can approve or publish a repair.
 
-  A repair can also be published from outside this process, by the worker that
-  answers a receipt-verified report about this room's tool. That arrives on the
-  room's channel and is handled exactly as the owner's own click is, so an open
-  page hot-swaps the tool without being reloaded.
+  Every publication reaches this page the same way, whether the owner approved
+  it here or the worker that answers receipt-verified reports about this room's
+  tool published it from outside this process: it arrives on the room's channel,
+  so an open page hot-swaps the tool without being reloaded.
   """
 
   use PatchbayWeb, :live_view
@@ -314,20 +314,15 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     end
   end
 
+  # The owner's approval reaches the page by the one road every publication
+  # takes: the proposal says it was published, and the clause below picks that
+  # up here exactly as it does for a repair published by the worker.
   @impl true
   def handle_event("approve_repair", _params, socket) do
     case socket.assigns.proposal do
       %RepairProposal{} = proposal ->
         try do
-          published = RepairApprovalService.approve_and_publish!(proposal, "owner")
-
-          socket =
-            socket
-            |> refresh(socket.assigns.browser_session)
-            |> assign(error_message: nil)
-            |> push_publication_requested(published)
-            |> push_desired_toolset()
-
+          RepairApprovalService.approve_and_publish!(proposal, "owner")
           {:noreply, socket}
         rescue
           error -> {:noreply, assign(socket, error_message: readable_error(error))}
@@ -429,14 +424,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     try do
       room = DemoReset.reset!(socket.assigns.room)
 
-      :ok =
-        Phoenix.PubSub.broadcast_from(
-          Patchbay.PubSub,
-          self(),
-          Room.topic(room.id),
-          {:patchbay_room_reset, room.id, room.invocation_epoch}
-        )
-
       socket =
         socket
         |> apply_room_reset(room.invocation_epoch)
@@ -486,6 +473,15 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   def handle_info({:patchbay_agent_progress, room_id, _phase}, socket)
       when room_id == socket.assigns.room.id do
     {:noreply, refresh(socket, socket.assigns.browser_session)}
+  end
+
+  # A reset reaches every page on the room, the one that asked for it included.
+  # The epoch says which reset it was, so the page that has already moved to it
+  # has nothing left to do.
+  @impl true
+  def handle_info({:patchbay_room_reset, room_id, epoch}, socket)
+      when room_id == socket.assigns.room.id and epoch == socket.assigns.invocation_epoch do
+    {:noreply, socket}
   end
 
   @impl true

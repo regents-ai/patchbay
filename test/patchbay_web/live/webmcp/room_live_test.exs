@@ -471,9 +471,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert room_after.desired_tool_generation == 1
     refute room_after.status in [:publishing, :repaired, :verified]
 
-    # The human control is the only way through.
-    html = render_click(view, "approve_repair")
-    assert html =~ "Generation 2"
+    # The human control is the only way through, and the page shows the new tool
+    # once the room's own channel reports the publication.
+    render_click(view, "approve_repair")
+    assert render(view) =~ "Generation 2"
     assert Domain.get_repair_proposal!(proposal.id).status == :published
     assert Domain.get_repair_proposal!(proposal.id).approved_by == "owner"
   end
@@ -839,7 +840,11 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     assert proposal.status == :ready_for_approval
 
-    html = render_click(view, "approve_repair", %{"approved_by" => "forged-browser-value"})
+    render_click(view, "approve_repair", %{"approved_by" => "forged-browser-value"})
+
+    # The publication reaches this page on the room's channel, the same way one
+    # the worker made does.
+    html = render(view)
     assert html =~ "Generation 2"
     assert html =~ "Publication requested"
 
@@ -1136,6 +1141,18 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     render_click(reset_view, "reset_demo")
     reset_event = "patchbay:#{room.id}:reset_browser_registry"
     assert_push_event(stale_view, ^reset_event, %{"invocation_epoch" => 1})
+
+    # The page that clicked is on the room's channel too, so it hears its own
+    # reset come back. It is already showing that lifecycle, and the message
+    # leaves it exactly as it stands.
+    {:ok, reset_socket} = Phoenix.LiveView.Debug.socket(reset_view.pid)
+    assert reset_socket.assigns.invocation_epoch == 1
+
+    assert {:noreply, ^reset_socket} =
+             PatchbayWeb.WebMCP.RoomLive.Show.handle_info(
+               {:patchbay_room_reset, room.id, 1},
+               reset_socket
+             )
 
     html =
       render_hook(stale_view, "webmcp_execute", %{

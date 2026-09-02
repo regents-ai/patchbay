@@ -3,7 +3,8 @@ defmodule Patchbay.Patchbay.Room do
     otp_app: :patchbay,
     domain: Patchbay.Patchbay,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   alias Patchbay.Patchbay.Types.{GoalKind, RoomStatus}
 
@@ -15,6 +16,15 @@ defmodule Patchbay.Patchbay.Room do
       reference(:last_failed_invocation, match_with: [id: :room_id])
       reference(:active_repair_proposal, match_with: [id: :room_id])
     end
+  end
+
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    # `topic/1` below is these same two parts joined the same way, so a reset
+    # lands on the channel every page open on the room is already listening to.
+    publish(:reset_demo, ["patchbay:room", :id], transform: &__MODULE__.reset_message/1)
   end
 
   attributes do
@@ -328,4 +338,15 @@ defmodule Patchbay.Patchbay.Room do
   """
   @spec topic(Ash.UUID.t()) :: String.t()
   def topic(room_id) when is_binary(room_id), do: "patchbay:room:#{room_id}"
+
+  @doc """
+  What the room's channel carries when the room is put back to its seed.
+
+  The epoch travels with it, so a page can tell a reset it has already applied
+  from one made somewhere else.
+  """
+  @spec reset_message(Ash.Notifier.Notification.t()) ::
+          {:patchbay_room_reset, Ash.UUID.t(), integer()}
+  def reset_message(%Ash.Notifier.Notification{data: room}),
+    do: {:patchbay_room_reset, room.id, room.invocation_epoch}
 end

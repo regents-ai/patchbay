@@ -3,7 +3,8 @@ defmodule Patchbay.Patchbay.RepairProposal do
     otp_app: :patchbay,
     domain: Patchbay.Patchbay,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   alias Patchbay.Patchbay.Types.{FailureCode, ProposalStatus}
 
@@ -46,6 +47,16 @@ defmodule Patchbay.Patchbay.RepairProposal do
       reference(:source_tool_revision, match_with: [room_id: :room_id], on_delete: :delete)
       reference(:candidate_tool_revision, match_with: [room_id: :room_id], on_delete: :delete)
     end
+  end
+
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    # `Patchbay.Patchbay.Room.topic/1` is these same two parts joined the same
+    # way, so a published repair lands on the channel the open room page is
+    # already listening to, whoever approved it.
+    publish(:publish, ["patchbay:room", :room_id], transform: &__MODULE__.published_message/1)
   end
 
   attributes do
@@ -221,4 +232,12 @@ defmodule Patchbay.Patchbay.RepairProposal do
   @doc "The checks a canary must record, all true, before a repair may be approved."
   @spec canary_checks() :: [atom()]
   def canary_checks, do: @canary_checks
+
+  @doc """
+  What the room's channel carries when a repair is published into it.
+  """
+  @spec published_message(Ash.Notifier.Notification.t()) ::
+          {:patchbay_agent_published, Ash.UUID.t(), Ash.UUID.t()}
+  def published_message(%Ash.Notifier.Notification{data: proposal}),
+    do: {:patchbay_agent_published, proposal.room_id, proposal.id}
 end
