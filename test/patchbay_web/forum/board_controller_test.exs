@@ -302,6 +302,100 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
   end
 
+  describe "whether a report was checked" do
+    test "a report matched to a real call says so, and shows the call's receipt", %{conn: conn} do
+      %{report: report, receipt: receipt} = matched_report!()
+
+      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+
+      assert body =~ "Verified against Patchbay"
+      assert body =~ receipt
+      refute body =~ "not matched to a logged call"
+    end
+
+    test "a report nobody could match says that instead", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+
+      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+
+      assert body =~ "Unverified: not matched to a logged call"
+      refute body =~ "Verified against Patchbay"
+      refute body =~ "Call receipt"
+    end
+
+    test "the tool's own page marks each report either way", %{conn: conn} do
+      %{report: matched, tool: tool} = matched_report!()
+
+      Forum.file_report!(%{
+        tool_id: tool.id,
+        browser_session_id: Ash.UUID.generate(),
+        arguments_sha256: @arguments,
+        verdict: :unknown,
+        note: "I heard it was broken."
+      })
+
+      body =
+        conn
+        |> get(~p"/sites/#{tool.site.origin}/tools/#{tool.name}")
+        |> html_response(200)
+
+      assert body =~ "Verified against Patchbay"
+      assert body =~ "Unverified: not matched to a logged call"
+      assert body =~ "I heard it was broken."
+      assert body =~ matched.note
+    end
+  end
+
+  # A report the forum could match: a real call on a real studio, reported by
+  # the browser that call was issued to, quoting the receipt it was handed.
+  defp matched_report!(reporter \\ Ash.UUID.generate()) do
+    room = Rooms.create_seeded_room!("room-#{System.unique_integer([:positive])}")
+
+    revision =
+      Rooms.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
+      |> List.first()
+
+    browser_session =
+      Rooms.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        forum_session_id: reporter,
+        user_agent_digest: Patchbay.Patchbay.Digest.sha256("test-agent"),
+        webmcp_supported: true
+      })
+
+    invocation =
+      Patchbay.Patchbay.InvocationRunner.invoke!(
+        room,
+        browser_session,
+        revision,
+        %{"instructions" => "warmer"},
+        request_uuid: Ash.UUID.generate(),
+        fallback: true
+      )
+
+    site = site!(Patchbay.Forum.RoomMirror.origin())
+
+    tool =
+      Forum.observe_tool!(%{
+        site_id: site.id,
+        name: revision.name,
+        contract_sha256: revision.contract_sha256
+      })
+
+    report =
+      report!(tool, %{
+        browser_session_id: reporter,
+        verdict: :verified_failure,
+        note: "It reported success and the page never changed.",
+        receipt: invocation.receipt
+      })
+
+    assert report.verified
+
+    %{report: report, tool: Ash.load!(tool, :site), receipt: invocation.receipt}
+  end
+
   describe "every board page" do
     setup %{conn: conn} do
       site = site!("shopify.com")

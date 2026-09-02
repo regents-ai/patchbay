@@ -55,6 +55,7 @@ defmodule Patchbay.Patchbay do
       define(:record_invocation, action: :record_invocation)
       define(:get_invocation, action: :read, get_by: [:id])
       define(:get_invocation_by_request_uuid, action: :read, get_by: [:request_uuid])
+      define(:get_invocation_by_receipt, action: :read, get_by: [:receipt])
       define(:list_invocations, action: :read)
       define(:mark_invocation_executing, action: :mark_executing)
       define(:record_handler_return, action: :record_handler_return)

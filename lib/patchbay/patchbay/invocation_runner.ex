@@ -290,7 +290,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         contract_sha256: invocation.tool_contract_sha256,
         arguments_sha256: invocation.arguments_sha256,
         fallback_used: (generated && Map.get(generated, :fallback_used)) || false,
-        failure_code: failure_code
+        failure_code: failure_code,
+        receipt: invocation.receipt
       }
     )
   end

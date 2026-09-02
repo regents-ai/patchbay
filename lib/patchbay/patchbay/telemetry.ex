@@ -23,7 +23,7 @@ defmodule Patchbay.Patchbay.Telemetry do
     :contract_sha256,
     :arguments_sha256
   ]
-  @handler_stop_metadata @invocation_metadata ++ [:fallback_used, :failure_code]
+  @handler_stop_metadata @invocation_metadata ++ [:fallback_used, :failure_code, :receipt]
   @verification_metadata [:room_id, :invocation_id, :passed, :failure_code]
   @repair_model_metadata [:room_id, :invocation_id, :fallback_used]
   @canary_metadata [:room_id, :invocation_id, :tool_revision_id, :passed, :failure_code]

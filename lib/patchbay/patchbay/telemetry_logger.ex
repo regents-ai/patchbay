@@ -6,7 +6,7 @@ defmodule Patchbay.Patchbay.TelemetryLogger do
   `Patchbay.Patchbay.Telemetry.events/0` becomes exactly one `:info` line with a
   fixed prefix, the dotted event name, and a fixed column order:
 
-      [webmcp] invocation.handler_stop room=<uuid> session=<uuid> invocation=<uuid> generation=1 tool=uplift_current_skill_v1 contract=<sha256> args=<sha256> outcome=success failure_code=- duration_ms=42 fallback_used=false
+      [webmcp] invocation.handler_stop room=<uuid> session=<uuid> invocation=<uuid> generation=1 tool=uplift_current_skill_v1 contract=<sha256> args=<sha256> outcome=success failure_code=- duration_ms=42 fallback_used=false receipt=<receipt>
 
   Each column is read by name from the sanitized metadata the emitter already
   allow-listed, never from the metadata map as a whole, so arguments, handler
@@ -46,7 +46,8 @@ defmodule Patchbay.Patchbay.TelemetryLogger do
       :outcome,
       :failure_code,
       :duration_ms,
-      :fallback_used
+      :fallback_used,
+      :receipt
     ],
     [:patchbay, :verification, :stop] => [
       :room,
@@ -117,6 +118,7 @@ defmodule Patchbay.Patchbay.TelemetryLogger do
   defp value(:revision, _measurements, metadata), do: metadata[:tool_revision_id]
   defp value(:failure_code, _measurements, metadata), do: metadata[:failure_code]
   defp value(:fallback_used, _measurements, metadata), do: metadata[:fallback_used]
+  defp value(:receipt, _measurements, metadata), do: metadata[:receipt]
   defp value(:outcome, _measurements, metadata), do: outcome(metadata)
   defp value(:duration_ms, measurements, _metadata), do: duration_ms(measurements)
 

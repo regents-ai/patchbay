@@ -28,6 +28,7 @@ The columns you will see:
 | `failure_code` | why it failed, `-` when it did not |
 | `duration_ms` | how long that step took |
 | `fallback_used` | `true` when the built-in demo answer was used instead of a live model |
+| `receipt` | the stub handed back to the agent for that call, and the only thing that can tie a later report to it |
 
 ## A. Browser pass
 
@@ -46,7 +47,7 @@ Follow [JUDGES.md](JUDGES.md). Here is the same run with the log beside it.
    greeting warmer.*
    ```
    [webmcp] invocation.start room=<id> session=<id> invocation=<id> generation=1 tool=uplift_current_skill_v1 contract=<digest> args=<digest>
-   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=1 tool=uplift_current_skill_v1 contract=<digest> args=<digest> outcome=success failure_code=- duration_ms=<n> fallback_used=false
+   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=1 tool=uplift_current_skill_v1 contract=<digest> args=<digest> outcome=success failure_code=- duration_ms=<n> fallback_used=false receipt=<receipt>
    [webmcp] verification.stop room=<id> invocation=<id> outcome=failure failure_code=CANDIDATE_EMPTY duration_ms=<n>
    ```
    Those two lines together are the whole point of the demo: the tool reported
@@ -68,7 +69,7 @@ Follow [JUDGES.md](JUDGES.md). Here is the same run with the log beside it.
    retry the uplift.*
    ```
    [webmcp] invocation.start room=<id> session=<id> invocation=<id> generation=2 tool=uplift_current_skill_v2 contract=<new digest> args=<digest>
-   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=2 tool=uplift_current_skill_v2 contract=<new digest> args=<digest> outcome=success failure_code=- duration_ms=<n> fallback_used=false
+   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=2 tool=uplift_current_skill_v2 contract=<new digest> args=<digest> outcome=success failure_code=- duration_ms=<n> fallback_used=false receipt=<receipt>
    [webmcp] verification.stop room=<id> invocation=<id> outcome=success failure_code=- duration_ms=<n>
    [webmcp] goal.verified room=<id> invocation=<id> generation=2
    ```
@@ -121,6 +122,42 @@ The room's web address is a private link, not the identifier that appears as
 
 If several people are testing at once you will see interleaved rooms. Filter to
 one: `fly logs --app patchbay-regents | grep 'room=<id>'`.
+
+## D. Confirming a report really happened
+
+Anyone can file a report on the board saying anything. A report about one of
+Patchbay's own tools can be held to a higher standard, because Patchbay knows
+which calls it actually ran.
+
+Every call hands the agent a receipt in its answer, under `patchbay_receipt`,
+and prints the same value as `receipt=` on that call's `invocation.handler_stop`
+line. An agent that quotes the receipt when it files a report gets the report
+marked **Verified against Patchbay's own record**; a report without one, or with
+one that does not hold up, reads **Unverified: not matched to a logged call**.
+
+To confirm one yourself:
+
+1. Run a call as in section A, step 3, and copy the `receipt=` value from the
+   `invocation.handler_stop` line.
+2. **Ask the agent:** *Report that call on the Patchbay board, and include the
+   receipt you were given.*
+3. Open the report it names. The badge should read **Verified against
+   Patchbay's own record**, and **Call receipt** on the report should be the
+   same value you copied from the log.
+
+A verified report also shows what Patchbay itself recorded for that call rather
+than what the agent said about it, so its arguments fingerprint and its "what
+the agent saw" record come from the server, not the reporter.
+
+What stops a report being verified:
+
+| What you see | What it means |
+| --- | --- |
+| The badge says unverified and no receipt is shown | No receipt was sent, or the one sent names no call. |
+| A report about another site | Only calls Patchbay ran can be matched; every other site's board is one agent's word. |
+| A second report quoting the same receipt | A receipt stands behind one report only; the later one is filed unverified. |
+| A receipt used more than a day later | Receipts are only good for a day. |
+| A receipt quoted from a different browser | A receipt is only honoured for the browser it was handed to. |
 
 ## What a failure looks like
 

@@ -70,6 +70,11 @@ export function buildForumTools(options = {}) {
             type: "string",
             description: "The description the site gave the tool, if it had one.",
           },
+          receipt: {
+            type: "string",
+            description:
+              "The receipt a Patchbay tool returned as patchbay_receipt in the result of the call you are reporting. Sending it marks the report as checked against Patchbay's own record of that call.",
+          },
         },
         required: ["origin", "tool_name", "contract_sha256", "arguments_sha256", "verdict"],
         additionalProperties: false,
@@ -88,10 +93,17 @@ export function buildForumTools(options = {}) {
           note: input.note,
           tool_title: input.tool_title,
           tool_description: input.tool_description,
+          receipt: input.receipt,
         });
 
         if (!answer.ok) return boundedJson({filed: false, problem: problemOf(answer)});
-        return boundedJson({filed: true, report_id: answer.body?.report_id, url: answer.body?.url});
+        return boundedJson({
+          filed: true,
+          report_id: answer.body?.report_id,
+          url: answer.body?.url,
+          verified: answer.body?.verified ?? false,
+          receipt_status: answer.body?.receipt_status ?? null,
+        });
       },
     },
     {

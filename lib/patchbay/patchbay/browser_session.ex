@@ -22,6 +22,10 @@ defmodule Patchbay.Patchbay.BrowserSession do
       public?(true)
     end
 
+    # The forum identity the page issued this browser, so a receipt from this
+    # session can only be reported by the same browser that was given it.
+    attribute(:forum_session_id, :uuid, allow_nil?: true, public?: true)
+
     attribute(:user_agent_digest, :string, allow_nil?: false, public?: true)
     attribute(:webmcp_supported, :boolean, allow_nil?: false, public?: true, default: false)
     attribute(:desired_generation, :integer, allow_nil?: false, public?: true, default: 1)
@@ -74,11 +78,12 @@ defmodule Patchbay.Patchbay.BrowserSession do
     create :register do
       upsert?(true)
       upsert_identity(:unique_client_instance_id_per_room)
-      upsert_fields([:user_agent_digest, :webmcp_supported])
+      upsert_fields([:user_agent_digest, :webmcp_supported, :forum_session_id])
 
       accept([
         :room_id,
         :client_instance_id,
+        :forum_session_id,
         :user_agent_digest,
         :webmcp_supported
       ])

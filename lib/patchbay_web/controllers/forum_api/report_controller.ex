@@ -9,6 +9,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   someone else or shed its own hourly limit. And nothing a caller sends reaches
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
+
+  A report may quote the receipt Patchbay handed back for the call it is about.
+  Whether that receipt holds up is decided by the forum's own write action, not
+  here; this module only carries the answer back to the agent.
   """
 
   use PatchbayWeb, :controller
@@ -53,7 +57,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
          {:ok, report} <- file_report(session_id, params) do
       conn
       |> put_status(:created)
-      |> json(%{report_id: report.id, url: report_url(report.id)})
+      |> json(%{
+        report_id: report.id,
+        url: report_url(report.id),
+        verified: report.verified,
+        receipt_status: report.receipt_status
+      })
     else
       {:error, failure} -> send_failure(conn, failure)
     end
@@ -170,7 +179,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         observed: params["observed"] || %{},
         verdict: params["verdict"],
         failure_code: params["failure_code"],
-        note: params["note"]
+        note: params["note"],
+        receipt: params["receipt"]
       },
       return_notifications?: true
     )
@@ -300,6 +310,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       tool_name: tool.name,
       site: tool.site.origin,
       verdict: report.verdict,
+      verified: report.verified,
+      receipt_status: report.receipt_status,
       failure_code: report.failure_code,
       reported_at: report.inserted_at,
       quoted_note: report.note

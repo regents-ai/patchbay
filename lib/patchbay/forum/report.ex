@@ -12,6 +12,7 @@ defmodule Patchbay.Forum.Report do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.ReceiptStatus
   alias Patchbay.Forum.Types.Verdict
 
   @max_evidence_bytes 8 * 1024
@@ -34,6 +35,22 @@ defmodule Patchbay.Forum.Report do
     # verifies it, so it is an attribute rather than a relationship to a row we
     # own, and it must never be read as an identity.
     attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
+
+    # Whether Patchbay found this account in its own record of the call. Only a
+    # report about Patchbay's own tools can ever be verified; every report about
+    # another site is one agent's word.
+    attribute(:verified, :boolean, allow_nil?: false, public?: true, default: false)
+
+    attribute(:receipt_status, ReceiptStatus,
+      allow_nil?: false,
+      public?: true,
+      default: :missing
+    )
+
+    # The call this report was matched to. Like the reporting session, this names
+    # a row rather than pointing at one: a report is a permanent public record
+    # and must outlive the room whose call it describes.
+    attribute(:invocation_id, :uuid, allow_nil?: true, public?: true)
 
     attribute :arguments_sha256, :string do
       allow_nil?(false)
@@ -58,6 +75,11 @@ defmodule Patchbay.Forum.Report do
     end
 
     create_timestamp(:inserted_at, public?: true)
+  end
+
+  identities do
+    # One call stands behind at most one report, so a receipt cannot be spent twice.
+    identity(:unique_invocation, [:invocation_id], eager_check?: false)
   end
 
   relationships do
@@ -90,7 +112,14 @@ defmodule Patchbay.Forum.Report do
         :note
       ])
 
+      argument(:receipt, :string,
+        allow_nil?: true,
+        description:
+          "The receipt Patchbay returned for the call being reported, if there was one."
+      )
+
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
+      change(Patchbay.Forum.Changes.VerifyReceipt)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}

@@ -20,6 +20,7 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
   @contract String.duplicate("a", 64)
   @args String.duplicate("b", 64)
   @tool "uplift_current_skill_v1"
+  @receipt "Ab3xQ7pL-t2ZmR4nS_1wCg"
 
   setup do
     # The application attaches the handler at boot; these tests only need the
@@ -83,12 +84,13 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
                    contract_sha256: @contract,
                    arguments_sha256: @args,
                    fallback_used: false,
-                   failure_code: nil
+                   failure_code: nil,
+                   receipt: @receipt
                  }
                )
              end) ==
                [
-                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=#{@tool} contract=#{@contract} args=#{@args} outcome=success failure_code=- duration_ms=42 fallback_used=false"
+                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=#{@tool} contract=#{@contract} args=#{@args} outcome=success failure_code=- duration_ms=42 fallback_used=false receipt=#{@receipt}"
                ]
     end
 
@@ -102,12 +104,13 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
                    invocation_id: @invocation,
                    tool_generation: 2,
                    fallback_used: true,
-                   failure_code: :MODEL_GENERATION_FAILED
+                   failure_code: :MODEL_GENERATION_FAILED,
+                   receipt: @receipt
                  }
                )
              end) ==
                [
-                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=2 tool=- contract=- args=- outcome=failure failure_code=MODEL_GENERATION_FAILED duration_ms=8 fallback_used=true"
+                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=2 tool=- contract=- args=- outcome=failure failure_code=MODEL_GENERATION_FAILED duration_ms=8 fallback_used=true receipt=#{@receipt}"
                ]
     end
 
@@ -247,7 +250,7 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
       refute log =~ "candidate_markdown"
 
       assert webmcp_lines(log) == [
-               "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=- contract=- args=- outcome=success failure_code=- duration_ms=11 fallback_used=false"
+               "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=- contract=- args=- outcome=success failure_code=- duration_ms=11 fallback_used=false receipt=-"
              ]
     end
   end
@@ -288,6 +291,11 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
 
       logged = webmcp_lines(log)
 
+      receipt =
+        Patchbay.list_invocations!(query: [filter: [room_id: room.id], limit: 1])
+        |> List.first()
+        |> Map.fetch!(:receipt)
+
       assert "[webmcp] webmcp.registered room=#{room.id} session=#{browser_session.id} generation=#{revision.generation} contract=#{revision.contract_sha256}" in logged
 
       assert Enum.any?(
@@ -299,7 +307,7 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
       assert Enum.any?(
                logged,
                &(&1 =~
-                   ~r/^\[webmcp\] invocation\.handler_stop room=#{room.id} session=#{browser_session.id} invocation=[0-9a-f-]{36} generation=1 tool=#{revision.name} contract=#{revision.contract_sha256} args=[0-9a-f]{64} outcome=success failure_code=- duration_ms=\d+ fallback_used=true$/)
+                   ~r/^\[webmcp\] invocation\.handler_stop room=#{room.id} session=#{browser_session.id} invocation=[0-9a-f-]{36} generation=1 tool=#{revision.name} contract=#{revision.contract_sha256} args=[0-9a-f]{64} outcome=success failure_code=- duration_ms=\d+ fallback_used=true receipt=#{receipt}$/)
              )
 
       assert Enum.any?(

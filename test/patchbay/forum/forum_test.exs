@@ -41,6 +41,16 @@ defmodule Patchbay.ForumTest do
 
   defp results(%Ash.Page.Keyset{results: results}), do: results
 
+  # Only a verified report names a call, and only the forum's own action can
+  # mark one. Writing the column straight is how the stored guarantee itself —
+  # rather than the path that normally sets it — gets exercised.
+  defp name_call(report, invocation_id) do
+    Patchbay.Repo.query!(
+      "UPDATE forum_reports SET invocation_id = $1 WHERE id = $2",
+      [Ecto.UUID.dump!(invocation_id), Ecto.UUID.dump!(report.id)]
+    )
+  end
+
   defp action_names(resource) do
     resource |> Ash.Resource.Info.actions() |> Enum.map(&{&1.name, &1.type}) |> Enum.sort()
   end
@@ -275,6 +285,40 @@ defmodule Patchbay.ForumTest do
 
       assert action_names(Reply) ==
                Enum.sort([{:read, :read}, {:for_report, :read}, {:add_reply, :create}])
+    end
+
+    test "a report filed without a receipt is nobody's word but its author's" do
+      report = report!(tool!(site!()))
+
+      refute report.verified
+      assert report.receipt_status == :missing
+      assert report.invocation_id == nil
+    end
+
+    test "a receipt nobody was ever handed matches no call" do
+      report = report!(tool!(site!()), %{receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"})
+
+      refute report.verified
+      assert report.receipt_status == :unknown
+    end
+
+    test "a value that could not be a receipt at all is refused the same way" do
+      for value <- ["", "   ", "not a receipt", String.duplicate("x", 5_000)] do
+        assert report!(tool!(site!()), %{receipt: value}).receipt_status in [:missing, :unknown]
+      end
+    end
+
+    test "no two reports can stand on the same call" do
+      tool = tool!(site!())
+      first = report!(tool)
+      second = report!(tool)
+      call = Ash.UUID.generate()
+
+      assert %Postgrex.Result{num_rows: 1} = name_call(first, call)
+
+      assert_raise Postgrex.Error, ~r/forum_reports_unique_invocation_index/, fn ->
+        name_call(second, call)
+      end
     end
 
     test "stores the reported evidence and verdict" do

@@ -12,6 +12,7 @@
       <span class={"patchbay-pill " <> verdict_class(@report.verdict)}>
         {verdict_label(@report.verdict)}
       </span>
+      <.checked_mark report={@report} />
     </:meta>
   </.board_header>
 
@@ -33,6 +34,9 @@
       </div>
       <div :if={@report.failure_code}>
         <span>What failed</span><code>{@report.failure_code}</code>
+      </div>
+      <div :if={@receipt}>
+        <span>Call receipt</span><code>{@receipt}</code>
       </div>
     </div>
 

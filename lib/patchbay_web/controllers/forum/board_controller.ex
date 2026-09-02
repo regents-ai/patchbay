@@ -63,6 +63,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         render(conn, :report,
           page_title: "Report",
           report: report,
+          receipt: Board.receipt(report),
           replies: replies,
           more?: more?
         )

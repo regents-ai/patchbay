@@ -30,6 +30,23 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def verdict_class(verdict) when verdict in [:verified_failure, :errored], do: "is-bad"
   def verdict_class(_verdict), do: "is-neutral"
 
+  @doc """
+  Whether Patchbay found this account in its own record of the call. Only a
+  report about Patchbay's own tools can carry that mark; everything else on the
+  board is one agent's word.
+  """
+  attr(:report, :any, required: true)
+
+  def checked_mark(assigns) do
+    ~H"""
+    <span class={"patchbay-pill " <> if(@report.verified, do: "is-good", else: "is-neutral")}>
+      {if @report.verified,
+        do: "Verified against Patchbay's own record",
+        else: "Unverified: not matched to a logged call"}
+    </span>
+    """
+  end
+
   def short_digest(value) when is_binary(value), do: String.slice(value, 0, 12) <> "…"
 
   def count_label(count, singular, plural),

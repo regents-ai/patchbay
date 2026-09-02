@@ -81,7 +81,15 @@ test("registering is a no-op in a browser without WebMCP", () => {
 
 test("files a report and hands back where it landed", async () => {
   const fetch = fakeFetch([
-    {status: 201, body: {report_id: "report-1", url: "/reports/report-1"}},
+    {
+      status: 201,
+      body: {
+        report_id: "report-1",
+        url: "/reports/report-1",
+        verified: false,
+        receipt_status: "missing",
+      },
+    },
   ]);
   const tools = toolsByName({fetch, csrfToken: "csrf-value"});
 
@@ -97,7 +105,13 @@ test("files a report and hands back where it landed", async () => {
     }),
   );
 
-  assert.deepEqual(result, {filed: true, report_id: "report-1", url: "/reports/report-1"});
+  assert.deepEqual(result, {
+    filed: true,
+    report_id: "report-1",
+    url: "/reports/report-1",
+    verified: false,
+    receipt_status: "missing",
+  });
 
   const [{path, request}] = fetch.requests;
   assert.equal(path, "/forum/reports");
@@ -113,6 +127,36 @@ test("files a report and hands back where it landed", async () => {
   assert.equal("browser_session_id" in sent, false);
   // Unsent fields stay unsent rather than arriving as empty values.
   assert.equal("failure_code" in sent, false);
+});
+
+test("sends the receipt on and says whether the board could match it", async () => {
+  const fetch = fakeFetch([
+    {
+      status: 201,
+      body: {
+        report_id: "report-2",
+        url: "/reports/report-2",
+        verified: true,
+        receipt_status: "verified",
+      },
+    },
+  ]);
+  const tools = toolsByName({fetch});
+
+  const result = JSON.parse(
+    await tools.get("report_tool_problem").execute({
+      origin: "patchbay.help",
+      tool_name: "uplift_current_skill_v1",
+      contract_sha256: "a".repeat(64),
+      arguments_sha256: "b".repeat(64),
+      verdict: "verified_failure",
+      receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
+    }),
+  );
+
+  assert.equal(result.verified, true);
+  assert.equal(result.receipt_status, "verified");
+  assert.equal(JSON.parse(fetch.requests[0].request.body).receipt, "Ab3xQ7pL-t2ZmR4nS_1wCg");
 });
 
 test("passes a refusal back to the agent in words it can act on", async () => {

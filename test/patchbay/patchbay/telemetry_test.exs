@@ -51,7 +51,8 @@ defmodule Patchbay.Patchbay.TelemetryTest do
       :contract_sha256,
       :arguments_sha256,
       :fallback_used,
-      :failure_code
+      :failure_code,
+      :receipt
     ],
     [:patchbay, :verification, :stop] => [:room_id, :invocation_id, :passed, :failure_code],
     [:patchbay, :repair, :model_stop] => [:room_id, :invocation_id, :fallback_used],

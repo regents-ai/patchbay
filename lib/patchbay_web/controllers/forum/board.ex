@@ -21,6 +21,7 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
+  alias Patchbay.Patchbay, as: Rooms
 
   @sites 200
   @site_versions 200
@@ -133,6 +134,20 @@ defmodule PatchbayWeb.Forum.Board do
       {:error, _no_such_report} -> :error
     end
   end
+
+  @doc """
+  The receipt of the call a verified report was matched to, so a reader can hold
+  the report against the server's own line for that call. Nothing else has one.
+  """
+  @spec receipt(Report.t()) :: String.t() | nil
+  def receipt(%Report{verified: true, invocation_id: id}) when is_binary(id) do
+    case Rooms.get_invocation(id, not_found_error?: false) do
+      {:ok, %{receipt: receipt}} -> receipt
+      _ -> nil
+    end
+  end
+
+  def receipt(%Report{}), do: nil
 
   @doc "The replies to one report, oldest first, and whether more remain."
   @spec replies(Report.t()) :: {[Reply.t()], boolean()}

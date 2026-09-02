@@ -546,6 +546,43 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
   end
 
+  test "hands the agent a receipt for the call, bound to this browser", %{conn: conn, room: room} do
+    conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
+    forum_session_id = Plug.Conn.get_session(conn, "forum_session_id")
+    {:ok, view, _html} = live(conn)
+    session = bootstrap(view, room)
+    revision = desired_revision(room)
+
+    render_hook(view, "webmcp_invocation_begin", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "invocation_epoch" => invocation_epoch(view),
+      "request_uuid" => Ash.UUID.generate(),
+      "tool_name" => revision.name,
+      "contract_sha256" => revision.contract_sha256,
+      "arguments" => %{"instructions" => "clarify the workflow"}
+    })
+
+    invocation = latest_invocation(room)
+
+    render_hook(view, "webmcp_execute", %{
+      "invocation_id" => invocation.id,
+      "invocation_epoch" => invocation_epoch(view)
+    })
+
+    render_async(view, 2_000)
+
+    assert_push_event(view, "patchbay:" <> _topic, %{"patchbay_receipt" => receipt})
+
+    assert receipt == Domain.get_invocation!(invocation.id).receipt
+    assert receipt =~ ~r/\A[A-Za-z0-9_-]{22}\z/
+
+    # The receipt belongs to the browser that made the call, so a report quoting
+    # it can be held against the identity the page issued.
+    assert is_binary(forum_session_id)
+    assert Domain.get_browser_session!(session.id).forum_session_id == forum_session_id
+  end
+
   test "runs repair, human approval, observed generation, retry, and reset on one page", %{
     conn: conn,
     room: room

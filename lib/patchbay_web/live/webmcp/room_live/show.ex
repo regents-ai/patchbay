@@ -41,7 +41,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
 
   @impl true
-  def mount(%{"slug" => slug}, _session, socket) do
+  def mount(%{"slug" => slug}, session, socket) do
     room = load_room!(slug)
 
     if connected?(socket) do
@@ -53,6 +53,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
      |> assign(assigns_for(room, nil))
      |> assign(
        page_title: room.title,
+       # The identity this browser posts to the board under. A receipt this room
+       # issues is only honoured in a report filed from the same browser.
+       forum_session_id: Map.get(session, "forum_session_id"),
        error_message: nil,
        upload_error: nil,
        pending_operation: nil,
@@ -74,7 +77,12 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     with :ok <- valid_room_event?(params, room),
          {:ok, client_instance_id} <- client_instance_id(params),
          {:ok, browser_session} <-
-           register_browser_session(room, params, client_instance_id) do
+           register_browser_session(
+             room,
+             params,
+             client_instance_id,
+             socket.assigns.forum_session_id
+           ) do
       append_event(
         room,
         :webmcp_supported,
@@ -965,10 +973,11 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     _ -> {:error, "repair proposal is no longer available"}
   end
 
-  defp register_browser_session(room, params, client_instance_id) do
+  defp register_browser_session(room, params, client_instance_id, forum_session_id) do
     attrs = %{
       room_id: room.id,
       client_instance_id: client_instance_id,
+      forum_session_id: forum_session_id,
       user_agent_digest: user_agent_digest(params),
       webmcp_supported: value(params, "webmcp_supported") == true
     }
@@ -1132,6 +1141,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       "failure_code" => if(invocation.failure_code, do: to_string(invocation.failure_code)),
       "handler_reported_success" => invocation.handler_reported_success,
       "handler_result" => invocation.handler_result,
+      "patchbay_receipt" => invocation.receipt,
       "patchbay_verification" => verification_reply(invocation),
       "next_action" => invocation_next_action(invocation),
       "expected_ui_revision" => room.ui_revision,

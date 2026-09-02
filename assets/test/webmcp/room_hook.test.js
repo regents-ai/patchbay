@@ -344,6 +344,42 @@ test("waits for an asynchronous LiveView invocation result", async () => {
   assert.equal(value.hook.pendingInvocations.size, 0);
 });
 
+test("hands the agent the receipt the server issued for the call", async () => {
+  const receipt = "Ab3xQ7pL-t2ZmR4nS_1wCg";
+  const value = setup("receipt-room", {
+    postStateReply: {effective_status: "verified_success", patchbay_receipt: receipt},
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "receipt-room", generation: 1, revisions: [v1]});
+
+  const result = JSON.parse(
+    await value.context.tools.get(v1.name).execute({instructions: "make it warmer"}),
+  );
+
+  assert.equal(result.patchbay_receipt, receipt);
+});
+
+test("keeps the receipt when the result is too long to return whole", async () => {
+  const receipt = "Ab3xQ7pL-t2ZmR4nS_1wCg";
+  const value = setup("long-receipt-room", {
+    postStateReply: {
+      effective_status: "verified_success",
+      patchbay_receipt: receipt,
+      patchbay_verification: {passed: true, checks: {}, observed: {page: "z".repeat(9000)}},
+    },
+  });
+  await PatchbayWebMCP.mounted.call(value.hook);
+  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
+  await reconcileTo(value, {room_id: "long-receipt-room", generation: 1, revisions: [v1]});
+
+  const serialized = await value.context.tools.get(v1.name).execute({instructions: "warmer"});
+  const result = JSON.parse(serialized);
+
+  assert.equal(result.patchbay_verification.details_truncated, true);
+  assert.equal(result.patchbay_receipt, receipt);
+});
+
 test("a dropped execute acknowledgement durably cancels the begun invocation", async () => {
   const value = setup("cancel-invocation-room", {
     asyncInvocation: true,

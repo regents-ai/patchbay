@@ -4,6 +4,10 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.RoomMirror
+  alias Patchbay.Patchbay, as: Rooms
+  alias Patchbay.Patchbay.Digest
+  alias Patchbay.Patchbay.InvocationRunner
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("b", 64)
@@ -99,6 +103,125 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       conn = post_json(conn, "/forum/reports", report_params())
       assert %{"error" => error} = json_response(conn, 429)
       assert error =~ "past hour"
+    end
+  end
+
+  describe "a report that quotes a receipt" do
+    setup %{conn: conn} do
+      # The identity a report is filed under is issued by a page load, and a
+      # receipt is only honoured for the browser holding it.
+      conn = get(conn, "/")
+      %{conn: conn, reporter: Plug.Conn.get_session(conn, "forum_session_id")}
+    end
+
+    test "is checked against Patchbay's own record of the call", context do
+      call = call_patchbay(context.reporter)
+
+      conn =
+        post_json(
+          context.conn,
+          "/forum/reports",
+          receipt_params(call, %{
+            "arguments_sha256" => String.duplicate("f", 64),
+            "observed" => %{"everything" => "went perfectly"}
+          })
+        )
+
+      assert %{"report_id" => id, "verified" => true, "receipt_status" => "verified"} =
+               json_response(conn, 201)
+
+      report = Ash.get!(Report, id)
+
+      assert report.verified
+      assert report.invocation_id == call.invocation.id
+      # The account keeps its author's words but not their version of the facts.
+      assert report.arguments_sha256 == call.invocation.arguments_sha256
+      assert report.note =~ "did nothing"
+
+      assert report.observed == %{
+               "effective_status" => "verified_failure",
+               "failure_code" => "CANDIDATE_EMPTY",
+               "handler_reported_success" => true,
+               "generation" => 1
+             }
+    end
+
+    test "is one agent's word when no receipt is sent", context do
+      call = call_patchbay(context.reporter)
+      params = call |> receipt_params() |> Map.delete("receipt")
+
+      conn = post_json(context.conn, "/forum/reports", params)
+
+      assert %{"report_id" => id, "verified" => false, "receipt_status" => "missing"} =
+               json_response(conn, 201)
+
+      assert Ash.get!(Report, id).observed == %{"cart_count" => 0}
+    end
+
+    test "is unverified when the receipt names no call Patchbay ran", context do
+      call = call_patchbay(context.reporter)
+      params = receipt_params(call, %{"receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"})
+
+      assert %{"verified" => false, "receipt_status" => "unknown"} =
+               json_response(post_json(context.conn, "/forum/reports", params), 201)
+    end
+
+    test "is unverified when it names a different tool", context do
+      call = call_patchbay(context.reporter)
+      params = receipt_params(call, %{"tool_name" => "add_to_cart"})
+
+      assert %{"verified" => false, "receipt_status" => "mismatched"} =
+               json_response(post_json(context.conn, "/forum/reports", params), 201)
+    end
+
+    test "is unverified when it names a different version of the tool", context do
+      call = call_patchbay(context.reporter)
+      params = receipt_params(call, %{"contract_sha256" => @contract})
+
+      assert %{"verified" => false, "receipt_status" => "mismatched"} =
+               json_response(post_json(context.conn, "/forum/reports", params), 201)
+    end
+
+    test "is unverified when it is filed against another site", context do
+      call = call_patchbay(context.reporter)
+      params = receipt_params(call, %{"origin" => "shop.example.com"})
+
+      assert %{"verified" => false, "receipt_status" => "mismatched"} =
+               json_response(post_json(context.conn, "/forum/reports", params), 201)
+    end
+
+    test "is unverified when another browser was handed the receipt", context do
+      call = call_patchbay(Ash.UUID.generate())
+
+      assert %{"verified" => false, "receipt_status" => "wrong_identity"} =
+               json_response(
+                 post_json(context.conn, "/forum/reports", receipt_params(call)),
+                 201
+               )
+    end
+
+    test "stands behind the first report only", context do
+      call = call_patchbay(context.reporter)
+      params = receipt_params(call)
+
+      assert %{"verified" => true} =
+               json_response(post_json(context.conn, "/forum/reports", params), 201)
+
+      assert %{"report_id" => id, "verified" => false, "receipt_status" => "spent"} =
+               json_response(post_json(context.conn, "/forum/reports", params), 201)
+
+      assert Ash.get!(Report, id).invocation_id == nil
+    end
+
+    test "no longer stands a day after the call", context do
+      call = call_patchbay(context.reporter)
+      age!(call.invocation, 25)
+
+      assert %{"verified" => false, "receipt_status" => "stale"} =
+               json_response(
+                 post_json(context.conn, "/forum/reports", receipt_params(call)),
+                 201
+               )
     end
   end
 
@@ -267,6 +390,70 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         "note" => "The tool said it worked but the cart stayed empty."
       },
       overrides
+    )
+  end
+
+  # One real call on a Patchbay studio, made by the browser the given forum
+  # identity belongs to, taken all the way to its visible verdict.
+  defp call_patchbay(forum_session_id) do
+    room = Rooms.create_seeded_room!("room-#{System.unique_integer([:positive])}")
+
+    revision =
+      Rooms.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
+      |> List.first()
+
+    browser_session =
+      Rooms.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        forum_session_id: forum_session_id,
+        user_agent_digest: Digest.sha256("test-agent"),
+        webmcp_supported: true
+      })
+
+    invocation =
+      room
+      |> InvocationRunner.invoke!(browser_session, revision, %{"instructions" => "warmer"},
+        request_uuid: Ash.UUID.generate(),
+        fallback: true
+      )
+      |> verify_visible!(room.id)
+
+    %{room: room, revision: revision, invocation: invocation}
+  end
+
+  defp verify_visible!(invocation, room_id) do
+    room = Rooms.get_room_by_id!(room_id)
+
+    InvocationRunner.verify!(invocation, %{
+      "ui_revision" => room.ui_revision,
+      "source" => %{"present" => true, "sha256" => room.source_sha256},
+      "candidate" => %{
+        "present" => is_binary(room.candidate_markdown),
+        "sha256" => room.candidate_sha256
+      }
+    })
+  end
+
+  defp age!(invocation, hours) do
+    Patchbay.Repo.query!("UPDATE invocations SET started_at = $1 WHERE id = $2", [
+      DateTime.add(DateTime.utc_now(), -hours, :hour),
+      Ecto.UUID.dump!(invocation.id)
+    ])
+  end
+
+  defp receipt_params(call, overrides \\ %{}) do
+    report_params(
+      Map.merge(
+        %{
+          "origin" => RoomMirror.origin(),
+          "tool_name" => call.revision.name,
+          "contract_sha256" => call.revision.contract_sha256,
+          "receipt" => call.invocation.receipt,
+          "note" => "It said it worked, but the page did nothing."
+        },
+        overrides
+      )
     )
   end
 
