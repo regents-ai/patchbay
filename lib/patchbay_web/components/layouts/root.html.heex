@@ -52,6 +52,12 @@
     </script>
   </head>
   <body>
-    {@inner_content}
+    <%!-- The first stop for a keyboard on every page, and out of sight until
+    it is reached. It targets the wrapper rather than a page's own <main> so
+    that the room, the board and the front page all answer it the same way. --%>
+    <a id="pb-skip-link" class="pb-skip-link" href="#pb-content">Skip to the main content</a>
+    <div id="pb-content" tabindex="-1">
+      {@inner_content}
+    </div>
   </body>
 </html>

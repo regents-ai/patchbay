@@ -18,44 +18,10 @@
 }
 
 /* daisyUI theme plugin. You can update this file by fetching the latest version with:
-  curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
-  We ship with two themes, a light one inspired on Phoenix colors and a dark one inspired
-  on Elixir colors. Build your own at: https://daisyui.com/theme-generator/ */
-@plugin "../vendor/daisyui-theme" {
-  name: "dark";
-  default: false;
-  prefersdark: true;
-  color-scheme: "dark";
-  --color-base-100: oklch(30.33% 0.016 252.42);
-  --color-base-200: oklch(25.26% 0.014 253.1);
-  --color-base-300: oklch(20.15% 0.012 254.09);
-  --color-base-content: oklch(97.807% 0.029 256.847);
-  --color-primary: oklch(58% 0.233 277.117);
-  --color-primary-content: oklch(96% 0.018 272.314);
-  --color-secondary: oklch(58% 0.233 277.117);
-  --color-secondary-content: oklch(96% 0.018 272.314);
-  --color-accent: oklch(60% 0.25 292.717);
-  --color-accent-content: oklch(96% 0.016 293.756);
-  --color-neutral: oklch(37% 0.044 257.287);
-  --color-neutral-content: oklch(98% 0.003 247.858);
-  --color-info: oklch(58% 0.158 241.966);
-  --color-info-content: oklch(97% 0.013 236.62);
-  --color-success: oklch(60% 0.118 184.704);
-  --color-success-content: oklch(98% 0.014 180.72);
-  --color-warning: oklch(66% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
-  --size-selector: 0.21875rem;
-  --size-field: 0.21875rem;
-  --border: 1.5px;
-  --depth: 1;
-  --noise: 0;
-}
-
+   curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
+   Patchbay is one warm sheet of paper, so this is its only theme. A dark one
+   under type that was drawn for paper took the quiet greys down to about
+   1.3:1 against it. */
 @plugin "../vendor/daisyui-theme" {
   name: "light";
   default: true;
@@ -123,7 +89,7 @@
   --pb-accent: #0e6b63;
   --pb-accent-deep: #0a4f49;
   --pb-accent-wash: #e2efec;
-  --pb-amber: #9c6206;
+  --pb-amber: #8f5a05;
   --pb-amber-wash: #fbedcf;
   --pb-green: #0f6b4a;
   --pb-green-wash: #dcefe2;
@@ -132,9 +98,10 @@
   --pb-gold: #d3a022;
   --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
 
+  /* One quiet tone, not two. Anything quieter than this stops clearing 4.5:1
+     against the warm paper, so quieter is not a thing this palette offers. */
   --pb-text: #16211f;
-  --pb-text-muted: #626f69;
-  --pb-text-faint: #737e79;
+  --pb-text-muted: #5d6a64;
   --pb-text-on-ink: #f3f0e6;
   --pb-text-on-ink-muted: #a7b6af;
 
@@ -148,10 +115,13 @@
   --pb-gutter: clamp(1.15rem, 5vw, 4rem);
   --pb-measure: min(100%, 70rem);
 
+  /* --pb-fs-xs is the floor for anything read as a sentence: 13px. Below it
+     sits --pb-fs-micro, which is for things read a glance at a time — all-caps
+     labels, timestamps, sequence numbers and digests — never prose. */
   --pb-fs-micro: .66rem;
-  --pb-fs-xs: .73rem;
-  --pb-fs-sm: .8rem;
-  --pb-fs-md: .92rem;
+  --pb-fs-xs: .8125rem;
+  --pb-fs-sm: .875rem;
+  --pb-fs-md: .96rem;
   --pb-fs-lg: 1.08rem;
   --pb-fs-xl: clamp(1.15rem, 2vw, 1.5rem);
 
@@ -170,6 +140,46 @@
   --pb-ease-out: cubic-bezier(.23, 1, .32, 1);
   --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
 }
+
+/* One focus ring for the whole site, so a keyboard is never guessing where it
+   is. The selector list is wrapped in :where() to keep it at the weight of a
+   single element rule: anything with a class can still say something different
+   without a fight. pre is in the list because an evidence pane that is taller
+   than its box becomes a scroll region, and a browser puts those in the tab
+   order; one that fits never matches and is left alone. A tabindex of -1 is
+   left out: it marks the places focus is sent by script or by the skip link,
+   never a stop on the keyboard's own walk, and the ring on the skip link's
+   target would be a frame around the whole page. On the dark surfaces the
+   same ring turns gold, because the teal disappears into the ink. */
+:where(a, button, input, textarea, select, summary, pre, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 3px solid var(--pb-accent-deep);
+  outline-offset: 2px;
+}
+.pb-band :focus-visible,
+.pb-why :focus-visible,
+.pb-skip-link:focus,
+.patchbay-board .patchbay-topbar :focus-visible,
+.patchbay-result-box :focus-visible {
+  outline-color: var(--pb-gold);
+}
+
+/* Skip to the content: the first thing a keyboard reaches on every page, and
+   out of sight until it is reached. */
+.pb-skip-link {
+  position: fixed;
+  top: .6rem;
+  left: .6rem;
+  z-index: 20;
+  transform: translateY(-250%);
+  border-radius: var(--pb-radius-sm);
+  padding: .7rem 1rem;
+  color: var(--pb-text-on-ink);
+  background: var(--pb-ink);
+  font: 800 var(--pb-fs-xs)/1.2 var(--pb-sans);
+  text-decoration: none;
+  box-shadow: var(--pb-shadow-lg);
+}
+.pb-skip-link:focus { transform: none; }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
@@ -303,7 +313,7 @@
 .patchbay-registry-head { display: flex; align-items: center; gap: .65rem; }
 .patchbay-registry-summary strong, .patchbay-registry-summary span { display: block; }
 .patchbay-registry-summary strong { font-size: var(--pb-fs-sm); }
-.patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); margin-top: .16rem; }
+.patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); margin-top: .16rem; }
 
 /* The island writes its own diagnosis here. It is the only place a browser
    without WebMCP is told why the card above it is still waiting, so it is read
@@ -312,7 +322,7 @@
   border-top: 1px dashed var(--pb-line);
   padding-top: .45rem;
   color: var(--pb-text-muted);
-  font-size: var(--pb-fs-micro);
+  font-size: var(--pb-fs-xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -334,21 +344,20 @@
 .patchbay-card-heading h3 { margin: 0; font-size: var(--pb-fs-md); letter-spacing: -.02em; }
 .patchbay-mono { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); white-space: nowrap; }
 .patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .85rem; color: #24322f; background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--pb-mono); tab-size: 2; }
-.patchbay-editor:focus { outline: 2px solid rgba(14, 107, 99, .38); outline-offset: 1px; border-color: var(--pb-accent); }
+.patchbay-editor:focus { border-color: var(--pb-accent); }
 .patchbay-editor-footer { justify-content: space-between; gap: .8rem; margin-top: .6rem; }
 .patchbay-digest { min-width: 0; overflow: hidden; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); text-overflow: ellipsis; white-space: nowrap; }
 
-.patchbay-disclosure { margin: .7rem 0 0; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.5; }
+.patchbay-disclosure { margin: .7rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
 .patchbay-upload { margin-top: .85rem; border-top: 1px dashed var(--pb-line); padding-top: .75rem; }
 .patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; }
 .patchbay-upload-row label { flex: 1 1 100%; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-upload-problem { margin: .5rem 0 0; color: var(--pb-red); font-size: var(--pb-fs-xs); line-height: 1.45; }
-.patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.45; }
+.patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
 .patchbay-button { cursor: pointer; border: 1px solid transparent; border-radius: .6rem; padding: .6rem .85rem; color: #f4fbf8; background: var(--pb-accent); font-size: var(--pb-fs-xs); font-weight: 800; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
 .patchbay-button:hover { background: var(--pb-accent-deep); }
-.patchbay-button:focus-visible { outline: 3px solid rgba(14, 107, 99, .35); outline-offset: 2px; }
 .patchbay-button:disabled { cursor: wait; filter: grayscale(.35); opacity: .6; }
 .patchbay-button-quiet { color: var(--pb-accent-deep); background: var(--pb-surface-sunk); border-color: var(--pb-line); }
 .patchbay-button-quiet:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent); }
@@ -372,10 +381,10 @@
 .patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .6rem; background: var(--pb-surface-sunk); }
 .patchbay-state-grid .patchbay-kicker { margin-bottom: .35rem; font-size: .58rem; }
 .patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: var(--pb-text-muted); font: .62rem/1.45 var(--pb-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.patchbay-shortened-note { margin: .4rem 0 0; font-size: .62rem; line-height: 1.45; }
+.patchbay-shortened-note { margin: .4rem 0 0; font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-result-box .patchbay-shortened-note { color: #9fc4b8; }
 .patchbay-state-grid .patchbay-shortened-note { color: var(--pb-text-muted); }
-.patchbay-empty-state { margin: .6rem 0; color: var(--pb-text-faint); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.patchbay-empty-state { margin: .6rem 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .patchbay-alert { display: flex; gap: .6rem; align-items: baseline; margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .65rem .75rem; font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-alert strong { white-space: nowrap; }
 .patchbay-alert-error { color: var(--pb-red); background: var(--pb-red-wash); border: 1px solid #eebcae; }
@@ -385,7 +394,7 @@
 .patchbay-repair-cta p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .patchbay-repair-details { display: grid; gap: .9rem; }
 .patchbay-root-cause p { margin: .3rem 0 0; font-size: var(--pb-fs-sm); line-height: 1.5; }
-.patchbay-provenance { display: flex; flex-wrap: wrap; gap: .35rem .75rem; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); }
+.patchbay-provenance { display: flex; flex-wrap: wrap; gap: .35rem .75rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
 .patchbay-provenance b { color: var(--pb-text-muted); font-weight: 700; }
 .patchbay-diff { border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); overflow: hidden; }
 .patchbay-diff > .patchbay-kicker { padding: .7rem .75rem .35rem; }
@@ -397,15 +406,15 @@
 .patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; align-items: center; }
 .patchbay-canary .patchbay-kicker { margin: 0; }
 .patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .6rem; }
-.patchbay-checks span { color: var(--pb-text-faint); font-size: var(--pb-fs-micro); }
+.patchbay-checks span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
 .patchbay-checks .is-pass { color: var(--pb-green); }
 .patchbay-checks .is-fail { color: var(--pb-red); }
-.patchbay-risk-notes ul { margin: .3rem 0 0; padding-left: 1rem; color: var(--pb-amber); font-size: var(--pb-fs-micro); line-height: 1.55; }
+.patchbay-risk-notes ul { margin: .3rem 0 0; padding-left: 1rem; color: var(--pb-amber); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .patchbay-approval-actions { border-top: 1px solid var(--pb-line); padding-top: .8rem; }
-.patchbay-approval-actions p { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
+.patchbay-approval-actions p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-approval-actions > div { flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
 
-.patchbay-footer { justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-4); color: var(--pb-text-faint); font-size: var(--pb-fs-xs); }
+.patchbay-footer { justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-4); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-footer p { margin: 0; }
 .patchbay-footer strong { color: var(--pb-text); }
 .patchbay-footer code { font-size: var(--pb-fs-micro); }
@@ -515,8 +524,7 @@
 
 .patchbay-prompt-body { min-width: 0; }
 .patchbay-prompt-body label { display: block; margin-bottom: .2rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; }
-.patchbay-prompt { display: block; width: 100%; border: 0; border-radius: .45rem; padding: .35rem .4rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-micro)/1.5 var(--pb-mono); resize: none; }
-.patchbay-prompt:focus { outline: 2px solid rgba(14, 107, 99, .38); outline-offset: 1px; }
+.patchbay-prompt { display: block; width: 100%; border: 0; border-radius: .45rem; padding: .35rem .4rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.5 var(--pb-mono); resize: none; }
 .patchbay-copy {
   align-self: center;
   cursor: pointer;
@@ -525,15 +533,14 @@
   padding: .3rem .55rem;
   color: var(--pb-accent-deep);
   background: var(--pb-surface);
-  font-size: var(--pb-fs-micro);
+  font-size: var(--pb-fs-xs);
   font-weight: 800;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 .patchbay-copy:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent); }
-.patchbay-copy:focus-visible { outline: 3px solid rgba(14, 107, 99, .35); outline-offset: 2px; }
 .patchbay-copy[data-state="done"] { color: var(--pb-green); background: var(--pb-green-wash); border-color: #b7dcc4; }
 
-.patchbay-guide-watch { grid-column: 1 / -1; margin: .15rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); line-height: 1.6; }
+.patchbay-guide-watch { grid-column: 1 / -1; margin: .15rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.6; }
 .patchbay-guide-watch b { color: var(--pb-text); }
 .patchbay-guide-watch strong { color: var(--pb-accent-deep); font-weight: 700; }
 
@@ -579,7 +586,7 @@
   inset-inline: 1rem;
   top: 42%;
   margin: 0;
-  color: var(--pb-text-faint);
+  color: var(--pb-text-muted);
   font-size: var(--pb-fs-sm);
   text-align: center;
   pointer-events: none;
@@ -616,7 +623,7 @@
 .patchbay-badge.is-good { color: #f2fbf5; background: var(--pb-green); }
 .patchbay-badge.is-bad { color: #fdf2ee; background: var(--pb-red); }
 .patchbay-badge.is-warn { color: #2c1d02; background: var(--pb-amber-wash); }
-.patchbay-score-note { display: block; color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.45; }
+.patchbay-score-note { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
 /* The repair belongs to the Patchbay Agent, so the card carries its gold and
    green rather than the page's teal. */
@@ -626,11 +633,11 @@
 .patchbay-retry-card h3 { margin: .1rem 0 0; font-size: var(--pb-fs-md); }
 .patchbay-retry-card p { margin-bottom: 0; }
 .patchbay-retry-actions { display: grid; justify-items: end; gap: .35rem; max-width: 17rem; }
-.patchbay-retry-note { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); line-height: 1.5; text-align: right; }
+.patchbay-retry-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; text-align: right; }
 
 /* Reset throws the room's whole record away, so the button asks first. */
 .patchbay-reset-confirm { display: grid; gap: .45rem; justify-items: end; max-width: 21rem; }
-.patchbay-reset-confirm p { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); line-height: 1.5; text-align: right; }
+.patchbay-reset-confirm p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; text-align: right; }
 .patchbay-reset-confirm > div { display: flex; flex-wrap: wrap; gap: .4rem; }
 
 /* A real ledger: one rail, one dot per event, coloured by what kind of moment
@@ -675,17 +682,24 @@
 .patchbay-timeline-entry.is-error .patchbay-timeline-dot { background: var(--pb-red); }
 .patchbay-timeline-body { min-width: 0; }
 .patchbay-timeline-body strong { display: block; font-size: var(--pb-fs-xs); }
-.patchbay-timeline-body span { display: block; margin-top: .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); overflow-wrap: anywhere; }
+.patchbay-timeline-body span { display: block; margin-top: .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
 .patchbay-timeline-when { text-align: right; white-space: nowrap; }
 .patchbay-timeline-when time { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-timeline-sequence { color: var(--pb-text-faint); font: .6rem var(--pb-mono); }
+.patchbay-timeline-sequence { color: var(--pb-text-muted); font: .6rem var(--pb-mono); }
 
 #patchbay-room .patchbay-room-reports { margin-top: var(--pb-space-3); }
 
-@media (max-width: 900px) {
+/* A laptop is the first place the room runs out of room. The workbench holds
+   grids inside grids — the scoreboard, the evidence pair, the state pair — so
+   it is the first thing to take the full column, well before the phone
+   breakpoint. The guide's two columns go with it. */
+@media (max-width: 1024px) {
   #patchbay-room .patchbay-guide { grid-template-columns: 1fr; }
-  #patchbay-room .patchbay-editors,
   .patchbay-workbench { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  #patchbay-room .patchbay-editors { grid-template-columns: 1fr; }
   .patchbay-candidate-card { padding: var(--pb-space-3); }
 }
 
@@ -721,8 +735,8 @@ a.patchbay-board-facts { text-decoration: none; }
 a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board-row .patchbay-board-facts { margin-right: auto; }
 .patchbay-version-row .patchbay-board-facts:last-child { width: 100%; }
-.patchbay-room-link { display: inline-block; color: var(--pb-text); font-size: var(--pb-fs-xs); font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--pb-line-strong); }
-.patchbay-room-link:hover { border-bottom-color: currentColor; }
+.patchbay-room-link { display: inline-flex; align-items: center; color: var(--pb-text); font-size: var(--pb-fs-xs); font-weight: 700; text-decoration: underline; text-decoration-color: var(--pb-line-strong); text-underline-offset: .3em; }
+.patchbay-room-link:hover { text-decoration-color: currentColor; }
 .patchbay-reported-copy { margin: .6rem 0 0; }
 .patchbay-reported-copy p { margin: .15rem 0 0; }
 .patchbay-board-text { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
@@ -768,8 +782,23 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .patchbay-button:disabled:hover { transform: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .patchbay-button:hover { transform: none; }
+/* A finger is about 9mm across and has no hover to aim with, so every control
+   the loop runs through is at least 44px tall where the pointer is coarse. The
+   labels are centred rather than pinned to the top of the taller box. */
+@media (pointer: coarse) {
+  .patchbay-button,
+  .patchbay-copy,
+  .patchbay-room-link,
+  .pb-cta,
+  .pb-secondary,
+  .pb-skip-link,
+  .pb-band-nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+  .patchbay-upload-row input[type="file"] { min-height: 44px; }
 }
 
 /* ==========================================================================
@@ -792,7 +821,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 .patchbay-board .patchbay-topbar,
 .patchbay-board .patchbay-card,
-.pb-lede,
+.patchbay-board .pb-lede,
 .pb-site-grid,
 .pb-log,
 .pb-aside {
@@ -826,7 +855,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-topbar-meta { flex-wrap: wrap; justify-content: flex-end; }
 .patchbay-board .patchbay-room-link {
   color: #f4efe4;
-  border-bottom-color: rgba(244, 239, 228, .35);
+  text-decoration-color: rgba(244, 239, 228, .55);
 }
 .patchbay-board .patchbay-topbar .patchbay-pill.is-neutral { color: #d7e0da; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .18); }
 
@@ -838,13 +867,15 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-board-card { padding: 1.15rem 1.25rem; }
 .patchbay-board h3 a:hover { color: var(--pb-accent); }
 
-.pb-lede {
+/* The board's lede and the landing page's lede are different paragraphs on
+   different pages, so each is scoped to the page that owns it. */
+.patchbay-board .pb-lede {
   /* Held to a readable measure by trimming the right edge, so its first
      character still lines up with the cards under it. */
   margin: 1.15rem auto .35rem;
   padding-right: min(16rem, 26%);
-  color: #5e6864;
-  font-size: .86rem;
+  color: var(--pb-text-muted);
+  font-size: .875rem;
   line-height: 1.62;
   text-wrap: pretty;
 }
@@ -863,7 +894,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-bar-part.is-failed { background: var(--pb-amber); }
 .pb-bar-part.is-errored { background: #97a09c; }
 .pb-bar-part.is-unclear { background: #cdd2cd; }
-.pb-bar-legend { margin: .42rem 0 0; color: #6b7570; font-size: .71rem; letter-spacing: .01em; }
+.pb-bar-legend { margin: .42rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; letter-spacing: .01em; }
 .pb-bar-legend b { color: var(--pb-ink); font-weight: 700; }
 
 /* The site cards on /sites */
@@ -899,15 +930,15 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   overflow-wrap: anywhere;
 }
 .pb-site-name:hover { color: var(--pb-accent); text-decoration: underline; }
-.pb-site-counts { margin: 0; color: #6b7570; font-size: .73rem; }
-.pb-site-checked { margin: 0; color: #5e6864; font-size: .71rem; }
+.pb-site-counts { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-site-checked { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-site-checked b { color: var(--pb-green); }
 .pb-site-foot {
   margin: auto 0 0;
   padding-top: .55rem;
   border-top: 1px dashed #e8e2d5;
-  color: #7b8480;
-  font-size: .69rem;
+  color: var(--pb-text-muted);
+  font-size: .8125rem;
 }
 
 /* Chips: short, quiet labels that carry one fact each. */
@@ -919,7 +950,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   border-radius: 999px;
   padding: .18rem .5rem;
   background: #f7f3ea;
-  color: #5e6864;
+  color: var(--pb-text-muted);
   font-size: .62rem;
   font-weight: 800;
   letter-spacing: .05em;
@@ -948,7 +979,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   color: #43514d;
   font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-.pb-chip-facts { color: #7b8480; font-size: .69rem; }
+.pb-chip-facts { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-version-chips .pb-chip-facts:last-child { margin-left: auto; }
 
 /* One tool's history, read top to bottom like a log of edits. */
@@ -964,17 +995,17 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   padding: .7rem .85rem;
   background: #fdf8ec;
 }
-.pb-changed .patchbay-kicker { color: #9a7414; }
-.pb-changed .patchbay-empty-state { margin: 0; color: #7a7365; font-size: .75rem; }
-.pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .5rem; margin: 0 0 .4rem; font-size: .78rem; }
+.pb-changed .patchbay-kicker { color: var(--pb-amber); }
+.pb-changed .patchbay-empty-state { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .5rem; margin: 0 0 .4rem; font-size: .8125rem; }
 .pb-change-title s { color: #9a5a3f; text-decoration-thickness: 1px; }
 .pb-change-title ins { color: var(--pb-green); text-decoration: none; font-weight: 700; }
-.pb-change-label { color: #8a8374; font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.pb-change-label { color: var(--pb-text-muted); font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 
 .pb-sentences { display: grid; gap: .28rem; margin: 0; padding: 0; list-style: none; }
-.pb-sentences > li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .45rem; font-size: .78rem; line-height: 1.5; }
-.pb-sentence-mark { color: #a49c8b; font: 800 .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.pb-sentence.is-kept { color: #8d9490; }
+.pb-sentences > li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .45rem; font-size: .8125rem; line-height: 1.5; }
+.pb-sentence-mark { color: var(--pb-text-muted); font: 800 .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.pb-sentence.is-kept { color: var(--pb-text-muted); }
 .pb-sentence.is-added { color: #12503f; }
 .pb-sentence.is-added .pb-sentence-mark { color: var(--pb-green); }
 .pb-sentence.is-added span:last-child { background: #e4f3ea; border-radius: .3rem; box-shadow: 0 0 0 .18rem #e4f3ea; }
@@ -987,8 +1018,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-nameplate-agent { background: var(--pb-agent-gradient); }
 .patchbay-board .patchbay-pill.is-good { color: #0d5040; background: #e3f2ea; border-color: #b4d9c8; }
 .patchbay-board .patchbay-pill.is-bad { color: #7d5309; background: #fbf0d6; border-color: #ecd696; }
-.pb-aside { margin: .9rem auto 0; color: #7b8480; font-size: .73rem; }
-.patchbay-board .patchbay-empty-state { color: #6b7570; }
+.pb-aside { margin: .9rem auto 0; color: var(--pb-text-muted); font-size: .8125rem; }
+.patchbay-board .patchbay-empty-state { color: var(--pb-text-muted); }
 
 @media (max-width: 760px) {
   .patchbay-board .patchbay-topbar { border-radius: .8rem; }
@@ -1024,9 +1055,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-wordmark { font-size: 1.02rem; font-weight: 700; letter-spacing: -.015em; }
 .pb-mark { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: .5rem; color: var(--pb-gold); background: var(--pb-accent); }
 .pb-mark svg { width: 1.05rem; height: 1.05rem; }
-.pb-band-nav { display: flex; gap: 1.2rem; font-size: .8rem; }
-.pb-band-nav a { color: #c7c1b4; text-decoration: none; padding-block: .2rem; border-bottom: 1px solid transparent; }
-.pb-band-nav a:hover { color: var(--pb-text-on-ink); border-bottom-color: var(--pb-gold); }
+.pb-band-nav { display: flex; gap: 1.2rem; font-size: .8125rem; }
+.pb-band-nav a { display: inline-flex; align-items: center; color: #c7c1b4; padding-block: .2rem; text-decoration: none; }
+.pb-band-nav a:hover { color: var(--pb-text-on-ink); text-decoration: underline; text-decoration-color: var(--pb-gold); text-underline-offset: .3em; }
 
 .pb-kicker {
   margin: 0 0 .7rem;
@@ -1061,7 +1092,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   letter-spacing: -.028em;
   text-wrap: balance;
 }
-.pb-lede { max-width: 40em; margin: 1.35rem 0 0; color: var(--pb-text-muted); font-size: clamp(.95rem, 1.4vw, 1.06rem); line-height: 1.62; }
+.pb-hero-copy .pb-lede { max-width: 40em; margin: 1.35rem 0 0; color: var(--pb-text-muted); font-size: clamp(.95rem, 1.4vw, 1.06rem); line-height: 1.62; }
 
 .pb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .85rem 1.5rem; margin-top: 1.9rem; }
 .pb-cta {
@@ -1079,10 +1110,21 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   transition: transform .25s cubic-bezier(.22, 1, .36, 1), background-color .25s ease;
 }
 .pb-cta:hover { background: var(--pb-accent-deep); transform: translateY(-2px); }
-.pb-cta:focus-visible { outline: 3px solid var(--pb-ink); outline-offset: 3px; }
-.pb-secondary { color: var(--pb-ink); font-size: .89rem; font-weight: 600; text-decoration: none; border-bottom: 1.5px solid var(--pb-accent); padding-bottom: .12rem; }
-.pb-secondary:hover { color: var(--pb-accent-deep); border-bottom-color: var(--pb-ink); }
-.pb-fineprint { margin: 1.15rem 0 0; color: var(--pb-text-muted); font-size: .8rem; }
+/* The underline is drawn on the text rather than on the box, so the box is
+   free to grow into a finger-sized target without the rule drifting away. */
+.pb-secondary {
+  display: inline-flex;
+  align-items: center;
+  color: var(--pb-ink);
+  font-size: .89rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--pb-accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: .3em;
+}
+.pb-secondary:hover { color: var(--pb-accent-deep); text-decoration-color: var(--pb-ink); }
+.pb-fineprint { margin: 1.15rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; }
 
 .pb-proof {
   border: 1px solid var(--pb-line);
@@ -1094,16 +1136,18 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 .pb-proof-rows { display: grid; gap: .55rem; margin: 0; }
 .pb-proof-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed var(--pb-line); padding-bottom: .5rem; }
-.pb-proof-rows dt { color: var(--pb-text-muted); font-size: .74rem; }
+.pb-proof-rows dt { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-proof-rows dd { margin: 0; font-size: .82rem; font-weight: 700; text-align: right; }
 .pb-said { color: var(--pb-text-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
 .pb-failed { color: var(--pb-amber); }
-.pb-proof-note { margin: .85rem 0 0; color: var(--pb-text-muted); font-size: .78rem; line-height: 1.55; }
-.pb-proof-after { display: flex; align-items: center; gap: .45rem; margin: .8rem 0 0; color: var(--pb-green); font-size: .76rem; font-weight: 700; }
+.pb-proof-note { margin: .85rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.55; }
+.pb-proof-after { display: flex; align-items: center; gap: .45rem; margin: .8rem 0 0; color: var(--pb-green); font-size: .8125rem; font-weight: 700; }
 .pb-dot-green { width: .48rem; height: .48rem; border-radius: 50%; background: var(--pb-green); box-shadow: 0 0 0 .22rem rgba(31, 122, 92, .14); }
 
 .pb-code { font-family: var(--pb-mono); }
-.pb-code-inline { color: var(--pb-accent-deep); font-size: .93em; overflow-wrap: anywhere; }
+/* Inline code keeps the size of the sentence it sits in, so a name in the
+   middle of a paragraph never drops below the page's reading floor. */
+.pb-code-inline { color: var(--pb-accent-deep); overflow-wrap: anywhere; }
 
 .pb-loop, .pb-tools { width: var(--pb-measure); margin-inline: auto; padding: clamp(2.25rem, 5vw, 3.75rem) var(--pb-gutter); }
 .pb-loop { border-top: 1px solid var(--pb-line); }
@@ -1129,22 +1173,22 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   font-size: .74rem;
 }
 .pb-step.is-warning { border-top-color: var(--pb-amber); }
-.pb-step.is-warning .pb-step-marker { border-color: var(--pb-amber); background: var(--pb-amber); color: #2f1f00; }
+.pb-step.is-warning .pb-step-marker { border-color: var(--pb-amber); background: var(--pb-amber); color: var(--pb-text-on-ink); }
 .pb-step.is-verified { border-top-color: var(--pb-green); }
 .pb-step.is-verified .pb-step-marker { border-color: var(--pb-green); background: var(--pb-green); }
 .pb-step h3 { margin: 0 0 .45rem; font-size: .93rem; font-weight: 700; line-height: 1.28; letter-spacing: -.015em; }
-.pb-step p { margin: 0; color: var(--pb-text-muted); font-size: .81rem; line-height: 1.55; }
+.pb-step p { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.55; }
 
 .pb-tool-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
 .pb-tool { border: 1px solid var(--pb-line); border-radius: .9rem; padding: 1.1rem 1.15rem; background: var(--pb-surface); }
 .pb-tool h3 { margin: 0 0 .55rem; color: var(--pb-accent-deep); font-size: .84rem; font-weight: 700; overflow-wrap: anywhere; }
-.pb-tool-desc { margin: 0; color: var(--pb-text-muted); font-size: .81rem; line-height: 1.6; }
+.pb-tool-desc { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.6; }
 .pb-tool.is-working { border-color: #e6cfa4; background: linear-gradient(180deg, #fffaee 0%, var(--pb-surface) 60%); }
-.pb-swap { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem; margin: .85rem 0 0; font-family: var(--pb-mono); font-size: .74rem; }
+.pb-swap { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem; margin: .85rem 0 0; font-family: var(--pb-mono); font-size: .8125rem; }
 .pb-swap-old { color: var(--pb-text-muted); text-decoration: line-through; }
 .pb-swap-arrow { color: var(--pb-amber); }
 .pb-swap-new { color: var(--pb-green); font-weight: 700; }
-.pb-swap-note { font-family: var(--pb-sans); font-size: .72rem; color: var(--pb-text-muted); }
+.pb-swap-note { font-family: var(--pb-sans); font-size: .8125rem; color: var(--pb-text-muted); }
 
 /* The second dark anchor. The argument for building this in the page at all
    gets the weight of a full band rather than a paragraph in a card. */
@@ -1158,7 +1202,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-why p { margin: 0; color: #c7c1b4; font-size: clamp(.92rem, 1.3vw, 1.02rem); line-height: 1.68; }
 .pb-cta-light { margin-top: 1.9rem; background: var(--pb-gold); color: #2f2405; box-shadow: none; }
 .pb-cta-light:hover { background: #f7dc93; }
-.pb-cta-light:focus-visible { outline-color: var(--pb-gold); }
 
 .pb-footer {
   display: flex;
@@ -1170,10 +1213,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   margin-inline: auto;
   padding: 1.6rem var(--pb-gutter) 2.4rem;
   color: var(--pb-text-muted);
-  font-size: .78rem;
+  font-size: .8125rem;
 }
 .pb-footer p { margin: 0; }
-.pb-footer a { color: var(--pb-ink); font-family: var(--pb-mono); font-size: .74rem; text-decoration: none; border-bottom: 1px solid var(--pb-line); }
+.pb-footer a { color: var(--pb-ink); font-family: var(--pb-mono); font-size: .8125rem; text-decoration: none; border-bottom: 1px solid var(--pb-line); }
 .pb-footer a:hover { border-bottom-color: var(--pb-accent); }
 
 /* The not-found page: the same paper, one way back. */
@@ -1196,7 +1239,11 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   to { opacity: 1; transform: none; }
 }
 
-@media (max-width: 60rem) {
+/* 64rem is a laptop, and it is where the hero's two columns and the five-across
+   step strip stop paying for themselves: the headline gets about ten characters
+   a line, and a step gets about 165px. Both give up their columns here rather
+   than holding on until the phone breakpoint. */
+@media (max-width: 64rem) {
   .pb-hero { grid-template-columns: minmax(0, 1fr); }
   .pb-proof { max-width: 30rem; }
   .pb-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem 1.35rem; }
@@ -1204,7 +1251,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 @media (max-width: 40rem) {
   .pb-band { padding-inline: var(--pb-gutter); }
-  .pb-band-nav { gap: .9rem; font-size: .76rem; }
+  .pb-band-nav { gap: .9rem; }
   .pb-headline { font-size: clamp(1.75rem, 8.5vw, 2.4rem); }
   .pb-actions { gap: .85rem 1rem; }
   .pb-cta { width: 100%; justify-content: center; }
@@ -1215,12 +1262,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .pb-step.is-warning { border-top: 0; border-left-color: var(--pb-amber); }
   .pb-step.is-verified { border-top: 0; border-left-color: var(--pb-green); }
   .pb-footer { flex-direction: column; align-items: flex-start; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pb-hero-copy > *, .pb-proof { animation: none; }
-  .pb-cta { transition: none; }
-  .pb-cta:hover { transform: none; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -1245,7 +1286,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 .patchbay-receipt-label { color: var(--pb-amber); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .patchbay-receipt code { color: var(--pb-text); font: var(--pb-fs-xs)/1.4 var(--pb-mono); overflow-wrap: anywhere; }
-.patchbay-receipt-note { color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.45; }
+.patchbay-receipt-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
 .patchbay-agent-steps { display: grid; gap: .35rem; margin: 0 0 var(--pb-space-3); padding: 0; list-style: none; }
 .patchbay-agent-step {
@@ -1261,7 +1302,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 .patchbay-agent-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pb-line-strong); }
 .patchbay-agent-label { color: var(--pb-text-muted); }
-.patchbay-agent-state { color: var(--pb-text-faint); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .02em; }
+.patchbay-agent-state { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .02em; }
 .patchbay-agent-step.is-working { background: linear-gradient(100deg, rgba(241, 199, 91, .3) 0%, rgba(111, 195, 161, .26) 100%); }
 .patchbay-agent-step.is-working .patchbay-agent-label { color: var(--pb-text); font-weight: 700; }
 .patchbay-agent-step.is-working .patchbay-agent-state { color: var(--pb-amber); }
@@ -1328,7 +1369,17 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   to { transform: rotate(360deg); }
 }
 
+/* Reduced motion, answered in one place. Every rule in this file that moves
+   something — the hero's rise, the ledger's landing, the verified sweep, the
+   spark's turn, the agent dot's beat, and the two hover lifts — is named here,
+   and what is left is either a plain fade or nothing at all. Colour is not
+   motion, so state changes still fade between tones. */
 @media (prefers-reduced-motion: reduce) {
+  .patchbay-button { transition-property: background-color, color, border-color; }
+  .patchbay-button:hover,
+  .pb-cta:hover { transform: none; }
+  .pb-cta { transition-property: background-color; }
+  .pb-hero-copy > *, .pb-proof { animation: none; }
   .patchbay-timeline-entry { animation: pb-fade-in 220ms ease both; }
   .patchbay-mark.is-verified { animation: none; }
   .patchbay-agent-step.is-working .patchbay-agent-dot { animation: pb-fade-pulse 1.8s ease-in-out infinite; }
@@ -1426,6 +1477,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-receipt-mark {
   margin: 0;
   color: var(--pb-green);
-  font-size: .72rem;
+  font-size: var(--pb-fs-xs);
   font-weight: 700;
 }

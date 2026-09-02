@@ -54,6 +54,19 @@ defmodule PatchbayWeb.LandingControllerTest do
     assert html =~ ~r{A site that repairs its own agent tool\s*· Patchbay</title>}
   end
 
+  test "the first thing on any page is a link to the content", %{conn: conn} do
+    # Both pages are asserted because the link belongs to the shared root
+    # layout: if it only showed up on the front page it would be the wrong fix.
+    for path <- [~p"/", ~p"/sites"] do
+      html = conn |> get(path) |> html_response(200)
+
+      assert html =~
+               ~r{<body>\s*<a id="pb-skip-link" class="pb-skip-link" href="#pb-content">\s*Skip to the main content\s*</a>}
+
+      assert html =~ ~s{<div id="pb-content" tabindex="-1">}
+    end
+  end
+
   test "robots.txt is served and lets crawlers in", %{conn: conn} do
     conn = get(conn, "/robots.txt")
 
