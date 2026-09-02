@@ -204,7 +204,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     assert_reply(view, %{
       "status" => "repair_requested",
-      "human_approval_required" => true,
+      "tool_can_publish" => false,
       "detail" => detail
     })
 
@@ -216,7 +216,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       "browser_session_id" => session.id
     })
 
-    assert_reply(view, %{"status" => "already_in_progress", "human_approval_required" => true})
+    assert_reply(view, %{"status" => "already_in_progress", "tool_can_publish" => false})
 
     html = render_async(view, 2_000)
     assert html =~ "CONTRACT DIFF"
@@ -228,7 +228,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     # The proposal is waiting for a person, so a further request only says so.
     render_hook(view, "webmcp_request_repair", %{"room_id" => room.id})
-    assert_reply(view, %{"status" => "proposal_ready", "human_approval_required" => true})
+    assert_reply(view, %{"status" => "proposal_ready", "tool_can_publish" => false})
 
     assert Domain.get_room_by_id!(room.id).desired_tool_generation == 1
   end
@@ -245,7 +245,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       "browser_session_id" => session.id
     })
 
-    assert_reply(view, %{"status" => "no_failed_invocation", "human_approval_required" => true})
+    assert_reply(view, %{"status" => "no_failed_invocation", "tool_can_publish" => false})
 
     assert Domain.get_room_by_id!(room.id).status == :ready
     assert Domain.list_repair_proposals!(query: [filter: [room_id: room.id]]) == []

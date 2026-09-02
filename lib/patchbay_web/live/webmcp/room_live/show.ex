@@ -388,7 +388,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
              %{
                "status" => to_string(status),
                "detail" => detail,
-               "human_approval_required" => true
+               "tool_can_publish" => false
              }, socket}
         end
 

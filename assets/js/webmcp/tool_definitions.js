@@ -91,14 +91,15 @@ export function buildPermanentTools(hook) {
 
 /**
  * A repair request is only ever a request: whatever the room answers, the
- * result says that a person still has to approve the replacement.
+ * result says this tool cannot publish a replacement. Publication happens
+ * by the room's owner or by the Patchbay Agent, never from a tool call.
  */
 function repairRequestResult(reply) {
   if (REPAIR_REQUEST_STATUSES.includes(reply?.status)) {
     return boundedJson({
       status: reply.status,
       detail: String(reply.detail ?? "").slice(0, 300),
-      human_approval_required: true,
+      tool_can_publish: false,
     });
   }
   return repairRequestProblem(reply?.error ?? "the room did not answer the repair request");
@@ -107,7 +108,7 @@ function repairRequestResult(reply) {
 function repairRequestProblem(detail) {
   return boundedJson({
     error: String(detail).slice(0, 300),
-    human_approval_required: true,
+    tool_can_publish: false,
   });
 }
 

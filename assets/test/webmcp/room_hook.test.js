@@ -164,7 +164,7 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options =
         reply = options.repairReply ?? {
           status: "repair_requested",
           detail: "Patchbay is working out a repair.",
-          human_approval_required: true,
+          tool_can_publish: false,
         };
       } else if (event === "webmcp_poststate_observed") {
         reply = options.postStateReply ?? {effective_status: "verified_success"};
@@ -1178,7 +1178,7 @@ test("the repair request tool asks the room and can only ask", async () => {
 
   const result = JSON.parse(await registered.execute({}));
   assert.equal(result.status, "repair_requested");
-  assert.equal(result.human_approval_required, true);
+  assert.equal(result.tool_can_publish, false);
 
   const asked = [...value.events].reverse().find(event => event.event === "webmcp_request_repair");
   assert.equal(asked.payload.room_id, "repair-request-room");
@@ -1206,7 +1206,7 @@ test("a repair request reports the room's answer and never claims approval", asy
 
   for (const status of statuses) {
     const value = setup(`repair-status-${status}`, {
-      repairReply: {status, detail: `detail for ${status}`, human_approval_required: true},
+      repairReply: {status, detail: `detail for ${status}`, tool_can_publish: false},
     });
     await PatchbayWebMCP.mounted.call(value.hook);
 
@@ -1215,7 +1215,7 @@ test("a repair request reports the room's answer and never claims approval", asy
     );
     assert.equal(result.status, status);
     assert.equal(result.detail, `detail for ${status}`);
-    assert.equal(result.human_approval_required, true);
+    assert.equal(result.tool_can_publish, false);
   }
 
   const refused = setup("repair-refused-room", {
@@ -1227,5 +1227,5 @@ test("a repair request reports the room's answer and never claims approval", asy
   );
   assert.equal(result.status, undefined);
   assert.match(result.error, /another room/);
-  assert.equal(result.human_approval_required, true);
+  assert.equal(result.tool_can_publish, false);
 });
