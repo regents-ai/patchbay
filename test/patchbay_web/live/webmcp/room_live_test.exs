@@ -80,6 +80,130 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert :binary.match(html, "patchbay-guide") < :binary.match(html, "patchbay-goal-title")
   end
 
+  test "the prompt strip marks the step the room is on and names the tool it offers now", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert has_element?(view, "li[aria-current=\"step\"] #patchbay-prompt-uplift")
+    assert has_element?(view, "li.patchbay-prompt-chip.is-waiting #patchbay-prompt-repair")
+    assert has_element?(view, "li.patchbay-prompt-chip.is-waiting #patchbay-prompt-retry")
+
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    assert Domain.get_room_by_id!(room.id).status == :failed
+    assert has_element?(view, "li[aria-current=\"step\"] #patchbay-prompt-repair")
+    assert has_element?(view, "li.patchbay-prompt-chip.is-done #patchbay-prompt-uplift")
+
+    render_click(view, "request_repair")
+    render_async(view, 2_000)
+    render_click(view, "approve_repair")
+
+    v2 = desired_revision(Domain.get_room_by_id!(room.id))
+
+    assert v2.generation == 2
+    assert has_element?(view, "li[aria-current=\"step\"] #patchbay-prompt-retry")
+
+    # A published replacement is the one state where Retry uplift is live, so it
+    # carries no explanation.
+    assert has_element?(view, "#patchbay-retry-button")
+    refute has_element?(view, "#patchbay-retry-disabled")
+
+    # After the hot-swap the first prompt calls the tool that is there now.
+    assert view |> element("#patchbay-prompt-uplift") |> render() =~
+             "Call #{v2.name} with instructions: make the greeting warmer."
+  end
+
+  test "the room and the board say a tool did not work in the same words", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+    html = render(view)
+
+    assert html =~ "Did not work"
+    assert html =~ "Did not work · CANDIDATE_EMPTY"
+    refute html =~ "Verified Failure"
+    refute html =~ "Failed postcondition"
+  end
+
+  test "the browser's own capability line sits beside the registry card", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert has_element?(view, ".patchbay-registry-summary [id^=patchbay-webmcp-]")
+    refute has_element?(view, ".patchbay-footer [id^=patchbay-webmcp-]")
+  end
+
+  test "the room carries its own connection-lost banner", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert has_element?(
+             view,
+             "#patchbay-connection-lost[hidden]",
+             "Connection lost, reconnecting"
+           )
+  end
+
+  test "resetting the demo asks before it throws the room away", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    view |> element("#patchbay-reset") |> render_click()
+
+    assert has_element?(view, "#patchbay-reset-confirmed")
+    assert Domain.get_room_by_id!(room.id).status == :failed
+
+    view |> element("#patchbay-reset-cancel") |> render_click()
+
+    assert has_element?(view, "#patchbay-reset")
+    refute has_element?(view, "#patchbay-reset-confirmed")
+    assert Domain.get_room_by_id!(room.id).status == :failed
+
+    view |> element("#patchbay-reset") |> render_click()
+    view |> element("#patchbay-reset-confirmed") |> render_click()
+
+    assert Domain.get_room_by_id!(room.id).status == :ready
+    refute has_element?(view, "#patchbay-reset-confirmed")
+  end
+
+  test "every empty card names the prompt that fills it", %{conn: conn, room: room} do
+    {:ok, _view, html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert html =~ "Send prompt 1, &quot;Ask for the uplift&quot;, and this fills"
+    assert html =~ "Nothing to repair yet."
+    assert html =~ "Nothing has happened in this room yet."
+    assert html =~ "Send prompt 2, &quot;Report the tool&quot;"
+    refute html =~ "seeded failure"
+  end
+
+  test "timeline entries carry a machine timestamp for the client to word", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    event =
+      Domain.list_room_events!(query: [filter: [room_id: room.id], sort: [sequence: :asc]])
+      |> List.first()
+
+    assert has_element?(
+             view,
+             "#patchbay-timeline-when-#{event.id}[phx-hook=\"PatchbayRelativeTime\"][datetime=\"#{DateTime.to_iso8601(event.inserted_at)}\"]"
+           )
+
+    assert has_element?(view, ".patchbay-timeline-sequence", "#1")
+  end
+
   test "names the active tool and discloses that the Source Skill is sent to OpenAI", %{
     conn: conn,
     room: room
@@ -707,6 +831,16 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            )
 
     assert Domain.get_room_by_id!(room.id).status == :verified
+
+    # Once the goal is proved there is nothing left to retry, and the button
+    # says so rather than sitting greyed out without a reason.
+    assert has_element?(view, "#patchbay-retry-button[disabled]")
+
+    assert has_element?(
+             view,
+             "#patchbay-retry-disabled",
+             "The retry already ran and this page proved it."
+           )
 
     html = render_click(view, "reset_demo")
     assert html =~ "Generation 1"

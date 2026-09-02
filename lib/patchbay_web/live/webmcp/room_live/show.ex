@@ -65,6 +65,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
        forum_session_id: Map.get(session, "forum_session_id"),
        error_message: nil,
        upload_error: nil,
+       confirming_reset: false,
        pending_operation: nil,
        repair_token: nil,
        invocation_epoch: room.invocation_epoch,
@@ -102,7 +103,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
       socket =
         socket
-        |> refresh(browser_session)
+        |> refresh_observation(browser_session)
         |> assign(invocation_epoch: room.invocation_epoch)
         |> push_desired_toolset()
         |> assign(error_message: nil)
@@ -143,7 +144,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
       socket =
         socket
-        |> refresh(browser_session)
+        |> refresh_observation(browser_session)
         |> assign(error_message: nil)
 
       {:reply, %{"ok" => true}, socket}
@@ -173,7 +174,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
       socket =
         socket
-        |> refresh(browser_session)
+        |> refresh_observation(browser_session)
         |> assign(error_message: nil)
 
       {:reply, %{"ok" => true}, socket}
@@ -494,6 +495,19 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     else
       {:error, message} -> {:noreply, assign(socket, error_message: message)}
     end
+  end
+
+  # Reset throws away the room's whole record, so it is asked for in the page
+  # rather than in a browser dialog: the button becomes the question, and only
+  # the second click resets.
+  @impl true
+  def handle_event("ask_reset_demo", _params, socket) do
+    {:noreply, assign(socket, confirming_reset: true)}
+  end
+
+  @impl true
+  def handle_event("keep_room", _params, socket) do
+    {:noreply, assign(socket, confirming_reset: false)}
   end
 
   @impl true
@@ -830,20 +844,18 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     do: {:error, "That file could not be read. Try uploading it again."}
 
   defp assigns_for(%Room{} = room, browser_session) do
-    invocation = latest_invocation(room)
-    proposal = active_repair_proposal(room)
+    room
+    |> observed_assigns(browser_session)
+    |> Map.merge(evidence_assigns(room))
+  end
 
+  # What a browser observation can move: the room row, the session it came from,
+  # and the one timeline entry it appended.
+  defp observed_assigns(%Room{} = room, browser_session) do
     %{
       room: room,
       browser_session: browser_session,
-      invocation: invocation,
-      invocation_revision: invocation_revision(invocation),
-      active_tool: active_tool(room),
-      proposal: proposal,
-      proposal_source_revision: proposal_revision(proposal, room, :source_tool_revision_id),
-      proposal_candidate_revision: proposal_revision(proposal, room, :candidate_tool_revision_id),
       timeline: RoomTimeline.list!(room.id),
-      room_reports: Board.reports_for_room(room.id),
       source_bytes: Digest.artifact_size(room.source_markdown),
       candidate_bytes:
         if(is_binary(room.candidate_markdown),
@@ -853,10 +865,33 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     }
   end
 
+  # The call, the repair and the board. None of these can change because a
+  # browser reported which tools it is offering.
+  defp evidence_assigns(%Room{} = room) do
+    invocation = latest_invocation(room)
+    proposal = active_repair_proposal(room)
+
+    %{
+      invocation: invocation,
+      invocation_revision: invocation_revision(invocation),
+      active_tool: active_tool(room),
+      proposal: proposal,
+      proposal_source_revision: proposal_revision(proposal, room, :source_tool_revision_id),
+      proposal_candidate_revision: proposal_revision(proposal, room, :candidate_tool_revision_id),
+      room_reports: Board.reports_for_room(room.id)
+    }
+  end
+
   defp refresh(socket, browser_session) do
     room = Domain.get_room_by_id!(socket.assigns.room.id)
-    browser_session = reload_browser_session(browser_session)
-    assign(socket, assigns_for(room, browser_session))
+    assign(socket, assigns_for(room, reload_browser_session(browser_session)))
+  end
+
+  # The registry pushes arrive on every toolchange, so they re-read only what
+  # they can have changed instead of the whole page.
+  defp refresh_observation(socket, browser_session) do
+    room = Domain.get_room_by_id!(socket.assigns.room.id)
+    assign(socket, observed_assigns(room, reload_browser_session(browser_session)))
   end
 
   defp reload_browser_session(nil), do: nil
@@ -1285,7 +1320,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
       socket =
         socket
-        |> refresh(browser_session)
+        |> refresh_observation(browser_session)
         |> assign(error_message: nil)
 
       {:reply, %{"ok" => true}, socket}
@@ -1382,6 +1417,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     |> assign(
       error_message: nil,
       upload_error: nil,
+      confirming_reset: false,
       pending_operation: nil,
       repair_token: nil,
       invocation_epoch: epoch

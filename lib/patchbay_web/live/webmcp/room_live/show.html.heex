@@ -1,4 +1,15 @@
 <main class="patchbay-shell" id="patchbay-room" data-room-slug={@room.slug}>
+  <p
+    id="patchbay-connection-lost"
+    class="patchbay-connection-lost"
+    role="status"
+    hidden
+    phx-disconnected={JS.remove_attribute("hidden")}
+    phx-connected={JS.set_attribute({"hidden", ""})}
+  >
+    Connection lost, reconnecting
+  </p>
+
   <header class="patchbay-topbar">
     <div class="patchbay-brand">
       <span
@@ -35,11 +46,17 @@
     </div>
 
     <ol class="patchbay-guide-prompts">
-      <li class="patchbay-prompt-chip">
+      <li
+        class={"patchbay-prompt-chip " <> step_state(@room, 1)}
+        aria-current={if(current_step?(@room, 1), do: "step", else: false)}
+      >
         <span class="patchbay-step-number" aria-hidden="true">1</span>
         <div class="patchbay-prompt-body">
-          <label for="patchbay-prompt-uplift">Ask for the uplift</label>
-          <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call uplift_current_skill_v1 with instructions: make the greeting warmer.</textarea>
+          <label for="patchbay-prompt-uplift">
+            Ask for the uplift
+            <span :if={current_step?(@room, 1)} class="patchbay-step-now">Send this one now</span>
+          </label>
+          <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call {active_tool_name(@active_tool)} with instructions: make the greeting warmer.</textarea>
         </div>
         <button
           id="patchbay-copy-uplift"
@@ -50,10 +67,16 @@
           aria-live="polite"
         >Copy</button>
       </li>
-      <li class="patchbay-prompt-chip">
+      <li
+        class={"patchbay-prompt-chip " <> step_state(@room, 2)}
+        aria-current={if(current_step?(@room, 2), do: "step", else: false)}
+      >
         <span class="patchbay-step-number" aria-hidden="true">2</span>
         <div class="patchbay-prompt-body">
-          <label for="patchbay-prompt-repair">Report the tool</label>
+          <label for="patchbay-prompt-repair">
+            Report the tool
+            <span :if={current_step?(@room, 2)} class="patchbay-step-now">Send this one now</span>
+          </label>
           <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="3" readonly>That tool reported success but changed nothing on the page. Call report_tool_problem with receipt set to the patchbay_receipt value from that result; that is all it needs.</textarea>
         </div>
         <button
@@ -65,10 +88,16 @@
           aria-live="polite"
         >Copy</button>
       </li>
-      <li class="patchbay-prompt-chip">
+      <li
+        class={"patchbay-prompt-chip " <> step_state(@room, 3)}
+        aria-current={if(current_step?(@room, 3), do: "step", else: false)}
+      >
         <span class="patchbay-step-number" aria-hidden="true">3</span>
         <div class="patchbay-prompt-body">
-          <label for="patchbay-prompt-retry">Once the tool is replaced</label>
+          <label for="patchbay-prompt-retry">
+            Once the tool is replaced
+            <span :if={current_step?(@room, 3)} class="patchbay-step-now">Send this one now</span>
+          </label>
           <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
         </div>
         <button
@@ -105,17 +134,32 @@
       </p>
     </div>
     <div class="patchbay-registry-summary" aria-label="Browser registry status">
-      <span class={"patchbay-status-dot " <> if(@browser_session && @browser_session.webmcp_supported, do: "is-live", else: "")}></span>
-      <div>
-        <strong>{if(@browser_session && @browser_session.webmcp_supported,
-          do: "WebMCP connected",
-          else: "Waiting for browser"
-        )}</strong>
-        <span>
-          Desired G{@room.desired_tool_generation} · Observed {observed_generation(
-            @browser_session
-          )}
-        </span>
+      <div class="patchbay-registry-head">
+        <span class={"patchbay-status-dot " <> if(@browser_session && @browser_session.webmcp_supported, do: "is-live", else: "")}></span>
+        <div>
+          <strong>{if(@browser_session && @browser_session.webmcp_supported,
+            do: "WebMCP connected",
+            else: "Waiting for browser"
+          )}</strong>
+          <span>
+            Desired G{@room.desired_tool_generation} · Observed {observed_generation(
+              @browser_session
+            )}
+          </span>
+        </div>
+      </div>
+      <%!-- The island writes this line itself, so a browser that cannot offer
+      tools says why here instead of leaving the card waiting forever. --%>
+      <div
+        id={"patchbay-webmcp-#{@room.id}"}
+        class="patchbay-capability-line"
+        phx-hook="PatchbayWebMCP"
+        phx-update="ignore"
+        data-room-id={@room.id}
+        data-webmcp-status="connecting"
+        aria-live="polite"
+      >
+        Checking this browser for WebMCP…
       </div>
     </div>
   </section>
@@ -305,12 +349,7 @@
           <strong class={"patchbay-badge " <> invocation_status_class(@invocation.effective_status)}>
             {status_label(@invocation.effective_status)}
           </strong>
-          <span class="patchbay-score-note">
-            {if(@invocation.failure_code,
-              do: "Failed postcondition #{@invocation.failure_code}",
-              else: "Verified against what this page was showing"
-            )}
-          </span>
+          <span class="patchbay-score-note">{page_verdict_note(@invocation)}</span>
         </div>
       </div>
 
@@ -358,7 +397,7 @@
       </div>
 
       <p :if={!@invocation} class="patchbay-empty-state">
-        Invoke the active tool from the browser agent to capture evidence here.
+        Nothing has been called here yet. Send prompt 1, "Ask for the uplift", and this fills with what the tool said next to what the page showed.
       </p>
 
       <div
@@ -519,7 +558,7 @@
         :if={!@proposal && @room.status != :failed && !agent_at_work?(@room, @proposal)}
         class="patchbay-empty-state"
       >
-        A repair card appears after Patchbay proves the seeded failure.
+        Nothing to repair yet. Send prompt 1, "Ask for the uplift"; the moment the tool claims a success this page cannot see, the repair starts here.
       </p>
     </article>
   </section>
@@ -539,13 +578,25 @@
         Ask the same browser agent to inspect the current tools, then retry without navigating away.
       </p>
     </div>
-    <button
-      id="patchbay-retry-button"
-      class="patchbay-button"
-      type="button"
-      phx-click="retry_original_goal"
-      disabled={@room.status != :repaired}
-    >Retry uplift</button>
+    <div class="patchbay-retry-actions">
+      <button
+        id="patchbay-retry-button"
+        class="patchbay-button"
+        type="button"
+        phx-click="retry_original_goal"
+        disabled={@room.status != :repaired}
+        aria-describedby={
+          if(@room.status != :repaired, do: "patchbay-retry-disabled", else: false)
+        }
+      >Retry uplift</button>
+      <p
+        :if={@room.status != :repaired}
+        id="patchbay-retry-disabled"
+        class="patchbay-retry-note"
+      >
+        {retry_disabled_reason(@room)}
+      </p>
+    </div>
   </section>
 
   <section
@@ -568,14 +619,12 @@
           <span>{timeline_detail(event)}</span>
         </div>
         <div class="patchbay-timeline-when">
-          <time datetime={DateTime.to_iso8601(event.inserted_at)}>{relative_time(
-            event.inserted_at
-          )}</time>
+          <.moment id={"patchbay-timeline-when-#{event.id}"} at={event.inserted_at} />
           <span class="patchbay-timeline-sequence">#{event.sequence}</span>
         </div>
       </li>
       <li :if={@timeline == []} class="patchbay-empty-state">
-        The room timeline is ready for its first browser observation.
+        Nothing has happened in this room yet. Send prompt 1, "Ask for the uplift", and every step lands here in order.
       </li>
     </ol>
   </section>
@@ -604,7 +653,7 @@
           </span>
           <.nameplate session_id={report.browser_session_id} />
           <a class="patchbay-board-facts" href={~p"/reports/#{report.id}"}>
-            {relative_time(report.inserted_at)}
+            <.moment id={"patchbay-report-when-#{report.id}"} at={report.inserted_at} />
           </a>
         </div>
         <p :if={report.failure_code} class="patchbay-board-facts">
@@ -614,27 +663,20 @@
         <ol :if={report.replies != []} class="patchbay-reply-list">
           <li :for={reply <- report.replies}>
             <.nameplate session_id={reply.browser_session_id} />
-            <span class="patchbay-board-facts">{relative_time(reply.inserted_at)}</span>
+            <span class="patchbay-board-facts">
+              <.moment id={"patchbay-reply-when-#{reply.id}"} at={reply.inserted_at} />
+            </span>
             <p :if={reply.note} class="patchbay-board-text">{reply.note}</p>
           </li>
         </ol>
       </li>
       <li :if={@room_reports == []} class="patchbay-empty-state">
-        No agent has reported a call from this room yet.
+        No agent has reported a call from this room yet. Send prompt 2, "Report the tool", and the report and Patchbay's own answer to it appear here.
       </li>
     </ol>
   </section>
 
   <footer class="patchbay-footer">
-    <div
-      id={"patchbay-webmcp-#{@room.id}"}
-      phx-hook="PatchbayWebMCP"
-      phx-update="ignore"
-      data-room-id={@room.id}
-      data-webmcp-status="connecting"
-      aria-live="polite"
-    >
-    </div>
     <div>
       <p class="patchbay-kicker">ROOM STATE</p>
       <p>
@@ -647,11 +689,39 @@
       <p class="patchbay-kicker">ROOM ID</p>
       <p><code>{@room.id}</code></p>
     </div>
-    <button
-      id="patchbay-reset"
-      class="patchbay-button patchbay-button-danger"
-      type="button"
-      phx-click="reset_demo"
-    >Reset demo</button>
+    <div class="patchbay-reset">
+      <button
+        :if={!@confirming_reset}
+        id="patchbay-reset"
+        class="patchbay-button patchbay-button-danger"
+        type="button"
+        phx-click="ask_reset_demo"
+      >Reset demo</button>
+      <div
+        :if={@confirming_reset}
+        id="patchbay-reset-confirm"
+        class="patchbay-reset-confirm"
+        role="group"
+        aria-label="Reset demo"
+      >
+        <p>
+          This clears the candidate, the evidence and the timeline, and puts the room back on its first tool.
+        </p>
+        <div>
+          <button
+            id="patchbay-reset-cancel"
+            class="patchbay-button patchbay-button-quiet"
+            type="button"
+            phx-click="keep_room"
+          >Keep this room</button>
+          <button
+            id="patchbay-reset-confirmed"
+            class="patchbay-button patchbay-button-danger"
+            type="button"
+            phx-click="reset_demo"
+          >Reset demo</button>
+        </div>
+      </div>
+    </div>
   </footer>
 </main>

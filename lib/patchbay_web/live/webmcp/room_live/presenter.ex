@@ -4,18 +4,45 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   use Phoenix.Component
 
   alias Patchbay.Patchbay.{BrowserSession, Invocation, Room, RoomEvent}
+  alias PatchbayWeb.Forum.BoardHTML
 
   # Arguments, handler responses, and observed state all arrive from the browser,
   # so the rendered text is capped before it can reach the LiveView diff.
   @display_bytes 4_000
 
+  # The board and the room are describing the same thing when a tool claims a
+  # success the page never showed, so they say it with the same two words. The
+  # board owns the pair; these are the room's states that mean it.
+  @verdict_states %{
+    failed: :verified_failure,
+    verified_failure: :verified_failure,
+    verified_success: :verified_success
+  }
+
   def status_label(status) do
+    case Map.fetch(@verdict_states, status) do
+      {:ok, verdict} -> BoardHTML.verdict_label(verdict)
+      :error -> title_case(status)
+    end
+  end
+
+  defp title_case(status) do
     status
     |> status_key()
     |> String.replace("_", " ")
     |> String.split()
     |> Enum.map_join(" ", &String.capitalize/1)
   end
+
+  @doc """
+  What the page saw, with the machine code beside it. The words are the board's;
+  the code is what a report or a log entry carries.
+  """
+  def page_verdict_note(%Invocation{failure_code: nil}),
+    do: "Verified against what this page was showing"
+
+  def page_verdict_note(%Invocation{failure_code: code}),
+    do: "#{BoardHTML.verdict_label(:verified_failure)} · #{code}"
 
   def status_class(status) do
     case status_key(status) do
@@ -121,6 +148,52 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   defp publication_state(%Room{status: status}) when status in [:repaired, :verified], do: :done
   defp publication_state(_room), do: :waiting
 
+  @doc """
+  The tool the room is offering right now. The first prompt calls it by name, so
+  after a hot-swap the prompt names the replacement rather than the tool that is
+  gone.
+  """
+  def active_tool_name(%{name: name}) when is_binary(name), do: name
+  def active_tool_name(_), do: "the tool this room is offering"
+
+  # Which prompt the room is waiting on, read from the room's own status rather
+  # than from anything the page guesses. Four means all three are behind it.
+  @steps %{
+    ready: 1,
+    invoking: 1,
+    failed: 2,
+    diagnosing: 2,
+    repair_ready: 2,
+    awaiting_approval: 2,
+    publishing: 2,
+    repaired: 3,
+    retrying: 3,
+    verified: 4
+  }
+
+  @doc "Whether a numbered prompt is behind the room, in front of it, or the one to send now."
+  def step_state(%Room{status: status}, step) do
+    case Map.get(@steps, status) do
+      nil -> "is-waiting"
+      current when step < current -> "is-done"
+      ^step -> "is-current"
+      _ -> "is-waiting"
+    end
+  end
+
+  @doc "Whether this numbered prompt is the one the room is waiting on."
+  def current_step?(room, step), do: step_state(room, step) == "is-current"
+
+  @doc """
+  Why the Retry uplift button is off. The button only turns on once a
+  replacement tool is published and nothing has retried it yet.
+  """
+  def retry_disabled_reason(%Room{status: :verified}),
+    do: "The retry already ran and this page proved it. There is nothing left to retry."
+
+  def retry_disabled_reason(_room),
+    do: "No replacement tool is published yet. Approve the repair above and this turns on."
+
   @doc "Which part of the loop a timeline entry belongs to, for its dot colour."
   def event_class(kind) do
     case kind do
@@ -166,22 +239,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     end
   end
 
-  @verdicts %{
-    verified_success: "Worked",
-    verified_failure: "Did not work",
-    errored: "Errored",
-    unknown: "Unclear"
-  }
-
   @doc "What an agent said happened when it called a tool, in the board's words."
-  def report_verdict_label(verdict), do: Map.get(@verdicts, verdict, "Unclear")
+  defdelegate report_verdict_label(verdict), to: BoardHTML, as: :verdict_label
 
-  def report_verdict_class(:verified_success), do: "is-good"
-
-  def report_verdict_class(verdict) when verdict in [:verified_failure, :errored],
-    do: "is-bad"
-
-  def report_verdict_class(_verdict), do: "is-neutral"
+  defdelegate report_verdict_class(verdict), to: BoardHTML, as: :verdict_class
 
   def observed_generation(nil), do: "—"
   def observed_generation(%BrowserSession{observed_generation: nil}), do: "—"
@@ -349,18 +410,26 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   def timeline_detail(_), do: "Recorded in room evidence"
 
-  def relative_time(%DateTime{} = inserted_at) do
-    seconds = DateTime.diff(DateTime.utc_now(), inserted_at, :second)
+  attr(:id, :string, required: true)
+  attr(:at, DateTime, required: true)
 
-    cond do
-      seconds < 5 -> "just now"
-      seconds < 60 -> "#{seconds}s ago"
-      seconds < 3_600 -> "#{div(seconds, 60)}m ago"
-      true -> Calendar.strftime(inserted_at, "%H:%M:%S")
-    end
+  @doc """
+  When something happened.
+
+  The server renders the clock time it happened at, which never goes stale
+  between diffs, and the client turns it into "3 minutes ago" and keeps that
+  fresh on its own. Sequence numbers stay server-side; only the wording moves.
+  """
+  def moment(assigns) do
+    ~H"""
+    <time
+      id={@id}
+      datetime={DateTime.to_iso8601(@at)}
+      phx-hook="PatchbayRelativeTime"
+      phx-update="ignore"
+    >{Calendar.strftime(@at, "%H:%M UTC")}</time>
+    """
   end
-
-  def relative_time(_), do: ""
 
   def map_value(map, key, default) when is_map(map) do
     case Map.fetch(map, key) do

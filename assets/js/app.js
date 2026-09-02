@@ -25,6 +25,7 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.js"
 import {PatchbayCopy} from "./hooks/copy_prompt.js"
+import {PatchbayRelativeTime} from "./hooks/relative_time.js"
 import {registerForumTools} from "./webmcp/forum_tools.js"
 import {getModelContext} from "./webmcp/webmcpify.js"
 import topbar from "../vendor/topbar"
@@ -33,11 +34,13 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PatchbayWebMCP, PatchbayCopy},
+  hooks: {...colocatedHooks, PatchbayWebMCP, PatchbayCopy, PatchbayRelativeTime},
 })
 
-// Show progress bar on live navigation and form submits
-topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+// Show progress bar on live navigation and form submits, in Patchbay's own
+// accent rather than the generator's blue, so the bar belongs to the page.
+const accent = getComputedStyle(document.documentElement).getPropertyValue("--pb-accent").trim()
+topbar.config({barColors: {0: accent}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 

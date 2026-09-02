@@ -294,10 +294,28 @@
 .patchbay-state-label.is-empty { color: var(--pb-amber); background: var(--pb-amber-wash); border-color: #ecd08a; }
 
 .patchbay-muted { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); line-height: 1.55; }
-.patchbay-registry-summary { min-width: 13rem; gap: .65rem; padding: .72rem .9rem; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); background: var(--pb-surface); box-shadow: var(--pb-shadow-sm); }
+.patchbay-registry-summary { min-width: 13rem; max-width: 22rem; flex-direction: column; align-items: stretch; gap: .5rem; padding: .72rem .9rem; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); background: var(--pb-surface); box-shadow: var(--pb-shadow-sm); }
+.patchbay-registry-head { display: flex; align-items: center; gap: .65rem; }
 .patchbay-registry-summary strong, .patchbay-registry-summary span { display: block; }
 .patchbay-registry-summary strong { font-size: var(--pb-fs-sm); }
 .patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); margin-top: .16rem; }
+
+/* The island writes its own diagnosis here. It is the only place a browser
+   without WebMCP is told why the card above it is still waiting, so it is read
+   at normal size rather than hidden away for screen readers. */
+.patchbay-capability-line {
+  border-top: 1px dashed var(--pb-line);
+  padding-top: .45rem;
+  color: var(--pb-text-muted);
+  font-size: var(--pb-fs-micro);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.patchbay-capability-line[data-webmcp-status="connected"] { color: var(--pb-accent-deep); }
+.patchbay-capability-line[data-webmcp-status="drift"],
+.patchbay-capability-line[data-webmcp-status="unverified"],
+.patchbay-capability-line[data-webmcp-status="unsupported"] { color: var(--pb-amber); }
+.patchbay-capability-line[data-webmcp-status="error"] { color: var(--pb-red); }
 .patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: var(--pb-line-strong); }
 .patchbay-status-dot.is-live { background: var(--pb-accent); box-shadow: 0 0 0 .23rem rgba(14, 107, 99, .15); }
 
@@ -387,7 +405,6 @@
 .patchbay-footer strong { color: var(--pb-text); }
 .patchbay-footer code { font-size: var(--pb-fs-micro); }
 #patchbay-room-id code { overflow-wrap: anywhere; }
-.patchbay-footer > div:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* ---------------------------------------------------------------------------
@@ -396,6 +413,21 @@
    editor that carries the proof, the scoreboard that compares the tool's claim
    with what the page showed, the repair, and the ledger.
    ------------------------------------------------------------------------- */
+
+/* The room is one bare main with no flash group, so the socket's own state has
+   to be said here or it is never said at all. */
+.patchbay-connection-lost {
+  width: min(100%, 92rem);
+  margin: 0 auto .7rem;
+  border: 1px solid #ecd08a;
+  border-radius: var(--pb-radius);
+  padding: .5rem .8rem;
+  color: var(--pb-amber);
+  background: var(--pb-amber-wash);
+  font-size: var(--pb-fs-xs);
+  font-weight: 700;
+}
+.patchbay-connection-lost[hidden] { display: none; }
 
 #patchbay-room .patchbay-topbar {
   border: 0;
@@ -459,6 +491,23 @@
   font-size: var(--pb-fs-micro);
   font-weight: 800;
 }
+/* Which prompt to send now is read off the room's own status, so the strip
+   tracks the loop instead of asking a judge to keep their place in it. */
+.patchbay-prompt-chip.is-current { border-color: var(--pb-accent); box-shadow: 0 0 0 2px var(--pb-accent-wash); }
+.patchbay-prompt-chip.is-waiting { opacity: .62; }
+.patchbay-prompt-chip.is-done .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-surface-sunk); border: 1px solid var(--pb-line); }
+.patchbay-prompt-chip.is-waiting .patchbay-step-number { background: var(--pb-line-strong); }
+.patchbay-step-now {
+  margin-left: .4rem;
+  border-radius: 999px;
+  padding: .04rem .38rem;
+  color: var(--pb-accent-deep);
+  background: var(--pb-accent-wash);
+  font-size: var(--pb-fs-micro);
+  font-weight: 800;
+  text-transform: none;
+}
+
 .patchbay-prompt-body { min-width: 0; }
 .patchbay-prompt-body label { display: block; margin-bottom: .2rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; }
 .patchbay-prompt { display: block; width: 100%; border: 0; border-radius: .45rem; padding: .35rem .4rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-micro)/1.5 var(--pb-mono); resize: none; }
@@ -571,6 +620,13 @@
 .patchbay-retry-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-3); border-color: #a9d8bd; background: #f2faf5; }
 .patchbay-retry-card h3 { margin: .1rem 0 0; font-size: var(--pb-fs-md); }
 .patchbay-retry-card p { margin-bottom: 0; }
+.patchbay-retry-actions { display: grid; justify-items: end; gap: .35rem; max-width: 17rem; }
+.patchbay-retry-note { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); line-height: 1.5; text-align: right; }
+
+/* Reset throws the room's whole record away, so the button asks first. */
+.patchbay-reset-confirm { display: grid; gap: .45rem; justify-items: end; max-width: 21rem; }
+.patchbay-reset-confirm p { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); line-height: 1.5; text-align: right; }
+.patchbay-reset-confirm > div { display: flex; flex-wrap: wrap; gap: .4rem; }
 
 /* A real ledger: one rail, one dot per event, coloured by what kind of moment
    it was. */
