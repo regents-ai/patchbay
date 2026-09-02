@@ -646,6 +646,63 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     end)
   end
 
+  # The browser reports the page state after every call, whatever the handler
+  # did, so a call that failed before visible proof answers with that failure.
+  test "answers a post-state report for a call that already failed with the failure",
+       %{conn: conn, room: room} do
+    without_live_inference(fn ->
+      {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+      session = bootstrap(view, room)
+      revision = desired_revision(room)
+
+      render_hook(view, "webmcp_invocation_begin", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
+        "request_uuid" => Ash.UUID.generate(),
+        "tool_name" => revision.name,
+        "contract_sha256" => revision.contract_sha256,
+        "arguments" => %{"instructions" => "uplift without a model"}
+      })
+
+      invocation = latest_invocation(room)
+
+      render_hook(view, "webmcp_execute", %{
+        "invocation_id" => invocation.id,
+        "invocation_epoch" => invocation_epoch(view)
+      })
+
+      render_async(view, 2_000)
+      assert Domain.get_invocation!(invocation.id).effective_status == :errored
+
+      room = Domain.get_room_by_id!(room.id)
+
+      render_hook(view, "webmcp_poststate_observed", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "invocation_epoch" => invocation_epoch(view),
+        "invocation_id" => invocation.id,
+        "post_state" => %{
+          "ui_revision" => room.ui_revision,
+          "source" => %{"present" => true, "sha256" => room.source_sha256},
+          "candidate" => %{"present" => false, "sha256" => nil}
+        }
+      })
+
+      assert_reply(view, %{
+        "effective_status" => "errored",
+        "handler_reported_success" => false,
+        "handler_result" => %{"error" => handler_error},
+        "next_action" => next_action
+      })
+
+      assert handler_error =~ "model_generation_failed"
+      assert next_action =~ "call the tool again"
+      assert Process.alive?(view.pid)
+      assert render(view) =~ "Live inference failed"
+    end)
+  end
+
   # The health probe, the candidate generator, and this room all decide the
   # generation mode through Patchbay.Config, so flipping the switch has to move
   # all three of them together. The second half leaves the application setting

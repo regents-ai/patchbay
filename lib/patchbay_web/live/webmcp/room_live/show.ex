@@ -246,15 +246,19 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          :ok <- invocation_epoch_matches?(params, room),
          :ok <- invocation_epoch_matches?(invocation, room),
          {:ok, post_state} <- post_state(params) do
-      invocation = verify_once(invocation, post_state)
+      try do
+        invocation = verify_once(invocation, post_state)
 
-      socket =
-        socket
-        |> refresh(browser_session)
-        |> assign(error_message: nil)
+        socket =
+          socket
+          |> refresh(browser_session)
+          |> assign(error_message: nil)
 
-      {:reply, invocation_reply(invocation, socket.assigns.active_tool, socket.assigns.room),
-       socket}
+        {:reply, invocation_reply(invocation, socket.assigns.active_tool, socket.assigns.room),
+         socket}
+      rescue
+        error -> reply_error(socket, readable_error(error))
+      end
     else
       {:error, message} -> reply_error(socket, message)
     end
@@ -1145,9 +1149,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     do: {:reply, %{"error" => message}, assign(socket, error_message: message)}
 
   # A call is verified once. The browser's post-state report and the owner's
-  # button both land here, so asking again reads the answer already recorded.
+  # button both land here, so asking again reads the answer already recorded,
+  # and a call that ended before visible proof answers with the ending it has.
   defp verify_once(%Invocation{effective_status: status} = invocation, _post_state)
-       when status in [:verified_failure, :verified_success],
+       when status in [:verified_failure, :verified_success, :errored, :cancelled],
        do: invocation
 
   defp verify_once(invocation, post_state),

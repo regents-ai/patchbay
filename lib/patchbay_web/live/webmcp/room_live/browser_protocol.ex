@@ -244,6 +244,13 @@ defmodule PatchbayWeb.WebMCP.RoomLive.BrowserProtocol do
   defp invocation_next_action(%Invocation{effective_status: :verified_success}),
     do: "The goal is verified; nothing more to do."
 
+  defp invocation_next_action(%Invocation{effective_status: :errored}),
+    do:
+      "The tool failed before visible proof; call get_patchbay_room_state, then call the tool again."
+
+  defp invocation_next_action(%Invocation{effective_status: :cancelled}),
+    do: "The call was cancelled; call get_patchbay_room_state, then call the tool again."
+
   defp invocation_next_action(_invocation), do: "Wait for visible-state verification."
 
   @doc "One tool as the browser needs to register it."
