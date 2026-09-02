@@ -29,10 +29,10 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert policy =~ "connect-src 'self' ws://www.example.com wss://www.example.com"
   end
 
-  test "the landing redirect carries the same browser policy", %{conn: conn} do
+  test "the front door carries the same browser policy", %{conn: conn} do
     conn = get(conn, ~p"/")
 
-    assert conn.status == 302
+    assert conn.status == 200
     assert get_resp_header(conn, "permissions-policy") == ["tools=(self)"]
     assert [policy] = get_resp_header(conn, "content-security-policy")
     refute policy =~ "unsafe-eval"

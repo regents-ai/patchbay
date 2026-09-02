@@ -31,7 +31,7 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :browser
 
-    get "/", RoomController, :enter
+    get "/", LandingController, :show
   end
 
   scope "/webmcp", PatchbayWeb do

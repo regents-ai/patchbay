@@ -6,18 +6,12 @@ defmodule PatchbayWeb.ErrorHTML do
   """
   use PatchbayWeb, :html
 
-  # If you want to customize your error pages,
-  # uncomment the embed_templates/1 call below
-  # and add pages to the error directory:
-  #
-  #   * lib/patchbay_web/controllers/error_html/404.html.heex
-  #   * lib/patchbay_web/controllers/error_html/500.html.heex
-  #
-  # embed_templates "error_html/*"
+  # Error responses are rendered without a layout, so the not-found page below
+  # carries its own document.
+  embed_templates "error_html/*"
 
-  # The default is to render a plain text page based on
-  # the template name. For example, "404.html" becomes
-  # "Not Found".
+  # Every other status still renders a plain text page based on the template
+  # name. For example, "500.html" becomes "Internal Server Error".
   def render(template, _assigns) do
     Phoenix.Controller.status_message_from_template(template)
   end

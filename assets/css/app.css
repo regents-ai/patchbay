@@ -653,4 +653,257 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .patchbay-board .patchbay-topbar-meta { justify-content: flex-start; }
   .pb-site-grid { grid-template-columns: 1fr; }
   .pb-version-chips .pb-chip-facts:last-child { margin-left: 0; }
+
+   Landing page and the not-found page (ticket regent-6h5).
+   Provisional palette tokens: the canonical --pb-* set belongs at the top of
+   this file. They are scoped to the two page roots below so this block cannot
+   reach the room, and so it can be deleted in one edit once the canonical set
+   lands.
+   ========================================================================== */
+
+.pb-page,
+.pb-error {
+  --pb-ink: #14201f;
+  --pb-canvas: #f4f1ea;
+  --pb-surface: #fffdf8;
+  --pb-accent: #bf4a2d;
+  --pb-amber: #e0a325;
+  --pb-green: #1f7a5c;
+  --pb-gold: #f1c75b;
+  --pb-agent-gradient: linear-gradient(100deg, #f7e3a4 0%, #f1c75b 42%, #6fc3a1 100%);
+
+  --pb-accent-deep: #9e3b23;
+  --pb-amber-deep: #8c5a11;
+  --pb-line: #ddd6c7;
+  --pb-muted: #5b6a66;
+  --pb-ink-soft: #ece7dc;
+  --pb-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --pb-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --pb-gutter: clamp(1.15rem, 5vw, 4rem);
+  --pb-measure: min(100%, 70rem);
+
+  color: var(--pb-ink);
+  font-family: var(--pb-sans);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(241, 199, 91, .3), transparent 30rem),
+    radial-gradient(circle at 0% 62%, rgba(191, 74, 45, .07), transparent 34rem),
+    var(--pb-canvas);
+}
+
+.pb-page { min-height: 100vh; display: flex; flex-direction: column; }
+.pb-main { flex: 1; }
+
+/* The one dark band on the page. It gives the warm canvas a top edge to sit
+   against, so the important things below it are not floating on white. */
+.pb-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem var(--pb-gutter);
+  background: var(--pb-ink);
+  color: var(--pb-ink-soft);
+}
+.pb-brand { display: inline-flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none; }
+.pb-wordmark { font-size: 1.02rem; font-weight: 700; letter-spacing: -.015em; }
+.pb-mark { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: .5rem; color: var(--pb-gold); background: var(--pb-accent); }
+.pb-mark svg { width: 1.05rem; height: 1.05rem; }
+.pb-band-nav { display: flex; gap: 1.2rem; font-size: .8rem; }
+.pb-band-nav a { color: #c7c1b4; text-decoration: none; padding-block: .2rem; border-bottom: 1px solid transparent; }
+.pb-band-nav a:hover { color: var(--pb-ink-soft); border-bottom-color: var(--pb-gold); }
+
+.pb-kicker {
+  margin: 0 0 .7rem;
+  color: var(--pb-accent-deep);
+  font-family: var(--pb-sans);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.pb-kicker-quiet { color: var(--pb-muted); }
+.pb-kicker-light { color: var(--pb-gold); }
+
+/* Hero: the sentence on the left, and the evidence it is talking about on the
+   right, so the claim and the proof arrive together. */
+.pb-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  width: var(--pb-measure);
+  margin-inline: auto;
+  padding: clamp(2.75rem, 7vw, 5.5rem) var(--pb-gutter) clamp(2.5rem, 6vw, 4.5rem);
+}
+.pb-headline {
+  max-width: 15em;
+  margin: 0;
+  font-family: var(--pb-display);
+  font-size: clamp(2.05rem, 5.2vw, 3.85rem);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -.028em;
+  text-wrap: balance;
+}
+.pb-lede { max-width: 40em; margin: 1.35rem 0 0; color: var(--pb-muted); font-size: clamp(.95rem, 1.4vw, 1.06rem); line-height: 1.62; }
+
+.pb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .85rem 1.5rem; margin-top: 1.9rem; }
+.pb-cta {
+  display: inline-flex;
+  align-items: center;
+  border-radius: .6rem;
+  padding: .82rem 1.35rem;
+  color: #fffaf3;
+  background: var(--pb-accent);
+  font-size: .93rem;
+  font-weight: 700;
+  letter-spacing: -.005em;
+  text-decoration: none;
+  box-shadow: 0 .6rem 1.4rem rgba(158, 59, 35, .22);
+  transition: transform .25s cubic-bezier(.22, 1, .36, 1), background-color .25s ease;
+}
+.pb-cta:hover { background: var(--pb-accent-deep); transform: translateY(-2px); }
+.pb-cta:focus-visible { outline: 3px solid var(--pb-ink); outline-offset: 3px; }
+.pb-secondary { color: var(--pb-ink); font-size: .89rem; font-weight: 600; text-decoration: none; border-bottom: 1.5px solid var(--pb-accent); padding-bottom: .12rem; }
+.pb-secondary:hover { color: var(--pb-accent-deep); border-bottom-color: var(--pb-ink); }
+.pb-fineprint { margin: 1.15rem 0 0; color: var(--pb-muted); font-size: .8rem; }
+
+.pb-proof {
+  border: 1px solid var(--pb-line);
+  border-top: 3px solid var(--pb-amber);
+  border-radius: .9rem;
+  padding: 1.15rem 1.25rem 1.05rem;
+  background: var(--pb-surface);
+  box-shadow: 0 1.1rem 2.6rem rgba(20, 32, 31, .07);
+}
+.pb-proof-rows { display: grid; gap: .55rem; margin: 0; }
+.pb-proof-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed var(--pb-line); padding-bottom: .5rem; }
+.pb-proof-rows dt { color: var(--pb-muted); font-size: .74rem; }
+.pb-proof-rows dd { margin: 0; font-size: .82rem; font-weight: 700; text-align: right; }
+.pb-said { color: var(--pb-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.pb-failed { color: var(--pb-amber-deep); }
+.pb-proof-note { margin: .85rem 0 0; color: var(--pb-muted); font-size: .78rem; line-height: 1.55; }
+.pb-proof-after { display: flex; align-items: center; gap: .45rem; margin: .8rem 0 0; color: var(--pb-green); font-size: .76rem; font-weight: 700; }
+.pb-dot-green { width: .48rem; height: .48rem; border-radius: 50%; background: var(--pb-green); box-shadow: 0 0 0 .22rem rgba(31, 122, 92, .14); }
+
+.pb-code { font-family: var(--pb-mono); }
+.pb-code-inline { color: var(--pb-accent-deep); font-size: .93em; overflow-wrap: anywhere; }
+
+.pb-loop, .pb-tools { width: var(--pb-measure); margin-inline: auto; padding: clamp(2.25rem, 5vw, 3.75rem) var(--pb-gutter); }
+.pb-loop { border-top: 1px solid var(--pb-line); }
+.pb-section-head h2 { max-width: 22em; margin: 0 0 2rem; font-family: var(--pb-display); font-size: clamp(1.35rem, 2.6vw, 1.95rem); font-weight: 600; line-height: 1.18; letter-spacing: -.022em; }
+
+/* The five steps read as one strip: a single hairline runs behind them and the
+   markers sit on it, so it reads as a sequence rather than five cards. */
+.pb-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 1.35rem; margin: 0; padding: 0; list-style: none; }
+.pb-step { position: relative; border-top: 1px solid var(--pb-line); padding-top: 2.1rem; }
+.pb-step-marker {
+  position: absolute;
+  top: -.85rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 1px solid var(--pb-ink);
+  border-radius: 50%;
+  color: var(--pb-ink-soft);
+  background: var(--pb-ink);
+  font-family: var(--pb-mono);
+  font-size: .74rem;
+}
+.pb-step.is-warning { border-top-color: var(--pb-amber); }
+.pb-step.is-warning .pb-step-marker { border-color: var(--pb-amber); background: var(--pb-amber); color: #2f1f00; }
+.pb-step.is-verified { border-top-color: var(--pb-green); }
+.pb-step.is-verified .pb-step-marker { border-color: var(--pb-green); background: var(--pb-green); }
+.pb-step h3 { margin: 0 0 .45rem; font-size: .93rem; font-weight: 700; line-height: 1.28; letter-spacing: -.015em; }
+.pb-step p { margin: 0; color: var(--pb-muted); font-size: .81rem; line-height: 1.55; }
+
+.pb-tool-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.pb-tool { border: 1px solid var(--pb-line); border-radius: .9rem; padding: 1.1rem 1.15rem; background: var(--pb-surface); }
+.pb-tool h3 { margin: 0 0 .55rem; color: var(--pb-accent-deep); font-size: .84rem; font-weight: 700; overflow-wrap: anywhere; }
+.pb-tool-desc { margin: 0; color: var(--pb-muted); font-size: .81rem; line-height: 1.6; }
+.pb-tool.is-working { border-color: #e6cfa4; background: linear-gradient(180deg, #fffaee 0%, var(--pb-surface) 60%); }
+.pb-swap { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem; margin: .85rem 0 0; font-family: var(--pb-mono); font-size: .74rem; }
+.pb-swap-old { color: var(--pb-muted); text-decoration: line-through; }
+.pb-swap-arrow { color: var(--pb-amber-deep); }
+.pb-swap-new { color: var(--pb-green); font-weight: 700; }
+.pb-swap-note { font-family: var(--pb-sans); font-size: .72rem; color: var(--pb-muted); }
+
+/* The second dark anchor. The argument for building this in the page at all
+   gets the weight of a full band rather than a paragraph in a card. */
+.pb-why {
+  padding: clamp(2.5rem, 6vw, 4.25rem) var(--pb-gutter);
+  background: var(--pb-ink);
+  color: var(--pb-ink-soft);
+}
+.pb-why > * { width: min(100%, 46rem); margin-inline: auto; }
+.pb-why h2 { margin: 0 0 1.1rem; font-family: var(--pb-display); font-size: clamp(1.45rem, 3vw, 2.25rem); font-weight: 600; line-height: 1.14; letter-spacing: -.025em; }
+.pb-why p { margin: 0; color: #c7c1b4; font-size: clamp(.92rem, 1.3vw, 1.02rem); line-height: 1.68; }
+.pb-cta-light { margin-top: 1.9rem; background: var(--pb-gold); color: #2f2405; box-shadow: none; }
+.pb-cta-light:hover { background: #f7dc93; }
+.pb-cta-light:focus-visible { outline-color: var(--pb-gold); }
+
+.pb-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem 1.5rem;
+  width: var(--pb-measure);
+  margin-inline: auto;
+  padding: 1.6rem var(--pb-gutter) 2.4rem;
+  color: var(--pb-muted);
+  font-size: .78rem;
+}
+.pb-footer p { margin: 0; }
+.pb-footer a { color: var(--pb-ink); font-family: var(--pb-mono); font-size: .74rem; text-decoration: none; border-bottom: 1px solid var(--pb-line); }
+.pb-footer a:hover { border-bottom-color: var(--pb-accent); }
+
+/* The not-found page: the same paper, one way back. */
+.pb-error { min-height: 100vh; display: grid; place-items: center; padding: 2rem var(--pb-gutter); }
+.pb-error-inner { width: min(100%, 32rem); }
+.pb-error h1 { margin: 0; font-family: var(--pb-display); font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: 600; line-height: 1.1; letter-spacing: -.028em; }
+.pb-error-lede { margin: 1rem 0 1.9rem; color: var(--pb-muted); font-size: .95rem; line-height: 1.6; }
+
+@media (min-width: 48rem) {
+  .pb-hero-copy > * { animation: pb-rise .7s cubic-bezier(.16, 1, .3, 1) backwards; }
+  .pb-hero-copy > :nth-child(2) { animation-delay: .05s; }
+  .pb-hero-copy > :nth-child(3) { animation-delay: .1s; }
+  .pb-hero-copy > :nth-child(4) { animation-delay: .15s; }
+  .pb-hero-copy > :nth-child(5) { animation-delay: .2s; }
+  .pb-proof { animation: pb-rise .7s cubic-bezier(.16, 1, .3, 1) .18s backwards; }
+}
+
+@keyframes pb-rise {
+  from { opacity: 0; transform: translateY(.75rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 60rem) {
+  .pb-hero { grid-template-columns: minmax(0, 1fr); }
+  .pb-proof { max-width: 30rem; }
+  .pb-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem 1.35rem; }
+}
+
+@media (max-width: 40rem) {
+  .pb-band { padding-inline: var(--pb-gutter); }
+  .pb-band-nav { gap: .9rem; font-size: .76rem; }
+  .pb-headline { font-size: clamp(1.75rem, 8.5vw, 2.4rem); }
+  .pb-actions { gap: .85rem 1rem; }
+  .pb-cta { width: 100%; justify-content: center; }
+  .pb-steps { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .pb-step { border-top: 0; border-left: 1px solid var(--pb-line); padding: 0 0 1.4rem 1.6rem; }
+  .pb-step:last-child { padding-bottom: 0; }
+  .pb-step-marker { top: -.1rem; left: -.85rem; }
+  .pb-step.is-warning { border-top: 0; border-left-color: var(--pb-amber); }
+  .pb-step.is-verified { border-top: 0; border-left-color: var(--pb-green); }
+  .pb-footer { flex-direction: column; align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-hero-copy > *, .pb-proof { animation: none; }
+  .pb-cta { transition: none; }
+  .pb-cta:hover { transform: none; }
 }

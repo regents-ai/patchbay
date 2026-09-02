@@ -18,8 +18,8 @@ defmodule PatchbayWeb.RoomControllerTest do
     :ok
   end
 
-  test "GET / sends a first-time visitor into a room of their own", %{conn: conn} do
-    conn = get(conn, ~p"/")
+  test "the room entrance sends a first-time visitor into a room of their own", %{conn: conn} do
+    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
 
     slug = redirected_room_slug(conn)
 
@@ -33,7 +33,8 @@ defmodule PatchbayWeb.RoomControllerTest do
   end
 
   test "a new room already offers its generation-1 tool", %{conn: conn} do
-    room = Domain.get_room_by_slug!(redirected_room_slug(get(conn, ~p"/")))
+    room =
+      Domain.get_room_by_slug!(redirected_room_slug(get(conn, ~p"/webmcp/rooms/skill-uplift")))
 
     assert [revision] =
              Domain.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired]])
@@ -42,15 +43,14 @@ defmodule PatchbayWeb.RoomControllerTest do
     assert revision.name == "uplift_current_skill_v1"
   end
 
-  test "GET /webmcp/rooms/skill-uplift sends the visitor to their own room too", %{conn: conn} do
-    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
-
-    refute redirected_room_slug(conn) == "skill-uplift"
-  end
-
   test "two visitors get different rooms with identical seeded state", %{conn: conn} do
-    first = Domain.get_room_by_slug!(redirected_room_slug(get(conn, ~p"/")))
-    second = Domain.get_room_by_slug!(redirected_room_slug(get(build_conn(), ~p"/")))
+    first =
+      Domain.get_room_by_slug!(redirected_room_slug(get(conn, ~p"/webmcp/rooms/skill-uplift")))
+
+    second =
+      Domain.get_room_by_slug!(
+        redirected_room_slug(get(build_conn(), ~p"/webmcp/rooms/skill-uplift"))
+      )
 
     refute first.slug == second.slug
     refute first.id == second.id
@@ -72,7 +72,7 @@ defmodule PatchbayWeb.RoomControllerTest do
   end
 
   test "a returning visitor lands back in the same room", %{conn: conn} do
-    conn = get(conn, ~p"/")
+    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
     slug = redirected_room_slug(conn)
 
     conn = conn |> recycle() |> get(~p"/webmcp/rooms/skill-uplift")
@@ -81,7 +81,7 @@ defmodule PatchbayWeb.RoomControllerTest do
   end
 
   test "opening somebody else's room does not change which room is yours", %{conn: conn} do
-    conn = get(conn, ~p"/")
+    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
     own_slug = redirected_room_slug(conn)
 
     other = Domain.create_seeded_room!("someone-else")
@@ -89,17 +89,17 @@ defmodule PatchbayWeb.RoomControllerTest do
     conn = conn |> recycle() |> get(~p"/webmcp/rooms/#{other.slug}")
     assert conn.status == 200
 
-    conn = conn |> recycle() |> get(~p"/")
+    conn = conn |> recycle() |> get(~p"/webmcp/rooms/skill-uplift")
     assert redirected_room_slug(conn) == own_slug
   end
 
   test "a remembered room that no longer exists gives the visitor a fresh one", %{conn: conn} do
-    conn = get(conn, ~p"/")
+    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
     slug = redirected_room_slug(conn)
 
     Domain.get_room_by_slug!(slug) |> Domain.discard_room!()
 
-    conn = conn |> recycle() |> get(~p"/")
+    conn = conn |> recycle() |> get(~p"/webmcp/rooms/skill-uplift")
 
     refute redirected_room_slug(conn) == slug
   end
@@ -112,7 +112,7 @@ defmodule PatchbayWeb.RoomControllerTest do
     Domain.create_seeded_room!("occupied-room")
     Application.put_env(:patchbay, :max_rooms, 1)
 
-    conn = get(conn, ~p"/")
+    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
 
     assert conn.status == 503
     assert html_response(conn, 503) =~ "Patchbay is busy, try again in a few minutes."
@@ -122,7 +122,7 @@ defmodule PatchbayWeb.RoomControllerTest do
     Domain.create_seeded_room!("occupied-room")
     Application.put_env(:patchbay, :max_rooms, 1)
 
-    conn = get(conn, ~p"/")
+    conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
 
     assert html_response(conn, 503) =~ ~r{<title[^>]*>\s*All rooms are busy\s*· Patchbay</title>}
   end

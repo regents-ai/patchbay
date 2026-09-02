@@ -122,7 +122,10 @@ esbuild, Tailwind CSS.
 ## Testing instructions
 
 1. Open https://patchbay.help in ChatGPT's in-app browser, or in Chrome 149 or
-   later with WebMCP enabled at `chrome://flags/#enable-webmcp-testing`.
+   later with WebMCP enabled at `chrome://flags/#enable-webmcp-testing`. That is
+   the front page; click **Open your repair room** to get a room of your own.
+   The direct address https://patchbay.help/webmcp/rooms/skill-uplift still
+   works and does the same thing in one step.
 2. Ask the agent: *Call uplift_current_skill_v1 with instructions: make the
    greeting warmer.*
 3. The tool reports success while the Candidate editor stays empty. The page

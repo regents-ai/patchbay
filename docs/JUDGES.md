@@ -7,35 +7,41 @@ no key and no setup.
 
 Open: https://patchbay.help
 
-The link gives you a room of your own, so you always start from an untouched
+That is the front page: what Patchbay does, the loop you are about to watch,
+and the tools the demo hands your agent. Click **Open your repair room** to
+start. The direct address https://patchbay.help/webmcp/rooms/skill-uplift does
+the same thing in one step, so either route is fine.
+
+Either way you get a room of your own, so you always start from an untouched
 Skill no matter who else is trying it at the same time. Your browser remembers
-the room, so opening the link again brings you back to where you left off, and
-**Reset demo** at the bottom of the page restarts it from the beginning.
+the room, so either link brings you back to where you left off, and **Reset
+demo** at the bottom of the room restarts it from the beginning.
 
 Nobody else is sent to your room, but there are no accounts here and its web
 address is the only thing keeping it private. Please do not put anything
 confidential into it.
 
-The whole run happens on that one page. Nothing here asks you to reload or start
-a new conversation, and the only optional detour is the public board at the very
-end.
+Once you are in the room, the whole run happens on that one page. Nothing here
+asks you to reload or start a new conversation, and the only optional detour is
+the public board at the very end.
 
-The page itself carries a short version of this guide, with the prompts below
+The room itself carries a short version of this guide, with the prompts below
 ready to copy.
 
 ## Pick a browser
 
 ### ChatGPT's in-app browser
 
-Open the link inside ChatGPT's in-app browser. Page tools are switched on
-there, so nothing else is needed. Keep the chat and the page both in view.
+Open the link inside ChatGPT's in-app browser and click **Open your repair
+room**. Page tools are switched on there, so nothing else is needed. Keep the
+chat and the page both in view.
 
 ### Chrome 149 or later
 
 1. Open `chrome://flags/#enable-webmcp-testing`.
 2. Set **WebMCP** to **Enabled**.
-3. Relaunch Chrome, then open the link with a browser agent that can call the
-   page's tools.
+3. Relaunch Chrome, open the link with a browser agent that can call the page's
+   tools, and click **Open your repair room**.
 
 More detail, including the origin-trial route, is in
 [LOCAL_WEBMCP.md](LOCAL_WEBMCP.md). To run the whole thing on your own machine
