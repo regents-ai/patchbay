@@ -136,9 +136,21 @@ defmodule Patchbay.Patchbay.RepairProposal do
   end
 
   policies do
-    # The record is visible in the seeded public room; approval remains a
-    # named action so the LiveView can make the human decision explicit.
-    policy always() do
+    # The record is visible in the seeded public room, so reads are open. Each
+    # step of the proposal's life is a named action, approval included, so
+    # nothing can move a proposal sideways.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action([
+             :create_proposal,
+             :mark_canary_passed,
+             :mark_canary_failed,
+             :approve,
+             :reject,
+             :publish
+           ]) do
       authorize_if(always())
     end
   end

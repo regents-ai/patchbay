@@ -59,8 +59,13 @@ defmodule Patchbay.Patchbay.RoomEvent do
   end
 
   policies do
-    # Timeline events are append-only public evidence for this room.
-    policy always() do
+    # Timeline events are append-only public evidence for this room: reads are
+    # open, appending is the one named write, and there is nothing else.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action(:append) do
       authorize_if(always())
     end
   end

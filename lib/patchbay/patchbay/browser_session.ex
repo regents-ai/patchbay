@@ -129,9 +129,14 @@ defmodule Patchbay.Patchbay.BrowserSession do
   end
 
   policies do
-    # Browser sessions are ephemeral observations in the public demo, but all
-    # actions remain behind an explicit policy boundary.
-    policy always() do
+    # Browser sessions are ephemeral observations in the public demo: reads are
+    # open, and so are the four writes the room page and the demo reset make.
+    # Anything not named here stays forbidden.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action([:register, :observe, :disconnect, :reset_demo]) do
       authorize_if(always())
     end
   end

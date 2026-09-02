@@ -192,7 +192,9 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
     test "answers honestly when the page the call belongs to has been cleared away" do
       call = failed_call()
       report = file_report!(call)
-      Ash.destroy!(call.room)
+      # Deleting a room is named by no policy, so the sweep that clears one is
+      # the only caller; the test stands in for it.
+      Ash.destroy!(call.room, authorize?: false)
 
       assert {:ok, attempt} = PatchbayAgent.sweep()
       assert attempt.status == :refused

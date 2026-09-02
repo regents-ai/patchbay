@@ -772,7 +772,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp handle_repair_failure(socket, message) do
     socket =
       try do
-        Domain.mark_repair_failed!(socket.assigns.room)
+        # Declaring a repair a failure is named by no policy, so the page says
+        # so deliberately: it watched the attempt it is reporting on.
+        Domain.mark_repair_failed!(socket.assigns.room, authorize?: false)
 
         socket
         |> append_event(:platform_error, %{"operation" => "repair", "error" => message})

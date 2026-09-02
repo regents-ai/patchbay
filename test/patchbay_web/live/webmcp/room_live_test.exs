@@ -362,9 +362,13 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     # Clear the room's own record of the proposal: the page has no other way to
     # find one, so it must stop showing it even though the room still reads as
-    # awaiting approval.
+    # awaiting approval. The pointer is named by no policy, so the test clears
+    # it the way the planner does.
     Domain.get_room_by_id!(room.id)
-    |> Domain.set_active_repair_proposal!(private_arguments: %{proposal_id: nil})
+    |> Domain.set_active_repair_proposal!(
+      authorize?: false,
+      private_arguments: %{proposal_id: nil}
+    )
 
     {:ok, reopened, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
@@ -1019,6 +1023,26 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            )
 
     assert timeline_entries(view) == ["Reading the failure"]
+  end
+
+  # A repair that cannot even be attempted still has to land on the page, or the
+  # visitor is left watching a room that says it is diagnosing forever.
+  test "a repair the model cannot attempt leaves the room in error", %{conn: conn, room: room} do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    without_live_inference(fn ->
+      render_click(view, "request_repair")
+      render_async(view, 2_000)
+
+      assert Domain.get_room_by_id!(room.id).status == :error
+
+      assert [_ | _] =
+               Domain.list_room_events!(
+                 query: [filter: [room_id: room.id, kind: :platform_error]]
+               )
+    end)
   end
 
   test "a reset clears a finished repair off the card", %{conn: conn, room: room} do

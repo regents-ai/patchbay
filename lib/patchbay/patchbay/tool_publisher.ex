@@ -89,11 +89,14 @@ defmodule Patchbay.Patchbay.ToolPublisher do
   end
 
   defp set_room_generation!(room, generation) do
+    # The room pointer is named by no policy because no caller outside this
+    # module may move it. The write runs without authorization under the lock
+    # the caller already holds.
     room
     |> Ash.Changeset.for_update(:set_desired_tool_generation, %{},
       domain: Domain,
       private_arguments: %{generation: generation}
     )
-    |> Ash.update!()
+    |> Ash.update!(authorize?: false)
   end
 end

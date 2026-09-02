@@ -122,7 +122,14 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
     proposal = Domain.reject_repair_proposal!(proposal)
     Domain.retire_tool_revision!(candidate_revision)
 
-    room = Domain.set_active_repair_proposal!(room, private_arguments: %{proposal_id: nil})
+    # The pointer to the proposal on the page is named by no policy, because the
+    # rejection this service just recorded is the only thing that may clear it.
+    room =
+      Domain.set_active_repair_proposal!(room,
+        authorize?: false,
+        private_arguments: %{proposal_id: nil}
+      )
+
     _room = Domain.record_failure!(room, room.last_failed_invocation_id)
 
     RoomTimeline.append!(room, :approval_rejected, %{"proposal_id" => proposal.id})

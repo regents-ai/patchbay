@@ -51,9 +51,12 @@ defmodule Patchbay.Patchbay.RoomCapacity do
   def reap_unused_rooms do
     cutoff = DateTime.add(DateTime.utc_now(), -Config.room_idle_hours(), :hour)
 
+    # Deleting a room is named by no policy because no visitor may ask for it.
+    # The sweep runs without authorization, and the read above is what bounds
+    # it: only rooms nobody used and nobody is looking at can match.
     Room
     |> Ash.Query.for_read(:idle_and_unused, %{untouched_since: cutoff})
-    |> Domain.discard_room!(bulk_options: [strategy: [:atomic, :stream]])
+    |> Domain.discard_room!(authorize?: false, bulk_options: [strategy: [:atomic, :stream]])
 
     :ok
   end

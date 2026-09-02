@@ -748,7 +748,13 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     # it again once it holds the room, so the second one is legal.
     room = room |> Patchbay.begin_diagnosis!() |> Patchbay.begin_diagnosis!()
 
-    room = room |> Patchbay.mark_repair_ready!() |> Patchbay.await_repair_approval!()
+    # Parking the room on a decision is named by no policy, so the test reaches
+    # it the way the planner does.
+    room =
+      room
+      |> Patchbay.mark_repair_ready!()
+      |> Patchbay.await_repair_approval!(authorize?: false)
+
     room = room |> Patchbay.begin_publication!() |> Patchbay.mark_repaired!()
     room = Patchbay.begin_retry!(room)
 
@@ -789,6 +795,60 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
   test "unknown reset slugs return not found", %{room: _room} do
     assert_raise Ash.Error.Query.NotFound, fn -> DemoReset.reset!("does-not-exist") end
+  end
+
+  test "a room's internal moves and its deletion are named by no policy", %{
+    room: room,
+    revision: revision
+  } do
+    browser_session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        user_agent_digest: Digest.sha256("test-agent")
+      })
+
+    invocation =
+      Patchbay.record_invocation!(%{
+        request_uuid: Ash.UUID.generate(),
+        room_id: room.id,
+        browser_session_id: browser_session.id,
+        tool_revision_id: revision.id,
+        tool_contract_sha256: revision.contract_sha256,
+        arguments: %{}
+      })
+
+    # Each move checks its prior status before anything else, so the room is
+    # walked to the status the move expects and is then refused for the policy.
+    diagnosing = room |> Patchbay.record_failure!(invocation.id) |> Patchbay.begin_diagnosis!()
+
+    assert {:error, %Ash.Error.Forbidden{}} = Patchbay.mark_repair_failed(diagnosing)
+    assert {:error, %Ash.Error.Forbidden{}} = Patchbay.discard_room(diagnosing)
+
+    assert {:error, %Ash.Error.Forbidden{}} =
+             Patchbay.set_active_repair_proposal(diagnosing,
+               private_arguments: %{proposal_id: nil}
+             )
+
+    assert {:error, %Ash.Error.Forbidden{}} =
+             diagnosing
+             |> Ash.Changeset.for_update(:set_desired_tool_generation, %{},
+               domain: Patchbay,
+               private_arguments: %{generation: 2}
+             )
+             |> Ash.update()
+
+    ready = Patchbay.mark_repair_ready!(diagnosing)
+    assert {:error, %Ash.Error.Forbidden{}} = Patchbay.await_repair_approval(ready)
+
+    # The planner and the page reach the two moves deliberately, and still can.
+    waiting = Patchbay.await_repair_approval!(ready, authorize?: false)
+    assert waiting.status == :awaiting_approval
+
+    diagnosing_again =
+      waiting |> Patchbay.record_failure!(invocation.id) |> Patchbay.begin_diagnosis!()
+
+    assert Patchbay.mark_repair_failed!(diagnosing_again, authorize?: false).status == :error
   end
 
   test "tool revisions expose only lifecycle updates, leaving contracts immutable", %{
@@ -1080,7 +1140,12 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         input_sha256: Digest.sha256("proposal")
       })
 
-    Patchbay.set_active_repair_proposal!(room, private_arguments: %{proposal_id: proposal.id})
+    # The pointer is named by no policy, so the test sets it the way the planner
+    # does.
+    Patchbay.set_active_repair_proposal!(room,
+      authorize?: false,
+      private_arguments: %{proposal_id: proposal.id}
+    )
 
     loaded =
       Patchbay.get_room_by_id!(room.id,

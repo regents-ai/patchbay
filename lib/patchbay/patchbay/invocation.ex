@@ -184,8 +184,22 @@ defmodule Patchbay.Patchbay.Invocation do
   end
 
   policies do
-    # Invocation rows are public evidence for the seeded demo.
-    policy always() do
+    # Invocation rows are public evidence for the seeded demo, so reads are
+    # open. The named writes below are the whole life of a call; a row can only
+    # be written by moving it along that line.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action([
+             :record_invocation,
+             :mark_executing,
+             :record_handler_return,
+             :mark_awaiting_visible_state,
+             :mark_errored,
+             :mark_cancelled,
+             :record_verification
+           ]) do
       authorize_if(always())
     end
   end

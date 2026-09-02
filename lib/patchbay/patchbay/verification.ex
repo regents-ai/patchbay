@@ -65,8 +65,13 @@ defmodule Patchbay.Patchbay.Verification do
   end
 
   policies do
-    # Verification is durable evidence for the public seeded demo.
-    policy always() do
+    # Verification is durable evidence for the public seeded demo: reads are
+    # open, and recording one is the single named write.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action(:record_verification) do
       authorize_if(always())
     end
   end

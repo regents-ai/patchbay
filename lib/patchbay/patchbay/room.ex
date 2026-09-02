@@ -289,9 +289,28 @@ defmodule Patchbay.Patchbay.Room do
   end
 
   policies do
-    # The hackathon room is intentionally public; authorization still remains
-    # explicit so a future private-room policy cannot accidentally be skipped.
-    policy always() do
+    # The hackathon room is intentionally public: reads are open, and so are the
+    # writes the room page and the repair services make by name. Destroying a
+    # room and the four status moves the publisher and the planner own are named
+    # by no policy, so only a caller that skips authorization deliberately can
+    # reach them.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action([
+             :create_seeded_room,
+             :update_source,
+             :apply_candidate,
+             :record_failure,
+             :begin_diagnosis,
+             :mark_repair_ready,
+             :begin_publication,
+             :mark_repaired,
+             :begin_retry,
+             :mark_verified,
+             :reset_demo
+           ]) do
       authorize_if(always())
     end
   end

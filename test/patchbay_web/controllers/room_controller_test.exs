@@ -97,7 +97,9 @@ defmodule PatchbayWeb.RoomControllerTest do
     conn = get(conn, ~p"/webmcp/rooms/skill-uplift")
     slug = redirected_room_slug(conn)
 
-    Domain.get_room_by_slug!(slug) |> Domain.discard_room!()
+    # Deleting a room is named by no policy, so the test reaches it the same
+    # way the sweep does.
+    Domain.get_room_by_slug!(slug) |> Domain.discard_room!(authorize?: false)
 
     conn = conn |> recycle() |> get(~p"/webmcp/rooms/skill-uplift")
 

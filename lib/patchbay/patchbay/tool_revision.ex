@@ -154,9 +154,21 @@ defmodule Patchbay.Patchbay.ToolRevision do
   end
 
   policies do
-    # Contract fields have no accepting update action. The named lifecycle
-    # actions above can only move a revision through publication statuses.
-    policy always() do
+    # Contract fields have no accepting update action, so reads are open and the
+    # named lifecycle actions below can only move a revision through publication
+    # statuses. Anything not named here stays forbidden.
+    policy action_type(:read) do
+      authorize_if(always())
+    end
+
+    policy action([
+             :create_revision,
+             :set_desired,
+             :mark_canary_passed,
+             :mark_ready_for_approval,
+             :mark_approved,
+             :retire
+           ]) do
       authorize_if(always())
     end
   end

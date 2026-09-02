@@ -154,13 +154,20 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
     proposal = Domain.mark_canary_passed!(proposal, %{canary_result: canary})
 
+    # Parking the room on a human decision is named by no policy, because
+    # nothing outside the planner may put a room into that state.
     room =
       room
       |> Domain.mark_repair_ready!()
-      |> Domain.await_repair_approval!()
+      |> Domain.await_repair_approval!(authorize?: false)
 
+    # Likewise the pointer to the proposal on the page: the planner is the only
+    # thing that knows which proposal the room is now waiting on.
     _room =
-      Domain.set_active_repair_proposal!(room, private_arguments: %{proposal_id: proposal.id})
+      Domain.set_active_repair_proposal!(room,
+        authorize?: false,
+        private_arguments: %{proposal_id: proposal.id}
+      )
 
     RoomTimeline.append!(room, :repair_proposed, %{"proposal_id" => proposal.id})
 
@@ -169,9 +176,18 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
   defp finalize_proposal!(proposal, room, revision, canary) do
     proposal = Domain.mark_canary_failed!(proposal, %{canary_result: canary})
-    room = Domain.mark_repair_failed!(room)
 
-    _room = Domain.set_active_repair_proposal!(room, private_arguments: %{proposal_id: nil})
+    # Declaring a repair a failure is named by no policy: only the planner and
+    # the room page, which both watched the attempt, may say so.
+    room = Domain.mark_repair_failed!(room, authorize?: false)
+
+    # Clearing the pointer belongs to the same decision, so it is reached the
+    # same way.
+    _room =
+      Domain.set_active_repair_proposal!(room,
+        authorize?: false,
+        private_arguments: %{proposal_id: nil}
+      )
 
     RoomTimeline.append!(
       room,
