@@ -193,12 +193,8 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert proposal.model_response_id == "resp_repair_usage"
 
     assert proposal.usage == %{
-             "candidate" => %{
-               "input_tokens" => 31,
-               "output_tokens" => 12,
-               "total_tokens" => 43
-             },
-             "repair_plan" => %{"input_tokens" => 5, "output_tokens" => 7, "total_tokens" => 12}
+             candidate: %{input_tokens: 31, output_tokens: 12, total_tokens: 43},
+             repair_plan: %{input_tokens: 5, output_tokens: 7, total_tokens: 12}
            }
   end
 
@@ -214,7 +210,11 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert generated.fallback_used
     assert generated.model == "patchbay-demo-fallback"
     assert Enum.any?(generated.warnings, &String.contains?(&1, "fallback"))
-    assert {:ok, ^generated} = CandidateCache.get(generated.generation_key)
+
+    assert {:ok, ^generated} =
+             CandidateCache.get(generated.generation_key, variant: generated.cache_variant)
+
+    assert {:error, :not_found} = CandidateCache.get(generated.generation_key, variant: "other")
     assert {:error, :generation_key_required} = CandidateCache.get(nil)
     assert {:error, :generation_key_required} = CandidateCache.put("", generated)
   end
@@ -237,7 +237,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     plan = Fixtures.repair_plan()
     proposal = RepairPlanner.propose!(v1, plan: plan, fallback: true)
     assert proposal.status == :ready_for_approval
-    assert proposal.canary_result["passed"]
+    assert proposal.canary_result.passed
 
     published = RepairApprovalService.approve_and_publish!(proposal, "owner")
 
@@ -569,19 +569,23 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
       webmcp_supported: true
     })
 
-    CandidateCache.put(invocation.generation_key, %{
-      candidate_markdown: "---\nname: bogus\n---\nwrong",
-      candidate_sha256: Digest.sha256("---\nname: bogus\n---\nwrong"),
-      generation_key: invocation.generation_key,
-      input_sha256: Digest.sha256("bogus"),
-      model: "attacker",
-      model_response_id: "attacker",
-      prompt_version: "attacker",
-      fallback_used: false,
-      fallback_reason: nil,
-      change_summary: [],
-      warnings: []
-    })
+    variant = invocation.handler_result["candidate_provenance"]["cache_variant"]
+
+    :ok =
+      CandidateCache.put(invocation.generation_key, %{
+        candidate_markdown: "---\nname: bogus\n---\nwrong",
+        candidate_sha256: Digest.sha256("---\nname: bogus\n---\nwrong"),
+        generation_key: invocation.generation_key,
+        input_sha256: Digest.sha256("bogus"),
+        cache_variant: variant,
+        model: "attacker",
+        model_response_id: "attacker",
+        prompt_version: "attacker",
+        fallback_used: false,
+        fallback_reason: nil,
+        change_summary: [],
+        warnings: []
+      })
 
     retried = InvocationRunner.retry!(invocation, browser_session)
     retried = verify_visible!(retried, room.id)

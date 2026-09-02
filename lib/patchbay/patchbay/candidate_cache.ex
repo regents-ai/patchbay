@@ -3,8 +3,10 @@ defmodule Patchbay.Patchbay.CandidateCache do
   A small process-local cache for generated candidates.
 
   The durable invocation row is the source of truth. Cache entries are only a
-  performance hint and are partitioned by both the logical generation key and
-  the requested inference provenance (provider, model, and prompt version).
+  performance hint and are always partitioned by both the logical generation key
+  and the requested inference provenance (provider, model, and prompt version),
+  so a candidate produced one way can never be served for a request that asked
+  for another.
   """
 
   alias Patchbay.Patchbay.Digest
@@ -14,14 +16,13 @@ defmodule Patchbay.Patchbay.CandidateCache do
   @type variant :: String.t()
 
   @spec get(term(), keyword()) ::
-          {:ok, map()} | {:error, :generation_key_required | :not_found | :ambiguous | :invalid}
+          {:ok, map()} | {:error, :generation_key_required | :not_found | :invalid}
   def get(key, opts \\ [])
 
   def get(key, opts) when is_binary(key) and key != "" do
     case Keyword.get(opts, :variant) do
-      nil -> get_unqualified(key)
       variant when is_binary(variant) and variant != "" -> get_variant(key, variant)
-      _ -> {:error, :invalid}
+      _missing -> {:error, :invalid}
     end
   end
 
@@ -31,10 +32,10 @@ defmodule Patchbay.Patchbay.CandidateCache do
   def put(key, value, opts \\ [])
 
   def put(key, value, opts) when is_binary(key) and key != "" and is_map(value) do
-    variant = Keyword.get(opts, :variant) || Map.get(value, :cache_variant)
+    variant = Keyword.get(opts, :variant) || value[:cache_variant]
 
     with :ok <- validate_entry(key, value, variant) do
-      true = :ets.insert(table(), {entry_key(key, variant), value})
+      true = :ets.insert(table(), {{key, variant}, value})
       :ok
     end
   end
@@ -60,34 +61,31 @@ defmodule Patchbay.Patchbay.CandidateCache do
       when is_binary(key) and key != "" and is_binary(variant) and variant != "" and
              is_function(generator, 0) and is_function(validator, 1) do
     :global.trans({__MODULE__, {key, variant}}, fn ->
-      case get(key, variant: variant) do
-        {:ok, value} ->
-          if validator.(value) do
-            {:ok, value}
-          else
-            delete(key, variant: variant)
-            generate_and_store(key, variant, generator)
-          end
-
-        {:error, reason} when reason in [:not_found, :invalid] ->
-          generate_and_store(key, variant, generator)
-
-        error ->
-          error
-      end
+      cached_or_generated(key, variant, generator, validator)
     end)
   end
 
   def fetch_or_generate(_key, _variant, _generator, _validator),
     do: {:error, :generation_key_required}
 
-  @spec delete(term(), keyword()) :: :ok
-  def delete(key, opts \\ []) do
-    if is_binary(key) and key != "" do
-      :ets.delete(table(), entry_key(key, Keyword.get(opts, :variant)))
-    end
+  # A cached entry that no longer describes the input it was stored for is
+  # dropped rather than returned, so the next reader generates a fresh one.
+  defp cached_or_generated(key, variant, generator, validator) do
+    case get(key, variant: variant) do
+      {:ok, value} ->
+        if validator.(value) do
+          {:ok, value}
+        else
+          delete_variant(key, variant)
+          generate_and_store(key, variant, generator)
+        end
 
-    :ok
+      {:error, reason} when reason in [:not_found, :invalid] ->
+        generate_and_store(key, variant, generator)
+
+      error ->
+        error
+    end
   end
 
   defp generate_and_store(key, variant, generator) do
@@ -112,32 +110,13 @@ defmodule Patchbay.Patchbay.CandidateCache do
     :ok
   end
 
-  defp get_unqualified(key) do
-    case :ets.lookup(table(), key) do
-      [{^key, value}] ->
-        if valid_cache_value?(key, value), do: {:ok, value}, else: {:error, :invalid}
-
-      [] ->
-        variants =
-          :ets.match_object(table(), {{key, :_}, :_})
-          |> Enum.map(fn {{^key, _variant}, value} -> value end)
-          |> Enum.filter(&valid_cache_value?(key, &1))
-
-        case variants do
-          [value] -> {:ok, value}
-          [] -> {:error, :not_found}
-          _ -> {:error, :ambiguous}
-        end
-    end
-  end
-
   defp get_variant(key, variant) do
-    case :ets.lookup(table(), entry_key(key, variant)) do
-      [{_, value}] ->
-        if valid_cache_value?(key, value) and Map.get(value, :cache_variant) == variant do
+    case :ets.lookup(table(), {key, variant}) do
+      [{_entry_key, value}] ->
+        if valid_cache_value?(key, value) and value[:cache_variant] == variant do
           {:ok, value}
         else
-          :ets.delete(table(), entry_key(key, variant))
+          delete_variant(key, variant)
           {:error, :invalid}
         end
 
@@ -146,29 +125,25 @@ defmodule Patchbay.Patchbay.CandidateCache do
     end
   end
 
-  defp entry_key(key, nil), do: key
-  defp entry_key(key, variant), do: {key, variant}
+  defp delete_variant(key, variant) do
+    :ets.delete(table(), {key, variant})
+    :ok
+  end
 
   defp validate_entry(key, value, variant) do
     cond do
-      not valid_cache_value?(key, value) -> {:error, :invalid}
-      is_nil(variant) -> :ok
       not is_binary(variant) or variant == "" -> {:error, :invalid}
-      Map.get(value, :cache_variant) != variant -> {:error, :invalid}
+      value[:cache_variant] != variant -> {:error, :invalid}
+      not valid_cache_value?(key, value) -> {:error, :invalid}
       true -> :ok
     end
   end
 
   defp valid_cache_value?(key, value) when is_map(value) do
-    candidate = Map.get(value, :candidate_markdown) || Map.get(value, "candidate_markdown")
+    candidate = value[:candidate_markdown]
 
-    generation_key = Map.get(value, :generation_key) || Map.get(value, "generation_key")
-
-    candidate_sha256 =
-      Map.get(value, :candidate_sha256) || Map.get(value, "candidate_sha256")
-
-    is_binary(candidate) and is_binary(candidate_sha256) and
-      Digest.sha256(candidate) == candidate_sha256 and generation_key == key
+    is_binary(candidate) and Digest.sha256(candidate) == value[:candidate_sha256] and
+      value[:generation_key] == key
   end
 
   defp valid_cache_value?(_key, _value), do: false

@@ -58,12 +58,8 @@
            [
              files: %{
                excluded: [
-                 # Structural refactor pending under regent-tb2.11.
-                 "lib/patchbay/patchbay/candidate_cache.ex",
-                 "lib/patchbay/patchbay/candidate_generator.ex",
                  # Structural refactor pending under regent-tb2.13.
                  "lib/patchbay/patchbay/canary_runner.ex",
-                 "lib/patchbay/patchbay/postcondition_verifier.ex",
                  # Structural refactor pending under regent-tb2.14.
                  "lib/patchbay/forum/patchbay_agent.ex",
                  "lib/patchbay/patchbay/frontmatter.ex"
@@ -82,14 +78,8 @@
            [
              files: %{
                excluded: [
-                 # Structural refactor pending under regent-tb2.11.
-                 "lib/patchbay/patchbay/candidate_cache.ex",
-                 "lib/patchbay/patchbay/candidate_generator.ex",
-                 # Structural refactor pending under regent-tb2.13.
-                 "lib/patchbay/patchbay/postcondition_verifier.ex",
                  # Structural refactor pending under regent-tb2.14.
                  "lib/patchbay/patchbay/frontmatter.ex",
-                 "lib/patchbay/patchbay/openai/client.ex",
                  # Structural refactor pending under regent-tb2.15.
                  "test/patchbay/patchbay/telemetry_test.exs"
                ]
@@ -132,16 +122,7 @@
           {ExSlop.Check.Warning.QueryInEnumMap, []},
           {ExSlop.Check.Warning.GenserverAsKvStore, []},
           {ExSlop.Check.Warning.PathExpandPriv, []},
-          {ExSlop.Check.Warning.DualKeyAccess,
-           [
-             files: %{
-               excluded: [
-                 # Structural refactor pending under regent-tb2.11.
-                 "lib/patchbay/patchbay/candidate_cache.ex",
-                 "lib/patchbay/patchbay/candidate_generator.ex"
-               ]
-             }
-           ]},
+          {ExSlop.Check.Warning.DualKeyAccess, []},
           {ExSlop.Check.Refactor.FilterNil, []},
           {ExSlop.Check.Refactor.RejectNil, []},
           {ExSlop.Check.Refactor.ReduceAsMap, []},

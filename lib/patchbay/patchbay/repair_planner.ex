@@ -12,7 +12,6 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   alias Patchbay.Patchbay.{
     CanaryRunner,
     CandidateGenerator,
-    Digest,
     Fixtures,
     Invocation,
     ModelBudget,
@@ -49,7 +48,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
     ensure_failed_latest!(invocation, room)
 
-    candidate = candidate_for!(invocation, room)
+    candidate = CandidateGenerator.durable_candidate!(invocation, room.source_markdown)
     model_started_at = System.monotonic_time()
     {plan, plan_metadata} = plan_for!(invocation, room, source_revision, opts)
     emit_model_stop(model_started_at, room, invocation, plan_metadata)
@@ -86,7 +85,11 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     source_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
 
     ensure_failed_latest!(invocation, room)
-    ensure_candidate_unchanged!(candidate_for!(invocation, room), candidate)
+
+    ensure_candidate_unchanged!(
+      CandidateGenerator.durable_candidate!(invocation, room.source_markdown),
+      candidate
+    )
 
     room = Domain.begin_diagnosis!(room)
 
@@ -242,51 +245,6 @@ defmodule Patchbay.Patchbay.RepairPlanner do
       {:ok, plan}
     end
   end
-
-  defp candidate_for!(invocation, room) do
-    if is_binary(invocation.generated_candidate) and
-         is_binary(invocation.generated_candidate_sha256) and
-         Digest.sha256(invocation.generated_candidate) == invocation.generated_candidate_sha256 and
-         is_binary(invocation.generation_key) do
-      provenance = fetch(invocation.handler_result, :candidate_provenance)
-
-      generated = %{
-        candidate_markdown: invocation.generated_candidate,
-        candidate_sha256: invocation.generated_candidate_sha256,
-        generation_key: invocation.generation_key,
-        input_sha256: fetch(provenance, :input_sha256),
-        cache_variant: fetch(provenance, :cache_variant),
-        change_summary: fetch(invocation.handler_result, :change_summary) || [],
-        warnings: fetch(invocation.handler_result, :warnings) || [],
-        model: fetch(provenance, :model),
-        model_response_id: fetch(provenance, :model_response_id),
-        prompt_version: fetch(provenance, :prompt_version),
-        fallback_used: fetch(provenance, :fallback_used),
-        fallback_reason: fetch(provenance, :fallback_reason),
-        usage: Client.normalize_usage(fetch(provenance, :usage))
-      }
-
-      case CandidateGenerator.validate_provenance(
-             generated,
-             room.source_markdown,
-             invocation.arguments
-           ) do
-        :ok ->
-          generated
-
-        {:error, reason} ->
-          raise ArgumentError, "repair candidate evidence is invalid: #{inspect(reason)}"
-      end
-    else
-      raise ArgumentError, "repair requires a generated candidate and exact generation key"
-    end
-  end
-
-  defp fetch(map, key) when is_map(map) do
-    Map.get(map, key) || Map.get(map, Atom.to_string(key))
-  end
-
-  defp fetch(_map, _key), do: nil
 
   defp plan_for!(invocation, room, source_revision, opts) do
     cond do

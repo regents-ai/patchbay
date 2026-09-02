@@ -25,101 +25,44 @@ defmodule Patchbay.Patchbay.PostconditionVerifier do
   def required_checks, do: @checks
 
   @doc """
-  Returns whether a persisted verification result is a complete, internally
-  consistent result from this verifier.
-
-  Persisted maps come back from PostgreSQL with string keys, so both atom and
-  string keys are accepted when checking the result.
+  Returns whether a verification result is a complete, internally consistent
+  result from this verifier.
   """
   @spec valid_result?(map()) :: boolean()
-  def valid_result?(result) when is_map(result) do
-    checks = fetch(result, :checks, nil)
-    expected_state = fetch(result, :expected_state, nil)
-    observed_state = fetch(result, :observed_state, nil)
-    passed = fetch(result, :passed, nil)
-    failure_code = fetch(result, :failure_code, nil)
-
-    is_boolean(passed) and is_map(checks) and is_map(expected_state) and
-      is_map(observed_state) and
-      (not passed or is_nil(failure_code)) and
-      (not passed or
-         (map_size(checks) > 0 and map_size(expected_state) > 0 and
-            map_size(observed_state) > 0)) and
-      (not passed or checks_complete?(checks)) and
-      (not passed or all_checks_true?(checks))
+  def valid_result?(%{
+        passed: passed,
+        checks: checks,
+        failure_code: failure_code,
+        expected_state: expected_state,
+        observed_state: observed_state
+      })
+      when is_boolean(passed) do
+    is_map(checks) and is_map(expected_state) and is_map(observed_state) and
+      (not passed or complete_pass?(checks, failure_code, expected_state, observed_state))
   end
 
   def valid_result?(_), do: false
 
+  # A recorded failure only has to be well formed. A recorded pass has to carry
+  # the whole story: no failure code, both states captured, and every check
+  # present and true.
+  defp complete_pass?(checks, failure_code, expected_state, observed_state) do
+    is_nil(failure_code) and map_size(expected_state) > 0 and map_size(observed_state) > 0 and
+      checks_complete?(checks) and all_checks_true?(checks)
+  end
+
   @doc "Returns whether all required checks in a result are present and true."
   @spec successful_result?(map()) :: boolean()
   def successful_result?(result) when is_map(result) do
-    valid_result?(result) and fetch(result, :passed, nil) == true
+    valid_result?(result) and result.passed == true
   end
 
   def successful_result?(_), do: false
 
-  @doc "Returns whether a result's required checks are all present and true."
-  @spec checks_passed?(map()) :: boolean()
-  def checks_passed?(result) when is_map(result) do
-    checks = fetch(result, :checks, nil)
-    is_map(checks) and checks_complete?(checks) and all_checks_true?(checks)
-  end
-
-  def checks_passed?(_), do: false
-
-  @spec verify(map()) :: map()
-  def verify(%{} = envelope) do
-    pre_state = fetch(envelope, :pre_state, %{})
-    post_state = fetch(envelope, :post_state, %{})
-    opts = Map.drop(envelope, [:pre_state, :post_state])
-    verify(pre_state, post_state, opts)
-  end
-
   @spec verify(map(), map(), map() | keyword()) :: map()
   def verify(pre_state, post_state, opts \\ %{}) when is_map(pre_state) and is_map(post_state) do
-    opts = Map.new(opts)
-    source = fetch(opts, :source_markdown, fetch(pre_state, :source_markdown, nil))
-    candidate = fetch(opts, :candidate_markdown, fetch(post_state, :candidate_markdown, nil))
-    source_state = state_for(pre_state, :source)
-    pre_candidate_state = state_for(pre_state, :candidate)
-    post_source_state = state_for(post_state, :source)
-    candidate_state = state_for(post_state, :candidate)
-    pre_revision = fetch(pre_state, :ui_revision, 0)
-    post_revision = fetch(post_state, :ui_revision, 0)
-    source_sha256 = fetch(source_state, :sha256, digest_or_nil(source))
-    post_source_sha256 = fetch(post_source_state, :sha256, digest_or_nil(source))
-    candidate_sha256 = digest_or_nil(candidate)
-    observed_candidate_sha256 = fetch(candidate_state, :sha256, nil)
-    expected_candidate_sha256 = fetch(opts, :expected_candidate_sha256, nil)
-    expected_contract_sha256 = fetch(opts, :expected_contract_sha256, nil)
-    observed_contract_sha256 = fetch(opts, :observed_contract_sha256, nil)
-    expected_session_id = fetch(opts, :expected_browser_session_id, nil)
-    observed_session_id = fetch(opts, :observed_browser_session_id, nil)
-
-    checks = %{
-      :candidate_present => fetch(candidate_state, :present, nil) == true and present?(candidate),
-      :source_unchanged => present?(source_sha256) and source_sha256 == post_source_sha256,
-      :candidate_changed =>
-        candidate_was_absent?(pre_candidate_state) and present?(candidate_sha256) and
-          candidate_sha256 != source_sha256,
-      :candidate_matches_server =>
-        present?(candidate_sha256) and present?(observed_candidate_sha256) and
-          present?(expected_candidate_sha256) and candidate_sha256 == observed_candidate_sha256 and
-          candidate_sha256 == expected_candidate_sha256,
-      :frontmatter_present => starts_with_frontmatter?(candidate),
-      :frontmatter_parses => Frontmatter.valid?(candidate || ""),
-      :identity_preserved => identity_preserved?(source, candidate),
-      :ui_revision_advanced =>
-        is_integer(pre_revision) and is_integer(post_revision) and post_revision > pre_revision,
-      :tool_contract_current =>
-        present?(expected_contract_sha256) and present?(observed_contract_sha256) and
-          observed_contract_sha256 == expected_contract_sha256,
-      :browser_session_current =>
-        present?(expected_session_id) and present?(observed_session_id) and
-          observed_session_id == expected_session_id
-    }
-
+    evidence = evidence(pre_state, post_state, Map.new(opts))
+    checks = run_checks(evidence)
     failures = Enum.reject(@checks, &Map.get(checks, &1))
 
     %{
@@ -128,23 +71,93 @@ defmodule Patchbay.Patchbay.PostconditionVerifier do
       failure_code: failure_code(failures),
       expected_state: pre_state,
       observed_state: post_state,
-      source_sha256: source_sha256,
-      candidate_sha256: candidate_sha256,
-      pre_ui_revision: pre_revision,
-      post_ui_revision: post_revision
+      source_sha256: evidence.source_sha256,
+      candidate_sha256: evidence.candidate_sha256,
+      pre_ui_revision: evidence.pre_revision,
+      post_ui_revision: evidence.post_revision
     }
   end
+
+  # Everything the checks compare, gathered once: what the room showed before
+  # and after the call, and the server-side digests the observation is measured
+  # against.
+  defp evidence(pre_state, post_state, opts) do
+    source = opts[:source_markdown]
+    candidate = opts[:candidate_markdown]
+
+    %{
+      source: source,
+      candidate: candidate,
+      pre_candidate_state: state_for(pre_state, :candidate),
+      candidate_state: state_for(post_state, :candidate),
+      pre_revision: Map.get(pre_state, :ui_revision) || 0,
+      post_revision: Map.get(post_state, :ui_revision) || 0,
+      source_sha256: state_for(pre_state, :source)[:sha256] || digest_or_nil(source),
+      post_source_sha256: state_for(post_state, :source)[:sha256] || digest_or_nil(source),
+      candidate_sha256: digest_or_nil(candidate),
+      observed_candidate_sha256: state_for(post_state, :candidate)[:sha256],
+      expected_candidate_sha256: opts[:expected_candidate_sha256],
+      expected_contract_sha256: opts[:expected_contract_sha256],
+      observed_contract_sha256: opts[:observed_contract_sha256],
+      expected_session_id: opts[:expected_browser_session_id],
+      observed_session_id: opts[:observed_browser_session_id]
+    }
+  end
+
+  defp run_checks(evidence) do
+    %{
+      candidate_present: candidate_present?(evidence),
+      source_unchanged: source_unchanged?(evidence),
+      candidate_changed: candidate_changed?(evidence),
+      candidate_matches_server: candidate_matches_server?(evidence),
+      frontmatter_present: starts_with_frontmatter?(evidence.candidate),
+      frontmatter_parses: Frontmatter.valid?(evidence.candidate || ""),
+      identity_preserved: identity_preserved?(evidence.source, evidence.candidate),
+      ui_revision_advanced: ui_revision_advanced?(evidence),
+      tool_contract_current:
+        same_present_value?(evidence.expected_contract_sha256, evidence.observed_contract_sha256),
+      browser_session_current:
+        same_present_value?(evidence.expected_session_id, evidence.observed_session_id)
+    }
+  end
+
+  defp candidate_present?(evidence),
+    do: evidence.candidate_state[:present] == true and present?(evidence.candidate)
+
+  defp source_unchanged?(evidence),
+    do:
+      present?(evidence.source_sha256) and
+        evidence.source_sha256 == evidence.post_source_sha256
+
+  defp candidate_changed?(evidence) do
+    candidate_was_absent?(evidence.pre_candidate_state) and
+      present?(evidence.candidate_sha256) and
+      evidence.candidate_sha256 != evidence.source_sha256
+  end
+
+  defp candidate_matches_server?(evidence) do
+    present?(evidence.candidate_sha256) and present?(evidence.observed_candidate_sha256) and
+      present?(evidence.expected_candidate_sha256) and
+      evidence.candidate_sha256 == evidence.observed_candidate_sha256 and
+      evidence.candidate_sha256 == evidence.expected_candidate_sha256
+  end
+
+  defp ui_revision_advanced?(evidence) do
+    is_integer(evidence.pre_revision) and is_integer(evidence.post_revision) and
+      evidence.post_revision > evidence.pre_revision
+  end
+
+  # The contract digest and the session id are both checked the same way: the
+  # server has to name one, the browser has to report one, and they have to be
+  # the same one.
+  defp same_present_value?(expected, observed),
+    do: present?(expected) and present?(observed) and observed == expected
 
   @spec identity_preserved?(binary() | nil, binary() | nil) :: boolean()
   def identity_preserved?(source, candidate) when is_binary(source) and is_binary(candidate) do
     with {:ok, source_meta} <- Frontmatter.parse(source),
          {:ok, candidate_meta} <- Frontmatter.parse(candidate) do
-      Enum.all?(~w(name license author), fn key ->
-        case Map.fetch(source_meta, key) do
-          {:ok, value} -> Map.get(candidate_meta, key) == value
-          :error -> true
-        end
-      end)
+      Enum.all?(~w(name license author), &same_identity_field?(source_meta, candidate_meta, &1))
     else
       _ -> false
     end
@@ -152,10 +165,17 @@ defmodule Patchbay.Patchbay.PostconditionVerifier do
 
   def identity_preserved?(_, _), do: false
 
+  # A field the source never declared cannot have been lost, so only the ones it
+  # declares are compared.
+  defp same_identity_field?(source_meta, candidate_meta, key) do
+    case Map.fetch(source_meta, key) do
+      {:ok, value} -> Map.get(candidate_meta, key) == value
+      :error -> true
+    end
+  end
+
   defp state_for(state, key) do
-    state
-    |> fetch(key, %{})
-    |> case do
+    case Map.get(state, key) do
       value when is_map(value) -> value
       _ -> %{}
     end
@@ -173,20 +193,16 @@ defmodule Patchbay.Patchbay.PostconditionVerifier do
   defp present?(_), do: false
 
   defp candidate_was_absent?(candidate_state) do
-    fetch(candidate_state, :present, nil) == false and
-      is_nil(fetch(candidate_state, :sha256, nil))
+    candidate_state[:present] == false and is_nil(candidate_state[:sha256])
   end
 
   defp checks_complete?(checks) do
-    Enum.all?(@checks, fn check -> is_boolean(fetch(checks, check, nil)) end)
+    Enum.all?(@checks, &is_boolean(checks[&1]))
   end
 
   defp all_checks_true?(checks) do
-    Enum.all?(@checks, fn check -> fetch(checks, check, false) == true end)
+    Enum.all?(@checks, &(checks[&1] == true))
   end
-
-  defp fetch(map, key, default) when is_map(map),
-    do: Map.get(map, key, Map.get(map, Atom.to_string(key), default))
 
   defp failure_code([]), do: nil
   defp failure_code([:candidate_present | _]), do: :CANDIDATE_EMPTY

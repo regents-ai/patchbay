@@ -49,7 +49,7 @@ defmodule Patchbay.Patchbay.Validations.RepairsCurrentFailure do
       invocation.effective_status != :verified_failure ->
         stale(:source_invocation_id, "the source call is not a persisted verified failure")
 
-      get_in(invocation.pre_state, ["source", "sha256"]) != room.source_sha256 ->
+      get_in(invocation.pre_state, [:source, :sha256]) != room.source_sha256 ->
         stale(:input_sha256, "the source changed after the failed call")
 
       Digest.generation_key(room.source_sha256, invocation.arguments) != invocation.generation_key ->
@@ -67,7 +67,7 @@ defmodule Patchbay.Patchbay.Validations.RepairsCurrentFailure do
   end
 
   defp recorded_candidate_digest(proposal),
-    do: Map.get(proposal.canary_result, "candidate_sha256")
+    do: Map.get(proposal.canary_result, :candidate_sha256)
 
   defp stale(field, message),
     do: {:error, InvalidAttribute.exception(field: field, message: message)}

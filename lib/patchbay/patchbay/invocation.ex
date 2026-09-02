@@ -6,7 +6,7 @@ defmodule Patchbay.Patchbay.Invocation do
     authorizers: [Ash.Policy.Authorizer]
 
   alias Patchbay.Patchbay.Receipt
-  alias Patchbay.Patchbay.Types.{FailureCode, InvocationStatus}
+  alias Patchbay.Patchbay.Types.{FailureCode, InvocationStatus, VisibleState}
 
   postgres do
     table("invocations")
@@ -46,7 +46,7 @@ defmodule Patchbay.Patchbay.Invocation do
     attribute(:tool_contract_sha256, :string, allow_nil?: false, public?: true)
     attribute(:arguments, :map, allow_nil?: false, public?: true, default: %{})
     attribute(:arguments_sha256, :string, allow_nil?: false, public?: true)
-    attribute(:pre_state, :map, allow_nil?: false, public?: true, default: %{})
+    attribute(:pre_state, VisibleState, allow_nil?: false, public?: true, default: %{})
     attribute(:handler_result, :map, allow_nil?: false, public?: true, default: %{})
 
     attribute(:handler_reported_success, :boolean,
@@ -64,7 +64,7 @@ defmodule Patchbay.Patchbay.Invocation do
 
     attribute(:generated_candidate_sha256, :string, allow_nil?: true, public?: true)
     attribute(:generation_key, :string, allow_nil?: true, public?: true)
-    attribute(:post_state, :map, allow_nil?: false, public?: true, default: %{})
+    attribute(:post_state, VisibleState, allow_nil?: false, public?: true, default: %{})
 
     attribute(:effective_status, InvocationStatus,
       allow_nil?: false,
@@ -131,7 +131,7 @@ defmodule Patchbay.Patchbay.Invocation do
 
       # The room lock is what decides the recorded pre-state. A caller may say
       # which state it believes it acted on, and is turned away if it disagrees.
-      argument(:pre_state, :map)
+      argument(:pre_state, VisibleState)
 
       change(Patchbay.Patchbay.Changes.CaptureInvocationPreState)
       change(Patchbay.Patchbay.Changes.RecomputeGeneratedCandidate)

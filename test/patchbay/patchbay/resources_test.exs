@@ -191,9 +191,9 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       })
 
     assert invocation.pre_state == %{
-             "ui_revision" => 0,
-             "source" => %{"present" => true, "sha256" => room.source_sha256},
-             "candidate" => %{"present" => false, "sha256" => nil}
+             ui_revision: 0,
+             source: %{present: true, sha256: room.source_sha256},
+             candidate: %{present: false, sha256: nil}
            }
 
     room = Patchbay.apply_candidate!(room, Fixtures.improved_markdown())
@@ -249,9 +249,6 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       create_verification!(%{
         room_id: room.id,
         invocation_id: invocation.id,
-        passed: false,
-        checks: %{},
-        expected_state: %{},
         observed_state: %{}
       })
     end
@@ -338,7 +335,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     end
   end
 
-  test "verification success requires a complete verifier result", %{
+  test "verified success is derived by the verifier, never claimed", %{
     room: room,
     revision: revision
   } do
@@ -371,30 +368,21 @@ defmodule Patchbay.Patchbay.ResourcesTest do
       })
     end
 
-    assert_raise Ash.Error.Invalid, fn ->
+    # Recording a verification for a call that never changed the room writes
+    # the verifier's own verdict, with every check it makes accounted for.
+    verification =
       create_verification!(%{
         room_id: room.id,
         invocation_id: invocation.id,
-        passed: true,
-        checks: %{},
-        expected_state: %{},
-        observed_state: %{}
-      })
-    end
-
-    checks =
-      Map.new(Elixir.Patchbay.Patchbay.PostconditionVerifier.required_checks(), &{&1, true})
-
-    assert_raise Ash.Error.Invalid, fn ->
-      create_verification!(%{
-        room_id: room.id,
-        invocation_id: invocation.id,
-        passed: true,
-        checks: checks,
-        expected_state: %{"candidate" => %{"present" => false}},
         observed_state: %{"candidate" => %{"present" => true}}
       })
-    end
+
+    required_checks = Elixir.Patchbay.Patchbay.PostconditionVerifier.required_checks()
+
+    refute verification.passed
+    assert verification.failure_code
+    assert Enum.sort(Map.keys(verification.checks)) == Enum.sort(required_checks)
+    refute Enum.all?(required_checks, &verification.checks[&1])
   end
 
   test "invocation verification status follows the verifier result", %{
@@ -555,17 +543,12 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     room = Patchbay.apply_candidate!(room, Fixtures.improved_markdown())
 
     post_state = visible_post_state(room)
-    result = VerificationService.derive_result(invocation, post_state)
 
     verification =
       create_verification!(%{
         room_id: room.id,
         invocation_id: invocation.id,
-        checks: result.checks,
-        passed: result.passed,
-        failure_code: result.failure_code,
-        expected_state: result.expected_state,
-        observed_state: result.observed_state
+        observed_state: post_state
       })
 
     stale_verified_at = DateTime.add(verification.inserted_at, -60, :second)
@@ -658,7 +641,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         root_cause: "test",
         repair_plan: %{},
         contract_diff: %{},
-        canary_result: %{"passed" => false},
+        canary_result: %{passed: false},
         risk_notes: [],
         model: "fixture",
         model_response_id: "fixture-response",
@@ -668,21 +651,11 @@ defmodule Patchbay.Patchbay.ResourcesTest do
 
     assert_raise Ash.Error.Invalid, fn -> Patchbay.publish_repair_proposal!(proposal) end
 
-    canary_checks = %{
-      "adapter_allowlisted" => true,
-      "postcondition_allowlisted" => true,
-      "candidate_present" => true,
-      "source_unchanged" => true,
-      "candidate_digest_changed" => true,
-      "frontmatter_valid" => true,
-      "identity_preserved" => true,
-      "output_contract_valid" => true,
-      "ui_revision_advanced" => true
-    }
+    canary_checks = Map.new(Elixir.Patchbay.Patchbay.RepairProposal.canary_checks(), &{&1, true})
 
     proposal =
       Patchbay.mark_canary_passed!(proposal, %{
-        canary_result: %{"passed" => true, "checks" => canary_checks}
+        canary_result: %{passed: true, checks: canary_checks}
       })
 
     # Approval also requires the repair to still answer the room's current
@@ -946,7 +919,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         root_cause: "The handler did not update visible state.",
         repair_plan: %{},
         contract_diff: %{},
-        canary_result: %{"passed" => true},
+        canary_result: %{passed: true},
         risk_notes: [],
         model: "fixture",
         model_response_id: "fixture-response",
@@ -1132,7 +1105,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
         root_cause: "The handler did not update visible state.",
         repair_plan: %{},
         contract_diff: %{},
-        canary_result: %{"passed" => true},
+        canary_result: %{passed: true},
         risk_notes: [],
         model: "fixture",
         model_response_id: "fixture-response",

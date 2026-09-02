@@ -10,11 +10,24 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   request is served without spending anything and without consulting the spend
   limits in `Patchbay.Patchbay.ModelBudget`. Pass `:room_id` so those limits can
   pace the room the call belongs to.
+
+  This module also owns the candidate cache, so a candidate is only ever built
+  or rebuilt here.
   """
 
   alias Patchbay.Config
-  alias Patchbay.Patchbay.{CandidateCache, CanonicalJSON, Digest, Fixtures, Frontmatter}
-  alias Patchbay.Patchbay.ModelBudget
+
+  alias Patchbay.Patchbay.{
+    CandidateCache,
+    CanonicalJSON,
+    Digest,
+    Fixtures,
+    Frontmatter,
+    Invocation,
+    ModelBudget,
+    PostconditionVerifier
+  }
+
   alias Patchbay.Patchbay.OpenAI.Client
 
   @prompt_version "patchbay-candidate-v1"
@@ -46,24 +59,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
         {:ok, generated}
 
       {:error, live_reason} ->
-        if fallback_enabled?(opts) do
-          fallback_variant =
-            cache_variant(
-              :fallback,
-              "patchbay-demo-fallback",
-              Keyword.get(opts, :prompt_version, @prompt_version)
-            )
-
-          generate_variant(
-            source,
-            generation_key,
-            input_sha256,
-            fallback_variant,
-            fn -> {:ok, fallback_result(source, live_reason)} end
-          )
-        else
-          {:error, {:model_generation_failed, live_reason}}
-        end
+        demo_candidate(source, generation_key, input_sha256, live_reason, opts)
     end
   rescue
     ArgumentError -> {:error, :invalid_generation_input}
@@ -71,12 +67,78 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
   def generate(_source, _arguments, _opts), do: {:error, :invalid_generation_input}
 
+  # When live inference is unavailable the demo still needs something to show,
+  # so it produces the canned candidate under its own cache variant. Outside the
+  # demo the call simply fails.
+  defp demo_candidate(source, generation_key, input_sha256, live_reason, opts) do
+    if fallback_enabled?(opts) do
+      generate_variant(
+        source,
+        generation_key,
+        input_sha256,
+        cache_variant(
+          :fallback,
+          "patchbay-demo-fallback",
+          Keyword.get(opts, :prompt_version, @prompt_version)
+        ),
+        fn -> {:ok, fallback_result(source, live_reason)} end
+      )
+    else
+      {:error, {:model_generation_failed, live_reason}}
+    end
+  end
+
   @spec generate!(binary(), map(), keyword()) :: map()
   def generate!(source, arguments, opts \\ []) do
     case generate(source, arguments, opts) do
       {:ok, result} -> result
       {:error, reason} -> raise ArgumentError, "candidate generation failed: #{inspect(reason)}"
     end
+  end
+
+  @doc """
+  Rebuilds the candidate a recorded call produced, from the call itself.
+
+  A retry and a repair both need the candidate a failed call generated, and the
+  invocation row is the only durable record of it, so both come here rather
+  than each reassembling it. What comes back is proved to belong to the room's
+  current source and arguments; whether its text is still a usable Skill is a
+  separate question, answered by the rerun's own validation or by the canary.
+  """
+  @spec durable_candidate!(Invocation.t(), binary()) :: map()
+  def durable_candidate!(invocation, source) do
+    generated = rebuild_candidate(invocation)
+
+    case validate_provenance(generated, source, invocation.arguments) do
+      :ok ->
+        generated
+
+      {:error, reason} ->
+        raise ArgumentError, "durable candidate evidence is invalid: #{inspect(reason)}"
+    end
+  end
+
+  # The handler result is free-form JSON from the tool call, so it is read with
+  # the string keys PostgreSQL gives back and turned into a candidate here.
+  defp rebuild_candidate(invocation) do
+    handler_result = invocation.handler_result || %{}
+    provenance = Map.get(handler_result, "candidate_provenance") || %{}
+
+    %{
+      candidate_markdown: invocation.generated_candidate,
+      candidate_sha256: invocation.generated_candidate_sha256,
+      generation_key: invocation.generation_key,
+      input_sha256: provenance["input_sha256"],
+      cache_variant: provenance["cache_variant"],
+      change_summary: handler_result["change_summary"] || [],
+      warnings: handler_result["warnings"] || [],
+      model: provenance["model"],
+      model_response_id: provenance["model_response_id"],
+      prompt_version: provenance["prompt_version"],
+      fallback_used: provenance["fallback_used"],
+      fallback_reason: provenance["fallback_reason"],
+      usage: Client.normalize_usage(provenance["usage"])
+    }
   end
 
   @spec fallback_warning() :: String.t()
@@ -88,13 +150,13 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   A NUL byte cannot be stored and the Unicode tag range (U+E0000..U+E007F) is
   invisible on screen, so text carrying either is refused whether it arrives
   from a person or comes back from a model. Callers check `String.valid?/1`
-  first; this walks the text as UTF-8.
+  first.
   """
   @spec unsupported_characters(binary()) :: :nul | :hidden_unicode | nil
   def unsupported_characters(text) when is_binary(text) do
     cond do
       String.contains?(text, <<0>>) -> :nul
-      text |> String.to_charlist() |> Enum.any?(&(&1 in 0xE0000..0xE007F)) -> :hidden_unicode
+      String.match?(text, ~r/[\x{E0000}-\x{E007F}]/u) -> :hidden_unicode
       true -> nil
     end
   end
@@ -109,62 +171,51 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
     CandidateCache.fetch_or_generate(
       generation_key,
       cache_variant,
-      fn ->
-        case generator.() do
-          {:ok, result} when is_map(result) ->
-            result =
-              result
-              |> Map.put(
-                :fallback_used,
-                result[:fallback_used] || result["fallback_used"] || false
-              )
-              |> Map.put(:fallback_reason, result[:fallback_reason] || result["fallback_reason"])
-
-            with {:ok, candidate} <- validate_candidate(source, candidate_from(result)) do
-              normalize_result(result, candidate, generation_key, input_sha256, cache_variant)
-            end
-
-          {:error, reason} ->
-            {:error, reason}
-
-          _ ->
-            {:error, :generator_result_invalid}
-        end
-      end,
+      fn -> generated_result(generator, source, generation_key, input_sha256, cache_variant) end,
       fn cached ->
-        cached_result_valid?(
-          cached,
-          source,
-          generation_key,
-          input_sha256,
-          cache_variant
-        )
+        cached_result_valid?(cached, source, generation_key, input_sha256, cache_variant)
       end
     )
   end
 
-  @doc false
-  @spec validate_generated(map(), binary(), map(), keyword()) :: :ok | {:error, term()}
-  def validate_generated(generated, source, arguments, _opts \\ [])
+  defp generated_result(generator, source, generation_key, input_sha256, cache_variant) do
+    case generator.() do
+      {:ok, result} when is_map(result) ->
+        with {:ok, candidate} <- validate_candidate(source, result[:candidate_markdown]) do
+          normalize_result(result, candidate, generation_key, input_sha256, cache_variant)
+        end
 
-  def validate_generated(generated, source, arguments, _opts)
-      when is_map(generated) and is_binary(source) and is_map(arguments) do
-    generation_key = Digest.generation_key(Digest.sha256(source), arguments)
-    input_sha256 = Digest.sha256(source <> <<0>> <> CanonicalJSON.encode(arguments))
-    cache_variant = Map.get(generated, :cache_variant) || Map.get(generated, "cache_variant")
+      {:error, reason} ->
+        {:error, reason}
 
-    with true <- is_binary(cache_variant),
-         true <-
-           cached_result_valid?(generated, source, generation_key, input_sha256, cache_variant),
-         {:ok, _candidate} <- validate_candidate(source, candidate_from(generated)) do
-      :ok
-    else
-      false -> {:error, :candidate_provenance_invalid}
-      {:error, _} = error -> error
+      _ ->
+        {:error, :generator_result_invalid}
     end
   end
 
-  def validate_generated(_generated, _source, _arguments, _opts),
+  @doc false
+  @spec validate_generated(map(), binary(), map()) :: :ok | {:error, term()}
+  def validate_generated(generated, source, arguments)
+      when is_map(generated) and is_binary(source) and is_map(arguments) do
+    generation_key = Digest.generation_key(Digest.sha256(source), arguments)
+    input_sha256 = Digest.sha256(source <> <<0>> <> CanonicalJSON.encode(arguments))
+
+    with true <- is_binary(generated[:cache_variant]),
+         true <-
+           cached_result_valid?(
+             generated,
+             source,
+             generation_key,
+             input_sha256,
+             generated.cache_variant
+           ) do
+      :ok
+    else
+      false -> {:error, :candidate_provenance_invalid}
+    end
+  end
+
+  def validate_generated(_generated, _source, _arguments),
     do: {:error, :candidate_provenance_invalid}
 
   @doc false
@@ -173,10 +224,9 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       when is_map(generated) and is_binary(source) and is_map(arguments) do
     generation_key = Digest.generation_key(Digest.sha256(source), arguments)
     input_sha256 = Digest.sha256(source <> <<0>> <> CanonicalJSON.encode(arguments))
-    cache_variant = Map.get(generated, :cache_variant) || Map.get(generated, "cache_variant")
 
-    if is_binary(cache_variant) and
-         provenance_valid?(generated, generation_key, input_sha256, cache_variant) do
+    if is_binary(generated[:cache_variant]) and
+         provenance_valid?(generated, generation_key, input_sha256, generated.cache_variant) do
       :ok
     else
       {:error, :candidate_provenance_invalid}
@@ -188,12 +238,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
   defp cached_result_valid?(cached, source, generation_key, input_sha256, cache_variant)
        when is_map(cached) do
-    candidate = candidate_from(cached)
-    candidate_sha256 = cached[:candidate_sha256] || cached["candidate_sha256"]
-
-    is_binary(candidate) and Digest.sha256(candidate) == candidate_sha256 and
-      provenance_valid?(cached, generation_key, input_sha256, cache_variant) and
-      match?({:ok, _}, validate_candidate(source, candidate))
+    provenance_valid?(cached, generation_key, input_sha256, cache_variant) and
+      match?({:ok, _}, validate_candidate(source, cached[:candidate_markdown]))
   end
 
   defp cached_result_valid?(_cached, _source, _generation_key, _input_sha256, _cache_variant),
@@ -201,15 +247,11 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
 
   defp provenance_valid?(cached, generation_key, input_sha256, cache_variant)
        when is_map(cached) do
-    candidate = candidate_from(cached)
-    candidate_sha256 = cached[:candidate_sha256] || cached["candidate_sha256"]
-    cached_generation_key = cached[:generation_key] || cached["generation_key"]
-    cached_input_sha256 = cached[:input_sha256] || cached["input_sha256"]
-    cached_variant = cached[:cache_variant] || cached["cache_variant"]
+    candidate = cached[:candidate_markdown]
 
-    is_binary(candidate) and Digest.sha256(candidate) == candidate_sha256 and
-      cached_generation_key == generation_key and cached_input_sha256 == input_sha256 and
-      cached_variant == cache_variant
+    is_binary(candidate) and Digest.sha256(candidate) == cached[:candidate_sha256] and
+      cached[:generation_key] == generation_key and cached[:input_sha256] == input_sha256 and
+      cached[:cache_variant] == cache_variant
   end
 
   defp provenance_valid?(_cached, _generation_key, _input_sha256, _cache_variant), do: false
@@ -294,16 +336,24 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       Digest.validate_artifact(candidate) != :ok ->
         {:error, :candidate_too_large}
 
-      unsupported_characters(candidate) == :nul ->
-        {:error, :candidate_contains_nul}
+      true ->
+        validate_skill_text(source, candidate, unsupported_characters(candidate))
+    end
+  end
 
-      unsupported_characters(candidate) == :hidden_unicode ->
-        {:error, :candidate_contains_hidden_unicode}
+  defp validate_candidate(_source, _candidate), do: {:error, :candidate_must_be_string}
 
+  defp validate_skill_text(_source, _candidate, :nul), do: {:error, :candidate_contains_nul}
+
+  defp validate_skill_text(_source, _candidate, :hidden_unicode),
+    do: {:error, :candidate_contains_hidden_unicode}
+
+  defp validate_skill_text(source, candidate, nil) do
+    cond do
       not Frontmatter.valid?(candidate) ->
         {:error, :candidate_frontmatter_invalid}
 
-      not Patchbay.Patchbay.PostconditionVerifier.identity_preserved?(source, candidate) ->
+      not PostconditionVerifier.identity_preserved?(source, candidate) ->
         {:error, :candidate_identity_not_preserved}
 
       candidate == source ->
@@ -314,13 +364,9 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
     end
   end
 
-  defp validate_candidate(_source, _candidate), do: {:error, :candidate_must_be_string}
-
   defp normalize_result(result, candidate, generation_key, input_sha256, cache_variant) do
-    change_summary =
-      normalize_bounded_list(result[:change_summary] || result["change_summary"], 6, 240)
-
-    warnings = normalize_bounded_list(result[:warnings] || result["warnings"], 4, 240)
+    change_summary = normalize_bounded_list(result[:change_summary], 6, 240)
+    warnings = normalize_bounded_list(result[:warnings], 4, 240)
 
     if is_nil(change_summary) or is_nil(warnings) do
       {:error, :candidate_metadata_invalid}
@@ -334,13 +380,12 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
          cache_variant: cache_variant,
          change_summary: change_summary,
          warnings: Enum.take(Enum.uniq(warnings ++ [@task_warning]), 4),
-         model: result[:model] || result["model"] || "unknown-model",
-         model_response_id:
-           result[:model_response_id] || result["model_response_id"] || "unknown-response",
-         prompt_version: result[:prompt_version] || result["prompt_version"] || @prompt_version,
-         fallback_used: result[:fallback_used] || result["fallback_used"] || false,
-         fallback_reason: result[:fallback_reason] || result["fallback_reason"],
-         usage: Client.normalize_usage(result[:usage] || result["usage"])
+         model: result[:model] || "unknown-model",
+         model_response_id: result[:model_response_id] || "unknown-response",
+         prompt_version: result[:prompt_version] || @prompt_version,
+         fallback_used: result[:fallback_used] || false,
+         fallback_reason: result[:fallback_reason],
+         usage: Client.normalize_usage(result[:usage])
        }}
     end
   end
@@ -356,11 +401,6 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   end
 
   defp normalize_bounded_list(_, _max_items, _max_bytes), do: nil
-
-  defp candidate_from(result) do
-    result[:candidate_markdown] || result["candidate_markdown"] ||
-      result[:improved_skill_markdown] || result["improved_skill_markdown"]
-  end
 
   defp fallback_enabled?(opts) do
     Keyword.get(opts, :fallback, false) or Config.demo_fallback?()

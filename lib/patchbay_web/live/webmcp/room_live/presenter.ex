@@ -313,12 +313,12 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   def short_digest(_), do: "—"
 
-  def fallback_used?(%Invocation{handler_result: result}) when is_map(result) do
-    provenance = map_value(result, :candidate_provenance, %{})
-    map_value(provenance, :fallback_used, false) == true
-  end
+  def fallback_used?(%Invocation{
+        handler_result: %{"candidate_provenance" => %{"fallback_used" => true}}
+      }),
+      do: true
 
-  def fallback_used?(_), do: false
+  def fallback_used?(_invocation), do: false
 
   def proposal_fallback?(proposal) do
     is_binary(proposal.model) and String.contains?(String.downcase(proposal.model), "fallback")
@@ -328,10 +328,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     do: Enum.sort_by(diff, fn {field, _value} -> to_string(field) end)
 
   def diff_entries(_), do: []
-  def diff_from(diff) when is_map(diff), do: map_value(diff, :from, nil)
-  def diff_from(_), do: nil
-  def diff_to(diff) when is_map(diff), do: map_value(diff, :to, nil)
-  def diff_to(_), do: nil
+  def diff_from(%{"from" => value}), do: value
+  def diff_from(_diff), do: nil
+  def diff_to(%{"to" => value}), do: value
+  def diff_to(_diff), do: nil
 
   def format_value(value) when is_binary(value), do: value
   def format_value(nil), do: "—"
@@ -383,13 +383,16 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
   defp format_map(value) when is_map(value), do: format_value(value)
   defp format_map(value), do: inspect(value)
 
-  def canary_passed?(proposal), do: map_value(proposal.canary_result, :passed, false) == true
+  def canary_passed?(%{canary_result: %{passed: true}}), do: true
+  def canary_passed?(_proposal), do: false
 
-  def canary_checks(result) when is_map(result) do
-    result |> map_value(:checks, %{}) |> Enum.sort_by(fn {name, _passed} -> to_string(name) end)
+  def canary_checks(%{checks: checks}) when is_map(checks) do
+    checks
+    |> Enum.map(fn {name, passed} -> {to_string(name), passed} end)
+    |> Enum.sort_by(fn {name, _passed} -> name end)
   end
 
-  def canary_checks(_), do: []
+  def canary_checks(_result), do: []
 
   def upload_problems(%Phoenix.LiveView.UploadConfig{errors: errors}) do
     errors
@@ -442,20 +445,17 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   def timeline_detail(%RoomEvent{payload: payload}) when is_map(payload) do
     cond do
-      is_binary(map_value(payload, :failure_code, nil)) ->
-        map_value(payload, :failure_code, "")
+      is_binary(payload["failure_code"]) ->
+        payload["failure_code"]
 
-      is_binary(map_value(payload, :failure, nil)) ->
-        map_value(payload, :failure, "")
+      is_binary(payload["failure"]) ->
+        payload["failure"]
 
-      is_integer(map_value(payload, :generation, nil)) ->
-        "Generation #{map_value(payload, :generation, 0)}"
+      is_integer(payload["generation"]) ->
+        "Generation #{payload["generation"]}"
 
-      is_boolean(map_value(payload, :reported_success, nil)) ->
-        if(map_value(payload, :reported_success, false),
-          do: "reported success",
-          else: "reported error"
-        )
+      is_boolean(payload["reported_success"]) ->
+        if(payload["reported_success"], do: "reported success", else: "reported error")
 
       true ->
         "Recorded in room evidence"
@@ -484,15 +484,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     >{Calendar.strftime(@at, "%H:%M UTC")}</time>
     """
   end
-
-  def map_value(map, key, default) when is_map(map) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> value
-      :error -> Map.get(map, Atom.to_string(key), default)
-    end
-  end
-
-  def map_value(_map, _key, default), do: default
 
   defp status_key(status) when is_atom(status), do: Atom.to_string(status)
   defp status_key(status) when is_binary(status), do: status

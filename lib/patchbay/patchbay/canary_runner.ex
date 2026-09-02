@@ -62,16 +62,16 @@ defmodule Patchbay.Patchbay.CanaryRunner do
       )
 
     checks = %{
-      "adapter_allowlisted" => adapter_allowlisted,
-      "postcondition_allowlisted" => postcondition_allowlisted,
-      "candidate_present" => output["applied"] == true,
-      "source_unchanged" => verifier.checks.source_unchanged,
-      "candidate_digest_changed" => verifier.checks.candidate_changed,
-      "frontmatter_valid" => frontmatter_valid,
-      "identity_preserved" => identity_preserved,
-      "output_contract_valid" =>
+      adapter_allowlisted: adapter_allowlisted,
+      postcondition_allowlisted: postcondition_allowlisted,
+      candidate_present: output["applied"] == true,
+      source_unchanged: verifier.checks.source_unchanged,
+      candidate_digest_changed: verifier.checks.candidate_changed,
+      frontmatter_valid: frontmatter_valid,
+      identity_preserved: identity_preserved,
+      output_contract_valid:
         revision_contract_valid and output_contract_valid?(output, candidate_sha256),
-      "ui_revision_advanced" => verifier.checks.ui_revision_advanced
+      ui_revision_advanced: verifier.checks.ui_revision_advanced
     }
 
     passed = Enum.all?(checks, fn {_key, value} -> value == true end)

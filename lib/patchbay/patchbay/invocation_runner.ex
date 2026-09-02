@@ -12,7 +12,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
 
   alias Patchbay.Patchbay.{
     BrowserSession,
-    CandidateCache,
     CandidateGenerator,
     Digest,
     Invocation,
@@ -427,8 +426,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     invocation = load_invocation!(invocation_or_id)
     room = Domain.get_room_by_id!(invocation.room_id, load: :desired_tool_revision)
 
-    generated = durable_candidate!(invocation, room)
-    generated = validate_retry_cache!(generated, invocation, room)
+    ensure_retryable!(invocation)
+    generated = CandidateGenerator.durable_candidate!(invocation, room.source_markdown)
 
     invoke!(
       room,
@@ -492,7 +491,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       :visible_state_observed,
       %{
         "invocation_id" => verified.id,
-        "ui_revision" => get_in(verified.post_state, ["ui_revision"])
+        "ui_revision" => verified.post_state[:ui_revision]
       },
       browser_session_id: browser_session_id
     )
@@ -625,11 +624,11 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       is_binary(room.candidate_markdown) and String.trim(room.candidate_markdown) != ""
 
     %{
-      "ui_revision" => room.ui_revision,
-      "source" => %{"present" => true, "sha256" => room.source_sha256},
-      "candidate" => %{
-        "present" => candidate_present,
-        "sha256" => if(candidate_present, do: room.candidate_sha256, else: nil)
+      ui_revision: room.ui_revision,
+      source: %{present: true, sha256: room.source_sha256},
+      candidate: %{
+        present: candidate_present,
+        sha256: if(candidate_present, do: room.candidate_sha256, else: nil)
       }
     }
   end
@@ -675,9 +674,15 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     raise ArgumentError, "invocation is no longer awaiting visible proof"
   end
 
+  defp ensure_retryable!(%Invocation{effective_status: :verified_failure}), do: :ok
+
+  defp ensure_retryable!(_invocation) do
+    raise ArgumentError, "retry requires a verified failure invocation"
+  end
+
   defp ensure_apply_session_current!(room, browser_session, revision) do
     if revision.handler_adapter == :apply_candidate_to_editor do
-      observed_contract = fetch(browser_session.observed_contracts, revision.name)
+      observed_contract = Map.get(browser_session.observed_contracts, revision.name)
 
       cond do
         browser_session.webmcp_supported != true ->
@@ -727,14 +732,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       end
   end
 
-  defp fetch(map, key) when is_map(map) and is_atom(key) do
-    Map.get(map, key) || Map.get(map, Atom.to_string(key))
-  end
-
-  defp fetch(map, key) when is_map(map) and is_binary(key), do: Map.get(map, key)
-
-  defp fetch(_map, _key), do: nil
-
   defp maybe_filter_browser_session(query, nil), do: query
 
   defp maybe_filter_browser_session(query, browser_session_id),
@@ -745,127 +742,21 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp maybe_filter_invocation_epoch(query, invocation_epoch),
     do: Ash.Query.filter(query, invocation_epoch == ^invocation_epoch)
 
-  defp durable_generated(invocation) do
-    provenance = fetch(invocation.handler_result, :candidate_provenance)
-
-    %{
-      candidate_markdown: invocation.generated_candidate,
-      candidate_sha256: invocation.generated_candidate_sha256,
-      generation_key: invocation.generation_key,
-      input_sha256: fetch(provenance, :input_sha256),
-      cache_variant: fetch(provenance, :cache_variant),
-      change_summary: fetch(invocation.handler_result, :change_summary) || [],
-      warnings: fetch(invocation.handler_result, :warnings) || [],
-      model: fetch(provenance, :model),
-      model_response_id: fetch(provenance, :model_response_id),
-      prompt_version: fetch(provenance, :prompt_version),
-      fallback_used: fetch(provenance, :fallback_used),
-      fallback_reason: fetch(provenance, :fallback_reason),
-      usage: Client.normalize_usage(fetch(provenance, :usage))
-    }
-  end
-
-  defp durable_candidate!(invocation, room) do
-    candidate = invocation.generated_candidate
-    candidate_sha256 = invocation.generated_candidate_sha256
-    generation_key = invocation.generation_key
-
-    cond do
-      invocation.effective_status != :verified_failure ->
-        raise ArgumentError, "retry requires a verified failure invocation"
-
-      not is_binary(candidate) or not is_binary(candidate_sha256) ->
-        raise ArgumentError, "retry requires durable candidate evidence"
-
-      Digest.sha256(candidate) != candidate_sha256 ->
-        raise ArgumentError, "retry candidate digest is invalid"
-
-      not is_binary(generation_key) or
-          generation_key != Digest.generation_key(room.source_sha256, invocation.arguments) ->
-        raise ArgumentError, "retry generation key is stale"
-
-      true ->
-        validated_generated!(invocation, room)
-    end
-  end
-
-  defp validated_generated!(invocation, room) do
-    generated = durable_generated(invocation)
-
-    case CandidateGenerator.validate_generated(
-           generated,
-           room.source_markdown,
-           invocation.arguments
-         ) do
-      :ok ->
-        generated
-
-      {:error, reason} ->
-        raise ArgumentError, "retry candidate evidence is invalid: #{inspect(reason)}"
-    end
-  end
-
-  defp validate_retry_cache!(generated, invocation, room) do
-    variant = generated.cache_variant
-
-    case CandidateCache.get(invocation.generation_key, variant: variant) do
-      {:ok, cached} ->
-        if same_candidate_evidence?(cached, generated) and
-             CandidateGenerator.validate_generated(
-               cached,
-               room.source_markdown,
-               invocation.arguments
-             ) ==
-               :ok do
-          generated
-        else
-          CandidateCache.delete(invocation.generation_key, variant: variant)
-          generated
-        end
-
-      {:error, _reason} ->
-        generated
-    end
-    |> then(fn durable ->
-      case CandidateCache.put(invocation.generation_key, durable, variant: variant) do
-        :ok ->
-          durable
-
-        {:error, reason} ->
-          raise ArgumentError, "retry candidate cache is invalid: #{inspect(reason)}"
-      end
-    end)
-  end
-
-  defp same_candidate_evidence?(left, right) do
-    Enum.all?(
-      ~w(candidate_markdown candidate_sha256 generation_key input_sha256 cache_variant model model_response_id prompt_version fallback_used fallback_reason),
-      fn key -> fetch(left, String.to_atom(key)) == fetch(right, String.to_atom(key)) end
-    )
-  end
-
   defp validate_arguments!(schema, arguments) when is_map(schema) do
-    properties = Map.get(schema, "properties", Map.get(schema, :properties, %{}))
-    required = Map.get(schema, "required", Map.get(schema, :required, []))
-
-    additional_properties =
-      Map.get(schema, "additionalProperties", Map.get(schema, :additionalProperties, true))
-
-    keys = Map.keys(arguments) |> Enum.map(&to_string/1)
-    property_keys = Map.keys(properties) |> Enum.map(&to_string/1)
+    properties = Map.get(schema, "properties", %{})
 
     cond do
-      Enum.any?(
-        required,
-        &(not Map.has_key?(arguments, &1) and not Map.has_key?(arguments, atom_key(arguments, &1)))
-      ) ->
+      Enum.any?(Map.get(schema, "required", []), &(not Map.has_key?(arguments, &1))) ->
         raise ArgumentError, "required invocation argument missing"
 
-      additional_properties == false and Enum.any?(keys, &(&1 not in property_keys)) ->
+      Map.get(schema, "additionalProperties", true) == false and
+          Enum.any?(Map.keys(arguments), &(not Map.has_key?(properties, &1))) ->
         raise ArgumentError, "unknown invocation argument"
 
-      not valid_instruction?(arguments) ->
-        raise ArgumentError, "instructions must be a non-empty string of at most 1000 characters"
+      Enum.any?(arguments, fn {key, value} ->
+        not valid_argument?(Map.get(properties, key), value)
+      end) ->
+        raise ArgumentError, "invocation argument does not match the tool input schema"
 
       true ->
         :ok
@@ -875,18 +766,20 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp validate_arguments!(_schema, _arguments),
     do: raise(ArgumentError, "tool input schema is invalid")
 
-  defp valid_instruction?(arguments) do
-    value = Map.get(arguments, "instructions", Map.get(arguments, :instructions))
+  # The tool contract already says how long a string argument may be, so the
+  # bounds are read from it rather than restated here. The minimum is measured
+  # after trimming, which is what makes "at least one character" mean a visible
+  # one.
+  defp valid_argument?(%{"type" => "string"} = property, value) when is_binary(value) do
+    maximum = Map.get(property, "maxLength")
 
-    is_binary(value) and String.trim(value) != "" and
-      Enum.count_until(String.codepoints(value), 1_001) <= 1_000
+    String.length(String.trim(value)) >= Map.get(property, "minLength", 0) and
+      (is_nil(maximum) or String.length(value) <= maximum)
   end
 
-  defp atom_key(map, key) when is_binary(key) do
-    Enum.find(Map.keys(map), fn candidate ->
-      is_atom(candidate) and Atom.to_string(candidate) == key
-    end)
-  end
+  defp valid_argument?(%{"type" => "string"}, _value), do: false
+
+  defp valid_argument?(_property, _value), do: true
 
   defp normalize_arguments!(arguments) when is_map(arguments) do
     Enum.reduce(arguments, %{}, fn {key, value}, normalized ->

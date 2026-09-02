@@ -10,11 +10,7 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
 
   @endpoint "https://api.openai.com/v1/responses"
   @reasoning %{effort: "low"}
-  @usage_keys [
-    {"input_tokens", :input_tokens},
-    {"output_tokens", :output_tokens},
-    {"total_tokens", :total_tokens}
-  ]
+  @usage_keys ["input_tokens", "output_tokens", "total_tokens"]
 
   @spec generate_candidate(binary(), map(), keyword()) ::
           {:ok, map()} | {:error, term()}
@@ -148,24 +144,22 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
   end
 
   defp extract_output(%{"output" => output}) when is_list(output) do
-    text =
-      output
-      |> Enum.flat_map(fn item ->
-        item
-        |> Map.get("content", [])
-        |> Enum.flat_map(fn content ->
-          case content do
-            %{"text" => value} when is_binary(value) -> [value]
-            _ -> []
-          end
-        end)
-      end)
-      |> Enum.join()
-
-    decode_output(text)
+    output
+    |> Enum.flat_map(&content_text/1)
+    |> Enum.join()
+    |> decode_output()
   end
 
   defp extract_output(_), do: {:error, :response_output_missing}
+
+  defp content_text(item) do
+    item
+    |> Map.get("content", [])
+    |> Enum.flat_map(fn
+      %{"text" => value} when is_binary(value) -> [value]
+      _ -> []
+    end)
+  end
 
   defp decode_output(value) do
     case Jason.decode(value) do
@@ -196,10 +190,10 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
   """
   @spec normalize_usage(term()) :: %{optional(binary()) => non_neg_integer()}
   def normalize_usage(usage) when is_map(usage) do
-    Enum.reduce(@usage_keys, %{}, fn {key, atom_key}, acc ->
-      case Map.get(usage, key) || Map.get(usage, atom_key) do
+    Enum.reduce(@usage_keys, %{}, fn key, acc ->
+      case Map.get(usage, key) do
         count when is_integer(count) and count >= 0 -> Map.put(acc, key, count)
-        _ -> acc
+        _unusable -> acc
       end
     end)
   end
@@ -208,7 +202,7 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
 
   defp inspect_argument(arguments) do
     arguments
-    |> Map.get("instructions", Map.get(arguments, :instructions, ""))
+    |> Map.get("instructions", "")
     |> to_string()
     |> String.slice(0, 1_000)
   end

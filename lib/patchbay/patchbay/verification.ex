@@ -5,7 +5,12 @@ defmodule Patchbay.Patchbay.Verification do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  alias Patchbay.Patchbay.Types.{FailureCode, GoalKind}
+  alias Patchbay.Patchbay.PostconditionVerifier
+  alias Patchbay.Patchbay.Types.{FailureCode, GoalKind, VisibleState}
+
+  # The verifier owns the check list, so the stored shape follows it rather than
+  # repeating it.
+  @check_fields Enum.map(PostconditionVerifier.required_checks(), &{&1, [type: :boolean]})
 
   postgres do
     table("verifications")
@@ -21,11 +26,18 @@ defmodule Patchbay.Patchbay.Verification do
     uuid_primary_key(:id)
 
     attribute(:goal_kind, GoalKind, allow_nil?: false, public?: true, default: :skill_uplift)
-    attribute(:checks, :map, allow_nil?: false, public?: true, default: %{})
+
+    attribute :checks, :map do
+      allow_nil?(false)
+      public?(true)
+      default(%{})
+      constraints(preserve_nil_values?: true, fields: @check_fields)
+    end
+
     attribute(:passed, :boolean, allow_nil?: false, public?: true, default: false)
     attribute(:failure_code, FailureCode, allow_nil?: true, public?: true)
-    attribute(:expected_state, :map, allow_nil?: false, public?: true, default: %{})
-    attribute(:observed_state, :map, allow_nil?: false, public?: true, default: %{})
+    attribute(:expected_state, VisibleState, allow_nil?: false, public?: true, default: %{})
+    attribute(:observed_state, VisibleState, allow_nil?: false, public?: true, default: %{})
 
     create_timestamp(:inserted_at, public?: true)
   end
@@ -49,18 +61,12 @@ defmodule Patchbay.Patchbay.Verification do
     create :record_verification do
       public?(false)
 
-      accept([
-        :room_id,
-        :invocation_id,
-        :goal_kind,
-        :checks,
-        :passed,
-        :failure_code,
-        :expected_state,
-        :observed_state
-      ])
+      # The observed state is the only evidence a caller supplies. Everything the
+      # row concludes from it is derived here, so there is one producer of the
+      # verdict rather than a caller and a checker that have to agree.
+      accept([:room_id, :invocation_id, :goal_kind, :observed_state])
 
-      validate(Patchbay.Patchbay.Validations.VerificationResult)
+      change(Patchbay.Patchbay.Changes.DeriveVerificationResult)
     end
   end
 

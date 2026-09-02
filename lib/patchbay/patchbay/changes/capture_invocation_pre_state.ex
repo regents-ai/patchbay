@@ -1,7 +1,7 @@
 defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
   use Ash.Resource.Change
 
-  alias Patchbay.Patchbay.{CanonicalJSON, Digest}
+  alias Patchbay.Patchbay.Digest
 
   @impl true
   def change(changeset, _opts, _context) do
@@ -14,20 +14,21 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
 
     pre_state = snapshot(room)
 
+    # Both maps are cast to the same shape by the attribute's type, so the
+    # caller's claim either is the locked state or it is not.
     case Ash.Changeset.get_argument(changeset, :pre_state) do
       nil ->
         capture(changeset, pre_state, room)
 
-      supplied_pre_state ->
-        if same_state?(supplied_pre_state, pre_state) do
-          capture(changeset, pre_state, room)
-        else
-          Ash.Changeset.add_error(
-            changeset,
-            field: :pre_state,
-            message: "must match the locked room state at invocation start"
-          )
-        end
+      ^pre_state ->
+        capture(changeset, pre_state, room)
+
+      _stale ->
+        Ash.Changeset.add_error(
+          changeset,
+          field: :pre_state,
+          message: "must match the locked room state at invocation start"
+        )
     end
   end
 
@@ -53,17 +54,9 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
       end
 
     %{
-      "ui_revision" => room.ui_revision,
-      "source" => %{"present" => true, "sha256" => room.source_sha256},
-      "candidate" => %{"present" => candidate_present, "sha256" => candidate_sha256}
+      ui_revision: room.ui_revision,
+      source: %{present: true, sha256: room.source_sha256},
+      candidate: %{present: candidate_present, sha256: candidate_sha256}
     }
   end
-
-  defp same_state?(left, right) when is_map(left) and is_map(right) do
-    CanonicalJSON.encode(left) == CanonicalJSON.encode(right)
-  rescue
-    ArgumentError -> false
-  end
-
-  defp same_state?(_left, _right), do: false
 end

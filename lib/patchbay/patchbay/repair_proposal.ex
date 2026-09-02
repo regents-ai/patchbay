@@ -5,7 +5,36 @@ defmodule Patchbay.Patchbay.RepairProposal do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  alias Patchbay.Patchbay.Types.ProposalStatus
+  alias Patchbay.Patchbay.Types.{FailureCode, ProposalStatus}
+
+  # The canary decides these nine checks itself; they are deliberately not the
+  # visible-postcondition set, because a canary runs before anything is on
+  # screen.
+  @canary_checks [
+    :adapter_allowlisted,
+    :postcondition_allowlisted,
+    :candidate_present,
+    :source_unchanged,
+    :candidate_digest_changed,
+    :frontmatter_valid,
+    :identity_preserved,
+    :output_contract_valid,
+    :ui_revision_advanced
+  ]
+
+  # A canary can fail a check the visible-postcondition verifier does not make,
+  # which is what its own code covers. Listing the atoms here is what lets a
+  # stored code be read back as an atom.
+  @canary_failure_codes [:CANARY_FAILED | FailureCode.values()]
+
+  @token_counters [
+    preserve_nil_values?: true,
+    fields: [
+      input_tokens: [type: :integer],
+      output_tokens: [type: :integer],
+      total_tokens: [type: :integer]
+    ]
+  ]
 
   postgres do
     table("repair_proposals")
@@ -27,7 +56,29 @@ defmodule Patchbay.Patchbay.RepairProposal do
     attribute(:root_cause, :string, allow_nil?: false, public?: true)
     attribute(:repair_plan, :map, allow_nil?: false, public?: true, default: %{})
     attribute(:contract_diff, :map, allow_nil?: false, public?: true, default: %{})
-    attribute(:canary_result, :map, allow_nil?: false, public?: true, default: %{})
+
+    attribute :canary_result, :map do
+      allow_nil?(false)
+      public?(true)
+      default(%{})
+
+      constraints(
+        preserve_nil_values?: true,
+        fields: [
+          passed: [type: :boolean],
+          checks: [
+            type: :map,
+            constraints: [
+              preserve_nil_values?: true,
+              fields: Enum.map(@canary_checks, &{&1, [type: :boolean]})
+            ]
+          ],
+          failure_code: [type: :atom, constraints: [one_of: @canary_failure_codes]],
+          candidate_sha256: [type: :string]
+        ]
+      )
+    end
+
     attribute(:risk_notes, {:array, :string}, allow_nil?: false, public?: true, default: [])
     attribute(:model, :string, allow_nil?: false, public?: true)
     attribute(:model_response_id, :string, allow_nil?: false, public?: true)
@@ -35,7 +86,19 @@ defmodule Patchbay.Patchbay.RepairProposal do
 
     # Bounded token counters from the candidate-generation and repair-plan
     # calls. Never any response text.
-    attribute(:usage, :map, allow_nil?: false, public?: true, default: %{})
+    attribute :usage, :map do
+      allow_nil?(false)
+      public?(true)
+      default(%{})
+
+      constraints(
+        preserve_nil_values?: true,
+        fields: [
+          candidate: [type: :map, constraints: @token_counters],
+          repair_plan: [type: :map, constraints: @token_counters]
+        ]
+      )
+    end
 
     attribute(:input_sha256, :string, allow_nil?: false, public?: true)
     attribute(:approved_by, :string, allow_nil?: true, public?: true)
@@ -154,4 +217,8 @@ defmodule Patchbay.Patchbay.RepairProposal do
       authorize_if(always())
     end
   end
+
+  @doc "The checks a canary must record, all true, before a repair may be approved."
+  @spec canary_checks() :: [atom()]
+  def canary_checks, do: @canary_checks
 end

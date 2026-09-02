@@ -23,21 +23,25 @@ defmodule Patchbay.Patchbay.Digest do
   @spec max_artifact_bytes() :: pos_integer()
   def max_artifact_bytes, do: @max_artifact_bytes
 
-  @spec contract_payload(map() | struct()) :: map()
+  @doc """
+  The JSON form of a tool contract, from a revision record or the same fields
+  as a plain map.
+  """
+  @spec contract_payload(map()) :: map()
   def contract_payload(revision) do
     %{
-      "name" => value(revision, :name),
-      "title" => value(revision, :title),
-      "description" => value(revision, :description),
-      "input_schema" => value(revision, :input_schema) || %{},
-      "annotations" => value(revision, :annotations) || %{},
-      "handler_adapter" => value(revision, :handler_adapter),
-      "output_contract" => value(revision, :output_contract) || %{},
-      "postcondition_set" => value(revision, :postcondition_set)
+      "name" => Map.get(revision, :name),
+      "title" => Map.get(revision, :title),
+      "description" => Map.get(revision, :description),
+      "input_schema" => Map.get(revision, :input_schema) || %{},
+      "annotations" => Map.get(revision, :annotations) || %{},
+      "handler_adapter" => Map.get(revision, :handler_adapter),
+      "output_contract" => Map.get(revision, :output_contract) || %{},
+      "postcondition_set" => Map.get(revision, :postcondition_set)
     }
   end
 
-  @spec contract_sha256(map() | struct()) :: String.t()
+  @spec contract_sha256(map()) :: String.t()
   def contract_sha256(revision),
     do: revision |> contract_payload() |> CanonicalJSON.encode() |> sha256()
 
@@ -50,7 +54,4 @@ defmodule Patchbay.Patchbay.Digest do
       when is_binary(source_sha256) and is_map(arguments) do
     sha256(source_sha256 <> <<0>> <> CanonicalJSON.encode(arguments))
   end
-
-  defp value(map, key) when is_map(map),
-    do: Map.get(map, key) || Map.get(map, Atom.to_string(key))
 end
