@@ -339,8 +339,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   def format_value(value) do
     value |> printable_value() |> Jason.encode!(pretty: true)
-  rescue
-    _ -> inspect(value)
   end
 
   attr(:value, :any, required: true)

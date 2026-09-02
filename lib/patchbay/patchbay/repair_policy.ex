@@ -84,13 +84,13 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   @spec output_contract() :: map()
   def output_contract do
     %{
-      "reported_success" => true,
-      "applied" => true,
-      "verified" => true,
-      "candidate_sha256" => "sha256",
-      "ui_revision" => 0,
-      "change_summary" => [],
-      "warnings" => ["This candidate has not been evaluated on real tasks."]
+      reported_success: true,
+      applied: true,
+      verified: true,
+      candidate_sha256: "sha256",
+      ui_revision: 0,
+      change_summary: [],
+      warnings: ["This candidate has not been evaluated on real tasks."]
     }
   end
 

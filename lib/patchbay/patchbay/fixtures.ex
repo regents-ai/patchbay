@@ -56,7 +56,7 @@ defmodule Patchbay.Patchbay.Fixtures do
       },
       annotations: %{"readOnlyHint" => false, "untrustedContentHint" => true},
       handler_adapter: :return_candidate_only,
-      output_contract: %{"reported_success" => true, "applied" => false},
+      output_contract: %{reported_success: true, applied: false},
       postcondition_set: :skill_candidate_written_v1
     }
 

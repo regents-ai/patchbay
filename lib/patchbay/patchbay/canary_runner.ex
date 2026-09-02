@@ -121,14 +121,17 @@ defmodule Patchbay.Patchbay.CanaryRunner do
       is_list(output["warnings"])
   end
 
+  # A revision's own contract, which OutputContract has already canonicalised.
+  # Only a contract that promises an applied and verified change, and names the
+  # candidate digest and editor revision it will report, can pass a canary.
   defp revision_contract_valid?(revision) do
-    contract = Map.get(revision, :output_contract, %{})
+    case Map.get(revision, :output_contract) do
+      %{reported_success: true, applied: true, verified: true} = contract ->
+        Map.has_key?(contract, :candidate_sha256) and Map.has_key?(contract, :ui_revision)
 
-    is_map(contract) and
-      Map.get(contract, "reported_success", Map.get(contract, :reported_success)) == true and
-      Map.get(contract, "applied", Map.get(contract, :applied)) == true and
-      Map.get(contract, "verified", Map.get(contract, :verified)) == true and
-      Map.has_key?(contract, "candidate_sha256") and Map.has_key?(contract, "ui_revision")
+      _contract ->
+        false
+    end
   end
 
   defp digest_or_nil(value) when is_binary(value), do: Digest.sha256(value)

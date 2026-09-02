@@ -291,8 +291,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp as_text(value) when is_map(value) do
     value |> Map.new(fn {key, item} -> {to_string(key), item} end) |> Jason.encode!(pretty: true)
-  rescue
-    _ -> inspect(value)
   end
 
   defp as_text(value), do: inspect(value)

@@ -838,6 +838,47 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert Patchbay.mark_verified!(room).status == :verified
   end
 
+  test "a tool revision's output contract reads the same in memory and out of the database", %{
+    room: room,
+    revision: revision
+  } do
+    assert revision.output_contract == %{reported_success: true, applied: false}
+    assert revision.contract_sha256 == Fixtures.revision_attributes(room.id).contract_sha256
+
+    candidate =
+      Fixtures.revision_attributes(room.id)
+      |> Map.merge(%{
+        generation: 2,
+        name: "uplift_current_skill_v2",
+        status: :candidate,
+        output_contract: %{
+          "reported_success" => true,
+          "applied" => true,
+          "verified" => true,
+          "candidate_sha256" => "sha256",
+          "ui_revision" => 0,
+          "change_summary" => [],
+          "warnings" => [],
+          "invented_field" => "not part of the contract"
+        }
+      })
+      |> Map.delete(:contract_sha256)
+      |> Patchbay.create_tool_revision!()
+
+    canonical = %{
+      reported_success: true,
+      applied: true,
+      verified: true,
+      candidate_sha256: "sha256",
+      ui_revision: 0,
+      change_summary: [],
+      warnings: []
+    }
+
+    assert candidate.output_contract == canonical
+    assert Patchbay.get_tool_revision!(candidate.id).output_contract == canonical
+  end
+
   test "tool revision lifecycle actions only accept their legal prior status", %{
     room: room,
     revision: revision

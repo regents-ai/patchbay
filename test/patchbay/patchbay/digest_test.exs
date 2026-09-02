@@ -1,7 +1,27 @@
 defmodule Patchbay.Patchbay.DigestTest do
   use ExUnit.Case, async: true
 
-  alias Patchbay.Patchbay.Digest
+  alias Patchbay.Patchbay.{Digest, Fixtures, ToolRevision}
+
+  # Every browser holds the digest a room announces against the tool it
+  # registered, so this value is live: it may only change when the seed contract
+  # itself changes, never as a side effect of how the contract is written down.
+  @seed_contract_sha256 "0b4a33ff4bfe013c154884179862ebc10eb42da5870620c900a48e0c682c11cc"
+
+  test "the seed tool contract keeps its published digest once its shape is declared" do
+    attributes = Fixtures.revision_attributes(Ash.UUID.generate())
+
+    assert attributes.contract_sha256 == @seed_contract_sha256
+
+    %{type: type, constraints: constraints} =
+      Ash.Resource.Info.attribute(ToolRevision, :output_contract)
+
+    assert {:ok, contract} = Ash.Type.cast_input(type, attributes.output_contract, constraints)
+    assert contract == %{reported_success: true, applied: false}
+
+    assert Digest.contract_sha256(%{attributes | output_contract: contract}) ==
+             @seed_contract_sha256
+  end
 
   test "canonical contract digest is stable across map ordering" do
     first = %{

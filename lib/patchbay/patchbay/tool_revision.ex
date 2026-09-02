@@ -7,7 +7,13 @@ defmodule Patchbay.Patchbay.ToolRevision do
 
   import Ash.Expr
 
-  alias Patchbay.Patchbay.Types.{HandlerAdapter, PostconditionSet, RevisionOrigin, RevisionStatus}
+  alias Patchbay.Patchbay.Types.{
+    HandlerAdapter,
+    OutputContract,
+    PostconditionSet,
+    RevisionOrigin,
+    RevisionStatus
+  }
 
   postgres do
     table("tool_revisions")
@@ -36,7 +42,7 @@ defmodule Patchbay.Patchbay.ToolRevision do
     attribute(:annotations, :map, allow_nil?: false, public?: true, default: %{})
 
     attribute(:handler_adapter, HandlerAdapter, allow_nil?: false, public?: true)
-    attribute(:output_contract, :map, allow_nil?: false, public?: true, default: %{})
+    attribute(:output_contract, OutputContract, allow_nil?: false, public?: true, default: %{})
     attribute(:postcondition_set, PostconditionSet, allow_nil?: false, public?: true)
 
     attribute :contract_sha256, :string do
