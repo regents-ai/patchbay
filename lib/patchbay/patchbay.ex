@@ -56,6 +56,10 @@ defmodule Patchbay.Patchbay do
     resource Patchbay.Patchbay.Invocation do
       define(:record_invocation, action: :record_invocation)
       define(:get_invocation, action: :read, get_by: [:id])
+
+      # A call named by a browser or by a message from elsewhere is only this
+      # room's call if the room says so, so the room is part of the lookup.
+      define(:get_room_invocation, action: :read, get_by: [:id, :room_id])
       define(:get_invocation_for_update, action: :for_update, get_by: [:id])
       define(:get_invocation_by_request_uuid, action: :read, get_by: [:request_uuid])
       define(:get_invocation_by_receipt, action: :read, get_by: [:receipt])
@@ -70,6 +74,7 @@ defmodule Patchbay.Patchbay do
     resource Patchbay.Patchbay.RepairProposal do
       define(:create_repair_proposal, action: :create_proposal)
       define(:get_repair_proposal, action: :read, get_by: [:id])
+      define(:get_room_repair_proposal, action: :read, get_by: [:id, :room_id])
       define(:get_repair_proposal_for_update, action: :for_update, get_by: [:id])
       define(:list_repair_proposals, action: :read)
       define(:mark_canary_passed, action: :mark_canary_passed)

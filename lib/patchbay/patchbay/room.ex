@@ -13,6 +13,7 @@ defmodule Patchbay.Patchbay.Room do
 
     references do
       reference(:last_failed_invocation, match_with: [id: :room_id])
+      reference(:active_repair_proposal, match_with: [id: :room_id])
     end
   end
 
@@ -96,6 +97,25 @@ defmodule Patchbay.Patchbay.Room do
     belongs_to :last_failed_invocation, Patchbay.Patchbay.Invocation,
       allow_nil?: true,
       public?: true
+
+    belongs_to :active_repair_proposal, Patchbay.Patchbay.RepairProposal,
+      allow_nil?: true,
+      public?: true
+
+    # The call the room is showing. A room's calls are its evidence and none of
+    # them is ever removed, so the newest one is the one on the page.
+    has_one :latest_invocation, Patchbay.Patchbay.Invocation do
+      public?(true)
+      from_many?(true)
+      sort(started_at: :desc)
+    end
+
+    # The tool this room is offering right now. A room holds exactly one
+    # revision in the desired state, and its own generation names which.
+    has_one :desired_tool_revision, Patchbay.Patchbay.ToolRevision do
+      public?(true)
+      filter(expr(status == :desired and generation == parent(desired_tool_generation)))
+    end
   end
 
   actions do

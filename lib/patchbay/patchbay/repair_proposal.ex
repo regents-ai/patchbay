@@ -46,6 +46,10 @@ defmodule Patchbay.Patchbay.RepairProposal do
     create_timestamp(:inserted_at, public?: true)
   end
 
+  identities do
+    identity(:unique_id_per_room, [:id, :room_id], eager_check?: false)
+  end
+
   relationships do
     belongs_to :room, Patchbay.Patchbay.Room, allow_nil?: false, public?: true
     belongs_to :source_invocation, Patchbay.Patchbay.Invocation, allow_nil?: false, public?: true

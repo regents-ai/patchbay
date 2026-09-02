@@ -42,7 +42,7 @@ defmodule Patchbay.Patchbay.VerificationService do
 
   defp verify_locked!(invocation_or_id, attrs) do
     invocation = load_invocation!(invocation_or_id)
-    room = Domain.get_room_for_update!(invocation.room_id)
+    room = Domain.get_room_for_update!(invocation.room_id, load: :desired_tool_revision)
     invocation = Domain.get_invocation_for_update!(invocation.id)
 
     ensure_current_epoch!(invocation, room)
@@ -108,7 +108,7 @@ defmodule Patchbay.Patchbay.VerificationService do
   @doc false
   @spec derive_result(Invocation.t(), map()) :: map()
   def derive_result(%Invocation{} = invocation, post_state) do
-    room = Domain.get_room_by_id!(invocation.room_id)
+    room = Domain.get_room_by_id!(invocation.room_id, load: :desired_tool_revision)
     derive_result_for_room(invocation, room, post_state)
   end
 
@@ -116,7 +116,7 @@ defmodule Patchbay.Patchbay.VerificationService do
        when is_map(post_state) do
     tool_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
     browser_session = Domain.get_browser_session!(invocation.browser_session_id)
-    active_revision = active_revision(room)
+    active_revision = room.desired_tool_revision
 
     if tool_revision.room_id != room.id or browser_session.room_id != room.id do
       raise ArgumentError, "invocation evidence relationships must belong to the same room"
@@ -183,20 +183,6 @@ defmodule Patchbay.Patchbay.VerificationService do
       observed_contract_sha256: observed_contract_sha256,
       observed_browser_session_id: if(session_current?, do: browser_session.id, else: nil)
     }
-  end
-
-  defp active_revision(room) do
-    Domain.list_tool_revisions!(
-      query: [
-        filter: [
-          room_id: room.id,
-          status: :desired,
-          generation: room.desired_tool_generation
-        ],
-        limit: 1
-      ]
-    )
-    |> List.first()
   end
 
   defp persist_invocation_result!(invocation, result, verified_at) do

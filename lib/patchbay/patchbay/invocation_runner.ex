@@ -426,8 +426,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   @spec retry!(Invocation.t() | binary(), BrowserSession.t(), keyword()) :: Invocation.t()
   def retry!(invocation_or_id, %BrowserSession{} = browser_session, opts \\ []) do
     invocation = load_invocation!(invocation_or_id)
-    room = Domain.get_room_by_id!(invocation.room_id)
-    revision = desired_revision!(room)
+    room = Domain.get_room_by_id!(invocation.room_id, load: :desired_tool_revision)
 
     generated = durable_candidate!(invocation, room)
     generated = validate_retry_cache!(generated, invocation, room)
@@ -435,7 +434,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     invoke!(
       room,
       browser_session,
-      revision,
+      room.desired_tool_revision,
       invocation.arguments,
       opts
       |> Keyword.put(:durable_candidate, generated)
@@ -640,22 +639,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         "sha256" => if(candidate_present, do: room.candidate_sha256, else: nil)
       }
     }
-  end
-
-  defp desired_revision!(room) do
-    case Domain.list_tool_revisions!(
-           query: [
-             filter: [
-               room_id: room.id,
-               generation: room.desired_tool_generation,
-               status: :desired
-             ],
-             limit: 1
-           ]
-         ) do
-      [revision | _] -> revision
-      [] -> raise ArgumentError, "room has no desired tool revision"
-    end
   end
 
   defp ensure_current_revision!(room, browser_session, revision) do

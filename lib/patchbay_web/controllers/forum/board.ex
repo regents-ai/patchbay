@@ -170,12 +170,16 @@ defmodule PatchbayWeb.Forum.Board do
     end
   end
 
+  # Only the ids are wanted here, and an invocation row carries the whole
+  # before-and-after of a call, so the column list is narrowed to the one asked
+  # for rather than reading fifty full records to throw them away.
   defp invocation_ids(room_id) do
     Rooms.list_invocations!(
       query: [
         filter: [room_id: room_id],
         sort: [started_at: :desc],
-        limit: @room_invocations
+        limit: @room_invocations,
+        select: [:id]
       ]
     )
     |> Enum.map(& &1.id)

@@ -66,9 +66,7 @@
                  "lib/patchbay/patchbay/postcondition_verifier.ex",
                  # Structural refactor pending under regent-tb2.14.
                  "lib/patchbay/forum/patchbay_agent.ex",
-                 "lib/patchbay/patchbay/frontmatter.ex",
-                 # Structural refactor pending under regent-tb2.15.
-                 "lib/patchbay_web/live/webmcp/room_live/show.ex"
+                 "lib/patchbay/patchbay/frontmatter.ex"
                ]
              }
            ]},
@@ -93,7 +91,6 @@
                  "lib/patchbay/patchbay/frontmatter.ex",
                  "lib/patchbay/patchbay/openai/client.ex",
                  # Structural refactor pending under regent-tb2.15.
-                 "lib/patchbay_web/live/webmcp/room_live/show.ex",
                  "test/patchbay/patchbay/telemetry_test.exs"
                ]
              }

@@ -899,6 +899,100 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     assert recreated.status == :desired
   end
 
+  test "a room names the tool it offers, the call it is showing and the repair it is holding", %{
+    room: room,
+    revision: revision
+  } do
+    loaded =
+      Patchbay.get_room_by_id!(room.id,
+        load: [
+          :desired_tool_revision,
+          latest_invocation: [:tool_revision],
+          active_repair_proposal: [:source_tool_revision, :candidate_tool_revision]
+        ]
+      )
+
+    assert loaded.desired_tool_revision.id == revision.id
+    assert is_nil(loaded.latest_invocation)
+    assert is_nil(loaded.active_repair_proposal)
+
+    browser_session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        user_agent_digest: Digest.sha256("test-agent")
+      })
+
+    _older =
+      Patchbay.record_invocation!(%{
+        request_uuid: Ash.UUID.generate(),
+        room_id: room.id,
+        browser_session_id: browser_session.id,
+        tool_revision_id: revision.id,
+        tool_contract_sha256: revision.contract_sha256,
+        arguments: %{"instructions" => "first"}
+      })
+
+    newest =
+      Patchbay.record_invocation!(%{
+        request_uuid: Ash.UUID.generate(),
+        room_id: room.id,
+        browser_session_id: browser_session.id,
+        tool_revision_id: revision.id,
+        tool_contract_sha256: revision.contract_sha256,
+        arguments: %{"instructions" => "second"}
+      })
+
+    proposal =
+      Patchbay.create_repair_proposal!(%{
+        room_id: room.id,
+        source_invocation_id: newest.id,
+        source_tool_revision_id: revision.id,
+        root_cause: "The handler did not update visible state.",
+        repair_plan: %{},
+        contract_diff: %{},
+        canary_result: %{"passed" => true},
+        risk_notes: [],
+        model: "fixture",
+        model_response_id: "fixture-response",
+        prompt_version: "v1",
+        input_sha256: Digest.sha256("proposal")
+      })
+
+    Patchbay.set_active_repair_proposal!(room, private_arguments: %{proposal_id: proposal.id})
+
+    loaded =
+      Patchbay.get_room_by_id!(room.id,
+        load: [
+          :desired_tool_revision,
+          latest_invocation: [:tool_revision],
+          active_repair_proposal: [:source_tool_revision, :candidate_tool_revision]
+        ]
+      )
+
+    assert loaded.latest_invocation.id == newest.id
+    assert loaded.latest_invocation.tool_revision.id == revision.id
+    assert loaded.active_repair_proposal.id == proposal.id
+    assert loaded.active_repair_proposal.source_tool_revision.id == revision.id
+    assert is_nil(loaded.active_repair_proposal.candidate_tool_revision)
+  end
+
+  test "the tool a room offers follows its own generation", %{room: room, revision: revision} do
+    _ = Patchbay.retire_tool_revision!(revision)
+
+    published =
+      Fixtures.revision_attributes(room.id)
+      |> Map.merge(%{generation: 2, name: "uplift_current_skill_v2", status: :candidate})
+      |> Map.delete(:contract_sha256)
+      |> Patchbay.create_tool_revision!()
+      |> ToolPublisher.publish!()
+
+    loaded = Patchbay.get_room_by_id!(room.id, load: :desired_tool_revision)
+
+    assert loaded.desired_tool_generation == 2
+    assert loaded.desired_tool_revision.id == published.id
+  end
+
   defp create_verification!(attrs) do
     Ash.Changeset.for_create(Verification, :record_verification, attrs)
     |> Ash.create!()
