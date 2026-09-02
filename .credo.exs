@@ -61,16 +61,12 @@
                  # Structural refactor pending under regent-tb2.11.
                  "lib/patchbay/patchbay/candidate_cache.ex",
                  "lib/patchbay/patchbay/candidate_generator.ex",
-                 # Structural refactor pending under regent-tb2.12.
-                 "lib/patchbay/patchbay/repair_approval_service.ex",
-                 "lib/patchbay/patchbay/repair_planner.ex",
                  # Structural refactor pending under regent-tb2.13.
                  "lib/patchbay/patchbay/canary_runner.ex",
                  "lib/patchbay/patchbay/postcondition_verifier.ex",
                  # Structural refactor pending under regent-tb2.14.
                  "lib/patchbay/forum/patchbay_agent.ex",
                  "lib/patchbay/patchbay/frontmatter.ex",
-                 "lib/patchbay/patchbay/invocation_runner.ex",
                  # Structural refactor pending under regent-tb2.15.
                  "lib/patchbay_web/live/webmcp/room_live/show.ex"
                ]
@@ -91,19 +87,12 @@
                  # Structural refactor pending under regent-tb2.11.
                  "lib/patchbay/patchbay/candidate_cache.ex",
                  "lib/patchbay/patchbay/candidate_generator.ex",
-                 # Structural refactor pending under regent-tb2.12.
-                 "lib/patchbay/patchbay/repair_approval_service.ex",
-                 "lib/patchbay/patchbay/repair_planner.ex",
                  # Structural refactor pending under regent-tb2.13.
                  "lib/patchbay/patchbay/postcondition_verifier.ex",
                  "lib/patchbay/patchbay/validations/relationships_same_room.ex",
-                 "lib/patchbay/patchbay/verification_service.ex",
                  # Structural refactor pending under regent-tb2.14.
-                 "lib/patchbay/patchbay/demo_reset.ex",
                  "lib/patchbay/patchbay/frontmatter.ex",
-                 "lib/patchbay/patchbay/invocation_runner.ex",
                  "lib/patchbay/patchbay/openai/client.ex",
-                 "lib/patchbay/patchbay/tool_publisher.ex",
                  # Structural refactor pending under regent-tb2.15.
                  "lib/patchbay_web/live/webmcp/room_live/show.ex",
                  "test/patchbay/patchbay/telemetry_test.exs"

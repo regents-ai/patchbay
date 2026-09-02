@@ -22,124 +22,102 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
     ToolRevision
   }
 
-  require Ash.Query
-
-  @spec approve_and_publish!(RepairProposal.t() | binary(), binary(), keyword() | map()) ::
+  @spec approve_and_publish!(RepairProposal.t() | binary(), binary(), keyword()) ::
           RepairProposal.t()
   def approve_and_publish!(proposal_or_id, approved_by, opts \\ [])
 
   def approve_and_publish!(proposal_or_id, approved_by, opts) when is_binary(approved_by) do
     if String.trim(approved_by) == "", do: raise(ArgumentError, "human approver is required")
 
-    opts = normalize_opts(opts)
-    proposal = load_proposal!(proposal_or_id, opts)
-    action_opts = action_opts(opts)
+    proposal = load_proposal!(proposal_or_id)
 
-    case Ash.transact(
-           [Room, RepairProposal, ToolRevision, Invocation],
-           fn ->
-             proposal = lock_proposal!(proposal.id, opts)
-             room = lock_room!(proposal.room_id, opts)
-
-             source_invocation = lock_invocation!(proposal.source_invocation_id, opts)
-
-             source_revision = lock_revision!(proposal.source_tool_revision_id, opts)
-             candidate_revision = lock_candidate_revision!(proposal, opts)
-
-             validate_fresh!(
-               proposal,
-               room,
-               source_invocation,
-               source_revision,
-               candidate_revision
-             )
-
-             proposal = Domain.approve_repair_proposal!(proposal, approved_by, action_opts)
-             Domain.mark_tool_revision_approved!(candidate_revision, action_opts)
-             Domain.begin_publication!(room, action_opts)
-
-             RoomTimeline.append!(
-               room,
-               :approval_granted,
-               %{
-                 "proposal_id" => proposal.id,
-                 "approved_by" => approved_by
-               },
-               action_opts
-             )
-
-             published_revision = ToolPublisher.publish!(candidate_revision, action_opts)
-             proposal = Domain.publish_repair_proposal!(proposal, action_opts)
-             room = Domain.get_room_by_id!(room.id, read_opts(opts))
-             Domain.mark_repaired!(room, action_opts)
-
-             RoomTimeline.append!(
-               room,
-               :publication_requested,
-               %{
-                 "proposal_id" => proposal.id,
-                 "revision_id" => published_revision.id
-               },
-               action_opts
-             )
-
-             proposal
-           end,
-           Keyword.take(opts, [:timeout])
-         ) do
-      {:ok, proposal} -> proposal
-      {:error, error} -> raise Ash.Error.to_error_class(error)
-    end
+    [Room, RepairProposal, ToolRevision, Invocation]
+    |> Ash.transact(
+      fn -> approve_locked!(proposal.id, approved_by) end,
+      Keyword.take(opts, [:timeout])
+    )
+    |> unwrap!()
   end
 
   def approve_and_publish!(_proposal, _approved_by, _opts),
     do: raise(ArgumentError, "human approver is required")
 
-  @spec reject!(RepairProposal.t() | binary(), keyword() | map()) :: RepairProposal.t()
+  @spec reject!(RepairProposal.t() | binary(), keyword()) :: RepairProposal.t()
   def reject!(proposal_or_id, opts \\ []) do
-    opts = normalize_opts(opts)
-    proposal = load_proposal!(proposal_or_id, opts)
-    action_opts = action_opts(opts)
+    proposal = load_proposal!(proposal_or_id)
 
-    case Ash.transact(
-           [Room, RepairProposal, ToolRevision],
-           fn ->
-             proposal = lock_proposal!(proposal.id, opts)
-             room = lock_room!(proposal.room_id, opts)
-             candidate_revision = lock_candidate_revision!(proposal, opts)
-
-             if proposal.status != :ready_for_approval do
-               raise ArgumentError, "proposal is not ready for rejection"
-             end
-
-             proposal = Domain.reject_repair_proposal!(proposal, action_opts)
-             Domain.retire_tool_revision!(candidate_revision, action_opts)
-
-             room =
-               Domain.set_active_repair_proposal!(
-                 room,
-                 Keyword.put(action_opts, :private_arguments, %{proposal_id: nil})
-               )
-
-             _room = Domain.record_failure!(room, room.last_failed_invocation_id, action_opts)
-
-             RoomTimeline.append!(
-               room,
-               :approval_rejected,
-               %{"proposal_id" => proposal.id},
-               action_opts
-             )
-
-             proposal
-           end,
-           Keyword.take(opts, [:timeout])
-         ) do
-      {:ok, proposal} -> proposal
-      {:error, error} -> raise Ash.Error.to_error_class(error)
-    end
+    [Room, RepairProposal, ToolRevision]
+    |> Ash.transact(fn -> reject_locked!(proposal.id) end, Keyword.take(opts, [:timeout]))
+    |> unwrap!()
   end
 
+  defp approve_locked!(proposal_id, approved_by) do
+    proposal = Domain.get_repair_proposal_for_update!(proposal_id)
+    room = Domain.get_room_for_update!(proposal.room_id)
+    source_invocation = Domain.get_invocation_for_update!(proposal.source_invocation_id)
+    source_revision = Domain.get_tool_revision_for_update!(proposal.source_tool_revision_id)
+    candidate_revision = lock_candidate_revision!(proposal)
+
+    validate_fresh!(proposal, room, source_invocation, source_revision, candidate_revision)
+
+    proposal = Domain.approve_repair_proposal!(proposal, approved_by)
+    Domain.mark_tool_revision_approved!(candidate_revision)
+    Domain.begin_publication!(room)
+
+    RoomTimeline.append!(room, :approval_granted, %{
+      "proposal_id" => proposal.id,
+      "approved_by" => approved_by
+    })
+
+    published_revision = ToolPublisher.publish!(candidate_revision)
+    proposal = Domain.publish_repair_proposal!(proposal)
+    room = Domain.get_room_by_id!(room.id)
+    Domain.mark_repaired!(room)
+
+    RoomTimeline.append!(room, :publication_requested, %{
+      "proposal_id" => proposal.id,
+      "revision_id" => published_revision.id
+    })
+
+    proposal
+  end
+
+  defp reject_locked!(proposal_id) do
+    proposal = Domain.get_repair_proposal_for_update!(proposal_id)
+    room = Domain.get_room_for_update!(proposal.room_id)
+    candidate_revision = lock_candidate_revision!(proposal)
+
+    if proposal.status != :ready_for_approval do
+      raise ArgumentError, "proposal is not ready for rejection"
+    end
+
+    proposal = Domain.reject_repair_proposal!(proposal)
+    Domain.retire_tool_revision!(candidate_revision)
+
+    room = Domain.set_active_repair_proposal!(room, private_arguments: %{proposal_id: nil})
+    _room = Domain.record_failure!(room, room.last_failed_invocation_id)
+
+    RoomTimeline.append!(room, :approval_rejected, %{"proposal_id" => proposal.id})
+
+    proposal
+  end
+
+  defp unwrap!({:ok, proposal}), do: proposal
+  defp unwrap!({:error, error}), do: raise(Ash.Error.to_error_class(error))
+
+  # Every branch below is a freshness check against the locked rows, in the
+  # order a stale approval would fail them: the proposal, then the invocation
+  # it came from, then the digests, then the candidate revision, then the
+  # canary re-run.
   defp validate_fresh!(proposal, room, invocation, source_revision, candidate_revision) do
+    validate_candidate_evidence!(proposal, invocation)
+    validate_invocation_current!(room, invocation, source_revision)
+    validate_digests!(proposal, room, invocation)
+    validate_candidate_revision!(proposal, room, invocation, source_revision, candidate_revision)
+    validate_canary!(room, invocation, candidate_revision)
+  end
+
+  defp validate_candidate_evidence!(proposal, invocation) do
     cond do
       proposal.status != :ready_for_approval ->
         raise ArgumentError, "proposal is not ready for approval"
@@ -155,6 +133,13 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
           Digest.sha256(invocation.generated_candidate) != invocation.generated_candidate_sha256 ->
         raise ArgumentError, "source invocation candidate digest is invalid"
 
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_invocation_current!(room, invocation, source_revision) do
+    cond do
       room.last_failed_invocation_id != invocation.id ->
         raise ArgumentError, "source invocation is stale"
 
@@ -167,6 +152,13 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
       room.desired_tool_generation != source_revision.generation ->
         raise ArgumentError, "desired tool revision is stale"
 
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_digests!(proposal, room, invocation) do
+    cond do
       source_state_digest(invocation) != room.source_sha256 ->
         raise ArgumentError, "source state changed since the failed invocation"
 
@@ -176,6 +168,19 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
       invocation.generation_key != proposal.input_sha256 ->
         raise ArgumentError, "proposal input digest is stale"
 
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_candidate_revision!(
+         proposal,
+         room,
+         invocation,
+         source_revision,
+         candidate_revision
+       ) do
+    cond do
       candidate_revision.room_id != room.id ->
         raise ArgumentError, "candidate tool revision is stale"
 
@@ -195,20 +200,20 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
         raise ArgumentError, "candidate contract digest is invalid"
 
       true ->
-        canary =
-          CanaryRunner.run(
-            room.source_markdown,
-            invocation.generated_candidate,
-            candidate_revision
-          )
-
-        if canary.passed != true or
-             canary.candidate_sha256 != invocation.generated_candidate_sha256 do
-          raise ArgumentError, "candidate canary has not passed"
-        end
-
-        canary
+        :ok
     end
+  end
+
+  defp validate_canary!(room, invocation, candidate_revision) do
+    canary =
+      CanaryRunner.run(room.source_markdown, invocation.generated_candidate, candidate_revision)
+
+    if canary.passed != true or
+         canary.candidate_sha256 != invocation.generated_candidate_sha256 do
+      raise ArgumentError, "candidate canary has not passed"
+    end
+
+    canary
   end
 
   defp source_state_digest(invocation) do
@@ -221,58 +226,13 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
     get_in(canary, ["candidate_sha256"]) || get_in(canary, [:candidate_sha256])
   end
 
-  defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: nil}, _opts),
+  defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: nil}),
     do: raise(ArgumentError, "proposal has no candidate revision")
 
-  defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: id}, opts),
-    do: lock_revision!(id, opts)
+  defp lock_candidate_revision!(%RepairProposal{candidate_tool_revision_id: id}),
+    do: Domain.get_tool_revision_for_update!(id)
 
-  defp load_proposal!(%RepairProposal{} = proposal, opts),
-    do: Domain.get_repair_proposal!(proposal.id, read_opts(opts))
+  defp load_proposal!(%RepairProposal{} = proposal), do: Domain.get_repair_proposal!(proposal.id)
 
-  defp load_proposal!(id, opts), do: Domain.get_repair_proposal!(id, read_opts(opts))
-
-  defp lock_proposal!(id, opts) do
-    RepairProposal
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp lock_room!(id, opts) do
-    Room
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp lock_invocation!(id, opts) do
-    Invocation
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp lock_revision!(id, opts) do
-    ToolRevision
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp normalize_opts(opts) when is_map(opts), do: Map.to_list(opts)
-  defp normalize_opts(opts) when is_list(opts), do: opts
-  defp normalize_opts(_), do: []
-
-  defp query_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-
-  defp execution_opts(opts),
-    do: Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query])
-
-  defp read_opts(opts), do: Keyword.drop(opts, [:query, :timeout])
-  defp action_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
+  defp load_proposal!(id), do: Domain.get_repair_proposal!(id)
 end

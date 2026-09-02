@@ -9,8 +9,6 @@ defmodule Patchbay.Patchbay.ToolPublisher do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Room, Telemetry, ToolRevision}
 
-  require Ash.Query
-
   @spec publish!(ToolRevision.t(), keyword()) :: ToolRevision.t()
   def publish!(%ToolRevision{} = revision, opts \\ []) do
     started_at = System.monotonic_time()
@@ -18,11 +16,11 @@ defmodule Patchbay.Patchbay.ToolPublisher do
     case Ash.transact(
            [Room, ToolRevision],
            fn ->
-             revision = load_revision!(revision.id, opts)
-             room = lock_room!(revision.room_id, opts)
-             retire_existing_desired!(room, revision, opts)
-             revision = set_revision_desired!(revision, opts)
-             _room = set_room_generation!(room, revision.generation, opts)
+             revision = Domain.get_tool_revision!(revision.id)
+             room = Domain.get_room_for_update!(revision.room_id)
+             retire_existing_desired!(room, revision)
+             revision = set_revision_desired!(revision)
+             _room = set_room_generation!(room, revision.generation)
              revision
            end,
            Keyword.take(opts, [:timeout])
@@ -49,16 +47,7 @@ defmodule Patchbay.Patchbay.ToolPublisher do
   def sync_room_generation!(%ToolRevision{} = revision, opts \\ []) do
     case Ash.transact(
            [Room, ToolRevision],
-           fn ->
-             revision = load_revision!(revision.id, opts)
-             room = lock_room!(revision.room_id, opts)
-
-             if revision.status != :desired do
-               raise ArgumentError, "only a desired revision can update the room pointer"
-             end
-
-             set_room_generation!(room, revision.generation, opts)
-           end,
+           fn -> sync_room_generation_locked!(revision.id) end,
            Keyword.take(opts, [:timeout])
          ) do
       {:ok, room} -> room
@@ -66,64 +55,42 @@ defmodule Patchbay.Patchbay.ToolPublisher do
     end
   end
 
-  defp load_revision!(revision_id, opts) do
-    Domain.get_tool_revision!(revision_id, Keyword.drop(opts, [:query]))
+  defp sync_room_generation_locked!(revision_id) do
+    revision = Domain.get_tool_revision!(revision_id)
+    room = Domain.get_room_for_update!(revision.room_id)
+
+    ensure_desired!(revision)
+    set_room_generation!(room, revision.generation)
   end
 
-  defp retire_existing_desired!(room, revision, opts) do
+  defp ensure_desired!(%ToolRevision{status: :desired}), do: :ok
+
+  defp ensure_desired!(%ToolRevision{}),
+    do: raise(ArgumentError, "only a desired revision can update the room pointer")
+
+  defp retire_existing_desired!(room, revision) do
     revisions =
-      Domain.list_tool_revisions!(
-        Keyword.merge(Keyword.drop(opts, [:query]),
-          query: [filter: [room_id: room.id, status: :desired]]
-        )
-      )
+      Domain.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired]])
 
     Enum.each(revisions, fn current ->
       if current.id != revision.id do
-        Domain.retire_tool_revision!(current, action_opts(opts))
+        Domain.retire_tool_revision!(current)
       end
     end)
   end
 
-  defp lock_room!(room_id, opts) do
-    query_opts = Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-    execution_opts = Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query])
-
-    Room
-    |> Ash.Query.for_read(:read, %{}, query_opts)
-    |> Ash.Query.filter(id: room_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts)
-  end
-
-  defp set_revision_desired!(revision, opts) do
+  defp set_revision_desired!(revision) do
     revision
-    |> Ash.Changeset.for_update(
-      :set_desired,
-      %{},
-      Keyword.put(
-        Keyword.take(opts, [:actor, :tenant, :authorize?, :scope]),
-        :domain,
-        Patchbay.Patchbay
-      )
-    )
-    |> Ash.update!(Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope]))
+    |> Ash.Changeset.for_update(:set_desired, %{}, domain: Domain)
+    |> Ash.update!()
   end
 
-  defp action_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-
-  defp set_room_generation!(room, generation, opts) do
+  defp set_room_generation!(room, generation) do
     room
-    |> Ash.Changeset.for_update(
-      :set_desired_tool_generation,
-      %{generation: generation},
-      Keyword.put(
-        Keyword.take(opts, [:actor, :tenant, :authorize?, :scope]),
-        :domain,
-        Patchbay.Patchbay
-      )
-      |> Keyword.put(:private_arguments, %{generation: generation})
+    |> Ash.Changeset.for_update(:set_desired_tool_generation, %{},
+      domain: Domain,
+      private_arguments: %{generation: generation}
     )
-    |> Ash.update!(Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope]))
+    |> Ash.update!()
   end
 end

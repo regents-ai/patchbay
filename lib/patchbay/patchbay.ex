@@ -8,6 +8,7 @@ defmodule Patchbay.Patchbay do
       define(:create_seeded_room, action: :create_seeded_room, args: [:slug])
       define(:get_room_by_slug, action: :read, get_by: [:slug])
       define(:get_room_by_id, action: :read, get_by: [:id])
+      define(:get_room_for_update, action: :for_update, get_by: [:id])
       define(:list_rooms, action: :read)
       define(:list_idle_unused_rooms, action: :idle_and_unused, args: [:untouched_since])
       define(:discard_room, action: :destroy)
@@ -33,6 +34,7 @@ defmodule Patchbay.Patchbay do
     resource Patchbay.Patchbay.BrowserSession do
       define(:register_browser_session, action: :register)
       define(:get_browser_session, action: :read, get_by: [:id])
+      define(:get_browser_session_for_update, action: :for_update, get_by: [:id])
       define(:list_browser_sessions, action: :read)
       define(:observe_browser_session, action: :observe)
       define(:disconnect_browser_session, action: :disconnect)
@@ -42,6 +44,7 @@ defmodule Patchbay.Patchbay do
     resource Patchbay.Patchbay.ToolRevision do
       define(:create_tool_revision, action: :create_revision)
       define(:get_tool_revision, action: :read, get_by: [:id])
+      define(:get_tool_revision_for_update, action: :for_update, get_by: [:id])
       define(:list_tool_revisions, action: :read)
       define(:mark_tool_revision_canary_passed, action: :mark_canary_passed)
       define(:mark_tool_revision_ready_for_approval, action: :mark_ready_for_approval)
@@ -53,6 +56,7 @@ defmodule Patchbay.Patchbay do
     resource Patchbay.Patchbay.Invocation do
       define(:record_invocation, action: :record_invocation)
       define(:get_invocation, action: :read, get_by: [:id])
+      define(:get_invocation_for_update, action: :for_update, get_by: [:id])
       define(:get_invocation_by_request_uuid, action: :read, get_by: [:request_uuid])
       define(:get_invocation_by_receipt, action: :read, get_by: [:receipt])
       define(:list_invocations, action: :read)
@@ -66,6 +70,7 @@ defmodule Patchbay.Patchbay do
     resource Patchbay.Patchbay.RepairProposal do
       define(:create_repair_proposal, action: :create_proposal)
       define(:get_repair_proposal, action: :read, get_by: [:id])
+      define(:get_repair_proposal_for_update, action: :for_update, get_by: [:id])
       define(:list_repair_proposals, action: :read)
       define(:mark_canary_passed, action: :mark_canary_passed)
       define(:mark_canary_failed, action: :mark_canary_failed)

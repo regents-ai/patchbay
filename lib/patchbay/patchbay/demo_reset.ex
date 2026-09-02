@@ -25,47 +25,11 @@ defmodule Patchbay.Patchbay.DemoReset do
 
   @spec reset!(Room.t() | String.t(), keyword()) :: Room.t()
   def reset!(room_or_slug, opts \\ []) do
-    room = find_room!(room_or_slug, opts)
-    action_opts = Keyword.drop(opts, [:query])
+    room = find_room!(room_or_slug)
 
     case Ash.transact(
            [Room, BrowserSession, ToolRevision, Invocation, RepairProposal, RoomEvent],
-           fn ->
-             room = lock_room!(room.id, opts)
-             room = Domain.reset_demo!(room, action_opts)
-             InvocationRunner.cancel_open!(room, action_opts)
-             reset_browser_sessions!(room, opts, action_opts)
-             revisions = list_revisions!(room, opts)
-
-             Enum.each(revisions, fn revision ->
-               if revision.generation != 1 and revision.status != :retired do
-                 Domain.retire_tool_revision!(revision, action_opts)
-               end
-             end)
-
-             seed_revision = Enum.find(revisions, &(&1.generation == 1))
-
-             seed_revision =
-               case seed_revision do
-                 nil ->
-                   Fixtures.revision_attributes(room.id)
-                   |> Map.delete(:contract_sha256)
-                   |> Map.put(:status, :candidate)
-                   |> then(&Domain.create_tool_revision!(&1, action_opts))
-                   |> then(&ToolPublisher.publish!(&1, action_opts))
-
-                 %ToolRevision{status: :desired} = revision ->
-                   revision
-
-                 revision ->
-                   ToolPublisher.publish!(revision, action_opts)
-               end
-
-             reject_open_proposals!(room, opts)
-             append_reset_event!(room, opts)
-             _ = seed_revision
-             room
-           end,
+           fn -> reset_locked!(room.id) end,
            Keyword.take(opts, [:timeout])
          ) do
       {:ok, room} -> room
@@ -73,84 +37,98 @@ defmodule Patchbay.Patchbay.DemoReset do
     end
   end
 
-  defp find_room!(%Room{} = room, _opts), do: room
+  defp reset_locked!(room_id) do
+    room =
+      room_id
+      |> Domain.get_room_for_update!()
+      |> Domain.reset_demo!()
 
-  defp find_room!(slug, opts) when is_binary(slug) do
-    Domain.get_room_by_slug!(slug, Keyword.drop(opts, [:query]))
+    InvocationRunner.cancel_open!(room)
+    reset_browser_sessions!(room)
+
+    revisions = list_revisions!(room)
+
+    retire_superseded_revisions!(revisions)
+    ensure_seed_revision_published!(room, revisions)
+    reject_open_proposals!(room)
+    append_reset_event!(room)
+
+    room
+  end
+
+  defp retire_superseded_revisions!(revisions) do
+    revisions
+    |> Enum.reject(&(&1.generation == 1 or &1.status == :retired))
+    |> Enum.each(&Domain.retire_tool_revision!/1)
+  end
+
+  defp find_room!(%Room{} = room), do: room
+
+  defp find_room!(slug) when is_binary(slug) do
+    Domain.get_room_by_slug!(slug)
   rescue
     Ash.Error.Invalid ->
       reraise Ash.Error.Query.NotFound.exception(resource: Room), __STACKTRACE__
   end
 
-  defp lock_room!(room_id, opts) do
-    query_opts = Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-    execution_opts = Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query])
-
-    Room
-    |> Ash.Query.for_read(:read, %{}, query_opts)
-    |> Ash.Query.filter(id: room_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts)
+  defp list_revisions!(room) do
+    Domain.list_tool_revisions!(query: [filter: [room_id: room.id], sort: [generation: :asc]])
   end
 
-  defp list_revisions!(room, opts) do
-    Domain.list_tool_revisions!(
-      Keyword.merge(opts, query: [filter: [room_id: room.id], sort: [generation: :asc]])
-    )
+  defp ensure_seed_revision_published!(room, revisions) do
+    case Enum.find(revisions, &(&1.generation == 1)) do
+      nil ->
+        room.id
+        |> Fixtures.revision_attributes()
+        |> Map.delete(:contract_sha256)
+        |> Map.put(:status, :candidate)
+        |> Domain.create_tool_revision!()
+        |> ToolPublisher.publish!()
+
+      %ToolRevision{status: :desired} = revision ->
+        revision
+
+      revision ->
+        ToolPublisher.publish!(revision)
+    end
   end
 
-  defp reset_browser_sessions!(room, opts, action_opts) do
-    room
-    |> list_browser_sessions!(opts)
-    |> Enum.each(&Domain.reset_browser_session!(&1, action_opts))
-  end
-
-  defp list_browser_sessions!(room, opts) do
-    query_opts = Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-    execution_opts = Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query])
-
+  defp reset_browser_sessions!(room) do
     BrowserSession
-    |> Ash.Query.for_read(:read, %{}, query_opts)
+    |> Ash.Query.for_read(:for_update)
     |> Ash.Query.filter(room_id: room.id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read!(execution_opts)
+    |> Ash.read!()
+    |> Enum.each(&Domain.reset_browser_session!/1)
   end
 
-  defp reject_open_proposals!(room, opts) do
+  defp reject_open_proposals!(room) do
     room
-    |> list_proposals!(opts)
+    |> list_proposals!()
     |> Enum.each(fn proposal ->
       if proposal.status not in [:rejected, :published, :failed] do
-        Domain.reject_repair_proposal!(proposal, Keyword.drop(opts, [:query]))
+        Domain.reject_repair_proposal!(proposal)
       end
     end)
   end
 
-  defp list_proposals!(room, opts) do
-    Domain.list_repair_proposals!(
-      Keyword.merge(opts, query: [filter: [room_id: room.id], sort: [inserted_at: :desc]])
-    )
+  defp list_proposals!(room) do
+    Domain.list_repair_proposals!(query: [filter: [room_id: room.id], sort: [inserted_at: :desc]])
   end
 
-  defp append_reset_event!(room, opts) do
+  defp append_reset_event!(room) do
     sequence =
       case Domain.list_room_events!(
-             Keyword.merge(opts,
-               query: [filter: [room_id: room.id], sort: [sequence: :desc], limit: 1]
-             )
+             query: [filter: [room_id: room.id], sort: [sequence: :desc], limit: 1]
            ) do
         [%RoomEvent{sequence: sequence} | _] -> sequence + 1
         _ -> 1
       end
 
-    Domain.append_room_event!(
-      %{
-        room_id: room.id,
-        sequence: sequence,
-        kind: :room_reset,
-        payload: %{"seed_version" => Fixtures.seed_version()}
-      },
-      Keyword.drop(opts, [:query])
-    )
+    Domain.append_room_event!(%{
+      room_id: room.id,
+      sequence: sequence,
+      kind: :room_reset,
+      payload: %{"seed_version" => Fixtures.seed_version()}
+    })
   end
 end

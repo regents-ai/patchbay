@@ -62,6 +62,10 @@ defmodule Patchbay.Patchbay.RepairProposal do
   actions do
     defaults([:read])
 
+    read :for_update do
+      prepare(build(lock: :for_update))
+    end
+
     create :create_proposal do
       accept([
         :room_id,

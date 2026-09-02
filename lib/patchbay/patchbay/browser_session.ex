@@ -75,6 +75,10 @@ defmodule Patchbay.Patchbay.BrowserSession do
   actions do
     defaults([:read])
 
+    read :for_update do
+      prepare(build(lock: :for_update))
+    end
+
     create :register do
       upsert?(true)
       upsert_identity(:unique_client_instance_id_per_room)

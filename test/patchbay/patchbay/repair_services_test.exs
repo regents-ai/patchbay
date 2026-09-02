@@ -239,8 +239,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert proposal.status == :ready_for_approval
     assert proposal.canary_result["passed"]
 
-    published =
-      Elixir.Patchbay.Patchbay.RepairApprovalService.approve_and_publish!(proposal, "owner", %{})
+    published = RepairApprovalService.approve_and_publish!(proposal, "owner")
 
     assert published.status == :published
     v2 = Patchbay.get_tool_revision!(proposal.candidate_tool_revision_id)

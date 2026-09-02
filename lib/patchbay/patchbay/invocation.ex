@@ -107,6 +107,10 @@ defmodule Patchbay.Patchbay.Invocation do
   actions do
     defaults([:read])
 
+    read :for_update do
+      prepare(build(lock: :for_update))
+    end
+
     create :record_invocation do
       touches_resources([Patchbay.Patchbay.Room])
 

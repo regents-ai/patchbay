@@ -27,13 +27,11 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
   alias Patchbay.Patchbay.OpenAI.Client
 
-  require Ash.Query
-
   @spec propose!(Invocation.t() | binary(), keyword()) :: RepairProposal.t()
   def propose!(invocation_or_id, opts \\ []) do
-    invocation = load_invocation!(invocation_or_id, opts)
-    room = Domain.get_room_by_id!(invocation.room_id, read_opts(opts))
-    source_revision = Domain.get_tool_revision!(invocation.tool_revision_id, read_opts(opts))
+    invocation = load_invocation!(invocation_or_id)
+    room = Domain.get_room_by_id!(invocation.room_id)
+    source_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
 
     ensure_failed_latest!(invocation, room)
 
@@ -50,33 +48,22 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     case Ash.transact(
            [Room, Invocation, ToolRevision, RepairProposal],
            fn ->
-             invocation = lock_invocation!(invocation.id, opts)
-             room = lock_room!(room.id, opts)
-             source_revision = Domain.get_tool_revision!(source_revision.id, read_opts(opts))
+             invocation = Domain.get_invocation_for_update!(invocation.id)
+             room = Domain.get_room_for_update!(room.id)
+             source_revision = Domain.get_tool_revision!(source_revision.id)
 
              ensure_failed_latest!(invocation, room)
 
-             current_candidate = candidate_for!(invocation, room)
+             ensure_candidate_unchanged!(candidate_for!(invocation, room), candidate)
 
-             if current_candidate.candidate_sha256 != candidate.candidate_sha256 or
-                  current_candidate.generation_key != candidate.generation_key do
-               raise ArgumentError, "repair candidate changed during planning"
-             end
+             room = Domain.begin_diagnosis!(room)
 
-             action_opts = action_opts(opts)
-             room = Domain.begin_diagnosis!(room, action_opts)
-
-             RoomTimeline.append!(
-               room,
-               :repair_requested,
-               %{"invocation_id" => invocation.id},
-               action_opts
-             )
+             RoomTimeline.append!(room, :repair_requested, %{"invocation_id" => invocation.id})
 
              revision =
                revision_attrs
                |> Map.delete(:contract_sha256)
-               |> Domain.create_tool_revision!(action_opts)
+               |> Domain.create_tool_revision!()
 
              canary_started_at = System.monotonic_time()
 
@@ -86,92 +73,38 @@ defmodule Patchbay.Patchbay.RepairPlanner do
              canary_duration = System.monotonic_time() - canary_started_at
 
              proposal =
-               Domain.create_repair_proposal!(
-                 %{
-                   room_id: room.id,
-                   source_invocation_id: invocation.id,
-                   source_tool_revision_id: source_revision.id,
-                   candidate_tool_revision_id: revision.id,
-                   root_cause: plan.root_cause,
-                   repair_plan: plan,
-                   contract_diff: contract_diff(source_revision, revision),
-                   canary_result: canary,
-                   risk_notes: plan.risk_notes,
-                   model: plan_metadata[:model] || candidate.model,
-                   model_response_id:
-                     plan_metadata[:model_response_id] || candidate.model_response_id,
-                   prompt_version: plan_metadata[:prompt_version] || plan_prompt_version(opts),
-                   usage: %{
-                     "candidate" => candidate.usage,
-                     "repair_plan" => Client.normalize_usage(plan_metadata[:usage])
-                   },
-                   input_sha256: candidate.generation_key
+               Domain.create_repair_proposal!(%{
+                 room_id: room.id,
+                 source_invocation_id: invocation.id,
+                 source_tool_revision_id: source_revision.id,
+                 candidate_tool_revision_id: revision.id,
+                 root_cause: plan.root_cause,
+                 repair_plan: plan,
+                 contract_diff: contract_diff(source_revision, revision),
+                 canary_result: canary,
+                 risk_notes: plan.risk_notes,
+                 model: plan_metadata[:model] || candidate.model,
+                 model_response_id:
+                   plan_metadata[:model_response_id] || candidate.model_response_id,
+                 prompt_version: plan_metadata[:prompt_version] || plan_prompt_version(opts),
+                 usage: %{
+                   "candidate" => candidate.usage,
+                   "repair_plan" => Client.normalize_usage(plan_metadata[:usage])
                  },
-                 action_opts
-               )
+                 input_sha256: candidate.generation_key
+               })
 
              RoomTimeline.append!(
                room,
-               if(canary.passed, do: :canary_passed, else: :canary_failed),
+               canary_event(canary),
                %{
                  "proposal_id" => proposal.id,
                  "revision_id" => revision.id,
                  "passed" => canary.passed
-               },
-               action_opts
+               }
              )
 
-             proposal =
-               if canary.passed do
-                 revision = Domain.mark_tool_revision_canary_passed!(revision, action_opts)
-                 _revision = Domain.mark_tool_revision_ready_for_approval!(revision, action_opts)
-
-                 proposal =
-                   Domain.mark_canary_passed!(proposal, %{canary_result: canary}, action_opts)
-
-                 room = Domain.mark_repair_ready!(room, action_opts)
-                 room = Domain.await_repair_approval!(room, action_opts)
-
-                 _room =
-                   Domain.set_active_repair_proposal!(
-                     room,
-                     Keyword.put(action_opts, :private_arguments, %{proposal_id: proposal.id})
-                   )
-
-                 RoomTimeline.append!(
-                   room,
-                   :repair_proposed,
-                   %{"proposal_id" => proposal.id},
-                   action_opts
-                 )
-
-                 proposal
-               else
-                 proposal =
-                   Domain.mark_canary_failed!(proposal, %{canary_result: canary}, action_opts)
-
-                 room = Domain.mark_repair_failed!(room, action_opts)
-
-                 _room =
-                   Domain.set_active_repair_proposal!(
-                     room,
-                     Keyword.put(action_opts, :private_arguments, %{proposal_id: nil})
-                   )
-
-                 RoomTimeline.append!(
-                   room,
-                   :platform_error,
-                   %{
-                     "proposal_id" => proposal.id,
-                     "revision_id" => revision.id,
-                     "failure" => "CANARY_FAILED",
-                     "failure_code" => canary.failure_code
-                   },
-                   action_opts
-                 )
-
-                 proposal
-               end
+             proposal = finalize_proposal!(proposal, room, revision, canary)
 
              {proposal, revision.id, canary, canary_duration}
            end,
@@ -184,6 +117,56 @@ defmodule Patchbay.Patchbay.RepairPlanner do
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
     end
+  end
+
+  defp ensure_candidate_unchanged!(current, candidate) do
+    if current.candidate_sha256 != candidate.candidate_sha256 or
+         current.generation_key != candidate.generation_key do
+      raise ArgumentError, "repair candidate changed during planning"
+    end
+  end
+
+  defp canary_event(%{passed: true}), do: :canary_passed
+  defp canary_event(_canary), do: :canary_failed
+
+  defp finalize_proposal!(proposal, room, revision, %{passed: true} = canary) do
+    revision
+    |> Domain.mark_tool_revision_canary_passed!()
+    |> Domain.mark_tool_revision_ready_for_approval!()
+
+    proposal = Domain.mark_canary_passed!(proposal, %{canary_result: canary})
+
+    room =
+      room
+      |> Domain.mark_repair_ready!()
+      |> Domain.await_repair_approval!()
+
+    _room =
+      Domain.set_active_repair_proposal!(room, private_arguments: %{proposal_id: proposal.id})
+
+    RoomTimeline.append!(room, :repair_proposed, %{"proposal_id" => proposal.id})
+
+    proposal
+  end
+
+  defp finalize_proposal!(proposal, room, revision, canary) do
+    proposal = Domain.mark_canary_failed!(proposal, %{canary_result: canary})
+    room = Domain.mark_repair_failed!(room)
+
+    _room = Domain.set_active_repair_proposal!(room, private_arguments: %{proposal_id: nil})
+
+    RoomTimeline.append!(
+      room,
+      :platform_error,
+      %{
+        "proposal_id" => proposal.id,
+        "revision_id" => revision.id,
+        "failure" => "CANARY_FAILED",
+        "failure_code" => canary.failure_code
+      }
+    )
+
+    proposal
   end
 
   defp emit_model_stop(started_at, room, invocation, plan_metadata) do
@@ -288,21 +271,25 @@ defmodule Patchbay.Patchbay.RepairPlanner do
         # The spend limits are checked here rather than around the whole clause
         # so a plan supplied by the caller and the checked-in demo plan stay
         # free of them: neither calls a model.
-        case ModelBudget.allow(room.id, :repair) do
-          :ok ->
-            input = repair_input(invocation, room, source_revision)
+        plan_from_model!(invocation, room, source_revision, opts)
+    end
+  end
 
-            case Client.repair_plan(input, opts) do
-              {:ok, %{plan: plan} = metadata} ->
-                parse_plan!(plan, metadata)
+  defp plan_from_model!(invocation, room, source_revision, opts) do
+    case ModelBudget.allow(room.id, :repair) do
+      :ok ->
+        input = repair_input(invocation, room, source_revision)
 
-              {:error, reason} ->
-                raise ArgumentError, "repair plan generation failed: #{inspect(reason)}"
-            end
+        case Client.repair_plan(input, opts) do
+          {:ok, %{plan: plan} = metadata} ->
+            parse_plan!(plan, metadata)
 
-          {:error, message} ->
-            raise ArgumentError, message
+          {:error, reason} ->
+            raise ArgumentError, "repair plan generation failed: #{inspect(reason)}"
         end
+
+      {:error, message} ->
+        raise ArgumentError, message
     end
   end
 
@@ -355,48 +342,9 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     }
   end
 
-  defp load_invocation!(%Invocation{} = invocation, opts),
-    do: Domain.get_invocation!(invocation.id, read_opts(opts))
+  defp load_invocation!(%Invocation{} = invocation), do: Domain.get_invocation!(invocation.id)
 
-  defp load_invocation!(id, opts), do: Domain.get_invocation!(id, read_opts(opts))
-
-  defp lock_room!(id, opts) do
-    Room
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp lock_invocation!(id, opts) do
-    Invocation
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
+  defp load_invocation!(id), do: Domain.get_invocation!(id)
 
   defp plan_prompt_version(opts), do: Keyword.get(opts, :prompt_version, "patchbay-repair-v1")
-  defp action_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-
-  defp read_opts(opts),
-    do:
-      Keyword.drop(opts, [
-        :query,
-        :plan,
-        :fallback,
-        :generator,
-        :request,
-        :api_key,
-        :model,
-        :prompt_version
-      ])
-
-  defp query_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-
-  defp execution_opts(opts),
-    do:
-      opts
-      |> read_opts()
-      |> Keyword.drop([:actor, :tenant, :authorize?, :scope, :query])
 end

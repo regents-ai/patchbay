@@ -6,8 +6,6 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Room, RoomEvent, Telemetry}
 
-  require Ash.Query
-
   @spec append!(Room.t() | binary(), atom(), map(), keyword()) :: RoomEvent.t()
   def append!(room_or_id, kind, payload \\ %{}, opts \\ [])
 
@@ -18,7 +16,7 @@ defmodule Patchbay.Patchbay.RoomTimeline do
     case Ash.transact(
            [Room, RoomEvent],
            fn ->
-             room = lock_room!(room_id, opts)
+             room = Domain.get_room_for_update!(room_id)
              sequence = next_sequence!(room.id, opts)
 
              Domain.append_room_event!(
@@ -82,19 +80,6 @@ defmodule Patchbay.Patchbay.RoomTimeline do
     do: Map.get(payload, key) || Map.get(payload, atom_key)
 
   defp payload_value(_payload, _key, _atom_key), do: nil
-
-  defp lock_room!(room_id, opts) do
-    query_opts = Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-
-    execution_opts =
-      Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query, :browser_session_id])
-
-    Room
-    |> Ash.Query.for_read(:read, %{}, query_opts)
-    |> Ash.Query.filter(id: room_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts)
-  end
 
   defp next_sequence!(room_id, opts) do
     events =

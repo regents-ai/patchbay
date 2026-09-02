@@ -1,9 +1,7 @@
 defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
   use Ash.Resource.Change
 
-  alias Patchbay.Patchbay.{CanonicalJSON, Digest, Room}
-
-  require Ash.Query
+  alias Patchbay.Patchbay.{CanonicalJSON, Digest}
 
   @impl true
   def change(changeset, _opts, _context) do
@@ -11,7 +9,9 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
   end
 
   defp capture_pre_state(changeset) do
-    room = load_room!(Ash.Changeset.get_attribute(changeset, :room_id))
+    room =
+      Patchbay.Patchbay.get_room_for_update!(Ash.Changeset.get_attribute(changeset, :room_id))
+
     pre_state = snapshot(room)
 
     case supplied_pre_state(changeset) do
@@ -61,14 +61,6 @@ defmodule Patchbay.Patchbay.Changes.CaptureInvocationPreState do
           :error -> :missing
         end
     end
-  end
-
-  defp load_room!(room_id) do
-    Room
-    |> Ash.Query.for_read(:read, %{})
-    |> Ash.Query.filter(id: room_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!()
   end
 
   defp snapshot(room) do

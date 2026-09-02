@@ -77,6 +77,10 @@ defmodule Patchbay.Patchbay.ToolRevision do
   actions do
     defaults([:read])
 
+    read :for_update do
+      prepare(build(lock: :for_update))
+    end
+
     create :create_revision do
       touches_resources([Patchbay.Patchbay.Room])
 

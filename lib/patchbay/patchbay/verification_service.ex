@@ -28,44 +28,7 @@ defmodule Patchbay.Patchbay.VerificationService do
 
     case Ash.transact(
            [Room, Invocation, Patchbay.Patchbay.Verification],
-           fn ->
-             invocation = load_invocation!(invocation_or_id, opts)
-             room = lock_room!(invocation.room_id, opts)
-             invocation = lock_invocation!(invocation.id, opts)
-
-             if invocation.invocation_epoch != room.invocation_epoch do
-               raise ArgumentError, "invocation belongs to an earlier room lifecycle"
-             end
-
-             if invocation.effective_status in [:cancelled, :errored] do
-               raise ArgumentError, "invocation is no longer awaiting visible proof"
-             end
-
-             case existing_verification(invocation.id, opts) do
-               %Verification{} = verification ->
-                 result = durable_result!(verification)
-
-                 persist_invocation_result!(
-                   invocation,
-                   result,
-                   verification.inserted_at || DateTime.utc_now(),
-                   opts
-                 )
-
-               nil ->
-                 post_state = fetch(attrs, :post_state, %{})
-                 result = derive_result_for_room(invocation, room, post_state, opts)
-
-                 verification = persist_verification!(invocation, result, opts)
-
-                 persist_invocation_result!(
-                   invocation,
-                   result,
-                   verification.inserted_at || DateTime.utc_now(),
-                   opts
-                 )
-             end
-           end,
+           fn -> verify_locked!(invocation_or_id, attrs) end,
            Keyword.take(opts, [:timeout])
          ) do
       {:ok, invocation} ->
@@ -74,6 +37,46 @@ defmodule Patchbay.Patchbay.VerificationService do
 
       {:error, error} ->
         raise Ash.Error.to_error_class(error)
+    end
+  end
+
+  defp verify_locked!(invocation_or_id, attrs) do
+    invocation = load_invocation!(invocation_or_id)
+    room = Domain.get_room_for_update!(invocation.room_id)
+    invocation = Domain.get_invocation_for_update!(invocation.id)
+
+    ensure_current_epoch!(invocation, room)
+    ensure_awaiting_proof!(invocation)
+
+    case existing_verification(invocation.id) do
+      %Verification{} = verification ->
+        persist_invocation_result!(
+          invocation,
+          durable_result!(verification),
+          verification.inserted_at || DateTime.utc_now()
+        )
+
+      nil ->
+        result = derive_result_for_room(invocation, room, fetch(attrs, :post_state, %{}))
+        verification = persist_verification!(invocation, result)
+
+        persist_invocation_result!(
+          invocation,
+          result,
+          verification.inserted_at || DateTime.utc_now()
+        )
+    end
+  end
+
+  defp ensure_current_epoch!(invocation, room) do
+    if invocation.invocation_epoch != room.invocation_epoch do
+      raise ArgumentError, "invocation belongs to an earlier room lifecycle"
+    end
+  end
+
+  defp ensure_awaiting_proof!(invocation) do
+    if invocation.effective_status in [:cancelled, :errored] do
+      raise ArgumentError, "invocation is no longer awaiting visible proof"
     end
   end
 
@@ -103,17 +106,17 @@ defmodule Patchbay.Patchbay.VerificationService do
   defp ui_commit_ms(_invocation), do: nil
 
   @doc false
-  @spec derive_result(Invocation.t(), map(), keyword()) :: map()
-  def derive_result(%Invocation{} = invocation, post_state, opts \\ []) do
-    room = Domain.get_room_by_id!(invocation.room_id, read_opts(opts))
-    derive_result_for_room(invocation, room, post_state, opts)
+  @spec derive_result(Invocation.t(), map()) :: map()
+  def derive_result(%Invocation{} = invocation, post_state) do
+    room = Domain.get_room_by_id!(invocation.room_id)
+    derive_result_for_room(invocation, room, post_state)
   end
 
-  defp derive_result_for_room(%Invocation{} = invocation, room, post_state, opts)
+  defp derive_result_for_room(%Invocation{} = invocation, room, post_state)
        when is_map(post_state) do
-    tool_revision = Domain.get_tool_revision!(invocation.tool_revision_id, read_opts(opts))
-    browser_session = Domain.get_browser_session!(invocation.browser_session_id, read_opts(opts))
-    active_revision = active_revision(room, opts)
+    tool_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
+    browser_session = Domain.get_browser_session!(invocation.browser_session_id)
+    active_revision = active_revision(room)
 
     if tool_revision.room_id != room.id or browser_session.room_id != room.id do
       raise ArgumentError, "invocation evidence relationships must belong to the same room"
@@ -141,7 +144,7 @@ defmodule Patchbay.Patchbay.VerificationService do
     )
   end
 
-  defp derive_result_for_room(_invocation, _room, _post_state, _opts), do: invalid_result()
+  defp derive_result_for_room(_invocation, _room, _post_state), do: invalid_result()
 
   defp generated_candidate_sha256(%{
          generated_candidate: candidate,
@@ -182,39 +185,36 @@ defmodule Patchbay.Patchbay.VerificationService do
     }
   end
 
-  defp active_revision(room, opts) do
+  defp active_revision(room) do
     Domain.list_tool_revisions!(
-      Keyword.put(read_opts(opts), :query,
+      query: [
         filter: [
           room_id: room.id,
           status: :desired,
           generation: room.desired_tool_generation
         ],
         limit: 1
-      )
+      ]
     )
     |> List.first()
   end
 
-  defp persist_invocation_result!(invocation, result, verified_at, opts) do
-    changeset =
-      Ash.Changeset.for_update(
-        invocation,
-        :record_verification,
-        %{
-          post_state: result.observed_state,
-          failure_code: result.failure_code,
-          verified_at: verified_at
-        },
-        changeset_opts(opts)
-      )
-
-    changeset
+  defp persist_invocation_result!(invocation, result, verified_at) do
+    invocation
+    |> Ash.Changeset.for_update(
+      :record_verification,
+      %{
+        post_state: result.observed_state,
+        failure_code: result.failure_code,
+        verified_at: verified_at
+      },
+      domain: Domain
+    )
     |> Ash.Changeset.set_context(%{trusted_verification_result: result})
     |> Ash.update!()
   end
 
-  defp persist_verification!(invocation, result, opts) do
+  defp persist_verification!(invocation, result) do
     attrs = %{
       room_id: invocation.room_id,
       invocation_id: invocation.id,
@@ -225,26 +225,17 @@ defmodule Patchbay.Patchbay.VerificationService do
       observed_state: result.observed_state
     }
 
-    Ash.Changeset.for_create(
-      Patchbay.Patchbay.Verification,
-      :record_verification,
-      attrs,
-      changeset_opts(opts)
-    )
+    Verification
+    |> Ash.Changeset.for_create(:record_verification, attrs, domain: Domain)
     |> Ash.create!()
   end
 
-  defp existing_verification(invocation_id, opts) do
-    query =
-      Verification
-      |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-      |> Ash.Query.filter(invocation_id: invocation_id)
-      |> Ash.Query.lock(:for_update)
-
-    case Ash.read!(query, execution_opts(opts)) do
-      [verification | _] -> verification
-      [] -> nil
-    end
+  defp existing_verification(invocation_id) do
+    Verification
+    |> Ash.Query.for_read(:for_update)
+    |> Ash.Query.filter(invocation_id: invocation_id)
+    |> Ash.read!()
+    |> List.first()
   end
 
   defp durable_result!(%Verification{} = verification) do
@@ -263,40 +254,10 @@ defmodule Patchbay.Patchbay.VerificationService do
     end
   end
 
-  defp load_invocation!(%Invocation{} = invocation, opts),
-    do: Domain.get_invocation!(invocation.id, read_opts(opts))
+  defp load_invocation!(%Invocation{} = invocation),
+    do: Domain.get_invocation!(invocation.id)
 
-  defp load_invocation!(invocation_id, opts),
-    do: Domain.get_invocation!(invocation_id, read_opts(opts))
-
-  defp lock_invocation!(invocation_id, opts) do
-    Invocation
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: invocation_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp lock_room!(room_id, opts) do
-    Room
-    |> Ash.Query.for_read(:read, %{}, query_opts(opts))
-    |> Ash.Query.filter(id: room_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.read_one!(execution_opts(opts))
-  end
-
-  defp query_opts(opts), do: Keyword.take(opts, [:actor, :tenant, :authorize?, :scope])
-
-  defp read_opts(opts), do: Keyword.drop(opts, [:query, :post_state, :timeout])
-
-  defp execution_opts(opts),
-    do: Keyword.drop(opts, [:actor, :tenant, :authorize?, :scope, :query, :post_state, :timeout])
-
-  defp changeset_opts(opts) do
-    opts
-    |> query_opts()
-    |> Keyword.put(:domain, Domain)
-  end
+  defp load_invocation!(invocation_id), do: Domain.get_invocation!(invocation_id)
 
   defp invalid_result do
     %{

@@ -101,6 +101,10 @@ defmodule Patchbay.Patchbay.Room do
   actions do
     defaults([:read, :destroy])
 
+    read :for_update do
+      prepare(build(lock: :for_update))
+    end
+
     # Rooms nobody used are reaped so a crawler or a retry loop cannot fill the
     # database. A room that holds an invocation is somebody's evidence and is
     # never swept up by this, and neither is a room whose visitor has been seen
