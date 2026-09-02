@@ -23,10 +23,9 @@ defmodule Patchbay.Patchbay do
       define(:begin_retry, action: :begin_retry)
       define(:mark_verified, action: :mark_verified)
 
-      define(:set_active_repair_proposal,
-        action: :set_active_repair_proposal,
-        args: [:proposal_id]
-      )
+      # `proposal_id` is a private argument, so callers pass it through
+      # `private_arguments:` rather than as a positional argument.
+      define(:set_active_repair_proposal, action: :set_active_repair_proposal)
 
       define(:reset_demo, action: :reset_demo)
     end

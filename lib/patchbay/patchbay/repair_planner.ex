@@ -131,7 +131,12 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
                  room = Domain.mark_repair_ready!(room, action_opts)
                  room = Domain.await_repair_approval!(room, action_opts)
-                 _room = Domain.set_active_repair_proposal!(room, proposal.id, action_opts)
+
+                 _room =
+                   Domain.set_active_repair_proposal!(
+                     room,
+                     Keyword.put(action_opts, :private_arguments, %{proposal_id: proposal.id})
+                   )
 
                  RoomTimeline.append!(
                    room,
@@ -146,7 +151,12 @@ defmodule Patchbay.Patchbay.RepairPlanner do
                    Domain.mark_canary_failed!(proposal, %{canary_result: canary}, action_opts)
 
                  room = Domain.mark_repair_failed!(room, action_opts)
-                 _room = Domain.set_active_repair_proposal!(room, nil, action_opts)
+
+                 _room =
+                   Domain.set_active_repair_proposal!(
+                     room,
+                     Keyword.put(action_opts, :private_arguments, %{proposal_id: nil})
+                   )
 
                  RoomTimeline.append!(
                    room,

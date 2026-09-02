@@ -268,6 +268,19 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
     assert Patchbay.get_room_by_id!(room.id).candidate_markdown == Fixtures.improved_markdown()
   end
 
+  test "a room records the proposal waiting on it", %{
+    room: room,
+    revision: revision,
+    browser_session: browser_session
+  } do
+    invocation =
+      invoke_failed!(room, browser_session, revision, %{"instructions" => "record the proposal"})
+
+    proposal = RepairPlanner.propose!(invocation, plan: Fixtures.repair_plan(), fallback: true)
+
+    assert Patchbay.get_room_by_id!(room.id).active_repair_proposal_id == proposal.id
+  end
+
   test "rejection retires the candidate and restores a recoverable failure", %{
     room: room,
     revision: revision,

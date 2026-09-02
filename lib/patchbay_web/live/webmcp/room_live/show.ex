@@ -827,7 +827,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   defp assigns_for(%Room{} = room, browser_session) do
     invocation = latest_invocation(room)
-    proposal = latest_proposal(room)
+    proposal = active_repair_proposal(room)
 
     %{
       room: room,
@@ -952,35 +952,19 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     end
   end
 
-  defp latest_proposal(%Room{} = room) do
+  # The room names its own proposal, so the page never has to guess one from the
+  # room's status.
+  defp active_repair_proposal(%Room{} = room) do
     with id when is_binary(id) <- room.active_repair_proposal_id,
          {:ok, proposal} <- fetch_proposal(id, room) do
       proposal
     else
-      _ ->
-        if room.status in [
-             :diagnosing,
-             :repair_ready,
-             :awaiting_approval,
-             :publishing,
-             :repaired,
-             :retrying,
-             :verified
-           ] do
-          case Domain.list_repair_proposals!(
-                 query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
-               ) do
-            [proposal | _] -> proposal
-            [] -> nil
-          end
-        end
+      _ -> nil
     end
-  rescue
-    _ -> nil
   end
 
   defp active_proposal(room) do
-    case latest_proposal(room) do
+    case active_repair_proposal(room) do
       nil -> {:error, "No repair proposal is waiting for a human decision"}
       proposal -> {:ok, proposal}
     end

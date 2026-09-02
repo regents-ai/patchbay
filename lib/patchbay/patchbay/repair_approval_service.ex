@@ -114,7 +114,13 @@ defmodule Patchbay.Patchbay.RepairApprovalService do
 
              proposal = Domain.reject_repair_proposal!(proposal, action_opts)
              Domain.retire_tool_revision!(candidate_revision, action_opts)
-             room = Domain.set_active_repair_proposal!(room, nil, action_opts)
+
+             room =
+               Domain.set_active_repair_proposal!(
+                 room,
+                 Keyword.put(action_opts, :private_arguments, %{proposal_id: nil})
+               )
+
              _room = Domain.record_failure!(room, room.last_failed_invocation_id, action_opts)
 
              RoomTimeline.append!(

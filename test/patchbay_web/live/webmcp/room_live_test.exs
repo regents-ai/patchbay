@@ -146,6 +146,39 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            )
   end
 
+  test "asking for a repair records it on the room, and the page shows only that one", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    render_click(view, "request_repair")
+    render_async(view, 2_000)
+
+    proposal =
+      Domain.list_repair_proposals!(
+        query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
+      )
+      |> List.first()
+
+    assert Domain.get_room_by_id!(room.id).active_repair_proposal_id == proposal.id
+    assert has_element?(view, "#patchbay-room-state[data-repair-status=\"ready_for_approval\"]")
+    assert has_element?(view, "#patchbay-repair-provenance", proposal.model)
+
+    # Clear the room's own record of the proposal: the page has no other way to
+    # find one, so it must stop showing it even though the room still reads as
+    # awaiting approval.
+    Domain.get_room_by_id!(room.id)
+    |> Domain.set_active_repair_proposal!(private_arguments: %{proposal_id: nil})
+
+    {:ok, reopened, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+
+    assert Domain.get_room_by_id!(room.id).status == :awaiting_approval
+    refute has_element?(reopened, "#patchbay-repair-provenance")
+  end
+
   test "an agent can ask for the repair, and asking twice does not start a second one", %{
     conn: conn,
     room: room
