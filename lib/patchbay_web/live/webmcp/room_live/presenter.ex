@@ -76,6 +76,51 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     end
   end
 
+  @doc """
+  Whether the Patchbay Agent is somewhere in the repair it runs by itself, so
+  the room can show its progress instead of an empty card.
+  """
+  def agent_at_work?(room, proposal) do
+    proposal != nil or
+      room.status in [:diagnosing, :repair_ready, :awaiting_approval, :publishing]
+  end
+
+  @doc """
+  The three moments of a repair, each one read from state the room actually
+  keeps: it is diagnosing, it has a proposal with a canary result, and it is
+  publishing. Nothing here is guessed while the room is silent.
+  """
+  def agent_steps(room, proposal) do
+    [
+      %{label: "Reading the failure", state: diagnosis_state(room, proposal)},
+      %{label: "Testing the replacement", state: canary_state(proposal)},
+      %{label: "Publishing the tool", state: publication_state(room)}
+    ]
+  end
+
+  defp diagnosis_state(%Room{status: :diagnosing}, nil), do: :working
+  defp diagnosis_state(_room, %{} = _proposal), do: :done
+
+  defp diagnosis_state(%Room{status: status}, _proposal)
+       when status in [:publishing, :repaired, :verified],
+       do: :done
+
+  defp diagnosis_state(_room, _proposal), do: :waiting
+
+  defp canary_state(nil), do: :waiting
+
+  defp canary_state(proposal) do
+    cond do
+      not is_map(proposal.canary_result) -> :waiting
+      canary_passed?(proposal) -> :done
+      true -> :failed
+    end
+  end
+
+  defp publication_state(%Room{status: :publishing}), do: :working
+  defp publication_state(%Room{status: status}) when status in [:repaired, :verified], do: :done
+  defp publication_state(_room), do: :waiting
+
   @doc "Which part of the loop a timeline entry belongs to, for its dot colour."
   def event_class(kind) do
     case kind do

@@ -161,6 +161,9 @@
   --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 33, 31, .12);
 
   --pb-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --pb-ease-out: cubic-bezier(.23, 1, .32, 1);
+  --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
 }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
@@ -1195,3 +1198,122 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .pb-cta { transition: none; }
   .pb-cta:hover { transform: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   The receipt, the agent's progress, and motion.
+
+   A receipt is the one part of a report Patchbay can check, so the room prints
+   it as a stub you can tear off and quote. The Patchbay Agent's progress is
+   read straight from the room's own status, so a step is only ever waiting,
+   working, done, or failed. Motion is reserved for the moments that change the
+   story: an entry landing in the ledger, and a candidate this room proved.
+   ------------------------------------------------------------------------- */
+
+.patchbay-receipt {
+  display: grid;
+  gap: .15rem;
+  margin: 0 0 var(--pb-space-3);
+  border: 1px dashed var(--pb-line-strong);
+  border-left: 3px solid var(--pb-gold);
+  border-radius: .5rem;
+  padding: .5rem .7rem;
+  background: var(--pb-surface-sunk);
+}
+.patchbay-receipt-label { color: var(--pb-amber); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.patchbay-receipt code { color: var(--pb-text); font: var(--pb-fs-xs)/1.4 var(--pb-mono); overflow-wrap: anywhere; }
+.patchbay-receipt-note { color: var(--pb-text-faint); font-size: var(--pb-fs-micro); line-height: 1.45; }
+
+.patchbay-agent-steps { display: grid; gap: .35rem; margin: 0 0 var(--pb-space-3); padding: 0; list-style: none; }
+.patchbay-agent-step {
+  display: grid;
+  grid-template-columns: .55rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .6rem;
+  border-radius: .5rem;
+  padding: .42rem .6rem;
+  background: var(--pb-surface-sunk);
+  font-size: var(--pb-fs-xs);
+  transition: background-color .2s ease;
+}
+.patchbay-agent-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pb-line-strong); }
+.patchbay-agent-label { color: var(--pb-text-muted); }
+.patchbay-agent-state { color: var(--pb-text-faint); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .02em; }
+.patchbay-agent-step.is-working { background: linear-gradient(100deg, rgba(241, 199, 91, .3) 0%, rgba(111, 195, 161, .26) 100%); }
+.patchbay-agent-step.is-working .patchbay-agent-label { color: var(--pb-text); font-weight: 700; }
+.patchbay-agent-step.is-working .patchbay-agent-state { color: var(--pb-amber); }
+.patchbay-agent-step.is-working .patchbay-agent-dot { background: var(--pb-gold); animation: pb-agent-pulse 1.5s ease-in-out infinite; }
+.patchbay-agent-step.is-done .patchbay-agent-dot { background: var(--pb-green); }
+.patchbay-agent-step.is-done .patchbay-agent-state { color: var(--pb-green); }
+.patchbay-agent-step.is-failed .patchbay-agent-dot { background: var(--pb-red); }
+.patchbay-agent-step.is-failed .patchbay-agent-state { color: var(--pb-red); }
+
+@keyframes pb-agent-pulse {
+  0%, 100% { opacity: .45; transform: scale(.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* A state pill never jumps colour: it moves from waiting to verified. */
+.patchbay-pill,
+.patchbay-state-label,
+#patchbay-room .patchbay-generation-badge {
+  transition: background-color .22s ease, border-color .22s ease, color .22s ease;
+}
+
+/* Ledger entries land rather than appear. */
+.patchbay-timeline-entry { animation: pb-timeline-in 260ms var(--pb-ease-out) both; }
+.patchbay-timeline-entry:nth-child(2) { animation-delay: 40ms; }
+.patchbay-timeline-entry:nth-child(3) { animation-delay: 80ms; }
+.patchbay-timeline-entry:nth-child(4) { animation-delay: 120ms; }
+.patchbay-timeline-entry:nth-child(5) { animation-delay: 160ms; }
+.patchbay-timeline-entry:nth-child(6) { animation-delay: 200ms; }
+.patchbay-timeline-entry:nth-child(n+7) { animation-delay: 240ms; }
+
+@keyframes pb-timeline-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The one moment worth celebrating: a candidate this room proved. The well
+   catches a single gold-and-green pass, and the spark turns once. */
+.patchbay-candidate-card.is-verified .patchbay-well::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--pb-radius-sm);
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 32%,
+    rgba(241, 199, 91, .5) 46%,
+    rgba(111, 195, 161, .45) 58%,
+    transparent 72%
+  );
+  animation: pb-verified-sweep 1s var(--pb-ease-out) both;
+}
+
+@keyframes pb-verified-sweep {
+  from { opacity: 0; transform: translateX(-55%); }
+  35% { opacity: 1; }
+  to { opacity: 0; transform: translateX(55%); }
+}
+
+.patchbay-mark.is-verified { animation: pb-spark-turn 700ms var(--pb-ease-in-out) both; }
+
+@keyframes pb-spark-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patchbay-timeline-entry { animation: pb-fade-in 220ms ease both; }
+  .patchbay-mark.is-verified { animation: none; }
+  .patchbay-agent-step.is-working .patchbay-agent-dot { animation: pb-fade-pulse 1.8s ease-in-out infinite; }
+  .patchbay-candidate-card.is-verified .patchbay-well::after {
+    background: linear-gradient(100deg, rgba(241, 199, 91, .3), rgba(111, 195, 161, .28));
+    animation: pb-fade-out 900ms ease both;
+  }
+}
+
+@keyframes pb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pb-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes pb-fade-pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }

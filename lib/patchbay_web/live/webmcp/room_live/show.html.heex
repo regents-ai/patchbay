@@ -1,7 +1,10 @@
 <main class="patchbay-shell" id="patchbay-room" data-room-slug={@room.slug}>
   <header class="patchbay-topbar">
     <div class="patchbay-brand">
-      <span class="patchbay-mark" aria-hidden="true">✦</span>
+      <span
+        class={"patchbay-mark " <> if(proof_verified?(@room, @invocation), do: "is-verified", else: "")}
+        aria-hidden="true"
+      >✦</span>
       <div>
         <p class="patchbay-brandline">Patchbay · WebMCP</p>
         <h1>{@room.title}</h1>
@@ -311,6 +314,14 @@
         </div>
       </div>
 
+      <div :if={@invocation && @invocation.receipt} id="patchbay-receipt" class="patchbay-receipt">
+        <span class="patchbay-receipt-label">Receipt</span>
+        <code>{@invocation.receipt}</code>
+        <span class="patchbay-receipt-note">
+          The one part of a report Patchbay can check against its own record of this call.
+        </span>
+      </div>
+
       <div :if={@invocation} class="patchbay-facts">
         <div>
           <span>Tool revision</span>
@@ -379,6 +390,22 @@
           @proposal.status
         )}</span>
       </div>
+
+      <ol
+        :if={agent_at_work?(@room, @proposal)}
+        id="patchbay-agent-steps"
+        class="patchbay-agent-steps"
+        aria-live="polite"
+      >
+        <li
+          :for={step <- agent_steps(@room, @proposal)}
+          class={"patchbay-agent-step is-" <> to_string(step.state)}
+        >
+          <span class="patchbay-agent-dot" aria-hidden="true"></span>
+          <span class="patchbay-agent-label">{step.label}</span>
+          <span class="patchbay-agent-state">{step.state}</span>
+        </li>
+      </ol>
 
       <div :if={!@proposal && @room.status == :failed} class="patchbay-repair-cta">
         <p>
@@ -488,7 +515,10 @@
         </div>
       </div>
 
-      <p :if={!@proposal && @room.status != :failed} class="patchbay-empty-state">
+      <p
+        :if={!@proposal && @room.status != :failed && !agent_at_work?(@room, @proposal)}
+        class="patchbay-empty-state"
+      >
         A repair card appears after Patchbay proves the seeded failure.
       </p>
     </article>
