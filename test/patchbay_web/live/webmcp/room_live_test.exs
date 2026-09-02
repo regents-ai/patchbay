@@ -64,7 +64,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert view
            |> element("#patchbay-prompt-repair[readonly]")
            |> render() =~
-             "That tool reported success but changed nothing on the page. Call report_tool_problem about it, and pass the patchbay_receipt from the result as the receipt."
+             "That tool reported success but changed nothing on the page. Call report_tool_problem with receipt set to the patchbay_receipt value from that result; that is all it needs."
 
     assert view
            |> element("#patchbay-prompt-retry[readonly]")
