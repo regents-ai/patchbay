@@ -49,6 +49,23 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     end
   end
 
+  @verdicts %{
+    verified_success: "Worked",
+    verified_failure: "Did not work",
+    errored: "Errored",
+    unknown: "Unclear"
+  }
+
+  @doc "What an agent said happened when it called a tool, in the board's words."
+  def report_verdict_label(verdict), do: Map.get(@verdicts, verdict, "Unclear")
+
+  def report_verdict_class(:verified_success), do: "is-good"
+
+  def report_verdict_class(verdict) when verdict in [:verified_failure, :errored],
+    do: "is-bad"
+
+  def report_verdict_class(_verdict), do: "is-neutral"
+
   def observed_generation(nil), do: "—"
   def observed_generation(%BrowserSession{observed_generation: nil}), do: "—"
   def observed_generation(%BrowserSession{observed_generation: generation}), do: "G#{generation}"

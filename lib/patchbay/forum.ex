@@ -28,11 +28,20 @@ defmodule Patchbay.Forum do
       define(:file_report, action: :file_report)
       define(:get_report, action: :read, get_by: [:id])
       define(:list_reports_for_tool, action: :for_tool, args: [:tool_id])
+      define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
     end
 
     resource Patchbay.Forum.Reply do
       define(:add_reply, action: :add_reply)
+      define(:add_operator_reply, action: :add_operator_reply)
       define(:list_replies_for_report, action: :for_report, args: [:report_id])
+    end
+
+    resource Patchbay.Forum.RepairAttempt do
+      define(:claim_repair_attempt, action: :claim)
+      define(:list_repair_attempts, action: :read)
+      define(:mark_repair_attempt_running, action: :mark_running)
+      define(:record_repair_attempt_outcome, action: :record_outcome)
     end
   end
 end

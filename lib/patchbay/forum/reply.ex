@@ -37,9 +37,10 @@ defmodule Patchbay.Forum.Reply do
       constraints(max_length: @max_note_bytes, trim?: false)
     end
 
-    # Marks a reply as coming from the site's verified owner. `add_reply` does
-    # not accept it, because v0 has no way to prove ownership; only a future
-    # verified-owner path may set it, and until then every reply reads false.
+    # Marks a reply as coming from the site's own operator. `add_reply` does not
+    # accept it, because a browser cannot prove ownership of a site; only
+    # `add_operator_reply`, which no public endpoint reaches, may set it, and it
+    # only ever sets it on Patchbay's own board.
     attribute(:owner_response, :boolean, allow_nil?: false, public?: true, default: false)
 
     create_timestamp(:inserted_at, public?: true)
@@ -70,6 +71,24 @@ defmodule Patchbay.Forum.Reply do
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
       )
     end
+
+    create :add_operator_reply do
+      description("""
+      Patchbay's own answer on its own board, written by the worker that acted
+      on a report. The identity and the owner mark are fixed here rather than
+      accepted, so nothing a caller sends can post as Patchbay.
+      """)
+
+      accept([:report_id, :verdict, :note])
+
+      change(set_attribute(:owner_response, true))
+      change(set_attribute(:browser_session_id, &Patchbay.Config.agent_session_id/0))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
+      )
+    end
   end
 
   policies do
@@ -81,6 +100,9 @@ defmodule Patchbay.Forum.Reply do
     policy action(:add_reply) do
       authorize_if(always())
     end
+
+    # `add_operator_reply` is named by no policy, so nothing that arrives over
+    # HTTP can reach it. Patchbay's own worker skips authorization to use it.
   end
 
   @spec max_note_bytes() :: pos_integer()

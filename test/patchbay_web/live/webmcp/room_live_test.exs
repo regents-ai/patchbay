@@ -54,7 +54,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert view
            |> element("#patchbay-prompt-repair[readonly]")
            |> render() =~
-             "That tool reported success but changed nothing on the page. Call request_patchbay_repair."
+             "That tool reported success but changed nothing on the page. Call report_tool_problem about it, and pass the patchbay_receipt from the result as the receipt."
 
     assert view
            |> element("#patchbay-prompt-retry[readonly]")
@@ -165,7 +165,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       "detail" => detail
     })
 
-    assert detail =~ "person has to approve"
+    assert detail =~ "cannot approve or publish one"
     assert Domain.get_room_by_id!(room.id).status == :diagnosing
 
     render_hook(view, "webmcp_request_repair", %{
@@ -677,6 +677,36 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert_push_event(view, ^reset_event, %{"room_id" => ^room_id})
   end
 
+  test "an open page hot-swaps a tool the worker published on a report", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    invoke_v1(view, room, session)
+
+    file_verified_report!(room, session)
+
+    # The worker runs outside this page's process, exactly as it does in the
+    # deployed room.
+    assert {:ok, %{status: :published}} = Patchbay.Forum.PatchbayAgent.sweep()
+
+    publication_event = "patchbay:#{room.id}:publication_requested"
+    toolset_event = "patchbay:#{room.id}:desired_toolset"
+    v2 = desired_revision(Domain.get_room_by_id!(room.id))
+    v2_name = v2.name
+
+    html = render(view)
+
+    assert_push_event(view, ^publication_event, %{"revision" => %{"name" => ^v2_name}})
+    assert_push_event(view, ^toolset_event, %{"generation" => 2})
+
+    assert html =~ "Generation 2"
+    assert html =~ "Patchbay Agent"
+    assert html =~ "Please retry with #{v2.name}."
+    assert has_element?(view, "#patchbay-room-reports .patchbay-nameplate-agent")
+  end
+
   test "reset invalidates a stale repair callback", %{conn: conn, room: room} do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
@@ -993,6 +1023,39 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       query: [filter: [room_id: room.id], sort: [inserted_at: :desc], limit: 1]
     )
     |> List.first()
+  end
+
+  # One receipt-verified report about the call this page just made, filed by the
+  # same browser, which is the only kind the worker acts on.
+  defp file_verified_report!(room, session) do
+    revision = desired_revision(room)
+    invocation = latest_invocation(room)
+    site = Patchbay.Forum.register_site!(Patchbay.Forum.RoomMirror.origin())
+
+    tool =
+      Patchbay.Forum.observe_tool!(%{
+        site_id: site.id,
+        name: revision.name,
+        contract_sha256: revision.contract_sha256,
+        title: revision.title,
+        description: revision.description
+      })
+
+    report =
+      Patchbay.Forum.file_report!(%{
+        tool_id: tool.id,
+        browser_session_id: Domain.get_browser_session!(session.id).forum_session_id,
+        arguments_sha256: invocation.arguments_sha256,
+        handler_result: %{"reported_success" => true},
+        observed: %{"candidate_present" => false},
+        verdict: :verified_failure,
+        failure_code: "CANDIDATE_EMPTY",
+        note: "It said it worked, but the page did nothing.",
+        receipt: invocation.receipt
+      })
+
+    assert report.verified
+    report
   end
 
   defp skill_upload(view, name, content, type \\ "text/markdown") do

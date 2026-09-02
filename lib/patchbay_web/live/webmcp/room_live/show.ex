@@ -5,16 +5,22 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   This LiveView is deliberately small: Phoenix owns the durable room state and
   the WebMCP island reports browser observations back through the event names
   below. A browser tool can ask for a diagnosis, which runs the same path as the
-  owner's button. Human repair approval remains a normal LiveView action; no
-  browser tool can approve or publish a repair.
+  owner's button. No browser tool can approve or publish a repair.
+
+  A repair can also be published from outside this process, by the worker that
+  answers a receipt-verified report about this room's tool. That arrives on the
+  room's channel and is handled exactly as the owner's own click is, so an open
+  page hot-swaps the tool without being reloaded.
   """
 
   use PatchbayWeb, :live_view
 
+  import PatchbayWeb.Forum.Nameplate
   import PatchbayWeb.WebMCP.RoomLive.Presenter
 
   alias Patchbay.Config
   alias Patchbay.Patchbay, as: Domain
+  alias PatchbayWeb.Forum.Board
 
   alias Patchbay.Patchbay.{
     BrowserSession,
@@ -45,7 +51,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     room = load_room!(slug)
 
     if connected?(socket) do
-      Phoenix.PubSub.subscribe(Patchbay.PubSub, room_topic(room.id))
+      Phoenix.PubSub.subscribe(Patchbay.PubSub, Room.topic(room.id))
     end
 
     {:ok,
@@ -498,7 +504,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
         Phoenix.PubSub.broadcast_from(
           Patchbay.PubSub,
           self(),
-          room_topic(room.id),
+          Room.topic(room.id),
           {:patchbay_room_reset, room.id, room.invocation_epoch}
         )
 
@@ -515,6 +521,34 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          |> cancel_repair(repair_key)
          |> assign(error_message: readable_error(error))}
     end
+  end
+
+  # A repair published by the worker that answered a report reaches the page the
+  # same way the owner's own click does: the room is re-read, and the browser is
+  # asked to swap the tool it is offering.
+  @impl true
+  def handle_info({:patchbay_agent_published, room_id, proposal_id}, socket)
+      when room_id == socket.assigns.room.id do
+    room = Domain.get_room_by_id!(room_id)
+
+    case fetch_proposal(proposal_id, room) do
+      {:ok, proposal} ->
+        {:noreply,
+         socket
+         |> refresh(socket.assigns.browser_session)
+         |> assign(error_message: nil)
+         |> push_publication_requested(proposal, room)
+         |> push_desired_toolset()}
+
+      {:error, _message} ->
+        {:noreply, refresh(socket, socket.assigns.browser_session)}
+    end
+  end
+
+  @impl true
+  def handle_info({:patchbay_agent_replied, room_id, _report_id}, socket)
+      when room_id == socket.assigns.room.id do
+    {:noreply, refresh(socket, socket.assigns.browser_session)}
   end
 
   @impl true
@@ -643,7 +677,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
         {:already_in_progress, "Patchbay is already working out a repair for this room.", socket}
 
       match?(%RepairProposal{status: :ready_for_approval}, proposal) ->
-        {:proposal_ready, "A repair is already proposed and waiting for a person to approve it.",
+        {:proposal_ready,
+         "A repair is already proposed and waiting to be approved. This tool cannot approve it.",
          socket}
 
       is_nil(proposal) and socket.assigns.room.status == :failed ->
@@ -684,7 +719,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       end)
 
     {:repair_requested,
-     "Patchbay is working out a repair. A person has to approve it before the replacement is published.",
+     "Patchbay is working out a repair. This tool cannot approve or publish one; asking is all it does.",
      socket}
   rescue
     error -> {:error, readable_error(error), socket}
@@ -804,6 +839,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       proposal_source_revision: proposal_revision(proposal, room, :source_tool_revision_id),
       proposal_candidate_revision: proposal_revision(proposal, room, :candidate_tool_revision_id),
       timeline: RoomTimeline.list!(room.id),
+      room_reports: Board.reports_for_room(room.id),
       source_bytes: Digest.artifact_size(room.source_markdown),
       candidate_bytes:
         if(is_binary(room.candidate_markdown),
@@ -1365,8 +1401,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     })
     |> push_desired_toolset()
   end
-
-  defp room_topic(room_id), do: "patchbay:room:#{room_id}"
 
   defp cancel_repair(socket, nil), do: socket
   defp cancel_repair(socket, key), do: cancel_async(socket, key, {:shutdown, :reset})

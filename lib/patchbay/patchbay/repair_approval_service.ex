@@ -1,10 +1,12 @@
 defmodule Patchbay.Patchbay.RepairApprovalService do
   @moduledoc """
-  Human-only approval and publication boundary for a repair proposal.
+  The approval and publication boundary for a repair proposal.
 
-  The caller must provide a non-empty owner label from the normal LiveView
-  action. WebMCP tools do not call this service. All freshness checks happen
-  after locking the room, immediately before approval and hot-swap.
+  Two callers reach it, and both name themselves: the owner's control on the
+  page, and Patchbay's own worker acting on a report it verified against its
+  record. No tool a browser agent can call reaches this service, and nothing a
+  caller sends can stand in for the name it approves under. All freshness checks
+  happen after locking the room, immediately before approval and hot-swap.
   """
 
   alias Patchbay.Patchbay, as: Domain

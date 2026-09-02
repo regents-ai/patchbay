@@ -66,7 +66,16 @@ defmodule Patchbay.Patchbay.TelemetryLogger do
       :duration_ms
     ],
     [:patchbay, :publication, :stop] => [:room, :revision, :generation, :duration_ms],
-    [:patchbay, :goal, :verified] => [:room, :invocation, :generation]
+    [:patchbay, :goal, :verified] => [:room, :invocation, :generation],
+    [:patchbay, :agent, :repair_start] => [:room, :report, :attempt],
+    [:patchbay, :agent, :repair_stop] => [
+      :room,
+      :report,
+      :attempt,
+      :outcome,
+      :contract,
+      :duration_ms
+    ]
   }
 
   @doc "The column names logged for one event, in the order they are printed."
@@ -116,11 +125,17 @@ defmodule Patchbay.Patchbay.TelemetryLogger do
   defp value(:tool, _measurements, metadata), do: metadata[:tool_name]
   defp value(:args, _measurements, metadata), do: metadata[:arguments_sha256]
   defp value(:revision, _measurements, metadata), do: metadata[:tool_revision_id]
+  defp value(:report, _measurements, metadata), do: metadata[:report_id]
+  defp value(:attempt, _measurements, metadata), do: metadata[:attempt_id]
   defp value(:failure_code, _measurements, metadata), do: metadata[:failure_code]
   defp value(:fallback_used, _measurements, metadata), do: metadata[:fallback_used]
   defp value(:receipt, _measurements, metadata), do: metadata[:receipt]
   defp value(:outcome, _measurements, metadata), do: outcome(metadata)
   defp value(:duration_ms, measurements, _metadata), do: duration_ms(measurements)
+
+  # An event that names its own outcome says it plainly; the rest are read from
+  # whether their check passed.
+  defp outcome(%{outcome: outcome}) when is_atom(outcome) and not is_nil(outcome), do: outcome
 
   defp outcome(%{passed: passed}) when is_boolean(passed),
     do: if(passed, do: :success, else: :failure)

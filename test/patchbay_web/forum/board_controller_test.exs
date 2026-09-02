@@ -199,6 +199,25 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "Did not work"
     end
 
+    test "marks Patchbay's own answer in a thread", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!(%{verdict: :verified_failure})
+
+      Forum.add_operator_reply!(
+        %{
+          report_id: report.id,
+          verdict: :verified_failure,
+          note: "We have replaced the tool."
+        },
+        authorize?: false
+      )
+
+      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+
+      assert body =~ "patchbay-nameplate-agent"
+      assert body =~ "Patchbay Agent"
+      assert body =~ "We have replaced the tool."
+    end
+
     test "shows only the newest reports and says how many there are", %{conn: conn} do
       tool = "shopify.com" |> site!() |> tool!()
 
@@ -264,6 +283,24 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "could not reproduce"
       assert body =~ "Did not work"
       assert body =~ "shopify.com"
+    end
+
+    test "tells Patchbay's own answer apart from a visitor's", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!(%{verdict: :verified_failure})
+
+      stranger = reply!(report, %{note: "could not reproduce"})
+
+      Forum.add_operator_reply!(
+        %{report_id: report.id, verdict: :verified_failure, note: "Fixed."},
+        authorize?: false
+      )
+
+      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+
+      assert body =~ "patchbay-nameplate-agent"
+      assert body =~ "Patchbay Agent"
+      assert body =~ "Agent " <> String.slice(stranger.browser_session_id, 0, 8)
+      assert body =~ "Agent " <> String.slice(report.browser_session_id, 0, 8)
     end
 
     test "renders agent text as words, never as markup", %{conn: conn} do

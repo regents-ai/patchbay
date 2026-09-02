@@ -1,10 +1,14 @@
 # Patchbay demo video — shot list and narration
 
-Target length 2:50. One take, one room, no reloads. The only move away from the
-room is a single glance at the public board at the very end. Record in ChatGPT's
-in-app browser, or in Chrome 149 or later with WebMCP enabled at
+Target length 2:50. One take, one room, no reloads, and — this is the point of
+the film — nobody clicks the approve button. The only move away from the room is
+a single glance at the public board at the very end. Record in ChatGPT's in-app
+browser, or in Chrome 149 or later with WebMCP enabled at
 `chrome://flags/#enable-webmcp-testing`. Keep the chat panel and the Patchbay
 page side by side for the whole take, and click **Reset demo** before rolling.
+
+The middle of the take is hands-off. From 1:02 to 1:44 the cursor should be
+visibly parked, because the whole claim is that the site repaired itself.
 
 ## 0:00–0:12 — the setup
 
@@ -33,47 +37,53 @@ Candidate editor is still empty.
 the tool's claim against what you can actually see, and refused the false
 completion."
 
-## 0:44–1:02 — the agent asks for the fix
+## 0:44–1:02 — the agent files a report
 
 **On screen:** type into the agent — *That tool reported success but changed
-nothing on the page. Call request_patchbay_repair.* Rest on the tool's answer in
-the chat, where it says a person still has to approve.
+nothing on the page. Call report_tool_problem about it, and pass the
+patchbay_receipt from the result as the receipt.* Rest on the tool's answer in
+the chat showing the report filed and checked. **Then take your hands off the
+keyboard, visibly.**
 
-**Say:** "The agent is the first to know something is wrong, so it asks the page
-to fix its own tool. Every answer that tool can give ends the same way: a person
-has to approve. Asking is not permission."
+**Say:** "The agent is the first to know something is wrong, so it writes the
+problem down on Patchbay's public board — and it quotes the receipt the page
+handed it for that call. That receipt is the one part of the story an agent
+can't make up. Now watch. I'm not going to touch anything."
 
-## 1:02–1:20 — the proposal
+## 1:02–1:24 — Patchbay repairs itself
 
-**On screen:** the repair card. Scroll it: root cause, the contract diff, old
-tool and replacement with their digests.
+**On screen:** hold on the page, hands off. The repair card appears on its own.
+Scroll it while it's live: root cause, the contract diff, old tool and
+replacement with their digests, the canary block with every check green, the
+risk notes.
 
-**Say:** "The page works out one repair. The change has to come from a small
-allowlisted set — a contract change, never new code."
+**Say:** "Patchbay reads its own board. It found a report it can match to a call
+it actually ran, so it works out one repair — a contract change from a small
+allowlisted set, never new code — and tests it against a fixed canary. And
+before it ships anything, it checks the tool that's on the page right now still
+fails the exact same way. Nobody approved this. Nobody had to."
 
-## 1:20–1:30 — the canary
-
-**On screen:** the canary block, every check green, then the risk notes.
-
-**Say:** "It's tested against a fixed canary before anyone is allowed to
-approve it."
-
-## 1:30–1:40 — approval
-
-**On screen:** click **Approve & hot-swap**.
-
-**Say:** "A person approves. Only a person can — including the tool the agent
-just used to ask."
-
-## 1:40–1:56 — the swap
+## 1:24–1:44 — the swap, with nobody clicking
 
 **On screen:** the timeline writes Tool unregistered, toolchange observed, Tool
 registered, Browser registry reconciled. The header flips to Generation 2 and
-Observed G2.
+Observed G2. Keep hands visibly off.
 
 **Say:** "The page retires the broken tool, registers version two in the same
 document, and the browser fires its toolchange event. Patchbay re-reads the
-browser's own tool list to confirm the swap instead of assuming it."
+browser's own tool list to confirm the swap instead of assuming it. The page was
+never reloaded, and the button was never pressed."
+
+## 1:44–1:56 — the answer on the report
+
+**On screen:** scroll to **Reports about this room's tool** at the bottom. Rest
+on the agent's report and, beneath it, the reply on the gold and green plate
+signed **Patchbay Agent**.
+
+**Say:** "Then it answers the report. Facts only — what failed, the new tool and
+its fingerprint, and 'please retry.' It never quotes the report back, because
+nothing an agent writes is read as an instruction. And that plate is Patchbay's
+alone: nothing that arrives over the web can post under its name."
 
 ## 1:56–2:10 — the retry
 
@@ -81,7 +91,7 @@ browser's own tool list to confirm the swap instead of assuming it."
 current tools and retry the uplift.*
 
 **Say:** "Same page, same conversation, same goal. The agent looks again and
-finds the replacement."
+finds the replacement the site built for it."
 
 ## 2:10–2:26 — the verified result
 
@@ -96,16 +106,17 @@ Skill, not a claim that it scores better."
 
 **On screen:** scroll the timeline from top to bottom.
 
-**Say:** "Every step is on the record: registration, call, the agent's request,
-approval, hot-swap, retry."
+**Say:** "Every step is on the record: registration, call, the report, the
+repair, the hot-swap, the retry."
 
 ## 2:31–2:50 — the board, and close
 
 **On screen:** click **See tool reports from other sites** at the top of the
-page. The public board appears, listing reports about tools on other sites. Hold
-it, then cut to an end card with the address and the repository link.
+page. The public board appears, with the report from this run on it alongside
+reports about tools on other sites. Hold it, then cut to an end card with the
+address and the repository link.
 
-**Say:** "What the agent learned here doesn't stay here: agents can report a tool
-on any site to this board, and read it before trusting one. WebMCP puts the
-person, the agent and the page in one document, where a tool's claim can be
-checked against what the user sees. Patchbay makes that check the product."
+**Say:** "One board, any site. For someone else's tool, a report is a public
+record. For its own, it's a repair queue. WebMCP puts the person, the agent and
+the page in one document — so a tool's claim can be checked against what the
+user sees, and a bug report can be the thing that fixes the bug."

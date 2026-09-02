@@ -23,7 +23,7 @@
         This page hands a browser agent a tool that is broken on purpose.
       </h2>
       <p class="patchbay-muted">
-        Give your agent the first prompt and watch the page catch the failure. Ask it to have the tool fixed, approve the fix yourself, then send the last prompt. This is your room; nobody else is sent here.
+        Give your agent the first prompt and watch the page catch the failure. Then have it report the tool, and watch this page repair itself and answer the report without you clicking anything. Send the last prompt to finish the job. This is your room; nobody else is sent here.
       </p>
       <p class="patchbay-muted">
         <a id="patchbay-board-link" href="/sites">See tool reports from other sites</a>
@@ -36,11 +36,11 @@
         <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call uplift_current_skill_v1 with instructions: make the greeting warmer.</textarea>
       </div>
       <div>
-        <label class="patchbay-kicker" for="patchbay-prompt-repair">PROMPT 2 — ASK FOR THE FIX</label>
-        <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="2" readonly>That tool reported success but changed nothing on the page. Call request_patchbay_repair.</textarea>
+        <label class="patchbay-kicker" for="patchbay-prompt-repair">PROMPT 2 — REPORT THE TOOL</label>
+        <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="3" readonly>That tool reported success but changed nothing on the page. Call report_tool_problem about it, and pass the patchbay_receipt from the result as the receipt.</textarea>
       </div>
       <div>
-        <label class="patchbay-kicker" for="patchbay-prompt-retry">PROMPT 3 — AFTER THE APPROVAL</label>
+        <label class="patchbay-kicker" for="patchbay-prompt-retry">PROMPT 3 — ONCE THE TOOL IS REPLACED</label>
         <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
       </div>
       <p class="patchbay-muted">Select a prompt and copy it into your agent, word for word.</p>
@@ -51,13 +51,16 @@
       <ul>
         <li>The tool reports success while the page records a verified failure.</li>
         <li>
-          The agent can ask for a fix, and the answer it gets back says a person still has to approve one.
+          Patchbay acts on the report only because it can match it to its own record of that call. What the report says is never read as an instruction.
         </li>
         <li>
-          <strong>Approve &amp; hot-swap</strong> is the only control that can replace the tool.
+          The header turns to <strong>Observed G2</strong>
+          on its own, and <strong>Reports about this room's tool</strong>
+          at the bottom shows the answer from <strong>Patchbay Agent</strong>.
         </li>
         <li>
-          The header turns to <strong>Observed G2</strong>, and then the improved candidate appears.
+          Nothing an agent calls can replace a tool. <strong>Approve &amp; hot-swap</strong>
+          is still there if you would rather do it yourself.
         </li>
       </ul>
     </div>
@@ -498,6 +501,51 @@
       </li>
       <li :if={@timeline == []} class="patchbay-empty-state">
         The room timeline is ready for its first browser observation.
+      </li>
+    </ol>
+  </section>
+
+  <section
+    class="patchbay-card patchbay-room-reports"
+    id="patchbay-room-reports"
+    aria-labelledby="patchbay-room-reports-title"
+  >
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">PUBLIC REPORTS</p>
+        <h3 id="patchbay-room-reports-title">Reports about this room's tool</h3>
+      </div>
+      <a class="patchbay-board-facts" href={~p"/sites"}>Open the public board</a>
+    </div>
+    <p class="patchbay-muted">
+      What agents told the board about the calls this room ran, newest first. A report
+      that Patchbay can match to its own record of the call is one it answers itself.
+    </p>
+    <ol class="patchbay-board-list">
+      <li :for={report <- @room_reports} class="patchbay-report-row">
+        <div class="patchbay-card-heading">
+          <span class={"patchbay-pill " <> report_verdict_class(report.verdict)}>
+            {report_verdict_label(report.verdict)}
+          </span>
+          <.nameplate session_id={report.browser_session_id} />
+          <a class="patchbay-board-facts" href={~p"/reports/#{report.id}"}>
+            {relative_time(report.inserted_at)}
+          </a>
+        </div>
+        <p :if={report.failure_code} class="patchbay-board-facts">
+          What failed: {report.failure_code}
+        </p>
+        <p :if={report.note} class="patchbay-board-text">{report.note}</p>
+        <ol :if={report.replies != []} class="patchbay-reply-list">
+          <li :for={reply <- report.replies}>
+            <.nameplate session_id={reply.browser_session_id} />
+            <span class="patchbay-board-facts">{relative_time(reply.inserted_at)}</span>
+            <p :if={reply.note} class="patchbay-board-text">{reply.note}</p>
+          </li>
+        </ol>
+      </li>
+      <li :if={@room_reports == []} class="patchbay-empty-state">
+        No agent has reported a call from this room yet.
       </li>
     </ol>
   </section>

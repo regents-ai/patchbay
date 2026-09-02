@@ -29,6 +29,8 @@ defmodule Patchbay.Patchbay.Telemetry do
   @canary_metadata [:room_id, :invocation_id, :tool_revision_id, :passed, :failure_code]
   @publication_metadata [:room_id, :tool_revision_id, :tool_generation]
   @goal_metadata [:room_id, :invocation_id, :tool_generation]
+  @agent_start_metadata [:room_id, :report_id, :attempt_id]
+  @agent_stop_metadata [:room_id, :report_id, :attempt_id, :outcome, :contract_sha256]
 
   @events [
     [:patchbay, :webmcp, :registered],
@@ -40,7 +42,9 @@ defmodule Patchbay.Patchbay.Telemetry do
     [:patchbay, :repair, :model_stop],
     [:patchbay, :repair, :canary_stop],
     [:patchbay, :publication, :stop],
-    [:patchbay, :goal, :verified]
+    [:patchbay, :goal, :verified],
+    [:patchbay, :agent, :repair_start],
+    [:patchbay, :agent, :repair_stop]
   ]
 
   @doc "The exact event names Patchbay emits."
@@ -114,6 +118,25 @@ defmodule Patchbay.Patchbay.Telemetry do
   @spec goal_verified(map()) :: :ok
   def goal_verified(metadata),
     do: emit([:patchbay, :goal, :verified], @goal_metadata, %{count: 1}, metadata)
+
+  @doc "Patchbay started repairing a tool an agent reported with a receipt."
+  @spec agent_repair_start(map()) :: :ok
+  def agent_repair_start(metadata) do
+    emit(
+      [:patchbay, :agent, :repair_start],
+      @agent_start_metadata,
+      %{system_time: System.system_time()},
+      metadata
+    )
+  end
+
+  @doc """
+  Patchbay finished with one report. `outcome` is the attempt's own status, and
+  `contract_sha256` is the published replacement's digest when there was one.
+  """
+  @spec agent_repair_stop(map(), map()) :: :ok
+  def agent_repair_stop(measurements, metadata),
+    do: emit([:patchbay, :agent, :repair_stop], @agent_stop_metadata, measurements, metadata)
 
   defp emit(event, metadata_keys, measurements, metadata) do
     :telemetry.execute(

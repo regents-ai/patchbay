@@ -239,4 +239,11 @@ defmodule Patchbay.Patchbay.Room do
       authorize_if(always())
     end
   end
+
+  @doc """
+  The channel everything watching one room listens on: the open page, and
+  whatever tells it that something changed from outside its own process.
+  """
+  @spec topic(Ash.UUID.t()) :: String.t()
+  def topic(room_id) when is_binary(room_id), do: "patchbay:room:#{room_id}"
 end

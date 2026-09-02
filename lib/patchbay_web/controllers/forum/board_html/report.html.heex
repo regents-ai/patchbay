@@ -19,7 +19,8 @@
   <section class="patchbay-card patchbay-board-card">
     <div class="patchbay-facts">
       <div>
-        <span>Reported by</span><code>{reporter_label(@report)}</code>
+        <span>Reported by</span>
+        <.nameplate session_id={@report.browser_session_id} />
       </div>
       <div>
         <span>Reported at</span><code>{moment(@report.inserted_at)}</code>

@@ -1,6 +1,9 @@
 defmodule Patchbay.Patchbay.TelemetryTest do
   use Patchbay.DataCase, async: false
 
+  alias Elixir.Patchbay.Forum
+  alias Elixir.Patchbay.Forum.PatchbayAgent
+  alias Elixir.Patchbay.Forum.RoomMirror
   alias Elixir.Patchbay.Patchbay
 
   alias Elixir.Patchbay.Patchbay.{
@@ -64,8 +67,20 @@ defmodule Patchbay.Patchbay.TelemetryTest do
       :failure_code
     ],
     [:patchbay, :publication, :stop] => [:room_id, :tool_revision_id, :tool_generation],
-    [:patchbay, :goal, :verified] => [:room_id, :invocation_id, :tool_generation]
+    [:patchbay, :goal, :verified] => [:room_id, :invocation_id, :tool_generation],
+    [:patchbay, :agent, :repair_start] => [:room_id, :report_id, :attempt_id],
+    [:patchbay, :agent, :repair_stop] => [
+      :room_id,
+      :report_id,
+      :attempt_id,
+      :outcome,
+      :contract_sha256
+    ]
   }
+
+  # The loop a person drives never reaches the worker that answers a report, so
+  # the two flows below cover the event list between them.
+  @agent_events [[:patchbay, :agent, :repair_start], [:patchbay, :agent, :repair_stop]]
 
   @required_measurements %{
     [:patchbay, :invocation, :start] => [:system_time],
@@ -73,7 +88,9 @@ defmodule Patchbay.Patchbay.TelemetryTest do
     [:patchbay, :verification, :stop] => [:duration],
     [:patchbay, :repair, :model_stop] => [:duration],
     [:patchbay, :repair, :canary_stop] => [:duration],
-    [:patchbay, :publication, :stop] => [:duration]
+    [:patchbay, :publication, :stop] => [:duration],
+    [:patchbay, :agent, :repair_start] => [:system_time],
+    [:patchbay, :agent, :repair_stop] => [:duration]
   }
 
   setup do
@@ -179,25 +196,45 @@ defmodule Patchbay.Patchbay.TelemetryTest do
 
     events = drain_telemetry()
 
-    for event <- Telemetry.events() do
+    for event <- Telemetry.events() -- @agent_events do
       assert Map.has_key?(events, event), "expected #{inspect(event)} to be emitted"
     end
 
-    Enum.each(events, fn {event, emissions} ->
-      Enum.each(emissions, fn {measurements, metadata} ->
-        assert Map.keys(metadata) |> Enum.sort() ==
-                 Enum.sort(Map.fetch!(@documented_metadata, event)),
-               "#{inspect(event)} metadata keys drifted: #{inspect(Map.keys(metadata))}"
+    assert_documented!(events)
+  end
 
-        for key <- Map.get(@required_measurements, event, []) do
-          assert is_number(Map.get(measurements, key)),
-                 "#{inspect(event)} is missing the #{key} measurement"
-        end
+  test "the worker that answers a report emits its own two events" do
+    Application.put_env(:patchbay, :demo_fallback, true)
+    on_exit(fn -> Application.delete_env(:patchbay, :demo_fallback) end)
 
-        assert_no_content(event, measurements)
-        assert_no_content(event, metadata)
-      end)
-    end)
+    call = failed_call()
+
+    Forum.file_report!(%{
+      tool_id: board_tool_id(call),
+      browser_session_id: call.forum_session_id,
+      arguments_sha256: call.invocation.arguments_sha256,
+      handler_result: %{"reported_success" => true},
+      observed: %{"candidate_present" => false},
+      verdict: :verified_failure,
+      failure_code: "CANDIDATE_EMPTY",
+      note: "It said it worked, but the page did nothing.",
+      receipt: call.invocation.receipt
+    })
+
+    assert {:ok, attempt} = PatchbayAgent.sweep()
+    assert attempt.status == :published
+
+    events = drain_telemetry()
+
+    for event <- @agent_events do
+      assert Map.has_key?(events, event), "expected #{inspect(event)} to be emitted"
+    end
+
+    assert [{_measurements, stop}] = Map.fetch!(events, [:patchbay, :agent, :repair_stop])
+    assert stop.outcome == :published
+    assert stop.contract_sha256 =~ ~r/\A[0-9a-f]{64}\z/
+
+    assert_documented!(events)
   end
 
   test "the handler stop carries the model token usage and the invocation stores it", %{
@@ -253,6 +290,63 @@ defmodule Patchbay.Patchbay.TelemetryTest do
     assert metadata.room_id == :unavailable
     assert metadata.tool_revision_id == :unavailable
     assert metadata.tool_generation == 2
+  end
+
+  defp assert_documented!(events) do
+    Enum.each(events, fn {event, emissions} ->
+      Enum.each(emissions, fn {measurements, metadata} ->
+        assert Map.keys(metadata) |> Enum.sort() ==
+                 Enum.sort(Map.fetch!(@documented_metadata, event)),
+               "#{inspect(event)} metadata keys drifted: #{inspect(Map.keys(metadata))}"
+
+        for key <- Map.get(@required_measurements, event, []) do
+          assert is_number(Map.get(measurements, key)),
+                 "#{inspect(event)} is missing the #{key} measurement"
+        end
+
+        assert_no_content(event, measurements)
+        assert_no_content(event, metadata)
+      end)
+    end)
+  end
+
+  # One real failed call on a studio of this deployment, from a browser holding
+  # a forum identity, which is what a receipt-verified report needs behind it.
+  defp failed_call do
+    room = Patchbay.create_seeded_room!("room-#{System.unique_integer([:positive])}")
+    revision = seeded_revision!(room)
+    forum_session_id = Ash.UUID.generate()
+
+    browser_session =
+      Patchbay.register_browser_session!(%{
+        room_id: room.id,
+        client_instance_id: Ash.UUID.generate(),
+        forum_session_id: forum_session_id,
+        user_agent_digest: Digest.sha256("test-agent"),
+        webmcp_supported: true
+      })
+
+    invocation =
+      room
+      |> InvocationRunner.invoke!(browser_session, revision, %{"instructions" => "warmer"},
+        request_uuid: Ash.UUID.generate(),
+        fallback: true
+      )
+      |> verify_visible!(room.id)
+
+    %{room: room, revision: revision, forum_session_id: forum_session_id, invocation: invocation}
+  end
+
+  defp board_tool_id(call) do
+    site = Forum.register_site!(RoomMirror.origin())
+
+    Forum.observe_tool!(%{
+      site_id: site.id,
+      name: call.revision.name,
+      contract_sha256: call.revision.contract_sha256,
+      title: call.revision.title,
+      description: call.revision.description
+    }).id
   end
 
   defp assert_no_content(event, values) do

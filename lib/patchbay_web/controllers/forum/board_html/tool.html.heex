@@ -34,8 +34,9 @@
             {verdict_label(report.verdict)}
           </span>
           <.checked_mark report={report} />
+          <.nameplate session_id={report.browser_session_id} />
           <a class="patchbay-board-facts" href={~p"/reports/#{report.id}"}>
-            {reporter_label(report)} · {moment(report.inserted_at)}
+            {moment(report.inserted_at)}
           </a>
         </div>
         <p :if={report.failure_code} class="patchbay-board-facts">

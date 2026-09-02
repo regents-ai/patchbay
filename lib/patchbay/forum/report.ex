@@ -85,6 +85,9 @@ defmodule Patchbay.Forum.Report do
   relationships do
     belongs_to(:tool, Patchbay.Forum.Tool, allow_nil?: false, public?: true)
     has_many(:replies, Patchbay.Forum.Reply)
+
+    # What Patchbay did about this report, if it was one Patchbay could act on.
+    has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
   end
 
   actions do
@@ -96,6 +99,25 @@ defmodule Patchbay.Forum.Report do
       filter(expr(tool_id == ^arg(:tool_id)))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
+    read :verified_awaiting_repair do
+      description("""
+      Reports about one site's tools that Patchbay matched to a call it ran and
+      has not yet worked on, oldest first, so the queue is fair.
+      """)
+
+      argument(:origin, :string, allow_nil?: false)
+
+      filter(
+        expr(
+          verified == true and not is_nil(invocation_id) and
+            tool.site.origin == ^arg(:origin) and
+            not exists(repair_attempt, true)
+        )
+      )
+
+      prepare(build(sort: [inserted_at: :asc, id: :asc]))
     end
 
     create :file_report do

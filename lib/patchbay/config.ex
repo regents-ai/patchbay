@@ -28,6 +28,49 @@ defmodule Patchbay.Config do
   @default_room_cooldown_seconds 20
   @default_max_rooms 2000
   @default_room_idle_hours 6
+  @default_agent_poll_seconds 15
+  @default_agent_daily_repairs 50
+
+  # The fixed identity every Patchbay Agent reply is written under. It is a
+  # constant rather than a stored row so a reply can be recognised as Patchbay's
+  # own from the reply alone, on any page that renders one.
+  @agent_session_id "00000000-0000-4a70-8000-000000000001"
+
+  @doc """
+  Whether Patchbay repairs its own tools when an agent reports one as broken.
+
+  On unless the deployment says otherwise, so turning the loop off is a
+  deliberate act: `PATCHBAY_AGENT_REPAIRS=false`.
+  """
+  def agent_repairs_enabled? do
+    case Application.get_env(:patchbay, :agent_repairs) do
+      value when is_boolean(value) -> value
+      _ -> System.get_env("PATCHBAY_AGENT_REPAIRS") not in ["false", "0"]
+    end
+  end
+
+  @doc """
+  How often Patchbay looks for a new receipt-verified report to act on.
+  """
+  def agent_poll_seconds do
+    whole_number(:agent_poll_seconds, "PATCHBAY_AGENT_POLL_SECONDS", @default_agent_poll_seconds)
+  end
+
+  @doc """
+  How many repairs Patchbay may make on its own in any rolling 24 hours.
+  """
+  def agent_daily_repairs do
+    whole_number(
+      :agent_daily_repairs,
+      "PATCHBAY_AGENT_DAILY_REPAIRS",
+      @default_agent_daily_repairs
+    )
+  end
+
+  @doc """
+  The identity Patchbay's own replies are posted under.
+  """
+  def agent_session_id, do: @agent_session_id
 
   @doc """
   How many demo rooms may exist at once.

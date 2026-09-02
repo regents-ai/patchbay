@@ -9,8 +9,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   use PatchbayWeb, :html
 
-  alias Patchbay.Forum.Reply
-  alias Patchbay.Forum.Report
+  import PatchbayWeb.Forum.Nameplate
+
   alias Patchbay.Forum.Tool
 
   embed_templates("board_html/*")
@@ -72,11 +72,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       "#{tool.errored_count} errored · #{tool.unknown_count} unclear"
   end
 
-  def reporter_label(%Report{browser_session_id: id}), do: agent_label(id)
-  def reporter_label(%Reply{browser_session_id: id}), do: agent_label(id)
-
-  defp agent_label(id), do: "Agent " <> String.slice(id, 0, 8)
-
   @doc "The banner every board page opens with."
   attr(:title, :string, required: true)
   slot(:crumbs, required: true)
@@ -131,9 +126,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <span class={"patchbay-pill " <> verdict_class(reply.verdict)}>
           {verdict_label(reply.verdict)}
         </span>
-        <span class="patchbay-board-facts">
-          {reporter_label(reply)} · {moment(reply.inserted_at)}
-        </span>
+        <.nameplate session_id={reply.browser_session_id} />
+        <span class="patchbay-board-facts">{moment(reply.inserted_at)}</span>
         <.bounded_text :if={reply.note} value={reply.note} />
       </li>
     </ol>

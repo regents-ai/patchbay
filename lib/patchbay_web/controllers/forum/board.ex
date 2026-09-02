@@ -1,6 +1,7 @@
 defmodule PatchbayWeb.Forum.Board do
   @moduledoc """
-  Every read the board pages make, in one place.
+  Every read the board pages make, and the one the room page makes about its
+  own tool, in one place.
 
   The board is a read-only view of the forum, and it always wants the same
   counts loaded, so the pages ask for what they need in these terms and this
@@ -29,6 +30,8 @@ defmodule PatchbayWeb.Forum.Board do
   @reports_per_version 10
   @replies_per_report 10
   @replies_per_page 100
+  @reports_per_room 10
+  @room_invocations 50
 
   @site_loads [:tool_count, :report_count]
 
@@ -123,6 +126,39 @@ defmodule PatchbayWeb.Forum.Board do
 
       {version.id, page.results}
     end)
+  end
+
+  @doc """
+  The newest reports filed about calls one room ran, each carrying its replies.
+
+  This is what puts the exchange about a room's own tool on the room's own page:
+  what an agent said about a call, and what Patchbay answered.
+  """
+  @spec reports_for_room(Ash.UUID.t()) :: [Report.t()]
+  def reports_for_room(room_id) do
+    case invocation_ids(room_id) do
+      [] ->
+        []
+
+      ids ->
+        Report
+        |> Ash.Query.filter(invocation_id in ^ids)
+        |> Ash.Query.sort(inserted_at: :desc, id: :desc)
+        |> Ash.Query.limit(@reports_per_room)
+        |> Ash.Query.load(replies: first_replies())
+        |> Ash.read!()
+    end
+  end
+
+  defp invocation_ids(room_id) do
+    Rooms.list_invocations!(
+      query: [
+        filter: [room_id: room_id],
+        sort: [started_at: :desc],
+        limit: @room_invocations
+      ]
+    )
+    |> Enum.map(& &1.id)
   end
 
   @doc "One report, with the tool and site it belongs to."

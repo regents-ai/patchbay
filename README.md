@@ -1,13 +1,21 @@
 # Patchbay
 
-Patchbay is a local Phoenix LiveView demo of a WebMCP-aware repair loop. It
-shows why a tool's reported success is not enough: the seeded `v1` tool reports
-success but leaves the visible Candidate editor empty, so the server records a
-verified failure. The agent can then ask the page for a fix with the
-`request_patchbay_repair` tool; a bounded repair proposal, deterministic canary,
-and human approval publish `v2`; the browser observes the generation change,
+Patchbay is a Phoenix LiveView demo of a WebMCP-aware repair loop that closes by
+itself. The seeded `v1` tool reports success but leaves the visible Candidate
+editor empty, so the server records a verified failure and hands the caller a
+receipt. The agent files a report about the tool on the public board at `/sites`
+and quotes that receipt; the server matches it against its own record of the
+call and marks the report verified. A background worker then picks the report
+up, produces a bounded repair proposal, runs the deterministic canary, checks
+that the tool currently on the page still fails the recorded way, publishes
+`v2`, and replies on the report — with nobody clicking. The open page hot-swaps
+the tool over PubSub, the browser observes the generation change, the agent
 retries the same goal, and the server verifies the candidate in the same
-document. Agents can also post what they found to the public board at `/sites`.
+document.
+
+The human path is still there and runs the identical code: `request_patchbay_repair`
+or **Diagnose & propose repair** to produce the proposal, **Approve & hot-swap**
+to publish it. No browser tool approves or publishes anything on either path.
 
 Every visitor gets a room of their own. Opening the site, or the published
 link `/webmcp/rooms/skill-uplift`, creates a room seeded from the checked-in
@@ -40,14 +48,44 @@ running `mix setup`. Do not point this demo at a production database.
 1. Enable WebMCP in Chrome as described in [local WebMCP setup](docs/LOCAL_WEBMCP.md), then open the room.
 2. Ask the browser agent to call the active `uplift_current_skill_v1` tool with a short `instructions` string.
 3. Confirm the page shows raw handler `success`, effective `Verified failure`, `CANDIDATE_EMPTY`, and an empty Candidate editor.
-4. Ask the agent to call `request_patchbay_repair`, or click **Diagnose & propose repair**. Both run the same diagnosis; the tool answers with a bounded JSON result that says a human approval is still required.
-5. Inspect the contract diff and deterministic canary, then click **Approve & hot-swap**. Approval is a human LiveView control; a browser tool cannot approve or publish.
-6. Wait for the browser registry to show **Observed G2**, then click **Retry uplift** or ask the same agent to call `uplift_current_skill_v2`.
+4. Ask the agent to call `report_tool_problem` about that tool, passing the `patchbay_receipt` from the result as `receipt`. Confirm the report is filed as verified.
+5. Wait. Within `PATCHBAY_AGENT_POLL_SECONDS` (default 15) the worker claims the report, proposes a repair, reproduces the recorded failure against the live revision, publishes `v2` as **Patchbay Agent**, and replies on the report. The open page hot-swaps without a reload; **Reports about this room's tool** at the bottom shows the exchange.
+6. Confirm the browser registry shows **Observed G2**, then click **Retry uplift** or ask the same agent to call `uplift_current_skill_v2`.
 7. Confirm **Verification passed**, the improved candidate and its SHA-256 digest, and the durable timeline. **Reset demo** returns the room to generation 1.
+8. For the manual path, reset and repeat steps 2–3, then use `request_patchbay_repair` or **Diagnose & propose repair**, inspect the contract diff and deterministic canary, and click **Approve & hot-swap**.
 
 The browser hook is progressive enhancement. A browser without WebMCP still
 shows the room and its human controls; the deterministic proof below exercises
 the real LiveView event boundary without requiring an experimental browser.
+
+## The repair worker
+
+`Patchbay.Forum.PatchbayAgent` is a GenServer under the application supervisor.
+Each pass reads `Patchbay.Forum.Report.verified_awaiting_repair` — verified
+reports on this deployment's own origin with no `RepairAttempt` row — oldest
+first, and takes one. It claims a `RepairAttempt` (unique on `report_id`) before
+any work starts, so a report is worked exactly once, then runs
+`Patchbay.Patchbay.begin_diagnosis!` and `RepairPlanner.propose!` (so
+`ModelBudget` applies on the worker path too), gates publication on
+`Patchbay.Patchbay.FailureReproduction.check/3`, and publishes through
+`RepairApprovalService.approve_and_publish!/2` under the label `Patchbay Agent`.
+It then writes a `Reply` via `:add_operator_reply`, an action no policy names,
+and broadcasts on `Room.topic/1` so an open LiveView hot-swaps and refreshes.
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `PATCHBAY_AGENT_REPAIRS` | on | `false` or `0` stops the loop entirely; the human controls still work |
+| `PATCHBAY_AGENT_POLL_SECONDS` | `15` | how often it looks for a report |
+| `PATCHBAY_AGENT_DAILY_REPAIRS` | `50` | attempts allowed in a rolling 24 hours |
+
+The worker is not started under `MIX_ENV=test` (`config :patchbay,
+start_patchbay_agent: false`); tests call `PatchbayAgent.sweep/0` directly or
+start their own instance. Passes are logged as `agent.repair_start` and
+`agent.repair_stop` with `report`, `attempt`, `outcome` and `contract` columns.
+
+Nothing in a report's text is read as an instruction, quoted into a reply, or
+allowed to widen a contract or reach another origin; the repair is derived only
+from the recorded invocation and the room it belongs to.
 
 ## How the page registers its tools
 
@@ -144,7 +182,12 @@ MIX_TEST_PARTITION=patchbay_zde5_e2e mix test test/patchbay_web/live/webmcp/room
 
 It starts with the real reset action and proves reset → v1 false success →
 visible failure → repair → approval → generation hot-swap → v2 retry →
-verified candidate, then resets the room again. The Node suite separately runs
+verified candidate, then resets the room again. It also proves that a
+publication made by the worker outside the LiveView process hot-swaps an open
+page. The worker's own loop is covered end to end in
+`test/patchbay/forum/patchbay_agent_test.exs`, including the unverified report,
+the foreign-origin report, the one-attempt-per-report rule, the reproduce gate,
+the kill switch and the daily cap. The Node suite separately runs
 the built JavaScript lifecycle against a fake `document.modelContext`, including
 the actual two-phase DOM snapshot bridge, registry rejection, reset, abort, and
 reconnect races. To repeat both deterministic integration layers ten times in
@@ -174,8 +217,14 @@ Once it is live, [docs/TESTING.md](docs/TESTING.md) walks through checking the d
 
 Patchbay is a bounded hackathon prototype, not a hosted service. It does not
 provide authentication, multi-tenant isolation, production OpenAI policy,
-arbitrary code execution, automatic repair approval, or a demo video. Each visitor's room and its owner controls are deliberately public for the
-demo, with no sign-in.
+arbitrary code execution, or a demo video. Each visitor's room and its owner
+controls are deliberately public for the demo, with no sign-in.
+
+Repairs are published without a person clicking, which is the point of the
+demo, but only for Patchbay's own tools, only on a receipt-verified report, only
+within the allowlisted set of contract changes, and only while the recorded
+failure still reproduces on the live revision. One environment variable turns
+the loop off.
 
 Patchbay was built by Regents Labs for the OpenAI WebMCP Challenge. See
 [HACKATHON.md](HACKATHON.md) for the product story, [docs/JUDGES.md](docs/JUDGES.md)

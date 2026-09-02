@@ -17,6 +17,8 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
   @session "22222222-2222-2222-2222-222222222222"
   @invocation "33333333-3333-3333-3333-333333333333"
   @revision "44444444-4444-4444-4444-444444444444"
+  @report "55555555-5555-5555-5555-555555555555"
+  @attempt "66666666-6666-6666-6666-666666666666"
   @contract String.duplicate("a", 64)
   @args String.duplicate("b", 64)
   @tool "uplift_current_skill_v1"
@@ -170,6 +172,55 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
              end) ==
                [
                  "[webmcp] publication.stop room=#{@room} revision=#{@revision} generation=2 duration_ms=9"
+               ]
+    end
+
+    test "agent.repair_start" do
+      assert lines(fn ->
+               Telemetry.agent_repair_start(%{
+                 room_id: @room,
+                 report_id: @report,
+                 attempt_id: @attempt
+               })
+             end) ==
+               [
+                 "[webmcp] agent.repair_start room=#{@room} report=#{@report} attempt=#{@attempt}"
+               ]
+    end
+
+    test "agent.repair_stop names the outcome and the published digest" do
+      assert lines(fn ->
+               Telemetry.agent_repair_stop(
+                 %{duration: native(210)},
+                 %{
+                   room_id: @room,
+                   report_id: @report,
+                   attempt_id: @attempt,
+                   outcome: :published,
+                   contract_sha256: @contract
+                 }
+               )
+             end) ==
+               [
+                 "[webmcp] agent.repair_stop room=#{@room} report=#{@report} attempt=#{@attempt} outcome=published contract=#{@contract} duration_ms=210"
+               ]
+    end
+
+    test "agent.repair_stop says so when nothing was published" do
+      assert lines(fn ->
+               Telemetry.agent_repair_stop(
+                 %{duration: native(4)},
+                 %{
+                   room_id: @room,
+                   report_id: @report,
+                   attempt_id: @attempt,
+                   outcome: :not_reproduced,
+                   contract_sha256: nil
+                 }
+               )
+             end) ==
+               [
+                 "[webmcp] agent.repair_stop room=#{@room} report=#{@report} attempt=#{@attempt} outcome=not_reproduced contract=- duration_ms=4"
                ]
     end
 

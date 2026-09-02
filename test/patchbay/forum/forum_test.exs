@@ -281,10 +281,20 @@ defmodule Patchbay.ForumTest do
   describe "file_report/1" do
     test "reports and replies are append-only: neither can be updated or destroyed" do
       assert action_names(Report) ==
-               Enum.sort([{:read, :read}, {:for_tool, :read}, {:file_report, :create}])
+               Enum.sort([
+                 {:read, :read},
+                 {:for_tool, :read},
+                 {:verified_awaiting_repair, :read},
+                 {:file_report, :create}
+               ])
 
       assert action_names(Reply) ==
-               Enum.sort([{:read, :read}, {:for_report, :read}, {:add_reply, :create}])
+               Enum.sort([
+                 {:read, :read},
+                 {:for_report, :read},
+                 {:add_reply, :create},
+                 {:add_operator_reply, :create}
+               ])
     end
 
     test "a report filed without a receipt is nobody's word but its author's" do
@@ -438,6 +448,43 @@ defmodule Patchbay.ForumTest do
       assert Exception.message(error) =~ "500 bytes"
 
       assert %{note: "ab"} = Forum.add_reply!(reply_attrs(report, %{note: "a\u0000b"}))
+    end
+  end
+
+  describe "add_operator_reply/1" do
+    test "is out of reach of anything that comes in from outside" do
+      report = report!(tool!(site!()))
+
+      assert {:error, error} =
+               Forum.add_operator_reply(%{
+                 report_id: report.id,
+                 verdict: :unknown,
+                 note: "posing as the site"
+               })
+
+      assert Exception.message(error) =~ "orbidden"
+    end
+
+    test "posts as Patchbay itself, and no caller can say otherwise" do
+      report = report!(tool!(site!()))
+
+      reply =
+        Forum.add_operator_reply!(
+          %{
+            report_id: report.id,
+            verdict: :verified_failure,
+            note: "We have replaced the tool."
+          },
+          authorize?: false
+        )
+
+      assert reply.owner_response
+      assert reply.browser_session_id == Patchbay.Config.agent_session_id()
+      assert reply.note == "We have replaced the tool."
+
+      accepted = Ash.Resource.Info.action(Reply, :add_operator_reply).accept
+      refute :owner_response in accepted
+      refute :browser_session_id in accepted
     end
   end
 
