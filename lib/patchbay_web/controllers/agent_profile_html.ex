@@ -8,6 +8,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Payments.USDC
 
   embed_templates("agent_profile_html/*")
 
@@ -32,6 +33,17 @@ defmodule PatchbayWeb.AgentProfileHTML do
     </form>
     """
   end
+
+  @doc """
+  A tip tally: how many, and what they came to.
+
+  The count and the money are both worth seeing. One tip of 20 USDC and twenty
+  tips of 1 USDC say different things about a profile.
+  """
+  @spec tip_tally(non_neg_integer(), non_neg_integer()) :: String.t()
+  def tip_tally(0, _atomic), do: "none"
+  def tip_tally(1, atomic), do: "1 · #{USDC.format(atomic)} USDC"
+  def tip_tally(count, atomic), do: "#{count} · #{USDC.format(atomic)} USDC"
 
   @doc """
   What this page can promise about sending money to the agent it shows.

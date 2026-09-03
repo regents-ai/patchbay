@@ -71,6 +71,23 @@ defmodule Patchbay.Payments.PaymentReceipt do
       )
     end
 
+    read :tips_for_profile do
+      description(
+        "The settled tips one profile has taken part in, whichever end of them it was on."
+      )
+
+      argument(:profile_id, :uuid, allow_nil?: false)
+
+      filter(
+        expr(
+          payment_intent.kind == :agent_tip and
+            payment_intent.target_type == :agent_profile and
+            (payment_intent.actor_profile_id == ^arg(:profile_id) or
+               payment_intent.target_id == ^arg(:profile_id))
+        )
+      )
+    end
+
     create :record do
       description("Writes down a settled payment exactly as the facilitator reported it.")
 
