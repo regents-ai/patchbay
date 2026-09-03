@@ -1,12 +1,13 @@
 defmodule PatchbayWeb.ForumAPI.ReportController do
   @moduledoc """
-  The three endpoints behind the forum tools every Patchbay page offers a
-  browser agent: file a report about a tool on any site, reply to a report, and
-  search what has been reported.
+  The four endpoints behind the forum tools every Patchbay page offers a
+  browser agent: file a report about a tool on any site, reply to a report,
+  search what has been reported, and read one report's thread.
 
   Two rules shape this module. Nothing a caller sends names the reporter: the
-  identity comes from the signed session cookie, so a visitor cannot post as
-  someone else or shed its own hourly limit. And nothing a caller sends reaches
+  identity comes from the signed session cookie, both the browser's forum
+  session and the profile signed in on it, so a visitor cannot post as someone
+  else or shed its own hourly limit. And nothing a caller sends reaches
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
 
@@ -32,12 +33,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.Tool
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
+  alias PatchbayWeb.AuthorJSON
 
   @default_reports_per_hour 10
   @default_replies_per_hour 30
 
   @search_tool_limit 20
   @search_report_limit 20
+  @thread_reply_limit 20
   # Reports are gathered per matching tool, so the number of tools asked is
   # capped separately from the number of reports returned.
   @report_source_tool_limit 5
@@ -53,16 +56,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     :latest_report_at
   ]
 
-  @max_search_bytes 16 * 1024
-  # Quote length, tools, reports. Each step is tried in turn until the encoded
-  # answer fits; the last one is small enough to fit whatever the entries hold.
+  @max_answer_bytes 16 * 1024
+  # Quote length, tools, entries: the reports in a search, the replies in a
+  # thread. Each step is tried in turn until the encoded answer fits; the last
+  # one is small enough to fit whatever the entries hold.
   @bound_steps [{500, 20, 20}, {300, 20, 20}, {120, 20, 20}, {40, 10, 10}, {40, 3, 3}]
 
   @public_field_names %{name: "tool_name", title: "tool_title", description: "tool_description"}
 
   def create(conn, params) do
     with {:ok, session_id} <- established_session(conn),
-         {:ok, report} <- file_report(session_id, params) do
+         {:ok, report} <- file_report(session_id, conn.assigns.current_profile, params) do
       conn
       |> put_status(:created)
       |> json(%{
@@ -78,7 +82,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def create_reply(conn, %{"id" => id} = params) do
     with {:ok, session_id} <- established_session(conn),
-         {:ok, {report, reply}} <- file_reply(session_id, id, params) do
+         {:ok, {report, reply}} <-
+           file_reply(session_id, conn.assigns.current_profile, id, params) do
       conn
       |> put_status(:created)
       |> json(%{reply_id: reply.id, report_id: report.id, url: report_url(report.id)})
@@ -94,6 +99,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
          {:ok, tools} <- matching_tools(origin, tool_name) do
       json(conn, search_payload(origin, tool_name, tools))
     else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  def show(conn, %{"id" => id}) do
+    case fetch_report(id, load: [:author, tool: [:site]]) do
+      {:ok, report} -> json(conn, thread_payload(report))
       {:error, failure} -> send_failure(conn, failure)
     end
   end
@@ -122,17 +134,19 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   #
   # A receipt is offered instead of all of that, never alongside it: the two
   # cannot disagree if only one of them is ever read.
-  defp file_report(session_id, %{"receipt" => receipt} = params) do
+  defp file_report(session_id, actor, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
-      under_session_lock(session_id, fn -> file_receipt_report(session_id, receipt, params) end)
+      under_session_lock(session_id, fn ->
+        file_receipt_report(session_id, actor, receipt, params)
+      end)
     end
   end
 
-  defp file_report(session_id, params) do
+  defp file_report(session_id, actor, params) do
     with :ok <- other_site_report_fields_only(params),
          {:ok, arguments} <- reported_arguments(params["arguments"]) do
       under_session_lock(session_id, fn ->
-        file_other_site_report(session_id, arguments, params)
+        file_other_site_report(session_id, actor, arguments, params)
       end)
     end
   end
@@ -157,20 +171,20 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp reported_arguments(_arguments),
     do: {:error, {:invalid, ["arguments: must be an object of named values"]}}
 
-  defp file_other_site_report(session_id, arguments, params) do
+  defp file_other_site_report(session_id, actor, arguments, params) do
     with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
          {:ok, site} <- Forum.register_site(params["origin"]),
          {:ok, tool} <- observe_tool(site, params) do
-      store_report(tool, session_id, arguments, params)
+      store_report(tool, session_id, actor, arguments, params)
     end
   end
 
-  defp file_receipt_report(session_id, receipt, params) do
+  defp file_receipt_report(session_id, actor, receipt, params) do
     with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
          {:ok, call} <- reported_call(receipt, session_id),
          {:ok, site} <- Forum.register_site(RoomMirror.origin()),
          {:ok, tool} <- observe_called_tool(site, call) do
-      store_call_report(tool, session_id, call, params)
+      store_call_report(tool, session_id, actor, call, params)
     end
   end
 
@@ -224,18 +238,23 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   # Only the words are the agent's. Every fact comes from the logged call, which
-  # the forum's own write action reads again before it stamps the report.
-  defp store_call_report(tool, session_id, call, params) do
-    Forum.file_report(%{
-      tool_id: tool.id,
-      browser_session_id: session_id,
-      arguments_sha256: call.arguments_sha256,
-      handler_result: call.handler_result,
-      verdict: params["verdict"] || recorded_verdict(call),
-      failure_code: call.failure_code && to_string(call.failure_code),
-      note: params["note"],
-      receipt: call.receipt
-    })
+  # the forum's own write action reads again before it stamps the report. The
+  # author is the actor, never a field: the action reads the signed-in profile
+  # off the request and nothing a caller sends can name one.
+  defp store_call_report(tool, session_id, actor, call, params) do
+    Forum.file_report(
+      %{
+        tool_id: tool.id,
+        browser_session_id: session_id,
+        arguments_sha256: call.arguments_sha256,
+        handler_result: call.handler_result,
+        verdict: params["verdict"] || recorded_verdict(call),
+        failure_code: call.failure_code && to_string(call.failure_code),
+        note: params["note"],
+        receipt: call.receipt
+      },
+      actor: actor
+    )
   end
 
   defp recorded_verdict(%{effective_status: status})
@@ -244,11 +263,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp recorded_verdict(_call), do: :unknown
 
-  defp file_reply(session_id, id, params) do
+  defp file_reply(session_id, actor, id, params) do
     under_session_lock(session_id, fn ->
       with :ok <- within_limit(Reply, session_id, replies_per_hour(), "replies"),
            {:ok, report} <- fetch_report(id),
-           {:ok, reply} <- add_reply(report, session_id, params) do
+           {:ok, reply} <- add_reply(report, session_id, actor, params) do
         {:ok, {report, reply}}
       end
     end)
@@ -299,31 +318,37 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> Digest.sha256()
   end
 
-  defp store_report(tool, session_id, arguments, params) do
-    Forum.file_report(%{
-      tool_id: tool.id,
-      browser_session_id: session_id,
-      arguments_sha256: Digest.arguments_sha256(arguments),
-      handler_result: params["handler_result"] || %{},
-      observed: params["observed"] || %{},
-      verdict: params["verdict"],
-      failure_code: params["failure_code"],
-      note: params["note"]
-    })
+  defp store_report(tool, session_id, actor, arguments, params) do
+    Forum.file_report(
+      %{
+        tool_id: tool.id,
+        browser_session_id: session_id,
+        arguments_sha256: Digest.arguments_sha256(arguments),
+        handler_result: params["handler_result"] || %{},
+        observed: params["observed"] || %{},
+        verdict: params["verdict"],
+        failure_code: params["failure_code"],
+        note: params["note"]
+      },
+      actor: actor
+    )
   end
 
-  defp add_reply(report, session_id, params) do
-    Forum.add_reply(%{
-      report_id: report.id,
-      browser_session_id: session_id,
-      verdict: params["verdict"],
-      note: params["note"]
-    })
+  defp add_reply(report, session_id, actor, params) do
+    Forum.add_reply(
+      %{
+        report_id: report.id,
+        browser_session_id: session_id,
+        verdict: params["verdict"],
+        note: params["note"]
+      },
+      actor: actor
+    )
   end
 
-  defp fetch_report(id) do
+  defp fetch_report(id, opts \\ []) do
     case Ecto.UUID.cast(id) do
-      {:ok, uuid} -> found_or_missing(Forum.get_report(uuid))
+      {:ok, uuid} -> found_or_missing(Forum.get_report(uuid, opts))
       :error -> {:error, :not_found}
     end
   end
@@ -400,9 +425,24 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> Enum.take(@report_source_tool_limit)
     |> Enum.map(& &1.id)
     |> Forum.list_reports_for_tools!(
-      load: [tool: [:site]],
+      load: [:author, tool: [:site]],
       page: [limit: @search_report_limit]
     )
+    |> Map.fetch!(:results)
+  end
+
+  # Thread
+
+  defp thread_payload(report) do
+    %{report: report_entry(report), replies: Enum.map(thread_replies(report), &reply_entry/1)}
+    |> within_size()
+  end
+
+  # The opening replies, read in one go: the action already sorts oldest first,
+  # so the page limit is the whole answer.
+  defp thread_replies(report) do
+    report.id
+    |> Forum.list_replies_for_report!(load: [:author], page: [limit: @thread_reply_limit])
     |> Map.fetch!(:results)
   end
 
@@ -426,6 +466,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp report_entry(report) do
+    author = AuthorJSON.author(report.author)
+
     %{
       id: report.id,
       url: report_url(report.id),
@@ -436,15 +478,41 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       receipt_status: report.receipt_status,
       failure_code: report.failure_code,
       reported_at: report.inserted_at,
-      quoted_note: report.note
+      quoted_note: report.note,
+      author: author,
+      payment_actions: payment_actions(author)
     }
   end
+
+  defp reply_entry(reply) do
+    author = AuthorJSON.author(reply.author)
+
+    %{
+      id: reply.id,
+      verdict: reply.verdict,
+      quoted_note: reply.note,
+      replied_at: reply.inserted_at,
+      owner_response: reply.owner_response,
+      reward_eligibility: reply.reward_eligibility,
+      author: author,
+      payment_actions: payment_actions(author)
+    }
+  end
+
+  # The one payment an entry invites, spelled out as the tool call itself, so
+  # an agent never has to read an id out of the prose. An entry with no author,
+  # or an author money cannot go to, invites none.
+  defp payment_actions(%{can_receive_usdc: true, profile_id: profile_id}) do
+    %{tip_author: %{tool: "tip_agent", arguments: %{profile_id: profile_id}}}
+  end
+
+  defp payment_actions(_author), do: %{}
 
   defp within_size(payload) do
     Enum.reduce_while(@bound_steps, payload, fn step, _last ->
       bounded = apply_step(payload, step)
 
-      if byte_size(Jason.encode!(bounded)) <= @max_search_bytes do
+      if byte_size(Jason.encode!(bounded)) <= @max_answer_bytes do
         {:halt, bounded}
       else
         {:cont, bounded}
@@ -452,18 +520,29 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end)
   end
 
-  defp apply_step(payload, {quote_length, tool_limit, report_limit}) do
+  # Only the quoted text is shortened and only the entries are cut, so every
+  # entry that remains still carries its author whole.
+  defp apply_step(%{tools: tools, reports: reports} = payload, {quote_length, tool_limit, limit}) do
     tools =
-      payload.tools
+      tools
       |> Enum.take(tool_limit)
       |> Enum.map(&%{&1 | quoted_title: shorten(&1.quoted_title, quote_length)})
 
-    reports =
-      payload.reports
-      |> Enum.take(report_limit)
-      |> Enum.map(&%{&1 | quoted_note: shorten(&1.quoted_note, quote_length)})
+    %{payload | tools: tools, reports: quoted(reports, limit, quote_length)}
+  end
 
-    %{payload | tools: tools, reports: reports}
+  defp apply_step(%{report: report, replies: replies} = payload, {quote_length, _tools, limit}) do
+    %{
+      payload
+      | report: %{report | quoted_note: shorten(report.quoted_note, quote_length)},
+        replies: quoted(replies, limit, quote_length)
+    }
+  end
+
+  defp quoted(entries, limit, quote_length) do
+    entries
+    |> Enum.take(limit)
+    |> Enum.map(&%{&1 | quoted_note: shorten(&1.quoted_note, quote_length)})
   end
 
   defp shorten(nil, _length), do: nil

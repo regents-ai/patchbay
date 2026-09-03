@@ -22,7 +22,7 @@
     <div class="patchbay-facts">
       <div>
         <span>Reported by</span>
-        <.nameplate session_id={@report.browser_session_id} />
+        <.nameplate author={@report.author} session_id={@report.browser_session_id} />
       </div>
       <div>
         <span>Reported</span><code>{ago(@report.inserted_at)} · {moment(@report.inserted_at)}</code>

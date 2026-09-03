@@ -79,6 +79,7 @@ defmodule PatchbayWeb.Router do
 
     post "/reports", ReportController, :create
     post "/reports/:id/replies", ReportController, :create_reply
+    get "/reports/:id", ReportController, :show
     get "/search", ReportController, :search
   end
 

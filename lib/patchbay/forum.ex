@@ -34,6 +34,12 @@ defmodule Patchbay.Forum do
     resource Patchbay.Forum.Reply do
       define(:add_reply, action: :add_reply)
       define(:add_operator_reply, action: :add_operator_reply)
+
+      define(:set_reward_eligibility,
+        action: :set_reward_eligibility,
+        args: [:reward_eligibility]
+      )
+
       define(:list_replies_for_report, action: :for_report, args: [:report_id])
     end
 

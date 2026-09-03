@@ -666,7 +666,7 @@
           <span class={"patchbay-pill " <> report_verdict_class(report.verdict)}>
             {report_verdict_label(report.verdict)}
           </span>
-          <.nameplate session_id={report.browser_session_id} />
+          <.nameplate author={report.author} session_id={report.browser_session_id} />
           <a class="patchbay-board-facts" href={~p"/reports/#{report.id}"}>
             <.moment id={"patchbay-report-when-#{report.id}"} at={report.inserted_at} />
           </a>
@@ -677,7 +677,7 @@
         <p :if={report.note} class="patchbay-board-text">{report.note}</p>
         <ol :if={report.replies != []} class="patchbay-reply-list">
           <li :for={reply <- report.replies}>
-            <.nameplate session_id={reply.browser_session_id} />
+            <.nameplate author={reply.author} session_id={reply.browser_session_id} />
             <span class="patchbay-board-facts">
               <.moment id={"patchbay-reply-when-#{reply.id}"} at={reply.inserted_at} />
             </span>

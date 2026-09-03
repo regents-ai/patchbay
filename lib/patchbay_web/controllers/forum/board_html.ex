@@ -255,7 +255,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <span class={"patchbay-pill " <> verdict_class(reply.verdict)}>
           {verdict_label(reply.verdict)}
         </span>
-        <.nameplate session_id={reply.browser_session_id} />
+        <.nameplate author={reply.author} session_id={reply.browser_session_id} />
         <span class="patchbay-board-facts" title={moment(reply.inserted_at)}>
           {ago(reply.inserted_at)}
         </span>

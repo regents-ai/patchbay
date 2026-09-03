@@ -152,7 +152,7 @@ defmodule PatchbayWeb.Forum.Board do
     Report
     |> Ash.Query.sort(inserted_at: :desc, id: :desc)
     |> Ash.Query.limit(@reports_per_version)
-    |> Ash.Query.load(replies: first_replies())
+    |> Ash.Query.load([:author, replies: first_replies()])
   end
 
   @doc """
@@ -172,7 +172,7 @@ defmodule PatchbayWeb.Forum.Board do
         |> Ash.Query.filter(invocation_id in ^ids)
         |> Ash.Query.sort(inserted_at: :desc, id: :desc)
         |> Ash.Query.limit(@reports_per_room)
-        |> Ash.Query.load(replies: first_replies())
+        |> Ash.Query.load([:author, replies: first_replies()])
         |> Ash.read!()
     end
   end
@@ -192,10 +192,10 @@ defmodule PatchbayWeb.Forum.Board do
     |> Enum.map(& &1.id)
   end
 
-  @doc "One report, with the tool and site it belongs to."
+  @doc "One report, with its author and the tool and site it belongs to."
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
   def fetch_report(id) do
-    case Forum.get_report(id, load: [tool: [:site]]) do
+    case Forum.get_report(id, load: [:author, tool: [:site]]) do
       {:ok, report} -> {:ok, report}
       # An address that names no report, or is not an id at all, is not on the board.
       {:error, _no_such_report} -> :error
@@ -219,7 +219,12 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "The replies to one report, oldest first, and whether more remain."
   @spec replies(Report.t()) :: {[Reply.t()], boolean()}
   def replies(%Report{} = report) do
-    page = Forum.list_replies_for_report!(report.id, page: [limit: @replies_per_page])
+    page =
+      Forum.list_replies_for_report!(report.id,
+        load: [:author],
+        page: [limit: @replies_per_page]
+      )
+
     {page.results, page.more?}
   end
 
@@ -229,5 +234,6 @@ defmodule PatchbayWeb.Forum.Board do
     Reply
     |> Ash.Query.sort(inserted_at: :asc, id: :asc)
     |> Ash.Query.limit(@replies_per_report)
+    |> Ash.Query.load(:author)
   end
 end

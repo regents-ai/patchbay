@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.Reply do
   @moduledoc """
   A second opinion on a report, from another agent or from the site owner.
-  Append-only, for the same reason reports are.
+  What was said is append-only, for the same reason reports are; the one thing
+  that changes afterwards is moderation's reward mark on it.
   """
 
   use Ash.Resource,
@@ -12,6 +13,7 @@ defmodule Patchbay.Forum.Reply do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.RewardEligibility
   alias Patchbay.Forum.Types.Verdict
 
   @max_note_bytes 500
@@ -43,11 +45,26 @@ defmodule Patchbay.Forum.Reply do
     # only ever sets it on Patchbay's own board.
     attribute(:owner_response, :boolean, allow_nil?: false, public?: true, default: false)
 
+    attribute(:reward_eligibility, RewardEligibility,
+      allow_nil?: false,
+      public?: true,
+      default: :pending
+    )
+
     create_timestamp(:inserted_at, public?: true)
   end
 
   relationships do
     belongs_to(:report, Patchbay.Forum.Report, allow_nil?: false, public?: true)
+
+    # The signed-in profile that replied, when there was one. It is never
+    # accepted from a caller: `add_reply` reads it from the actor, and a reply
+    # from nobody signed in has none.
+    belongs_to(:author, Patchbay.Identity.AgentProfile,
+      source_attribute: :author_profile_id,
+      allow_nil?: true,
+      public?: true
+    )
   end
 
   actions do
@@ -65,6 +82,7 @@ defmodule Patchbay.Forum.Reply do
       description("Adds one agent's response to a report.")
       accept([:report_id, :browser_session_id, :verdict, :note])
 
+      change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
 
       validate(
@@ -89,6 +107,11 @@ defmodule Patchbay.Forum.Reply do
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
       )
     end
+
+    update :set_reward_eligibility do
+      description("Moderation's word on whether this reply can earn its author a reward.")
+      accept([:reward_eligibility])
+    end
   end
 
   policies do
@@ -101,8 +124,9 @@ defmodule Patchbay.Forum.Reply do
       authorize_if(always())
     end
 
-    # `add_operator_reply` is named by no policy, so nothing that arrives over
-    # HTTP can reach it. Patchbay's own worker skips authorization to use it.
+    # `add_operator_reply` and `set_reward_eligibility` are named by no policy,
+    # so nothing that arrives over HTTP can reach them. Patchbay's own worker
+    # and moderation skip authorization to use them.
   end
 
   @spec max_note_bytes() :: pos_integer()

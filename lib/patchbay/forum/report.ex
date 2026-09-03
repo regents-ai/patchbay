@@ -84,6 +84,16 @@ defmodule Patchbay.Forum.Report do
 
   relationships do
     belongs_to(:tool, Patchbay.Forum.Tool, allow_nil?: false, public?: true)
+
+    # The signed-in profile that filed the report, when there was one. It is
+    # never accepted from a caller: `file_report` reads it from the actor, and a
+    # report filed by nobody signed in has none.
+    belongs_to(:author, Patchbay.Identity.AgentProfile,
+      source_attribute: :author_profile_id,
+      allow_nil?: true,
+      public?: true
+    )
+
     has_many(:replies, Patchbay.Forum.Reply)
 
     # What Patchbay did about this report, if it was one Patchbay could act on.
@@ -146,6 +156,7 @@ defmodule Patchbay.Forum.Report do
           "The receipt Patchbay returned for the call being reported, if there was one."
       )
 
+      change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.VerifyReceipt)
 

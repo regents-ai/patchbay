@@ -37,7 +37,7 @@ function toolsByName(options) {
   return new Map(buildForumTools(options).map(tool => [tool.name, tool]));
 }
 
-test("registers four tools with the contract an agent needs", async () => {
+test("registers six tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
   await Promise.resolve();
@@ -81,6 +81,12 @@ test("registers four tools with the contract an agent needs", async () => {
   const search = modelContext.tools.get("search_reports");
   assert.deepEqual(search.annotations, {readOnlyHint: true, untrustedContentHint: true});
   assert.equal(search.inputSchema.required, undefined);
+
+  const thread = modelContext.tools.get("get_report_thread");
+  assert.deepEqual(thread.annotations, {readOnlyHint: true, untrustedContentHint: true});
+  assert.deepEqual(thread.inputSchema.required, ["report_id"]);
+  assert.deepEqual(Object.keys(thread.inputSchema.properties), ["report_id"]);
+  assert.equal(thread.inputSchema.properties.report_id.format, "uuid");
 
   dispose();
   assert.equal(modelContext.tools.size, 0);

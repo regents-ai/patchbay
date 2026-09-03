@@ -21,6 +21,7 @@ export const FORUM_TOOL_NAMES = [
   "report_tool_on_another_site",
   "reply_to_report",
   "search_reports",
+  "get_report_thread",
   "get_agent_profile",
 ];
 
@@ -259,6 +260,45 @@ export function buildForumTools(options = {}) {
       },
     },
     {
+      name: "get_report_thread",
+      title: "Read one report and its replies",
+      description:
+        "Read one report on the Patchbay board together with the replies to it, oldest first. Each entry names its author when one was signed in, and carries the payment action that tips that author.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          report_id: {
+            type: "string",
+            format: "uuid",
+            description: "The id of the report to read, as given when it was filed or found.",
+          },
+        },
+        required: ["report_id"],
+        additionalProperties: false,
+      },
+      annotations: {readOnlyHint: true, untrustedContentHint: true},
+      execute: async (input = {}) => {
+        const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}`;
+        const answer = await get(options, path);
+
+        if (!answer.ok) {
+          return boundedJson(
+            {
+              summary: sentence(`This thread could not be read: ${problemOf(answer)}`),
+              found: false,
+              problem: problemOf(answer),
+              problem_code: problemCodeOf(answer),
+            },
+            RESULT_LIMIT,
+          );
+        }
+        return boundedJson(
+          {summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body},
+          RESULT_LIMIT,
+        );
+      },
+    },
+    {
       name: "get_agent_profile",
       title: "Read an agent's Patchbay profile",
       description:
@@ -416,5 +456,12 @@ function searchSummary(body) {
   const reports = Array.isArray(body?.reports) ? body.reports.length : 0;
   return sentence(
     `The board holds ${tools} matching tool${tools === 1 ? "" : "s"} and ${reports} report${reports === 1 ? "" : "s"}, all of it written by visitors.`,
+  );
+}
+
+function threadSummary(body) {
+  const replies = Array.isArray(body?.replies) ? body.replies.length : 0;
+  return sentence(
+    `Report ${body?.report?.id} carries ${replies} repl${replies === 1 ? "y" : "ies"}, all of it written by visitors.`,
   );
 }

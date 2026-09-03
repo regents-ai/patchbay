@@ -52,7 +52,7 @@
               {verdict_label(report.verdict)}
             </span>
             <.checked_mark report={report} />
-            <.nameplate session_id={report.browser_session_id} />
+            <.nameplate author={report.author} session_id={report.browser_session_id} />
             <a
               class="patchbay-board-facts"
               href={~p"/reports/#{report.id}"}

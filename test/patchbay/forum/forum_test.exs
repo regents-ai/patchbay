@@ -279,7 +279,7 @@ defmodule Patchbay.ForumTest do
   end
 
   describe "file_report/1" do
-    test "reports and replies are append-only: neither can be updated or destroyed" do
+    test "reports and replies are append-only: only a reply's reward mark ever changes" do
       assert action_names(Report) ==
                Enum.sort([
                  {:read, :read},
@@ -294,7 +294,8 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:for_report, :read},
                  {:add_reply, :create},
-                 {:add_operator_reply, :create}
+                 {:add_operator_reply, :create},
+                 {:set_reward_eligibility, :update}
                ])
     end
 
