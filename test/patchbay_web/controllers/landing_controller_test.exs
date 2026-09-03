@@ -51,6 +51,8 @@ defmodule PatchbayWeb.LandingControllerTest do
     assert html =~ ~s{<meta property="og:title" content="Patchbay">}
     assert html =~ ~s{<meta name="twitter:card" content="summary">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
+    assert html =~ ~s{<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">}
+    assert html =~ ~s{<link rel="apple-touch-icon" href="/apple-touch-icon.png">}
     assert html =~ ~r{A site that repairs its own agent tool\s*· Patchbay</title>}
   end
 

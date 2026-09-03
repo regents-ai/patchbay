@@ -7,8 +7,7 @@ defmodule PatchbayWeb.LandingHTML do
   embed_templates "landing_html/*"
 
   @doc """
-  The Patchbay mark: the same four-pointed spark the room header carries, drawn
-  as a shape so the header and the favicon cannot drift apart.
+  The Patchbay mark: the four-pointed spark the room header carries.
   """
   attr :class, :string, default: nil
 

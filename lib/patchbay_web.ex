@@ -17,7 +17,8 @@ defmodule PatchbayWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets favicon.ico favicon.svg robots.txt)
+  def static_paths,
+    do: ~w(assets apple-touch-icon.png favicon-32.png favicon-192.png favicon.svg robots.txt)
 
   def router do
     quote do
