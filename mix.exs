@@ -61,6 +61,7 @@ defmodule Patchbay.MixProject do
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
+      {:regent_privy, path: "vendor/regent_privy"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -81,11 +82,21 @@ defmodule Patchbay.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind patchbay", "esbuild patchbay"],
+      "assets.setup": [
+        "tailwind.install --if-missing",
+        "esbuild.install --if-missing",
+        "cmd npm ci --prefix assets"
+      ],
+      "assets.build": [
+        "compile",
+        "tailwind patchbay",
+        "esbuild patchbay",
+        "esbuild patchbay_privy"
+      ],
       "assets.deploy": [
         "tailwind patchbay --minify",
         "esbuild patchbay --minify",
+        "esbuild patchbay_privy --minify",
         "phx.digest"
       ],
       precommit: [

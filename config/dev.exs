@@ -26,6 +26,7 @@ config :patchbay, PatchbayWeb.Endpoint,
   secret_key_base: "AEzU7cDlq6ghPh8aabbqv24S3vr7M3tdTmNYtKMF16hvq7mgI6XQrhr6dxM0uNC/",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
+    privy_bridge: {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:patchbay, ~w(--watch)]}
   ]
 

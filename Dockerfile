@@ -18,11 +18,19 @@ ARG DEBIAN_VERSION=bookworm-20260824-slim
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
 
+# The asset build installs the Privy bridge's npm packages, so the builder needs
+# a Node of its own; the release image below never sees it.
+FROM node:24-bookworm-slim AS node
+
 FROM ${BUILDER_IMAGE} AS builder
 
 # install build dependencies
-RUN apt-get update -y && apt-get install -y build-essential git curl \
+RUN apt-get update -y && apt-get install -y build-essential git curl python3 \
     && apt-get clean && rm -f /var/lib/apt/lists/*_*
+
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
 
 # prepare build dir
 WORKDIR /app
@@ -36,6 +44,7 @@ ENV MIX_ENV="prod"
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
+COPY vendor vendor
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 

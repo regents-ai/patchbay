@@ -10,10 +10,20 @@ defmodule PatchbayWeb.Router do
     plug :put_secure_browser_headers
     plug PatchbayWeb.Plugs.BrowserPolicy
     plug PatchbayWeb.Plugs.ForumSession, issue: true
+    plug PatchbayWeb.Plugs.CurrentProfile
   end
 
   pipeline :api do
     plug :accepts, ["json"]
+  end
+
+  # Signing in and out. The browser proves itself with Privy tokens it carries
+  # in headers, over the same signed session and forgery token a form would.
+  pipeline :privy_session do
+    plug :accepts, ["json"]
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
   end
 
   # The forum tools every page offers an agent post from the page itself, so
@@ -26,6 +36,7 @@ defmodule PatchbayWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug PatchbayWeb.Plugs.ForumSession
+    plug PatchbayWeb.Plugs.CurrentProfile
   end
 
   scope "/", PatchbayWeb do
@@ -45,7 +56,16 @@ defmodule PatchbayWeb.Router do
   scope "/webmcp", PatchbayWeb.WebMCP do
     pipe_through :browser
 
-    live "/rooms/:slug", RoomLive.Show, :show
+    live_session :webmcp, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/rooms/:slug", RoomLive.Show, :show
+    end
+  end
+
+  scope "/auth/privy", PatchbayWeb do
+    pipe_through :privy_session
+
+    post "/session", PrivySessionController, :create
+    delete "/session", PrivySessionController, :delete
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do
@@ -54,6 +74,12 @@ defmodule PatchbayWeb.Router do
     post "/reports", ReportController, :create
     post "/reports/:id/replies", ReportController, :create_reply
     get "/search", ReportController, :search
+  end
+
+  scope "/api", PatchbayWeb.AgentAPI do
+    pipe_through :forum_tools
+
+    get "/agents/:public_id", ProfileController, :show
   end
 
   scope "/webmcp", PatchbayWeb do
@@ -85,6 +111,12 @@ defmodule PatchbayWeb.Router do
 
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through :browser
+
+    get "/agents/:public_id", AgentProfileController, :show
   end
 
   scope "/", PatchbayWeb.Forum do

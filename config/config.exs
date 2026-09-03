@@ -10,7 +10,7 @@ import Config
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
-  ash_domains: [Patchbay.Forum, Patchbay.Patchbay]
+  ash_domains: [Patchbay.Identity, Patchbay.Forum, Patchbay.Patchbay]
 
 # Configure the endpoint
 config :patchbay, PatchbayWeb.Endpoint,
@@ -33,10 +33,21 @@ config :patchbay, PatchbayWeb.Endpoint,
 config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
+#
+# The Privy bridge is a bundle of its own rather than part of `app.js`: it
+# carries a whole wallet SDK, and nobody who never asks to sign in should pay
+# for it. The page fetches it by address on the first sign-in click, so it is
+# built as a module.
 config :esbuild,
   version: "0.25.4",
   patchbay: [
     args: ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+  ],
+  patchbay_privy: [
+    args:
+      ~w(js/privy_bridge.jsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]

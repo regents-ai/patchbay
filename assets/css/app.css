@@ -214,6 +214,51 @@
    whole page, so it draws none, not even the browser's own. */
 #pb-content:focus { outline: none; }
 
+/* The account strip. It belongs to Patchbay rather than to any one page, so it
+   sits above all of them in the same ink the landing band uses: on the front
+   page the two read as one header, and everywhere else it gives the warm
+   canvas the same top edge to sit against. */
+.pb-account {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pb-space-2);
+  height: 2.1rem;
+  padding-inline: var(--pb-gutter);
+  color: var(--pb-text-on-ink);
+  background: var(--pb-ink-soft);
+  font: 700 var(--pb-fs-xs)/1.2 var(--pb-sans);
+}
+/* The strip takes its own height off the page below it, so a page that filled
+   the viewport exactly still does. */
+.pb-account + #pb-content .patchbay-shell,
+.pb-account + #pb-content .pb-page { min-height: calc(100vh - 2.1rem); }
+.pb-account-name {
+  max-width: 14rem;
+  overflow: hidden;
+  color: var(--pb-text-on-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: underline;
+  text-decoration-color: var(--pb-accent);
+  text-underline-offset: .3em;
+}
+.pb-account-button {
+  border: 1px solid var(--pb-text-on-ink-muted);
+  border-radius: var(--pb-radius-sm);
+  padding: .2rem .7rem;
+  color: var(--pb-text-on-ink);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.pb-account-button:hover { border-color: var(--pb-accent); color: var(--pb-accent); }
+.pb-account-button[disabled] { opacity: .6; cursor: progress; }
+/* Empty until the strip has something to say, and out of the layout until then. */
+.pb-account-note { margin: 0; color: var(--pb-text-on-ink-muted); font-weight: 400; }
+.pb-account-note:empty { display: none; }
+.pb-account :focus-visible { outline-color: var(--pb-accent); }
+
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {

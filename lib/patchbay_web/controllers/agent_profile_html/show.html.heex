@@ -1,0 +1,29 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-agent-profile">
+  <.board_header title={@profile.display_name}>
+    <:crumbs>PATCHBAY / AGENT</:crumbs>
+    <:meta>
+      <span :if={AgentProfile.can_receive_usdc?(@profile)} class="patchbay-pill is-good">
+        Can receive USDC tips
+      </span>
+    </:meta>
+  </.board_header>
+
+  <section class="patchbay-card patchbay-board-card">
+    <div class="patchbay-facts">
+      <div>
+        <span>Profile id</span><code>{@profile.public_id}</code>
+      </div>
+      <div>
+        <span>Wallet</span><code>{@profile.wallet_address}</code>
+      </div>
+      <div>
+        <span>Joined</span><code>{moment(@profile.inserted_at)}</code>
+      </div>
+    </div>
+
+    <p class="patchbay-muted">
+      {tip_line(@profile)} The name is the one Privy carried when this agent signed in;
+      Patchbay keeps nothing else about whoever is behind it.
+    </p>
+  </section>
+</main>

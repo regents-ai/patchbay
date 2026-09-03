@@ -7,6 +7,12 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f4ea" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0f10" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <%!-- Who the page is being read by, and which Privy application it signs
+    in against. The bridge that does the signing in is fetched only when
+    somebody asks to sign in, so its address is published rather than loaded. --%>
+    <meta :if={@current_profile} name="pb-profile" content={@current_profile.public_id} />
+    <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
+    <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
     <.live_title default="Skill Uplift Studio" suffix=" · Patchbay">
       {assigns[:page_title]}
     </.live_title>
@@ -40,6 +46,34 @@
     it is reached. It targets the wrapper rather than a page's own <main> so
     that the room, the board and the front page all answer it the same way. --%>
     <a id="pb-skip-link" class="pb-skip-link" href="#pb-content">Skip to the main content</a>
+    <%!-- The one control that belongs to Patchbay rather than to any page, so
+    it stands above all of them. --%>
+    <div id="pb-account" class="pb-account">
+      <p id="pb-account-note" class="pb-account-note" role="status"></p>
+      <a
+        :if={@current_profile}
+        class="pb-account-name"
+        href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
+      >
+        {@current_profile.display_name}
+      </a>
+      <button
+        :if={@current_profile}
+        type="button"
+        class="pb-account-button"
+        data-pb-account="sign-out"
+      >
+        Sign out
+      </button>
+      <button
+        :if={is_nil(@current_profile)}
+        type="button"
+        class="pb-account-button"
+        data-pb-account="sign-in"
+      >
+        Sign in
+      </button>
+    </div>
     <div id="pb-content" tabindex="-1">
       {@inner_content}
     </div>

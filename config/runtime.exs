@@ -23,6 +23,28 @@ end
 config :patchbay, PatchbayWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# Signing in. PRIVY_APP_ID is the Privy application this deployment belongs to,
+# and PRIVY_VERIFICATION_KEY is that application's public ES256 key, not its
+# secret. A deployment that sets neither still serves every page; the sign-in
+# control simply says that signing in is not set up here.
+#
+# Fly hands multi-line secrets back with the newlines escaped, so both
+# spellings of the PEM are accepted.
+privy_verification_key =
+  case System.get_env("PRIVY_VERIFICATION_KEY") do
+    nil ->
+      nil
+
+    value ->
+      value
+      |> String.replace("\\r\\n", "\n")
+      |> String.replace("\\n", "\n")
+  end
+
+config :patchbay, :privy,
+  app_id: System.get_env("PRIVY_APP_ID"),
+  verification_key: privy_verification_key
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

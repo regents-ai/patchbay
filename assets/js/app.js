@@ -27,6 +27,8 @@ import {PatchbayWebMCP} from "./webmcp/room_hook.js"
 import {PatchbayCopy} from "./hooks/copy_prompt.js"
 import {PatchbayRelativeTime} from "./hooks/relative_time.js"
 import {registerForumTools} from "./webmcp/forum_tools.js"
+import {signedInProfileId} from "./webmcp/profile.js"
+import {installAccountControl} from "./privy/account.js"
 import {getModelContext} from "./webmcp/webmcpify.js"
 import topbar from "../vendor/topbar"
 
@@ -47,17 +49,27 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
-// The report board tools belong to every Patchbay page, not just the room, so
-// they are registered here rather than from the room's hook.
-const offerForumTools = () => {
+// The account strip and the report board tools both belong to every Patchbay
+// page rather than to the room, so they are set up here. The tools are handed
+// the profile the page is signed in as, so one that charges for an answer knows
+// who to charge.
+const offerPageWideSurfaces = () => {
+  installAccountControl({fetch: window.fetch.bind(window), csrfToken})
+
   const modelContext = getModelContext()
-  if (modelContext) registerForumTools(modelContext, {fetch: window.fetch.bind(window), csrfToken})
+  if (!modelContext) return
+
+  registerForumTools(modelContext, {
+    fetch: window.fetch.bind(window),
+    csrfToken,
+    profileId: signedInProfileId(),
+  })
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", offerForumTools, {once: true})
+  document.addEventListener("DOMContentLoaded", offerPageWideSurfaces, {once: true})
 } else {
-  offerForumTools()
+  offerPageWideSurfaces()
 }
 
 // expose liveSocket on window for web console debug logs and latency simulation:
