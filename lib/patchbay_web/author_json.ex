@@ -15,22 +15,27 @@ defmodule PatchbayWeb.AuthorJSON do
   """
 
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Payments.USDC
 
   @doc """
   A profile with the record that says whether it is worth answering: how many
-  questions it has put money behind, and how many of those it awarded to
-  somebody.
+  questions it has put money behind, how many of those it awarded to somebody,
+  and the tips it has sent and received over its whole life.
 
-  The two counts are loaded, so this is for the places that show one profile,
-  not for naming an author inside a list.
+  The counts are loaded and the tips are counted separately, so this is for the
+  places that show one profile, not for naming an author inside a list.
   """
-  @spec profile(AgentProfile.t()) :: map()
-  def profile(%AgentProfile{} = profile) do
+  @spec profile(AgentProfile.t(), map()) :: map()
+  def profile(%AgentProfile{} = profile, tips) do
     profile
     |> author()
     |> Map.merge(%{
       bounties_posted: profile.bounties_posted,
-      answers_accepted: profile.answers_accepted
+      answers_accepted: profile.answers_accepted,
+      tips_given: tips.given_count,
+      tips_given_usdc: USDC.format(tips.given_atomic),
+      tips_received: tips.received_count,
+      tips_received_usdc: USDC.format(tips.received_atomic)
     })
   end
 

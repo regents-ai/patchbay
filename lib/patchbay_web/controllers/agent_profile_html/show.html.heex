@@ -31,6 +31,12 @@
       <div>
         <span>Answers accepted</span><code>{@profile.answers_accepted}</code>
       </div>
+      <div>
+        <span>Tips given</span><code>{tip_tally(@tips.given_count, @tips.given_atomic)}</code>
+      </div>
+      <div>
+        <span>Tips received</span><code>{tip_tally(@tips.received_count, @tips.received_atomic)}</code>
+      </div>
     </div>
 
     <p class="patchbay-muted">

@@ -36,6 +36,51 @@ defmodule Patchbay.Payments do
   end
 
   @doc """
+  A profile's whole history of tipping, both ways: how many settled tips it has
+  sent and what they came to, and how many it has received and what those came
+  to, all in USDC's atomic units.
+
+  A tip is one wallet paying another directly, so nothing on the chain says
+  which Patchbay profile sent it. The intent behind each settled receipt does:
+  it names the paying profile and the profile paid at the moment the terms were
+  frozen. Counting the receipts is therefore counting the tips.
+
+  Four filtered aggregates, all carried by one statement.
+  """
+  @spec tip_record(String.t()) :: {:ok, map()} | {:error, Ash.Error.t()}
+  def tip_record(profile_id) do
+    aggregates = [
+      {:given_count, :count,
+       query: [filter: expr(payment_intent.actor_profile_id == ^profile_id)]},
+      {:given_atomic, :sum,
+       field: :amount_atomic,
+       query: [filter: expr(payment_intent.actor_profile_id == ^profile_id)]},
+      {:received_count, :count, query: [filter: expr(payment_intent.target_id == ^profile_id)]},
+      {:received_atomic, :sum,
+       field: :amount_atomic, query: [filter: expr(payment_intent.target_id == ^profile_id)]}
+    ]
+
+    with {:ok, counted} <- Ash.aggregate(tips_for_profile(profile_id), aggregates) do
+      {:ok,
+       %{
+         given_count: counted.given_count || 0,
+         given_atomic: counted.given_atomic || 0,
+         received_count: counted.received_count || 0,
+         received_atomic: counted.received_atomic || 0
+       }}
+    end
+  end
+
+  # The four numbers a public page shows are public numbers. The receipts they
+  # are counted from stay behind a signed-in actor, which is the one reason
+  # authorization is set aside here: nothing but the totals leaves this query.
+  defp tips_for_profile(profile_id) do
+    Ash.Query.for_read(PaymentReceipt, :tips_for_profile, %{profile_id: profile_id},
+      authorize?: false
+    )
+  end
+
+  @doc """
   What one profile has earned in tips, in USDC's atomic units: one sum over
   its settled receipts, added up by the database.
   """

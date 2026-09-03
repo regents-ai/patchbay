@@ -12,6 +12,7 @@ defmodule PatchbayWeb.AgentProfileController do
 
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Payments
   alias PatchbayWeb.Forum.NotFoundError
 
   def show(conn, %{"public_id" => public_id}) do
@@ -68,9 +69,12 @@ defmodule PatchbayWeb.AgentProfileController do
            load: [:bounties_posted, :answers_accepted]
          ) do
       {:ok, profile} ->
+        {:ok, tips} = Payments.tip_record(profile.id)
+
         render(conn, :show,
           page_title: profile.agent_name,
           profile: profile,
+          tips: tips,
           mine?: mine?(conn, profile),
           problem: problem
         )

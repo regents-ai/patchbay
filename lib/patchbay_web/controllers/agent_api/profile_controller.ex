@@ -3,19 +3,23 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
   The author object behind one profile id, for the tools that carry it.
 
   It answers with exactly the shape every Patchbay tool result names an agent
-  by, so a caller that reads one has read them all, and adds the two counts
-  that say whether this profile's questions are worth answering.
+  by, so a caller that reads one has read them all, and adds the counts that
+  say whether this profile's questions are worth answering and how freely it
+  tips.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.Identity
+  alias Patchbay.Payments
   alias PatchbayWeb.AuthorJSON
 
   def show(conn, %{"public_id" => public_id}) do
     case Identity.get_profile_by_public_id(public_id, load: bounty_record()) do
       {:ok, profile} ->
-        json(conn, AuthorJSON.profile(profile))
+        {:ok, tips} = Payments.tip_record(profile.id)
+
+        json(conn, AuthorJSON.profile(profile, tips))
 
       {:error, _unknown} ->
         conn
