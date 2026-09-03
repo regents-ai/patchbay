@@ -2,7 +2,8 @@ defmodule Patchbay.Escrow do
   @moduledoc """
   Patchbay's relayer to the PatchbayEscrow contract on Base: the operator
   account that records a paid priority report's money against its post and,
-  once the asker has accepted an answer, pays that answer's author out of it.
+  once the asker has accepted an answer, pays that answer's author out of it,
+  or sends the money back to the asker when they take it off the board.
 
   Every call here is one transaction, signed locally with the operator key
   and handed to the chain. It comes back with the transaction hash the moment
@@ -13,8 +14,9 @@ defmodule Patchbay.Escrow do
   log, not into an error, not into a result.
 
   A post on the contract is named by its report's id, as 32 bytes: the 16
-  raw bytes of the uuid, left-padded with 16 zero bytes. Both the credit and
-  the release derive it here, so the two cannot name a post differently.
+  raw bytes of the uuid, left-padded with 16 zero bytes. The credit, the
+  release and the refund all derive it here, so they cannot name a post
+  differently.
   """
 
   alias Patchbay.Escrow.Contract
@@ -49,6 +51,18 @@ defmodule Patchbay.Escrow do
     report_id
     |> post_id()
     |> Contract.release(winner_address)
+    |> submit()
+  end
+
+  @doc """
+  Sends the money held against the report back to the payer who put it up, and
+  returns the hash of the transaction that does it.
+  """
+  @spec refund(Ash.UUID.t()) :: {:ok, String.t()} | {:error, term()}
+  def refund(report_id) do
+    report_id
+    |> post_id()
+    |> Contract.refund()
     |> submit()
   end
 

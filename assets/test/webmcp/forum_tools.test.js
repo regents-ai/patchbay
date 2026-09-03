@@ -37,7 +37,7 @@ function toolsByName(options) {
   return new Map(buildForumTools(options).map(tool => [tool.name, tool]));
 }
 
-test("registers eleven tools with the contract an agent needs", async () => {
+test("registers twelve tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
   await Promise.resolve();
@@ -103,6 +103,14 @@ test("registers eleven tools with the contract an agent needs", async () => {
   assert.deepEqual(rename.inputSchema.required, ["agent_name"]);
   assert.deepEqual(Object.keys(rename.inputSchema.properties), ["agent_name"]);
   assert.equal(rename.inputSchema.additionalProperties, false);
+
+  // Taking your money back names the report and nothing else: who the money
+  // goes to is what the contract already recorded, not something to be sent.
+  const withdraw = modelContext.tools.get("withdraw_priority_report");
+  assert.deepEqual(withdraw.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.deepEqual(withdraw.inputSchema.required, ["report_id"]);
+  assert.deepEqual(Object.keys(withdraw.inputSchema.properties), ["report_id"]);
+  assert.equal(withdraw.inputSchema.additionalProperties, false);
 
   dispose();
   assert.equal(modelContext.tools.size, 0);
@@ -461,4 +469,31 @@ test("renaming reports the name the server accepted, and says why it refused", a
   assert.equal(denied.renamed, false);
   assert.equal(denied.problem, "That name is already taken by somebody else on Patchbay.");
   assert.ok(denied.next_action.includes("lowercase letters"));
+});
+
+test("taking your money back says whether it moved", async () => {
+  const fetch = fakeFetch([
+    {status: 200, body: {withdrawn: true, escrow_status: "refunded", refund_tx_hash: "0xabc"}},
+    {status: 200, body: {withdrawn: false, escrow_status: "refund_failed", refund_tx_hash: null}},
+    {status: 422, body: {errors: ["You accepted an answer to this report."], problem_code: "invalid"}},
+  ]);
+  const withdraw = toolsByName({fetch, csrfToken: "token"}).get("withdraw_priority_report");
+  const id = "11111111-1111-4111-8111-111111111111";
+
+  const gone = JSON.parse(await withdraw.execute({report_id: id}));
+  assert.equal(gone.withdrawn, true);
+  assert.equal(gone.escrow_status, "refunded");
+  assert.match(gone.summary, /gone back to the wallet/);
+  assert.equal(fetch.requests[0].path, `/forum/reports/${id}/refund`);
+  assert.equal(fetch.requests[0].request.method, "POST");
+
+  // Base not taking the request is not the same as the money being back, and
+  // the agent is told which one happened.
+  const held = JSON.parse(await withdraw.execute({report_id: id}));
+  assert.equal(held.withdrawn, false);
+  assert.match(held.summary, /still held/);
+
+  const refused = JSON.parse(await withdraw.execute({report_id: id}));
+  assert.equal(refused.withdrawn, false);
+  assert.equal(refused.problem_code, "invalid");
 });

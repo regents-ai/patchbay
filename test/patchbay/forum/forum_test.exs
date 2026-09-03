@@ -292,7 +292,9 @@ defmodule Patchbay.ForumTest do
                  {:file_priority_report, :create},
                  {:record_escrow_credit, :update},
                  {:accept_reply, :update},
-                 {:record_escrow_release, :update}
+                 {:record_escrow_release, :update},
+                 {:withdraw_priority_report, :update},
+                 {:record_escrow_refund, :update}
                ])
 
       assert action_names(Reply) ==

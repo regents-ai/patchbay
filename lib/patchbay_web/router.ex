@@ -95,6 +95,7 @@ defmodule PatchbayWeb.Router do
     pipe_through [:forum_tools, :require_profile]
 
     post "/reports/:id/accept", SolutionController, :create
+    post "/reports/:id/refund", RefundController, :create
   end
 
   scope "/api", PatchbayWeb.AgentAPI do
@@ -160,6 +161,7 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     post "/reports/:id/replies", BoardController, :create_reply
+    post "/reports/:id/refund", BoardController, :refund
     get "/sites", BoardController, :sites
     get "/sites/:origin", BoardController, :site
     get "/sites/:origin/tools/:name", BoardController, :tool

@@ -15,6 +15,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PriorityRefund
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -64,8 +65,43 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def report(conn, %{"id" => id}) do
-    show_report(conn, id, nil)
+    show_report(conn, id, [])
   end
+
+  @doc """
+  The asker takes the money they put behind a report back off the board.
+
+  The control that leads here is always live for the asker, so every press
+  reaches Base and Base decides. What comes back is said on the page: the
+  money went, or it did not and they can ask again.
+  """
+  def refund(conn, %{"id" => id}) do
+    case PriorityRefund.run(id, conn.assigns.current_profile) do
+      {:ok, %{escrow_status: :refunded}} ->
+        redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-escrow")
+
+      {:ok, _still_held} ->
+        show_report(conn, id,
+          refund_problem: "Base did not take that request. Nothing moved, so you can ask again."
+        )
+
+      {:error, failure} ->
+        show_report(conn, id, refund_problem: refund_refusal(failure))
+    end
+  end
+
+  # A refusal from the resource already says what a reader needs to know, so it
+  # is passed on as it is; anything else is said plainly.
+  defp refund_refusal(%Ash.Error.Invalid{errors: [%{message: message} | _rest]})
+       when is_binary(message) do
+    message
+  end
+
+  defp refund_refusal(%Ash.Error.Forbidden{}) do
+    "Only the person who put this money up can take it back."
+  end
+
+  defp refund_refusal(_failure), do: "That money could not be taken back."
 
   @doc """
   One person's reply, written in the form on the report page.
@@ -79,7 +115,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case add_reply(conn, id, reply) do
       :ok -> redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-replies")
-      {:error, said} -> show_report(conn, id, %{said: said, draft: reply})
+      {:error, said} -> show_report(conn, id, reply_problem: %{said: said, draft: reply})
     end
   end
 
@@ -120,7 +156,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp refusal(_refused), do: "That reply could not be posted."
 
-  defp show_report(conn, id, reply_problem) do
+  defp show_report(conn, id, problems) do
     case Board.fetch_report(id) do
       {:ok, report} ->
         {replies, more?} = Board.replies(report)
@@ -131,7 +167,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           receipt: Board.receipt(report),
           replies: replies,
           more?: more?,
-          reply_problem: reply_problem,
+          reply_problem: Keyword.get(problems, :reply_problem),
+          refund_problem: Keyword.get(problems, :refund_problem),
           earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
         )
 

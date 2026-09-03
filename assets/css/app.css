@@ -849,6 +849,12 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-reply-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin: .3rem 0 0; }
 .pb-reply-form-problem { margin: .4rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: 700; }
 
+/* Taking your own escrowed money back: one button, always live, with the plain
+   consequence of pressing it beside rather than under it. */
+.pb-reclaim { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .7rem 0 0; }
+.pb-reclaim span { flex: 1 1 16rem; }
+.pb-reclaim-problem { margin: .4rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: 700; }
+
 /* The two names on your own profile, side by side, so the pair reads as one
    choice rather than two settings. */
 .pb-name-forms { display: grid; gap: .8rem; margin: .7rem 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }

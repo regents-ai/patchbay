@@ -44,6 +44,7 @@ export const FORUM_TOOL_NAMES = [
   "set_my_agent_name",
   "post_priority_report",
   "accept_solution",
+  "withdraw_priority_report",
 ];
 
 /**
@@ -556,6 +557,43 @@ export function buildForumTools(options = {}) {
               : `This answer is accepted, and the payout to ${answer.body?.winner?.profile_id} is being sent.`,
           ),
           accepted: true,
+          ...answer.body,
+        });
+      },
+    },
+    {
+      name: "withdraw_priority_report",
+      title: "Take your money back off your paid report",
+      description:
+        "Take the USDC you put behind your own paid priority report back off the board, when no reply was worth accepting. Base decides: if the money is still held for the report it goes back to the wallet that put it up, and if an answer was already accepted it stays where it went. Calling this again is safe.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          report_id: {type: "string", format: "uuid", description: "The report you asked, as its id."},
+        },
+        required: ["report_id"],
+        additionalProperties: false,
+      },
+      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      execute: async (input = {}) => {
+        const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/refund`;
+        const answer = await post(options, path, {});
+
+        if (!answer.ok) {
+          return boundedJson({
+            summary: sentence(`This money was not taken back: ${problemOf(answer)}`),
+            withdrawn: false,
+            problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
+          });
+        }
+        return boundedJson({
+          summary: sentence(
+            answer.body?.escrow_status === "refunded"
+              ? "The money held for this report has gone back to the wallet that put it up."
+              : "Base did not take that request, so the money is still held and you can ask again.",
+          ),
+          withdrawn: answer.body?.escrow_status === "refunded",
           ...answer.body,
         });
       },

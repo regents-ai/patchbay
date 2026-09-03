@@ -345,6 +345,80 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
+  @doc """
+  Where a paid priority report's money stands, and the asker's way of taking it
+  back.
+
+  The button is live for the asker whenever they are looking at their own paid
+  report, whatever the page believes about the money: pressing it asks Base,
+  and Base is what decides. A press that changes nothing is a fine outcome.
+  """
+  attr(:report, :any, required: true)
+  attr(:profile, :any, required: true, doc: "The signed-in profile, or nil.")
+
+  attr(:problem, :any,
+    required: true,
+    doc: "What Base or the board said about the last attempt, or nil."
+  )
+
+  def escrow_standing(assigns) do
+    assigns = assign(assigns, asker?: asker?(assigns.report, assigns.profile))
+
+    ~H"""
+    <section
+      :if={@report.priority_amount_atomic}
+      class="patchbay-card patchbay-board-card"
+      id="patchbay-escrow"
+    >
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">THE MONEY</p>
+          <h3>{escrowed(@report)} USDC on this report</h3>
+        </div>
+      </div>
+
+      <p class="patchbay-board-facts">{escrow_standing_said(@report)}</p>
+
+      <p :if={@problem} class="pb-reclaim-problem" role="alert">{@problem}</p>
+
+      <form :if={@asker?} method="post" action={~p"/reports/#{@report.id}/refund"} class="pb-reclaim">
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <button type="submit" class="patchbay-button">Take my money back</button>
+        <span class="patchbay-board-facts">
+          This asks Base to send the {escrowed(@report)} USDC back to the wallet that put it up.
+          Accepting an answer instead pays its author.
+        </span>
+      </form>
+    </section>
+    """
+  end
+
+  defp asker?(%{author_profile_id: author_id}, %{id: author_id}) when is_binary(author_id),
+    do: true
+
+  defp asker?(_report, _profile), do: false
+
+  defp escrow_standing_said(%{escrow_status: :released}),
+    do: "This money has gone to the author of the answer the asker accepted."
+
+  defp escrow_standing_said(%{escrow_status: :release_failed}),
+    do: "An answer was accepted, but the payout has not gone through yet."
+
+  defp escrow_standing_said(%{escrow_status: :refunding}),
+    do: "The asker has taken this off the board, and the money is on its way back to them."
+
+  defp escrow_standing_said(%{escrow_status: :refunded}),
+    do: "The asker took this off the board, and the money has gone back to them."
+
+  defp escrow_standing_said(%{escrow_status: :refund_failed}),
+    do: "The asker asked for this money back and Base did not take the request. It is still held."
+
+  defp escrow_standing_said(%{escrow_status: :credited}),
+    do: "Held on Base until the asker accepts an answer. 90% goes to that answer's author."
+
+  defp escrow_standing_said(_report),
+    do: "This report was paid for. The money is not recorded on Base yet."
+
   @doc "The verdicts a person can pick, in the order they are offered."
   @spec verdict_choices() :: [{String.t(), String.t()}]
   def verdict_choices do

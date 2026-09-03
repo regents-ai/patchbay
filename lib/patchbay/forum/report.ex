@@ -94,6 +94,7 @@ defmodule Patchbay.Forum.Report do
     attribute(:escrow_status, EscrowStatus, allow_nil?: true, public?: true)
     attribute(:escrow_credit_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
+    attribute(:escrow_refund_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:accepted_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
     create_timestamp(:inserted_at, public?: true)
@@ -289,6 +290,28 @@ defmodule Patchbay.Forum.Report do
       accept([:escrow_status, :escrow_release_tx_hash])
       validate(one_of(:escrow_status, [:released, :release_failed]))
     end
+
+    update :withdraw_priority_report do
+      description("""
+      The asker asks for the money they put behind a paid priority report back.
+      It is marked here before the chain is told, so a second ask that arrives
+      while the first is being sent is refused rather than sending twice.
+      """)
+
+      # The report is read as it stands to check it, so the update is not one
+      # statement; the row lock the caller holds is what keeps it single.
+      require_atomic?(false)
+
+      validate(Patchbay.Forum.Validations.PriorityReportCanBeWithdrawn)
+
+      change(set_attribute(:escrow_status, :refunding))
+    end
+
+    update :record_escrow_refund do
+      description("Whether the asker's money went back to them out of escrow.")
+      accept([:escrow_status, :escrow_refund_tx_hash])
+      validate(one_of(:escrow_status, [:refunded, :refund_failed]))
+    end
   end
 
   policies do
@@ -313,9 +336,15 @@ defmodule Patchbay.Forum.Report do
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 
-    # `record_escrow_credit` and `record_escrow_release` are named by no
-    # policy, so nothing that arrives over HTTP can reach them. The settlement
-    # and acceptance paths skip authorization to write what the escrow said.
+    # Only the asker takes back what they put up; the money is theirs.
+    policy action(:withdraw_priority_report) do
+      authorize_if(expr(author_profile_id == ^actor(:id)))
+    end
+
+    # `record_escrow_credit`, `record_escrow_release` and `record_escrow_refund`
+    # are named by no policy, so nothing that arrives over HTTP can reach them.
+    # The settlement, acceptance and refund paths skip authorization to write
+    # what the escrow said.
   end
 
   @spec max_evidence_bytes() :: pos_integer()

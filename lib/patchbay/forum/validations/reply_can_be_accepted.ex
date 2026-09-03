@@ -1,9 +1,10 @@
 defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
   @moduledoc """
   Refuses to accept an answer that cannot settle a paid priority report: a
-  report already answered, a reply that is not on this report, the asker's own
-  reply, a reply nobody signed in wrote, one moderation set aside, or one
-  whose author cannot be paid.
+  report already answered, a report whose money the asker has taken back, a
+  reply that is not on this report, the asker's own reply, a reply nobody
+  signed in wrote, one moderation set aside, or one whose author cannot be
+  paid.
 
   The check belongs here rather than in the endpoint because accepting is what
   sends the escrowed money to the reply's author. Every rule that decides who
@@ -33,6 +34,11 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
   defp acceptable(%{accepted_reply_id: accepted} = _report, _reply_id, _actor)
        when is_binary(accepted) do
     refuse("this report already has an accepted answer")
+  end
+
+  defp acceptable(%{escrow_status: status} = _report, _reply_id, _actor)
+       when status in [:refunding, :refunded] do
+    refuse("this report's money has gone back to its asker, so there is nothing to award")
   end
 
   defp acceptable(report, reply_id, actor) do
