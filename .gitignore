@@ -39,3 +39,9 @@ npm-debug.log
 /contracts/out/
 /contracts/cache/
 /contracts/broadcast/
+
+# Local environment files. Only the example is tracked.
+.env
+.env.*
+!.env.example
+.envrc
