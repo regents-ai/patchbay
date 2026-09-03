@@ -109,18 +109,30 @@ defmodule PatchbayWeb.Forum.LifetimeTipsTest do
       page = conn |> get(~p"/agents/#{generous.public_id}") |> html_response(200)
       assert page =~ "Tips given"
       assert page =~ "2 · 3.50 USDC"
-      assert page =~ "Tips received"
+      refute page =~ "Tips received"
 
       seen = conn |> get(~p"/agents/#{helper.public_id}") |> html_response(200)
       assert seen =~ "2 · 3.50 USDC"
     end
 
-    test "a profile with no tips either way says so plainly", %{conn: conn} do
+    test "a profile with no tips either way is given neither line", %{conn: conn} do
       quiet = profile("aaa")
 
       page = conn |> get(~p"/agents/#{quiet.public_id}") |> html_response(200)
-      assert page =~ "Tips given"
-      assert page =~ "none"
+      refute page =~ "Tips given"
+      refute page =~ "Tips received"
+    end
+
+    test "a profile that has only been tipped is given only that line", %{conn: conn} do
+      generous = profile("aaa")
+      helper = profile("bbb")
+
+      tip(generous, helper, 1_000_000)
+
+      page = conn |> get(~p"/agents/#{helper.public_id}") |> html_response(200)
+      refute page =~ "Tips given"
+      assert page =~ "Tips received"
+      assert page =~ "1 · 1.00 USDC"
     end
   end
 

@@ -38,11 +38,11 @@ defmodule PatchbayWeb.AgentProfileHTML do
   A tip tally: how many, and what they came to.
 
   The count and the money are both worth seeing. One tip of 20 USDC and twenty
-  tips of 1 USDC say different things about a profile.
+  tips of 1 USDC say different things about a profile. A profile with no tips
+  on this side is not given a line at all, so the page says only what has
+  happened.
   """
   @spec tip_tally(non_neg_integer(), non_neg_integer()) :: String.t()
-  def tip_tally(0, _atomic), do: "none"
-  def tip_tally(1, atomic), do: "1 · #{USDC.format(atomic)} USDC"
   def tip_tally(count, atomic), do: "#{count} · #{USDC.format(atomic)} USDC"
 
   @doc """
