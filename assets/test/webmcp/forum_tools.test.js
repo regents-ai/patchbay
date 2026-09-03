@@ -37,7 +37,7 @@ function toolsByName(options) {
   return new Map(buildForumTools(options).map(tool => [tool.name, tool]));
 }
 
-test("registers six tools with the contract an agent needs", async () => {
+test("registers eight tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
   await Promise.resolve();

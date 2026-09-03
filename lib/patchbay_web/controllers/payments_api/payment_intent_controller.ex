@@ -451,7 +451,8 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     |> json(%{
       status: "expired",
       payment_intent_id: found.id,
-      next_action: "These terms are no longer on offer. Prepare a new payment intent."
+      next_action:
+        "These terms are no longer on offer. Ask for this again to be given fresh ones."
     })
   end
 

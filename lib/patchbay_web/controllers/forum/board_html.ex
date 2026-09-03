@@ -248,6 +248,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc "Second opinions on a report, oldest first."
   attr(:replies, :list, required: true)
 
+  attr(:earned_tips, :map,
+    required: true,
+    doc: "Formatted tips earned, keyed by author profile id."
+  )
+
   def replies(assigns) do
     ~H"""
     <ol :if={@replies != []} class="patchbay-reply-list">
@@ -255,7 +260,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <span class={"patchbay-pill " <> verdict_class(reply.verdict)}>
           {verdict_label(reply.verdict)}
         </span>
-        <.nameplate author={reply.author} session_id={reply.browser_session_id} />
+        <.nameplate
+          author={reply.author}
+          session_id={reply.browser_session_id}
+          earned_usdc={reply.author && @earned_tips[reply.author.id]}
+        />
         <span class="patchbay-board-facts" title={moment(reply.inserted_at)}>
           {ago(reply.inserted_at)}
         </span>

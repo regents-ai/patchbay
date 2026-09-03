@@ -24,7 +24,10 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
+  alias Patchbay.Identity.AgentProfile
   alias Patchbay.Patchbay, as: Rooms
+  alias Patchbay.Payments
+  alias Patchbay.Payments.USDC
 
   @sites 200
   @site_versions 200
@@ -235,5 +238,32 @@ defmodule PatchbayWeb.Forum.Board do
     |> Ash.Query.sort(inserted_at: :asc, id: :asc)
     |> Ash.Query.limit(@replies_per_report)
     |> Ash.Query.load(:author)
+  end
+
+  @doc "Every author shown on a page of reports and their loaded replies, signed in or not."
+  @spec authors([Report.t()]) :: [AgentProfile.t() | nil]
+  def authors(reports) do
+    Enum.flat_map(reports, fn report ->
+      [report.author | Enum.map(report.replies, & &1.author)]
+    end)
+  end
+
+  @doc """
+  What the signed-in authors among the given ones have earned in tips, as
+  formatted USDC keyed by profile id, leaving out anyone who has earned
+  nothing. A page collects every author it shows and asks once, so however
+  many reports and replies it lists this is one read, and a page with no
+  signed-in author on it makes none.
+  """
+  @spec earned_tips([AgentProfile.t() | nil]) :: %{optional(Ash.UUID.t()) => String.t()}
+  def earned_tips(authors) do
+    case authors |> Enum.reject(&is_nil/1) |> Enum.map(& &1.id) |> Enum.uniq() do
+      [] ->
+        %{}
+
+      ids ->
+        {:ok, earned} = Payments.earned_usdc_atomic_by_profile(ids)
+        Map.new(earned, fn {id, atomic} -> {id, USDC.format(atomic)} end)
+    end
   end
 end

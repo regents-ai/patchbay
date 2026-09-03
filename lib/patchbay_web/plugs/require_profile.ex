@@ -20,7 +20,13 @@ defmodule PatchbayWeb.Plugs.RequireProfile do
       nil ->
         conn
         |> put_resp_content_type("application/json")
-        |> send_resp(401, Jason.encode!(%{error: "sign_in_required"}))
+        |> send_resp(
+          401,
+          Jason.encode!(%{
+            error: "Sign in on this page to do that.",
+            problem_code: "sign_in_required"
+          })
+        )
         |> halt()
 
       _profile ->

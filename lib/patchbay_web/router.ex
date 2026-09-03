@@ -101,6 +101,7 @@ defmodule PatchbayWeb.Router do
     post "/payment_intents", PaymentIntentController, :create
     post "/payment_intents/:id/execute", PaymentIntentController, :execute
     get "/payment_intents/:id", PaymentIntentController, :show
+    get "/me/usdc_balance", BalanceController, :show
   end
 
   # Other scopes may use custom stacks.

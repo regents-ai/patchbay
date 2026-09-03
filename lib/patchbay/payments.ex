@@ -10,6 +10,10 @@ defmodule Patchbay.Payments do
 
   use Ash.Domain, otp_app: :patchbay
 
+  import Ash.Expr, only: [expr: 1]
+
+  alias Patchbay.Payments.PaymentReceipt
+
   resources do
     resource Patchbay.Payments.PaymentIntent do
       define(:prepare_agent_tip, action: :prepare_agent_tip)
@@ -26,5 +30,57 @@ defmodule Patchbay.Payments do
     resource Patchbay.Payments.PaymentReceipt do
       define(:record_payment_receipt, action: :record)
     end
+  end
+
+  @doc """
+  What one profile has earned in tips, in USDC's atomic units: one sum over
+  its settled receipts, added up by the database.
+  """
+  @spec earned_usdc_atomic(String.t()) :: {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
+  def earned_usdc_atomic(profile_id) do
+    with {:ok, sum} <- Ash.sum(earned_by_profile([profile_id]), :amount_atomic) do
+      {:ok, sum || 0}
+    end
+  end
+
+  @doc """
+  What each of the given profiles has earned in tips, keyed by profile id and
+  leaving out those who have earned nothing, so a page can show the line
+  beside every author it lists from one query: one filtered sum per profile,
+  all carried by the same statement.
+  """
+  @spec earned_usdc_atomic_by_profile([String.t()]) ::
+          {:ok, %{String.t() => pos_integer()}} | {:error, Ash.Error.t()}
+  def earned_usdc_atomic_by_profile([]), do: {:ok, %{}}
+
+  def earned_usdc_atomic_by_profile(profile_ids) do
+    named =
+      Enum.with_index(profile_ids, fn profile_id, index -> {:"earned_#{index}", profile_id} end)
+
+    sums =
+      Enum.map(named, fn {name, profile_id} ->
+        {name, :sum,
+         field: :amount_atomic, query: [filter: expr(payment_intent.target_id == ^profile_id)]}
+      end)
+
+    with {:ok, earned} <- Ash.aggregate(earned_by_profile(profile_ids), sums) do
+      positive =
+        for {name, profile_id} <- named,
+            is_integer(earned[name]) and earned[name] > 0,
+            into: %{} do
+          {profile_id, earned[name]}
+        end
+
+      {:ok, positive}
+    end
+  end
+
+  # The sum a public page shows is a public number. The receipts it is summed
+  # from stay behind a signed-in actor, which is the one reason authorization
+  # is set aside here: nothing but the total leaves this query.
+  defp earned_by_profile(profile_ids) do
+    Ash.Query.for_read(PaymentReceipt, :earned_by_profile, %{profile_ids: profile_ids},
+      authorize?: false
+    )
   end
 end

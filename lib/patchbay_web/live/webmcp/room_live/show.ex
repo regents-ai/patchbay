@@ -815,6 +815,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp assigns_for(%Room{} = room, browser_session) do
     invocation = room.latest_invocation
     proposal = room.active_repair_proposal
+    reports = Board.reports_for_room(room.id)
 
     %{
       room: room,
@@ -832,7 +833,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       proposal_source_revision: proposal && proposal.source_tool_revision,
       proposal_candidate_revision: proposal && proposal.candidate_tool_revision,
       agent_attempt: latest_agent_attempt(room),
-      room_reports: Board.reports_for_room(room.id)
+      room_reports: reports,
+      earned_tips: Board.earned_tips(Board.authors(reports))
     }
   end
 

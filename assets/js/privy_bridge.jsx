@@ -1,6 +1,6 @@
 import {createElement, useEffect} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, useIdentityToken, useLogin, usePrivy} from "@privy-io/react-auth"
+import {PrivyProvider, useIdentityToken, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
 // page fetches only when somebody asks to sign in. Everything it does is driven
@@ -12,6 +12,8 @@ const READY_TIMEOUT_MS = 20000
 const TOKEN_TIMEOUT_MS = 15000
 // Privy's own code for a person who closed the window instead of signing in.
 const CLOSED_BY_USER = "exited_auth_flow"
+// The wallet's own code (EIP-1193) for a person who declined to sign.
+const REJECTED_BY_USER = 4001
 
 let mounted = null
 let current = null
@@ -34,6 +36,7 @@ function finishLogin(outcome) {
 function Bridge() {
   const privy = usePrivy()
   const {identityToken} = useIdentityToken()
+  const {wallets, ready: walletsReady} = useWallets()
   const {login} = useLogin({
     onComplete: () => finishLogin({ok: true}),
     onError: code => finishLogin({ok: false, code}),
@@ -43,10 +46,13 @@ function Bridge() {
     publish({
       ready: privy.ready,
       authenticated: privy.authenticated,
+      user: privy.user,
       getAccessToken: privy.getAccessToken,
       logout: privy.logout,
       identityToken,
       login,
+      wallets,
+      walletsReady,
     })
   })
 
@@ -149,6 +155,78 @@ export async function signOut(appId) {
 
   const state = await waitFor(one => one.ready, READY_TIMEOUT_MS)
   if (state.authenticated) await state.logout()
+}
+
+/**
+ * The address of the wallet this browser signed in with, as Privy holds it
+ * connected right now.
+ *
+ * @param {string} appId
+ * @returns {Promise<{ok: true, address: string} | {ok: false, reason: string}>}
+ */
+export async function walletAddress(appId) {
+  const found = await connectedWallet(appId)
+  return found.ok ? {ok: true, address: found.wallet.address} : found
+}
+
+/**
+ * Signs EIP-712 typed data with the wallet this browser signed in with, on the
+ * chain the typed data's domain names. Whatever that wallet shows its owner
+ * before signing is the whole confirmation; nothing is drawn here.
+ *
+ * @param {string} appId
+ * @param {{domain: {chainId: number}}} typedData
+ * @returns {Promise<{ok: true, signature: string, address: string} | {ok: false, reason: string}>}
+ */
+export async function signTypedData(appId, typedData) {
+  const found = await connectedWallet(appId)
+  if (!found.ok) return found
+
+  const {wallet} = found
+
+  try {
+    await wallet.switchChain(Number(typedData.domain.chainId))
+  } catch {
+    return {ok: false, reason: "wrong_chain"}
+  }
+
+  try {
+    const provider = await wallet.getEthereumProvider()
+    const signature = await provider.request({
+      method: "eth_signTypedData_v4",
+      params: [wallet.address, JSON.stringify(typedData)],
+    })
+
+    return {ok: true, signature, address: wallet.address}
+  } catch (error) {
+    return {ok: false, reason: error?.code === REJECTED_BY_USER ? "refused" : "failed"}
+  }
+}
+
+// The connected wallet behind the signed-in address: the one Privy names as
+// the person's wallet, found among the wallets it holds connected. A person
+// whose Privy session is gone, or whose wallet is not connected in this
+// browser, has nothing to sign with here.
+async function connectedWallet(appId) {
+  start(appId)
+
+  let state
+  try {
+    state = await waitFor(one => one.ready && one.walletsReady, READY_TIMEOUT_MS)
+  } catch {
+    return {ok: false, reason: "unready"}
+  }
+
+  if (!state.authenticated) return {ok: false, reason: "signed_out"}
+
+  const address = state.user?.wallet?.address
+  const wallet = state.wallets.find(one => sameAddress(one.address, address))
+
+  return wallet ? {ok: true, wallet} : {ok: false, reason: "no_wallet"}
+}
+
+function sameAddress(left, right) {
+  return typeof left === "string" && typeof right === "string" && left.toLowerCase() === right.toLowerCase()
 }
 
 function isToken(value) {

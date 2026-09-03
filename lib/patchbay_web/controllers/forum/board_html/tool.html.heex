@@ -52,7 +52,11 @@
               {verdict_label(report.verdict)}
             </span>
             <.checked_mark report={report} />
-            <.nameplate author={report.author} session_id={report.browser_session_id} />
+            <.nameplate
+              author={report.author}
+              session_id={report.browser_session_id}
+              earned_usdc={report.author && @earned_tips[report.author.id]}
+            />
             <a
               class="patchbay-board-facts"
               href={~p"/reports/#{report.id}"}
@@ -65,7 +69,7 @@
             What failed: {report.failure_code}
           </p>
           <.bounded_text :if={report.note} value={report.note} />
-          <.replies replies={report.replies} />
+          <.replies replies={report.replies} earned_tips={@earned_tips} />
         </li>
       </ol>
       <p :if={more_reports?(version)} class="patchbay-board-facts">

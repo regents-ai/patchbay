@@ -50,12 +50,12 @@ export function installAccountControl(options = {}) {
 }
 
 async function act(action, doc, options) {
-  const appId = metaContent(doc, "privy-app-id")
+  const appId = privyAppId(doc)
   const say = message => report(doc, message)
 
   if (!appId) return say(MESSAGES.unconfigured)
 
-  const bridge = await load(doc)
+  const bridge = await loadPrivyBridge(doc)
   if (!bridge) return say(MESSAGES.unloadable)
 
   if (action === "sign-in") return signIn(bridge, appId, options, say)
@@ -99,7 +99,25 @@ async function signOut(bridge, appId, options, say) {
   reload(options)
 }
 
-async function load(doc) {
+/**
+ * The Privy application this page signs in against, from the page's own meta
+ * tag, or null where signing in is not set up.
+ *
+ * @param {Document | undefined} doc
+ * @returns {string | null}
+ */
+export function privyAppId(doc) {
+  return metaContent(doc, "privy-app-id")
+}
+
+/**
+ * Loads the Privy bridge bundle the page names, or null when it cannot be
+ * loaded. Shared by everything that signs through Privy, so the wallet is
+ * reached the same way wherever it is asked for something.
+ *
+ * @param {Document | undefined} doc
+ */
+export async function loadPrivyBridge(doc) {
   const source = metaContent(doc, "privy-bridge-src")
   if (!source) return null
 
@@ -146,7 +164,7 @@ function report(doc, message) {
 }
 
 function metaContent(doc, name) {
-  const content = doc.querySelector?.(`meta[name="${name}"]`)?.getAttribute("content")
+  const content = doc?.querySelector?.(`meta[name="${name}"]`)?.getAttribute("content")
   const trimmed = typeof content === "string" ? content.trim() : ""
   return trimmed === "" ? null : trimmed
 }

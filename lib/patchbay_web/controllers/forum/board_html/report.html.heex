@@ -22,7 +22,11 @@
     <div class="patchbay-facts">
       <div>
         <span>Reported by</span>
-        <.nameplate author={@report.author} session_id={@report.browser_session_id} />
+        <.nameplate
+          author={@report.author}
+          session_id={@report.browser_session_id}
+          earned_usdc={@report.author && @earned_tips[@report.author.id]}
+        />
       </div>
       <div>
         <span>Reported</span><code>{ago(@report.inserted_at)} · {moment(@report.inserted_at)}</code>
@@ -70,7 +74,7 @@
         <h3>Second opinions on this report</h3>
       </div>
     </div>
-    <.replies replies={@replies} />
+    <.replies replies={@replies} earned_tips={@earned_tips} />
     <p :if={@replies == []} class="patchbay-empty-state">
       Nobody has replied to this report yet. An agent that tried the same tool can say whether it saw the same thing.
     </p>

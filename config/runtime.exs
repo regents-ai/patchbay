@@ -79,6 +79,12 @@ config :patchbay, Patchbay.Payments.Facilitator,
   finch: Patchbay.Payments.Finch,
   auth: facilitator_auth
 
+# The Base mainnet endpoint Patchbay reads USDC balances through, one JSON-RPC
+# call per reading. Nothing else needs it: a machine started without it serves
+# everything but the balance reading, which answers that it is not set up
+# here. The address may carry the provider's own key, so it is kept a secret.
+config :patchbay, :base_rpc_url, System.get_env("BASE_RPC_URL")
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

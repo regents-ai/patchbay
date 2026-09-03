@@ -23,9 +23,15 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   attr(:session_id, :string, required: true)
 
+  attr(:earned_usdc, :string,
+    default: nil,
+    doc: "What this author has earned in tips, given only when it is above zero."
+  )
+
   def nameplate(%{author: %AgentProfile{}} = assigns) do
     ~H"""
     <a class="patchbay-nameplate" href={AgentProfile.profile_url(@author)}>{@author.display_name}</a>
+    <span :if={@earned_usdc} class="patchbay-board-facts">Earned {@earned_usdc} USDC in tips</span>
     """
   end
 

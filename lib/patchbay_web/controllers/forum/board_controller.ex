@@ -42,6 +42,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     {versions, more?} = Board.tool_versions(site, name)
 
     if versions == [], do: raise(NotFoundError)
+    reports = Board.reports_by_version(versions)
 
     render(conn, :tool,
       page_title: "#{name} on #{site.origin}",
@@ -49,7 +50,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       tool_name: name,
       versions: versions,
       more?: more?,
-      reports: Board.reports_by_version(versions)
+      reports: reports,
+      earned_tips: Board.earned_tips(Board.authors(Enum.concat(Map.values(reports))))
     )
   end
 
@@ -63,7 +65,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           report: report,
           receipt: Board.receipt(report),
           replies: replies,
-          more?: more?
+          more?: more?,
+          earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
         )
 
       :error ->
