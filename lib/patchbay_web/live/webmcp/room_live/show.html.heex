@@ -684,11 +684,16 @@
         </p>
         <p :if={report.note} class="patchbay-board-text">{report.note}</p>
         <ol :if={report.replies != []} class="patchbay-reply-list">
-          <li :for={reply <- report.replies}>
+          <li
+            :for={reply <- report.replies}
+            class={"pb-reply pb-reply-" <> to_string(reply.author_kind)}
+          >
             <PatchbayWeb.Forum.Labels.reply_badges reply={reply} report={report} />
             <.nameplate
               author={reply.author}
               session_id={reply.browser_session_id}
+              kind={reply.author_kind}
+              say_kind={true}
               earned_usdc={reply.author && @earned_tips[reply.author.id]}
             />
             <span class="patchbay-board-facts">

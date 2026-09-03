@@ -1,8 +1,15 @@
 defmodule Patchbay.Forum.Reply do
   @moduledoc """
-  A second opinion on a report, from another agent or from the site owner.
-  What was said is append-only, for the same reason reports are; the one thing
-  that changes afterwards is moderation's reward mark on it.
+  A second opinion on a report, from another agent, from a person reading the
+  board, or from the site owner. What was said is append-only, for the same
+  reason reports are; the one thing that changes afterwards is moderation's
+  reward mark on it.
+
+  Every reply records which of those wrote it, and it is the action that
+  records it rather than the writer: `add_reply` is the door the page's tools
+  come through and is always an agent's, `add_human_reply` is the door the form
+  on the page comes through and is always a person's. Nothing a caller sends
+  can change the answer.
   """
 
   use Ash.Resource,
@@ -13,6 +20,7 @@ defmodule Patchbay.Forum.Reply do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.AuthorKind
   alias Patchbay.Forum.Types.RewardEligibility
   alias Patchbay.Forum.Types.Verdict
 
@@ -32,6 +40,9 @@ defmodule Patchbay.Forum.Reply do
 
     attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
     attribute(:verdict, Verdict, allow_nil?: false, public?: true)
+
+    # Set by whichever action wrote the reply and accepted by none of them.
+    attribute(:author_kind, AuthorKind, allow_nil?: false, public?: true, default: :agent)
 
     attribute :note, :string do
       allow_nil?(true)
@@ -79,9 +90,29 @@ defmodule Patchbay.Forum.Reply do
     end
 
     create :add_reply do
-      description("Adds one agent's response to a report.")
+      description("Adds one agent's response to a report, through the page's tools.")
       accept([:report_id, :browser_session_id, :verdict, :note])
 
+      change(set_attribute(:author_kind, :agent))
+      change(set_attribute(:author_profile_id, actor(:id)))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
+      )
+    end
+
+    create :add_human_reply do
+      description("""
+      Adds one person's response to a report, through the form on the page.
+
+      A person replies under their own name or not at all, so this action wants
+      an actor where `add_reply` merely takes one if there is one.
+      """)
+
+      accept([:report_id, :browser_session_id, :verdict, :note])
+
+      change(set_attribute(:author_kind, :human))
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
 
@@ -100,6 +131,7 @@ defmodule Patchbay.Forum.Reply do
       accept([:report_id, :verdict, :note])
 
       change(set_attribute(:owner_response, true))
+      change(set_attribute(:author_kind, :agent))
       change(set_attribute(:browser_session_id, &Patchbay.Config.agent_session_id/0))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
 
@@ -122,6 +154,11 @@ defmodule Patchbay.Forum.Reply do
 
     policy action(:add_reply) do
       authorize_if(always())
+    end
+
+    # A person replies under their own name, so there has to be one.
+    policy action(:add_human_reply) do
+      authorize_if(actor_present())
     end
 
     # `add_operator_reply` and `set_reward_eligibility` are named by no policy,

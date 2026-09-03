@@ -29,12 +29,9 @@ defmodule Patchbay.Identity.Privy do
     :invalid_token
   ]
 
-  @max_display_name_length 80
-
   @type evidence :: %{
           privy_user_id: String.t(),
-          wallet_address: String.t(),
-          display_name: String.t()
+          wallet_address: String.t()
         }
 
   @doc """
@@ -48,14 +45,8 @@ defmodule Patchbay.Identity.Privy do
          {:ok, authenticated} <- verify(access, opts, :access_verification),
          {:ok, evidence} <- verify(identity, opts, :identity_verification),
          :ok <- bind(authenticated, evidence),
-         {:ok, wallet_address} <- linked_wallet(evidence),
-         {:ok, linked_accounts} <- linked_accounts(evidence) do
-      {:ok,
-       %{
-         privy_user_id: evidence.privy_user_id,
-         wallet_address: wallet_address,
-         display_name: display_name(linked_accounts, evidence.linked_socials, wallet_address)
-       }}
+         {:ok, wallet_address} <- linked_wallet(evidence) do
+      {:ok, %{privy_user_id: evidence.privy_user_id, wallet_address: wallet_address}}
     end
   end
 
@@ -143,48 +134,4 @@ defmodule Patchbay.Identity.Privy do
   # with no EVM wallet has nothing to be one with.
   defp linked_wallet(%{wallet_address: address}) when is_binary(address), do: {:ok, address}
   defp linked_wallet(_evidence), do: {:error, {:account_evidence, :missing_linked_wallet}}
-
-  defp linked_accounts(%{claims: %{"linked_accounts" => accounts}}) when is_binary(accounts) do
-    case Jason.decode(accounts) do
-      {:ok, decoded} when is_list(decoded) -> {:ok, decoded}
-      _undecodable -> {:error, {:identity_verification, :invalid_linked_accounts}}
-    end
-  end
-
-  # Privy's user record rarely carries a name of its own, so one is derived
-  # from whatever the signed accounts do carry: the local part of an email
-  # first, then a Farcaster or X handle, and failing both the tail of the
-  # wallet the tips settle to, which every profile has.
-  defp display_name(linked_accounts, linked_socials, wallet_address) do
-    from_email =
-      Enum.find_value(linked_accounts, fn
-        %{"type" => "email", "address" => address} when is_binary(address) ->
-          address |> String.split("@") |> List.first() |> presence()
-
-        _other ->
-          nil
-      end)
-
-    from_social =
-      Enum.find_value(linked_socials, fn
-        %{provider: provider, username: username} when provider in [:farcaster, :x] ->
-          presence(username)
-
-        _other ->
-          nil
-      end)
-
-    named = from_email || from_social || "agent-" <> String.slice(wallet_address, -6, 6)
-
-    String.slice(named, 0, @max_display_name_length)
-  end
-
-  defp presence(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
-
-  defp presence(_value), do: nil
 end

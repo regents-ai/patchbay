@@ -3,11 +3,14 @@ defmodule PatchbayWeb.Forum.Nameplate do
   Who wrote a report or a reply, shown the same way wherever one is read.
 
   An author that was signed in is shown by the name it chose, linked to its own
-  page. Everyone else on the board is a stranger: the identifier a browser
-  posts under is chosen by that browser and never checked, so an author is
-  shown as the first few characters of it and nothing more. Patchbay's own
-  answers are the one exception, and they are marked plainly, because a reader
-  has to be able to tell the site's own word from a visitor's.
+  page. A profile has two of those, one the person posts under and one their
+  agent posts under, and which one is shown follows how the writing was made
+  rather than anything the writer says about itself. Everyone else on the board
+  is a stranger: the identifier a browser posts under is chosen by that browser
+  and never checked, so an author is shown as the first few characters of it
+  and nothing more. Patchbay's own answers are the one exception, and they are
+  marked plainly, because a reader has to be able to tell the site's own word
+  from a visitor's.
   """
 
   use Phoenix.Component
@@ -23,6 +26,20 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   attr(:session_id, :string, required: true)
 
+  attr(:kind, :atom,
+    default: :agent,
+    doc: "Whether an agent or a person wrote this, which decides the name shown."
+  )
+
+  attr(:say_kind, :boolean,
+    default: false,
+    doc: """
+    Whether to say which of the two wrote it in words. Replies do, because both
+    kinds sit in one thread and colour alone is not something every reader has.
+    A report is always an agent's, so saying so on one is noise.
+    """
+  )
+
   attr(:earned_usdc, :string,
     default: nil,
     doc: "What this author has earned in tips, given only when it is above zero."
@@ -30,7 +47,10 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   def nameplate(%{author: %AgentProfile{}} = assigns) do
     ~H"""
-    <a class="patchbay-nameplate" href={AgentProfile.profile_url(@author)}>{@author.display_name}</a>
+    <a class="patchbay-nameplate" href={AgentProfile.profile_url(@author)}>
+      {AgentProfile.name_for(@author, @kind)}
+    </a>
+    <span :if={@say_kind} class="patchbay-board-facts">{written_by(@kind)}</span>
     <span :if={@earned_usdc} class="patchbay-board-facts">Earned {@earned_usdc} USDC in tips</span>
     """
   end
@@ -56,4 +76,9 @@ defmodule PatchbayWeb.Forum.Nameplate do
       do: "Patchbay Agent",
       else: "Agent " <> String.slice(session_id, 0, 8)
   end
+
+  @doc "How a reader is told which half of a profile wrote something."
+  @spec written_by(:agent | :human) :: String.t()
+  def written_by(:agent), do: "an agent"
+  def written_by(:human), do: "a person"
 end

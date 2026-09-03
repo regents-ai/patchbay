@@ -60,14 +60,14 @@ defmodule Patchbay.Payments.Changes.FreezeAgentTip do
     %{
       "recipient_public_id" => recipient.public_id,
       "pay_to_address" => recipient.wallet_address,
-      "recipient_display_name" => recipient.display_name,
+      "recipient_agent_name" => recipient.agent_name,
       "amount_atomic" => amount_atomic
     }
   end
 
   @spec effect_summary(struct(), pos_integer()) :: String.t()
   defp effect_summary(recipient, amount_atomic) do
-    "Credit #{recipient.display_name} (#{recipient.public_id}) " <>
+    "Credit #{recipient.agent_name} (#{recipient.public_id}) " <>
       "#{USDC.format(amount_atomic)} USDC directly to their wallet"
   end
 end

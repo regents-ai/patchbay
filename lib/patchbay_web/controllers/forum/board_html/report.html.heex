@@ -71,7 +71,7 @@
     </div>
   </section>
 
-  <section class="patchbay-card patchbay-board-card">
+  <section class="patchbay-card patchbay-board-card" id="patchbay-replies">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">REPLIES</p>
@@ -85,5 +85,11 @@
     <p :if={@more?} class="patchbay-board-facts">
       Showing the first {length(@replies)} replies.
     </p>
+
+    <.human_reply_form
+      report={@report}
+      profile={@conn.assigns.current_profile}
+      problem={@reply_problem}
+    />
   </section>
 </main>

@@ -37,7 +37,7 @@ function toolsByName(options) {
   return new Map(buildForumTools(options).map(tool => [tool.name, tool]));
 }
 
-test("registers ten tools with the contract an agent needs", async () => {
+test("registers eleven tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
   await Promise.resolve();
@@ -95,6 +95,14 @@ test("registers ten tools with the contract an agent needs", async () => {
   const accept = modelContext.tools.get("accept_solution");
   assert.deepEqual(accept.annotations, {readOnlyHint: false, untrustedContentHint: false});
   assert.deepEqual(accept.inputSchema.required, ["report_id", "reply_id"]);
+
+  // Renaming is the agent's own half and only its own half, so the tool takes
+  // the agent name and nothing else at all.
+  const rename = modelContext.tools.get("set_my_agent_name");
+  assert.deepEqual(rename.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.deepEqual(rename.inputSchema.required, ["agent_name"]);
+  assert.deepEqual(Object.keys(rename.inputSchema.properties), ["agent_name"]);
+  assert.equal(rename.inputSchema.additionalProperties, false);
 
   dispose();
   assert.equal(modelContext.tools.size, 0);
@@ -409,4 +417,48 @@ test("every board result opens with one sentence about what happened", async () 
   }
 
   assert.match(JSON.parse(searched).summary, /1 matching tool and 0 reports/);
+});
+
+test("renaming reports the name the server accepted, and says why it refused", async () => {
+  const accepted = fakeFetch([
+    {
+      status: 200,
+      body: {
+        renamed: true,
+        author: {profile_id: "agt_1", agent_name: "kettle", human_name: "human-1"},
+      },
+    },
+  ]);
+
+  const named = JSON.parse(
+    await toolsByName({fetch: accepted, csrfToken: "csrf-value"})
+      .get("set_my_agent_name")
+      .execute({agent_name: "kettle"}),
+  );
+
+  assert.equal(named.renamed, true);
+  assert.equal(named.summary, "You now post as kettle on Patchbay.");
+  assert.equal(named.author.agent_name, "kettle");
+
+  const refused = fakeFetch([
+    {
+      status: 422,
+      body: {
+        renamed: false,
+        error: "That name is already taken by somebody else on Patchbay.",
+        next_action:
+          "A name is 3 to 30 characters of lowercase letters, digits and single hyphens, and starts with a letter.",
+      },
+    },
+  ]);
+
+  const denied = JSON.parse(
+    await toolsByName({fetch: refused, csrfToken: "csrf-value"})
+      .get("set_my_agent_name")
+      .execute({agent_name: "kettle"}),
+  );
+
+  assert.equal(denied.renamed, false);
+  assert.equal(denied.problem, "That name is already taken by somebody else on Patchbay.");
+  assert.ok(denied.next_action.includes("lowercase letters"));
 });

@@ -6,13 +6,15 @@ defmodule PatchbayWeb.Forum.BoardController do
   Every page here is plain HTML. Nothing on the board changes while it is on
   screen, so there is nothing for a live connection to do.
 
-  Opening a page here writes nothing. Patchbay's own entry is recorded when a
-  studio starts offering a contract, so a visit only reads what is already on
-  the board.
+  Opening a page here writes nothing. The one thing a visitor can write from
+  here is a reply, and only while signed in: Patchbay's own entry is recorded
+  when a studio starts offering a contract, so a visit only reads what is
+  already on the board.
   """
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Forum
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -62,6 +64,63 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def report(conn, %{"id" => id}) do
+    show_report(conn, id, nil)
+  end
+
+  @doc """
+  One person's reply, written in the form on the report page.
+
+  The page is the only way a person can reply, and a person replies under their
+  own name, so a visitor who is not signed in is told so on the page rather than
+  being sent anywhere. Whatever they typed is still on screen when they are.
+  """
+  def create_reply(conn, %{"id" => id} = params) do
+    reply = Map.get(params, "reply", %{})
+
+    case add_reply(conn, id, reply) do
+      :ok -> redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-replies")
+      {:error, said} -> show_report(conn, id, %{said: said, draft: reply})
+    end
+  end
+
+  defp add_reply(%{assigns: %{current_profile: nil}}, _id, _reply) do
+    {:error, "Sign in to reply here. Your reply keeps the name you chose for yourself."}
+  end
+
+  defp add_reply(conn, id, reply) do
+    profile = conn.assigns.current_profile
+
+    input = %{
+      report_id: id,
+      browser_session_id: conn.assigns.forum_session_id,
+      verdict: Map.get(reply, "verdict"),
+      note: Map.get(reply, "note")
+    }
+
+    case Forum.add_human_reply(input, actor: profile) do
+      {:ok, _reply} -> :ok
+      {:error, refused} -> {:error, refusal(refused)}
+    end
+  end
+
+  # An Ash refusal names fields a reader never sees, so the form says what to do
+  # about the two things a person can actually get wrong.
+  defp refusal(%Ash.Error.Invalid{errors: errors}) do
+    cond do
+      Enum.any?(errors, &(Map.get(&1, :field) == :verdict)) ->
+        "Say whether the tool worked before you post."
+
+      Enum.any?(errors, &(Map.get(&1, :field) == :note)) ->
+        "That reply is too long. Keep it under 500 characters."
+
+      true ->
+        "That reply could not be posted."
+    end
+  end
+
+  defp refusal(_refused), do: "That reply could not be posted."
+
+  defp show_report(conn, id, reply_problem) do
     case Board.fetch_report(id) do
       {:ok, report} ->
         {replies, more?} = Board.replies(report)
@@ -72,6 +131,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           receipt: Board.receipt(report),
           replies: replies,
           more?: more?,
+          reply_problem: reply_problem,
           earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
         )
 

@@ -16,8 +16,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
     asker =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:asker",
-        wallet_address: "0x" <> String.duplicate("a", 40),
-        display_name: "Asker One"
+        wallet_address: "0x" <> String.duplicate("a", 40)
       })
 
     report =
@@ -38,7 +37,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
 
     assert html =~ "Paid priority"
     assert html =~ "Escrowed 5.00 USDC"
-    assert html =~ "Asker One"
+    assert html =~ asker.agent_name
 
     page = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
     assert page =~ "Escrowed 5.00 USDC"

@@ -103,6 +103,12 @@ defmodule PatchbayWeb.Router do
     get "/agents/:public_id", ProfileController, :show
   end
 
+  scope "/api", PatchbayWeb.IdentityAPI do
+    pipe_through [:forum_tools, :require_profile]
+
+    post "/me/agent_name", NameController, :agent
+  end
+
   scope "/webmcp", PatchbayWeb do
     pipe_through :api
 
@@ -147,11 +153,13 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     get "/agents/:public_id", AgentProfileController, :show
+    post "/agents/:public_id/names", AgentProfileController, :rename
   end
 
   scope "/", PatchbayWeb.Forum do
     pipe_through :browser
 
+    post "/reports/:id/replies", BoardController, :create_reply
     get "/sites", BoardController, :sites
     get "/sites/:origin", BoardController, :site
     get "/sites/:origin/tools/:name", BoardController, :tool

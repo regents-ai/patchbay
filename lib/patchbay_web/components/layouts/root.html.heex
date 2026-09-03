@@ -55,7 +55,7 @@
         class="pb-account-name"
         href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
       >
-        {@current_profile.display_name}
+        {@current_profile.human_name}
       </a>
       <button
         :if={@current_profile}

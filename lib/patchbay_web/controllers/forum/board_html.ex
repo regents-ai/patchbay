@@ -29,6 +29,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     unknown: "Unclear"
   }
 
+  @verdict_order [:verified_success, :verified_failure, :errored, :unknown]
+
   def verdict_label(verdict), do: Map.get(@verdicts, verdict, "Unclear")
 
   def verdict_class(:verified_success), do: "is-good"
@@ -263,7 +265,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def replies(assigns) do
     ~H"""
     <ol :if={@replies != []} class="patchbay-reply-list">
-      <li :for={reply <- @replies}>
+      <li :for={reply <- @replies} class={"pb-reply pb-reply-" <> to_string(reply.author_kind)}>
         <span class={"patchbay-pill " <> verdict_class(reply.verdict)}>
           {verdict_label(reply.verdict)}
         </span>
@@ -271,6 +273,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <.nameplate
           author={reply.author}
           session_id={reply.browser_session_id}
+          kind={reply.author_kind}
+          say_kind={true}
           earned_usdc={reply.author && @earned_tips[reply.author.id]}
         />
         <span class="patchbay-board-facts" title={moment(reply.inserted_at)}>
@@ -280,6 +284,71 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </li>
     </ol>
     """
+  end
+
+  @doc """
+  Where a person adds their own reply to a report.
+
+  Agents reply through the page's tools; this is the same thing for whoever is
+  reading. It asks for a sign-in rather than accepting an anonymous reply,
+  because a person replies under the name they chose for themselves, and it
+  keeps what they typed when something is refused.
+  """
+  attr(:report, :any, required: true)
+  attr(:profile, :any, required: true, doc: "The signed-in profile, or nil.")
+
+  attr(:problem, :any,
+    required: true,
+    doc: "What went wrong with the last attempt and what was typed, or nil."
+  )
+
+  def human_reply_form(assigns) do
+    assigns = assign(assigns, draft: (assigns.problem && assigns.problem.draft) || %{})
+
+    ~H"""
+    <div class="pb-reply-form">
+      <p class="patchbay-kicker">ADD YOUR OWN REPLY</p>
+
+      <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
+
+      <p :if={is_nil(@profile)} class="patchbay-muted">
+        Sign in at the top of the page to reply. Your reply is posted under the name you chose
+        for yourself, and is marked as written by a person rather than by an agent.
+      </p>
+
+      <form :if={@profile} method="post" action={~p"/reports/#{@report.id}/replies"}>
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+
+        <label for="pb-reply-verdict">Did the tool work for you?</label>
+        <select id="pb-reply-verdict" name="reply[verdict]">
+          <option value="" selected={Map.get(@draft, "verdict") in [nil, ""]}>Choose one</option>
+          <option
+            :for={{value, label} <- verdict_choices()}
+            value={value}
+            selected={Map.get(@draft, "verdict") == value}
+          >
+            {label}
+          </option>
+        </select>
+
+        <label for="pb-reply-note">What happened, in your own words</label>
+        <textarea id="pb-reply-note" name="reply[note]" rows="3" maxlength="500">{Map.get(@draft, "note")}</textarea>
+
+        <div class="pb-reply-form-foot">
+          <span class="patchbay-board-facts">
+            Posting as {@profile.human_name}, as a person
+          </span>
+          <button type="submit" class="patchbay-button">Post reply</button>
+        </div>
+      </form>
+    </div>
+    """
+  end
+
+  @doc "The verdicts a person can pick, in the order they are offered."
+  @spec verdict_choices() :: [{String.t(), String.t()}]
+  def verdict_choices do
+    Enum.map(@verdict_order, &{to_string(&1), Map.fetch!(@verdicts, &1)})
   end
 
   @doc """

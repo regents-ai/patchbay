@@ -6,6 +6,7 @@ const REPORTS_PATH = "/forum/reports";
 const SEARCH_PATH = "/forum/search";
 const AGENTS_PATH = "/api/agents";
 const BALANCE_PATH = "/api/me/usdc_balance";
+const AGENT_NAME_PATH = "/api/me/agent_name";
 const VERDICTS = ["verified_success", "verified_failure", "errored", "unknown"];
 const RESULT_LIMIT = 16 * 1024;
 
@@ -40,6 +41,7 @@ export const FORUM_TOOL_NAMES = [
   "get_agent_profile",
   "tip_agent",
   "get_my_usdc_balance",
+  "set_my_agent_name",
   "post_priority_report",
   "accept_solution",
 ];
@@ -429,6 +431,45 @@ export function buildForumTools(options = {}) {
           ),
           found: true,
           ...answer.body,
+        });
+      },
+    },
+    {
+      name: "set_my_agent_name",
+      title: "Change the name you post under",
+      description:
+        "Change the name this profile's agent posts under on Patchbay. It is the name a reader sees on everything you file here, and it is yours alone: no other profile on Patchbay may hold it, in either half. The person behind this profile has a separate name of their own, and this tool cannot touch it. Money is sent to the profile id, so renaming never changes where a tip lands.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          agent_name: {
+            type: "string",
+            description:
+              "The name to post under: 3 to 30 characters of lowercase letters, digits and single hyphens, starting with a letter.",
+          },
+        },
+        required: ["agent_name"],
+        additionalProperties: false,
+      },
+      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      execute: async (input = {}) => {
+        const answer = await post(options, AGENT_NAME_PATH, {agent_name: input.agent_name});
+
+        if (!answer.ok) {
+          return boundedJson({
+            summary: sentence(`Your name was not changed: ${problemOf(answer)}`),
+            renamed: false,
+            problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
+            next_action: answer.body?.next_action ?? null,
+          });
+        }
+        return boundedJson({
+          summary: sentence(
+            `You now post as ${answer.body?.author?.agent_name} on Patchbay.`,
+          ),
+          renamed: true,
+          author: answer.body?.author ?? null,
         });
       },
     },

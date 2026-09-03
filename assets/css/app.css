@@ -98,6 +98,14 @@
   --pb-bad-wash: #f5e4dc;
   --pb-agent-gradient: linear-gradient(100deg, #e5e3d2 0%, #ff7a45 44%, #aecacd 100%);
 
+  /* Who wrote a reply, said in colour: the board's own orange for an agent,
+     powder blue for a person. Both are edges and washes rather than fills, so
+     the text on them keeps the same contrast as text anywhere else. */
+  --pb-agent-edge: #ff5b19;
+  --pb-agent-edge-wash: #fdf0e9;
+  --pb-human-edge: #8fb8c9;
+  --pb-human-edge-wash: #eef4f7;
+
   /* One quiet tone, not two. Anything quieter than this stops clearing 4.5:1
      against the warm paper, so quieter is not a thing this palette offers. */
   --pb-text: #161616;
@@ -163,6 +171,13 @@
     --pb-good-wash: #101e20;
     --pb-bad: #efa98c;
     --pb-bad-wash: #2b211d;
+
+    /* The two reply edges keep their hue on dark paper; only the wash behind
+       them changes, to a tone the page's own text still clears 4.5:1 against. */
+    --pb-agent-edge: #ff7e4c;
+    --pb-agent-edge-wash: #241611;
+    --pb-human-edge: #aecacd;
+    --pb-human-edge-wash: #141c1e;
 
     --pb-text: #e5e3d2;
     --pb-text-muted: #9c9a8b;
@@ -812,8 +827,35 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-reported-copy p { margin: .15rem 0 0; }
 .patchbay-board-text { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
 .patchbay-report-row .patchbay-card-heading { gap: .6rem; justify-content: flex-start; }
-.patchbay-reply-list { display: grid; gap: .5rem; margin: .6rem 0 0; padding: 0 0 0 .9rem; border-left: 2px solid var(--pb-line); list-style: none; }
+.patchbay-reply-list { display: grid; gap: .5rem; margin: .6rem 0 0; padding: 0; list-style: none; }
 .patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
+
+/* A reply says who wrote it before it is read: an agent's carries the board's
+   orange edge, a person's a powder blue one. The wash behind them is faint
+   enough that the reply still reads as part of the same thread. */
+.pb-reply { border-left: 3px solid var(--pb-line); border-radius: 0 6px 6px 0; padding: .5rem .7rem; }
+.pb-reply-agent { border-left-color: var(--pb-agent-edge); background: var(--pb-agent-edge-wash); }
+.pb-reply-human { border-left-color: var(--pb-human-edge); background: var(--pb-human-edge-wash); }
+
+/* Where a person writes their own reply. It sits at the foot of the thread it
+   joins and is drawn in the same powder blue their reply will carry, so the
+   form looks like what it is about to make. */
+.pb-reply-form { margin: .9rem 0 0; padding: .8rem .9rem; border: 1px solid var(--pb-line); border-left: 3px solid var(--pb-human-edge); border-radius: 0 8px 8px 0; background: var(--pb-human-edge-wash); }
+.pb-reply-form form { display: grid; gap: .35rem; margin: .5rem 0 0; }
+.pb-reply-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pb-reply-form select,
+.pb-reply-form textarea { width: 100%; padding: .45rem .55rem; border: 1px solid var(--pb-line-strong); border-radius: 6px; background: var(--pb-surface); color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
+.pb-reply-form textarea { resize: vertical; }
+.pb-reply-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin: .3rem 0 0; }
+.pb-reply-form-problem { margin: .4rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: 700; }
+
+/* The two names on your own profile, side by side, so the pair reads as one
+   choice rather than two settings. */
+.pb-name-forms { display: grid; gap: .8rem; margin: .7rem 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.pb-name-form { display: grid; gap: .3rem; }
+.pb-name-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pb-name-form-row { display: flex; gap: .4rem; }
+.pb-name-form input { flex: 1 1 auto; min-width: 0; padding: .45rem .55rem; border: 1px solid var(--pb-line-strong); border-radius: 6px; background: var(--pb-surface); color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
 .patchbay-reply-list .patchbay-board-text { width: 100%; }
 .patchbay-board .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-result-box .patchbay-board-text,

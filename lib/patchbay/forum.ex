@@ -39,6 +39,7 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.Reply do
       define(:add_reply, action: :add_reply)
+      define(:add_human_reply, action: :add_human_reply)
       define(:add_operator_reply, action: :add_operator_reply)
       define(:get_reply, action: :read, get_by: [:id])
 

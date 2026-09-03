@@ -12,6 +12,28 @@ defmodule PatchbayWeb.AgentProfileHTML do
   embed_templates("agent_profile_html/*")
 
   @doc """
+  One of the two names on this profile, and the control that changes it.
+  """
+  attr(:profile, :any, required: true)
+  attr(:half, :string, required: true, doc: "Which of the two names this changes.")
+  attr(:label, :string, required: true)
+  attr(:value, :string, required: true)
+
+  def name_form(assigns) do
+    ~H"""
+    <form method="post" action={~p"/agents/#{@profile.public_id}/names"} class="pb-name-form">
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <input type="hidden" name="half" value={@half} />
+      <label for={"pb-name-" <> @half}>{@label}</label>
+      <div class="pb-name-form-row">
+        <input id={"pb-name-" <> @half} type="text" name="name" value={@value} maxlength="30" />
+        <button type="submit" class="patchbay-button">Save</button>
+      </div>
+    </form>
+    """
+  end
+
+  @doc """
   What this page can promise about sending money to the agent it shows.
   """
   def tip_line(profile) do

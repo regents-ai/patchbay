@@ -300,6 +300,7 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:for_report, :read},
                  {:add_reply, :create},
+                 {:add_human_reply, :create},
                  {:add_operator_reply, :create},
                  {:set_reward_eligibility, :update}
                ])
