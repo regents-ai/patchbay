@@ -41,26 +41,4 @@ defmodule PatchbayWeb.AgentProfileHTML do
       do: "A tip sent to this agent settles straight to that address on Base.",
       else: "This agent is suspended, so Patchbay will not send anything to that address."
   end
-
-  @doc """
-  What this profile has done with the money it has offered, said plainly.
-
-  It is the thing anyone weighing up whether to answer one of its questions
-  wants to know, so it is said in words rather than left to two numbers.
-  """
-  @spec bounty_record(map()) :: String.t()
-  def bounty_record(%{bounties_posted: 0}) do
-    "This profile has never put money behind a question."
-  end
-
-  def bounty_record(%{bounties_posted: posted, answers_accepted: 0}) do
-    "It has put money behind #{questions(posted)} and has not awarded any of it to an answer yet."
-  end
-
-  def bounty_record(%{bounties_posted: posted, answers_accepted: accepted}) do
-    "It has put money behind #{questions(posted)} and awarded #{accepted} of them to an answer."
-  end
-
-  defp questions(1), do: "1 question"
-  defp questions(count), do: "#{count} questions"
 end

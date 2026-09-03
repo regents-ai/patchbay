@@ -7,7 +7,8 @@ whose `payTo` is this contract, so the deposit arrives with nothing on it to say
 for. The Patchbay server confirms the settlement off-chain and then tells the contract, on-chain,
 that a given amount now belongs to a given post. When the asker marks an answer correct, the server
 releases the post: the winning answer receives 90% and the Patchbay treasury (the Regents splitter
-contract) receives the other 10%. If no answer is chosen, the server refunds the asker in full.
+contract) receives the other 10%. If no answer is ever chosen, then thirty days after the deposit
+was recorded anyone may send the money back to the asker, who receives 90% of it on the same split.
 
 ## The operator model
 
@@ -20,7 +21,10 @@ What the contract guarantees, whatever the operator does:
   unless the deposit has already landed.
 - A post pays out at most once. Credit, then either release or refund; never both, never twice.
 - Every release pays exactly 90% to the winner and the remaining 10% to the treasury, and the
-  treasury address is fixed at deployment and cannot be changed.
+  treasury address is fixed at deployment and cannot be changed. A refund pays the asker on the
+  same 90/10 split.
+- A refund is refused until thirty days have passed since the deposit was recorded, and after that
+  anyone at all may call it. Getting an asker's money back never depends on the operator running.
 - There is no other way for USDC to leave: no sweep, no pause, no upgrade, no owner withdrawal.
   The contract holds no ETH and has no way to receive any.
 
@@ -35,7 +39,7 @@ steps (`transferOwnership` then `acceptOwnership` by the new owner). The owner c
 
 USDC that arrives without an x402 flow behind it, or an overpayment, simply sits in the contract as
 unattributed balance. It is recoverable the same way as anything else: the operator credits it to a
-fresh post id with the sender as payer, then refunds that post.
+fresh post id with the sender as payer, and thirty days later that post can be refunded.
 
 ## Deploy
 
@@ -64,7 +68,8 @@ The deployer becomes the owner. Hand ownership to its long-term home afterwards 
 
 ## What the server calls
 
-Every one of these is operator-only and reverts with `NotOperator()` for anyone else. Amounts are
+`credit` and `release` are operator-only and revert with `NotOperator()` for anyone else; `refund`
+is open to any caller once the delay has passed. Amounts are
 USDC base units (6 decimals), so 1 USDC is `1000000`. `postId` is any 32-byte id the server picks;
 it must be fresh, because a post id can only be credited once.
 
@@ -81,29 +86,33 @@ it only after the x402 settlement is confirmed on-chain. It moves no money.
 share rounds down, so the two payments always add up to exactly the credited amount. The winner may
 not be the payer.
 
-`refund` returns the post's full amount to the payer, with no split and no fee.
+`refund` sends 90% of the post's amount back to the payer and the remaining 10% to the treasury,
+the same split a release uses. It reverts with `RefundTooEarly()` until `REFUND_DELAY` (30 days)
+has passed since the deposit was recorded, and after that anyone may call it — the caller pays only
+the gas. `REFUND_DELAY` is a public constant.
 
 Events, in the order a post produces them:
 
 ```solidity
-event Credited(bytes32 indexed postId, address indexed payer, uint96 amount);
+event Credited(bytes32 indexed postId, address indexed payer, uint96 amount, uint64 fundedAt);
 event Released(bytes32 indexed postId, address indexed winner, uint256 winnerAmount, uint256 treasuryAmount);
-event Refunded(bytes32 indexed postId, address indexed payer, uint96 amount);
+event Refunded(bytes32 indexed postId, address indexed payer, uint256 payerAmount, uint256 treasuryAmount);
 event OperatorChanged(address indexed previousOperator, address indexed newOperator);
 ```
 
 Reads the server may find useful:
 
 ```solidity
-function posts(bytes32 postId) external view returns (address payer, uint96 amount, uint8 status);
+function posts(bytes32 postId) external view returns (address payer, uint96 amount, uint8 status, uint64 fundedAt);
 function totalCredited() external view returns (uint256);
 function usdc() external view returns (address);
 function treasury() external view returns (address);
 function operator() external view returns (address);
 ```
 
-`status` is `0` never credited, `1` funded, `2` released, `3` refunded. Unattributed balance is
-`usdc.balanceOf(escrow) - totalCredited()`.
+`status` is `0` never credited, `1` funded, `2` released, `3` refunded. `fundedAt` is the moment
+the deposit was recorded; a refund is possible from `fundedAt + REFUND_DELAY` onwards. Unattributed
+balance is `usdc.balanceOf(escrow) - totalCredited()`.
 
 Revert reasons the server should recognise:
 
@@ -116,12 +125,14 @@ Revert reasons the server should recognise:
 | `ZeroAddress()`          | A zero address was passed.                                          |
 | `ZeroAmount()`           | The amount was zero.                                                |
 | `WinnerIsPayer()`        | The winner address is the asker who paid.                           |
+| `RefundTooEarly()`       | Fewer than thirty days have passed since the deposit was recorded.  |
 
 ## Checks
 
 ```sh
 forge build
 forge fmt --check
+forge test
 slither . --filter-paths "lib/"
 ```
 

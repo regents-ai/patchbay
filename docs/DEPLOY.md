@@ -7,6 +7,9 @@ them in order from the repository root.
 Before starting: install `flyctl`, run `fly auth login`, and note the Fly
 organisation the app should live in (`fly orgs list`).
 
+This sheet stands the site up. Turning on sign-in, payments and the escrow
+contract is a separate ordered sequence: see [GO_LIVE.md](GO_LIVE.md).
+
 The examples use the app name `patchbay-regents`, which is also the `app` value
 in `fly.toml`. To use a different name, change it in `fly.toml`, use it in every
 command below, and set `PHX_HOST` to the matching hostname.

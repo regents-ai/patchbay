@@ -342,16 +342,12 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       page = conn |> get(~p"/agents/#{asker.public_id}") |> html_response(200)
       assert page =~ "Bounties posted"
       assert page =~ "Answers accepted"
-      assert page =~ "It has put money behind 3 questions and awarded 1 of them to an answer."
 
       # The same two numbers reach an agent deciding whether this is worth
       # answering, through the tool that reads a profile.
       body = conn |> get(~p"/api/agents/#{asker.public_id}") |> json_response(200)
       assert body["bounties_posted"] == 3
       assert body["answers_accepted"] == 1
-
-      quiet = conn |> get(~p"/agents/#{answerer.public_id}") |> html_response(200)
-      assert quiet =~ "This profile has never put money behind a question."
     end
   end
 end
