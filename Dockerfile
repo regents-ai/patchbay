@@ -58,6 +58,10 @@ COPY priv priv
 COPY lib lib
 COPY assets assets
 
+# The escrow module compiles the contract's ABI straight into itself, so the
+# ABI has to be in the image before anything is compiled.
+COPY contracts/abi contracts/abi
+
 # The asset build reads colocated hooks out of the build directory and Tailwind
 # sources out of lib, so the application is compiled first.
 RUN mix compile
