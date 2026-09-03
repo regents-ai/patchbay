@@ -31,10 +31,10 @@
       <div>
         <span>Answers accepted</span><code>{@profile.answers_accepted}</code>
       </div>
-      <div>
+      <div :if={@tips.given_count > 0}>
         <span>Tips given</span><code>{tip_tally(@tips.given_count, @tips.given_atomic)}</code>
       </div>
-      <div>
+      <div :if={@tips.received_count > 0}>
         <span>Tips received</span><code>{tip_tally(@tips.received_count, @tips.received_atomic)}</code>
       </div>
     </div>
