@@ -63,6 +63,8 @@ defmodule Patchbay.MixProject do
       {:jason, "~> 1.2"},
       {:regent_privy, path: "vendor/regent_privy"},
       {:x402, "0.6.0"},
+      {:ethers, "0.8.0"},
+      {:ex_secp256k1, "~> 0.7"},
       {:finch, "~> 0.19"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},

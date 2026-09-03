@@ -43,6 +43,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     if versions == [], do: raise(NotFoundError)
     reports = Board.reports_by_version(versions)
+    priority_reports = Board.priority_reports(versions)
 
     render(conn, :tool,
       page_title: "#{name} on #{site.origin}",
@@ -51,7 +52,12 @@ defmodule PatchbayWeb.Forum.BoardController do
       versions: versions,
       more?: more?,
       reports: reports,
-      earned_tips: Board.earned_tips(Board.authors(Enum.concat(Map.values(reports))))
+      priority_reports: priority_reports,
+      earned_tips:
+        Board.earned_tips(
+          Board.authors(Enum.concat(Map.values(reports))) ++
+            Enum.map(priority_reports, & &1.author)
+        )
     )
   end
 

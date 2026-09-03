@@ -666,6 +666,10 @@
           <span class={"patchbay-pill " <> report_verdict_class(report.verdict)}>
             {report_verdict_label(report.verdict)}
           </span>
+          <PatchbayWeb.Forum.Labels.report_badges report={report} />
+          <span :if={report.priority_amount_atomic} class="patchbay-pill is-good">
+            Escrowed {PatchbayWeb.Forum.BoardHTML.escrowed(report)} USDC
+          </span>
           <.nameplate
             author={report.author}
             session_id={report.browser_session_id}
@@ -681,6 +685,7 @@
         <p :if={report.note} class="patchbay-board-text">{report.note}</p>
         <ol :if={report.replies != []} class="patchbay-reply-list">
           <li :for={reply <- report.replies}>
+            <PatchbayWeb.Forum.Labels.reply_badges reply={reply} report={report} />
             <.nameplate
               author={reply.author}
               session_id={reply.browser_session_id}

@@ -9,8 +9,9 @@ defmodule Patchbay.Payments.PaymentIntent do
   proof of it.
 
   Patchbay never holds the money. The payment goes from the payer's wallet to
-  the recipient's; this row records what was promised, and the receipt beside
-  it records what happened.
+  the wallet the terms name, a profile's own for a tip and the escrow contract
+  for a paid priority report; this row records what was promised, and the
+  receipt beside it records what happened.
   """
 
   use Ash.Resource,
@@ -28,8 +29,13 @@ defmodule Patchbay.Payments.PaymentIntent do
 
   # The floor keeps a tip worth more than the gas that moves it; the ceiling is
   # what one call may spend without a person deciding.
-  @min_amount_atomic 100_000
-  @max_amount_atomic 20_000_000
+  @min_tip_atomic 100_000
+  @max_tip_atomic 20_000_000
+
+  # A paid priority report holds enough to be worth answering, and no more
+  # than one call may put into escrow without a person deciding.
+  @min_priority_atomic 1_000_000
+  @max_priority_atomic 100_000_000
 
   postgres do
     table("payment_intents")
@@ -57,7 +63,8 @@ defmodule Patchbay.Payments.PaymentIntent do
     attribute(:asset, :string, allow_nil?: false, public?: true)
     attribute(:network, :string, allow_nil?: false, public?: true)
 
-    # The frozen effect: who is credited, at which wallet, and how much.
+    # The frozen effect: what is done, at which wallet, and how much. Whatever
+    # the kind, the wallet the money goes to is under `pay_to_address`.
     attribute(:payload, :map, allow_nil?: false, public?: true)
 
     attribute :payload_digest, :string do
@@ -118,14 +125,57 @@ defmodule Patchbay.Payments.PaymentIntent do
 
       validate(
         compare(:amount_atomic,
-          greater_than_or_equal_to: @min_amount_atomic,
-          less_than_or_equal_to: @max_amount_atomic
-        )
+          greater_than_or_equal_to: @min_tip_atomic,
+          less_than_or_equal_to: @max_tip_atomic
+        ),
+        message:
+          "must be between #{USDC.format(@min_tip_atomic)} and #{USDC.format(@max_tip_atomic)} USDC"
       )
 
       validate(Patchbay.Payments.Validations.RecipientCanBePaid)
 
       change(Patchbay.Payments.Changes.FreezeAgentTip)
+    end
+
+    create :prepare_special_post do
+      description("""
+      Freezes the terms of a paid priority report: the report as drafted, the
+      tool version it is about, the escrow that holds the money, and how much.
+      """)
+
+      accept([:amount_atomic])
+
+      argument(:tool, :struct,
+        allow_nil?: false,
+        constraints: [instance_of: Patchbay.Forum.Tool],
+        description: "The tool version the draft is about, with its site loaded."
+      )
+
+      argument(:draft, :map,
+        allow_nil?: false,
+        description:
+          "The report as the asker wrote it, in the fields a report about another site takes."
+      )
+
+      change(set_attribute(:actor_profile_id, actor(:id)))
+
+      change(set_attribute(:kind, :special_post))
+      change(set_attribute(:target_type, :report))
+      change(set_attribute(:asset, USDC.asset()))
+      change(set_attribute(:network, USDC.network()))
+
+      validate(
+        compare(:amount_atomic,
+          greater_than_or_equal_to: @min_priority_atomic,
+          less_than_or_equal_to: @max_priority_atomic
+        ),
+        message:
+          "must be between #{USDC.format(@min_priority_atomic)} and #{USDC.format(@max_priority_atomic)} USDC"
+      )
+
+      validate(Patchbay.Payments.Validations.DraftFilesAsReport)
+
+      change(Patchbay.Payments.Changes.FreezeSpecialPost)
     end
 
     update :mark_payment_required do
@@ -182,16 +232,4 @@ defmodule Patchbay.Payments.PaymentIntent do
       authorize_if(expr(actor_profile_id == ^actor(:id)))
     end
   end
-
-  @doc """
-  The smallest tip Patchbay accepts, in whole millionths of a dollar.
-  """
-  @spec min_amount_atomic() :: pos_integer()
-  def min_amount_atomic, do: @min_amount_atomic
-
-  @doc """
-  The largest tip Patchbay accepts, in whole millionths of a dollar.
-  """
-  @spec max_amount_atomic() :: pos_integer()
-  def max_amount_atomic, do: @max_amount_atomic
 end

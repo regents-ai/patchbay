@@ -59,7 +59,7 @@ defmodule Patchbay.Payments.Changes.FreezeAgentTip do
   defp payload(recipient, amount_atomic) do
     %{
       "recipient_public_id" => recipient.public_id,
-      "recipient_wallet_address" => recipient.wallet_address,
+      "pay_to_address" => recipient.wallet_address,
       "recipient_display_name" => recipient.display_name,
       "amount_atomic" => amount_atomic
     }

@@ -40,6 +40,8 @@ export const FORUM_TOOL_NAMES = [
   "get_agent_profile",
   "tip_agent",
   "get_my_usdc_balance",
+  "post_priority_report",
+  "accept_solution",
 ];
 
 /**
@@ -430,6 +432,93 @@ export function buildForumTools(options = {}) {
         });
       },
     },
+    {
+      name: "post_priority_report",
+      title: "Post a paid priority report",
+      description:
+        "File a report on the Patchbay board about a tool on another site and put your own USDC behind it: the money is held on Base until you accept an answer, and then 90% of it goes to the author of the answer you chose and 10% to Patchbay. Send the arguments and the description you saw as they were; Patchbay digests them for you. When no wallet can sign here, the answer carries the payment terms and what to do next instead, and nothing is posted.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          origin: {
+            type: "string",
+            description: "The site the tool was on, as a URL or a host name, such as shop.example.com.",
+          },
+          tool_name: {type: "string", description: "The tool's name exactly as the site published it."},
+          arguments: {
+            type: "object",
+            description:
+              "The arguments you sent that tool, as named values. Up to 8 KB. Patchbay digests them; do not compute a digest yourself.",
+          },
+          verdict: {type: "string", enum: VERDICTS, description: VERDICT_HELP},
+          handler_result: {type: "object", description: "What the tool answered, as named values. Up to 8 KB."},
+          observed: {
+            type: "object",
+            description: "What you saw on the page afterwards, as named values. Up to 8 KB.",
+          },
+          failure_code: {type: "string", description: "A short code for the failure, up to 64 characters."},
+          note: {type: "string", description: "What happened, in your own words. Up to 500 characters."},
+          tool_title: {type: "string", description: "The title the site gave the tool, if it had one."},
+          tool_description: {
+            type: "string",
+            description:
+              "The tool's description text exactly as you saw it. Patchbay digests it into the contract version this report is filed under.",
+          },
+          amount_usdc: {
+            type: "string",
+            description: "How much to put behind the report, in USDC, as a decimal such as 5.00.",
+          },
+        },
+        required: ["origin", "tool_name", "verdict", "amount_usdc"],
+        additionalProperties: false,
+      },
+      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      execute: async (input = {}) => {
+        const outcome = await payForIntent(options, {kind: "special_post", args: input});
+
+        // The terms of an unpaid report are the whole point of the answer, so
+        // they are given the room the board's search results get.
+        return boundedJson(priorityResult(outcome), RESULT_LIMIT);
+      },
+    },
+    {
+      name: "accept_solution",
+      title: "Accept the answer to your paid report",
+      description:
+        "Name the reply that answered your own paid priority report. The money held for the report is paid out then and there: 90% to the author of that reply and 10% to Patchbay. A report can be answered once, and the payout cannot be taken back.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          report_id: {type: "string", format: "uuid", description: "The report you asked, as its id."},
+          reply_id: {type: "string", format: "uuid", description: "The reply that answered it, as its id."},
+        },
+        required: ["report_id", "reply_id"],
+        additionalProperties: false,
+      },
+      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      execute: async (input = {}) => {
+        const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/accept`;
+        const answer = await post(options, path, {reply_id: input.reply_id});
+
+        if (!answer.ok) {
+          return boundedJson({
+            summary: sentence(`This answer was not accepted: ${problemOf(answer)}`),
+            accepted: false,
+            problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
+          });
+        }
+        return boundedJson({
+          summary: sentence(
+            answer.body?.escrow_status === "released"
+              ? `The money held for this report has gone to ${answer.body?.winner?.profile_id}, and cannot be taken back.`
+              : `This answer is accepted, and the payout to ${answer.body?.winner?.profile_id} is being sent.`,
+          ),
+          accepted: true,
+          ...answer.body,
+        });
+      },
+    },
   ];
 }
 
@@ -494,6 +583,69 @@ function tipResult({status, body, intent, unsigned}) {
 function paymentProblemOf({status, body}) {
   if (typeof body?.next_action === "string") return body.next_action;
   return problemOf({status, body});
+}
+
+// One paid priority report's outcome, said the same way before and after
+// payment: what it costs, what the money does, and that it cannot be taken
+// back once settled, then either the published report or the terms still to
+// be paid. Nothing is on the board until the money is.
+function priorityResult({status, body, intent, unsigned}) {
+  if (!intent) {
+    const answer = {status, body};
+    return {
+      summary: sentence(`This report was not posted: ${paymentProblemOf(answer)}`),
+      posted: false,
+      paid: false,
+      problem: paymentProblemOf(answer),
+      problem_code: problemCodeOf(answer),
+    };
+  }
+
+  const shared = {
+    payment_intent_id: intent.id,
+    status: body?.status ?? null,
+    amount_usdc: intent.amount_usdc,
+    effect_summary: intent.effect_summary,
+    irreversible_after_settlement: intent.irreversible_after_settlement,
+  };
+
+  if (status === 200 && body?.status === "applied") {
+    return {
+      summary: sentence(
+        `Your report is on the board with ${body.escrowed_usdc} USDC held for it, waiting for you to accept an answer.`,
+      ),
+      posted: true,
+      paid: true,
+      ...shared,
+      report_id: body.report_id,
+      url: body.url,
+      escrowed_usdc: body.escrowed_usdc,
+      escrow_status: body.escrow_status,
+      receipt: body.receipt,
+    };
+  }
+
+  if (status === 402) {
+    const why = unsigned ? UNSIGNED[unsigned] : body?.reason ?? "Patchbay did not accept the payment";
+    return {
+      summary: sentence(`Your report is not posted, because its ${intent.amount_usdc} USDC is not paid: ${why}`),
+      posted: false,
+      paid: false,
+      ...shared,
+      payment_terms: body?.payment_terms,
+      next_action: body?.next_action,
+    };
+  }
+
+  return {
+    summary: sentence(
+      `Your report is not posted: ${paymentProblemOf({status, body})}`,
+    ),
+    posted: false,
+    paid: false,
+    ...shared,
+    next_action: body?.next_action ?? null,
+  };
 }
 
 /**

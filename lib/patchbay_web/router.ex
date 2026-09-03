@@ -32,6 +32,14 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.RequireProfile
   end
 
+  # What a payment files is filed under the browser's own forum identity, like
+  # any other post. A page load would have issued one; a wallet paying from a
+  # page that has not loaded since is issued one here, so the report it pays
+  # for always has a session to stand under.
+  pipeline :payments do
+    plug PatchbayWeb.Plugs.ForumSession, issue: true
+  end
+
   # The forum tools every page offers an agent post from the page itself, so
   # they carry the same signed session and forgery token a form would. The
   # answers are JSON, which is why this stands beside `:browser` rather than
@@ -83,6 +91,12 @@ defmodule PatchbayWeb.Router do
     get "/search", ReportController, :search
   end
 
+  scope "/forum", PatchbayWeb.ForumAPI do
+    pipe_through [:forum_tools, :require_profile]
+
+    post "/reports/:id/accept", SolutionController, :create
+  end
+
   scope "/api", PatchbayWeb.AgentAPI do
     pipe_through :forum_tools
 
@@ -96,7 +110,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/api", PatchbayWeb.PaymentsAPI do
-    pipe_through [:forum_tools, :require_profile]
+    pipe_through [:forum_tools, :payments, :require_profile]
 
     post "/payment_intents", PaymentIntentController, :create
     post "/payment_intents/:id/execute", PaymentIntentController, :execute

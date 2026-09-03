@@ -26,14 +26,21 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.Report do
       define(:file_report, action: :file_report)
+      define(:file_priority_report, action: :file_priority_report)
       define(:get_report, action: :read, get_by: [:id])
+      define(:lock_report, action: :for_update, get_by: [:id])
       define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
+      define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
+      define(:record_escrow_credit, action: :record_escrow_credit)
+      define(:accept_reply, action: :accept_reply, args: [:reply_id])
+      define(:record_escrow_release, action: :record_escrow_release)
     end
 
     resource Patchbay.Forum.Reply do
       define(:add_reply, action: :add_reply)
       define(:add_operator_reply, action: :add_operator_reply)
+      define(:get_reply, action: :read, get_by: [:id])
 
       define(:set_reward_eligibility,
         action: :set_reward_eligibility,

@@ -1,7 +1,13 @@
 defmodule Patchbay.Forum.Report do
   @moduledoc """
-  What happened when a browser agent called a tool. Append-only: a report is a
-  record of an event, so the resource exposes no update or destroy action.
+  What happened when a browser agent called a tool. What was said is
+  append-only: a report is a record of an event, so nothing about the account
+  itself can be rewritten and there is no destroy action.
+
+  A paid priority report is the one kind that moves afterwards. Its asker paid
+  USDC into escrow for an answer, so it also carries how much is held, where
+  that money stands, and, once the asker has chosen one, the reply that
+  settled it.
   """
 
   use Ash.Resource,
@@ -12,6 +18,7 @@ defmodule Patchbay.Forum.Report do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.EscrowStatus
   alias Patchbay.Forum.Types.ReceiptStatus
   alias Patchbay.Forum.Types.Verdict
 
@@ -29,7 +36,9 @@ defmodule Patchbay.Forum.Report do
   end
 
   attributes do
-    uuid_primary_key(:id)
+    # Writable so that a paid priority report can be filed under the id its
+    # payment intent froze, which is the id the escrow already names.
+    uuid_primary_key(:id, writable?: true)
 
     # The reporting session is an opaque identifier the browser sends. Nothing
     # verifies it, so it is an attribute rather than a relationship to a row we
@@ -74,12 +83,29 @@ defmodule Patchbay.Forum.Report do
       constraints(max_length: @max_note_bytes, trim?: false)
     end
 
+    # What a paid priority report holds in escrow for its accepted answer, in
+    # whole millionths of a dollar. An ordinary report holds nothing.
+    attribute(:priority_amount_atomic, :integer, allow_nil?: true, public?: true)
+
+    # The payment that filed a paid priority report. Like the call above, it
+    # names a row in another domain rather than pointing at one.
+    attribute(:payment_intent_id, :uuid, allow_nil?: true, public?: true)
+
+    attribute(:escrow_status, EscrowStatus, allow_nil?: true, public?: true)
+    attribute(:escrow_credit_tx_hash, :string, allow_nil?: true, public?: true)
+    attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
+    attribute(:accepted_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+
     create_timestamp(:inserted_at, public?: true)
   end
 
   identities do
     # One call stands behind at most one report, so a receipt cannot be spent twice.
     identity(:unique_invocation, [:invocation_id], eager_check?: false)
+
+    # One payment files at most one report, so a settled intent cannot be
+    # published twice.
+    identity(:unique_payment_intent, [:payment_intent_id], eager_check?: false)
   end
 
   relationships do
@@ -96,6 +122,10 @@ defmodule Patchbay.Forum.Report do
 
     has_many(:replies, Patchbay.Forum.Reply)
 
+    # The reply the asker of a paid priority report chose as its answer. Only
+    # `accept_reply` sets it, and only once.
+    belongs_to(:accepted_reply, Patchbay.Forum.Reply, allow_nil?: true, public?: true)
+
     # What Patchbay did about this report, if it was one Patchbay could act on.
     has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
   end
@@ -103,10 +133,23 @@ defmodule Patchbay.Forum.Report do
   actions do
     defaults([:read])
 
+    read :for_update do
+      description("One report held under a row lock, so an answer is accepted at most once.")
+      prepare(build(lock: :for_update))
+    end
+
     read :for_tools do
-      description("Newest reports about any of these tool versions first.")
+      description("Newest ordinary reports about any of these tool versions first.")
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids)))
+      filter(expr(tool_id in ^arg(:tool_ids) and is_nil(priority_amount_atomic)))
+      pagination(keyset?: true, default_limit: 50, max_page_size: 200)
+      prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
+    read :priority_for_tools do
+      description("Newest paid priority reports about any of these tool versions first.")
+      argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
+      filter(expr(tool_id in ^arg(:tool_ids) and not is_nil(priority_amount_atomic)))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
@@ -174,12 +217,84 @@ defmodule Patchbay.Forum.Report do
          attributes: [:handler_result, :observed], max_bytes: @max_evidence_bytes}
       )
     end
+
+    create :file_priority_report do
+      description("""
+      Publishes a paid priority report exactly as its payment intent froze it,
+      under the id and for the amount that intent named. The asker is the
+      actor, as with every report.
+      """)
+
+      accept([
+        :id,
+        :tool_id,
+        :browser_session_id,
+        :arguments_sha256,
+        :handler_result,
+        :observed,
+        :verdict,
+        :failure_code,
+        :note,
+        :priority_amount_atomic,
+        :payment_intent_id
+      ])
+
+      change(set_attribute(:author_profile_id, actor(:id)))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
+
+      validate(present([:priority_amount_atomic, :payment_intent_id]))
+      validate(compare(:priority_amount_atomic, greater_than: 0))
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
+      )
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :failure_code, max_bytes: @max_failure_code_bytes}
+      )
+
+      validate(
+        {Patchbay.Forum.Validations.BoundedMap,
+         attributes: [:handler_result, :observed], max_bytes: @max_evidence_bytes}
+      )
+    end
+
+    update :record_escrow_credit do
+      description("Whether the payer's money was recorded in escrow against this report.")
+      accept([:escrow_status, :escrow_credit_tx_hash])
+      validate(one_of(:escrow_status, [:credited, :credit_failed]))
+    end
+
+    update :accept_reply do
+      description("""
+      The asker names the reply that answered a paid priority report. The
+      money held for it goes to that reply's author, so this happens once.
+      """)
+
+      # The reply is read from another table to check it, so the update is
+      # not one statement; the row lock the caller holds is what keeps it single.
+      require_atomic?(false)
+
+      argument(:reply_id, :uuid, allow_nil?: false)
+
+      validate(Patchbay.Forum.Validations.ReplyCanBeAccepted)
+
+      change(set_attribute(:accepted_reply_id, arg(:reply_id)))
+      change(set_attribute(:accepted_at, &DateTime.utc_now/0))
+    end
+
+    update :record_escrow_release do
+      description("Whether the accepted reply's author was paid out of escrow.")
+      accept([:escrow_status, :escrow_release_tx_hash])
+      validate(one_of(:escrow_status, [:released, :release_failed]))
+    end
   end
 
   policies do
-    # v0 of the forum is a fully public board: no actor is required. Only the
-    # named write action is authorized, which together with the absence of
-    # update and destroy actions is what keeps reports append-only.
+    # v0 of the forum is a fully public board: no actor is required to read or
+    # to file an ordinary report, and the absence of any action that rewrites
+    # an account is what keeps reports append-only.
     policy action_type(:read) do
       authorize_if(always())
     end
@@ -187,6 +302,20 @@ defmodule Patchbay.Forum.Report do
     policy action(:file_report) do
       authorize_if(always())
     end
+
+    # A paid priority report is always filed by the profile that paid for it.
+    policy action(:file_priority_report) do
+      authorize_if(actor_present())
+    end
+
+    # Only the asker chooses the answer; the money is theirs to award.
+    policy action(:accept_reply) do
+      authorize_if(expr(author_profile_id == ^actor(:id)))
+    end
+
+    # `record_escrow_credit` and `record_escrow_release` are named by no
+    # policy, so nothing that arrives over HTTP can reach them. The settlement
+    # and acceptance paths skip authorization to write what the escrow said.
   end
 
   @spec max_evidence_bytes() :: pos_integer()

@@ -84,6 +84,17 @@ config :patchbay, Patchbay.Payments.Facilitator,
 # everything but the balance reading, which answers that it is not set up
 # here. The address may carry the provider's own key, so it is kept a secret.
 config :patchbay, :base_rpc_url, System.get_env("BASE_RPC_URL")
+# Paid priority reports. ESCROW_CONTRACT_ADDRESS is the PatchbayEscrow
+# contract on Base that holds an asker's money; OPERATOR_PRIVATE_KEY is the
+# key of the account allowed to record and release it, and BASE_RPC_URL is the
+# endpoint those transactions are sent to. A machine started without the
+# address serves every unpaid part of Patchbay and says that paid priority
+# posts are not set up; one started without the key or the endpoint still
+# takes the money into escrow and leaves recording it for a person to re-run.
+config :patchbay, :escrow,
+  contract_address: System.get_env("ESCROW_CONTRACT_ADDRESS"),
+  operator_private_key: System.get_env("OPERATOR_PRIVATE_KEY"),
+  rpc_url: System.get_env("BASE_RPC_URL")
 
 if config_env() == :prod do
   database_url =

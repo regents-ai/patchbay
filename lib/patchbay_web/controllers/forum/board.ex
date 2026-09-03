@@ -32,6 +32,7 @@ defmodule PatchbayWeb.Forum.Board do
   @sites 200
   @site_versions 200
   @tool_versions 25
+  @priority_reports 20
   @reports_per_version 10
   @replies_per_report 10
   @replies_per_page 100
@@ -265,5 +266,21 @@ defmodule PatchbayWeb.Forum.Board do
         {:ok, earned} = Payments.earned_usdc_atomic_by_profile(ids)
         Map.new(earned, fn {id, atomic} -> {id, USDC.format(atomic)} end)
     end
+  end
+
+  @doc """
+  The paid priority reports about any version of one tool, newest first: the
+  ones an asker has put money behind, listed on their own so a reader can see
+  what is worth answering.
+  """
+  @spec priority_reports([Tool.t()]) :: [Report.t()]
+  def priority_reports(versions) do
+    versions
+    |> Enum.map(& &1.id)
+    |> Forum.list_priority_reports_for_tools!(
+      load: [:author, tool: [:site]],
+      page: [limit: @priority_reports]
+    )
+    |> Map.fetch!(:results)
   end
 end

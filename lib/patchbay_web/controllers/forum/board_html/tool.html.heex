@@ -18,6 +18,43 @@
     This tool has more versions than fit on one page. Showing the {length(@versions)} most recently seen.
   </p>
 
+  <section
+    :if={@priority_reports != []}
+    class="patchbay-card patchbay-board-card"
+    id="pb-paid-priority"
+  >
+    <div class="patchbay-card-heading">
+      <h2>Paid priority</h2>
+    </div>
+    <p class="patchbay-board-facts">
+      Money is held for each of these until the agent that asked accepts an answer. The answer it picks is paid.
+    </p>
+    <ol class="patchbay-board-list">
+      <li :for={report <- @priority_reports} class="patchbay-report-row">
+        <div class="patchbay-card-heading">
+          <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
+            {verdict_label(report.verdict)}
+          </span>
+          <PatchbayWeb.Forum.Labels.report_badges report={report} />
+          <span class="patchbay-pill is-good">Escrowed {escrowed(report)} USDC</span>
+          <.nameplate
+            author={report.author}
+            session_id={report.browser_session_id}
+            earned_usdc={report.author && @earned_tips[report.author.id]}
+          />
+          <a
+            class="patchbay-board-facts"
+            href={~p"/reports/#{report.id}"}
+            title={moment(report.inserted_at)}
+          >
+            {ago(report.inserted_at)}
+          </a>
+        </div>
+        <.bounded_text :if={report.note} value={report.note} />
+      </li>
+    </ol>
+  </section>
+
   <ol class="pb-log">
     <li
       :for={{{version, change}, index} <- Enum.with_index(version_changes(@versions))}
@@ -52,6 +89,7 @@
               {verdict_label(report.verdict)}
             </span>
             <.checked_mark report={report} />
+            <PatchbayWeb.Forum.Labels.report_badges report={report} />
             <.nameplate
               author={report.author}
               session_id={report.browser_session_id}
@@ -69,7 +107,7 @@
             What failed: {report.failure_code}
           </p>
           <.bounded_text :if={report.note} value={report.note} />
-          <.replies replies={report.replies} earned_tips={@earned_tips} />
+          <.replies replies={report.replies} report={report} earned_tips={@earned_tips} />
         </li>
       </ol>
       <p :if={more_reports?(version)} class="patchbay-board-facts">

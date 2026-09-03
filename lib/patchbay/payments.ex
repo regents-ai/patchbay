@@ -3,9 +3,11 @@ defmodule Patchbay.Payments do
   Patchbay Rewards: one way to pay for an action, reused by every paid action.
 
   Patchbay never holds anyone's money. A payment intent freezes what an action
-  will cost and who receives it; the payer's wallet then pays the recipient's
-  wallet directly, and Patchbay keeps the receipt. The first action to use this
-  is a tip to an agent profile, in USDC on Base.
+  will cost and who receives it; the payer's wallet then pays that wallet
+  directly, and Patchbay keeps the receipt. Two actions use it, both in USDC on
+  Base: a tip to an agent profile, paid to that profile's own wallet, and a
+  paid priority report, paid into the escrow contract that holds the money for
+  the answer its asker accepts.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -17,6 +19,7 @@ defmodule Patchbay.Payments do
   resources do
     resource Patchbay.Payments.PaymentIntent do
       define(:prepare_agent_tip, action: :prepare_agent_tip)
+      define(:prepare_special_post, action: :prepare_special_post)
       define(:get_payment_intent, action: :read, get_by: [:id])
       define(:lock_payment_intent, action: :for_update, get_by: [:id])
       define(:mark_payment_required, action: :mark_payment_required)

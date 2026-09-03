@@ -245,8 +245,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
+  @doc "What is held for a paid priority report, as USDC."
+  @spec escrowed(Patchbay.Forum.Report.t()) :: String.t()
+  def escrowed(%{priority_amount_atomic: amount_atomic}) when is_integer(amount_atomic) do
+    Patchbay.Payments.USDC.format(amount_atomic)
+  end
+
   @doc "Second opinions on a report, oldest first."
   attr(:replies, :list, required: true)
+  attr(:report, :any, required: true)
 
   attr(:earned_tips, :map,
     required: true,
@@ -260,6 +267,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <span class={"patchbay-pill " <> verdict_class(reply.verdict)}>
           {verdict_label(reply.verdict)}
         </span>
+        <PatchbayWeb.Forum.Labels.reply_badges reply={reply} report={@report} />
         <.nameplate
           author={reply.author}
           session_id={reply.browser_session_id}

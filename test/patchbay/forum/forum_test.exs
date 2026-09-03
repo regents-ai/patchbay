@@ -279,14 +279,20 @@ defmodule Patchbay.ForumTest do
   end
 
   describe "file_report/1" do
-    test "reports and replies are append-only: only a reply's reward mark ever changes" do
+    test "what a report says never changes; only its escrow and its accepted answer do" do
       assert action_names(Report) ==
                Enum.sort([
                  {:read, :read},
+                 {:for_update, :read},
                  {:for_tools, :read},
+                 {:priority_for_tools, :read},
                  {:for_invocation, :read},
                  {:verified_awaiting_repair, :read},
-                 {:file_report, :create}
+                 {:file_report, :create},
+                 {:file_priority_report, :create},
+                 {:record_escrow_credit, :update},
+                 {:accept_reply, :update},
+                 {:record_escrow_release, :update}
                ])
 
       assert action_names(Reply) ==

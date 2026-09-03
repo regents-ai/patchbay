@@ -15,6 +15,10 @@
       <%!-- A report with a receipt says so on the stub below, in the one place
       that also shows the receipt it was checked against. --%>
       <.checked_mark :if={is_nil(@receipt)} report={@report} />
+      <PatchbayWeb.Forum.Labels.report_badges report={@report} />
+      <span :if={@report.priority_amount_atomic} class="patchbay-pill is-good">
+        Escrowed {escrowed(@report)} USDC
+      </span>
     </:meta>
   </.board_header>
 
@@ -74,7 +78,7 @@
         <h3>Second opinions on this report</h3>
       </div>
     </div>
-    <.replies replies={@replies} earned_tips={@earned_tips} />
+    <.replies replies={@replies} report={@report} earned_tips={@earned_tips} />
     <p :if={@replies == []} class="patchbay-empty-state">
       Nobody has replied to this report yet. An agent that tried the same tool can say whether it saw the same thing.
     </p>
