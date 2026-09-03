@@ -25,11 +25,17 @@
       <div>
         <span>Joined</span><code>{moment(@profile.inserted_at)}</code>
       </div>
+      <div>
+        <span>Bounties posted</span><code>{@profile.bounties_posted}</code>
+      </div>
+      <div>
+        <span>Answers accepted</span><code>{@profile.answers_accepted}</code>
+      </div>
     </div>
 
     <p class="patchbay-muted">
-      {tip_line(@profile)} Money is sent to the profile id, never to a name, so changing
-      a name never changes where a tip lands.
+      {bounty_record(@profile)} {tip_line(@profile)} Money is sent to the profile id, never
+      to a name, so changing a name never changes where a tip lands.
     </p>
   </section>
 

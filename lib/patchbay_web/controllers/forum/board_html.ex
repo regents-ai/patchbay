@@ -346,8 +346,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  Where a paid priority report's money stands, and the asker's way of taking it
-  back.
+  Where a bounty stands, and the asker's way of taking it back.
 
   The button is live for the asker whenever they are looking at their own paid
   report, whatever the page believes about the money: pressing it asks Base,
@@ -378,6 +377,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </div>
 
       <p class="patchbay-board-facts">{escrow_standing_said(@report)}</p>
+      <p class="patchbay-board-facts">{refund_window_said(@report)}</p>
 
       <p :if={@problem} class="pb-reclaim-problem" role="alert">{@problem}</p>
 
@@ -385,8 +385,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <button type="submit" class="patchbay-button">Take my money back</button>
         <span class="patchbay-board-facts">
-          This asks Base to send the {escrowed(@report)} USDC back to the wallet that put it up.
-          Accepting an answer instead pays its author.
+          This asks Base to send 90% of the {escrowed(@report)} USDC back to the wallet that put
+          it up, with 10% to Patchbay, which is the same split accepting an answer pays.
         </span>
       </form>
     </section>
@@ -404,11 +404,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp escrow_standing_said(%{escrow_status: :release_failed}),
     do: "An answer was accepted, but the payout has not gone through yet."
 
-  defp escrow_standing_said(%{escrow_status: :refunding}),
-    do: "The asker has taken this off the board, and the money is on its way back to them."
-
   defp escrow_standing_said(%{escrow_status: :refunded}),
-    do: "The asker took this off the board, and the money has gone back to them."
+    do: "This bounty was taken off the board, and 90% of it went back to the asker."
 
   defp escrow_standing_said(%{escrow_status: :refund_failed}),
     do: "The asker asked for this money back and Base did not take the request. It is still held."
@@ -418,6 +415,28 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp escrow_standing_said(_report),
     do: "This report was paid for. The money is not recorded on Base yet."
+
+  @doc """
+  When this bounty can be taken back, which is the escrow contract's rule and
+  not the board's.
+  """
+  @spec refund_window_said(map()) :: String.t()
+  def refund_window_said(%{escrow_status: :refunded}), do: ""
+
+  def refund_window_said(%{escrow_funded_at: nil}) do
+    "A bounty can be taken back 30 days after it is recorded on Base."
+  end
+
+  def refund_window_said(%{escrow_funded_at: funded_at}) do
+    free_at = DateTime.add(funded_at, 30, :day)
+
+    if DateTime.after?(DateTime.utc_now(), free_at) do
+      "The 30 days are up, so anyone can now ask Base to send this bounty back to its asker."
+    else
+      "Base will not send this bounty back before " <>
+        Calendar.strftime(free_at, "%-d %B %Y") <> ", 30 days after it was recorded."
+    end
+  end
 
   @doc "The verdicts a person can pick, in the order they are offered."
   @spec verdict_choices() :: [{String.t(), String.t()}]

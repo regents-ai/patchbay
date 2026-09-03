@@ -1,14 +1,20 @@
 defmodule Patchbay.Forum.PriorityRefund do
   @moduledoc """
-  Sending the money behind a paid priority report back to the asker who put it
-  up, when they decide no answer was worth accepting.
+  Asking Base to take a bounty off the board and send it back to the asker who
+  put it up.
 
-  Both doors on to this, the page and the board's tools, come through here, so
-  the money is taken back the same way whichever one is used. The report is
-  held under a row lock while it is checked and marked, so two asks arriving at
-  once cannot both reach the chain, and the chain itself refuses a post whose
-  money has already moved. An ask the chain does not take is written on the
-  report and can be made again; it is never retried here.
+  The escrow contract owns this rule, not Patchbay. It refuses a refund until
+  thirty days after the money was recorded, and once that has passed it lets
+  anybody make one, paying the asker 90% and the treasury 10%: the same split
+  answering the question would have paid, so taking a bounty back is never the
+  cheaper way out of it.
+
+  Patchbay's part is only a relay for the asker's convenience, and it pays the
+  gas, which is why it relays for the asker alone. Nothing here decides whether
+  the money can move. Every press reaches the chain, including a press before
+  the thirty days and a second press while an earlier one is in flight, and
+  what the chain says is written down. A press the chain refuses costs gas and
+  changes nothing, which is an accepted outcome.
   """
 
   alias Patchbay.Escrow
@@ -16,40 +22,39 @@ defmodule Patchbay.Forum.PriorityRefund do
   alias Patchbay.Forum.Report
 
   @doc """
-  Takes the money behind `report_id` back for `actor`, and returns the report
-  as it stands afterwards.
+  Relays `actor`'s request to take the bounty on `report_id` back, and returns
+  the report as it stands afterwards.
   """
-  @spec run(String.t(), struct()) :: {:ok, Report.t()} | {:error, term()}
+  @spec run(String.t(), struct() | nil) :: {:ok, Report.t()} | {:error, term()}
   def run(report_id, actor) do
-    # A report that does not exist is answered before the transaction opens,
-    # because a rollback carries no reason back out with it.
     with {:ok, uuid} <- uuid(report_id),
-         {:ok, _report} <- found_or_missing(Forum.get_report(uuid)),
-         {:ok, marked} <- mark(uuid, actor) do
-      send_back(marked)
+         {:ok, report} <- found_or_missing(Forum.get_report(uuid)),
+         {:ok, asked} <- Forum.request_refund(report, actor: actor) do
+      send_back(asked)
     end
+  end
+
+  @doc """
+  Records a refund that has already happened on Base, whoever made it.
+
+  This is how a refund Patchbay never relayed reaches the board.
+  """
+  @spec record(Report.t(), String.t()) :: {:ok, Report.t()} | {:error, term()}
+  def record(report, tx_hash) do
+    # Nothing over HTTP may write what the escrow said; this and the relay
+    # below are the only places that hear it, so the write is made deliberately
+    # without an actor.
+    Forum.record_escrow_refund(
+      report,
+      %{escrow_status: :refunded, escrow_refund_tx_hash: tx_hash},
+      authorize?: false
+    )
   end
 
   defp uuid(report_id) do
     case Ecto.UUID.cast(report_id) do
       {:ok, uuid} -> {:ok, uuid}
       :error -> {:error, :not_found}
-    end
-  end
-
-  # The check and the mark happen under one row lock, so a second ask that
-  # arrives while the first is being written waits for it and is then refused,
-  # before anything reaches the chain.
-  defp mark(uuid, actor) do
-    case Ash.transact([Report], fn -> withdraw(uuid, actor) end) do
-      {:ok, {:ok, marked}} -> {:ok, marked}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp withdraw(uuid, actor) do
-    with {:ok, report} <- found_or_missing(Forum.lock_report(uuid, actor: actor)) do
-      Forum.withdraw_priority_report(report, actor: actor)
     end
   end
 
@@ -67,20 +72,22 @@ defmodule Patchbay.Forum.PriorityRefund do
   def missing?(_error), do: false
 
   # The money goes back to the payer the contract already recorded, so nothing
-  # here says where it goes.
-  defp send_back(marked) do
-    {status, tx_hash} =
-      case Escrow.refund(marked.id) do
-        {:ok, tx_hash} -> {:refunded, tx_hash}
-        {:error, _reason} -> {:refund_failed, nil}
-      end
+  # here says where it goes. A transaction Base accepted is not money that
+  # moved, so the relay writes down the transaction and leaves the money where
+  # the board believes it is until the watch sees the refund happen.
+  defp send_back(asked) do
+    case Escrow.refund(asked.id) do
+      {:ok, tx_hash} ->
+        # Nothing over HTTP may write what the escrow said, so this is written
+        # deliberately without an actor.
+        Forum.record_refund_relay(asked, %{escrow_refund_tx_hash: tx_hash}, authorize?: false)
 
-    # Nothing over HTTP may write what the escrow said; this is the one place
-    # that hears it, so the write is made deliberately without an actor.
-    Forum.record_escrow_refund(
-      marked,
-      %{escrow_status: status, escrow_refund_tx_hash: tx_hash},
-      authorize?: false
-    )
+      {:error, _reason} ->
+        Forum.record_escrow_refund(
+          asked,
+          %{escrow_status: :refund_failed, escrow_refund_tx_hash: nil},
+          authorize?: false
+        )
+    end
   end
 end

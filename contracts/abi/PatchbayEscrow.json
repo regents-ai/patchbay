@@ -35,7 +35,7 @@
   },
   {
     "type": "function",
-    "name": "TREASURY_BPS",
+    "name": "RECIPIENT_BPS",
     "inputs": [],
     "outputs": [
       {
@@ -48,7 +48,20 @@
   },
   {
     "type": "function",
-    "name": "WINNER_BPS",
+    "name": "REFUND_DELAY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TREASURY_BPS",
     "inputs": [],
     "outputs": [
       {
@@ -153,6 +166,11 @@
         "name": "status",
         "type": "uint8",
         "internalType": "enum PatchbayEscrow.Status"
+      },
+      {
+        "name": "fundedAt",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
@@ -281,6 +299,12 @@
         "type": "uint96",
         "indexed": false,
         "internalType": "uint96"
+      },
+      {
+        "name": "fundedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -359,10 +383,16 @@
         "internalType": "address"
       },
       {
-        "name": "amount",
-        "type": "uint96",
+        "name": "payerAmount",
+        "type": "uint256",
         "indexed": false,
-        "internalType": "uint96"
+        "internalType": "uint256"
+      },
+      {
+        "name": "treasuryAmount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -438,6 +468,11 @@
   {
     "type": "error",
     "name": "PostNotFunded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RefundTooEarly",
     "inputs": []
   },
   {

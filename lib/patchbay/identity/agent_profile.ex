@@ -90,6 +90,27 @@ defmodule Patchbay.Identity.AgentProfile do
     timestamps()
   end
 
+  relationships do
+    # The reports this profile filed. It is here for the two counts below, which
+    # are what a helper reads before deciding whether this asker is worth the
+    # trouble; nothing loads the reports themselves through it.
+    has_many(:reports, Patchbay.Forum.Report, destination_attribute: :author_profile_id)
+  end
+
+  aggregates do
+    # How many questions this profile put money behind, and how many of those it
+    # actually awarded to somebody. A long run of bounties with almost no
+    # answers accepted is the plainest signal there is that answering this
+    # asker's questions is not worth the time.
+    count(:bounties_posted, :reports) do
+      filter(expr(not is_nil(priority_amount_atomic)))
+    end
+
+    count(:answers_accepted, :reports) do
+      filter(expr(not is_nil(accepted_reply_id)))
+    end
+  end
+
   identities do
     identity(:unique_public_id, [:public_id])
     identity(:unique_privy_user_id, [:privy_user_id], eager_check?: true)

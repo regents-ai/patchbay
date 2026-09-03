@@ -8,11 +8,16 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /// @title PatchbayEscrow
 /// @notice Holds the USDC a Patchbay asker pays for a pay-to-special forum post until the asker
-///         picks a correct answer, then pays the winner 90% and the Patchbay treasury 10%.
+///         picks a correct answer, then pays the winner 90% and the Patchbay treasury 10%. An
+///         answer the asker never picks is not held forever: 30 days after a post is funded anyone
+///         may refund it, which pays the asker back 90% and the treasury the same 10%.
 /// @dev The asker pays over x402, whose settlement is a plain USDC transfer to this contract, so a
 ///      deposit arrives with no indication of which post it belongs to. The Patchbay server (the
 ///      operator) attributes each confirmed deposit to a post id with `credit`, and later calls
-///      `release` or `refund`. The contract is an operator-trusted ledger with an immutable split:
+///      `release`. The refund is the one call the operator does not gate: after the refund delay
+///      anybody may make it, and the money can only go back to the payer the credit recorded, so
+///      an asker is never left waiting on Patchbay to be running. The contract is an
+///      operator-trusted ledger with an immutable split:
 ///      it enforces that the operator can never attribute more than the USDC actually held, that a
 ///      post pays out at most once, and that every payout follows the fixed 90/10 split. It does
 ///      not, and cannot, verify that the operator attributed a deposit to the right post or
@@ -33,20 +38,28 @@ contract PatchbayEscrow is Ownable2Step {
     /// @param payer The address the asker paid from; the refund destination.
     /// @param amount The attributed USDC amount, in USDC's 6-decimal base units.
     /// @param status Where the post is in its lifecycle.
+    /// @param fundedAt The block timestamp the credit was recorded at, which starts the refund delay.
     struct Post {
         address payer;
         uint96 amount;
         Status status;
+        uint64 fundedAt;
     }
 
-    /// @notice Share of a released amount paid to the winning answer, in basis points.
-    uint256 public constant WINNER_BPS = 9000;
+    /// @notice Share of a post's amount paid to its recipient, in basis points.
+    /// @dev The recipient is the winning answer on a release, and the asker who paid on a refund.
+    ///      Taking a post off the board costs the asker the same fee that answering it would have,
+    ///      so a refund is never the cheaper way out of a bounty.
+    uint256 public constant RECIPIENT_BPS = 9000;
 
-    /// @notice Share of a released amount paid to the treasury, in basis points.
+    /// @notice Share of a post's amount paid to the treasury, in basis points.
     uint256 public constant TREASURY_BPS = 1000;
 
     /// @notice Basis-point denominator.
     uint256 public constant BPS = 10_000;
+
+    /// @notice How long after funding a post must wait before anyone may refund it.
+    uint256 public constant REFUND_DELAY = 30 days;
 
     /// @notice The USDC token this escrow holds and pays out.
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
@@ -71,13 +84,13 @@ contract PatchbayEscrow is Ownable2Step {
     event OperatorChanged(address indexed previousOperator, address indexed newOperator);
 
     /// @notice Emitted when the operator attributes a deposit to a post id.
-    event Credited(bytes32 indexed postId, address indexed payer, uint96 amount);
+    event Credited(bytes32 indexed postId, address indexed payer, uint96 amount, uint64 fundedAt);
 
     /// @notice Emitted when the operator releases a funded post to a winning answer.
     event Released(bytes32 indexed postId, address indexed winner, uint256 winnerAmount, uint256 treasuryAmount);
 
-    /// @notice Emitted when the operator refunds a funded post to its payer.
-    event Refunded(bytes32 indexed postId, address indexed payer, uint96 amount);
+    /// @notice Emitted when a funded post is refunded to its payer after the refund delay.
+    event Refunded(bytes32 indexed postId, address indexed payer, uint256 payerAmount, uint256 treasuryAmount);
 
     /// @notice Thrown when a call that only the operator may make comes from another address.
     error NotOperator();
@@ -100,7 +113,10 @@ contract PatchbayEscrow is Ownable2Step {
     /// @notice Thrown when a release names the payer as the winner.
     error WinnerIsPayer();
 
-    /// @dev Restricts a call to the Patchbay server. One check, three call sites; kept inline so
+    /// @notice Thrown when a refund is attempted before the refund delay has passed.
+    error RefundTooEarly();
+
+    /// @dev Restricts a call to the Patchbay server. One check, two call sites; kept inline so
     ///      the access rule is readable at the point it is enforced.
     // forge-lint: disable-next-item(unwrapped-modifier-logic)
     modifier onlyOperator() {
@@ -112,7 +128,7 @@ contract PatchbayEscrow is Ownable2Step {
     ///         safe address with `transferOwnership` / `acceptOwnership`.
     /// @param usdc_ The USDC token address on this chain.
     /// @param treasury_ The Regents splitter contract that receives the 10% treasury share.
-    /// @param operator_ The Patchbay server address allowed to credit, release and refund.
+    /// @param operator_ The Patchbay server address allowed to credit and release.
     constructor(IERC20 usdc_, address treasury_, address operator_) Ownable(msg.sender) {
         if (address(usdc_) == address(0)) revert ZeroAddress();
         if (treasury_ == address(0)) revert ZeroAddress();
@@ -123,7 +139,7 @@ contract PatchbayEscrow is Ownable2Step {
     }
 
     /// @notice Points the escrow at a new Patchbay server address.
-    /// @dev Owner only. Moves no funds; it only changes who may call credit, release and refund.
+    /// @dev Owner only. Moves no funds; it only changes who may call credit and release.
     /// @param newOperator The new operator address.
     function setOperator(address newOperator) external onlyOwner {
         _setOperator(newOperator);
@@ -144,10 +160,11 @@ contract PatchbayEscrow is Ownable2Step {
         uint256 credited = totalCredited + amount;
         if (credited > usdc.balanceOf(address(this))) revert AmountExceedsBalance();
 
-        posts[postId] = Post({payer: payer, amount: amount, status: Status.Funded});
+        uint64 fundedAt = uint64(block.timestamp);
+        posts[postId] = Post({payer: payer, amount: amount, status: Status.Funded, fundedAt: fundedAt});
         totalCredited = credited;
 
-        emit Credited(postId, payer, amount);
+        emit Credited(postId, payer, amount, fundedAt);
     }
 
     /// @notice Pays out a funded post: 90% to the winning answer, the remainder to the treasury.
@@ -166,7 +183,7 @@ contract PatchbayEscrow is Ownable2Step {
         post.status = Status.Released;
         totalCredited -= amount;
 
-        uint256 winnerAmount = (amount * WINNER_BPS) / BPS;
+        uint256 winnerAmount = (amount * RECIPIENT_BPS) / BPS;
         uint256 treasuryAmount = amount - winnerAmount;
 
         emit Released(postId, winner, winnerAmount, treasuryAmount);
@@ -175,22 +192,30 @@ contract PatchbayEscrow is Ownable2Step {
         usdc.safeTransfer(treasury, treasuryAmount);
     }
 
-    /// @notice Returns a funded post's full amount to the asker who paid it.
-    /// @dev Operator only. Moves the post's full amount out of the contract to its payer, with no
-    ///      split and no fee.
+    /// @notice Takes a funded post off the board once the refund delay has passed: 90% back to the
+    ///         asker who paid it, the remainder to the treasury.
+    /// @dev Anyone may call this, because the money can only go to the payer the credit recorded
+    ///      and the deadline is the contract's own. A post whose answer was already released is not
+    ///      funded any more, so it cannot be refunded. The payer share rounds down, so the two
+    ///      transfers always sum to exactly the credited amount.
     /// @param postId The post id to refund.
-    function refund(bytes32 postId) external onlyOperator {
+    function refund(bytes32 postId) external {
         Post storage post = posts[postId];
         if (post.status != Status.Funded) revert PostNotFunded();
+        if (block.timestamp < post.fundedAt + REFUND_DELAY) revert RefundTooEarly();
 
         address payer = post.payer;
-        uint96 amount = post.amount;
+        uint256 amount = post.amount;
         post.status = Status.Refunded;
         totalCredited -= amount;
 
-        emit Refunded(postId, payer, amount);
+        uint256 payerAmount = (amount * RECIPIENT_BPS) / BPS;
+        uint256 treasuryAmount = amount - payerAmount;
 
-        usdc.safeTransfer(payer, amount);
+        emit Refunded(postId, payer, payerAmount, treasuryAmount);
+
+        usdc.safeTransfer(payer, payerAmount);
+        usdc.safeTransfer(treasury, treasuryAmount);
     }
 
     /// @dev Sets the operator and emits `OperatorChanged`. Used by the constructor and by

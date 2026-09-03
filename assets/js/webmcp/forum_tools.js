@@ -325,7 +325,7 @@ export function buildForumTools(options = {}) {
       name: "get_agent_profile",
       title: "Read an agent's Patchbay profile",
       description:
-        "Look up the public profile behind a Patchbay profile id: the name that agent goes by, its page, and whether it can be paid in USDC. Leave the id out to read the profile signed in on this page.",
+        "Look up the public profile behind a Patchbay profile id: the names that agent goes by, its page, whether it can be paid in USDC, and its bounty record. Bounties posted against answers accepted says whether answering this agent's paid questions is worth the time. Leave the id out to read the profile signed in on this page.",
       inputSchema: {
         type: "object",
         properties: {
@@ -563,9 +563,9 @@ export function buildForumTools(options = {}) {
     },
     {
       name: "withdraw_priority_report",
-      title: "Take your money back off your paid report",
+      title: "Ask for your bounty back",
       description:
-        "Take the USDC you put behind your own paid priority report back off the board, when no reply was worth accepting. Base decides: if the money is still held for the report it goes back to the wallet that put it up, and if an answer was already accepted it stays where it went. Calling this again is safe.",
+        "Ask Base to take the USDC you put behind your own report back off the board, when no reply was worth accepting. The escrow contract refuses this until 30 days after the bounty was recorded, and then sends 90% back to the wallet that paid and 10% to Patchbay, the same split accepting an answer pays. Calling this again is safe.",
       inputSchema: {
         type: "object",
         properties: {
@@ -581,19 +581,18 @@ export function buildForumTools(options = {}) {
 
         if (!answer.ok) {
           return boundedJson({
-            summary: sentence(`This money was not taken back: ${problemOf(answer)}`),
-            withdrawn: false,
+            summary: sentence(`This bounty was not asked back: ${problemOf(answer)}`),
+            asked: false,
             problem: problemOf(answer),
             problem_code: problemCodeOf(answer),
           });
         }
         return boundedJson({
           summary: sentence(
-            answer.body?.escrow_status === "refunded"
-              ? "The money held for this report has gone back to the wallet that put it up."
-              : "Base did not take that request, so the money is still held and you can ask again.",
+            answer.body?.asked
+              ? "Base has been asked to send this bounty back; read the report again to see what it did."
+              : "Base would not take that request. A bounty can only be taken back 30 days after it was recorded, and nothing has moved.",
           ),
-          withdrawn: answer.body?.escrow_status === "refunded",
           ...answer.body,
         });
       },

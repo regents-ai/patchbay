@@ -95,6 +95,12 @@ defmodule Patchbay.Forum.Report do
     attribute(:escrow_credit_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_refund_tx_hash, :string, allow_nil?: true, public?: true)
+
+    # When the money was recorded in escrow, which is what the contract's
+    # thirty-day refund delay is counted from, and when the asker last asked
+    # for it back. Neither decides anything: the chain does.
+    attribute(:escrow_funded_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+    attribute(:refund_requested_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:accepted_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
     create_timestamp(:inserted_at, public?: true)
@@ -131,6 +137,20 @@ defmodule Patchbay.Forum.Report do
     has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
   end
 
+  calculations do
+    # What makes a report one of the board's paid ones: money was put behind it
+    # and it is still there to be won. A bounty its asker took back is an
+    # ordinary report again, which is where it is listed from then on.
+    calculate(
+      :bounty_open,
+      :boolean,
+      expr(
+        not is_nil(priority_amount_atomic) and
+          (is_nil(escrow_status) or escrow_status != :refunded)
+      )
+    )
+  end
+
   actions do
     defaults([:read])
 
@@ -142,7 +162,7 @@ defmodule Patchbay.Forum.Report do
     read :for_tools do
       description("Newest ordinary reports about any of these tool versions first.")
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids) and is_nil(priority_amount_atomic)))
+      filter(expr(tool_id in ^arg(:tool_ids) and not bounty_open))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
@@ -150,7 +170,7 @@ defmodule Patchbay.Forum.Report do
     read :priority_for_tools do
       description("Newest paid priority reports about any of these tool versions first.")
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids) and not is_nil(priority_amount_atomic)))
+      filter(expr(tool_id in ^arg(:tool_ids) and bounty_open))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
@@ -159,6 +179,17 @@ defmodule Patchbay.Forum.Report do
       description("The report a logged call already stands behind, if one does.")
       argument(:invocation_id, :uuid, allow_nil?: false)
       filter(expr(invocation_id == ^arg(:invocation_id)))
+    end
+
+    read :bounties_to_reconcile do
+      description("""
+      Bounties the board still believes are held, oldest first. Anybody can
+      refund one on Base once thirty days have passed, so these are the reports
+      whose money may have moved without Patchbay being told.
+      """)
+
+      filter(expr(escrow_status == :credited))
+      prepare(build(sort: [escrow_funded_at: :asc, id: :asc], limit: 200))
     end
 
     read :verified_awaiting_repair do
@@ -263,7 +294,7 @@ defmodule Patchbay.Forum.Report do
 
     update :record_escrow_credit do
       description("Whether the payer's money was recorded in escrow against this report.")
-      accept([:escrow_status, :escrow_credit_tx_hash])
+      accept([:escrow_status, :escrow_credit_tx_hash, :escrow_funded_at])
       validate(one_of(:escrow_status, [:credited, :credit_failed]))
     end
 
@@ -291,24 +322,40 @@ defmodule Patchbay.Forum.Report do
       validate(one_of(:escrow_status, [:released, :release_failed]))
     end
 
-    update :withdraw_priority_report do
+    update :request_refund do
       description("""
-      The asker asks for the money they put behind a paid priority report back.
-      It is marked here before the chain is told, so a second ask that arrives
-      while the first is being sent is refused rather than sending twice.
+      The asker asks for the bounty they put up back. It records that they
+      asked and nothing else: whether the money can go is the escrow
+      contract's to answer, not this board's, so nothing here refuses on
+      account of how far along the money is or of an ask already in flight.
       """)
 
-      # The report is read as it stands to check it, so the update is not one
-      # statement; the row lock the caller holds is what keeps it single.
+      # The report is read as it stands to see that it is a bounty at all, so
+      # the update is not one statement.
       require_atomic?(false)
 
-      validate(Patchbay.Forum.Validations.PriorityReportCanBeWithdrawn)
+      validate(Patchbay.Forum.Validations.ReportCarriesABounty)
 
-      change(set_attribute(:escrow_status, :refunding))
+      change(set_attribute(:refund_requested_at, &DateTime.utc_now/0))
+    end
+
+    update :record_refund_relay do
+      description("""
+      The transaction Patchbay sent to Base asking for a refund. Sending it is
+      not the money moving: whether it moved is what the chain says, and that
+      is heard by watching, not by having asked.
+      """)
+
+      accept([:escrow_refund_tx_hash])
     end
 
     update :record_escrow_refund do
-      description("Whether the asker's money went back to them out of escrow.")
+      description("""
+      What the escrow said about a refund. It is written from Patchbay's own
+      relay and from Base itself, because after thirty days anybody can refund
+      a bounty without Patchbay in the middle.
+      """)
+
       accept([:escrow_status, :escrow_refund_tx_hash])
       validate(one_of(:escrow_status, [:refunded, :refund_failed]))
     end
@@ -336,8 +383,9 @@ defmodule Patchbay.Forum.Report do
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 
-    # Only the asker takes back what they put up; the money is theirs.
-    policy action(:withdraw_priority_report) do
+    # Patchbay relays a refund for the asker and pays the gas, so only the
+    # asker may ask it to. Anybody at all can call the contract directly.
+    policy action(:request_refund) do
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 

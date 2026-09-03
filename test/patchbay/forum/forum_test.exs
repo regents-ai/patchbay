@@ -293,8 +293,10 @@ defmodule Patchbay.ForumTest do
                  {:record_escrow_credit, :update},
                  {:accept_reply, :update},
                  {:record_escrow_release, :update},
-                 {:withdraw_priority_report, :update},
-                 {:record_escrow_refund, :update}
+                 {:request_refund, :update},
+                 {:record_refund_relay, :update},
+                 {:record_escrow_refund, :update},
+                 {:bounties_to_reconcile, :read}
                ])
 
       assert action_names(Reply) ==

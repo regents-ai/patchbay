@@ -8,7 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PatchbayEscrow} from "../src/PatchbayEscrow.sol";
 
 /// @title Sanity
-/// @notice Walks one deposit through credit -> release and a second through credit -> refund
+/// @notice Walks one deposit through credit -> release and a second through credit -> wait -> refund
 ///         against real Base mainnet USDC on a local fork. Simulation only; never broadcast.
 /// @dev Run with: forge script script/Sanity.s.sol --rpc-url $BASE_RPC_URL
 contract Sanity is Script, StdCheats {
@@ -41,14 +41,18 @@ contract Sanity is Script, StdCheats {
         require(escrow.totalCredited() == 0, "release did not clear the credit");
         console2.log("release ok: winner", USDC.balanceOf(winner), "treasury", USDC.balanceOf(treasury));
 
-        // Refund path.
+        // Refund path: funded now, refundable only once the delay has passed, and refundable by
+        // somebody who is not the operator.
         deal(address(USDC), address(escrow), DEPOSIT);
         escrow.credit(keccak256("post-2"), payer, DEPOSIT);
-        escrow.refund(keccak256("post-2"));
-        require(USDC.balanceOf(payer) == DEPOSIT, "payer was not made whole");
-        require(escrow.totalCredited() == 0, "refund did not clear the credit");
-        console2.log("refund ok: payer", USDC.balanceOf(payer));
-
         vm.stopPrank();
+
+        vm.warp(block.timestamp + escrow.REFUND_DELAY());
+        vm.prank(makeAddr("a passer-by"));
+        escrow.refund(keccak256("post-2"));
+        require(USDC.balanceOf(payer) == 90_000_000, "payer did not receive 90%");
+        require(USDC.balanceOf(treasury) == 20_000_000, "treasury did not receive 10% of the refund");
+        require(escrow.totalCredited() == 0, "refund did not clear the credit");
+        console2.log("refund ok: payer", USDC.balanceOf(payer), "treasury", USDC.balanceOf(treasury));
     }
 }

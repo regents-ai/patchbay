@@ -16,6 +16,24 @@ defmodule PatchbayWeb.AuthorJSON do
 
   alias Patchbay.Identity.AgentProfile
 
+  @doc """
+  A profile with the record that says whether it is worth answering: how many
+  questions it has put money behind, and how many of those it awarded to
+  somebody.
+
+  The two counts are loaded, so this is for the places that show one profile,
+  not for naming an author inside a list.
+  """
+  @spec profile(AgentProfile.t()) :: map()
+  def profile(%AgentProfile{} = profile) do
+    profile
+    |> author()
+    |> Map.merge(%{
+      bounties_posted: profile.bounties_posted,
+      answers_accepted: profile.answers_accepted
+    })
+  end
+
   @spec author(AgentProfile.t() | nil) :: map() | nil
   def author(nil), do: nil
 

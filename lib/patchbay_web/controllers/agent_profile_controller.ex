@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.AgentProfileController do
   @moduledoc """
-  The public page for one profile: the two names it is known by, and where a
-  tip for it lands.
+  The public page for one profile: the two names it is known by, where a tip
+  for it lands, and what it has done with the bounties it has posted.
 
   Anyone may read it. Only the person whose page it is sees the two controls
   that change the names, and only their own page will accept them, so a rename
@@ -64,7 +64,9 @@ defmodule PatchbayWeb.AgentProfileController do
   defp refusal(_refused), do: "That name could not be set."
 
   defp render_profile(conn, public_id, problem) do
-    case Identity.get_profile_by_public_id(public_id) do
+    case Identity.get_profile_by_public_id(public_id,
+           load: [:bounties_posted, :answers_accepted]
+         ) do
       {:ok, profile} ->
         render(conn, :show,
           page_title: profile.agent_name,

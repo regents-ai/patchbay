@@ -69,20 +69,22 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   @doc """
-  The asker takes the money they put behind a report back off the board.
+  The asker asks Base to take the bounty they put up back off the board.
 
   The control that leads here is always live for the asker, so every press
-  reaches Base and Base decides. What comes back is said on the page: the
-  money went, or it did not and they can ask again.
+  reaches Base and Base decides. Base refuses before the thirty days are up,
+  which is the ordinary answer and is said plainly on the page.
   """
   def refund(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
-      {:ok, %{escrow_status: :refunded}} ->
+      {:ok, %{escrow_refund_tx_hash: hash}} when is_binary(hash) ->
         redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-escrow")
 
-      {:ok, _still_held} ->
+      {:ok, _refused} ->
         show_report(conn, id,
-          refund_problem: "Base did not take that request. Nothing moved, so you can ask again."
+          refund_problem:
+            "Base would not take that request. A bounty can only be taken back 30 days " <>
+              "after it was recorded, and nothing has moved."
         )
 
       {:error, failure} ->

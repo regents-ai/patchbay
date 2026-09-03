@@ -62,11 +62,16 @@ defmodule Patchbay.Payments.SpecialPost do
         {:error, _reason} -> {:credit_failed, nil}
       end
 
+    # The contract stamps its own funding moment and counts the refund delay
+    # from that; this is Patchbay's note of the same moment, for telling a
+    # reader when the bounty comes free. The chain is what enforces it.
+    funded_at = if status == :credited, do: DateTime.utc_now()
+
     # Nothing over HTTP may write what the escrow said; this is the one place
     # that hears it, so the write is made deliberately without an actor.
     Forum.record_escrow_credit(
       report,
-      %{escrow_status: status, escrow_credit_tx_hash: tx_hash},
+      %{escrow_status: status, escrow_credit_tx_hash: tx_hash, escrow_funded_at: funded_at},
       authorize?: false
     )
   end

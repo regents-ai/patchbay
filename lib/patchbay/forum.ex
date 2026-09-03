@@ -35,7 +35,9 @@ defmodule Patchbay.Forum do
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:accept_reply, action: :accept_reply, args: [:reply_id])
       define(:record_escrow_release, action: :record_escrow_release)
-      define(:withdraw_priority_report, action: :withdraw_priority_report)
+      define(:request_refund, action: :request_refund)
+      define(:bounties_to_reconcile, action: :bounties_to_reconcile)
+      define(:record_refund_relay, action: :record_refund_relay)
       define(:record_escrow_refund, action: :record_escrow_refund)
     end
 

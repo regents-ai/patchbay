@@ -2,8 +2,11 @@ defmodule Patchbay.Escrow do
   @moduledoc """
   Patchbay's relayer to the PatchbayEscrow contract on Base: the operator
   account that records a paid priority report's money against its post and,
-  once the asker has accepted an answer, pays that answer's author out of it,
-  or sends the money back to the asker when they take it off the board.
+  once the asker has accepted an answer, pays that answer's author out of it.
+  It also relays an asker's request to take a bounty back, though the contract
+  is what decides that: it refuses until thirty days after the money was
+  recorded, and then anybody at all may make the call, so Patchbay finds out
+  what happened by reading the chain rather than by having asked.
 
   Every call here is one transaction, signed locally with the operator key
   and handed to the chain. It comes back with the transaction hash the moment
@@ -22,6 +25,9 @@ defmodule Patchbay.Escrow do
   alias Patchbay.Escrow.Contract
 
   @private_key ~r/\A(?:0x)?[0-9a-fA-F]{64}\z/
+
+  # The contract's Status enum, in its own order.
+  @post_statuses [:none, :funded, :released, :refunded]
 
   @doc """
   The contract address paid-priority money is held at, or nil when this
@@ -55,8 +61,42 @@ defmodule Patchbay.Escrow do
   end
 
   @doc """
-  Sends the money held against the report back to the payer who put it up, and
-  returns the hash of the transaction that does it.
+  What the contract holds for a report: `:none` when it has never been
+  credited, `:funded`, `:released` or `:refunded`.
+  """
+  @spec post_status(Ash.UUID.t()) ::
+          {:ok, :none | :funded | :released | :refunded} | {:error, term()}
+  def post_status(report_id) do
+    with {:ok, operator} <- operator() do
+      report_id
+      |> post_id()
+      |> Contract.posts()
+      |> Ethers.call(to: operator.contract_address, rpc_opts: [url: operator.rpc_url])
+      |> read_status()
+    end
+  rescue
+    _exception -> {:error, :call_failed}
+  end
+
+  # The contract answers with the whole post; only where it stands is wanted,
+  # and anything that is not that shape is a read that did not happen.
+  defp read_status({:ok, fields}) when is_list(fields) do
+    case Enum.at(fields, 2) do
+      status when is_integer(status) -> {:ok, Enum.at(@post_statuses, status, :none)}
+      _unreadable -> {:error, :unreadable_post}
+    end
+  end
+
+  defp read_status({:error, reason}), do: {:error, reason}
+  defp read_status(_unreadable), do: {:error, :unreadable_post}
+
+  @doc """
+  Asks the contract to take a report's bounty off the board, and returns the
+  hash of the transaction that asks.
+
+  Anybody may make this call and the contract refuses it until thirty days
+  after the money was recorded, so a transaction going through is not the same
+  as the money having moved.
   """
   @spec refund(Ash.UUID.t()) :: {:ok, String.t()} | {:error, term()}
   def refund(report_id) do

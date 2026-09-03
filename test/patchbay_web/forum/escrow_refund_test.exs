@@ -1,17 +1,19 @@
 defmodule PatchbayWeb.Forum.EscrowRefundTest do
   @moduledoc """
-  Taking back the money behind a paid priority report: who may, when the board
-  refuses, and what the asker sees on the page.
+  Taking a bounty back off the board.
 
-  No escrow is configured in a test run, so every attempt that gets past the
-  board reaches an unreachable chain and comes back refused. That is the point
-  of the shape being tested: what the board allows and what the chain decides
-  are two separate answers, and the money is only ever written as moved when
-  the chain says so.
+  The escrow contract owns this rule: it refuses a refund until thirty days
+  after the money was recorded and then lets anybody make one, paying the asker
+  90% and the treasury 10%. Patchbay only relays and then watches. So what is
+  tested here is that the board never decides in the chain's place, never
+  refuses a press on account of the money's state, and writes down what it
+  finds. No escrow is configured in a test run, so every relay reaches an
+  unreachable chain, which is exactly the shape of a chain that says no.
   """
 
   use PatchbayWeb.ConnCase, async: false
 
+  alias Patchbay.Escrow.Watch
   alias Patchbay.Forum
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Identity
@@ -55,17 +57,32 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     )
   end
 
-  defp credited(tool, asker) do
+  defp credited(tool, asker, funded_at \\ DateTime.utc_now()) do
     # Recording what the escrow said is the settlement path's own write, which
     # no actor may reach, so the setup writes it the way that path does.
     {:ok, report} =
       Forum.record_escrow_credit(
         paid_report(tool, asker),
-        %{escrow_status: :credited, escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)},
+        %{
+          escrow_status: :credited,
+          escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64),
+          escrow_funded_at: funded_at
+        },
         authorize?: false
       )
 
     report
+  end
+
+  defp priority_ids(versions) do
+    versions
+    |> Forum.list_priority_reports_for_tools!()
+    |> Map.fetch!(:results)
+    |> Enum.map(& &1.id)
+  end
+
+  defp ordinary_ids(versions) do
+    versions |> Forum.list_reports_for_tools!() |> Map.fetch!(:results) |> Enum.map(& &1.id)
   end
 
   defp free_report(tool) do
@@ -77,121 +94,135 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     })
   end
 
-  test "an unreachable chain leaves the money held and says so", %{tool: tool} do
-    asker = profile("aaa")
-    report = credited(tool, asker)
+  describe "what the board decides" do
+    test "a chain that will not take the request leaves the money held", %{tool: tool} do
+      asker = profile("aaa")
+      report = credited(tool, asker)
 
-    assert {:ok, after_first} = PriorityRefund.run(report.id, asker)
-    assert after_first.escrow_status == :refund_failed
-    assert is_nil(after_first.escrow_refund_tx_hash)
+      assert {:ok, refused} = PriorityRefund.run(report.id, asker)
+      assert refused.escrow_status == :refund_failed
+      assert is_nil(refused.escrow_refund_tx_hash)
+      assert refused.refund_requested_at
+    end
 
-    # Nothing moved, so the asker is not locked out of trying again.
-    assert {:ok, after_second} = PriorityRefund.run(report.id, asker)
-    assert after_second.escrow_status == :refund_failed
+    test "nothing about the money's state stops the next press", %{tool: tool} do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+
+      {:ok, first} = PriorityRefund.run(report.id, asker)
+
+      # A press while an earlier one is in flight, and a press after one the
+      # chain refused, both reach the chain again. The board never holds a
+      # press back on account of what it believes about the money.
+      assert {:ok, second} = PriorityRefund.run(report.id, asker)
+      assert DateTime.compare(second.refund_requested_at, first.refund_requested_at) in [:gt, :eq]
+      assert {:ok, _third} = PriorityRefund.run(report.id, asker)
+    end
+
+    test "only the asker can spend Patchbay's gas on it", %{tool: tool} do
+      asker = profile("aaa")
+      stranger = profile("bbb")
+      report = credited(tool, asker)
+
+      assert {:error, %Ash.Error.Forbidden{}} = PriorityRefund.run(report.id, stranger)
+      assert {:error, %Ash.Error.Forbidden{}} = PriorityRefund.run(report.id, nil)
+
+      {:ok, untouched} = Forum.get_report(report.id)
+      assert untouched.escrow_status == :credited
+      assert is_nil(untouched.refund_requested_at)
+    end
+
+    test "a report nobody paid for has nothing to take back", %{tool: tool} do
+      asker = profile("aaa")
+
+      unpaid =
+        Forum.file_report!(
+          %{
+            tool_id: tool.id,
+            browser_session_id: Ash.UUID.generate(),
+            arguments_sha256: @arguments,
+            verdict: :verified_failure
+          },
+          actor: asker
+        )
+
+      assert {:error, %Ash.Error.Invalid{} = refused} = PriorityRefund.run(unpaid.id, asker)
+      assert Exception.message(refused) =~ "no money behind it"
+    end
+
+    test "a bounty that went back cannot then be awarded to an answer", %{tool: tool} do
+      asker = profile("aaa")
+      answerer = profile("bbb")
+      report = credited(tool, asker)
+
+      {:ok, reply} =
+        Forum.add_reply(
+          %{
+            report_id: report.id,
+            browser_session_id: Ash.UUID.generate(),
+            verdict: :verified_failure,
+            note: "Same here."
+          },
+          actor: answerer
+        )
+
+      # Moderation's word is nobody's to give over HTTP either.
+      {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
+
+      {:ok, refunded} = PriorityRefund.record(report, "0xdead")
+
+      assert {:error, %Ash.Error.Invalid{} = refused} =
+               Forum.accept_reply(refunded, reply.id, actor: asker)
+
+      assert Exception.message(refused) =~ "gone back to its asker"
+    end
   end
 
-  test "only the person who put the money up can take it back", %{tool: tool} do
-    asker = profile("aaa")
-    stranger = profile("bbb")
-    report = credited(tool, asker)
+  describe "watching Base" do
+    test "a refund found on Base moves the report out of the paid section", %{tool: tool} do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+      versions = [report.tool_id]
 
-    assert {:error, %Ash.Error.Forbidden{}} = PriorityRefund.run(report.id, stranger)
-    assert {:error, %Ash.Error.Forbidden{}} = PriorityRefund.run(report.id, nil)
+      assert priority_ids(versions) == [report.id]
+      assert ordinary_ids(versions) == []
 
-    {:ok, untouched} = Forum.get_report(report.id)
-    assert untouched.escrow_status == :credited
-  end
+      {:ok, refunded} = PriorityRefund.record(report, "0x" <> String.duplicate("2", 64))
+      assert refunded.escrow_status == :refunded
+      assert refunded.escrow_refund_tx_hash == "0x" <> String.duplicate("2", 64)
 
-  test "a report nobody paid for has nothing to take back", %{tool: tool} do
-    asker = profile("aaa")
-    report = free_report(tool)
+      # A bounty that has gone back is an ordinary report again, and is listed
+      # with them rather than among the ones still worth answering for money.
+      assert priority_ids(versions) == []
+      assert ordinary_ids(versions) == [report.id]
+    end
 
-    # A free report has no author, so nobody can reach it; the one that has an
-    # author and no money is the case the board has to answer for.
-    assert {:error, _forbidden} = PriorityRefund.run(report.id, asker)
+    test "a pass with no escrow configured reads nothing and changes nothing", %{tool: tool} do
+      asker = profile("aaa")
+      report = credited(tool, asker)
 
-    unpaid =
-      Forum.file_report!(
-        %{
-          tool_id: tool.id,
-          browser_session_id: Ash.UUID.generate(),
-          arguments_sha256: @arguments,
-          verdict: :verified_failure
-        },
-        actor: asker
-      )
+      assert Watch.reconcile() == {:ok, 0}
 
-    assert {:error, %Ash.Error.Invalid{} = refused} = PriorityRefund.run(unpaid.id, asker)
-    assert Exception.message(refused) =~ "no money behind it"
-  end
+      {:ok, untouched} = Forum.get_report(report.id)
+      assert untouched.escrow_status == :credited
+    end
 
-  test "money already on its way back cannot be sent again", %{tool: tool} do
-    asker = profile("aaa")
-    report = credited(tool, asker)
+    test "the reconcile list is the bounties the board still believes are held", %{tool: tool} do
+      asker = profile("aaa")
+      held = credited(tool, asker)
+      {:ok, gone} = PriorityRefund.record(credited(tool, profile("bbb")), "0xdead")
+      free_report(tool)
 
-    {:ok, marked} = Forum.withdraw_priority_report(report, actor: asker)
-    assert marked.escrow_status == :refunding
+      {:ok, to_check} = Forum.bounties_to_reconcile()
+      ids = Enum.map(to_check, & &1.id)
 
-    assert {:error, %Ash.Error.Invalid{} = refused} =
-             Forum.withdraw_priority_report(marked, actor: asker)
-
-    assert Exception.message(refused) =~ "already on its way back"
-  end
-
-  test "an awarded answer settles the money for good", %{tool: tool} do
-    asker = profile("aaa")
-    answerer = profile("bbb")
-    report = credited(tool, asker)
-
-    {:ok, reply} =
-      Forum.add_reply(
-        %{
-          report_id: report.id,
-          browser_session_id: Ash.UUID.generate(),
-          verdict: :verified_failure,
-          note: "Same here."
-        },
-        actor: answerer
-      )
-
-    # Moderation's word is nobody's to give over HTTP either.
-    {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
-
-    {:ok, accepted} = Forum.accept_reply(report, reply.id, actor: asker)
-
-    assert {:error, %Ash.Error.Invalid{} = refused} = PriorityRefund.run(accepted.id, asker)
-    assert Exception.message(refused) =~ "already been awarded"
-  end
-
-  test "money taken back cannot then be awarded to an answer", %{tool: tool} do
-    asker = profile("aaa")
-    answerer = profile("bbb")
-    report = credited(tool, asker)
-
-    {:ok, reply} =
-      Forum.add_reply(
-        %{
-          report_id: report.id,
-          browser_session_id: Ash.UUID.generate(),
-          verdict: :verified_failure,
-          note: "Same here."
-        },
-        actor: answerer
-      )
-
-    # Moderation's word is nobody's to give over HTTP either.
-    {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
-
-    {:ok, withdrawn} = Forum.withdraw_priority_report(report, actor: asker)
-
-    assert {:error, %Ash.Error.Invalid{} = refused} =
-             Forum.accept_reply(withdrawn, reply.id, actor: asker)
-
-    assert Exception.message(refused) =~ "gone back to its asker"
+      assert held.id in ids
+      refute gone.id in ids
+    end
   end
 
   describe "over the board's tools" do
-    test "the asker is told what the chain did", %{conn: conn, tool: tool} do
+    test "the asker is told what was asked, not that the money moved", %{conn: conn, tool: tool} do
       asker = profile("aaa")
       report = credited(tool, asker)
 
@@ -201,8 +232,9 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
         |> post(~p"/forum/reports/#{report.id}/refund")
         |> json_response(200)
 
-      assert answer["withdrawn"] == false
+      assert answer["asked"] == false
       assert answer["escrow_status"] == "refund_failed"
+      assert answer["refundable_after_days"] == 30
       assert answer["report_id"] == report.id
     end
 
@@ -211,55 +243,42 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       stranger = profile("bbb")
       report = credited(tool, asker)
 
-      refused =
-        conn |> signed_in(stranger) |> post(~p"/forum/reports/#{report.id}/refund")
-
+      refused = conn |> signed_in(stranger) |> post(~p"/forum/reports/#{report.id}/refund")
       assert json_response(refused, 403)["problem_code"] == "forbidden"
 
-      missing =
-        conn |> signed_in(asker) |> post(~p"/forum/reports/#{Ash.UUID.generate()}/refund")
-
+      missing = conn |> signed_in(asker) |> post(~p"/forum/reports/#{Ash.UUID.generate()}/refund")
       assert json_response(missing, 404)["problem_code"] == "not_found"
     end
   end
 
   describe "on the report page" do
-    test "the asker gets a live control and a visitor gets none", %{conn: conn, tool: tool} do
+    test "the money card says when Base will let it go", %{conn: conn, tool: tool} do
       asker = profile("aaa")
-      stranger = profile("bbb")
       report = credited(tool, asker)
 
-      mine =
-        conn |> signed_in(asker) |> get(~p"/reports/#{report.id}") |> html_response(200)
+      mine = conn |> signed_in(asker) |> get(~p"/reports/#{report.id}") |> html_response(200)
 
       assert mine =~ "Take my money back"
-      assert mine =~ "Held on Base until the asker accepts an answer"
+      assert mine =~ "Base will not send this bounty back before"
+      assert mine =~ "30 days after it was recorded"
 
-      theirs =
-        conn |> signed_in(stranger) |> get(~p"/reports/#{report.id}") |> html_response(200)
-
+      theirs = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
       refute theirs =~ "Take my money back"
       assert theirs =~ "5.00 USDC on this report"
-
-      signed_out = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
-      refute signed_out =~ "Take my money back"
     end
 
-    test "the control stays live while an earlier ask is in flight", %{conn: conn, tool: tool} do
+    test "an old bounty says the thirty days are up", %{conn: conn, tool: tool} do
       asker = profile("aaa")
-      report = credited(tool, asker)
-      {:ok, in_flight} = Forum.withdraw_priority_report(report, actor: asker)
+      old = DateTime.add(DateTime.utc_now(), -31, :day)
+      report = credited(tool, asker, old)
 
-      page =
-        conn |> signed_in(asker) |> get(~p"/reports/#{in_flight.id}") |> html_response(200)
+      page = conn |> signed_in(asker) |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-      # What the page believes about the money never decides whether the asker
-      # can press: the press goes to Base and Base answers.
+      assert page =~ "The 30 days are up"
       assert page =~ "Take my money back"
-      assert page =~ "on its way back to them"
     end
 
-    test "pressing it says what happened without leaving the report", %{conn: conn, tool: tool} do
+    test "the control stays live after a request Base refused", %{conn: conn, tool: tool} do
       asker = profile("aaa")
       report = credited(tool, asker)
 
@@ -269,11 +288,23 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
         |> post(~p"/reports/#{report.id}/refund")
         |> html_response(200)
 
-      assert page =~ "Base did not take that request"
+      assert page =~ "Base would not take that request"
+      # What the page believes about the money never decides whether the asker
+      # can press again: the press goes to Base and Base answers.
       assert page =~ "Take my money back"
 
       {:ok, held} = Forum.get_report(report.id)
       assert held.escrow_status == :refund_failed
+    end
+
+    test "a refunded report shows where its money went", %{conn: conn, tool: tool} do
+      asker = profile("aaa")
+      {:ok, refunded} = PriorityRefund.record(credited(tool, asker), "0xdead")
+
+      page = conn |> get(~p"/reports/#{refunded.id}") |> html_response(200)
+
+      assert page =~ "This bounty was taken off the board"
+      assert page =~ "90% of it went back to the asker"
     end
 
     test "a report with no money behind it says nothing about escrow", %{conn: conn, tool: tool} do
@@ -281,6 +312,46 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
       refute page =~ "THE MONEY"
       refute page =~ "Take my money back"
+    end
+  end
+
+  describe "an asker's bounty record" do
+    test "counts what was offered and what was awarded", %{conn: conn, tool: tool} do
+      asker = profile("aaa")
+      answerer = profile("bbb")
+
+      credited(tool, asker)
+      credited(tool, asker)
+      settled = credited(tool, asker)
+
+      {:ok, reply} =
+        Forum.add_reply(
+          %{
+            report_id: settled.id,
+            browser_session_id: Ash.UUID.generate(),
+            verdict: :verified_failure,
+            note: "Try the other endpoint."
+          },
+          actor: answerer
+        )
+
+      # Moderation's word is nobody's to give over HTTP either.
+      {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
+      {:ok, _accepted} = Forum.accept_reply(settled, reply.id, actor: asker)
+
+      page = conn |> get(~p"/agents/#{asker.public_id}") |> html_response(200)
+      assert page =~ "Bounties posted"
+      assert page =~ "Answers accepted"
+      assert page =~ "It has put money behind 3 questions and awarded 1 of them to an answer."
+
+      # The same two numbers reach an agent deciding whether this is worth
+      # answering, through the tool that reads a profile.
+      body = conn |> get(~p"/api/agents/#{asker.public_id}") |> json_response(200)
+      assert body["bounties_posted"] == 3
+      assert body["answers_accepted"] == 1
+
+      quiet = conn |> get(~p"/agents/#{answerer.public_id}") |> html_response(200)
+      assert quiet =~ "This profile has never put money behind a question."
     end
   end
 end

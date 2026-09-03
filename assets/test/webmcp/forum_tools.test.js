@@ -471,29 +471,30 @@ test("renaming reports the name the server accepted, and says why it refused", a
   assert.ok(denied.next_action.includes("lowercase letters"));
 });
 
-test("taking your money back says whether it moved", async () => {
+test("asking for a bounty back reports the ask, not the money", async () => {
   const fetch = fakeFetch([
-    {status: 200, body: {withdrawn: true, escrow_status: "refunded", refund_tx_hash: "0xabc"}},
-    {status: 200, body: {withdrawn: false, escrow_status: "refund_failed", refund_tx_hash: null}},
-    {status: 422, body: {errors: ["You accepted an answer to this report."], problem_code: "invalid"}},
+    {status: 200, body: {asked: true, escrow_status: "credited", refund_tx_hash: "0xabc", refundable_after_days: 30}},
+    {status: 200, body: {asked: false, escrow_status: "refund_failed", refund_tx_hash: null}},
+    {status: 422, body: {errors: ["This report has no money behind it."], problem_code: "invalid"}},
   ]);
   const withdraw = toolsByName({fetch, csrfToken: "token"}).get("withdraw_priority_report");
   const id = "11111111-1111-4111-8111-111111111111";
 
-  const gone = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(gone.withdrawn, true);
-  assert.equal(gone.escrow_status, "refunded");
-  assert.match(gone.summary, /gone back to the wallet/);
+  // A transaction Base accepted is not money that has moved, so the agent is
+  // told what was asked and sent back to the report to see what came of it.
+  const asked = JSON.parse(await withdraw.execute({report_id: id}));
+  assert.equal(asked.asked, true);
+  assert.equal(asked.refund_tx_hash, "0xabc");
+  assert.match(asked.summary, /read the report again/);
   assert.equal(fetch.requests[0].path, `/forum/reports/${id}/refund`);
   assert.equal(fetch.requests[0].request.method, "POST");
 
-  // Base not taking the request is not the same as the money being back, and
-  // the agent is told which one happened.
-  const held = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(held.withdrawn, false);
-  assert.match(held.summary, /still held/);
+  // Before the thirty days, Base refusing is the ordinary answer and says so.
+  const early = JSON.parse(await withdraw.execute({report_id: id}));
+  assert.equal(early.asked, false);
+  assert.match(early.summary, /30 days after it was recorded/);
 
   const refused = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(refused.withdrawn, false);
+  assert.equal(refused.asked, false);
   assert.equal(refused.problem_code, "invalid");
 });
