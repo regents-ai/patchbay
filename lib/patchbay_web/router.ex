@@ -26,6 +26,12 @@ defmodule PatchbayWeb.Router do
     plug :put_secure_browser_headers
   end
 
+  # Paid actions act on behalf of one signed-in profile and have no anonymous
+  # form, so the request stops at the door when there is nobody behind it.
+  pipeline :require_profile do
+    plug PatchbayWeb.Plugs.RequireProfile
+  end
+
   # The forum tools every page offers an agent post from the page itself, so
   # they carry the same signed session and forgery token a form would. The
   # answers are JSON, which is why this stands beside `:browser` rather than
@@ -86,6 +92,14 @@ defmodule PatchbayWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :show
+  end
+
+  scope "/api", PatchbayWeb.PaymentsAPI do
+    pipe_through [:forum_tools, :require_profile]
+
+    post "/payment_intents", PaymentIntentController, :create
+    post "/payment_intents/:id/execute", PaymentIntentController, :execute
+    get "/payment_intents/:id", PaymentIntentController, :show
   end
 
   # Other scopes may use custom stacks.

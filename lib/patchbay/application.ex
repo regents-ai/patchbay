@@ -15,7 +15,11 @@ defmodule Patchbay.Application do
         PatchbayWeb.Telemetry,
         Patchbay.Repo,
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
-        {Phoenix.PubSub, name: Patchbay.PubSub}
+        {Phoenix.PubSub, name: Patchbay.PubSub},
+        {Finch,
+         name: Patchbay.Payments.Finch,
+         pools: %{default: X402.Facilitator.HTTP.secure_pool_opts()}},
+        {X402.Facilitator, otp_app: :patchbay, name: Patchbay.Payments.Facilitator}
       ] ++
         patchbay_agent() ++
         [

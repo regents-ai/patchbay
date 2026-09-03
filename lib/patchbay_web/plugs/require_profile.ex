@@ -1,0 +1,30 @@
+defmodule PatchbayWeb.Plugs.RequireProfile do
+  @moduledoc """
+  Stops an API request that has no signed-in profile behind it.
+
+  Payment endpoints act on behalf of one profile and no other, so there is no
+  anonymous version of them to fall through to: without a profile the request
+  ends here with a 401 the caller can act on.
+  """
+
+  @behaviour Plug
+
+  import Plug.Conn
+
+  @impl Plug
+  def init(opts), do: opts
+
+  @impl Plug
+  def call(conn, _opts) do
+    case conn.assigns[:current_profile] do
+      nil ->
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(401, Jason.encode!(%{error: "sign_in_required"}))
+        |> halt()
+
+      _profile ->
+        conn
+    end
+  end
+end

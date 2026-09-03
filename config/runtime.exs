@@ -45,6 +45,40 @@ config :patchbay, :privy,
   app_id: System.get_env("PRIVY_APP_ID"),
   verification_key: privy_verification_key
 
+# The service that verifies and settles an x402 payment on Base mainnet.
+# Patchbay never holds the money: the payment travels from the payer's wallet
+# straight to the recipient's, and this is the only party Patchbay talks to
+# about it.
+#
+# Everywhere, including production, that service is Coinbase's hosted
+# facilitator, the one the x402 package documents for Base mainnet. Its address
+# is public, so it is written here rather than kept as a secret, and nothing has
+# to be set for Patchbay to start. X402_FACILITATOR_URL points Patchbay at a
+# different facilitator when there is a reason to.
+#
+# CDP_API_KEY_ID and CDP_API_KEY_SECRET are that facilitator's credentials. A
+# machine started without them still boots, and only a payment attempt fails,
+# so a developer can run every unpaid part of Patchbay with no account.
+facilitator_url =
+  case System.get_env("X402_FACILITATOR_URL") do
+    url when is_binary(url) and url != "" -> url
+    _unset -> X402.Facilitator.Auth.CDP.facilitator_url()
+  end
+
+facilitator_auth =
+  case {System.get_env("CDP_API_KEY_ID"), System.get_env("CDP_API_KEY_SECRET")} do
+    {id, secret} when is_binary(id) and id != "" and is_binary(secret) and secret != "" ->
+      {X402.Facilitator.Auth.CDP, api_key_id: id, api_key_secret: secret}
+
+    _absent ->
+      nil
+  end
+
+config :patchbay, Patchbay.Payments.Facilitator,
+  url: facilitator_url,
+  finch: Patchbay.Payments.Finch,
+  auth: facilitator_auth
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
