@@ -239,6 +239,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     case checked_payment(request.signature, found, requirement) do
       {:ok, payment} -> settle(actor, found, payment, requirement, request)
       {:refused, reason} -> {:payment_rejected, found, reason}
+      {:unavailable, reason} -> {:facilitator_unavailable, found, reason}
     end
   end
 
@@ -329,7 +330,8 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         {:refused, invalid_message(body)}
 
       _unclear ->
-        {:refused, "That payment could not be checked just now. Try again in a moment."}
+        {:unavailable,
+         "The payment service could not be reached before a settlement result."}
     end
   end
 
@@ -468,12 +470,14 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
     conn
     |> offer(offered)
-    |> json(%{
-      status: "payment_required",
-      payment_intent_id: found.id,
-      payment_terms: offered,
-      next_action: @pay_and_retry
-    })
+    |> json(
+      with_payment_help(%{
+        status: "payment_required",
+        payment_intent_id: found.id,
+        payment_terms: offered,
+        next_action: @pay_and_retry
+      })
+    )
   end
 
   defp send_answer(conn, {:payment_rejected, found, reason}) do
@@ -481,29 +485,32 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
     conn
     |> offer(offered)
-    |> json(%{
-      status: "payment_required",
-      payment_intent_id: found.id,
-      payment_terms: offered,
-      reason: reason,
-      next_action: @pay_and_retry
-    })
+    |> json(
+      with_payment_help(%{
+        status: "payment_required",
+        payment_intent_id: found.id,
+        payment_terms: offered,
+        reason: reason,
+        next_action: @pay_and_retry
+      })
+    )
   end
 
   defp send_answer(conn, {:applied, found, receipt}) do
     {:ok, header} = PaymentResponse.encode(receipt.payment_response)
 
-    answer = %{
-      status: "applied",
-      payment_intent_id: found.id,
-      receipt: %{
-        transaction_hash: receipt.transaction_hash,
-        payer_address: receipt.payer_address,
-        settled_at: receipt.settled_at
-      },
-      amount_usdc: USDC.format(found.amount_atomic),
-      effect_summary: found.effect_summary
-    }
+    answer =
+      with_payment_help(%{
+        status: "applied",
+        payment_intent_id: found.id,
+        receipt: %{
+          transaction_hash: receipt.transaction_hash,
+          payer_address: receipt.payer_address,
+          settled_at: receipt.settled_at
+        },
+        amount_usdc: USDC.format(found.amount_atomic),
+        effect_summary: found.effect_summary
+      })
 
     conn
     |> put_resp_header("payment-response", header)
@@ -513,23 +520,52 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   defp send_answer(conn, {:settlement_pending, found}) do
     conn
     |> put_status(:conflict)
-    |> json(%{
-      status: "settlement_pending",
-      payment_intent_id: found.id,
-      next_action:
-        "Do not pay again. This payment is being confirmed with the payment service by hand."
-    })
+    |> json(
+      with_payment_help(%{
+        status: "settlement_pending",
+        payment_intent_id: found.id,
+        next_action:
+          "Do not pay again. This payment is being confirmed with the payment service by hand."
+      })
+    )
   end
 
   defp send_answer(conn, {:expired, found}) do
     conn
     |> put_status(:gone)
-    |> json(%{
-      status: "expired",
-      payment_intent_id: found.id,
-      next_action:
-        "These terms are no longer on offer. Ask for this again to be given fresh ones."
-    })
+    |> json(
+      with_payment_help(%{
+        status: "expired",
+        payment_intent_id: found.id,
+        next_action:
+          "These terms are no longer on offer. Ask for this again to be given fresh ones."
+      })
+    )
+  end
+
+  defp send_answer(conn, {:facilitator_unavailable, found, reason}) do
+    conn
+    |> put_status(:bad_gateway)
+    |> json(
+      with_payment_help(%{
+        status: "facilitator_unavailable",
+        payment_intent_id: found.id,
+        problem_code: "facilitator_unavailable",
+        reason: reason,
+        next_action: "Do not pay again. Retry the same signed intent or check its status."
+      })
+    )
+  end
+
+  defp with_payment_help(fields) do
+    Map.merge(
+      %{
+        payment_help_url: url(~p"/agent-setup") <> "#x402",
+        protocol: "x402",
+        x402_version: 2
+      },
+      fields
+    )
   end
 
   # What the settled money did, per kind: the profile a tip reached, or the
@@ -640,7 +676,13 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   defp send_failure(conn, :not_configured) do
     conn
     |> put_status(:service_unavailable)
-    |> json(%{error: @not_set_up, problem_code: "not_configured"})
+    |> json(
+      with_payment_help(%{
+        error: @not_set_up,
+        problem_code: "not_configured",
+        next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment."
+      })
+    )
   end
 
   defp send_failure(conn, {:invalid, messages}) do

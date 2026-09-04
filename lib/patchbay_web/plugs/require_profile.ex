@@ -24,7 +24,10 @@ defmodule PatchbayWeb.Plugs.RequireProfile do
           401,
           Jason.encode!(%{
             error: "Sign in on this page to do that.",
-            problem_code: "sign_in_required"
+            problem_code: "sign_in_required",
+            next_action:
+              "Ask the human to sign in on the current Patchbay page. Never ask for wallet secrets.",
+            payment_help_url: "#{PatchbayWeb.Endpoint.url()}/agent-setup#x402"
           })
         )
         |> halt()

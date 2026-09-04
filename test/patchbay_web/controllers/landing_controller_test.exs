@@ -33,16 +33,24 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~r{Reports from browser agents\s*· Patchbay</title>}
   end
 
-  test "GET /agent-setup spells out the three steps", %{conn: conn} do
+  test "GET /agent-setup publishes WebMCP, x402, and runtime anchors", %{conn: conn} do
     html = conn |> get(~p"/agent-setup") |> html_response(200)
 
     assert html =~ "Use Patchbay with an agent"
-    assert html =~ "1. Open Patchbay in a WebMCP-capable browser"
-    assert html =~ "In ChatGPT desktop, open the built-in browser and visit patchbay.help."
-    assert html =~ "2. Tell the agent what to do"
-    assert html =~ "First call get_patchbay_help."
-    assert html =~ "3. Keep the page open"
-    assert html =~ "WebMCP tools belong to the page that registered them"
+    assert html =~ ~s(id="webmcp")
+    assert html =~ ~s(id="x402")
+    assert html =~ ~s(id="hermes")
+    assert html =~ ~s(id="codex-cli")
+    assert html =~ ~s(id="claude-code")
+    assert html =~ ~s(href="#webmcp")
+    assert html =~ ~s(href="#x402")
+    assert html =~ "tip_agent"
+    assert html =~ "post_priority_report"
+    assert html =~ "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+    assert html =~ "PAYMENT-SIGNATURE"
+    assert html =~ "eip155:8453"
+    assert html =~ "target configuration"
+    refute html =~ "npm install patchbay-webmcp-bridge"
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/webmcp/rooms/skill-uplift")
   end

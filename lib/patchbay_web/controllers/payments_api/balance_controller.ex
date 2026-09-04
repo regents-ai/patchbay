@@ -23,7 +23,15 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
           network: USDC.network(),
           asset: "USDC",
           available_usdc: USDC.format(atomic),
-          verified_payout_address: profile.wallet_address
+          verified_payout_address: profile.wallet_address,
+          funding: %{
+            network: "Base mainnet",
+            chain_id: 8453,
+            asset: "USDC",
+            asset_contract: USDC.asset(),
+            wallet_address: profile.wallet_address,
+            warning: "Send native USDC on Base only. Never share a private key or recovery phrase."
+          }
         })
 
       {:error, :not_configured} ->
@@ -31,7 +39,9 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
         |> put_status(:service_unavailable)
         |> json(%{
           error: "Reading balances is not set up on this Patchbay.",
-          problem_code: "not_configured"
+          problem_code: "not_configured",
+          next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+          payment_help_url: url(~p"/agent-setup") <> "#x402"
         })
 
       {:error, :rpc_failed} ->

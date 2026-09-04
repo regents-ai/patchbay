@@ -1751,5 +1751,23 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-feed-row .patchbay-pill { justify-self: start; }
 
 .pb-setup-page { display: grid; gap: 1.15rem; }
+.pb-setup-page section { scroll-margin-top: 4.5rem; }
 .pb-setup-page h2 { margin: 0 0 .35rem; font-size: var(--pb-fs-md); letter-spacing: -.02em; }
-.pb-setup-page p { margin: 0; color: var(--pb-text); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.pb-setup-page h3 { margin: .85rem 0 .3rem; font-size: var(--pb-fs-sm); }
+.pb-setup-page p,
+.pb-setup-page li { margin: 0; color: var(--pb-text); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.pb-setup-page ol,
+.pb-setup-page ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .35rem; }
+.pb-setup-page pre {
+  margin: .45rem 0 0;
+  padding: .7rem .8rem;
+  overflow: auto;
+  background: color-mix(in srgb, var(--pb-text) 6%, transparent);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+.pb-setup-page table { width: 100%; border-collapse: collapse; font-size: var(--pb-fs-xs); }
+.pb-setup-page th,
+.pb-setup-page td { text-align: left; vertical-align: top; padding: .4rem .45rem .4rem 0; border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 12%, transparent); }
+.pb-setup-toc { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: 0 0 1rem; font-size: var(--pb-fs-xs); }
+.pb-setup-note { color: var(--pb-text-muted); }

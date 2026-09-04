@@ -94,9 +94,18 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.deepEqual(Object.keys(thread.inputSchema.properties), ["report_id"]);
   assert.equal(thread.inputSchema.properties.report_id.format, "uuid");
 
+  const tip = modelContext.tools.get("tip_agent");
+  assert.match(tip.description, /spends USDC on Base through x402/);
+  assert.match(tip.description, /get_patchbay_help/);
+  assert.match(tip.description, /agent-setup#x402/);
+  assert.ok(tip.description.length <= 500);
+
   const priority = modelContext.tools.get("post_priority_report");
   assert.deepEqual(priority.annotations, {readOnlyHint: false, untrustedContentHint: false});
   assert.deepEqual(priority.inputSchema.required, ["origin", "tool_name", "verdict", "amount_usdc"]);
+  assert.match(priority.description, /spends USDC on Base through x402/);
+  assert.match(priority.description, /agent-setup#x402/);
+  assert.ok(priority.description.length <= 500);
 
   const accept = modelContext.tools.get("accept_solution");
   assert.deepEqual(accept.annotations, {readOnlyHint: false, untrustedContentHint: false});
@@ -523,6 +532,10 @@ test("get_patchbay_help is local, read-only, and names the current page", async 
     assert.equal(result.current_page, "agent_setup");
     assert.equal(result.recommended_first_action.tool, "search_reports");
     assert.equal(payments.status, "needs_human_sign_in");
+    assert.equal(result.payment_setup.protocol, "x402");
+    assert.equal(result.payment_setup.scheme, "exact");
+    assert.deepEqual(result.payment_setup.paid_tools, ["tip_agent", "post_priority_report"]);
+    assert.match(result.payment_setup.url, /\/agent-setup#x402$/);
     assert.equal(fetch.requests.length, 0);
   } finally {
     globalThis.location = previous;
@@ -581,7 +594,8 @@ test("get_my_usdc_balance maps the four readiness statuses and skips the 401 doo
   const empty = JSON.parse(await balance.execute());
   assert.equal(empty.status, "needs_human_funding");
   assert.equal(empty.wallet_address, wallet);
-  assert.match(empty.human_handoff, /Do not send me a seed phrase or private key/);
+  assert.match(empty.human_handoff, /Do not send me a private key or recovery phrase/);
+  assert.equal(empty.payment_help.protocol, "x402");
 
   const missing = JSON.parse(await balance.execute());
   assert.equal(missing.status, "not_configured");
@@ -639,4 +653,6 @@ test("tip_agent returns the funding handoff when the wallet is short and still r
   );
   assert.equal(sent.paid, true);
   assert.equal(paid, 1);
+  assert.equal(sent.payment_help.scheme, "exact");
+  assert.deepEqual(sent.payment_help.paid_tools, ["tip_agent", "post_priority_report"]);
 });

@@ -55,7 +55,7 @@ test("a zero balance maps to needs_human_funding with the handoff text", () => {
   );
   assert.match(readiness.funding_request, /native USDC/);
   assert.match(readiness.funding_request, new RegExp(USDC_CONTRACT));
-  assert.match(readiness.funding_request, /Do not send me a seed phrase or private key/);
+  assert.match(readiness.funding_request, /Do not send me a private key or recovery phrase/);
   assert.equal("found" in readiness, false);
 });
 
@@ -113,7 +113,7 @@ test("a paid-tool shortfall uses the funding handoff shape", () => {
   assert.equal(short.asset.contract, USDC_CONTRACT);
   assert.equal(
     short.human_handoff,
-    `Please send 5.00 USDC on Base mainnet to ${WALLET}. Do not send it on Ethereum or another network. Do not send me a seed phrase or private key.`,
+    `Please send 5.00 native USDC on Base mainnet to ${WALLET}. Do not send it on Ethereum or another network. Do not send me a private key or recovery phrase.`,
   );
   assert.equal(short.next_action, "After funding, call get_my_usdc_balance and retry this action.");
 });

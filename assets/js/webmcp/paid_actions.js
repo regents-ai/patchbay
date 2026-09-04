@@ -3,8 +3,10 @@ import {loadPrivyBridge, privyAppId} from "../privy/account.js";
 const INTENTS_PATH = "/api/payment_intents";
 const CHALLENGE_HEADER = "payment-required";
 const SIGNATURE_HEADER = "payment-signature";
+const RESPONSE_HEADER = "payment-response";
 const X402_VERSION = 2;
 const EVM_NETWORK = /^eip155:(\d+)$/;
+const SIGNED_REPLAY_LIMIT = 3;
 
 // The EIP-3009 authorization USDC accepts, in the exact shape the server
 // checks: one transfer from the signer to the recipient the challenge names.
@@ -71,12 +73,35 @@ export async function payForIntent(options, {kind, args}) {
     payload: {signature: signed.signature, authorization: typedData.message},
     extensions: challenge.extensions,
   };
-  const settled = await request(options, executePath, {
+  const signedHeaders = {[SIGNATURE_HEADER]: encodeBase64Json(payment)};
+  let settled = await request(options, executePath, {
     method: "POST",
-    headers: {[SIGNATURE_HEADER]: encodeBase64Json(payment)},
+    headers: signedHeaders,
   });
 
+  // An unclear 5xx after signing may mean the facilitator already saw the
+  // payment. Replay the same intent and the same signature only.
+  for (let attempt = 1; shouldReplaySigned(settled) && attempt < SIGNED_REPLAY_LIMIT; attempt += 1) {
+    settled = await request(options, executePath, {method: "POST", headers: signedHeaders});
+  }
+
+  if (shouldReplaySigned(settled)) {
+    return {
+      status: settled.status,
+      body: {
+        ...(settled.body ?? {}),
+        payment_intent_id: intent.id,
+        next_action: "Do not pay again; check this intent.",
+      },
+      intent,
+    };
+  }
+
   return answer(settled, intent);
+}
+
+export function shouldReplaySigned({status, paymentResponse} = {}) {
+  return Number.isInteger(status) && status >= 500 && status <= 599 && !paymentResponse;
 }
 
 function answer({status, body}, intent, unsigned) {
@@ -176,6 +201,7 @@ async function request(options, url, {method, json, headers = {}}) {
       status: response.status ?? 0,
       body: await readBody(response),
       challenge: response.headers?.get?.(CHALLENGE_HEADER) ?? null,
+      paymentResponse: response.headers?.get?.(RESPONSE_HEADER) ?? null,
     };
   } catch (error) {
     return unreachable(
@@ -185,7 +211,12 @@ async function request(options, url, {method, json, headers = {}}) {
 }
 
 function unreachable(problem) {
-  return {status: 0, body: {error: problem, problem_code: "unreachable"}, challenge: null};
+  return {
+    status: 0,
+    body: {error: problem, problem_code: "unreachable"},
+    challenge: null,
+    paymentResponse: null,
+  };
 }
 
 async function readBody(response) {

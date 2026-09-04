@@ -82,18 +82,57 @@ export function isShortOf(available, required) {
 }
 
 export function fundingHandoffText({walletAddress, amountUsdc} = {}) {
-  const what = amountUsdc ? `${amountUsdc} USDC` : "USDC";
+  const what = amountUsdc ? `${amountUsdc} native USDC` : "native USDC";
   const to = walletAddress ?? "the signed-in wallet";
-  return `Please send ${what} on Base mainnet to ${to}. Do not send it on Ethereum or another network. Do not send me a seed phrase or private key.`;
+  return `Please send ${what} on Base mainnet to ${to}. Do not send it on Ethereum or another network. Do not send me a private key or recovery phrase.`;
 }
 
 export function fundingRequestText({walletAddress, amountUsdc} = {}) {
+  const amount = amountUsdc ?? "{AMOUNT}";
+  const wallet = walletAddress ?? "{WALLET_ADDRESS}";
   return [
-    fundingHandoffText({walletAddress, amountUsdc}),
-    `Network: ${NETWORK_NAME} (${NETWORK_CAIP2})`,
+    `Please send ${amount} native USDC on Base mainnet to:`,
+    "",
+    wallet,
+    "",
+    "Network: Base",
+    `Chain ID: ${CHAIN_ID}`,
     `Asset: native ${ASSET_SYMBOL}`,
-    `Contract: ${USDC_CONTRACT}`,
+    `USDC contract: ${USDC_CONTRACT}`,
+    "",
+    "Do not send USDC on Ethereum or another network.",
+    "Do not send me a private key or recovery phrase.",
+    "Tell me when the transfer is complete.",
   ].join("\n");
+}
+
+export function paymentGuideUrl() {
+  const origin =
+    typeof globalThis.location?.origin === "string" && globalThis.location.origin !== "null"
+      ? globalThis.location.origin
+      : "https://patchbay.help";
+  return `${origin}/agent-setup#x402`;
+}
+
+export function paymentHelp() {
+  return {
+    url: paymentGuideUrl(),
+    protocol: "x402",
+    version: 2,
+    scheme: "exact",
+    network: NETWORK_CAIP2,
+    asset: {
+      symbol: ASSET_SYMBOL,
+      contract: USDC_CONTRACT,
+    },
+    paid_tools: ["tip_agent", "post_priority_report"],
+    instruction:
+      "Read this before asking a human to sign or fund a wallet. Never request a private key or recovery phrase.",
+  };
+}
+
+export function withPaymentHelp(result) {
+  return {...result, payment_help: paymentHelp()};
 }
 
 export function needsSignIn() {
