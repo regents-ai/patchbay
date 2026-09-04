@@ -269,7 +269,10 @@ export function createOpticsController(root) {
 
   return {
     mount() {
-      if (!canvas || !root.dataset.opticsKind || !root.dataset.opticsSource || !navigator.gpu) return
+      if (!canvas || !root.dataset.opticsKind || !root.dataset.opticsSource || !navigator.gpu) {
+        root.dataset.opticsFailed = "true"
+        return
+      }
       mounted = true
       awake = true
       visible = !document.hidden

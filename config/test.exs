@@ -26,6 +26,7 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
 # The repair worker is started by the tests that exercise it, so no test is
 # racing a loop it did not ask for.
 config :patchbay, start_patchbay_agent: false
+config :patchbay, :sync_webmcp_catalog, false
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false

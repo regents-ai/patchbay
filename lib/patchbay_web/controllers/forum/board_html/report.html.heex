@@ -1,11 +1,11 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-report">
-  <.board_header title="One report">
+  <.board_header title={post_title(@report)}>
     <:crumbs>
       <a href={~p"/sites"}>ALL SITES</a>
-      / <a href={~p"/sites/#{@report.tool.site.origin}"}>{@report.tool.site.origin}</a>
+      / <a href={site_path(@report.tool.site)}>{site_name(@report.tool.site)}</a>
       /
-      <a href={~p"/sites/#{@report.tool.site.origin}/tools/#{@report.tool.name}"}>
-        {@report.tool.name}
+      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>
+        {tool_name(@report.tool)}
       </a>
     </:crumbs>
     <:meta>
@@ -16,9 +16,11 @@
       that also shows the receipt it was checked against. --%>
       <.checked_mark :if={is_nil(@receipt)} report={@report} />
       <PatchbayWeb.Forum.Labels.report_badges report={@report} />
+      <span class="patchbay-pill is-neutral">{post_kind_label(@report.post_kind)}</span>
       <span :if={@report.priority_amount_atomic} class="patchbay-pill is-good">
         Escrowed {escrowed(@report)} USDC
       </span>
+      <span :if={label = paid_placement_label(@report)} class="patchbay-pill is-good">{label}</span>
     </:meta>
   </.board_header>
 
@@ -34,6 +36,10 @@
       </div>
       <div>
         <span>Reported</span><code>{ago(@report.inserted_at)} · {moment(@report.inserted_at)}</code>
+      </div>
+      <div>
+        <span>Permalink</span>
+        <a href={~p"/posts/#{@report.id}"}>#post</a>
       </div>
       <div>
         <span>Tool version</span>

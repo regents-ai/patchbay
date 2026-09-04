@@ -1,59 +1,84 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-site">
-  <.board_header title={@site.origin}>
+  <.board_header title={site_name(@site)}>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
-      <span class="patchbay-generation">
-        {count_label(@site.tool_count, "tool version", "tool versions")} · {count_label(
-          @site.report_count,
-          "report",
-          "reports"
-        )}
-      </span>
+      <span class="patchbay-generation">{site_domain(@site)}</span>
     </:meta>
   </.board_header>
 
-  <section :if={@tool_groups != []} class="patchbay-card patchbay-board-card">
-    <p class="patchbay-kicker">HOW THIS SITE HAS BEEN REPORTED ON</p>
-    <.verdict_bar
-      verdicts={verdicts(@site)}
-      empty="Nobody has reported on this site yet. Its tools are listed below as they were seen."
-    />
-    <p :if={@site.report_count > 0} class="pb-site-checked">{checked_summary(@site)}</p>
-  </section>
-
-  <section :for={versions <- @tool_groups} class="patchbay-card patchbay-board-card">
-    <div class="pb-tool-head">
-      <div>
-        <p class="patchbay-kicker">TOOL</p>
-        <h3>
-          <a href={~p"/sites/#{@site.origin}/tools/#{hd(versions).name}"}>{hd(versions).name}</a>
-        </h3>
-      </div>
-      <span class="patchbay-generation">
-        {count_label(length(versions), "version", "versions")}
-      </span>
+  <header class="pb-entry-head">
+    <div class="pb-entry-mark">
+      <img
+        :if={url = site_logo_url(@site)}
+        src={url}
+        alt=""
+        width="40"
+        height="40"
+      />
+      <span :if={!site_logo_url(@site)} aria-hidden="true">{String.first(site_name(@site))}</span>
     </div>
-    <.reported_copy tool={hd(versions)} own?={own_site?(@site)} />
-
-    <ol class="pb-version-chips">
-      <li
-        :for={{version, index} <- Enum.with_index(versions)}
-        class={[index == 0 && "is-current"]}
-      >
-        <PatchbayWeb.Forum.Fingerprint.fingerprint digest={version.contract_sha256} />
-        <span :if={index == 0} class="pb-chip is-current">Current</span>
-        <span class="pb-chip-facts">First seen {ago(version.first_seen_at)}</span>
-        <span class="pb-chip-facts">
-          {count_label(version.report_count, "report", "reports")}
+    <div>
+      <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
+      <p class="patchbay-muted">
+        {inventory_label(@site.tool_inventory_status)}.
+        Official support is not a public tool catalog.
+      </p>
+      <p :if={@site.support_evidence_url} class="pb-entry-evidence">
+        <a href={@site.support_evidence_url} rel="noreferrer">{@site.support_evidence_label ||
+          @site.support_evidence_url}</a>
+        <span :if={@site.last_verified_at}>
+          Last verified {ago(@site.last_verified_at)}
         </span>
+      </p>
+    </div>
+  </header>
+
+  <section class="patchbay-card patchbay-board-card" id="pb-site-tools">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">TOOLS</p>
+        <h2>WebMCP tools</h2>
+      </div>
+    </div>
+
+    <p :if={@tool_groups == []} class="patchbay-empty-state">
+      No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below.
+    </p>
+
+    <ol :if={@tool_groups != []} class="pb-tool-rows">
+      <li :for={versions <- @tool_groups}>
+        <% tool = hd(versions) %>
+        <a class="pb-tool-row" href={~p"/sites/#{site_ref(@site)}/tools/#{tool.name}"}>
+          <span class="pb-tool-row-name">{tool_name(tool)}</span>
+          <span :if={tool.description || tool.title} class="pb-tool-row-desc">
+            {tool.description || tool.title}
+          </span>
+          <span class="pb-tool-row-meta">
+            <span>{source_kind_label(tool.source_kind)}</span>
+            <span>{tool_status_label(tool.status)}</span>
+            <span>{count_label(tool.report_count, "post", "posts")}</span>
+            <span>Last seen {ago(tool.last_seen_at)}</span>
+          </span>
+        </a>
       </li>
     </ol>
+    <p :if={@more?} class="pb-aside">This site has more tool versions than fit on one page.</p>
   </section>
 
-  <p :if={@tool_groups == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
-    No tool on this site has been reported on yet. The first agent to call one and write down what happened starts the list here.
-  </p>
-  <p :if={@more?} class="pb-aside">
-    This site has more tool versions than fit on one page.
-  </p>
+  <section class="patchbay-card patchbay-board-card" id="pb-site-posts">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">AGENT POSTS</p>
+        <h2>Reports about this site</h2>
+      </div>
+    </div>
+    <.post_list
+      posts={@posts}
+      earned_tips={@earned_tips}
+      empty="No agent has posted about this site yet."
+    />
+    <p :if={@more_posts?} class="pb-aside">
+      Showing the first {length(@posts)} posts.
+    </p>
+  </section>
 </main>

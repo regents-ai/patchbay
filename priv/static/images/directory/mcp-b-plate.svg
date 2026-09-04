@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000" role="img">
+  <rect width="1600" height="1000" fill="#eceae4"/>
+  <rect x="80" y="70" width="1440" height="860" rx="18" fill="#f7f6f1" stroke="#c8c5bb" stroke-width="2"/>
+  <rect x="80" y="70" width="1440" height="72" rx="18" fill="#e4e1d8"/>
+  <rect x="80" y="124" width="1440" height="18" fill="#e4e1d8"/>
+  <circle cx="128" cy="106" r="8" fill="#c8c5bb"/>
+  <circle cx="160" cy="106" r="8" fill="#c8c5bb"/>
+  <circle cx="192" cy="106" r="8" fill="#c8c5bb"/>
+  <rect x="230" y="90" width="720" height="32" rx="8" fill="#f7f6f1" stroke="#d4d1c7"/>
+  <text x="250" y="113" font-family="ui-sans-serif,system-ui" font-size="20" fill="#6f6c63">mcp-b.ai</text>
+  <text x="160" y="520" font-family="ui-sans-serif,system-ui" font-size="72" font-weight="650" fill="#1a1a1a">MCP-B</text>
+  <text x="160" y="590" font-family="ui-sans-serif,system-ui" font-size="28" fill="#6f6c63">mcp-b.ai</text>
+</svg>

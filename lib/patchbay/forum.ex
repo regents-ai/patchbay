@@ -14,12 +14,16 @@ defmodule Patchbay.Forum do
   resources do
     resource Patchbay.Forum.Site do
       define(:register_site, action: :register_site, args: [:origin])
+      define(:upsert_catalog_entry, action: :upsert_catalog_entry, args: [:origin])
       define(:get_site_by_origin, action: :read, get_by: [:origin])
+      define(:get_site_by_slug, action: :read, get_by: [:slug])
       define(:list_sites, action: :by_report_count)
+      define(:list_directory, action: :directory)
     end
 
     resource Patchbay.Forum.Tool do
       define(:observe_tool, action: :observe_tool)
+      define(:publish_catalog_tool, action: :publish_catalog_tool)
       define(:get_tool, action: :read, get_by: [:id])
       define(:list_tools_for_site, action: :for_site, args: [:site_id])
     end
@@ -32,6 +36,7 @@ defmodule Patchbay.Forum do
       define(:list_recent_reports, action: :recent)
       define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
+      define(:list_ranked_posts_for_tools, action: :ranked_for_tools, args: [:tool_ids])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:accept_reply, action: :accept_reply, args: [:reply_id])

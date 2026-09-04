@@ -34,6 +34,7 @@ defmodule PatchbayWeb.Forum.Board do
   @site_versions 200
   @tool_versions 25
   @priority_reports 20
+  @ranked_posts 20
   @reports_per_version 10
   @replies_per_report 10
   @replies_per_page 100
@@ -43,6 +44,7 @@ defmodule PatchbayWeb.Forum.Board do
   @search_tool_limit 20
 
   @site_loads [:tool_count, :report_count]
+  @post_loads [:author, :reply_count, :verified_paid_usdc_atomic, :post_kind, tool: [:site]]
 
   @tool_loads [
     :report_count,
@@ -177,6 +179,29 @@ defmodule PatchbayWeb.Forum.Board do
     {home_first(page.results), page.more?}
   end
 
+  @doc """
+  The public directory: catalogued WebMCP entries first, then any other site
+  the board has seen. The catalog is written before the read so a cold
+  database still has the researched rows.
+  """
+  @spec list_directory() :: {[Site.t()], boolean()}
+  def list_directory do
+    _ = sync_catalog()
+    page = Forum.list_directory!(query: site_summary(), page: [limit: @sites])
+    {page.results, page.more?}
+  end
+
+  # A cold or half-loaded catalog must not take down `/` or `/sites`.
+  defp sync_catalog do
+    Patchbay.Forum.Catalog.sync!()
+  rescue
+    _ -> :ok
+  end
+
+  @doc "How many posts a site or tool list shows before it says there are more."
+  @spec posts_per_page() :: pos_integer()
+  def posts_per_page, do: @ranked_posts
+
   # A site card carries the same summary wherever it is read: how much has been
   # reported, how it broke down, and when the last word came in. All of it is
   # counted alongside the site itself, so a page of cards is still one read.
@@ -220,6 +245,48 @@ defmodule PatchbayWeb.Forum.Board do
       {:error, _no_such_site} -> :error
     end
   end
+
+  @doc """
+  The directory entry a public address names: a catalog slug first, then a
+  host, so `/sites/chrome` and `/sites/google.com` open the same Chrome row.
+  """
+  @spec fetch_site_ref(String.t()) :: {:ok, Site.t()} | :error
+  def fetch_site_ref(ref) when is_binary(ref) do
+    _ = sync_catalog()
+
+    cond do
+      slug?(ref) ->
+        case Forum.get_site_by_slug(ref, query: site_summary()) do
+          {:ok, site} -> {:ok, site}
+          {:error, _no_such_slug} -> fetch_normalized_origin(ref)
+        end
+
+      true ->
+        case fetch_normalized_origin(ref) do
+          {:ok, site} -> {:ok, site}
+          :error -> fetch_slug(ref)
+        end
+    end
+  end
+
+  def fetch_site_ref(_ref), do: :error
+
+  defp fetch_normalized_origin(ref) do
+    case normalize_origin(ref) do
+      {:ok, host} -> fetch_site(host)
+      :error -> :error
+    end
+  end
+
+  defp fetch_slug(ref) do
+    case Forum.get_site_by_slug(ref, query: site_summary()) do
+      {:ok, site} -> {:ok, site}
+      {:error, _no_such_slug} -> :error
+    end
+  end
+
+  @slug ~r/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/
+  defp slug?(value), do: Regex.match?(@slug, value)
 
   @doc """
   Every tool version on a site, grouped so one tool's versions stay together,
@@ -318,11 +385,30 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "One report, with its author and the tool and site it belongs to."
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
   def fetch_report(id) do
-    case Forum.get_report(id, load: [:author, tool: [:site]]) do
+    case Forum.get_report(id, load: @post_loads) do
       {:ok, report} -> {:ok, report}
       # An address that names no report, or is not an id at all, is not on the board.
       {:error, _no_such_report} -> :error
     end
+  end
+
+  @doc """
+  Posts about any of the given tool versions, paid placement first, and
+  whether more remain.
+  """
+  @spec ranked_posts([Tool.t()]) :: {[Report.t()], boolean()}
+  def ranked_posts([]), do: {[], false}
+
+  def ranked_posts(versions) do
+    page =
+      versions
+      |> Enum.map(& &1.id)
+      |> Forum.list_ranked_posts_for_tools!(
+        load: @post_loads,
+        page: [limit: @ranked_posts]
+      )
+
+    {page.results, page.more?}
   end
 
   @doc """

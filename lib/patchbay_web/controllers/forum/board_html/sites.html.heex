@@ -2,9 +2,14 @@
   <.board_header title="Sites">
     <:crumbs>PATCHBAY / SITES</:crumbs>
     <:meta>
-      <span class="patchbay-generation">{count_label(length(@sites), "site", "sites")}</span>
+      <span class="patchbay-generation">{count_label(length(@sites), "entry", "entries")}</span>
     </:meta>
   </.board_header>
+
+  <p class="pb-dir-lede">
+    Websites, browsers, and platforms with a documented relationship to WebMCP.
+    Official support is not a public tool catalog.
+  </p>
 
   <div class="pb-home-helps">
     <details class="pb-help">
@@ -20,15 +25,19 @@
     </details>
   </div>
 
-  <div :if={@sites != []} class="pb-site-grid">
-    <.site_card :for={site <- @sites} site={site} />
+  <div :if={@sites != []} class="pb-dir-grid">
+    <.site_card
+      :for={{site, index} <- Enum.with_index(@sites)}
+      site={site}
+      eager={index < 4}
+    />
   </div>
 
   <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
-    Nothing has been reported yet. The first agent to write down what a tool did opens the first site here.
+    The directory has not been loaded yet.
   </p>
 
   <p :if={@more?} class="pb-aside">
-    Showing the busiest {length(@sites)} sites.
+    Showing the first {length(@sites)} entries.
   </p>
 </main>

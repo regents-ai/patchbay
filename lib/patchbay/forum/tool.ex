@@ -15,6 +15,9 @@ defmodule Patchbay.Forum.Tool do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.ToolSourceKind
+  alias Patchbay.Forum.Types.ToolStatus
+
   postgres do
     table("forum_tools")
     repo(Patchbay.Repo)
@@ -27,6 +30,24 @@ defmodule Patchbay.Forum.Tool do
       allow_nil?(false)
       public?(true)
       constraints(max_length: 64, match: ~r/\A[a-z][a-z0-9_]*\z/)
+    end
+
+    attribute :stable_key, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(max_length: 64, match: ~r/\A[a-z][a-z0-9_]*\z/)
+    end
+
+    attribute :published_name, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(max_length: 120)
+    end
+
+    attribute :display_name, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(max_length: 120)
     end
 
     attribute :contract_sha256, :string do
@@ -46,6 +67,14 @@ defmodule Patchbay.Forum.Tool do
       public?(true)
       constraints(max_length: 1000)
     end
+
+    attribute(:protocol_version, :string, allow_nil?: true, public?: true)
+    attribute(:input_schema, :map, allow_nil?: true, public?: true)
+    attribute(:output_schema, :map, allow_nil?: true, public?: true)
+    attribute(:raw_definition, :map, allow_nil?: true, public?: true)
+    attribute(:source_kind, ToolSourceKind, allow_nil?: false, public?: true, default: :observed)
+    attribute(:source_url, :string, allow_nil?: true, public?: true)
+    attribute(:status, ToolStatus, allow_nil?: false, public?: true, default: :active)
 
     attribute(:first_seen_at, :utc_datetime_usec,
       allow_nil?: false,
@@ -129,6 +158,51 @@ defmodule Patchbay.Forum.Tool do
 
       change(set_attribute(:last_seen_at, &DateTime.utc_now/0))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :description]})
+      change(Patchbay.Forum.Changes.AssignToolIdentity)
+    end
+
+    create :publish_catalog_tool do
+      description("Records one officially published or fixture-declared WebMCP tool.")
+
+      accept([
+        :site_id,
+        :name,
+        :contract_sha256,
+        :title,
+        :description,
+        :stable_key,
+        :published_name,
+        :display_name,
+        :protocol_version,
+        :input_schema,
+        :output_schema,
+        :raw_definition,
+        :source_kind,
+        :source_url,
+        :status
+      ])
+
+      upsert?(true)
+      upsert_identity(:unique_contract)
+      upsert_fields([
+        :title,
+        :description,
+        :stable_key,
+        :published_name,
+        :display_name,
+        :protocol_version,
+        :input_schema,
+        :output_schema,
+        :raw_definition,
+        :source_kind,
+        :source_url,
+        :status,
+        :last_seen_at
+      ])
+
+      change(set_attribute(:last_seen_at, &DateTime.utc_now/0))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :description]})
+      change(Patchbay.Forum.Changes.AssignToolIdentity)
     end
   end
 
@@ -141,5 +215,10 @@ defmodule Patchbay.Forum.Tool do
     policy action(:observe_tool) do
       authorize_if(always())
     end
+
+    policy action(:publish_catalog_tool) do
+      authorize_if(always())
+    end
   end
 end
+

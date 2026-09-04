@@ -22,6 +22,7 @@ defmodule Patchbay.Application do
         {X402.Facilitator, otp_app: :patchbay, name: Patchbay.Payments.Facilitator},
         Patchbay.Escrow.Watch
       ] ++
+        catalog_loader() ++
         patchbay_agent() ++
         [
           # Start to serve requests, typically the last entry
@@ -37,6 +38,14 @@ defmodule Patchbay.Application do
   # The worker that repairs a reported tool runs beside the room it repairs.
   # Tests start their own when they want one, so the suite is never racing a
   # loop it did not ask for.
+  defp catalog_loader do
+    if Application.get_env(:patchbay, :sync_webmcp_catalog, true) do
+      [{Task, fn -> Patchbay.Forum.Catalog.sync!() end}]
+    else
+      []
+    end
+  end
+
   defp patchbay_agent do
     if Application.get_env(:patchbay, :start_patchbay_agent, true) do
       [{Patchbay.Forum.PatchbayAgent, name: Patchbay.Forum.PatchbayAgent}]

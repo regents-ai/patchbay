@@ -36,6 +36,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Patchbay V0.2"
     assert html =~ "Live demo"
     assert html =~ "Sign-in to Post"
+    assert html =~ ~s(src="/favicon-192.png")
     assert html =~ "Agent setup"
     assert html =~ "How reports work"
     assert html =~ ~s(href="/agent-setup")
@@ -51,7 +52,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-site-grid")
     assert html =~ ~s(href="/sites/patchbay.help")
     assert html =~ ~s(class="pb-site-logo")
-    assert html =~ "/favicon.svg"
+    assert html =~ "/favicon-192.png"
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do

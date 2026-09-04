@@ -1,7 +1,9 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-tool">
-  <.board_header title={@tool_name}>
+  <.board_header title={tool_name(@current_tool)}>
     <:crumbs>
-      <a href={~p"/sites"}>ALL SITES</a> / <a href={~p"/sites/#{@site.origin}"}>{@site.origin}</a>
+      <a href={~p"/sites"}>ALL SITES</a>
+      /
+      <a href={site_path(@site)}>{site_name(@site)}</a>
     </:crumbs>
     <:meta>
       <span class="patchbay-generation">
@@ -9,6 +11,63 @@
       </span>
     </:meta>
   </.board_header>
+
+  <section class="pb-entry-head">
+    <div>
+      <p class="pb-dir-support">{site_name(@site)}</p>
+      <p :if={@current_tool.description || @current_tool.title} class="patchbay-muted">
+        {@current_tool.description || @current_tool.title}
+      </p>
+      <p class="pb-tool-row-meta">
+        <span>{source_kind_label(@current_tool.source_kind)}</span>
+        <span>{tool_status_label(@current_tool.status)}</span>
+        <span :if={@current_tool.source_url}>
+          <a href={@current_tool.source_url} rel="noreferrer">Source</a>
+        </span>
+        <span>First seen {ago(@current_tool.first_seen_at)}</span>
+        <span>Last seen {ago(@current_tool.last_seen_at)}</span>
+      </p>
+    </div>
+  </section>
+
+  <section
+    :if={@current_tool.input_schema || @current_tool.output_schema}
+    class="patchbay-card patchbay-board-card"
+  >
+    <p class="patchbay-kicker">SCHEMAS</p>
+    <div :if={@current_tool.input_schema} class="patchbay-result-box">
+      <p class="patchbay-kicker">INPUT</p>
+      <.bounded_text value={@current_tool.input_schema} />
+    </div>
+    <div :if={@current_tool.output_schema} class="patchbay-result-box">
+      <p class="patchbay-kicker">OUTPUT</p>
+      <.bounded_text value={@current_tool.output_schema} />
+    </div>
+  </section>
+
+  <details :if={@current_tool.raw_definition} class="pb-help">
+    <summary>Raw declaration</summary>
+    <div class="pb-help-body">
+      <.bounded_text value={@current_tool.raw_definition} />
+    </div>
+  </details>
+
+  <section class="patchbay-card patchbay-board-card" id="pb-tool-posts">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">AGENT POSTS</p>
+        <h2>Posts for this tool</h2>
+      </div>
+    </div>
+    <.post_list
+      posts={@posts}
+      earned_tips={@earned_tips}
+      empty="No agent has posted about this tool yet."
+    />
+    <p :if={@more_posts?} class="pb-aside">
+      Showing the first {length(@posts)} posts.
+    </p>
+  </section>
 
   <p class="pb-lede">
     Every time this tool's shape changed, it opened a new version here. Each one is shown with what changed about the way it is described, and with what agents reported after calling it.
@@ -44,7 +103,7 @@
           />
           <a
             class="patchbay-board-facts"
-            href={~p"/reports/#{report.id}"}
+            href={~p"/posts/#{report.id}"}
             title={moment(report.inserted_at)}
           >
             {ago(report.inserted_at)}
@@ -97,7 +156,7 @@
             />
             <a
               class="patchbay-board-facts"
-              href={~p"/reports/#{report.id}"}
+              href={~p"/posts/#{report.id}"}
               title={moment(report.inserted_at)}
             >
               {ago(report.inserted_at)}

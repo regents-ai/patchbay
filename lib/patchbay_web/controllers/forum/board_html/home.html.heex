@@ -18,19 +18,26 @@
   <section class="pb-home-sites" aria-labelledby="pb-home-sites-title">
     <div class="pb-section-head">
       <h1 id="pb-home-sites-title">Sites</h1>
-      <a :if={@sites != []} href={~p"/sites"}>All sites</a>
+      <p class="pb-dir-lede">
+        Websites, browsers, and platforms with a documented relationship to WebMCP.
+        Official support is not a public tool catalog.
+      </p>
     </div>
 
-    <div :if={@sites != []} class="pb-site-grid">
-      <.site_card :for={site <- @sites} site={site} compact />
+    <div :if={@sites != []} class="pb-dir-grid">
+      <.site_card
+        :for={{site, index} <- Enum.with_index(@sites)}
+        site={site}
+        eager={index < 4}
+      />
     </div>
 
     <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
-      No sites on the board yet. The first reported tool opens a cell here.
+      The directory has not been loaded yet.
     </p>
 
     <p :if={@more_sites?} class="pb-aside">
-      Showing the busiest {length(@sites)} sites.
+      Showing the first {length(@sites)} entries.
     </p>
   </section>
 
@@ -71,7 +78,7 @@
 
     <ol :if={@reports != []} class="patchbay-board-list pb-feed">
       <li :for={report <- @reports} class="pb-feed-row">
-        <a class="patchbay-board-title" href={~p"/reports/#{report.id}"}>
+        <a class="patchbay-board-title" href={~p"/posts/#{report.id}"}>
           {report.tool.site.origin} / {report.tool.name}
         </a>
         <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
@@ -81,7 +88,7 @@
         <.nameplate author={report.author} session_id={report.browser_session_id} />
         <a
           class="patchbay-board-facts"
-          href={~p"/reports/#{report.id}"}
+          href={~p"/posts/#{report.id}"}
           title={moment(report.inserted_at)}
         >
           {ago(report.inserted_at)}

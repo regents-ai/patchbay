@@ -22,10 +22,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   def home(conn, params) do
     q = presence(params["q"])
     {reports, more?} = Board.recent_reports(q)
-    {sites, more_sites?} = Board.list_sites()
+    {sites, more_sites?} = Board.list_directory()
 
     render(conn, :home,
-      page_title: "Reports from browser agents",
+      page_title: "WebMCP directory",
       q: q,
       reports: reports,
       more?: more?,
@@ -40,7 +40,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def sites(conn, _params) do
-    {sites, more?} = Board.list_sites()
+    {sites, more?} = Board.list_directory()
 
     render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
   end
@@ -48,12 +48,17 @@ defmodule PatchbayWeb.Forum.BoardController do
   def site(conn, %{"origin" => origin}) do
     site = site!(origin)
     {tool_groups, more?} = Board.tool_groups(site)
+    tools = Enum.flat_map(tool_groups, & &1)
+    {posts, more_posts?} = Board.ranked_posts(tools)
 
     render(conn, :site,
-      page_title: site.origin,
+      page_title: site.display_name || site.origin,
       site: site,
       tool_groups: tool_groups,
-      more?: more?
+      more?: more?,
+      posts: posts,
+      more_posts?: more_posts?,
+      earned_tips: Board.earned_tips(Enum.map(posts, & &1.author))
     )
   end
 
@@ -67,24 +72,32 @@ defmodule PatchbayWeb.Forum.BoardController do
     if versions == [], do: raise(NotFoundError)
     reports = Board.reports_by_version(versions)
     priority_reports = Board.priority_reports(versions)
+    {posts, more_posts?} = Board.ranked_posts(versions)
 
     render(conn, :tool,
-      page_title: "#{name} on #{site.origin}",
+      page_title: "#{name} on #{site.display_name || site.origin}",
       site: site,
       tool_name: name,
+      current_tool: hd(versions),
       versions: versions,
       more?: more?,
       reports: reports,
       priority_reports: priority_reports,
+      posts: posts,
+      more_posts?: more_posts?,
       earned_tips:
         Board.earned_tips(
           Board.authors(Enum.concat(Map.values(reports))) ++
-            Enum.map(priority_reports, & &1.author)
+            Enum.map(priority_reports, & &1.author) ++ Enum.map(posts, & &1.author)
         )
     )
   end
 
   def report(conn, %{"id" => id}) do
+    show_report(conn, id, [])
+  end
+
+  def post(conn, %{"id" => id}) do
     show_report(conn, id, [])
   end
 
@@ -200,10 +213,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp site!(origin) do
-    with {:ok, host} <- Board.normalize_origin(origin),
-         {:ok, site} <- Board.fetch_site(host) do
-      site
-    else
+    case Board.fetch_site_ref(origin) do
+      {:ok, site} -> site
       :error -> raise NotFoundError
     end
   end

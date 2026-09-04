@@ -19,6 +19,7 @@ defmodule Patchbay.Forum.Report do
   import Ash.Expr
 
   alias Patchbay.Forum.Types.EscrowStatus
+  alias Patchbay.Forum.Types.PostKind
   alias Patchbay.Forum.Types.ReceiptStatus
   alias Patchbay.Forum.Types.Verdict
 
@@ -137,6 +138,10 @@ defmodule Patchbay.Forum.Report do
     has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
   end
 
+  aggregates do
+    count(:reply_count, :replies)
+  end
+
   calculations do
     # What makes a report one of the board's paid ones: money was put behind it
     # and it is still there to be won. A bounty its asker took back is an
@@ -147,6 +152,35 @@ defmodule Patchbay.Forum.Report do
       expr(
         not is_nil(priority_amount_atomic) and
           (is_nil(escrow_status) or escrow_status != :refunded)
+      )
+    )
+
+    # Only money that reached escrow counts as paid placement. A priority
+    # report that has been filed but not credited is still pending, and a
+    # refunded bounty is no longer a paid placement.
+    calculate(
+      :verified_paid_usdc_atomic,
+      :integer,
+      expr(
+        if not is_nil(priority_amount_atomic) and
+             escrow_status in [:credited, :released] do
+          priority_amount_atomic
+        else
+          0
+        end
+      )
+    )
+
+    calculate(
+      :post_kind,
+      PostKind,
+      expr(
+        cond do
+          exists(repair_attempt, true) -> :repair
+          verdict == :verified_success -> :verification
+          verdict in [:verified_failure, :errored] -> :failure
+          true -> :report
+        end
       )
     )
   end
@@ -179,6 +213,19 @@ defmodule Patchbay.Forum.Report do
       filter(expr(tool_id in ^arg(:tool_ids) and bounty_open))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
+    read :ranked_for_tools do
+      description("""
+      Posts about any of these tool versions, paid placement first: largest
+      settled USDC, then newest. Unpaid posts follow, newest first. Pending
+      or failed escrow does not promote a post.
+      """)
+
+      argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
+      filter(expr(tool_id in ^arg(:tool_ids)))
+      pagination(keyset?: true, default_limit: 20, max_page_size: 20)
+      prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
     end
 
     read :for_invocation do

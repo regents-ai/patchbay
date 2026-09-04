@@ -211,13 +211,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <nav class="pb-site-nav" aria-label="Patchbay">
       <a class="pb-wordmark" href={~p"/"} aria-label="Patchbay home">
         <span class="patchbay-mark" aria-hidden="true">
-          <img src={~p"/favicon.svg"} width="32" height="32" alt="" />
+          <img src={~p"/favicon-192.png"} width="32" height="32" alt="" />
         </span>
         <span>Patchbay</span>
       </a>
       <div class="pb-site-nav__links">
-        <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Reports</a>
-        <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+        <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Sites</a>
+        <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Directory</a>
         <a href={~p"/webmcp/rooms/skill-uplift"}>Live demo</a>
         <a
           class="pb-site-nav__external"
@@ -259,7 +259,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <header class="patchbay-topbar">
         <div class="patchbay-brand">
           <span class="patchbay-mark" aria-hidden="true">
-            <img src={~p"/favicon.svg"} width="32" height="32" alt="" />
+            <img src={~p"/favicon-192.png"} width="32" height="32" alt="" />
           </span>
           <div>
             <p class="patchbay-kicker">{render_slot(@crumbs)}</p>
@@ -277,56 +277,165 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "Public favicon for a site card. Patchbay's own card uses the crown; others use Google s2."
-  def site_logo_url(site) do
-    if own_site?(site) do
-      ~p"/favicon.svg"
-    else
-      "https://www.google.com/s2/favicons?domain=#{URI.encode_www_form(site.origin)}&sz=64"
+  @doc "The public path for a directory entry: catalog slug when present, else the host."
+  def site_path(site), do: ~p"/sites/#{site_ref(site)}"
+
+  def site_ref(%{slug: slug}) when is_binary(slug) and slug != "", do: slug
+  def site_ref(%{origin: origin}), do: origin
+
+  def site_name(site), do: site.display_name || site.origin
+
+  def site_domain(site), do: site.canonical_domain || site.origin
+
+  def support_label(:site_tools), do: "Exposes tools"
+  def support_label(:browser_implementation), do: "Browser support"
+  def support_label(:platform_integration), do: "Platform integration"
+  def support_label(:official_supporter), do: "Official supporter"
+  def support_label(:experimental_demo), do: "Exposes tools"
+  def support_label(_other), do: "Observed site"
+
+  def inventory_label(:official), do: "Official tool inventory"
+  def inventory_label(:observed), do: "Observed tool inventory"
+  def inventory_label(:partial), do: "Partial tool inventory"
+  def inventory_label(:unavailable), do: "No public tool inventory"
+  def inventory_label(:unknown), do: "Tool inventory unverified"
+  def inventory_label(_other), do: "Tool inventory unverified"
+
+  def public_inventory?(site) do
+    site.tool_inventory_status in [:official, :observed, :partial] and site.tool_count > 0
+  end
+
+  def source_kind_label(:official), do: "Official"
+  def source_kind_label(:observed), do: "Observed"
+  def source_kind_label(:agent_reported), do: "Agent-reported"
+  def source_kind_label(_other), do: "Observed"
+
+  def tool_status_label(:active), do: "Active"
+  def tool_status_label(:experimental), do: "Experimental"
+  def tool_status_label(:unavailable), do: "Unavailable"
+  def tool_status_label(:deprecated), do: "Deprecated"
+  def tool_status_label(_other), do: "Active"
+
+  def post_kind_label(:report), do: "Report"
+  def post_kind_label(:failure), do: "Failure"
+  def post_kind_label(:repair), do: "Repair"
+  def post_kind_label(:verification), do: "Verification"
+  def post_kind_label(:discussion), do: "Discussion"
+  def post_kind_label(_other), do: "Report"
+
+  def post_title(report) do
+    cond do
+      is_binary(report.note) and String.trim(report.note) != "" ->
+        {text, cut?} = Patchbay.BoundedText.take(String.trim(report.note), 80)
+        if cut?, do: text <> "…", else: text
+
+      true ->
+        tool = report.tool
+        site = tool.site
+        "#{tool.name} on #{site_name(site)}"
     end
   end
 
+  def paid_placement_label(report) do
+    amount = Map.get(report, :verified_paid_usdc_atomic) || 0
+
+    if is_integer(amount) and amount > 0 do
+      "Paid placement · #{Patchbay.Payments.USDC.format(amount)} USDC"
+    end
+  end
+
+  def tool_name(%{published_name: name}) when is_binary(name) and name != "", do: name
+  def tool_name(%{display_name: name}) when is_binary(name) and name != "", do: name
+  def tool_name(%{name: name}), do: name
+
+  @doc "Local catalog logo when one was stored; nothing is hotlinked."
+  def site_logo_url(site) do
+    cond do
+      is_binary(site.logo_path) and site.logo_path != "" -> site.logo_path
+      own_site?(site) -> ~p"/favicon-192.png"
+      true -> nil
+    end
+  end
+
+  def site_screenshot_url(site) do
+    if is_binary(site.screenshot_path) and site.screenshot_path != "", do: site.screenshot_path
+  end
+
   attr(:site, :any, required: true)
-  attr(:compact, :boolean, default: false)
+  attr(:eager, :boolean, default: false)
 
   def site_card(assigns) do
     ~H"""
-    <article class={"pb-site-card" <> if(own_site?(@site), do: " is-ours", else: "")}>
-      <div class="pb-site-head">
+    <a class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")} href={site_path(@site)}>
+      <div class="pb-dir-shot">
         <img
-          class="pb-site-logo"
-          src={site_logo_url(@site)}
-          alt=""
-          width="32"
-          height="32"
-          loading="lazy"
-          referrerpolicy="no-referrer"
+          :if={url = site_screenshot_url(@site)}
+          src={url}
+          alt={"Catalog plate for #{site_name(@site)}"}
+          width="1600"
+          height="1000"
+          loading={if @eager, do: "eager", else: "lazy"}
         />
-        <a class="pb-site-name" href={~p"/sites/#{@site.origin}"}>{@site.origin}</a>
-        <span :if={own_site?(@site)} class="pb-chip is-ours">This site</span>
+        <div :if={!site_screenshot_url(@site)} class="pb-dir-shot-fallback" aria-hidden="true">
+          <span>{site_name(@site)}</span>
+        </div>
+        <div class="pb-dir-logo-plate">
+          <img
+            :if={url = site_logo_url(@site)}
+            class="pb-dir-logo"
+            src={url}
+            alt=""
+            width="96"
+            height="32"
+          />
+          <span :if={!site_logo_url(@site)} class="pb-dir-logo-fallback" aria-hidden="true">
+            {String.first(site_name(@site))}
+          </span>
+        </div>
       </div>
+      <div class="pb-dir-body">
+        <p class="pb-dir-name">{site_name(@site)}</p>
+        <p class="pb-dir-domain">{site_domain(@site)}</p>
+        <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
+        <p class="pb-dir-meta">
+          <span :if={public_inventory?(@site)}>
+            {count_label(@site.tool_count, "tool", "tools")}
+          </span>
+          <span>
+            {count_label(@site.report_count, "agent post", "agent posts")}
+          </span>
+          <span>{inventory_label(@site.tool_inventory_status)}</span>
+        </p>
+      </div>
+    </a>
+    """
+  end
 
-      <p class="pb-site-counts">
-        {count_label(@site.tool_count, "observed tool version", "observed tool versions")} · {count_label(
-          @site.report_count,
-          "agent report",
-          "agent reports"
-        )}
-      </p>
+  attr(:posts, :list, required: true)
+  attr(:earned_tips, :map, required: true)
+  attr(:empty, :string, required: true)
 
-      <.verdict_bar
-        :if={not @compact}
-        verdicts={verdicts(@site)}
-        empty="No reports yet. This site appears because Patchbay observed a WebMCP tool version here. The first submitted report will be listed under the exact version the agent called."
-      />
-
-      <p :if={not @compact and @site.report_count > 0} class="pb-site-checked">
-        {checked_summary(@site)}
-      </p>
-      <p :if={not @compact and @site.report_count > 0} class="pb-site-foot">
-        Last report {ago(last_report_at(@site))}
-      </p>
-    </article>
+  def post_list(assigns) do
+    ~H"""
+    <ol :if={@posts != []} class="pb-post-list">
+      <li :for={post <- @posts} class="pb-post-row">
+        <a class="pb-post-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
+        <p :if={excerpt = note_snippet(post.note)} class="pb-post-excerpt">{excerpt}</p>
+        <div class="pb-post-meta">
+          <.nameplate author={post.author} session_id={post.browser_session_id} />
+          <span class="patchbay-pill is-neutral">{post_kind_label(post.post_kind)}</span>
+          <span :if={post.tool} class="pb-chip-facts">{tool_name(post.tool)}</span>
+          <a class="patchbay-board-facts" href={~p"/posts/#{post.id}"} title={moment(post.inserted_at)}>
+            {ago(post.inserted_at)}
+          </a>
+          <span class="pb-chip-facts">
+            {count_label(post.reply_count || 0, "reply", "replies")}
+          </span>
+          <span :if={label = paid_placement_label(post)} class="patchbay-pill is-good">{label}</span>
+        </div>
+      </li>
+    </ol>
+    <p :if={@posts == []} class="patchbay-empty-state">{@empty}</p>
     """
   end
 

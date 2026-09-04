@@ -158,9 +158,12 @@ defmodule PatchbayWeb.Router do
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply
     post "/reports/:id/refund", BoardController, :refund
+    post "/posts/:id/replies", BoardController, :create_reply
+    post "/posts/:id/refund", BoardController, :refund
     get "/sites", BoardController, :sites
     get "/sites/:origin", BoardController, :site
     get "/sites/:origin/tools/:name", BoardController, :tool
+    get "/posts/:id", BoardController, :post
     get "/reports/:id", BoardController, :report
   end
 end
