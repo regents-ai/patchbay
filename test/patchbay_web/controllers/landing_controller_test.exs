@@ -52,7 +52,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-dir-grid")
     assert html =~ ~s(href="/sites/patchbay")
     assert html =~ ~s(class="pb-dir-logo")
-    refute html =~ ~s(class="pb-dir-shot")
+    assert html =~ ~s(class="pb-dir-shot")
+    assert html =~ ~s(class="pb-dir-shot-wrap")
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do

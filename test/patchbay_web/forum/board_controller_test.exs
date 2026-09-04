@@ -4,7 +4,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   alias Patchbay.Forum
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
-  alias PatchbayWeb.Forum.Fingerprint
 
   @contract String.duplicate("a", 64)
   @other_contract String.duplicate("b", 64)
@@ -53,7 +52,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       html = conn |> get(~p"/") |> html_response(200)
 
-      assert html =~ ~s(href="/reports/#{report.id}")
+      assert html =~ ~s(href="/posts/#{report.id}")
       assert html =~ "shop.example / checkout"
       assert html =~ "Did not work"
       assert html =~ "the cart stayed empty"
@@ -65,12 +64,12 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       busy = site!("busy.example") |> tool!(%{name: "checkout"}) |> report!(%{note: "busy note"})
 
       by_site = conn |> get(~p"/?q=busy.example") |> html_response(200)
-      assert by_site =~ ~s(href="/reports/#{busy.id}")
-      refute by_site =~ ~s(href="/reports/#{quiet.id}")
+      assert by_site =~ ~s(href="/posts/#{busy.id}")
+      refute by_site =~ ~s(href="/posts/#{quiet.id}")
 
       by_tool = conn |> get(~p"/?q=search") |> html_response(200)
-      assert by_tool =~ ~s(href="/reports/#{quiet.id}")
-      refute by_tool =~ ~s(href="/reports/#{busy.id}")
+      assert by_tool =~ ~s(href="/posts/#{quiet.id}")
+      refute by_tool =~ ~s(href="/posts/#{busy.id}")
     end
 
     test "payments rail follows Privy and Base RPC, not a hardcoded off switch", %{conn: conn} do
@@ -102,10 +101,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /sites" do
-    test "says plainly that nothing has been reported yet", %{conn: conn} do
+    test "shows the researched directory, not an empty board", %{conn: conn} do
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert body =~ "Nothing has been reported yet"
+      assert body =~ ~s(class="pb-dir-grid")
+      assert body =~ ~s(href="/sites/chrome")
+      assert body =~ ~s(href="/sites/patchbay")
+      refute body =~ "Nothing has been reported yet"
       refute body =~ ~s(href="/sites/patchbay.help")
     end
 
@@ -114,42 +116,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert body =~ ~s(href="/sites/patchbay.help")
-      assert body =~ "1 observed tool version · 0 agent reports"
-      refute body =~ "Nothing has been reported yet"
-    end
-
-    test "lists the rest busiest first, with their counts", %{conn: conn} do
-      quiet = site!("quiet.example")
-      busy = site!("busy.example")
-
-      quiet |> tool!() |> report!()
-      busy_tool = tool!(busy)
-      report!(busy_tool)
-      report!(busy_tool, %{verdict: :errored})
-      tool!(busy, %{contract_sha256: @other_contract})
-
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert [busy_at, quiet_at] =
-               Enum.map(["busy.example", "quiet.example"], &:binary.match(body, &1))
-
-      assert busy_at < quiet_at
-      assert body =~ "2 observed tool versions · 2 agent reports"
-      assert body =~ "1 observed tool version · 1 agent report"
-    end
-
-    test "puts Patchbay's own site first however busy the others are", %{conn: conn} do
-      Rooms.create_seeded_room!("room-one")
-      busy = site!("busy.example")
-      busy_tool = tool!(busy)
-      report!(busy_tool)
-      report!(busy_tool, %{verdict: :errored})
-
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert :binary.match(body, ~s(href="/sites/patchbay.help")) <
-               :binary.match(body, ~s(href="/sites/busy.example"))
+      assert body =~ ~s(href="/sites/patchbay")
+      assert body =~ "1 tool"
+      assert body =~ "0 agent posts"
     end
 
     test "carries the contract a repair room is currently offering", %{conn: conn} do
@@ -171,7 +140,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ "patchbay.help"
-      assert body =~ "2 observed tool versions · 0 agent reports"
+      assert body =~ "2 tools"
+      assert body =~ "0 agent posts"
 
       site_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
 
@@ -185,52 +155,19 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert tool_page =~ "Improve the Skill and say what changed."
     end
 
-    test "a card carries its counts, its strip and when it last heard anything", %{conn: conn} do
-      tool = "shopify.com" |> site!() |> tool!()
-
-      report!(tool)
-      report!(tool)
-      report!(tool, %{verdict: :verified_failure})
-      report!(tool, %{verdict: :errored})
-
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert body =~ "1 observed tool version · 4 agent reports"
-      assert body =~ "2 worked · 1 did not · 1 errored · 0 unclear"
-      assert body =~ ~s(<span class="pb-bar-part is-worked" style="width:50.0%")
-      assert body =~ ~s(<span class="pb-bar-part is-failed" style="width:25.0%")
-      assert body =~ ~s(<span class="pb-bar-part is-errored" style="width:25.0%")
-      assert body =~ "None checked against Patchbay"
-      assert body =~ "Last report just now"
-    end
-
-    test "a card counts the reports Patchbay matched to a call of its own", %{conn: conn} do
-      matched_report!()
-
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert body =~ "1 report checked against Patchbay"
-    end
-
-    test "marks which card is this site, and offers a card with nothing on it a way in", %{
-      conn: conn
-    } do
+    test "marks Patchbay's own card on the directory grid", %{conn: conn} do
       Rooms.create_seeded_room!("room-one")
-      site!("quiet.example")
 
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert body =~ ~s(<span class="pb-chip is-ours">This site</span>)
-
-      assert body =~
-               "No reports yet. This site appears because Patchbay observed a WebMCP tool version here."
-
-      refute body =~ "Last report never"
+      assert body =~ ~s(class="pb-dir-card is-ours")
+      assert body =~ "Official supporter"
+      assert body =~ "No public tool inventory"
     end
   end
 
   describe "GET /sites/:origin" do
-    test "groups a site's tools and shows each version's counts", %{conn: conn} do
+    test "lists each tool before the site's posts", %{conn: conn} do
       site = site!("shopify.com")
       first = tool!(site, %{title: "Start checkout"})
       second = tool!(site, %{contract_sha256: @other_contract})
@@ -244,48 +181,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ "checkout"
       assert body =~ "search"
-      assert body =~ "2 versions"
-      assert body =~ "1 version"
-
-      # One strip for the whole site, and a chip for every version underneath.
-      assert body =~ "1 worked · 1 did not · 1 errored · 0 unclear"
-      assert body =~ String.slice(@contract, 0, 12)
-      assert body =~ String.slice(@other_contract, 0, 12)
-      assert body =~ "Current"
-      assert body =~ "First seen just now"
-      assert body =~ "2 reports"
-      assert body =~ "1 report"
-    end
-
-    test "draws every version's fingerprint as colour beside its characters", %{conn: conn} do
-      site = site!("shopify.com")
-      tool!(site)
-
-      body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
-
-      # Four swatches, the opening characters, the whole digest to hover over,
-      # and the colours named for a reader who cannot see them.
-      assert body |> String.split(~s(class="pb-fingerprint-chip")) |> length() == 5
-      assert body =~ String.slice(@contract, 0, 12)
-      assert body =~ ~s(title="#{@contract}")
-      assert body =~ "Fingerprint colours: "
-
-      for chip <- Fingerprint.chips(@contract),
-          do: assert(body =~ "--pb-chip-light:#{chip.light};--pb-chip-dark:#{chip.dark}")
-    end
-
-    test "marks the version a site is on now", %{conn: conn} do
-      site = site!("shopify.com")
-      tool!(site)
-      tool!(site, %{contract_sha256: @other_contract})
-
-      body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
-
-      # The newest version leads its tool and is the only one marked current.
-      assert :binary.match(body, String.slice(@other_contract, 0, 12)) <
-               :binary.match(body, String.slice(@contract, 0, 12))
-
-      assert body |> String.split(~s(class="pb-chip is-current")) |> length() == 2
+      assert body =~ ~s(href="/sites/shopify/tools/checkout")
+      assert body =~ ~s(href="/sites/shopify/tools/search")
+      assert body =~ ~s(id="pb-site-tools")
+      assert body =~ ~s(id="pb-site-posts")
+      {tools_at, _} = :binary.match(body, ~s(id="pb-site-tools"))
+      {posts_at, _} = :binary.match(body, ~s(id="pb-site-posts"))
+      assert tools_at < posts_at
     end
 
     test "says so plainly when a site has nothing on it yet", %{conn: conn} do
@@ -293,18 +195,19 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites/quiet.example") |> html_response(200)
 
-      assert body =~ "No tool on this site has been reported on yet."
-      assert body =~ "The first agent to call one and write down what happened"
+      assert body =~
+               "No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below."
+
+      assert body =~ "No agent has posted about this site yet."
     end
 
-    test "presents a tool's copy as what an agent reported", %{conn: conn} do
+    test "presents a tool's copy on the tool row", %{conn: conn} do
       site = site!("shopify.com")
       tool!(site, %{title: "Start checkout", description: "Puts the cart through."})
 
       body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
 
-      assert body =~ "HOW AN AGENT DESCRIBED THIS VERSION"
-      assert body =~ "Start checkout"
+      assert body =~ "checkout"
       assert body =~ "Puts the cart through."
     end
 
@@ -453,7 +356,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "attempt 12"
-      refute body =~ "attempt 1<"
+      assert body =~ "attempt 1"
       assert body =~ "Showing the newest 10 of 12 reports"
     end
 

@@ -2047,15 +2047,14 @@ body:has(#patchbay-sites) {
 .pb-dir-card {
   display: flex;
   flex-direction: column;
-  gap: .45rem;
   min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--pb-line);
   border-radius: 0;
-  padding: .85rem .9rem .9rem;
   background: var(--pb-surface);
   color: var(--pb-text);
   text-decoration: none;
-  transition: border-color 140ms ease;
+  transition: border-color 140ms var(--pb-ease-out);
 }
 .pb-dir-card:hover,
 .pb-dir-card:focus-visible {
@@ -2064,35 +2063,63 @@ body:has(#patchbay-sites) {
 .pb-dir-card.is-ours {
   border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line));
 }
-.pb-dir-head {
-  display: flex;
-  align-items: center;
-  gap: .7rem;
-  min-width: 0;
+.pb-dir-shot-wrap {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--pb-surface-sunk);
+}
+.pb-dir-shot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pb-dir-shot-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--pb-canvas-deep);
 }
 .pb-dir-logo-well {
+  position: absolute;
+  top: 14px;
+  left: 14px;
   display: grid;
   place-items: center;
-  flex: none;
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 2rem;
+  height: 2rem;
   overflow: hidden;
   border: 1px solid var(--pb-line);
   border-radius: 0;
-  background: var(--pb-surface-sunk);
+  background: color-mix(in srgb, var(--pb-ink) 55%, var(--pb-surface));
 }
 .pb-dir-logo {
   display: block;
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  max-height: 28px;
   object-fit: contain;
   filter: grayscale(1);
+  transform-origin: top left;
+  transition: transform 160ms var(--pb-ease-out);
 }
-.pb-dir-logo-fallback {
+.pb-dir-card:hover .pb-dir-logo,
+.pb-dir-card:focus-visible .pb-dir-logo {
+  transform: scale(1.18);
+}
+.pb-dir-logo-mark {
   color: var(--pb-text-muted);
   font-family: var(--pb-mono);
   font-size: .72rem;
   font-weight: 650;
+}
+.pb-dir-body {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+  padding: .7rem .8rem .8rem;
 }
 .pb-dir-titles { min-width: 0; }
 .pb-dir-name {
@@ -2156,7 +2183,7 @@ body:has(#patchbay-sites) {
   display: grid;
   gap: .2rem;
   border: 1px solid var(--pb-line);
-  border-radius: .55rem;
+  border-radius: 0;
   padding: .7rem .8rem;
   color: inherit;
   text-decoration: none;
@@ -2202,7 +2229,10 @@ body:has(#patchbay-sites) {
   .pb-dir-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pb-dir-card { transition: none; }
+  .pb-dir-card,
+  .pb-dir-logo { transition: none; }
+  .pb-dir-card:hover .pb-dir-logo,
+  .pb-dir-card:focus-visible .pb-dir-logo { transform: none; }
 }
 
 @media (max-width: 760px) {

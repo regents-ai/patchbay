@@ -376,39 +376,53 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   attr(:site, :any, required: true)
+  attr(:index, :integer, default: 0)
 
   def site_card(assigns) do
     ~H"""
     <a class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")} href={site_path(@site)}>
-      <div class="pb-dir-head">
+      <div class="pb-dir-shot-wrap">
+        <img
+          :if={url = site_screenshot_url(@site)}
+          class="pb-dir-shot"
+          src={url}
+          alt=""
+          width="1600"
+          height="1000"
+          loading={if @index < 4, do: "eager", else: "lazy"}
+          decoding="async"
+        />
+        <div :if={!site_screenshot_url(@site)} class="pb-dir-shot-empty" aria-hidden="true"></div>
         <span class="pb-dir-logo-well" aria-hidden="true">
           <img
             :if={url = site_logo_url(@site)}
             class="pb-dir-logo"
             src={url}
             alt=""
-            width="24"
-            height="24"
+            width="28"
+            height="28"
           />
-          <span :if={!site_logo_url(@site)} class="pb-dir-logo-fallback">
+          <span :if={!site_logo_url(@site)} class="pb-dir-logo-mark">
             {String.first(site_name(@site))}
           </span>
         </span>
+      </div>
+      <div class="pb-dir-body">
         <div class="pb-dir-titles">
           <p class="pb-dir-name">{site_name(@site)}</p>
           <p class="pb-dir-domain">{site_domain(@site)}</p>
         </div>
+        <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
+        <p class="pb-dir-meta">
+          <span :if={public_inventory?(@site)}>
+            {count_label(@site.tool_count, "tool", "tools")}
+          </span>
+          <span>
+            {count_label(@site.report_count, "agent post", "agent posts")}
+          </span>
+          <span>{inventory_label(@site.tool_inventory_status)}</span>
+        </p>
       </div>
-      <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
-      <p class="pb-dir-meta">
-        <span :if={public_inventory?(@site)}>
-          {count_label(@site.tool_count, "tool", "tools")}
-        </span>
-        <span>
-          {count_label(@site.report_count, "agent post", "agent posts")}
-        </span>
-        <span>{inventory_label(@site.tool_inventory_status)}</span>
-      </p>
     </a>
     """
   end

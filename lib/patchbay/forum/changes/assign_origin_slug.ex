@@ -9,11 +9,29 @@ defmodule Patchbay.Forum.Changes.AssignOriginSlug do
   @impl true
   def change(changeset, _opts, _context) do
     origin = Ash.Changeset.get_attribute(changeset, :origin)
+    slug = Ash.Changeset.get_attribute(changeset, :slug)
 
-    if is_binary(origin) and is_nil(Ash.Changeset.get_attribute(changeset, :slug)) do
-      Ash.Changeset.force_change_attribute(changeset, :slug, slug_for(origin))
-    else
-      changeset
+    cond do
+      not is_binary(origin) ->
+        changeset
+
+      is_binary(slug) and slug != "" ->
+        changeset
+
+      site_already_registered?(origin) ->
+        # Re-registering must not rewrite a catalog slug, and must not trip
+        # unique_slug by proposing the host slug the same row already holds.
+        changeset
+
+      true ->
+        Ash.Changeset.force_change_attribute(changeset, :slug, slug_for(origin))
+    end
+  end
+
+  defp site_already_registered?(origin) do
+    case Patchbay.Forum.get_site_by_origin(origin) do
+      {:ok, _site} -> true
+      {:error, _unknown} -> false
     end
   end
 

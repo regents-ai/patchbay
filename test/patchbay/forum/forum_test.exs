@@ -132,12 +132,14 @@ defmodule Patchbay.ForumTest do
       assert is_nil(site.claimed_at)
 
       # Claiming needs an ownership proof that does not exist yet, so no write
-      # action may touch these fields. Registering is the only write.
+      # action may touch these fields. Directory catalog writes never set them.
       assert action_names(Patchbay.Forum.Site) ==
                [
                  {:read, :read},
                  {:by_report_count, :read},
-                 {:register_site, :create}
+                 {:directory, :read},
+                 {:register_site, :create},
+                 {:upsert_catalog_entry, :create}
                ]
                |> Enum.sort()
     end
@@ -286,6 +288,7 @@ defmodule Patchbay.ForumTest do
                  {:for_update, :read},
                  {:for_tools, :read},
                  {:priority_for_tools, :read},
+                 {:ranked_for_tools, :read},
                  {:for_invocation, :read},
                  {:recent, :read},
                  {:verified_awaiting_repair, :read},
