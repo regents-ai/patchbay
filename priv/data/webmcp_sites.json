@@ -184,7 +184,7 @@
       "support_evidence_url": "https://patchbay.help/agent-setup",
       "support_evidence_label": "This site exposes WebMCP tools",
       "tool_inventory_status": "observed",
-      "logo_path": "/favicon-192.png",
+      "logo_path": "/favicon.svg",
       "logo_source_url": "https://patchbay.help/",
       "logo_usage_note": "Patchbay's own mark. Tools appear here when a repair room starts offering a contract.",
       "screenshot_path": "/images/directory/patchbay-plate.svg",

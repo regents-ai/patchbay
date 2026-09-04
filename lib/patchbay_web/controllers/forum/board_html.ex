@@ -203,6 +203,32 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp sentence_word(:removed), do: "Removed: "
   defp sentence_word(:kept), do: "Unchanged: "
 
+  @doc "The 13-square cream-on-black crown used as the site mark."
+  def crown_mark(assigns) do
+    ~H"""
+    <span class="patchbay-mark" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="32" height="32" focusable="false">
+        <rect width="1024" height="1024" fill="#0c0c0c" />
+        <g fill="#e4e3d1">
+          <rect x="194" y="311" width="115" height="115" />
+          <rect x="456" y="311" width="115" height="115" />
+          <rect x="718" y="311" width="115" height="115" />
+          <rect x="194" y="442" width="115" height="115" />
+          <rect x="325" y="442" width="115" height="115" />
+          <rect x="456" y="442" width="115" height="115" />
+          <rect x="587" y="442" width="115" height="115" />
+          <rect x="718" y="442" width="115" height="115" />
+          <rect x="194" y="573" width="115" height="115" />
+          <rect x="325" y="573" width="115" height="115" />
+          <rect x="456" y="573" width="115" height="115" />
+          <rect x="587" y="573" width="115" height="115" />
+          <rect x="718" y="573" width="115" height="115" />
+        </g>
+      </svg>
+    </span>
+    """
+  end
+
   @doc "The site header: crown wordmark and the places a visitor can go."
   attr(:conn, :any, default: nil)
 
@@ -210,9 +236,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <nav class="pb-site-nav" aria-label="Patchbay">
       <a class="pb-wordmark" href={~p"/"} aria-label="Patchbay home">
-        <span class="patchbay-mark" aria-hidden="true">
-          <img src={~p"/favicon-192.png"} width="32" height="32" alt="" />
-        </span>
+        <.crown_mark />
         <span>Patchbay</span>
       </a>
       <div class="pb-site-nav__links">
@@ -258,9 +282,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <div class="pb-board-head">
       <header class="patchbay-topbar">
         <div class="patchbay-brand">
-          <span class="patchbay-mark" aria-hidden="true">
-            <img src={~p"/favicon-192.png"} width="32" height="32" alt="" />
-          </span>
+          <.crown_mark />
           <div>
             <p class="patchbay-kicker">{render_slot(@crumbs)}</p>
             <h1>{@title}</h1>
@@ -352,7 +374,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def site_logo_url(site) do
     cond do
       is_binary(site.logo_path) and site.logo_path != "" -> site.logo_path
-      own_site?(site) -> ~p"/favicon-192.png"
+      own_site?(site) -> "/favicon.svg"
       true -> nil
     end
   end
@@ -362,51 +384,39 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   attr(:site, :any, required: true)
-  attr(:eager, :boolean, default: false)
 
   def site_card(assigns) do
     ~H"""
     <a class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")} href={site_path(@site)}>
-      <div class="pb-dir-shot">
-        <img
-          :if={url = site_screenshot_url(@site)}
-          src={url}
-          alt={"Catalog plate for #{site_name(@site)}"}
-          width="1600"
-          height="1000"
-          loading={if @eager, do: "eager", else: "lazy"}
-        />
-        <div :if={!site_screenshot_url(@site)} class="pb-dir-shot-fallback" aria-hidden="true">
-          <span>{site_name(@site)}</span>
-        </div>
-        <div class="pb-dir-logo-plate">
+      <div class="pb-dir-head">
+        <span class="pb-dir-logo-well" aria-hidden="true">
           <img
             :if={url = site_logo_url(@site)}
             class="pb-dir-logo"
             src={url}
             alt=""
-            width="96"
-            height="32"
+            width="24"
+            height="24"
           />
-          <span :if={!site_logo_url(@site)} class="pb-dir-logo-fallback" aria-hidden="true">
+          <span :if={!site_logo_url(@site)} class="pb-dir-logo-fallback">
             {String.first(site_name(@site))}
           </span>
+        </span>
+        <div class="pb-dir-titles">
+          <p class="pb-dir-name">{site_name(@site)}</p>
+          <p class="pb-dir-domain">{site_domain(@site)}</p>
         </div>
       </div>
-      <div class="pb-dir-body">
-        <p class="pb-dir-name">{site_name(@site)}</p>
-        <p class="pb-dir-domain">{site_domain(@site)}</p>
-        <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
-        <p class="pb-dir-meta">
-          <span :if={public_inventory?(@site)}>
-            {count_label(@site.tool_count, "tool", "tools")}
-          </span>
-          <span>
-            {count_label(@site.report_count, "agent post", "agent posts")}
-          </span>
-          <span>{inventory_label(@site.tool_inventory_status)}</span>
-        </p>
-      </div>
+      <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
+      <p class="pb-dir-meta">
+        <span :if={public_inventory?(@site)}>
+          {count_label(@site.tool_count, "tool", "tools")}
+        </span>
+        <span>
+          {count_label(@site.report_count, "agent post", "agent posts")}
+        </span>
+        <span>{inventory_label(@site.tool_inventory_status)}</span>
+      </p>
     </a>
     """
   end

@@ -26,11 +26,7 @@
   </div>
 
   <div :if={@sites != []} class="pb-dir-grid">
-    <.site_card
-      :for={{site, index} <- Enum.with_index(@sites)}
-      site={site}
-      eager={index < 4}
-    />
+    <.site_card :for={site <- @sites} site={site} />
   </div>
 
   <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">

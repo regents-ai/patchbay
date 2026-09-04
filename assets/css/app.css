@@ -389,7 +389,8 @@ body {
     0 0 0 1px color-mix(in srgb, var(--pb-text-on-ink) 18%, transparent),
     0 .3rem .9rem color-mix(in srgb, var(--pb-accent) 30%, transparent);
 }
-.patchbay-mark img {
+.patchbay-mark img,
+.patchbay-mark svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -2141,89 +2142,77 @@ body:has(#patchbay-sites) {
 .pb-dir-card {
   display: flex;
   flex-direction: column;
+  gap: .45rem;
   min-width: 0;
-  overflow: hidden;
   border: 1px solid var(--pb-line);
-  border-radius: .7rem;
+  border-radius: .55rem;
+  padding: .85rem .9rem .9rem;
   background: var(--pb-surface);
   color: inherit;
   text-decoration: none;
-  box-shadow: var(--pb-shadow-sm);
-  transition: border-color 160ms ease, box-shadow 160ms var(--pb-ease-out);
+  transition: border-color 140ms ease;
 }
 .pb-dir-card:hover,
 .pb-dir-card:focus-visible {
   border-color: var(--pb-line-strong);
-  box-shadow: var(--pb-shadow);
 }
-.pb-dir-shot {
-  position: relative;
-  aspect-ratio: 16 / 10;
-  background: #eceae4;
-  overflow: hidden;
+.pb-dir-card.is-ours {
+  border-color: color-mix(in srgb, var(--pb-accent) 40%, var(--pb-line));
 }
-.pb-dir-shot img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.pb-dir-head {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-width: 0;
 }
-.pb-dir-shot-fallback,
-.pb-dir-logo-fallback {
+.pb-dir-logo-well {
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
-  color: #5c5a53;
-  font-family: var(--pb-sans);
-  font-weight: 650;
-}
-.pb-dir-logo-plate {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  display: grid;
-  place-items: start;
-  min-width: 2.2rem;
-  min-height: 1.7rem;
-  padding: .2rem .35rem;
-  background: color-mix(in srgb, #f7f6f1 88%, transparent);
-  border: 1px solid color-mix(in srgb, #1a1a1a 8%, transparent);
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  overflow: hidden;
+  border: 1px solid var(--pb-line);
+  border-radius: .35rem;
+  background: var(--pb-canvas-deep);
 }
 .pb-dir-logo {
   display: block;
-  width: auto;
-  max-width: 5.5rem;
-  height: 28px;
-  max-height: 28px;
+  width: 1.15rem;
+  height: 1.15rem;
   object-fit: contain;
   filter: grayscale(1);
-  transform-origin: 0 0;
-  transition: transform 160ms var(--pb-ease-out);
-}
-.pb-dir-card:hover .pb-dir-logo,
-.pb-dir-card:focus-visible .pb-dir-logo {
-  transform: scale(1.18);
 }
 .pb-dir-logo-fallback {
-  width: 1.5rem;
-  height: 1.5rem;
+  color: var(--pb-text-muted);
+  font-family: var(--pb-sans);
   font-size: .8rem;
+  font-weight: 650;
 }
-.pb-dir-body { display: grid; gap: .2rem; padding: .75rem .8rem .85rem; }
+.pb-dir-titles { min-width: 0; }
 .pb-dir-name {
   margin: 0;
   color: var(--pb-text);
-  font-size: .95rem;
-  font-weight: 700;
+  font-family: var(--pb-sans);
+  font-size: .9rem;
+  font-weight: 650;
   letter-spacing: -.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pb-dir-domain,
 .pb-dir-support,
 .pb-dir-meta {
   margin: 0;
   color: var(--pb-text-muted);
+  font-family: var(--pb-sans);
   font-size: .75rem;
+}
+.pb-dir-domain {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pb-dir-meta {
   display: flex;
@@ -2246,6 +2235,10 @@ body:has(#patchbay-sites) {
   background: var(--pb-surface);
 }
 .pb-entry-mark img { width: 1.6rem; height: 1.6rem; object-fit: contain; filter: grayscale(1); }
+@media (prefers-color-scheme: dark) {
+  .pb-dir-logo,
+  .pb-entry-mark img { filter: grayscale(1) invert(1); }
+}
 .pb-entry-evidence {
   display: flex;
   flex-wrap: wrap;
@@ -2304,10 +2297,7 @@ body:has(#patchbay-sites) {
   .pb-dir-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pb-dir-logo,
   .pb-dir-card { transition: none; }
-  .pb-dir-card:hover .pb-dir-logo,
-  .pb-dir-card:focus-visible .pb-dir-logo { transform: none; }
 }
 
 @media (max-width: 760px) {

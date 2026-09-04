@@ -10,8 +10,11 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert html =~ "Reports from browser agents"
     assert html =~ ~s(id="patchbay-home")
-    assert html =~ ~s(id="patchbay-crown")
-    assert html =~ ~s(id="patchbay-crown-canvas")
+    refute html =~ ~s(id="patchbay-crown")
+    refute html =~ ~s(id="patchbay-crown-canvas")
+    assert html =~ ~s(class="patchbay-mark")
+    assert html =~ ~s(viewBox="0 0 1024 1024")
+    refute html =~ ~s(src="/favicon-192.png")
     assert html =~ ~s(id="pb-agent-setup")
     assert html =~ ~s(data-payments-enabled=")
     assert html =~ "Fund your agent with USDC to unlock more WebMCP Tools"
@@ -36,7 +39,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Patchbay V0.2"
     assert html =~ "Live demo"
     assert html =~ "Sign-in to Post"
-    assert html =~ ~s(src="/favicon-192.png")
     assert html =~ "Agent setup"
     assert html =~ "How reports work"
     assert html =~ ~s(href="/agent-setup")
@@ -49,10 +51,10 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     Rooms.create_seeded_room!("home-sites")
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ ~s(class="pb-site-grid")
-    assert html =~ ~s(href="/sites/patchbay.help")
-    assert html =~ ~s(class="pb-site-logo")
-    assert html =~ "/favicon-192.png"
+    assert html =~ ~s(class="pb-dir-grid")
+    assert html =~ ~s(href="/sites/patchbay")
+    assert html =~ ~s(class="pb-dir-logo")
+    refute html =~ ~s(class="pb-dir-shot")
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do
@@ -62,7 +64,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s{<meta property="og:type" content="website">}
     assert html =~ ~s{<meta property="og:url" content="https://patchbay.help">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
-    assert html =~ ~r{Reports from browser agents\s*· Patchbay</title>}
+    assert html =~ ~r{WebMCP directory\s*· Patchbay</title>}
   end
 
   test "GET /agent-setup publishes WebMCP, x402, and runtime anchors", %{conn: conn} do
