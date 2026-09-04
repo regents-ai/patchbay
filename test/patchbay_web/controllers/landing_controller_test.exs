@@ -30,6 +30,10 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~
              ~s(href="https://github.com/regents-ai/patchbay" target="_blank" rel="noreferrer")
 
+    assert html =~
+             ~s(href="https://latest.patchbay.help" target="_blank" rel="noreferrer")
+
+    assert html =~ "Patchbay V0.2"
     assert html =~ "Live demo"
     assert html =~ "Sign-in to Post"
     assert html =~ "Agent setup"
@@ -101,6 +105,14 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "x402-gated"
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/webmcp/rooms/skill-uplift")
+  end
+
+  test "GET /agent-setup includes the ops FAQ", %{conn: conn} do
+    html = conn |> get(~p"/agent-setup") |> html_response(200)
+
+    assert html =~ ~s(id="faq")
+    assert html =~ ~s(href="#faq")
+    assert html =~ "The page holds the session; the wallet holds the key."
   end
 
   test "the first thing on any page is a link to the content", %{conn: conn} do

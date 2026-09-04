@@ -1763,7 +1763,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   background: var(--pb-surface-sunk);
   box-shadow: inset 0 -2px var(--pb-accent);
 }
-.pb-site-nav__github { gap: .3rem; }
+.pb-site-nav__github,
+.pb-site-nav__external { gap: .3rem; }
 
 .pb-section-head {
   display: flex;
