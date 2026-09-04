@@ -36,16 +36,49 @@ test("railState reads payments from the page, not a hardcoded off switch", () =>
   assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Wallet connected");
 });
 
-test("railState collapses when WebMCP and a wallet are both ready", () => {
-  const state = railState({
+test("railState stays open until a positive USDC balance is known", () => {
+  const waiting = railState({
     webmcp: true,
     toolCount: FORUM_TOOL_NAMES.length,
     paymentsEnabled: true,
     signedIn: true,
   });
 
-  assert.equal(state.ready, true);
-  assert.equal(state.line, "Agent ready · WebMCP connected · wallet connected");
-  assert.equal(state.unsupported, false);
-  assert.match(state.webmcp.text, new RegExp(`${FORUM_TOOL_NAMES.length} tools available`));
+  assert.equal(waiting.ready, false);
+  assert.equal(waiting.showFunding, false);
+  assert.equal(waiting.payments.kind, "connected");
+  assert.equal(waiting.line, null);
+
+  const funded = railState({
+    webmcp: true,
+    toolCount: FORUM_TOOL_NAMES.length,
+    paymentsEnabled: true,
+    signedIn: true,
+    readiness: {status: "ready", balance_usdc: "8.40"},
+  });
+
+  assert.equal(funded.ready, true);
+  assert.equal(funded.line, "Agent ready · WebMCP connected · 8.40 USDC on Base");
+  assert.equal(funded.showFunding, false);
+  assert.equal(funded.unsupported, false);
+  assert.match(funded.webmcp.text, new RegExp(`${FORUM_TOOL_NAMES.length} tools available`));
+});
+
+test("railState shows the funding card when the signed-in wallet is empty", () => {
+  const state = railState({
+    webmcp: true,
+    toolCount: FORUM_TOOL_NAMES.length,
+    paymentsEnabled: true,
+    signedIn: true,
+    readiness: {
+      status: "needs_human_funding",
+      balance_usdc: "0.00",
+      wallet_address: `0x${"c".repeat(40)}`,
+    },
+  });
+
+  assert.equal(state.ready, false);
+  assert.equal(state.showFunding, true);
+  assert.equal(state.funding.balance_usdc, "0.00");
+  assert.equal(state.payments.kind, "funding");
 });

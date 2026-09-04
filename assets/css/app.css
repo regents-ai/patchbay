@@ -1668,7 +1668,61 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   font: var(--pb-fs-xs)/1.5 var(--pb-mono);
   resize: none;
 }
-.pb-agent-setup .patchbay-copy:active { transform: scale(0.97); }
+.pb-agent-setup .patchbay-copy:active,
+.pb-fund-card button:active { transform: scale(0.97); }
+
+.pb-fund-card {
+  margin: .65rem 0 0;
+  padding: .7rem .75rem;
+  border: 1px solid var(--pb-line);
+  border-radius: .6rem;
+  background: var(--pb-surface-sunk);
+}
+.pb-fund-card[hidden] { display: none; }
+.pb-fund-title {
+  margin: 0 0 .5rem;
+  font-size: var(--pb-fs-xs);
+  font-weight: 800;
+}
+.pb-fund-facts { display: grid; gap: .4rem; margin: 0; }
+.pb-fund-facts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .75rem;
+  border-bottom: 1px dashed var(--pb-line);
+  padding-bottom: .35rem;
+}
+.pb-fund-facts dt {
+  margin: 0;
+  color: var(--pb-text-muted);
+  font-size: var(--pb-fs-micro);
+  font-weight: 700;
+}
+.pb-fund-facts dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: .4rem;
+  min-width: 0;
+  color: var(--pb-text);
+  font-size: var(--pb-fs-xs);
+}
+.pb-fund-facts code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--pb-fs-micro);
+}
+.pb-fund-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: .65rem 0 0;
+}
+.pb-fund-card button {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color .15s ease, border-color .15s ease, color .15s ease;
+}
 
 .pb-home-search {
   display: flex;

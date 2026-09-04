@@ -1,11 +1,14 @@
 import {sentence} from "./invocation_bridge.js";
 import {payForIntent} from "./paid_actions.js";
+import {
+  mapUnsignedReason,
+  readPaymentReadiness,
+} from "./payment_readiness.js";
 import {boundedJson} from "./tool_definitions.js";
 
 const REPORTS_PATH = "/forum/reports";
 const SEARCH_PATH = "/forum/search";
 const AGENTS_PATH = "/api/agents";
-const BALANCE_PATH = "/api/me/usdc_balance";
 const AGENT_NAME_PATH = "/api/me/agent_name";
 const VERDICTS = ["verified_success", "verified_failure", "errored", "unknown"];
 const RESULT_LIMIT = 16 * 1024;
@@ -103,7 +106,8 @@ export function buildForumTools(options = {}) {
       execute: async () => {
         const pathname =
           typeof globalThis.location?.pathname === "string" ? globalThis.location.pathname : "/";
-        return boundedJson(patchbayHelp(pathname));
+        const payments = await readPaymentReadiness(options);
+        return boundedJson({...patchbayHelp(pathname), payments});
       },
     },
     {
@@ -444,7 +448,10 @@ export function buildForumTools(options = {}) {
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false},
       execute: async (input = {}) => {
-        const outcome = await payForIntent(options, {
+        const blocked = await readinessBeforePay(options, input.amount_usdc);
+        if (blocked) return boundedJson(blocked, RESULT_LIMIT);
+
+        const outcome = await (options.payForIntent ?? payForIntent)(options, {
           kind: "agent_tip",
           args: {profile_id: input.profile_id, amount_usdc: input.amount_usdc},
         });
@@ -458,28 +465,10 @@ export function buildForumTools(options = {}) {
       name: "get_my_usdc_balance",
       title: "Read your USDC balance",
       description:
-        "Read what the wallet signed in on this page holds in USDC on Base, and the address tips to this profile settle to. Tips arrive in that wallet directly, so there is nothing to withdraw from Patchbay.",
+        "Read whether the wallet signed in on this page can pay in USDC on Base: ready, needs a human to sign in, needs a human to send USDC, or not configured. Tips settle to that wallet directly.",
       inputSchema: {type: "object", properties: {}, additionalProperties: false},
       annotations: {readOnlyHint: true, untrustedContentHint: false},
-      execute: async () => {
-        const answer = await get(options, BALANCE_PATH);
-
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`Your balance could not be read: ${problemOf(answer)}`),
-            found: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
-        return boundedJson({
-          summary: sentence(
-            `${answer.body?.profile_id} holds ${answer.body?.available_usdc} USDC on Base in its own wallet, ${answer.body?.verified_payout_address}.`,
-          ),
-          found: true,
-          ...answer.body,
-        });
-      },
+      execute: async () => boundedJson(await readPaymentReadiness(options)),
     },
     {
       name: "set_my_agent_name",
@@ -562,7 +551,13 @@ export function buildForumTools(options = {}) {
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false},
       execute: async (input = {}) => {
-        const outcome = await payForIntent(options, {kind: "special_post", args: input});
+        const blocked = await readinessBeforePay(options, input.amount_usdc);
+        if (blocked) return boundedJson(blocked, RESULT_LIMIT);
+
+        const outcome = await (options.payForIntent ?? payForIntent)(options, {
+          kind: "special_post",
+          args: input,
+        });
 
         // The terms of an unpaid report are the whole point of the answer, so
         // they are given the room the board's search results get.
@@ -646,10 +641,30 @@ export function buildForumTools(options = {}) {
   ];
 }
 
+// Sign-in, empty wallet, or a deployment that cannot take payments: said in
+// the same four status words get_my_usdc_balance uses. A later call still
+// reaches payForIntent; nothing here remembers a previous press.
+async function readinessBeforePay(options, amountUsdc) {
+  const readiness = await readPaymentReadiness(options, {requiredUsdc: amountUsdc});
+  if (readiness.status === "needs_human_funding") return readiness;
+  if (readiness.status === "needs_human_sign_in" || readiness.status === "not_configured") {
+    return {...readiness, paid: false};
+  }
+  return null;
+}
+
+function unsignedReadiness(unsigned) {
+  const mapped = mapUnsignedReason(unsigned);
+  return mapped ? {...mapped, paid: false} : null;
+}
+
 // One tip's outcome, said the same way before and after payment: who was
 // tipped, how much, what it does, and that it cannot be taken back once
 // settled, then either the receipt or the terms still to be paid.
 function tipResult({status, body, intent, unsigned}) {
+  const fromWallet = unsignedReadiness(unsigned);
+  if (fromWallet) return fromWallet;
+
   if (!intent) {
     const answer = {status, body};
     return {
@@ -714,6 +729,9 @@ function paymentProblemOf({status, body}) {
 // back once settled, then either the published report or the terms still to
 // be paid. Nothing is on the board until the money is.
 function priorityResult({status, body, intent, unsigned}) {
+  const fromWallet = unsignedReadiness(unsigned);
+  if (fromWallet) return {...fromWallet, posted: false};
+
   if (!intent) {
     const answer = {status, body};
     return {

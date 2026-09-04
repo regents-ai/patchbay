@@ -61,10 +61,12 @@ const offerPageWideSurfaces = () => {
   const modelContext = getModelContext()
   if (!modelContext) return
 
+  const rail = document.getElementById("pb-agent-setup")
   registerForumTools(modelContext, {
     fetch: window.fetch.bind(window),
     csrfToken,
     profileId: signedInProfileId(),
+    paymentsEnabled: rail ? rail.getAttribute("data-payments-enabled") === "true" : undefined,
   })
 }
 

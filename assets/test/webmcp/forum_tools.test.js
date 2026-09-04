@@ -517,10 +517,12 @@ test("get_patchbay_help is local, read-only, and names the current page", async 
 
   try {
     const result = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help").execute());
-    assert.deepEqual(result, patchbayHelp("/agent-setup"));
+    const {payments, ...rest} = result;
+    assert.deepEqual(rest, patchbayHelp("/agent-setup"));
     assert.equal(result.webmcp_status, "connected");
     assert.equal(result.current_page, "agent_setup");
     assert.equal(result.recommended_first_action.tool, "search_reports");
+    assert.equal(payments.status, "needs_human_sign_in");
     assert.equal(fetch.requests.length, 0);
   } finally {
     globalThis.location = previous;
@@ -529,4 +531,112 @@ test("get_patchbay_help is local, read-only, and names the current page", async 
   assert.equal(helpCurrentPage("/"), "report_index");
   assert.equal(helpCurrentPage("/sites"), "sites");
   assert.equal(helpCurrentPage("/reports/abc"), "report");
+});
+
+test("get_my_usdc_balance maps the four readiness statuses and skips the 401 door when unsigned", async () => {
+  const unsignedFetch = fakeFetch([]);
+  const unsigned = JSON.parse(
+    await toolsByName({fetch: unsignedFetch}).get("get_my_usdc_balance").execute(),
+  );
+  assert.equal(unsigned.status, "needs_human_sign_in");
+  assert.equal(unsigned.balance_usdc, null);
+  assert.equal("found" in unsigned, false);
+  assert.equal(unsignedFetch.requests.length, 0);
+
+  const wallet = `0x${"a".repeat(40)}`;
+  const funded = fakeFetch([
+    {
+      status: 200,
+      body: {
+        profile_id: "agt_1",
+        available_usdc: "8.40",
+        verified_payout_address: wallet,
+        network: "eip155:8453",
+        asset: "USDC",
+      },
+    },
+    {
+      status: 200,
+      body: {
+        profile_id: "agt_1",
+        available_usdc: "0.00",
+        verified_payout_address: wallet,
+        network: "eip155:8453",
+        asset: "USDC",
+      },
+    },
+    {
+      status: 503,
+      body: {error: "Reading balances is not set up on this Patchbay.", problem_code: "not_configured"},
+    },
+  ]);
+  const tools = toolsByName({fetch: funded, profileId: "agt_1"});
+  const balance = tools.get("get_my_usdc_balance");
+
+  const ready = JSON.parse(await balance.execute());
+  assert.equal(ready.status, "ready");
+  assert.equal(ready.balance_usdc, "8.40");
+  assert.equal(ready.can_use_paid_patchbay_tools, true);
+
+  const empty = JSON.parse(await balance.execute());
+  assert.equal(empty.status, "needs_human_funding");
+  assert.equal(empty.wallet_address, wallet);
+  assert.match(empty.human_handoff, /Do not send me a seed phrase or private key/);
+
+  const missing = JSON.parse(await balance.execute());
+  assert.equal(missing.status, "not_configured");
+});
+
+test("tip_agent returns the funding handoff when the wallet is short and still reaches payForIntent later", async () => {
+  const wallet = `0x${"b".repeat(40)}`;
+  let paid = 0;
+  const fetch = fakeFetch([
+    {
+      status: 200,
+      body: {
+        available_usdc: "0.00",
+        verified_payout_address: wallet,
+        network: "eip155:8453",
+      },
+    },
+    {
+      status: 200,
+      body: {
+        available_usdc: "8.40",
+        verified_payout_address: wallet,
+        network: "eip155:8453",
+      },
+    },
+  ]);
+  const payForIntent = async () => {
+    paid += 1;
+    return {
+      status: 200,
+      body: {status: "applied", receipt: {tx: "0x1"}},
+      intent: {
+        id: "int_1",
+        amount_usdc: "5.00",
+        recipient: {profile_id: "agt_2"},
+        effect_summary: "tip",
+        irreversible_after_settlement: true,
+      },
+    };
+  };
+  const tip = toolsByName({fetch, profileId: "agt_1", payForIntent}).get("tip_agent");
+
+  const short = JSON.parse(
+    await tip.execute({profile_id: "agt_2", amount_usdc: "5.00"}),
+  );
+  assert.equal(short.status, "needs_human_funding");
+  assert.equal(short.required_usdc, "5.00");
+  assert.equal(short.wallet_address, wallet);
+  assert.equal(short.paid, false);
+  assert.equal(paid, 0);
+  assert.equal(fetch.requests[0].path, "/api/me/usdc_balance");
+
+  const sent = JSON.parse(
+    await tip.execute({profile_id: "agt_2", amount_usdc: "5.00"}),
+  );
+  assert.equal(sent.paid, true);
+  assert.equal(paid, 1);
 });

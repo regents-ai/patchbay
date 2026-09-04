@@ -306,11 +306,62 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </div>
       <label class="sr-only" for="pb-starter-prompt">Starter prompt</label>
       <textarea id="pb-starter-prompt" class="pb-starter-prompt" readonly rows="6">{@starter_prompt}</textarea>
+      <div id="pb-agent-funding" class="pb-fund-card" hidden>
+        <p class="pb-fund-title">Fund this agent</p>
+        <dl class="pb-fund-facts">
+          <div>
+            <dt>Wallet</dt>
+            <dd>
+              <code id="pb-fund-wallet"></code>
+              <button
+                type="button"
+                class="patchbay-copy"
+                data-copy-target="pb-fund-wallet"
+                data-idle="Copy"
+              >
+                Copy
+              </button>
+            </dd>
+          </div>
+          <div>
+            <dt>Network</dt>
+            <dd>Base mainnet</dd>
+          </div>
+          <div>
+            <dt>Asset</dt>
+            <dd>USDC</dd>
+          </div>
+          <div>
+            <dt>Balance</dt>
+            <dd id="pb-fund-balance"></dd>
+          </div>
+          <div id="pb-fund-needed-row" hidden>
+            <dt>Needed now</dt>
+            <dd id="pb-fund-needed"></dd>
+          </div>
+        </dl>
+        <label class="sr-only" for="pb-funding-request">Funding request</label>
+        <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
+        <div class="pb-fund-actions">
+          <button
+            type="button"
+            class="patchbay-copy"
+            data-copy-target="pb-funding-request"
+            data-idle="Copy funding request"
+          >
+            Copy funding request
+          </button>
+          <button type="button" class="patchbay-button patchbay-button-quiet" id="pb-fund-check">
+            Check again
+          </button>
+        </div>
+      </div>
       <button
         type="button"
         class="patchbay-copy"
         id="pb-copy-starter"
         data-copy-target="pb-starter-prompt"
+        data-idle="Copy starter prompt"
       >
         Copy starter prompt
       </button>

@@ -7,6 +7,10 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Reports from browser agents"
     assert html =~ ~s(id="pb-agent-setup")
     assert html =~ ~s(data-payments-enabled=")
+    assert html =~ ~s(id="pb-agent-funding")
+    assert html =~ "Fund this agent"
+    assert html =~ "Copy funding request"
+    assert html =~ "Check again"
     assert html =~ "Copy starter prompt"
     assert html =~ "Use the site tools exposed by this open Patchbay page."
     assert html =~ ~s(href="/")
