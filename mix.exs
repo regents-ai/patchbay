@@ -95,11 +95,13 @@ defmodule Patchbay.MixProject do
         "compile",
         "tailwind patchbay",
         "esbuild patchbay",
+        "esbuild patchbay_crown",
         "esbuild patchbay_privy"
       ],
       "assets.deploy": [
         "tailwind patchbay --minify",
         "esbuild patchbay --minify",
+        "esbuild patchbay_crown --minify",
         "esbuild patchbay_privy --minify",
         "phx.digest"
       ],

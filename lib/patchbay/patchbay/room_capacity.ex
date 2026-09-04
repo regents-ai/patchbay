@@ -38,9 +38,15 @@ defmodule Patchbay.Patchbay.RoomCapacity do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock($1)", [@capacity_lock])
     reap_unused_rooms()
 
-    if room_count() >= Config.max_rooms(),
-      do: :at_capacity,
-      else: Domain.create_seeded_room!(slug)
+    case Domain.get_room_by_slug!(slug, not_found_error?: false) do
+      %Room{} = room ->
+        room
+
+      nil ->
+        if room_count() >= Config.max_rooms(),
+          do: :at_capacity,
+          else: Domain.create_seeded_room!(slug)
+    end
   end
 
   @doc """

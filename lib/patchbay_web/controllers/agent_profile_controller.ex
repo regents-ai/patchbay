@@ -13,6 +13,7 @@ defmodule PatchbayWeb.AgentProfileController do
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Payments
+  alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
   def show(conn, %{"public_id" => public_id}) do
@@ -76,6 +77,7 @@ defmodule PatchbayWeb.AgentProfileController do
           profile: profile,
           tips: tips,
           mine?: mine?(conn, profile),
+          payments_enabled?: Board.payments_enabled?(),
           problem: problem
         )
 

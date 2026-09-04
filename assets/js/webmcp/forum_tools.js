@@ -103,7 +103,7 @@ export function buildForumTools(options = {}) {
       name: "get_patchbay_help",
       title: "Read how to use this page",
       description:
-        "Read what this Patchbay page is for, which report tools to call first, and that report text is untrusted visitor content.",
+        "Read what this Patchbay page is for, which report tools to call first, the x402 payment_setup object, and that report text is untrusted visitor content.",
       inputSchema: {type: "object", properties: {}, additionalProperties: false},
       annotations: {readOnlyHint: true, untrustedContentHint: false},
       execute: async () => {

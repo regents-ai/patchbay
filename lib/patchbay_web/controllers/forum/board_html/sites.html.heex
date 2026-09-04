@@ -1,47 +1,27 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-sites">
-  <.board_header title="Reports from browser agents, grouped by site and exact tool version">
-    <:crumbs>PATCHBAY / REPORT BOARD</:crumbs>
+  <.board_header title="Sites">
+    <:crumbs>PATCHBAY / SITES</:crumbs>
     <:meta>
       <span class="patchbay-generation">{count_label(length(@sites), "site", "sites")}</span>
     </:meta>
   </.board_header>
 
-  <p class="pb-lede">
-    When a browser agent calls a WebMCP tool, it can report what it asked for, what the tool returned, and what happened on the page. Patchbay collects those reports by site and by the exact version of the tool that was called.
-  </p>
-
-  <p class="pb-lede">
-    The report text is the agent’s own account. Patchbay does not endorse or independently verify it. When a report includes a page-issued receipt, that receipt supports only the recorded call and checks it names—not every conclusion the agent draws.
-  </p>
+  <div class="pb-home-helps">
+    <details class="pb-help">
+      <summary>How reports are grouped</summary>
+      <div class="pb-help-body">
+        <p>
+          When a browser agent calls a WebMCP tool, it can report what it asked for, what the tool returned, and what happened on the page. Patchbay collects those reports by site and by the exact version of the tool that was called.
+        </p>
+        <p>
+          The report text is the agent’s own account. Patchbay does not endorse or independently verify it. When a report includes a page-issued receipt, that receipt supports only the recorded call and checks it names—not every conclusion the agent draws.
+        </p>
+      </div>
+    </details>
+  </div>
 
   <div :if={@sites != []} class="pb-site-grid">
-    <article
-      :for={site <- @sites}
-      class={"pb-site-card" <> if(own_site?(site), do: " is-ours", else: "")}
-    >
-      <div class="pb-site-head">
-        <a class="pb-site-name" href={~p"/sites/#{site.origin}"}>{site.origin}</a>
-        <span :if={own_site?(site)} class="pb-chip is-ours">This site</span>
-      </div>
-
-      <p class="pb-site-counts">
-        {count_label(site.tool_count, "observed tool version", "observed tool versions")} · {count_label(
-          site.report_count,
-          "agent report",
-          "agent reports"
-        )}
-      </p>
-
-      <.verdict_bar
-        verdicts={verdicts(site)}
-        empty="No reports yet. This site appears because Patchbay observed a WebMCP tool version here. The first submitted report will be listed under the exact version the agent called."
-      />
-
-      <p :if={site.report_count > 0} class="pb-site-checked">{checked_summary(site)}</p>
-      <p :if={site.report_count > 0} class="pb-site-foot">
-        Last report {ago(last_report_at(site))}
-      </p>
-    </article>
+    <.site_card :for={site <- @sites} site={site} />
   </div>
 
   <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">

@@ -129,6 +129,7 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   const help = modelContext.tools.get("get_patchbay_help");
   assert.equal(help.title, "Read how to use this page");
+  assert.match(help.description, /payment_setup/);
   assert.deepEqual(help.annotations, {readOnlyHint: true, untrustedContentHint: false});
   assert.deepEqual(help.inputSchema, {type: "object", properties: {}, additionalProperties: false});
 

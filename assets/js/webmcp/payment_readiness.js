@@ -48,6 +48,9 @@ export function resolvePaymentsEnabled(options = {}) {
   const rail = doc?.getElementById?.("pb-agent-setup");
   if (rail) return rail.getAttribute("data-payments-enabled") === "true";
 
+  const funding = doc?.getElementById?.("pb-agent-funding");
+  if (funding) return funding.getAttribute("data-payments-enabled") === "true";
+
   const appId = doc?.querySelector?.('meta[name="privy-app-id"]')?.getAttribute("content");
   if (typeof appId === "string" && appId.trim() === "") return false;
   return undefined;

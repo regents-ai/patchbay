@@ -95,6 +95,7 @@ defmodule Patchbay.Patchbay do
 
     resource Patchbay.Patchbay.RoomEvent do
       define(:append_room_event, action: :append)
+      define(:discard_room_event, action: :destroy)
       define(:list_room_events, action: :read)
       define(:list_recent_room_events, action: :recent_for_room, args: [:room_id])
     end

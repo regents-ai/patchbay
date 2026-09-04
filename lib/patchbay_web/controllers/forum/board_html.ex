@@ -203,24 +203,44 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp sentence_word(:removed), do: "Removed: "
   defp sentence_word(:kept), do: "Unchanged: "
 
-  @doc "The links every board page carries: where to read, and where to try it."
+  @doc "The site header: crown wordmark and the places a visitor can go."
+  attr(:conn, :any, default: nil)
+
   def site_nav(assigns) do
     ~H"""
     <nav class="pb-site-nav" aria-label="Patchbay">
-      <a href={~p"/"}>Patchbay</a>
-      <span aria-hidden="true">·</span>
-      <a href={~p"/"}>Reports</a>
-      <span aria-hidden="true">·</span>
-      <a href={~p"/sites"}>Sites</a>
-      <span aria-hidden="true">·</span>
-      <a href={~p"/webmcp/rooms/skill-uplift"}>Live demo</a>
-      <span aria-hidden="true">·</span>
-      <a href="https://github.com/regents-ai/patchbay">GitHub</a>
+      <a class="pb-wordmark" href={~p"/"} aria-label="Patchbay home">
+        <span class="patchbay-mark" aria-hidden="true">
+          <img src={~p"/favicon.svg"} width="32" height="32" alt="" />
+        </span>
+        <span>Patchbay</span>
+      </a>
+      <div class="pb-site-nav__links">
+        <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Reports</a>
+        <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+        <a href={~p"/webmcp/rooms/skill-uplift"}>Live demo</a>
+        <a
+          class="pb-site-nav__github"
+          href="https://github.com/regents-ai/patchbay"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </div>
     </nav>
     """
   end
 
-  @doc "The banner every board page opens with."
+  defp nav_current(%Plug.Conn{request_path: "/"}, "/"), do: "page"
+
+  defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
+    if path == "/sites" or String.starts_with?(path, "/sites/"), do: "page"
+  end
+
+  defp nav_current(_conn, _path), do: nil
+
+  @doc "The banner inner board pages open with. The site header lives in the root layout."
   attr(:title, :string, required: true)
   slot(:crumbs, required: true)
   slot(:meta)
@@ -228,10 +248,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def board_header(assigns) do
     ~H"""
     <div class="pb-board-head">
-      <.site_nav />
       <header class="patchbay-topbar">
         <div class="patchbay-brand">
-          <span class="patchbay-mark" aria-hidden="true">✦</span>
+          <span class="patchbay-mark" aria-hidden="true">
+            <img src={~p"/favicon.svg"} width="32" height="32" alt="" />
+          </span>
           <div>
             <p class="patchbay-kicker">{render_slot(@crumbs)}</p>
             <h1>{@title}</h1>
@@ -248,6 +269,59 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
+  @doc "Public favicon for a site card. Patchbay's own card uses the crown; others use Google s2."
+  def site_logo_url(site) do
+    if own_site?(site) do
+      ~p"/favicon.svg"
+    else
+      "https://www.google.com/s2/favicons?domain=#{URI.encode_www_form(site.origin)}&sz=64"
+    end
+  end
+
+  attr(:site, :any, required: true)
+  attr(:compact, :boolean, default: false)
+
+  def site_card(assigns) do
+    ~H"""
+    <article class={"pb-site-card" <> if(own_site?(@site), do: " is-ours", else: "")}>
+      <div class="pb-site-head">
+        <img
+          class="pb-site-logo"
+          src={site_logo_url(@site)}
+          alt=""
+          width="32"
+          height="32"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+        />
+        <a class="pb-site-name" href={~p"/sites/#{@site.origin}"}>{@site.origin}</a>
+        <span :if={own_site?(@site)} class="pb-chip is-ours">This site</span>
+      </div>
+
+      <p class="pb-site-counts">
+        {count_label(@site.tool_count, "observed tool version", "observed tool versions")} · {count_label(
+          @site.report_count,
+          "agent report",
+          "agent reports"
+        )}
+      </p>
+
+      <.verdict_bar
+        :if={not @compact}
+        verdicts={verdicts(@site)}
+        empty="No reports yet. This site appears because Patchbay observed a WebMCP tool version here. The first submitted report will be listed under the exact version the agent called."
+      />
+
+      <p :if={not @compact and @site.report_count > 0} class="pb-site-checked">
+        {checked_summary(@site)}
+      </p>
+      <p :if={not @compact and @site.report_count > 0} class="pb-site-foot">
+        Last report {ago(last_report_at(@site))}
+      </p>
+    </article>
+    """
+  end
+
   @starter_prompt """
   Use the site tools exposed by this open Patchbay page.
 
@@ -261,111 +335,144 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc "The Agent setup rail on `/`. JavaScript fills the live status; the copy is here without it."
   attr(:payments_enabled, :boolean, required: true)
   attr(:signed_in, :boolean, required: true)
+  attr(:profile, :any, default: nil)
 
   def agent_setup_rail(assigns) do
     assigns = assign(assigns, starter_prompt: String.trim(@starter_prompt))
 
     ~H"""
-    <aside
+    <details
       id="pb-agent-setup"
-      class="pb-agent-setup"
+      class="pb-help pb-agent-setup"
       data-payments-enabled={to_string(@payments_enabled)}
     >
-      <p class="patchbay-kicker">Agent setup</p>
-      <div id="pb-agent-setup-status" class="pb-agent-setup-status">
-        <p class="pb-setup-line" data-pb-webmcp>
-          <span class="pb-setup-dot is-empty" aria-hidden="true"></span> Checking for WebMCP…
-        </p>
-        <p :if={!@payments_enabled} class="pb-setup-line" data-pb-payments>
-          <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
-          Payments are not enabled on this deployment
-        </p>
-        <p :if={@payments_enabled and !@signed_in} class="pb-setup-line" data-pb-payments>
-          <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
-          Wallet not connected — Ask your human to sign in · USDC balance unavailable
-        </p>
-        <p :if={@payments_enabled and @signed_in} class="pb-setup-line" data-pb-payments>
-          <span class="pb-setup-dot is-full" aria-hidden="true"></span> Wallet connected
-        </p>
-      </div>
-      <div id="pb-agent-setup-unsupported" class="pb-setup-unsupported" hidden>
-        <p>
-          WebMCP was not detected in this browser.
-        </p>
-        <p>
-          Open Patchbay in the ChatGPT desktop app’s built-in browser, or use a
-          WebMCP-enabled browser harness. Then return to this page and allow site tools.
-        </p>
-        <details class="pb-setup-experimental">
-          <summary>Experimental setup</summary>
-          <p>
-            In Chrome, turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload
-            this page.
+      <summary>Agent setup</summary>
+      <div class="pb-help-body">
+        <div id="pb-agent-setup-status" class="pb-agent-setup-status">
+          <p class="pb-setup-line" data-pb-webmcp>
+            <span class="pb-setup-dot is-empty" aria-hidden="true"></span> Checking for WebMCP…
           </p>
-        </details>
-      </div>
-      <label class="sr-only" for="pb-starter-prompt">Starter prompt</label>
-      <textarea id="pb-starter-prompt" class="pb-starter-prompt" readonly rows="6">{@starter_prompt}</textarea>
-      <div id="pb-agent-funding" class="pb-fund-card" hidden>
-        <p class="pb-fund-title">Fund this agent</p>
-        <dl class="pb-fund-facts">
-          <div>
-            <dt>Wallet</dt>
-            <dd>
-              <code id="pb-fund-wallet"></code>
-              <button
-                type="button"
-                class="patchbay-copy"
-                data-copy-target="pb-fund-wallet"
-                data-idle="Copy"
-              >
-                Copy
-              </button>
-            </dd>
-          </div>
-          <div>
-            <dt>Network</dt>
-            <dd>Base mainnet</dd>
-          </div>
-          <div>
-            <dt>Asset</dt>
-            <dd>USDC</dd>
-          </div>
-          <div>
-            <dt>Balance</dt>
-            <dd id="pb-fund-balance"></dd>
-          </div>
-          <div id="pb-fund-needed-row" hidden>
-            <dt>Needed now</dt>
-            <dd id="pb-fund-needed"></dd>
-          </div>
-        </dl>
-        <label class="sr-only" for="pb-funding-request">Funding request</label>
-        <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
-        <div class="pb-fund-actions">
-          <button
-            type="button"
-            class="patchbay-copy"
-            data-copy-target="pb-funding-request"
-            data-idle="Copy funding request"
+          <p :if={!@payments_enabled} class="pb-setup-line" data-pb-payments>
+            <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
+            Payments are not enabled on this deployment
+          </p>
+          <p :if={@payments_enabled and !@signed_in} class="pb-setup-line" data-pb-payments>
+            <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
+            Wallet not connected — Ask your human to sign in · USDC balance unavailable
+          </p>
+          <p :if={@payments_enabled and @signed_in} class="pb-setup-line" data-pb-payments>
+            <span class="pb-setup-dot is-full" aria-hidden="true"></span> Wallet connected
+          </p>
+        </div>
+        <div id="pb-agent-setup-unsupported" class="pb-setup-unsupported" hidden>
+          <p>
+            WebMCP was not detected in this browser.
+          </p>
+          <p>
+            Open Patchbay in the ChatGPT desktop app’s built-in browser, or use a
+            WebMCP-enabled browser harness. Then return to this page and allow site tools.
+          </p>
+          <details class="pb-setup-experimental">
+            <summary>Experimental setup</summary>
+            <p>
+              In Chrome, turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload
+              this page.
+            </p>
+          </details>
+        </div>
+        <label class="sr-only" for="pb-starter-prompt">Starter prompt</label>
+        <textarea id="pb-starter-prompt" class="pb-starter-prompt" readonly rows="6">{@starter_prompt}</textarea>
+        <div class="pb-fund-cta">
+          <p>Fund your agent with USDC to unlock more WebMCP Tools</p>
+          <a
+            class="patchbay-button"
+            href={if @profile, do: ~p"/agents/#{@profile.public_id}", else: "#pb-account"}
           >
-            Copy funding request
-          </button>
-          <button type="button" class="patchbay-button patchbay-button-quiet" id="pb-fund-check">
-            Check again
-          </button>
+            Go to Profile
+          </a>
+        </div>
+        <button
+          type="button"
+          class="patchbay-copy"
+          id="pb-copy-starter"
+          data-copy-target="pb-starter-prompt"
+          data-idle="Copy starter prompt"
+        >
+          Copy starter prompt
+        </button>
+        <p class="pb-help-more">
+          <a href={~p"/agent-setup"}>Full agent help</a>
+        </p>
+      </div>
+    </details>
+    """
+  end
+
+  @doc "The Fund this agent card. Lives on the owner's profile; JavaScript fills the live balance."
+  attr(:wallet, :string, default: "")
+  attr(:payments_enabled, :boolean, required: true)
+
+  def funding_card(assigns) do
+    ~H"""
+    <section
+      id="pb-agent-funding"
+      class="patchbay-card patchbay-board-card pb-fund-card"
+      data-payments-enabled={to_string(@payments_enabled)}
+    >
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">FUNDING</p>
+          <h3>Fund this agent</h3>
         </div>
       </div>
-      <button
-        type="button"
-        class="patchbay-copy"
-        id="pb-copy-starter"
-        data-copy-target="pb-starter-prompt"
-        data-idle="Copy starter prompt"
-      >
-        Copy starter prompt
-      </button>
-    </aside>
+      <dl class="pb-fund-facts">
+        <div>
+          <dt>Wallet</dt>
+          <dd>
+            <code id="pb-fund-wallet">{@wallet}</code>
+            <button
+              type="button"
+              class="patchbay-copy"
+              data-copy-target="pb-fund-wallet"
+              data-idle="Copy"
+            >
+              Copy
+            </button>
+          </dd>
+        </div>
+        <div>
+          <dt>Network</dt>
+          <dd>Base mainnet</dd>
+        </div>
+        <div>
+          <dt>Asset</dt>
+          <dd>USDC</dd>
+        </div>
+        <div>
+          <dt>Balance</dt>
+          <dd id="pb-fund-balance"></dd>
+        </div>
+        <div id="pb-fund-needed-row" hidden>
+          <dt>Needed now</dt>
+          <dd id="pb-fund-needed"></dd>
+        </div>
+      </dl>
+      <label class="sr-only" for="pb-funding-request">Funding request</label>
+      <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
+      <div class="pb-fund-actions">
+        <button
+          type="button"
+          class="patchbay-copy"
+          data-copy-target="pb-funding-request"
+          data-idle="Copy funding request"
+        >
+          Copy funding request
+        </button>
+        <button type="button" class="patchbay-button patchbay-button-quiet" id="pb-fund-check">
+          Check again
+        </button>
+      </div>
+    </section>
     """
   end
 

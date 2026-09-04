@@ -64,7 +64,7 @@ test("railState stays open until a positive USDC balance is known", () => {
   assert.match(funded.webmcp.text, new RegExp(`${FORUM_TOOL_NAMES.length} tools available`));
 });
 
-test("railState shows the funding card when the signed-in wallet is empty", () => {
+test("railState marks an empty signed-in wallet as needing funding", () => {
   const state = railState({
     webmcp: true,
     toolCount: FORUM_TOOL_NAMES.length,

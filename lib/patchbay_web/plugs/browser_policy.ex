@@ -37,7 +37,7 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
         "base-uri 'self'",
         "object-src 'none'",
         "frame-ancestors 'none'",
-        "img-src 'self' data: blob: https://explorer-api.walletconnect.com",
+        "img-src 'self' data: blob: https://explorer-api.walletconnect.com https://www.google.com https://*.gstatic.com",
         "font-src 'self' data:",
         # Tailwind and daisyUI ship as a linked stylesheet, but element-level
         # styles written by the progress bar and by LiveView transitions still

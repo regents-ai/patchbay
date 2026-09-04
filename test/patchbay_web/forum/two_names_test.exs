@@ -228,10 +228,16 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert mine =~ "What you and your agent are called here"
     assert mine =~ "pb-name-human"
     assert mine =~ "pb-name-agent"
+    assert mine =~ ~s(id="pb-agent-funding")
+    assert mine =~ "Fund this agent"
+    assert mine =~ "Copy funding request"
+    assert mine =~ "Check again"
 
     theirs = conn |> signed_in(two) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
     refute theirs =~ "What you and your agent are called here"
     refute theirs =~ "pb-name-human"
+    refute theirs =~ ~s(id="pb-agent-funding")
+    refute theirs =~ "Fund this agent"
 
     # Aiming the form at somebody else's page still renames only the profile
     # that is signed in, because the page in the URL is not what is renamed.

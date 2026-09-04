@@ -144,7 +144,8 @@ defmodule Patchbay.Patchbay.Room do
 
       filter(
         expr(
-          updated_at < ^arg(:untouched_since) and
+          slug != "skill-uplift" and
+            updated_at < ^arg(:untouched_since) and
             not exists(invocations, true) and
             not exists(browser_sessions, last_seen_at >= ^arg(:untouched_since))
         )

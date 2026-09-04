@@ -23,6 +23,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   alias Patchbay.Forum
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Domain
+  alias Patchbay.Patchbay.RoomEntrance
   alias PatchbayWeb.Forum.Board
 
   alias Patchbay.Patchbay.{
@@ -41,6 +42,15 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   }
 
   @no_proposal "No repair proposal is waiting for a human decision"
+  @readonly_message "Sign in to get a room of your own."
+  @mutating_ui_events ~w(
+    update_source upload_skill request_repair approve_repair reject_repair
+    retry_original_goal verify_goal ask_reset_demo reset_demo
+  )
+  @mutating_webmcp_events ~w(
+    webmcp_request_repair webmcp_invocation_begin webmcp_execute
+    webmcp_invocation_cancel webmcp_poststate_observed
+  )
 
   # Everything the page says about a room, read with the room itself: the call
   # it is showing and the tool that call ran, the tool it offers now, and the
@@ -53,34 +63,24 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   @impl true
   def mount(%{"slug" => slug}, session, socket) do
-    room = load_room!(slug)
+    case open_room(slug, socket.assigns.current_profile) do
+      {:redirect, path} ->
+        {:ok, redirect(socket, to: path)}
 
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(Patchbay.PubSub, Room.topic(room.id))
+      {:ok, room, readonly?} ->
+        mount_room(socket, session, room, readonly?)
     end
+  end
 
-    {:ok,
-     socket
-     |> assign(assigns_for(room, nil))
-     |> stream_timeline(room)
-     |> assign(
-       page_title: room.title,
-       # The identity this browser posts to the board under. A receipt this room
-       # issues is only honoured in a report filed from the same browser.
-       forum_session_id: Map.get(session, "forum_session_id"),
-       error_message: nil,
-       upload_error: nil,
-       confirming_reset: false,
-       pending_operation: nil,
-       repair_token: nil,
-       invocation_epoch: room.invocation_epoch,
-       invocation_keys: MapSet.new()
-     )
-     |> allow_upload(:skill,
-       accept: ~w(.md .markdown),
-       max_entries: 1,
-       max_file_size: Digest.max_artifact_bytes()
-     )}
+  @impl true
+  def handle_event(event, _params, %{assigns: %{readonly?: true}} = socket)
+      when event in @mutating_ui_events do
+    {:noreply, assign(socket, error_message: @readonly_message)}
+  end
+
+  def handle_event(event, _params, %{assigns: %{readonly?: true}} = socket)
+      when event in @mutating_webmcp_events do
+    reply_error(socket, @readonly_message)
   end
 
   @impl true
@@ -878,9 +878,64 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp reload_browser_session(%BrowserSession{id: id}),
     do: Domain.get_browser_session!(id, not_found_error?: false)
 
-  # Rooms are created by PatchbayWeb.RoomController when a visitor arrives,
-  # already offering their generation-1 tool. A slug that resolves to nothing is
-  # simply not a room; any other failure is a real error and stays visible.
+  defp mount_room(socket, session, room, readonly?) do
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Patchbay.PubSub, Room.topic(room.id))
+    end
+
+    {:ok,
+     socket
+     |> assign(assigns_for(room, nil))
+     |> stream_timeline(room)
+     |> assign(
+       page_title: room.title,
+       readonly?: readonly?,
+       # The identity this browser posts to the board under. A receipt this room
+       # issues is only honoured in a report filed from the same browser.
+       forum_session_id: Map.get(session, "forum_session_id"),
+       error_message: nil,
+       upload_error: nil,
+       confirming_reset: false,
+       pending_operation: nil,
+       repair_token: nil,
+       invocation_epoch: room.invocation_epoch,
+       invocation_keys: MapSet.new()
+     )
+     |> allow_upload(:skill,
+       accept: ~w(.md .markdown),
+       max_entries: 1,
+       max_file_size: Digest.max_artifact_bytes()
+     )}
+  end
+
+  # Unsigned visitors see the shared preview. A signed-in profile is sent to
+  # the room that belongs to them, created the first time they arrive.
+  defp open_room("skill-uplift", profile) do
+    case profile do
+      nil ->
+        open_showcase()
+
+      profile ->
+        case RoomEntrance.ensure_personal(profile) do
+          {:ok, room} -> {:redirect, ~p"/webmcp/rooms/#{room.slug}"}
+          {:error, :at_capacity} -> {:redirect, ~p"/webmcp/rooms/busy"}
+        end
+    end
+  end
+
+  defp open_room(slug, _profile) do
+    {:ok, load_room!(slug), false}
+  end
+
+  defp open_showcase do
+    case RoomEntrance.ensure_showcase() do
+      {:ok, room} -> {:ok, load_room!(room.slug), true}
+      {:error, :at_capacity} -> {:redirect, ~p"/webmcp/rooms/busy"}
+    end
+  end
+
+  # A slug that resolves to nothing is simply not a room; any other failure is
+  # a real error and stays visible.
   defp load_room!(slug) do
     case Domain.get_room_by_slug!(slug, load: @page_loads, not_found_error?: false) do
       %Room{} = room -> room

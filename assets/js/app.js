@@ -30,7 +30,8 @@ import {registerForumTools} from "./webmcp/forum_tools.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
 import {getModelContext} from "./webmcp/webmcpify.js"
-import {mountAgentSetup} from "./webmcp/agent_setup.js"
+import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.js"
+import {mountHomepageCrown} from "./optics_controller.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -57,6 +58,9 @@ liveSocket.connect()
 const offerPageWideSurfaces = () => {
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   mountAgentSetup()
+  mountAgentFunding()
+  mountHomepageCrown()
+  hideBrokenSiteLogos()
 
   const modelContext = getModelContext()
   if (!modelContext) return
@@ -68,6 +72,13 @@ const offerPageWideSurfaces = () => {
     profileId: signedInProfileId(),
     paymentsEnabled: rail ? rail.getAttribute("data-payments-enabled") === "true" : undefined,
   })
+}
+
+const hideBrokenSiteLogos = () => {
+  for (const img of document.querySelectorAll(".pb-site-logo")) {
+    if (img.complete && img.naturalWidth === 0) img.hidden = true
+    else img.addEventListener("error", () => { img.hidden = true }, {once: true})
+  }
 }
 
 if (document.readyState === "loading") {

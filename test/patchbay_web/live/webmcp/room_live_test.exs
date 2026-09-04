@@ -87,8 +87,22 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            |> render() =~ "See tool reports from other sites"
 
     assert html =~ "This page hands a browser agent a tool that is broken on purpose."
+    assert html =~ "This is a dev playground just for you and your agent"
     assert html =~ "Observed G2"
     assert :binary.match(html, "patchbay-guide") < :binary.match(html, "patchbay-goal-title")
+  end
+
+  test "the shared preview is read-only and carries the site nav", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/webmcp/rooms/skill-uplift")
+
+    assert html =~ ~s(data-readonly="true")
+    assert html =~ "This preview is read-only. Sign in to get a room of your own."
+    assert html =~ ~s(href="/")
+    assert html =~ ~s(href="/sites")
+    refute has_element?(view, "#patchbay-reset")
+
+    html = render_click(view, "request_repair", %{})
+    assert html =~ "Sign in to get a room of your own."
   end
 
   test "the prompt strip marks the step the room is on and names the tool it offers now", %{
@@ -1105,6 +1119,34 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
                  query: [filter: [room_id: room.id, kind: :platform_error]]
                )
     end)
+  end
+
+  test "reset wipes prior timeline entries including WebMCP capability", %{
+    conn: conn,
+    room: room
+  } do
+    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
+    session = bootstrap(view, room)
+    revision = desired_revision(room)
+
+    render_hook(view, "webmcp_tool_registered", %{
+      "room_id" => room.id,
+      "browser_session_id" => session.id,
+      "tool_name" => revision.name,
+      "generation" => 1,
+      "contract_sha256" => revision.contract_sha256
+    })
+
+    assert has_element?(view, "#patchbay-timeline", "WebMCP capability reported")
+    assert has_element?(view, "#patchbay-timeline", "Tool registered")
+    assert timeline_sequences(view) == [1, 2]
+
+    render_click(view, "reset_demo")
+
+    refute has_element?(view, "#patchbay-timeline", "WebMCP capability reported")
+    refute has_element?(view, "#patchbay-timeline", "Tool registered")
+    assert has_element?(view, "#patchbay-timeline", "Room reset")
+    assert timeline_sequences(view) == [1]
   end
 
   test "a reset clears a finished repair off the card", %{conn: conn, room: room} do

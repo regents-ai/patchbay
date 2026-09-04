@@ -29,6 +29,8 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert policy =~ "connect-src 'self' ws://www.example.com wss://www.example.com"
     assert policy =~ "https://auth.privy.io"
     assert policy =~ "https://explorer-api.walletconnect.com"
+    assert policy =~ "https://www.google.com"
+    assert policy =~ "https://*.gstatic.com"
     assert policy =~ "wss://relay.walletconnect.com"
     assert policy =~ "frame-src https://auth.privy.io"
   end

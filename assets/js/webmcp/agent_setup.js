@@ -1,7 +1,7 @@
 import {copyPrompt} from "../hooks/copy_prompt.js";
 import {signedInProfileId} from "./profile.js";
 import {FORUM_TOOL_NAMES} from "./forum_tools.js";
-import {readPaymentReadiness} from "./payment_readiness.js";
+import {fundingRequestText, readPaymentReadiness} from "./payment_readiness.js";
 import {getModelContext} from "./webmcpify.js";
 
 export const STARTER_PROMPT = `Use the site tools exposed by this open Patchbay page.
@@ -95,24 +95,55 @@ export function mountAgentSetup(options = {}) {
 
   const detect = options.getModelContext ?? getModelContext;
   const profileId = options.signedInProfileId ?? signedInProfileId;
-  const copy = options.copyPrompt ?? copyPrompt;
   const load = options.readPaymentReadiness ?? readPaymentReadiness;
   const paymentsEnabled = root.getAttribute("data-payments-enabled") === "true";
   const signedIn = Boolean(profileId());
 
   const paintAll = readiness => {
-    const state = railState({
-      webmcp: Boolean(detect()),
-      toolCount: FORUM_TOOL_NAMES.length,
-      paymentsEnabled,
-      signedIn,
-      readiness,
-    });
-    paint(root, state);
-    paintFunding(root, state);
+    paint(
+      root,
+      railState({
+        webmcp: Boolean(detect()),
+        toolCount: FORUM_TOOL_NAMES.length,
+        paymentsEnabled,
+        signedIn,
+        readiness,
+      }),
+    );
   };
 
   paintAll(null);
+
+  if (paymentsEnabled && signedIn) {
+    load({
+      fetch: options.fetch,
+      signedIn: true,
+      paymentsEnabled: true,
+    }).then(paintAll);
+  }
+
+  bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
+}
+
+/**
+ * Paint the Fund this agent card on the owner's profile. Home has no card.
+ *
+ * @param {{
+ *   root?: ParentNode | null,
+ *   signedInProfileId?: (doc?: Document) => string | null,
+ *   copyPrompt?: typeof copyPrompt,
+ *   fetch?: typeof globalThis.fetch,
+ *   readPaymentReadiness?: typeof readPaymentReadiness,
+ * }} [options]
+ */
+export function mountAgentFunding(options = {}) {
+  const root = options.root ?? globalThis.document?.getElementById("pb-agent-funding");
+  if (!root) return;
+
+  const profileId = options.signedInProfileId ?? signedInProfileId;
+  const load = options.readPaymentReadiness ?? readPaymentReadiness;
+  const paymentsEnabled = root.getAttribute("data-payments-enabled") === "true";
+  const signedIn = Boolean(profileId());
 
   const refresh = () => {
     if (!paymentsEnabled || !signedIn) return;
@@ -120,11 +151,58 @@ export function mountAgentSetup(options = {}) {
       fetch: options.fetch,
       signedIn: true,
       paymentsEnabled: true,
-    }).then(paintAll);
+    }).then(readiness => paintFunding(root, readiness));
   };
 
   refresh();
+  bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
 
+  const check = root.querySelector("#pb-fund-check");
+  if (check) check.addEventListener("click", refresh);
+}
+
+function paint(root, state) {
+  const status = root.querySelector("#pb-agent-setup-status");
+  const unsupported = root.querySelector("#pb-agent-setup-unsupported");
+  if (!status) return;
+
+  if (state.ready) {
+    status.replaceChildren(line(true, state.line));
+  } else {
+    status.replaceChildren(
+      line(state.webmcp.ok, state.webmcp.text),
+      line(state.payments.kind === "connected" || state.payments.kind === "ready", state.payments.text),
+    );
+  }
+
+  if (unsupported) unsupported.hidden = !state.unsupported;
+}
+
+function paintFunding(root, readiness) {
+  const wallet = root.querySelector("#pb-fund-wallet");
+  if (wallet && readiness?.wallet_address) wallet.textContent = readiness.wallet_address;
+
+  const balance = root.querySelector("#pb-fund-balance");
+  if (balance && readiness?.balance_usdc) {
+    balance.textContent = `${readiness.balance_usdc} USDC`;
+  }
+
+  const request = root.querySelector("#pb-funding-request");
+  if (request) {
+    request.value =
+      readiness?.funding_request ??
+      (readiness?.wallet_address ? fundingRequestText({walletAddress: readiness.wallet_address}) : "");
+  }
+
+  const neededRow = root.querySelector("#pb-fund-needed-row");
+  const needed = root.querySelector("#pb-fund-needed");
+  if (neededRow) {
+    neededRow.hidden = !readiness?.required_usdc;
+    if (needed && readiness?.required_usdc) needed.textContent = `${readiness.required_usdc} USDC`;
+  }
+}
+
+function bindCopyButtons(root, copy) {
   for (const button of root.querySelectorAll("[data-copy-target]")) {
     button.addEventListener("click", () => {
       copy(button).then(outcome => {
@@ -136,56 +214,6 @@ export function mountAgentSetup(options = {}) {
         }, 1600);
       });
     });
-  }
-
-  const check = root.querySelector("#pb-fund-check");
-  if (check) {
-    check.addEventListener("click", refresh);
-  }
-}
-
-function paint(root, state) {
-  const status = root.querySelector("#pb-agent-setup-status");
-  const unsupported = root.querySelector("#pb-agent-setup-unsupported");
-  if (!status) return;
-
-  if (state.ready) {
-    status.replaceChildren(line(true, state.line));
-  } else if (state.showFunding) {
-    status.replaceChildren(line(state.webmcp.ok, state.webmcp.text));
-  } else {
-    status.replaceChildren(
-      line(state.webmcp.ok, state.webmcp.text),
-      line(state.payments.kind === "connected" || state.payments.kind === "ready", state.payments.text),
-    );
-  }
-
-  if (unsupported) unsupported.hidden = !state.unsupported;
-}
-
-function paintFunding(root, state) {
-  const card = root.querySelector("#pb-agent-funding");
-  if (!card) return;
-
-  const show = Boolean(state.showFunding && state.funding);
-  card.hidden = !show;
-  if (!show) return;
-
-  const funding = state.funding;
-  const wallet = root.querySelector("#pb-fund-wallet");
-  if (wallet) wallet.textContent = funding.wallet_address ?? "";
-
-  const balance = root.querySelector("#pb-fund-balance");
-  if (balance) balance.textContent = `${funding.balance_usdc} USDC`;
-
-  const request = root.querySelector("#pb-funding-request");
-  if (request) request.value = funding.funding_request ?? "";
-
-  const neededRow = root.querySelector("#pb-fund-needed-row");
-  const needed = root.querySelector("#pb-fund-needed");
-  if (neededRow) {
-    neededRow.hidden = !funding.required_usdc;
-    if (needed && funding.required_usdc) needed.textContent = `${funding.required_usdc} USDC`;
   }
 }
 

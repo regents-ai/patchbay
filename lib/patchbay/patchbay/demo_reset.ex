@@ -4,7 +4,8 @@ defmodule Patchbay.Patchbay.DemoReset do
   fixture without restarting Phoenix or relying on page reload state.
 
   All reset writes happen while the room row is locked. This keeps revision
-  lifecycle changes, proposal cleanup, and the reset event in one transaction.
+  lifecycle changes, proposal cleanup, the timeline wipe, and the reset event
+  in one transaction.
   """
 
   alias Patchbay.Patchbay, as: Domain
@@ -52,6 +53,7 @@ defmodule Patchbay.Patchbay.DemoReset do
     retire_superseded_revisions!(room)
     ensure_seed_revision_published!(room, revisions)
     reject_open_proposals!(room)
+    RoomTimeline.wipe!(room)
     append_reset_event!(room)
 
     room

@@ -5,7 +5,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
   use PatchbayWeb, :html
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
+  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, funding_card: 1, moment: 1]
 
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Payments.USDC

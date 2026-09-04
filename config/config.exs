@@ -45,6 +45,12 @@ config :esbuild,
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ],
+  patchbay_crown: [
+    args:
+      ~w(js/crown_island.js --bundle --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+  ],
   patchbay_privy: [
     args:
       ~w(js/privy_bridge.jsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),

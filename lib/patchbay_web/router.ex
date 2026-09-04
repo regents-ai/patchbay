@@ -56,9 +56,9 @@ defmodule PatchbayWeb.Router do
   scope "/webmcp", PatchbayWeb do
     pipe_through :browser
 
-    # The published demo link. It hands the visitor their own room rather than
-    # opening a shared one, so it must be matched before the room route below.
-    get "/rooms/skill-uplift", RoomController, :enter
+    # The published demo link is the LiveView at /rooms/skill-uplift (a shared
+    # read-only preview). This page is what a full deployment shows instead.
+    get "/rooms/busy", RoomController, :busy
   end
 
   scope "/webmcp", PatchbayWeb.WebMCP do

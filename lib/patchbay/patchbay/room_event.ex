@@ -41,7 +41,7 @@ defmodule Patchbay.Patchbay.RoomEvent do
   end
 
   actions do
-    defaults([:read])
+    defaults([:read, :destroy])
 
     # The newest page of one room's events, newest first, so the read itself
     # decides how much history leaves the database.
@@ -59,13 +59,13 @@ defmodule Patchbay.Patchbay.RoomEvent do
   end
 
   policies do
-    # Timeline events are append-only public evidence for this room: reads are
-    # open, appending is the one named write, and there is nothing else.
+    # Timeline events are public evidence for this room: reads are open,
+    # appending is the ordinary write, and destroy is the reset wipe.
     policy action_type(:read) do
       authorize_if(always())
     end
 
-    policy action(:append) do
+    policy action([:append, :destroy]) do
       authorize_if(always())
     end
   end

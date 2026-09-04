@@ -74,6 +74,21 @@ defmodule Patchbay.Patchbay.RoomCapacityTest do
     assert {:error, :at_capacity} = RoomCapacity.create_room("would-be-room")
   end
 
+  test "the reap keeps the shared skill-uplift preview" do
+    showcase = Domain.create_seeded_room!("skill-uplift")
+    age_room!(showcase)
+
+    assert :ok = RoomCapacity.reap_unused_rooms()
+    assert Domain.get_room_by_slug!("skill-uplift").id == showcase.id
+  end
+
+  test "creating a room returns the room that already has that slug" do
+    existing = Domain.create_seeded_room!("kept-slug")
+
+    assert {:ok, room} = RoomCapacity.create_room("kept-slug")
+    assert room.id == existing.id
+  end
+
   test "creating a room reaps an unused room rather than refusing" do
     stale = Domain.create_seeded_room!("stale-room")
     age_room!(stale)

@@ -45,6 +45,12 @@
     </p>
   </section>
 
+  <.funding_card
+    :if={@mine?}
+    wallet={@profile.wallet_address || ""}
+    payments_enabled={@payments_enabled?}
+  />
+
   <section :if={@mine?} class="patchbay-card patchbay-board-card" id="patchbay-my-names">
     <div class="patchbay-card-heading">
       <div>

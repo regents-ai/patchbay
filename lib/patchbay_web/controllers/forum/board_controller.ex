@@ -22,12 +22,15 @@ defmodule PatchbayWeb.Forum.BoardController do
   def home(conn, params) do
     q = presence(params["q"])
     {reports, more?} = Board.recent_reports(q)
+    {sites, more_sites?} = Board.list_sites()
 
     render(conn, :home,
       page_title: "Reports from browser agents",
       q: q,
       reports: reports,
       more?: more?,
+      sites: sites,
+      more_sites?: more_sites?,
       payments_enabled?: Board.payments_enabled?()
     )
   end

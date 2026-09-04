@@ -1,4 +1,4 @@
-<main class="patchbay-shell" id="patchbay-room" data-room-slug={@room.slug}>
+<main class="patchbay-shell" id="patchbay-room" data-room-slug={@room.slug} data-readonly={to_string(@readonly?)}>
   <p
     id="patchbay-connection-lost"
     class="patchbay-connection-lost"
@@ -15,7 +15,9 @@
       <span
         class={"patchbay-mark " <> if(proof_verified?(@room, @invocation), do: "is-verified", else: "")}
         aria-hidden="true"
-      >✦</span>
+      >
+        <img src={~p"/favicon.svg"} width="32" height="32" alt="" />
+      </span>
       <div>
         <p class="patchbay-brandline">Patchbay · WebMCP</p>
         <h1>{@room.title}</h1>
@@ -38,7 +40,10 @@
         This page hands a browser agent a tool that is broken on purpose.
       </h2>
       <p class="patchbay-muted">
-        Give your agent the first prompt and watch the page catch the failure. Then have it report the tool, and watch this page repair itself and answer the report without you clicking anything. Send the last prompt to finish the job. This is your room; nobody else is sent here.
+        Give your agent the first prompt and watch the page catch the failure. Then have it report the tool, and watch this page repair itself and answer the report without you clicking anything. Send the last prompt to finish the job. This is a dev playground just for you and your agent.
+      </p>
+      <p :if={@readonly?} class="patchbay-muted" id="patchbay-room-signin">
+        This preview is read-only. Sign in to get a room of your own.
       </p>
       <p class="patchbay-guide-links">
         <a id="patchbay-board-link" href="/sites">See tool reports from other sites</a>
@@ -237,7 +242,7 @@
           class="patchbay-editor"
           spellcheck="false"
           aria-describedby="patchbay-source-digest"
-          readonly={@room.status != :ready}
+          readonly={@readonly? or @room.status != :ready}
         >{@room.source_markdown}</textarea>
         <div class="patchbay-editor-footer">
           <span
@@ -248,7 +253,7 @@
           <button
             class="patchbay-button patchbay-button-quiet"
             type="submit"
-            disabled={@room.status != :ready}
+            disabled={@readonly? or @room.status != :ready}
           >Save source</button>
         </div>
       </form>
@@ -271,7 +276,7 @@
             id="patchbay-skill-upload-button"
             class="patchbay-button patchbay-button-quiet"
             type="submit"
-            disabled={@room.status != :ready}
+            disabled={@readonly? or @room.status != :ready}
           >Upload file</button>
         </div>
         <p
@@ -722,7 +727,7 @@
       <p class="patchbay-kicker">ROOM ID</p>
       <p><code>{@room.id}</code></p>
     </div>
-    <div class="patchbay-reset">
+    <div :if={!@readonly?} class="patchbay-reset">
       <button
         :if={!@confirming_reset}
         id="patchbay-reset"

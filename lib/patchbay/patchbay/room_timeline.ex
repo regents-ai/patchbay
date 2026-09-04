@@ -6,6 +6,8 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Room, RoomEvent, Telemetry}
 
+  require Ash.Query
+
   @spec append!(Room.t() | binary(), atom(), map(), keyword()) :: RoomEvent.t()
   def append!(room_or_id, kind, payload \\ %{}, opts \\ [])
 
@@ -43,6 +45,25 @@ defmodule Patchbay.Patchbay.RoomTimeline do
 
   def append!(_room_or_id, _kind, _payload, _opts),
     do: raise(ArgumentError, "timeline payload must be a map")
+
+  @doc """
+  Drops every event on this room.
+
+  The caller must already hold the room row lock taken by
+  `Patchbay.Patchbay.get_room_for_update!/1`. Reset is the write that uses
+  this: it wipes, then records one fresh `:room_reset` event.
+  """
+  @spec wipe!(Room.t() | binary()) :: :ok
+  def wipe!(room_or_id) do
+    room_id = if match?(%Room{}, room_or_id), do: room_or_id.id, else: room_or_id
+
+    RoomEvent
+    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(room_id == ^room_id)
+    |> Domain.discard_room_event!(bulk_options: [strategy: [:atomic, :stream]])
+
+    :ok
+  end
 
   # The bounded read hands back the newest events first, and the room shows its
   # history oldest first, so the page it returns is turned around here.
