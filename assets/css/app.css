@@ -23,7 +23,7 @@
   name: "light";
   default: true;
   prefersdark: false;
-  color-scheme: "light dark";
+  color-scheme: "dark";
   --color-base-100: var(--pb-canvas);
   --color-base-200: var(--pb-canvas-deep);
   --color-base-300: var(--pb-line);
@@ -44,13 +44,13 @@
   --color-warning-content: var(--pb-accent-ink);
   --color-error: var(--pb-bad);
   --color-error-content: var(--pb-surface);
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
+  --radius-selector: 0;
+  --radius-field: 0;
+  --radius-box: 0;
   --size-selector: 0.21875rem;
   --size-field: 0.21875rem;
-  --border: 1.5px;
-  --depth: 1;
+  --border: 1px;
+  --depth: 0;
   --noise: 0;
 }
 
@@ -89,54 +89,39 @@
   font-display: swap;
 }
 
-/* Patchbay's palette: titanium neutrals, and two accents spent on purpose.
-   One warm canvas, one near-black band, and meanings that never move. Orange
-   is attention — what you can act on now, and the states that are waiting for
-   you or have failed a check. Blue is the settled state: verified, connected,
-   proved. The burnt tone is something that broke. The quiet neutrals are idle
-   and unclear. The titanium-to-orange-to-blue gradient belongs to the Patchbay
-   Agent alone. Every Patchbay page reads these, so the room, the board, and
-   the landing page stay one system.
-
-   Orange cannot carry small text on paper; against white it reaches only
-   3.1:1, so --pb-accent-deep is the orange that can, and --pb-accent-ink is
-   the near-black that sits on an orange fill. After dark the accent is already
-   bright enough against the page, so the deep tone lightens instead of
-   darkening, and text on a filled state chip becomes --pb-surface. */
+/* Patchbay chrome follows TechTree's system — one field, hairlines, square
+   corners, Geist Sans for UI and Mono for anything a machine produced — but
+   the colours are Patchbay's: a charcoal / titanium field, cream crown, and a
+   restrained burnt-orange accent. Not TechTree's tangerine-on-black hero. */
 :root {
-  --pb-ink: #161616;
-  --pb-ink-soft: #262523;
-  --pb-canvas: #f6f4ea;
-  --pb-canvas-deep: #e5e3d2;
-  --pb-surface: #ffffff;
-  --pb-surface-sunk: #f1efe3;
-  --pb-line: #dad8c7;
-  --pb-line-strong: #cfcdbb;
+  --pb-ink: #1b2227;
+  --pb-ink-soft: #2a3339;
+  --pb-canvas: #46535e;
+  --pb-canvas-deep: #3a454e;
+  --pb-surface: #52606a;
+  --pb-surface-sunk: #3f4b54;
+  --pb-line: rgb(216 223 225 / 22%);
+  --pb-line-strong: rgb(216 223 225 / 38%);
 
-  --pb-accent: #ff5b19;
-  --pb-accent-deep: #a5410f;
-  --pb-accent-wash: #fce6da;
-  --pb-accent-ink: #161616;
-  --pb-good: #2f5c60;
-  --pb-good-wash: #e4eff0;
-  --pb-bad: #7a3113;
-  --pb-bad-wash: #f5e4dc;
-  --pb-agent-gradient: linear-gradient(100deg, #e5e3d2 0%, #ff7a45 44%, #aecacd 100%);
+  --pb-accent: #c75a2a;
+  --pb-accent-deep: #e09468;
+  --pb-accent-wash: #3d2e28;
+  --pb-accent-ink: #1a1612;
+  --pb-good: #8fb8a8;
+  --pb-good-wash: #2a3834;
+  --pb-bad: #d08070;
+  --pb-bad-wash: #3a2a28;
+  --pb-agent-gradient: linear-gradient(100deg, #c9c4b4 0%, #c75a2a 48%, #8fb8a8 100%);
 
-  /* Who wrote a reply, said in colour: the board's own orange for an agent,
-     powder blue for a person. Both are edges and washes rather than fills, so
-     the text on them keeps the same contrast as text anywhere else. */
-  --pb-agent-edge: #ff5b19;
-  --pb-agent-edge-wash: #fdf0e9;
+  --pb-agent-edge: #c75a2a;
+  --pb-agent-edge-wash: #3d2e28;
   --pb-human-edge: #8fb8c9;
-  --pb-human-edge-wash: #eef4f7;
+  --pb-human-edge-wash: #2a3339;
 
-  /* One quiet tone, not two. Anything quieter than this stops clearing 4.5:1
-     against the warm paper, so quieter is not a thing this palette offers. */
-  --pb-text: #161616;
-  --pb-text-muted: #5b5a50;
-  --pb-text-on-ink: #e5e3d2;
-  --pb-text-on-ink-muted: #b9b7a6;
+  --pb-text: #e8e4d4;
+  --pb-text-muted: #b8b4a4;
+  --pb-text-on-ink: #e8e4d4;
+  --pb-text-on-ink-muted: #b8b4a4;
 
   --pb-space-1: .35rem;
   --pb-space-2: .6rem;
@@ -146,11 +131,11 @@
   --pb-space-6: clamp(2.4rem, 4vw, 3.4rem);
 
   --pb-gutter: clamp(1.15rem, 5vw, 4rem);
-  --pb-measure: min(100%, 70rem);
+  --pb-measure: min(100%, 76rem);
+  --pb-page-width: 76rem;
+  --pb-reading-width: 46rem;
+  --pb-header-height: 4.375rem;
 
-  /* --pb-fs-xs is the floor for anything read as a sentence: 13px. Below it
-     sits --pb-fs-micro, which is for things read a glance at a time — all-caps
-     labels, timestamps, sequence numbers and digests — never prose. */
   --pb-fs-micro: .66rem;
   --pb-fs-xs: .8125rem;
   --pb-fs-sm: .875rem;
@@ -158,63 +143,35 @@
   --pb-fs-lg: 1.08rem;
   --pb-fs-xl: clamp(1.15rem, 2vw, 1.5rem);
 
-  --pb-radius-sm: .5rem;
-  --pb-radius: .8rem;
-  --pb-radius-lg: 1.1rem;
+  --pb-radius-sm: 0;
+  --pb-radius: 0;
+  --pb-radius-lg: 0;
 
-  --pb-shadow-sm: 0 1px 2px rgba(22, 22, 22, .07);
-  --pb-shadow: 0 .55rem 1.5rem rgba(22, 22, 22, .08);
-  --pb-shadow-lg: 0 1.1rem 2.4rem rgba(22, 22, 22, .13);
+  --pb-shadow-sm: none;
+  --pb-shadow: none;
+  --pb-shadow-lg: none;
 
   --pb-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --pb-display: "Geist Pixel Square", "Geist", ui-sans-serif, sans-serif;
+  --pb-display: "Geist", ui-sans-serif, system-ui, sans-serif;
   --pb-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --pb-ease-out: cubic-bezier(.23, 1, .32, 1);
   --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
 }
 
-/* The same palette after dark. Only colour is redeclared here; every size,
-   face and curve above still holds. The accent, the ink that sits on it, the
-   Agent's gradient and the two tones for type on a dark panel are the same in
-   both themes, so they are not repeated. The band inverts: on paper it is the
-   darkest thing on the page, after dark it is the one panel lifted off it. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --pb-ink: #0f0f10;
-    --pb-ink-soft: #1b1c1e;
-    --pb-canvas: #0f0f10;
-    --pb-canvas-deep: #131315;
-    --pb-surface: #1b1c1e;
-    --pb-surface-sunk: #141517;
-    --pb-line: #2a2b2e;
-    --pb-line-strong: #3e4044;
-
-    --pb-accent-deep: #ff7e4c;
-    --pb-accent-wash: #2e1b13;
-    --pb-good: #aecacd;
-    --pb-good-wash: #101e20;
-    --pb-bad: #efa98c;
-    --pb-bad-wash: #2b211d;
-
-    /* The two reply edges keep their hue on dark paper; only the wash behind
-       them changes, to a tone the page's own text still clears 4.5:1 against. */
-    --pb-agent-edge: #ff7e4c;
-    --pb-agent-edge-wash: #241611;
-    --pb-human-edge: #aecacd;
-    --pb-human-edge-wash: #141c1e;
-
-    --pb-text: #e5e3d2;
-    --pb-text-muted: #9c9a8b;
-
-    --pb-shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
-    --pb-shadow: 0 .55rem 1.5rem rgba(0, 0, 0, .55);
-    --pb-shadow-lg: 0 1.1rem 2.4rem rgba(0, 0, 0, .6);
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
+  min-width: 20rem;
+  min-height: 100vh;
+  background: var(--pb-canvas);
+  color: var(--pb-text);
   font-family: var(--pb-sans);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
 }
 .pb-headline,
 .pb-why h2,
@@ -254,17 +211,16 @@ body {
    out of sight until it is reached. */
 .pb-skip-link {
   position: fixed;
-  top: .6rem;
-  left: .6rem;
-  z-index: 20;
-  transform: translateY(-250%);
-  border-radius: var(--pb-radius-sm);
-  padding: .7rem 1rem;
-  color: var(--pb-text-on-ink);
-  background: var(--pb-ink);
-  font: 800 var(--pb-fs-xs)/1.2 var(--pb-sans);
+  top: .75rem;
+  left: .75rem;
+  z-index: 100;
+  transform: translateY(calc(-100% - 1rem));
+  border-radius: 0;
+  padding: .7rem .9rem;
+  color: var(--pb-ink);
+  background: var(--pb-text);
+  font: 650 var(--pb-fs-xs)/1.2 var(--pb-sans);
   text-decoration: none;
-  box-shadow: var(--pb-shadow-lg);
 }
 .pb-skip-link:focus { transform: none; }
 /* The content wrapper takes focus from the skip link so the next Tab starts
@@ -272,22 +228,24 @@ body {
    whole page, so it draws none, not even the browser's own. */
 #pb-content:focus { outline: none; }
 
-/* Site header: wordmark, nav, and the account control as one bar. */
+/* Site header: TechTree masthead rhythm — name, selector, account. */
 .pb-masthead {
   position: relative;
-  z-index: 4;
-  display: flex;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 3.4rem;
-  padding: .45rem var(--pb-gutter);
+  gap: 1.25rem;
+  width: min(100% - 2rem, var(--pb-page-width));
+  min-height: var(--pb-header-height);
+  margin: 0 auto;
+  padding: 0;
   border-bottom: 1px solid var(--pb-line);
   color: var(--pb-text);
-  background: color-mix(in srgb, var(--pb-canvas) 88%, var(--pb-surface));
+  background: color-mix(in srgb, var(--pb-canvas) 94%, transparent);
 }
 .pb-masthead + #pb-content .patchbay-shell,
-.pb-masthead + #pb-content .pb-page { min-height: calc(100vh - 3.4rem); }
+.pb-masthead + #pb-content .pb-page { min-height: calc(100vh - var(--pb-header-height)); }
 .pb-account {
   display: flex;
   align-items: center;
@@ -308,21 +266,22 @@ body {
   text-underline-offset: .3em;
 }
 .pb-account-button {
-  min-height: 2.6rem;
-  border: 1px solid var(--pb-text);
-  border-radius: var(--pb-radius-sm);
+  min-height: 2.75rem;
+  border: 1px solid var(--pb-line-strong);
+  border-radius: 0;
   padding: .45rem 1rem;
   color: var(--pb-text);
   background: var(--pb-surface);
-  font: inherit;
+  font: 620 .82rem/1 var(--pb-sans);
   cursor: pointer;
-  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease;
+  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease, transform 140ms var(--pb-ease-out);
 }
 .pb-account-button:hover {
   border-color: var(--pb-accent);
-  color: var(--pb-accent-ink);
-  background: var(--pb-accent);
+  color: var(--pb-text);
+  background: var(--pb-surface);
 }
+.pb-account-button:active { transform: scale(0.97); }
 .pb-account-button[disabled] { opacity: .6; cursor: progress; }
 .pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: 400; }
 .pb-account-note:empty { display: none; }
@@ -333,11 +292,8 @@ body {
 .patchbay-shell {
   min-height: 100vh;
   color: var(--pb-text);
-  background:
-    radial-gradient(circle at 88% -4%, color-mix(in srgb, var(--pb-accent) 14%, transparent), transparent 26rem),
-    radial-gradient(circle at 4% 12%, color-mix(in srgb, var(--pb-good) 12%, transparent), transparent 30rem),
-    linear-gradient(160deg, var(--pb-canvas) 0%, var(--pb-canvas-deep) 100%);
-  padding: 1.2rem clamp(1rem, 3vw, 3.5rem) 3rem;
+  background: var(--pb-canvas);
+  padding: 1.5rem clamp(1rem, 3vw, 3.5rem) 3rem;
   font-family: var(--pb-sans);
 }
 
@@ -380,14 +336,12 @@ body {
 .patchbay-mark {
   display: block;
   flex-shrink: 0;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 1.45rem;
+  height: 1.45rem;
   overflow: hidden;
-  border-radius: .35rem;
+  border-radius: 0;
   background: #0c0c0c;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--pb-text-on-ink) 18%, transparent),
-    0 .3rem .9rem color-mix(in srgb, var(--pb-accent) 30%, transparent);
+  color: #e4e3d1;
 }
 .patchbay-mark img,
 .patchbay-mark svg {
@@ -439,12 +393,15 @@ body {
 .patchbay-state-label {
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--pb-line);
-  border-radius: 999px;
-  padding: .26rem .6rem;
-  font-size: var(--pb-fs-micro);
-  font-weight: 800;
-  letter-spacing: .02em;
+  border: 1px solid var(--pb-line-strong);
+  border-radius: 0;
+  padding: .2rem .45rem;
+  font-family: var(--pb-mono);
+  font-size: .62rem;
+  font-weight: 650;
+  letter-spacing: .04em;
+  line-height: 1.3;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 .patchbay-pill.is-good, .patchbay-state-label.is-ready { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
@@ -483,7 +440,7 @@ body {
 .patchbay-workbench { display: grid; gap: var(--pb-space-3); }
 .patchbay-editors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .patchbay-workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.patchbay-card { border: 1px solid var(--pb-line); border-radius: var(--pb-radius-lg); background: var(--pb-surface); box-shadow: var(--pb-shadow); }
+.patchbay-card { border: 1px solid var(--pb-line); border-radius: 0; background: var(--pb-surface); box-shadow: none; }
 .patchbay-editor-card { min-width: 0; padding: var(--pb-space-3); }
 .patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: .8rem; margin-bottom: .8rem; }
 .patchbay-card-heading h3 { margin: 0; font-family: var(--pb-display); font-size: var(--pb-fs-md); letter-spacing: -.02em; }
@@ -501,7 +458,8 @@ body {
 .patchbay-upload-problem { margin: .5rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
-.patchbay-button { cursor: pointer; border: 1px solid var(--pb-accent-deep); border-radius: .6rem; padding: .6rem .85rem; color: var(--pb-accent-ink); background: var(--pb-accent); font-family: var(--pb-mono); font-size: var(--pb-fs-xs); font-weight: 800; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
+.patchbay-button { cursor: pointer; min-height: 2.75rem; border: 1px solid var(--pb-accent); border-radius: 0; padding: .6rem 1.2rem; color: var(--pb-accent-ink); background: var(--pb-accent); font-family: var(--pb-sans); font-size: .92rem; font-weight: 620; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms var(--pb-ease-out); }
+.patchbay-button:active { transform: scale(0.97); }
 /* The fill darkens on hover by the smallest step that still leaves the label
    above 4.5:1, so the label never has to change colour under the pointer. */
 .patchbay-button:hover { background: color-mix(in srgb, var(--pb-accent) 88%, var(--pb-accent-ink)); }
@@ -583,19 +541,7 @@ body {
    page reads as one header language. Tokens live on the body so the masthead
    inherits them; paint and cards stay under #patchbay-room. */
 body:has(#patchbay-room) {
-  --pb-canvas: #46535e;
-  --pb-canvas-deep: #3a454e;
-  --pb-surface: #5c6973;
-  --pb-surface-sunk: #3f4b54;
-  --pb-line: #6d7b85;
-  --pb-line-strong: #87949d;
-  --pb-text: #d8dfe1;
-  --pb-text-muted: #b4c0c6;
-  --pb-ink: #1b2227;
-  --pb-ink-soft: #2a3339;
-  --pb-text-on-ink: #d8dfe1;
-  --pb-text-on-ink-muted: #b4c0c6;
-  background: #46535e;
+  background: var(--pb-canvas);
   overflow-x: clip;
 }
 
@@ -1097,9 +1043,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
    anchor the eye, and colour spent only where it carries a verdict. */
 .patchbay-board {
   color: var(--pb-text);
-  background:
-    radial-gradient(circle at 88% -4%, color-mix(in srgb, var(--pb-accent) 14%, transparent), transparent 26rem),
-    linear-gradient(178deg, var(--pb-canvas) 0%, var(--pb-surface-sunk) 62%, var(--pb-canvas-deep) 100%);
+  background: var(--pb-canvas);
   padding-top: 1.6rem;
 }
 
@@ -1124,12 +1068,12 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* The header band */
 .patchbay-board .patchbay-topbar {
   align-items: flex-start;
-  border-bottom: 0;
-  border-radius: 1.1rem;
-  padding: 1.15rem 1.3rem;
-  color: var(--pb-text-on-ink);
-  background: linear-gradient(148deg, var(--pb-ink-soft) 0%, var(--pb-ink) 100%);
-  box-shadow: var(--pb-shadow-lg);
+  border-bottom: 1px solid var(--pb-line);
+  border-radius: 0;
+  padding: 1.5rem 0 1.25rem;
+  color: var(--pb-text);
+  background: transparent;
+  box-shadow: none;
 }
 .patchbay-board .patchbay-topbar h1 {
   font-size: clamp(1.15rem, 2.3vw, 1.62rem);
@@ -1137,19 +1081,19 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
-.patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-accent); }
-.patchbay-board .patchbay-topbar .patchbay-kicker a { color: var(--pb-text-on-ink-muted); }
-.patchbay-board .patchbay-topbar .patchbay-generation { color: var(--pb-text-on-ink-muted); }
+.patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-accent-deep); }
+.patchbay-board .patchbay-topbar .patchbay-kicker a { color: var(--pb-text-muted); }
+.patchbay-board .patchbay-topbar .patchbay-generation { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-mark {
   background: #0c0c0c;
-  box-shadow: .28rem .28rem 0 color-mix(in srgb, var(--pb-good) 55%, transparent);
+  box-shadow: none;
 }
 .patchbay-board .patchbay-topbar-meta { flex-wrap: wrap; justify-content: flex-end; }
 .patchbay-board .patchbay-room-link {
-  color: var(--pb-text-on-ink);
-  text-decoration-color: color-mix(in srgb, var(--pb-text-on-ink) 55%, transparent);
+  color: var(--pb-text);
+  text-decoration-color: var(--pb-line-strong);
 }
-.patchbay-board .patchbay-topbar .patchbay-pill.is-neutral { color: var(--pb-text-on-ink); background: color-mix(in srgb, var(--pb-text-on-ink) 10%, transparent); border-color: color-mix(in srgb, var(--pb-text-on-ink) 20%, transparent); }
+.patchbay-board .patchbay-topbar .patchbay-pill.is-neutral { color: var(--pb-text-muted); background: var(--pb-surface-sunk); border-color: var(--pb-line); }
 
 .patchbay-board .patchbay-card {
   border-color: var(--pb-line);
@@ -1335,7 +1279,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-empty-state { color: var(--pb-text-muted); }
 
 @media (max-width: 760px) {
-  .patchbay-board .patchbay-topbar { border-radius: .8rem; }
+  .patchbay-board .patchbay-topbar { border-radius: 0; }
   .patchbay-board .patchbay-topbar-meta { justify-content: flex-start; }
   .pb-site-grid { grid-template-columns: 1fr; }
   .pb-version-chips .pb-chip-facts:last-child { margin-left: 0; }
@@ -1411,7 +1355,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-cta {
   display: inline-flex;
   align-items: center;
-  border-radius: .6rem;
+  border-radius: 0;
   padding: .82rem 1.35rem;
   color: var(--pb-accent-ink);
   background: var(--pb-accent);
@@ -1771,23 +1715,25 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: .75rem 1.15rem;
+  gap: .75rem 1.25rem;
   min-width: 0;
   flex: 1;
 }
 .pb-site-nav .pb-wordmark {
   display: inline-flex;
   align-items: center;
-  gap: .55rem;
+  gap: .65rem;
   color: var(--pb-text);
   font-family: var(--pb-sans);
   font-size: 1.05rem;
-  font-weight: 650;
+  font-weight: 400;
   text-decoration: none;
 }
 .pb-site-nav .patchbay-mark {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0;
+  box-shadow: none;
 }
 .pb-site-nav__links {
   display: inline-flex;
@@ -1796,14 +1742,14 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   background: var(--pb-surface);
 }
 .pb-site-nav__links a {
-  min-height: 2.6rem;
-  padding: 0 .85rem;
+  min-height: 2.75rem;
+  padding: 0 .8rem;
   display: inline-flex;
   align-items: center;
   color: var(--pb-text-muted);
   font-family: var(--pb-sans);
-  font-size: var(--pb-fs-xs);
-  font-weight: 700;
+  font-size: .82rem;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
   transition: background-color 140ms ease, color 140ms ease;
@@ -1852,7 +1798,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-help {
   margin: 0;
   border: 1px solid var(--pb-line);
-  border-radius: var(--pb-radius-sm);
+  border-radius: 0;
   background: var(--pb-surface);
   color: var(--pb-text);
   font-size: var(--pb-fs-xs);
@@ -1891,7 +1837,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   margin: 0;
   padding: 0;
   border: 1px solid var(--pb-line);
-  border-radius: var(--pb-radius-sm);
+  border-radius: 0;
   background: var(--pb-surface);
 }
 .pb-agent-setup .pb-help-body { padding-top: .15rem; }
@@ -2059,48 +2005,7 @@ a.patchbay-button { text-decoration: none; }
 .pb-setup-toc { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: 0 0 1rem; font-size: var(--pb-fs-xs); }
 .pb-setup-note { color: var(--pb-text-muted); }
 
-/* Homepage crown: a sized island under the header, not a full-viewport
-   overlay behind the feed. Charcoal / titanium page chrome matches that
-   scene when the canvas is missing or still waking up. */
-.pb-crown {
-  position: relative;
-  z-index: 0;
-  box-sizing: border-box;
-  width: min(9.25rem, calc(100% - 1rem));
-  height: 7rem;
-  max-width: 100%;
-  margin: .3rem 0 .1rem max(.45rem, env(safe-area-inset-left, 0px));
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-.pb-crown[data-optics-ready="true"] { opacity: 1; }
-.pb-crown[data-optics-failed="true"] {
-  height: 0;
-  width: 0;
-  margin: 0;
-}
-.pb-crown__canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-@media (min-width: 760px) {
-  .pb-crown {
-    width: min(18rem, 34vw);
-    height: 13rem;
-    margin: .45rem 0 .2rem max(.85rem, var(--pb-gutter));
-  }
-}
-@media (min-width: 1200px) {
-  .pb-crown {
-    width: 21rem;
-    height: 15rem;
-  }
-}
-.pb-masthead { position: relative; z-index: 4; }
+.pb-masthead { position: relative; z-index: 20; }
 .pb-account { position: relative; z-index: 2; }
 #pb-content { position: relative; z-index: 1; }
 
@@ -2145,19 +2050,19 @@ body:has(#patchbay-sites) {
   gap: .45rem;
   min-width: 0;
   border: 1px solid var(--pb-line);
-  border-radius: .55rem;
+  border-radius: 0;
   padding: .85rem .9rem .9rem;
   background: var(--pb-surface);
-  color: inherit;
+  color: var(--pb-text);
   text-decoration: none;
   transition: border-color 140ms ease;
 }
 .pb-dir-card:hover,
 .pb-dir-card:focus-visible {
-  border-color: var(--pb-line-strong);
+  border-color: var(--pb-accent);
 }
 .pb-dir-card.is-ours {
-  border-color: color-mix(in srgb, var(--pb-accent) 40%, var(--pb-line));
+  border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line));
 }
 .pb-dir-head {
   display: flex;
@@ -2169,12 +2074,12 @@ body:has(#patchbay-sites) {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 1.7rem;
+  height: 1.7rem;
   overflow: hidden;
   border: 1px solid var(--pb-line);
-  border-radius: .35rem;
-  background: var(--pb-canvas-deep);
+  border-radius: 0;
+  background: var(--pb-surface-sunk);
 }
 .pb-dir-logo {
   display: block;
@@ -2185,8 +2090,8 @@ body:has(#patchbay-sites) {
 }
 .pb-dir-logo-fallback {
   color: var(--pb-text-muted);
-  font-family: var(--pb-sans);
-  font-size: .8rem;
+  font-family: var(--pb-mono);
+  font-size: .72rem;
   font-weight: 650;
 }
 .pb-dir-titles { min-width: 0; }
@@ -2206,8 +2111,8 @@ body:has(#patchbay-sites) {
 .pb-dir-meta {
   margin: 0;
   color: var(--pb-text-muted);
-  font-family: var(--pb-sans);
-  font-size: .75rem;
+  font-family: var(--pb-mono);
+  font-size: .72rem;
 }
 .pb-dir-domain {
   overflow: hidden;
@@ -2302,17 +2207,13 @@ body:has(#patchbay-sites) {
 
 @media (max-width: 760px) {
   .pb-masthead {
-    flex-wrap: wrap;
-    align-items: flex-start;
+    width: min(100% - 1.25rem, var(--pb-page-width));
+    grid-template-columns: minmax(0, 1fr);
+    gap: .55rem 1rem;
     min-height: 0;
-    padding-block: .55rem;
+    padding-block: .6rem;
   }
   .pb-site-nav { width: 100%; }
   .pb-site-nav__links { flex-wrap: wrap; }
   .pb-account { width: 100%; justify-content: flex-start; }
-  .pb-crown {
-    width: min(7.5rem, 38vw);
-    height: 5.75rem;
-    margin-left: .4rem;
-  }
 }

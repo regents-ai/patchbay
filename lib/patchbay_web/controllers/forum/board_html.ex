@@ -244,14 +244,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Directory</a>
         <a href={~p"/webmcp/rooms/skill-uplift"}>Live demo</a>
         <a
-          class="pb-site-nav__external"
-          href="https://latest.patchbay.help"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Patchbay V0.2 <span aria-hidden="true">↗</span>
-        </a>
-        <a
           class="pb-site-nav__github"
           href="https://github.com/regents-ai/patchbay"
           target="_blank"
