@@ -7,8 +7,8 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
   rule that generated content is never executed.
 
   A per-request nonce is published as the `:csp_nonce` assign. `connect-src`
-  names this page's own origin over `ws`/`wss` so the LiveView socket connects
-  and nothing else does.
+  names this page's own origin over `ws`/`wss` so the LiveView socket connects,
+  plus the Privy and WalletConnect hosts the sign-in bridge has to reach.
   """
 
   @behaviour Plug
@@ -37,14 +37,18 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
         "base-uri 'self'",
         "object-src 'none'",
         "frame-ancestors 'none'",
-        "img-src 'self' data:",
+        "img-src 'self' data: blob: https://explorer-api.walletconnect.com",
         "font-src 'self' data:",
         # Tailwind and daisyUI ship as a linked stylesheet, but element-level
         # styles written by the progress bar and by LiveView transitions still
         # need inline styles.
         "style-src 'self' 'unsafe-inline'",
         "script-src 'self' 'nonce-#{nonce}'",
-        "connect-src 'self' ws://#{authority} wss://#{authority}",
+        # Privy's documented hosts for @privy-io/react-auth. The page still
+        # never loads remote scripts; these are fetches, sockets, and iframes.
+        "connect-src 'self' ws://#{authority} wss://#{authority} https://auth.privy.io wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org https://*.rpc.privy.systems https://explorer-api.walletconnect.com",
+        "child-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org",
+        "frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org",
         "form-action 'self'"
       ],
       "; "

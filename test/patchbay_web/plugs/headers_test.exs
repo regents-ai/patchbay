@@ -27,6 +27,10 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert policy =~ "object-src 'none'"
     assert policy =~ "frame-ancestors 'none'"
     assert policy =~ "connect-src 'self' ws://www.example.com wss://www.example.com"
+    assert policy =~ "https://auth.privy.io"
+    assert policy =~ "https://explorer-api.walletconnect.com"
+    assert policy =~ "wss://relay.walletconnect.com"
+    assert policy =~ "frame-src https://auth.privy.io"
   end
 
   test "the front door carries the same browser policy", %{conn: conn} do
