@@ -10,7 +10,7 @@ defmodule PatchbayWeb.ErrorHTMLTest do
     assert html =~ "There is nothing at this address."
     assert html =~ ~s{class="pb-error"}
     assert html =~ ~r{<link rel="stylesheet" href="/assets/css/app.css[^"]*">}
-    assert html =~ ~r{<a class="pb-cta" href="/">\s*Back to the front page\s*</a>}
+    assert html =~ ~r{<a class="pb-cta" href="/">\s*Back to reports\s*</a>}
   end
 
   test "an unknown address renders the styled not-found page", %{conn: conn} do

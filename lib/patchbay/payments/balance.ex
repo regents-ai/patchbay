@@ -17,6 +17,12 @@ defmodule Patchbay.Payments.Balance do
   @receive_timeout_ms 10_000
 
   @doc """
+  Whether Base can be read for balances: `BASE_RPC_URL` is a real http(s) address.
+  """
+  @spec configured?() :: boolean()
+  def configured?, do: is_binary(rpc_url())
+
+  @doc """
   The wallet's USDC balance in atomic units (six decimals), read on chain.
   """
   @spec available_usdc_atomic(String.t()) ::

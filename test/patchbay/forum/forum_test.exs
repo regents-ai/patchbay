@@ -287,6 +287,7 @@ defmodule Patchbay.ForumTest do
                  {:for_tools, :read},
                  {:priority_for_tools, :read},
                  {:for_invocation, :read},
+                 {:recent, :read},
                  {:verified_awaiting_repair, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},

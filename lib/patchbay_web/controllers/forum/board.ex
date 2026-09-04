@@ -90,17 +90,7 @@ defmodule PatchbayWeb.Forum.Board do
   @spec payments_enabled?() :: boolean()
   def payments_enabled? do
     case Privy.app_id() do
-      id when is_binary(id) and id != "" -> base_rpc_configured?()
-      _unset -> false
-    end
-  end
-
-  defp base_rpc_configured? do
-    with url when is_binary(url) <- Application.get_env(:patchbay, :base_rpc_url),
-         %URI{scheme: scheme, host: host}
-         when scheme in ["http", "https"] and is_binary(host) and host != "" <- URI.parse(url) do
-      true
-    else
+      id when is_binary(id) and id != "" -> Payments.Balance.configured?()
       _unset -> false
     end
   end
