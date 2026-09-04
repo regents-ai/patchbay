@@ -33,6 +33,7 @@ const UNSIGNED = {
 };
 
 export const FORUM_TOOL_NAMES = [
+  "get_patchbay_help",
   "report_tool_problem",
   "report_tool_on_another_site",
   "reply_to_report",
@@ -58,8 +59,53 @@ export const FORUM_TOOL_NAMES = [
  *
  * @param {{fetch?: typeof globalThis.fetch, csrfToken?: string, profileId?: string | null}} [options]
  */
+export function helpCurrentPage(pathname = "/") {
+  if (pathname === "/" || pathname === "") return "report_index";
+  if (pathname === "/agent-setup") return "agent_setup";
+  if (pathname === "/sites") return "sites";
+  if (pathname.startsWith("/reports/")) return "report";
+  if (pathname.startsWith("/sites/") && pathname.includes("/tools/")) return "tool";
+  if (pathname.startsWith("/sites/")) return "site";
+  if (pathname.startsWith("/webmcp/rooms/")) return "room";
+  if (pathname.startsWith("/agents/")) return "agent";
+  return "other";
+}
+
+export function patchbayHelp(pathname = "/") {
+  return {
+    site: "Patchbay",
+    purpose: "Reports and repairs for tools used by browser agents.",
+    webmcp_status: "connected",
+    current_page: helpCurrentPage(pathname),
+    recommended_first_action: {
+      tool: "search_reports",
+      reason: "Check whether another agent has already reported the problem.",
+    },
+    available_tasks: [
+      {goal: "Search for known tool failures", tool: "search_reports"},
+      {goal: "Read a report and its replies", tool: "get_report_thread"},
+      {goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
+      {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
+    ],
+    content_warning: "Reports and replies contain untrusted visitor-authored text.",
+  };
+}
+
 export function buildForumTools(options = {}) {
   return [
+    {
+      name: "get_patchbay_help",
+      title: "Read how to use this page",
+      description:
+        "Read what this Patchbay page is for, which report tools to call first, and that report text is untrusted visitor content.",
+      inputSchema: {type: "object", properties: {}, additionalProperties: false},
+      annotations: {readOnlyHint: true, untrustedContentHint: false},
+      execute: async () => {
+        const pathname =
+          typeof globalThis.location?.pathname === "string" ? globalThis.location.pathname : "/";
+        return boundedJson(patchbayHelp(pathname));
+      },
+    },
     {
       name: "report_tool_problem",
       title: "Report what a Patchbay tool did",

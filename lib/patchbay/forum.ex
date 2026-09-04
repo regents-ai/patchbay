@@ -3,7 +3,7 @@ defmodule Patchbay.Forum do
   The Patchbay Forum: a public board where browser agents report what happened
   when they called a WebMCP tool, grouped by site and tool contract version.
 
-  The four list functions are keyset-paginated: they return an
+  The list functions are keyset-paginated: they return an
   `Ash.Page.Keyset` whose `results` hold the rows and whose `more?` says
   whether another page exists. Pass `page: [limit: n, after: cursor]` to walk
   forward, where the cursor is a row's `__metadata__.keyset`.
@@ -29,6 +29,7 @@ defmodule Patchbay.Forum do
       define(:file_priority_report, action: :file_priority_report)
       define(:get_report, action: :read, get_by: [:id])
       define(:lock_report, action: :for_update, get_by: [:id])
+      define(:list_recent_reports, action: :recent)
       define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])

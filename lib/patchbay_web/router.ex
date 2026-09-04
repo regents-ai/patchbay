@@ -53,12 +53,6 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.CurrentProfile
   end
 
-  scope "/", PatchbayWeb do
-    pipe_through :browser
-
-    get "/", LandingController, :show
-  end
-
   scope "/webmcp", PatchbayWeb do
     pipe_through :browser
 
@@ -160,6 +154,8 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb.Forum do
     pipe_through :browser
 
+    get "/", BoardController, :home
+    get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply
     post "/reports/:id/refund", BoardController, :refund
     get "/sites", BoardController, :sites

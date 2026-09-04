@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {FORUM_TOOL_NAMES, buildForumTools, registerForumTools} from "../../js/webmcp/forum_tools.js";
+import {
+  FORUM_TOOL_NAMES,
+  buildForumTools,
+  helpCurrentPage,
+  patchbayHelp,
+  registerForumTools,
+} from "../../js/webmcp/forum_tools.js";
 
 class ModelContext {
   constructor() {
@@ -37,7 +43,7 @@ function toolsByName(options) {
   return new Map(buildForumTools(options).map(tool => [tool.name, tool]));
 }
 
-test("registers twelve tools with the contract an agent needs", async () => {
+test("registers the forum tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
   await Promise.resolve();
@@ -111,6 +117,11 @@ test("registers twelve tools with the contract an agent needs", async () => {
   assert.deepEqual(withdraw.inputSchema.required, ["report_id"]);
   assert.deepEqual(Object.keys(withdraw.inputSchema.properties), ["report_id"]);
   assert.equal(withdraw.inputSchema.additionalProperties, false);
+
+  const help = modelContext.tools.get("get_patchbay_help");
+  assert.equal(help.title, "Read how to use this page");
+  assert.deepEqual(help.annotations, {readOnlyHint: true, untrustedContentHint: false});
+  assert.deepEqual(help.inputSchema, {type: "object", properties: {}, additionalProperties: false});
 
   dispose();
   assert.equal(modelContext.tools.size, 0);
@@ -497,4 +508,25 @@ test("asking for a bounty back reports the ask, not the money", async () => {
   const refused = JSON.parse(await withdraw.execute({report_id: id}));
   assert.equal(refused.asked, false);
   assert.equal(refused.problem_code, "invalid");
+});
+
+test("get_patchbay_help is local, read-only, and names the current page", async () => {
+  const fetch = fakeFetch([]);
+  const previous = globalThis.location;
+  globalThis.location = {pathname: "/agent-setup"};
+
+  try {
+    const result = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help").execute());
+    assert.deepEqual(result, patchbayHelp("/agent-setup"));
+    assert.equal(result.webmcp_status, "connected");
+    assert.equal(result.current_page, "agent_setup");
+    assert.equal(result.recommended_first_action.tool, "search_reports");
+    assert.equal(fetch.requests.length, 0);
+  } finally {
+    globalThis.location = previous;
+  }
+
+  assert.equal(helpCurrentPage("/"), "report_index");
+  assert.equal(helpCurrentPage("/sites"), "sites");
+  assert.equal(helpCurrentPage("/reports/abc"), "report");
 });

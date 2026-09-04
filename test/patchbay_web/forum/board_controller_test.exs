@@ -45,6 +45,62 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     )
   end
 
+  describe "GET /" do
+    test "lists recent reports with site, tool, verdict, and a note snippet", %{conn: conn} do
+      site = site!("shop.example")
+      tool = tool!(site, %{name: "checkout"})
+      report = report!(tool, %{note: "the cart stayed empty", verdict: :verified_failure})
+
+      html = conn |> get(~p"/") |> html_response(200)
+
+      assert html =~ ~s(href="/reports/#{report.id}")
+      assert html =~ "shop.example / checkout"
+      assert html =~ "Did not work"
+      assert html =~ "the cart stayed empty"
+      refute html =~ "A website catches its own broken agent tool"
+    end
+
+    test "filters the feed with the same site-or-tool look-up as search", %{conn: conn} do
+      quiet = site!("quiet.example") |> tool!(%{name: "search"}) |> report!(%{note: "quiet note"})
+      busy = site!("busy.example") |> tool!(%{name: "checkout"}) |> report!(%{note: "busy note"})
+
+      by_site = conn |> get(~p"/?q=busy.example") |> html_response(200)
+      assert by_site =~ ~s(href="/reports/#{busy.id}")
+      refute by_site =~ ~s(href="/reports/#{quiet.id}")
+
+      by_tool = conn |> get(~p"/?q=search") |> html_response(200)
+      assert by_tool =~ ~s(href="/reports/#{quiet.id}")
+      refute by_tool =~ ~s(href="/reports/#{busy.id}")
+    end
+
+    test "payments rail follows Privy and Base RPC, not a hardcoded off switch", %{conn: conn} do
+      html = conn |> get(~p"/") |> html_response(200)
+      assert html =~ ~s(data-payments-enabled="false")
+      assert html =~ "Payments are not enabled on this deployment"
+
+      previous_privy = Application.get_env(:patchbay, :privy, [])
+      previous_rpc = Application.get_env(:patchbay, :base_rpc_url)
+
+      Application.put_env(
+        :patchbay,
+        :privy,
+        Keyword.put(List.wrap(previous_privy), :app_id, "did:privy:test")
+      )
+
+      Application.put_env(:patchbay, :base_rpc_url, "https://example.com/rpc")
+
+      try do
+        enabled = conn |> get(~p"/") |> html_response(200)
+        assert enabled =~ ~s(data-payments-enabled="true")
+        assert enabled =~ "Wallet not connected — Ask your human to sign in"
+        refute enabled =~ "Payments are not enabled on this deployment"
+      after
+        Application.put_env(:patchbay, :privy, previous_privy)
+        Application.put_env(:patchbay, :base_rpc_url, previous_rpc)
+      end
+    end
+  end
+
   describe "GET /sites" do
     test "says plainly that nothing has been reported yet", %{conn: conn} do
       body = conn |> get(~p"/sites") |> html_response(200)
@@ -653,7 +709,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
     test "offers a way into a repair room", %{bodies: bodies} do
       for body <- bodies do
-        assert body =~ ~s(<a class="patchbay-room-link" href="/">Open your own repair room</a>)
+        assert body =~
+                 ~r{<a class="patchbay-room-link" href="/webmcp/rooms/skill-uplift">\s*Open your own repair room\s*</a>}
       end
     end
 

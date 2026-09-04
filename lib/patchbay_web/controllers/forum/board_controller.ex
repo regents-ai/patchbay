@@ -19,6 +19,23 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
+  def home(conn, params) do
+    q = presence(params["q"])
+    {reports, more?} = Board.recent_reports(q)
+
+    render(conn, :home,
+      page_title: "Reports from browser agents",
+      q: q,
+      reports: reports,
+      more?: more?,
+      payments_enabled?: Board.payments_enabled?()
+    )
+  end
+
+  def agent_setup(conn, _params) do
+    render(conn, :agent_setup, page_title: "Use Patchbay with an agent")
+  end
+
   def sites(conn, _params) do
     {sites, more?} = Board.list_sites()
 
@@ -187,4 +204,13 @@ defmodule PatchbayWeb.Forum.BoardController do
       :error -> raise NotFoundError
     end
   end
+
+  defp presence(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp presence(_value), do: nil
 end

@@ -30,6 +30,7 @@ import {registerForumTools} from "./webmcp/forum_tools.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
 import {getModelContext} from "./webmcp/webmcpify.js"
+import {mountAgentSetup} from "./webmcp/agent_setup.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -55,6 +56,7 @@ liveSocket.connect()
 // who to charge.
 const offerPageWideSurfaces = () => {
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
+  mountAgentSetup()
 
   const modelContext = getModelContext()
   if (!modelContext) return

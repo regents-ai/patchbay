@@ -25,6 +25,7 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Identity.Privy
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Payments
   alias Patchbay.Payments.USDC
@@ -38,6 +39,8 @@ defmodule PatchbayWeb.Forum.Board do
   @replies_per_page 100
   @reports_per_room 10
   @room_invocations 50
+  @recent 40
+  @search_tool_limit 20
 
   @site_loads [:tool_count, :report_count]
 
@@ -50,6 +53,132 @@ defmodule PatchbayWeb.Forum.Board do
     :unknown_count,
     :latest_report_at
   ]
+
+  @recent_loads [:author, tool: [:site]]
+
+  @doc """
+  The newest reports on the board, every site, and whether more remain.
+
+  A `q` is the same look-up the JSON search uses: a site, a tool name, or
+  both, written as one box. An empty `q` is the unfiltered recent list.
+  """
+  @spec recent_reports(String.t() | nil) :: {[Report.t()], boolean()}
+  def recent_reports(q \\ nil) do
+    case search_terms(q) do
+      :all ->
+        page =
+          Forum.list_recent_reports!(
+            load: @recent_loads,
+            page: [limit: @recent]
+          )
+
+        {page.results, page.more?}
+
+      {:ok, origin, tool_name} ->
+        reports_for_search(origin, tool_name)
+
+      :none ->
+        {[], false}
+    end
+  end
+
+  @doc """
+  Whether this deployment can take a wallet payment: Privy is named and Base
+  can be read, the same two gates the balance tool uses. The rail reads this
+  from the page rather than guessing.
+  """
+  @spec payments_enabled?() :: boolean()
+  def payments_enabled? do
+    case Privy.app_id() do
+      id when is_binary(id) and id != "" -> base_rpc_configured?()
+      _unset -> false
+    end
+  end
+
+  defp base_rpc_configured? do
+    with url when is_binary(url) <- Application.get_env(:patchbay, :base_rpc_url),
+         %URI{scheme: scheme, host: host}
+         when scheme in ["http", "https"] and is_binary(host) and host != "" <- URI.parse(url) do
+      true
+    else
+      _unset -> false
+    end
+  end
+
+  # One box on the home page. A host (or a URL that names one) is a site; a
+  # token that could be a tool name is a tool; two tokens are a site and a
+  # tool. Anything else is not a search the board knows how to run.
+  defp search_terms(q) do
+    case q |> to_string() |> String.trim() |> String.split(~r/\s+/, trim: true) do
+      [] ->
+        :all
+
+      [one] ->
+        case Origin.normalize(one) do
+          {:ok, host} -> {:ok, host, nil}
+          {:error, _not_a_host} -> if tool_name?(one), do: {:ok, nil, one}, else: :none
+        end
+
+      [site, name | _rest] ->
+        origin =
+          case Origin.normalize(site) do
+            {:ok, host} -> host
+            {:error, _not_a_host} -> nil
+          end
+
+        tool = if tool_name?(name), do: name
+        if origin || tool, do: {:ok, origin, tool}, else: :none
+    end
+  end
+
+  # Same pairing the JSON search uses: paid reports first, then the rest,
+  # both newest first, both already loaded with author and site.
+  defp reports_for_search(origin, tool_name) do
+    case matching_tools(origin, tool_name) do
+      [] ->
+        {[], false}
+
+      tools ->
+        ids = tools |> Enum.map(& &1.id) |> Enum.take(5)
+
+        priority =
+          Forum.list_priority_reports_for_tools!(ids,
+            load: @recent_loads,
+            page: [limit: @recent]
+          )
+
+        ordinary =
+          Forum.list_reports_for_tools!(ids,
+            load: @recent_loads,
+            page: [limit: @recent]
+          )
+
+        reports = Enum.uniq_by(priority.results ++ ordinary.results, & &1.id)
+        {Enum.take(reports, @recent), priority.more? or ordinary.more?}
+    end
+  end
+
+  defp matching_tools(nil, tool_name) when is_binary(tool_name) do
+    Tool
+    |> Ash.Query.filter(name == ^tool_name)
+    |> Ash.Query.sort(last_seen_at: :desc, id: :asc)
+    |> Ash.Query.limit(@search_tool_limit)
+    |> Ash.read!()
+  end
+
+  defp matching_tools(origin, tool_name) when is_binary(origin) do
+    case Forum.get_site_by_origin(origin) do
+      {:ok, site} ->
+        query = if tool_name, do: [filter: [name: tool_name]], else: []
+
+        site.id
+        |> Forum.list_tools_for_site!(query: query, page: [limit: @search_tool_limit])
+        |> Map.fetch!(:results)
+
+      {:error, _no_such_site} ->
+        []
+    end
+  end
 
   @doc "The busiest sites on the board, Patchbay's own first, and whether more remain."
   @spec list_sites() :: {[Site.t()], boolean()}

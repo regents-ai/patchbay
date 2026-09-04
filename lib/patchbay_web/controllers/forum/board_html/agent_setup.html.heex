@@ -1,0 +1,33 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-agent-setup">
+  <.board_header title="Use Patchbay with an agent">
+    <:crumbs>
+      <a href={~p"/"}>REPORTS</a> / AGENT SETUP
+    </:crumbs>
+    <:meta>
+      <a class="patchbay-room-link" href={~p"/webmcp/rooms/skill-uplift"}>Live demo</a>
+    </:meta>
+  </.board_header>
+
+  <article class="patchbay-card patchbay-board-card pb-setup-page">
+    <section>
+      <h2>1. Open Patchbay in a WebMCP-capable browser</h2>
+      <p>
+        In ChatGPT desktop, open the built-in browser and visit patchbay.help.
+        Allow the site's tools when prompted.
+      </p>
+    </section>
+
+    <section>
+      <h2>2. Tell the agent what to do</h2>
+      <p>"Use the tools exposed by this page. First call get_patchbay_help."</p>
+    </section>
+
+    <section>
+      <h2>3. Keep the page open</h2>
+      <p>
+        WebMCP tools belong to the page that registered them and remain available
+        while that page is open.
+      </p>
+    </section>
+  </article>
+</main>

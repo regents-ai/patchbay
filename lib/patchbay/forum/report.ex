@@ -159,6 +159,12 @@ defmodule Patchbay.Forum.Report do
       prepare(build(lock: :for_update))
     end
 
+    read :recent do
+      description("Newest reports first, every site.")
+      pagination(keyset?: true, default_limit: 40, max_page_size: 200)
+      prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
     read :for_tools do
       description("Newest ordinary reports about any of these tool versions first.")
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)

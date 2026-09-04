@@ -1,65 +1,50 @@
-defmodule PatchbayWeb.LandingControllerTest do
+defmodule PatchbayWeb.Forum.HomeControllerTest do
   use PatchbayWeb.ConnCase, async: true
 
-  test "GET / is the front door and does not open a room", %{conn: conn} do
-    conn = get(conn, ~p"/")
-    html = html_response(conn, 200)
+  test "GET / is the report board", %{conn: conn} do
+    html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~
-             "A website catches its own broken agent tool, proves the failure, and replaces it while the agent waits."
-
-    assert html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
+    assert html =~ "Reports from browser agents"
+    assert html =~ ~s(id="pb-agent-setup")
+    assert html =~ ~s(data-payments-enabled=")
+    assert html =~ "Copy starter prompt"
+    assert html =~ "Use the site tools exposed by this open Patchbay page."
+    assert html =~ ~s(href="/")
+    assert html =~ ~s(href="/sites")
+    assert html =~ ~s(href="/webmcp/rooms/skill-uplift")
     assert html =~ "https://github.com/regents-ai/patchbay"
+    assert html =~ "Run live demo"
+    refute html =~ "A website catches its own broken agent tool"
+    refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
+    refute html =~ "Open your repair room"
   end
 
-  test "the primary button opens the room entrance and the secondary link the board", %{
-    conn: conn
-  } do
-    html = conn |> get(~p"/") |> html_response(200)
-
-    assert html =~
-             ~r{<a[^>]+href="/webmcp/rooms/skill-uplift"[^>]*>\s*Open your repair room\s*</a>}
-
-    assert html =~ ~r{<a[^>]+href="/sites"[^>]*>\s*Browse agent reports\s*</a>}
-  end
-
-  test "the front door names every tool the page offers an agent", %{conn: conn} do
-    html = conn |> get(~p"/") |> html_response(200)
-
-    for name <-
-          ~w(get_patchbay_room_state verify_skill_uplift_goal uplift_current_skill_v1 uplift_current_skill_v2) do
-      assert html =~ name
-    end
-  end
-
-  test "the loop is spelled out in five steps", %{conn: conn} do
-    html = conn |> get(~p"/") |> html_response(200)
-
-    assert html =~ "The agent calls the broken tool"
-    assert html =~ "The page checks what actually changed"
-    assert html =~ "The agent files a report"
-    assert html =~ "Patchbay replaces the tool"
-    assert html =~ "The same agent retries"
-  end
-
-  test "the page carries its description and sharing tags", %{conn: conn} do
+  test "GET / carries sharing tags and no marketing title", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
     assert html =~ ~r{<meta name="description" content="Patchbay is a website that catches}
     assert html =~ ~s{<meta property="og:type" content="website">}
     assert html =~ ~s{<meta property="og:url" content="https://patchbay.help">}
-    assert html =~ ~s{<meta property="og:title" content="Patchbay">}
-    assert html =~ ~s{<meta name="twitter:card" content="summary">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
-    assert html =~ ~s{<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">}
-    assert html =~ ~s{<link rel="apple-touch-icon" href="/apple-touch-icon.png">}
-    assert html =~ ~r{A site that repairs its own agent tool\s*· Patchbay</title>}
+    assert html =~ ~r{Reports from browser agents\s*· Patchbay</title>}
+  end
+
+  test "GET /agent-setup spells out the three steps", %{conn: conn} do
+    html = conn |> get(~p"/agent-setup") |> html_response(200)
+
+    assert html =~ "Use Patchbay with an agent"
+    assert html =~ "1. Open Patchbay in a WebMCP-capable browser"
+    assert html =~ "In ChatGPT desktop, open the built-in browser and visit patchbay.help."
+    assert html =~ "2. Tell the agent what to do"
+    assert html =~ "First call get_patchbay_help."
+    assert html =~ "3. Keep the page open"
+    assert html =~ "WebMCP tools belong to the page that registered them"
+    assert html =~ ~s(href="/")
+    assert html =~ ~s(href="/webmcp/rooms/skill-uplift")
   end
 
   test "the first thing on any page is a link to the content", %{conn: conn} do
-    # Both pages are asserted because the link belongs to the shared root
-    # layout: if it only showed up on the front page it would be the wrong fix.
-    for path <- [~p"/", ~p"/sites"] do
+    for path <- [~p"/", ~p"/sites", ~p"/agent-setup"] do
       html = conn |> get(path) |> html_response(200)
 
       assert html =~
