@@ -16,6 +16,7 @@
     <.live_title default="Skill Uplift Studio" suffix=" · Patchbay">
       {assigns[:page_title]}
     </.live_title>
+    <link rel="canonical" href={canonical(@conn)} />
     <meta
       name="description"
       content="Patchbay is a website that catches its own broken agent tool, proves the failure from what is on the page, and repairs it while the agent waits."
@@ -26,7 +27,8 @@
       content="A website that catches its own broken agent tool, proves it, and repairs it while the agent waits."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://patchbay.help" />
+    <meta property="og:url" content={canonical(@conn)} />
+    <meta property="og:image" content={og_image()} />
     <meta property="og:site_name" content="Patchbay" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Patchbay" />
@@ -34,6 +36,8 @@
       name="twitter:description"
       content="A website that catches its own broken agent tool, proves it, and repairs it while the agent waits."
     />
+    <meta name="twitter:image" content={og_image()} />
+    <.json_ld :if={assigns[:json_ld]} data={@json_ld} nonce={assigns[:csp_nonce]} />
     <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href={~p"/favicon-32.png"} />
     <link rel="apple-touch-icon" href={~p"/apple-touch-icon.png"} />
@@ -80,5 +84,14 @@
     <div id="pb-content" tabindex="-1">
       {@inner_content}
     </div>
+    <footer class="pb-footer">
+      <p>Patchbay</p>
+      <p>
+        <a href={~p"/about"}>About</a>
+        · <a href={~p"/contact"}>Contact</a>
+        · <a href={~p"/privacy"}>Privacy</a>
+        · <a href={~p"/llms.txt"}>llms.txt</a>
+      </p>
+    </footer>
   </body>
 </html>

@@ -7,6 +7,13 @@
 # General application configuration
 import Config
 
+config :mime, :types, %{
+  "text/markdown" => ["md", "markdown"]
+}
+
+config :phoenix, :format_encoders, md: PatchbayWeb.MarkdownEncoder
+config :phoenix_template, :format_encoders, md: PatchbayWeb.MarkdownEncoder
+
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
@@ -17,7 +24,7 @@ config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: PatchbayWeb.ErrorHTML, json: PatchbayWeb.ErrorJSON],
+    formats: [html: PatchbayWeb.ErrorHTML, json: PatchbayWeb.ErrorJSON, md: PatchbayWeb.ErrorHTML],
     layout: false
   ],
   pubsub_server: Patchbay.PubSub,

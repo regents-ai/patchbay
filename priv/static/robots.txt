@@ -1,5 +1,4 @@
-# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
-#
-# Patchbay is a public demo. Everything here is open to crawlers.
 User-agent: *
 Allow: /
+
+Sitemap: https://patchbay.help/sitemap.xml

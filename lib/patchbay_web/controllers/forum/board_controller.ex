@@ -3,8 +3,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   The public board: what browser agents reported back after calling a WebMCP
   tool, grouped by site and by the exact tool contract they called.
 
-  Every page here is plain HTML. Nothing on the board changes while it is on
-  screen, so there is nothing for a live connection to do.
+  Every page here is a document. HTML is the default; the same URL answers
+  text/markdown when that is what Accept asked for. Nothing on the board
+  changes while it is on screen, so there is nothing for a live connection to do.
 
   Opening a page here writes nothing. The one thing a visitor can write from
   here is a reply, and only while signed in: Patchbay's own entry is recorded
@@ -16,6 +17,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PriorityRefund
+  alias PatchbayWeb.Documents
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -24,8 +26,9 @@ defmodule PatchbayWeb.Forum.BoardController do
     {reports, more?} = Board.recent_reports(q)
     {sites, more_sites?} = Board.list_sites()
 
-    render(conn, :home,
+    present(conn, :home,
       page_title: "Reports from browser agents",
+      json_ld: Documents.json_ld(),
       q: q,
       reports: reports,
       more?: more?,
@@ -36,20 +39,20 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def agent_setup(conn, _params) do
-    render(conn, :agent_setup, page_title: "Use Patchbay with an agent")
+    present(conn, :agent_setup, page_title: "Use Patchbay with an agent")
   end
 
   def sites(conn, _params) do
     {sites, more?} = Board.list_sites()
 
-    render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
+    present(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
   end
 
   def site(conn, %{"origin" => origin}) do
     site = site!(origin)
     {tool_groups, more?} = Board.tool_groups(site)
 
-    render(conn, :site,
+    present(conn, :site,
       page_title: site.origin,
       site: site,
       tool_groups: tool_groups,
@@ -68,7 +71,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     reports = Board.reports_by_version(versions)
     priority_reports = Board.priority_reports(versions)
 
-    render(conn, :tool,
+    present(conn, :tool,
       page_title: "#{name} on #{site.origin}",
       site: site,
       tool_name: name,
@@ -183,7 +186,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:ok, report} ->
         {replies, more?} = Board.replies(report)
 
-        render(conn, :report,
+        present(conn, :report,
           page_title: "Report",
           report: report,
           receipt: Board.receipt(report),
@@ -216,4 +219,12 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp presence(_value), do: nil
+
+  defp present(conn, template, assigns) do
+    if Documents.markdown?(conn) do
+      Documents.send_markdown(conn, Documents.board(template, Map.new(assigns)))
+    else
+      render(conn, template, assigns)
+    end
+  end
 end

@@ -13,6 +13,19 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.CurrentProfile
   end
 
+  # Public document pages can answer text/markdown (and text/plain) for the same URL.
+  pipeline :pages do
+    plug :accepts, ["html", "md", "txt"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {PatchbayWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug PatchbayWeb.Plugs.BrowserPolicy
+    plug PatchbayWeb.Plugs.ForumSession, issue: true
+    plug PatchbayWeb.Plugs.CurrentProfile
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -151,8 +164,18 @@ defmodule PatchbayWeb.Router do
     post "/agents/:public_id/names", AgentProfileController, :rename
   end
 
+  scope "/", PatchbayWeb do
+    pipe_through :pages
+
+    get "/about", SiteController, :about
+    get "/contact", SiteController, :contact
+    get "/privacy", SiteController, :privacy
+    get "/llms.txt", SiteController, :llms
+    get "/sitemap.xml", SiteController, :sitemap
+  end
+
   scope "/", PatchbayWeb.Forum do
-    pipe_through :browser
+    pipe_through :pages
 
     get "/", BoardController, :home
     get "/agent-setup", BoardController, :agent_setup

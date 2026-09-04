@@ -1,0 +1,14 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-contact">
+  <.board_header title="Contact">
+    <:crumbs>
+      <a href={~p"/"}>REPORTS</a> / CONTACT
+    </:crumbs>
+  </.board_header>
+
+  <article class="patchbay-card patchbay-board-card">
+    <p :for={paragraph <- paragraphs(:contact)} class="pb-lede">{paragraph}</p>
+    <p class="pb-lede">
+      <a href="mailto:build@regents.sh">build@regents.sh</a>
+    </p>
+  </article>
+</main>

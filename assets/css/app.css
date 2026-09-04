@@ -1457,6 +1457,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-error-inner { width: min(100%, 32rem); }
 .pb-error h1 { margin: 0; font-family: var(--pb-display); font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: 400; line-height: 1.1; letter-spacing: -.028em; }
 .pb-error-lede { margin: 1rem 0 1.9rem; color: var(--pb-text-muted); font-size: .95rem; line-height: 1.6; }
+.pb-error-links { margin: 0 0 1.5rem; padding-left: 1.2rem; color: var(--pb-text); font-size: .95rem; line-height: 1.7; }
+.pb-error-links a { color: var(--pb-text); }
 
 @media (min-width: 48rem) {
   .pb-hero-copy > * { animation: pb-rise .7s cubic-bezier(.16, 1, .3, 1) backwards; }

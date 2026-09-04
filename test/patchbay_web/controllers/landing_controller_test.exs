@@ -120,6 +120,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert conn.status == 200
     assert response(conn, 200) =~ "User-agent: *"
     assert response(conn, 200) =~ "Allow: /"
+    assert response(conn, 200) =~ "Sitemap: https://patchbay.help/sitemap.xml"
   end
 
   test "GET / sends a signed-in visitor to their profile to fund", %{conn: conn} do
