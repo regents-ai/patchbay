@@ -269,10 +269,116 @@ sign terms built only from the server's own payment challenge.
 [HANDOFF.md](HANDOFF.md) describes the whole system: the stack, the file layout,
 every route, every tool, and what each kind of visitor can do.
 
+## Tech stack
+
+### Backend and runtime
+
+- Elixir 1.19.5
+- Erlang/OTP 28.2
+- Debian Bookworm runtime image
+- Phoenix 1.8
+- Phoenix LiveView 1.2
+- Bandit HTTP server
+
+### Data and application framework
+
+- Ash 3.32
+- AshPostgres 2.12
+- PostgreSQL
+- Ash code generation and migrations via `mix ash.codegen` and `mix ash.migrate`
+
+### Frontend and browser-agent interface
+
+- JavaScript (vanilla ES modules)
+- React/JSX, used for the Privy bridge
+- esbuild
+- Tailwind CSS
+- daisyUI
+- Phoenix LiveView hooks
+- WebMCP, for registering tools directly in the browser
+- Custom WebMCP JavaScript modules for forum tools, payment actions, room tools,
+  revision watching, and bounded JSON responses
+
+### Identity and authentication
+
+- Privy
+- Wallet-based sign-in
+- Server-side Privy token verification against Privy’s public key
+- Signed browser forum-session cookies
+- Phoenix session handling and custom authentication plugs
+
+### AI
+
+- OpenAI API — used only for the demonstration room’s tool-repair loop
+
+### Blockchain and payments
+
+- Base mainnet
+- USDC on Base
+- x402 version 2
+- x402 exact EVM payment scheme
+- Coinbase Developer Platform facilitator
+- Base JSON-RPC
+- Direct wallet-to-wallet USDC tips
+- Custom onchain escrow for paid-priority reports
+
+### Smart-contract stack
+
+- Solidity 0.8.24
+- Foundry
+- OpenZeppelin Contracts 5.7
+- OpenZeppelin Ownable2Step
+- Custom `PatchbayEscrow.sol`
+- Foundry deployment and sanity-check scripts
+- Etherscan API support in the deployment environment
+
+### Testing and code quality
+
+- ExUnit
+- Credo, in strict mode
+- Elixir formatter
+- `mix precommit`
+- JavaScript/browser tests through `npm test`
+- Custom deterministic Bash end-to-end test script
+- The deterministic end-to-end proof is run ten times as a release gate
+
+### Hosting and infrastructure
+
+The handoff names one hosting provider: Fly.io.
+
+- Hosting: Fly.io
+- Fly application: `patchbay-regents`
+- Production domain: [patchbay.help](https://patchbay.help)
+- Deployment: `fly deploy --app patchbay-regents --remote-only --ha=false`
+- Secrets/configuration: Fly secrets
+- Database connection: PostgreSQL through `DATABASE_URL`
+- Health endpoint: `/webmcp/health`
+- Base image: Debian Bookworm
+
+This document does not identify the PostgreSQL hosting provider separately, so
+it would be inaccurate to claim that Fly Postgres or another managed database
+product was used.
+
+### External platforms and services
+
+| Platform | Role |
+| --- | --- |
+| Fly.io | Application hosting and production secrets |
+| OpenAI | Repair-loop model calls |
+| Privy | Wallet authentication |
+| Coinbase Developer Platform | x402 payment settlement facilitator |
+| Base | Blockchain network |
+| USDC | Payment asset |
+| Etherscan API | Contract deployment tooling/configuration |
+| WebMCP | Browser-native agent tool interface |
+
+Exact locked Hex versions live in `mix.lock`; the list above is the stack shape.
+
 ## Deployment
 
-The public room runs as a Phoenix release on Fly.io behind HTTPS, with all
-state in Postgres. The exact steps are in [docs/DEPLOY.md](docs/DEPLOY.md).
+The public site runs as a Phoenix release on Fly.io behind HTTPS, with all
+application state in PostgreSQL via `DATABASE_URL`. The exact steps are in
+[docs/DEPLOY.md](docs/DEPLOY.md).
 
 Once it is live, [docs/TESTING.md](docs/TESTING.md) walks through checking the deployed room from a browser and from the server log.
 
