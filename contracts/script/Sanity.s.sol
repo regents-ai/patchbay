@@ -22,10 +22,11 @@ contract Sanity is Script, StdCheats {
     function run() external {
         address treasury = makeAddr("treasury");
         address operator = makeAddr("operator");
+        address owner = makeAddr("owner");
         address payer = makeAddr("payer");
         address winner = makeAddr("winner");
 
-        PatchbayEscrow escrow = new PatchbayEscrow(USDC, treasury, operator);
+        PatchbayEscrow escrow = new PatchbayEscrow(USDC, treasury, operator, owner);
         console2.log("escrow:", address(escrow));
         vm.startPrank(operator);
 

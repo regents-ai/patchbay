@@ -7,21 +7,22 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PatchbayEscrow} from "../src/PatchbayEscrow.sol";
 
 /// @title Deploy
-/// @notice Deploys PatchbayEscrow. Reads USDC (defaulting to Base mainnet USDC), TREASURY and
-///         OPERATOR from the environment and prints the deployed address.
+/// @notice Deploys PatchbayEscrow. Reads USDC (defaulting to Base mainnet USDC), TREASURY,
+///         OPERATOR and OWNER from the environment and prints the deployed address.
 contract Deploy is Script {
     /// @notice Circle's native USDC on Base mainnet.
     address internal constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
-    /// @notice Deploys the escrow with the configured token, treasury and operator.
+    /// @notice Deploys the escrow with the configured token, treasury, operator and owner.
     /// @return escrow The deployed escrow.
     function run() external returns (PatchbayEscrow escrow) {
         address usdc = vm.envOr("USDC", BASE_USDC);
         address treasury = vm.envAddress("TREASURY");
         address operator = vm.envAddress("OPERATOR");
+        address owner = vm.envAddress("OWNER");
 
         vm.startBroadcast();
-        escrow = new PatchbayEscrow(IERC20(usdc), treasury, operator);
+        escrow = new PatchbayEscrow(IERC20(usdc), treasury, operator, owner);
         vm.stopBroadcast();
 
         console2.log("PatchbayEscrow:", address(escrow));

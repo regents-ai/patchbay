@@ -49,6 +49,7 @@ Set the environment first:
 | ------------------- | --------------------------------------------------------------------------------- |
 | `TREASURY`          | The Regents splitter contract that receives the 10% share. Required.               |
 | `OPERATOR`          | The Patchbay server address allowed to credit, release and refund. Required.       |
+| `OWNER`             | The address that owns the escrow from construction. Required.                      |
 | `USDC`              | Token address. Optional; defaults to Base mainnet USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. |
 | `BASE_RPC_URL`      | Base mainnet RPC endpoint.                                                        |
 | `ETHERSCAN_API_KEY` | Used by `--verify`.                                                               |
@@ -60,11 +61,9 @@ forge script script/Deploy.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify
 ```
 
 Add the sender the deployment should be signed by, for example `--ledger` for a hardware wallet or
-`--account <name>` for a Foundry keystore entry. The script prints the deployed address along with
-the token, treasury, operator and owner it was given.
-
-The deployer becomes the owner. Hand ownership to its long-term home afterwards with
-`transferOwnership`, followed by `acceptOwnership` from that address.
+`--account <name>` for a Foundry keystore entry. The Ledger still signs; it is not the owner unless
+`OWNER` equals the signer. The script prints the deployed address along with the token, treasury,
+operator and owner it was given. `OWNER` is the owner from construction.
 
 ## What the server calls
 

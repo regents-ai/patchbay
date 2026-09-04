@@ -124,12 +124,13 @@ contract PatchbayEscrow is Ownable2Step {
         _;
     }
 
-    /// @notice Deploys the escrow. The deployer becomes the owner and should hand ownership to a
-    ///         safe address with `transferOwnership` / `acceptOwnership`.
+    /// @notice Deploys the escrow. `owner_` is the owner from construction; a Safe can hold that
+    ///         role in the same deploy receipt. Ownable2Step still applies to later handovers.
     /// @param usdc_ The USDC token address on this chain.
     /// @param treasury_ The Regents splitter contract that receives the 10% treasury share.
     /// @param operator_ The Patchbay server address allowed to credit and release.
-    constructor(IERC20 usdc_, address treasury_, address operator_) Ownable(msg.sender) {
+    /// @param owner_ The address that may later call `setOperator` and transfer ownership.
+    constructor(IERC20 usdc_, address treasury_, address operator_, address owner_) Ownable(owner_) {
         if (address(usdc_) == address(0)) revert ZeroAddress();
         if (treasury_ == address(0)) revert ZeroAddress();
 

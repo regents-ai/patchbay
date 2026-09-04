@@ -22,7 +22,7 @@ Two rules that apply throughout:
 | A Base mainnet RPC endpoint | From Alchemy, QuickNode, or Coinbase. It usually carries your key in the URL, so it is kept as a secret. |
 | The treasury address | The Regents splitter contract that takes the 10%. Fixed at deployment and can never be changed afterwards, so be certain of it. |
 | An operator wallet | A fresh EOA whose only job is to sign Patchbay's `credit` and `release` calls. It needs a little ETH on Base for gas — 0.01 ETH is plenty for a demo. |
-| An owner address | Ideally a hardware wallet or Safe. It can only repoint the operator; it can never move money. The deployer becomes the owner, so deploy from this address or hand ownership over afterwards. |
+| An owner address | Ideally a hardware wallet or Safe. Set it as `OWNER`. It is the owner from construction. It can only repoint the operator; it can never move money. |
 | A Privy app | From <https://dashboard.privy.io>. You need its app id and its verification key. |
 | Coinbase Developer Platform keys | From <https://portal.cdp.coinbase.com>. These are the x402 facilitator's credentials. |
 | An Etherscan API key | Only for `--verify` on the contract deployment. |
@@ -35,6 +35,7 @@ From `repos/patchbay/contracts`. Set the environment first, in your own shell:
 export BASE_RPC_URL="https://<your Base mainnet endpoint>"
 export TREASURY="0x<the Regents splitter address>"
 export OPERATOR="0x<the operator wallet address>"
+export OWNER="0x<the owner address, typically a Safe>"
 export ETHERSCAN_API_KEY="<your Etherscan key>"
 ```
 
@@ -54,16 +55,13 @@ forge script script/Deploy.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify --
 ```
 
 Use `--account <name>` instead of `--ledger` for a Foundry keystore entry. The
+Ledger still signs; it is not the owner unless `OWNER` equals the signer. The
 script prints the deployed address along with the token, treasury, operator and
 owner it was given. **Write the deployed address down** — it is the only thing
 from this step the site needs.
 
-Check the printed treasury and operator against what you meant, because the
-treasury can never be changed.
-
-If you deployed from a hot key rather than the address you want owning it, hand
-ownership over now: call `transferOwnership` from the deployer, then
-`acceptOwnership` from the new owner.
+Check the printed treasury, operator and owner against what you meant, because
+the treasury can never be changed and `OWNER` is the owner from construction.
 
 ## 2. Turn on sign-in
 

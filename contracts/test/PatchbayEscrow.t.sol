@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {PatchbayEscrow} from "../src/PatchbayEscrow.sol";
 
 /// @notice A six-decimal token standing in for USDC.
@@ -29,6 +30,7 @@ contract PatchbayEscrowTest is Test {
 
     address internal treasury = makeAddr("treasury");
     address internal operator = makeAddr("operator");
+    address internal owner = makeAddr("owner");
     address internal payer = makeAddr("payer");
     address internal winner = makeAddr("winner");
     address internal stranger = makeAddr("stranger");
@@ -41,7 +43,22 @@ contract PatchbayEscrowTest is Test {
 
     function setUp() public {
         usdc = new TestUSDC();
-        escrow = new PatchbayEscrow(IERC20(address(usdc)), treasury, operator);
+        escrow = new PatchbayEscrow(IERC20(address(usdc)), treasury, operator, owner);
+    }
+
+    function test_owner_isTheConstructedAddressAndAloneCanSetOperator() public {
+        assertEq(escrow.owner(), owner);
+        assertEq(escrow.pendingOwner(), address(0));
+        assertTrue(owner != address(this));
+
+        address nextOperator = makeAddr("next-operator");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.prank(stranger);
+        escrow.setOperator(nextOperator);
+
+        vm.prank(owner);
+        escrow.setOperator(nextOperator);
+        assertEq(escrow.operator(), nextOperator);
     }
 
     /// @dev The x402 settlement lands before the operator attributes it, which is the real order.
