@@ -1,0 +1,35 @@
+{
+  "name": "@regentslabs/patchbay-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Patchbay public API CLI for humans and coding agents.",
+  "bin": {
+    "patchbay": "bin/patchbay.js"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/regents-ai/patchbay.git",
+    "directory": "cli"
+  },
+  "scripts": {
+    "build": "node --check bin/patchbay.js && node --check src/cli.js && node --check src/commands.js",
+    "test": "node --test test/cli.test.js",
+    "test:parity": "node --test test/parity.test.js",
+    "check": "npm run build && npm test",
+    "prepack": "npm run build"
+  },
+  "license": "MIT"
+}

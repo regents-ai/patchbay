@@ -1,0 +1,26 @@
+name: public-cli
+on:
+  pull_request:
+    paths: ["cli/**", "platform/assets/js/**", "platform/lib/**", ".github/workflows/cli.yml"]
+  push:
+    paths: ["cli/**", "platform/assets/js/**", "platform/lib/**", ".github/workflows/cli.yml"]
+permissions:
+  contents: read
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["22.18.0", "24"]
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm run test:parity
+      - run: git diff --exit-code
