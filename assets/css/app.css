@@ -1,3 +1,4 @@
+@import "../vendor/regent_ui/design_system_tokens.css";
 @import "../vendor/regent_ui/primitives.css";
 /* See the Tailwind configuration guide for advanced usage
    https://tailwindcss.com/docs/configuration */
@@ -24,7 +25,7 @@
   name: "light";
   default: true;
   prefersdark: false;
-  color-scheme: "dark";
+  color-scheme: "light";
   --color-base-100: var(--pb-canvas);
   --color-base-200: var(--pb-canvas-deep);
   --color-base-300: var(--pb-line);
@@ -95,34 +96,34 @@
    the colours are Patchbay's: a charcoal / titanium field, cream crown, and a
    restrained burnt-orange accent. Not TechTree's tangerine-on-black hero. */
 :root {
-  --pb-ink: #1b2227;
-  --pb-ink-soft: #2a3339;
-  --pb-canvas: #46535e;
-  --pb-canvas-deep: #3a454e;
-  --pb-surface: #52606a;
-  --pb-surface-sunk: #3f4b54;
-  --pb-line: rgb(216 223 225 / 22%);
-  --pb-line-strong: rgb(216 223 225 / 38%);
+  --pb-ink: var(--color-surface);
+  --pb-ink-soft: var(--color-surface);
+  --pb-canvas: var(--color-bg);
+  --pb-canvas-deep: var(--color-bg);
+  --pb-surface: var(--color-surface);
+  --pb-surface-sunk: var(--color-bg);
+  --pb-line: var(--color-border);
+  --pb-line-strong: color-mix(in srgb, var(--color-fg) 35%, var(--color-border));
 
-  --pb-accent: #c75a2a;
-  --pb-accent-deep: #e09468;
-  --pb-accent-wash: #3d2e28;
-  --pb-accent-ink: #1a1612;
-  --pb-good: #8fb8a8;
-  --pb-good-wash: #2a3834;
-  --pb-bad: #d08070;
-  --pb-bad-wash: #3a2a28;
-  --pb-agent-gradient: linear-gradient(100deg, #c9c4b4 0%, #c75a2a 48%, #8fb8a8 100%);
+  --pb-accent: var(--color-accent);
+  --pb-accent-deep: var(--color-link);
+  --pb-accent-wash: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  --pb-accent-ink: var(--color-fg-on-accent);
+  --pb-good: var(--color-success);
+  --pb-good-wash: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  --pb-bad: var(--color-error);
+  --pb-bad-wash: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
+  --pb-agent-gradient: linear-gradient(100deg, var(--palette-platinum), var(--palette-tangerine-tango), var(--palette-powder-blue));
 
-  --pb-agent-edge: #c75a2a;
-  --pb-agent-edge-wash: #3d2e28;
-  --pb-human-edge: #8fb8c9;
-  --pb-human-edge-wash: #2a3339;
+  --pb-agent-edge: var(--palette-tangerine-tango);
+  --pb-agent-edge-wash: color-mix(in srgb, var(--palette-tangerine-tango) 12%, var(--color-surface));
+  --pb-human-edge: var(--palette-powder-blue);
+  --pb-human-edge-wash: color-mix(in srgb, var(--palette-powder-blue) 12%, var(--color-surface));
 
-  --pb-text: #e8e4d4;
-  --pb-text-muted: #b8b4a4;
-  --pb-text-on-ink: #e8e4d4;
-  --pb-text-on-ink-muted: #b8b4a4;
+  --pb-text: var(--color-fg);
+  --pb-text-muted: var(--color-fg-muted);
+  --pb-text-on-ink: var(--color-fg);
+  --pb-text-on-ink-muted: var(--color-fg-muted);
 
   --pb-space-1: .35rem;
   --pb-space-2: .6rem;
@@ -161,13 +162,13 @@
 }
 
 html {
-  color-scheme: dark;
+  background: var(--color-bg);
 }
 
 body {
   min-width: 20rem;
   min-height: 100vh;
-  background: var(--pb-canvas);
+  background: transparent;
   color: var(--pb-text);
   font-family: var(--pb-sans);
   font-size: 1.125rem;
@@ -293,7 +294,7 @@ body {
 .patchbay-shell {
   min-height: 100vh;
   color: var(--pb-text);
-  background: var(--pb-canvas);
+  background: transparent;
   padding: 1.5rem clamp(1rem, 3vw, 3.5rem) 3rem;
   font-family: var(--pb-sans);
 }
@@ -542,7 +543,7 @@ body {
    page reads as one header language. Tokens live on the body so the masthead
    inherits them; paint and cards stay under #patchbay-room. */
 body:has(#patchbay-room) {
-  background: var(--pb-canvas);
+  background: transparent;
   overflow-x: clip;
 }
 
@@ -570,7 +571,7 @@ body:has(#patchbay-room) {
    second dark hero. The crown already lives in the site nav. */
 #patchbay-room .patchbay-topbar {
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, #d8dfe1 22%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 22%, transparent);
   border-radius: 0;
   padding: .35rem 0 1.15rem;
   color: var(--pb-text);
@@ -594,14 +595,14 @@ body:has(#patchbay-room) {
 }
 #patchbay-room .patchbay-topbar .patchbay-generation { color: var(--pb-text-muted); }
 #patchbay-room .patchbay-generation-badge {
-  border: 1px solid color-mix(in srgb, #d8dfe1 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
   border-radius: 999px;
   padding: .26rem .6rem;
   color: var(--pb-text);
-  background: color-mix(in srgb, #2a3339 42%, transparent);
+  background: color-mix(in srgb, var(--pb-surface) 42%, transparent);
   font-weight: 700;
 }
-#patchbay-room .patchbay-topbar .patchbay-pill { border-color: color-mix(in srgb, #d8dfe1 28%, transparent); }
+#patchbay-room .patchbay-topbar .patchbay-pill { border-color: color-mix(in srgb, var(--pb-text) 28%, transparent); }
 #patchbay-room .patchbay-topbar .patchbay-pill.is-neutral {
   color: var(--pb-text-muted);
   background: var(--pb-surface-sunk);
@@ -615,10 +616,10 @@ body:has(#patchbay-room) {
   gap: var(--pb-space-3) var(--pb-space-4);
   align-items: start;
   margin-top: var(--pb-space-4);
-  border: 1px solid color-mix(in srgb, #d8dfe1 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
   border-radius: var(--pb-radius);
   padding: var(--pb-space-4);
-  background: color-mix(in srgb, #2a3339 72%, #d8dfe1);
+  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
   box-shadow: none;
 }
 #patchbay-room .patchbay-guide-head h2 {
@@ -641,10 +642,10 @@ body:has(#patchbay-room) {
   grid-template-columns: 1.6rem minmax(0, 1fr) auto;
   gap: .65rem;
   align-items: start;
-  border: 1px solid color-mix(in srgb, #d8dfe1 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-text) 22%, transparent);
   border-radius: var(--pb-radius-sm);
   padding: .75rem .85rem;
-  background: color-mix(in srgb, #2a3339 55%, transparent);
+  background: color-mix(in srgb, var(--pb-surface) 55%, transparent);
 }
 .patchbay-step-number {
   display: grid;
@@ -717,9 +718,9 @@ body:has(#patchbay-room) {
 }
 #patchbay-room .patchbay-hero .patchbay-muted { margin: .4rem 0 0; }
 #patchbay-room .patchbay-registry-summary {
-  border: 1px solid color-mix(in srgb, #d8dfe1 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
   border-radius: var(--pb-radius-sm);
-  background: color-mix(in srgb, #2a3339 72%, #d8dfe1);
+  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
   box-shadow: none;
 }
 
@@ -727,10 +728,10 @@ body:has(#patchbay-room) {
    sits beside it as reference. Both are hairline cards, not lifted glass. */
 #patchbay-room .patchbay-editors { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
 #patchbay-room .patchbay-card {
-  border: 1px solid color-mix(in srgb, #d8dfe1 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
   border-radius: var(--pb-radius);
   padding: var(--pb-space-4);
-  background: color-mix(in srgb, #2a3339 72%, #d8dfe1);
+  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
   box-shadow: none;
 }
 #patchbay-room .patchbay-card-heading h3,
@@ -741,7 +742,7 @@ body:has(#patchbay-room) {
 .patchbay-candidate-card { padding: var(--pb-space-4); box-shadow: none; }
 .patchbay-candidate-card h3 { font-size: var(--pb-fs-lg); }
 .patchbay-candidate-card .patchbay-editor { min-height: 22rem; }
-.patchbay-source-card { background: color-mix(in srgb, #2a3339 82%, #d8dfe1); box-shadow: none; }
+.patchbay-source-card { background: color-mix(in srgb, var(--pb-surface) 82%, var(--pb-text)); box-shadow: none; }
 .patchbay-source-card .patchbay-editor { min-height: 13rem; background: var(--pb-surface-sunk); }
 .patchbay-source-card h3 { color: var(--pb-text-muted); }
 
@@ -775,7 +776,7 @@ body:has(#patchbay-room) {
 }
 .patchbay-candidate-card.is-verified {
   border-color: var(--pb-good);
-  background: color-mix(in srgb, #2a3339 72%, #d8dfe1);
+  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
   box-shadow: none;
 }
 .patchbay-candidate-card.is-verified .patchbay-editor { border-color: var(--pb-good); background: var(--pb-good-wash); }
@@ -1044,7 +1045,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
    anchor the eye, and colour spent only where it carries a verdict. */
 .patchbay-board {
   color: var(--pb-text);
-  background: var(--pb-canvas);
+  background: transparent;
   padding-top: 1.6rem;
 }
 
@@ -2248,3 +2249,6 @@ body:has(#patchbay-sites) {
   .pb-site-nav__links { flex-wrap: wrap; }
   .pb-account { width: 100%; justify-content: flex-start; }
 }
+
+.pb-theme-toggle { margin-inline-start: auto; border: 1px solid var(--pb-line); border-radius: 4px; padding: .35rem .6rem; background: var(--pb-surface); color: var(--pb-text); font: inherit; cursor: pointer; }
+.pb-theme-toggle:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }

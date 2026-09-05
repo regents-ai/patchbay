@@ -1,10 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-brand="patchbay" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#46535e" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#0F0F10" />
+    <script nonce={@csp_nonce}>
+      try {
+        const saved = localStorage.getItem("patchbay-theme")
+        document.documentElement.dataset.theme = ["light", "dark"].includes(saved)
+          ? saved : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+      } catch {}
+    </script>
     <meta name="csrf-token" content={get_csrf_token()} />
     <%!-- Who the page is being read by, and which Privy application it signs
     in against. The bridge that does the signing in is fetched only when
@@ -45,11 +52,19 @@
     it is reached. It targets the wrapper rather than a page's own <main> so
     that the room, the board and the front page all answer it the same way. --%>
     <a id="pb-skip-link" class="pb-skip-link" href="#pb-content">Skip to the main content</a>
+    <Regent.SiteBackground.site_background />
     <header class="pb-masthead">
       <.site_nav conn={@conn} />
+
       <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
       <div id="pb-account" class="pb-account">
+        <button
+          type="button"
+          class="pb-theme-toggle"
+          data-pb-theme-toggle
+          aria-label="Switch color theme"
+        >Theme</button>
         <p id="pb-account-note" class="pb-account-note" role="status"></p>
         <a
           :if={@current_profile}
