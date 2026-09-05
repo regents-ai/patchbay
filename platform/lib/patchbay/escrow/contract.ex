@@ -6,5 +6,5 @@ defmodule Patchbay.Escrow.Contract do
   and sends it.
   """
 
-  use Ethers.Contract, abi_file: "contracts/abi/PatchbayEscrow.json"
+  use Ethers.Contract, abi_file: "../contracts/abi/PatchbayEscrow.json"
 end

@@ -1,0 +1,13 @@
+**/.git
+**/.env
+**/.env.*
+**/.envrc
+**/node_modules
+**/_build
+**/deps
+**/out
+**/cache
+**/broadcast
+**/erl_crash.dump
+platform/vendor/.regent-ui-history
+platform/vendor/.regent-ui-stage-*

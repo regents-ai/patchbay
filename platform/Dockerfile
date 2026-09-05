@@ -33,7 +33,7 @@ COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
 
 # prepare build dir
-WORKDIR /app
+WORKDIR /app/platform
 
 # install hex + rebar
 RUN mix local.hex --force && \
@@ -41,27 +41,27 @@ RUN mix local.hex --force && \
 
 # set build ENV
 ENV MIX_ENV="prod"
-ENV REGENT_UI_PATH="/app/vendor/regent_ui"
+ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
 # install mix dependencies
-COPY mix.exs mix.lock ./
-COPY vendor vendor
+COPY platform/mix.exs platform/mix.lock ./
+COPY platform/vendor vendor
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies
 # to ensure any relevant config change will trigger the dependencies
 # to be re-compiled.
-COPY config/config.exs config/${MIX_ENV}.exs config/
+COPY platform/config/config.exs platform/config/${MIX_ENV}.exs config/
 RUN mix deps.compile
 
-COPY priv priv
-COPY lib lib
-COPY assets assets
+COPY platform/priv priv
+COPY platform/lib lib
+COPY platform/assets assets
 
 # The escrow module compiles the contract's ABI straight into itself, so the
 # ABI has to be in the image before anything is compiled.
-COPY contracts/abi contracts/abi
+COPY contracts/abi ../contracts/abi
 
 # The asset build reads colocated hooks out of the build directory and Tailwind
 # sources out of lib, so the application is compiled first.
@@ -72,9 +72,9 @@ RUN mix assets.setup
 RUN mix assets.deploy
 
 # changes to config/runtime.exs don't require recompiling the code
-COPY config/runtime.exs config/
+COPY platform/config/runtime.exs config/
 
-COPY rel rel
+COPY platform/rel rel
 RUN mix release
 
 # start a new build stage so that the final image will only contain
@@ -97,10 +97,10 @@ RUN chown nobody /app
 
 # set runner ENV
 ENV MIX_ENV="prod"
-ENV REGENT_UI_PATH="/app/vendor/regent_ui"
+ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
 # Only copy the final release from the build stage
-COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/patchbay ./
+COPY --from=builder --chown=nobody:root /app/platform/_build/${MIX_ENV}/rel/patchbay ./
 
 USER nobody
 

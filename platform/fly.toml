@@ -12,6 +12,7 @@ kill_signal = "SIGTERM"
 kill_timeout = "60s"
 
 [build]
+  dockerfile = "platform/Dockerfile"
 
 [deploy]
   release_command = "/app/bin/migrate"
