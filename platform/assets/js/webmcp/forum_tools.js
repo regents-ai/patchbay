@@ -1,5 +1,5 @@
 import {sentence} from "./invocation_bridge.js";
-import {payForIntent} from "./paid_actions.js";
+import {payForIntent, paymentCancellation} from "./paid_actions.js";
 import {
   mapUnsignedReason,
   paymentHelp,
@@ -15,7 +15,7 @@ const AGENTS_PATH = "/api/agents";
 const AGENT_NAME_PATH = "/api/me/agent_name";
 const VERDICTS = ["verified_success", "verified_failure", "errored", "unknown"];
 const RESULT_LIMIT = 16 * 1024;
-const PAYMENT_TOOLS = new Set(["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]);
+const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 
 const VERDICT_HELP =
   "verified_success when you saw the tool do what it said, verified_failure when you saw it not, errored when the call itself failed, unknown when you could not tell.";
@@ -468,14 +468,20 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
-      execute: async (input = {}) => {
-        const blocked = await readinessBeforePay(options, input.amount_usdc);
+      execute: async (input = {}, {signal} = {}) => {
+        const requestOptions = {...options, signal};
+        if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
+        const blocked = await readinessBeforePay(requestOptions, input.amount_usdc);
+        if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
         if (blocked) return boundedJson(blocked, RESULT_LIMIT);
 
-        const outcome = await (options.payForIntent ?? payForIntent)(options, {
+        const outcome = await (options.payForIntent ?? payForIntent)(requestOptions, {
           kind: "agent_tip",
           args: {profile_id: input.profile_id, amount_usdc: input.amount_usdc},
         });
+        if (signal?.aborted && outcome.body?.problem_code !== "canceled") {
+          return boundedJson(paymentCancellation(outcome.intent, {dispatched: true}).body, RESULT_LIMIT);
+        }
 
         // The terms of an unpaid tip are the whole point of the answer, so
         // they are given the room the board's search results get.
@@ -572,14 +578,20 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
-      execute: async (input = {}) => {
-        const blocked = await readinessBeforePay(options, input.amount_usdc);
+      execute: async (input = {}, {signal} = {}) => {
+        const requestOptions = {...options, signal};
+        if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
+        const blocked = await readinessBeforePay(requestOptions, input.amount_usdc);
+        if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
         if (blocked) return boundedJson(blocked, RESULT_LIMIT);
 
-        const outcome = await (options.payForIntent ?? payForIntent)(options, {
+        const outcome = await (options.payForIntent ?? payForIntent)(requestOptions, {
           kind: "special_post",
           args: input,
         });
+        if (signal?.aborted && outcome.body?.problem_code !== "canceled") {
+          return boundedJson(paymentCancellation(outcome.intent, {dispatched: true}).body, RESULT_LIMIT);
+        }
 
         // The terms of an unpaid report are the whole point of the answer, so
         // they are given the room the board's search results get.
@@ -601,9 +613,9 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
-      execute: async (input = {}) => {
+      execute: async (input = {}, {signal} = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/accept`;
-        const answer = await post(options, path, {reply_id: input.reply_id});
+        const answer = await post({...options, signal}, path, {reply_id: input.reply_id});
 
         if (!answer.ok) {
           return boundedJson({
@@ -638,9 +650,9 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
-      execute: async (input = {}) => {
+      execute: async (input = {}, {signal} = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/refund`;
-        const answer = await post(options, path, {});
+        const answer = await post({...options, signal}, path, {});
 
         if (!answer.ok) {
           return boundedJson({
@@ -660,7 +672,7 @@ export function buildForumTools(options = {}) {
         });
       },
     },
-  ].map(tool => PAYMENT_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
+  ].map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
 }
 
 // Sign-in, empty wallet, or a deployment that cannot take payments: said in
@@ -684,6 +696,7 @@ function unsignedReadiness(unsigned) {
 // tipped, how much, what it does, and that it cannot be taken back once
 // settled, then either the receipt or the terms still to be paid.
 function tipResult({status, body, intent, unsigned}) {
+  if (body?.problem_code === "canceled") return body;
   const fromWallet = unsignedReadiness(unsigned);
   if (fromWallet) return withPaymentHelp(fromWallet);
 
@@ -751,6 +764,7 @@ function paymentProblemOf({status, body}) {
 // back once settled, then either the published report or the terms still to
 // be paid. Nothing is on the board until the money is.
 function priorityResult({status, body, intent, unsigned}) {
+  if (body?.problem_code === "canceled") return body;
   const fromWallet = unsignedReadiness(unsigned);
   if (fromWallet) return {...fromWallet, posted: false};
 
@@ -836,6 +850,10 @@ function cancellableTool(tool) {
     const signal = execution.signal;
     const canceled = dispatched => JSON.stringify({
       problem_code: "canceled",
+      ...(["accept_solution", "withdraw_priority_report"].includes(tool.name) ? {
+        report_id: input?.report_id ?? null,
+        status_url: input?.report_id ? `${REPORTS_PATH}/${encodeURIComponent(input.report_id)}` : null,
+      } : {}),
       outcome: dispatched && !tool.annotations.readOnlyHint ? "unknown" : "canceled",
       error: dispatched && !tool.annotations.readOnlyHint
         ? "Canceled after dispatch. The server may have completed the write; check its status before retrying."

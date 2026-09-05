@@ -838,3 +838,75 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
     assert.equal(tools.get(name).annotations.consequentialHint, true);
   }
 });
+
+test("all paid tool entry points honor a pre-aborted signal before readiness or HTTP", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
+    fetch: () => assert.fail("unexpected HTTP request"),
+    payForIntent: () => assert.fail("unexpected payment invocation")});
+  for (const name of ["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]) {
+    const result = JSON.parse(await tools.get(name).execute({report_id: "report"}, {signal: controller.signal}));
+    assert.equal(result.problem_code, "canceled", name);
+    assert.equal(result.outcome, "canceled", name);
+    assert.equal(result.paid, undefined, name);
+  }
+});
+
+for (const name of ["tip_agent", "post_priority_report"]) {
+  test(`${name} stops after canceled readiness and retains a known canceled intent`, async () => {
+    const controller = new AbortController();
+    let payCalls = 0;
+    const fetch = async (_path, request) => {
+      assert.equal(request.signal, controller.signal);
+      controller.abort();
+      return {ok: true, status: 200, json: async () => ({available_usdc: "10.00"})};
+    };
+    const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true, fetch,
+      payForIntent: () => { payCalls++; }});
+    const result = JSON.parse(await tools.get(name).execute({amount_usdc: "1.00"}, {signal: controller.signal}));
+    assert.equal(result.problem_code, "canceled");
+    assert.equal(payCalls, 0);
+    assert.equal(result.paid, undefined);
+
+    const second = new AbortController();
+    const intentId = "12345678-1234-4234-8234-123456789012";
+    const signed = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
+      fetch: async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})}),
+      payForIntent: async options => {
+        assert.equal(options.signal, second.signal);
+        second.abort();
+        return {status: 200, intent: {id: intentId}, body: {status: "applied"}};
+      }});
+    const canceled = JSON.parse(await signed.get(name).execute({amount_usdc: "1.00"}, {signal: second.signal}));
+    assert.equal(canceled.problem_code, "canceled");
+    assert.equal(canceled.outcome, "unknown");
+    assert.equal(canceled.payment_intent_id, intentId);
+    assert.equal(canceled.status_url, `/api/payment_intents/${intentId}`);
+    assert.equal(canceled.paid, undefined);
+    assert.equal(canceled.posted, undefined);
+  });
+}
+
+for (const name of ["accept_solution", "withdraw_priority_report"]) {
+  test(`${name} reports an uncertain canceled write with the report recovery URL`, async () => {
+    const controller = new AbortController();
+    let finish;
+    const id = "12345678-1234-4234-8234-123456789012";
+    const tools = toolsByName({fetch: (_path, request) => {
+      assert.equal(request.signal, controller.signal);
+      return new Promise(resolve => { finish = resolve; });
+    }});
+    const pending = tools.get(name).execute({report_id: id, reply_id: "reply"}, {signal: controller.signal});
+    await Promise.resolve();
+    controller.abort();
+    const result = JSON.parse(await pending);
+    assert.equal(result.problem_code, "canceled");
+    assert.equal(result.outcome, "unknown");
+    assert.equal(result.report_id, id);
+    assert.equal(result.status_url, `/forum/reports/${id}`);
+    assert.equal(result.accepted, undefined);
+    assert.equal(result.asked, undefined);
+    finish({ok: true, status: 200, json: async () => ({escrow_status: "released"})});
+  });
+}

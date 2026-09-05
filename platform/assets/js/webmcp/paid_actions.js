@@ -42,62 +42,102 @@ const TRANSFER_TYPES = {
  * intent as it was created. When no wallet can sign, or the wallet refuses,
  * the challenge answer comes back untouched and `unsigned` names why.
  *
- * @param {{fetch?: typeof globalThis.fetch, csrfToken?: string, document?: Document, signer?: (doc: Document) => Promise<object>}} options
+ * @param {{fetch?: typeof globalThis.fetch, csrfToken?: string, document?: Document, signal?: AbortSignal, signer?: (doc: Document, signal?: AbortSignal) => Promise<object>}} options
  * @param {{kind: string, args: object}} action
  * @returns {Promise<{status: number, body: object | null, intent?: object, unsigned?: string}>}
  */
 export async function payForIntent(options, {kind, args}) {
-  const created = await request(options, INTENTS_PATH, {method: "POST", json: {kind, args}});
-  if (created.status !== 201) return answer(created);
+  const signal = options.signal;
+  let intent;
+  let dispatched = false;
+  let submitted = false;
+  const canceled = () => paymentCancellation(intent, {dispatched, submitted});
+  if (signal?.aborted) return canceled();
+  try {
+    dispatched = true;
+    const created = await request(options, INTENTS_PATH, {method: "POST", json: {kind, args}});
+    if (created.status === 201) intent = created.body;
+    if (signal?.aborted) return canceled();
+    if (created.status !== 201) return answer(created);
 
-  const intent = created.body;
-  const executePath = `${INTENTS_PATH}/${encodeURIComponent(intent.id)}/execute`;
-  const challenged = await request(options, executePath, {method: "POST"});
-  if (challenged.status !== 402) return answer(challenged, intent);
+    const executePath = `${INTENTS_PATH}/${encodeURIComponent(intent.id)}/execute`;
+    const challenged = await request(options, executePath, {method: "POST"});
+    if (signal?.aborted) return canceled();
+    if (challenged.status !== 402) return answer(challenged, intent);
 
-  const challenge = decodeChallenge(challenged.challenge);
-  const requirement = challenge?.accepts?.[0];
-  const chainId = chainIdOf(requirement);
-  if (chainId === null) return answer(challenged, intent, "unsupported_challenge");
+    const challenge = decodeChallenge(challenged.challenge);
+    const requirement = challenge?.accepts?.[0];
+    const chainId = chainIdOf(requirement);
+    if (chainId === null) return answer(challenged, intent, "unsupported_challenge");
 
-  const signer = await (options.signer ?? bridgeSigner)(options.document ?? globalThis.document);
-  if (!signer.ok) return answer(challenged, intent, signer.reason);
+    const signer = await (options.signer ?? bridgeSigner)(options.document ?? globalThis.document, signal);
+    if (signal?.aborted) return canceled();
+    if (!signer.ok) return answer(challenged, intent, signer.reason);
 
-  const typedData = transferAuthorization(requirement, chainId, signer.address);
-  const signed = await signer.signTypedData(typedData);
-  if (!signed.ok) return answer(challenged, intent, signed.reason);
+    const typedData = transferAuthorization(requirement, chainId, signer.address);
+    const signed = await signer.signTypedData(typedData);
+    if (signal?.aborted) return canceled();
+    if (!signed.ok) return answer(challenged, intent, signed.reason);
 
-  const payment = {
-    x402Version: X402_VERSION,
-    accepted: requirement,
-    payload: {signature: signed.signature, authorization: typedData.message},
-    extensions: challenge.extensions,
-  };
-  const signedHeaders = {[SIGNATURE_HEADER]: encodeBase64Json(payment)};
-  let settled = await request(options, executePath, {
-    method: "POST",
-    headers: signedHeaders,
-  });
-
-  // An unclear 5xx after signing may mean the facilitator already saw the
-  // payment. Replay the same intent and the same signature only.
-  for (let attempt = 1; shouldReplaySigned(settled) && attempt < SIGNED_REPLAY_LIMIT; attempt += 1) {
-    settled = await request(options, executePath, {method: "POST", headers: signedHeaders});
-  }
-
-  if (shouldReplaySigned(settled)) {
-    return {
-      status: settled.status,
-      body: {
-        ...(settled.body ?? {}),
-        payment_intent_id: intent.id,
-        next_action: "Do not pay again; check this intent.",
-      },
-      intent,
+    const payment = {
+      x402Version: X402_VERSION,
+      accepted: requirement,
+      payload: {signature: signed.signature, authorization: typedData.message},
+      extensions: challenge.extensions,
     };
-  }
+    const signedHeaders = {[SIGNATURE_HEADER]: encodeBase64Json(payment)};
+    submitted = true;
+    let settled = await request(options, executePath, {
+      method: "POST",
+      headers: signedHeaders,
+    });
 
-  return answer(settled, intent);
+    if (signal?.aborted) return canceled();
+
+    // An unclear 5xx after signing may mean the facilitator already saw the
+    // payment. Replay the same intent and the same signature only.
+    for (let attempt = 1; shouldReplaySigned(settled) && attempt < SIGNED_REPLAY_LIMIT; attempt += 1) {
+      settled = await request(options, executePath, {method: "POST", headers: signedHeaders});
+      if (signal?.aborted) return canceled();
+    }
+
+    if (shouldReplaySigned(settled)) {
+      return {
+        status: settled.status,
+        body: {
+          ...(settled.body ?? {}),
+          payment_intent_id: intent.id,
+          next_action: "Do not pay again; check this intent.",
+        },
+        intent,
+      };
+    }
+
+    return answer(settled, intent);
+  } catch (error) {
+    if (signal?.aborted) return canceled();
+    throw error;
+  }
+}
+
+/** Cancellation cannot undo an HTTP request or dismiss an issued wallet prompt. */
+export function paymentCancellation(intent, {dispatched = false, submitted = false} = {}) {
+  return {
+    status: 0,
+    ...(intent && {intent}),
+    body: {
+      problem_code: "canceled",
+      outcome: dispatched ? "unknown" : "canceled",
+      payment_intent_id: intent?.id ?? null,
+      status_url: intent?.id ? `${INTENTS_PATH}/${encodeURIComponent(intent.id)}` : null,
+      error: submitted
+        ? "Canceled after signed submission began. Payment may have settled; cancellation does not reverse it."
+        : "The payment call was canceled. An issued server request or wallet prompt may still finish.",
+      next_action: intent?.id
+        ? "Read this intent's status before taking another payment action. Do not pay again automatically."
+        : "Check the current page before retrying. No payment intent ID was returned.",
+    },
+  };
 }
 
 export function shouldReplaySigned({status, paymentResponse} = {}) {
@@ -111,11 +151,12 @@ function answer({status, body}, intent, unsigned) {
 // The wallet the page signed in with, reached through the same Privy bridge
 // the account strip uses. It answers the signing address first, because the
 // authorization names its signer before it is signed.
-async function bridgeSigner(doc) {
+async function bridgeSigner(doc, signal) {
   const appId = privyAppId(doc);
   if (!appId) return {ok: false, reason: "unconfigured"};
 
   const bridge = await loadPrivyBridge(doc);
+  if (signal?.aborted) return {ok: false, reason: "canceled"};
   if (!bridge) return {ok: false, reason: "unloadable"};
 
   const wallet = await bridge.walletAddress(appId);
@@ -186,6 +227,7 @@ async function request(options, url, {method, json, headers = {}}) {
 
   try {
     const response = await fetchImpl(url, {
+      signal: options.signal,
       method,
       credentials: "same-origin",
       headers: {

@@ -127,3 +127,171 @@ test("an exhausted 5xx replay tells the agent not to pay again", async () => {
   assert.equal(outcome.body.payment_intent_id, "int_9");
   assert.match(outcome.body.next_action, /Do not pay again/);
 });
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return {promise, resolve, reject};
+}
+
+const cancellationChallenge = {
+  accepts: [{scheme: "exact", network: "eip155:8453", asset: `0x${"a".repeat(40)}`,
+    payTo: `0x${"b".repeat(40)}`, amount: "1000001", maxTimeoutSeconds: 300,
+    extra: {name: "USD Coin", version: "2"}}],
+  extensions: {},
+};
+const cancellationIntent = "12345678-1234-4234-8234-123456789012";
+const cancellationAction = {kind: "agent_tip", args: {profile_id: "agt_recipient", amount_usdc: "1.000001"}};
+
+test("a pre-aborted payment invocation does not prepare an intent or reach a signer", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const outcome = await payForIntent({signal: controller.signal,
+    fetch: () => assert.fail("unexpected request"), signer: () => assert.fail("unexpected signer")}, cancellationAction);
+  assert.equal(outcome.body.problem_code, "canceled");
+  assert.equal(outcome.body.outcome, "canceled");
+  assert.equal(outcome.body.paid, undefined);
+});
+
+for (const phase of ["preparation", "challenge", "signer", "signature", "submission", "replay"]) {
+  test(`aborting during ${phase} prevents the next payment phase and discards its late response`, async () => {
+    const controller = new AbortController();
+    const entered = deferred();
+    const release = deferred();
+    const requests = [];
+    let signerCalls = 0, signatureCalls = 0, submissions = 0;
+    const pause = async (at, value) => {
+      if (at === phase) { entered.resolve(); await release.promise; }
+      return value;
+    };
+    const fetch = async (url, request) => {
+      requests.push({url, request});
+      if (url === "/api/payment_intents") {
+        return pause("preparation", jsonResponse(201, {id: cancellationIntent}));
+      }
+      if (!request.headers["payment-signature"]) {
+        return pause("challenge", jsonResponse(402, {status: "payment_required"}, {
+          "payment-required": encodeChallenge(cancellationChallenge),
+        }));
+      }
+      submissions++;
+      return pause(submissions === 1 ? "submission" : "replay", jsonResponse(502, {error: "uncertain settlement"}));
+    };
+    const pending = payForIntent({signal: controller.signal, fetch,
+      signer: async () => {
+        signerCalls++;
+        return pause("signer", {ok: true, address: `0x${"c".repeat(40)}`,
+          signTypedData: async () => { signatureCalls++; return pause("signature", {ok: true, signature: "synthetic"}); }});
+      }}, cancellationAction);
+    await entered.promise;
+    controller.abort();
+    release.resolve();
+    const outcome = await pending;
+    assert.equal(outcome.body.problem_code, "canceled");
+    assert.equal(outcome.body.outcome, "unknown");
+    assert.equal(outcome.body.payment_intent_id, cancellationIntent);
+    assert.equal(outcome.body.status_url, `/api/payment_intents/${cancellationIntent}`);
+    assert.equal(outcome.body.paid, undefined);
+    assert.equal(requests.length, {preparation: 1, challenge: 2, signer: 2, signature: 2, submission: 3, replay: 4}[phase]);
+    assert.equal(signerCalls, ["preparation", "challenge"].includes(phase) ? 0 : 1);
+    assert.equal(signatureCalls, ["preparation", "challenge", "signer"].includes(phase) ? 0 : 1);
+    assert.equal(submissions, phase === "submission" ? 1 : phase === "replay" ? 2 : 0);
+    for (const {request} of requests) assert.equal(request.signal, controller.signal);
+    if (submissions) assert.match(outcome.body.error, /may have settled/);
+  });
+}
+
+test("an aborted signer rejection remains a cancellation instead of an unrelated failure", async () => {
+  const controller = new AbortController();
+  const fetch = async url => url === "/api/payment_intents"
+    ? jsonResponse(201, {id: cancellationIntent})
+    : jsonResponse(402, {}, {"payment-required": encodeChallenge(cancellationChallenge)});
+  const outcome = await payForIntent({signal: controller.signal, fetch, signer: async () => {
+    controller.abort();
+    throw new Error("late provider failure");
+  }}, cancellationAction);
+  assert.equal(outcome.body.problem_code, "canceled");
+  assert.equal(outcome.body.payment_intent_id, cancellationIntent);
+});
+
+for (const cancelFirst of [false, true]) {
+  test(`concurrent payment invocations remain independent${cancelFirst ? " when one is canceled" : ""}`, async () => {
+    const first = new AbortController(), second = new AbortController();
+    const signatures = deferred();
+    const bothSigning = deferred();
+    const sent = [];
+    let intentCount = 0, signingCount = 0;
+    const options = signal => ({signal,
+      fetch: async (url, request) => {
+        if (url === "/api/payment_intents") return jsonResponse(201, {id: `intent_${++intentCount}`});
+        if (!request.headers["payment-signature"]) {
+          return jsonResponse(402, {}, {"payment-required": encodeChallenge(cancellationChallenge)});
+        }
+        sent.push({url, signature: request.headers["payment-signature"]});
+        return jsonResponse(200, {status: "applied"});
+      },
+      signer: async () => ({ok: true, address: `0x${"d".repeat(40)}`, signTypedData: async () => {
+        if (++signingCount === 2) bothSigning.resolve();
+        await signatures.promise;
+        return {ok: true, signature: "synthetic"};
+      }}),
+    });
+    const one = payForIntent(options(first.signal), cancellationAction);
+    const two = payForIntent(options(second.signal), cancellationAction);
+    await bothSigning.promise;
+    if (cancelFirst) first.abort();
+    signatures.resolve();
+    const [a, b] = await Promise.all([one, two]);
+    assert.equal(intentCount, 2);
+    assert.equal(signingCount, 2);
+    assert.equal(sent.length, cancelFirst ? 1 : 2);
+    assert.equal(b.body.status, "applied");
+    assert.equal(a.body[cancelFirst ? "problem_code" : "status"], cancelFirst ? "canceled" : "applied");
+    if (!cancelFirst) assert.equal(new Set(sent.map(value => value.signature)).size, 2);
+  });
+}
+
+for (const lateResponse of ["applied", "abort_error"]) {
+  test(`signed submission cancellation keeps recovery details after ${lateResponse}`, async () => {
+    const controller = new AbortController();
+    let submissions = 0;
+    const fetch = async (url, request) => {
+      if (url === "/api/payment_intents") return jsonResponse(201, {id: cancellationIntent});
+      if (!request.headers["payment-signature"]) {
+        return jsonResponse(402, {}, {"payment-required": encodeChallenge(cancellationChallenge)});
+      }
+      submissions++;
+      controller.abort();
+      if (lateResponse === "abort_error") throw new DOMException("Canceled", "AbortError");
+      return jsonResponse(200, {status: "applied"});
+    };
+    const outcome = await payForIntent({signal: controller.signal, fetch,
+      signer: async () => ({ok: true, address: `0x${"c".repeat(40)}`,
+        signTypedData: async () => ({ok: true, signature: "synthetic"})})}, cancellationAction);
+    assert.equal(outcome.body.problem_code, "canceled");
+    assert.equal(outcome.body.outcome, "unknown");
+    assert.equal(outcome.body.payment_intent_id, cancellationIntent);
+    assert.equal(outcome.body.status_url, `/api/payment_intents/${cancellationIntent}`);
+    assert.equal(outcome.body.paid, undefined);
+    assert.equal(outcome.body.status, undefined);
+    assert.equal(submissions, 1);
+  });
+}
+
+for (const refusal of ["preparation", "unsupported_challenge", "signed_out", "refused"]) {
+  test(`uncanceled ${refusal} refusal retains its existing result`, async () => {
+    const intent = {id: cancellationIntent, amount_usdc: "1.000001"};
+    const body = {status: "payment_required", error: "synthetic refusal"};
+    const challenge = refusal === "unsupported_challenge" ? {accepts: []} : cancellationChallenge;
+    const result = await payForIntent({
+      fetch: async url => url === "/api/payment_intents"
+        ? jsonResponse(refusal === "preparation" ? 422 : 201, refusal === "preparation" ? body : intent)
+        : jsonResponse(402, body, {"payment-required": encodeChallenge(challenge)}),
+      signer: async () => refusal === "signed_out" ? {ok: false, reason: "signed_out"}
+        : {ok: true, address: `0x${"c".repeat(40)}`, signTypedData: async () => ({ok: false, reason: "refused"})},
+    }, cancellationAction);
+    assert.deepEqual(result, refusal === "preparation"
+      ? {status: 422, body}
+      : {status: 402, body, intent, unsigned: refusal});
+  });
+}

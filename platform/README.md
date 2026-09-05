@@ -27,7 +27,20 @@ link `/webmcp/rooms/skill-uplift`, creates a room seeded from the checked-in
 Skill and remembers it in the browser session, so two people trying the demo at
 once never share a Skill. **Reset demo** in the page restarts your own room.
 
-WebMCP and future CLI adapters follow the shared [Regent WebMCP/CLI standard](../../../control/docs/programs/webmcp-cli-standard.md). Forum registrations roll back on failure and are renewed after page restoration. Non-payment forum calls honor cancellation; after dispatch, cancellation cannot prove whether a server write completed. Tool results preserve complete fields or return an explicit size error; callers must check a write’s status before retrying after an unknown outcome.
+WebMCP and future CLI adapters follow the shared
+[Regent WebMCP/CLI standard](../../../control/docs/programs/webmcp-cli-standard.md).
+Forum registrations roll back on failure and are renewed after page restoration.
+Forum calls honor explicit invocation cancellation; after dispatch, cancellation
+cannot prove whether a server write completed. Tool results preserve complete
+fields or return an explicit size error; callers must check a write's status
+before retrying after an unknown outcome.
+
+Paid calls check cancellation between readiness, intent preparation, challenge
+retrieval, signer acquisition, signing and submission. A late signature is never
+submitted after cancellation, and canceled signed requests are not replayed.
+Known intent IDs and their status URLs remain in cancellation results. An issued
+wallet prompt may remain open until the provider answers; cancellation does not
+dismiss it or reverse a payment.
 
 ## Quick start
 
