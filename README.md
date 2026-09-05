@@ -349,7 +349,7 @@ The handoff names one hosting provider: Fly.io.
 - Hosting: Fly.io
 - Fly application: `patchbay-regents`
 - Production domain: [patchbay.help](https://patchbay.help)
-- Release preparation: `mix regent_ui.stage` includes the resolved shared UI in the build context.
+- Release preparation: `regentctl worktree-run patchbay <ticket> -- mix regent_ui.stage` includes the verified pinned shared UI in the build context.
 - Deployment after preparation: `fly deploy --app patchbay-regents --remote-only --ha=false`
 - Secrets/configuration: Fly secrets
 - Database connection: PostgreSQL through `DATABASE_URL`
@@ -406,8 +406,11 @@ for the judge walkthrough, and [docs/DEPLOY.md](docs/DEPLOY.md) for hosting. The
 ## Shared UI in release builds
 
 The UI source remains in `design-system/regent_ui`. Before a standalone Docker or
-Fly build, run `mix regent_ui.stage` using the dependency revision selected for the
-release. This creates ignored `vendor/regent_ui`; the Dockerfile uses that generated
+Fly build, prepare the release worktree and run
+`regentctl worktree-run patchbay <ticket> -- mix regent_ui.stage`.
+Staging requires the selected pinned dependency snapshot, verifies package content,
+and records its revision and SHA256 in `.regent-ui-generated`. Keep that evidence
+with the release. This creates ignored `vendor/regent_ui`; the Dockerfile uses that generated
 copy through `REGENT_UI_PATH`. Staging performs no remote action. Previous generated
 copies remain in ignored `vendor/.regent-ui-history`, excluded from Docker contexts.
 For isolated verification, `REGENT_DEPS_ROOT` selects the worktree's pinned libraries.
