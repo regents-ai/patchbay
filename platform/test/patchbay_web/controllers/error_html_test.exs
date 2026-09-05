@@ -20,6 +20,10 @@ defmodule PatchbayWeb.ErrorHTMLTest do
   end
 
   test "renders 500.html" do
-    assert render_to_string(PatchbayWeb.ErrorHTML, "500", "html", []) == "Internal Server Error"
+    html = render_to_string(PatchbayWeb.ErrorHTML, "500", "html", [])
+    assert html =~ "This page is unavailable."
+    assert html =~ ~s(href="")
+    assert html =~ ~s(role="alert")
+    refute html =~ "No reports yet"
   end
 end

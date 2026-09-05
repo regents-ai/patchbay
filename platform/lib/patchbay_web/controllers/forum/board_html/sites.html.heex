@@ -29,9 +29,9 @@
     <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
   </div>
 
-  <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
-    The directory has not been loaded yet.
-  </p>
+  <Regent.Primitives.empty_state :if={@sites == []} title="No directory entries available">
+    <:action><a href="">Retry directory</a></:action>
+  </Regent.Primitives.empty_state>
 
   <p :if={@more?} class="pb-aside">
     Showing the first {length(@sites)} entries.

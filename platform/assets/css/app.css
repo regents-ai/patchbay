@@ -2252,3 +2252,30 @@ body:has(#patchbay-sites) {
 
 .pb-theme-toggle { margin-inline-start: auto; border: 1px solid var(--pb-line); border-radius: 4px; padding: .35rem .6rem; background: var(--pb-surface); color: var(--pb-text); font: inherit; cursor: pointer; }
 .pb-theme-toggle:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+
+/* Compact reports and setup keep long evidence within the reading column. */
+.pb-report-next { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; font-size: var(--pb-fs-xs); }
+#report-evidence .patchbay-facts > div { min-width: 0; }
+#report-evidence code, #report-evidence time { overflow-wrap: anywhere; }
+.pb-full-evidence { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+#patchbay-agent-setup .pb-agent-setup { margin-bottom: 1rem; }
+.pb-setup-payment-note { margin-bottom: 1rem; font-size: var(--pb-fs-xs); }
+.pb-setup-page, .pb-setup-page .rg-disclosure, .pb-setup-page .rg-disclosure-body { min-width: 0; }
+.pb-setup-page pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pb-setup-page table { table-layout: fixed; }
+.pb-setup-page td, .pb-setup-page th { overflow-wrap: anywhere; }
+.pb-setup-page section > * + * { margin-top: .65rem; }
+.pb-agent-setup .rg-disclosure-body { padding-top: .3rem; }
+#patchbay-report a:focus-visible, #patchbay-agent-setup a:focus-visible,
+#patchbay-agent-setup textarea:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
+
+#report-evidence .patchbay-facts > div > span:first-child { flex: 0 0 6rem; }
+#report-evidence time { min-width: 0; text-align: right; font: var(--pb-fs-micro)/1.5 var(--pb-mono); }
+#patchbay-report .patchbay-result-box .patchbay-kicker { color: var(--pb-text-muted); }
+#patchbay-replies .rg-empty { padding: .8rem 0; text-align: left; font-size: var(--pb-fs-xs); }
+.pb-full-evidence:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
+
+#patchbay-agent-setup .pb-agent-setup,
+#patchbay-agent-setup .pb-setup-payment-note { width: min(100%, 62rem); margin-inline: auto; }
+.pb-agent-setup summary::after { content: none; }
+#report-evidence .patchbay-facts a { font-size: var(--pb-fs-xs); }

@@ -17,9 +17,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ ~s(src="/favicon-192.png")
     assert html =~ ~s(id="pb-agent-setup")
     assert html =~ ~s(data-payments-enabled=")
-    assert html =~ "Fund your agent with USDC to unlock more WebMCP Tools"
-    assert html =~ "Go to Profile"
-    assert html =~ ~s(href="#pb-account")
+    assert html =~ "Payments are not enabled on this deployment"
+    refute html =~ "Go to Profile"
     refute html =~ ~s(id="pb-agent-funding")
     refute html =~ "Fund this agent"
     refute html =~ "Copy funding request"
@@ -70,12 +69,15 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     html = conn |> get(~p"/agent-setup") |> html_response(200)
 
     assert html =~ "Use Patchbay with an agent"
+    document = LazyHTML.from_document(html)
+    assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
+    assert Enum.count(LazyHTML.query(document, "#pb-agent-setup textarea[readonly]")) == 1
+    assert Enum.empty?(LazyHTML.query(document, ".pb-setup-page details[open]"))
     assert html =~ ~s(id="webmcp")
     assert html =~ ~s(id="x402")
     assert html =~ ~s(id="hermes")
     assert html =~ ~s(id="codex-cli")
     assert html =~ ~s(id="claude-code")
-    assert html =~ ~s(href="#webmcp")
     assert html =~ ~s(href="#x402")
     assert html =~ "tip_agent"
     assert html =~ "post_priority_report"
@@ -113,7 +115,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     html = conn |> get(~p"/agent-setup") |> html_response(200)
 
     assert html =~ ~s(id="faq")
-    assert html =~ ~s(href="#faq")
     assert html =~ "The page holds the session; the wallet holds the key."
   end
 
@@ -136,7 +137,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert response(conn, 200) =~ "Allow: /"
   end
 
-  test "GET / sends a signed-in visitor to their profile to fund", %{conn: conn} do
+  test "GET / does not suggest funding when payments are disabled", %{conn: conn} do
     profile =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:home-fund",
@@ -150,9 +151,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       |> get(~p"/")
       |> html_response(200)
 
-    assert html =~ "Fund your agent with USDC to unlock more WebMCP Tools"
-    assert html =~ "Go to Profile"
-    assert html =~ ~s(href="/agents/#{profile.public_id}")
+    assert html =~ "Payments are not enabled on this deployment"
+    refute html =~ "Go to Profile"
     refute html =~ ~s(id="pb-agent-funding")
   end
 end

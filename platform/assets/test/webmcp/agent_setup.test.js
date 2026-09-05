@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {FORUM_TOOL_NAMES} from "../../js/webmcp/forum_tools.js";
 import {paymentsLine, railState, STARTER_PROMPT} from "../../js/webmcp/agent_setup.js";
 
 test("starter prompt is the exact copy an agent should be given", () => {
@@ -13,7 +12,6 @@ test("starter prompt is the exact copy an agent should be given", () => {
 test("railState is unsigned and unsupported when WebMCP and a wallet are missing", () => {
   const state = railState({
     webmcp: false,
-    toolCount: FORUM_TOOL_NAMES.length,
     paymentsEnabled: true,
     signedIn: false,
   });
@@ -33,13 +31,12 @@ test("railState reads payments from the page, not a hardcoded off switch", () =>
     "Payments are not enabled on this deployment",
   );
   assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).kind, "connected");
-  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Wallet connected");
+  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Signed in · Checking wallet balance");
 });
 
 test("railState stays open until a positive USDC balance is known", () => {
   const waiting = railState({
     webmcp: true,
-    toolCount: FORUM_TOOL_NAMES.length,
     paymentsEnabled: true,
     signedIn: true,
   });
@@ -51,23 +48,22 @@ test("railState stays open until a positive USDC balance is known", () => {
 
   const funded = railState({
     webmcp: true,
-    toolCount: FORUM_TOOL_NAMES.length,
     paymentsEnabled: true,
     signedIn: true,
     readiness: {status: "ready", balance_usdc: "8.40"},
   });
 
   assert.equal(funded.ready, true);
-  assert.equal(funded.line, "Agent ready · WebMCP connected · 8.40 USDC on Base");
+  assert.equal(funded.line, "WebMCP detected · 8.40 USDC on Base");
   assert.equal(funded.showFunding, false);
   assert.equal(funded.unsupported, false);
-  assert.match(funded.webmcp.text, new RegExp(`${FORUM_TOOL_NAMES.length} tools available`));
+  assert.equal(funded.webmcp.text, "WebMCP detected");
+  assert.doesNotMatch(funded.line, /ready|connected|tools available/i);
 });
 
 test("railState marks an empty signed-in wallet as needing funding", () => {
   const state = railState({
     webmcp: true,
-    toolCount: FORUM_TOOL_NAMES.length,
     paymentsEnabled: true,
     signedIn: true,
     readiness: {
@@ -81,4 +77,24 @@ test("railState marks an empty signed-in wallet as needing funding", () => {
   assert.equal(state.showFunding, true);
   assert.equal(state.funding.balance_usdc, "0.00");
   assert.equal(state.payments.kind, "funding");
+});
+
+
+test("a failed balance read stays unavailable instead of claiming a connected wallet", () => {
+  const failed = railState({webmcp: true, paymentsEnabled: true, signedIn: true,
+    readiness: {problem: "network error", summary: "Could not read balance"}});
+  assert.equal(failed.ready, false);
+  assert.equal(failed.payments.kind, "unavailable");
+  assert.match(failed.payments.text, /Reload this page/);
+  assert.equal(failed.showFunding, false);
+  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true,
+    readiness: {status: "needs_human_sign_in"}}).kind, "unsigned");
+});
+
+
+test("detecting a WebMCP API does not claim that tool registration succeeded", () => {
+  const detected = railState({webmcp: true, paymentsEnabled: false, signedIn: false});
+  assert.equal(detected.webmcp.text, "WebMCP detected");
+  assert.equal(detected.ready, false);
+  assert.doesNotMatch(detected.webmcp.text, /connected|tools available|agent ready/i);
 });

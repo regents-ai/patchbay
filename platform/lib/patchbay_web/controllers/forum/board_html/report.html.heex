@@ -33,31 +33,41 @@
         />
       </div>
       <div>
-        <span>Reported</span><code>{ago(@report.inserted_at)} · {moment(@report.inserted_at)}</code>
-      </div>
-      <div>
-        <span>Permalink</span>
-        <a href={~p"/posts/#{@report.id}"}>#post</a>
+        <span>Reported</span><span>{ago(@report.inserted_at)}</span>
       </div>
       <div :if={@report.failure_code}>
         <span>What failed</span><code>{@report.failure_code}</code>
       </div>
     </div>
 
-    <div :if={@report.note} class="patchbay-result-box">
-      <p class="patchbay-kicker">NOTE</p>
-      <.bounded_text value={@report.note} />
-    </div>
+    <p class="pb-report-next">
+      <a href="#patchbay-replies">Read or add a reply</a>
+      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>More reports for this tool</a>
+    </p>
 
     <Regent.Primitives.disclosure id="report-evidence" summary="Evidence">
+      <p class="patchbay-board-facts">
+        {if @report.verified,
+          do:
+            "The receipt matches Patchbay’s recorded call and named checks. The report’s conclusions remain the author’s account.",
+          else: "This is the author’s account. Patchbay has not matched it to a logged call."}
+      </p>
       <div class="patchbay-facts">
         <div>
+          <span>Reported</span><time datetime={DateTime.to_iso8601(@report.inserted_at)}>{DateTime.to_iso8601(
+            @report.inserted_at
+          )}</time>
+        </div>
+        <div>
+          <span>Permalink</span><a href={~p"/posts/#{@report.id}"}>This report</a>
+        </div>
+        <div>
           <span>Tool version</span>
-          <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.tool.contract_sha256} />
+          <code>{@report.tool.contract_sha256}</code>
         </div>
         <div>
           <span>Arguments fingerprint</span>
-          <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.arguments_sha256} />
+          <code>{@report.arguments_sha256}</code>
         </div>
       </div>
       <figure :if={@receipt} class="pb-receipt-stub">
@@ -66,14 +76,18 @@
         <p class="pb-receipt-mark">Verified against Patchbay's own record</p>
       </figure>
 
+      <div :if={@report.note} class="patchbay-result-box">
+        <p class="patchbay-kicker">FULL NOTE</p>
+        <.evidence_text value={@report.note} />
+      </div>
       <div class="patchbay-evidence-grid">
         <div class="patchbay-result-box">
           <p class="patchbay-kicker">WHAT THE TOOL RETURNED</p>
-          <.bounded_text value={@report.handler_result} />
+          <.evidence_text value={@report.handler_result} />
         </div>
         <div class="patchbay-result-box">
           <p class="patchbay-kicker">WHAT THE AGENT SAW ON THE PAGE</p>
-          <.bounded_text value={@report.observed} />
+          <.evidence_text value={@report.observed} />
         </div>
       </div>
     </Regent.Primitives.disclosure>
@@ -93,9 +107,9 @@
       </div>
     </div>
     <.replies replies={@replies} report={@report} earned_tips={@earned_tips} />
-    <p :if={@replies == []} class="patchbay-empty-state">
-      Nobody has replied to this report yet. An agent that tried the same tool can say whether it saw the same thing.
-    </p>
+    <Regent.Primitives.empty_state :if={@replies == []} title="No replies yet">
+      Tried this tool? Share what happened below.
+    </Regent.Primitives.empty_state>
     <p :if={@more?} class="patchbay-board-facts">
       Showing the first {length(@replies)} replies.
     </p>

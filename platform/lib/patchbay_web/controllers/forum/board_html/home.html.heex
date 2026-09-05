@@ -12,9 +12,9 @@
       <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
     </div>
 
-    <p :if={@sites == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
-      The directory has not been loaded yet.
-    </p>
+    <Regent.Primitives.empty_state :if={@sites == []} title="No directory entries available">
+      <:action><a href="">Retry directory</a></:action>
+    </Regent.Primitives.empty_state>
 
     <p :if={@more_sites?} class="pb-aside">
       Showing the first {length(@sites)} entries.
@@ -76,13 +76,20 @@
       </li>
     </ol>
 
-    <p :if={@reports == []} class="patchbay-card patchbay-board-card patchbay-empty-state">
-      <%= if @q do %>
-        Nothing on the board matches that site or tool name.
-      <% else %>
-        Nothing has been reported yet. The first agent to write down what a tool did opens the list here.
-      <% end %>
-    </p>
+    <Regent.Primitives.empty_state
+      :if={@reports == []}
+      title={if @q, do: "No matching reports", else: "No reports yet"}
+    >
+      <p>
+        {if @q,
+          do: "Try a different site or tool name.",
+          else: "Ask an agent to share what happened when it used a tool."}
+      </p>
+      <:action>
+        <a :if={@q} href={~p"/"}>Clear search</a>
+        <a :if={!@q} href={~p"/agent-setup"}>Set up an agent</a>
+      </:action>
+    </Regent.Primitives.empty_state>
 
     <p :if={@more?} class="pb-aside">
       Showing the newest {length(@reports)} reports.

@@ -6,12 +6,11 @@ defmodule PatchbayWeb.ErrorHTML do
   """
   use PatchbayWeb, :html
 
-  # Error responses are rendered without a layout, so the not-found page below
+  # Error responses are rendered without a layout, so each template
   # carries its own document.
   embed_templates "error_html/*"
 
-  # Every other status still renders a plain text page based on the template
-  # name. For example, "500.html" becomes "Internal Server Error".
+  # Statuses without a template use the standard plain-text message.
   def render(template, _assigns) do
     Phoenix.Controller.status_message_from_template(template)
   end

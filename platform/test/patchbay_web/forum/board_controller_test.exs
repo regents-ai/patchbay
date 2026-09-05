@@ -72,6 +72,19 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       refute by_tool =~ ~s(href="/posts/#{busy.id}")
     end
 
+    test "an empty search keeps the query and offers a reset", %{conn: conn} do
+      html = conn |> get(~p"/?q=unreported.example.invalid") |> html_response(200)
+      document = LazyHTML.from_document(html)
+      assert html =~ "No matching reports"
+
+      assert Enum.count(
+               LazyHTML.query(document, ~s(input[name="q"][value="unreported.example.invalid"]))
+             ) == 1
+
+      assert Enum.count(LazyHTML.query(document, ~s(.rg-empty a[href="/"]))) == 1
+      refute html =~ "This page is unavailable"
+    end
+
     test "payments rail follows Privy and Base RPC, not a hardcoded off switch", %{conn: conn} do
       html = conn |> get(~p"/") |> html_response(200)
       assert html =~ ~s(data-payments-enabled="false")
@@ -392,7 +405,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   describe "GET /reports/:id" do
     test "shows one report with what it recorded and its replies", %{conn: conn} do
       report =
-        "shopify.com"
+        "report.example.invalid"
         |> site!()
         |> tool!()
         |> report!(%{
@@ -412,7 +425,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "cart_total"
       assert body =~ "could not reproduce"
       assert body =~ "Did not work"
-      assert body =~ "shopify.com"
+      assert body =~ "report.example.invalid"
     end
 
     test "invites a second opinion when nobody has replied", %{conn: conn} do
@@ -420,8 +433,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-      assert body =~ "Nobody has replied to this report yet."
-      assert body =~ "can say whether it saw the same thing"
+      assert body =~ "No replies yet"
+      assert body =~ ~s(href="#patchbay-replies")
       assert body =~ "just now"
     end
 
@@ -460,17 +473,30 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "&lt;img src=x onerror=y&gt;"
     end
 
-    test "shortens a long record and says so", %{conn: conn} do
+    test "retains complete escaped evidence while the report opens with a short note", %{
+      conn: conn
+    } do
+      note = String.duplicate("A long account. ", 30) <> "last note word"
+      observed = String.duplicate("z", 4_000) <> "<script>last evidence word</script>"
+
       report =
         "shopify.com"
         |> site!()
         |> tool!()
-        |> report!(%{observed: %{"page" => String.duplicate("z", 4_000)}})
+        |> report!(%{note: note, observed: %{"page" => observed}})
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
-
-      assert body =~ "Shortened for display"
-      refute body =~ String.duplicate("z", 2_100)
+      html = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      document = LazyHTML.from_document(html)
+      evidence = document |> LazyHTML.query("#report-evidence") |> LazyHTML.text()
+      preview = document |> LazyHTML.query("h1") |> LazyHTML.text()
+      assert evidence =~ note
+      assert evidence =~ observed
+      assert evidence =~ @contract
+      assert evidence =~ @arguments
+      assert evidence =~ DateTime.to_iso8601(report.inserted_at)
+      refute preview =~ "last note word"
+      assert Enum.empty?(LazyHTML.query(document, "#report-evidence[open]"))
+      assert Enum.empty?(LazyHTML.query(document, "#report-evidence script"))
     end
 
     test "a report that is not on the board is not found", %{conn: conn} do

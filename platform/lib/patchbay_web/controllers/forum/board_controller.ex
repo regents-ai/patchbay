@@ -36,7 +36,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def agent_setup(conn, _params) do
-    render(conn, :agent_setup, page_title: "Use Patchbay with an agent")
+    render(conn, :agent_setup,
+      page_title: "Use Patchbay with an agent",
+      payments_enabled?: Board.payments_enabled?()
+    )
   end
 
   def sites(conn, _params) do
