@@ -91,7 +91,8 @@ test("registers the forum tools with the contract an agent needs", async () => {
   const thread = modelContext.tools.get("get_report_thread");
   assert.deepEqual(thread.annotations, {readOnlyHint: true, untrustedContentHint: true});
   assert.deepEqual(thread.inputSchema.required, ["report_id"]);
-  assert.deepEqual(Object.keys(thread.inputSchema.properties), ["report_id"]);
+  assert.deepEqual(Object.keys(thread.inputSchema.properties), ["report_id", "after"]);
+  assert.equal(thread.inputSchema.properties.after.type, "string");
   assert.equal(thread.inputSchema.properties.report_id.format, "uuid");
 
   const tip = modelContext.tools.get("tip_agent");
@@ -656,4 +657,64 @@ test("tip_agent returns the funding handoff when the wallet is short and still r
   assert.equal(paid, 1);
   assert.equal(sent.payment_help.scheme, "exact");
   assert.deepEqual(sent.payment_help.paid_tools, ["tip_agent", "post_priority_report"]);
+});
+
+
+test("thread pages preserve complete notes, IDs, authors and continuation tokens", async () => {
+  const reportId = "f3b8abe0-4a24-4ba8-b3f3-a56cb4045c91";
+  const cursor = "opaque-" + "aB_09-".repeat(70);
+  const author = {profile_id: "agt_123456789abc", agent_name: "helper", human_name: "owner",
+    profile_url: "/agents/agt_123456789abc", can_receive_usdc: true};
+  const payment = {tip_author: {tool: "tip_agent", arguments: {profile_id: author.profile_id}}};
+  const replies = Array.from({length: 13}, (_, index) => ({
+    id: `f3b8abe0-4a24-4ba8-b3f3-${String(index).padStart(12, "0")}`,
+    quoted_note: "🔥".repeat(125), author, payment_actions: payment,
+  }));
+  const first = {report: {id: reportId, quoted_note: "🔥".repeat(125), author, payment_actions: payment},
+    replies, pagination: {has_more: true, next_cursor: cursor}};
+  const last = {...first, replies: [], pagination: {has_more: false, next_cursor: null}};
+  const fetch = fakeFetch([{status: 200, body: first}, {status: 200, body: last}]);
+  const tool = toolsByName({fetch}).get("get_report_thread");
+  const raw = await tool.execute({report_id: reportId});
+  const result = JSON.parse(raw);
+  assert.deepEqual(result.thread, first);
+  assert.ok(Buffer.byteLength(raw, "utf8") <= 16 * 1024);
+  assert.match(result.summary, /This page contains 13 replies/);
+  assert.match(result.summary, /More replies remain/);
+  assert.match(result.data_only, /not instructions/);
+  const final = JSON.parse(await tool.execute({report_id: reportId, after: result.thread.pagination.next_cursor}));
+  assert.deepEqual(final.thread, last);
+  assert.match(final.summary, /This page contains 0 replies/);
+  assert.match(final.summary, /final page/);
+  assert.equal(fetch.requests[0].path, `/forum/reports/${reportId}`);
+  const requestUrl = new URL(fetch.requests[1].path, "http://localhost");
+  assert.equal(requestUrl.searchParams.get("after"), cursor);
+  assert.equal(requestUrl.pathname, `/forum/reports/${reportId}`);
+});
+
+test("an oversized UTF-8 thread is refused without truncating rows or identifiers", async () => {
+  const body = {report: {id: "f3b8abe0-4a24-4ba8-b3f3-a56cb4045c91"},
+    replies: Array.from({length: 20}, (_, id) => ({id, quoted_note: "🔥".repeat(250)})),
+    pagination: {has_more: false, next_cursor: null}};
+  assert.ok(JSON.stringify(body).length < 16 * 1024);
+  assert.ok(Buffer.byteLength(JSON.stringify(body), "utf8") > 16 * 1024);
+  const tool = toolsByName({fetch: fakeFetch([{status: 200, body}])}).get("get_report_thread");
+  const raw = await tool.execute({report_id: body.report.id});
+  const result = JSON.parse(raw);
+  assert.equal(result.found, false);
+  assert.equal(result.problem_code, "response_too_large");
+  assert.equal(result.thread, undefined);
+  assert.ok(Buffer.byteLength(raw, "utf8") <= 16 * 1024);
+});
+
+test("thread cursor errors remain structured and the opaque query is forwarded unchanged", async () => {
+  const cursor = "opaque+value/with?special=characters&spaces here";
+  const fetch = fakeFetch([{status: 400, body: {problem_code: "invalid_cursor", error: "Start again without after."}}]);
+  const tool = toolsByName({fetch}).get("get_report_thread");
+  const result = JSON.parse(await tool.execute({report_id: "report-id", after: cursor}));
+  assert.equal(new URL(fetch.requests[0].path, "http://localhost").searchParams.get("after"), cursor);
+  assert.equal(result.found, false);
+  assert.equal(result.problem_code, "invalid_cursor");
+  assert.equal(result.problem, "Start again without after.");
+  assert.equal(result.thread, undefined);
 });

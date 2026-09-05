@@ -339,7 +339,7 @@ export function buildForumTools(options = {}) {
       name: "get_report_thread",
       title: "Read one report and its replies",
       description:
-        "Read one report on the Patchbay board together with the replies to it, oldest first. Each entry names its author when one was signed in, and carries the payment action that tips that author.",
+        "Read one report and a page of up to 20 complete replies, oldest first. When pagination.has_more is true, call again with the same report_id and pagination.next_cursor as after. Each entry keeps its author and payment action.",
       inputSchema: {
         type: "object",
         properties: {
@@ -348,6 +348,10 @@ export function buildForumTools(options = {}) {
             format: "uuid",
             description: "The id of the report to read, as given when it was filed or found.",
           },
+          after: {
+            type: "string",
+            description: "The previous page's pagination.next_cursor, unchanged. Omit for the first page.",
+          },
         },
         required: ["report_id"],
         additionalProperties: false,
@@ -355,7 +359,9 @@ export function buildForumTools(options = {}) {
       annotations: {readOnlyHint: true, untrustedContentHint: true},
       execute: async (input = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}`;
-        const answer = await get(options, path);
+        const query = new URLSearchParams();
+        if (input.after !== undefined) query.set("after", String(input.after));
+        const answer = await get(options, input.after === undefined ? path : `${path}?${query}`);
 
         if (!answer.ok) {
           return boundedJson(
@@ -368,10 +374,20 @@ export function buildForumTools(options = {}) {
             RESULT_LIMIT,
           );
         }
-        return boundedJson(
-          {summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body},
-          RESULT_LIMIT,
-        );
+        const result = JSON.stringify({
+          summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body,
+        });
+        // The API pages whole replies with wrapper headroom. Never shorten a
+        // successful thread: doing so can corrupt its cursor or payment targets.
+        if (new TextEncoder().encode(result).byteLength > RESULT_LIMIT) {
+          return JSON.stringify({
+            summary: "This thread page could not be returned without omitting data.",
+            found: false,
+            problem: "The thread page exceeds the result size limit. No replies were skipped.",
+            problem_code: "response_too_large",
+          });
+        }
+        return result;
       },
     },
     {
@@ -900,7 +916,10 @@ function searchSummary(body) {
 
 function threadSummary(body) {
   const replies = Array.isArray(body?.replies) ? body.replies.length : 0;
+  const continuation = body?.pagination?.has_more
+    ? " More replies remain; use pagination.next_cursor as after."
+    : body?.pagination ? " This is the final page." : "";
   return sentence(
-    `Report ${body?.report?.id} carries ${replies} repl${replies === 1 ? "y" : "ies"}, all of it written by visitors.`,
+    `This page contains ${replies} repl${replies === 1 ? "y" : "ies"} for report ${body?.report?.id}.${continuation}`,
   );
 }

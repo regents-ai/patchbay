@@ -27,6 +27,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   use PatchbayWeb, :controller
 
   require Ash.Query
+  require Logger
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
@@ -47,6 +48,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   @search_tool_limit 20
   @search_report_limit 20
   @thread_reply_limit 20
+  @thread_cursor_salt "report-replies-v1"
+  @thread_cursor_max_age 86_400
+  # The WebMCP result adds a summary and content warning outside this body.
+  @thread_payload_bytes 15 * 1024
   # Reports are gathered per matching tool, so the number of tools asked is
   # capped separately from the number of reports returned.
   @report_source_tool_limit 5
@@ -63,8 +68,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   ]
 
   @max_answer_bytes 16 * 1024
-  # Quote length, tools, entries: the reports in a search, the replies in a
-  # thread. Each step is tried in turn until the encoded answer fits; the last
+  # Quote length, tools, entries for search results. Each step is tried in
+  # turn until the encoded answer fits; the last
   # one is small enough to fit whatever the entries hold.
   @bound_steps [{500, 20, 20}, {300, 20, 20}, {120, 20, 20}, {40, 10, 10}, {40, 3, 3}]
 
@@ -107,11 +112,30 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    case fetch_report(id, load: [:author, tool: [:site]]) do
-      {:ok, report} -> json(conn, thread_payload(report))
-      {:error, failure} -> send_failure(conn, failure)
+  def show(conn, %{"id" => id} = params) do
+    with {:ok, report} <- fetch_report(id, load: [:author, tool: [:site]]),
+         {:ok, cursor} <- thread_cursor(report.id, params["after"]),
+         {:ok, payload} <- thread_payload(report, cursor) do
+      json(conn, payload)
+    else
+      {:error, failure} -> send_thread_failure(conn, failure)
     end
+  end
+
+  defp send_thread_failure(conn, failure)
+       when failure in [:not_found, :invalid_cursor, :response_too_large],
+       do: send_failure(conn, failure)
+
+  defp send_thread_failure(conn, failure) do
+    error_type = if is_struct(failure), do: failure.__struct__, else: :unknown
+    Logger.warning("Report thread read unavailable", error_type: inspect(error_type))
+
+    conn
+    |> put_status(:service_unavailable)
+    |> json(%{
+      error: "This thread could not be loaded. Try again with the same report and cursor.",
+      problem_code: "unavailable"
+    })
   end
 
   # Only a page load issues a forum identity, so a caller without one has not
@@ -368,20 +392,66 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Thread
 
-  defp thread_payload(report) do
-    %{
-      report: report_entry(report),
-      replies: Enum.map(thread_replies(report), &reply_entry(&1, report))
-    }
-    |> within_size()
+  defp thread_cursor(_report_id, nil), do: {:ok, nil}
+
+  defp thread_cursor(report_id, token) when is_binary(token) and byte_size(token) <= 2048 do
+    case Phoenix.Token.verify(PatchbayWeb.Endpoint, @thread_cursor_salt, token,
+           max_age: @thread_cursor_max_age
+         ) do
+      {:ok, %{report_id: ^report_id, keyset: keyset}} when is_binary(keyset) -> {:ok, keyset}
+      _invalid -> {:error, :invalid_cursor}
+    end
   end
 
-  # The opening replies, read in one go: the action already sorts oldest first,
-  # so the page limit is the whole answer.
-  defp thread_replies(report) do
-    report.id
-    |> Forum.list_replies_for_report!(load: [:author], page: [limit: @thread_reply_limit])
-    |> Map.fetch!(:results)
+  defp thread_cursor(_report_id, _token), do: {:error, :invalid_cursor}
+
+  defp thread_payload(report, cursor) do
+    paging =
+      if cursor,
+        do: [limit: @thread_reply_limit, after: cursor],
+        else: [limit: @thread_reply_limit]
+
+    with {:ok, page} <-
+           Forum.list_replies_for_report(report.id,
+             load: [:author],
+             page: paging
+           ) do
+      entries = Enum.map(page.results, &{reply_entry(&1, report), &1.__metadata__.keyset})
+      fit_thread_page(report_entry(report), entries, page.more?)
+    end
+  end
+
+  # Keep complete entries. A cursor must follow the last returned row, including
+  # when the byte budget leaves some of the fetched page for the next request.
+  defp fit_thread_page(report, entries, more?) do
+    payload = %{
+      report: report,
+      replies: Enum.map(entries, &elem(&1, 0)),
+      pagination: %{
+        has_more: more?,
+        next_cursor: if(more? and entries != [], do: sign_thread_cursor(report.id, entries))
+      }
+    }
+
+    cond do
+      byte_size(Jason.encode!(payload)) <= @thread_payload_bytes ->
+        {:ok, payload}
+
+      length(entries) > 1 ->
+        fit_thread_page(report, Enum.drop(entries, -1), true)
+
+      true ->
+        {:error, :response_too_large}
+    end
+  end
+
+  defp sign_thread_cursor(report_id, entries) do
+    {_entry, keyset} = List.last(entries)
+
+    Phoenix.Token.sign(PatchbayWeb.Endpoint, @thread_cursor_salt, %{
+      report_id: report_id,
+      keyset: keyset
+    })
   end
 
   defp tool_entry(tool) do
@@ -482,14 +552,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     }
   end
 
-  defp apply_step(%{report: report, replies: replies} = payload, {quote_length, _tools, limit}) do
-    %{
-      payload
-      | report: %{report | quoted_note: shorten(report.quoted_note, quote_length)},
-        replies: quoted(replies, limit, quote_length)
-    }
-  end
-
   defp quoted(entries, limit, quote_length) do
     entries
     |> Enum.take(limit)
@@ -532,6 +594,25 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Every refusal carries a short `problem_code` beside its words, so a browser
   # agent can branch on the reason without reading English.
+  defp send_failure(conn, :invalid_cursor) do
+    conn
+    |> put_status(:bad_request)
+    |> json(%{
+      error: "This reply cursor is invalid or expired. Start again without after.",
+      problem_code: "invalid_cursor"
+    })
+  end
+
+  defp send_failure(conn, :response_too_large) do
+    conn
+    |> put_status(:internal_server_error)
+    |> json(%{
+      error:
+        "This thread page is too large to return without omitting data. No replies were skipped.",
+      problem_code: "response_too_large"
+    })
+  end
+
   defp send_failure(conn, {:rate_limited, message}) do
     conn
     |> put_status(:too_many_requests)

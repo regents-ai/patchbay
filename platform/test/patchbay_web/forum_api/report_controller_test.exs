@@ -436,6 +436,196 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     end
   end
 
+  describe "reading reply pages" do
+    test "walks a busy thread in stable order, including tied timestamps and a new reply", %{
+      conn: conn
+    } do
+      report = thread_report!()
+      replies = for n <- 1..45, do: thread_reply!(report, "reply #{n}")
+      same_time = ~U[2026-01-01 00:00:00.000000Z]
+
+      for reply <- replies do
+        Patchbay.Repo.query!("UPDATE forum_replies SET inserted_at = $1 WHERE id = $2", [
+          same_time,
+          Ecto.UUID.dump!(reply.id)
+        ])
+      end
+
+      first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      assert length(first["replies"]) == 20
+      assert first["pagination"]["has_more"]
+      appended = thread_reply!(report, "appended between pages")
+      rest = thread_pages(conn, report.id, first["pagination"]["next_cursor"])
+      ids = Enum.flat_map([first | rest], &Enum.map(&1["replies"], fn reply -> reply["id"] end))
+
+      assert ids == Enum.sort(Enum.map(replies, & &1.id)) ++ [appended.id]
+      assert length(Enum.uniq(ids)) == 46
+      assert List.last(rest)["pagination"] == %{"has_more" => false, "next_cursor" => nil}
+    end
+
+    test "an empty thread is a final empty page", %{conn: conn} do
+      report = thread_report!()
+      [page] = thread_pages(conn, report.id)
+      assert page["report"]["id"] == report.id
+      assert page["replies"] == []
+      assert page["pagination"] == %{"has_more" => false, "next_cursor" => nil}
+    end
+
+    test "rejects malformed, tampered, and other-report cursors", %{conn: conn} do
+      report = thread_report!()
+      other = thread_report!()
+      for n <- 1..21, do: thread_reply!(report, "reply #{n}")
+      first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      cursor = first["pagination"]["next_cursor"]
+      <<first_byte, rest::binary>> = cursor
+      tampered = <<Bitwise.bxor(first_byte, 1), rest::binary>>
+
+      for {id, value} <- [
+            {report.id, ""},
+            {report.id, "not-a-cursor"},
+            {report.id, tampered},
+            {report.id, ["nested"]},
+            {report.id, String.duplicate("a", 2049)},
+            {other.id, cursor}
+          ] do
+        response = conn |> recycle() |> get("/forum/reports/#{id}", %{"after" => value})
+        assert %{"problem_code" => "invalid_cursor"} = json_response(response, 400)
+      end
+
+      assert [last] = thread_pages(conn, report.id, cursor)
+      assert length(last["replies"]) == 1
+    end
+
+    test "pages whole Unicode notes and payment metadata within the response budget", %{
+      conn: conn
+    } do
+      profile =
+        Patchbay.Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:thread-pages",
+          wallet_address: "0x" <> String.duplicate("a", 40)
+        })
+
+      profile =
+        Patchbay.Identity.rename_agent!(profile, %{agent_name: String.duplicate("a", 30)},
+          actor: profile
+        )
+
+      profile =
+        Patchbay.Identity.rename_human!(profile, %{human_name: String.duplicate("h", 30)},
+          actor: profile
+        )
+
+      note = String.duplicate("🔥", 125)
+      report = thread_report!(profile, note)
+
+      replies =
+        for n <- 1..35 do
+          text = if rem(n, 2) == 0, do: String.duplicate("\"", 500), else: note
+          thread_reply!(report, text, profile)
+        end
+
+      pages = thread_pages(conn, report.id)
+      assert length(hd(pages)["replies"]) < 20
+      returned = Enum.flat_map(pages, & &1["replies"])
+      assert Enum.map(returned, & &1["id"]) == Enum.map(replies, & &1.id)
+      assert Enum.map(returned, & &1["quoted_note"]) == Enum.map(replies, & &1.note)
+
+      author = %{
+        "profile_id" => profile.public_id,
+        "agent_name" => profile.agent_name,
+        "human_name" => profile.human_name,
+        "profile_url" => "/agents/#{profile.public_id}",
+        "can_receive_usdc" => true
+      }
+
+      payment = %{
+        "tip_author" => %{
+          "tool" => "tip_agent",
+          "arguments" => %{"profile_id" => profile.public_id}
+        }
+      }
+
+      for page <- pages do
+        assert page["report"]["quoted_note"] == note
+        assert page["report"]["author"] == author
+        assert page["report"]["payment_actions"] == payment
+      end
+
+      for reply <- returned do
+        assert reply["author"] == author
+        assert reply["payment_actions"] == payment
+        refute Map.has_key?(reply["author"], "wallet_address")
+        refute Map.has_key?(reply["author"], "privy_user_id")
+      end
+    end
+
+    test "an oversized stored entry returns an explicit error instead of skipping it", %{
+      conn: conn
+    } do
+      report = thread_report!()
+      reply = thread_reply!(report, "legacy entry")
+      # Simulate legacy data exceeding today's write limits without changing those limits.
+      Patchbay.Repo.query!("UPDATE forum_replies SET note = $1 WHERE id = $2", [
+        String.duplicate("🔥", 5000),
+        Ecto.UUID.dump!(reply.id)
+      ])
+
+      response = conn |> get("/forum/reports/#{report.id}") |> json_response(500)
+      assert response["problem_code"] == "response_too_large"
+      refute Map.has_key?(response, "pagination")
+      refute Map.has_key?(response, "replies")
+    end
+  end
+
+  defp thread_report!(actor \\ nil, note \\ "thread report") do
+    site = Forum.register_site!("thread.example.invalid")
+
+    tool =
+      Forum.observe_tool!(%{site_id: site.id, name: "thread_tool", contract_sha256: @contract})
+
+    Forum.file_report!(
+      %{
+        tool_id: tool.id,
+        browser_session_id: Ash.UUID.generate(),
+        arguments_sha256: @arguments,
+        verdict: :verified_failure,
+        note: note
+      },
+      actor: actor
+    )
+  end
+
+  defp thread_reply!(report, note, actor \\ nil) do
+    Forum.add_reply!(
+      %{
+        report_id: report.id,
+        browser_session_id: Ash.UUID.generate(),
+        verdict: :unknown,
+        note: note
+      },
+      actor: actor
+    )
+  end
+
+  defp thread_pages(conn, report_id, cursor \\ nil, seen \\ MapSet.new()) do
+    params = if cursor, do: %{"after" => cursor}, else: %{}
+    response = conn |> recycle() |> get("/forum/reports/#{report_id}", params)
+    page = json_response(response, 200)
+    assert byte_size(response.resp_body) <= 15 * 1024
+    assert length(page["replies"]) <= 20
+
+    if page["pagination"]["has_more"] do
+      next = page["pagination"]["next_cursor"]
+      assert is_binary(next)
+      refute MapSet.member?(seen, next)
+      assert page["replies"] != []
+      [page | thread_pages(conn, report_id, next, MapSet.put(seen, next))]
+    else
+      assert page["pagination"]["next_cursor"] == nil
+      [page]
+    end
+  end
+
   describe "searching" do
     test "a tool name that could never be stored is refused, not crashed", %{conn: conn} do
       for name <- ["a\u0000b", "Checkout", String.duplicate("a", 65)] do
