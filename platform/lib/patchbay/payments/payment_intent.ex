@@ -220,12 +220,9 @@ defmodule Patchbay.Payments.PaymentIntent do
       authorize_if(actor_present())
     end
 
-    # An intent is only ever reached through the endpoint that owns it, and
-    # that endpoint refuses anyone but the payer by name. What the resource
-    # adds is that no anonymous caller, and no job that forgot to say who it
-    # was acting as, can read one at all.
+    # Keep payer ownership at the domain boundary, including row-lock reads.
     policy action_type(:read) do
-      authorize_if(actor_present())
+      authorize_if(expr(actor_profile_id == ^actor(:id)))
     end
 
     policy action_type(:update) do

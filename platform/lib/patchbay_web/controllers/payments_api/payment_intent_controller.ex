@@ -330,8 +330,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         {:refused, invalid_message(body)}
 
       _unclear ->
-        {:unavailable,
-         "The payment service could not be reached before a settlement result."}
+        {:unavailable, "The payment service could not be reached before a settlement result."}
     end
   end
 
@@ -633,8 +632,8 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     end
   end
 
-  # A payment intent is the payer's own. Someone else asking for it is told so,
-  # rather than told it does not exist, because they hold its id already.
+  # Ash filters out other payers' intents. Keep this ownership check as defense
+  # in depth; denied reads reveal neither the record nor its existence.
   defp owned({:ok, found}, actor) do
     if found.actor_profile_id == actor.id, do: {:ok, found}, else: {:error, :forbidden}
   end
