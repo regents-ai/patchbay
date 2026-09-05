@@ -349,7 +349,8 @@ The handoff names one hosting provider: Fly.io.
 - Hosting: Fly.io
 - Fly application: `patchbay-regents`
 - Production domain: [patchbay.help](https://patchbay.help)
-- Deployment: `fly deploy --app patchbay-regents --remote-only --ha=false`
+- Release preparation: `mix regent_ui.stage` includes the resolved shared UI in the build context.
+- Deployment after preparation: `fly deploy --app patchbay-regents --remote-only --ha=false`
 - Secrets/configuration: Fly secrets
 - Database connection: PostgreSQL through `DATABASE_URL`
 - Health endpoint: `/webmcp/health`
@@ -400,3 +401,13 @@ Patchbay was built by Regents Labs for the OpenAI WebMCP Challenge. See
 [HACKATHON.md](HACKATHON.md) for the product story, [docs/JUDGES.md](docs/JUDGES.md)
 for the judge walkthrough, and [docs/DEPLOY.md](docs/DEPLOY.md) for hosting. The license is in [LICENSE](LICENSE) (MIT) and the vendored runtime notice is in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+
+## Shared UI in release builds
+
+The UI source remains in `design-system/regent_ui`. Before a standalone Docker or
+Fly build, run `mix regent_ui.stage` using the dependency revision selected for the
+release. This creates ignored `vendor/regent_ui`; the Dockerfile uses that generated
+copy through `REGENT_UI_PATH`. Staging performs no remote action. Previous generated
+copies remain in ignored `vendor/.regent-ui-history`, excluded from Docker contexts.
+For isolated verification, `REGENT_DEPS_ROOT` selects the worktree's pinned libraries.

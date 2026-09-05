@@ -16,7 +16,7 @@ config :patchbay, Patchbay.Repo,
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :patchbay, PatchbayWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4002],
+  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT", "4002"))],
   secret_key_base: "veQzbAXuIb79+jLk5QWx2Jq4Gy/5WzZbQRfCk77MHXxP2IUiKWLI5vDOixz/wQlP",
   server: false
 

@@ -12,9 +12,7 @@
       <span class={"patchbay-pill " <> verdict_class(@report.verdict)}>
         {verdict_label(@report.verdict)}
       </span>
-      <%!-- A report with a receipt says so on the stub below, in the one place
-      that also shows the receipt it was checked against. --%>
-      <.checked_mark :if={is_nil(@receipt)} report={@report} />
+      <.checked_mark report={@report} />
       <PatchbayWeb.Forum.Labels.report_badges report={@report} />
       <span class="patchbay-pill is-neutral">{post_kind_label(@report.post_kind)}</span>
       <span :if={@report.priority_amount_atomic} class="patchbay-pill is-good">
@@ -41,40 +39,44 @@
         <span>Permalink</span>
         <a href={~p"/posts/#{@report.id}"}>#post</a>
       </div>
-      <div>
-        <span>Tool version</span>
-        <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.tool.contract_sha256} />
-      </div>
-      <div>
-        <span>Arguments fingerprint</span>
-        <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.arguments_sha256} />
-      </div>
       <div :if={@report.failure_code}>
         <span>What failed</span><code>{@report.failure_code}</code>
       </div>
     </div>
-
-    <figure :if={@receipt} class="pb-receipt-stub">
-      <figcaption class="patchbay-kicker">CALL RECEIPT</figcaption>
-      <code class="pb-receipt-value">{@receipt}</code>
-      <p class="pb-receipt-mark">Verified against Patchbay's own record</p>
-    </figure>
 
     <div :if={@report.note} class="patchbay-result-box">
       <p class="patchbay-kicker">NOTE</p>
       <.bounded_text value={@report.note} />
     </div>
 
-    <div class="patchbay-evidence-grid">
-      <div class="patchbay-result-box">
-        <p class="patchbay-kicker">WHAT THE TOOL RETURNED</p>
-        <.bounded_text value={@report.handler_result} />
+    <Regent.Primitives.disclosure id="report-evidence" summary="Evidence">
+      <div class="patchbay-facts">
+        <div>
+          <span>Tool version</span>
+          <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.tool.contract_sha256} />
+        </div>
+        <div>
+          <span>Arguments fingerprint</span>
+          <PatchbayWeb.Forum.Fingerprint.fingerprint digest={@report.arguments_sha256} />
+        </div>
       </div>
-      <div class="patchbay-result-box">
-        <p class="patchbay-kicker">WHAT THE AGENT SAW ON THE PAGE</p>
-        <.bounded_text value={@report.observed} />
+      <figure :if={@receipt} class="pb-receipt-stub">
+        <figcaption class="patchbay-kicker">CALL RECEIPT</figcaption>
+        <code class="pb-receipt-value">{@receipt}</code>
+        <p class="pb-receipt-mark">Verified against Patchbay's own record</p>
+      </figure>
+
+      <div class="patchbay-evidence-grid">
+        <div class="patchbay-result-box">
+          <p class="patchbay-kicker">WHAT THE TOOL RETURNED</p>
+          <.bounded_text value={@report.handler_result} />
+        </div>
+        <div class="patchbay-result-box">
+          <p class="patchbay-kicker">WHAT THE AGENT SAW ON THE PAGE</p>
+          <.bounded_text value={@report.observed} />
+        </div>
       </div>
-    </div>
+    </Regent.Primitives.disclosure>
   </section>
 
   <.escrow_standing

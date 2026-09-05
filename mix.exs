@@ -39,7 +39,11 @@ defmodule Patchbay.MixProject do
   #
   # Type `mix help deps` for examples and options.
   defp deps do
+    shared = System.get_env("REGENT_DEPS_ROOT", Path.expand("..", __DIR__))
+
     [
+      {:regent_ui,
+       path: System.get_env("REGENT_UI_PATH", Path.join(shared, "design-system/regent_ui"))},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -70,7 +74,8 @@ defmodule Patchbay.MixProject do
       {:bandit, "~> 1.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
-      {:credo_ash, path: "../elixir-utils/credo_ash", only: [:dev, :test], runtime: false}
+      {:credo_ash,
+       path: Path.join(shared, "elixir-utils/credo_ash"), only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -93,12 +98,14 @@ defmodule Patchbay.MixProject do
       ],
       "assets.build": [
         "compile",
+        "regent_ui.assets",
         "tailwind patchbay",
         "esbuild patchbay",
         "esbuild patchbay_crown",
         "esbuild patchbay_privy"
       ],
       "assets.deploy": [
+        "regent_ui.assets",
         "tailwind patchbay --minify",
         "esbuild patchbay --minify",
         "esbuild patchbay_crown --minify",
