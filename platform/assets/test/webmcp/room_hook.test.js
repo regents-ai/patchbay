@@ -834,38 +834,26 @@ test("carries the specified titles on permanent and dynamic tools", async () => 
   assert.equal(buildRevisionTool(value.hook, v2).title, "Improve the current Skill");
 });
 
-test("bounded tool results are always parseable JSON", () => {
-  assert.deepEqual(JSON.parse(boundedJson({room: "skill-uplift", passed: true})), {
-    room: "skill-uplift",
-    passed: true,
-  });
-
-  const oversized = {
-    note: "x".repeat(5000),
-    nested: {deep: "y".repeat(5000)},
-    list: ["z".repeat(5000)],
+test("bounded results preserve complete scalar fields and count UTF-8 bytes", () => {
+  const value = {
+    id: "12345678-1234-1234-1234-123456789012",
+    digest: "a".repeat(64), cursor: "cursor+opaque/==", amount: "1.000001",
+    address: `0x${"a".repeat(40)}`, note: "🔥".repeat(50), truncated: "source metadata",
   };
-  const bounded = boundedJson(oversized, 200);
-  const parsed = JSON.parse(bounded);
-
-  assert.ok(bounded.length <= 200);
-  assert.equal(parsed.truncated, true);
-  assert.ok(parsed.note.length < oversized.note.length);
-  assert.equal(typeof parsed.nested.deep, "string");
-  assert.equal(parsed.list.length, 1);
-
-  for (const limit of [1, 24, 80, 220, 1100]) {
-    assert.doesNotThrow(() => JSON.parse(boundedJson(oversized, limit)), `limit ${limit}`);
-  }
-});
-
-test("bounding never overwrites a result's own truncated field", () => {
-  const carriesTruncated = {truncated: "server said the source was clipped", body: "x".repeat(4000)};
-  const parsed = JSON.parse(boundedJson(carriesTruncated, 200));
-
-  assert.equal(parsed.truncated, true);
-  assert.equal(parsed.value.truncated, "server said the source was clipped");
-  assert.ok(parsed.value.body.length < carriesTruncated.body.length);
+  const exact = JSON.stringify(value);
+  assert.deepEqual(JSON.parse(boundedJson(value, Buffer.byteLength(exact))), value);
+  const error = JSON.parse(boundedJson(value, Buffer.byteLength(exact) - 1));
+  assert.equal(error.problem_code, "response_too_large");
+  assert.equal(error.id, undefined);
+  const unicode = boundedJson({note: "🔥".repeat(6000)}, 16 * 1024);
+  assert.ok(Buffer.byteLength(unicode) <= 16 * 1024);
+  assert.equal(JSON.parse(unicode).problem_code, "response_too_large");
+  assert.throws(() => boundedJson(value, 1), RangeError);
+  const circular = {};
+  circular.self = circular;
+  assert.equal(JSON.parse(boundedJson(circular)).problem_code, "invalid_result");
+  const rows = Array.from({length: 10}, () => ({id: value.id, digest: value.digest}));
+  assert.equal(JSON.parse(boundedJson({rows})).problem_code, "response_too_large");
 });
 
 test("reconciliation reports a Patchbay tool the browser no longer holds", async () => {

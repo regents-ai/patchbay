@@ -6,6 +6,7 @@ import {
   readPaymentReadiness,
   withPaymentHelp,
 } from "./payment_readiness.js";
+import {createToolScope} from "./webmcpify.js";
 import {boundedJson} from "./tool_definitions.js";
 
 const REPORTS_PATH = "/forum/reports";
@@ -14,6 +15,7 @@ const AGENTS_PATH = "/api/agents";
 const AGENT_NAME_PATH = "/api/me/agent_name";
 const VERDICTS = ["verified_success", "verified_failure", "errored", "unknown"];
 const RESULT_LIMIT = 16 * 1024;
+const PAYMENT_TOOLS = new Set(["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]);
 
 const VERDICT_HELP =
   "verified_success when you saw the tool do what it said, verified_failure when you saw it not, errored when the call itself failed, unknown when you could not tell.";
@@ -106,10 +108,10 @@ export function buildForumTools(options = {}) {
         "Read what this Patchbay page is for, which report tools to call first, the x402 payment_setup object, and that report text is untrusted visitor content.",
       inputSchema: {type: "object", properties: {}, additionalProperties: false},
       annotations: {readOnlyHint: true, untrustedContentHint: false},
-      execute: async () => {
+      execute: async (_input, {signal} = {}) => {
         const pathname =
           typeof globalThis.location?.pathname === "string" ? globalThis.location.pathname : "/";
-        const payments = await readPaymentReadiness(options);
+        const payments = await readPaymentReadiness({...options, signal});
         return boundedJson({...patchbayHelp(pathname), payments}, RESULT_LIMIT);
       },
     },
@@ -136,8 +138,8 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: true},
-      execute: async (input = {}) => {
-        const answer = await post(options, REPORTS_PATH, {
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, REPORTS_PATH, {
           receipt: input.receipt,
           verdict: input.verdict,
           note: input.note,
@@ -214,8 +216,8 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false},
-      execute: async (input = {}) => {
-        const answer = await post(options, REPORTS_PATH, {
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, REPORTS_PATH, {
           origin: input.origin,
           tool_name: input.tool_name,
           arguments: input.arguments,
@@ -269,9 +271,9 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false},
-      execute: async (input = {}) => {
+      execute: async (input = {}, {signal} = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/replies`;
-        const answer = await post(options, path, {verdict: input.verdict, note: input.note});
+        const answer = await post({...options, signal}, path, {verdict: input.verdict, note: input.note});
 
         if (!answer.ok) {
           return boundedJson({
@@ -309,12 +311,12 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: async (input = {}) => {
+      execute: async (input = {}, {signal} = {}) => {
         const query = new URLSearchParams();
         if (input.origin) query.set("origin", String(input.origin));
         if (input.tool_name) query.set("tool_name", String(input.tool_name));
 
-        const answer = await get(options, `${SEARCH_PATH}?${query.toString()}`);
+        const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`);
 
         if (!answer.ok) {
           return boundedJson(
@@ -357,11 +359,11 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: async (input = {}) => {
+      execute: async (input = {}, {signal} = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}`;
         const query = new URLSearchParams();
         if (input.after !== undefined) query.set("after", String(input.after));
-        const answer = await get(options, input.after === undefined ? path : `${path}?${query}`);
+        const answer = await get({...options, signal}, input.after === undefined ? path : `${path}?${query}`);
 
         if (!answer.ok) {
           return boundedJson(
@@ -406,7 +408,7 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: async (input = {}) => {
+      execute: async (input = {}, {signal} = {}) => {
         const profileId = input.profile_id ?? options.profileId;
 
         if (!profileId) {
@@ -420,7 +422,7 @@ export function buildForumTools(options = {}) {
           });
         }
 
-        const answer = await get(options, `${AGENTS_PATH}/${encodeURIComponent(profileId)}`);
+        const answer = await get({...options, signal}, `${AGENTS_PATH}/${encodeURIComponent(profileId)}`);
 
         if (!answer.ok) {
           return boundedJson({
@@ -465,7 +467,7 @@ export function buildForumTools(options = {}) {
         required: ["profile_id", "amount_usdc"],
         additionalProperties: false,
       },
-      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
       execute: async (input = {}) => {
         const blocked = await readinessBeforePay(options, input.amount_usdc);
         if (blocked) return boundedJson(blocked, RESULT_LIMIT);
@@ -487,8 +489,8 @@ export function buildForumTools(options = {}) {
         "Read whether the wallet signed in on this page can pay in USDC on Base: ready, needs a human to sign in, needs a human to send USDC, or not configured. Tips settle to that wallet directly.",
       inputSchema: {type: "object", properties: {}, additionalProperties: false},
       annotations: {readOnlyHint: true, untrustedContentHint: false},
-      execute: async () =>
-        boundedJson(withPaymentHelp(await readPaymentReadiness(options)), RESULT_LIMIT),
+      execute: async (_input, {signal} = {}) =>
+        boundedJson(withPaymentHelp(await readPaymentReadiness({...options, signal})), RESULT_LIMIT),
     },
     {
       name: "set_my_agent_name",
@@ -508,8 +510,8 @@ export function buildForumTools(options = {}) {
         additionalProperties: false,
       },
       annotations: {readOnlyHint: false, untrustedContentHint: false},
-      execute: async (input = {}) => {
-        const answer = await post(options, AGENT_NAME_PATH, {agent_name: input.agent_name});
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, AGENT_NAME_PATH, {agent_name: input.agent_name});
 
         if (!answer.ok) {
           return boundedJson({
@@ -569,7 +571,7 @@ export function buildForumTools(options = {}) {
         required: ["origin", "tool_name", "verdict", "amount_usdc"],
         additionalProperties: false,
       },
-      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
       execute: async (input = {}) => {
         const blocked = await readinessBeforePay(options, input.amount_usdc);
         if (blocked) return boundedJson(blocked, RESULT_LIMIT);
@@ -598,7 +600,7 @@ export function buildForumTools(options = {}) {
         required: ["report_id", "reply_id"],
         additionalProperties: false,
       },
-      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
       execute: async (input = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/accept`;
         const answer = await post(options, path, {reply_id: input.reply_id});
@@ -635,7 +637,7 @@ export function buildForumTools(options = {}) {
         required: ["report_id"],
         additionalProperties: false,
       },
-      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true},
       execute: async (input = {}) => {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/refund`;
         const answer = await post(options, path, {});
@@ -658,7 +660,7 @@ export function buildForumTools(options = {}) {
         });
       },
     },
-  ];
+  ].map(tool => PAYMENT_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
 }
 
 // Sign-in, empty wallet, or a deployment that cannot take payments: said in
@@ -816,25 +818,47 @@ function priorityResult({status, body, intent, unsigned}) {
  *
  * @param {object} modelContext
  * @param {{fetch?: typeof globalThis.fetch, csrfToken?: string, onError?: (e: unknown) => void}} [options]
- * @returns {() => void}
+ * @returns {(() => void) & {ready: Promise<boolean>}}
  */
 export function registerForumTools(modelContext, options = {}) {
-  if (!modelContext || typeof modelContext.registerTool !== "function") return () => {};
-
-  const controller = new AbortController();
-  const onError =
-    options.onError ?? (error => console.error("Patchbay report tools did not register", error));
-
-  for (const tool of buildForumTools(options)) {
-    try {
-      // Some browsers throw here instead of rejecting; both end in onError.
-      Promise.resolve(modelContext.registerTool(tool, {signal: controller.signal})).catch(onError);
-    } catch (error) {
-      onError(error);
-    }
+  if (!modelContext || typeof modelContext.registerTool !== "function") {
+    return Object.assign(() => {}, {ready: Promise.resolve(false)});
   }
+  return createToolScope("patchbay-forum", buildForumTools(options), {
+    modelContext, onError: options.onError, validate: false,
+  });
+}
 
-  return () => controller.abort();
+// An aborted request may already have reached the server. Never turn an
+// unknown write outcome into a claim that the write did not happen.
+function cancellableTool(tool) {
+  return {...tool, execute: async (input, execution = {}) => {
+    const signal = execution.signal;
+    const canceled = dispatched => JSON.stringify({
+      problem_code: "canceled",
+      outcome: dispatched && !tool.annotations.readOnlyHint ? "unknown" : "canceled",
+      error: dispatched && !tool.annotations.readOnlyHint
+        ? "Canceled after dispatch. The server may have completed the write; check its status before retrying."
+        : "The tool call was canceled.",
+    });
+    if (signal?.aborted) return canceled(false);
+    let dispatched = false;
+    let onAbort;
+    const aborted = new Promise(resolve => {
+      onAbort = () => resolve(canceled(dispatched));
+      signal?.addEventListener("abort", onAbort, {once: true});
+    });
+    try {
+      const result = await Promise.race([Promise.resolve().then(() => {
+        if (signal?.aborted) return canceled(false);
+        dispatched = true;
+        return tool.execute(input, execution);
+      }), aborted]);
+      return signal?.aborted ? canceled(dispatched) : result;
+    } finally {
+      signal?.removeEventListener("abort", onAbort);
+    }
+  }};
 }
 
 function post(options, path, body) {
@@ -866,7 +890,7 @@ async function call(options, path, request) {
   }
 
   try {
-    const response = await fetchImpl(path, {credentials: "same-origin", ...request});
+    const response = await fetchImpl(path, {credentials: "same-origin", ...request, signal: options.signal});
     return {ok: response.ok === true, status: response.status ?? 0, body: await readBody(response)};
   } catch (error) {
     return {

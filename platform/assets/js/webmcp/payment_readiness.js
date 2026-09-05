@@ -311,6 +311,7 @@ async function fetchBalanceHttp(options = {}) {
 
   try {
     const response = await fetchImpl(BALANCE_PATH, {
+      signal: options.signal,
       method: "GET",
       credentials: "same-origin",
       headers: {accept: "application/json"},

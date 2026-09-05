@@ -82,11 +82,11 @@ function makeHandle(dispose, ready) {
  *
  * @param {string} key
  * @param {Array<object>} tools
- * @param {{ exposedTo?: string[], validate?: boolean, onError?: (e: unknown) => void }} [options]
+ * @param {{ exposedTo?: string[], validate?: boolean, onError?: (e: unknown) => void, modelContext?: object }} [options]
  * @returns {ToolScopeHandle}
  */
 export function createToolScope(key, tools, options) {
-  const mc = getModelContext();
+  const mc = options?.modelContext ?? getModelContext();
   if (!mc) return makeHandle(() => {}, Promise.resolve(false));
   if (scopes.has(key)) return makeHandle(() => {}, Promise.resolve(false));
 

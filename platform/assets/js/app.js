@@ -27,10 +27,9 @@ import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.js"
 import {PatchbayCopy} from "./hooks/copy_prompt.js"
 import {PatchbayRelativeTime} from "./hooks/relative_time.js"
-import {registerForumTools} from "./webmcp/forum_tools.js"
+import {mountForumTools} from "./webmcp/forum_lifecycle.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
-import {getModelContext} from "./webmcp/webmcpify.js"
 import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.js"
 import {mountHomepageCrown} from "./optics_controller.js"
 import topbar from "../vendor/topbar"
@@ -63,11 +62,8 @@ const offerPageWideSurfaces = () => {
   mountHomepageCrown()
   hideBrokenSiteLogos()
 
-  const modelContext = getModelContext()
-  if (!modelContext) return
-
   const rail = document.getElementById("pb-agent-setup")
-  registerForumTools(modelContext, {
+  mountForumTools(window, {
     fetch: window.fetch.bind(window),
     csrfToken,
     profileId: signedInProfileId(),

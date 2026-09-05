@@ -304,49 +304,25 @@ export function isPatchbayToolName(name) {
   return PERMANENT_TOOL_NAMES.includes(name) || /^uplift_current_skill_v\d+$/.test(name);
 }
 
-/**
- * Bound a tool result without ever handing the agent something it cannot parse:
- * oversized results keep their structure and lose only the tails of long text
- * values, flagged with `truncated: true`.
- */
+/** Keep successful results exact; identifiers and payment terms are never shortened. */
 export function boundedJson(value, limit = 1100) {
-  const exact = serialize(value);
-  if (exact !== null && exact.length <= limit) return exact;
-
-  for (const maxTextLength of [256, 128, 64, 32, 16]) {
-    const serialized = serialize(markTruncated(truncateText(value, maxTextLength)));
-    if (serialized !== null && serialized.length <= limit) return serialized;
-  }
-
-  return JSON.stringify({truncated: true, error: "the result was too large to report"});
-}
-
-function serialize(value) {
+  let problemCode = "response_too_large";
   try {
-    const serialized = JSON.stringify(value);
-    return typeof serialized === "string" ? serialized : null;
+    const exact = JSON.stringify(value);
+    if (typeof exact !== "string") problemCode = "invalid_result";
+    else if (new TextEncoder().encode(exact).byteLength <= limit) return exact;
   } catch {
-    return null;
+    problemCode = "invalid_result";
   }
-}
-
-function truncateText(value, maxTextLength) {
-  if (typeof value === "string") {
-    return value.length <= maxTextLength ? value : `${value.slice(0, maxTextLength)}…`;
+  const error = JSON.stringify({
+    problem_code: problemCode,
+    outcome: "unknown",
+    error: "The result could not be returned intact. Check a write's status before retrying.",
+  });
+  if (new TextEncoder().encode(error).byteLength > limit) {
+    throw new RangeError("The result limit must accommodate an error response.");
   }
-  if (Array.isArray(value)) return value.map(entry => truncateText(entry, maxTextLength));
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [key, truncateText(entry, maxTextLength)]),
-    );
-  }
-  return value;
-}
-
-function markTruncated(value) {
-  // Never overwrite a `truncated` field the result itself carries.
-  if (isPlainObject(value) && !Object.hasOwn(value, "truncated")) return {...value, truncated: true};
-  return {truncated: true, value};
+  return error;
 }
 
 export function stableStringify(value) {

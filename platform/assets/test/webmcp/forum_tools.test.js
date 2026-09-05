@@ -46,7 +46,7 @@ function toolsByName(options) {
 test("registers the forum tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
-  await Promise.resolve();
+  assert.equal(await dispose.ready, true);
 
   assert.deepEqual(modelContext.calls, FORUM_TOOL_NAMES);
 
@@ -102,14 +102,14 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.ok(tip.description.length <= 500);
 
   const priority = modelContext.tools.get("post_priority_report");
-  assert.deepEqual(priority.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.deepEqual(priority.annotations, {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true});
   assert.deepEqual(priority.inputSchema.required, ["origin", "tool_name", "verdict", "amount_usdc"]);
   assert.match(priority.description, /spends USDC on Base through x402/);
   assert.match(priority.description, /agent-setup#x402/);
   assert.ok(priority.description.length <= 500);
 
   const accept = modelContext.tools.get("accept_solution");
-  assert.deepEqual(accept.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.deepEqual(accept.annotations, {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true});
   assert.deepEqual(accept.inputSchema.required, ["report_id", "reply_id"]);
 
   // Renaming is the agent's own half and only its own half, so the tool takes
@@ -123,7 +123,7 @@ test("registers the forum tools with the contract an agent needs", async () => {
   // Taking your money back names the report and nothing else: who the money
   // goes to is what the contract already recorded, not something to be sent.
   const withdraw = modelContext.tools.get("withdraw_priority_report");
-  assert.deepEqual(withdraw.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.deepEqual(withdraw.annotations, {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true});
   assert.deepEqual(withdraw.inputSchema.required, ["report_id"]);
   assert.deepEqual(Object.keys(withdraw.inputSchema.properties), ["report_id"]);
   assert.equal(withdraw.inputSchema.additionalProperties, false);
@@ -370,7 +370,7 @@ test("search asks for only the fields it was given", async () => {
   assert.equal(fetch.requests[0].path, "/forum/search?tool_name=add_to_cart");
 });
 
-test("a board answer too large to hand over is cut down, not dropped", async () => {
+test("an oversized board answer returns an explicit error without damaged rows", async () => {
   const body = {
     reports: Array.from({length: 200}, (_, index) => ({
       id: `report-${index}`,
@@ -383,7 +383,8 @@ test("a board answer too large to hand over is cut down, not dropped", async () 
   const raw = await tools.get("search_reports").execute({origin: "busy.example.com"});
 
   assert.equal(raw.length <= 16 * 1024, true);
-  assert.equal(JSON.parse(raw).truncated, true);
+  assert.equal(JSON.parse(raw).problem_code, "response_too_large");
+  assert.equal(JSON.parse(raw).results, undefined);
 });
 
 test("a refusal carries the board's own code beside its words", async () => {
@@ -717,4 +718,123 @@ test("thread cursor errors remain structured and the opaque query is forwarded u
   assert.equal(result.problem_code, "invalid_cursor");
   assert.equal(result.problem, "Start again without after.");
   assert.equal(result.thread, undefined);
+});
+
+for (const failure of ["throw", "reject"]) {
+  test(`forum registration rolls back a ${failure} and can be retried`, async () => {
+    const modelContext = new ModelContext();
+    const register = modelContext.registerTool.bind(modelContext);
+    const errors = [];
+    modelContext.registerTool = (tool, options) => {
+      if (tool.name !== "search_reports") return register(tool, options);
+      if (failure === "throw") throw new Error("synthetic registration failure");
+      return Promise.reject(new Error("synthetic registration failure"));
+    };
+    const scope = registerForumTools(modelContext, {onError: error => errors.push(error)});
+    assert.equal(await scope.ready, false);
+    assert.equal(modelContext.tools.size, 0);
+    assert.equal(errors.length, 1);
+    modelContext.registerTool = register;
+    const retry = registerForumTools(modelContext);
+    assert.equal(await retry.ready, true);
+    assert.equal(modelContext.tools.size, FORUM_TOOL_NAMES.length);
+    retry();
+  });
+}
+
+test("pre-canceled non-payment calls make no request", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const fetch = fakeFetch([]);
+  const tools = toolsByName({fetch, profileId: "agt_1", paymentsEnabled: true});
+  for (const tool of tools.values()) {
+    if (tool.annotations.consequentialHint) continue;
+    const result = JSON.parse(await tool.execute({}, {signal: controller.signal}));
+    assert.equal(result.problem_code, "canceled", tool.name);
+    assert.equal(result.outcome, "canceled", tool.name);
+  }
+  assert.equal(fetch.requests.length, 0);
+});
+
+test("cancellation forwards the signal and discards late write success", async () => {
+  const controller = new AbortController();
+  let finish;
+  let request;
+  const fetch = (_path, value) => {
+    request = value;
+    return new Promise(resolve => { finish = resolve; });
+  };
+  const pending = toolsByName({fetch}).get("reply_to_report")
+    .execute({report_id: "report", verdict: "unknown"}, {signal: controller.signal});
+  await Promise.resolve();
+  assert.equal(request.signal, controller.signal);
+  controller.abort();
+  const result = JSON.parse(await pending);
+  assert.equal(result.problem_code, "canceled");
+  assert.equal(result.outcome, "unknown");
+  assert.equal(result.replied, undefined);
+  finish({ok: true, status: 201, json: async () => ({reply_id: "late", report_id: "report"})});
+  await Promise.resolve();
+  assert.equal(JSON.parse(await pending).outcome, "unknown");
+});
+
+test("a canceled balance read discards a late balance without changing payment execution", async () => {
+  const controller = new AbortController();
+  let finish;
+  const fetch = (_path, request) => {
+    assert.equal(request.signal, controller.signal);
+    return new Promise(resolve => { finish = resolve; });
+  };
+  const pending = toolsByName({fetch, profileId: "agt_1", paymentsEnabled: true})
+    .get("get_my_usdc_balance").execute({}, {signal: controller.signal});
+  await Promise.resolve();
+  controller.abort();
+  assert.equal(JSON.parse(await pending).outcome, "canceled");
+  finish({ok: true, status: 200, json: async () => ({available_usdc: "1.00"})});
+});
+
+test("paid outputs preserve exact terms, identifiers, and receipts or report an unknown outcome", async () => {
+  const id = "12345678-1234-4234-8234-123456789012";
+  const address = `0x${"a".repeat(40)}`;
+  const hash = `0x${"b".repeat(64)}`;
+  const intent = {
+    id, recipient: {profile_id: `agt_${"c".repeat(32)}`, profile_url: `/agents/agt_${"c".repeat(32)}`},
+    amount_usdc: "1.000001", effect_summary: "A synthetic tip", irreversible_after_settlement: true,
+  };
+  const terms = {network: "eip155:8453", pay_to: address, amount: "1000001", asset: address, nonce: hash};
+  const receipt = {transaction: hash, payer: address, network: "eip155:8453"};
+  let outcome = {status: 402, intent, body: {status: "payment_required", payment_terms: terms}};
+  let payCalls = 0;
+  const fetch = async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})});
+  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true, fetch,
+    payForIntent: async () => { payCalls++; return outcome; }});
+  const tip = tools.get("tip_agent");
+  const unpaid = JSON.parse(await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc}));
+  assert.deepEqual(unpaid.payment_terms, terms);
+  assert.deepEqual(unpaid.recipient, intent.recipient);
+  assert.equal(unpaid.payment_intent_id, id);
+  assert.equal(unpaid.amount_usdc, intent.amount_usdc);
+  assert.equal(unpaid.paid, false);
+  outcome = {status: 200, intent, body: {status: "applied", receipt}};
+  const paid = JSON.parse(await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc}));
+  assert.deepEqual(paid.receipt, receipt);
+  assert.equal(paid.paid, true);
+  assert.equal(paid.payment_intent_id, id);
+  outcome = {status: 200, intent, body: {status: "applied", report_id: id, url: `/reports/${id}`,
+    escrowed_usdc: intent.amount_usdc, escrow_status: "credited", receipt}};
+  const priority = JSON.parse(await tools.get("post_priority_report").execute({amount_usdc: intent.amount_usdc}));
+  assert.deepEqual(priority.receipt, receipt);
+  assert.equal(priority.report_id, id);
+  assert.equal(priority.payment_intent_id, id);
+  assert.equal(priority.escrowed_usdc, intent.amount_usdc);
+  outcome = {...outcome, body: {...outcome.body, receipt: {...receipt, detail: "🔥".repeat(6000)}}};
+  const oversized = await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc});
+  assert.ok(Buffer.byteLength(oversized) <= 16 * 1024);
+  assert.equal(JSON.parse(oversized).problem_code, "response_too_large");
+  assert.equal(JSON.parse(oversized).paid, undefined);
+  assert.equal(JSON.parse(oversized).receipt, undefined);
+  assert.equal(payCalls, 4);
+  for (const name of ["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]) {
+    assert.equal(tools.get(name).annotations.consequentialHint, true);
+  }
 });
