@@ -350,7 +350,7 @@ The handoff names one hosting provider: Fly.io.
 - Fly application: `patchbay-regents`
 - Production domain: [patchbay.help](https://patchbay.help)
 - Release preparation: `regentctl worktree-run patchbay <ticket> -- mix regent_ui.stage` includes the verified pinned shared UI in the build context.
-- Deployment after preparation: `fly deploy --app patchbay-regents --remote-only --ha=false`
+- Deployment from the monorepo root after preparation: `fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false`
 - Secrets/configuration: Fly secrets
 - Database connection: PostgreSQL through `DATABASE_URL`
 - Health endpoint: `/webmcp/health`

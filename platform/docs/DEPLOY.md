@@ -62,7 +62,7 @@ app. Do not set `DATABASE_URL` by hand.
 
 ```sh
 fly secrets set --app patchbay-regents \
-  SECRET_KEY_BASE="$(mix phx.gen.secret)" \
+  SECRET_KEY_BASE="$(cd platform && mix phx.gen.secret)" \
   PHX_HOST="patchbay-regents.fly.dev"
 ```
 
@@ -139,13 +139,13 @@ unbounded bill.
 ## 4. Deploy
 
 ```sh
-fly deploy --app patchbay-regents --remote-only --ha=false
+fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false
 ```
 
 `--ha=false` is required: without it Fly creates a second machine for high
 availability, and this demo is deliberately one shared-cpu-1x 512MB machine.
 
-The image is built from `Dockerfile`. Before the new machine takes traffic, Fly
+The image is built from `platform/Dockerfile` with the monorepo root as its context. Before the new machine takes traffic, Fly
 runs the release command `/app/bin/migrate`, which applies every pending
 migration. A failed migration fails the deploy and leaves the previous release
 serving.
@@ -271,7 +271,7 @@ fly releases --app patchbay-regents --image
 Redeploy that image:
 
 ```sh
-fly deploy --app patchbay-regents --image registry.fly.io/patchbay-regents:deployment-<id>
+fly deploy --config platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:deployment-<id>
 ```
 
 A rollback replays no migrations. If the bad release migrated the database,

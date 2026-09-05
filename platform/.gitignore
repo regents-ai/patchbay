@@ -35,11 +35,6 @@ patchbay-*.tar
 npm-debug.log
 /assets/node_modules/
 
-# Foundry build artifacts for the contracts/ project.
-/contracts/out/
-/contracts/cache/
-/contracts/broadcast/
-
 # Local environment files. Only the example is tracked.
 .env
 .env.*
