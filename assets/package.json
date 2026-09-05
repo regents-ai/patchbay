@@ -2,7 +2,7 @@
   "name": "patchbay-assets",
   "private": true,
   "scripts": {
-    "test": "node --test test/webmcp/*.test.js"
+    "test": "node --test test/webmcp/*.test.js test/hooks/*.test.js"
   },
   "dependencies": {
     "@privy-io/react-auth": "3.34.0",

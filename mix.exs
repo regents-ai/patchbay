@@ -107,8 +107,8 @@ defmodule Patchbay.MixProject do
       ],
       precommit: [
         "compile --warnings-as-errors",
-        "deps.unlock --unused",
-        "format",
+        "deps.unlock --check-unused",
+        "format --check-formatted",
         "credo --strict",
         "test"
       ]
