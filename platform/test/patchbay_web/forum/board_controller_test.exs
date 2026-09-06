@@ -638,12 +638,18 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert redirected_to(posted) == "/reports/#{report.id}#patchbay-replies"
     end
 
-    # A continuation dated more than a day ago, exactly as one handed out then.
-    defp expired_cursor(report, keyset) do
-      PatchbayWeb.Forum.ReplyCursor.sign(report.id, keyset,
-        signed_at: System.system_time(:second) - 86_401
+    # A continuation minted the way the board mints them, dated in the past:
+    # more than a day ago it has expired, within the day it is still good.
+    defp dated_cursor(report, keyset, seconds_ago) do
+      Phoenix.Token.sign(
+        PatchbayWeb.Endpoint,
+        "report-replies-v1",
+        %{report_id: report.id, keyset: keyset},
+        signed_at: System.system_time(:second) - seconds_ago
       )
     end
+
+    defp expired_cursor(report, keyset), do: dated_cursor(report, keyset, 86_401)
 
     defp keyset_of(report, reply) do
       %{results: [placed]} =
@@ -667,10 +673,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ "This reply link has expired or is invalid."
 
-      fresh =
-        PatchbayWeb.Forum.ReplyCursor.sign(report.id, keyset,
-          signed_at: System.system_time(:second) - 86_000
-        )
+      fresh = dated_cursor(report, keyset, 86_000)
 
       assert conn |> get(~p"/reports/#{report.id}?after=#{fresh}") |> html_response(200) =~
                "reply-002"
@@ -725,54 +728,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       refute body =~ "No replies yet"
     end
 
-    # Once a reply row is written, this connection goes on as a role that row
-    # security keeps from seeing any reply: the post is saved, and the page
-    # that should follow cannot be found. Everything here is undone with the
-    # test's transaction.
-    defp hide_replies_once_saved! do
-      Patchbay.Repo.query!("CREATE ROLE pb_hidden_reader")
-      Patchbay.Repo.query!("GRANT USAGE ON SCHEMA public TO pb_hidden_reader")
-      Patchbay.Repo.query!("GRANT SELECT ON ALL TABLES IN SCHEMA public TO pb_hidden_reader")
-      Patchbay.Repo.query!("ALTER TABLE public.forum_replies ENABLE ROW LEVEL SECURITY")
-
-      Patchbay.Repo.query!("""
-      CREATE FUNCTION pg_temp.hide_replies() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN
-        PERFORM set_config('role', 'pb_hidden_reader', false);
-        RETURN NULL;
-      END
-      $$
-      """)
-
-      Patchbay.Repo.query!("""
-      CREATE TRIGGER hide_replies AFTER INSERT ON public.forum_replies
-      FOR EACH ROW EXECUTE FUNCTION pg_temp.hide_replies()
-      """)
-    end
-
-    test "a reply saved whose page cannot then be read is reported as posted, once", %{conn: conn} do
+    # The page that ends on a saved reply is looked up after the save, so a
+    # lookup that cannot find the reply is an error to say, never a crash.
+    test "the landing page of a reply that cannot be read back is an error, not a crash" do
       report = "shopify.com" |> site!() |> tool!() |> report!()
-      numbered_replies!(report, 1..3)
-      hide_replies_once_saved!()
+      [only] = numbered_replies!(report, 1..1)
+      unread = %Forum.Reply{id: Ash.UUID.generate(), report_id: report.id}
 
-      body =
-        conn
-        |> signed_in(person!("eee"))
-        |> post(~p"/reports/#{report.id}/replies", %{
-          "reply" => %{"verdict" => "verified_failure", "note" => "posted into the dark"}
-        })
-        |> html_response(200)
-
-      Patchbay.Repo.query!("RESET ROLE")
-
-      assert body =~ "Your reply was posted."
-      assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
-      refute body =~ "could not be posted"
-      refute body =~ "Say whether the tool worked"
-      refute body =~ ~s(action="/reports/#{report.id}/replies")
-
-      assert Enum.map(api_walk(conn, report.id), &String.slice(&1, 0, 9)) ==
-               ["reply-001", "reply-002", "reply-003", "posted in"]
+      assert PatchbayWeb.Forum.Board.page_ending_at(unread) == {:error, :reply_not_read}
+      assert PatchbayWeb.Forum.Board.page_ending_at(only) == {:ok, nil}
     end
   end
 

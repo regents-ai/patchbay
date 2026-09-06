@@ -15,18 +15,10 @@ defmodule PatchbayWeb.Forum.ReplyCursor do
   @max_age 86_400
   @max_bytes 2048
 
-  @doc """
-  The continuation that follows the reply with the given keyset. `signed_at`
-  (seconds since the epoch) dates it; it is a day old from then.
-  """
-  @spec sign(Ash.UUID.t(), String.t(), signed_at: pos_integer()) :: String.t()
-  def sign(report_id, keyset, opts \\ []) when is_binary(keyset) do
-    Phoenix.Token.sign(
-      Endpoint,
-      @salt,
-      %{report_id: report_id, keyset: keyset},
-      Keyword.take(opts, [:signed_at])
-    )
+  @doc "The continuation that follows the reply with the given keyset."
+  @spec sign(Ash.UUID.t(), String.t()) :: String.t()
+  def sign(report_id, keyset) when is_binary(keyset) do
+    Phoenix.Token.sign(Endpoint, @salt, %{report_id: report_id, keyset: keyset})
   end
 
   @doc """
