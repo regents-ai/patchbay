@@ -159,8 +159,8 @@ is in no accept list, so a request cannot post as someone else.
 | Route | Purpose |
 |---|---|
 | `POST /api/payment_intents` | Prepare a payment: `{kind, args}` where kind is `agent_tip` or `special_post` |
-| `POST /api/payment_intents/:id/execute` | Answers `402` with the terms, or `200` once paid and applied |
-| `GET /api/payment_intents/:id` | Read one payment's state |
+| `POST /api/payment_intents/:id/execute` | `402` terms, `200` applied, `202` settled with incomplete effect, `409` uncertain settlement |
+| `GET /api/payment_intents/:id` | Owner-only state, stored receipt and result/recovery instructions |
 | `GET /api/me/usdc_balance` | What the signed-in wallet holds on Base |
 | `POST /api/me/agent_name` | Changes the agent half of the signed-in profile's names |
 
@@ -221,12 +221,21 @@ not untrusted, because it comes from the chain.
 3. The browser builds a USDC transfer authorization **only from that challenge**
    and asks the signed-in wallet to sign it. Nothing on the page can sign for a
    different amount or a different recipient.
-4. The tool retries with the signature. The server checks it against the frozen
-   terms field by field, verifies and settles it through the facilitator, and
-   writes a receipt, all inside one transaction with the intent row locked.
-5. The effect runs. A tip is complete when it settles. A paid report is
-   published from the frozen draft, and the money is recorded against it in the
-   escrow contract.
+4. The tool submits the signature. Under a short row lock, the server checks
+   the frozen terms and verifies the signature, then commits `settlement_pending`
+   before dispatching settlement. The facilitator client does not retry settlement.
+5. A successful settlement commits its receipt and `settled` state together,
+   before carrying out the effect. A tip is complete at settlement. A paid report
+   is published from its frozen draft, then an escrow credit is submitted.
+   A credit submission hash is not an on-chain confirmation.
+
+The payer can recover the stored receipt through `GET /api/payment_intents/:id`,
+including after publication fails or an optional recipient/report disappears.
+A settled payment with an incomplete report/escrow effect answers `202`; an
+uncertain settlement answers `409`. Neither is automatically paid or published
+again. Keep the intent ID and reconcile the facilitator result, report and escrow
+receipt before any operator repair. This patch adds no repair command or queue.
+Another profile receives `404`, including for existing intents.
 
 An expired offer answers `410`. A payment already being confirmed answers `409`
 and says not to pay again. A press is never blocked by page state: every press

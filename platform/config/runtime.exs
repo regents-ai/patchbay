@@ -87,6 +87,9 @@ facilitator_auth =
 config :patchbay, Patchbay.Payments.Facilitator,
   url: facilitator_url,
   finch: Patchbay.Payments.Finch,
+  # A timed-out settlement may already have moved value. Recovery reads the
+  # durable intent; neither this client nor the controller retries settlement.
+  max_retries: 0,
   auth: facilitator_auth
 
 # The Base mainnet endpoint Patchbay reads USDC balances through, one JSON-RPC

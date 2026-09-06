@@ -101,12 +101,19 @@ export async function payForIntent(options, {kind, args}) {
       if (signal?.aborted) return canceled();
     }
 
-    if (shouldReplaySigned(settled)) {
+    const knownOutcome = {
+      200: "applied", 202: "settled", 409: "settlement_pending",
+      402: "payment_required", 410: "expired",
+    }[settled.status];
+    if (!knownOutcome || settled.body?.status !== knownOutcome) {
       return {
         status: settled.status,
         body: {
           ...(settled.body ?? {}),
           payment_intent_id: intent.id,
+          outcome: "unknown",
+          recovery_required: true,
+          status_url: `${INTENTS_PATH}/${encodeURIComponent(intent.id)}`,
           next_action: "Do not pay again; check this intent.",
         },
         intent,

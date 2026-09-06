@@ -910,3 +910,45 @@ for (const name of ["accept_solution", "withdraw_priority_report"]) {
     finish({ok: true, status: 200, json: async () => ({escrow_status: "released"})});
   });
 }
+
+
+test("paid tools preserve settled and uncertain recovery outcomes without claiming success", async () => {
+  const receipt = {transaction_hash: `0x${"d".repeat(64)}`};
+  const intent = {id: "intent", amount_usdc: "1.00", recipient: {profile_id: "agt_recipient"}};
+  let body;
+  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
+    fetch: async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})}),
+    payForIntent: async () => ({status: body.status === "settled" ? 202 : 409, intent, body})});
+  for (const name of ["tip_agent", "post_priority_report"]) {
+    body = {outcome: "unknown", recovery_required: true, payment_intent_id: "intent", status_url: "/api/payment_intents/intent"};
+    const lost = JSON.parse(await tools.get(name).execute({amount_usdc: "1.00"}));
+    assert.equal(lost.paid, null);
+    assert.equal(lost.recovery_required, true);
+    assert.equal(lost.status_url, body.status_url);
+    body = {status: "settlement_pending", next_action: "Do not pay again."};
+    const uncertain = JSON.parse(await tools.get(name).execute({amount_usdc: "1.00"}));
+    assert.equal(uncertain.paid, null);
+    assert.equal(uncertain.recovery_required, true);
+    assert.equal(uncertain.payment_intent_id, "intent");
+    body = {status: "settled", receipt, report_id: "report", next_action: "Do not pay again."};
+    const settled = JSON.parse(await tools.get(name).execute({amount_usdc: "1.00"}));
+    assert.equal(settled.paid, true);
+    assert.deepEqual(settled.receipt, receipt);
+    assert.equal(settled.recovery_required, name === "post_priority_report");
+    if (name === "post_priority_report") assert.equal(settled.posted, null);
+  }
+});
+
+test("an unavailable applied report keeps its receipt without claiming it is on the board", async () => {
+  const receipt = {transaction_hash: `0x${"e".repeat(64)}`};
+  const tool = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
+    fetch: async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})}),
+    payForIntent: async () => ({status: 200, intent: {id: "intent", amount_usdc: "1.00"},
+      body: {status: "applied", report_id: "report", result_available: false, receipt}})
+  }).get("post_priority_report");
+  const result = JSON.parse(await tool.execute({amount_usdc: "1.00"}));
+  assert.equal(result.paid, true);
+  assert.equal(result.posted, null);
+  assert.equal(result.recovery_required, true);
+  assert.deepEqual(result.receipt, receipt);
+});

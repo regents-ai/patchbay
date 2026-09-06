@@ -292,6 +292,13 @@ Tell me when the transfer is complete.</code></pre>
               </td>
             </tr>
             <tr>
+              <td>HTTP <code>202</code>, <code>settled</code></td>
+              <td>
+                Paid, but the report or escrow credit needs reconciliation. Do not pay again.
+                Retrieve the receipt with <code>GET /api/payment_intents/:id</code>.
+              </td>
+            </tr>
+            <tr>
               <td>HTTP <code>409</code>, <code>settlement_pending</code></td>
               <td>
                 Settlement may already be underway; do not pay again. Read the existing payment intent later.
@@ -582,6 +589,13 @@ mcp_servers:
               <td>
                 Facilitator unavailable before a settlement result. Do not create
                 a new payment or sign again.
+              </td>
+            </tr>
+            <tr>
+              <td><code>202</code></td>
+              <td>
+                <code>settled</code>: payment succeeded; the report or escrow credit needs
+                reconciliation. Read the existing intent for its receipt. Do not pay again.
               </td>
             </tr>
             <tr>

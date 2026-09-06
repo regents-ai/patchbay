@@ -17,10 +17,10 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   money bought is then carried out per kind: a tip is complete once settled,
   and a paid priority report is published from its frozen terms.
 
-  One intent applies exactly once. The row is locked for the whole of an
-  execute call, so two calls racing each other cannot both settle it, and a
-  call that arrives after the effect was applied is answered with the stored
-  result rather than charged again.
+  A short row lock commits the settlement attempt before external dispatch.
+  A crash leaves an uncertain intent for reconciliation, never an automatic
+  second payment. Settlement evidence commits before publication and escrow
+  submission, so those later failures cannot erase the payment receipt.
   """
 
   use PatchbayWeb, :controller
@@ -115,8 +115,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   def show(conn, %{"id" => id}) do
     actor = conn.assigns.current_profile
 
-    case intent(actor, id, &Payments.get_payment_intent/2) do
-      {:ok, found} -> json(conn, intent_payload(found))
+    read = fn id, opts ->
+      Payments.get_payment_intent(id, Keyword.put(opts, :load, [:receipt]))
+    end
+
+    case intent(actor, id, read) do
+      {:ok, found} -> json(conn, Map.merge(intent_payload(found), recovery_payload(found)))
       {:error, failure} -> send_failure(conn, failure)
     end
   end
@@ -177,12 +181,18 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     %{signature: payment_signature(conn), browser_session_id: conn.assigns.forum_session_id}
   end
 
-  # The whole of an execute call happens under one row lock, so a settled
-  # intent is applied exactly once however many calls arrive at once.
+  # Only the caller that commits the pending transition receives dispatch
+  # data. External settlement runs after the transaction has committed.
   defp under_lock(actor, id, request) do
     case Ash.transact([PaymentIntent, PaymentReceipt], fn -> attempt(actor, id, request) end) do
-      {:ok, {:settled, answer}} -> answer
-      {:error, failed_write} -> {:error, failed_write}
+      {:ok, {:settled, {:dispatch, found, payment, requirement, request}}} ->
+        settle(actor, found, payment, requirement, request)
+
+      {:ok, {:settled, answer}} ->
+        answer
+
+      {:error, failed_write} ->
+        {:error, failed_write}
     end
   end
 
@@ -202,10 +212,14 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     end
   end
 
-  defp advance(_actor, %{status: status} = found, _request)
-       when status in [:settled, :applied] do
-    {:applied, found, found.receipt}
-  end
+  defp advance(_actor, %{status: :applied} = found, _request),
+    do: {:applied, found, found.receipt}
+
+  defp advance(_actor, %{status: :settled, kind: :agent_tip} = found, _request),
+    do: {:applied, found, found.receipt}
+
+  defp advance(_actor, %{status: :settled} = found, _request),
+    do: {:settled, found, found.receipt}
 
   defp advance(_actor, %{status: :settlement_pending} = found, _request) do
     {:settlement_pending, found}
@@ -237,9 +251,16 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     requirement = requirement(found)
 
     case checked_payment(request.signature, found, requirement) do
-      {:ok, payment} -> settle(actor, found, payment, requirement, request)
-      {:refused, reason} -> {:payment_rejected, found, reason}
-      {:unavailable, reason} -> {:facilitator_unavailable, found, reason}
+      {:ok, payment} ->
+        with {:ok, pending} <- Payments.mark_settlement_pending(found, actor: actor) do
+          {:dispatch, pending, payment, requirement, request}
+        end
+
+      {:refused, reason} ->
+        {:payment_rejected, found, reason}
+
+      {:unavailable, reason} ->
+        {:facilitator_unavailable, found, reason}
     end
   end
 
@@ -382,11 +403,27 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   end
 
   defp apply_payment(actor, found, payment, body, request) do
-    with {:ok, receipt} <- record_receipt(actor, found, payment, body),
-         {:ok, settled} <- Payments.mark_settled(found, actor: actor),
-         {:ok, _effect} <- carry_out(settled, receipt, actor, request),
-         {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
-      {:applied, applied, receipt}
+    persisted =
+      Ash.transact([PaymentIntent, PaymentReceipt], fn ->
+        with {:ok, receipt} <- record_receipt(actor, found, payment, body),
+             {:ok, settled} <- Payments.mark_settled(found, actor: actor) do
+          {settled, receipt}
+        end
+      end)
+
+    case persisted do
+      {:ok, {settled, receipt}} ->
+        with {:ok, effect} when effect == :settled or effect.escrow_status == :credited <-
+               carry_out(settled, receipt, actor, request),
+             {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
+          {:applied, applied, receipt}
+        else
+          _incomplete -> {:settled, settled, receipt}
+        end
+
+      {:error, _failed_write} ->
+        # The already-committed pending marker survives. Never redispatch.
+        {:settlement_pending, found}
     end
   end
 
@@ -502,11 +539,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
       with_payment_help(%{
         status: "applied",
         payment_intent_id: found.id,
-        receipt: %{
-          transaction_hash: receipt.transaction_hash,
-          payer_address: receipt.payer_address,
-          settled_at: receipt.settled_at
-        },
+        receipt: receipt_payload(receipt),
         amount_usdc: USDC.format(found.amount_atomic),
         effect_summary: found.effect_summary
       })
@@ -514,6 +547,16 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_resp_header("payment-response", header)
     |> json(Map.merge(answer, applied_effect(found)))
+  end
+
+  defp send_answer(conn, {:settled, found, receipt}) do
+    conn
+    |> put_status(:accepted)
+    |> json(
+      intent_payload(found)
+      |> Map.merge(recovery_payload(%{found | receipt: receipt}))
+      |> Map.put(:payment_intent_id, found.id)
+    )
   end
 
   defp send_answer(conn, {:settlement_pending, found}) do
@@ -572,14 +615,20 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   defp applied_effect(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
 
   defp applied_effect(%{kind: :special_post} = found) do
-    report = Forum.get_report!(found.target_id)
+    case Forum.get_report(found.target_id) do
+      {:ok, %{} = report} ->
+        %{
+          report_id: report.id,
+          url: url(~p"/reports/#{report.id}"),
+          escrowed_usdc: USDC.format(report.priority_amount_atomic),
+          escrow_status: report.escrow_status,
+          credit_confirmation: "unverified",
+          result_available: true
+        }
 
-    %{
-      report_id: report.id,
-      url: url(~p"/reports/#{report.id}"),
-      escrowed_usdc: USDC.format(report.priority_amount_atomic),
-      escrow_status: report.escrow_status
-    }
+      _unavailable ->
+        %{report_id: found.target_id, result_available: false, credit_confirmation: "unverified"}
+    end
   end
 
   defp offer(conn, offered) do
@@ -604,6 +653,47 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     |> Map.merge(intent_target(found))
   end
 
+  defp receipt_payload(receipt) do
+    %{
+      transaction_hash: receipt.transaction_hash,
+      payer_address: receipt.payer_address,
+      settled_at: receipt.settled_at
+    }
+  end
+
+  defp recovery_payload(%{status: :applied} = found) do
+    result = applied_effect(found)
+
+    %{
+      receipt: receipt_payload(found.receipt),
+      result: result,
+      recovery_required: Map.get(result, :result_available) == false
+    }
+  end
+
+  defp recovery_payload(%{status: :settled} = found) do
+    %{
+      receipt: receipt_payload(found.receipt),
+      result: applied_effect(found),
+      recovery_required: found.kind != :agent_tip,
+      next_action:
+        if(found.kind == :agent_tip,
+          do: "Payment settled. The tip is complete; do not pay again.",
+          else:
+            "Payment settled. Do not pay again. Check the report and reconcile any incomplete effect."
+        )
+    }
+  end
+
+  defp recovery_payload(%{status: :settlement_pending}) do
+    %{
+      recovery_required: true,
+      next_action: "Do not pay again. Settlement is uncertain and requires reconciliation."
+    }
+  end
+
+  defp recovery_payload(_found), do: %{}
+
   # Whom or what the terms are for: the profile a tip pays, or the report a
   # paid priority payment will publish and the escrow that holds its money.
   defp intent_target(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
@@ -615,10 +705,22 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   # The profile as it stands now. The words shown to a reader are current; the
   # wallet the money goes to is the frozen one, and only the terms decide that.
   defp recipient_author(found) do
-    {:ok, recipient} =
-      found.payload |> Map.fetch!("recipient_public_id") |> Identity.get_profile_by_public_id()
+    public_id = Map.fetch!(found.payload, "recipient_public_id")
 
-    AuthorJSON.author(recipient)
+    case Identity.get_profile_by_public_id(public_id) do
+      {:ok, %{} = recipient} ->
+        AuthorJSON.author(recipient)
+
+      _unavailable ->
+        %{
+          profile_id: public_id,
+          agent_name: found.payload["recipient_agent_name"],
+          human_name: nil,
+          profile_url: nil,
+          can_receive_usdc: false,
+          profile_available: false
+        }
+    end
   end
 
   defp execute_url(found), do: url(~p"/api/payment_intents/#{found.id}/execute")

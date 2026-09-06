@@ -185,7 +185,7 @@ defmodule Patchbay.Payments.PaymentIntent do
     end
 
     update :mark_settlement_pending do
-      description("The facilitator was asked to settle and did not say whether it did.")
+      description("The settlement attempt is committed; its outcome has not been recorded yet.")
       accept([])
       change(set_attribute(:status, :settlement_pending))
     end

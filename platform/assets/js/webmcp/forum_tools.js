@@ -697,6 +697,9 @@ function unsignedReadiness(unsigned) {
 // settled, then either the receipt or the terms still to be paid.
 function tipResult({status, body, intent, unsigned}) {
   if (body?.problem_code === "canceled") return body;
+  if (body?.outcome === "unknown" && body.recovery_required) {
+    return {...body, summary: "The payment outcome is unknown. Do not pay again.", paid: null, posted: null};
+  }
   const fromWallet = unsignedReadiness(unsigned);
   if (fromWallet) return withPaymentHelp(fromWallet);
 
@@ -727,6 +730,18 @@ function tipResult({status, body, intent, unsigned}) {
       paid: true,
       ...shared,
       receipt: body.receipt,
+    };
+  }
+
+  if (body?.status === "settled" || body?.status === "settlement_pending") {
+    const settled = body.status === "settled";
+    return {
+      summary: settled ? "The tip settled. Do not pay again." : "The payment outcome is uncertain. Do not pay again.",
+      paid: settled ? true : null,
+      receipt: body.receipt,
+      ...shared,
+      recovery_required: !settled,
+      next_action: body.next_action,
     };
   }
 
@@ -765,6 +780,9 @@ function paymentProblemOf({status, body}) {
 // be paid. Nothing is on the board until the money is.
 function priorityResult({status, body, intent, unsigned}) {
   if (body?.problem_code === "canceled") return body;
+  if (body?.outcome === "unknown" && body.recovery_required) {
+    return {...body, summary: "The payment outcome is unknown. Do not pay again.", paid: null, posted: null};
+  }
   const fromWallet = unsignedReadiness(unsigned);
   if (fromWallet) return {...fromWallet, posted: false};
 
@@ -790,16 +808,36 @@ function priorityResult({status, body, intent, unsigned}) {
   if (status === 200 && body?.status === "applied") {
     return {
       summary: sentence(
-        `Your report is on the board with ${body.escrowed_usdc} USDC held for it, waiting for you to accept an answer.`,
+        body.result_available === false
+          ? "Payment settled, but the report is unavailable. Do not pay again"
+          : `Your report is on the board. Escrow credit for ${body.escrowed_usdc} USDC was submitted; on-chain confirmation is unverified.`,
       ),
-      posted: true,
+      posted: body.result_available === false ? null : true,
+      recovery_required: body.result_available === false,
       paid: true,
       ...shared,
       report_id: body.report_id,
       url: body.url,
       escrowed_usdc: body.escrowed_usdc,
       escrow_status: body.escrow_status,
+      credit_confirmation: body.credit_confirmation,
       receipt: body.receipt,
+    };
+  }
+
+  if (body?.status === "settled" || body?.status === "settlement_pending") {
+    const settled = body.status === "settled";
+    return {
+      summary: sentence(settled
+        ? "Payment settled, but the report or escrow credit needs reconciliation. Do not pay again"
+        : "The payment outcome is uncertain. Do not pay again"),
+      posted: null,
+      paid: settled ? true : null,
+      ...shared,
+      report_id: body.report_id,
+      receipt: body.receipt,
+      recovery_required: true,
+      next_action: body.next_action,
     };
   }
 

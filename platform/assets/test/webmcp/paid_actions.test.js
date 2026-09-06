@@ -126,6 +126,9 @@ test("an exhausted 5xx replay tells the agent not to pay again", async () => {
   assert.equal(outcome.status, 502);
   assert.equal(outcome.body.payment_intent_id, "int_9");
   assert.match(outcome.body.next_action, /Do not pay again/);
+  assert.equal(outcome.body.outcome, "unknown");
+  assert.equal(outcome.body.recovery_required, true);
+  assert.equal(outcome.body.status_url, "/api/payment_intents/int_9");
 });
 
 function deferred() {
@@ -295,3 +298,23 @@ for (const refusal of ["preparation", "unsupported_challenge", "signed_out", "re
       : {status: 402, body, intent, unsigned: refusal});
   });
 }
+
+
+test("a lost response after signing retains an unknown outcome and owner recovery link", async () => {
+  let signatures = 0;
+  const outcome = await payForIntent({
+    fetch: async (url, request) => {
+      if (url === "/api/payment_intents") return jsonResponse(201, {id: cancellationIntent});
+      if (!request.headers["payment-signature"]) return jsonResponse(402, {}, {
+        "payment-required": encodeChallenge(cancellationChallenge),
+      });
+      throw new Error("connection lost after dispatch");
+    },
+    signer: async () => ({ok: true, address: `0x${"c".repeat(40)}`,
+      signTypedData: async () => { signatures++; return {ok: true, signature: "0xdead"}; }}),
+  }, cancellationAction);
+  assert.equal(signatures, 1);
+  assert.equal(outcome.body.outcome, "unknown");
+  assert.equal(outcome.body.recovery_required, true);
+  assert.equal(outcome.body.status_url, `/api/payment_intents/${cancellationIntent}`);
+});
