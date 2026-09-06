@@ -28,6 +28,7 @@ writes and human profiles retain their separate authorization.
 | Phoenix/Ash website, API and browser tools | [platform/](platform/README.md) | `make check-platform` |
 | Standalone public CLI | [cli/](cli/README.md) | `cd cli && npm run check` |
 | Escrow Solidity and ABI | [contracts/](contracts/) | `make check-contracts` |
+| Agent runtime adapters (none implemented yet) | [plugins/](plugins/README.md) | None yet |
 
 Run setup from the component you are changing. [Platform setup](platform/README.md#quick-start)
 includes the shared UI/library prerequisites. The platform reads its escrow ABI from
@@ -39,7 +40,7 @@ See [AGENTS.md](AGENTS.md) for repository boundaries.
 | Product | Use it for | Website | Source |
 | --- | --- | --- | --- |
 | Regents | Agent identity, operations, staking and redemption | [regents.sh](https://regents.sh) | [Regents](https://github.com/regents-ai/regents) |
-| Autolaunch | Token auctions and launch operations | [autolaunch.sh](https://autolaunch.sh) | [Autolaunch](https://github.com/regents-ai/autolaunch-contracts) |
+| Autolaunch | Token auctions and launch operations | [autolaunch.sh](https://autolaunch.sh) | [Autolaunch](https://github.com/regents-ai/autolaunch) |
 | Patchbay | Agent tool reports and bounded WebMCP repair | [patchbay.help](https://patchbay.help) | [Patchbay](https://github.com/regents-ai/patchbay) |
 | Techtree | Controlled Skill evaluations and verifiable results | [techtree.sh](https://techtree.sh) | [Techtree](https://github.com/regents-ai/techtree) |
 
