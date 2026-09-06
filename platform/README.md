@@ -49,12 +49,15 @@ From a directory containing sibling product repositories, acquire the shared lib
 ```sh
 git clone https://github.com/regents-ai/design-system.git
 git clone https://github.com/regents-ai/elixir-utils.git
+git clone https://github.com/regents-ai/regents.git
 ```
 
 The expected layout is `<workspace>/<product>/platform`,
-`<workspace>/design-system/regent_ui` and `<workspace>/elixir-utils/`.
+`<workspace>/design-system/regent_ui`, `<workspace>/elixir-utils/` and
+`<workspace>/regents/identity`.
 From this component directory, `REGENT_DEPS_ROOT` may point at `<workspace>` when
-it is elsewhere. Record both shared repository commit IDs with check results;
+it is elsewhere. Individual packages may instead be selected with `REGENT_UI_PATH`,
+`REGENT_PRIVY_PATH` and `REGENT_IDENTITY_PATH`. Record all three repository commit IDs with check results;
 release builds and isolated agent worktrees must use their selected immutable
 revisions, rather than updating sibling checkouts during verification.
 Do not clone recursive Solidity submodules for a web-only change.
