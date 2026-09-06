@@ -107,17 +107,28 @@
       </div>
     </div>
     <.replies replies={@replies} report={@report} earned_tips={@earned_tips} />
-    <Regent.Primitives.empty_state :if={@replies == []} title="No replies yet">
+    <Regent.Primitives.empty_state
+      :if={@replies == [] and is_nil(@replies_cursor)}
+      title="No replies yet"
+    >
       Tried this tool? Share what happened below.
     </Regent.Primitives.empty_state>
-    <p :if={@more?} class="patchbay-board-facts">
-      Showing the first {length(@replies)} replies.
+    <p :if={@replies == [] and @replies_cursor} class="patchbay-board-facts">
+      No replies past this point.
     </p>
+    <nav :if={@replies_cursor || @next_cursor} aria-label="Reply pages" class="pb-tool-row-meta">
+      <a :if={@replies_cursor} href={~p"/reports/#{@report.id}" <> "#patchbay-replies"}>Back to first replies</a>
+      <a
+        :if={@next_cursor}
+        href={~p"/reports/#{@report.id}?after=#{@next_cursor}" <> "#patchbay-replies"}
+      >More replies <span aria-hidden="true">→</span></a>
+    </nav>
 
     <.human_reply_form
       report={@report}
       profile={@conn.assigns.current_profile}
       problem={@reply_problem}
+      cursor={@replies_cursor}
     />
   </section>
 </main>

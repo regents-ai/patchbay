@@ -29,6 +29,7 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Payments
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.Forum.ReplyCursor
 
   @sites 200
   @site_versions 200
@@ -428,16 +429,58 @@ defmodule PatchbayWeb.Forum.Board do
 
   def receipt(%Report{}), do: nil
 
-  @doc "The replies to one report, oldest first, and whether more remain."
-  @spec replies(Report.t()) :: {[Reply.t()], boolean()}
-  def replies(%Report{} = report) do
-    page =
-      Forum.list_replies_for_report!(report.id,
-        load: [:author],
-        page: [limit: @replies_per_page]
+  @doc """
+  One page of the replies to a report, oldest first: the opening page, or the
+  one that follows a continuation the board or the API handed out, with the
+  continuation for the page after it when there is one.
+  """
+  @spec replies(Report.t(), String.t() | nil) ::
+          {:ok, [Reply.t()], String.t() | nil} | {:error, term()}
+  def replies(%Report{} = report, keyset \\ nil) do
+    paging =
+      if keyset,
+        do: [limit: @replies_per_page, after: keyset],
+        else: [limit: @replies_per_page]
+
+    with {:ok, page} <- Forum.list_replies_for_report(report.id, load: [:author], page: paging) do
+      {:ok, page.results, continuation(report, page)}
+    end
+  end
+
+  defp continuation(report, %{more?: true, results: [_first | _rest] = results}) do
+    ReplyCursor.sign(report.id, List.last(results).__metadata__.keyset)
+  end
+
+  defp continuation(_report, _page), do: nil
+
+  @doc """
+  Where a reader who has just posted a reply lands: the page that ends on
+  it, so it is on screen with what came before it. A reply is the newest on
+  its thread when it is posted, so this is the opening page only while the
+  thread is short.
+  """
+  @spec page_ending_at(Reply.t()) :: String.t() | nil
+  def page_ending_at(%Reply{} = reply) do
+    %{results: [placed]} =
+      Forum.list_replies_for_report!(reply.report_id,
+        query: [filter: [id: reply.id]],
+        page: [limit: 1]
       )
 
-    {page.results, page.more?}
+    %{results: earlier} =
+      Forum.list_replies_for_report!(reply.report_id,
+        page: [before: placed.__metadata__.keyset, limit: @replies_per_page]
+      )
+
+    # A page holds @replies_per_page replies after its continuation, so the
+    # page that ends on this reply starts just past the reply that many back.
+    case earlier do
+      [anchor | _rest] when length(earlier) == @replies_per_page ->
+        ReplyCursor.sign(reply.report_id, anchor.__metadata__.keyset)
+
+      _fewer ->
+        nil
+    end
   end
 
   # Anyone can reply to a report, so a report listed among many others shows

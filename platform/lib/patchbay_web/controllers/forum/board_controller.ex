@@ -14,10 +14,13 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   use PatchbayWeb, :controller
 
+  require Logger
+
   alias Patchbay.Forum
   alias Patchbay.Forum.PriorityRefund
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.Forum.ReplyCursor
 
   def home(conn, params) do
     q = presence(params["q"])
@@ -125,12 +128,16 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
-  def report(conn, %{"id" => id}) do
-    show_report(conn, id, [])
+  @doc """
+  One report and a page of its replies: the opening page, or the page a
+  continuation from this board or from the API names.
+  """
+  def report(conn, %{"id" => id} = params) do
+    show_report(conn, id, params, [])
   end
 
-  def post(conn, %{"id" => id}) do
-    show_report(conn, id, [])
+  def post(conn, %{"id" => id} = params) do
+    show_report(conn, id, params, [])
   end
 
   @doc """
@@ -146,14 +153,14 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-escrow")
 
       {:ok, _refused} ->
-        show_report(conn, id,
+        show_report(conn, id, %{},
           refund_problem:
             "Base would not take that request. A bounty can only be taken back 30 days " <>
               "after it was recorded, and nothing has moved."
         )
 
       {:error, failure} ->
-        show_report(conn, id, refund_problem: refund_refusal(failure))
+        show_report(conn, id, %{}, refund_problem: refund_refusal(failure))
     end
   end
 
@@ -175,16 +182,24 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   The page is the only way a person can reply, and a person replies under their
   own name, so a visitor who is not signed in is told so on the page rather than
-  being sent anywhere. Whatever they typed is still on screen when they are.
+  being sent anywhere. Whatever they typed is still on screen when they are, on
+  the page of replies they were reading. A posted reply is the newest on its
+  thread, so the person is taken to the page that ends on it.
   """
   def create_reply(conn, %{"id" => id} = params) do
     reply = Map.get(params, "reply", %{})
 
     case add_reply(conn, id, reply) do
-      :ok -> redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-replies")
-      {:error, said} -> show_report(conn, id, reply_problem: %{said: said, draft: reply})
+      {:ok, posted} ->
+        redirect(conn, to: replies_path(id, Board.page_ending_at(posted)))
+
+      {:error, said} ->
+        show_report(conn, id, params, reply_problem: %{said: said, draft: reply})
     end
   end
+
+  defp replies_path(id, nil), do: ~p"/reports/#{id}" <> "#patchbay-replies"
+  defp replies_path(id, cursor), do: ~p"/reports/#{id}?after=#{cursor}" <> "#patchbay-replies"
 
   defp add_reply(%{assigns: %{current_profile: nil}}, _id, _reply) do
     {:error, "Sign in to reply here. Your reply keeps the name you chose for yourself."}
@@ -201,7 +216,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     }
 
     case Forum.add_human_reply(input, actor: profile) do
-      {:ok, _reply} -> :ok
+      {:ok, reply} -> {:ok, reply}
       {:error, refused} -> {:error, refusal(refused)}
     end
   end
@@ -223,24 +238,52 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp refusal(_refused), do: "That reply could not be posted."
 
-  defp show_report(conn, id, problems) do
-    case Board.fetch_report(id) do
-      {:ok, report} ->
-        {replies, more?} = Board.replies(report)
+  # A missing report is not on the board; a bad continuation and a reply read
+  # that fails are each said for what they are, never shown as an empty thread.
+  defp show_report(conn, id, params, problems) do
+    report = fetch_report!(id)
 
-        render(conn, :report,
-          page_title: "Report",
+    with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),
+         {:ok, replies, next_cursor} <- Board.replies(report, keyset) do
+      render(conn, :report,
+        page_title: "Report",
+        report: report,
+        receipt: Board.receipt(report),
+        replies: replies,
+        replies_cursor: params["after"],
+        next_cursor: next_cursor,
+        reply_problem: Keyword.get(problems, :reply_problem),
+        refund_problem: Keyword.get(problems, :refund_problem),
+        earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
+      )
+    else
+      {:error, :invalid_cursor} ->
+        conn
+        |> put_status(:bad_request)
+        |> render(:report_error,
+          page_title: "Replies unavailable",
           report: report,
-          receipt: Board.receipt(report),
-          replies: replies,
-          more?: more?,
-          reply_problem: Keyword.get(problems, :reply_problem),
-          refund_problem: Keyword.get(problems, :refund_problem),
-          earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
+          invalid_cursor?: true
         )
 
-      :error ->
-        raise NotFoundError
+      {:error, failure} ->
+        error_type = if is_struct(failure), do: failure.__struct__, else: :unknown
+        Logger.warning("Report replies unavailable: #{inspect(error_type)}")
+
+        conn
+        |> put_status(:service_unavailable)
+        |> render(:report_error,
+          page_title: "Replies unavailable",
+          report: report,
+          invalid_cursor?: false
+        )
+    end
+  end
+
+  defp fetch_report!(id) do
+    case Board.fetch_report(id) do
+      {:ok, report} -> report
+      :error -> raise NotFoundError
     end
   end
 

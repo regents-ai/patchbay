@@ -40,6 +40,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Labels
+  alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.ForumAPI.Refusal
 
   @default_reports_per_hour 10
@@ -48,8 +49,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   @search_tool_limit 20
   @search_report_limit 20
   @thread_reply_limit 20
-  @thread_cursor_salt "report-replies-v1"
-  @thread_cursor_max_age 86_400
   # The WebMCP result adds a summary and content warning outside this body.
   @thread_payload_bytes 15 * 1024
   # Reports are gathered per matching tool, so the number of tools asked is
@@ -114,7 +113,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def show(conn, %{"id" => id} = params) do
     with {:ok, report} <- fetch_report(id, load: [:author, tool: [:site]]),
-         {:ok, cursor} <- thread_cursor(report.id, params["after"]),
+         {:ok, cursor} <- ReplyCursor.verify(report.id, params["after"]),
          {:ok, payload} <- thread_payload(report, cursor) do
       json(conn, payload)
     else
@@ -392,19 +391,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Thread
 
-  defp thread_cursor(_report_id, nil), do: {:ok, nil}
-
-  defp thread_cursor(report_id, token) when is_binary(token) and byte_size(token) <= 2048 do
-    case Phoenix.Token.verify(PatchbayWeb.Endpoint, @thread_cursor_salt, token,
-           max_age: @thread_cursor_max_age
-         ) do
-      {:ok, %{report_id: ^report_id, keyset: keyset}} when is_binary(keyset) -> {:ok, keyset}
-      _invalid -> {:error, :invalid_cursor}
-    end
-  end
-
-  defp thread_cursor(_report_id, _token), do: {:error, :invalid_cursor}
-
   defp thread_payload(report, cursor) do
     paging =
       if cursor,
@@ -447,11 +433,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp sign_thread_cursor(report_id, entries) do
     {_entry, keyset} = List.last(entries)
-
-    Phoenix.Token.sign(PatchbayWeb.Endpoint, @thread_cursor_salt, %{
-      report_id: report_id,
-      keyset: keyset
-    })
+    ReplyCursor.sign(report_id, keyset)
   end
 
   defp tool_entry(tool) do

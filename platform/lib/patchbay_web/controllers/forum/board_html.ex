@@ -707,6 +707,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "What went wrong with the last attempt and what was typed, or nil."
   )
 
+  attr(:cursor, :any,
+    default: nil,
+    doc:
+      "The continuation of the page of replies the form sits under, so a refused reply comes back to it."
+  )
+
   def human_reply_form(assigns) do
     assigns = assign(assigns, draft: (assigns.problem && assigns.problem.draft) || %{})
 
@@ -723,6 +729,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
       <form :if={@profile} method="post" action={~p"/reports/#{@report.id}/replies"}>
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <input :if={@cursor} type="hidden" name="after" value={@cursor} />
 
         <label for="pb-reply-verdict">Did the tool work for you?</label>
         <select id="pb-reply-verdict" name="reply[verdict]">

@@ -402,6 +402,243 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
   end
 
+  describe "GET /reports/:id reply pages" do
+    # Notes are numbered so the order a page shows can be read back off it.
+    defp numbered_replies!(report, range) do
+      for n <- range, do: reply!(report, %{note: "reply-#{String.pad_leading("#{n}", 3, "0")}"})
+    end
+
+    # Ties in the time of writing fall back on the id, on the page and in the API alike.
+    defp written_at_once!(replies) do
+      for reply <- replies do
+        Patchbay.Repo.query!("UPDATE forum_replies SET inserted_at = $1 WHERE id = $2", [
+          ~U[2026-01-01 00:00:00.000000Z],
+          Ecto.UUID.dump!(reply.id)
+        ])
+      end
+    end
+
+    defp notes_shown(body), do: Regex.scan(~r/reply-\d{3}/, body) |> List.flatten()
+
+    defp next_page_path(body) do
+      case Regex.run(~r/href="(\/reports\/[^"#]*after=[^"#]*)#patchbay-replies"/, body) do
+        [_whole, path] -> path |> String.replace("&amp;", "&")
+        nil -> nil
+      end
+    end
+
+    # Every reply a person reads walking the thread from its start, page by page.
+    defp human_walk(conn, path, seen \\ []) do
+      body = conn |> get(path) |> html_response(200)
+      notes = seen ++ notes_shown(body)
+
+      case next_page_path(body) do
+        nil -> notes
+        next -> human_walk(conn, next, notes)
+      end
+    end
+
+    defp api_walk(conn, report_id, cursor \\ nil, seen \\ []) do
+      params = if cursor, do: %{"after" => cursor}, else: %{}
+      page = conn |> get("/forum/reports/#{report_id}", params) |> json_response(200)
+      notes = seen ++ Enum.map(page["replies"], & &1["quoted_note"])
+
+      case page["pagination"] do
+        %{"has_more" => true, "next_cursor" => next} -> api_walk(conn, report_id, next, notes)
+        _last -> notes
+      end
+    end
+
+    defp signed_in(conn, profile) do
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> Plug.Conn.put_session(PatchbayWeb.Plugs.CurrentProfile.session_key(), profile.id)
+    end
+
+    defp person!(subject) do
+      Patchbay.Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:" <> subject,
+        wallet_address: "0x" <> String.duplicate(String.first(subject), 40)
+      })
+    end
+
+    test "walks every reply in the order the API reads them, whichever handed out the continuation",
+         %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      {tied, later} = report |> numbered_replies!(1..250) |> Enum.split(150)
+      written_at_once!(tied)
+      expected = Enum.map(Enum.sort_by(tied, & &1.id) ++ later, & &1.note)
+
+      first = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      assert notes_shown(first) == Enum.take(expected, 100)
+      refute first =~ "Back to first replies"
+      refute first =~ "No replies yet"
+      second_path = next_page_path(first)
+      assert second_path
+
+      # A reply written while someone is reading lands at the end of the thread.
+      reply!(report, %{note: "reply-251"})
+
+      assert human_walk(conn, ~p"/reports/#{report.id}") == expected ++ ["reply-251"]
+      assert api_walk(conn, report.id) == expected ++ ["reply-251"]
+
+      # A machine continuation opens the same place on the page.
+      api_first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      api_cursor = api_first["pagination"]["next_cursor"]
+
+      after_machine =
+        conn |> get(~p"/reports/#{report.id}?after=#{api_cursor}") |> html_response(200)
+
+      assert notes_shown(after_machine) == Enum.slice(expected, 20, 100)
+      assert after_machine =~ "Back to first replies"
+
+      # And the page's continuation reads on through the API.
+      %{"after" => page_cursor} = URI.decode_query(URI.parse(second_path).query)
+
+      api_after_page =
+        conn
+        |> get("/forum/reports/#{report.id}", %{"after" => page_cursor})
+        |> json_response(200)
+
+      assert Enum.map(api_after_page["replies"], & &1["quoted_note"]) ==
+               Enum.slice(expected, 100, 20)
+    end
+
+    test "refuses a continuation this report never handed out, with a way back", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      other = "other.example" |> site!() |> tool!() |> report!()
+      numbered_replies!(report, 1..101)
+      numbered_replies!(other, 1..101)
+
+      other_cursor =
+        other
+        |> then(&get(conn, ~p"/reports/#{&1.id}"))
+        |> html_response(200)
+        |> next_page_path()
+        |> URI.parse()
+        |> Map.fetch!(:query)
+        |> URI.decode_query()
+        |> Map.fetch!("after")
+
+      <<first_byte, rest::binary>> = other_cursor
+      tampered = <<Bitwise.bxor(first_byte, 1), rest::binary>>
+
+      for bad <- ["", "not-a-cursor", tampered, other_cursor, String.duplicate("a", 2049)] do
+        body = conn |> get(~p"/reports/#{report.id}", %{"after" => bad}) |> html_response(400)
+
+        assert body =~ "This reply link has expired or is invalid."
+        assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+        refute body =~ "No replies yet"
+        refute body =~ "reply-001"
+      end
+
+      assert_error_sent(404, fn ->
+        get(conn, ~p"/reports/#{Ash.UUID.generate()}", %{"after" => other_cursor})
+      end)
+    end
+
+    test "a continuation that can no longer be followed says so and offers a retry, not an empty thread",
+         %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      numbered_replies!(report, 1..3)
+      unreadable = PatchbayWeb.Forum.ReplyCursor.sign(report.id, "not a place in the thread")
+
+      response = get(conn, ~p"/reports/#{report.id}?after=#{unreadable}")
+      body = html_response(response, 503)
+
+      assert body =~ "could not be loaded right now"
+      assert body =~ ~s(href="#{response.request_path}?#{response.query_string}")
+      assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+      refute body =~ "No replies yet"
+    end
+
+    test "a page past the last reply does not call the thread empty", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      [only] = numbered_replies!(report, 1..1)
+
+      %{results: [placed]} =
+        Forum.list_replies_for_report!(report.id,
+          page: [limit: 1],
+          query: [filter: [id: only.id]]
+        )
+
+      past_end = PatchbayWeb.Forum.ReplyCursor.sign(report.id, placed.__metadata__.keyset)
+      body = conn |> get(~p"/reports/#{report.id}?after=#{past_end}") |> html_response(200)
+
+      refute body =~ "No replies yet"
+      assert body =~ "No replies past this point."
+      assert body =~ "Back to first replies"
+      refute body =~ "More replies"
+    end
+
+    test "a reply posted from a later page lands on the page that ends with it", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      report |> numbered_replies!(1..130) |> written_at_once!()
+      conn = signed_in(conn, person!("aaa"))
+
+      second_path =
+        conn |> get(~p"/reports/#{report.id}") |> html_response(200) |> next_page_path()
+
+      second = conn |> get(second_path) |> html_response(200)
+      %{"after" => cursor} = URI.decode_query(URI.parse(second_path).query)
+      assert second =~ ~s(name="after" value="#{cursor}")
+
+      # A refused reply comes back to the page it was written on, draft intact.
+      refused =
+        conn
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "after" => cursor,
+          "reply" => %{"verdict" => "", "note" => "kept for me"}
+        })
+        |> html_response(200)
+
+      assert refused =~ "Say whether the tool worked before you post."
+      assert refused =~ "kept for me"
+      assert notes_shown(refused) == notes_shown(second)
+
+      posted =
+        post(conn, ~p"/reports/#{report.id}/replies", %{
+          "after" => cursor,
+          "reply" => %{"verdict" => "verified_failure", "note" => "my own reply"}
+        })
+
+      landing = redirected_to(posted)
+      assert landing =~ "#patchbay-replies"
+      landing_path = String.replace(landing, "#patchbay-replies", "")
+      refute landing_path == "/reports/#{report.id}"
+
+      # The 99 replies before it, in the thread's own order, then the new one.
+      expected = api_walk(conn, report.id)
+      assert List.last(expected) == "my own reply"
+      shown = conn |> get(landing_path) |> html_response(200)
+      assert notes_shown(shown) ++ ["my own reply"] == Enum.take(expected, -100)
+      refute shown =~ Enum.at(expected, -101)
+      assert shown =~ "my own reply"
+      refute shown =~ "More replies"
+
+      # A reply that arrives afterwards does not push the person's own off the page.
+      reply!(report, %{note: "reply-131"})
+      again = conn |> get(landing_path) |> html_response(200)
+      assert again =~ "my own reply"
+      assert again =~ "More replies"
+      refute again =~ "reply-131"
+    end
+
+    test "a reply on a short thread lands on its opening page", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      numbered_replies!(report, 1..3)
+
+      posted =
+        conn
+        |> signed_in(person!("bbb"))
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "reply" => %{"verdict" => "verified_success", "note" => "worked for me"}
+        })
+
+      assert redirected_to(posted) == "/reports/#{report.id}#patchbay-replies"
+    end
+  end
+
   describe "GET /reports/:id" do
     test "shows one report with what it recorded and its replies", %{conn: conn} do
       report =
