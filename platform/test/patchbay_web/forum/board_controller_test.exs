@@ -637,6 +637,143 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert redirected_to(posted) == "/reports/#{report.id}#patchbay-replies"
     end
+
+    # A continuation dated more than a day ago, exactly as one handed out then.
+    defp expired_cursor(report, keyset) do
+      PatchbayWeb.Forum.ReplyCursor.sign(report.id, keyset,
+        signed_at: System.system_time(:second) - 86_401
+      )
+    end
+
+    defp keyset_of(report, reply) do
+      %{results: [placed]} =
+        Forum.list_replies_for_report!(report.id,
+          page: [limit: 1],
+          query: [filter: [id: reply.id]]
+        )
+
+      placed.__metadata__.keyset
+    end
+
+    test "a continuation from more than a day ago has expired", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      [first | _rest] = numbered_replies!(report, 1..3)
+      keyset = keyset_of(report, first)
+
+      body =
+        conn
+        |> get(~p"/reports/#{report.id}?after=#{expired_cursor(report, keyset)}")
+        |> html_response(400)
+
+      assert body =~ "This reply link has expired or is invalid."
+
+      fresh =
+        PatchbayWeb.Forum.ReplyCursor.sign(report.id, keyset,
+          signed_at: System.system_time(:second) - 86_000
+        )
+
+      assert conn |> get(~p"/reports/#{report.id}?after=#{fresh}") |> html_response(200) =~
+               "reply-002"
+    end
+
+    test "a reply refused after its page link expired keeps the draft, on a page that leads back",
+         %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      [first | _rest] = numbered_replies!(report, 1..3)
+      stale = expired_cursor(report, keyset_of(report, first))
+
+      body =
+        conn
+        |> signed_in(person!("ccc"))
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "after" => stale,
+          "reply" => %{"verdict" => "", "note" => "kept through the expiry"}
+        })
+        |> html_response(400)
+
+      assert body =~ "This reply link has expired or is invalid."
+      assert body =~ "Say whether the tool worked before you post."
+      assert body =~ "kept through the expiry"
+      assert body =~ ~s(action="/reports/#{report.id}/replies")
+      refute body =~ ~s(name="after")
+      assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+      refute body =~ ~s(href="/reports/#{report.id}/replies)
+      refute body =~ "reply-001"
+    end
+
+    test "a reply refused while its page cannot be read keeps the draft and retries by reading",
+         %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      numbered_replies!(report, 1..3)
+      unreadable = PatchbayWeb.Forum.ReplyCursor.sign(report.id, "not a place in the thread")
+
+      body =
+        conn
+        |> signed_in(person!("ddd"))
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "after" => unreadable,
+          "reply" => %{"verdict" => "", "note" => "kept through the outage"}
+        })
+        |> html_response(503)
+
+      assert body =~ "could not be loaded right now"
+      assert body =~ "Say whether the tool worked before you post."
+      assert body =~ "kept through the outage"
+      assert body =~ ~s(name="after" value="#{unreadable}")
+      assert body =~ ~s(href="/reports/#{report.id}?after=#{unreadable}")
+      refute body =~ ~s(href="/reports/#{report.id}/replies)
+      refute body =~ "No replies yet"
+    end
+
+    # Once a reply row is written, this connection goes on as a role that row
+    # security keeps from seeing any reply: the post is saved, and the page
+    # that should follow cannot be found. Everything here is undone with the
+    # test's transaction.
+    defp hide_replies_once_saved! do
+      Patchbay.Repo.query!("CREATE ROLE pb_hidden_reader")
+      Patchbay.Repo.query!("GRANT USAGE ON SCHEMA public TO pb_hidden_reader")
+      Patchbay.Repo.query!("GRANT SELECT ON ALL TABLES IN SCHEMA public TO pb_hidden_reader")
+      Patchbay.Repo.query!("ALTER TABLE public.forum_replies ENABLE ROW LEVEL SECURITY")
+
+      Patchbay.Repo.query!("""
+      CREATE FUNCTION pg_temp.hide_replies() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        PERFORM set_config('role', 'pb_hidden_reader', false);
+        RETURN NULL;
+      END
+      $$
+      """)
+
+      Patchbay.Repo.query!("""
+      CREATE TRIGGER hide_replies AFTER INSERT ON public.forum_replies
+      FOR EACH ROW EXECUTE FUNCTION pg_temp.hide_replies()
+      """)
+    end
+
+    test "a reply saved whose page cannot then be read is reported as posted, once", %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      numbered_replies!(report, 1..3)
+      hide_replies_once_saved!()
+
+      body =
+        conn
+        |> signed_in(person!("eee"))
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "reply" => %{"verdict" => "verified_failure", "note" => "posted into the dark"}
+        })
+        |> html_response(200)
+
+      Patchbay.Repo.query!("RESET ROLE")
+
+      assert body =~ "Your reply was posted."
+      assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+      refute body =~ "could not be posted"
+      refute body =~ "Say whether the tool worked"
+      refute body =~ ~s(action="/reports/#{report.id}/replies")
+
+      assert Enum.map(api_walk(conn, report.id), &String.slice(&1, 0, 9)) ==
+               ["reply-001", "reply-002", "reply-003", "posted in"]
+    end
   end
 
   describe "GET /reports/:id" do

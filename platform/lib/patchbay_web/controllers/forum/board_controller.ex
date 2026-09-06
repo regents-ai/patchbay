@@ -183,18 +183,41 @@ defmodule PatchbayWeb.Forum.BoardController do
   The page is the only way a person can reply, and a person replies under their
   own name, so a visitor who is not signed in is told so on the page rather than
   being sent anywhere. Whatever they typed is still on screen when they are, on
-  the page of replies they were reading. A posted reply is the newest on its
-  thread, so the person is taken to the page that ends on it.
+  the page of replies they were reading; if that page can no longer be shown,
+  it is still on screen on the page that says so. A posted reply is the newest
+  on its thread, so the person is taken to the page that ends on it; if that
+  page cannot be found once the reply is saved, the page says the reply was
+  posted and leads back to the report. The reply is never posted twice.
   """
   def create_reply(conn, %{"id" => id} = params) do
     reply = Map.get(params, "reply", %{})
+    # Read before the write, so nothing the page needs is read after it.
+    report = fetch_report!(id)
 
-    case add_reply(conn, id, reply) do
+    case add_reply(conn, report.id, reply) do
       {:ok, posted} ->
-        redirect(conn, to: replies_path(id, Board.page_ending_at(posted)))
+        landing(conn, report, posted)
 
       {:error, said} ->
         show_report(conn, id, params, reply_problem: %{said: said, draft: reply})
+    end
+  end
+
+  defp landing(conn, report, posted) do
+    case Board.page_ending_at(posted) do
+      {:ok, cursor} ->
+        redirect(conn, to: replies_path(report.id, cursor))
+
+      {:error, failure} ->
+        Logger.warning("Reply posted but its page was not read: #{inspect(error_type(failure))}")
+
+        render(conn, :report_error,
+          page_title: "Reply posted",
+          report: report,
+          problem: :posted_unread,
+          cursor: nil,
+          reply_problem: nil
+        )
     end
   end
 
@@ -240,6 +263,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # A missing report is not on the board; a bad continuation and a reply read
   # that fails are each said for what they are, never shown as an empty thread.
+  # A reply refused on the way to either page stays on screen there, on a form
+  # that carries the page only while that page can still be shown.
   defp show_report(conn, id, params, problems) do
     report = fetch_report!(id)
 
@@ -263,22 +288,28 @@ defmodule PatchbayWeb.Forum.BoardController do
         |> render(:report_error,
           page_title: "Replies unavailable",
           report: report,
-          invalid_cursor?: true
+          problem: :invalid_cursor,
+          cursor: nil,
+          reply_problem: Keyword.get(problems, :reply_problem)
         )
 
       {:error, failure} ->
-        error_type = if is_struct(failure), do: failure.__struct__, else: :unknown
-        Logger.warning("Report replies unavailable: #{inspect(error_type)}")
+        Logger.warning("Report replies unavailable: #{inspect(error_type(failure))}")
 
         conn
         |> put_status(:service_unavailable)
         |> render(:report_error,
           page_title: "Replies unavailable",
           report: report,
-          invalid_cursor?: false
+          problem: :unavailable,
+          cursor: params["after"],
+          reply_problem: Keyword.get(problems, :reply_problem)
         )
     end
   end
+
+  defp error_type(failure) when is_struct(failure), do: failure.__struct__
+  defp error_type(failure), do: failure
 
   defp fetch_report!(id) do
     case Board.fetch_report(id) do

@@ -458,30 +458,38 @@ defmodule PatchbayWeb.Forum.Board do
   it, so it is on screen with what came before it. A reply is the newest on
   its thread when it is posted, so this is the opening page only while the
   thread is short.
+
+  The reply is already saved by the time this is asked, so a read that fails
+  here, or that cannot find the reply, is an error about the landing page
+  only, never about the post.
   """
-  @spec page_ending_at(Reply.t()) :: String.t() | nil
+  @spec page_ending_at(Reply.t()) :: {:ok, String.t() | nil} | {:error, term()}
   def page_ending_at(%Reply{} = reply) do
-    %{results: [placed]} =
-      Forum.list_replies_for_report!(reply.report_id,
-        query: [filter: [id: reply.id]],
-        page: [limit: 1]
-      )
-
-    %{results: earlier} =
-      Forum.list_replies_for_report!(reply.report_id,
-        page: [before: placed.__metadata__.keyset, limit: @replies_per_page]
-      )
-
-    # A page holds @replies_per_page replies after its continuation, so the
-    # page that ends on this reply starts just past the reply that many back.
-    case earlier do
-      [anchor | _rest] when length(earlier) == @replies_per_page ->
-        ReplyCursor.sign(reply.report_id, anchor.__metadata__.keyset)
-
-      _fewer ->
-        nil
+    with {:ok, %{results: placed}} <-
+           Forum.list_replies_for_report(reply.report_id,
+             query: [filter: [id: reply.id]],
+             page: [limit: 1]
+           ),
+         {:ok, %{__metadata__: %{keyset: keyset}}} <- placed_reply(placed),
+         {:ok, %{results: earlier}} <-
+           Forum.list_replies_for_report(reply.report_id,
+             page: [before: keyset, limit: @replies_per_page]
+           ) do
+      {:ok, page_start(reply.report_id, earlier)}
     end
   end
+
+  defp placed_reply([placed]), do: {:ok, placed}
+  defp placed_reply(_missing), do: {:error, :reply_not_read}
+
+  # A page holds @replies_per_page replies after its continuation, so the
+  # page that ends on a reply starts just past the reply that many back.
+  defp page_start(report_id, [anchor | _rest] = earlier)
+       when length(earlier) == @replies_per_page do
+    ReplyCursor.sign(report_id, anchor.__metadata__.keyset)
+  end
+
+  defp page_start(_report_id, _fewer), do: nil
 
   # Anyone can reply to a report, so a report listed among many others shows
   # only its opening replies and links on for the rest.

@@ -1,5 +1,7 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-report">
-  <.board_header title="Replies unavailable">
+  <.board_header title={
+    if @problem == :posted_unread, do: "Reply posted", else: "Replies unavailable"
+  }>
     <:crumbs>
       <a href={~p"/sites"}>ALL SITES</a>
       / <a href={site_path(@report.tool.site)}>{site_name(@report.tool.site)}</a>
@@ -10,16 +12,31 @@
       / <a href={~p"/reports/#{@report.id}"}>{post_title(@report)}</a>
     </:crumbs>
   </.board_header>
-  <Regent.Primitives.notice role="alert">
-    <p>
-      {if @invalid_cursor?,
-        do: "This reply link has expired or is invalid.",
-        else: "The replies to this report could not be loaded right now."}
+  <Regent.Primitives.notice role={if @problem == :posted_unread, do: "status", else: "alert"}>
+    <p :if={@problem == :invalid_cursor}>This reply link has expired or is invalid.</p>
+    <p :if={@problem == :unavailable}>
+      The replies to this report could not be loaded right now.
+    </p>
+    <p :if={@problem == :posted_unread}>
+      Your reply was posted. The replies to this report could not be shown right now.
     </p>
     <a
-      :if={not @invalid_cursor?}
-      href={@conn.request_path <> if(@conn.query_string == "", do: "", else: "?" <> @conn.query_string)}
-    >Retry</a>
-    <a href={~p"/reports/#{@report.id}" <> "#patchbay-replies"}>Back to first replies</a>
+      :if={@problem == :unavailable and @cursor}
+      href={~p"/reports/#{@report.id}?after=#{@cursor}"}
+    >
+      Retry
+    </a>
+    <a :if={@problem == :unavailable and is_nil(@cursor)} href={~p"/reports/#{@report.id}"}>Retry</a>
+    <a href={~p"/reports/#{@report.id}" <> "#patchbay-replies"}>
+      {if @problem == :posted_unread, do: "Open the report", else: "Back to first replies"}
+    </a>
   </Regent.Primitives.notice>
+  <section :if={@reply_problem} class="patchbay-card patchbay-board-card" id="patchbay-replies">
+    <.human_reply_form
+      report={@report}
+      profile={@conn.assigns.current_profile}
+      problem={@reply_problem}
+      cursor={@cursor}
+    />
+  </section>
 </main>
