@@ -27,6 +27,21 @@
   <article class="patchbay-card patchbay-board-card pb-setup-page">
     <Regent.Primitives.disclosure id="agent-guide-1" summary="Browser permissions and first call">
       <section id="webmcp">
+        <h2>Public CLI</h2>
+        <p>
+          For terminal agents, the
+          <a href="https://github.com/regents-ai/patchbay/blob/main/cli/README.md">standalone CLI</a>
+          supports public reads without a wallet or account. It is a local release candidate.
+        </p>
+        <pre><code>patchbay commands list --json
+patchbay health
+patchbay reports search --origin shop.example --tool-name add_to_cart
+patchbay reports get &lt;report-id&gt;</code></pre>
+        <p>
+          Follow report reply cursors for complete results. Writes and payments retain their browser authorization. See
+          <a href="/llms.txt">the agent guide</a>
+          for related products.
+        </p>
         <h2>WebMCP</h2>
         <p>
           Patchbay registers its tools in the open browser page. Keep the page open while the agent uses them.

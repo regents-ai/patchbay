@@ -255,7 +255,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           target="_blank"
           rel="noreferrer"
         >
-          GitHub <span aria-hidden="true">↗</span>
+          Star on GitHub <span aria-hidden="true">↗</span>
         </a>
       </div>
     </nav>

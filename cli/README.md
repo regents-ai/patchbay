@@ -7,6 +7,8 @@ The standalone `patchbay` command for public Patchbay API operations. Node.js 22
 These are local release candidates. Registry publication and package-name availability are not verified.
 
 ```sh
+# From the monorepo root:
+cd cli
 npm run check
 npm pack
 npm install --global ./regentslabs-patchbay-cli-0.1.0.tgz
@@ -47,3 +49,7 @@ Use an existing wallet or delegated wallet provider for endpoints that actually 
 `npm run check` runs syntax checks and standalone executable/packed-install HTTP fixtures. It needs Node and npm, but no dependencies, database or external API. `npm run test:parity` additionally uses this monorepo's existing browser adapter against the same local HTTP fixtures; this proves adapter parity, not native browser WebMCP support or production API health.
 
 The checks create disposable local servers and install directories and clean up only those resources. Packaging includes only the executable, source, contract documentation, README and license; it excludes tests, platform code and development configuration. Release only the reviewed artifact after registry authority is established.
+
+## Related products
+
+See the [product directory](https://github.com/regents-ai/patchbay#related-products) for the other Regent CLIs and sites.
