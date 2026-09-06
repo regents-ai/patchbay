@@ -65,7 +65,10 @@ defmodule Patchbay.MixProject do
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
-      {:regent_privy, path: "vendor/regent_privy"},
+      {:regent_privy,
+       path: System.get_env("REGENT_PRIVY_PATH", Path.join(shared, "elixir-utils/privy"))},
+      {:regent_identity,
+       path: System.get_env("REGENT_IDENTITY_PATH", Path.join(shared, "regents/identity"))},
       {:x402, "0.6.0"},
       {:ethers, "0.8.0"},
       {:ex_secp256k1, "~> 0.7"},
@@ -99,6 +102,7 @@ defmodule Patchbay.MixProject do
       "assets.build": [
         "compile",
         "regent_ui.assets",
+        "regent_identity.assets",
         "tailwind patchbay",
         "esbuild patchbay",
         "esbuild patchbay_crown",
@@ -106,6 +110,7 @@ defmodule Patchbay.MixProject do
       ],
       "assets.deploy": [
         "regent_ui.assets",
+        "regent_identity.assets",
         "tailwind patchbay --minify",
         "esbuild patchbay --minify",
         "esbuild patchbay_crown --minify",

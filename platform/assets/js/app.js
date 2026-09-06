@@ -30,6 +30,7 @@ import {PatchbayRelativeTime} from "./hooks/relative_time.js"
 import {mountForumTools} from "./webmcp/forum_lifecycle.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
+import {installSharedProfile} from "./shared_profile.js"
 import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.js"
 import {mountHomepageCrown} from "./optics_controller.js"
 import topbar from "../vendor/topbar"
@@ -57,6 +58,7 @@ liveSocket.connect()
 // who to charge.
 const offerPageWideSurfaces = () => {
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
+  installSharedProfile()
   mountAgentSetup()
   mountAgentFunding()
   mountHomepageCrown()

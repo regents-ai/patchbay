@@ -1,6 +1,8 @@
 import {createElement, useEffect} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, useIdentityToken, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
+import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
 // page fetches only when somebody asks to sign in. Everything it does is driven
@@ -18,10 +20,23 @@ const REJECTED_BY_USER = 4001
 let mounted = null
 let current = null
 let settleLogin = null
+let identityGeneration = 0
+let linkNonce = null
+let mountedAppId = null
+const linkIntent = () => {
+  let storage = null
+  try { storage = window.sessionStorage } catch {}
+  return createXLinkIntent(storage, mountedAppId)
+}
 const waiters = new Set()
 
 function publish(state) {
+  const changed = current?.user?.id !== state.user?.id || current?.authenticated !== state.authenticated
   current = state
+  if (changed) {
+    identityGeneration += 1
+    window.dispatchEvent(new Event("regent:profile-identity"))
+  }
   for (const waiter of Array.from(waiters)) waiter(state)
 }
 
@@ -41,6 +56,21 @@ function Bridge() {
     onComplete: () => finishLogin({ok: true}),
     onError: code => finishLogin({ok: false, code}),
   })
+  const {linkTwitter} = useLinkAccount({
+    onSuccess: payload => {
+      const expectedSubject = linkIntent().claim(payload)
+      if (!expectedSubject) return
+      linkNonce = null
+      void profileFor(expectedSubject)("sync").then(result => {
+        window.dispatchEvent(new CustomEvent("regent:profile-link", {detail: {ok: result.ok}}))
+      })
+    },
+    onError: () => {
+      linkIntent().cancel(linkNonce)
+      linkNonce = null
+      window.dispatchEvent(new CustomEvent("regent:profile-link", {detail: {ok: false}}))
+    },
+  })
 
   useEffect(() => {
     publish({
@@ -51,6 +81,7 @@ function Bridge() {
       logout: privy.logout,
       identityToken,
       login,
+      linkTwitter,
       wallets,
       walletsReady,
     })
@@ -59,8 +90,44 @@ function Bridge() {
   return null
 }
 
+const profileFor = expectedSubject => createProfileClient({
+  async acquireProof({signal}) {
+    const state = await waitFor(one => one.ready && (!expectedSubject || one.user?.id === expectedSubject), 10_000)
+    signal.throwIfAborted()
+    if (!state.authenticated || !state.user?.id) return null
+    const generation = identityGeneration
+    const subject = state.user.id
+    const identityToken = await getIdentityToken()
+    const accessToken = await state.getAccessToken()
+    const isCurrent = () => current?.authenticated && current.user?.id === subject && identityGeneration === generation
+    return {accessToken, identityToken, subject, isCurrent}
+  },
+})
+
+// These capabilities return profile data, never credentials. Reading does not
+// open login or establish a product session.
+export function profile(appId, operation, input, options) {
+  start(appId)
+  return profileFor()(operation, input, options)
+}
+
+export async function linkProfileX(appId) {
+  start(appId)
+  const state = await waitFor(one => one.ready, READY_TIMEOUT_MS)
+  if (!state.authenticated) throw new Error("authentication_required")
+  if (!state.user?.id) throw new Error("authentication_required")
+  const nonce = linkIntent().begin(state.user.id)
+  linkNonce = nonce
+  try { await state.linkTwitter() }
+  catch (error) { linkIntent().cancel(nonce); throw error }
+}
+
 function start(appId) {
-  if (mounted) return
+  if (mounted) {
+    if (mountedAppId !== appId) throw new Error("privy_application_changed")
+    return
+  }
+  mountedAppId = appId
 
   const container = document.createElement("div")
   container.id = CONTAINER_ID

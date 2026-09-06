@@ -47,3 +47,7 @@ Use an existing wallet or delegated wallet provider for endpoints that actually 
 `npm run check` runs syntax checks and standalone executable/packed-install HTTP fixtures. It needs Node and npm, but no dependencies, database or external API. `npm run test:parity` additionally uses this monorepo's existing browser adapter against the same local HTTP fixtures; this proves adapter parity, not native browser WebMCP support or production API health.
 
 The checks create disposable local servers and install directories and clean up only those resources. Packaging includes only the executable, source, contract documentation, README and license; it excludes tests, platform code and development configuration. Release only the reviewed artifact after registry authority is established.
+
+## Shared personal profile
+
+Private `profile get`, `profile sync`, and `profile update` are available with paired Privy proof from an approved credential provider. See [the private profile contract](docs/private-profile.md). They use the same API as browser WebMCP and do not obtain a session or grant payment authority.

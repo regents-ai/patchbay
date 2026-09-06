@@ -7,6 +7,8 @@
 # General application configuration
 import Config
 
+config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
+
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],

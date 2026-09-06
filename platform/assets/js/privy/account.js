@@ -41,7 +41,7 @@ export function installAccountControl(options = {}) {
     button.disabled = true
 
     try {
-      await act(button.dataset.pbAccount, doc, options)
+      await requestAccountAction(button.dataset.pbAccount, doc, options)
     } finally {
       running = false
       button.disabled = false
@@ -49,7 +49,20 @@ export function installAccountControl(options = {}) {
   })
 }
 
-async function act(action, doc, options) {
+const accountAttempts = new WeakMap()
+
+export function requestAccountAction(action, doc, options = {}) {
+  const existing = accountAttempts.get(doc)
+  if (existing) return existing
+  const attempt = performAccountAction(action, doc, options)
+  accountAttempts.set(doc, attempt)
+  void attempt.finally(() => {
+    if (accountAttempts.get(doc) === attempt) accountAttempts.delete(doc)
+  }).catch(() => {})
+  return attempt
+}
+
+async function performAccountAction(action, doc, options = {}) {
   const appId = privyAppId(doc)
   const say = message => report(doc, message)
 

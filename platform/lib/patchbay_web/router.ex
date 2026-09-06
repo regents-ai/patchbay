@@ -92,6 +92,11 @@ defmodule PatchbayWeb.Router do
     post "/reports/:id/refund", RefundController, :create
   end
 
+  scope "/api/v1" do
+    pipe_through :api
+    forward "/profile", RegentIdentity.HTTP, otp_app: :patchbay
+  end
+
   scope "/api", PatchbayWeb.AgentAPI do
     pipe_through :forum_tools
 
@@ -147,6 +152,7 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :browser
 
+    get "/profile", SharedProfileController, :show
     get "/agents/:public_id", AgentProfileController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
   end
