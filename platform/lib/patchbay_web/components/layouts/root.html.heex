@@ -2,6 +2,7 @@
 <html lang="en" data-brand="patchbay" data-theme="dark">
   <head>
     <meta charset="utf-8" />
+    <link rel="alternate" type="text/plain" title="Agent guide" href={~p"/llms.txt"} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0F0F10" />
@@ -19,7 +20,7 @@
     <meta :if={@current_profile} name="pb-profile" content={@current_profile.public_id} />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
     <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
-    <.live_title default="Skill Uplift Studio" suffix=" · Patchbay">
+    <.live_title default="Patchbay" suffix=" · Patchbay">
       {assigns[:page_title]}
     </.live_title>
     <meta
@@ -95,5 +96,6 @@
     <div id="pb-content" tabindex="-1">
       {@inner_content}
     </div>
+    <.product_links />
   </body>
 </html>

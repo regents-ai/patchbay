@@ -18,17 +18,17 @@ or **Diagnose & propose repair** to produce the proposal, **Approve & hot-swap**
 to publish it. No browser tool approves or publishes anything on either path.
 
 Around that room is a public board about tools that browser agents call anywhere
-on the web, described under [The board](#the-board) below: ten tools an agent
+on the web, described under [The board](#the-board) below: tools an agent
 uses from the page, a version history for every tool's published description,
 and USDC on Base behind the reports that matter.
 
-Every visitor gets a room of their own. Opening the site, or the published
-link `/webmcp/rooms/skill-uplift`, creates a room seeded from the checked-in
-Skill and remembers it in the browser session, so two people trying the demo at
-once never share a Skill. **Reset demo** in the page restarts your own room.
+Unsigned visitors share a read-only preview of the demo. Sign in to create a personal
+room before following the repair walkthrough; reset and mutation actions require
+the owning profile. The shared preview is not a private workspace.
 
-WebMCP and future CLI adapters follow the shared
-[Regent WebMCP/CLI standard](../../../control/docs/programs/webmcp-cli-standard.md).
+The [standalone CLI](../cli/README.md) provides public reads. Browser adapters are
+documented in [local WebMCP setup](docs/LOCAL_WEBMCP.md); browser-only writes keep
+their server-side session, ownership and payment checks.
 Forum registrations roll back on failure and are renewed after page restoration.
 Forum calls honor explicit invocation cancellation; after dispatch, cancellation
 cannot prove whether a server write completed. Tool results preserve complete
@@ -42,12 +42,30 @@ Known intent IDs and their status URLs remain in cancellation results. An issued
 wallet prompt may remain open until the provider answers; cancellation does not
 dismiss it or reverse a payment.
 
+## Shared dependencies
+
+From a directory containing sibling product repositories, acquire the shared libraries:
+
+```sh
+git clone https://github.com/regents-ai/design-system.git
+git clone https://github.com/regents-ai/elixir-utils.git
+```
+
+The expected layout is `<workspace>/<product>/platform`,
+`<workspace>/design-system/regent_ui` and `<workspace>/elixir-utils/`.
+From this component directory, `REGENT_DEPS_ROOT` may point at `<workspace>` when
+it is elsewhere. Record both shared repository commit IDs with check results;
+release builds and isolated agent worktrees must use their selected immutable
+revisions, rather than updating sibling checkouts during verification.
+Do not clone recursive Solidity submodules for a web-only change.
+
 ## Quick start
 
 Requirements: Elixir/Erlang, PostgreSQL, and Node.js/npm. The application uses
 the versions accepted by `mix.exs` and stores local data in PostgreSQL.
 
-From a fresh local checkout and a fresh local `patchbay_dev` database:
+After acquiring the shared dependencies, run from `platform/` against a fresh local
+`patchbay_dev` database:
 
 ```sh
 mix setup
@@ -430,7 +448,7 @@ the loop off.
 
 Patchbay was built by Regents Labs for the OpenAI WebMCP Challenge. See
 [HACKATHON.md](HACKATHON.md) for the product story, [docs/JUDGES.md](docs/JUDGES.md)
-for the judge walkthrough, and [docs/DEPLOY.md](docs/DEPLOY.md) for hosting. The license is in [LICENSE](LICENSE) (MIT) and the vendored runtime notice is in
+for the judge walkthrough, and [docs/DEPLOY.md](docs/DEPLOY.md) for hosting. The license is in [LICENSE](../LICENSE) (MIT) and the vendored runtime notice is in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 

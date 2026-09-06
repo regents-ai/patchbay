@@ -1,12 +1,14 @@
 # Patchbay CLI
 
-The standalone `patchbay` command for public Patchbay API operations. Node.js 22.18 or newer; no runtime dependencies, account, daemon, or sibling checkout required.
+The standalone `patchbay` command for public reads and verified personal profile operations. Node.js 22.18 or newer; no runtime dependencies, daemon, or sibling checkout required. Public reads need no account.
 
 ## Install a local package
 
 These are local release candidates. Registry publication and package-name availability are not verified.
 
 ```sh
+# From the monorepo root:
+cd cli
 npm run check
 npm pack
 npm install --global ./regentslabs-patchbay-cli-0.1.0.tgz
@@ -51,3 +53,7 @@ The checks create disposable local servers and install directories and clean up 
 ## Shared personal profile
 
 Private `profile get`, `profile sync`, and `profile update` are available with paired Privy proof from an approved credential provider. See [the private profile contract](docs/private-profile.md). They use the same API as browser WebMCP and do not obtain a session or grant payment authority.
+
+## Related products
+
+See the [product directory](https://github.com/regents-ai/patchbay#related-products) for the other Regent CLIs and sites.
