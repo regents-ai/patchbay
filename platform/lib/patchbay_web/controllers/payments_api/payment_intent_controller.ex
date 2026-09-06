@@ -723,6 +723,9 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     end
   end
 
+  defp execute_url(%{payload: %{"author_origin" => "wallet"}} = found),
+    do: url(~p"/api/agent/payment_intents/#{found.id}/execute")
+
   defp execute_url(found), do: url(~p"/api/payment_intents/#{found.id}/execute")
 
   # Reading an intent
@@ -737,7 +740,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   # Ash filters out other payers' intents. Keep this ownership check as defense
   # in depth; denied reads reveal neither the record nor its existence.
   defp owned({:ok, found}, actor) do
-    if found.actor_profile_id == actor.id, do: {:ok, found}, else: {:error, :forbidden}
+    permitted_kind = actor.authentication_origin != :wallet or found.kind == :special_post
+
+    if found.actor_profile_id == actor.id and permitted_kind,
+      do: {:ok, found},
+      else: {:error, :not_found}
   end
 
   defp owned({:error, failure}, _actor), do: {:error, failure}

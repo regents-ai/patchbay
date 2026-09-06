@@ -24,29 +24,34 @@ defmodule Patchbay.Payments.Changes.FreezeSpecialPost do
   @not_set_up "Paid priority posts are not set up on this Patchbay."
 
   @impl true
-  def change(changeset, _opts, _context) do
+  def change(changeset, _opts, context) do
     with %Tool{} = tool <- Ash.Changeset.get_argument(changeset, :tool),
          %{} = draft <- Ash.Changeset.get_argument(changeset, :draft),
          amount_atomic when is_integer(amount_atomic) <-
            Ash.Changeset.get_attribute(changeset, :amount_atomic) do
-      freeze(changeset, tool, draft, amount_atomic, Escrow.contract_address())
+      freeze(changeset, tool, draft, amount_atomic, Escrow.contract_address(), context.actor)
     else
       _incomplete -> changeset
     end
   end
 
   # Terms with nowhere for the money to go are no terms at all.
-  defp freeze(changeset, _tool, _draft, _amount_atomic, nil) do
+  defp freeze(changeset, _tool, _draft, _amount_atomic, nil, _actor) do
     Ash.Changeset.add_error(changeset, InvalidChanges.exception(message: @not_set_up))
   end
 
-  defp freeze(changeset, tool, draft, amount_atomic, escrow_address) do
+  defp freeze(changeset, tool, draft, amount_atomic, escrow_address, actor) do
     # Both ids are minted here rather than read back off a row, because the
     # report does not exist yet and the intent's own default is not applied
     # until the insert itself.
     identifier = Ash.UUID.generate()
     report_id = Ash.UUID.generate()
     payload = payload(report_id, tool, draft, amount_atomic, escrow_address)
+
+    payload =
+      if actor.authentication_origin == :wallet,
+        do: Map.put(payload, "author_origin", "wallet"),
+        else: payload
 
     Ash.Changeset.force_change_attributes(changeset, %{
       id: identifier,

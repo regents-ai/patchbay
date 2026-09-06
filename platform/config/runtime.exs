@@ -1,5 +1,8 @@
 import Config
 
+# Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
+config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
+
 database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
 
 unless database_schema in ["public", "patchbay"] do

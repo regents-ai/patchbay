@@ -216,7 +216,12 @@ defmodule Patchbay.Payments.PaymentIntent do
   end
 
   policies do
-    policy action_type(:create) do
+    policy action(:prepare_agent_tip) do
+      forbid_if(expr(^actor(:authentication_origin) == :wallet))
+      authorize_if(actor_present())
+    end
+
+    policy action(:prepare_special_post) do
       authorize_if(actor_present())
     end
 

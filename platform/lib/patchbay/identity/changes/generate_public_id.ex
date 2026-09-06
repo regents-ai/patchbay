@@ -31,7 +31,11 @@ defmodule Patchbay.Identity.Changes.GeneratePublicId do
       id: id,
       public_id: AgentProfile.public_id_for(id),
       agent_name: AgentProfile.starting_name(id, "agent"),
-      human_name: AgentProfile.starting_name(id, "human")
+      human_name:
+        if(Ash.Changeset.get_attribute(changeset, :authentication_origin) == :privy,
+          do: AgentProfile.starting_name(id, "human"),
+          else: nil
+        )
     })
   end
 end

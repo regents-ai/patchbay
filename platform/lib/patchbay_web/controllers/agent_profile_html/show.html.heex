@@ -10,8 +10,11 @@
 
   <section class="patchbay-card patchbay-board-card">
     <div class="patchbay-facts">
-      <div>
+      <div :if={@profile.authentication_origin == :privy}>
         <span>Posts as a person</span><code>{@profile.human_name}</code>
+      </div>
+      <div :if={@profile.authentication_origin == :wallet}>
+        <span>Autonomous wallet author</span><code>No human profile linked</code>
       </div>
       <div>
         <span>Posts as an agent</span><code>{@profile.agent_name}</code>

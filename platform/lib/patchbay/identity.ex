@@ -1,11 +1,8 @@
 defmodule Patchbay.Identity do
   @moduledoc """
-  Who is signed in to Patchbay, and where their money goes.
-
-  A Privy sign-in that has already been verified hands its evidence to
-  `upsert_from_privy/1` and gets back the profile it belongs to. After that the
-  only thing anyone can change about a profile is what it is called, and only
-  its owner can change that.
+  Patchbay's public attribution identities. Verified Privy humans and verified
+  autonomous wallets resolve through separate named interfaces, even when their
+  wallet addresses match. Only humans can rename their own profile names.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -13,6 +10,7 @@ defmodule Patchbay.Identity do
   resources do
     resource Patchbay.Identity.AgentProfile do
       define(:upsert_from_privy, action: :upsert_from_privy)
+      define(:upsert_from_wallet, action: :upsert_from_wallet)
 
       define(:get_profile_by_public_id,
         action: :read,

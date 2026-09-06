@@ -44,7 +44,7 @@ defmodule Patchbay.Forum.Report do
     # The reporting session is an opaque identifier the browser sends. Nothing
     # verifies it, so it is an attribute rather than a relationship to a row we
     # own, and it must never be read as an identity.
-    attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
+    attribute(:browser_session_id, :uuid, allow_nil?: true, public?: true)
 
     # Whether Patchbay found this account in its own record of the call. Only a
     # report about Patchbay's own tools can ever be verified; every report about
@@ -266,6 +266,7 @@ defmodule Patchbay.Forum.Report do
 
     create :file_report do
       description("Files one agent's account of calling this tool.")
+      validate(present(:browser_session_id))
 
       accept([
         :tool_id,
@@ -327,6 +328,7 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
 
+      validate(Patchbay.Forum.Validations.PriorityAuthor)
       validate(present([:priority_amount_atomic, :payment_intent_id]))
       validate(compare(:priority_amount_atomic, greater_than: 0))
 

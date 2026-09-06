@@ -58,3 +58,5 @@ npm-debug.log
 /vendor/regent_privy_shared/
 /vendor/.regent-identity-history/
 /vendor/.regent-identity-stage-*/
+
+/vendor/siwa/

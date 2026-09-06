@@ -69,6 +69,12 @@ defmodule Patchbay.MixProject do
        path: System.get_env("REGENT_PRIVY_PATH", Path.join(shared, "elixir-utils/privy"))},
       {:regent_identity,
        path: System.get_env("REGENT_IDENTITY_PATH", Path.join(shared, "regents/identity"))},
+      {:siwa,
+       path:
+         System.get_env(
+           "REGENT_SIWA_PATH",
+           Path.join(shared, "elixir-utils/siwa/siwa-elixir/apps/siwa")
+         )},
       {:x402, "0.6.0"},
       {:ethers, "0.8.0"},
       {:ex_secp256k1, "~> 0.7"},

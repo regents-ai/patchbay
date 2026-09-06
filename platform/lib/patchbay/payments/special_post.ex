@@ -6,8 +6,8 @@ defmodule Patchbay.Payments.SpecialPost do
 
   The report comes from the frozen terms and nothing else: the id, the tool
   version, the draft and the amount are all read off the intent, and the payer
-  is the actor who paid. Only the browser session comes from the request that
-  settled it, because a report is filed under the session that posted it.
+  is the actor who paid. Human reports also retain the browser session from the settling request;
+  autonomous reports have no browser session and belong to their wallet author.
 
   The escrow credit is sent after the report is on the board. The money is
   already in the contract by then, so a credit that does not go through is
@@ -29,7 +29,7 @@ defmodule Patchbay.Payments.SpecialPost do
   """
   @spec publish(PaymentIntent.t(), PaymentReceipt.t(),
           actor: struct(),
-          browser_session_id: String.t()
+          browser_session_id: String.t() | nil
         ) ::
           {:ok, Report.t()} | {:error, term()}
   def publish(%PaymentIntent{kind: :special_post} = intent, %PaymentReceipt{} = receipt, opts) do

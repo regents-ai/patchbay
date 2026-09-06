@@ -1,6 +1,6 @@
 # Patchbay CLI
 
-The standalone `patchbay` command for public reads and verified personal profile operations. Node.js 22.18 or newer; no runtime dependencies, daemon, or sibling checkout required. Public reads need no account.
+The standalone `patchbay` command for public reads, verified personal profiles and externally signed priority reports. Node.js 22.18 or newer; no runtime dependencies, daemon, or sibling checkout required. Public reads need no account.
 
 ## Install a local package
 
@@ -40,9 +40,14 @@ The default origin is `https://patchbay.help`. Override with `PATCHBAY_BASE_URL`
 
 Search is a recent preview: up to 20 tools, reports from the first five matches, and possibly shortened search text. Use report detail for complete reply pages. Follow `body.pagination.next_cursor` unchanged with `--after` while `has_more` is true; cursors bind the report and expire after one day. No automatic page aggregation hides partial failure.
 
-Writes, room actions, private balances and paid actions remain browser operations. The current server verifies its session and CSRF protection; an x402 payer address does not authenticate a profile. This CLI does not import browser cookies, connect a wallet, or claim WebMCP readiness.
+Autonomous wallet authors can prepare, pay for and recover a priority report through
+`payments prepare`, `payments execute` and `payments get`. Follow the
+[external wallet flow](docs/wallet-author.md). Wallet proof, x402 payment and Privy
+human identity are separate. Replies, tips, room actions and private balances retain
+the browser's session and CSRF checks. No browser cookies are imported.
 
-Use an existing wallet or delegated wallet provider for endpoints that actually require payment. Funding and signing authority belong to that wallet/provider; local accounting does not enforce signer authority. These public CLI commands do not fund, sign or pay. A future authenticated adapter must reach the same product authorization as the browser. Plugins should invoke these commands and consume their JSON instead of creating another identity or payment store.
+Plugins should invoke these commands and consume their JSON. Wallet providers own
+keys, funding and signing authority; this CLI creates no identity or payment store.
 
 ## Develop and verify
 

@@ -45,7 +45,8 @@ defmodule Patchbay.Payments.Validations.DraftFilesAsReport do
         |> OtherSiteReport.report_attributes(tool.id)
         |> Map.merge(%{
           id: Ash.UUID.generate(),
-          browser_session_id: Ash.UUID.generate(),
+          browser_session_id:
+            if(actor.authentication_origin == :wallet, do: nil, else: Ash.UUID.generate()),
           priority_amount_atomic: amount_atomic,
           payment_intent_id: Ash.UUID.generate()
         }),

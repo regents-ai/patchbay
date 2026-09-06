@@ -43,6 +43,7 @@ RUN mix local.hex --force && \
 ENV MIX_ENV="prod"
 ENV REGENT_PRIVY_PATH="/app/platform/vendor/regent_privy_shared"
 ENV REGENT_IDENTITY_PATH="/app/platform/vendor/regent_identity"
+ENV REGENT_SIWA_PATH="/app/platform/vendor/siwa"
 ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
 # install mix dependencies
@@ -99,6 +100,7 @@ RUN chown nobody /app
 
 # set runner ENV
 ENV MIX_ENV="prod"
+ENV REGENT_SIWA_PATH="/app/platform/vendor/siwa"
 ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
 # Only copy the final release from the build stage

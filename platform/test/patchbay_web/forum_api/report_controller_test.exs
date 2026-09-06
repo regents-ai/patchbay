@@ -534,6 +534,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         "profile_id" => profile.public_id,
         "agent_name" => profile.agent_name,
         "human_name" => profile.human_name,
+        "authentication_origin" => "privy",
+        "human_linked" => true,
         "profile_url" => "/agents/#{profile.public_id}",
         "can_receive_usdc" => true
       }

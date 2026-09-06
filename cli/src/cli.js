@@ -1,3 +1,4 @@
+import {requestWallet} from "./wallet.js";
 import {requestProfile, ProfileInputError} from "./profile.js";
 import {parseArgs} from "node:util";
 
@@ -117,9 +118,10 @@ export async function run({product, version, defaultOrigin, commands, notes, arg
     const timeoutMs = values["timeout-ms"] === undefined ? 30000 : Number(values["timeout-ms"]);
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000) throw new UsageError("--timeout-ms must be an integer from 1 to 300000.");
     const privateProfile = command.authority === "privy-proof-pair";
-    const base = origin(values["base-url"] ?? (privateProfile ? defaultOrigin : process.env[`${product.toUpperCase()}_BASE_URL`] ?? defaultOrigin));
+    const wallet = command.authority === "wallet-proof";
+    const base = origin(values["base-url"] ?? ((privateProfile || wallet) ? defaultOrigin : process.env[`${product.toUpperCase()}_BASE_URL`] ?? defaultOrigin));
     const target = command.request(positionals, values);
-    const result = privateProfile ? await requestProfile(base, target, timeoutMs) : await request(base, target, timeoutMs);
+    const result = wallet ? await requestWallet(base, target, timeoutMs) : privateProfile ? await requestProfile(base, target, timeoutMs) : await request(base, target, timeoutMs);
     if (!result.ok) process.exitCode = result.error?.code === "aborted" ? 130 : 1;
     return result;
   } catch (error) {

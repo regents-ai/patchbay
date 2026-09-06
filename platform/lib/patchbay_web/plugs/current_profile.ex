@@ -30,7 +30,8 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   @spec signed_in_profile(map()) :: Patchbay.Identity.AgentProfile.t() | nil
   def signed_in_profile(%{@session_key => id}) when is_binary(id) do
     case Identity.get_profile(id) do
-      {:ok, profile} -> profile
+      {:ok, %{authentication_origin: :privy} = profile} -> profile
+      {:ok, _wallet_author} -> nil
       {:error, _gone} -> nil
     end
   end

@@ -17,6 +17,17 @@ defmodule PatchbayWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :wallet_author do
+    plug PatchbayWeb.Plugs.WalletAuthor
+  end
+
+  scope "/api/agent", PatchbayWeb.PaymentsAPI do
+    pipe_through [:api, :wallet_author]
+    post "/payment_intents", PaymentIntentController, :create
+    post "/payment_intents/:id/execute", PaymentIntentController, :execute
+    get "/payment_intents/:id", PaymentIntentController, :show
+  end
+
   # Signing in and out. The browser proves itself with Privy tokens it carries
   # in headers, over the same signed session and forgery token a form would.
   pipeline :privy_session do

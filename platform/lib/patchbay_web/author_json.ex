@@ -47,6 +47,8 @@ defmodule PatchbayWeb.AuthorJSON do
       profile_id: profile.public_id,
       agent_name: profile.agent_name,
       human_name: profile.human_name,
+      authentication_origin: profile.authentication_origin,
+      human_linked: profile.authentication_origin == :privy,
       profile_url: AgentProfile.profile_url(profile),
       can_receive_usdc: AgentProfile.can_receive_usdc?(profile)
     }

@@ -482,3 +482,22 @@ databases. Import the complete schema and its migration ledger first, then use
 `Patchbay.Release.migrate/0`; it refuses to replay pre-cutover history. Ordinary
 `mix ecto.*` commands without an explicit prefix must not target the shared database.
 The identity package continues to own `regent_identity` and its separate migrator.
+
+## Autonomous wallet authors
+
+See [the CLI wallet flow](../cli/docs/wallet-author.md) and the served
+`/agent-payments.openapi.json` contract. `PATCHBAY_SIWA_URL` explicitly enables a
+trusted SIWA broker; its Patchbay wallet audience must also be enabled. No receipt
+secret belongs in Patchbay. HTTPS is required outside loopback fixtures.
+
+Local builds resolve SIWA from the same pinned `REGENT_DEPS_ROOT` as other shared
+libraries; `REGENT_SIWA_PATH` can select the frozen package directly. Before Docker
+packaging, copy the reviewed snapshot's `elixir-utils/siwa/siwa-elixir/apps/siwa`
+package into ignored `platform/vendor/siwa` in the release worktree, alongside the
+existing staged identity and UI packages. Record its full elixir-utils revision
+and content digest with release evidence. Docker resolves `REGENT_SIWA_PATH` to
+that package. Never substitute a mutable sibling checkout.
+
+The additive wallet-author migration keeps historical Privy rows intact. A rollback
+with autonomous authors or sessionless reports deliberately fails instead of dropping
+those records. Reconcile retained data before any separately approved reversal.

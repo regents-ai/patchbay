@@ -19,7 +19,7 @@ defmodule PatchbayWeb do
 
   def static_paths,
     do:
-      ~w(assets fonts images apple-touch-icon.png favicon-32.png favicon-192.png favicon.svg robots.txt llms.txt)
+      ~w(assets fonts images apple-touch-icon.png favicon-32.png favicon-192.png favicon.svg robots.txt llms.txt agent-payments.openapi.json)
 
   def router do
     quote do

@@ -1,23 +1,10 @@
 defmodule Patchbay.Identity.AgentProfile do
   @moduledoc """
-  Who someone is on Patchbay, and the address a tip for them settles to.
+  Public attribution for a verified Privy human or an autonomous Base wallet.
 
-  One sign-in is one profile with two names on it: the name the person posts
-  under and the name their agent posts under. Both are chosen by whoever owns
-  the profile, both start as placeholders minted from the row's own key, and
-  neither may be a name any other profile already holds, in either half. Which
-  of the two a piece of writing is shown under is decided by how it was
-  written, never by what the writer claims.
-
-  A profile exists only because Privy proved the sign-in behind it, so the
-  Privy user is the identity and the wallet address follows it: it is re-read
-  from Privy on every sign-in rather than kept as something a visitor could
-  edit. The public id a profile is addressed by is minted from its own key and
-  never changes, which is why money is sent to that and never to a name.
-
-  This is not the forum's `browser_session_id`, which is a cookie a browser
-  chose to keep and is never an identity. A profile is the one thing on
-  Patchbay that a stranger's money can be sent to.
+  These are distinct profiles even when they share a wallet address. Wallet
+  authors have no Privy subject or human name and cannot edit human settings.
+  Public identifiers are permanent; payment terms freeze the recipient address.
   """
 
   use Ash.Resource,
@@ -45,6 +32,14 @@ defmodule Patchbay.Identity.AgentProfile do
   postgres do
     table("agent_profiles")
     repo(Patchbay.Repo)
+    identity_wheres_to_sql(unique_wallet_author: "authentication_origin = 'wallet'")
+
+    check_constraints do
+      check_constraint(:authentication_origin, "agent_profiles_authentication_shape",
+        check:
+          "(authentication_origin = 'privy' AND privy_user_id IS NOT NULL AND human_name IS NOT NULL AND wallet_chain_id IS NULL) OR (authentication_origin = 'wallet' AND privy_user_id IS NULL AND human_name IS NULL AND wallet_chain_id IS NOT NULL AND wallet_chain_id = 8453)"
+      )
+    end
   end
 
   attributes do
@@ -57,14 +52,14 @@ defmodule Patchbay.Identity.AgentProfile do
     end
 
     attribute :privy_user_id, :string do
-      description("Privy's own subject for the signed-in user.")
-      allow_nil?(false)
+      description("Privy's own subject for a verified human; absent for autonomous wallets.")
+      allow_nil?(true)
       public?(false)
     end
 
     attribute :human_name, :string do
-      description("The name the person behind this profile posts under.")
-      allow_nil?(false)
+      description("The linked human's name; absent for autonomous wallets.")
+      allow_nil?(true)
       public?(true)
       constraints(match: @name_pattern, min_length: @name_min, max_length: @name_max)
     end
@@ -75,6 +70,15 @@ defmodule Patchbay.Identity.AgentProfile do
       public?(true)
       constraints(match: @name_pattern, min_length: @name_min, max_length: @name_max)
     end
+
+    attribute :authentication_origin, :atom do
+      constraints(one_of: [:privy, :wallet])
+      allow_nil?(false)
+      public?(true)
+      default(:privy)
+    end
+
+    attribute(:wallet_chain_id, :integer, public?: true)
 
     attribute(:profile_type, ProfileType, allow_nil?: false, public?: true, default: :agent)
 
@@ -112,6 +116,10 @@ defmodule Patchbay.Identity.AgentProfile do
   end
 
   identities do
+    identity(:unique_wallet_author, [:wallet_chain_id, :wallet_address],
+      where: expr(authentication_origin == :wallet)
+    )
+
     identity(:unique_public_id, [:public_id])
     identity(:unique_privy_user_id, [:privy_user_id], eager_check?: true)
     identity(:unique_human_name, [:human_name], eager_check?: true)
@@ -132,11 +140,25 @@ defmodule Patchbay.Identity.AgentProfile do
       """)
 
       accept([:privy_user_id, :wallet_address])
+      validate(present(:privy_user_id))
+      change(set_attribute(:authentication_origin, :privy))
+      change(set_attribute(:wallet_chain_id, nil))
 
       upsert?(true)
       upsert_identity(:unique_privy_user_id)
       upsert_fields([:wallet_address, :updated_at])
 
+      change(Patchbay.Identity.Changes.GeneratePublicId)
+    end
+
+    create :upsert_from_wallet do
+      description("Resolves an autonomous author from trusted SIWA wallet verification.")
+      accept([:wallet_address])
+      change(set_attribute(:authentication_origin, :wallet))
+      change(set_attribute(:wallet_chain_id, 8453))
+      upsert?(true)
+      upsert_identity(:unique_wallet_author)
+      upsert_fields([])
       change(Patchbay.Identity.Changes.GeneratePublicId)
     end
 
@@ -160,19 +182,19 @@ defmodule Patchbay.Identity.AgentProfile do
   policies do
     # Profiles are public: the board, the tools and the payment target all read
     # them without an actor. Writing one is not something a request can ask for
-    # in its own words — only a verified Privy sign-in reaches the one write.
+    # in its own words: trusted Privy or SIWA verification selects the interface.
     policy action_type(:read) do
       authorize_if(always())
     end
 
-    policy action(:upsert_from_privy) do
+    policy action([:upsert_from_privy, :upsert_from_wallet]) do
       authorize_if(always())
     end
 
     # A name is the one thing about a profile its owner may change, and only
     # its owner may change it.
     policy action([:rename_human, :rename_agent]) do
-      authorize_if(expr(id == ^actor(:id)))
+      authorize_if(expr(id == ^actor(:id) and authentication_origin == :privy))
     end
   end
 

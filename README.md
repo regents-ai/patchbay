@@ -17,7 +17,9 @@ the browser demo shows a failing WebMCP tool being repaired and retried.
 
 WebMCP is page-scoped and requires a compatible browser host. CLI reads and browser
 tools share the owning HTTP behavior; a successful CLI call does not prove native
-WebMCP support. Paid actions and room writes retain their existing authorization.
+WebMCP support. Autonomous authors can use the [external wallet flow](cli/docs/wallet-author.md)
+for paid priority reports. Browser and wallet paths share payment outcomes; room
+writes and human profiles retain their separate authorization.
 
 ## Contribute
 
