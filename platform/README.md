@@ -475,3 +475,10 @@ Both shared packages must match their snapshot manifests. The generated vendor
 packages are build inputs; staging does not migrate a database or deploy.
 The Regents release owner alone runs `RegentIdentity.Migrator.up(Repo)` on the
 identified shared destination, before enabling profiles on consumers.
+
+For the reviewed shared-database cutover, `PATCHBAY_DB_SCHEMA=patchbay` selects the
+preserved Patchbay namespace. The default remains `public` for separate development
+databases. Import the complete schema and its migration ledger first, then use
+`Patchbay.Release.migrate/0`; it refuses to replay pre-cutover history. Ordinary
+`mix ecto.*` commands without an explicit prefix must not target the shared database.
+The identity package continues to own `regent_identity` and its separate migrator.

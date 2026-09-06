@@ -1,5 +1,15 @@
 import Config
 
+database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
+
+unless database_schema in ["public", "patchbay"] do
+  raise "PATCHBAY_DB_SCHEMA must be public or patchbay"
+end
+
+config :patchbay, Patchbay.Repo,
+  default_prefix: database_schema,
+  migration_default_prefix: database_schema
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
