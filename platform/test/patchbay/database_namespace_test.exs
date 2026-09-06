@@ -145,6 +145,26 @@ defmodule Patchbay.DatabaseNamespaceTest do
              Repo.query!("SELECT version FROM patchbay.schema_migrations ORDER BY version").rows
   end
 
+  test "deployment health follows the selected ledger rather than public history" do
+    cache_key = {PatchbayWeb.HealthController, :migrations_status}
+    :persistent_term.erase(cache_key)
+    on_exit(fn -> :persistent_term.erase(cache_key) end)
+
+    Repo.query!("DELETE FROM public.schema_migrations")
+
+    healthy = PatchbayWeb.HealthController.show(Phoenix.ConnTest.build_conn(), %{})
+    assert healthy.status == 200
+    assert Jason.decode!(healthy.resp_body)["migrations"] == "current"
+
+    :persistent_term.erase(cache_key)
+    Repo.query!("INSERT INTO public.schema_migrations SELECT * FROM patchbay.schema_migrations")
+    Repo.query!("DELETE FROM patchbay.schema_migrations")
+
+    pending = PatchbayWeb.HealthController.show(Phoenix.ConnTest.build_conn(), %{})
+    assert pending.status == 503
+    assert Jason.decode!(pending.resp_body)["migrations"] == "pending"
+  end
+
   test "rollback cannot enter the imported public-qualified history" do
     assert_raise RuntimeError, ~r/Cannot roll back imported history/, fn ->
       Release.rollback(Repo, 0)

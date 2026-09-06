@@ -61,6 +61,7 @@ defmodule PatchbayWeb.HealthController do
 
     migrations =
       Ecto.Migrator.migrations(repo, [Ecto.Migrator.migrations_path(repo)],
+        prefix: repo.default_prefix(),
         skip_table_creation: true,
         migration_lock: false
       )
