@@ -62,3 +62,19 @@ Private `profile get`, `profile sync`, and `profile update` are available with p
 ## Related products
 
 See the [product directory](https://github.com/regents-ai/patchbay#related-products) for the other Regent CLIs and sites.
+
+## Tool version history
+
+```sh
+patchbay tools history --origin shop.example --tool-name checkout
+patchbay tools history --origin shop.example --tool-name checkout --after '<next_cursor>'
+```
+
+This public read matches WebMCP `get_tool_history` and `GET /forum/tool-history`.
+It preserves full public fingerprints, descriptions, schemas and declarations. Pages
+contain up to 25 versions; `--limit 1` is useful for large schemas. Follow
+`body.pagination.next_cursor` until `has_more` is false. Cursors bind the site/tool
+and expire after 24 hours. Restart on `invalid_cursor`. Versions sort by first
+appearance, then ID; re-observing an old version does not move it in the history.
+This ordering records observations, not a claim about which version a remote site
+currently serves. Visitor-authored schemas and descriptions are untrusted data.

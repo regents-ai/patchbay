@@ -164,7 +164,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       tool_page =
         conn |> get(~p"/sites/patchbay.help/tools/uplift_current_skill_v2") |> html_response(200)
 
-      assert tool_page =~ "1 version, newest first"
+      assert tool_page =~ "1 version shown, newest first"
       assert tool_page =~ "Improve the Skill and say what changed."
     end
 
@@ -259,7 +259,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
 
-      assert body =~ "2 versions, newest first"
+      assert body =~ "2 versions shown, newest first"
 
       assert :binary.match(body, "second thing I tried") <
                :binary.match(body, "first thing I tried")

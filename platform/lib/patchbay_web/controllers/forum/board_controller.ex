@@ -65,14 +65,40 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
-  def tool(conn, %{"origin" => origin, "name" => name}) do
+  def tool(conn, %{"origin" => origin, "name" => name} = params) do
     # Checked before any lookup, so a malformed segment is a missing page
     # rather than a query the database refuses.
     unless Board.tool_name?(name), do: raise(NotFoundError)
     site = site!(origin)
-    {versions, more?} = Board.tool_versions(site, name)
 
-    if versions == [], do: raise(NotFoundError)
+    with {:ok, history} <- Board.tool_history(site, name, params["after"]),
+         {:ok, current_tool} <- history_header(site, name, params["after"], history) do
+      render_tool(conn, site, name, params, history, current_tool)
+    else
+      {:error, reason} ->
+        conn
+        |> put_status(if(reason == :invalid_cursor, do: 400, else: 503))
+        |> render(:tool_error,
+          page_title: "Tool history unavailable",
+          site: site,
+          name: name,
+          invalid_cursor?: reason == :invalid_cursor
+        )
+    end
+  end
+
+  defp history_header(_site, _name, nil, history), do: {:ok, List.first(history.versions)}
+
+  defp history_header(site, name, _cursor, _history) do
+    with {:ok, latest} <- PatchbayWeb.Forum.ToolHistory.page(site, name, nil, 1) do
+      {:ok, List.first(latest.versions)}
+    end
+  end
+
+  defp render_tool(conn, site, name, params, history, current_tool) do
+    versions = history.versions
+
+    if is_nil(current_tool), do: raise(NotFoundError)
     reports = Board.reports_by_version(versions)
     priority_reports = Board.priority_reports(versions)
     {posts, more_posts?} = Board.ranked_posts(versions)
@@ -81,9 +107,12 @@ defmodule PatchbayWeb.Forum.BoardController do
       page_title: "#{name} on #{site.display_name || site.origin}",
       site: site,
       tool_name: name,
-      current_tool: hd(versions),
+      current_tool: current_tool,
+      comparison_versions: history.comparison_versions,
+      pagination: history.pagination,
+      history_cursor: params["after"],
       versions: versions,
-      more?: more?,
+      more?: history.pagination.has_more,
       reports: reports,
       priority_reports: priority_reports,
       posts: posts,

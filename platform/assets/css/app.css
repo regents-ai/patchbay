@@ -2297,3 +2297,6 @@ body:has(#patchbay-sites) {
   gap: 0.75rem;
   padding-top: 0.75rem;
 }
+
+/* Complete public schemas stay contained on narrow tool pages. */
+.pb-complete-schema { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }

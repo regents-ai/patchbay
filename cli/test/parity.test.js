@@ -11,6 +11,7 @@ test("public CLI reads match existing browser tools, including complete cursor p
   const tools = buildForumTools({fetch: (path, options) => fetch(new URL(path, api.origin), options)});
   const cursor = "SFMyNTY.cursor/bytes+資料==";
   const cases = [
+    {tool: "get_tool_history", input: {origin: "shop.example", tool_name: "checkout", after: cursor, limit: 1}, args: ["tools", "history", "--origin", "shop.example", "--tool-name", "checkout", "--after", cursor, "--limit", "1"], field: "history", body: {origin: "shop.example", tool_name: "checkout", versions: [{id: "v1", contract_sha256: "a".repeat(64), input_schema: {description: "資料🌳".repeat(5000)}}], pagination: {has_more: true, next_cursor: cursor}}},
     {tool: "search_reports", input: {origin: "shop.example", tool_name: "add_to_cart"}, args: ["reports", "search", "--origin", "shop.example", "--tool-name", "add_to_cart"], field: "results", body: {tools: [], reports: [], priority_reports: []}},
     {tool: "get_report_thread", input: {report_id: "report-id"}, args: ["reports", "get", "report-id"], field: "thread", body: {report: {id: "report-id", quoted_note: "證據🌳".repeat(150)}, replies: [{id: "one", quoted_note: "whole reply", author: null}], pagination: {has_more: true, next_cursor: cursor}}},
     {tool: "get_report_thread", input: {report_id: "report-id", after: cursor}, args: ["reports", "get", "report-id", "--after", cursor], field: "thread", body: {report: {id: "report-id"}, replies: [{id: "two", quoted_note: "final reply"}], pagination: {has_more: false, next_cursor: null}}},

@@ -1,13 +1,11 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-tool">
   <.board_header title={tool_name(@current_tool)}>
     <:crumbs>
-      <a href={~p"/sites"}>ALL SITES</a>
-      /
-      <a href={site_path(@site)}>{site_name(@site)}</a>
+      <a href={~p"/sites"}>ALL SITES</a> / <a href={site_path(@site)}>{site_name(@site)}</a>
     </:crumbs>
     <:meta>
       <span class="patchbay-generation">
-        {count_label(length(@versions), "version", "versions")}, newest first
+        {count_label(length(@versions), "version", "versions")} shown, newest first
       </span>
     </:meta>
   </.board_header>
@@ -30,51 +28,43 @@
     </div>
   </section>
 
-  <section
-    :if={@current_tool.input_schema || @current_tool.output_schema}
-    class="patchbay-card patchbay-board-card"
+  <Regent.Primitives.disclosure
+    :if={
+      @current_tool.input_schema || @current_tool.output_schema || @current_tool.raw_definition
+    }
+    id="tool-schemas"
+    summary="Schemas and declaration"
   >
-    <p class="patchbay-kicker">SCHEMAS</p>
     <div :if={@current_tool.input_schema} class="patchbay-result-box">
-      <p class="patchbay-kicker">INPUT</p>
-      <.bounded_text value={@current_tool.input_schema} />
+      <p class="patchbay-kicker">INPUT</p><pre class="pb-complete-schema">{Jason.encode!(@current_tool.input_schema, pretty: true)}</pre>
     </div>
     <div :if={@current_tool.output_schema} class="patchbay-result-box">
-      <p class="patchbay-kicker">OUTPUT</p>
-      <.bounded_text value={@current_tool.output_schema} />
+      <p class="patchbay-kicker">OUTPUT</p><pre class="pb-complete-schema">{Jason.encode!(@current_tool.output_schema, pretty: true)}</pre>
     </div>
-  </section>
-
-  <details :if={@current_tool.raw_definition} class="pb-help">
-    <summary>Raw declaration</summary>
-    <div class="pb-help-body">
-      <.bounded_text value={@current_tool.raw_definition} />
+    <div :if={@current_tool.raw_definition} class="patchbay-result-box">
+      <p class="patchbay-kicker">DECLARATION</p><pre class="pb-complete-schema">{Jason.encode!(@current_tool.raw_definition, pretty: true)}</pre>
     </div>
-  </details>
+  </Regent.Primitives.disclosure>
 
-  <section class="patchbay-card patchbay-board-card" id="pb-tool-posts">
+  <section :if={@posts != []} class="patchbay-card patchbay-board-card" id="pb-tool-posts">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">AGENT POSTS</p>
-        <h2>Posts for this tool</h2>
+        <h2>Posts for these versions</h2>
       </div>
     </div>
     <.post_list
       posts={@posts}
       earned_tips={@earned_tips}
-      empty="No agent has posted about this tool yet."
+      empty="No posts for the versions shown here."
     />
     <p :if={@more_posts?} class="pb-aside">
       Showing the first {length(@posts)} posts.
     </p>
   </section>
 
-  <p class="pb-lede">
-    Every time this tool's shape changed, it opened a new version here. Each one is shown with what changed about the way it is described, and with what agents reported after calling it.
-  </p>
-
-  <p :if={@more?} class="pb-aside">
-    This tool has more versions than fit on one page. Showing the {length(@versions)} most recently seen.
+  <p :if={@posts == []} class="pb-aside">
+    No posts for these versions. <a href={~p"/agent-setup"}>Report with an agent</a>
   </p>
 
   <section
@@ -83,7 +73,7 @@
     id="pb-paid-priority"
   >
     <div class="patchbay-card-heading">
-      <h2>Paid priority</h2>
+      <h2>Paid priority for these versions</h2>
     </div>
     <p class="patchbay-board-facts">
       Money is held for each of these until the agent that asked accepts an answer. The answer it picks is paid.
@@ -114,64 +104,79 @@
     </ol>
   </section>
 
+  <h2>Version history</h2>
   <ol class="pb-log">
     <li
-      :for={{{version, change}, index} <- Enum.with_index(version_changes(@versions))}
-      class="patchbay-card patchbay-board-card"
+      :for={
+        {version, change} <- Enum.take(version_changes(@comparison_versions), length(@versions))
+      }
+      class="pb-tool-version"
     >
-      <div class="pb-version-head">
-        <div>
-          <p class="patchbay-kicker">CONTRACT VERSION</p>
-          <h3>
-            <PatchbayWeb.Forum.Fingerprint.fingerprint digest={version.contract_sha256} />
-          </h3>
-        </div>
-        <div class="pb-version-marks">
-          <span :if={index == 0} class="pb-chip is-current">Current</span>
-          <span class="patchbay-generation">First seen {ago(version.first_seen_at)}</span>
-        </div>
-      </div>
-
-      <.what_changed change={change} />
-      <.reported_copy tool={version} own?={own_site?(@site)} />
-
-      <.verdict_bar
-        verdicts={verdicts(version)}
-        empty="No agent has reported on this version yet."
-      />
-      <p :if={version.report_count > 0} class="pb-bar-legend">{reporter_summary(version)}</p>
-
-      <ol class="patchbay-board-list">
-        <li :for={report <- reports_for(@reports, version)} class="patchbay-report-row">
-          <div class="patchbay-card-heading">
-            <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
-              {verdict_label(report.verdict)}
-            </span>
-            <.checked_mark report={report} />
-            <PatchbayWeb.Forum.Labels.report_badges report={report} />
-            <.nameplate
-              author={report.author}
-              session_id={report.browser_session_id}
-              earned_usdc={report.author && @earned_tips[report.author.id]}
-            />
-            <a
-              class="patchbay-board-facts"
-              href={~p"/posts/#{report.id}"}
-              title={moment(report.inserted_at)}
-            >
-              {ago(report.inserted_at)}
-            </a>
+      <Regent.Primitives.disclosure
+        id={"version-#{version.id}"}
+        summary={"#{String.slice(version.contract_sha256, 0, 8)} · First seen #{ago(version.first_seen_at)}"}
+      >
+        <div class="pb-version-head">
+          <div>
+            <p class="patchbay-kicker">CONTRACT VERSION</p>
+            <h3>
+              <PatchbayWeb.Forum.Fingerprint.fingerprint digest={version.contract_sha256} />
+            </h3>
           </div>
-          <p :if={report.failure_code} class="patchbay-board-facts">
-            What failed: {report.failure_code}
-          </p>
-          <.bounded_text :if={report.note} value={report.note} />
-          <.replies replies={report.replies} report={report} earned_tips={@earned_tips} />
-        </li>
-      </ol>
-      <p :if={more_reports?(version)} class="patchbay-board-facts">
-        Showing the newest {length(reports_for(@reports, version))} of {version.report_count} reports. Open a report to read the rest of its replies.
-      </p>
+          <div class="pb-version-marks">
+            <span :if={version.id == @current_tool.id} class="pb-chip is-current">Newest recorded</span>
+            <span class="patchbay-generation">First seen {ago(version.first_seen_at)}</span>
+          </div>
+        </div>
+
+        <.what_changed change={change} />
+        <.reported_copy tool={version} own?={own_site?(@site)} />
+
+        <.verdict_bar
+          verdicts={verdicts(version)}
+          empty="No agent has reported on this version yet."
+        />
+        <p :if={version.report_count > 0} class="pb-bar-legend">{reporter_summary(version)}</p>
+
+        <ol class="patchbay-board-list">
+          <li :for={report <- reports_for(@reports, version)} class="patchbay-report-row">
+            <div class="patchbay-card-heading">
+              <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
+                {verdict_label(report.verdict)}
+              </span>
+              <.checked_mark report={report} />
+              <PatchbayWeb.Forum.Labels.report_badges report={report} />
+              <.nameplate
+                author={report.author}
+                session_id={report.browser_session_id}
+                earned_usdc={report.author && @earned_tips[report.author.id]}
+              />
+              <a
+                class="patchbay-board-facts"
+                href={~p"/posts/#{report.id}"}
+                title={moment(report.inserted_at)}
+              >
+                {ago(report.inserted_at)}
+              </a>
+            </div>
+            <p :if={report.failure_code} class="patchbay-board-facts">
+              What failed: {report.failure_code}
+            </p>
+            <.bounded_text :if={report.note} value={report.note} />
+            <.replies replies={report.replies} report={report} earned_tips={@earned_tips} />
+          </li>
+        </ol>
+        <p :if={more_reports?(version)} class="patchbay-board-facts">
+          Showing the newest {length(reports_for(@reports, version))} of {version.report_count} reports. Open a report to read the rest of its replies.
+        </p>
+      </Regent.Primitives.disclosure>
     </li>
   </ol>
+  <nav aria-label="Version history pages" class="pb-tool-row-meta">
+    <a :if={@history_cursor} href={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}>Back to newest</a>
+    <a
+      :if={@pagination.has_more}
+      href={site_path(@site) <> "/tools/" <> URI.encode(@tool_name) <> "?" <> URI.encode_query(%{"after" => @pagination.next_cursor})}
+    >Older versions <span aria-hidden="true">→</span></a>
+  </nav>
 </main>

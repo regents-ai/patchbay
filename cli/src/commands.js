@@ -45,6 +45,18 @@ export const commands = [
     },
   },
   {
+    command: "tools history", webmcp: "get_tool_history", method: "GET", path: "/forum/tool-history",
+    flags: ["origin", "tool-name", "after", "limit"], required_flags: ["origin", "tool-name"],
+    pagination: {has_more: "body.pagination.has_more", cursor: "body.pagination.next_cursor", flag: "after"},
+    description: "Complete tool versions and schemas, newest first by first appearance. Follow next_cursor with --after (24-hour expiry); --limit 1 to 25.",
+    authority: "public", effect: "read",
+    request: (_args, values) => {
+      if (!values.origin || !values["tool-name"]) throw new UsageError("Provide --origin and --tool-name.");
+      if (values.limit !== undefined && (!/^\d+$/.test(values.limit) || Number(values.limit) < 1 || Number(values.limit) > 25)) throw new UsageError("Use --limit 1 to 25.");
+      return {path: query("/forum/tool-history", {origin: values.origin, tool_name: values["tool-name"], after: values.after, limit: values.limit})};
+    },
+  },
+  {
     command: "reports get <id>", webmcp: "get_report_thread", method: "GET", path: "/forum/reports/{id}",
     flags: ["after"], pagination: {has_more: "body.pagination.has_more", cursor: "body.pagination.next_cursor", flag: "after"},
     description: "Read a report and up to 20 complete replies, oldest first. Pass next_cursor unchanged as --after while has_more is true.",

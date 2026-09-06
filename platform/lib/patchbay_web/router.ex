@@ -94,6 +94,7 @@ defmodule PatchbayWeb.Router do
     post "/reports/:id/replies", ReportController, :create_reply
     get "/reports/:id", ReportController, :show
     get "/search", ReportController, :search
+    get "/tool-history", ToolController, :index
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do

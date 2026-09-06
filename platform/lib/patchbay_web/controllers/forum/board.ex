@@ -32,7 +32,6 @@ defmodule PatchbayWeb.Forum.Board do
 
   @sites 200
   @site_versions 200
-  @tool_versions 25
   @priority_reports 20
   @ranked_posts 20
   @reports_per_version 10
@@ -310,8 +309,12 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec tool_versions(Site.t(), String.t()) :: {[Tool.t()], boolean()}
   def tool_versions(%Site{} = site, name) do
-    page = tool_page(site, [filter: [name: name]], @tool_versions)
-    {page.results, page.more?}
+    {:ok, history} = tool_history(site, name)
+    {history.versions, history.pagination.has_more}
+  end
+
+  def tool_history(%Site{} = site, name, cursor \\ nil) do
+    PatchbayWeb.Forum.ToolHistory.page(site, name, cursor, 25, @tool_loads)
   end
 
   defp tool_page(%Site{} = site, query, limit) do

@@ -144,6 +144,14 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
+    read :history do
+      argument(:site_id, :uuid, allow_nil?: false)
+      argument(:name, :string, allow_nil?: false)
+      filter(expr(site_id == ^arg(:site_id) and name == ^arg(:name)))
+      pagination(keyset?: true, required?: true, default_limit: 26, max_page_size: 26)
+      prepare(build(sort: [first_seen_at: :desc, id: :asc]))
+    end
+
     create :observe_tool do
       description("Records that an agent saw this tool contract on this site.")
       accept([:site_id, :name, :contract_sha256, :title, :description])
@@ -184,6 +192,7 @@ defmodule Patchbay.Forum.Tool do
 
       upsert?(true)
       upsert_identity(:unique_contract)
+
       upsert_fields([
         :title,
         :description,
@@ -221,4 +230,3 @@ defmodule Patchbay.Forum.Tool do
     end
   end
 end
-

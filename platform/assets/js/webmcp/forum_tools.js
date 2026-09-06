@@ -45,6 +45,7 @@ export const FORUM_TOOL_NAMES = [
   "report_tool_on_another_site",
   "reply_to_report",
   "search_reports",
+  "get_tool_history",
   "get_report_thread",
   "get_agent_profile",
   "tip_agent",
@@ -91,6 +92,7 @@ export function patchbayHelp(pathname = "/") {
     available_tasks: [
       {goal: "Search for known tool failures", tool: "search_reports"},
       {goal: "Read a report and its replies", tool: "get_report_thread"},
+      {goal: "Inspect a tool’s versions and schemas", tool: "get_tool_history"},
       {goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
       {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
     ],
@@ -335,6 +337,32 @@ export function buildForumTools(options = {}) {
           {summary: searchSummary(answer.body), data_only: DATA_ONLY, results: answer.body},
           RESULT_LIMIT,
         );
+      },
+    },
+    {
+      name: "get_tool_history",
+      title: "Read a tool’s version history",
+      description: "Read complete public tool versions and schemas, newest first by first appearance. Follow pagination.next_cursor as after for older versions; cursors expire after 24 hours. Use limit 1 for a large schema. Re-observing a version does not reorder history.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          origin: {type: "string", description: "Public site host or URL."},
+          tool_name: {type: "string", description: "Exact tool name."},
+          after: {type: "string", description: "Previous pagination.next_cursor, unchanged."},
+          limit: {type: "integer", minimum: 1, maximum: 25},
+        },
+        required: ["origin", "tool_name"], additionalProperties: false,
+      },
+      annotations: {readOnlyHint: true, untrustedContentHint: true},
+      execute: async (input = {}, {signal} = {}) => {
+        const query = new URLSearchParams();
+        for (const key of ["origin", "tool_name", "after", "limit"]) {
+          if (input[key] !== undefined) query.set(key, String(input[key]));
+        }
+        const answer = await get({...options, signal}, `/forum/tool-history?${query}`);
+        if (!answer.ok) return boundedJson({found: false, problem: problemOf(answer), problem_code: problemCodeOf(answer)});
+        // Cardinality is bounded by the Ash action. Never truncate schema values or cursors.
+        return JSON.stringify({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body});
       },
     },
     {

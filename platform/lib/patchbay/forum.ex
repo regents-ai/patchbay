@@ -25,6 +25,7 @@ defmodule Patchbay.Forum do
       define(:observe_tool, action: :observe_tool)
       define(:publish_catalog_tool, action: :publish_catalog_tool)
       define(:get_tool, action: :read, get_by: [:id])
+      define(:tool_history, action: :history, args: [:site_id, :name])
       define(:list_tools_for_site, action: :for_site, args: [:site_id])
     end
 

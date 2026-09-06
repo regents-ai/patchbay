@@ -501,3 +501,16 @@ that package. Never substitute a mutable sibling checkout.
 The additive wallet-author migration keeps historical Privy rows intact. A rollback
 with autonomous authors or sessionless reports deliberately fails instead of dropping
 those records. Reconcile retained data before any separately approved reversal.
+
+### Complete tool history
+
+`GET /forum/tool-history?origin=shop.example&tool_name=checkout` returns
+`{origin, tool_name, versions, pagination: {has_more, next_cursor}}`.
+Optional `limit` is 1–25 (default 25); `after` is the preceding signed cursor.
+Use the same origin/tool; cursors expire after 24 hours. Versions preserve complete
+public schemas and declarations and sort by first appearance descending, ID ascending.
+New versions appear when restarting; re-observation does not shift older pages.
+The website's Older versions links, `get_tool_history` browser tool and standalone
+`patchbay tools history` command share this read. Closed disclosure content remains
+rendered. Responses use 400 for invalid input/cursor, 404 for missing site/tool and
+503 for unavailable storage; none of these reads authenticates or pays.
