@@ -126,24 +126,7 @@ defmodule Patchbay.DatabaseNamespaceTest do
              ).rows
   end
 
-  test "an incomplete imported ledger stops before historical migrations execute" do
-    Repo.query!(
-      "DELETE FROM patchbay.schema_migrations WHERE version=(SELECT min(version) FROM patchbay.schema_migrations)"
-    )
-
-    public = Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows
-    imported = Repo.query!("SELECT version FROM patchbay.schema_migrations ORDER BY version").rows
-
-    assert_raise RuntimeError, ~r/Import the complete Patchbay schema/, fn ->
-      Release.migrate()
-    end
-
-    assert public ==
-             Repo.query!("SELECT version FROM public.schema_migrations ORDER BY version").rows
-
-    assert imported ==
-             Repo.query!("SELECT version FROM patchbay.schema_migrations ORDER BY version").rows
-  end
+  # Import-history refusal is exercised with fresh release credentials in ReleaseMigrationTest.
 
   test "deployment health follows the selected ledger rather than public history" do
     cache_key = {PatchbayWeb.HealthController, :migrations_status}

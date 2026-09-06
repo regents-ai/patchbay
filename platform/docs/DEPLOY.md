@@ -285,3 +285,14 @@ ahead of the database:
 fly ssh console --app patchbay-regents \
   -C "/app/bin/patchbay eval 'Patchbay.Release.rollback(Patchbay.Repo, 20260901132657)'"
 ```
+
+### Separate migration credentials
+
+`Patchbay.Release.migrate()` requires `DATABASE_DIRECT_URL`, a PostgreSQL URL
+with explicit migration-owner credentials and no query parameters or fragment.
+`DATABASE_URL` remains the runtime connection. Run migration commands in a fresh
+release `eval` process; they refuse an already-running Repo and restore its
+configuration afterward. Local `mix ecto.migrate` keeps its existing development
+configuration. The selected product schema, TLS and socket options are retained;
+supply transport settings appropriate to the direct endpoint. Existing imported
+history must be present before selecting the shared product namespace.
