@@ -1,4 +1,9 @@
-<main class="patchbay-shell" id="patchbay-room" data-room-slug={@room.slug} data-readonly={to_string(@readonly?)}>
+<main
+  class="patchbay-shell"
+  id="patchbay-room"
+  data-room-slug={@room.slug}
+  data-readonly={to_string(@readonly?)}
+>
   <p
     id="patchbay-connection-lost"
     class="patchbay-connection-lost"
@@ -57,14 +62,15 @@
           </label>
           <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call {active_tool_name(@active_tool)} with instructions: make the greeting warmer.</textarea>
         </div>
-        <button
+        <Regent.Primitives.button
+          variant="secondary"
           id="patchbay-copy-uplift"
           class="patchbay-copy"
           type="button"
           phx-hook="PatchbayCopy"
           data-copy-target="patchbay-prompt-uplift"
           aria-live="polite"
-        >Copy</button>
+        >Copy</Regent.Primitives.button>
       </li>
       <li
         class={"patchbay-prompt-chip " <> step_state(@room, 2)}
@@ -78,14 +84,15 @@
           </label>
           <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="3" readonly>That tool reported success but changed nothing on the page. Call report_tool_problem with receipt set to the patchbay_receipt value from that result; that is all it needs.</textarea>
         </div>
-        <button
+        <Regent.Primitives.button
+          variant="secondary"
           id="patchbay-copy-repair"
           class="patchbay-copy"
           type="button"
           phx-hook="PatchbayCopy"
           data-copy-target="patchbay-prompt-repair"
           aria-live="polite"
-        >Copy</button>
+        >Copy</Regent.Primitives.button>
       </li>
       <li
         class={"patchbay-prompt-chip " <> step_state(@room, 3)}
@@ -99,14 +106,15 @@
           </label>
           <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
         </div>
-        <button
+        <Regent.Primitives.button
+          variant="secondary"
           id="patchbay-copy-retry"
           class="patchbay-copy"
           type="button"
           phx-hook="PatchbayCopy"
           data-copy-target="patchbay-prompt-retry"
           aria-live="polite"
-        >Copy</button>
+        >Copy</Regent.Primitives.button>
       </li>
     </ol>
 
@@ -132,7 +140,10 @@
         When you or an agent asks for an uplift, Patchbay sends the Source Skill below and the request instructions to OpenAI. Asking for a repair also sends the tool's contract, what the handler returned, and the short fingerprints of what this page was showing.
       </p>
     </div>
-    <div class="patchbay-registry-summary" aria-label="Browser registry status">
+    <Regent.Structure.panel
+      class="patchbay-registry-summary rg-support-panel"
+      aria-label="Browser registry status"
+    >
       <div class="patchbay-registry-head">
         <span class={"patchbay-status-dot " <> if(@browser_session && @browser_session.webmcp_supported, do: "is-live", else: "")}></span>
         <div>
@@ -160,7 +171,7 @@
       >
         Checking this browser for WebMCP…
       </div>
-    </div>
+    </Regent.Structure.panel>
   </section>
 
   <p
@@ -193,14 +204,15 @@
         </div>
       </div>
       <div class="patchbay-well">
-        <label class="sr-only" for="patchbay-candidate-editor">Candidate Skill Markdown</label>
-        <textarea
-          id="patchbay-candidate-editor"
-          class="patchbay-editor"
-          readonly
-          spellcheck="false"
-          aria-describedby="patchbay-candidate-digest"
-        >{if(@room.candidate_markdown, do: @room.candidate_markdown, else: "")}</textarea>
+        <Regent.Primitives.field id="patchbay-candidate-editor" label="Candidate Skill Markdown">
+          <textarea
+            id="patchbay-candidate-editor"
+            class="patchbay-editor"
+            readonly
+            spellcheck="false"
+            aria-describedby="patchbay-candidate-digest"
+          >{if(@room.candidate_markdown, do: @room.candidate_markdown, else: "")}</textarea>
+        </Regent.Primitives.field>
         <p :if={!@room.candidate_markdown} class="patchbay-well-note" aria-hidden="true">
           Waiting for a tool to write here
         </p>
@@ -229,26 +241,28 @@
         <span class="patchbay-mono">{@source_bytes} bytes</span>
       </div>
       <form id="patchbay-source-form" phx-submit="update_source">
-        <label class="sr-only" for="patchbay-source-editor">Source Skill Markdown</label>
-        <textarea
-          id="patchbay-source-editor"
-          name="source_markdown"
-          class="patchbay-editor"
-          spellcheck="false"
-          aria-describedby="patchbay-source-digest"
-          readonly={@readonly? or @room.status != :ready}
-        >{@room.source_markdown}</textarea>
+        <Regent.Primitives.field id="patchbay-source-editor" label="Source Skill Markdown">
+          <textarea
+            id="patchbay-source-editor"
+            name="source_markdown"
+            class="patchbay-editor"
+            spellcheck="false"
+            aria-describedby="patchbay-source-digest"
+            readonly={@readonly? or @room.status != :ready}
+          >{@room.source_markdown}</textarea>
+        </Regent.Primitives.field>
         <div class="patchbay-editor-footer">
           <span
             id="patchbay-source-digest"
             class="patchbay-digest"
             title={@room.source_sha256}
           >Fingerprint {short_digest(@room.source_sha256)}</span>
-          <button
+          <Regent.Primitives.button
+            variant="secondary"
             class="patchbay-button patchbay-button-quiet"
             type="submit"
             disabled={@readonly? or @room.status != :ready}
-          >Save source</button>
+          >Save source</Regent.Primitives.button>
         </div>
       </form>
 
@@ -266,12 +280,13 @@
             Please do not upload anything private. This demo has no accounts, and anyone with your room's web address can read what is in it.
           </p>
           <.live_file_input upload={@uploads.skill} />
-          <button
+          <Regent.Primitives.button
+            variant="secondary"
             id="patchbay-skill-upload-button"
             class="patchbay-button patchbay-button-quiet"
             type="submit"
             disabled={@readonly? or @room.status != :ready}
-          >Upload file</button>
+          >Upload file</Regent.Primitives.button>
         </div>
         <p
           :for={message <- upload_problems(@uploads.skill)}
@@ -457,7 +472,8 @@
         <p>
           The page saw a failed visible postcondition even though the handler reported success.
         </p>
-        <button
+        <Regent.Primitives.button
+          variant="primary"
           id="patchbay-diagnose"
           class="patchbay-button"
           type="button"
@@ -465,7 +481,7 @@
           disabled={@pending_operation == :repair}
         >
           {if(@pending_operation == :repair, do: "Diagnosing…", else: "Diagnose & propose repair")}
-        </button>
+        </Regent.Primitives.button>
       </div>
 
       <div :if={@proposal} class="patchbay-repair-details">
@@ -545,18 +561,20 @@
         <div :if={@proposal.status == :ready_for_approval} class="patchbay-approval-actions">
           <p>Only this human control can approve and publish the replacement.</p>
           <div>
-            <button
+            <Regent.Primitives.button
+              variant="secondary"
               id="patchbay-approve"
               class="patchbay-button patchbay-button-quiet"
               type="button"
               phx-click="approve_repair"
-            >Approve &amp; hot-swap</button>
-            <button
+            >Approve &amp; hot-swap</Regent.Primitives.button>
+            <Regent.Primitives.button
+              variant="secondary"
               id="patchbay-reject"
               class="patchbay-button patchbay-button-quiet"
               type="button"
               phx-click="reject_repair"
-            >Reject repair</button>
+            >Reject repair</Regent.Primitives.button>
           </div>
         </div>
       </div>
@@ -589,7 +607,8 @@
       </p>
     </div>
     <div class="patchbay-retry-actions">
-      <button
+      <Regent.Primitives.button
+        variant="primary"
         id="patchbay-retry-button"
         class="patchbay-button"
         type="button"
@@ -598,7 +617,7 @@
         aria-describedby={
           if(@room.status != :repaired, do: "patchbay-retry-disabled", else: false)
         }
-      >Retry uplift</button>
+      >Retry uplift</Regent.Primitives.button>
       <p
         :if={@room.status != :repaired}
         id="patchbay-retry-disabled"
@@ -722,13 +741,14 @@
       <p><code>{@room.id}</code></p>
     </div>
     <div :if={!@readonly?} class="patchbay-reset">
-      <button
+      <Regent.Primitives.button
         :if={!@confirming_reset}
+        variant="secondary"
         id="patchbay-reset"
         class="patchbay-button patchbay-button-danger"
         type="button"
         phx-click="ask_reset_demo"
-      >Reset demo</button>
+      >Reset demo</Regent.Primitives.button>
       <div
         :if={@confirming_reset}
         id="patchbay-reset-confirm"
@@ -740,18 +760,20 @@
           This clears the candidate, the evidence and the timeline, and puts the room back on its first tool.
         </p>
         <div>
-          <button
+          <Regent.Primitives.button
+            variant="secondary"
             id="patchbay-reset-cancel"
             class="patchbay-button patchbay-button-quiet"
             type="button"
             phx-click="keep_room"
-          >Keep this room</button>
-          <button
+          >Keep this room</Regent.Primitives.button>
+          <Regent.Primitives.button
+            variant="secondary"
             id="patchbay-reset-confirmed"
             class="patchbay-button patchbay-button-danger"
             type="button"
             phx-click="reset_demo"
-          >Reset demo</button>
+          >Reset demo</Regent.Primitives.button>
         </div>
       </div>
     </div>

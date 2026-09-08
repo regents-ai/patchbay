@@ -18,9 +18,9 @@
 /* daisyUI theme plugin. You can update this file by fetching the latest version with:
    curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
    Patchbay paints every element of every page itself. The one thing left to
-   this block is the sheet behind the page, which the landing page and the
-   not-found page sit straight on, so it is handed Patchbay's own tokens and
-   follows the palette into the dark. */
+   this block is the sheet behind the page, which the not-found page sits
+   straight on, so it is handed Patchbay's own tokens and the shared corner
+   and follows the palette into the dark. */
 @plugin "../vendor/daisyui-theme" {
   name: "light";
   default: true;
@@ -46,11 +46,9 @@
   --color-warning-content: var(--pb-accent-ink);
   --color-error: var(--pb-bad);
   --color-error-content: var(--pb-surface);
-  --radius-selector: 0;
-  --radius-field: 0;
-  --radius-box: 0;
-  --size-selector: 0.21875rem;
-  --size-field: 0.21875rem;
+  --radius-selector: var(--radius);
+  --radius-field: var(--radius);
+  --radius-box: var(--radius);
   --border: 1px;
   --depth: 0;
   --noise: 0;
@@ -66,35 +64,7 @@
 
 /* This file is for your main application CSS */
 
-/* Vercel Geist (SIL OFL): Pixel Square for large display titles, Sans for
-   nav, headings and reading, Mono for buttons and code. Files live in
-   priv/static/fonts/. */
-@font-face {
-  font-family: "Geist Pixel Square";
-  src: url("/fonts/GeistPixel-Square.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist";
-  src: url("/fonts/Geist-Variable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist Mono";
-  src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
 
-/* Patchbay chrome follows TechTree's system — one field, hairlines, square
-   corners, Geist Sans for UI and Mono for anything a machine produced — but
-   the colours are Patchbay's: a charcoal / titanium field, cream crown, and a
-   restrained burnt-orange accent. Not TechTree's tangerine-on-black hero. */
 :root {
   --pb-ink: var(--color-surface);
   --pb-ink-soft: var(--color-surface);
@@ -125,18 +95,9 @@
   --pb-text-on-ink: var(--color-fg);
   --pb-text-on-ink-muted: var(--color-fg-muted);
 
-  --pb-space-1: .35rem;
-  --pb-space-2: .6rem;
-  --pb-space-3: .95rem;
-  --pb-space-4: 1.4rem;
-  --pb-space-5: 2.1rem;
-  --pb-space-6: clamp(2.4rem, 4vw, 3.4rem);
-
-  --pb-gutter: clamp(1.15rem, 5vw, 4rem);
-  --pb-measure: min(100%, 76rem);
   --pb-page-width: 76rem;
-  --pb-reading-width: 46rem;
-  --pb-header-height: 4.375rem;
+  /* Nine grid units: room for a 44px control and the hairline under it. */
+  --pb-header-height: 4.5rem;
 
   --pb-fs-micro: .66rem;
   --pb-fs-xs: .8125rem;
@@ -144,21 +105,6 @@
   --pb-fs-md: .96rem;
   --pb-fs-lg: 1.08rem;
   --pb-fs-xl: clamp(1.15rem, 2vw, 1.5rem);
-
-  --pb-radius-sm: 0;
-  --pb-radius: 0;
-  --pb-radius-lg: 0;
-
-  --pb-shadow-sm: none;
-  --pb-shadow: none;
-  --pb-shadow-lg: none;
-
-  --pb-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --pb-display: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --pb-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  --pb-ease-out: cubic-bezier(.23, 1, .32, 1);
-  --pb-ease-in-out: cubic-bezier(.77, 0, .175, 1);
 }
 
 html {
@@ -166,28 +112,14 @@ html {
 }
 
 body {
-  min-width: 20rem;
+  min-width: 320px;
   min-height: 100vh;
   background: transparent;
   color: var(--pb-text);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-ui);
   font-size: 1.125rem;
   line-height: 1.6;
   text-rendering: optimizeLegibility;
-}
-.pb-headline,
-.pb-why h2,
-.pb-error h1,
-.pb-loop .pb-section-head h2,
-.pb-tools .pb-section-head h2 {
-  font-family: var(--pb-display);
-  font-weight: 400;
-  font-synthesis: none;
-}
-.patchbay-button,
-.patchbay-copy,
-.pb-cta {
-  font-family: var(--pb-mono);
 }
 
 /* One focus ring for the whole site, so a keyboard is never guessing where it
@@ -201,8 +133,6 @@ body {
   outline: 3px solid var(--pb-accent-deep);
   outline-offset: 2px;
 }
-.pb-band :focus-visible,
-.pb-why :focus-visible,
 .pb-skip-link:focus,
 .patchbay-board .patchbay-topbar :focus-visible,
 .patchbay-result-box :focus-visible {
@@ -213,15 +143,15 @@ body {
    out of sight until it is reached. */
 .pb-skip-link {
   position: fixed;
-  top: .75rem;
-  left: .75rem;
+  top: var(--space-1);
+  left: var(--space-1);
   z-index: 100;
-  transform: translateY(calc(-100% - 1rem));
-  border-radius: 0;
-  padding: .7rem .9rem;
+  transform: translateY(calc(-100% - var(--space-2)));
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
   color: var(--pb-ink);
   background: var(--pb-text);
-  font: 650 var(--pb-fs-xs)/1.2 var(--pb-sans);
+  font: var(--font-weight-semibold) var(--pb-fs-xs)/1.2 var(--font-family-ui);
   text-decoration: none;
 }
 .pb-skip-link:focus { transform: none; }
@@ -237,29 +167,29 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 1.25rem;
-  width: min(100% - 2rem, var(--pb-page-width));
+  gap: var(--space-3);
+  /* Header and content use the same responsive panel inset. */
+  width: 100%;
   min-height: var(--pb-header-height);
   margin: 0 auto;
-  padding: 0;
-  border-bottom: 1px solid var(--pb-line);
+  padding: var(--space-2) var(--rg-panel-padding);
+
   color: var(--pb-text);
-  background: color-mix(in srgb, var(--pb-canvas) 94%, transparent);
+  background: var(--pb-canvas);
 }
-.pb-masthead + #pb-content .patchbay-shell,
-.pb-masthead + #pb-content .pb-page { min-height: calc(100vh - var(--pb-header-height)); }
+.pb-masthead + #pb-content .patchbay-shell { min-height: calc(100vh - var(--pb-header-height)); }
 .pb-account {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--pb-space-2);
+  gap: var(--space-1);
   flex: none;
   color: var(--pb-text);
-  font: 700 var(--pb-fs-sm)/1.2 var(--pb-sans);
+  font: var(--font-weight-semibold) var(--pb-fs-sm)/1.2 var(--font-family-ui);
 }
 .pb-account-name {
   max-width: 14rem;
-  overflow: hidden;
+
   color: inherit;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -267,36 +197,18 @@ body {
   text-decoration-color: var(--pb-accent);
   text-underline-offset: .3em;
 }
-.pb-account-button {
-  min-height: 2.75rem;
-  border: 1px solid var(--pb-line-strong);
-  border-radius: 0;
-  padding: .45rem 1rem;
-  color: var(--pb-text);
-  background: var(--pb-surface);
-  font: 620 .82rem/1 var(--pb-sans);
-  cursor: pointer;
-  transition: border-color 140ms ease, color 140ms ease, background-color 140ms ease, transform 140ms var(--pb-ease-out);
-}
-.pb-account-button:hover {
-  border-color: var(--pb-accent);
-  color: var(--pb-text);
-  background: var(--pb-surface);
-}
-.pb-account-button:active { transform: scale(0.97); }
-.pb-account-button[disabled] { opacity: .6; cursor: progress; }
-.pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: 400; }
+.pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: var(--font-weight-regular); }
 .pb-account-note:empty { display: none; }
 .pb-account :focus-visible { outline-color: var(--pb-accent); }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
-  min-height: 100vh;
+  min-height: 65vh;
   color: var(--pb-text);
   background: transparent;
-  padding: 1.5rem clamp(1rem, 3vw, 3.5rem) 3rem;
-  font-family: var(--pb-sans);
+  padding: var(--rg-panel-padding);
+  font-family: var(--font-family-ui);
 }
 
 .patchbay-topbar,
@@ -305,21 +217,21 @@ body {
 .patchbay-editors,
 .patchbay-workbench,
 .patchbay-footer {
-  width: min(100%, 92rem);
+  width: 100%;
   margin-inline: auto;
 }
 
-.patchbay-notice { width: min(100%, 34rem); margin: 18vh auto 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-lg); padding: 1.6rem; background: var(--pb-surface); }
-.patchbay-notice h1 { margin: .3rem 0 0; font-size: 1.35rem; line-height: 1.25; letter-spacing: -.03em; }
-.patchbay-notice .patchbay-muted { margin: .6rem 0 0; }
+.patchbay-notice { width: min(100%, 34rem); margin: var(--space-7) auto 0; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface); }
+.patchbay-notice h1 { margin: var(--space-1) 0 0; font-size: 1.35rem; line-height: 1.25; letter-spacing: -.03em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-notice .patchbay-muted { margin: var(--space-1) 0 0; }
 
 .patchbay-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-2);
   border-bottom: 1px solid var(--pb-line);
-  padding-block: .65rem 1.15rem;
+  padding-block: var(--space-1) var(--space-2);
 }
 
 .patchbay-brand,
@@ -333,15 +245,15 @@ body {
   align-items: center;
 }
 
-.patchbay-brand { gap: .8rem; }
-.patchbay-brand h1 { margin: 0; font-family: var(--pb-sans); font-size: var(--pb-fs-lg); font-weight: 650; letter-spacing: -.025em; }
+.patchbay-brand { gap: var(--space-2); }
+.patchbay-brand h1 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-lg); font-weight: 400; letter-spacing: -.025em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+/* The crown is a drawing, not a surface: its square is the mark itself. */
 .patchbay-mark {
   display: block;
   flex-shrink: 0;
   width: 1.45rem;
   height: 1.45rem;
-  overflow: hidden;
-  border-radius: 0;
+
   background: #0c0c0c;
   color: #e4e3d1;
 }
@@ -356,53 +268,52 @@ body {
 /* Kickers are the board's small all-caps labels. The room keeps them only
    where the exact words are part of the record. */
 .patchbay-kicker {
-  margin: 0 0 .32rem;
+  margin: 0 0 var(--space-1);
   color: var(--pb-accent-deep);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-ui);
   font-size: var(--pb-fs-micro);
-  font-weight: 800;
-  letter-spacing: .14em;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-microlabel);
   line-height: 1.2;
   text-transform: uppercase;
 }
 
 .patchbay-eyebrow {
-  margin: 0 0 .22rem;
+  margin: 0 0 var(--space-1);
   color: var(--pb-text-muted);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-ui);
   font-size: var(--pb-fs-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .01em;
   line-height: 1.2;
 }
-.patchbay-eyebrow-strong { color: var(--pb-accent-deep); }
-.patchbay-eyebrow-agent {
-  color: var(--pb-accent-deep);
-  font-weight: 700;
-}
+.patchbay-eyebrow-strong,
+.patchbay-eyebrow-agent { color: var(--pb-accent-deep); }
 
-.patchbay-topbar-meta { gap: .55rem; flex-wrap: wrap; }
-.patchbay-generation,
+.patchbay-topbar-meta { gap: var(--space-1); flex-wrap: wrap; }
+.patchbay-generation { font-family: var(--font-family-ui); }
+
 .patchbay-mono,
 .patchbay-digest,
 .patchbay-facts code,
 .patchbay-result-box pre,
 .patchbay-footer code {
-  font-family: var(--pb-mono);
+  font-family: var(--font-family-mono);
 }
 .patchbay-generation { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+/* Dense status labels use Sans and square ruled boundaries. */
 .patchbay-pill,
 .patchbay-state-label {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--pb-line-strong);
-  border-radius: 0;
-  padding: .2rem .45rem;
-  font-family: var(--pb-mono);
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-1);
+  font-family: var(--font-family-ui);
   font-size: .62rem;
-  font-weight: 650;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .04em;
-  line-height: 1.3;
+  line-height: 1.5;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -412,19 +323,19 @@ body {
 .patchbay-pill.is-neutral { color: var(--pb-text-muted); background: var(--pb-surface-sunk); }
 .patchbay-state-label.is-empty { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
 
-.patchbay-muted { color: var(--pb-text-muted); font-family: var(--pb-sans); font-size: var(--pb-fs-sm); line-height: 1.55; }
-.patchbay-registry-summary { min-width: 13rem; max-width: 22rem; flex-direction: column; align-items: stretch; gap: .5rem; padding: .72rem .9rem; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); background: var(--pb-surface); box-shadow: var(--pb-shadow-sm); }
-.patchbay-registry-head { display: flex; align-items: center; gap: .65rem; }
+.patchbay-muted { color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-sm); line-height: 1.55; }
+.patchbay-registry-summary { min-width: 13rem; max-width: 22rem; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--rg-panel-padding); border: 1px solid var(--pb-line); border-radius: var(--radius); background: var(--pb-surface); }
+.patchbay-registry-head { display: flex; align-items: center; gap: var(--space-1); }
 .patchbay-registry-summary strong, .patchbay-registry-summary span { display: block; }
 .patchbay-registry-summary strong { font-size: var(--pb-fs-sm); }
-.patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); margin-top: .16rem; }
+.patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 
 /* The island writes its own diagnosis here. It is the only place a browser
    without WebMCP is told why the card above it is still waiting, so it is read
    at normal size rather than hidden away for screen readers. */
 .patchbay-capability-line {
   border-top: 1px dashed var(--pb-line);
-  padding-top: .45rem;
+  padding-top: var(--space-1);
   color: var(--pb-text-muted);
   font-size: var(--pb-fs-xs);
   line-height: 1.5;
@@ -435,93 +346,82 @@ body {
 .patchbay-capability-line[data-webmcp-status="unverified"],
 .patchbay-capability-line[data-webmcp-status="unsupported"] { color: var(--pb-accent-deep); }
 .patchbay-capability-line[data-webmcp-status="error"] { color: var(--pb-bad); }
+/* Dots are indicators, so they stay true circles. */
 .patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: var(--pb-accent-deep); }
 .patchbay-status-dot.is-live { background: var(--pb-good); }
 
 .patchbay-editors,
-.patchbay-workbench { display: grid; gap: var(--pb-space-3); }
+.patchbay-workbench { display: grid; gap: var(--space-3); }
 .patchbay-editors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .patchbay-workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.patchbay-card { border: 1px solid var(--pb-line); border-radius: 0; background: var(--pb-surface); box-shadow: none; }
-.patchbay-editor-card { min-width: 0; padding: var(--pb-space-3); }
-.patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: .8rem; margin-bottom: .8rem; }
-.patchbay-card-heading h3 { margin: 0; font-family: var(--pb-display); font-size: var(--pb-fs-md); letter-spacing: -.02em; }
+.patchbay-card { border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface);  }
+.patchbay-editor-card { min-width: 0; }
+.patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+.patchbay-card-heading h3 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-md); letter-spacing: -.02em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-mono { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); white-space: nowrap; }
-.patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .85rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--pb-mono); tab-size: 2; }
+.patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--space-2); color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--font-family-mono); tab-size: 2; }
 .patchbay-editor:focus { border-color: var(--pb-accent); }
-.patchbay-editor-footer { justify-content: space-between; gap: .8rem; margin-top: .6rem; }
-.patchbay-digest { min-width: 0; overflow: hidden; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); text-overflow: ellipsis; white-space: nowrap; }
+.patchbay-editor-footer { justify-content: space-between; gap: var(--space-2); margin-top: var(--space-1); }
+.patchbay-digest { min-width: 0;  color: var(--pb-text-muted); font-size: var(--pb-fs-micro); text-overflow: ellipsis; white-space: nowrap; }
 
-.patchbay-disclosure { margin: .7rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
-.patchbay-upload { margin-top: .85rem; border-top: 1px dashed var(--pb-line); padding-top: .75rem; }
-.patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; }
+.patchbay-disclosure { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
+.patchbay-upload { margin-top: var(--space-2); border-top: 1px dashed var(--pb-line); padding-top: var(--space-1); }
+.patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 .patchbay-upload-row label { flex: 1 1 100%; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-upload-problem { margin: .5rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); line-height: 1.45; }
-.patchbay-upload-privacy { flex: 1 1 100%; margin: 0 0 .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
+.patchbay-upload-problem { margin: var(--space-1) 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); line-height: 1.45; }
+.patchbay-upload-privacy { flex: 1 1 100%; margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
-.patchbay-button { cursor: pointer; min-height: 2.75rem; border: 1px solid var(--pb-accent); border-radius: 0; padding: .6rem 1.2rem; color: var(--pb-accent-ink); background: var(--pb-accent); font-family: var(--pb-sans); font-size: .92rem; font-weight: 620; transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms var(--pb-ease-out); }
-.patchbay-button:active { transform: scale(0.97); }
-/* The fill darkens on hover by the smallest step that still leaves the label
-   above 4.5:1, so the label never has to change colour under the pointer. */
-.patchbay-button:hover { background: color-mix(in srgb, var(--pb-accent) 88%, var(--pb-accent-ink)); }
-.patchbay-button:disabled { cursor: wait; filter: grayscale(.35); opacity: .6; }
-.patchbay-button-quiet { color: var(--pb-accent-deep); background: var(--pb-surface-sunk); border-color: var(--pb-line); }
-.patchbay-button-quiet:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
-.patchbay-button-danger { color: var(--pb-bad); background: var(--pb-bad-wash); border-color: var(--pb-bad); }
-.patchbay-button-danger:hover { background: color-mix(in srgb, var(--pb-bad) 12%, var(--pb-bad-wash)); }
-
-.patchbay-evidence-card, .patchbay-repair-card, .patchbay-retry-card, .patchbay-timeline-card { padding: var(--pb-space-3); }
-.patchbay-facts { display: grid; gap: .45rem; }
-.patchbay-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; border-bottom: 1px dashed var(--pb-line); padding-bottom: .4rem; }
+.patchbay-facts { display: grid; gap: var(--space-1); }
+.patchbay-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); border-bottom: 1px dashed var(--pb-line); padding-bottom: var(--space-1); }
 .patchbay-facts span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
 .patchbay-facts strong { font-size: var(--pb-fs-xs); }
 .patchbay-facts code { color: var(--pb-text); font-size: var(--pb-fs-micro); text-align: right; overflow-wrap: anywhere; }
 .patchbay-positive { color: var(--pb-good); }
 .patchbay-negative { color: var(--pb-bad); }
-.patchbay-result-box { margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .72rem; background: var(--pb-ink); color: var(--pb-text-on-ink); }
-.patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.patchbay-result-box { margin-top: var(--space-2); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-ink); color: var(--pb-text-on-ink); }
+.patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); }
 .patchbay-evidence-grid > .patchbay-result-box { min-width: 0; }
 .patchbay-result-box .patchbay-kicker { color: var(--pb-accent); }
 .patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: var(--pb-fs-micro); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .65rem; }
-.patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); padding: .6rem; background: var(--pb-surface-sunk); }
-.patchbay-state-grid .patchbay-kicker { margin-bottom: .35rem; font-size: .58rem; }
-.patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: var(--pb-text-muted); font: .62rem/1.45 var(--pb-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.patchbay-shortened-note { margin: .4rem 0 0; font-size: var(--pb-fs-xs); line-height: 1.45; }
+.patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); margin-top: var(--space-1); }
+.patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface-sunk); }
+.patchbay-state-grid .patchbay-kicker { margin-bottom: var(--space-1); font-size: .58rem; }
+.patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: var(--pb-text-muted); font: .62rem/1.45 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.patchbay-shortened-note { margin: var(--space-1) 0 0; font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
 .patchbay-state-grid .patchbay-shortened-note { color: var(--pb-text-muted); }
-.patchbay-empty-state { margin: .6rem 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
-.patchbay-alert { display: flex; gap: .6rem; align-items: baseline; margin-top: .9rem; border-radius: var(--pb-radius-sm); padding: .65rem .75rem; font-size: var(--pb-fs-xs); line-height: 1.45; }
+.patchbay-empty-state { margin: var(--space-1) 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.patchbay-alert { display: flex; gap: var(--space-1); align-items: baseline; margin-top: var(--space-2); border-radius: var(--radius); padding: var(--rg-panel-padding); font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-alert strong { white-space: nowrap; }
 .patchbay-alert-error { color: var(--pb-bad); background: var(--pb-bad-wash); border: 1px solid var(--pb-bad); }
 .patchbay-alert-warn { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border: 1px solid var(--pb-accent-deep); }
-#patchbay-platform-error { width: min(100%, 92rem); margin-inline: auto; }
+#patchbay-platform-error { width: 100%; margin-inline: auto; }
 
 .patchbay-repair-cta p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
-.patchbay-repair-details { display: grid; gap: .9rem; }
-.patchbay-root-cause p { margin: .3rem 0 0; font-size: var(--pb-fs-sm); line-height: 1.5; }
-.patchbay-provenance { display: flex; flex-wrap: wrap; gap: .35rem .75rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-provenance b { color: var(--pb-text-muted); font-weight: 700; }
-.patchbay-diff { border: 1px solid var(--pb-line); border-radius: var(--pb-radius-sm); overflow: hidden; }
-.patchbay-diff > .patchbay-kicker { padding: .7rem .75rem .35rem; }
-.patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: .45rem .8rem; padding: .45rem .75rem; border-top: 1px solid var(--pb-line); font-size: var(--pb-fs-micro); }
-.patchbay-diff-row code { grid-row: span 2; color: var(--pb-text-muted); font-weight: 700; overflow-wrap: anywhere; }
+.patchbay-repair-details { display: grid; gap: var(--space-2); }
+.patchbay-root-cause p { margin: var(--space-1) 0 0; font-size: var(--pb-fs-sm); line-height: 1.5; }
+.patchbay-provenance { display: flex; flex-wrap: wrap; gap: var(--space-1); color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
+.patchbay-provenance b { color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); }
+.patchbay-diff { border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); }
+.patchbay-diff > .patchbay-kicker { padding: 0 0 var(--space-1); }
+.patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: var(--space-1) var(--space-2); padding: var(--space-1) 0; border-top: 1px solid var(--pb-line); font-size: var(--pb-fs-micro); }
+.patchbay-diff-row code { grid-row: span 2; color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
 .patchbay-diff-old, .patchbay-diff-new { overflow-wrap: anywhere; white-space: pre-wrap; }
 .patchbay-diff-old { color: var(--pb-bad); }
 .patchbay-diff-new { color: var(--pb-good); }
-.patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: .45rem .8rem; align-items: center; }
+.patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-2); align-items: center; }
 .patchbay-canary .patchbay-kicker { margin: 0; }
-.patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .6rem; }
+.patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .patchbay-checks span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
 .patchbay-checks .is-pass { color: var(--pb-good); }
 .patchbay-checks .is-fail { color: var(--pb-bad); }
-.patchbay-risk-notes ul { margin: .3rem 0 0; padding-left: 1rem; color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); line-height: 1.55; }
-.patchbay-approval-actions { border-top: 1px solid var(--pb-line); padding-top: .8rem; }
+.patchbay-risk-notes ul { margin: var(--space-1) 0 0; padding-left: var(--space-2); color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); line-height: 1.55; }
+.patchbay-approval-actions { border-top: 1px solid var(--pb-line); padding-top: var(--space-2); }
 .patchbay-approval-actions p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-approval-actions > div { flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+.patchbay-approval-actions > div { flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }
 
-.patchbay-footer { justify-content: space-between; gap: 1rem; margin-top: var(--pb-space-4); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.patchbay-footer { justify-content: space-between; gap: var(--space-2); margin-top: var(--space-4); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .patchbay-footer p { margin: 0; }
 .patchbay-footer strong { color: var(--pb-text); }
 .patchbay-footer code { font-size: var(--pb-fs-micro); }
@@ -534,9 +434,8 @@ body {
    editor that carries the proof, the scoreboard that compares the tool's claim
    with what the page showed, the repair, and the ledger.
 
-   After the Stripe / TechTree pass the live site is titanium and charcoal,
-   Geist Sans, hairline borders, no glow. The room follows that language here
-   only — homepage, catalog, and site-grid rules stay untouched.
+   Pixel Square titles and Mono controls follow the shared typography;
+   flat evidence cells keep the product’s compact information architecture.
    ------------------------------------------------------------------------- */
 
 /* Same charcoal chrome as / and /sites, so the root masthead already on this
@@ -544,27 +443,27 @@ body {
    inherits them; paint and cards stay under #patchbay-room. */
 body:has(#patchbay-room) {
   background: transparent;
-  overflow-x: clip;
+
 }
 
 /* The room is one bare main with no flash group, so the socket's own state has
    to be said here or it is never said at all. */
 .patchbay-connection-lost {
-  width: min(100%, 92rem);
-  margin: 0 auto .7rem;
+  width: 100%;
+  margin: 0 auto var(--space-1);
   border: 1px solid var(--pb-accent-deep);
-  border-radius: var(--pb-radius);
-  padding: .5rem .8rem;
+  border-radius: var(--radius);
+  padding: var(--rg-panel-padding);
   color: var(--pb-accent-deep);
   background: var(--pb-accent-wash);
   font-size: var(--pb-fs-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
 }
 .patchbay-connection-lost[hidden] { display: none; }
 
 #patchbay-room.patchbay-shell {
   background: transparent;
-  padding: 1.5rem clamp(1rem, 3vw, 3.5rem) 3.5rem;
+  padding-bottom: var(--space-7);
 }
 
 /* Page title + meta, in the same quiet language as the root masthead — not a
@@ -572,35 +471,34 @@ body:has(#patchbay-room) {
 #patchbay-room .patchbay-topbar {
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 22%, transparent);
-  border-radius: 0;
-  padding: .35rem 0 1.15rem;
+  padding: 0 0 var(--space-2);
   color: var(--pb-text);
   background: transparent;
-  box-shadow: none;
+
 }
 #patchbay-room .patchbay-brand h1 {
   color: var(--pb-text);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-title);
   font-size: var(--pb-fs-xl);
-  font-weight: 650;
-}
+  font-weight: 400;
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 #patchbay-room .patchbay-brandline {
-  margin: 0 0 .2rem;
+  margin: 0;
   color: var(--pb-text-muted);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-ui);
   font-size: var(--pb-fs-xs);
-  font-weight: 650;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .01em;
   text-transform: none;
 }
 #patchbay-room .patchbay-topbar .patchbay-generation { color: var(--pb-text-muted); }
 #patchbay-room .patchbay-generation-badge {
   border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  border-radius: 999px;
-  padding: .26rem .6rem;
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-1);
   color: var(--pb-text);
-  background: color-mix(in srgb, var(--pb-surface) 42%, transparent);
-  font-weight: 700;
+  background: var(--pb-surface);
+  font-weight: var(--font-weight-semibold);
 }
 #patchbay-room .patchbay-topbar .patchbay-pill { border-color: color-mix(in srgb, var(--pb-text) 28%, transparent); }
 #patchbay-room .patchbay-topbar .patchbay-pill.is-neutral {
@@ -613,115 +511,102 @@ body:has(#patchbay-room) {
 #patchbay-room .patchbay-guide {
   display: grid;
   grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr);
-  gap: var(--pb-space-3) var(--pb-space-4);
+  gap: var(--space-3) var(--space-4);
   align-items: start;
-  margin-top: var(--pb-space-4);
+  margin-top: var(--space-4);
   border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  border-radius: var(--pb-radius);
-  padding: var(--pb-space-4);
-  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
-  box-shadow: none;
+  border-radius: var(--radius);
+  padding: var(--rg-panel-padding);
+  background: var(--pb-surface);
+
 }
 #patchbay-room .patchbay-guide-head h2 {
   margin: 0;
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-title);
   font-size: var(--pb-fs-lg);
-  font-weight: 650;
+  font-weight: 400;
   line-height: 1.35;
   letter-spacing: -.02em;
   text-wrap: balance;
-}
-.patchbay-guide-head .patchbay-muted { margin: .55rem 0 0; font-size: var(--pb-fs-sm); }
-.patchbay-guide-links { margin: .5rem 0 0; font-size: var(--pb-fs-xs); }
-.patchbay-guide-links a { color: var(--pb-accent-deep); font-weight: 700; text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--pb-accent-deep) 40%, transparent); }
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-guide-head .patchbay-muted { margin: var(--space-1) 0 0; font-size: var(--pb-fs-sm); }
+.patchbay-guide-links { margin: var(--space-1) 0 0; font-size: var(--pb-fs-xs); }
+.patchbay-guide-links a { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--pb-accent-deep) 40%, transparent); }
 .patchbay-guide-links a:hover { border-bottom-color: var(--pb-accent-deep); }
 
-.patchbay-guide-prompts { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.patchbay-guide-prompts { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
 .patchbay-prompt-chip {
   display: grid;
   grid-template-columns: 1.6rem minmax(0, 1fr) auto;
-  gap: .65rem;
+  gap: var(--space-1);
   align-items: start;
   border: 1px solid color-mix(in srgb, var(--pb-text) 22%, transparent);
-  border-radius: var(--pb-radius-sm);
-  padding: .75rem .85rem;
-  background: color-mix(in srgb, var(--pb-surface) 55%, transparent);
+  border-radius: var(--radius);
+  padding: var(--rg-panel-padding);
+  background: var(--pb-surface);
 }
+/* A step marker is a 22px box, so the shared corner clamps it to a circle. */
 .patchbay-step-number {
   display: grid;
   place-items: center;
   width: 1.4rem;
   height: 1.4rem;
-  border-radius: 50%;
+  border-radius: var(--radius);
   color: var(--pb-accent-ink);
   background: var(--pb-accent);
   font-size: var(--pb-fs-micro);
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
 }
 /* Which prompt to send now is read off the room's own status, so the strip
    tracks the loop instead of asking a judge to keep their place in it. */
-.patchbay-prompt-chip.is-current { border-color: var(--pb-accent); box-shadow: none; }
-.patchbay-prompt-chip.is-waiting { opacity: .62; }
+.patchbay-prompt-chip.is-current { border-color: var(--pb-accent);  }
+.patchbay-prompt-chip.is-waiting { opacity: 1; }
 .patchbay-prompt-chip.is-done .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-surface-sunk); border: 1px solid var(--pb-line); }
 .patchbay-prompt-chip.is-waiting .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-canvas-deep); }
 .patchbay-step-now {
-  margin-left: .4rem;
-  border-radius: 999px;
-  padding: .04rem .38rem;
+  margin-left: var(--space-1);
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-1);
   color: var(--pb-accent-deep);
   background: var(--pb-accent-wash);
   font-size: var(--pb-fs-micro);
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
   text-transform: none;
 }
 
 .patchbay-prompt-body { min-width: 0; }
-.patchbay-prompt-body label { display: block; margin-bottom: .2rem; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; }
-.patchbay-prompt { display: block; width: 100%; border: 0; border-radius: .4rem; padding: .5rem .55rem; color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.5 var(--pb-mono); resize: none; }
-.patchbay-copy {
-  align-self: center;
-  cursor: pointer;
-  border: 1px solid var(--pb-line);
-  border-radius: .45rem;
-  padding: .3rem .55rem;
-  color: var(--pb-accent-deep);
-  background: var(--pb-surface);
-  font-family: var(--pb-mono);
-  font-size: var(--pb-fs-xs);
-  font-weight: 800;
-  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
-}
-.patchbay-copy:hover { background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
+.patchbay-prompt-body label { display: block; margin-bottom: var(--space-1); color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); }
+.patchbay-prompt { display: block; width: 100%; border: 0; border-radius: var(--radius); padding: var(--space-1) var(--space-2); color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.5 var(--font-family-ui); resize: none; }
+.patchbay-copy { align-self: center; font-size: var(--pb-fs-xs); }
+.patchbay-copy:hover { align-self: center; font-size: var(--pb-fs-xs); }
 .patchbay-copy[data-state="done"] { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
 
-.patchbay-guide-watch { grid-column: 1 / -1; margin: .35rem 0 0; color: var(--pb-text-muted); font-family: var(--pb-sans); font-size: var(--pb-fs-xs); line-height: 1.6; }
+.patchbay-guide-watch { grid-column: 1 / -1; margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-xs); line-height: 1.6; }
 .patchbay-guide-watch b { color: var(--pb-text); }
-.patchbay-guide-watch strong { color: var(--pb-accent-deep); font-weight: 700; }
+.patchbay-guide-watch strong { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); }
 
 /* The goal is a section header now, not a billboard. */
 #patchbay-room .patchbay-hero {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--pb-space-4);
-  padding-block: var(--pb-space-4) var(--pb-space-3);
+  gap: var(--space-4);
+  padding-block: var(--space-4) var(--space-3);
 }
 .patchbay-goal { max-width: 46rem; }
 #patchbay-room .patchbay-hero h2 {
   margin: 0;
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-title);
   font-size: var(--pb-fs-xl);
-  font-weight: 650;
+  font-weight: 400;
   line-height: 1.25;
   letter-spacing: -.03em;
   text-wrap: balance;
-}
-#patchbay-room .patchbay-hero .patchbay-muted { margin: .4rem 0 0; }
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+#patchbay-room .patchbay-hero .patchbay-muted { margin: var(--space-1) 0 0; }
 #patchbay-room .patchbay-registry-summary {
   border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  border-radius: var(--pb-radius-sm);
-  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
-  box-shadow: none;
+  background: var(--pb-surface);
 }
 
 /* The Candidate editor is the proof, so it is the largest panel; Source Skill
@@ -729,40 +614,36 @@ body:has(#patchbay-room) {
 #patchbay-room .patchbay-editors { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
 #patchbay-room .patchbay-card {
   border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  border-radius: var(--pb-radius);
-  padding: var(--pb-space-4);
-  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
-  box-shadow: none;
+  background: var(--pb-surface);
 }
 #patchbay-room .patchbay-card-heading h3,
 #patchbay-room .patchbay-retry-card h3 {
-  font-family: var(--pb-sans);
-  font-weight: 650;
-}
-.patchbay-candidate-card { padding: var(--pb-space-4); box-shadow: none; }
-.patchbay-candidate-card h3 { font-size: var(--pb-fs-lg); }
+  font-family: var(--font-family-title);
+  font-weight: 400;
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-candidate-card h3 { font-size: var(--pb-fs-lg);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-candidate-card .patchbay-editor { min-height: 22rem; }
-.patchbay-source-card { background: color-mix(in srgb, var(--pb-surface) 82%, var(--pb-text)); box-shadow: none; }
+.patchbay-source-card { background: var(--pb-surface); }
 .patchbay-source-card .patchbay-editor { min-height: 13rem; background: var(--pb-surface-sunk); }
-.patchbay-source-card h3 { color: var(--pb-text-muted); }
+.patchbay-source-card h3 { color: var(--pb-text-muted);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 
-.patchbay-verdict { display: flex; align-items: center; gap: .4rem; }
+.patchbay-verdict { display: flex; align-items: center; gap: var(--space-1); }
 .patchbay-verdict-chip {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: .3rem .7rem;
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-1);
   color: var(--pb-surface);
   background: var(--pb-good);
   font-size: var(--pb-fs-xs);
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .01em;
 }
 
 .patchbay-well { position: relative; }
 .patchbay-well-note {
   position: absolute;
-  inset-inline: 1rem;
+  inset-inline: var(--space-2);
   top: 42%;
   margin: 0;
   color: var(--pb-text-muted);
@@ -776,25 +657,25 @@ body:has(#patchbay-room) {
 }
 .patchbay-candidate-card.is-verified {
   border-color: var(--pb-good);
-  background: color-mix(in srgb, var(--pb-surface) 72%, var(--pb-text));
-  box-shadow: none;
+  background: var(--pb-surface);
+
 }
 .patchbay-candidate-card.is-verified .patchbay-editor { border-color: var(--pb-good); background: var(--pb-good-wash); }
 
 /* The scoreboard is the thesis: what the tool claimed, against what the page
    could actually see. */
-.patchbay-scoreboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-bottom: var(--pb-space-3); }
-.patchbay-score { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--pb-radius); padding: .7rem .8rem; background: var(--pb-surface-sunk); }
-.patchbay-score-label { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.patchbay-scoreboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); margin-bottom: var(--space-3); }
+.patchbay-score { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface-sunk); }
+.patchbay-score-label { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
 .patchbay-badge {
   display: inline-block;
-  margin: .4rem 0 .35rem;
-  border-radius: .55rem;
-  padding: .25rem .55rem;
+  margin: var(--space-1) 0;
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-2);
   font-size: var(--pb-fs-lg);
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: -.02em;
-  line-height: 1.15;
+  line-height: 1.5;
 }
 .patchbay-badge.is-neutral { color: var(--pb-text); background: var(--pb-canvas-deep); }
 .patchbay-badge.is-good { color: var(--pb-surface); background: var(--pb-good); }
@@ -808,31 +689,32 @@ body:has(#patchbay-room) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-top: var(--pb-space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-4);
   border-color: var(--pb-good);
   background: color-mix(in srgb, var(--pb-good) 16%, var(--pb-surface-sunk));
 }
-.patchbay-retry-card h3 { margin: .1rem 0 0; font-size: var(--pb-fs-md); }
+.patchbay-retry-card h3 { margin: 0; font-size: var(--pb-fs-md);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-retry-card p { margin-bottom: 0; }
-.patchbay-retry-actions { display: grid; justify-items: end; gap: .35rem; max-width: 17rem; }
+.patchbay-retry-actions { display: grid; justify-items: end; gap: var(--space-1); max-width: 17rem; }
 .patchbay-retry-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; text-align: right; }
 
 /* Reset throws the room's whole record away, so the button asks first. */
-.patchbay-reset-confirm { display: grid; gap: .45rem; justify-items: end; max-width: 21rem; }
+.patchbay-reset-confirm { display: grid; gap: var(--space-1); justify-items: end; max-width: 21rem; }
 .patchbay-reset-confirm p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; text-align: right; }
-.patchbay-reset-confirm > div { display: flex; flex-wrap: wrap; gap: .4rem; }
+.patchbay-reset-confirm > div { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 
 /* A real ledger: one rail, one dot per event, coloured by what kind of moment
-   it was. */
-.patchbay-timeline-card { margin-top: var(--pb-space-4); }
+   it was. The rail and its dots are drawn geometry, so they keep their own
+   measures; the rows between them sit on the grid. */
+.patchbay-timeline-card { margin-top: var(--space-4); }
 .patchbay-timeline { margin: 0; padding: 0; list-style: none; }
 .patchbay-timeline-entry {
   position: relative;
   display: grid;
   grid-template-columns: .95rem minmax(0, 1fr) auto;
-  gap: 0 .75rem;
-  padding: .5rem 0;
+  gap: 0 var(--space-1);
+  padding: var(--space-1) 0;
 }
 .patchbay-timeline-entry::before {
   content: "";
@@ -853,28 +735,28 @@ body:has(#patchbay-room) {
   height: .58rem;
   border-radius: 50%;
   background: var(--pb-text-muted);
-  box-shadow: 0 0 0 3px var(--pb-surface);
+
 }
 .patchbay-timeline-entry.is-invocation .patchbay-timeline-dot { background: var(--pb-accent); }
 .patchbay-timeline-entry.is-verification .patchbay-timeline-dot { background: var(--pb-accent-deep); }
 .patchbay-timeline-entry.is-verification.is-passed .patchbay-timeline-dot { background: var(--pb-good); }
 .patchbay-timeline-entry.is-repair .patchbay-timeline-dot { background: var(--pb-accent); }
 .patchbay-timeline-entry.is-publication .patchbay-timeline-dot { background: var(--pb-text); }
-.patchbay-timeline-entry.is-goal .patchbay-timeline-dot { background: var(--pb-good); box-shadow: 0 0 0 3px var(--pb-surface); }
+.patchbay-timeline-entry.is-goal .patchbay-timeline-dot { background: var(--pb-good);  }
 .patchbay-timeline-entry.is-error .patchbay-timeline-dot { background: var(--pb-bad); }
 .patchbay-timeline-body { min-width: 0; }
 .patchbay-timeline-body strong { display: block; font-size: var(--pb-fs-xs); }
-.patchbay-timeline-body span { display: block; margin-top: .1rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
+.patchbay-timeline-body span { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
 .patchbay-timeline-when { text-align: right; white-space: nowrap; }
 .patchbay-timeline-when time { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-timeline-sequence { color: var(--pb-text-muted); font: .6rem var(--pb-mono); }
+.patchbay-timeline-sequence { color: var(--pb-text-muted); font: .6rem var(--font-family-mono); }
 
-#patchbay-room .patchbay-room-reports { margin-top: var(--pb-space-4); }
+#patchbay-room .patchbay-room-reports { margin-top: var(--space-4); }
 #patchbay-room .patchbay-nameplate-agent {
   background: color-mix(in srgb, var(--pb-accent) 16%, var(--pb-surface-sunk));
   color: var(--pb-text);
   border-color: color-mix(in srgb, var(--pb-accent) 40%, var(--pb-line));
-  box-shadow: none;
+
 }
 
 /* A laptop is the first place the room runs out of room. The workbench holds
@@ -888,13 +770,12 @@ body:has(#patchbay-room) {
 
 @media (max-width: 900px) {
   #patchbay-room .patchbay-editors { grid-template-columns: 1fr; }
-  .patchbay-candidate-card { padding: var(--pb-space-3); }
 }
 
 @media (max-width: 760px) {
   .patchbay-topbar, #patchbay-room .patchbay-hero, .patchbay-footer { align-items: flex-start; flex-direction: column; }
   .patchbay-topbar-meta { width: 100%; }
-  #patchbay-room .patchbay-hero { gap: 1.1rem; }
+  #patchbay-room .patchbay-hero { gap: var(--space-2); }
   .patchbay-registry-summary { width: 100%; }
   .patchbay-scoreboard, .patchbay-state-grid, .patchbay-evidence-grid { grid-template-columns: 1fr; }
   .patchbay-editor { min-height: 14rem; }
@@ -914,105 +795,101 @@ body:has(#patchbay-room) {
 /* The forum board reuses the room's paper and card language, but its pages are
    read-only lists, so they stay a single narrow column. */
 .patchbay-board .patchbay-topbar,
-.patchbay-board .patchbay-card { width: min(100%, 62rem); margin-inline: auto; }
-.patchbay-board .patchbay-card { margin-top: 1rem; padding: var(--pb-space-3); }
+.patchbay-board .patchbay-card { width: 100%; margin-inline: auto; }
+.patchbay-board .patchbay-card { margin-top: var(--space-2); }
 .patchbay-board .patchbay-kicker a { color: inherit; text-decoration: none; }
 .patchbay-board .patchbay-kicker a:hover { text-decoration: underline; }
-.patchbay-board h3 a { color: inherit; text-decoration: none; }
-.patchbay-board h3 a:hover { text-decoration: underline; }
-.patchbay-board-list { display: grid; gap: 0; margin: .5rem 0 0; padding: 0; list-style: none; }
-.patchbay-board-list > li { padding: .7rem 0; border-top: 1px solid var(--pb-line); }
-.patchbay-board-row, .patchbay-version-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
-.patchbay-board-title { color: var(--pb-text); font-family: var(--pb-sans); font-size: var(--pb-fs-md); font-weight: 650; text-decoration: none; }
-.patchbay-board-title:hover { text-decoration: underline; }
-.patchbay-board-facts { color: var(--pb-text-muted); font-family: var(--pb-sans); font-size: var(--pb-fs-xs); }
+.patchbay-board h3 a { color: inherit; text-decoration: none;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-board h3 a:hover { text-decoration: underline;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-board-list { display: grid; gap: 0; margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.patchbay-board-list > li { padding: var(--space-1) 0; border-top: 1px solid var(--pb-line); }
+.patchbay-board-row, .patchbay-version-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.patchbay-board-title { color: var(--pb-text); font-family: var(--font-family-title); font-size: var(--pb-fs-md); font-weight: 400; text-decoration: none;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-board-title:hover { text-decoration: underline;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.patchbay-board-facts { color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-xs); }
 a.patchbay-board-facts { text-decoration: none; }
 a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board-row .patchbay-board-facts { margin-right: auto; }
 .patchbay-version-row .patchbay-board-facts:last-child { width: 100%; }
-.patchbay-room-link { display: inline-flex; align-items: center; color: var(--pb-text); font-size: var(--pb-fs-xs); font-weight: 700; text-decoration: underline; text-decoration-color: var(--pb-line-strong); text-underline-offset: .3em; }
+.patchbay-room-link { display: inline-flex; align-items: center; color: var(--pb-text); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); text-decoration: underline; text-decoration-color: var(--pb-line-strong); text-underline-offset: .3em; }
 .patchbay-room-link:hover { text-decoration-color: currentColor; }
-.patchbay-reported-copy { margin: .6rem 0 0; }
-.patchbay-reported-copy p { margin: .15rem 0 0; }
-.patchbay-board-text { margin: .35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
-.patchbay-report-row .patchbay-card-heading { gap: .6rem; justify-content: flex-start; }
-.patchbay-reply-list { display: grid; gap: .5rem; margin: .6rem 0 0; padding: 0; list-style: none; }
-.patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; }
+.patchbay-reported-copy { margin: var(--space-1) 0 0; }
+.patchbay-reported-copy p { margin: 0; }
+.patchbay-board-text { margin: var(--space-1) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--font-family-mono); }
+.patchbay-report-row .patchbay-card-heading { gap: var(--space-1); justify-content: flex-start; }
+.patchbay-reply-list { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 
 /* A reply says who wrote it before it is read: an agent's carries the board's
    orange edge, a person's a powder blue one. The wash behind them is faint
    enough that the reply still reads as part of the same thread. */
-.pb-reply { border-left: 3px solid var(--pb-line); border-radius: 0 6px 6px 0; padding: .5rem .7rem; }
+.pb-reply { border-left: 3px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); }
 .pb-reply-agent { border-left-color: var(--pb-agent-edge); background: var(--pb-agent-edge-wash); }
 .pb-reply-human { border-left-color: var(--pb-human-edge); background: var(--pb-human-edge-wash); }
 
 /* Where a person writes their own reply. It sits at the foot of the thread it
    joins and is drawn in the same powder blue their reply will carry, so the
    form looks like what it is about to make. */
-.pb-reply-form { margin: .9rem 0 0; padding: .8rem .9rem; border: 1px solid var(--pb-line); border-left: 3px solid var(--pb-human-edge); border-radius: 0 8px 8px 0; background: var(--pb-human-edge-wash); }
-.pb-reply-form form { display: grid; gap: .35rem; margin: .5rem 0 0; }
-.pb-reply-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pb-reply-form { margin: var(--space-2) 0 0; padding: var(--rg-panel-padding); border: 1px solid var(--pb-line); border-left: 3px solid var(--pb-human-edge); border-radius: var(--radius); background: var(--pb-human-edge-wash); }
+.pb-reply-form form { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; }
+.pb-reply-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .04em; text-transform: uppercase; }
 .pb-reply-form select,
-.pb-reply-form textarea { width: 100%; padding: .45rem .55rem; border: 1px solid var(--pb-line-strong); border-radius: 6px; background: var(--pb-surface); color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
+.pb-reply-form textarea { width: 100%; min-height: 2.75rem;       }
 .pb-reply-form textarea { resize: vertical; }
-.pb-reply-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin: .3rem 0 0; }
-.pb-reply-form-problem { margin: .4rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: 700; }
+.pb-reply-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); margin: var(--space-1) 0 0; }
+.pb-reply-form-problem { margin: var(--space-1) 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
 
 /* Taking your own escrowed money back: one button, always live, with the plain
    consequence of pressing it beside rather than under it. */
-.pb-reclaim { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .7rem 0 0; }
+.pb-reclaim { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; margin: var(--space-1) 0 0; }
 .pb-reclaim span { flex: 1 1 16rem; }
-.pb-reclaim-problem { margin: .4rem 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: 700; }
+.pb-reclaim-problem { margin: var(--space-1) 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
 
 /* The two names on your own profile, side by side, so the pair reads as one
    choice rather than two settings. */
-.pb-name-forms { display: grid; gap: .8rem; margin: .7rem 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-.pb-name-form { display: grid; gap: .3rem; }
-.pb-name-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.pb-name-form-row { display: flex; gap: .4rem; }
-.pb-name-form input { flex: 1 1 auto; min-width: 0; padding: .45rem .55rem; border: 1px solid var(--pb-line-strong); border-radius: 6px; background: var(--pb-surface); color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--pb-mono); }
+.pb-name-forms { display: grid; gap: var(--space-2); margin: var(--space-1) 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.pb-name-form { display: grid; gap: var(--space-1); }
+.pb-name-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .04em; text-transform: uppercase; }
+.pb-name-form-row { display: flex; gap: var(--space-1); }
+.pb-name-form input { flex: 1 1 auto; min-width: 0; min-height: 2.75rem;       }
 .patchbay-reply-list .patchbay-board-text { width: 100%; }
 .patchbay-board .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-result-box .patchbay-board-text,
 .patchbay-board .patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
 
-/* Who wrote a report or a reply. Every visitor is a stranger on a plain white
-   plate; Patchbay's own answers carry the one gradient plate on the page, so
-   the site's own word is never mistaken for a visitor's. */
+/* Authorship stays explicit in text. Patchbay's own nameplate uses a flat
+   Charcoal/Platinum pair, never a gradient behind the author name. */
 .patchbay-nameplate {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--pb-line);
-  border-radius: 999px;
-  padding: .24rem .6rem;
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-1);
   background: var(--pb-surface);
   color: var(--pb-text);
   font-size: var(--pb-fs-micro);
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .02em;
+  line-height: 1.5;
   white-space: nowrap;
 }
 .patchbay-nameplate-agent {
   border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line));
-  background: var(--pb-agent-gradient);
-  color: var(--pb-accent-ink);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--pb-text) 18%, transparent);
+  background: var(--support-panel-surface); color: var(--support-panel-ink);
+  color: var(--support-panel-ink);
+
 }
 
 /* The board thread the room page carries at the bottom, so the whole exchange
    about one tool is readable without leaving the room. */
-.patchbay-room-reports .patchbay-board-list > li { border-top: 1px solid var(--pb-line); padding: .7rem 0; }
+.patchbay-room-reports .patchbay-board-list > li { border-top: 1px solid var(--pb-line); padding: var(--space-1) 0; }
 .patchbay-room-reports .patchbay-board-list > .patchbay-empty-state {
   margin: 0;
-  padding: var(--pb-space-4);
+  padding: var(--space-3) 0;
 }
-.patchbay-room-reports .patchbay-board-text { margin-top: .3rem; }
+.patchbay-room-reports .patchbay-board-text { margin-top: var(--space-1); }
 .patchbay-room-reports .patchbay-reply-list > li { align-items: baseline; }
 
-@media (hover: hover) and (pointer: fine) {
-  .patchbay-button:hover { transform: translateY(-1px); }
-  .patchbay-button:disabled:hover { transform: none; }
-}
 
 /* A finger is about 9mm across and has no hover to aim with, so every control
    the loop runs through is at least 44px tall where the pointer is coarse. The
@@ -1022,9 +899,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   .patchbay-copy,
   .patchbay-room-link,
   .pb-cta,
-  .pb-secondary,
-  .pb-skip-link,
-  .pb-band-nav a {
+  .pb-skip-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1036,8 +911,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* ==========================================================================
    FORUM BOARD — regent-4il
    Everything below styles the public board pages only (/sites, one site, one
-   tool, one report). It is appended as its own section and changes no rule
-   above it. The --pb-* tokens are declared on :root so a palette declared
+   tool, one report). The --pb-* tokens are declared on :root so a palette declared
    closer to the page, on the shell itself, still wins.
    ========================================================================== */
 
@@ -1046,7 +920,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board {
   color: var(--pb-text);
   background: transparent;
-  padding-top: 1.6rem;
 }
 
 .patchbay-board .patchbay-topbar,
@@ -1060,10 +933,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-home-search,
 .pb-feed,
 .pb-setup-page,
-.pb-site-grid,
 .pb-log,
 .pb-aside {
-  width: min(100%, 62rem);
+  width: 100%;
   margin-inline: auto;
 }
 
@@ -1071,24 +943,23 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-topbar {
   align-items: flex-start;
   border-bottom: 1px solid var(--pb-line);
-  border-radius: 0;
-  padding: 1.5rem 0 1.25rem;
+  padding: 0 0 var(--space-3);
   color: var(--pb-text);
   background: transparent;
-  box-shadow: none;
+
 }
 .patchbay-board .patchbay-topbar h1 {
   font-size: clamp(1.15rem, 2.3vw, 1.62rem);
   letter-spacing: -.035em;
   line-height: 1.1;
   overflow-wrap: anywhere;
-}
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-accent-deep); }
 .patchbay-board .patchbay-topbar .patchbay-kicker a { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-topbar .patchbay-generation { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-mark {
   background: #0c0c0c;
-  box-shadow: none;
+
 }
 .patchbay-board .patchbay-topbar-meta { flex-wrap: wrap; justify-content: flex-end; }
 .patchbay-board .patchbay-room-link {
@@ -1100,17 +971,14 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-card {
   border-color: var(--pb-line);
   background: var(--pb-surface);
-  box-shadow: var(--pb-shadow);
 }
-.patchbay-board .patchbay-board-card { padding: 1.15rem 1.25rem; }
-.patchbay-board h3 a:hover { color: var(--pb-accent-deep); }
+.patchbay-board h3 a:hover { color: var(--pb-accent-deep);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 
-/* The board's lede and the landing page's lede are different paragraphs on
-   different pages, so each is scoped to the page that owns it. */
+/* The board's lede. */
 .patchbay-board .pb-lede {
   /* Held to a readable measure by trimming the right edge, so its first
      character still lines up with the cards under it. */
-  margin: 1.15rem auto .35rem;
+  margin: var(--space-2) auto var(--space-1);
   padding-right: min(16rem, 26%);
   color: var(--pb-text-muted);
   font-size: .875rem;
@@ -1119,12 +987,12 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 
 /* Verdict bars: one thin proportional strip, read with the line beneath it. */
-.pb-verdicts { margin-top: .8rem; }
+.pb-verdicts { margin-top: var(--space-2); }
 .pb-bar {
   display: flex;
   height: .4rem;
-  overflow: hidden;
-  border-radius: 999px;
+
+  border-radius: var(--radius);
   background: var(--pb-canvas-deep);
 }
 .pb-bar-part { display: block; height: 100%; }
@@ -1132,79 +1000,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-bar-part.is-failed { background: var(--pb-accent); }
 .pb-bar-part.is-errored { background: var(--pb-bad); }
 .pb-bar-part.is-unclear { background: var(--pb-text-muted); }
-.pb-bar-legend { margin: .42rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; letter-spacing: .01em; }
-.pb-bar-legend b { color: var(--pb-text); font-weight: 700; }
-
-/* The site cards */
-.pb-site-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
-  gap: .7rem;
-  margin-top: .75rem;
-}
-.pb-site-card {
-  display: flex;
-  flex-direction: column;
-  gap: .4rem;
-  min-width: 0;
-  border: 1px solid var(--pb-line);
-  border-radius: .7rem;
-  padding: .75rem .8rem .8rem;
-  background: var(--pb-surface);
-  box-shadow: var(--pb-shadow-sm);
-  transition: transform 200ms var(--pb-ease-out), box-shadow 200ms var(--pb-ease-out), border-color 200ms ease;
-}
-@media (hover: hover) and (pointer: fine) {
-  .pb-site-card:hover {
-    transform: translateY(-1px);
-    border-color: color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line));
-    box-shadow: var(--pb-shadow);
-  }
-}
-.pb-site-card.is-ours {
-  border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line));
-  box-shadow: 0 .4rem 1.1rem color-mix(in srgb, var(--pb-accent) 14%, transparent);
-}
-.pb-site-head {
-  display: flex;
-  align-items: center;
-  gap: .55rem;
-  min-width: 0;
-}
-.pb-site-logo {
-  display: block;
-  flex: none;
-  width: 1.7rem;
-  height: 1.7rem;
-  border-radius: .35rem;
-  background: var(--pb-surface-sunk);
-  object-fit: contain;
-}
-.pb-site-logo[hidden] { display: none; }
-.pb-site-name {
-  min-width: 0;
-  flex: 1;
-  color: var(--pb-text);
-  font-family: var(--pb-sans);
-  font-size: .9rem;
-  font-weight: 700;
-  letter-spacing: -.02em;
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pb-site-name:hover { color: var(--pb-accent-deep); text-decoration: underline; }
-.pb-site-counts { margin: 0; color: var(--pb-text-muted); font-family: var(--pb-sans); font-size: .75rem; }
-.pb-site-checked { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-site-checked b { color: var(--pb-good); }
-.pb-site-foot {
-  margin: auto 0 0;
-  padding-top: .45rem;
-  border-top: 1px dashed var(--pb-line);
-  color: var(--pb-text-muted);
-  font-size: .75rem;
-}
+.pb-bar-legend { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: .8125rem; letter-spacing: .01em; }
+.pb-bar-legend b { color: var(--pb-text); font-weight: var(--font-weight-semibold); }
 
 /* Chips: short, quiet labels that carry one fact each. */
 .pb-chip {
@@ -1212,320 +1009,81 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   align-items: center;
   flex: none;
   border: 1px solid var(--pb-line);
-  border-radius: 999px;
-  padding: .18rem .5rem;
+  border-radius: var(--radius);
+  padding: var(--space-0) var(--space-1);
   background: var(--pb-surface-sunk);
   color: var(--pb-text-muted);
   font-size: .62rem;
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .05em;
+  line-height: 1.5;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .pb-chip.is-ours { color: var(--pb-accent-ink); background: var(--pb-accent); border-color: var(--pb-accent-deep); }
 .pb-chip.is-current { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
-
-/* One site's tools, each with its versions as a row of chips. */
-.pb-tool-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
-.pb-tool-head h3 { margin: 0; font-size: 1.02rem; letter-spacing: -.025em; }
-.pb-version-chips { display: grid; gap: .45rem; margin: .85rem 0 0; padding: 0; list-style: none; }
-.pb-version-chips > li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .35rem .7rem;
-  border: 1px solid var(--pb-line);
-  border-radius: .6rem;
-  padding: .5rem .65rem;
-  background: var(--pb-surface-sunk);
-}
-.pb-version-chips > li.is-current { border-color: var(--pb-good); background: var(--pb-good-wash); }
 .pb-chip-facts { color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-version-chips .pb-chip-facts:last-child { margin-left: auto; }
 
 /* One tool's history, read top to bottom like a log of edits. */
 .pb-log { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
-.pb-version-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; }
-.pb-version-head h3 { margin: 0; font-size: 1rem; letter-spacing: 0; }
-.pb-version-marks { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .4rem .6rem; }
+.pb-version-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.pb-version-head h3 { margin: 0; font-size: 1rem; letter-spacing: 0;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.pb-version-marks { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-1); }
 
 .pb-changed {
-  margin: .9rem 0 0;
+  margin: var(--space-2) 0 0;
   border-left: 2px solid var(--pb-accent);
-  border-radius: 0 .6rem .6rem 0;
-  padding: .7rem .85rem;
+  border-radius: var(--radius);
+  padding: var(--rg-panel-padding);
   background: var(--pb-accent-wash);
 }
 .pb-changed .patchbay-kicker { color: var(--pb-accent-deep); }
 .pb-changed .patchbay-empty-state { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .5rem; margin: 0 0 .4rem; font-size: .8125rem; }
+.pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1); margin: 0 0 var(--space-1); font-size: .8125rem; }
 .pb-change-title s { color: var(--pb-bad); text-decoration-thickness: 1px; }
-.pb-change-title ins { color: var(--pb-good); text-decoration: none; font-weight: 700; }
-.pb-change-label { color: var(--pb-text-muted); font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.pb-change-title ins { color: var(--pb-good); text-decoration: none; font-weight: var(--font-weight-semibold); }
+.pb-change-label { color: var(--pb-text-muted); font-size: .62rem; font-weight: var(--font-weight-semibold); letter-spacing: .12em; text-transform: uppercase; }
 
-.pb-sentences { display: grid; gap: .28rem; margin: 0; padding: 0; list-style: none; }
-.pb-sentences > li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: .45rem; font-size: .8125rem; line-height: 1.5; }
-.pb-sentence-mark { color: var(--pb-text-muted); font: 800 .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.pb-sentences { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.pb-sentences > li { display: grid; grid-template-columns: .9rem minmax(0, 1fr); gap: var(--space-1); font-size: .8125rem; line-height: 1.5; }
+.pb-sentence-mark { color: var(--pb-text-muted); font: var(--font-weight-semibold) .8125rem/1.5 var(--font-family-mono); }
 .pb-sentence.is-kept { color: var(--pb-text-muted); }
 .pb-sentence.is-added { color: var(--pb-good); }
 .pb-sentence.is-added .pb-sentence-mark { color: var(--pb-good); }
-.pb-sentence.is-added span:last-child { background: var(--pb-good-wash); border-radius: .3rem; box-shadow: 0 0 0 .18rem var(--pb-good-wash); }
+.pb-sentence.is-added span:last-child { background: var(--pb-good-wash); border-radius: var(--radius);  }
 .pb-sentence.is-removed { color: var(--pb-bad); }
 .pb-sentence.is-removed .pb-sentence-mark { color: var(--pb-bad); }
-.pb-sentence.is-removed span:last-child { background: var(--pb-bad-wash); border-radius: .3rem; box-shadow: 0 0 0 .18rem var(--pb-bad-wash); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pb-bad) 45%, transparent); }
+.pb-sentence.is-removed span:last-child { background: var(--pb-bad-wash); border-radius: var(--radius);  text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--pb-bad) 45%, transparent); }
 
 /* One report, wherever it is read. */
 .patchbay-board .patchbay-report-row .patchbay-card-heading { flex-wrap: wrap; align-items: center; }
-.patchbay-board .patchbay-nameplate-agent { background: var(--pb-agent-gradient); }
-.pb-aside { margin: .9rem auto 0; color: var(--pb-text-muted); font-size: .8125rem; }
+.patchbay-board .patchbay-nameplate-agent { background: var(--support-panel-surface); color: var(--support-panel-ink); }
+.pb-aside { margin: var(--space-2) auto 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .patchbay-board .patchbay-empty-state { color: var(--pb-text-muted); }
 
 @media (max-width: 760px) {
-  .patchbay-board .patchbay-topbar { border-radius: 0; }
   .patchbay-board .patchbay-topbar-meta { justify-content: flex-start; }
-  .pb-site-grid { grid-template-columns: 1fr; }
-  .pb-version-chips .pb-chip-facts:last-child { margin-left: 0; }
-
 }
 
 /* ==========================================================================
-   Landing page and the not-found page (ticket regent-6h5).
-   Provisional palette tokens: the canonical --pb-* set belongs at the top of
-   this file. They are scoped to the two page roots below so this block cannot
-   reach the room, and so it can be deleted in one edit once the canonical set
-   lands.
+   The not-found and unavailable pages: the same paper, one way back.
    ========================================================================== */
 
-.pb-page { min-height: 100vh; display: flex; flex-direction: column; font-family: var(--pb-sans); }
-.pb-main { flex: 1; }
-
-/* The one dark band on the page. It gives the warm canvas a top edge to sit
-   against, so the important things below it are not floating on white. */
-.pb-band {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: .85rem var(--pb-gutter);
-  background: var(--pb-ink-soft);
-  color: var(--pb-text-on-ink);
-}
-.pb-brand { display: inline-flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none; }
-.pb-wordmark { font-family: var(--pb-sans); font-size: 1.02rem; font-weight: 650; letter-spacing: -.015em; }
-.pb-mark { display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: .5rem; color: var(--pb-accent-ink); background: var(--pb-accent); }
-.pb-mark svg { width: 1.05rem; height: 1.05rem; }
-.pb-band-nav { display: flex; gap: 1.2rem; font-size: .8125rem; }
-.pb-band-nav a { display: inline-flex; align-items: center; color: var(--pb-text-on-ink-muted); padding-block: .2rem; text-decoration: none; }
-.pb-band-nav a:hover { color: var(--pb-text-on-ink); text-decoration: underline; text-decoration-color: var(--pb-accent); text-underline-offset: .3em; }
-
 .pb-kicker {
-  margin: 0 0 .7rem;
+  margin: 0 0 var(--space-1);
   color: var(--pb-accent-deep);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-ui);
   font-size: .68rem;
-  font-weight: 800;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: .16em;
   text-transform: uppercase;
 }
-.pb-kicker-quiet { color: var(--pb-text-muted); }
-.pb-kicker-light { color: var(--pb-accent); }
 
-/* Hero: the sentence on the left, and the evidence it is talking about on the
-   right, so the claim and the proof arrive together. */
-.pb-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
-  align-items: start;
-  gap: clamp(1.75rem, 4vw, 3.5rem);
-  width: var(--pb-measure);
-  margin-inline: auto;
-  padding: clamp(2.75rem, 7vw, 5.5rem) var(--pb-gutter) clamp(2.5rem, 6vw, 4.5rem);
-}
-.pb-headline {
-  max-width: 15em;
-  margin: 0;
-  font-family: var(--pb-display);
-  font-size: clamp(2.05rem, 5.2vw, 3.85rem);
-  font-weight: 400;
-  line-height: 1.04;
-  letter-spacing: -.028em;
-  text-wrap: balance;
-}
-.pb-hero-copy .pb-lede { max-width: 40em; margin: 1.35rem 0 0; color: var(--pb-text-muted); font-size: clamp(.95rem, 1.4vw, 1.06rem); line-height: 1.62; }
-
-.pb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .85rem 1.5rem; margin-top: 1.9rem; }
-.pb-cta {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 0;
-  padding: .82rem 1.35rem;
-  color: var(--pb-accent-ink);
-  background: var(--pb-accent);
-  font-family: var(--pb-mono);
-  font-size: .93rem;
-  font-weight: 700;
-  letter-spacing: -.005em;
-  text-decoration: none;
-  /* The first ring is the button's own edge: an orange fill alone clears only
-     2.8:1 against the paper it sits on, which is not enough to find. */
-  box-shadow: 0 0 0 1px var(--pb-accent-deep), 0 .6rem 1.4rem color-mix(in srgb, var(--pb-accent) 22%, transparent);
-  transition: transform .25s cubic-bezier(.22, 1, .36, 1), background-color .25s ease;
-}
-.pb-cta:hover { background: color-mix(in srgb, var(--pb-accent) 88%, var(--pb-accent-ink)); transform: translateY(-2px); }
-/* The underline is drawn on the text rather than on the box, so the box is
-   free to grow into a finger-sized target without the rule drifting away. */
-.pb-secondary {
-  display: inline-flex;
-  align-items: center;
-  color: var(--pb-text);
-  font-size: .89rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: var(--pb-accent);
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: .3em;
-}
-.pb-secondary:hover { color: var(--pb-accent-deep); text-decoration-color: var(--pb-text); }
-.pb-fineprint { margin: 1.15rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; }
-
-.pb-proof {
-  border: 1px solid var(--pb-line);
-  border-top: 3px solid var(--pb-accent);
-  border-radius: .9rem;
-  padding: 1.15rem 1.25rem 1.05rem;
-  background: var(--pb-surface);
-  box-shadow: var(--pb-shadow-lg);
-}
-.pb-proof-rows { display: grid; gap: .55rem; margin: 0; }
-.pb-proof-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed var(--pb-line); padding-bottom: .5rem; }
-.pb-proof-rows dt { color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-proof-rows dd { margin: 0; font-size: .82rem; font-weight: 700; text-align: right; }
-.pb-said { color: var(--pb-text-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
-.pb-failed { color: var(--pb-accent-deep); }
-.pb-proof-note { margin: .85rem 0 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.55; }
-.pb-proof-after { display: flex; align-items: center; gap: .45rem; margin: .8rem 0 0; color: var(--pb-good); font-size: .8125rem; font-weight: 700; }
-.pb-dot-green { width: .48rem; height: .48rem; border-radius: 50%; background: var(--pb-good); box-shadow: 0 0 0 .22rem color-mix(in srgb, var(--pb-good) 18%, transparent); }
-
-.pb-code { font-family: var(--pb-mono); }
-/* Inline code keeps the size of the sentence it sits in, so a name in the
-   middle of a paragraph never drops below the page's reading floor. */
-.pb-code-inline { color: var(--pb-accent-deep); overflow-wrap: anywhere; }
-
-.pb-loop, .pb-tools { width: var(--pb-measure); margin-inline: auto; padding: clamp(2.25rem, 5vw, 3.75rem) var(--pb-gutter); }
-.pb-loop { border-top: 1px solid var(--pb-line); }
-.pb-section-head h2 { max-width: 22em; margin: 0 0 2rem; font-family: var(--pb-display); font-size: clamp(1.35rem, 2.6vw, 1.95rem); font-weight: 400; line-height: 1.18; letter-spacing: -.022em; }
-
-/* The five steps read as one strip: a single hairline runs behind them and the
-   markers sit on it, so it reads as a sequence rather than five cards. */
-.pb-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 1.35rem; margin: 0; padding: 0; list-style: none; }
-.pb-step { position: relative; border-top: 1px solid var(--pb-line); padding-top: 2.1rem; }
-.pb-step-marker {
-  position: absolute;
-  top: -.85rem;
-  left: 0;
-  display: grid;
-  place-items: center;
-  width: 1.7rem;
-  height: 1.7rem;
-  border: 1px solid var(--pb-ink-soft);
-  border-radius: 50%;
-  color: var(--pb-text-on-ink);
-  background: var(--pb-ink-soft);
-  font-family: var(--pb-mono);
-  font-size: .74rem;
-}
-.pb-step.is-warning { border-top-color: var(--pb-accent); }
-.pb-step.is-warning .pb-step-marker { border-color: var(--pb-accent); background: var(--pb-accent); color: var(--pb-accent-ink); }
-.pb-step.is-verified { border-top-color: var(--pb-good); }
-.pb-step.is-verified .pb-step-marker { border-color: var(--pb-good); background: var(--pb-good); color: var(--pb-surface); }
-.pb-step h3 { margin: 0 0 .45rem; font-size: .93rem; font-weight: 400; line-height: 1.28; letter-spacing: -.015em; }
-.pb-step p { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.55; }
-
-.pb-tool-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
-.pb-tool { border: 1px solid var(--pb-line); border-radius: .9rem; padding: 1.1rem 1.15rem; background: var(--pb-surface); }
-.pb-tool h3 { margin: 0 0 .55rem; color: var(--pb-accent-deep); font-size: .84rem; font-weight: 400; overflow-wrap: anywhere; }
-.pb-tool-desc { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.6; }
-.pb-tool.is-working { border-color: color-mix(in srgb, var(--pb-accent) 40%, var(--pb-line)); background: linear-gradient(180deg, var(--pb-accent-wash) 0%, var(--pb-surface) 60%); }
-.pb-swap { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem; margin: .85rem 0 0; font-family: var(--pb-mono); font-size: .8125rem; }
-.pb-swap-old { color: var(--pb-text-muted); text-decoration: line-through; }
-.pb-swap-arrow { color: var(--pb-accent-deep); }
-.pb-swap-new { color: var(--pb-good); font-weight: 700; }
-.pb-swap-note { font-family: var(--pb-sans); font-size: .8125rem; color: var(--pb-text-muted); }
-
-/* The second dark anchor. The argument for building this in the page at all
-   gets the weight of a full band rather than a paragraph in a card. */
-.pb-why {
-  padding: clamp(2.5rem, 6vw, 4.25rem) var(--pb-gutter);
-  background: var(--pb-ink-soft);
-  color: var(--pb-text-on-ink);
-}
-.pb-why > * { width: min(100%, 46rem); margin-inline: auto; }
-.pb-why h2 { margin: 0 0 1.1rem; font-family: var(--pb-display); font-size: clamp(1.45rem, 3vw, 2.25rem); font-weight: 400; line-height: 1.14; letter-spacing: -.025em; }
-.pb-why p { margin: 0; color: var(--pb-text-on-ink-muted); font-size: clamp(.92rem, 1.3vw, 1.02rem); line-height: 1.68; }
-/* The one button that sits on a dark panel, so it inverts: paper on ink. */
-.pb-cta-light { margin-top: 1.9rem; background: var(--pb-text-on-ink); color: var(--pb-ink); box-shadow: none; }
-.pb-cta-light:hover { background: color-mix(in srgb, var(--pb-text-on-ink) 85%, var(--pb-accent)); }
-
-.pb-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: .6rem 1.5rem;
-  width: var(--pb-measure);
-  margin-inline: auto;
-  padding: 1.6rem var(--pb-gutter) 2.4rem;
-  color: var(--pb-text-muted);
-  font-size: .8125rem;
-}
-.pb-footer p { margin: 0; }
-.pb-footer a { color: var(--pb-text); font-family: var(--pb-mono); font-size: .8125rem; text-decoration: none; border-bottom: 1px solid var(--pb-line); }
-.pb-footer a:hover { border-bottom-color: var(--pb-accent-deep); }
-
-/* The not-found page: the same paper, one way back. */
-.pb-error { min-height: 100vh; display: grid; place-items: center; padding: 2rem var(--pb-gutter); }
+.pb-error { min-height: 100vh; display: grid; place-items: center; padding: var(--space-4) var(--space-3); }
 .pb-error-inner { width: min(100%, 32rem); }
-.pb-error h1 { margin: 0; font-family: var(--pb-display); font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: 400; line-height: 1.1; letter-spacing: -.028em; }
-.pb-error-lede { margin: 1rem 0 1.9rem; color: var(--pb-text-muted); font-size: .95rem; line-height: 1.6; }
+.pb-error h1 { margin: 0; font-family: var(--font-family-title); font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: var(--font-weight-regular); line-height: 1.1; letter-spacing: -.028em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.pb-error-lede { margin: var(--space-2) 0 var(--space-4); color: var(--pb-text-muted); font-size: .95rem; line-height: 1.6; }
 
-@media (min-width: 48rem) {
-  .pb-hero-copy > * { animation: pb-rise .7s cubic-bezier(.16, 1, .3, 1) backwards; }
-  .pb-hero-copy > :nth-child(2) { animation-delay: .05s; }
-  .pb-hero-copy > :nth-child(3) { animation-delay: .1s; }
-  .pb-hero-copy > :nth-child(4) { animation-delay: .15s; }
-  .pb-hero-copy > :nth-child(5) { animation-delay: .2s; }
-  .pb-proof { animation: pb-rise .7s cubic-bezier(.16, 1, .3, 1) .18s backwards; }
-}
-
-@keyframes pb-rise {
-  from { opacity: 0; transform: translateY(.75rem); }
-  to { opacity: 1; transform: none; }
-}
-
-/* 64rem is a laptop, and it is where the hero's two columns and the five-across
-   step strip stop paying for themselves: the headline gets about ten characters
-   a line, and a step gets about 165px. Both give up their columns here rather
-   than holding on until the phone breakpoint. */
-@media (max-width: 64rem) {
-  .pb-hero { grid-template-columns: minmax(0, 1fr); }
-  .pb-proof { max-width: 30rem; }
-  .pb-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6rem 1.35rem; }
-}
-
-@media (max-width: 40rem) {
-  .pb-band { padding-inline: var(--pb-gutter); }
-  .pb-band-nav { gap: .9rem; }
-  .pb-headline { font-size: clamp(1.75rem, 8.5vw, 2.4rem); }
-  .pb-actions { gap: .85rem 1rem; }
-  .pb-cta { width: 100%; justify-content: center; }
-  .pb-steps { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .pb-step { border-top: 0; border-left: 1px solid var(--pb-line); padding: 0 0 1.4rem 1.6rem; }
-  .pb-step:last-child { padding-bottom: 0; }
-  .pb-step-marker { top: -.1rem; left: -.85rem; }
-  .pb-step.is-warning { border-top: 0; border-left-color: var(--pb-accent); }
-  .pb-step.is-verified { border-top: 0; border-left-color: var(--pb-good); }
-  .pb-footer { flex-direction: column; align-items: flex-start; }
-}
 
 /* ---------------------------------------------------------------------------
    The receipt, the agent's progress, and motion.
@@ -1539,35 +1097,35 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 .patchbay-receipt {
   display: grid;
-  gap: .15rem;
-  margin: 0 0 var(--pb-space-3);
+  gap: 0;
+  margin: 0 0 var(--space-3);
   border: 1px dashed var(--pb-line-strong);
   border-left: 3px solid var(--pb-accent);
-  border-radius: .5rem;
-  padding: .5rem .7rem;
+  border-radius: var(--radius);
+  padding: var(--rg-panel-padding);
   background: var(--pb-surface-sunk);
 }
-.patchbay-receipt-label { color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.patchbay-receipt code { color: var(--pb-text); font: var(--pb-fs-xs)/1.4 var(--pb-mono); overflow-wrap: anywhere; }
+.patchbay-receipt-label { color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .1em; text-transform: uppercase; }
+.patchbay-receipt code { color: var(--pb-text); font: var(--pb-fs-xs)/1.4 var(--font-family-mono); overflow-wrap: anywhere; }
 .patchbay-receipt-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
-.patchbay-agent-steps { display: grid; gap: .35rem; margin: 0 0 var(--pb-space-3); padding: 0; list-style: none; }
+.patchbay-agent-steps { display: grid; gap: var(--space-1); margin: 0 0 var(--space-3); padding: 0; list-style: none; }
 .patchbay-agent-step {
   display: grid;
   grid-template-columns: .55rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: .6rem;
-  border-radius: .5rem;
-  padding: .42rem .6rem;
+  gap: var(--space-1);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
   background: var(--pb-surface-sunk);
   font-size: var(--pb-fs-xs);
   transition: background-color .2s ease;
 }
 .patchbay-agent-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pb-text-muted); }
 .patchbay-agent-label { color: var(--pb-text-muted); }
-.patchbay-agent-state { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 800; letter-spacing: .02em; }
+.patchbay-agent-state { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .02em; }
 .patchbay-agent-step.is-working { background: color-mix(in srgb, var(--pb-accent) 14%, var(--pb-surface-sunk)); }
-.patchbay-agent-step.is-working .patchbay-agent-label { color: var(--pb-text); font-weight: 700; }
+.patchbay-agent-step.is-working .patchbay-agent-label { color: var(--pb-text); font-weight: var(--font-weight-semibold); }
 .patchbay-agent-step.is-working .patchbay-agent-state { color: var(--pb-accent-deep); }
 .patchbay-agent-step.is-working .patchbay-agent-dot { background: var(--pb-accent); animation: pb-agent-pulse 1.5s ease-in-out infinite; }
 .patchbay-agent-step.is-done .patchbay-agent-dot { background: var(--pb-good); }
@@ -1588,7 +1146,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 
 /* Ledger entries land rather than appear. */
-.patchbay-timeline-entry { animation: pb-timeline-in 260ms var(--pb-ease-out) both; }
+.patchbay-timeline-entry { animation: pb-timeline-in 260ms var(--ease-out) both; }
 .patchbay-timeline-entry:nth-child(2) { animation-delay: 40ms; }
 .patchbay-timeline-entry:nth-child(3) { animation-delay: 80ms; }
 .patchbay-timeline-entry:nth-child(4) { animation-delay: 120ms; }
@@ -1607,16 +1165,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* Reduced motion, answered in one place. Colour is not motion, so state
    changes still fade between tones. */
 @media (prefers-reduced-motion: reduce) {
-  .patchbay-button { transition-property: background-color, color, border-color; }
   .patchbay-button:hover,
-  .pb-cta:hover { transform: none; }
-  .pb-cta { transition-property: background-color; }
-  .pb-hero-copy > *, .pb-proof { animation: none; }
-  .patchbay-timeline-entry { animation: pb-fade-in 220ms ease both; }
-  .patchbay-agent-step.is-working .patchbay-agent-dot { animation: pb-fade-pulse 1.8s ease-in-out infinite; }
-  .pb-help summary::after,
-  .pb-site-card { transition: none; }
-  .pb-site-card:hover { transform: none; }
+
+  .patchbay-timeline-entry { animation: none; }
+  .patchbay-agent-step.is-working .patchbay-agent-dot { animation: none; }
 }
 
 @keyframes pb-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -1625,9 +1177,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 /* ==========================================================================
    FINGERPRINT CHIPS AND THE RECEIPT STUB — regent-sgj
-   Appended as its own section; nothing above it changes. Two ideas only: a
-   digest is drawn as colour beside its hex so it can be recognised at a
-   glance, and a receipt is drawn as the ticket stub it behaves like.
+   Digests retain their meaningful swatches beside copyable hex; receipts
+   remain flat ruled evidence, without decorative notches or shadows.
    ========================================================================== */
 
 /* A digest: four swatches, then the opening characters. Each swatch carries
@@ -1640,14 +1191,14 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   display: inline-flex;
   align-items: center;
   flex: none;
-  gap: .4rem;
+  gap: var(--space-1);
 }
+/* The swatch strip is a glyph, not a rounded surface. Keep every chip visible. */
 .pb-fingerprint-chips {
   display: inline-flex;
   flex: none;
   gap: 2px;
-  border-radius: 3px;
-  overflow: hidden;
+
 }
 .pb-fingerprint-chip {
   display: block;
@@ -1657,7 +1208,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 }
 .pb-fingerprint-hex {
   color: var(--pb-text-muted);
-  font: 700 .68rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: var(--font-weight-semibold) .68rem/1.2 var(--font-family-mono);
   white-space: nowrap;
 }
 /* On a version's own heading the hex is the heading, so it is set at heading
@@ -1665,51 +1216,35 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-version-head h3 .pb-fingerprint-hex { font-size: .86rem; }
 .pb-version-head h3 .pb-fingerprint-chip { width: .5rem; height: 1rem; }
 
-/* The receipt: the one thing on the page an agent could not have made up, so
-   it is drawn as what it is. Notches down the left edge and a perforation
-   line beside them make a stub torn from a longer strip; the edge is the
-   board's own accent, spent here and nowhere else on this page. */
+
 .pb-receipt-stub {
   --pb-tear: .3rem;
   position: relative;
   display: grid;
-  gap: .3rem;
+  gap: var(--space-1);
   /* A stub is the size of what is printed on it, not the width of the page. */
   width: max-content;
   max-width: 100%;
-  margin: 1.05rem 0 0;
-  padding: .7rem .95rem .68rem 1.35rem;
+  margin: var(--space-2) 0 0;
+  padding: var(--rg-panel-padding);
   border: 1px solid var(--pb-accent);
   border-left: 0;
-  border-radius: 0 .55rem .55rem 0;
-  background:
-    radial-gradient(
-        circle at left center,
-        transparent 0 var(--pb-tear),
-        color-mix(in srgb, var(--pb-accent) 11%, var(--pb-surface)) var(--pb-tear)
-      )
-      left top / 100% calc(var(--pb-tear) * 2) repeat-y;
-  box-shadow: 0 .3rem .9rem color-mix(in srgb, var(--pb-accent) 14%, transparent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--pb-surface-sunk);
+
 }
-.pb-receipt-stub::before {
-  content: "";
-  position: absolute;
-  top: .4rem;
-  bottom: .4rem;
-  left: .58rem;
-  border-left: 2px dotted color-mix(in srgb, var(--pb-accent) 78%, transparent);
-}
+.pb-receipt-stub::before { content: none; }
 .pb-receipt-stub .patchbay-kicker { margin: 0; }
 .pb-receipt-value {
   color: var(--pb-text);
-  font: 700 .8rem/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: var(--font-weight-semibold) .8rem/1.35 var(--font-family-mono);
   overflow-wrap: anywhere;
 }
 .pb-receipt-mark {
   margin: 0;
   color: var(--pb-good);
   font-size: var(--pb-fs-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
 }
 
 /* Site header, collapsed help, and the Agent setup rail. */
@@ -1717,137 +1252,108 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: .75rem 1.25rem;
+  gap: var(--space-1) var(--space-3);
   min-width: 0;
   flex: 1;
 }
 .pb-site-nav .pb-wordmark {
   display: inline-flex;
   align-items: center;
-  gap: .65rem;
+  gap: var(--space-1);
   color: var(--pb-text);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-title);
   font-size: 1.05rem;
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   text-decoration: none;
-}
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-site-nav .patchbay-mark {
   width: 1.45rem;
   height: 1.45rem;
-  border-radius: 0;
-  box-shadow: none;
+
 }
+
 .pb-site-nav__links {
   display: inline-flex;
   align-items: stretch;
   border: 1px solid var(--pb-line-strong);
+  border-radius: var(--radius);
   background: var(--pb-surface);
 }
 .pb-site-nav__links a {
   min-height: 2.75rem;
-  padding: 0 .8rem;
+  padding: 0 var(--space-2);
   display: inline-flex;
   align-items: center;
+  border-radius: var(--radius);
   color: var(--pb-text-muted);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-ui);
   font-size: .82rem;
-  font-weight: 500;
+  font-weight: var(--font-weight-regular);
   text-decoration: none;
   white-space: nowrap;
   transition: background-color 140ms ease, color 140ms ease;
 }
-.pb-site-nav__links a + a { border-left: 1px solid var(--pb-line-strong); }
 .pb-site-nav__links a:hover { background: var(--pb-surface-sunk); color: var(--pb-text); }
 .pb-site-nav__links a[aria-current="page"] {
   color: var(--pb-text);
   background: var(--pb-surface-sunk);
-  box-shadow: inset 0 -2px var(--pb-accent);
-}
+
+ border-block-end: 2px solid currentColor; }
 .pb-site-nav__github,
-.pb-site-nav__external { gap: .3rem; }
+.pb-site-nav__external { gap: var(--space-1); }
 
 .pb-section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: .8rem;
-  margin: 0 0 .15rem;
+  gap: var(--space-2);
+  margin: 0;
 }
 .pb-section-head h1,
 .pb-home-feed h2 {
   margin: 0;
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-title);
   font-size: var(--pb-fs-xl);
-  font-weight: 650;
+  font-weight: 400;
   letter-spacing: -.02em;
-}
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-section-head a {
   color: var(--pb-text-muted);
   font-size: var(--pb-fs-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
   text-decoration: none;
 }
 .pb-section-head a:hover { color: var(--pb-accent-deep); text-decoration: underline; }
-.pb-home-sites { margin-top: .35rem; }
+.pb-home-sites { margin-top: var(--space-1); }
 .pb-home-helps {
   display: grid;
-  gap: .45rem;
-  margin: 1rem auto 0;
+  gap: var(--space-1);
+  margin: var(--space-2) auto 0;
 }
-.pb-home-feed { margin-top: 1.35rem; }
-.pb-home-feed .pb-home-search { margin-top: .65rem; width: 100%; }
+.pb-home-feed { margin-top: var(--space-3); }
+.pb-home-feed .pb-home-search { margin-top: var(--space-1); width: 100%; }
+
 
 .pb-help {
   margin: 0;
-  border: 1px solid var(--pb-line);
-  border-radius: 0;
+  border-block-end: 1px solid var(--pb-line);
+  border-radius: var(--radius);
+  padding: 0;
   background: var(--pb-surface);
   color: var(--pb-text);
   font-size: var(--pb-fs-xs);
 }
-.pb-help summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .6rem;
-  min-height: 2.4rem;
-  padding: .4rem .75rem;
-  cursor: pointer;
-  font-family: var(--pb-sans);
-  font-weight: 700;
-  list-style: none;
-}
-.pb-help summary::-webkit-details-marker { display: none; }
-.pb-help summary::after {
-  content: "";
-  width: .42rem;
-  height: .42rem;
-  flex: none;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  transition: transform 140ms var(--pb-ease-out);
-}
-.pb-help[open] summary::after { transform: rotate(225deg); }
-.pb-help-body { padding: 0 .75rem .75rem; }
-.pb-help-body p { margin: 0 0 .55rem; color: var(--pb-text-muted); line-height: 1.5; }
+.pb-help > .pb-help-body { padding-top: var(--space-2); }
+.pb-help-body p { margin: 0 0 var(--space-1); color: var(--pb-text-muted); line-height: 1.5; }
 .pb-help-body p:last-child { margin-bottom: 0; }
-.pb-help-more { margin: .65rem 0 0; }
-.pb-help-more a { font-weight: 700; }
+.pb-help-more { margin: var(--space-1) 0 0; }
+.pb-help-more a { font-weight: var(--font-weight-semibold); }
 
-.pb-agent-setup {
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--pb-line);
-  border-radius: 0;
-  background: var(--pb-surface);
-}
-.pb-agent-setup .pb-help-body { padding-top: .15rem; }
-.pb-agent-setup-status { display: grid; gap: .3rem; }
+.pb-agent-setup-status { display: grid; gap: var(--space-1); }
 .pb-setup-line {
   display: flex;
   align-items: flex-start;
-  gap: .5rem;
+  gap: var(--space-1);
   margin: 0;
   color: var(--pb-text);
   font-size: var(--pb-fs-xs);
@@ -1858,7 +1364,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   width: .55rem;
   height: .55rem;
   margin-top: .28rem;
-  border-radius: 999px;
+  border-radius: 50%;
   border: 1.5px solid var(--pb-line-strong);
   background: transparent;
 }
@@ -1866,31 +1372,28 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   border-color: var(--pb-good);
   background: var(--pb-good);
 }
-.pb-setup-unsupported { margin: .55rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
-.pb-setup-unsupported p { margin: 0 0 .45rem; }
-.pb-setup-experimental { margin: .2rem 0 0; }
-.pb-setup-experimental summary { cursor: pointer; font-weight: 700; color: var(--pb-text); }
-.pb-setup-experimental p { margin: .35rem 0 0; }
+.pb-setup-unsupported { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
+.pb-setup-unsupported p { margin: 0 0 var(--space-1); }
+.pb-setup-experimental { margin: var(--space-1) 0 0; }
+.pb-setup-experimental summary { cursor: pointer; font-weight: var(--font-weight-semibold); color: var(--pb-text); }
+.pb-setup-experimental p { margin: var(--space-1) 0 0; }
 .pb-starter-prompt {
   display: block;
   width: 100%;
-  margin: .7rem 0 .5rem;
-  padding: .5rem .6rem;
+  margin: var(--space-1) 0;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--pb-line);
-  border-radius: .5rem;
+  border-radius: var(--radius);
   background: var(--pb-surface-sunk);
   color: var(--pb-text);
-  font: var(--pb-fs-xs)/1.5 var(--pb-mono);
+  font: var(--pb-fs-xs)/1.5 var(--font-family-ui);
   resize: none;
 }
-.pb-agent-setup .patchbay-copy:active,
-.pb-fund-card button:active { transform: scale(0.97); }
-
 .pb-fund-cta {
   display: grid;
   justify-items: start;
-  gap: .5rem;
-  margin: .65rem 0 .55rem;
+  gap: var(--space-1);
+  margin: var(--space-1) 0;
 }
 .pb-fund-cta p {
   margin: 0;
@@ -1901,45 +1404,44 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 a.patchbay-button { text-decoration: none; }
 
 .pb-fund-card {
-  margin: .65rem 0 0;
-  padding: .7rem .75rem;
+  margin: var(--space-1) 0 0;
+  padding: var(--rg-panel-padding);
   border: 1px solid var(--pb-line);
-  border-radius: .6rem;
+  border-radius: var(--radius);
   background: var(--pb-surface-sunk);
 }
 .patchbay-board-card.pb-fund-card {
-  margin-top: 1rem;
-  padding: var(--pb-space-3);
+  margin-top: var(--space-2);
   background: var(--pb-surface);
 }
 .pb-fund-card[hidden] { display: none; }
 .pb-fund-title {
-  margin: 0 0 .5rem;
-  font-family: var(--pb-sans);
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-family-title);
   font-size: var(--pb-fs-xs);
-  font-weight: 650;
-}
-.pb-fund-facts { display: grid; gap: .4rem; margin: 0; }
+  font-weight: 400;
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.pb-fund-facts { display: grid; gap: var(--space-1); margin: 0; }
 .pb-fund-facts > div {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: .75rem;
+  gap: var(--space-1);
   border-bottom: 1px dashed var(--pb-line);
-  padding-bottom: .35rem;
+  padding-bottom: var(--space-1);
 }
 .pb-fund-facts dt {
   margin: 0;
   color: var(--pb-text-muted);
   font-size: var(--pb-fs-micro);
-  font-weight: 700;
+  font-weight: var(--font-weight-semibold);
 }
 .pb-fund-facts dd {
   margin: 0;
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
-  gap: .4rem;
+  gap: var(--space-1);
   min-width: 0;
   color: var(--pb-text);
   font-size: var(--pb-fs-xs);
@@ -1952,59 +1454,57 @@ a.patchbay-button { text-decoration: none; }
 .pb-fund-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: .4rem;
-  margin: .65rem 0 0;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
 }
 .pb-fund-card button {
-  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color .15s ease, border-color .15s ease, color .15s ease;
+  transition: transform 160ms var(--ease-out), background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
 .pb-home-search {
   display: flex;
   flex-wrap: wrap;
-  gap: .45rem;
-  margin: 1rem auto 0;
+  gap: var(--space-1);
+  margin: var(--space-2) auto 0;
 }
 .pb-home-search input {
   flex: 1 1 14rem;
   min-width: 0;
-  padding: .45rem .6rem;
-  border: 1px solid var(--pb-line-strong);
-  border-radius: 6px;
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  font: var(--pb-fs-xs)/1.45 var(--pb-sans);
+  min-height: 2.75rem;
+
+
 }
 
-.pb-feed { margin-top: .4rem; }
+.pb-feed { margin-top: var(--space-1); }
 .pb-feed-row {
   display: grid;
-  gap: .25rem .7rem;
-  padding: .75rem 0;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
 }
-.pb-feed-row .patchbay-board-title { justify-self: start; }
+.pb-feed-row .patchbay-board-title { justify-self: start;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-feed-row .patchbay-pill { justify-self: start; }
 
-.pb-setup-page { display: grid; gap: 1.15rem; }
-.pb-setup-page section { scroll-margin-top: 4.5rem; }
-.pb-setup-page h2 { margin: 0 0 .35rem; font-size: var(--pb-fs-md); letter-spacing: -.02em; }
-.pb-setup-page h3 { margin: .85rem 0 .3rem; font-size: var(--pb-fs-sm); }
+.pb-setup-page { display: grid; gap: var(--space-2); }
+.pb-setup-page section { scroll-margin-top: var(--pb-header-height); }
+.pb-setup-page h2 { margin: 0 0 var(--space-1); font-size: var(--pb-fs-md); letter-spacing: -.02em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+.pb-setup-page h3 { margin: var(--space-2) 0 var(--space-1); font-size: var(--pb-fs-sm);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-setup-page p,
 .pb-setup-page li { margin: 0; color: var(--pb-text); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .pb-setup-page ol,
-.pb-setup-page ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .35rem; }
+.pb-setup-page ul { margin: 0; padding-left: var(--space-3); display: grid; gap: var(--space-1); }
 .pb-setup-page pre {
-  margin: .45rem 0 0;
-  padding: .7rem .8rem;
+  margin: var(--space-1) 0 0;
+  padding: var(--rg-panel-padding);
   overflow: auto;
+  border-radius: var(--radius);
   background: color-mix(in srgb, var(--pb-text) 6%, transparent);
   font-size: .78rem;
   line-height: 1.45;
 }
 .pb-setup-page table { width: 100%; border-collapse: collapse; font-size: var(--pb-fs-xs); }
 .pb-setup-page th,
-.pb-setup-page td { text-align: left; vertical-align: top; padding: .4rem .45rem .4rem 0; border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 12%, transparent); }
-.pb-setup-toc { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin: 0 0 1rem; font-size: var(--pb-fs-xs); }
+.pb-setup-page td { text-align: left; vertical-align: top; padding: var(--space-1) var(--space-1) var(--space-1) 0; border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 12%, transparent); }
+.pb-setup-toc { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin: 0 0 var(--space-2); font-size: var(--pb-fs-xs); }
 .pb-setup-note { color: var(--pb-text-muted); }
 
 .pb-masthead { position: relative; z-index: 20; }
@@ -2012,9 +1512,7 @@ a.patchbay-button { text-decoration: none; }
 #pb-content { position: relative; z-index: 1; }
 
 body:has(#patchbay-home),
-body:has(#patchbay-sites) {
-  overflow-x: clip;
-}
+
 #patchbay-home,
 #patchbay-sites {
   position: relative;
@@ -2029,35 +1527,25 @@ body:has(#patchbay-sites) {
 }
 
 .pb-dir-lede {
-  width: min(100%, 72rem);
-  margin: .35rem auto .85rem;
+  width: 100%;
+  margin: var(--space-1) auto var(--space-2);
   color: var(--pb-text-muted);
   font-size: .875rem;
   line-height: 1.5;
 }
 .pb-home-sites,
 .pb-dir-grid {
-  width: min(100%, 72rem);
+  width: 100%;
   margin-inline: auto;
 }
 .pb-dir-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: .85rem;
-  margin-top: .75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: var(--space-2);
 }
-.pb-dir-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--pb-line);
-  border-radius: 0;
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  text-decoration: none;
-  transition: border-color 140ms var(--pb-ease-out);
-}
+
+.pb-dir-card { display: inline-flex; gap: var(--space-1); align-items: baseline; min-height: 2.75rem; color: var(--pb-text); text-decoration: underline; overflow-wrap: anywhere; }
 .pb-dir-card:hover,
 .pb-dir-card:focus-visible {
   border-color: var(--pb-accent);
@@ -2067,33 +1555,34 @@ body:has(#patchbay-sites) {
 }
 .pb-dir-shot-wrap {
   position: relative;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  background: var(--pb-surface-sunk);
+  aspect-ratio: 1;
+
+  background: var(--support-figure-surface);
 }
 .pb-dir-shot {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .pb-dir-shot-empty {
   display: block;
   width: 100%;
   height: 100%;
-  background: var(--pb-canvas-deep);
+  background: var(--support-figure-surface);
 }
+/* The logo well is an avatar: a 32px box the shared corner clamps to a circle. */
 .pb-dir-logo-well {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: var(--space-2);
+  left: var(--space-2);
   display: grid;
   place-items: center;
   width: 2rem;
   height: 2rem;
-  overflow: hidden;
+
   border: 1px solid var(--pb-line);
-  border-radius: 0;
+  border-radius: var(--radius);
   background: color-mix(in srgb, var(--pb-ink) 55%, var(--pb-surface));
 }
 .pb-dir-logo {
@@ -2104,121 +1593,118 @@ body:has(#patchbay-sites) {
   object-fit: contain;
   filter: grayscale(1);
   transform-origin: top left;
-  transition: transform 160ms var(--pb-ease-out);
-}
-.pb-dir-card:hover .pb-dir-logo,
-.pb-dir-card:focus-visible .pb-dir-logo {
-  transform: scale(1.18);
+  transition: transform 160ms var(--ease-out);
 }
 .pb-dir-logo-mark {
   color: var(--pb-text-muted);
-  font-family: var(--pb-mono);
+  font-family: var(--font-family-ui);
   font-size: .72rem;
-  font-weight: 650;
+  font-weight: var(--font-weight-semibold);
 }
 .pb-dir-body {
   display: flex;
   flex-direction: column;
-  gap: .35rem;
+  gap: var(--space-1);
   min-width: 0;
-  padding: .7rem .8rem .8rem;
 }
 .pb-dir-titles { min-width: 0; }
 .pb-dir-name {
   margin: 0;
   color: var(--pb-text);
-  font-family: var(--pb-sans);
+  font-family: var(--font-family-title);
   font-size: .9rem;
-  font-weight: 650;
+  font-weight: 400;
   letter-spacing: -.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
+
+  overflow-wrap: anywhere;
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+/* A host name is machine text; what a site offers and how many posts it has
+   are words, so only the domain keeps the mono face. */
 .pb-dir-domain,
 .pb-dir-support,
 .pb-dir-meta {
   margin: 0;
   color: var(--pb-text-muted);
-  font-family: var(--pb-mono);
   font-size: .72rem;
 }
 .pb-dir-domain {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  font-family: var(--font-family-mono);
+
+  overflow-wrap: anywhere;
 }
 .pb-dir-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: .2rem .7rem;
+  gap: 0 var(--space-1);
 }
 .pb-entry-head {
   display: flex;
   align-items: flex-start;
-  gap: .85rem;
-  width: min(100%, 62rem);
-  margin: .9rem auto 1rem;
+  gap: var(--space-2);
+  width: 100%;
+  margin: var(--space-2) auto;
 }
+/* The entry mark is an avatar too: 40px, clamped to a circle. */
 .pb-entry-mark {
   display: grid;
   place-items: center;
   width: 2.5rem;
   height: 2.5rem;
   border: 1px solid var(--pb-line);
+  border-radius: var(--radius);
   background: var(--pb-surface);
 }
 .pb-entry-mark img { width: 1.6rem; height: 1.6rem; object-fit: contain; filter: grayscale(1); }
-@media (prefers-color-scheme: dark) {
-  .pb-dir-logo,
-  .pb-entry-mark img { filter: grayscale(1) invert(1); }
-}
+:root[data-theme="dark"] .pb-dir-logo,
+:root[data-theme="dark"] .pb-entry-mark img { filter: grayscale(1) invert(1); }
 .pb-entry-evidence {
   display: flex;
   flex-wrap: wrap;
-  gap: .35rem .8rem;
-  margin: .45rem 0 0;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-1) 0 0;
   font-size: .8125rem;
 }
-.pb-tool-rows { display: grid; gap: .45rem; margin: .7rem 0 0; padding: 0; list-style: none; }
+.pb-tool-rows { display: grid; gap: 0; margin: var(--space-1) 0 0; padding: 0; list-style: none; }
 .pb-tool-row {
   display: grid;
-  gap: .2rem;
-  border: 1px solid var(--pb-line);
-  border-radius: 0;
-  padding: .7rem .8rem;
+  gap: 0;
+  border-bottom: 1px solid var(--pb-line);
+  border-radius: var(--radius);
+  padding: var(--space-2) 0;
   color: inherit;
   text-decoration: none;
-  background: var(--pb-surface-sunk);
+  background: transparent;
 }
 .pb-tool-row:hover,
 .pb-tool-row:focus-visible {
   border-color: var(--pb-line-strong);
 }
-.pb-tool-row-name { font-weight: 700; letter-spacing: -.02em; }
+.pb-tool-row-name { font-weight: 400; letter-spacing: -.02em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-tool-row-desc { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-tool-row-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: .25rem .75rem;
+  gap: 0 var(--space-1);
   color: var(--pb-text-muted);
   font-size: .75rem;
 }
-.pb-post-list { display: grid; gap: .7rem; margin: .7rem 0 0; padding: 0; list-style: none; }
-.pb-post-row { display: grid; gap: .25rem; }
+.pb-post-list { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.pb-post-row { display: grid; gap: 0; }
 .pb-post-title {
   color: var(--pb-text);
-  font-weight: 700;
+  font-weight: 400;
   text-decoration: none;
-}
+ font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-post-title:hover,
-.pb-post-title:focus-visible { text-decoration: underline; }
+.pb-post-title:focus-visible { text-decoration: underline;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-post-excerpt { margin: 0; color: var(--pb-text-muted); font-size: .875rem; }
 .pb-post-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: .35rem .7rem;
+  gap: var(--space-1);
 }
 
 @media (max-width: 1100px) {
@@ -2233,50 +1719,44 @@ body:has(#patchbay-sites) {
 @media (prefers-reduced-motion: reduce) {
   .pb-dir-card,
   .pb-dir-logo { transition: none; }
-  .pb-dir-card:hover .pb-dir-logo,
-  .pb-dir-card:focus-visible .pb-dir-logo { transform: none; }
 }
 
 @media (max-width: 760px) {
   .pb-masthead {
-    width: min(100% - 1.25rem, var(--pb-page-width));
     grid-template-columns: minmax(0, 1fr);
-    gap: .55rem 1rem;
+    gap: var(--space-1) var(--space-2);
     min-height: 0;
-    padding-block: .6rem;
+    padding-block: var(--space-1);
   }
   .pb-site-nav { width: 100%; }
   .pb-site-nav__links { flex-wrap: wrap; }
   .pb-account { width: 100%; justify-content: flex-start; }
 }
 
-.pb-theme-toggle { margin-inline-start: auto; border: 1px solid var(--pb-line); border-radius: 4px; padding: .35rem .6rem; background: var(--pb-surface); color: var(--pb-text); font: inherit; cursor: pointer; }
-.pb-theme-toggle:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
-
 /* Compact reports and setup keep long evidence within the reading column. */
-.pb-report-next { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; font-size: var(--pb-fs-xs); }
+.pb-report-next { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); font-size: var(--pb-fs-xs); }
 #report-evidence .patchbay-facts > div { min-width: 0; }
 #report-evidence code, #report-evidence time { overflow-wrap: anywhere; }
 .pb-full-evidence { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
-#patchbay-agent-setup .pb-agent-setup { margin-bottom: 1rem; }
-.pb-setup-payment-note { margin-bottom: 1rem; font-size: var(--pb-fs-xs); }
+#patchbay-agent-setup .pb-agent-setup { margin-bottom: var(--space-2); }
+.pb-setup-payment-note { margin-bottom: var(--space-2); font-size: var(--pb-fs-xs); }
 .pb-setup-page, .pb-setup-page .rg-disclosure, .pb-setup-page .rg-disclosure-body { min-width: 0; }
 .pb-setup-page pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-setup-page table { table-layout: fixed; }
 .pb-setup-page td, .pb-setup-page th { overflow-wrap: anywhere; }
-.pb-setup-page section > * + * { margin-top: .65rem; }
-.pb-agent-setup .rg-disclosure-body { padding-top: .3rem; }
+.pb-setup-page section > * + * { margin-top: var(--space-1); }
 #patchbay-report a:focus-visible, #patchbay-agent-setup a:focus-visible,
 #patchbay-agent-setup textarea:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
 
 #report-evidence .patchbay-facts > div > span:first-child { flex: 0 0 6rem; }
-#report-evidence time { min-width: 0; text-align: right; font: var(--pb-fs-micro)/1.5 var(--pb-mono); }
+#report-evidence time { min-width: 0; text-align: right; font: var(--pb-fs-micro)/1.5 var(--font-family-mono); }
 #patchbay-report .patchbay-result-box .patchbay-kicker { color: var(--pb-text-muted); }
-#patchbay-replies .rg-empty { padding: .8rem 0; text-align: left; font-size: var(--pb-fs-xs); }
+#patchbay-replies .rg-empty { padding: var(--space-2) 0; text-align: left; font-size: var(--pb-fs-xs); }
 .pb-full-evidence:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
 
 #patchbay-agent-setup .pb-agent-setup,
-#patchbay-agent-setup .pb-setup-payment-note { width: min(100%, 62rem); margin-inline: auto; }
+#patchbay-agent-setup .pb-setup-payment-note { width: 100%; margin-inline: auto; }
+/* The shared disclosure draws its own chevron. */
 .pb-agent-setup summary::after { content: none; }
 #report-evidence .patchbay-facts a { font-size: var(--pb-fs-xs); }
 
@@ -2285,18 +1765,84 @@ body:has(#patchbay-sites) {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.75rem 1.5rem;
-  padding: 1.25rem;
-  margin: 1rem auto;
-  max-width: 72rem;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--rg-panel-padding);
+  margin: var(--space-2) auto;
+  max-width: none;
   font-size: 0.875rem;
 }
 .product-links__related {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
+  gap: var(--space-1);
+  padding-top: var(--space-1);
 }
 
 /* Complete public schemas stay contained on narrow tool pages. */
 .pb-complete-schema { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Continuous product sheet: same tracks from navigation through evidence to footer.
+   Dense rows remain rows; only figures and secondary panels use cut skins. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-title);
+  font-weight: 400;
+  font-synthesis: none;
+}
+.pb-frame { margin-block: var(--rg-page-gutter); }
+.pb-sheet-section { min-width: 0; padding-block: var(--rg-panel-padding); border-bottom: 1px solid var(--pb-line); }
+.pb-sheet-section > :last-child { margin-bottom: 0; }
+.pb-sheet-section .patchbay-card-heading { flex-wrap: wrap; }
+.pb-section-head { flex-wrap: wrap; }
+.pb-section-head .pb-dir-lede { flex: 1 1 26rem; margin: 0; }
+.pb-home-sites { padding-bottom: var(--rg-panel-padding); border-bottom: 1px solid var(--pb-line); }
+.pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
+.pb-home-search { align-items: end; }
+.pb-account { flex-wrap: wrap; }
+.pb-account-name { white-space: normal; overflow-wrap: anywhere; }
+.pb-dir-feature { font-size: var(--pb-fs-xs); }
+.pb-dir-feature .rg-panel__heading h3 { font-size: clamp(1.1rem, 1.8vw, 1.5rem); }
+.pb-dir-feature .rg-feature__actions { margin-top: var(--space-1); display: block; }
+.pb-dir-feature .rg-technical-figure__art { --rg-panel-ink: var(--support-figure-ink); }
+.pb-dir-card .pb-dir-name { font-size: var(--pb-fs-xs); }
+.pb-dir-logo-well { background: var(--pb-surface); }
+.pb-dir-feature:focus-within { position: relative; z-index: 2; }
+.pb-profile-panel { width: min(100%, 48rem); margin-inline: auto; }
+.pb-profile-panel .rg-profile { width: 100%; padding: var(--rg-panel-padding); }
+.pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
+.pb-error-inner .pb-kicker { margin: 0; }
+.patchbay-notice.rg-panel { background: transparent; border: 0; }
+#patchbay-room .patchbay-registry-summary.rg-panel { background: transparent; border: 0; }
+.patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: var(--support-panel-ink); }
+.patchbay-registry-summary.rg-support-panel .patchbay-capability-line { border-color: var(--rg-local-rule); }
+.patchbay-registry-summary.rg-support-panel .patchbay-status-dot { background: var(--support-figure-surface); }
+.patchbay-registry-summary.rg-support-panel .patchbay-status-dot.is-live { background: var(--support-band-surface); }
+.patchbay-editors, .patchbay-workbench { gap: 1px; }
+.patchbay-card { min-width: 0; }
+.patchbay-prompt-body .rg-field, .patchbay-editor-card .rg-field { font-size: var(--pb-fs-xs); }
+.patchbay-editor-footer, .patchbay-facts > div { flex-wrap: wrap; }
+.patchbay-pill, .patchbay-state-label, .patchbay-nameplate, .pb-chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.patchbay-alert { flex-wrap: wrap; }
+.patchbay-button-danger.rg-button { color: var(--pb-bad); border-color: var(--pb-bad); }
+.pb-post-row { border-bottom: 1px solid var(--pb-line); padding-block: var(--space-2); }
+.pb-name-forms { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.pb-name-form-row { flex-wrap: wrap; }
+.pb-name-form-row input { flex-basis: 10rem; }
+.pb-reclaim > .patchbay-board-facts { flex: 1 1 16rem; }
+.pb-reclaim .rg-button__label { flex: initial; }
+.product-links { margin: 0; padding: var(--rg-panel-padding); }
+.product-links > .rg-disclosure { flex: 1 1 15rem; }
+.product-links .rg-disclosure > summary { min-height: 2.75rem; }
+@media (max-width: 1023px) {
+  .pb-dir-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pb-masthead { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .pb-account { justify-content: flex-start; }
+}
+@media (max-width: 767px) {
+  .pb-dir-grid { grid-template-columns: minmax(0, 1fr); }
+  .pb-site-nav__links { flex-wrap: wrap; }
+}
+@media (forced-colors: active) {
+  .patchbay-button-danger.rg-button { color: ButtonText; border-color: ButtonText; }
+  .patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: CanvasText; }
+  .patchbay-agent-dot, .patchbay-timeline-entry { animation: none; }
+}

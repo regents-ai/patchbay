@@ -32,7 +32,6 @@ import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
 import {installSharedProfile} from "./shared_profile.js"
 import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.js"
-import {mountHomepageCrown} from "./optics_controller.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -61,7 +60,6 @@ const offerPageWideSurfaces = () => {
   installSharedProfile()
   mountAgentSetup()
   mountAgentFunding()
-  mountHomepageCrown()
   hideBrokenSiteLogos()
 
   const rail = document.getElementById("pb-agent-setup")

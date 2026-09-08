@@ -3,11 +3,10 @@ defmodule PatchbayWeb.Forum.FingerprintTest do
 
   alias PatchbayWeb.Forum.Fingerprint
 
-  # The papers a chip is read against on the light theme: a card, a version
-  # row, and the row of the version being read. After dark, the same three
-  # panels. A chip has to hold up on all of them.
-  @light_papers ["#ffffff", "#f1efe3", "#e4eff0"]
-  @dark_panels ["#1b1c1e", "#141517", "#101e20"]
+  # Approved Patchbay canvas and flat version/disclosure surfaces, in both modes.
+  # Fingerprints stay inside these data surfaces, never supporting artwork bands.
+  @light_papers ["#ffffff", "#f6f4ea"]
+  @dark_panels ["#1b1c1e", "#0f0f10"]
 
   # Graphics that carry meaning have to reach 3:1 against what is behind them.
   @readable 3.0

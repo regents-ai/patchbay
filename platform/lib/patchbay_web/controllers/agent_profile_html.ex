@@ -25,11 +25,12 @@ defmodule PatchbayWeb.AgentProfileHTML do
     <form method="post" action={~p"/agents/#{@profile.public_id}/names"} class="pb-name-form">
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <input type="hidden" name="half" value={@half} />
-      <label for={"pb-name-" <> @half}>{@label}</label>
-      <div class="pb-name-form-row">
-        <input id={"pb-name-" <> @half} type="text" name="name" value={@value} maxlength="30" />
-        <button type="submit" class="patchbay-button">Save</button>
-      </div>
+      <Regent.Primitives.field id={"pb-name-" <> @half} label={@label}>
+        <div class="pb-name-form-row">
+          <input id={"pb-name-" <> @half} type="text" name="name" value={@value} maxlength="30" />
+          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Save</Regent.Primitives.button>
+        </div>
+      </Regent.Primitives.field>
     </form>
     """
   end

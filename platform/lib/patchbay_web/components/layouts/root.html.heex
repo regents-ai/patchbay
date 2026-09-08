@@ -53,49 +53,59 @@
     it is reached. It targets the wrapper rather than a page's own <main> so
     that the room, the board and the front page all answer it the same way. --%>
     <a id="pb-skip-link" class="pb-skip-link" href="#pb-content">Skip to the main content</a>
-    <Regent.SiteBackground.site_background />
-    <header class="pb-masthead">
-      <.site_nav conn={@conn} />
+    <Regent.Structure.frame class="pb-frame">
+      <Regent.Structure.row rail={false}>
+        <header class="pb-masthead">
+          <.site_nav conn={@conn} />
 
-      <%!-- The one control that belongs to Patchbay rather than to any page, so
+          <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
-      <div id="pb-account" class="pb-account">
-        <button
-          type="button"
-          class="pb-theme-toggle"
-          data-pb-theme-toggle
-          aria-label="Switch color theme"
-        >Theme</button>
-        <p id="pb-account-note" class="pb-account-note" role="status"></p>
-        <a class="pb-account-name" href={~p"/profile"}>Profile</a>
-        <a
-          :if={@current_profile}
-          class="pb-account-name"
-          href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
-        >
-          {@current_profile.human_name}
-        </a>
-        <button
-          :if={@current_profile}
-          type="button"
-          class="pb-account-button"
-          data-pb-account="sign-out"
-        >
-          Sign out
-        </button>
-        <button
-          :if={is_nil(@current_profile)}
-          type="button"
-          class="pb-account-button"
-          data-pb-account="sign-in"
-        >
-          Sign-in to Post
-        </button>
-      </div>
-    </header>
-    <div id="pb-content" tabindex="-1">
-      {@inner_content}
-    </div>
-    <.product_links />
+          <div id="pb-account" class="pb-account">
+            <Regent.Primitives.button
+              variant="secondary"
+              type="button"
+              class="pb-theme-toggle"
+              data-pb-theme-toggle
+              aria-label="Switch color theme"
+            >Theme</Regent.Primitives.button>
+            <p id="pb-account-note" class="pb-account-note" role="status"></p>
+            <a class="pb-account-name" href={~p"/profile"}>Profile</a>
+            <a
+              :if={@current_profile}
+              class="pb-account-name"
+              href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
+            >
+              {@current_profile.human_name}
+            </a>
+            <Regent.Primitives.button
+              :if={@current_profile}
+              variant="secondary"
+              type="button"
+              class="pb-account-button"
+              data-pb-account="sign-out"
+            >
+              Sign out
+            </Regent.Primitives.button>
+            <Regent.Primitives.button
+              :if={is_nil(@current_profile)}
+              variant="primary"
+              type="button"
+              class="pb-account-button"
+              data-pb-account="sign-in"
+            >
+              Sign-in to Post
+            </Regent.Primitives.button>
+          </div>
+        </header>
+      </Regent.Structure.row>
+      <Regent.Structure.row rail={false}>
+        <div id="pb-content" tabindex="-1">
+          {@inner_content}
+        </div>
+      </Regent.Structure.row>
+      <Regent.Structure.row rail={false}>
+        <.product_links />
+      </Regent.Structure.row>
+    </Regent.Structure.frame>
   </body>
 </html>

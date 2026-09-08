@@ -81,18 +81,14 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   defp card_chunk(html, slug) do
-    href = ~s(href="/sites/#{slug}")
+    card =
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(~s|article.pb-dir-feature:has(a[href="/sites/#{slug}"])|)
+      |> LazyHTML.to_html()
 
-    case :binary.split(html, href) do
-      [_before, rest] ->
-        case :binary.split(rest, ~s(class="pb-dir-card")) do
-          [card, _after] -> href <> card
-          [card] -> href <> card
-        end
-
-      _missing ->
-        flunk("no directory card linked to /sites/#{slug}")
-    end
+    assert card != "", "no directory card linked to /sites/#{slug}"
+    card
   end
 
   defp post_order(html, notes) do

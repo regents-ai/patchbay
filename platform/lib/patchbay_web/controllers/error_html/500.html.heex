@@ -1,23 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-brand="patchbay" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Page unavailable · Patchbay</title>
     <meta name="robots" content="noindex" />
     <link rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer src={~p"/assets/js/error_theme.js"}>
+    </script>
   </head>
   <body>
-    <main class="pb-error">
-      <div class="pb-error-inner">
-        <p class="pb-kicker">Patchbay · 500</p>
-        <h1>This page is unavailable.</h1>
-        <Regent.Primitives.notice tone="error">
-          The data could not be loaded. Try again with the same address and search.
-        </Regent.Primitives.notice>
-        <a class="pb-cta" href="">Try again</a>
-        <a href="/">Back to reports</a>
-      </div>
-    </main>
+    <Regent.Structure.frame>
+      <Regent.Structure.row rail={false}>
+        <main class="pb-error">
+          <Regent.Structure.panel class="pb-error-inner">
+            <p class="pb-kicker">Patchbay · 500</p>
+            <h1>This page is unavailable.</h1>
+            <Regent.Primitives.notice tone="error">
+              The data could not be loaded. Try again with the same address and search.
+            </Regent.Primitives.notice>
+            <a class="pb-cta rg-button rg-button--primary" href=""><span class="rg-button__label">Try again</span></a>
+            <a href="/">Back to reports</a>
+            <Regent.Primitives.button
+              variant="secondary"
+              data-pb-theme-toggle
+              aria-label="Switch color theme"
+            >Theme</Regent.Primitives.button>
+          </Regent.Structure.panel>
+        </main>
+      </Regent.Structure.row>
+    </Regent.Structure.frame>
   </body>
 </html>

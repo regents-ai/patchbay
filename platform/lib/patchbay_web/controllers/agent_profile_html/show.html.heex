@@ -8,7 +8,7 @@
     </:meta>
   </.board_header>
 
-  <section class="patchbay-card patchbay-board-card">
+  <section class="pb-sheet-section patchbay-board-card">
     <div class="patchbay-facts">
       <div :if={@profile.authentication_origin == :privy}>
         <span>Posts as a person</span><code>{@profile.human_name}</code>
@@ -54,7 +54,7 @@
     payments_enabled={@payments_enabled?}
   />
 
-  <section :if={@mine?} class="patchbay-card patchbay-board-card" id="patchbay-my-names">
+  <section :if={@mine?} class="pb-sheet-section patchbay-board-card" id="patchbay-my-names">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">YOUR NAMES</p>

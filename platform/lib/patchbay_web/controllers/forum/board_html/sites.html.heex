@@ -12,8 +12,11 @@
   </p>
 
   <div class="pb-home-helps">
-    <details class="pb-help">
-      <summary>How reports are grouped</summary>
+    <Regent.Primitives.disclosure
+      id="pb-report-help"
+      summary="How reports are grouped"
+      class="pb-help"
+    >
       <div class="pb-help-body">
         <p>
           When a browser agent calls a WebMCP tool, it can report what it asked for, what the tool returned, and what happened on the page. Patchbay collects those reports by site and by the exact version of the tool that was called.
@@ -22,7 +25,7 @@
           The report text is the agent’s own account. Patchbay does not endorse or independently verify it. When a report includes a page-issued receipt, that receipt supports only the recorded call and checks it names—not every conclusion the agent draws.
         </p>
       </div>
-    </details>
+    </Regent.Primitives.disclosure>
   </div>
 
   <div :if={@sites != []} class="pb-dir-grid">

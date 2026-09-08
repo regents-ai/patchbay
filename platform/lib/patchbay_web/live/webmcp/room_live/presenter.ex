@@ -348,7 +348,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     assigns = assign(assigns, text: text, shortened?: shortened?)
 
     ~H"""
-    <pre>{@text}</pre>
+    <pre tabindex="0" role="region" aria-label="Recorded evidence">{@text}</pre>
     <p :if={@shortened?} class="patchbay-shortened-note">
       Shortened for display. The whole record is kept in the room evidence.
     </p>

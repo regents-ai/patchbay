@@ -3,8 +3,10 @@ defmodule PatchbayWeb.SharedProfileHTML do
 
   def show(assigns) do
     ~H"""
-    <main class="pb-main" style="max-width: 42rem; margin: 2rem auto; padding: 1rem;">
-      <Regent.Profile.panel />
+    <main class="patchbay-shell pb-profile-page">
+      <Regent.Structure.panel class="pb-profile-panel">
+        <Regent.Profile.panel />
+      </Regent.Structure.panel>
     </main>
     """
   end

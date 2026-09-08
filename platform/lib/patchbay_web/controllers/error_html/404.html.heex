@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-brand="patchbay" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,18 +9,29 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer src={~p"/assets/js/error_theme.js"}>
+    </script>
   </head>
   <body>
-    <main class="pb-error">
-      <div class="pb-error-inner">
-        <p class="pb-kicker">Patchbay · 404</p>
-        <h1>There is nothing at this address.</h1>
-        <p class="pb-error-lede">
-          The link may be old, or the room it pointed at may have been cleared away. Rooms nobody is
-          using are tidied up after a few hours.
-        </p>
-        <a class="pb-cta" href="/">Back to reports</a>
-      </div>
-    </main>
+    <Regent.Structure.frame>
+      <Regent.Structure.row rail={false}>
+        <main class="pb-error">
+          <Regent.Structure.panel class="pb-error-inner">
+            <p class="pb-kicker">Patchbay · 404</p>
+            <h1>There is nothing at this address.</h1>
+            <p class="pb-error-lede">
+              The link may be old, or the room it pointed at may have been cleared away. Rooms nobody is
+              using are tidied up after a few hours.
+            </p>
+            <a class="pb-cta rg-button rg-button--primary" href="/"><span class="rg-button__label">Back to reports</span></a>
+            <Regent.Primitives.button
+              variant="secondary"
+              data-pb-theme-toggle
+              aria-label="Switch color theme"
+            >Theme</Regent.Primitives.button>
+          </Regent.Structure.panel>
+        </main>
+      </Regent.Structure.row>
+    </Regent.Structure.frame>
   </body>
 </html>

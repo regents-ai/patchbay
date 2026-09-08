@@ -382,50 +382,60 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def site_card(assigns) do
     ~H"""
-    <a class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")} href={site_path(@site)}>
-      <div class="pb-dir-shot-wrap">
-        <img
-          :if={url = site_screenshot_url(@site)}
-          class="pb-dir-shot"
-          src={url}
-          alt=""
-          width="1600"
-          height="1000"
-          loading={if @index < 4, do: "eager", else: "lazy"}
-          decoding="async"
-        />
-        <div :if={!site_screenshot_url(@site)} class="pb-dir-shot-empty" aria-hidden="true"></div>
-        <span class="pb-dir-logo-well" aria-hidden="true">
+    <Regent.Structure.capability_card
+      title={site_name(@site)}
+      description={support_label(@site.support_relationship)}
+      class="pb-dir-feature rg-support-figure"
+    >
+      <:media>
+        <div class="pb-dir-shot-wrap">
           <img
-            :if={url = site_logo_url(@site)}
-            class="pb-dir-logo"
+            :if={url = site_screenshot_url(@site)}
+            class="pb-dir-shot"
             src={url}
             alt=""
-            width="28"
-            height="28"
+            width="1600"
+            height="1000"
+            loading={if @index < 4, do: "eager", else: "lazy"}
+            decoding="async"
           />
-          <span :if={!site_logo_url(@site)} class="pb-dir-logo-mark">
-            {String.first(site_name(@site))}
+          <div :if={!site_screenshot_url(@site)} class="pb-dir-shot-empty" aria-hidden="true"></div>
+          <span class="pb-dir-logo-well" aria-hidden="true">
+            <img
+              :if={url = site_logo_url(@site)}
+              class="pb-dir-logo"
+              src={url}
+              alt=""
+              width="28"
+              height="28"
+            />
+            <span :if={!site_logo_url(@site)} class="pb-dir-logo-mark">
+              {String.first(site_name(@site))}
+            </span>
           </span>
-        </span>
-      </div>
-      <div class="pb-dir-body">
-        <div class="pb-dir-titles">
-          <p class="pb-dir-name">{site_name(@site)}</p>
-          <p class="pb-dir-domain">{site_domain(@site)}</p>
         </div>
-        <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
-        <p class="pb-dir-meta">
-          <span :if={public_inventory?(@site)}>
-            {count_label(@site.tool_count, "tool", "tools")}
-          </span>
-          <span>
-            {count_label(@site.report_count, "agent post", "agent posts")}
-          </span>
-          <span>{inventory_label(@site.tool_inventory_status)}</span>
-        </p>
-      </div>
-    </a>
+      </:media>
+      <:actions>
+        <div class="pb-dir-body">
+          <p class="pb-dir-domain">{site_domain(@site)}</p>
+          <p class="pb-dir-meta">
+            <span :if={public_inventory?(@site)}>
+              {count_label(@site.tool_count, "tool", "tools")}
+            </span>
+            <span>
+              {count_label(@site.report_count, "agent post", "agent posts")}
+            </span>
+            <span>{inventory_label(@site.tool_inventory_status)}</span>
+          </p>
+          <a
+            class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")}
+            href={site_path(@site)}
+          >
+            <span class="pb-dir-name">{site_name(@site)}</span><span aria-hidden="true"> →</span>
+          </a>
+        </div>
+      </:actions>
+    </Regent.Structure.capability_card>
     """
   end
 
@@ -509,18 +519,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             Signed in · Checking wallet balance
           </p>
         </div>
-        <label class="sr-only" for="pb-starter-prompt">Starter prompt</label>
-        <textarea id="pb-starter-prompt" class="pb-starter-prompt" readonly rows="6">{@starter_prompt}</textarea>
+        <Regent.Primitives.field id="pb-starter-prompt" label="Starter prompt">
+          <textarea id="pb-starter-prompt" class="pb-starter-prompt" readonly rows="6">{@starter_prompt}</textarea>
+        </Regent.Primitives.field>
         <div :if={@payments_enabled} class="pb-fund-cta">
           <p>Optional payments use native USDC on Base. Check your wallet before paying.</p>
           <a
-            class="patchbay-button"
+            class="patchbay-button rg-button rg-button--primary"
             href={if @profile, do: ~p"/agents/#{@profile.public_id}", else: "#pb-account"}
           >
-            Go to Profile
+            <span class="rg-button__label">Go to Profile</span>
           </a>
         </div>
-        <button
+        <Regent.Primitives.button
+          variant="secondary"
           type="button"
           class="patchbay-copy"
           id="pb-copy-starter"
@@ -528,7 +540,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           data-idle="Copy starter prompt"
         >
           Copy starter prompt
-        </button>
+        </Regent.Primitives.button>
         <div id="pb-agent-setup-unsupported" class="pb-setup-unsupported" hidden>
           <Regent.Primitives.disclosure id="agent-browser-alternatives" summary="Browser alternatives">
             <p>
@@ -557,7 +569,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <section
       id="pb-agent-funding"
-      class="patchbay-card patchbay-board-card pb-fund-card"
+      class="pb-sheet-section patchbay-board-card pb-fund-card"
       data-payments-enabled={to_string(@payments_enabled)}
     >
       <div class="patchbay-card-heading">
@@ -571,14 +583,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dt>Wallet</dt>
           <dd>
             <code id="pb-fund-wallet">{@wallet}</code>
-            <button
+            <Regent.Primitives.button
+              variant="secondary"
               type="button"
               class="patchbay-copy"
               data-copy-target="pb-fund-wallet"
               data-idle="Copy"
             >
               Copy
-            </button>
+            </Regent.Primitives.button>
           </dd>
         </div>
         <div>
@@ -601,17 +614,23 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <label class="sr-only" for="pb-funding-request">Funding request</label>
       <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
       <div class="pb-fund-actions">
-        <button
+        <Regent.Primitives.button
+          variant="secondary"
           type="button"
           class="patchbay-copy"
           data-copy-target="pb-funding-request"
           data-idle="Copy funding request"
         >
           Copy funding request
-        </button>
-        <button type="button" class="patchbay-button patchbay-button-quiet" id="pb-fund-check">
+        </Regent.Primitives.button>
+        <Regent.Primitives.button
+          variant="secondary"
+          type="button"
+          class="patchbay-button patchbay-button-quiet"
+          id="pb-fund-check"
+        >
           Check again
-        </button>
+        </Regent.Primitives.button>
       </div>
     </section>
     """
@@ -727,26 +746,28 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <input :if={@cursor} type="hidden" name="after" value={@cursor} />
 
-        <label for="pb-reply-verdict">Did the tool work for you?</label>
-        <select id="pb-reply-verdict" name="reply[verdict]">
-          <option value="" selected={Map.get(@draft, "verdict") in [nil, ""]}>Choose one</option>
-          <option
-            :for={{value, label} <- verdict_choices()}
-            value={value}
-            selected={Map.get(@draft, "verdict") == value}
-          >
-            {label}
-          </option>
-        </select>
+        <Regent.Primitives.field id="pb-reply-verdict" label="Did the tool work for you?">
+          <select id="pb-reply-verdict" name="reply[verdict]">
+            <option value="" selected={Map.get(@draft, "verdict") in [nil, ""]}>Choose one</option>
+            <option
+              :for={{value, label} <- verdict_choices()}
+              value={value}
+              selected={Map.get(@draft, "verdict") == value}
+            >
+              {label}
+            </option>
+          </select>
+        </Regent.Primitives.field>
 
-        <label for="pb-reply-note">What happened, in your own words</label>
-        <textarea id="pb-reply-note" name="reply[note]" rows="3" maxlength="500">{Map.get(@draft, "note")}</textarea>
+        <Regent.Primitives.field id="pb-reply-note" label="What happened, in your own words">
+          <textarea id="pb-reply-note" name="reply[note]" rows="3" maxlength="500">{Map.get(@draft, "note")}</textarea>
+        </Regent.Primitives.field>
 
         <div class="pb-reply-form-foot">
           <span class="patchbay-board-facts">
             Posting as {@profile.human_name}, as a person
           </span>
-          <button type="submit" class="patchbay-button">Post reply</button>
+          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Post reply</Regent.Primitives.button>
         </div>
       </form>
     </div>
@@ -774,7 +795,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <section
       :if={@report.priority_amount_atomic}
-      class="patchbay-card patchbay-board-card"
+      class="pb-sheet-section patchbay-board-card"
       id="patchbay-escrow"
     >
       <div class="patchbay-card-heading">
@@ -791,7 +812,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
       <form :if={@asker?} method="post" action={~p"/reports/#{@report.id}/refund"} class="pb-reclaim">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <button type="submit" class="patchbay-button">Take my money back</button>
+        <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Take my money back</Regent.Primitives.button>
         <span class="patchbay-board-facts">
           This asks Base to send 90% of the {escrowed(@report)} USDC back to the wallet that put
           it up, with 10% to Patchbay, which is the same split accepting an answer pays.

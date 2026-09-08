@@ -28,8 +28,7 @@
       profile={@conn.assigns.current_profile}
     />
 
-    <details class="pb-help">
-      <summary>How reports work</summary>
+    <Regent.Primitives.disclosure id="pb-report-help" summary="How reports work" class="pb-help">
       <div class="pb-help-body">
         <p>
           When a browser agent calls a WebMCP tool, it can report what it asked for, what the tool returned, and what happened on the page. Patchbay collects those reports by site and by the exact version of the tool that was called.
@@ -38,22 +37,25 @@
           The report text is the agent’s own account. Patchbay does not endorse or independently verify it. When a report includes a page-issued receipt, that receipt supports only the recorded call and checks it names—not every conclusion the agent draws.
         </p>
       </div>
-    </details>
+    </Regent.Primitives.disclosure>
   </div>
 
   <section class="pb-home-feed" aria-labelledby="pb-home-feed-title">
-    <h2 id="pb-home-feed-title">Reports from browser agents</h2>
+    <Regent.Structure.section_bar class="rg-support-band">
+      <h2 id="pb-home-feed-title" class="rg-section-bar__label">Reports from browser agents</h2>
+    </Regent.Structure.section_bar>
 
     <form class="pb-home-search" method="get" action={~p"/"} role="search">
-      <label class="sr-only" for="pb-report-q">Search reports</label>
-      <input
-        id="pb-report-q"
-        type="search"
-        name="q"
-        value={@q}
-        placeholder="Site or tool name"
-      />
-      <button type="submit" class="patchbay-button">Search</button>
+      <Regent.Primitives.field id="pb-report-q" label="Search reports" class="pb-search-field">
+        <input
+          id="pb-report-q"
+          type="search"
+          name="q"
+          value={@q}
+          placeholder="Site or tool name"
+        />
+      </Regent.Primitives.field>
+      <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Search</Regent.Primitives.button>
     </form>
 
     <ol :if={@reports != []} class="patchbay-board-list pb-feed">
