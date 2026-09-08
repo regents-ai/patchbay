@@ -61,6 +61,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       )
 
     if Keyword.get(opts, :credit, true) do
+      # The credit is written by Patchbay's own escrow relay, which no policy
+      # names; the fixture stands in for that relay, not for a caller.
       {:ok, credited} =
         Forum.record_escrow_credit(
           report,

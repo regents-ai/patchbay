@@ -740,6 +740,123 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
   end
 
+  describe "POST /reports/:id/replies" do
+    test "a reply not shaped like the form's is refused without a write, keeping what was typed",
+         %{conn: conn} do
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      conn = signed_in(conn, person!("eee"))
+
+      # The container is not the form's, then one field at a time is not.
+      for reply <- [
+            "typed straight in",
+            ["verified_success"],
+            %{"verdict" => %{"x" => "1"}, "note" => "kept beside a bad verdict"},
+            %{"verdict" => "verified_success", "note" => %{"x" => "1"}},
+            %{"verdict" => "verified_success", "note" => ["a", "b"]}
+          ] do
+        body =
+          conn
+          |> post(~p"/reports/#{report.id}/replies", %{"reply" => reply})
+          |> html_response(200)
+
+        assert body =~ "That reply could not be posted."
+        assert body =~ ~s(action="/reports/#{report.id}/replies")
+      end
+
+      assert Forum.list_replies_for_report!(report.id).results == []
+
+      # The string beside a malformed field stays on the form; the malformed
+      # field is dropped rather than shown.
+      body =
+        conn
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "reply" => %{"verdict" => %{"x" => "1"}, "note" => "kept beside a bad verdict"}
+        })
+        |> html_response(200)
+
+      document = LazyHTML.from_document(body)
+
+      assert document |> LazyHTML.query("#pb-reply-note") |> LazyHTML.text() =~
+               "kept beside a bad verdict"
+
+      assert document
+             |> LazyHTML.query("#pb-reply-verdict option[selected]")
+             |> LazyHTML.attribute("value") == [""]
+
+      # JSON preserves these types. Ash would coerce boolean/numeric notes to
+      # strings, but neither HTTP entry point accepts non-text reply fields.
+      api_conn =
+        Plug.Conn.put_session(
+          conn,
+          PatchbayWeb.Plugs.ForumSession.session_key(),
+          Ash.UUID.generate()
+        )
+
+      for field <- ["verdict", "note"], value <- [%{}, ["text"], true, 42] do
+        payload = Map.put(%{"verdict" => "unknown", "note" => "safe"}, field, value)
+
+        assert %{"problem_code" => "invalid"} =
+                 api_conn
+                 |> put_req_header("content-type", "application/json")
+                 |> post("/forum/reports/#{report.id}/replies", Jason.encode!(payload))
+                 |> json_response(422)
+      end
+
+      assert Forum.list_replies_for_report!(report.id).results == []
+    end
+
+    test "a person's replies draw on the same hourly share as the page's tools", %{conn: conn} do
+      Application.put_env(:patchbay, :forum_replies_per_hour, 2)
+      on_exit(fn -> Application.delete_env(:patchbay, :forum_replies_per_hour) end)
+
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      session_id = Ash.UUID.generate()
+
+      conn =
+        conn
+        |> signed_in(person!("fff"))
+        |> Plug.Conn.put_session(PatchbayWeb.Plugs.ForumSession.session_key(), session_id)
+
+      reply = %{"verdict" => "verified_success", "note" => "worked for me"}
+
+      # One through the page's tools and one from the form, both this browser's.
+      assert conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(201)
+
+      assert conn
+             |> post(~p"/reports/#{report.id}/replies", %{"reply" => reply})
+             |> redirected_to() =~ "#patchbay-replies"
+
+      # The third is refused at either door, draft intact, and nothing is written.
+      refused =
+        conn
+        |> post(~p"/reports/#{report.id}/replies", %{
+          "reply" => %{"verdict" => "verified_failure", "note" => "kept while waiting"}
+        })
+        |> html_response(200)
+
+      assert refused =~ "You have already posted 2 replies in the past hour."
+      assert refused =~ "kept while waiting"
+
+      assert %{"problem_code" => "rate_limited"} =
+               conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(429)
+
+      replies = Forum.list_replies_for_report!(report.id).results
+      assert Enum.map(replies, & &1.author_kind) == [:agent, :human]
+      assert Enum.all?(replies, &(&1.browser_session_id == session_id))
+
+      # Another browser's share is its own.
+      other =
+        build_conn()
+        |> Plug.Test.init_test_session(%{})
+        |> Plug.Conn.put_session(
+          PatchbayWeb.Plugs.ForumSession.session_key(),
+          Ash.UUID.generate()
+        )
+
+      assert other |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(201)
+    end
+  end
+
   describe "GET /reports/:id" do
     test "shows one report with what it recorded and its replies", %{conn: conn} do
       report =

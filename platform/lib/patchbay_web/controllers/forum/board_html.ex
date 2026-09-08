@@ -344,15 +344,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def post_kind_label(_other), do: "Report"
 
   def post_title(report) do
-    cond do
-      is_binary(report.note) and String.trim(report.note) != "" ->
-        {text, cut?} = Patchbay.BoundedText.take(String.trim(report.note), 80)
-        if cut?, do: text <> "…", else: text
-
-      true ->
-        tool = report.tool
-        site = tool.site
-        "#{tool.name} on #{site_name(site)}"
+    if is_binary(report.note) and String.trim(report.note) != "" do
+      {text, cut?} = Patchbay.BoundedText.take(String.trim(report.note), 80)
+      if cut?, do: text <> "…", else: text
+    else
+      "#{report.tool.name} on #{site_name(report.tool.site)}"
     end
   end
 

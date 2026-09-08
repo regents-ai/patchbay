@@ -33,18 +33,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.ReceiptCheck
-  alias Patchbay.Forum.Reply
-  alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Tool
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Labels
   alias PatchbayWeb.Forum.ReplyCursor
+  alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Refusal
-
-  @default_reports_per_hour 10
-  @default_replies_per_hour 30
 
   @search_tool_limit 20
   @search_report_limit 20
@@ -161,9 +157,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   #
   # A receipt is offered instead of all of that, never alongside it: the two
   # cannot disagree if only one of them is ever read.
+  #
+  # Both are written under the session's hourly share, which `SessionBudget`
+  # counts and locks in the same transaction as the write.
   defp file_report(session_id, actor, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
-      under_session_lock(session_id, fn ->
+      SessionBudget.admit_report(session_id, fn ->
         file_receipt_report(session_id, actor, receipt, params)
       end)
     end
@@ -171,20 +170,20 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp file_report(session_id, actor, params) do
     with {:ok, draft} <- OtherSiteReport.draft(params) do
-      under_session_lock(session_id, fn -> file_other_site_report(session_id, actor, draft) end)
+      SessionBudget.admit_report(session_id, fn ->
+        file_other_site_report(session_id, actor, draft)
+      end)
     end
   end
 
   defp file_other_site_report(session_id, actor, draft) do
-    with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
-         {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
+    with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
       store_report(tool, session_id, actor, draft)
     end
   end
 
   defp file_receipt_report(session_id, actor, receipt, params) do
-    with :ok <- within_limit(Report, session_id, reports_per_hour(), "reports"),
-         {:ok, call} <- reported_call(receipt, session_id),
+    with {:ok, call} <- reported_call(receipt, session_id),
          {:ok, site} <- Forum.register_site(RoomMirror.origin()),
          {:ok, tool} <- observe_called_tool(site, call) do
       store_call_report(tool, session_id, actor, call, params)
@@ -248,36 +247,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp recorded_verdict(_call), do: :unknown
 
+  # A reply from the page's tools and one from the form on the report page
+  # draw on the same hourly share of the same session; `SessionBudget` is the
+  # one door both go through.
   defp file_reply(session_id, actor, id, params) do
-    under_session_lock(session_id, fn ->
-      with :ok <- within_limit(Reply, session_id, replies_per_hour(), "replies"),
-           {:ok, report} <- fetch_report(id),
+    SessionBudget.admit_reply(session_id, fn ->
+      with {:ok, report} <- fetch_report(id),
            {:ok, reply} <- add_reply(report, session_id, actor, params) do
         {:ok, {report, reply}}
       end
     end)
-  end
-
-  defp under_session_lock(session_id, write) do
-    case Ash.transact([Report, Reply], fn -> locked_post(session_id, write) end) do
-      {:ok, {:settled, answer}} -> answer
-      {:error, failed_write} -> {:error, failed_write}
-    end
-  end
-
-  # The hourly count and the write happen under one per-session lock, so a
-  # burst of parallel posts cannot all read the same count and all get through.
-  defp locked_post(session_id, write) do
-    Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [session_id])
-
-    case write.() do
-      # A write that failed is handed back as an error, which is what undoes the
-      # board and thread a half-written post would otherwise leave behind. Every
-      # other refusal is settled before anything is stored, so it travels out as
-      # the transaction's own answer.
-      {:error, failure} when is_exception(failure) -> {:error, failure}
-      answer -> {:settled, answer}
-    end
   end
 
   defp store_report(tool, session_id, actor, draft) do
@@ -288,15 +267,26 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp add_reply(report, session_id, actor, params) do
+    add_reply(report, session_id, actor, params["verdict"], params["note"])
+  end
+
+  # Ash strings also cast booleans and numbers; the HTTP contract accepts text
+  # only. Refuse malformed fields before a coercion can turn them into a post.
+  defp add_reply(report, session_id, actor, verdict, note)
+       when (is_binary(verdict) or is_nil(verdict)) and (is_binary(note) or is_nil(note)) do
     Forum.add_reply(
       %{
         report_id: report.id,
         browser_session_id: session_id,
-        verdict: params["verdict"],
-        note: params["note"]
+        verdict: verdict,
+        note: note
       },
       actor: actor
     )
+  end
+
+  defp add_reply(_report, _session_id, _actor, _verdict, _note) do
+    {:error, {:invalid, ["Reply verdict and note must be text."]}}
   end
 
   defp fetch_report(id, opts \\ []) do
@@ -423,7 +413,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       byte_size(Jason.encode!(payload)) <= @thread_payload_bytes ->
         {:ok, payload}
 
-      length(entries) > 1 ->
+      match?([_first, _second | _rest], entries) ->
         fit_thread_page(report, Enum.drop(entries, -1), true)
 
       true ->
@@ -543,34 +533,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp shorten(nil, _length), do: nil
   defp shorten(text, length) when byte_size(text) <= length, do: text
   defp shorten(text, length), do: String.slice(text, 0, length) <> "…"
-
-  # Limits
-
-  defp within_limit(resource, session_id, limit, subject) do
-    since = DateTime.add(DateTime.utc_now(), -1, :hour)
-
-    count =
-      resource
-      |> Ash.Query.for_read(:read)
-      |> Ash.Query.filter(browser_session_id == ^session_id and inserted_at > ^since)
-      |> Ash.count!()
-
-    if count < limit do
-      :ok
-    else
-      {:error,
-       {:rate_limited,
-        "You have already posted #{limit} #{subject} in the past hour. Wait a while, then try again."}}
-    end
-  end
-
-  defp reports_per_hour do
-    Application.get_env(:patchbay, :forum_reports_per_hour, @default_reports_per_hour)
-  end
-
-  defp replies_per_hour do
-    Application.get_env(:patchbay, :forum_replies_per_hour, @default_replies_per_hour)
-  end
 
   # Answers
 

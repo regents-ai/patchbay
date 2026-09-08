@@ -9,7 +9,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   Opening a page here writes nothing. The one thing a visitor can write from
   here is a reply, and only while signed in: Patchbay's own entry is recorded
   when a studio starts offering a contract, so a visit only reads what is
-  already on the board.
+  already on the board. A reply written here draws on the same hourly share
+  as the replies the page's tools post, because both come from the same
+  browser.
   """
 
   use PatchbayWeb, :controller
@@ -21,6 +23,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.ReplyCursor
+  alias PatchbayWeb.Forum.SessionBudget
+
+  @not_posted "That reply could not be posted."
 
   def home(conn, params) do
     q = presence(params["q"])
@@ -188,20 +193,42 @@ defmodule PatchbayWeb.Forum.BoardController do
   on its thread, so the person is taken to the page that ends on it; if that
   page cannot be found once the reply is saved, the page says the reply was
   posted and leads back to the report. The reply is never posted twice.
+
+  A request that is not shaped the way the form sends a reply is refused
+  before anything is written, and whatever in it a person could have typed
+  is still on screen.
   """
   def create_reply(conn, %{"id" => id} = params) do
-    reply = Map.get(params, "reply", %{})
     # Read before the write, so nothing the page needs is read after it.
     report = fetch_report!(id)
 
-    case add_reply(conn, report.id, reply) do
-      {:ok, posted} ->
-        landing(conn, report, posted)
-
-      {:error, said} ->
-        show_report(conn, id, params, reply_problem: %{said: said, draft: reply})
+    with {:ok, draft} <- reply_draft(params["reply"]),
+         {:ok, posted} <- add_reply(conn, report.id, draft) do
+      landing(conn, report, posted)
+    else
+      {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
     end
   end
+
+  # What the form sends and nothing else: a verdict and a note, each a string
+  # or left out. Anything shaped differently did not come from the form, so it
+  # is refused without a write; the fields that are strings stay on screen.
+  @reply_fields ~w(verdict note)
+
+  defp reply_draft(nil), do: {:ok, %{}}
+
+  defp reply_draft(reply) when is_map(reply) do
+    {typed, malformed} =
+      reply
+      |> Map.take(@reply_fields)
+      |> Map.split_with(fn {_field, value} -> is_binary(value) or is_nil(value) end)
+
+    if map_size(malformed) == 0,
+      do: {:ok, typed},
+      else: {:error, %{said: @not_posted, draft: typed}}
+  end
+
+  defp reply_draft(_reply), do: {:error, %{said: @not_posted, draft: %{}}}
 
   defp landing(conn, report, posted) do
     case Board.page_ending_at(posted) do
@@ -224,23 +251,35 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp replies_path(id, nil), do: ~p"/reports/#{id}" <> "#patchbay-replies"
   defp replies_path(id, cursor), do: ~p"/reports/#{id}?after=#{cursor}" <> "#patchbay-replies"
 
-  defp add_reply(%{assigns: %{current_profile: nil}}, _id, _reply) do
-    {:error, "Sign in to reply here. Your reply keeps the name you chose for yourself."}
+  defp add_reply(%{assigns: %{current_profile: nil}}, _id, draft) do
+    {:error,
+     %{
+       said: "Sign in to reply here. Your reply keeps the name you chose for yourself.",
+       draft: draft
+     }}
   end
 
-  defp add_reply(conn, id, reply) do
-    profile = conn.assigns.current_profile
+  # The reply is a person's, under their own name, and it is counted against
+  # the browser's hourly share of replies like one the page's tools post.
+  defp add_reply(conn, id, draft) do
+    session_id = conn.assigns.forum_session_id
 
     input = %{
       report_id: id,
-      browser_session_id: conn.assigns.forum_session_id,
-      verdict: Map.get(reply, "verdict"),
-      note: Map.get(reply, "note")
+      browser_session_id: session_id,
+      verdict: draft["verdict"],
+      note: draft["note"]
     }
 
-    case Forum.add_human_reply(input, actor: profile) do
+    admitted =
+      SessionBudget.admit_reply(session_id, fn ->
+        Forum.add_human_reply(input, actor: conn.assigns.current_profile)
+      end)
+
+    case admitted do
       {:ok, reply} -> {:ok, reply}
-      {:error, refused} -> {:error, refusal(refused)}
+      {:error, {:rate_limited, said}} -> {:error, %{said: said, draft: draft}}
+      {:error, refused} -> {:error, %{said: refusal(refused), draft: draft}}
     end
   end
 
@@ -255,11 +294,11 @@ defmodule PatchbayWeb.Forum.BoardController do
         "That reply is too long. Keep it under 500 characters."
 
       true ->
-        "That reply could not be posted."
+        @not_posted
     end
   end
 
-  defp refusal(_refused), do: "That reply could not be posted."
+  defp refusal(_refused), do: @not_posted
 
   # A missing report is not on the board; a bad continuation and a reply read
   # that fails are each said for what they are, never shown as an empty thread.

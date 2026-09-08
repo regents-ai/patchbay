@@ -102,24 +102,29 @@ defmodule PatchbayWeb.Forum.Board do
   # tool. Anything else is not a search the board knows how to run.
   defp search_terms(q) do
     case q |> to_string() |> String.trim() |> String.split(~r/\s+/, trim: true) do
-      [] ->
-        :all
+      [] -> :all
+      [one] -> one_term(one)
+      [site, name | _rest] -> two_terms(site, name)
+    end
+  end
 
-      [one] ->
-        case Origin.normalize(one) do
-          {:ok, host} -> {:ok, host, nil}
-          {:error, _not_a_host} -> if tool_name?(one), do: {:ok, nil, one}, else: :none
-        end
+  defp one_term(term) do
+    case host_of(term) do
+      nil -> if tool_name?(term), do: {:ok, nil, term}, else: :none
+      host -> {:ok, host, nil}
+    end
+  end
 
-      [site, name | _rest] ->
-        origin =
-          case Origin.normalize(site) do
-            {:ok, host} -> host
-            {:error, _not_a_host} -> nil
-          end
+  defp two_terms(site, name) do
+    origin = host_of(site)
+    tool = if tool_name?(name), do: name
+    if origin || tool, do: {:ok, origin, tool}, else: :none
+  end
 
-        tool = if tool_name?(name), do: name
-        if origin || tool, do: {:ok, origin, tool}, else: :none
+  defp host_of(term) do
+    case normalize_origin(term) do
+      {:ok, host} -> host
+      :error -> nil
     end
   end
 
@@ -254,18 +259,16 @@ defmodule PatchbayWeb.Forum.Board do
   def fetch_site_ref(ref) when is_binary(ref) do
     _ = sync_catalog()
 
-    cond do
-      slug?(ref) ->
-        case Forum.get_site_by_slug(ref, query: site_summary()) do
-          {:ok, site} -> {:ok, site}
-          {:error, _no_such_slug} -> fetch_normalized_origin(ref)
-        end
-
-      true ->
-        case fetch_normalized_origin(ref) do
-          {:ok, site} -> {:ok, site}
-          :error -> fetch_slug(ref)
-        end
+    if slug?(ref) do
+      case fetch_slug(ref) do
+        {:ok, site} -> {:ok, site}
+        :error -> fetch_normalized_origin(ref)
+      end
+    else
+      case fetch_normalized_origin(ref) do
+        {:ok, site} -> {:ok, site}
+        :error -> fetch_slug(ref)
+      end
     end
   end
 

@@ -30,7 +30,8 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
             asset: "USDC",
             asset_contract: USDC.asset(),
             wallet_address: profile.wallet_address,
-            warning: "Send native USDC on Base only. Never share a private key or recovery phrase."
+            warning:
+              "Send native USDC on Base only. Never share a private key or recovery phrase."
           }
         })
 
@@ -40,7 +41,8 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
         |> json(%{
           error: "Reading balances is not set up on this Patchbay.",
           problem_code: "not_configured",
-          next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+          next_action:
+            "Use the free Patchbay tools. Payments are not enabled on this deployment.",
           payment_help_url: url(~p"/agent-setup") <> "#x402"
         })
 

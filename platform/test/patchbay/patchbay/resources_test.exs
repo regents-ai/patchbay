@@ -1268,9 +1268,7 @@ defmodule Patchbay.Patchbay.ResourcesTest do
     reset = DemoReset.reset!(room)
 
     events =
-      Patchbay.list_room_events!(
-        query: [filter: [room_id: reset.id], sort: [sequence: :asc]]
-      )
+      Patchbay.list_room_events!(query: [filter: [room_id: reset.id], sort: [sequence: :asc]])
 
     assert [%RoomEvent{kind: :room_reset, sequence: 1}] = events
   end
