@@ -8,6 +8,7 @@ defmodule Patchbay.Forum.Catalog do
   """
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Types.{EntityType, SupportRelationship, SupportStatus, ToolInventoryStatus}
 
   @spec path() :: Path.t()
   def path, do: Application.app_dir(:patchbay, "priv/data/webmcp_sites.json")
@@ -44,15 +45,15 @@ defmodule Patchbay.Forum.Catalog do
       origin: entry["origin"],
       slug: entry["slug"],
       display_name: entry["display_name"],
-      entity_type: String.to_existing_atom(entry["entity_type"]),
+      entity_type: enum!(EntityType, entry["entity_type"]),
       organization_name: entry["organization_name"],
       canonical_domain: entry["canonical_domain"],
-      support_relationship: String.to_existing_atom(entry["support_relationship"]),
-      support_status: String.to_existing_atom(entry["support_status"]),
+      support_relationship: enum!(SupportRelationship, entry["support_relationship"]),
+      support_status: enum!(SupportStatus, entry["support_status"]),
       support_evidence_url: entry["support_evidence_url"],
       support_evidence_label: entry["support_evidence_label"],
       last_verified_at: verified,
-      tool_inventory_status: String.to_existing_atom(entry["tool_inventory_status"]),
+      tool_inventory_status: enum!(ToolInventoryStatus, entry["tool_inventory_status"]),
       logo_path: entry["logo_path"],
       logo_source_url: entry["logo_source_url"],
       logo_usage_note: entry["logo_usage_note"],
@@ -61,6 +62,13 @@ defmodule Patchbay.Forum.Catalog do
       screenshot_captured_at: captured,
       featured_rank: entry["featured_rank"]
     }
+  end
+
+  # Let the owning enum load and validate its values. The VM's atom table is
+  # not a catalog schema, especially before resources load on a fresh boot.
+  defp enum!(type, value) do
+    {:ok, value} = type.match(value)
+    value
   end
 
   defp parse_time(nil), do: nil

@@ -82,7 +82,10 @@ defmodule Patchbay.Forum.Site do
 
   identities do
     identity(:unique_origin, [:origin], eager_check?: true)
-    identity(:unique_slug, [:slug], eager_check?: true)
+    # Catalog upserts target origin. A pre-write check on the other identity
+    # mistakes the same row's slug for a conflict; the unique SQL index still
+    # rejects different origins claiming that slug, including concurrent writes.
+    identity(:unique_slug, [:slug], eager_check?: false)
   end
 
   relationships do
