@@ -7,6 +7,10 @@
 # General application configuration
 import Config
 
+# Codepoints bound stored length; one grapheme can contain unbounded combining
+# marks. Keep the stricter byte validators on public report and reply fields.
+config :ash, default_string_length_count: :codepoints
+
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
 config :patchbay,

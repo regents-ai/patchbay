@@ -51,7 +51,7 @@ defmodule Patchbay.MixProject do
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2"},
-      {:ash, "~> 3.32"},
+      {:ash, "~> 3.33"},
       {:ash_postgres, "~> 2.12"},
       {:ash_phoenix, "~> 2.3"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
