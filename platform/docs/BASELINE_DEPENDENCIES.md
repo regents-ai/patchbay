@@ -1,8 +1,9 @@
 # Committed dependency baseline
 
-This is a dependency/build checkpoint, not forum-first product acceptance or a
-production security clearance. Existing local reply hardening and presentation
-changes are a separate review/commit group; this checkpoint does not include them.
+This records the reproducible inputs for the current source, not forum-first
+product acceptance or a production security clearance. Reply hardening, catalog
+fixes and shared-component adoption are now committed in separate review groups.
+The ordinary-question, solution and inbox milestone has not been implemented.
 
 ## Shared inputs
 
@@ -12,8 +13,15 @@ path dependencies; use their exact commits, not their current working directorie
 | Repository | Revision | Packages consumed |
 | --- | --- | --- |
 | `regents-ai/design-system` | `4c6dc42cde958f5168f541a8ccefadfbc61a4d51` | `regent_ui` |
-| `regents-ai/regents` | `fe4e4ef61668245d098818b4693c4d13493fb546` | `identity` |
-| `regents-ai/elixir-utils` | `fbd492cf51dc5d385da86567d763f01318187bae` | `privy`, `credo_ash`, `siwa/siwa-elixir/apps/siwa` |
+| `regents-ai/regents` | `e183c52df9f46193e66b4d7bba9d0fc5d5721685` | `identity` |
+| `regents-ai/elixir-utils` | `4d534af41736b4c059395ab9ddfadeb3f239beb6` | `privy`, `credo_ash`, `siwa/siwa-elixir/apps/siwa` |
+
+The identity revision is published on `release/patchbay-identity-ash333`; its
+package tree exactly matches the tested local commit `fe4e4ef61668245d098818b4693c4d13493fb546`.
+The Elixir inputs are published on `release/patchbay-shared-inputs`; all three
+package trees exactly match `fbd492cf51dc5d385da86567d763f01318187bae`.
+These package-only exports avoid publishing unrelated Regents history or dirty
+shared-library work. The design revision is published on `main`.
 
 The identity commit aligns its Ash constraint with Patchbay's Ash 3.33 lock.
 The consumer and standalone identity configuration explicitly choose codepoint
@@ -37,10 +45,9 @@ build-root/
 Clone Patchbay at the desired consuming commit and clone each repository above
 from `https://github.com/regents-ai/<repository>.git`, then use
 `git checkout --detach <revision>` in each shared checkout. Do not clone recursive
-Solidity submodules for this web build. These commits were initially created
-locally, without push permission: until published, clone from a local repository
-containing the commit or transfer it with a Git bundle. Do not silently substitute
-a remote HEAD if the requested revision is unavailable.
+Solidity submodules for this web build. Use a normal clone that fetches the release
+branches above, or explicitly fetch the named branch before detaching at its
+revision. Do not silently substitute a remote HEAD if a revision is unavailable.
 
 From `patchbay/platform`, with Elixir 1.19/OTP 28 and Node/npm available:
 
@@ -72,9 +79,26 @@ working-tree identity or private source overlay was used. The shared UI's existi
 `mix check` passed; existing visual assertions were aligned with the documented
 Sans/interaction contract rather than expanded into a new suite.
 
-The full database suite, connected browser flows, migration rehearsal and live
-Privy/SIWA were not certified by this build. This does not complete Batch A's
-remaining local source selection or Batches B/C's forum acceptance.
+The later integrated release candidate passed `mix precommit` (490 tests, no
+failures, formatter and strict Credo), `mix ash.codegen --check`, asset setup/build,
+128 JavaScript checks, nine CLI checks and one CLI/browser parity check. It used
+an owned disposable PostgreSQL server on a separate port, not the shared local
+database. No new behavioral suite was added. The current local directory rendered
+the shared frame/cards and Sans text without desktop horizontal overflow; its
+theme toggle switched successfully. This is not authenticated-browser acceptance.
+
+## Live deployment gate
+
+Live preflight found `DATABASE_DIRECT_URL` absent from the existing Fly app's
+secret names. `Patchbay.Release.migrate/0` requires that explicit migration-owner
+connection; `DATABASE_URL` is deliberately not a fallback. Configure the direct
+connection securely before deployment, then verify migration/schema prerequisites
+and stage the pinned packages in a clean release checkout. Do not paste credentials
+into repository documentation or skip the release migration command.
+
+The public app remained on release v49 at preflight, with health reporting database
+OK and migrations current. Source pushes are not evidence of a new live release.
+Production migration rehearsal and live Privy/SIWA/payment flows remain unverified.
 
 Dependency tools also reported existing issues that this compatibility checkpoint
 does not resolve:

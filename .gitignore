@@ -6,3 +6,6 @@
 /contracts/out/
 /contracts/cache/
 /contracts/broadcast/
+
+# Private planning packages are not source or release inputs.
+/local-only-docs-and-specs/
