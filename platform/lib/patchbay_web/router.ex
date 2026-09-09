@@ -17,6 +17,12 @@ defmodule PatchbayWeb.Router do
     plug :accepts, ["json"]
   end
 
+  scope "/", PatchbayWeb do
+    pipe_through :browser
+    get "/blog", BlogController, :index
+    get "/blog/:slug", BlogController, :show
+  end
+
   pipeline :wallet_author do
     plug PatchbayWeb.Plugs.WalletAuthor
   end

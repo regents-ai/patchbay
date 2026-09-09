@@ -46,6 +46,8 @@ ENV REGENT_IDENTITY_PATH="/app/platform/vendor/regent_identity"
 ENV REGENT_SIWA_PATH="/app/platform/vendor/siwa"
 ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
+ENV REGENT_BLOG_PATH="/app/platform/vendor/regent_blog"
+
 # install mix dependencies
 COPY platform/mix.exs platform/mix.lock ./
 COPY platform/vendor vendor
@@ -60,6 +62,7 @@ RUN mix deps.compile
 
 COPY platform/priv priv
 COPY platform/lib lib
+COPY platform/vendor/regent_blog_content /app/blog
 COPY platform/assets assets
 
 # The escrow module compiles the contract's ABI straight into itself, so the

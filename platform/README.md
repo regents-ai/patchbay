@@ -488,7 +488,11 @@ shared tokens; `app.css` declares no fonts of its own.
 
 Run `mix regent_identity.stage` through the prepared worktree with pinned
 `REGENT_IDENTITY_REVISION` and `REGENT_PRIVY_REVISION`, alongside `mix regent_ui.stage`.
-Both shared packages must match their snapshot manifests. The generated vendor
+Also run `mix regent_blog.stage` with the selected `REGENT_BLOG_PATH` and exact
+`REGENT_BLOG_REVISION` before every Docker/Fly build. It refreshes both
+`vendor/regent_blog` and `vendor/regent_blog_content`; reusing old generated blog
+content can otherwise ship stale posts. See [`../blog/README.md`](../blog/README.md).
+Shared packages must match their snapshot manifests. The generated vendor
 packages are build inputs; staging does not migrate a database or deploy.
 The Regents release owner alone runs `RegentIdentity.Migrator.up(Repo)` on the
 identified shared destination, before enabling profiles on consumers.

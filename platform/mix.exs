@@ -44,6 +44,8 @@ defmodule Patchbay.MixProject do
     [
       {:regent_ui,
        path: System.get_env("REGENT_UI_PATH", Path.join(shared, "design-system/regent_ui"))},
+      {:regent_blog,
+       path: System.get_env("REGENT_BLOG_PATH", Path.join(shared, "elixir-utils/blog"))},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -108,6 +110,7 @@ defmodule Patchbay.MixProject do
       "assets.build": [
         "compile",
         "regent_ui.assets",
+        "regent_blog.assets",
         "regent_identity.assets",
         "tailwind patchbay",
         "esbuild patchbay",
@@ -116,6 +119,7 @@ defmodule Patchbay.MixProject do
       ],
       "assets.deploy": [
         "regent_ui.assets",
+        "regent_blog.assets",
         "regent_identity.assets",
         "tailwind patchbay --minify",
         "esbuild patchbay --minify",

@@ -3,8 +3,13 @@ const system = matchMedia("(prefers-color-scheme: light)")
 function apply(theme) {
   root.dataset.theme = theme
   document.querySelectorAll("[data-pb-theme-toggle]").forEach(button => {
-    button.textContent = theme === "dark" ? "Light" : "Dark"
-    button.setAttribute("aria-label", `Switch to ${button.textContent.toLowerCase()} mode`)
+    const current = theme === "dark" ? "Dark" : "Light"
+    const next = theme === "dark" ? "Light" : "Dark"
+    button.setAttribute("aria-label", `Color theme: ${current}. Activate ${next} theme.`)
+    button.setAttribute("aria-pressed", String(theme === "light"))
+    button.setAttribute("title", `Switch to ${next}`)
+    const state = button.querySelector("[data-theme-toggle-state]")
+    if (state) state.textContent = `${current} theme active`
   })
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0F0F10" : "#F6F4EA")
 }

@@ -12,3 +12,5 @@
 platform/vendor/.regent-ui-history
 platform/vendor/.regent-ui-stage-*
 platform/vendor/.regent-identity-history
+platform/vendor/.regent-blog-history
+platform/vendor/.regent-blog-stage-*
