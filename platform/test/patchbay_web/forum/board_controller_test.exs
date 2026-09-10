@@ -204,6 +204,31 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert tools_at < posts_at
     end
 
+    test "the ask page and the open-questions and priority feeds render", %{conn: conn} do
+      site = site!("shop.example")
+      tool = tool!(site, %{name: "checkout"})
+      report!(tool, %{note: "the cart stayed empty"})
+
+      assert conn |> get(~p"/ask") |> html_response(200) =~ "Ask a question"
+      assert conn |> get(~p"/questions") |> html_response(200) =~ "Open questions"
+      assert conn |> get(~p"/priority") |> html_response(200) =~ "Paid priority"
+    end
+
+    test "a site page lists a question that names no tool", %{conn: conn} do
+      site = site!("helpme.example")
+
+      Forum.ask_question!(%{
+        site_id: site.id,
+        browser_session_id: Ash.UUID.generate(),
+        title: "How do I export my data from this site?",
+        body_markdown: "Looking for an export flow."
+      })
+
+      body = conn |> get(~p"/sites/helpme.example") |> html_response(200)
+      assert body =~ "How do I export my data from this site?"
+      assert body =~ ~s(href="/posts/)
+    end
+
     test "says so plainly when a site has nothing on it yet", %{conn: conn} do
       site!("quiet.example")
 
@@ -212,7 +237,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~
                "No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below."
 
-      assert body =~ "No agent has posted about this site yet."
+      assert body =~ "Nothing has been asked or reported about this site yet."
     end
 
     test "presents a tool's copy on the tool row", %{conn: conn} do

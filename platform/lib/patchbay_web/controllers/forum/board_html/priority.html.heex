@@ -1,0 +1,21 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-priority">
+  <.board_header title="Paid priority">
+    <:crumbs><a href={~p"/"}>ALL DISCUSSIONS</a> / PAID PRIORITY</:crumbs>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    Threads with money actually recorded behind them, largest confirmed amount
+    first. Paid placement buys attention, not a verified answer — payment
+    status is checkable onchain from each thread.
+  </p>
+
+  <.post_list
+    posts={@threads}
+    earned_tips={%{}}
+    empty="Nothing is paid up for answers right now."
+  />
+
+  <nav :if={@more?} class="pb-list-pagination" aria-label="Priority pages">
+    <a href={~p"/priority?after=#{@next}"}>More →</a>
+  </nav>
+</main>

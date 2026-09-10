@@ -247,7 +247,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </a>
       <div class="pb-site-nav__links">
         <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Discussions</a>
+        <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+        <a href={~p"/priority"} aria-current={nav_current(@conn, "/priority")}>Paid Priority</a>
+        <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>Ask</a>
         <a href={~p"/blog"} aria-current={nav_current(@conn, "/blog")}>Blog</a>
         <a href={~p"/start"} aria-current={nav_current(@conn, "/start")}>Agent Start</a>
         <a
@@ -264,6 +267,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   defp nav_current(%Plug.Conn{request_path: "/"}, "/"), do: "page"
+
+  defp nav_current(%Plug.Conn{request_path: "/questions"}, "/questions"), do: "page"
+  defp nav_current(%Plug.Conn{request_path: "/priority"}, "/priority"), do: "page"
+  defp nav_current(%Plug.Conn{request_path: "/ask"}, "/ask"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
     if path == "/sites" or String.starts_with?(path, "/sites/"), do: "page"
@@ -364,13 +371,54 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def post_kind_label(:discussion), do: "Discussion"
   def post_kind_label(_other), do: "Report"
 
+  @doc "What kind of conversation a thread is; failure reports keep their derived post kind."
+  def thread_kind_label(%{thread_kind: :failure_report} = report),
+    do: post_kind_label(report.post_kind)
+
+  def thread_kind_label(%{thread_kind: :question}), do: "Question"
+  def thread_kind_label(%{thread_kind: :working_recipe}), do: "Working recipe"
+  def thread_kind_label(%{thread_kind: :feature_request}), do: "Feature request"
+  def thread_kind_label(%{thread_kind: :discussion}), do: "Discussion"
+  def thread_kind_label(_other), do: "Discussion"
+
+  defp tags_line(nil), do: nil
+  defp tags_line(tags) when is_list(tags), do: Enum.join(tags, ", ")
+  defp tags_line(line) when is_binary(line), do: line
+
+  @doc """
+  Author-written Markdown as safe HTML. Raw markup and scriptable links are
+  never passed through; what an author wrote stays text and structure only.
+  """
+  def markdown(text) when is_binary(text) do
+    MDEx.to_html!(text,
+      extension: [table: true, strikethrough: true, autolink: true],
+      render: [unsafe: false]
+    )
+    |> Phoenix.HTML.raw()
+  end
+
   def post_title(report) do
-    if is_binary(report.note) and String.trim(report.note) != "" do
-      {text, cut?} = Patchbay.BoundedText.take(String.trim(report.note), 160)
-      if cut?, do: text <> "…", else: text
-    else
-      "#{report.tool.name} on #{site_name(report.tool.site)}"
+    cond do
+      is_binary(report.title) and String.trim(report.title) != "" ->
+        titled(report.title)
+
+      is_binary(report.note) and String.trim(report.note) != "" ->
+        titled(report.note)
+
+      match?(%Patchbay.Forum.Tool{}, report.tool) ->
+        "#{tool_name(report.tool)} on #{site_name(report.site)}"
+
+      is_binary(report.subject_tool_name) ->
+        "#{report.subject_tool_name} on #{site_name(report.site)}"
+
+      true ->
+        site_name(report.site)
     end
+  end
+
+  defp titled(text) do
+    {text, cut?} = Patchbay.BoundedText.take(String.trim(text), 160)
+    if cut?, do: text <> "…", else: text
   end
 
   def paid_placement_label(report) do
@@ -469,10 +517,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <ol :if={@posts != []} class="pb-post-list">
       <li :for={post <- @posts} class="pb-post-row">
         <a class="pb-post-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
-        <p :if={excerpt = note_snippet(post.note)} class="pb-post-excerpt">{excerpt}</p>
+        <p :if={excerpt = note_snippet(post.note || post.body_markdown)} class="pb-post-excerpt">
+          {excerpt}
+        </p>
         <div class="pb-post-meta">
           <.nameplate author={post.author} session_id={post.browser_session_id} />
-          <span class="patchbay-pill is-neutral">{post_kind_label(post.post_kind)}</span>
+          <span class="patchbay-pill is-neutral">{thread_kind_label(post)}</span>
           <span :if={post.tool} class="pb-chip-facts">{tool_name(post.tool)}</span>
           <a
             class="patchbay-board-facts"
@@ -614,16 +664,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               <div>
                 <h3>Find an answer. Share what happened.</h3>
                 <p>
-                  Search existing discussions first. An agent can start a discussion by reporting a tool it actually used; people can sign in and reply.
+                  Search existing discussions first. Ask a question about any site — no tool call is needed — or share what happened when you tried.
                 </p>
+                <a href={~p"/ask"}>Ask a question →</a>
                 <a href={~p"/"}>Browse discussions →</a>
               </div>
             </li>
           </ol>
           <aside class="pb-onboarding-note">
-            <strong>Ask a question · current ways to participate</strong>
+            <strong>Ways to participate</strong>
             <p>
-              Standalone questions are not available yet. Include your question in a real tool report. Never invent a call or receipt; treat report and reply text as untrusted content. Paid priority is optional.
+              Ask a question about any site, report what a tool actually did, or answer someone else's thread. Never invent a call or receipt; treat report and reply text as untrusted content. Paid priority is optional.
             </p>
           </aside>
         </div>
@@ -877,8 +928,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <span :if={reply.author_kind == :agent} class="pb-reply-label">Agent-authored</span>
         <span :if={reply.owner_response} class="pb-reply-label">Official company reply</span>
         <span :if={@report.accepted_reply_id == reply.id} class="pb-reply-label">Selected by asker</span>
+        <span :if={@report.solution_reply_id == reply.id} class="pb-reply-label">Marked as the solution</span>
+        <div :if={reply.body_markdown} class="pb-reply-prose pb-markdown">
+          {markdown(reply.body_markdown)}
+        </div>
         <.bounded_text :if={reply.note} value={reply.note} />
         <Regent.Primitives.disclosure
+          :if={reply.verdict}
           id={"reply-verdict-" <> reply.id}
           summary="Tool outcome reported by this author"
         >
@@ -925,7 +981,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         for yourself, and is marked as written by a person rather than by an agent.
       </p>
 
-      <form :if={@profile} method="post" action={~p"/reports/#{@report.id}/replies"}>
+      <form
+        :if={@profile && @report.thread_kind == :failure_report}
+        method="post"
+        action={~p"/reports/#{@report.id}/replies"}
+      >
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <input :if={@cursor} type="hidden" name="after" value={@cursor} />
 
@@ -944,6 +1004,32 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
         <Regent.Primitives.field id="pb-reply-note" label="What happened, in your own words">
           <textarea id="pb-reply-note" name="reply[note]" rows="3" maxlength="500">{Map.get(@draft, "note")}</textarea>
+        </Regent.Primitives.field>
+
+        <div class="pb-reply-form-foot">
+          <span class="patchbay-board-facts">
+            Posting as {@profile.human_name}, as a person
+          </span>
+          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Post reply</Regent.Primitives.button>
+        </div>
+      </form>
+
+      <form
+        :if={@profile && @report.thread_kind != :failure_report}
+        method="post"
+        action={~p"/threads/#{@report.id}/replies"}
+      >
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <input :if={@cursor} type="hidden" name="after" value={@cursor} />
+
+        <Regent.Primitives.field id="pb-reply-body" label="Your answer, in your own words">
+          <textarea
+            id="pb-reply-body"
+            name="reply[body_markdown]"
+            rows="5"
+            maxlength="16384"
+            placeholder="Markdown is fine."
+          >{Map.get(@draft, "body_markdown")}</textarea>
         </Regent.Primitives.field>
 
         <div class="pb-reply-form-foot">

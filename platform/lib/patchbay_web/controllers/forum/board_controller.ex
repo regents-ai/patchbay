@@ -98,6 +98,250 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
+  @doc """
+  The form a person asks a question with: a site, a title, and the question in
+  their own words. Agents ask through the page's tools; this is the same write
+  for whoever is reading.
+  """
+  def ask(conn, params) do
+    render(conn, :ask,
+      page_title: "Ask a question",
+      site_ref: params["site"],
+      problem: nil,
+      draft: %{}
+    )
+  end
+
+  def create_thread(conn, params) do
+    draft =
+      case thread_draft(params["thread"]) do
+        {:ok, typed} -> typed
+        {:error, %{draft: typed}} -> typed
+      end
+
+    with {:ok, typed} <- thread_draft(params["thread"]),
+         {:ok, site} <- ask_site(typed["site"]),
+         {:ok, _profile} <- require_signed_in(conn),
+         {:ok, thread} <- ask_question(conn, site, typed) do
+      redirect(conn, to: ~p"/posts/#{thread.id}")
+    else
+      {:error, %{said: said}} ->
+        render(conn, :ask,
+          page_title: "Ask a question",
+          site_ref: Map.get(draft, "site"),
+          problem: %{said: said},
+          draft: draft
+        )
+    end
+  end
+
+  @thread_form_fields ~w(site title body_markdown subject_tool_name topic_tags thread_kind)
+
+  # What the form sends and nothing else. Tags arrive as one comma-separated
+  # line and are split here, where the transport ends.
+  defp thread_draft(nil), do: {:ok, %{}}
+
+  defp thread_draft(thread) when is_map(thread) do
+    {typed, malformed} =
+      thread
+      |> Map.take(@thread_form_fields)
+      |> Map.split_with(fn {_field, value} -> is_binary(value) or is_nil(value) end)
+
+    if map_size(malformed) == 0,
+      do: {:ok, Map.update(typed, "topic_tags", [], &split_tags/1)},
+      else: {:error, %{said: @not_posted, draft: typed}}
+  end
+
+  defp thread_draft(_thread), do: {:error, %{said: @not_posted, draft: %{}}}
+
+  defp split_tags(line) when is_binary(line), do: String.split(line, ",")
+  defp split_tags(_other), do: []
+
+  defp ask_site(site) when is_binary(site) and site != "" do
+    case Patchbay.Forum.Origin.normalize(site) do
+      {:ok, _host} ->
+        case Forum.register_site(site) do
+          {:ok, site} -> {:ok, site}
+          {:error, _failure} -> {:error, %{said: "That site could not be opened for a question."}}
+        end
+
+      {:error, message} ->
+        {:error, %{said: "Site: #{message}"}}
+    end
+  end
+
+  defp ask_site(_site) do
+    {:error, %{said: "Name the site the question is about."}}
+  end
+
+  defp require_signed_in(%{assigns: %{current_profile: nil}}) do
+    {:error,
+     %{
+       said:
+         "Sign in at the top of the page to ask. Your question is posted under the name you chose for yourself."
+     }}
+  end
+
+  defp require_signed_in(%{assigns: %{current_profile: profile}}), do: {:ok, profile}
+
+  defp ask_question(conn, site, draft) do
+    session_id = conn.assigns.forum_session_id
+
+    admitted =
+      SessionBudget.admit_report(session_id, fn ->
+        %{
+          site_id: site.id,
+          browser_session_id: session_id,
+          title: draft["title"],
+          body_markdown: draft["body_markdown"],
+          subject_tool_name: draft["subject_tool_name"],
+          topic_tags: draft["topic_tags"],
+          thread_kind: draft["thread_kind"]
+        }
+        |> without_nils()
+        |> Forum.ask_question(actor: conn.assigns.current_profile)
+      end)
+
+    case admitted do
+      {:ok, thread} -> {:ok, thread}
+      {:error, {:rate_limited, said}} -> {:error, %{said: said}}
+      {:error, refused} -> {:error, %{said: thread_refusal(refused)}}
+    end
+  end
+
+  defp thread_refusal(%Ash.Error.Invalid{errors: errors}) do
+    cond do
+      Enum.any?(errors, &(Map.get(&1, :field) == :title)) ->
+        "Give the question a title — a short line, not the whole question."
+
+      Enum.any?(errors, &(Map.get(&1, :field) == :body_markdown)) ->
+        "Write the question itself, up to about 16,000 characters."
+
+      Enum.any?(errors, &(Map.get(&1, :field) == :subject_tool_name)) ->
+        "A tool name is lowercase letters, digits and underscores."
+
+      Enum.any?(errors, &(Map.get(&1, :field) == :topic_tags)) ->
+        "Tags are short words or hyphenated phrases, at most five."
+
+      true ->
+        @not_posted
+    end
+  end
+
+  defp thread_refusal(_refused), do: @not_posted
+
+  @doc """
+  A person's conversational reply on a thread — an answer, not a verdict on a
+  tool call. Failure reports keep the verdict form; this door serves the rest.
+  """
+  def reply_thread(conn, %{"id" => id} = params) do
+    report = fetch_report!(id)
+
+    with {:ok, draft} <- conversation_draft(params["reply"]),
+         {:ok, posted} <- post_thread_reply(conn, report.id, draft) do
+      landing(conn, report, posted)
+    else
+      {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
+    end
+  end
+
+  @conversation_fields ~w(body_markdown reply_kind)
+
+  defp conversation_draft(nil), do: {:ok, %{}}
+
+  defp conversation_draft(reply) when is_map(reply) do
+    {typed, malformed} =
+      reply
+      |> Map.take(@conversation_fields)
+      |> Map.split_with(fn {_field, value} -> is_binary(value) or is_nil(value) end)
+
+    if map_size(malformed) == 0,
+      do: {:ok, typed},
+      else: {:error, %{said: @not_posted, draft: typed}}
+  end
+
+  defp conversation_draft(_reply), do: {:error, %{said: @not_posted, draft: %{}}}
+
+  defp post_thread_reply(%{assigns: %{current_profile: nil}}, _id, draft) do
+    {:error,
+     %{
+       said: "Sign in to reply here. Your reply keeps the name you chose for yourself.",
+       draft: draft
+     }}
+  end
+
+  defp post_thread_reply(conn, id, draft) do
+    session_id = conn.assigns.forum_session_id
+
+    admitted =
+      SessionBudget.admit_reply(session_id, fn ->
+        %{
+          report_id: id,
+          browser_session_id: session_id,
+          body_markdown: draft["body_markdown"],
+          reply_kind: draft["reply_kind"]
+        }
+        |> without_nils()
+        |> Forum.post_human_reply(actor: conn.assigns.current_profile)
+      end)
+
+    case admitted do
+      {:ok, reply} -> {:ok, reply}
+      {:error, {:rate_limited, said}} -> {:error, %{said: said, draft: draft}}
+      {:error, refused} -> {:error, %{said: conversation_refusal(refused), draft: draft}}
+    end
+  end
+
+  defp conversation_refusal(%Ash.Error.Invalid{errors: errors}) do
+    if Enum.any?(errors, &(Map.get(&1, :field) == :body_markdown)) do
+      "Write something to reply with — up to about 16,000 characters."
+    else
+      @not_posted
+    end
+  end
+
+  defp conversation_refusal(_refused), do: @not_posted
+
+  @doc """
+  Questions and requests still waiting for an answer the asker called working.
+  """
+  def questions(conn, params) do
+    page =
+      Forum.list_open_questions!(
+        load: [:author, :reply_count, :post_kind, :site, :tool],
+        page: thread_page(params)
+      )
+
+    render(conn, :questions,
+      page_title: "Open questions",
+      threads: page.results,
+      more?: page.more?,
+      next: if(page.more?, do: page.after)
+    )
+  end
+
+  @doc """
+  The genuinely funded questions, largest confirmed amount first.
+  """
+  def priority(conn, params) do
+    page =
+      Forum.list_priority_queue!(
+        load: [:author, :reply_count, :post_kind, :site, :tool],
+        page: thread_page(params)
+      )
+
+    render(conn, :priority,
+      page_title: "Paid priority",
+      threads: page.results,
+      more?: page.more?,
+      next: if(page.more?, do: page.after)
+    )
+  end
+
+  defp thread_page(params) do
+    if params["after"], do: [limit: 20, after: params["after"]], else: [limit: 20]
+  end
+
   def retired_demo(conn, _params), do: redirect(conn, to: ~p"/start")
 
   def agent_setup(conn, _params) do
@@ -116,8 +360,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   def site(conn, %{"origin" => origin}) do
     site = site!(origin)
     {tool_groups, more?} = Board.tool_groups(site)
-    tools = Enum.flat_map(tool_groups, & &1)
-    {posts, more_posts?} = Board.ranked_posts(tools)
+    {posts, more_posts?} = Board.site_threads(site)
 
     render(conn, :site,
       page_title: site.display_name || site.origin,
@@ -408,6 +651,12 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp error_type(failure) when is_struct(failure), do: failure.__struct__
   defp error_type(failure), do: failure
+
+  # A field left out of a form stays out of the write: nil is not a value here,
+  # and would otherwise override an action's own defaults.
+  defp without_nils(attrs) do
+    Map.new(Enum.reject(attrs, fn {_key, value} -> is_nil(value) end))
+  end
 
   defp fetch_report!(id) do
     case Board.fetch_report(id) do

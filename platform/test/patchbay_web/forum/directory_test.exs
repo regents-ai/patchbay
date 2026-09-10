@@ -235,8 +235,11 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
       refute html =~ "Paid placement · 100.00 USDC"
       assert html =~ "Paid placement · 5.00 USDC"
-      [settled, pending] = post_order(html, ["five usdc settled", "pending hundred usdc post"])
-      assert settled < pending
+
+      # The site feed orders by latest activity, so the newer post leads
+      # regardless of the money pending behind it.
+      [pending, settled] = post_order(html, ["pending hundred usdc post", "five usdc settled"])
+      assert pending < settled
     end
 
     test "equal paid totals put the newest first", %{

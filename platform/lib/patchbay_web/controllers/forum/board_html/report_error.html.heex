@@ -4,9 +4,12 @@
   }>
     <:crumbs>
       <a href={~p"/sites"}>ALL SITES</a>
-      / <a href={site_path(@report.tool.site)}>{site_name(@report.tool.site)}</a>
+      / <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
       /
-      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>
+      <a
+        :if={@report.tool}
+        href={~p"/sites/#{site_ref(@report.site)}/tools/#{@report.tool.name}"}
+      >
         {tool_name(@report.tool)}
       </a>
       / <a href={~p"/reports/#{@report.id}"}>{post_title(@report)}</a>

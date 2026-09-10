@@ -139,8 +139,8 @@
             aria-current={if @thread && @thread.report.id == report.id, do: "true"}
           >
             <strong>{post_title(report)}</strong>
-            <span>{site_name(report.tool.site)} · {post_kind_label(report.post_kind)} · {report.reply_count} replies · {ago(
-              report.inserted_at
+            <span>{site_name(report.site)} · {thread_kind_label(report)} · {report.reply_count} replies · {ago(
+              report.last_activity_at || report.inserted_at
             )}</span>
           </a>
         </li>
@@ -168,9 +168,9 @@
         <a href={~p"/posts/#{@thread.report.id}"}>Open full discussion ↗</a>
         <button
           type="button"
-          data-pb-follow={@thread.report.tool.site.id}
-          aria-pressed={to_string(@thread.report.tool.site.id in @following)}
-          aria-label={"Follow #{site_name(@thread.report.tool.site)} in this browser"}
+          data-pb-follow={@thread.report.site.id}
+          aria-pressed={to_string(@thread.report.site.id in @following)}
+          aria-label={"Follow #{site_name(@thread.report.site)} in this browser"}
         >Follow site</button>
       </div>
       <.thread_body

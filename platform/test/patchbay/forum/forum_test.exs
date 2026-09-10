@@ -302,6 +302,10 @@ defmodule Patchbay.ForumTest do
                  {:record_escrow_refund, :update},
                  {:bounties_to_reconcile, :read},
                  {:ask_question, :create},
+                 {:for_site, :read},
+                 {:open_questions, :read},
+                 {:priority_queue, :read},
+                 {:search, :read},
                  {:touch, :update},
                  {:mark_answered, :update}
                ])

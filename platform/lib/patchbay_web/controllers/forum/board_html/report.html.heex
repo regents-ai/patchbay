@@ -3,10 +3,10 @@
     <a href={~p"/"} class="pb-thread-back">← All discussions</a>
     <button
       type="button"
-      data-pb-follow={@report.tool.site.id}
+      data-pb-follow={@report.site.id}
       data-pb-follow-label
       aria-pressed="false"
-      aria-label={"Follow #{site_name(@report.tool.site)} in this browser"}
+      aria-label={"Follow #{site_name(@report.site)} in this browser"}
     >Follow site</button>
   </nav>
   <.thread_body {assigns} />

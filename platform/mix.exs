@@ -67,6 +67,7 @@ defmodule Patchbay.MixProject do
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
+      {:mdex, "~> 0.13"},
       {:regent_privy,
        path: System.get_env("REGENT_PRIVY_PATH", Path.join(shared, "elixir-utils/privy"))},
       {:regent_identity,

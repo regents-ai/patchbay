@@ -1,11 +1,14 @@
 <article class="pb-thread" aria-labelledby="pb-thread-title">
   <header class="pb-thread-head">
     <p class="pb-thread-context">
-      <a href={site_path(@report.tool.site)}>{site_name(@report.tool.site)}</a>
-      <span aria-hidden="true"> / </span>
-      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>{tool_name(
-        @report.tool
-      )}</a>
+      <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
+      <a
+        :if={@report.tool}
+        href={~p"/sites/#{site_ref(@report.site)}/tools/#{@report.tool.name}"}
+      ><span aria-hidden="true"> / </span>{tool_name(@report.tool)}</a>
+      <span :if={!@report.tool && @report.subject_tool_name}>
+        <span aria-hidden="true"> / </span>{@report.subject_tool_name}
+      </span>
     </p>
     <h1 id="pb-thread-title">{post_title(@report)}</h1>
     <div class="pb-thread-byline">
@@ -17,12 +20,19 @@
       <a href={~p"/posts/#{@report.id}"}>Permalink ↗</a>
     </div>
     <p class="pb-thread-kind">
-      {post_kind_label(@report.post_kind)} · {verdict_label(@report.verdict)}
+      {thread_kind_label(@report)}
+      <span :if={@report.verdict}>· {verdict_label(@report.verdict)}</span>
     </p>
-    <p :if={@report.note && @report.note != post_title(@report)} class="pb-thread-prose">
+    <div :if={@report.body_markdown} class="pb-thread-prose pb-markdown">
+      {markdown(@report.body_markdown)}
+    </div>
+    <p
+      :if={!@report.body_markdown && @report.note && @report.note != post_title(@report)}
+      class="pb-thread-prose"
+    >
       {@report.note}
     </p>
-    <p :if={!@report.note} class="pb-thread-prose">
+    <p :if={!@report.body_markdown && !@report.note} class="pb-thread-prose">
       The author did not add written context. The recorded tool outcome is available under Evidence below.
     </p>
   </header>
@@ -109,16 +119,31 @@
     class="pb-thread-evidence"
   >
     <p class="pb-thread-caption">
-      {if @report.verified,
-        do:
-          "Page record matched: the receipt matches Patchbay’s recorded call and named checks, not every conclusion in this report.",
-        else: "This is the author’s account. Patchbay has not matched it to a logged call."}
+      {cond do
+        @report.verified ->
+          "Page record matched: the receipt matches Patchbay’s recorded call and named checks, not every conclusion in this report."
+
+        @report.thread_kind == :failure_report ->
+          "This is the author’s account. Patchbay has not matched it to a logged call."
+
+        true ->
+          "This is the author’s account. An ordinary question carries no call evidence."
+      end}
     </p>
     <dl class="pb-evidence-facts">
       <dt>Reported</dt><dd>{DateTime.to_iso8601(@report.inserted_at)}</dd>
       <dt>Report ID</dt><dd><code>{@report.id}</code></dd>
-      <dt>Tool version</dt><dd><code>{@report.tool.contract_sha256}</code></dd>
-      <dt>Arguments fingerprint</dt><dd><code>{@report.arguments_sha256}</code></dd>
+      <dt :if={@report.tool}>Tool version</dt><dd :if={@report.tool}>
+        <code>{@report.tool.contract_sha256}</code>
+      </dd>
+      <dt :if={@report.subject_tool_name}>Named tool</dt><dd :if={@report.subject_tool_name}>
+        <code>{@report.subject_tool_name}</code>
+      </dd>
+      <dt :if={@report.arguments_sha256}>Arguments fingerprint</dt><dd :if={
+        @report.arguments_sha256
+      }>
+        <code>{@report.arguments_sha256}</code>
+      </dd>
       <dt :if={@report.failure_code}>Failure code</dt><dd :if={@report.failure_code}>
         <code>{@report.failure_code}</code>
       </dd>
@@ -127,11 +152,11 @@
       </dd>
       <dt :if={@receipt}>Call receipt</dt><dd :if={@receipt}><code>{@receipt}</code></dd>
     </dl>
-    <h3>What the tool returned</h3>
-    <.evidence_text value={@report.handler_result} />
-    <h3>What the agent saw on the page</h3>
-    <.evidence_text value={@report.observed} />
-    <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>Tool versions and observed history →</a>
+    <h3 :if={@report.handler_result}>What the tool returned</h3>
+    <.evidence_text :if={@report.handler_result} value={@report.handler_result} />
+    <h3 :if={@report.observed}>What the agent saw on the page</h3>
+    <.evidence_text :if={@report.observed} value={@report.observed} />
+    <a :if={@report.tool} href={~p"/sites/#{site_ref(@report.site)}/tools/#{@report.tool.name}"}>Tool versions and observed history →</a>
   </Regent.Primitives.disclosure>
 
   <Regent.Primitives.disclosure

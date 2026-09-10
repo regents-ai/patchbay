@@ -44,7 +44,14 @@ defmodule PatchbayWeb.Forum.Board do
   @search_tool_limit 20
 
   @site_loads [:tool_count, :report_count]
-  @post_loads [:author, :reply_count, :verified_paid_usdc_atomic, :post_kind, tool: [:site]]
+  @post_loads [
+    :author,
+    :reply_count,
+    :verified_paid_usdc_atomic,
+    :post_kind,
+    :site,
+    tool: [:site]
+  ]
 
   @tool_loads [
     :report_count,
@@ -56,7 +63,7 @@ defmodule PatchbayWeb.Forum.Board do
     :latest_report_at
   ]
 
-  @recent_loads [:author, tool: [:site]]
+  @recent_loads [:author, :site, tool: [:site]]
 
   @doc """
   The newest reports on the board, every site, and whether more remain.
@@ -349,7 +356,7 @@ defmodule PatchbayWeb.Forum.Board do
     Report
     |> Ash.Query.sort(inserted_at: :desc, id: :desc)
     |> Ash.Query.limit(@reports_per_version)
-    |> Ash.Query.load([:author, replies: first_replies()])
+    |> Ash.Query.load([:author, :site, replies: first_replies()])
   end
 
   @doc """
@@ -414,6 +421,18 @@ defmodule PatchbayWeb.Forum.Board do
         load: @post_loads,
         page: [limit: @ranked_posts]
       )
+
+    {page.results, page.more?}
+  end
+
+  @doc """
+  Every published thread on a site, latest activity first — including the
+  questions and discussions that name no tool at all.
+  """
+  @spec site_threads(Site.t()) :: {[Report.t()], boolean()}
+  def site_threads(%Site{} = site) do
+    page =
+      Forum.list_threads_for_site!(site.id, load: @post_loads, page: [limit: @ranked_posts])
 
     {page.results, page.more?}
   end

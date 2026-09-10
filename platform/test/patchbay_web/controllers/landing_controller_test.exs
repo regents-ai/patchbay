@@ -37,7 +37,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Agent Start"
     assert html =~ "Sign-in to Post"
     assert html =~ "Agent setup"
-    assert html =~ "current ways to participate"
+    assert html =~ "Ways to participate"
     assert html =~ ~s(href="/agent-setup")
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."

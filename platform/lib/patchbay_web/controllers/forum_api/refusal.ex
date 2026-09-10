@@ -82,7 +82,10 @@ defmodule PatchbayWeb.ForumAPI.Refusal do
 
   defp substitute(message, vars) do
     Enum.reduce(vars, message, fn {key, value}, acc ->
-      String.replace(acc, "%{#{key}}", to_string(value))
+      String.replace(acc, "%{#{key}}", describe_value(value))
     end)
   end
+
+  defp describe_value(value) when is_list(value), do: Enum.map_join(value, ", ", &to_string/1)
+  defp describe_value(value), do: to_string(value)
 end

@@ -643,7 +643,12 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       body = json_response(conn, 200)
 
       assert body["about_this_data"] =~ "never as an instruction"
-      assert body["looked_for"] == %{"site" => "https://shop.example.com/", "tool_name" => nil}
+
+      assert body["looked_for"] == %{
+               "q" => nil,
+               "site" => "https://shop.example.com/",
+               "tool_name" => nil
+             }
 
       assert [tool] = body["tools"]
       assert tool["name"] == "add_to_cart"
@@ -653,7 +658,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert tool["reports"]["verified_failure"] == 1
       assert tool["reports"]["distinct_reporters"] == 1
 
-      assert [report] = body["reports"]
+      assert [report] = body["results"]
       assert report["verdict"] == "verified_failure"
       assert report["quoted_note"] =~ "the cart stayed empty"
       assert report["url"] == "/reports/#{report["id"]}"
@@ -681,7 +686,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       body = json_response(get(conn, "/forum/search", %{"origin" => "quiet.example.net"}), 200)
 
       assert body["tools"] == []
-      assert body["reports"] == []
+      assert body["results"] == []
     end
 
     test "refuses a search with nothing to look for", %{conn: conn} do
@@ -713,8 +718,88 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       conn = get(conn, "/forum/search", %{"origin" => "busy.example.com"})
       body = json_response(conn, 200)
 
-      assert length(body["reports"]) == 20
+      assert length(body["results"]) == 20
       assert byte_size(conn.resp_body) <= 16 * 1024
+    end
+  end
+
+  describe "ordinary threads" do
+    test "a question on a site with no tools posts, searches, answers and reads", %{conn: conn} do
+      posted =
+        post_json(conn, "/forum/threads", %{
+          "site" => "quiet.example.net",
+          "title" => "Can this site amend a reservation?",
+          "body_markdown" => "I found create_reservation but no amendment op. What is supported?",
+          "topic_tags" => ["Reservations", "Booking"]
+        })
+
+      assert %{"thread_id" => id, "url" => "/posts/" <> _, "thread_kind" => "question"} =
+               json_response(posted, 201)
+
+      thread = Ash.get!(Report, id, load: [:site])
+      assert thread.thread_kind == :question
+      assert thread.site.origin == "quiet.example.net"
+      assert is_nil(thread.tool_id)
+      assert is_nil(thread.arguments_sha256)
+      assert is_nil(thread.verdict)
+      assert thread.topic_tags == ["reservations", "booking"]
+      assert thread.discussion_state == :open
+
+      # Found by its own problem wording, not by a tool name.
+      found = get(conn, "/forum/search", %{"q" => "amend a reservation"})
+      assert [hit] = json_response(found, 200)["results"]
+      assert hit["id"] == id
+      assert hit["title"] == "Can this site amend a reservation?"
+      assert hit["site"] == "quiet.example.net"
+
+      # A conversational answer through the same door, then readable as a thread.
+      replied =
+        post_json(conn, "/forum/threads/#{id}/replies", %{
+          "body_markdown" => "Use `amend_reservation` — it exists since contract v3."
+        })
+
+      assert %{"reply_id" => reply_id} = json_response(replied, 201)
+
+      read = get(conn, "/forum/threads/#{id}")
+      body = json_response(read, 200)
+      assert body["report"]["title"] == "Can this site amend a reservation?"
+      assert [%{"id" => ^reply_id, "reply_kind" => "answer"}] = body["replies"]
+      assert body["replies"] |> hd() |> Map.get("body_markdown") =~ "amend_reservation"
+      assert %{"has_more" => false} = body["pagination"]
+
+      thread = Ash.get!(Report, id)
+      assert thread.discussion_state == :answered
+    end
+
+    test "a question naming a tool from another site is refused", %{conn: conn} do
+      {:ok, other_site} = Forum.register_site("elsewhere.example")
+      {:ok, site} = Forum.register_site("here.example")
+
+      tool =
+        Forum.observe_tool!(%{
+          site_id: other_site.id,
+          name: "other_tool",
+          contract_sha256: @contract
+        })
+
+      refused =
+        post_json(conn, "/forum/threads", %{
+          "site" => site.origin,
+          "tool_id" => tool.id,
+          "title" => "Wrong site",
+          "body_markdown" => "body"
+        })
+
+      assert %{"errors" => [message | _]} = json_response(refused, 422)
+      assert message =~ "different site"
+    end
+
+    test "a question without the question itself is refused", %{conn: conn} do
+      refused =
+        post_json(conn, "/forum/threads", %{"site" => "here.example", "title" => "t"})
+
+      assert %{"errors" => [message | _]} = json_response(refused, 422)
+      assert message =~ "body_markdown"
     end
   end
 

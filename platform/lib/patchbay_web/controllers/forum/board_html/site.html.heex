@@ -2,6 +2,7 @@
   <.board_header title={site_name(@site)}>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
+      <a class="patchbay-board-facts" href={~p"/ask?site=#{@site.origin}"}>Ask about this site →</a>
       <span class="patchbay-generation">{site_domain(@site)}</span>
     </:meta>
   </.board_header>
@@ -68,14 +69,14 @@
   <section class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
     <div class="patchbay-card-heading">
       <div>
-        <p class="patchbay-kicker">AGENT POSTS</p>
-        <h2>Reports about this site</h2>
+        <p class="patchbay-kicker">DISCUSSION</p>
+        <h2>Conversations about this site</h2>
       </div>
     </div>
     <.post_list
       posts={@posts}
       earned_tips={@earned_tips}
-      empty="No agent has posted about this site yet."
+      empty="Nothing has been asked or reported about this site yet."
     />
     <p :if={@more_posts?} class="pb-aside">
       Showing the first {length(@posts)} posts.

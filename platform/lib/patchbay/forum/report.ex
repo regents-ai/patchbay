@@ -307,6 +307,133 @@ defmodule Patchbay.Forum.Report do
       prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
     end
 
+    read :for_site do
+      description("""
+      Published threads on one site, latest activity first — including the
+      ones that name no tool, which a version-scoped listing cannot see.
+      """)
+
+      argument(:site_id, :uuid, allow_nil?: false)
+      filter(expr(site_id == ^arg(:site_id) and visibility == :published))
+      pagination(keyset?: true, offset?: true, default_limit: 20, max_page_size: 50)
+      prepare(build(sort: [last_activity_at: :desc, id: :desc]))
+    end
+
+    read :open_questions do
+      description("""
+      Published questions and requests still waiting for an answer the asker
+      called working, latest activity first.
+      """)
+
+      filter(
+        expr(
+          thread_kind in [:question, :feature_request] and
+            discussion_state in [:open, :answered] and
+            visibility == :published
+        )
+      )
+
+      pagination(keyset?: true, default_limit: 20, max_page_size: 50)
+      prepare(build(sort: [last_activity_at: :desc, id: :desc]))
+    end
+
+    read :priority_queue do
+      description("""
+      Threads whose money is actually recorded in escrow and whose answer has
+      not been accepted, largest confirmed amount first. Pending, failed or
+      refunded money does not appear.
+      """)
+
+      filter(
+        expr(
+          verified_paid_usdc_atomic > 0 and is_nil(accepted_reply_id) and
+            visibility == :published
+        )
+      )
+
+      pagination(keyset?: true, default_limit: 20, max_page_size: 50)
+
+      prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+    end
+
+    read :search do
+      description("""
+      Full-text search over thread titles, bodies, notes and their published
+      replies, matched directly against the site's records — not bounded by a
+      handful of observed tool versions.
+      """)
+
+      argument(:term, :string, allow_nil?: false)
+      argument(:site_id, :uuid, allow_nil?: true)
+
+      # Narrow a search to threads about one tool name — the observed row or
+      # the name a thread's author reported when none was observed.
+      argument(:tool_name, :string, allow_nil?: true)
+
+      filter(expr(visibility == :published))
+
+      filter(
+        expr(
+          fragment(
+            "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
+            title,
+            body_markdown,
+            note,
+            ^arg(:term)
+          ) or
+            fragment(
+              "to_tsvector('english', coalesce(?, '')) @@ plainto_tsquery('english', ?)",
+              subject_tool_name,
+              ^arg(:term)
+            ) or
+            site.origin == ^arg(:term) or
+            tool.name == ^arg(:term) or
+            exists(
+              replies,
+              visibility == :published and
+                fragment(
+                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
+                  body_markdown,
+                  note,
+                  ^arg(:term)
+                )
+            )
+        )
+      )
+
+      filter(expr(is_nil(^arg(:site_id)) or site_id == ^arg(:site_id)))
+
+      filter(
+        expr(
+          is_nil(^arg(:tool_name)) or tool.name == ^arg(:tool_name) or
+            subject_tool_name == ^arg(:tool_name)
+        )
+      )
+
+      pagination(offset?: true, default_limit: 10, max_page_size: 50)
+
+      # Relevance first — the thread's own words rank it — then what moved
+      # last and a stable id, so two equally relevant threads never reorder.
+      prepare(fn query, _context ->
+        term = Ash.Query.get_argument(query, :term)
+
+        Ash.Query.sort(query, [
+          {calc(
+             fragment(
+               "ts_rank(to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')), plainto_tsquery('english', ?))",
+               title,
+               body_markdown,
+               note,
+               ^term
+             ),
+             type: :float
+           ), :desc},
+          {:last_activity_at, :desc},
+          {:id, :desc}
+        ])
+      end)
+    end
+
     read :for_invocation do
       description("The report a logged call already stands behind, if one does.")
       argument(:invocation_id, :uuid, allow_nil?: false)
@@ -457,7 +584,10 @@ defmodule Patchbay.Forum.Report do
         description: "What kind of conversation this is; a failure report is not one."
       )
 
-      validate(present([:site_id, :browser_session_id, :title, :body_markdown]))
+      validate(present(:site_id))
+      validate(present(:browser_session_id))
+      validate(present(:title))
+      validate(present(:body_markdown))
       validate(Patchbay.Forum.Validations.ToolBelongsToSite)
 
       validate(
@@ -479,7 +609,7 @@ defmodule Patchbay.Forum.Report do
       # A question is the default kind; naming a failure report here is
       # refused because evidence-backed reports go through file_report.
       change(fn changeset, _context ->
-        kind = Ash.Changeset.get_argument(changeset, :thread_kind)
+        kind = Ash.Changeset.get_argument(changeset, :thread_kind) || :question
 
         if kind in [:question, :working_recipe, :feature_request, :discussion] do
           Ash.Changeset.force_change_attribute(changeset, :thread_kind, kind)

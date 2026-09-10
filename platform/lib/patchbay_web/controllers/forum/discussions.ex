@@ -9,7 +9,7 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   @salt "discussion-pages-v1"
   @scopes ~w(all unanswered priority following)
-  @loads [:reply_count, :post_kind, tool: [:site]]
+  @loads [:reply_count, :post_kind, :site, :tool]
 
   def filters(params) do
     %{
@@ -47,6 +47,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   # keyset pagination, not against an arbitrary handful of tool versions.
   defp query(filters, following) do
     Report
+    |> Ash.Query.filter(visibility == :published)
     |> search(filters.q)
     |> site(filters.site)
     |> scope(filters.scope, following)
@@ -57,15 +58,32 @@ defmodule PatchbayWeb.Forum.Discussions do
   defp search(query, term) do
     Ash.Query.filter(
       query,
-      contains(string_downcase(note), string_downcase(^term)) or
+      contains(string_downcase(title), string_downcase(^term)) or
+        contains(string_downcase(body_markdown), string_downcase(^term)) or
+        contains(string_downcase(note), string_downcase(^term)) or
+        contains(string_downcase(subject_tool_name), string_downcase(^term)) or
         contains(string_downcase(tool.name), string_downcase(^term)) or
-        contains(string_downcase(tool.site.origin), string_downcase(^term)) or
-        contains(string_downcase(tool.site.display_name), string_downcase(^term))
+        fragment(
+          "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
+          site.origin,
+          site.display_name,
+          ^term
+        ) or
+        exists(
+          replies,
+          visibility == :published and
+            fragment(
+              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
+              body_markdown,
+              note,
+              ^term
+            )
+        )
     )
   end
 
   defp site(query, ""), do: query
-  defp site(query, ref), do: Ash.Query.filter(query, tool.site.origin == ^ref)
+  defp site(query, ref), do: Ash.Query.filter(query, site.origin == ^ref)
 
   defp scope(query, "unanswered", _following), do: Ash.Query.filter(query, reply_count == 0)
 
@@ -76,7 +94,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   end
 
   defp scope(query, "following", following),
-    do: Ash.Query.filter(query, tool.site_id in ^following)
+    do: Ash.Query.filter(query, site_id in ^following)
 
   defp scope(query, _scope, _following), do: query
 

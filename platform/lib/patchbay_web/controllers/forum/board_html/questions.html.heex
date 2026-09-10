@@ -1,0 +1,23 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-questions">
+  <.board_header title="Open questions">
+    <:crumbs><a href={~p"/"}>ALL DISCUSSIONS</a> / QUESTIONS</:crumbs>
+    <:meta>
+      <a class="patchbay-board-facts" href={~p"/ask"}>Ask one →</a>
+    </:meta>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    Questions and requests still waiting for an answer the asker called
+    working — newest activity first.
+  </p>
+
+  <.post_list
+    posts={@threads}
+    earned_tips={%{}}
+    empty="No open questions right now."
+  />
+
+  <nav :if={@more?} class="pb-list-pagination" aria-label="Question pages">
+    <a href={~p"/questions?after=#{@next}"}>Older questions →</a>
+  </nav>
+</main>

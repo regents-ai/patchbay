@@ -113,6 +113,9 @@ defmodule PatchbayWeb.Router do
     post "/reports", ReportController, :create
     post "/reports/:id/replies", ReportController, :create_reply
     get "/reports/:id", ReportController, :show
+    post "/threads", ReportController, :create_thread
+    post "/threads/:id/replies", ReportController, :create_thread_reply
+    get "/threads/:id", ReportController, :show
     get "/search", ReportController, :search
     get "/tool-history", ToolController, :index
   end
@@ -198,6 +201,11 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     get "/", BoardController, :home
+    get "/ask", BoardController, :ask
+    post "/threads", BoardController, :create_thread
+    post "/threads/:id/replies", BoardController, :reply_thread
+    get "/questions", BoardController, :questions
+    get "/priority", BoardController, :priority
     get "/start", BoardController, :start
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply
