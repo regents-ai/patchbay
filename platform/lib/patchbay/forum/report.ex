@@ -277,10 +277,10 @@ defmodule Patchbay.Forum.Report do
     end
 
     read :recent do
-      description("Newest reports first, every site.")
+      description("Threads with the newest activity first, every site.")
       filter(expr(visibility == :published))
       pagination(keyset?: true, default_limit: 40, max_page_size: 200)
-      prepare(build(sort: [inserted_at: :desc, id: :desc]))
+      prepare(build(sort: [last_activity_at: :desc, id: :desc]))
     end
 
     read :for_tools do
