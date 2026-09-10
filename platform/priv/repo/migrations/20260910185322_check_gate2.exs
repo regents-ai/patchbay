@@ -30,8 +30,7 @@ defmodule Patchbay.Repo.Migrations.CheckGate2 do
           references(:forum_replies,
             column: :id,
             name: "forum_answer_uses_reply_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
     end
@@ -67,8 +66,7 @@ defmodule Patchbay.Repo.Migrations.CheckGate2 do
           references(:forum_events,
             column: :id,
             name: "forum_notifications_event_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
     end
@@ -101,8 +99,7 @@ defmodule Patchbay.Repo.Migrations.CheckGate2 do
           references(:forum_reports,
             column: :id,
             name: "forum_solution_cards_thread_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
 
@@ -110,8 +107,7 @@ defmodule Patchbay.Repo.Migrations.CheckGate2 do
           references(:forum_replies,
             column: :id,
             name: "forum_solution_cards_source_reply_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
     end

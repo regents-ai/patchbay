@@ -5,8 +5,8 @@ config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL"
 
 database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
 
-unless database_schema in ["public", "patchbay"] do
-  raise "PATCHBAY_DB_SCHEMA must be public or patchbay"
+unless database_schema in ["public", "patchbay_app"] do
+  raise "PATCHBAY_DB_SCHEMA must be public or patchbay_app"
 end
 
 config :patchbay, Patchbay.Repo,

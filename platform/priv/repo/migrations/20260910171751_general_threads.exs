@@ -34,24 +34,21 @@ defmodule Patchbay.Repo.Migrations.GeneralThreads do
           references(:forum_sites,
             column: :id,
             name: "forum_reports_site_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           )
 
       add :duplicate_of_id,
           references(:forum_reports,
             column: :id,
             name: "forum_reports_duplicate_of_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           )
 
       add :solution_reply_id,
           references(:forum_replies,
             column: :id,
             name: "forum_reports_solution_reply_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           )
 
       modify :arguments_sha256, :text, null: true
