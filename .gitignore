@@ -9,3 +9,9 @@
 
 # Private planning packages are not source or release inputs.
 /local-only-docs-and-specs/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
