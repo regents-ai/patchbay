@@ -29,6 +29,11 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   @impl Siwa.AgentAuthPlug.Hooks
   def before_verify(conn, headers) do
+    validate_signed_request(conn, headers, permitted_request?(conn))
+  end
+
+  @doc "Shared exact-request checks; each caller supplies its own narrow route allowlist."
+  def validate_signed_request(conn, headers, permitted?) do
     duplicates = conn.req_headers |> Enum.map(&elem(&1, 0)) |> Enum.frequencies()
 
     cond do
@@ -44,7 +49,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
       conn.query_string != "" ->
         refused(:unsupported_query)
 
-      not permitted_request?(conn) ->
+      not permitted? ->
         refused(:unsupported_action)
 
       true ->

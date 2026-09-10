@@ -12,6 +12,10 @@ defmodule Patchbay.Forum do
   use Ash.Domain, otp_app: :patchbay
 
   resources do
+    resource Patchbay.Forum.Hello do
+      define(:record_hello, action: :record)
+    end
+
     resource Patchbay.Forum.Site do
       define(:register_site, action: :register_site, args: [:origin])
       define(:upsert_catalog_entry, action: :upsert_catalog_entry, args: [:origin])

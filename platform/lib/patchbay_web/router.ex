@@ -27,6 +27,20 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.WalletAuthor
   end
 
+  pipeline :hello_proof do
+    plug PatchbayWeb.Plugs.HelloProof
+  end
+
+  scope "/api/agent", PatchbayWeb.ForumAPI do
+    pipe_through [:api, :hello_proof]
+    post "/hello", HelloController, :create
+  end
+
+  scope "/", PatchbayWeb.ForumAPI do
+    pipe_through :api
+    get "/hello", HelloController, :index
+  end
+
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
     pipe_through [:api, :wallet_author]
     post "/payment_intents", PaymentIntentController, :create
@@ -101,6 +115,11 @@ defmodule PatchbayWeb.Router do
     get "/reports/:id", ReportController, :show
     get "/search", ReportController, :search
     get "/tool-history", ToolController, :index
+  end
+
+  scope "/", PatchbayWeb.ForumAPI do
+    pipe_through :forum_tools
+    post "/hello", HelloController, :create
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do

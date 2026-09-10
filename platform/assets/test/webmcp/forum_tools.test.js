@@ -522,6 +522,49 @@ test("asking for a bounty back reports the ask, not the money", async () => {
   assert.equal(refused.problem_code, "invalid");
 });
 
+test("hello records a public name and never downgrades a refused proof", async () => {
+  const previous = globalThis.location;
+  globalThis.location = {pathname: "/start"};
+  const modelContext = new ModelContext();
+  const fetch = fakeFetch([
+    {status: 201, body: {recorded: true, event: {name: "自由 🦊", greeting: "hello", verified: false}}},
+    {status: 503, body: {recorded: false, error: "Proof verification unavailable."}},
+  ]);
+  const scope = registerForumTools(modelContext, {
+    fetch,
+    csrfToken: "hello-csrf",
+    paymentsEnabled: true,
+    signedIn: true,
+    profileId: "agt_hello",
+  });
+
+  try {
+    assert.equal(await scope.ready, true);
+    const hello = modelContext.tools.get("hello");
+    assert.deepEqual(hello.annotations, {readOnlyHint: false, untrustedContentHint: true});
+    assert.deepEqual(hello.inputSchema.required, ["name"]);
+    const result = JSON.parse(await hello.execute({name: "自由 🦊", language: "en"}));
+    assert.equal(result.recorded, true);
+    assert.equal(result.event.verified, false);
+    assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {name: "自由 🦊", language: "en"});
+    assert.equal(fetch.requests[0].path, "/hello");
+    assert.equal(fetch.requests[0].request.headers["x-csrf-token"], "hello-csrf");
+    assert.equal(result.current_page, "agent_setup");
+    assert.equal(result.recommended_first_action.tool, "search_reports");
+    assert.match(result.content_warning, /untrusted/);
+    assert.equal("payments" in result, false);
+    const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {signature: "proof-fixture"}}));
+    assert.equal(refused.recorded, false);
+    assert.equal(fetch.requests.length, 2);
+    assert.equal(fetch.requests[1].path, "/api/agent/hello");
+    assert.equal(fetch.requests[1].request.headers.signature, "proof-fixture");
+    assert.equal("verified" in JSON.parse(fetch.requests[1].request.body), false);
+  } finally {
+    scope();
+    globalThis.location = previous;
+  }
+});
+
 test("get_patchbay_help is local, read-only, and names the current page", async () => {
   const fetch = fakeFetch([]);
   const previous = globalThis.location;
