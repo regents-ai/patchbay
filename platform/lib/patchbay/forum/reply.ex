@@ -21,10 +21,13 @@ defmodule Patchbay.Forum.Reply do
   import Ash.Expr
 
   alias Patchbay.Forum.Types.AuthorKind
+  alias Patchbay.Forum.Types.ReplyKind
   alias Patchbay.Forum.Types.RewardEligibility
   alias Patchbay.Forum.Types.Verdict
+  alias Patchbay.Forum.Types.Visibility
 
   @max_note_bytes 500
+  @max_body_bytes 16 * 1024
 
   postgres do
     table("forum_replies")
@@ -39,7 +42,22 @@ defmodule Patchbay.Forum.Reply do
     uuid_primary_key(:id)
 
     attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
-    attribute(:verdict, Verdict, allow_nil?: false, public?: true)
+
+    # The verdict a tool report asked for. An ordinary conversational reply
+    # carries none; only the report-reply actions require one.
+    attribute(:verdict, Verdict, allow_nil?: true, public?: true)
+
+    # What a conversational reply is doing in the thread. Replies filed
+    # before kinds existed have none.
+    attribute(:reply_kind, ReplyKind, allow_nil?: true, public?: true)
+
+    # The reply's words when it is an ordinary conversation reply rather than
+    # a report verdict. Historical replies keep their words in `note`.
+    attribute(:body_markdown, :string, allow_nil?: true, public?: true)
+
+    # Moderation's word on whether this reply may be shown. No public action
+    # accepts it.
+    attribute(:visibility, Visibility, allow_nil?: false, public?: true, default: :published)
 
     # Set by whichever action wrote the reply and accepted by none of them.
     attribute(:author_kind, AuthorKind, allow_nil?: false, public?: true, default: :agent)
@@ -92,10 +110,12 @@ defmodule Patchbay.Forum.Reply do
     create :add_reply do
       description("Adds one agent's response to a report, through the page's tools.")
       accept([:report_id, :browser_session_id, :verdict, :note])
+      validate(present(:verdict))
 
       change(set_attribute(:author_kind, :agent))
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
+      change(Patchbay.Forum.Changes.TouchThread)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -112,9 +132,11 @@ defmodule Patchbay.Forum.Reply do
 
       accept([:report_id, :browser_session_id, :verdict, :note])
 
+      validate(present(:verdict))
       change(set_attribute(:author_kind, :human))
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
+      change(Patchbay.Forum.Changes.TouchThread)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -130,14 +152,73 @@ defmodule Patchbay.Forum.Reply do
 
       accept([:report_id, :verdict, :note])
 
+      validate(present(:verdict))
       change(set_attribute(:owner_response, true))
       change(set_attribute(:author_kind, :agent))
       change(set_attribute(:browser_session_id, &Patchbay.Config.agent_session_id/0))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
+      change(Patchbay.Forum.Changes.TouchThread)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
       )
+    end
+
+    create :post_reply do
+      description("""
+      Adds an agent's conversational reply to a thread, through the page's
+      tools. A conversation answer carries words and a kind, never a verdict.
+      """)
+
+      accept([:report_id, :browser_session_id, :body_markdown])
+
+      argument(:reply_kind, ReplyKind,
+        allow_nil?: true,
+        default: :answer,
+        description: "What this reply is doing in the thread."
+      )
+
+      validate(present(:body_markdown))
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :body_markdown, max_bytes: @max_body_bytes}
+      )
+
+      change(set_attribute(:reply_kind, arg(:reply_kind)))
+      change(set_attribute(:author_kind, :agent))
+      change(set_attribute(:author_profile_id, actor(:id)))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
+      change(Patchbay.Forum.Changes.TouchThread)
+    end
+
+    create :post_human_reply do
+      description("""
+      Adds a person's conversational reply to a thread, through the form on
+      the page. As with every human write it wants an actor: a person replies
+      under their own name or not at all.
+      """)
+
+      accept([:report_id, :browser_session_id, :body_markdown])
+
+      argument(:reply_kind, ReplyKind,
+        allow_nil?: true,
+        default: :answer,
+        description: "What this reply is doing in the thread."
+      )
+
+      validate(present(:body_markdown))
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :body_markdown, max_bytes: @max_body_bytes}
+      )
+
+      change(set_attribute(:reply_kind, arg(:reply_kind)))
+      change(set_attribute(:author_kind, :human))
+      change(set_attribute(:author_profile_id, actor(:id)))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
+      change(Patchbay.Forum.Changes.TouchThread)
     end
 
     update :set_reward_eligibility do
@@ -154,6 +235,15 @@ defmodule Patchbay.Forum.Reply do
 
     policy action(:add_reply) do
       authorize_if(always())
+    end
+
+    policy action(:post_reply) do
+      authorize_if(always())
+    end
+
+    # A person replies under their own name, so there has to be one.
+    policy action(:post_human_reply) do
+      authorize_if(actor_present())
     end
 
     # A person replies under their own name, so there has to be one.

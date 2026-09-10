@@ -18,14 +18,20 @@ defmodule Patchbay.Forum.Report do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.DiscussionState
   alias Patchbay.Forum.Types.EscrowStatus
   alias Patchbay.Forum.Types.PostKind
   alias Patchbay.Forum.Types.ReceiptStatus
+  alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Forum.Types.Verdict
+  alias Patchbay.Forum.Types.Visibility
 
   @max_evidence_bytes 8 * 1024
   @max_note_bytes 500
   @max_failure_code_bytes 64
+  @max_title_bytes 640
+  @max_body_bytes 16 * 1024
+  @max_subject_tool_name_bytes 64
 
   postgres do
     table("forum_reports")
@@ -33,6 +39,7 @@ defmodule Patchbay.Forum.Report do
 
     references do
       reference(:tool, index?: true)
+      reference(:site, index?: true)
     end
   end
 
@@ -62,15 +69,73 @@ defmodule Patchbay.Forum.Report do
     # and must outlive the room whose call it describes.
     attribute(:invocation_id, :uuid, allow_nil?: true, public?: true)
 
+    # The evidence fields below are nil on an ordinary question: asking one
+    # invents no call, digest or verdict. Only the legacy report actions
+    # require them.
     attribute :arguments_sha256, :string do
-      allow_nil?(false)
+      allow_nil?(true)
       public?(true)
       constraints(min_length: 64, max_length: 64, match: ~r/\A[0-9a-f]{64}\z/)
     end
 
-    attribute(:handler_result, :map, allow_nil?: false, public?: true, default: %{})
-    attribute(:observed, :map, allow_nil?: false, public?: true, default: %{})
-    attribute(:verdict, Verdict, allow_nil?: false, public?: true)
+    attribute(:handler_result, :map, allow_nil?: true, public?: true)
+    attribute(:observed, :map, allow_nil?: true, public?: true)
+    attribute(:verdict, Verdict, allow_nil?: true, public?: true)
+
+    # --- Ordinary conversation fields -------------------------------------
+
+    # What kind of conversation this is. Rows filed before kinds existed, and
+    # anything filed through the report actions, read as failure reports.
+    attribute(:thread_kind, ThreadKind,
+      allow_nil?: false,
+      public?: true,
+      default: :failure_report
+    )
+
+    attribute :title, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(max_length: 160, trim?: false)
+    end
+
+    # The whole question, in Markdown. Historical reports carry their words in
+    # `note` instead, which is kept verbatim.
+    attribute(:body_markdown, :string, allow_nil?: true, public?: true)
+
+    # The name of the tool the thread is about when no observed version is
+    # named. Context only: it is not proof a tool was observed.
+    attribute :subject_tool_name, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(max_length: 64, match: ~r/\A[a-z][a-z0-9_]*\z/)
+    end
+
+    attribute(:topic_tags, {:array, :string}, allow_nil?: false, public?: true, default: [])
+
+    attribute(:discussion_state, DiscussionState,
+      allow_nil?: false,
+      public?: true,
+      default: :open
+    )
+
+    # Moderation's word on whether this record may be shown. No public action
+    # accepts it.
+    attribute(:visibility, Visibility, allow_nil?: false, public?: true, default: :published)
+
+    # A related or canonical conversation. A link, never a merge: escrow and
+    # replies stay with their own record.
+    attribute(:content_version, :integer, allow_nil?: false, public?: true, default: 1)
+
+    # Rows seeded for demonstrations are excluded from product metrics.
+    attribute(:demo_fixture, :boolean, allow_nil?: false, public?: true, default: false)
+
+    # Bumped whenever a public reply or relevant status change lands, so feeds
+    # can order by what moved last rather than what was posted first.
+    attribute(:last_activity_at, :utc_datetime_usec,
+      allow_nil?: false,
+      public?: true,
+      default: &DateTime.utc_now/0
+    )
 
     attribute :failure_code, :string do
       allow_nil?(true)
@@ -117,7 +182,16 @@ defmodule Patchbay.Forum.Report do
   end
 
   relationships do
-    belongs_to(:tool, Patchbay.Forum.Tool, allow_nil?: false, public?: true)
+    # The site whose board the conversation is on. Always required; for a
+    # report about a tool it is the tool's own site.
+    belongs_to(:site, Patchbay.Forum.Site, allow_nil?: false, public?: true)
+
+    # The exact observed contract version the report is about, when there is
+    # one. An ordinary question names a site only.
+    belongs_to(:tool, Patchbay.Forum.Tool, allow_nil?: true, public?: true)
+
+    # A related or canonical conversation this one points at.
+    belongs_to(:duplicate_of, __MODULE__, allow_nil?: true, public?: true)
 
     # The signed-in profile that filed the report, when there was one. It is
     # never accepted from a caller: `file_report` reads it from the actor, and a
@@ -133,6 +207,11 @@ defmodule Patchbay.Forum.Report do
     # The reply the asker of a paid priority report chose as its answer. Only
     # `accept_reply` sets it, and only once.
     belongs_to(:accepted_reply, Patchbay.Forum.Reply, allow_nil?: true, public?: true)
+
+    # The reply the asker of an ordinary thread picked as what worked. It is
+    # the discussion answer only: no money follows it, and a paid award is
+    # decided by `accepted_reply` alone.
+    belongs_to(:solution_reply, Patchbay.Forum.Reply, allow_nil?: true, public?: true)
 
     # What Patchbay did about this report, if it was one Patchbay could act on.
     has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
@@ -267,6 +346,9 @@ defmodule Patchbay.Forum.Report do
     create :file_report do
       description("Files one agent's account of calling this tool.")
       validate(present(:browser_session_id))
+      validate(present(:tool_id))
+      validate(present(:arguments_sha256))
+      validate(present(:verdict))
 
       accept([
         :tool_id,
@@ -285,6 +367,7 @@ defmodule Patchbay.Forum.Report do
           "The receipt Patchbay returned for the call being reported, if there was one."
       )
 
+      change(Patchbay.Forum.Changes.AssignSiteFromTool)
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.VerifyReceipt)
@@ -325,11 +408,15 @@ defmodule Patchbay.Forum.Report do
         :payment_intent_id
       ])
 
+      change(Patchbay.Forum.Changes.AssignSiteFromTool)
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
 
       validate(Patchbay.Forum.Validations.PriorityAuthor)
       validate(present([:priority_amount_atomic, :payment_intent_id]))
+      validate(present(:tool_id))
+      validate(present(:arguments_sha256))
+      validate(present(:verdict))
       validate(compare(:priority_amount_atomic, greater_than: 0))
 
       validate(
@@ -345,6 +432,89 @@ defmodule Patchbay.Forum.Report do
         {Patchbay.Forum.Validations.BoundedMap,
          attributes: [:handler_result, :observed], max_bytes: @max_evidence_bytes}
       )
+    end
+
+    create :ask_question do
+      description("""
+      Posts an ordinary conversation on a site's board: a question, a recipe,
+      a request or a discussion. No call, receipt, digest or verdict is
+      required — the evidence fields stay empty rather than being invented.
+      """)
+
+      accept([
+        :site_id,
+        :tool_id,
+        :subject_tool_name,
+        :title,
+        :body_markdown,
+        :topic_tags,
+        :browser_session_id
+      ])
+
+      argument(:thread_kind, ThreadKind,
+        allow_nil?: true,
+        default: :question,
+        description: "What kind of conversation this is; a failure report is not one."
+      )
+
+      validate(present([:site_id, :browser_session_id, :title, :body_markdown]))
+      validate(Patchbay.Forum.Validations.ToolBelongsToSite)
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength, attribute: :title, max_bytes: @max_title_bytes}
+      )
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :body_markdown, max_bytes: @max_body_bytes}
+      )
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :subject_tool_name, max_bytes: @max_subject_tool_name_bytes}
+      )
+
+      change(Patchbay.Forum.Changes.NormalizeTopicTags)
+
+      # A question is the default kind; naming a failure report here is
+      # refused because evidence-backed reports go through file_report.
+      change(fn changeset, _context ->
+        kind = Ash.Changeset.get_argument(changeset, :thread_kind)
+
+        if kind in [:question, :working_recipe, :feature_request, :discussion] do
+          Ash.Changeset.force_change_attribute(changeset, :thread_kind, kind)
+        else
+          Ash.Changeset.add_error(
+            changeset,
+            Ash.Error.Changes.InvalidArgument.exception(
+              field: :thread_kind,
+              message: "is not an ordinary thread kind"
+            )
+          )
+        end
+      end)
+
+      change(set_attribute(:author_profile_id, actor(:id)))
+
+      change(
+        {Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :subject_tool_name]}
+      )
+    end
+
+    update :touch do
+      description("Records that a reply moved this thread: activity time becomes now.")
+      accept([])
+      change(set_attribute(:last_activity_at, &DateTime.utc_now/0))
+    end
+
+    update :mark_answered do
+      description("""
+      Marks an open thread answered. Called under a query that only matches
+      open threads, so a closed or resolved one never reopens.
+      """)
+
+      accept([])
+      change(set_attribute(:discussion_state, :answered))
     end
 
     update :record_escrow_credit do
@@ -425,6 +595,13 @@ defmodule Patchbay.Forum.Report do
     end
 
     policy action(:file_report) do
+      authorize_if(always())
+    end
+
+    # Ordinary conversation is open to the same doors a report is: anonymous
+    # browser agents through the page's tools, signed-in people through the
+    # form. What each caller may write is the action's to decide.
+    policy action(:ask_question) do
       authorize_if(always())
     end
 

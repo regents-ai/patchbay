@@ -300,7 +300,10 @@ defmodule Patchbay.ForumTest do
                  {:request_refund, :update},
                  {:record_refund_relay, :update},
                  {:record_escrow_refund, :update},
-                 {:bounties_to_reconcile, :read}
+                 {:bounties_to_reconcile, :read},
+                 {:ask_question, :create},
+                 {:touch, :update},
+                 {:mark_answered, :update}
                ])
 
       assert action_names(Reply) ==
@@ -308,6 +311,8 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:for_report, :read},
                  {:add_reply, :create},
+                 {:post_reply, :create},
+                 {:post_human_reply, :create},
                  {:add_human_reply, :create},
                  {:add_operator_reply, :create},
                  {:set_reward_eligibility, :update}

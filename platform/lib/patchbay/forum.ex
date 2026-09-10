@@ -35,6 +35,7 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.Report do
       define(:file_report, action: :file_report)
+      define(:ask_question, action: :ask_question)
       define(:file_priority_report, action: :file_priority_report)
       define(:get_report, action: :read, get_by: [:id])
       define(:lock_report, action: :for_update, get_by: [:id])
@@ -54,6 +55,8 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.Reply do
       define(:add_reply, action: :add_reply)
+      define(:post_reply, action: :post_reply)
+      define(:post_human_reply, action: :post_human_reply)
       define(:add_human_reply, action: :add_human_reply)
       define(:add_operator_reply, action: :add_operator_reply)
       define(:get_reply, action: :read, get_by: [:id])
