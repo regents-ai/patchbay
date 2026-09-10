@@ -61,15 +61,17 @@ defmodule Patchbay.Repo.Migrations.GeneralThreads do
     # Existing reports named their site through their tool; the backfill is
     # complete because every one of them has a tool. Then the column becomes
     # required, and activity starts where the record was first written.
+    schema = prefix() || "public"
+
     execute("""
-    UPDATE forum_reports r
+    UPDATE #{schema}.forum_reports r
     SET site_id = t.site_id
-    FROM forum_tools t
+    FROM #{schema}.forum_tools t
     WHERE r.tool_id = t.id
     """)
 
     execute("""
-    UPDATE forum_reports SET last_activity_at = inserted_at
+    UPDATE #{schema}.forum_reports SET last_activity_at = inserted_at
     """)
 
     alter table(:forum_reports) do
