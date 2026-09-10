@@ -54,6 +54,47 @@
     <a href={~p"/posts/#{@report.id}?replies=accepted" <> "#reply-#{@report.accepted_reply_id}"}>Read the source reply →</a>
   </section>
 
+  <section
+    :if={@report.solution_reply && @report.solution_reply_id != @report.accepted_reply_id}
+    class="pb-selected-answer"
+    aria-labelledby="pb-solution-title"
+  >
+    <h2 id="pb-solution-title">Marked as the answer</h2>
+    <p class="pb-thread-caption">
+      The asker says this reply worked. That is their word, not a check.
+    </p>
+    <.nameplate
+      author={@report.solution_reply.author}
+      session_id={@report.solution_reply.browser_session_id}
+      kind={@report.solution_reply.author_kind}
+      say_kind={true}
+    />
+    <p class="pb-thread-prose">
+      {@report.solution_reply.note || @report.solution_reply.body_markdown}
+    </p>
+    <a href={"#reply-#{@report.solution_reply_id}"}>Read the source reply →</a>
+  </section>
+
+  <section
+    :for={card <- @report.solution_cards || []}
+    class="pb-solution-card"
+    aria-labelledby={"pb-card-#{card.id}"}
+  >
+    <h2 id={"pb-card-#{card.id}"}>The short of it</h2>
+    <p class="pb-thread-caption">
+      A summary kept beside its source — the asker’s word, not a check.
+    </p>
+    <dl class="pb-card-facts">
+      <dt>The problem</dt><dd>{card.problem_summary}</dd>
+      <dt :if={card.applicability}>Applies to</dt><dd :if={card.applicability}>
+        {card.applicability}
+      </dd>
+      <dt>What worked</dt><dd>{card.proposed_steps}</dd>
+      <dt :if={card.caveats}>Caveats</dt><dd :if={card.caveats}>{card.caveats}</dd>
+    </dl>
+    <a href={"#reply-#{card.source_reply_id}"}>The reply it came from →</a>
+  </section>
+
   <section id="patchbay-replies" class="pb-conversation" aria-labelledby="pb-replies-title">
     <h2 id="pb-replies-title">Discussion <span>{@report.reply_count}</span></h2>
     <nav class="pb-reply-filters" aria-label="Filter replies">
@@ -75,6 +116,10 @@
       earned_tips={@earned_tips}
       cursor={@replies_cursor}
       reply_filter={@reply_filter}
+      can_mark={
+        reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply_id) &&
+          @report.discussion_state in [:open, :answered] && is_nil(@report.priority_amount_atomic)
+      }
     />
     <p :if={@replies == []} class="pb-thread-caption">
       {cond do

@@ -19,23 +19,25 @@ defmodule PatchbayWeb.Forum.Discussions do
     }
   end
 
-  def following(value) when is_binary(value) and byte_size(value) <= 4096 do
-    value
-    |> String.split(",", trim: true)
-    |> Enum.filter(&match?({:ok, _}, Ecto.UUID.cast(&1)))
-    |> Enum.uniq()
-    |> Enum.take(80)
+  @doc "The subscriptions a request's own principals hold — the durable follow list."
+  def subscriptions(principals) do
+    Patchbay.Forum.Subscription
+    |> Ash.Query.filter(principal in ^principals)
+    |> Ash.read!()
   end
 
-  def following(_), do: []
-
-  def page(filters, following, token) do
-    context = {filters, if(filters.scope == "following", do: Enum.sort(following), else: [])}
+  def page(filters, subscriptions, token) do
+    context =
+      {filters,
+       if(filters.scope == "following",
+         do: subscriptions |> Enum.map(&{&1.scope_kind, &1.scope_id}) |> Enum.sort(),
+         else: []
+       )}
 
     with {:ok, keyset} <- verify(token, context),
          {:ok, page} <-
            Forum.list_recent_reports(
-             query: query(filters, following),
+             query: query(filters, subscriptions),
              load: @loads,
              page: if(keyset, do: [limit: 20, after: keyset], else: [limit: 20])
            ) do
@@ -58,17 +60,17 @@ defmodule PatchbayWeb.Forum.Discussions do
   defp search(query, term) do
     Ash.Query.filter(
       query,
-      contains(string_downcase(title), string_downcase(^term)) or
-        contains(string_downcase(body_markdown), string_downcase(^term)) or
-        contains(string_downcase(note), string_downcase(^term)) or
-        contains(string_downcase(subject_tool_name), string_downcase(^term)) or
-        contains(string_downcase(tool.name), string_downcase(^term)) or
-        fragment(
-          "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-          site.origin,
-          site.display_name,
-          ^term
-        ) or
+      fragment(
+        "(coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) ILIKE ('%' || lower(?) || '%')",
+        title,
+        body_markdown,
+        note,
+        subject_tool_name,
+        tool.name,
+        site.origin,
+        site.display_name,
+        ^term
+      ) or
         exists(
           replies,
           visibility == :published and
@@ -76,6 +78,16 @@ defmodule PatchbayWeb.Forum.Discussions do
               "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
               body_markdown,
               note,
+              ^term
+            )
+        ) or
+        exists(
+          solution_cards,
+          status == :published and
+            fragment(
+              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
+              problem_summary,
+              proposed_steps,
               ^term
             )
         )
@@ -93,8 +105,15 @@ defmodule PatchbayWeb.Forum.Discussions do
     Ash.Query.filter(query, verified_paid_usdc_atomic > 0)
   end
 
-  defp scope(query, "following", following),
-    do: Ash.Query.filter(query, site_id in ^following)
+  # Following is the caller's own subscriptions: followed sites, tools and
+  # threads all surface here.
+  defp scope(query, "following", subscriptions) do
+    sites = for %{scope_kind: :site, scope_id: id} <- subscriptions, do: id
+    tools = for %{scope_kind: :tool, scope_id: id} <- subscriptions, do: id
+    threads = for %{scope_kind: :thread, scope_id: id} <- subscriptions, do: id
+
+    Ash.Query.filter(query, site_id in ^sites or tool_id in ^tools or id in ^threads)
+  end
 
   defp scope(query, _scope, _following), do: query
 

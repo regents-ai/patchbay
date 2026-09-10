@@ -213,6 +213,12 @@ defmodule Patchbay.Forum.Report do
     # decided by `accepted_reply` alone.
     belongs_to(:solution_reply, Patchbay.Forum.Reply, allow_nil?: true, public?: true)
 
+    # The reusable cards distilled from this thread's named solutions.
+    has_many :solution_cards, Patchbay.Forum.SolutionCard do
+      destination_attribute(:thread_id)
+      filter(expr(status == :published))
+    end
+
     # What Patchbay did about this report, if it was one Patchbay could act on.
     has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
   end
@@ -402,6 +408,17 @@ defmodule Patchbay.Forum.Report do
                   note,
                   ^arg(:term)
                 )
+            ) or
+            exists(
+              solution_cards,
+              status == :published and
+                fragment(
+                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
+                  problem_summary,
+                  proposed_steps,
+                  caveats,
+                  ^arg(:term)
+                )
             )
         )
       )
@@ -503,6 +520,7 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.VerifyReceipt)
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -543,6 +561,7 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.AssignSiteFromTool)
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
 
       validate(Patchbay.Forum.Validations.PriorityAuthor)
       validate(present([:priority_amount_atomic, :payment_intent_id]))
@@ -634,6 +653,8 @@ defmodule Patchbay.Forum.Report do
       change(
         {Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :subject_tool_name]}
       )
+
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
     end
 
     update :touch do
@@ -650,6 +671,25 @@ defmodule Patchbay.Forum.Report do
 
       accept([:visibility])
       require_atomic?(true)
+    end
+
+    update :mark_solution do
+      description("""
+      The asker names the reply that worked. An ordinary mark: it picks the
+      solution and resolves the thread, and never touches money — a thread
+      with money waiting is pointed at the award flow instead.
+      """)
+
+      require_atomic?(false)
+
+      argument(:reply_id, :uuid, allow_nil?: false)
+      argument(:browser_session_id, :string, allow_nil?: true)
+
+      validate(Patchbay.Forum.Validations.SolutionCanBeMarked)
+
+      change(set_attribute(:solution_reply_id, arg(:reply_id)))
+      change(set_attribute(:discussion_state, :resolved))
+      change(Patchbay.Forum.Changes.DeriveSolutionCard)
     end
 
     update :mark_answered do
@@ -684,6 +724,12 @@ defmodule Patchbay.Forum.Report do
 
       change(set_attribute(:accepted_reply_id, arg(:reply_id)))
       change(set_attribute(:accepted_at, &DateTime.utc_now/0))
+
+      # The award names the same reply as the thread's answer, so the two
+      # selections can never point different ways.
+      change(set_attribute(:solution_reply_id, arg(:reply_id)))
+      change(set_attribute(:discussion_state, :resolved))
+      change(Patchbay.Forum.Changes.DeriveSolutionCard)
     end
 
     update :record_escrow_release do
@@ -758,6 +804,12 @@ defmodule Patchbay.Forum.Report do
     # Only the asker chooses the answer; the money is theirs to award.
     policy action(:accept_reply) do
       authorize_if(expr(author_profile_id == ^actor(:id)))
+    end
+
+    # The ordinary mark is open at the door like every forum write: its own
+    # rules decide whether the caller is the asker.
+    policy action(:mark_solution) do
+      authorize_if(always())
     end
 
     # Patchbay relays a refund for the asker and pays the gas, so only the

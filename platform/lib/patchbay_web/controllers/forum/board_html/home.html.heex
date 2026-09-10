@@ -72,12 +72,25 @@
             <strong>{site_name(site)}</strong>
             <span>{site.report_count} discussions</span>
           </a>
-          <button
-            type="button"
-            data-pb-follow={site.id}
-            aria-pressed={to_string(site.id in @following)}
-            aria-label={"Follow #{site_name(site)} in this browser"}
-          >+</button>
+          <form method="post" action={~p"/follow"} class="pb-follow-form">
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <input type="hidden" name="site_id" value={site.id} />
+            <input
+              type="hidden"
+              name="back"
+              value={@conn.request_path <> "?#{@conn.query_string}"}
+            />
+            <button
+              type="submit"
+              aria-pressed={to_string(site.id in @following)}
+              aria-label={"Follow #{site_name(site)}"}
+              title={
+                if site.id in @following,
+                  do: "Following — updates reach your inbox",
+                  else: "Follow this site"
+              }
+            >{if site.id in @following, do: "✓", else: "+"}</button>
+          </form>
         </div>
       </section>
       <section aria-labelledby="pb-home-sites-title">
@@ -87,12 +100,25 @@
             href={discussion_path(@filters, %{site: site.origin, scope: "all"})}
             aria-current={if @filters.site == site.origin, do: "page"}
           >{site_name(site)}</a>
-          <button
-            type="button"
-            data-pb-follow={site.id}
-            aria-pressed={to_string(site.id in @following)}
-            aria-label={"Follow #{site_name(site)} in this browser"}
-          >+</button>
+          <form method="post" action={~p"/follow"} class="pb-follow-form">
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <input type="hidden" name="site_id" value={site.id} />
+            <input
+              type="hidden"
+              name="back"
+              value={@conn.request_path <> "?#{@conn.query_string}"}
+            />
+            <button
+              type="submit"
+              aria-pressed={to_string(site.id in @following)}
+              aria-label={"Follow #{site_name(site)}"}
+              title={
+                if site.id in @following,
+                  do: "Following — updates reach your inbox",
+                  else: "Follow this site"
+              }
+            >{if site.id in @following, do: "✓", else: "+"}</button>
+          </form>
         </div>
         <a class="pb-directory-link" href={~p"/sites"}>Full site directory →</a>
       </section>
@@ -115,14 +141,20 @@
           aria-label="Use compact discussion rows"
           title="Compact rows"
         >≡</button>
-        <button
+        <form
           :if={selected_site = Enum.find(@sites, &(&1.origin == @filters.site))}
-          type="button"
-          data-pb-follow={selected_site.id}
-          data-pb-follow-label
-          aria-pressed={to_string(selected_site.id in @following)}
-          aria-label={"Follow #{site_name(selected_site)} in this browser"}
-        >Follow site</button>
+          method="post"
+          action={~p"/follow"}
+          class="pb-follow-form"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="site_id" value={selected_site.id} />
+          <input type="hidden" name="back" value={@conn.request_path <> "?#{@conn.query_string}"} />
+          <button
+            type="submit"
+            aria-pressed={to_string(selected_site.id in @following)}
+          >{if selected_site.id in @following, do: "Following", else: "Follow site"}</button>
+        </form>
       </header>
       <p :if={@filters.q != ""} class="pb-search-summary">
         Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
@@ -166,12 +198,15 @@
     <section class="pb-reader" aria-label="Selected discussion">
       <div :if={@thread} class="pb-reader-toolbar">
         <a href={~p"/posts/#{@thread.report.id}"}>Open full discussion ↗</a>
-        <button
-          type="button"
-          data-pb-follow={@thread.report.site.id}
-          aria-pressed={to_string(@thread.report.site.id in @following)}
-          aria-label={"Follow #{site_name(@thread.report.site)} in this browser"}
-        >Follow site</button>
+        <form method="post" action={~p"/follow"} class="pb-follow-form">
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="site_id" value={@thread.report.site.id} />
+          <input type="hidden" name="back" value={@conn.request_path <> "?#{@conn.query_string}"} />
+          <button
+            type="submit"
+            aria-pressed={to_string(@thread.report.site.id in @following)}
+          >{if @thread.report.site.id in @following, do: "Following", else: "Follow site"}</button>
+        </form>
       </div>
       <.thread_body
         :if={@thread && !Map.get(@thread, :unavailable?, false)}

@@ -20,7 +20,8 @@ defmodule Patchbay.Application do
          name: Patchbay.Payments.Finch,
          pools: %{default: X402.Facilitator.HTTP.secure_pool_opts()}},
         {X402.Facilitator, otp_app: :patchbay, name: Patchbay.Payments.Facilitator},
-        Patchbay.Escrow.Watch
+        Patchbay.Escrow.Watch,
+        Patchbay.Forum.NotificationFanout
       ] ++
         catalog_loader() ++
         patchbay_agent() ++

@@ -250,6 +250,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
         <a href={~p"/priority"} aria-current={nav_current(@conn, "/priority")}>Paid Priority</a>
+        <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
         <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>Ask</a>
         <a href={~p"/blog"} aria-current={nav_current(@conn, "/blog")}>Blog</a>
         <a href={~p"/start"} aria-current={nav_current(@conn, "/start")}>Agent Start</a>
@@ -270,6 +271,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp nav_current(%Plug.Conn{request_path: "/questions"}, "/questions"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/priority"}, "/priority"), do: "page"
+  defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/ask"}, "/ask"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
@@ -395,6 +397,28 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       render: [unsafe: false]
     )
     |> Phoenix.HTML.raw()
+  end
+
+  @doc "How an inbox notice reads: the thread it is about."
+  def inbox_event_label(%{kind: :reply_posted}), do: "New reply"
+  def inbox_event_label(%{kind: :thread_posted}), do: "New discussion"
+  def inbox_event_label(%{kind: :solution_marked}), do: "Answer marked"
+  def inbox_event_label(_event), do: "Update"
+
+  def inbox_event_kind(kind), do: inbox_event_label(%{kind: kind})
+
+  def notice_title(%{thread: thread}) when is_map(thread), do: post_title(thread)
+  def notice_title(%{thread_id: id}), do: "Thread #{id}"
+
+  def subscription_kind(:site), do: "Site"
+  def subscription_kind(:tool), do: "Tool"
+  def subscription_kind(:thread), do: "Thread"
+
+  @doc "Whether the page's own profile or session is the one that asked this thread."
+  def reader_asked?(report, assigns) do
+    (assigns.current_profile && report.author_profile_id == assigns.current_profile.id) ||
+      (is_binary(assigns.forum_session_id) &&
+         report.browser_session_id == assigns.forum_session_id)
   end
 
   def post_title(report) do
@@ -901,6 +925,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "Formatted tips earned, keyed by author profile id."
   )
 
+  attr(:can_mark, :boolean,
+    default: false,
+    doc: "Whether the reader is this thread's asker and may name its solution."
+  )
+
   def replies(assigns) do
     ~H"""
     <ol :if={@replies != []} class="patchbay-reply-list">
@@ -940,6 +969,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         >
           {verdict_label(reply.verdict)}
         </Regent.Primitives.disclosure>
+        <form
+          :if={@can_mark}
+          method="post"
+          action={~p"/posts/#{@report.id}/solution"}
+          class="pb-mark-solution"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="reply_id" value={reply.id} />
+          <button type="submit" class="patchbay-button">
+            This answered it
+          </button>
+        </form>
       </li>
     </ol>
     """

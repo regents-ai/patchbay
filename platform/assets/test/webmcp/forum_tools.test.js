@@ -995,3 +995,77 @@ test("an unavailable applied report keeps its receipt without claiming it is on 
   assert.equal(result.recovery_required, true);
   assert.deepEqual(result.receipt, receipt);
 });
+
+test("mark_solution posts the asker's pick and repeats the board's refusal", async () => {
+  const fetch = fakeFetch([
+    {status: 201, body: {marked: true, solution_reply_id: "reply-1", url: "/posts/t-1"}},
+    {status: 422, body: {errors: ["only whoever asked may say which answer worked"], problem_code: "invalid"}},
+  ]);
+  const tool = toolsByName({fetch, csrfToken: "token"}).get("mark_solution");
+
+  const marked = JSON.parse(await tool.execute({thread_id: "t-1", reply_id: "reply-1"}));
+  assert.equal(marked.marked, true);
+  assert.equal(fetch.requests[0].path, "/forum/threads/t-1/solution");
+  assert.equal(fetch.requests[0].request.method, "POST");
+  assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {reply_id: "reply-1"});
+
+  const refused = JSON.parse(await tool.execute({thread_id: "t-1", reply_id: "reply-1"}));
+  assert.equal(refused.marked, false);
+  assert.equal(refused.problem_code, "invalid");
+  assert.match(refused.problem, /whoever asked/);
+});
+
+test("record_answer_use sends outcome, task token and note", async () => {
+  const fetch = fakeFetch([{status: 201, body: {recorded: true, use_id: "use-1", outcome: "worked"}}]);
+  const tool = toolsByName({fetch, csrfToken: "token"}).get("record_answer_use");
+
+  const result = JSON.parse(
+    await tool.execute({reply_id: "r-1", outcome: "worked", task_token: "my-task", note: "shipped it"}),
+  );
+  assert.equal(result.recorded, true);
+  assert.equal(fetch.requests[0].path, "/forum/replies/r-1/uses");
+  assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {
+    outcome: "worked",
+    task_token: "my-task",
+    note: "shipped it",
+  });
+});
+
+test("follow_scope names exactly one scope and unfollow deletes by id", async () => {
+  const fetch = fakeFetch([
+    {status: 201, body: {subscribed: true, subscription_id: "sub-1"}},
+    {status: 200, body: {unsubscribed: true}},
+  ]);
+  const tools = toolsByName({fetch, csrfToken: "token"});
+
+  // Two scopes at once is refused before a request is made.
+  const refused = JSON.parse(await tools.get("follow_scope").execute({site: "a.example", thread_id: "t"}));
+  assert.equal(refused.subscribed, false);
+  assert.equal(fetch.requests.length, 0);
+
+  const followed = JSON.parse(await tools.get("follow_scope").execute({site: "shop.example.com"}));
+  assert.equal(followed.subscribed, true);
+  assert.equal(fetch.requests[0].path, "/forum/subscriptions");
+  assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {site: "shop.example.com"});
+
+  const unfollowed = JSON.parse(await tools.get("unfollow_scope").execute({subscription_id: "sub-1"}));
+  assert.equal(unfollowed.unsubscribed, true);
+  assert.equal(fetch.requests[1].path, "/forum/subscriptions/sub-1");
+  assert.equal(fetch.requests[1].request.method, "DELETE");
+});
+
+test("get_inbox and acknowledge_notifications round-trip the pull inbox", async () => {
+  const fetch = fakeFetch([
+    {status: 200, body: {notifications: [{id: "n-1", kind: "reply_posted", thread_id: "t-1", url: "/posts/t-1"}], has_more: false}},
+    {status: 200, body: {acknowledged: 1}},
+  ]);
+  const tools = toolsByName({fetch, csrfToken: "token"});
+
+  const inbox = JSON.parse(await tools.get("get_inbox").execute({}));
+  assert.equal(fetch.requests[0].path, "/forum/notifications");
+  assert.equal(inbox.notifications.length, 1);
+
+  const acked = JSON.parse(await tools.get("acknowledge_notifications").execute({ids: ["n-1"]}));
+  assert.equal(fetch.requests[1].path, "/forum/notifications/acknowledge");
+  assert.equal(acked.acknowledged, 1);
+});

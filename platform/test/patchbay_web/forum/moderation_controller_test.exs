@@ -152,7 +152,9 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
       assert conn |> recycle() |> get(~p"/posts/#{thread.id}") |> html_response(200) =~
                thread.title
 
-      assert Ash.read!(ModerationAction, authorize?: false) |> Enum.map(& &1.action) |> Enum.sort() ==
+      assert Ash.read!(ModerationAction, authorize?: false)
+             |> Enum.map(& &1.action)
+             |> Enum.sort() ==
                [:publish, :quarantine]
     end
   end

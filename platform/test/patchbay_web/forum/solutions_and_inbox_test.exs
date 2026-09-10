@@ -1,0 +1,338 @@
+defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
+  @moduledoc """
+  Gate 2's conversation loop end to end: an answer named as the solution, the
+  card it leaves behind, a participant's word on whether it worked, and the
+  subscriptions and inbox that bring people back.
+  """
+
+  use PatchbayWeb.ConnCase, async: false
+
+  require Ash.Query
+
+  alias Patchbay.Forum
+  alias Patchbay.Forum.NotificationFanout
+  alias Patchbay.Forum.Report
+  alias Patchbay.Forum.SolutionCard
+
+  @wallet "0x" <> String.duplicate("a", 40)
+
+  defp moderator! do
+    Patchbay.Identity.upsert_from_privy!(%{
+      privy_user_id: "did:privy:" <> String.replace(@wallet, "0x", ""),
+      wallet_address: @wallet
+    })
+  end
+
+  defp allow_moderator do
+    previous = Application.get_env(:patchbay, :moderator_wallets)
+    Application.put_env(:patchbay, :moderator_wallets, [@wallet])
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:patchbay, :moderator_wallets, previous),
+        else: Application.delete_env(:patchbay, :moderator_wallets)
+    end)
+  end
+
+  # A page load issues the forum identity every write stands under.
+  defp visitor(conn) do
+    conn |> recycle() |> get("/")
+  end
+
+  defp post_json(conn, path, params) do
+    conn
+    |> recycle()
+    |> put_req_header("content-type", "application/json")
+    |> post(path, Jason.encode!(params))
+  end
+
+  defp ask(conn, title) do
+    post_json(conn, "/forum/threads", %{
+      "site" => "shop.example.com",
+      "title" => title,
+      "body_markdown" => "What I tried and what happened."
+    })
+  end
+
+  defp answer(conn, thread_id, body) do
+    post_json(conn, "/forum/threads/#{thread_id}/replies", %{"body_markdown" => body})
+  end
+
+  describe "marking the answer" do
+    test "the asker names the reply that worked; the thread shows it and keeps the card", %{
+      conn: conn
+    } do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "Can a cart be restored?") |> json_response(201)
+
+      helper = visitor(build_conn())
+
+      %{"reply_id" => reply_id} =
+        answer(helper, thread_id, "POST /cart/restore does it.") |> json_response(201)
+
+      marked =
+        asker
+        |> recycle()
+        |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+        |> json_response(201)
+
+      assert marked["marked"] == true
+      assert marked["solution_reply_id"] == reply_id
+
+      thread = Ash.get!(Report, thread_id, load: [:solution_cards])
+      assert thread.discussion_state == :resolved
+      assert thread.solution_reply_id == reply_id
+
+      # The card cites its source and is attributed as the asker's pick.
+      assert [card] = thread.solution_cards
+      assert card.source_reply_id == reply_id
+      assert card.proposed_steps == "POST /cart/restore does it."
+      assert card.status == :published
+
+      # And the public read says the same.
+      body =
+        conn
+        |> recycle()
+        |> get("/forum/threads/#{thread_id}")
+        |> json_response(200)
+
+      assert body["report"]["solution_reply_id"] == reply_id
+
+      assert [%{"source_reply_id" => ^reply_id, "summary_of" => "asker_selected_reply"}] =
+               body["report"]["solution_cards"]
+    end
+
+    test "nobody but the asker can name the answer", %{conn: conn} do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "A question") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(build_conn()), thread_id, "An answer") |> json_response(201)
+
+      # Somebody else marks it — refused.
+      stranger = visitor(build_conn())
+
+      response =
+        stranger
+        |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+        |> json_response(422)
+
+      assert response["problem_code"] == "invalid"
+
+      assert is_nil(Ash.get!(Report, thread_id).solution_reply_id)
+    end
+
+    test "a thread with money waiting refuses the ordinary mark", %{conn: conn} do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "A funded question") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(build_conn()), thread_id, "An answer") |> json_response(201)
+
+      # Money behind it, as if a paid intent had credited.
+      Ash.get!(Report, thread_id)
+      |> Ecto.Changeset.change(priority_amount_atomic: 1_000_000)
+      |> Patchbay.Repo.update!()
+
+      response =
+        asker
+        |> recycle()
+        |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+        |> json_response(422)
+
+      assert response["problem_code"] == "invalid"
+    end
+  end
+
+  describe "reporting whether an answer worked" do
+    test "one task token records one use, and the reply's own author is flagged", %{
+      conn: conn
+    } do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "Where do reports go?") |> json_response(201)
+
+      helper = visitor(build_conn())
+
+      %{"reply_id" => reply_id} =
+        answer(helper, thread_id, "Into the board.") |> json_response(201)
+
+      # The helper reports on their own answer — recorded, flagged same_author.
+      own =
+        helper
+        |> recycle()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => "task-1"
+        })
+        |> json_response(201)
+
+      assert own["recorded"] == true
+
+      # A second report under the same token updates rather than doubles.
+      _again =
+        helper
+        |> recycle()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "not_tried",
+          "task_token" => "task-1"
+        })
+        |> json_response(201)
+
+      uses = Forum.list_uses_for_reply!(reply_id)
+      assert [%{outcome: :not_tried, same_author: true}] = uses
+
+      # A different task token is a different use.
+      helper
+      |> recycle()
+      |> post_json("/forum/replies/#{reply_id}/uses", %{
+        "outcome" => "worked",
+        "task_token" => "task-2"
+      })
+      |> json_response(201)
+
+      assert length(Forum.list_uses_for_reply!(reply_id)) == 2
+    end
+  end
+
+  describe "subscriptions and the pull inbox" do
+    test "a followed site notifies its followers, exactly once, until acknowledged", %{
+      conn: conn
+    } do
+      follower = visitor(conn)
+      %{"thread_id" => thread_id} = ask(follower, "Is there a wishlist?") |> json_response(201)
+
+      subscribed =
+        follower
+        |> recycle()
+        |> post_json("/forum/subscriptions", %{"site" => "shop.example.com"})
+        |> json_response(201)
+
+      assert subscribed["subscribed"] == true
+
+      # Somebody else answers; the worker runs (a restart changes nothing —
+      # the event waited on the row).
+      %{"reply_id" => _} =
+        answer(visitor(build_conn()), thread_id, "Yes — /wishlist.") |> json_response(201)
+
+      NotificationFanout.process_events()
+
+      # A second pass is a retry, not a second notice.
+      NotificationFanout.process_events()
+
+      inbox =
+        follower
+        |> recycle()
+        |> get("/forum/notifications")
+        |> json_response(200)
+
+      assert [%{"id" => notice_id, "kind" => "reply_posted", "thread_id" => ^thread_id}] =
+               inbox["notifications"]
+
+      # Acknowledged is gone; the same call again acknowledges nothing new.
+      follower
+      |> recycle()
+      |> post_json("/forum/notifications/acknowledge", %{"ids" => [notice_id]})
+      |> json_response(200)
+
+      assert %{"notifications" => []} =
+               follower |> recycle() |> get("/forum/notifications") |> json_response(200)
+
+      # Nothing came to the answerer about their own reply.
+      assert %{"notifications" => other} =
+               build_conn() |> visitor() |> get("/forum/notifications") |> json_response(200)
+
+      refute Enum.any?(other, &(&1["thread_id"] == thread_id and &1["kind"] == "reply_posted"))
+    end
+
+    test "a redacted answer takes its card down with it", %{conn: conn} do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "How are carts merged?") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(build_conn()), thread_id, "POST /carts/merge.") |> json_response(201)
+
+      asker
+      |> recycle()
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      assert Ash.read!(SolutionCard) |> length() == 1
+
+      # Moderation takes the source reply out of view.
+      reply = Ash.get!(Patchbay.Forum.Reply, reply_id)
+      moderator = moderator!()
+      allow_moderator()
+
+      assert {:ok, _} = Forum.moderate(reply, :redact, "Contained credentials.", moderator)
+
+      assert [%{status: :invalidated}] = Ash.read!(SolutionCard)
+    end
+
+    test "following a thread hears about its answer being named", %{conn: conn} do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "Can totals be negative?") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(build_conn()), thread_id, "Only if you return items.")
+        |> json_response(201)
+
+      watcher = visitor(build_conn())
+
+      watcher
+      |> post_json("/forum/subscriptions", %{"thread_id" => thread_id})
+      |> json_response(201)
+
+      NotificationFanout.process_events()
+
+      asker
+      |> recycle()
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      NotificationFanout.process_events()
+
+      inbox = watcher |> recycle() |> get("/forum/notifications") |> json_response(200)
+      kinds = Enum.map(inbox["notifications"], & &1["kind"])
+      assert "solution_marked" in kinds
+    end
+
+    test "unfollowing a scope ends its notices and only its owner's", %{conn: conn} do
+      follower = visitor(conn)
+
+      %{"subscription_id" => id} =
+        follower
+        |> post_json("/forum/subscriptions", %{"site" => "shop.example.com"})
+        |> json_response(201)
+
+      # Someone else's request cannot end it.
+      stranger = visitor(build_conn())
+
+      assert json_response(delete(stranger, "/forum/subscriptions/#{id}"), 404)["problem_code"] ==
+               "not_found"
+
+      assert json_response(
+               follower |> recycle() |> delete("/forum/subscriptions/#{id}"),
+               200
+             )["unsubscribed"] == true
+    end
+  end
+
+  describe "the capabilities manifest" do
+    test "promises exactly the tools the page registers" do
+      # The registered list is the page's own; the manifest must claim nothing
+      # beyond it and nothing less.
+      [_list, names_block] =
+        String.split(
+          File.read!("assets/js/webmcp/forum_tools.js"),
+          "FORUM_TOOL_NAMES = [",
+          parts: 2
+        )
+
+      [names_block | _] = String.split(names_block, "]", parts: 2)
+
+      registered = Regex.scan(~r/"([a-z_]+)"/, names_block) |> Enum.map(&Enum.at(&1, 1))
+
+      assert Enum.sort(registered) == Enum.sort(Patchbay.Forum.Capabilities.names())
+    end
+  end
+end

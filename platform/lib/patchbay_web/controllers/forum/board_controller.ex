@@ -16,9 +16,11 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   use PatchbayWeb, :controller
 
+  require Ash.Query
   require Logger
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
@@ -32,10 +34,16 @@ defmodule PatchbayWeb.Forum.BoardController do
     hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
     hello_events = Patchbay.Forum.Hellos.latest(hello_stream)
     filters = Discussions.filters(params)
-    following = Discussions.following(conn.req_cookies["pb_following"])
+
+    subscriptions =
+      Discussions.subscriptions(
+        Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
+      )
+
+    following = for %{scope_kind: :site, scope_id: id} <- subscriptions, do: id
     {sites, more_sites?} = Board.list_directory()
 
-    case Discussions.page(filters, following, params["after"]) do
+    case Discussions.page(filters, subscriptions, params["after"]) do
       {:ok, reports, next_page} ->
         selected = home_thread(params["thread"], reports)
 
@@ -96,6 +104,112 @@ defmodule PatchbayWeb.Forum.BoardController do
       page_title: "Start with an agent",
       payments_enabled?: Board.payments_enabled?()
     )
+  end
+
+  @doc """
+  Follows a site, or stops following it, for whoever is on this page — the
+  signed-in profile when there is one, the page's own session otherwise.
+  Following is what the inbox reads from.
+  """
+  def follow(conn, %{"site_id" => site_id} = params) do
+    principal =
+      case conn.assigns.current_profile do
+        %{id: id} -> Principal.for_profile(id)
+        _ -> Principal.for_session(conn.assigns.forum_session_id)
+      end
+
+    existing =
+      Patchbay.Forum.Subscription
+      |> Ash.Query.filter(
+        principal == ^principal and scope_kind == :site and scope_id == ^site_id
+      )
+      |> Ash.read_one!()
+
+    if existing do
+      Forum.unsubscribe(principal, existing.id)
+    else
+      Forum.subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id})
+    end
+
+    redirect(conn, to: back(params["back"]))
+  end
+
+  defp back(path) when is_binary(path) do
+    if String.starts_with?(path, "/") and not String.starts_with?(path, "//"),
+      do: path,
+      else: "/"
+  end
+
+  defp back(_), do: "/"
+
+  defp followed_sites(conn) do
+    conn.assigns.current_profile
+    |> Principal.for_request(conn.assigns.forum_session_id)
+    |> Discussions.subscriptions()
+    |> Enum.filter(&(&1.scope_kind == :site))
+    |> Enum.map(& &1.scope_id)
+  end
+
+  @doc "Whoever is on this page's own unacknowledged notifications."
+  def inbox(conn, _params) do
+    principals =
+      Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
+
+    # Confined to the caller's own principals; the event join reads the
+    # caller's own mail.
+    page =
+      Forum.list_inbox!(principals,
+        load: [event: [:thread, :site]],
+        page: [limit: 50],
+        authorize?: false
+      )
+
+    notifications = page.results
+
+    render(conn, :inbox,
+      page_title: "Inbox",
+      notifications: notifications,
+      subscriptions: Discussions.subscriptions(principals)
+    )
+  end
+
+  def acknowledge(conn, params) do
+    ids =
+      params["ids"]
+      |> List.wrap()
+      |> Enum.filter(&match?({:ok, _}, Ecto.UUID.cast(&1)))
+
+    Forum.acknowledge_notifications(
+      Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id),
+      ids
+    )
+
+    redirect(conn, to: ~p"/inbox")
+  end
+
+  @doc """
+  The asker names the reply that worked, from the thread page — the same mark
+  the mark_solution tool makes, and just as free of money.
+  """
+  def mark_solution(conn, %{"id" => id, "reply_id" => reply_id}) do
+    report = fetch_report!(id)
+
+    case Forum.mark_solution(
+           report,
+           reply_id,
+           conn.assigns.forum_session_id,
+           conn.assigns.current_profile
+         ) do
+      {:ok, _thread} ->
+        redirect(conn, to: ~p"/posts/#{report.id}" <> "#reply-#{reply_id}")
+
+      {:error, failure} ->
+        Logger.warning("Marking a solution was refused", error_type: inspect(error_type(failure)))
+
+        conn
+        |> put_flash(:error, "Only whoever asked can say which answer worked.")
+        |> redirect(to: ~p"/posts/#{report.id}")
+    end
   end
 
   @doc """
@@ -619,6 +733,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       render(conn, :report,
         page_title: PatchbayWeb.Forum.BoardHTML.post_title(report),
         report: report,
+        following: followed_sites(conn),
         reply_filter: filter,
         receipt: Board.receipt(report),
         replies: replies,

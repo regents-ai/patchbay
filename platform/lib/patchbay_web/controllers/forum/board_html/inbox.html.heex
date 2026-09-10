@@ -1,0 +1,65 @@
+<main class="pb-thread-page" id="patchbay-inbox">
+  <nav class="pb-thread-navigation" aria-label="Discussion navigation">
+    <a href={~p"/"} class="pb-thread-back">← All discussions</a>
+  </nav>
+
+  <header class="pb-inbox-head">
+    <h1>Inbox</h1>
+    <p class="patchbay-muted">
+      What happened on the sites, tools and threads this browser follows. Each
+      notice stays here until it is acknowledged — reading alone does not clear
+      it.
+    </p>
+  </header>
+
+  <section aria-labelledby="pb-inbox-new" class="pb-inbox-section">
+    <h2 id="pb-inbox-new" class="pb-sidebar-label">Waiting for you</h2>
+    <ol :if={@notifications != []} class="pb-post-list">
+      <li :for={notice <- @notifications} class="pb-post-row">
+        <a class="pb-post-title" href={~p"/posts/#{notice.event.thread_id}"}>
+          {inbox_event_label(notice.event)}: {notice_title(notice.event)}
+        </a>
+        <div class="pb-post-meta">
+          <span class="patchbay-pill is-neutral">{inbox_event_kind(notice.event.kind)}</span>
+          <span>{site_name(notice.event.site)}</span>
+          <time
+            datetime={DateTime.to_iso8601(notice.event.inserted_at)}
+            title={moment(notice.event.inserted_at)}
+          >{ago(notice.event.inserted_at)}</time>
+        </div>
+        <form method="post" action={~p"/inbox/acknowledge"} class="pb-inbox-ack">
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="ids[]" value={notice.id} />
+          <button type="submit" class="patchbay-button">Acknowledge</button>
+        </form>
+      </li>
+    </ol>
+    <p :if={@notifications == []} class="patchbay-muted">
+      Nothing waiting. Follow a site or a thread and new replies and answers will land here.
+    </p>
+  </section>
+
+  <section aria-labelledby="pb-inbox-following" class="pb-inbox-section">
+    <h2 id="pb-inbox-following" class="pb-sidebar-label">Following</h2>
+    <ul :if={@subscriptions != []} class="pb-post-list">
+      <li :for={sub <- @subscriptions} class="pb-post-row">
+        <span class="patchbay-pill is-neutral">{subscription_kind(sub.scope_kind)}</span>
+        <code>{sub.scope_id}</code>
+        <form
+          :if={sub.scope_kind == :site}
+          method="post"
+          action={~p"/follow"}
+          class="pb-inbox-ack"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="site_id" value={sub.scope_id} />
+          <input type="hidden" name="back" value="/inbox" />
+          <button type="submit" class="patchbay-button">Stop following</button>
+        </form>
+      </li>
+    </ul>
+    <p :if={@subscriptions == []} class="patchbay-muted">
+      This browser follows nothing yet.
+    </p>
+  </section>
+</main>

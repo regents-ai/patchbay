@@ -11,6 +11,8 @@ defmodule Patchbay.Forum do
 
   use Ash.Domain, otp_app: :patchbay
 
+  require Ash.Query
+
   resources do
     resource Patchbay.Forum.Hello do
       define(:record_hello, action: :record)
@@ -89,6 +91,32 @@ defmodule Patchbay.Forum do
     end
 
     resource(Patchbay.Forum.ModerationAction)
+
+    resource Patchbay.Forum.SolutionCard do
+      define(:derive_solution_card, action: :derive)
+      define(:list_cards_for_thread, action: :for_thread, args: [:thread_id])
+    end
+
+    resource Patchbay.Forum.AnswerUse do
+      define(:record_answer_use, action: :record)
+      define(:list_uses_for_reply, action: :for_reply, args: [:reply_id])
+    end
+
+    resource Patchbay.Forum.ForumEvent do
+      define(:list_events_awaiting_fanout, action: :awaiting_fanout)
+    end
+
+    resource Patchbay.Forum.Subscription do
+      define(:subscribe, action: :subscribe)
+      define(:unsubscribe, action: :unsubscribe)
+      define(:list_subscriptions, action: :for_principal, args: [:principal])
+      define(:list_subscriptions_for_event, action: :deliver_to, args: [:thread_id, :site_id])
+    end
+
+    resource Patchbay.Forum.Notification do
+      define(:deliver_notification, action: :deliver)
+      define(:list_inbox, action: :inbox, args: [:principals])
+    end
   end
 
   @doc """
@@ -105,9 +133,15 @@ defmodule Patchbay.Forum do
     visibility = %{quarantine: :quarantined, publish: :published, redact: :redacted}[action]
 
     Ash.transact(
-      [Patchbay.Forum.Report, Patchbay.Forum.Reply, Patchbay.Forum.ModerationAction],
+      [
+        Patchbay.Forum.Report,
+        Patchbay.Forum.Reply,
+        Patchbay.Forum.ModerationAction,
+        Patchbay.Forum.SolutionCard
+      ],
       fn ->
         with {:ok, updated} <- set_visibility(subject, visibility),
+             :ok <- retire_cards(subject, action),
              {:ok, _audit} <- record_moderation(subject, action, reason, actor) do
           {:ok, updated}
         end
@@ -131,6 +165,22 @@ defmodule Patchbay.Forum do
     Ash.update(reply, %{visibility: visibility}, action: :set_visibility, authorize?: false)
   end
 
+  # A reply taken out of public view cannot keep speaking through a card that
+  # cited it — the card's source is gone, so the card is gone with it.
+  defp retire_cards(%Patchbay.Forum.Reply{id: reply_id}, action)
+       when action in [:quarantine, :redact] do
+    Patchbay.Forum.SolutionCard
+    |> Ash.Query.filter(source_reply_id == ^reply_id)
+    |> Ash.bulk_update(:invalidate, %{}, authorize?: false)
+    |> case do
+      %Ash.BulkResult{status: :success} -> :ok
+      %Ash.BulkResult{status: :partial_success} -> :ok
+      result -> {:error, result}
+    end
+  end
+
+  defp retire_cards(_subject, _action), do: :ok
+
   defp record_moderation(subject, action, reason, actor) do
     # The audit row is written by the domain function itself; nothing public
     # creates one.
@@ -147,4 +197,47 @@ defmodule Patchbay.Forum do
 
   defp subject_kind(%Patchbay.Forum.Report{}), do: :thread
   defp subject_kind(%Patchbay.Forum.Reply{}), do: :reply
+
+  @doc """
+  The asker names the reply that worked. The mark is the asker's — the
+  signed-in profile or the session the question was posted under — and never
+  touches money.
+  """
+  def mark_solution(report, reply_id, browser_session_id, actor) do
+    Ash.update(
+      report,
+      %{reply_id: reply_id, browser_session_id: browser_session_id},
+      action: :mark_solution,
+      actor: actor
+    )
+  end
+
+  @doc """
+  Ends a principal's subscription, found by id and principal together so one
+  caller's unsubscribe can never reach another's.
+  """
+  def unsubscribe(principal, subscription_id) do
+    # The lookup names the caller's own principal; authorization is the
+    # join between the two, not an actor.
+    case Patchbay.Forum.Subscription
+         |> Ash.Query.filter(id == ^subscription_id and principal == ^principal)
+         |> Ash.read_one(authorize?: false) do
+      {:ok, nil} -> {:error, :not_found}
+      {:ok, subscription} -> Ash.destroy(subscription, action: :unsubscribe, authorize?: false)
+      {:error, failure} -> {:error, failure}
+    end
+  end
+
+  @doc """
+  A principal's receipt for the notifications it handled: every named id the
+  principal actually owns is marked acknowledged; ids it does not own are
+  quietly not.
+  """
+  def acknowledge_notifications(principals, ids) do
+    # Same as above: the query itself confines the write to the caller's own
+    # unacknowledged mail, so policy adds nothing to it.
+    Patchbay.Forum.Notification
+    |> Ash.Query.filter(id in ^ids and recipient in ^principals and is_nil(acknowledged_at))
+    |> Ash.bulk_update(:acknowledge, %{}, authorize?: false, return_records?: false)
+  end
 end

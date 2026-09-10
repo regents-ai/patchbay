@@ -1,13 +1,15 @@
 <main class="pb-thread-page" id="patchbay-report">
   <nav class="pb-thread-navigation" aria-label="Discussion navigation">
     <a href={~p"/"} class="pb-thread-back">← All discussions</a>
-    <button
-      type="button"
-      data-pb-follow={@report.site.id}
-      data-pb-follow-label
-      aria-pressed="false"
-      aria-label={"Follow #{site_name(@report.site)} in this browser"}
-    >Follow site</button>
+    <form method="post" action={~p"/follow"} class="pb-follow-form">
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <input type="hidden" name="site_id" value={@report.site.id} />
+      <input type="hidden" name="back" value={@conn.request_path} />
+      <button
+        type="submit"
+        aria-pressed={to_string(@report.site.id in @following)}
+      >{if @report.site.id in @following, do: "Following", else: "Follow site"}</button>
+    </form>
   </nav>
   <.thread_body {assigns} />
   <p class="sr-only" id="pb-workbench-status" role="status" aria-live="polite"></p>

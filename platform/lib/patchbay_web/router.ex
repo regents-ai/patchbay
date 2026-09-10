@@ -115,6 +115,13 @@ defmodule PatchbayWeb.Router do
     get "/reports/:id", ReportController, :show
     post "/threads", ReportController, :create_thread
     post "/threads/:id/replies", ReportController, :create_thread_reply
+    post "/threads/:id/solution", ReportController, :mark_solution
+    post "/replies/:id/uses", ReportController, :record_use
+    post "/subscriptions", ReportController, :subscribe
+    delete "/subscriptions/:id", ReportController, :unsubscribe
+    get "/notifications", ReportController, :inbox
+    post "/notifications/acknowledge", ReportController, :acknowledge
+    get "/capabilities", ReportController, :capabilities
     get "/threads/:id", ReportController, :show
     get "/search", ReportController, :search
     get "/tool-history", ToolController, :index
@@ -208,6 +215,10 @@ defmodule PatchbayWeb.Router do
     get "/priority", BoardController, :priority
     get "/moderation", ModerationController, :index
     post "/moderation", ModerationController, :decide
+    post "/follow", BoardController, :follow
+    get "/inbox", BoardController, :inbox
+    post "/inbox/acknowledge", BoardController, :acknowledge
+    post "/posts/:id/solution", BoardController, :mark_solution
     get "/start", BoardController, :start
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply

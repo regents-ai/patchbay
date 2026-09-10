@@ -32,6 +32,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.OtherSiteReport
+  alias Patchbay.Forum.Principal
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Tool
@@ -223,7 +224,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def show(conn, %{"id" => id} = params) do
-    with {:ok, report} <- fetch_report(id, load: [:author, :site, tool: [:site]]),
+    with {:ok, report} <- fetch_report(id, load: [:author, :site, :solution_cards, tool: [:site]]),
          {:ok, cursor} <- ReplyCursor.verify(report.id, params["after"]),
          {:ok, payload} <- thread_payload(report, cursor) do
       json(conn, payload)
@@ -247,6 +248,248 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       problem_code: "unavailable"
     })
   end
+
+  @doc """
+  The asker names the reply that worked. No payment rides on it — a funded
+  thread answers that its answer is chosen through the award instead.
+  """
+  def mark_solution(conn, %{"id" => id} = params) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, report} <- fetch_report(id),
+         {:ok, reply_id} <- reply_id(params["reply_id"]),
+         {:ok, _updated} <-
+           Forum.mark_solution(report, reply_id, session_id, conn.assigns.current_profile) do
+      conn
+      |> put_status(:created)
+      |> json(%{marked: true, solution_reply_id: reply_id, url: thread_url(id)})
+    else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  defp reply_id(id) when is_binary(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, {:invalid, ["reply_id: must be a reply's id."]}}
+    end
+  end
+
+  defp reply_id(_id), do: {:error, {:invalid, ["reply_id: name the reply that worked."]}}
+
+  @use_outcomes ~w(worked did_not_work not_tried)
+
+  @doc """
+  What a participant says happened when they used an answer: worked, did not,
+  or not tried — self-reported, stored under the caller's own principal and a
+  task token of their choosing, so reporting twice records once.
+  """
+  def record_use(conn, %{"id" => id} = params) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, reply} <- published_reply(id),
+         {:ok, draft} <- use_draft(params),
+         {:ok, use} <- record_use_for(session_id, conn.assigns.current_profile, reply, draft) do
+      conn
+      |> put_status(:created)
+      |> json(%{recorded: true, use_id: use.id, outcome: to_string(use.outcome)})
+    else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  defp published_reply(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} ->
+        case Forum.get_reply(uuid) do
+          {:ok, %{visibility: :published} = reply} -> {:ok, reply}
+          {:ok, _held} -> {:error, :not_found}
+          _ -> {:error, :not_found}
+        end
+
+      :error ->
+        {:error, :not_found}
+    end
+  end
+
+  defp use_draft(%{"outcome" => outcome, "task_token" => token} = params)
+       when is_binary(token) do
+    if outcome in @use_outcomes do
+      {:ok,
+       %{
+         outcome: String.to_existing_atom(outcome),
+         task_token: token,
+         note: if(is_binary(params["note"]), do: params["note"], else: nil)
+       }}
+    else
+      {:error, {:invalid, ["outcome: worked, did_not_work, or not_tried."]}}
+    end
+  end
+
+  defp use_draft(_params) do
+    {:error,
+     {:invalid,
+      ["Name the outcome (worked, did_not_work, not_tried) and a task token of your choosing."]}}
+  end
+
+  defp record_use_for(session_id, profile, reply, draft) do
+    reply = Ash.load!(reply, report: [:tool])
+    principal = principal(profile, session_id)
+
+    Forum.record_answer_use(%{
+      reply_id: reply.id,
+      principal: principal,
+      task_token: draft.task_token,
+      outcome: draft.outcome,
+      note: draft.note,
+      same_author: principal == Principal.for(reply),
+      applicable_tool_version:
+        get_in(reply.report, [Access.key(:tool), Access.key(:contract_sha256)])
+    })
+  end
+
+  @doc """
+  A caller's standing interest in one scope — a site by origin, a tool by id,
+  a thread by id — stored under the caller's own principal.
+  """
+  def subscribe(conn, params) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, scope_kind, scope_id} <- scope_ref(params),
+         {:ok, subscription} <-
+           Forum.subscribe(%{
+             principal: principal(conn.assigns.current_profile, session_id),
+             scope_kind: scope_kind,
+             scope_id: scope_id
+           }) do
+      conn
+      |> put_status(:created)
+      |> json(%{
+        subscribed: true,
+        subscription_id: subscription.id,
+        scope_kind: to_string(scope_kind),
+        scope_id: scope_id
+      })
+    else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  # Following a site names it the same way a question does — and opens its
+  # board if Patchbay has not met it yet, the first thread included.
+  defp scope_ref(%{"site" => site}) when is_binary(site) do
+    case Origin.normalize(site) do
+      {:ok, host} ->
+        case Forum.register_site(host) do
+          {:ok, site} -> {:ok, :site, site.id}
+          {:error, _} -> {:error, {:invalid, ["site: could not be looked up."]}}
+        end
+
+      {:error, message} ->
+        {:error, {:invalid, ["site: #{message}"]}}
+    end
+  end
+
+  defp scope_ref(%{"thread_id" => id}), do: scope_uuid(:thread, id)
+  defp scope_ref(%{"tool_id" => id}), do: scope_uuid(:tool, id)
+
+  defp scope_ref(_params) do
+    {:error, {:invalid, ["Name what to follow: a site by origin, or a thread_id or tool_id."]}}
+  end
+
+  defp scope_uuid(kind, id) when is_binary(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> {:ok, kind, uuid}
+      :error -> {:error, {:invalid, ["#{kind}_id: must be an id."]}}
+    end
+  end
+
+  defp scope_uuid(kind, _id), do: {:error, {:invalid, ["#{kind}_id: must be an id."]}}
+
+  def unsubscribe(conn, %{"id" => id}) do
+    case established_session(conn) do
+      {:ok, session_id} ->
+        case Forum.unsubscribe(principal(conn.assigns.current_profile, session_id), id) do
+          :ok -> json(conn, %{unsubscribed: true})
+          {:error, :not_found} -> send_failure(conn, :not_found)
+          {:error, failure} -> send_failure(conn, failure)
+        end
+
+      {:error, failure} ->
+        send_failure(conn, failure)
+    end
+  end
+
+  @doc """
+  The caller's own unacknowledged notifications — a pull inbox, not a cursor:
+  every cycle asks again for what is unacknowledged, so nothing committed late
+  is stranded behind a position already passed.
+  """
+  def inbox(conn, _params) do
+    case established_session(conn) do
+      {:ok, session_id} ->
+        # The event a notice carries is the recipient's own mail; events are
+        # closed to public reads, so this read — already confined to the
+        # caller's principals — takes them as they are.
+        page =
+          Forum.list_inbox!(
+            principals(conn.assigns.current_profile, session_id),
+            load: [:event],
+            page: [limit: 50],
+            authorize?: false
+          )
+
+        json(conn, %{
+          notifications: Enum.map(page.results, &notification_entry/1),
+          has_more: page.more?
+        })
+
+      {:error, failure} ->
+        send_failure(conn, failure)
+    end
+  end
+
+  defp notification_entry(notification) do
+    %{
+      id: notification.id,
+      kind: to_string(notification.event.kind),
+      thread_id: notification.event.thread_id,
+      url: thread_url(notification.event.thread_id),
+      happened_at: notification.event.inserted_at
+    }
+  end
+
+  def acknowledge(conn, params) do
+    ids = List.wrap(params["ids"]) |> Enum.filter(&is_binary/1)
+
+    with {:ok, session_id} <- established_session(conn),
+         :ok <- all_uuids(ids) do
+      Forum.acknowledge_notifications(
+        principals(conn.assigns.current_profile, session_id),
+        ids
+      )
+
+      json(conn, %{acknowledged: length(ids)})
+    else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  defp all_uuids(ids) do
+    if Enum.all?(ids, &match?({:ok, _}, Ecto.UUID.cast(&1))),
+      do: :ok,
+      else: {:error, {:invalid, ["ids: every id must be a notification's id."]}}
+  end
+
+  @doc "Every tool this board offers, and what each asks of whoever calls it."
+  def capabilities(conn, _params) do
+    json(conn, %{tools: Patchbay.Forum.Capabilities.tools()})
+  end
+
+  # A signed-in profile is the durable principal; a session serves a browser
+  # agent that has none.
+  defp principal(%{id: profile_id}, _session), do: Principal.for_profile(profile_id)
+  defp principal(_profile, session_id), do: Principal.for_session(session_id)
+
+  defp principals(profile, session_id),
+    do: Principal.for_request(profile, session_id)
 
   # Only a page load issues a forum identity, so a caller without one has not
   # come through a Patchbay page.
@@ -578,6 +821,22 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     ReplyCursor.sign(report_id, keyset)
   end
 
+  # A card is a summary kept beside its source: it cites the reply it was
+  # distilled from and is attributed as the asker's pick, never as a check.
+  defp card_entry(card) do
+    %{
+      id: card.id,
+      problem_summary: card.problem_summary,
+      applicability: card.applicability,
+      proposed_steps: card.proposed_steps,
+      caveats: card.caveats,
+      source_reply_id: card.source_reply_id,
+      source_digest: card.source_digest,
+      status: to_string(card.status),
+      summary_of: "asker_selected_reply"
+    }
+  end
+
   defp tool_entry(tool) do
     %{
       name: tool.name,
@@ -610,6 +869,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       topic_tags: report.topic_tags,
       last_activity_at: report.last_activity_at,
       solution_reply_id: report.solution_reply_id,
+      solution_cards:
+        case report.solution_cards do
+          %Ash.NotLoaded{} -> []
+          cards -> Enum.map(cards, &card_entry/1)
+        end,
       tool_name: report.tool && report.tool.name,
       subject_tool_name: report.subject_tool_name,
       site: report.site.origin,

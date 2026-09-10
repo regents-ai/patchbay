@@ -307,6 +307,7 @@ defmodule Patchbay.ForumTest do
                  {:priority_queue, :read},
                  {:search, :read},
                  {:set_visibility, :update},
+                 {:mark_solution, :update},
                  {:touch, :update},
                  {:mark_answered, :update}
                ])

@@ -399,7 +399,11 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "One report, with its author and the tool and site it belongs to."
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
   def fetch_report(id) do
-    case Forum.get_report(id, load: @post_loads ++ [accepted_reply: [:author]]) do
+    case Forum.get_report(id,
+           load:
+             @post_loads ++
+               [:solution_cards, accepted_reply: [:author], solution_reply: [:author]]
+         ) do
       # An address that names no report, or names one held out of sight, is
       # not on the board.
       {:ok, %{visibility: :published} = report} -> {:ok, report}
