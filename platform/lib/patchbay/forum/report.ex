@@ -381,7 +381,11 @@ defmodule Patchbay.Forum.Report do
       # the name a thread's author reported when none was observed.
       argument(:tool_name, :string, allow_nil?: true)
 
+      # Only threads touched at or after this moment — a recent-posts read.
+      argument(:since, :utc_datetime, allow_nil?: true)
+
       filter(expr(visibility == :published))
+      filter(expr(is_nil(^arg(:since)) or last_activity_at >= ^arg(:since)))
 
       filter(
         expr(

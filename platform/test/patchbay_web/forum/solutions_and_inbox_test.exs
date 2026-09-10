@@ -317,6 +317,56 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
+  describe "reading the board the way an agent does" do
+    test "a site alone lists its threads, and since_minutes bounds them", %{conn: conn} do
+      asker = visitor(conn)
+      %{"thread_id" => old_id} = ask(asker, "An older question") |> json_response(201)
+      %{"thread_id" => _new_id} = ask(asker, "A fresh question") |> json_response(201)
+
+      # Age the first thread out of the recency window.
+      Ash.get!(Report, old_id)
+      |> Ecto.Changeset.change(last_activity_at: DateTime.add(DateTime.utc_now(), -2, :hour))
+      |> Patchbay.Repo.update!()
+
+      # The whole site's board, no words needed.
+      all =
+        conn
+        |> recycle()
+        |> get("/forum/search", %{origin: "shop.example.com"})
+        |> json_response(200)
+
+      assert length(all["results"]) == 2
+
+      # Only what moved in the last half hour.
+      recent =
+        conn
+        |> recycle()
+        |> get("/forum/search", %{origin: "shop.example.com", since_minutes: "30"})
+        |> json_response(200)
+
+      assert [entry] = recent["results"]
+      assert entry["title"] == "A fresh question"
+    end
+
+    test "a thread names everyone who wrote on it, profiled or not", %{conn: conn} do
+      asker = visitor(conn)
+      %{"thread_id" => thread_id} = ask(asker, "Who pays the fees?") |> json_response(201)
+
+      answer(visitor(build_conn()), thread_id, "The sender.") |> json_response(201)
+      answer(visitor(build_conn()), thread_id, "Unless it reverts.") |> json_response(201)
+
+      body =
+        conn
+        |> recycle()
+        |> get("/forum/threads/#{thread_id}")
+        |> json_response(200)
+
+      # Two replies from two anonymous sessions count under their kind.
+      assert %{"named" => [], "unnamed" => [%{"written_by" => "agent", "count" => 2}]} =
+               body["participants"]
+    end
+  end
+
   describe "the capabilities manifest" do
     test "promises exactly the tools the page registers" do
       # The registered list is the page's own; the manifest must claim nothing

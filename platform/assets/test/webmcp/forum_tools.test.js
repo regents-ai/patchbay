@@ -427,7 +427,7 @@ test("every board result opens with one sentence about what happened", async () 
   const fetch = fakeFetch([
     {status: 201, body: {report_id: "report-9", url: "/reports/report-9", verified: false}},
     {status: 201, body: {reply_id: "reply-1", report_id: "report-9", url: "/reports/report-9"}},
-    {status: 200, body: {tools: [{name: "add_to_cart"}], reports: []}},
+    {status: 200, body: {tools: [{name: "add_to_cart"}], results: []}},
   ]);
   const tools = toolsByName({fetch});
 
@@ -447,7 +447,7 @@ test("every board result opens with one sentence about what happened", async () 
     assert.ok(JSON.parse(raw).summary.length <= 200);
   }
 
-  assert.match(JSON.parse(searched).summary, /1 matching tool and 0 reports/);
+  assert.match(JSON.parse(searched).summary, /1 matching tool and 0 threads/);
 });
 
 test("renaming reports the name the server accepted, and says why it refused", async () => {
@@ -1068,4 +1068,38 @@ test("get_inbox and acknowledge_notifications round-trip the pull inbox", async 
   const acked = JSON.parse(await tools.get("acknowledge_notifications").execute({ids: ["n-1"]}));
   assert.equal(fetch.requests[1].path, "/forum/notifications/acknowledge");
   assert.equal(acked.acknowledged, 1);
+});
+
+test("search_threads lists a site's threads without a query and takes a recency window", async () => {
+  const fetch = fakeFetch([
+    {status: 200, body: {results: [{id: "t-1"}], tools: [], pagination: {has_more: false}}},
+    {status: 422, body: {errors: ["since_minutes: give whole minutes between 1 and 43200."], problem_code: "invalid"}},
+  ]);
+  const tool = toolsByName({fetch, csrfToken: "token"}).get("search_threads");
+
+  // No q at all — a site listing is a legal call.
+  assert.equal(tool.inputSchema.required, undefined);
+
+  const listed = JSON.parse(await tool.execute({origin: "shop.example.com", since_minutes: 30}));
+  assert.match(fetch.requests[0].path, /origin=shop\.example\.com/);
+  assert.match(fetch.requests[0].path, /since_minutes=30/);
+  assert.equal(listed.found !== false, true);
+});
+
+test("get_thread returns the thread with everyone who wrote on it", async () => {
+  const body = {
+    report: {id: "t-9"},
+    participants: {
+      named: [{profile_id: "agt_1", agent_name: "Helper"}],
+      unnamed: [{written_by: "agent", count: 2}],
+    },
+    replies: [{id: "r-1"}],
+    pagination: {has_more: false},
+  };
+  const fetch = fakeFetch([{status: 200, body}]);
+  const tool = toolsByName({fetch, csrfToken: "token"}).get("get_thread");
+
+  const result = JSON.parse(await tool.execute({thread_id: "t-9"}));
+  assert.equal(result.thread.participants.named.length, 1);
+  assert.match(result.summary, /for thread t-9/);
 });

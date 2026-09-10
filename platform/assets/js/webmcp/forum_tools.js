@@ -599,18 +599,18 @@ export function buildForumTools(options = {}) {
     },
     {
       name: "search_threads",
-      title: "Search threads by their words",
+      title: "Search or list threads",
       description:
-        "Free-text search over thread titles, bodies and published replies — the actual problem wording, error codes and tool names people wrote. Results are ranked by relevance; follow pagination.next_offset as offset for more.",
+        "Find threads by their words, list every thread on a site, or narrow to one tool name — give at least one of q, origin or tool_name. With origin alone it lists that site's threads newest-activity first; since_minutes narrows to threads touched in that window. Results follow pagination.next_offset as offset.",
       inputSchema: {
         type: "object",
         properties: {
           q: {type: "string", description: "The words to look for."},
           origin: {type: "string", description: "Limit to one site, as a URL or host name."},
           tool_name: {type: "string", description: "Limit to threads about one tool name."},
+          since_minutes: {type: "integer", description: "Only threads touched in the last N minutes (1–43200)."},
           offset: {type: "integer", description: "pagination.next_offset from the previous answer."},
         },
-        required: ["q"],
         additionalProperties: false,
       },
       annotations: {readOnlyHint: true, untrustedContentHint: true},
@@ -619,6 +619,7 @@ export function buildForumTools(options = {}) {
         if (input.q) query.set("q", String(input.q));
         if (input.origin) query.set("origin", String(input.origin));
         if (input.tool_name) query.set("tool_name", String(input.tool_name));
+        if (input.since_minutes) query.set("since_minutes", String(input.since_minutes));
         if (input.offset) query.set("offset", String(input.offset));
 
         const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`);
@@ -1504,9 +1505,10 @@ function problemCodeOf(answer) {
 
 function searchSummary(body) {
   const tools = Array.isArray(body?.tools) ? body.tools.length : 0;
-  const reports = Array.isArray(body?.reports) ? body.reports.length : 0;
+  const threads = Array.isArray(body?.results) ? body.results.length
+    : Array.isArray(body?.reports) ? body.reports.length : 0;
   return sentence(
-    `The board holds ${tools} matching tool${tools === 1 ? "" : "s"} and ${reports} report${reports === 1 ? "" : "s"}, all of it written by visitors.`,
+    `The board holds ${tools} matching tool${tools === 1 ? "" : "s"} and ${threads} thread${threads === 1 ? "" : "s"}, all of it written by visitors.`,
   );
 }
 
@@ -1516,6 +1518,6 @@ function threadSummary(body) {
     ? " More replies remain; use pagination.next_cursor as after."
     : body?.pagination ? " This is the final page." : "";
   return sentence(
-    `This page contains ${replies} repl${replies === 1 ? "y" : "ies"} for report ${body?.report?.id}.${continuation}`,
+    `This page contains ${replies} repl${replies === 1 ? "y" : "ies"} for thread ${body?.report?.id}.${continuation}`,
   );
 }

@@ -26,6 +26,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   use PatchbayWeb, :controller
 
+  import Ash.Expr
   require Ash.Query
   require Logger
 
@@ -34,6 +35,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.ReceiptCheck
+  alias Patchbay.Forum.Reply
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Tool
   alias Patchbay.Payments.USDC
@@ -215,8 +217,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     with {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
          {:ok, site} <- search_site(origin),
+         {:ok, since} <- since_minutes(params["since_minutes"]),
          {:ok, tools} <- search_tools(site, tool_name),
-         {:ok, page} <- thread_search(q, tool_name, site, params) do
+         {:ok, page} <- thread_search(q, tool_name, site, since, params) do
       json(conn, search_payload(q, origin, tool_name, tools, page))
     else
       {:error, failure} -> send_failure(conn, failure)
@@ -717,20 +720,21 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @thread_search_loads [:author, :site, tool: [:site]]
 
-  defp thread_search(nil, nil, nil, _params) do
+  defp thread_search(nil, nil, nil, _since, _params) do
     {:error,
      {:invalid, ["Name a site, a tool, or words to look for, so there is something to look for."]}}
   end
 
-  defp thread_search(_q, _tool_name, :empty, _params),
+  defp thread_search(_q, _tool_name, :empty, _since, _params),
     do: {:ok, %{results: [], more?: false, offset: 0}}
 
-  defp thread_search(nil, nil, site, params) do
+  defp thread_search(nil, nil, site, since, params) do
     offset = search_offset(params)
 
     {:ok,
      site.id
      |> Forum.list_threads_for_site!(
+       query: since_filter(since),
        load: @thread_search_loads,
        page: [limit: @search_report_limit, offset: offset]
      )
@@ -740,17 +744,40 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # A term searches the words threads and their replies actually carry. A tool
   # name narrows to threads about that name — observed or only reported — on
   # top of whatever else the term matched.
-  defp thread_search(q, tool_name, site, params) do
+  defp thread_search(q, tool_name, site, since, params) do
     term = q || tool_name
     offset = search_offset(params)
 
     {:ok,
-     Forum.search_threads!(term, %{site_id: site && site.id, tool_name: q && tool_name},
+     Forum.search_threads!(
+       term,
+       %{site_id: site && site.id, tool_name: q && tool_name, since: since},
        load: @thread_search_loads,
        page: [limit: @search_report_limit, offset: offset]
      )
      |> Map.put(:offset, offset)}
   end
+
+  # A plain cutoff keeps a "recent" read honest: threads touched at or after
+  # it, newest activity first.
+  defp since_minutes(nil), do: {:ok, nil}
+
+  defp since_minutes(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {minutes, ""} when minutes in 1..43_200 ->
+        {:ok, DateTime.add(DateTime.utc_now(), -minutes, :minute)}
+
+      _ ->
+        {:error, {:invalid, ["since_minutes: give whole minutes between 1 and 43200."]}}
+    end
+  end
+
+  defp since_minutes(_value), do: {:error, {:invalid, ["since_minutes: give whole minutes."]}}
+
+  defp since_filter(nil), do: []
+
+  defp since_filter(%DateTime{} = since),
+    do: [filter: expr(last_activity_at >= ^since)]
 
   defp search_offset(params) do
     case Integer.parse(params["offset"] || "") do
@@ -786,17 +813,50 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
            Forum.list_replies_for_report(report.id,
              load: [:author],
              page: paging
-           ) do
+           ),
+         {:ok, participants} <- thread_participants(report) do
       entries = Enum.map(page.results, &{reply_entry(&1, report), &1.__metadata__.keyset})
-      fit_thread_page(report_entry(report), entries, page.more?)
+      fit_thread_page(report_entry(report), participants, entries, page.more?)
     end
+  end
+
+  # Everyone who wrote on the thread, named once each — asker first, then the
+  # reply authors in the order they first appear, across every published reply
+  # rather than only the page being read. A reply with no profile still
+  # counts, under the kind of writer it was.
+  defp thread_participants(report) do
+    with {:ok, replies} <-
+           Reply
+           |> Ash.Query.filter(report_id == ^report.id and visibility == :published)
+           |> Ash.Query.load(:author)
+           |> Ash.read() do
+      {:ok, participant_map(report, replies)}
+    end
+  end
+
+  defp participant_map(report, replies) do
+    named =
+      [report.author | Enum.map(replies, & &1.author)]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(&AuthorJSON.author/1)
+      |> Enum.uniq_by(& &1.profile_id)
+
+    unnamed =
+      replies
+      |> Enum.filter(&is_nil(&1.author))
+      |> Enum.map(& &1.author_kind)
+      |> Enum.frequencies()
+      |> Enum.map(fn {kind, count} -> %{written_by: kind, count: count} end)
+
+    %{named: named, unnamed: unnamed}
   end
 
   # Keep complete entries. A cursor must follow the last returned row, including
   # when the byte budget leaves some of the fetched page for the next request.
-  defp fit_thread_page(report, entries, more?) do
+  defp fit_thread_page(report, participants, entries, more?) do
     payload = %{
       report: report,
+      participants: participants,
       replies: Enum.map(entries, &elem(&1, 0)),
       pagination: %{
         has_more: more?,
@@ -809,7 +869,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         {:ok, payload}
 
       match?([_first, _second | _rest], entries) ->
-        fit_thread_page(report, Enum.drop(entries, -1), true)
+        fit_thread_page(report, participants, Enum.drop(entries, -1), true)
 
       true ->
         {:error, :response_too_large}
