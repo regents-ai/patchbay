@@ -87,5 +87,64 @@ defmodule Patchbay.Forum do
       define(:mark_repair_attempt_phase, action: :mark_phase, args: [:phase])
       define(:record_repair_attempt_outcome, action: :record_outcome)
     end
+
+    resource(Patchbay.Forum.ModerationAction)
   end
+
+  @doc """
+  Applies a moderation decision to a thread or reply and writes the audit row
+  that makes the decision accountable.
+
+  `action` is `:quarantine` (hold it out of sight), `:publish` (put it back),
+  or `:redact` (keep it out permanently). `reason` is the moderator's words,
+  kept with the record so the decision can be explained later. The caller's
+  profile supplies the actor id — the page has already checked the wallet.
+  """
+  @spec moderate(struct(), atom(), String.t(), term()) :: {:ok, struct()} | {:error, term()}
+  def moderate(subject, action, reason, actor) when action in [:quarantine, :publish, :redact] do
+    visibility = %{quarantine: :quarantined, publish: :published, redact: :redacted}[action]
+
+    Ash.transact(
+      [Patchbay.Forum.Report, Patchbay.Forum.Reply, Patchbay.Forum.ModerationAction],
+      fn ->
+        with {:ok, updated} <- set_visibility(subject, visibility),
+             {:ok, _audit} <- record_moderation(subject, action, reason, actor) do
+          {:ok, updated}
+        end
+      end
+    )
+    |> case do
+      {:ok, {:ok, updated}} -> {:ok, updated}
+      {:ok, {:error, reason}} -> {:error, reason}
+      other -> other
+    end
+  end
+
+  # Moderation decisions are applied internally: the allowlist check happens at
+  # the door, not per record.
+  defp set_visibility(%Patchbay.Forum.Report{} = report, visibility) do
+    Ash.update(report, %{visibility: visibility}, action: :set_visibility, authorize?: false)
+  end
+
+  # Same internal write as above, for a reply.
+  defp set_visibility(%Patchbay.Forum.Reply{} = reply, visibility) do
+    Ash.update(reply, %{visibility: visibility}, action: :set_visibility, authorize?: false)
+  end
+
+  defp record_moderation(subject, action, reason, actor) do
+    # The audit row is written by the domain function itself; nothing public
+    # creates one.
+    Patchbay.Forum.ModerationAction
+    |> Ash.Changeset.for_create(:record, %{
+      subject_kind: subject_kind(subject),
+      subject_id: subject.id,
+      action: action,
+      reason: reason,
+      actor_profile_id: actor.id
+    })
+    |> Ash.create(authorize?: false)
+  end
+
+  defp subject_kind(%Patchbay.Forum.Report{}), do: :thread
+  defp subject_kind(%Patchbay.Forum.Reply{}), do: :reply
 end

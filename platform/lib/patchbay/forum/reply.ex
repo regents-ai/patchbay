@@ -102,7 +102,7 @@ defmodule Patchbay.Forum.Reply do
     read :for_report do
       description("Oldest replies first, so a thread reads in order.")
       argument(:report_id, :uuid, allow_nil?: false)
-      filter(expr(report_id == ^arg(:report_id)))
+      filter(expr(report_id == ^arg(:report_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :asc, id: :asc]))
     end
@@ -219,6 +219,16 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
       change(Patchbay.Forum.Changes.TouchThread)
+    end
+
+    update :set_visibility do
+      description("""
+      Moderation's word on whether this reply may be shown. Reached only
+      through the moderation door, which writes the audit row alongside.
+      """)
+
+      accept([:visibility])
+      require_atomic?(true)
     end
 
     update :set_reward_eligibility do

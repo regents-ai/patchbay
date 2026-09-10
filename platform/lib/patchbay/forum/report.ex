@@ -218,7 +218,11 @@ defmodule Patchbay.Forum.Report do
   end
 
   aggregates do
-    count(:reply_count, :replies)
+    # Only published replies count; what moderation holds or redacts is not
+    # part of the public tally.
+    count(:reply_count, :replies) do
+      filter(expr(visibility == :published))
+    end
   end
 
   calculations do
@@ -274,6 +278,7 @@ defmodule Patchbay.Forum.Report do
 
     read :recent do
       description("Newest reports first, every site.")
+      filter(expr(visibility == :published))
       pagination(keyset?: true, default_limit: 40, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
@@ -281,7 +286,7 @@ defmodule Patchbay.Forum.Report do
     read :for_tools do
       description("Newest ordinary reports about any of these tool versions first.")
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids) and not bounty_open))
+      filter(expr(tool_id in ^arg(:tool_ids) and not bounty_open and visibility == :published))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
@@ -289,7 +294,7 @@ defmodule Patchbay.Forum.Report do
     read :priority_for_tools do
       description("Newest paid priority reports about any of these tool versions first.")
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids) and bounty_open))
+      filter(expr(tool_id in ^arg(:tool_ids) and bounty_open and visibility == :published))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
@@ -302,7 +307,7 @@ defmodule Patchbay.Forum.Report do
       """)
 
       argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids)))
+      filter(expr(tool_id in ^arg(:tool_ids) and visibility == :published))
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
       prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
     end
@@ -437,7 +442,7 @@ defmodule Patchbay.Forum.Report do
     read :for_invocation do
       description("The report a logged call already stands behind, if one does.")
       argument(:invocation_id, :uuid, allow_nil?: false)
-      filter(expr(invocation_id == ^arg(:invocation_id)))
+      filter(expr(invocation_id == ^arg(:invocation_id) and visibility == :published))
     end
 
     read :bounties_to_reconcile do
@@ -635,6 +640,16 @@ defmodule Patchbay.Forum.Report do
       description("Records that a reply moved this thread: activity time becomes now.")
       accept([])
       change(set_attribute(:last_activity_at, &DateTime.utc_now/0))
+    end
+
+    update :set_visibility do
+      description("""
+      Moderation's word on whether this record may be shown. Reached only
+      through the moderation door, which writes the audit row alongside.
+      """)
+
+      accept([:visibility])
+      require_atomic?(true)
     end
 
     update :mark_answered do

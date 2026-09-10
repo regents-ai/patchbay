@@ -406,8 +406,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp fetch_report(id, opts \\ []) do
     case Ecto.UUID.cast(id) do
-      {:ok, uuid} -> found_or_missing(Forum.get_report(uuid, opts))
-      :error -> {:error, :not_found}
+      {:ok, uuid} ->
+        # A thread held out of sight answers like one that does not exist.
+        case Forum.get_report(uuid, opts) do
+          {:ok, %{visibility: :published} = report} -> {:ok, report}
+          {:ok, _held} -> {:error, :not_found}
+          other -> found_or_missing(other)
+        end
+
+      :error ->
+        {:error, :not_found}
     end
   end
 

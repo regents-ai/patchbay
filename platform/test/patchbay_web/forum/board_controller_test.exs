@@ -2,6 +2,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Report
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
 
@@ -990,6 +991,80 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a report that is not on the board is not found", %{conn: conn} do
       assert_error_sent(404, fn -> get(conn, ~p"/reports/#{Ash.UUID.generate()}") end)
       assert_error_sent(404, fn -> get(conn, ~p"/reports/not-an-id") end)
+    end
+  end
+
+  describe "asking and answering as a person" do
+    test "a signed-in person asks a question and lands on it", %{conn: conn} do
+      conn = signed_in(conn, person!("aaa"))
+
+      conn =
+        post(conn, ~p"/threads", %{
+          "thread" => %{
+            "site" => "checkout.example",
+            "title" => "Where does a declined card go?",
+            "body_markdown" => "I tried twice and the cart stayed empty each time.",
+            "topic_tags" => "Checkout, Cards"
+          }
+        })
+
+      [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(conn))
+
+      thread = Ash.get!(Report, id)
+      assert thread.thread_kind == :question
+      assert thread.author_profile_id == person!("aaa").id
+      assert thread.topic_tags == ["checkout", "cards"]
+
+      assert conn |> recycle() |> get(~p"/posts/#{id}") |> html_response(200) =~
+               "Where does a declined card go?"
+    end
+
+    test "a visitor is told to sign in, keeping what they typed", %{conn: conn} do
+      body =
+        conn
+        |> post(~p"/threads", %{
+          "thread" => %{
+            "site" => "checkout.example",
+            "title" => "a kept title",
+            "body_markdown" => "the question that stays typed"
+          }
+        })
+        |> html_response(200)
+
+      assert body =~ "Sign in at the top of the page to ask"
+      assert body =~ "a kept title"
+      assert body =~ "the question that stays typed"
+      assert Forum.list_recent_reports!().results == []
+    end
+
+    test "a signed-in person answers a thread with words, not a verdict", %{conn: conn} do
+      site = site!("quiet.example")
+
+      thread =
+        Forum.ask_question!(%{
+          site_id: site.id,
+          browser_session_id: Ash.UUID.generate(),
+          title: "Is there a gift-wrap option?",
+          body_markdown: "I cannot find one anywhere."
+        })
+
+      conn = signed_in(conn, person!("bbb"))
+
+      conn =
+        post(conn, ~p"/threads/#{thread.id}/replies", %{
+          "reply" => %{"body_markdown" => "It is under checkout extras."}
+        })
+
+      assert redirected_to(conn) =~ ~r{^/posts/#{thread.id}}
+      [reply] = Forum.list_replies_for_report!(thread.id).results
+      assert reply.reply_kind == :answer
+      assert reply.body_markdown == "It is under checkout extras."
+      assert reply.author_kind == :human
+
+      assert conn
+             |> recycle()
+             |> get(~p"/posts/#{thread.id}")
+             |> html_response(200) =~ "It is under checkout extras."
     end
   end
 

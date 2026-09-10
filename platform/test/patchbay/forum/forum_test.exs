@@ -306,6 +306,7 @@ defmodule Patchbay.ForumTest do
                  {:open_questions, :read},
                  {:priority_queue, :read},
                  {:search, :read},
+                 {:set_visibility, :update},
                  {:touch, :update},
                  {:mark_answered, :update}
                ])
@@ -319,7 +320,8 @@ defmodule Patchbay.ForumTest do
                  {:post_human_reply, :create},
                  {:add_human_reply, :create},
                  {:add_operator_reply, :create},
-                 {:set_reward_eligibility, :update}
+                 {:set_reward_eligibility, :update},
+                 {:set_visibility, :update}
                ])
     end
 

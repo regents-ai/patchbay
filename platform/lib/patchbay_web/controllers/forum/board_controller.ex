@@ -239,7 +239,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     with {:ok, draft} <- conversation_draft(params["reply"]),
          {:ok, posted} <- post_thread_reply(conn, report.id, draft) do
-      landing(conn, report, posted)
+      landing(conn, report, posted, :posts)
     else
       {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
     end
@@ -530,10 +530,10 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp reply_draft(_reply), do: {:error, %{said: @not_posted, draft: %{}}}
 
-  defp landing(conn, report, posted) do
+  defp landing(conn, report, posted, door \\ :reports) do
     case Board.page_ending_at(posted) do
       {:ok, cursor} ->
-        redirect(conn, to: replies_path(report.id, cursor))
+        redirect(conn, to: replies_path(door, report.id, cursor))
 
       {:error, failure} ->
         Logger.warning("Reply posted but its page was not read: #{inspect(error_type(failure))}")
@@ -548,8 +548,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp replies_path(id, nil), do: ~p"/reports/#{id}" <> "#patchbay-replies"
-  defp replies_path(id, cursor), do: ~p"/reports/#{id}?after=#{cursor}" <> "#patchbay-replies"
+  defp replies_path(:reports, id, nil), do: ~p"/reports/#{id}" <> "#patchbay-replies"
+  defp replies_path(:posts, id, nil), do: ~p"/posts/#{id}" <> "#patchbay-replies"
+
+  defp replies_path(:reports, id, cursor),
+    do: ~p"/reports/#{id}?after=#{cursor}" <> "#patchbay-replies"
+
+  defp replies_path(:posts, id, cursor),
+    do: ~p"/posts/#{id}?after=#{cursor}" <> "#patchbay-replies"
 
   defp add_reply(%{assigns: %{current_profile: nil}}, _id, draft) do
     {:error,

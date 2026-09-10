@@ -400,8 +400,10 @@ defmodule PatchbayWeb.Forum.Board do
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
   def fetch_report(id) do
     case Forum.get_report(id, load: @post_loads ++ [accepted_reply: [:author]]) do
-      {:ok, report} -> {:ok, report}
-      # An address that names no report, or is not an id at all, is not on the board.
+      # An address that names no report, or names one held out of sight, is
+      # not on the board.
+      {:ok, %{visibility: :published} = report} -> {:ok, report}
+      {:ok, _held} -> :error
       {:error, _no_such_report} -> :error
     end
   end

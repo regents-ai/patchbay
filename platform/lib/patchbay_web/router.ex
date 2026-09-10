@@ -206,6 +206,8 @@ defmodule PatchbayWeb.Router do
     post "/threads/:id/replies", BoardController, :reply_thread
     get "/questions", BoardController, :questions
     get "/priority", BoardController, :priority
+    get "/moderation", ModerationController, :index
+    post "/moderation", ModerationController, :decide
     get "/start", BoardController, :start
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply

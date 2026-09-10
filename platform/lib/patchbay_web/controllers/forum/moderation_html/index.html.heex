@@ -1,0 +1,95 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-moderation">
+  <.board_header title="Moderation">
+    <:crumbs>PATCHBAY / MODERATION</:crumbs>
+    <:meta>
+      <span class="patchbay-generation">Private</span>
+    </:meta>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    What a decision does is written next to it: hold keeps a record out of
+    every public view until you decide, put back returns it, and remove keeps
+    it out for good. Every decision is recorded below with its reason.
+  </p>
+
+  <p :if={Phoenix.Flash.get(@flash, :error)} class="pb-reply-form-problem" role="alert">
+    {Phoenix.Flash.get(@flash, :error)}
+  </p>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-mod-queue">
+    <h2 id="pb-mod-queue">Waiting for a decision</h2>
+
+    <ul class="pb-mod-list">
+      <li :for={{kind, record} <- @quarantined} class="pb-mod-item">
+        <header class="pb-mod-item-head">
+          <span>{subject_label(kind)} · {record.inserted_at}</span>
+          <a href={subject_path(kind, record)}>view</a>
+        </header>
+        <div class="pb-mod-item-body">{subject_text(record)}</div>
+        <form method="post" action={~p"/moderation"} class="pb-mod-actions">
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="subject[kind]" value={subject_label(kind)} />
+          <input type="hidden" name="subject[id]" value={record.id} />
+          <input
+            type="text"
+            name="subject[reason]"
+            required
+            maxlength="500"
+            placeholder="Why — this is recorded with the decision"
+          />
+          <button type="submit" name="subject[action]" value="publish">Put back</button>
+          <button type="submit" name="subject[action]" value="redact">Remove</button>
+        </form>
+      </li>
+    </ul>
+
+    <p :if={@quarantined == []} class="patchbay-muted">Nothing is waiting.</p>
+  </section>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-mod-latest">
+    <h2 id="pb-mod-latest">Newest published</h2>
+
+    <ul class="pb-mod-list">
+      <li :for={thread <- @latest} class="pb-mod-item">
+        <header class="pb-mod-item-head">
+          <span>thread · {thread.inserted_at}</span>
+          <a href={~p"/posts/#{thread.id}"}>view</a>
+        </header>
+        <div class="pb-mod-item-body">{thread.title || thread.note}</div>
+        <form method="post" action={~p"/moderation"} class="pb-mod-actions">
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="subject[kind]" value="thread" />
+          <input type="hidden" name="subject[id]" value={thread.id} />
+          <input
+            type="text"
+            name="subject[reason]"
+            required
+            maxlength="500"
+            placeholder="Why — this is recorded with the decision"
+          />
+          <button type="submit" name="subject[action]" value="quarantine">Hold</button>
+          <button type="submit" name="subject[action]" value="redact">Remove</button>
+        </form>
+      </li>
+    </ul>
+
+    <p :if={@latest == []} class="patchbay-muted">Nothing is published yet.</p>
+  </section>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-mod-record">
+    <h2 id="pb-mod-record">Decisions on record</h2>
+
+    <ul class="pb-mod-list">
+      <li :for={decision <- @decisions} class="pb-mod-item">
+        <header class="pb-mod-item-head">
+          <span>
+            {decision.action} {decision.subject_kind} · {decision.inserted_at}
+          </span>
+        </header>
+        <div class="pb-mod-item-body">{decision.reason}</div>
+      </li>
+    </ul>
+
+    <p :if={@decisions == []} class="patchbay-muted">No decisions yet.</p>
+  </section>
+</main>

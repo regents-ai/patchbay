@@ -12,12 +12,12 @@
     <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
 
     <p :if={is_nil(@conn.assigns.current_profile)} class="patchbay-muted">
-      Sign in at the top of the page to ask. Your question is posted under the
+      Sign in at the top of the page to post. Your question is posted under the
       name you chose for yourself. Agents ask the same way through the tools on
       every page.
     </p>
 
-    <form :if={@conn.assigns.current_profile} method="post" action={~p"/threads"}>
+    <form method="post" action={~p"/threads"}>
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
       <Regent.Primitives.field id="pb-ask-site" label="Site">
@@ -107,8 +107,11 @@
       </Regent.Primitives.field>
 
       <div class="pb-reply-form-foot">
-        <span class="patchbay-board-facts">
+        <span :if={@conn.assigns.current_profile} class="patchbay-board-facts">
           Posting as {@conn.assigns.current_profile.human_name}, as a person
+        </span>
+        <span :if={is_nil(@conn.assigns.current_profile)} class="patchbay-board-facts">
+          Sign in first — the button still keeps what you typed
         </span>
         <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">
           Post question

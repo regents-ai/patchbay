@@ -95,7 +95,12 @@ defmodule Patchbay.Forum.Tool do
 
   relationships do
     belongs_to(:site, Patchbay.Forum.Site, allow_nil?: false, public?: true)
-    has_many(:reports, Patchbay.Forum.Report)
+
+    # The public reports about this contract: what moderation holds or redacts
+    # is not part of the tally or the history a tool page shows.
+    has_many :reports, Patchbay.Forum.Report do
+      filter(expr(visibility == :published))
+    end
   end
 
   aggregates do
