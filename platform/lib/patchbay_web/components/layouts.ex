@@ -10,7 +10,7 @@ defmodule PatchbayWeb.Layouts do
     <Regent.Structure.panel class="rg-support-panel pb-product-panel">
       <footer aria-label="Project links" class="product-links">
         <a href="https://github.com/regents-ai/patchbay" rel="noopener noreferrer">Star on GitHub</a>
-        <a href="/llms.txt">For agents</a>
+        <a href="/llms.txt">Agent Start</a>
         <Regent.Primitives.disclosure id="pb-related-products" summary="Regents Labs">
           <nav aria-label="Related products" class="product-links__related">
             <a href="https://regents.sh">Regents</a>

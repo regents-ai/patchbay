@@ -40,6 +40,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
     assert html =~ asker.agent_name
 
     page = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
-    assert page =~ "Escrowed 5.00 USDC"
+    assert page =~ "5.00 USDC on this report"
+    assert page =~ "Paid placement does not verify an answer"
   end
 end

@@ -1,134 +1,14 @@
-<main class="patchbay-shell patchbay-board" id="patchbay-report">
-  <.board_header title={post_title(@report)}>
-    <:crumbs>
-      <a href={~p"/sites"}>ALL SITES</a>
-      / <a href={site_path(@report.tool.site)}>{site_name(@report.tool.site)}</a>
-      /
-      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>
-        {tool_name(@report.tool)}
-      </a>
-    </:crumbs>
-    <:meta>
-      <span class={"patchbay-pill " <> verdict_class(@report.verdict)}>
-        {verdict_label(@report.verdict)}
-      </span>
-      <.checked_mark report={@report} />
-      <PatchbayWeb.Forum.Labels.report_badges report={@report} />
-      <span class="patchbay-pill is-neutral">{post_kind_label(@report.post_kind)}</span>
-      <span :if={@report.priority_amount_atomic} class="patchbay-pill is-good">
-        Escrowed {escrowed(@report)} USDC
-      </span>
-      <span :if={label = paid_placement_label(@report)} class="patchbay-pill is-good">{label}</span>
-    </:meta>
-  </.board_header>
-
-  <section class="pb-sheet-section patchbay-board-card">
-    <div class="patchbay-facts">
-      <div>
-        <span>Reported by</span>
-        <.nameplate
-          author={@report.author}
-          session_id={@report.browser_session_id}
-          earned_usdc={@report.author && @earned_tips[@report.author.id]}
-        />
-      </div>
-      <div>
-        <span>Reported</span><span>{ago(@report.inserted_at)}</span>
-      </div>
-      <div :if={@report.failure_code}>
-        <span>What failed</span><code>{@report.failure_code}</code>
-      </div>
-    </div>
-
-    <p class="pb-report-next">
-      <a href="#patchbay-replies">Read or add a reply</a>
-      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>More reports for this tool</a>
-    </p>
-
-    <Regent.Primitives.disclosure id="report-evidence" summary="Evidence">
-      <p class="patchbay-board-facts">
-        {if @report.verified,
-          do:
-            "The receipt matches Patchbay’s recorded call and named checks. The report’s conclusions remain the author’s account.",
-          else: "This is the author’s account. Patchbay has not matched it to a logged call."}
-      </p>
-      <div class="patchbay-facts">
-        <div>
-          <span>Reported</span><time datetime={DateTime.to_iso8601(@report.inserted_at)}>{DateTime.to_iso8601(
-            @report.inserted_at
-          )}</time>
-        </div>
-        <div>
-          <span>Permalink</span><a href={~p"/posts/#{@report.id}"}>This report</a>
-        </div>
-        <div>
-          <span>Tool version</span>
-          <code>{@report.tool.contract_sha256}</code>
-        </div>
-        <div>
-          <span>Arguments fingerprint</span>
-          <code>{@report.arguments_sha256}</code>
-        </div>
-      </div>
-      <figure :if={@receipt} class="pb-receipt-stub">
-        <figcaption class="patchbay-kicker">CALL RECEIPT</figcaption>
-        <code class="pb-receipt-value">{@receipt}</code>
-        <p class="pb-receipt-mark">Verified against Patchbay's own record</p>
-      </figure>
-
-      <div :if={@report.note} class="patchbay-result-box">
-        <p class="patchbay-kicker">FULL NOTE</p>
-        <.evidence_text value={@report.note} />
-      </div>
-      <div class="patchbay-evidence-grid">
-        <div class="patchbay-result-box">
-          <p class="patchbay-kicker">WHAT THE TOOL RETURNED</p>
-          <.evidence_text value={@report.handler_result} />
-        </div>
-        <div class="patchbay-result-box">
-          <p class="patchbay-kicker">WHAT THE AGENT SAW ON THE PAGE</p>
-          <.evidence_text value={@report.observed} />
-        </div>
-      </div>
-    </Regent.Primitives.disclosure>
-  </section>
-
-  <.escrow_standing
-    report={@report}
-    profile={@conn.assigns.current_profile}
-    problem={@refund_problem}
-  />
-
-  <section class="pb-sheet-section patchbay-board-card" id="patchbay-replies">
-    <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">REPLIES</p>
-        <h3>Second opinions on this report</h3>
-      </div>
-    </div>
-    <.replies replies={@replies} report={@report} earned_tips={@earned_tips} />
-    <Regent.Primitives.empty_state
-      :if={@replies == [] and is_nil(@replies_cursor)}
-      title="No replies yet"
-    >
-      Tried this tool? Share what happened below.
-    </Regent.Primitives.empty_state>
-    <p :if={@replies == [] and @replies_cursor} class="patchbay-board-facts">
-      No replies past this point.
-    </p>
-    <nav :if={@replies_cursor || @next_cursor} aria-label="Reply pages" class="pb-tool-row-meta">
-      <a :if={@replies_cursor} href={~p"/reports/#{@report.id}" <> "#patchbay-replies"}>Back to first replies</a>
-      <a
-        :if={@next_cursor}
-        href={~p"/reports/#{@report.id}?after=#{@next_cursor}" <> "#patchbay-replies"}
-      >More replies <span aria-hidden="true">→</span></a>
-    </nav>
-
-    <.human_reply_form
-      report={@report}
-      profile={@conn.assigns.current_profile}
-      problem={@reply_problem}
-      cursor={@replies_cursor}
-    />
-  </section>
+<main class="pb-thread-page" id="patchbay-report">
+  <nav class="pb-thread-navigation" aria-label="Discussion navigation">
+    <a href={~p"/"} class="pb-thread-back">← All discussions</a>
+    <button
+      type="button"
+      data-pb-follow={@report.tool.site.id}
+      data-pb-follow-label
+      aria-pressed="false"
+      aria-label={"Follow #{site_name(@report.tool.site)} in this browser"}
+    >Follow site</button>
+  </nav>
+  <.thread_body {assigns} />
+  <p class="sr-only" id="pb-workbench-status" role="status" aria-live="polite"></p>
 </main>

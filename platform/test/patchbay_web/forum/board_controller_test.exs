@@ -53,7 +53,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       html = conn |> get(~p"/") |> html_response(200)
 
       assert html =~ ~s(href="/posts/#{report.id}")
-      assert html =~ "shop.example / checkout"
+      assert html =~ "shop.example"
+      assert html =~ "checkout"
       assert html =~ "Did not work"
       assert html =~ "the cart stayed empty"
       refute html =~ "A website catches its own broken agent tool"
@@ -75,7 +76,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "an empty search keeps the query and offers a reset", %{conn: conn} do
       html = conn |> get(~p"/?q=unreported.example.invalid") |> html_response(200)
       document = LazyHTML.from_document(html)
-      assert html =~ "No matching reports"
+      assert html =~ "No discussions here yet"
 
       assert Enum.count(
                LazyHTML.query(document, ~s(input[name="q"][value="unreported.example.invalid"]))
@@ -418,7 +419,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       end
     end
 
-    defp notes_shown(body), do: Regex.scan(~r/reply-\d{3}/, body) |> List.flatten()
+    defp notes_shown(body) do
+      body
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(".patchbay-reply-list .patchbay-board-text")
+      |> LazyHTML.text()
+      |> then(&Regex.scan(~r/reply-\d{3}/, &1))
+      |> List.flatten()
+    end
 
     defp next_page_path(body) do
       case Regex.run(~r/href="(\/reports\/[^"#]*after=[^"#]*)#patchbay-replies"/, body) do
@@ -889,7 +897,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
       assert body =~ "No replies yet"
-      assert body =~ ~s(href="#patchbay-replies")
+      assert body =~ ~s(id="patchbay-replies")
       assert body =~ "just now"
     end
 
@@ -944,7 +952,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       document = LazyHTML.from_document(html)
       evidence = document |> LazyHTML.query("#report-evidence") |> LazyHTML.text()
       preview = document |> LazyHTML.query("h1") |> LazyHTML.text()
-      assert evidence =~ note
+      assert document |> LazyHTML.query(".pb-thread-prose") |> LazyHTML.text() =~ note
       assert evidence =~ observed
       assert evidence =~ @contract
       assert evidence =~ @arguments
@@ -966,7 +974,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-      assert body =~ "Verified against Patchbay"
+      assert body =~ "Page record matched"
       assert body =~ receipt
       refute body =~ "not matched to a logged call"
     end
@@ -976,22 +984,20 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-      assert body =~ "Unverified: not matched to a logged call"
-      refute body =~ "Verified against Patchbay"
+      assert body =~ "Patchbay has not matched it to a logged call"
+      refute body =~ "Page record matched"
       refute body =~ "Call receipt"
     end
 
-    test "a receipt is set out as the stub it is, and nothing else on the page is",
+    test "a matched receipt is retained once in the collapsed evidence",
          %{conn: conn} do
       %{report: report, receipt: receipt} = matched_report!()
 
       body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-      assert body |> String.split(~s(class="pb-receipt-stub")) |> length() == 2
-      assert body =~ ~s(<code class="pb-receipt-value">#{receipt}</code>)
-
-      # The stub carries the checked line, so the page does not say it twice.
-      assert body |> String.split("Verified against Patchbay's own record") |> length() == 2
+      evidence = body |> LazyHTML.from_document() |> LazyHTML.query("#report-evidence")
+      assert evidence |> LazyHTML.text() |> String.split(receipt) |> length() == 2
+      assert Enum.empty?(LazyHTML.query(evidence, "[open]"))
     end
 
     test "a report with no receipt has no stub to show", %{conn: conn} do
@@ -1091,10 +1097,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       %{bodies: bodies}
     end
 
-    test "offers a way into a repair room", %{bodies: bodies} do
+    test "offers the agent starting point", %{bodies: bodies} do
       for body <- bodies do
-        assert body =~
-                 ~r{<a class="patchbay-room-link" href="/webmcp/rooms/skill-uplift">\s*Open your own repair room\s*</a>}
+        assert body =~ ~s(href="/start")
       end
     end
 

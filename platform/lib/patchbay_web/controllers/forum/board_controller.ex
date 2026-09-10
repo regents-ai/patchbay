@@ -21,6 +21,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum
   alias Patchbay.Forum.PriorityRefund
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SessionBudget
@@ -28,20 +29,76 @@ defmodule PatchbayWeb.Forum.BoardController do
   @not_posted "That reply could not be posted."
 
   def home(conn, params) do
-    q = presence(params["q"])
-    {reports, more?} = Board.recent_reports(q)
+    hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
+    hello_events = Patchbay.Forum.Hellos.latest(hello_stream)
+    filters = Discussions.filters(params)
+    following = Discussions.following(conn.req_cookies["pb_following"])
     {sites, more_sites?} = Board.list_directory()
 
-    render(conn, :home,
-      page_title: "WebMCP directory",
-      q: q,
-      reports: reports,
-      more?: more?,
-      sites: sites,
-      more_sites?: more_sites?,
+    case Discussions.page(filters, following, params["after"]) do
+      {:ok, reports, next_page} ->
+        selected = home_thread(params["thread"], reports)
+
+        render(conn, :home,
+          page_title: "Discussions",
+          hello_stream: hello_stream,
+          hello_events: hello_events,
+          filters: filters,
+          reports: reports,
+          next_page: next_page,
+          current_page: params["after"],
+          sites: sites,
+          more_sites?: more_sites?,
+          following: following,
+          thread: selected,
+          payments_enabled?: Board.payments_enabled?()
+        )
+
+      {:error, :invalid_cursor} ->
+        conn
+        |> put_flash(:error, "That discussion page has expired or does not match these filters.")
+        |> redirect(to: ~p"/?#{filters}")
+
+      {:error, _failure} ->
+        conn |> put_status(:service_unavailable) |> text("Discussions unavailable. Please retry.")
+    end
+  end
+
+  defp home_thread(nil, []), do: nil
+  defp home_thread(nil, [report | _]), do: home_thread(report.id, [])
+
+  defp home_thread(id, _reports) when is_binary(id) do
+    report = fetch_report!(id)
+
+    case Board.replies(report) do
+      {:ok, replies, next_cursor} ->
+        %{
+          report: report,
+          receipt: Board.receipt(report),
+          replies: replies,
+          replies_cursor: nil,
+          next_cursor: next_cursor,
+          reply_filter: "all",
+          reply_problem: nil,
+          refund_problem: nil,
+          earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
+        }
+
+      {:error, _failure} ->
+        %{report: report, unavailable?: true}
+    end
+  end
+
+  defp home_thread(_id, _reports), do: raise(NotFoundError)
+
+  def start(conn, _params) do
+    render(conn, :start,
+      page_title: "Start with an agent",
       payments_enabled?: Board.payments_enabled?()
     )
   end
+
+  def retired_demo(conn, _params), do: redirect(conn, to: ~p"/start")
 
   def agent_setup(conn, _params) do
     render(conn, :agent_setup,
@@ -306,12 +363,14 @@ defmodule PatchbayWeb.Forum.BoardController do
   # that carries the page only while that page can still be shown.
   defp show_report(conn, id, params, problems) do
     report = fetch_report!(id)
+    filter = if params["replies"] in ["accepted", "official"], do: params["replies"], else: "all"
 
     with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),
-         {:ok, replies, next_cursor} <- Board.replies(report, keyset) do
+         {:ok, replies, next_cursor} <- Board.replies(report, keyset, filter) do
       render(conn, :report,
-        page_title: "Report",
+        page_title: PatchbayWeb.Forum.BoardHTML.post_title(report),
         report: report,
+        reply_filter: filter,
         receipt: Board.receipt(report),
         replies: replies,
         replies_cursor: params["after"],
@@ -363,13 +422,4 @@ defmodule PatchbayWeb.Forum.BoardController do
       :error -> raise NotFoundError
     end
   end
-
-  defp presence(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
-
-  defp presence(_value), do: nil
 end

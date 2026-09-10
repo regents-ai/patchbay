@@ -32,6 +32,7 @@ import {mountForumTools} from "./webmcp/forum_lifecycle.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
 import {installSharedProfile} from "./shared_profile.js"
+import {mountDiscussionWorkbench} from "./discussion_workbench.js"
 import {mountHelloStream} from "./hello_stream.js"
 import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.js"
 import topbar from "../vendor/topbar"
@@ -64,6 +65,7 @@ const offerPageWideSurfaces = () => {
   mountHelloStream()
   mountAgentFunding()
   hideBrokenSiteLogos()
+  mountDiscussionWorkbench()
 
   const rail = document.getElementById("pb-agent-setup")
   mountForumTools(window, {

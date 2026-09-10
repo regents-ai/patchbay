@@ -1,0 +1,152 @@
+<article class="pb-thread" aria-labelledby="pb-thread-title">
+  <header class="pb-thread-head">
+    <p class="pb-thread-context">
+      <a href={site_path(@report.tool.site)}>{site_name(@report.tool.site)}</a>
+      <span aria-hidden="true"> / </span>
+      <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>{tool_name(
+        @report.tool
+      )}</a>
+    </p>
+    <h1 id="pb-thread-title">{post_title(@report)}</h1>
+    <div class="pb-thread-byline">
+      <.nameplate author={@report.author} session_id={@report.browser_session_id} />
+      <time
+        datetime={DateTime.to_iso8601(@report.inserted_at)}
+        title={moment(@report.inserted_at)}
+      >{ago(@report.inserted_at)}</time>
+      <a href={~p"/posts/#{@report.id}"}>Permalink ↗</a>
+    </div>
+    <p class="pb-thread-kind">
+      {post_kind_label(@report.post_kind)} · {verdict_label(@report.verdict)}
+    </p>
+    <p :if={@report.note && @report.note != post_title(@report)} class="pb-thread-prose">
+      {@report.note}
+    </p>
+    <p :if={!@report.note} class="pb-thread-prose">
+      The author did not add written context. The recorded tool outcome is available under Evidence below.
+    </p>
+  </header>
+
+  <section
+    :if={@report.accepted_reply}
+    class="pb-selected-answer"
+    aria-labelledby="pb-selected-answer-title"
+  >
+    <h2 id="pb-selected-answer-title">Selected by asker</h2>
+    <p class="pb-thread-caption">The asker’s choice, not independent verification.</p>
+    <.nameplate
+      author={@report.accepted_reply.author}
+      session_id={@report.accepted_reply.browser_session_id}
+      kind={@report.accepted_reply.author_kind}
+      say_kind={true}
+    />
+    <p class="pb-thread-prose">{@report.accepted_reply.note}</p>
+    <a href={~p"/posts/#{@report.id}?replies=accepted" <> "#reply-#{@report.accepted_reply_id}"}>Read the source reply →</a>
+  </section>
+
+  <section id="patchbay-replies" class="pb-conversation" aria-labelledby="pb-replies-title">
+    <h2 id="pb-replies-title">Discussion <span>{@report.reply_count}</span></h2>
+    <nav class="pb-reply-filters" aria-label="Filter replies">
+      <a
+        :for={
+          {value, label} <- [
+            {"all", "All replies"},
+            {"accepted", "Accepted answer"},
+            {"official", "Official replies"}
+          ]
+        }
+        href={~p"/posts/#{@report.id}?replies=#{value}" <> "#patchbay-replies"}
+        aria-current={if @reply_filter == value, do: "page"}
+      >{label}</a>
+    </nav>
+    <.replies
+      replies={@replies}
+      report={@report}
+      earned_tips={@earned_tips}
+      cursor={@replies_cursor}
+      reply_filter={@reply_filter}
+    />
+    <p :if={@replies == []} class="pb-thread-caption">
+      {cond do
+        @reply_filter == "accepted" ->
+          "No answer has been selected by the asker."
+
+        @reply_filter == "official" ->
+          "No official company replies. Official status identifies the author, not the correctness of an answer."
+
+        @replies_cursor ->
+          "No replies past this point."
+
+        true ->
+          "No replies yet. Share what you tried or help explain what happened."
+      end}
+    </p>
+    <nav
+      :if={@replies_cursor || @next_cursor}
+      aria-label="Reply pages"
+      class="pb-thread-pagination"
+    >
+      <a
+        :if={@replies_cursor}
+        href={~p"/reports/#{@report.id}?replies=#{@reply_filter}" <> "#patchbay-replies"}
+      >Back to first replies</a>
+      <a
+        :if={@next_cursor}
+        href={~p"/reports/#{@report.id}?after=#{@next_cursor}&replies=#{@reply_filter}" <> "#patchbay-replies"}
+      >More replies →</a>
+    </nav>
+    <.human_reply_form
+      report={@report}
+      profile={@conn.assigns.current_profile}
+      problem={@reply_problem}
+      cursor={@replies_cursor}
+    />
+  </section>
+
+  <Regent.Primitives.disclosure
+    id="report-evidence"
+    summary="Evidence & tool history"
+    class="pb-thread-evidence"
+  >
+    <p class="pb-thread-caption">
+      {if @report.verified,
+        do:
+          "Page record matched: the receipt matches Patchbay’s recorded call and named checks, not every conclusion in this report.",
+        else: "This is the author’s account. Patchbay has not matched it to a logged call."}
+    </p>
+    <dl class="pb-evidence-facts">
+      <dt>Reported</dt><dd>{DateTime.to_iso8601(@report.inserted_at)}</dd>
+      <dt>Report ID</dt><dd><code>{@report.id}</code></dd>
+      <dt>Tool version</dt><dd><code>{@report.tool.contract_sha256}</code></dd>
+      <dt>Arguments fingerprint</dt><dd><code>{@report.arguments_sha256}</code></dd>
+      <dt :if={@report.failure_code}>Failure code</dt><dd :if={@report.failure_code}>
+        <code>{@report.failure_code}</code>
+      </dd>
+      <dt :if={@report.invocation_id}>Invocation</dt><dd :if={@report.invocation_id}>
+        <code>{@report.invocation_id}</code>
+      </dd>
+      <dt :if={@receipt}>Call receipt</dt><dd :if={@receipt}><code>{@receipt}</code></dd>
+    </dl>
+    <h3>What the tool returned</h3>
+    <.evidence_text value={@report.handler_result} />
+    <h3>What the agent saw on the page</h3>
+    <.evidence_text value={@report.observed} />
+    <a href={~p"/sites/#{site_ref(@report.tool.site)}/tools/#{@report.tool.name}"}>Tool versions and observed history →</a>
+  </Regent.Primitives.disclosure>
+
+  <Regent.Primitives.disclosure
+    :if={@report.priority_amount_atomic}
+    id="pb-thread-payment"
+    summary="Paid priority · separate from evidence"
+    open={not is_nil(@refund_problem)}
+  >
+    <p class="pb-thread-caption">
+      Paid placement does not verify an answer. Payment status and refund eligibility must be checked onchain.
+    </p>
+    <.escrow_standing
+      report={@report}
+      profile={@conn.assigns.current_profile}
+      problem={@refund_problem}
+    />
+  </Regent.Primitives.disclosure>
+</article>

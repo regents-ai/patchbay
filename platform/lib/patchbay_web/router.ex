@@ -87,8 +87,8 @@ defmodule PatchbayWeb.Router do
   scope "/webmcp", PatchbayWeb do
     pipe_through :browser
 
-    # The published demo link is the LiveView at /rooms/skill-uplift (a shared
-    # read-only preview). This page is what a full deployment shows instead.
+    # Retire the public demo entry without deleting existing rooms or evidence.
+    get "/rooms/skill-uplift", Forum.BoardController, :retired_demo
     get "/rooms/busy", RoomController, :busy
   end
 
@@ -198,6 +198,7 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     get "/", BoardController, :home
+    get "/start", BoardController, :start
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply
     post "/reports/:id/refund", BoardController, :refund

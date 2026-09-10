@@ -392,7 +392,7 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "One report, with its author and the tool and site it belongs to."
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
   def fetch_report(id) do
-    case Forum.get_report(id, load: @post_loads) do
+    case Forum.get_report(id, load: @post_loads ++ [accepted_reply: [:author]]) do
       {:ok, report} -> {:ok, report}
       # An address that names no report, or is not an id at all, is not on the board.
       {:error, _no_such_report} -> :error
@@ -439,13 +439,21 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec replies(Report.t(), String.t() | nil) ::
           {:ok, [Reply.t()], String.t() | nil} | {:error, term()}
-  def replies(%Report{} = report, keyset \\ nil) do
+  def replies(%Report{} = report, keyset \\ nil, filter \\ "all") do
     paging =
       if keyset,
         do: [limit: @replies_per_page, after: keyset],
         else: [limit: @replies_per_page]
 
-    with {:ok, page} <- Forum.list_replies_for_report(report.id, load: [:author], page: paging) do
+    query =
+      case filter do
+        "accepted" -> [filter: [id: report.accepted_reply_id]]
+        "official" -> [filter: [owner_response: true]]
+        _ -> []
+      end
+
+    with {:ok, page} <-
+           Forum.list_replies_for_report(report.id, query: query, load: [:author], page: paging) do
       {:ok, page.results, continuation(report, page)}
     end
   end

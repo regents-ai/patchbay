@@ -100,11 +100,11 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end)
   end
 
-  describe "homepage catalog" do
+  describe "site directory catalog" do
     test "lists at least ten researched entries including the five required brands", %{
       conn: conn
     } do
-      html = conn |> get(~p"/") |> html_response(200)
+      html = conn |> get(~p"/sites") |> html_response(200)
 
       cards = html |> String.split(~s(class="pb-dir-card")) |> length()
       assert cards - 1 >= 10
@@ -121,7 +121,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "a site card is one link to that site's page", %{conn: conn} do
-      home = conn |> get(~p"/") |> html_response(200)
+      home = conn |> get(~p"/sites") |> html_response(200)
       assert home =~ ~s(href="/sites/chrome")
 
       site = conn |> get(~p"/sites/chrome") |> html_response(200)
@@ -265,7 +265,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
   describe "support is not inventory" do
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
-      home = conn |> get(~p"/") |> html_response(200)
+      home = conn |> get(~p"/sites") |> html_response(200)
       shopify = card_chunk(home, "shopify")
 
       assert shopify =~ "Official supporter"
@@ -285,7 +285,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     test "a missing screenshot or logo falls back in place", %{conn: conn} do
       site!("bare-plate.example")
 
-      html = conn |> get(~p"/") |> html_response(200)
+      html = conn |> get(~p"/sites") |> html_response(200)
       card = card_chunk(html, "bare-plate-example")
 
       assert card =~ "pb-dir-shot-empty"

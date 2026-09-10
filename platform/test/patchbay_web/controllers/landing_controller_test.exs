@@ -8,7 +8,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   test "GET / is the report board", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ "Reports from browser agents"
+    assert html =~ "All discussions"
     assert html =~ ~s(id="patchbay-home")
     refute html =~ ~s(id="patchbay-crown")
     refute html =~ ~s(id="patchbay-crown-canvas")
@@ -27,42 +27,63 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Use the site tools exposed by this open Patchbay page."
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/sites")
-    assert html =~ ~s(href="/webmcp/rooms/skill-uplift")
+    assert html =~ ~s(href="/start")
 
     assert html =~
              ~s(href="https://github.com/regents-ai/patchbay" target="_blank" rel="noreferrer")
 
     refute html =~ "latest.patchbay.help"
     refute html =~ "Patchbay V0.2"
-    assert html =~ "Live demo"
+    assert html =~ "Agent Start"
     assert html =~ "Sign-in to Post"
     assert html =~ "Agent setup"
-    assert html =~ "How reports work"
+    assert html =~ "current ways to participate"
     assert html =~ ~s(href="/agent-setup")
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
     refute html =~ "Open your repair room"
   end
 
-  test "GET / leads with the site grid", %{conn: conn} do
+  test "GET / keeps sites reachable beside discussions without poster previews", %{conn: conn} do
     Rooms.create_seeded_room!("home-sites")
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ ~s(class="pb-dir-grid")
-    assert html =~ ~s(href="/sites/patchbay")
-    assert html =~ ~s(class="pb-dir-logo")
-    assert html =~ ~s(class="pb-dir-shot")
-    assert html =~ ~s(class="pb-dir-shot-wrap")
+    assert html =~ ~s(class="pb-workbench-panes")
+    assert html =~ "Featured sites"
+    assert html =~ "Patchbay"
+    assert html =~ ~s(href="/sites")
+    refute html =~ ~s(class="pb-dir-shot-wrap")
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ ~r{<meta name="description" content="Patchbay is a website that catches}
+    assert html =~
+             ~r{<meta name="description" content="Patchbay is the public help and discussion network for agents using websites\.}
+
     assert html =~ ~s{<meta property="og:type" content="website">}
     assert html =~ ~s{<meta property="og:url" content="https://patchbay.help">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
-    assert html =~ ~r{WebMCP directory\s*· Patchbay</title>}
+    assert html =~ ~r{Discussions\s*· Patchbay</title>}
+  end
+
+  test "home and /start share the exact handoff and public participation guide", %{conn: conn} do
+    for path <- [~p"/", ~p"/start"] do
+      document = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
+
+      assert document |> LazyHTML.query("main > .pb-agent-intro h1") |> LazyHTML.text() ==
+               "Agents help agents with WebMCP"
+
+      assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
+               "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call."
+
+      assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
+      assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
+
+      assert Enum.count(
+               LazyHTML.query(document, "button[data-copy-target='pb-agent-handoff-text']")
+             ) == 1
+    end
   end
 
   test "GET /agent-setup publishes WebMCP, x402, and runtime anchors", %{conn: conn} do
@@ -108,7 +129,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "npm install patchbay-webmcp-bridge"
     refute html =~ "x402-gated"
     assert html =~ ~s(href="/")
-    assert html =~ ~s(href="/webmcp/rooms/skill-uplift")
+    assert html =~ ~s(href="/start")
   end
 
   test "GET /agent-setup includes the ops FAQ", %{conn: conn} do

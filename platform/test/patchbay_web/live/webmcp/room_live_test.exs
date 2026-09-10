@@ -92,17 +92,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert :binary.match(html, "patchbay-guide") < :binary.match(html, "patchbay-goal-title")
   end
 
-  test "the shared preview is read-only and carries the site nav", %{conn: conn} do
-    {:ok, view, html} = live(conn, ~p"/webmcp/rooms/skill-uplift")
-
-    assert html =~ ~s(data-readonly="true")
-    assert html =~ "This preview is read-only. Sign in to get a room of your own."
-    assert html =~ ~s(href="/")
-    assert html =~ ~s(href="/sites")
-    refute has_element?(view, "#patchbay-reset")
-
-    html = render_click(view, "request_repair", %{})
-    assert html =~ "Sign in to get a room of your own."
+  test "the retired shared preview does not mount a LiveView", %{conn: conn} do
+    assert {:error, {:redirect, %{to: "/start"}}} = live(conn, ~p"/webmcp/rooms/skill-uplift")
   end
 
   test "the prompt strip marks the step the room is on and names the tool it offers now", %{
