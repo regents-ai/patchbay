@@ -1,3 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="#1a1a1a" role="img">
-  <rect x="6" y="8" width="20" height="16" rx="2" fill="none" stroke="#1a1a1a" stroke-width="1.75"/><text x="16" y="19" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="8" font-weight="700" fill="#1a1a1a">B</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="390 289.5 420 420">
+  <title>MCP-B</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      #top-gradient stop:nth-child(2) { stop-color: #06e8ff }
+      #top-gradient stop:nth-child(3) { stop-color: #25dfff }
+      #top-gradient stop:nth-child(4) { stop-color: #2ed1ff }
+      #top-gradient stop:nth-child(5) { stop-color: #36bdff }
+      #top-gradient stop:nth-child(6) { stop-color: #3ca4ff }
+      #top-gradient stop:nth-child(7) { stop-color: #3b85ff }
+      #top-gradient stop:nth-child(8) { stop-color: #3566ff }
+      #top-gradient stop:nth-child(9) { stop-color: #3561ff }
+      #bottom-gradient stop:nth-child(2) { stop-color: #17e8ff }
+      #bottom-gradient stop:nth-child(3) { stop-color: #2fe1ff }
+      #bottom-gradient stop:nth-child(4) { stop-color: #40d5ff }
+      #bottom-gradient stop:nth-child(5) { stop-color: #49c5ff }
+      #bottom-gradient stop:nth-child(6) { stop-color: #4cb1ff }
+      #bottom-gradient stop:nth-child(7) { stop-color: #4999ff }
+      #bottom-gradient stop:nth-child(8) { stop-color: #4081ff }
+      #bottom-gradient stop:nth-child(9) { stop-color: #316bff }
+      #bottom-gradient stop:nth-child(10) { stop-color: #2a64ff }
+      .body { fill: #26e5ff }
+    }
+  </style>
+  <defs>
+    <linearGradient id="top-gradient" x1="756.23" y1="475.14" x2="608.29" y2="352.58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00ebff"/>
+      <stop offset=".17" stop-color="#00e7fe"/>
+      <stop offset=".32" stop-color="#01dcfd"/>
+      <stop offset=".46" stop-color="#04cbfa"/>
+      <stop offset=".59" stop-color="#08b2f6"/>
+      <stop offset=".72" stop-color="#0c91f2"/>
+      <stop offset=".85" stop-color="#1269ec"/>
+      <stop offset=".98" stop-color="#183be6"/>
+      <stop offset="1" stop-color="#1a32e5"/>
+    </linearGradient>
+    <linearGradient id="bottom-gradient" x1="452.57" y1="524.29" x2="583.8" y2="641.28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00ebff"/>
+      <stop offset=".24" stop-color="#00e8ff"/>
+      <stop offset=".38" stop-color="#00e0ff"/>
+      <stop offset=".5" stop-color="#00d1ff"/>
+      <stop offset=".61" stop-color="#00bdff"/>
+      <stop offset=".71" stop-color="#00a3ff"/>
+      <stop offset=".8" stop-color="#0082ff"/>
+      <stop offset=".88" stop-color="#005cff"/>
+      <stop offset=".96" stop-color="#0030ff"/>
+      <stop offset="1" stop-color="#0118ff"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#top-gradient)" d="m746.99 482.75-145.57-84.52 60.02-34.87 71.05 41.28a29.03 29.03 0 0 1 14.47 25.13l.03 52.97Z"/>
+  <path fill="url(#bottom-gradient)" d="m602.51 601.74-60.02 34.87-29.12-16.94-45.85-26.63a29.03 29.03 0 0 1-14.48-25.14l-.03-53 59.5 34.57.79.46 89.21 51.8Z"/>
+  <path class="body" fill="#00e4ff" d="m732.58 595.89-115.46 67.09a29.16 29.16 0 0 1-29.22 0l-45.41-26.38 60.02-34.87 84.29-48.96-.07-84.18 60.29 35.03.03 67.1a29.05 29.05 0 0 1-14.47 25.16Z"/>
+  <path class="body" fill="#00e4ff" d="m661.44 363.37-60.02 34.87-88.19 51.21.07 79.61-60.32-35.03-.03-62.5a29.05 29.05 0 0 1 14.48-25.16l119.39-69.35a29.16 29.16 0 0 1 29.2 0l45.42 26.36Z"/>
 </svg>

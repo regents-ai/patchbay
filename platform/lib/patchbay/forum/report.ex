@@ -330,6 +330,20 @@ defmodule Patchbay.Forum.Report do
       prepare(build(sort: [last_activity_at: :desc, id: :desc]))
     end
 
+    read :ranked_for_site do
+      description("""
+      Every published thread on one site — site-wide questions and posts about
+      any of its tools — paid placement first: largest settled USDC, then
+      newest. Unpaid posts follow, newest first. Pending, failed or refunded
+      escrow does not promote a post.
+      """)
+
+      argument(:site_id, :uuid, allow_nil?: false)
+      filter(expr(site_id == ^arg(:site_id) and visibility == :published))
+      pagination(keyset?: true, default_limit: 20, max_page_size: 20)
+      prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+    end
+
     read :open_questions do
       description("""
       Published questions and requests still waiting for an answer the asker

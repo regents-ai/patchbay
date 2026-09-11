@@ -205,7 +205,7 @@ defmodule PatchbayWeb.Forum.Board do
 
   # A cold or half-loaded catalog must not take down `/` or `/sites`.
   defp sync_catalog do
-    Patchbay.Forum.Catalog.sync!()
+    Patchbay.Forum.Catalog.sync_entries!()
   rescue
     _ -> :ok
   end
@@ -413,35 +413,55 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  Posts about any of the given tool versions, paid placement first, and
-  whether more remain.
+  One page of the posts about any of the given tool versions, paid placement
+  first, and the cursor of the page after it when there is one.
+
+  Paid placement means settled escrow only: the ranking reads the same
+  `verified_paid_usdc_atomic` the post list labels, so a post is never listed
+  above another for money that has not been recorded on Base.
   """
-  @spec ranked_posts([Tool.t()]) :: {[Report.t()], boolean()}
-  def ranked_posts([]), do: {[], false}
+  @spec ranked_posts([Tool.t()], String.t() | nil) ::
+          {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
+  def ranked_posts(versions, cursor \\ nil)
+  def ranked_posts([], _cursor), do: {:ok, [], nil}
 
-  def ranked_posts(versions) do
-    page =
-      versions
-      |> Enum.map(& &1.id)
-      |> Forum.list_ranked_posts_for_tools!(
-        load: @post_loads,
-        page: [limit: @ranked_posts]
-      )
-
-    {page.results, page.more?}
+  def ranked_posts(versions, cursor) do
+    versions
+    |> Enum.map(& &1.id)
+    |> Forum.list_ranked_posts_for_tools(load: @post_loads, page: post_page(cursor))
+    |> post_page_result()
   end
 
   @doc """
-  Every published thread on a site, latest activity first — including the
-  questions and discussions that name no tool at all.
+  One page of every published thread on a site — the questions that name no
+  tool and the posts about any of its tools — paid placement first, and the
+  cursor of the page after it when there is one.
   """
-  @spec site_threads(Site.t()) :: {[Report.t()], boolean()}
-  def site_threads(%Site{} = site) do
-    page =
-      Forum.list_threads_for_site!(site.id, load: @post_loads, page: [limit: @ranked_posts])
-
-    {page.results, page.more?}
+  @spec site_threads(Site.t(), String.t() | nil) ::
+          {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
+  def site_threads(%Site{} = site, cursor \\ nil) do
+    site.id
+    |> Forum.list_ranked_threads_for_site(load: @post_loads, page: post_page(cursor))
+    |> post_page_result()
   end
+
+  defp post_page(nil), do: [limit: @ranked_posts]
+  defp post_page(cursor), do: [limit: @ranked_posts, after: cursor]
+
+  # A page of posts and the cursor that continues it. A cursor that names no
+  # page — expired, edited, or made up — is said so, never shown as an empty
+  # list.
+  defp post_page_result({:ok, %{results: results, more?: more?}}) do
+    {:ok, results, if(more?, do: List.last(results).__metadata__.keyset)}
+  end
+
+  defp post_page_result({:error, %Ash.Error.Invalid{errors: errors}}) do
+    if Enum.any?(errors, &match?(%Ash.Error.Page.InvalidKeyset{}, &1)),
+      do: {:error, :invalid_posts_cursor},
+      else: raise(Ash.Error.Invalid, errors: errors)
+  end
+
+  defp post_page_result({:error, failure}), do: raise(failure)
 
   @doc """
   The receipt of the call a verified report was matched to, so a reader can hold

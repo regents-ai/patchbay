@@ -7,6 +7,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.{Capabilities, Catalog}
   alias Patchbay.Identity
   alias Patchbay.Patchbay, as: Rooms
 
@@ -84,7 +85,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     card =
       html
       |> LazyHTML.from_document()
-      |> LazyHTML.query(~s|article.pb-dir-feature:has(a[href="/sites/#{slug}"])|)
+      |> LazyHTML.query(~s|a.pb-dir-card[href="/sites/#{slug}"]|)
       |> LazyHTML.to_html()
 
     assert card != "", "no directory card linked to /sites/#{slug}"
@@ -101,13 +102,14 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site directory catalog" do
-    test "lists at least ten researched entries including the five required brands", %{
-      conn: conn
-    } do
+    test "the homepage and /sites show the same grid of at least ten entries", %{conn: conn} do
+      home = conn |> get(~p"/") |> html_response(200)
       html = conn |> get(~p"/sites") |> html_response(200)
 
-      cards = html |> String.split(~s(class="pb-dir-card")) |> length()
-      assert cards - 1 >= 10
+      for page <- [home, html] do
+        cards = page |> LazyHTML.from_document() |> LazyHTML.query("a.pb-dir-card")
+        assert length(Enum.to_list(cards)) >= 10
+      end
 
       for brand <- @required_brands do
         assert html =~ brand
@@ -122,7 +124,11 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
     test "a site card is one link to that site's page", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
-      assert home =~ ~s(href="/sites/chrome")
+      card = card_chunk(home, "chrome")
+      assert card =~ ~s(alt="Screenshot of google.com")
+      assert card =~ "Browser support"
+      assert card =~ "Source verified"
+      assert length(String.split(card, "<a ")) == 2, "a card is one link with none inside it"
 
       site = conn |> get(~p"/sites/chrome") |> html_response(200)
       assert site =~ "Chrome"
@@ -155,10 +161,11 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert tool =~ ~s(id="pb-tool-posts")
     end
 
-    test "the tool page lists only that tool's posts", %{conn: conn} do
+    test "the tool page lists only that tool's posts, paid first", %{conn: conn} do
       site = site!("tools-only.example")
       checkout = tool!(site, %{name: "checkout"})
       search = tool!(site, %{name: "search", contract_sha256: @other_contract})
+      paid_report!(checkout, asker!(), 5_000_000, "paid checkout post")
       report!(checkout, %{note: "checkout stayed empty"})
       report!(search, %{note: "search returned nothing"})
 
@@ -169,6 +176,37 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
       assert tool =~ "checkout stayed empty"
       refute tool =~ "search returned nothing"
+      [paid, unpaid] = post_order(tool, ["paid checkout post", "checkout stayed empty"])
+      assert paid < unpaid
+    end
+
+    test "posts page at twenty with a cursor link", %{conn: conn} do
+      site = site!("paged.example")
+      tool = tool!(site)
+      for n <- 1..21, do: report!(tool, %{note: "paged post number #{n}"})
+
+      first = conn |> get(~p"/sites/paged-example") |> html_response(200)
+      assert first =~ "paged post number 21"
+      refute first =~ "paged post number 1<"
+
+      assert [next] =
+               Regex.run(
+                 ~r|href="/sites/paged-example\?posts_after=([^#"]+)#pb-site-posts"|,
+                 first,
+                 capture: :all_but_first
+               )
+
+      second =
+        conn
+        |> get(~p"/sites/paged-example", posts_after: URI.decode_www_form(next))
+        |> html_response(200)
+
+      assert second =~ "paged post number 1<"
+      refute second =~ "paged post number 21"
+      refute second =~ "posts_after="
+
+      expired = conn |> get(~p"/sites/paged-example", posts_after: "not-a-cursor")
+      assert redirected_to(expired) == "/sites/paged-example#pb-site-posts"
     end
 
     test "the site page lists posts from every tool on the site", %{conn: conn} do
@@ -236,10 +274,10 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       refute html =~ "Paid placement · 100.00 USDC"
       assert html =~ "Paid placement · 5.00 USDC"
 
-      # The site feed orders by latest activity, so the newer post leads
-      # regardless of the money pending behind it.
-      [pending, settled] = post_order(html, ["pending hundred usdc post", "five usdc settled"])
-      assert pending < settled
+      # Money that has not settled buys nothing: the newer pending post sorts
+      # with the unpaid posts, below the settled one.
+      [settled, pending] = post_order(html, ["five usdc settled", "pending hundred usdc post"])
+      assert settled < pending
     end
 
     test "equal paid totals put the newest first", %{
@@ -269,20 +307,37 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   describe "support is not inventory" do
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
-      shopify = card_chunk(home, "shopify")
+      netlify = card_chunk(home, "netlify")
 
-      assert shopify =~ "Official supporter"
-      assert shopify =~ "No public tool inventory"
-      refute shopify =~ "Exposes tools"
-      refute shopify =~ "1 tool"
-      refute shopify =~ "2 tools"
+      assert netlify =~ "Official supporter"
+      refute netlify =~ "Exposes tools"
+      refute netlify =~ ~r/\d+ tools?/
 
-      site = conn |> get(~p"/sites/shopify") |> html_response(200)
+      site = conn |> get(~p"/sites/netlify") |> html_response(200)
       assert site =~ "Official supporter"
       assert site =~ "No public tool inventory"
 
       assert site =~
                "No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below."
+    end
+
+    test "published inventories come from the owner's own publication", %{conn: conn} do
+      Catalog.sync!()
+
+      shopify = conn |> get(~p"/sites/shopify") |> html_response(200)
+      assert shopify =~ "Official tool inventory"
+      assert shopify =~ ~s(href="/sites/shopify/tools/proceed_to_checkout")
+      refute shopify =~ "start_checkout"
+
+      tool = conn |> get(~p"/sites/shopify/tools/proceed_to_checkout") |> html_response(200)
+      assert tool =~ ~s(href="https://shopify.dev/docs/api/web-mcp")
+
+      patchbay = conn |> get(~p"/sites/patchbay") |> html_response(200)
+      assert patchbay =~ "Official tool inventory"
+
+      for name <- Capabilities.names() do
+        assert patchbay =~ ~s(href="/sites/patchbay/tools/#{name}")
+      end
     end
 
     test "a missing screenshot or logo falls back in place", %{conn: conn} do

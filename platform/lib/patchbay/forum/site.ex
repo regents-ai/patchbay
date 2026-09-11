@@ -93,7 +93,12 @@ defmodule Patchbay.Forum.Site do
   end
 
   aggregates do
-    count(:tool_count, :tools)
+    # A tool is one name, however many contract versions it has been seen with.
+    count :tool_count, :tools do
+      field(:name)
+      uniq?(true)
+    end
+
     count(:report_count, [:tools, :reports])
   end
 

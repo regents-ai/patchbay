@@ -1,5 +1,5 @@
 {
-  "last_verified_at": "2026-09-04T00:00:00Z",
+  "last_verified_at": "2026-09-11T00:00:00Z",
   "entries": [
     {
       "slug": "chrome",
@@ -10,15 +10,16 @@
       "canonical_domain": "google.com",
       "support_relationship": "browser_implementation",
       "support_status": "experimental",
-      "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge judge, Chrome",
+      "support_evidence_url": "https://developer.chrome.com/docs/ai/webmcp",
+      "support_evidence_label": "Chrome WebMCP documentation (origin trial from Chrome 149)",
       "tool_inventory_status": "unavailable",
-      "logo_path": "/images/directory/chrome-logo.svg",
-      "logo_source_url": "https://www.google.com/chrome/",
-      "logo_usage_note": "Local monochrome mark for the directory. Chrome implements WebMCP in the browser; it does not publish a website tool catalog.",
-      "screenshot_path": "/images/directory/chrome-plate.svg",
+      "logo_path": null,
+      "logo_source_url": "https://partnermarketinghub.withgoogle.com/brands/chrome/",
+      "logo_usage_note": "No logo shown. Chrome brand assets are released only through Google's partner hub under login and the mark is trademarked, so the directory uses a text monogram.",
+      "screenshot_path": "/images/directory/chrome.webp",
       "screenshot_source_url": "https://www.google.com/chrome/",
-      "featured_rank": 1
+      "featured_rank": 1,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "openai",
@@ -29,15 +30,16 @@
       "canonical_domain": "openai.com",
       "support_relationship": "platform_integration",
       "support_status": "active",
-      "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge organizer; ChatGPT desktop browser",
+      "support_evidence_url": "https://learn.chatgpt.com/docs/webmcp",
+      "support_evidence_label": "ChatGPT site tools documentation; WebMCP Challenge organizer",
       "tool_inventory_status": "unavailable",
       "logo_path": "/images/directory/openai-logo.svg",
-      "logo_source_url": "https://openai.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. OpenAI integrates WebMCP in ChatGPT's desktop browser and organizes the WebMCP Challenge. openai.com does not publish a public WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/openai-plate.svg",
-      "screenshot_source_url": "https://openai.com/webmcp-challenge/",
-      "featured_rank": 2
+      "logo_source_url": "https://openai.com/brand/",
+      "logo_usage_note": "Official OpenAI wordmark (black) from the OpenAI brand package, unmodified. Marks usage terms apply; the Blossom symbol is not used as primary branding.",
+      "screenshot_path": "/images/directory/openai.webp",
+      "screenshot_source_url": "https://learn.chatgpt.com/docs/webmcp",
+      "featured_rank": 2,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "shopify",
@@ -46,17 +48,60 @@
       "organization_name": "Shopify",
       "origin": "shopify.com",
       "canonical_domain": "shopify.com",
-      "support_relationship": "official_supporter",
+      "support_relationship": "platform_integration",
       "support_status": "active",
-      "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge judge and prize partner",
-      "tool_inventory_status": "unavailable",
+      "support_evidence_url": "https://shopify.dev/docs/api/web-mcp",
+      "support_evidence_label": "Shopify WebMCP tools reference for Liquid storefronts and Hydrogen",
+      "tool_inventory_status": "official",
       "logo_path": "/images/directory/shopify-logo.svg",
-      "logo_source_url": "https://www.shopify.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. Official challenge support is not a published WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/shopify-plate.svg",
+      "logo_source_url": "https://www.shopify.com/brand-assets",
+      "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Shopify asks for at least 80px width and no stretching or effects.",
+      "screenshot_path": "/images/directory/shopify.webp",
       "screenshot_source_url": "https://www.shopify.com/",
-      "featured_rank": 3
+      "featured_rank": 3,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z",
+      "tools": [
+        {
+          "name": "search_catalog",
+          "description": "Search the store's products, collections, articles, and pages. Returns matching products with prices and availability, plus a link to the full search results page."
+        },
+        {
+          "name": "browse_store",
+          "description": "List the store's collections, or browse the products in a specific collection. The agent can also take the shopper to the collection page."
+        },
+        {
+          "name": "get_product",
+          "description": "Get full details for a product, including variants, prices, and which option combinations are in stock. The agent can also take the shopper to the product page."
+        },
+        {
+          "name": "show_variant",
+          "description": "Take the shopper to a product page with a specific variant selected. The agent can pass an exact variant, or a partial option selection such as a color, and the tool selects a matching available variant."
+        },
+        {
+          "name": "get_cart",
+          "description": "Get the cart's contents, including line items with product and variant details, quantities, and totals."
+        },
+        {
+          "name": "update_cart",
+          "description": "Add items to the cart, change quantities, or remove items. If a request is ambiguous, then the tool returns options to clarify without changing the cart."
+        },
+        {
+          "name": "cancel_cart",
+          "description": "Remove everything from the cart."
+        },
+        {
+          "name": "proceed_to_checkout",
+          "description": "Take the shopper to checkout with their current cart, after verifying the cart isn't empty."
+        },
+        {
+          "name": "manage_orders",
+          "description": "Take the shopper to their order history page, where they can check order status and tracking. If the shopper isn't logged in, then they're asked to log in first."
+        },
+        {
+          "name": "search_shop_policies_and_faqs",
+          "description": "Answer questions about the store's policies and services, such as returns, shipping, and hours of operation."
+        }
+      ]
     },
     {
       "slug": "netlify",
@@ -67,15 +112,16 @@
       "canonical_domain": "netlify.com",
       "support_relationship": "official_supporter",
       "support_status": "active",
-      "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge judge and prize partner",
+      "support_evidence_url": "https://www.netlify.com/webmcp-challenge/",
+      "support_evidence_label": "Netlify: partner on the WebMCP Challenge",
       "tool_inventory_status": "unavailable",
       "logo_path": "/images/directory/netlify-logo.svg",
-      "logo_source_url": "https://www.netlify.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. Official challenge support is not a published WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/netlify-plate.svg",
+      "logo_source_url": "https://www.netlify.com/press/",
+      "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Netlify asks that the file not be modified.",
+      "screenshot_path": "/images/directory/netlify.webp",
       "screenshot_source_url": "https://www.netlify.com/",
-      "featured_rank": 4
+      "featured_rank": 4,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "render",
@@ -87,14 +133,15 @@
       "support_relationship": "official_supporter",
       "support_status": "active",
       "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge prize partner",
+      "support_evidence_label": "Named prize partner on the WebMCP Challenge page",
       "tool_inventory_status": "unavailable",
       "logo_path": "/images/directory/render-logo.svg",
-      "logo_source_url": "https://render.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. Official challenge support is not a published WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/render-plate.svg",
+      "logo_source_url": "https://render.com/press",
+      "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Guidelines ship inside the Render brand kit.",
+      "screenshot_path": "/images/directory/render.webp",
       "screenshot_source_url": "https://render.com/",
-      "featured_rank": 5
+      "featured_rank": 5,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "cloudflare",
@@ -103,17 +150,18 @@
       "organization_name": "Cloudflare",
       "origin": "cloudflare.com",
       "canonical_domain": "cloudflare.com",
-      "support_relationship": "official_supporter",
-      "support_status": "active",
-      "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge judge and prize partner",
+      "support_relationship": "platform_integration",
+      "support_status": "experimental",
+      "support_evidence_url": "https://blog.cloudflare.com/webmcp/",
+      "support_evidence_label": "Cloudflare: give any website a WebMCP interface (developer preview)",
       "tool_inventory_status": "unavailable",
-      "logo_path": "/images/directory/cloudflare-logo.svg",
-      "logo_source_url": "https://www.cloudflare.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. Official challenge support is not a published WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/cloudflare-plate.svg",
+      "logo_path": null,
+      "logo_source_url": "https://www.cloudflare.com/press-kit/",
+      "logo_usage_note": "No logo shown. Cloudflare's press kit offers only colour raster files and no monochrome vector, so the directory uses a text monogram.",
+      "screenshot_path": "/images/directory/cloudflare.webp",
       "screenshot_source_url": "https://www.cloudflare.com/",
-      "featured_rank": 6
+      "featured_rank": 6,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "vercel",
@@ -125,14 +173,15 @@
       "support_relationship": "official_supporter",
       "support_status": "active",
       "support_evidence_url": "https://openai.com/webmcp-challenge/",
-      "support_evidence_label": "WebMCP Challenge judge and prize partner",
+      "support_evidence_label": "Named prize partner on the WebMCP Challenge page",
       "tool_inventory_status": "unavailable",
       "logo_path": "/images/directory/vercel-logo.svg",
-      "logo_source_url": "https://vercel.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. Official challenge support is not a published WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/vercel-plate.svg",
+      "logo_source_url": "https://vercel.com/geist/brands",
+      "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Listing does not imply endorsement by Vercel.",
+      "screenshot_path": "/images/directory/vercel.webp",
       "screenshot_source_url": "https://vercel.com/",
-      "featured_rank": 7
+      "featured_rank": 7,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "microsoft",
@@ -142,16 +191,17 @@
       "origin": "microsoft.com",
       "canonical_domain": "microsoft.com",
       "support_relationship": "official_supporter",
-      "support_status": "active",
-      "support_evidence_url": "https://github.com/webmachinelearning/webmcp",
-      "support_evidence_label": "WebMCP specification authors",
+      "support_status": "announced",
+      "support_evidence_url": "https://webmachinelearning.github.io/webmcp/",
+      "support_evidence_label": "WebMCP draft specification, edited at Microsoft",
       "tool_inventory_status": "unavailable",
-      "logo_path": "/images/directory/microsoft-logo.svg",
-      "logo_source_url": "https://www.microsoft.com/",
-      "logo_usage_note": "Local monochrome mark for the directory. Microsoft engineers authored the WebMCP draft. This is not a claim that Edge exposes a public WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/microsoft-plate.svg",
-      "screenshot_source_url": "https://github.com/webmachinelearning/webmcp",
-      "featured_rank": 8
+      "logo_path": null,
+      "logo_source_url": "https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks",
+      "logo_usage_note": "No logo shown. Microsoft logos need a licence for this use, so the directory uses a text monogram.",
+      "screenshot_path": "/images/directory/microsoft.webp",
+      "screenshot_source_url": "https://www.microsoft.com/",
+      "featured_rank": 8,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "mcp-b",
@@ -164,13 +214,14 @@
       "support_status": "active",
       "support_evidence_url": "https://github.com/webmachinelearning/webmcp",
       "support_evidence_label": "Cited related implementation in the WebMCP specification",
-      "tool_inventory_status": "unknown",
+      "tool_inventory_status": "unavailable",
       "logo_path": "/images/directory/mcp-b-logo.svg",
       "logo_source_url": "https://mcp-b.ai/",
-      "logo_usage_note": "Local monochrome mark for the directory. MCP-B is a related browser-tool implementation cited by the WebMCP specification, not a verified public site-tool catalog.",
-      "screenshot_path": "/images/directory/mcp-b-plate.svg",
+      "logo_usage_note": "Official MCP-B logo as published on mcp-b.ai. It is a colour mark with no monochrome variant; the directory shows it in greyscale.",
+      "screenshot_path": "/images/directory/mcp-b.webp",
       "screenshot_source_url": "https://mcp-b.ai/",
-      "featured_rank": 9
+      "featured_rank": 9,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "patchbay",
@@ -180,16 +231,17 @@
       "origin": "patchbay.help",
       "canonical_domain": "patchbay.help",
       "support_relationship": "site_tools",
-      "support_status": "experimental",
-      "support_evidence_url": "https://patchbay.help/agent-setup",
-      "support_evidence_label": "This site exposes WebMCP tools",
-      "tool_inventory_status": "observed",
+      "support_status": "active",
+      "support_evidence_url": "https://patchbay.help/forum/capabilities",
+      "support_evidence_label": "Published tool manifest",
+      "tool_inventory_status": "official",
       "logo_path": "/favicon.svg",
       "logo_source_url": "https://patchbay.help/",
-      "logo_usage_note": "Patchbay's own mark. Tools appear here when a repair room starts offering a contract.",
-      "screenshot_path": "/images/directory/patchbay-plate.svg",
+      "logo_usage_note": "Patchbay's own mark.",
+      "screenshot_path": "/images/directory/patchbay.webp",
       "screenshot_source_url": "https://patchbay.help/",
-      "featured_rank": 10
+      "featured_rank": 10,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     },
     {
       "slug": "w3c",
@@ -200,15 +252,16 @@
       "canonical_domain": "w3.org",
       "support_relationship": "official_supporter",
       "support_status": "active",
-      "support_evidence_url": "https://github.com/webmachinelearning/webmcp",
-      "support_evidence_label": "WebMCP draft in the W3C Web Machine Learning Community Group",
+      "support_evidence_url": "https://webmachinelearning.github.io/webmcp/",
+      "support_evidence_label": "Web Machine Learning Community Group report; not a W3C Standard",
       "tool_inventory_status": "unavailable",
       "logo_path": "/images/directory/w3c-logo.svg",
-      "logo_source_url": "https://www.w3.org/",
-      "logo_usage_note": "Local monochrome mark for the directory. The WebMCP draft is developed in a W3C Community Group. w3.org does not expose a public WebMCP tool catalog.",
-      "screenshot_path": "/images/directory/w3c-plate.svg",
-      "screenshot_source_url": "https://github.com/webmachinelearning/webmcp",
-      "featured_rank": 11
+      "logo_source_url": "https://www.w3.org/Consortium/Legal/logo-usage-20000308",
+      "logo_usage_note": "Official W3C 2025 black logo, unmodified. W3C asks that it stand alone and imply no endorsement.",
+      "screenshot_path": "/images/directory/w3c.webp",
+      "screenshot_source_url": "https://www.w3.org/",
+      "featured_rank": 11,
+      "screenshot_captured_at": "2026-09-11T20:30:00Z"
     }
   ]
 }

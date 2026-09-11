@@ -471,20 +471,34 @@ defmodule PatchbayWeb.Forum.BoardController do
     render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
   end
 
-  def site(conn, %{"origin" => origin}) do
+  def site(conn, %{"origin" => origin} = params) do
     site = site!(origin)
     {tool_groups, more?} = Board.tool_groups(site)
-    {posts, more_posts?} = Board.site_threads(site)
 
-    render(conn, :site,
-      page_title: site.display_name || site.origin,
-      site: site,
-      tool_groups: tool_groups,
-      more?: more?,
-      posts: posts,
-      more_posts?: more_posts?,
-      earned_tips: Board.earned_tips(Enum.map(posts, & &1.author))
-    )
+    case Board.site_threads(site, params["posts_after"]) do
+      {:ok, posts, next_posts} ->
+        render(conn, :site,
+          page_title: site.display_name || site.origin,
+          site: site,
+          tool_groups: tool_groups,
+          more?: more?,
+          posts: posts,
+          posts_cursor: params["posts_after"],
+          next_posts: next_posts,
+          earned_tips: Board.earned_tips(Enum.map(posts, & &1.author))
+        )
+
+      {:error, :invalid_posts_cursor} ->
+        expired_posts_page(conn, PatchbayWeb.Forum.BoardHTML.site_path(site))
+    end
+  end
+
+  # A continuation that names no page any more sends the reader back to the
+  # first page of posts, and says so, rather than showing an empty list.
+  defp expired_posts_page(conn, path) do
+    conn
+    |> put_flash(:error, "That page of posts has expired. Showing the first page.")
+    |> redirect(to: path <> "#pb-site-posts")
   end
 
   def tool(conn, %{"origin" => origin, "name" => name} = params) do
@@ -494,9 +508,16 @@ defmodule PatchbayWeb.Forum.BoardController do
     site = site!(origin)
 
     with {:ok, history} <- Board.tool_history(site, name, params["after"]),
-         {:ok, current_tool} <- history_header(site, name, params["after"], history) do
-      render_tool(conn, site, name, params, history, current_tool)
+         {:ok, current_tool} <- history_header(site, name, params["after"], history),
+         {:ok, posts, next_posts} <- Board.ranked_posts(history.versions, params["posts_after"]) do
+      render_tool(conn, site, name, params, history, current_tool, {posts, next_posts})
     else
+      {:error, :invalid_posts_cursor} ->
+        expired_posts_page(
+          conn,
+          PatchbayWeb.Forum.BoardHTML.site_path(site) <> "/tools/" <> URI.encode(name)
+        )
+
       {:error, reason} ->
         conn
         |> put_status(if(reason == :invalid_cursor, do: 400, else: 503))
@@ -517,13 +538,12 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp render_tool(conn, site, name, params, history, current_tool) do
+  defp render_tool(conn, site, name, params, history, current_tool, {posts, next_posts}) do
     versions = history.versions
 
     if is_nil(current_tool), do: raise(NotFoundError)
     reports = Board.reports_by_version(versions)
     priority_reports = Board.priority_reports(versions)
-    {posts, more_posts?} = Board.ranked_posts(versions)
 
     render(conn, :tool,
       page_title: "#{name} on #{site.display_name || site.origin}",
@@ -538,7 +558,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       reports: reports,
       priority_reports: priority_reports,
       posts: posts,
-      more_posts?: more_posts?,
+      posts_cursor: params["posts_after"],
+      next_posts: next_posts,
       earned_tips:
         Board.earned_tips(
           Board.authors(Enum.concat(Map.values(reports))) ++

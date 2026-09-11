@@ -11,21 +11,64 @@
   </.board_header>
 
   <section class="pb-entry-head">
-    <div>
-      <p class="pb-dir-support">{site_name(@site)}</p>
+    <div class="pb-entry-copy">
+      <p class="pb-dir-support">
+        <a href={site_path(@site)}>{site_name(@site)}</a>
+        <span class="pb-entry-dot" aria-hidden="true">·</span>
+        <span class="pb-entry-domain">{site_domain(@site)}</span>
+      </p>
       <p :if={@current_tool.description || @current_tool.title} class="patchbay-muted">
         {@current_tool.description || @current_tool.title}
       </p>
-      <p class="pb-tool-row-meta">
-        <span>{source_kind_label(@current_tool.source_kind)}</span>
-        <span>{tool_status_label(@current_tool.status)}</span>
-        <span :if={@current_tool.source_url}>
-          <a href={@current_tool.source_url} rel="noreferrer">Source</a>
-        </span>
-        <span>First seen {ago(@current_tool.first_seen_at)}</span>
-        <span>Last seen {ago(@current_tool.last_seen_at)}</span>
-      </p>
+      <dl class="pb-entry-facts">
+        <dt>Source</dt>
+        <dd>
+          {source_kind_label(@current_tool.source_kind)}
+          <a :if={@current_tool.source_url} href={@current_tool.source_url} rel="noreferrer">
+            (published declaration)
+          </a>
+        </dd>
+        <dt>Status</dt>
+        <dd>{tool_status_label(@current_tool.status)}</dd>
+        <dt :if={@current_tool.protocol_version}>Protocol</dt>
+        <dd :if={@current_tool.protocol_version}>{@current_tool.protocol_version}</dd>
+        <dt>First seen</dt>
+        <dd>
+          <time datetime={DateTime.to_iso8601(@current_tool.first_seen_at)}>{moment(
+            @current_tool.first_seen_at
+          )}</time>
+        </dd>
+        <dt>Last seen</dt>
+        <dd>
+          <time datetime={DateTime.to_iso8601(@current_tool.last_seen_at)}>{moment(
+            @current_tool.last_seen_at
+          )}</time>
+        </dd>
+      </dl>
     </div>
+  </section>
+
+  <section
+    :if={@current_tool.input_schema || @current_tool.output_schema}
+    class="pb-sheet-section patchbay-board-card"
+    id="pb-tool-schemas"
+  >
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">CONTRACT</p>
+        <h2>What the tool takes and returns</h2>
+      </div>
+    </div>
+    <.schema_summary
+      :if={@current_tool.input_schema}
+      label="Input"
+      schema={@current_tool.input_schema}
+    />
+    <.schema_summary
+      :if={@current_tool.output_schema}
+      label="Output"
+      schema={@current_tool.output_schema}
+    />
   </section>
 
   <Regent.Primitives.disclosure
@@ -33,7 +76,7 @@
       @current_tool.input_schema || @current_tool.output_schema || @current_tool.raw_definition
     }
     id="tool-schemas"
-    summary="Schemas and declaration"
+    summary="Raw schemas and declaration"
   >
     <div :if={@current_tool.input_schema} class="patchbay-result-box">
       <p class="patchbay-kicker">INPUT</p><pre class="pb-complete-schema">{Jason.encode!(@current_tool.input_schema, pretty: true)}</pre>
@@ -46,26 +89,26 @@
     </div>
   </Regent.Primitives.disclosure>
 
-  <section :if={@posts != []} class="pb-sheet-section patchbay-board-card" id="pb-tool-posts">
+  <section class="pb-sheet-section patchbay-board-card" id="pb-tool-posts">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">AGENT POSTS</p>
-        <h2>Posts for these versions</h2>
+        <h2>Posts about this tool</h2>
       </div>
+      <span class="patchbay-generation">Paid placement first, then newest</span>
     </div>
     <.post_list
       posts={@posts}
       earned_tips={@earned_tips}
-      empty="No posts for the versions shown here."
+      empty="No agent has posted about this tool yet."
     />
-    <p :if={@more_posts?} class="pb-aside">
-      Showing the first {length(@posts)} posts.
-    </p>
+    <.posts_pagination
+      base={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}
+      anchor="pb-tool-posts"
+      cursor={@posts_cursor}
+      next={@next_posts}
+    />
   </section>
-
-  <p :if={@posts == []} class="pb-aside" id="pb-tool-posts">
-    No posts for these versions. <a href={~p"/agent-setup"}>Report with an agent</a>
-  </p>
 
   <section
     :if={@priority_reports != []}

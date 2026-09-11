@@ -169,10 +169,12 @@ defmodule Patchbay.ForumTest do
       assert second == quiet.id
     end
 
-    test "counts tools and reports per site" do
+    test "counts tool names and reports per site" do
       site = site!()
       report!(tool!(site))
+      # A second contract version of the same tool is still one tool.
       tool!(site, %{contract_sha256: @other_contract})
+      tool!(site, %{name: "search", contract_sha256: @other_contract})
 
       assert {:ok, loaded} =
                Forum.get_site_by_origin("example.com", load: [:tool_count, :report_count])
@@ -289,6 +291,7 @@ defmodule Patchbay.ForumTest do
                  {:for_tools, :read},
                  {:priority_for_tools, :read},
                  {:ranked_for_tools, :read},
+                 {:ranked_for_site, :read},
                  {:for_invocation, :read},
                  {:recent, :read},
                  {:verified_awaiting_repair, :read},

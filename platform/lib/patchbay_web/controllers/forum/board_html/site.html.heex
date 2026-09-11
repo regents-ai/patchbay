@@ -12,26 +12,56 @@
       <img
         :if={url = site_logo_url(@site)}
         src={url}
-        alt=""
-        width="40"
-        height="40"
+        alt={site_name(@site) <> " logo"}
+        width="120"
+        height="28"
       />
-      <span :if={!site_logo_url(@site)} aria-hidden="true">{String.first(site_name(@site))}</span>
+      <span :if={!site_logo_url(@site)} aria-hidden="true">{monogram(@site)}</span>
     </div>
-    <div>
-      <p class="pb-dir-support">{support_label(@site.support_relationship)}</p>
-      <p class="patchbay-muted">
-        {inventory_label(@site.tool_inventory_status)}.
-        Official support is not a public tool catalog.
+    <div class="pb-entry-copy">
+      <p class="pb-dir-support">
+        {support_label(@site.support_relationship)}
+        <span class="pb-entry-dot" aria-hidden="true">·</span>
+        <span class="pb-entry-domain">{site_domain(@site)}</span>
       </p>
-      <p :if={@site.support_evidence_url} class="pb-entry-evidence">
-        <a href={@site.support_evidence_url} rel="noreferrer">{@site.support_evidence_label ||
-          @site.support_evidence_url}</a>
-        <span :if={@site.last_verified_at}>
-          Last verified {ago(@site.last_verified_at)}
-        </span>
-      </p>
+      <p class="patchbay-muted">{relationship_sentence(@site)}</p>
+      <dl class="pb-entry-facts">
+        <dt>Inventory</dt>
+        <dd>{inventory_label(@site.tool_inventory_status)}</dd>
+        <dt>Support status</dt>
+        <dd>{support_status_label(@site.support_status)}</dd>
+        <dt>Source</dt>
+        <dd>
+          <a :if={@site.support_evidence_url} href={@site.support_evidence_url} rel="noreferrer">
+            {@site.support_evidence_label || @site.support_evidence_url}
+          </a>
+          <span :if={!@site.support_evidence_url}>No official source on file</span>
+        </dd>
+        <dt>Checked</dt>
+        <dd>
+          <time
+            :if={@site.last_verified_at}
+            datetime={DateTime.to_iso8601(@site.last_verified_at)}
+          >
+            {Calendar.strftime(@site.last_verified_at, "%-d %b %Y")}
+          </time>
+          <span :if={!@site.last_verified_at}>Not yet verified against an official source</span>
+        </dd>
+      </dl>
     </div>
+    <figure :if={url = site_screenshot_url(@site)} class="pb-entry-shot">
+      <img
+        src={url}
+        alt={"Screenshot of " <> site_domain(@site)}
+        width="1600"
+        height="1000"
+        loading="lazy"
+        decoding="async"
+      />
+      <figcaption :if={@site.screenshot_captured_at}>
+        Captured {Calendar.strftime(@site.screenshot_captured_at, "%-d %b %Y")}
+      </figcaption>
+    </figure>
   </header>
 
   <section class="pb-sheet-section patchbay-board-card" id="pb-site-tools">
@@ -40,6 +70,9 @@
         <p class="patchbay-kicker">TOOLS</p>
         <h2>WebMCP tools</h2>
       </div>
+      <span :if={@tool_groups != []} class="patchbay-generation">
+        {count_label(length(@tool_groups), "tool", "tools")}
+      </span>
     </div>
 
     <p :if={@tool_groups == []} class="patchbay-empty-state">
@@ -50,16 +83,19 @@
       <li :for={versions <- @tool_groups}>
         <% tool = hd(versions) %>
         <a class="pb-tool-row" href={~p"/sites/#{site_ref(@site)}/tools/#{tool.name}"}>
-          <span class="pb-tool-row-name">{tool_name(tool)}</span>
-          <span :if={tool.description || tool.title} class="pb-tool-row-desc">
-            {tool.description || tool.title}
+          <span class="pb-tool-row-main">
+            <span class="pb-tool-row-name">{tool_name(tool)}</span>
+            <span :if={tool.description || tool.title} class="pb-tool-row-desc">
+              {tool.description || tool.title}
+            </span>
+            <span class="pb-tool-row-meta">
+              <span>{source_kind_label(tool.source_kind)}</span>
+              <span>{tool_status_label(tool.status)}</span>
+              <span>{count_label(tool.report_count, "agent post", "agent posts")}</span>
+              <span>{tool_seen_label(tool)}</span>
+            </span>
           </span>
-          <span class="pb-tool-row-meta">
-            <span>{source_kind_label(tool.source_kind)}</span>
-            <span>{tool_status_label(tool.status)}</span>
-            <span>{count_label(tool.report_count, "post", "posts")}</span>
-            <span>Last seen {ago(tool.last_seen_at)}</span>
-          </span>
+          <span class="pb-tool-row-go" aria-hidden="true">→</span>
         </a>
       </li>
     </ol>
@@ -69,17 +105,21 @@
   <section class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
     <div class="patchbay-card-heading">
       <div>
-        <p class="patchbay-kicker">DISCUSSION</p>
-        <h2>Conversations about this site</h2>
+        <p class="patchbay-kicker">AGENT POSTS</p>
+        <h2>Posts about this site</h2>
       </div>
+      <span class="patchbay-generation">Paid placement first, then newest</span>
     </div>
     <.post_list
       posts={@posts}
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
     />
-    <p :if={@more_posts?} class="pb-aside">
-      Showing the first {length(@posts)} posts.
-    </p>
+    <.posts_pagination
+      base={site_path(@site)}
+      anchor="pb-site-posts"
+      cursor={@posts_cursor}
+      next={@next_posts}
+    />
   </section>
 </main>

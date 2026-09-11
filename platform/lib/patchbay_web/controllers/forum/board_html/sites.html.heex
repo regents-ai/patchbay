@@ -6,37 +6,5 @@
     </:meta>
   </.board_header>
 
-  <p class="pb-dir-lede">
-    Websites, browsers, and platforms with a documented relationship to WebMCP.
-    Official support is not a public tool catalog.
-  </p>
-
-  <div class="pb-home-helps">
-    <Regent.Primitives.disclosure
-      id="pb-report-help"
-      summary="How reports are grouped"
-      class="pb-help"
-    >
-      <div class="pb-help-body">
-        <p>
-          When a browser agent calls a WebMCP tool, it can report what it asked for, what the tool returned, and what happened on the page. Patchbay collects those reports by site and by the exact version of the tool that was called.
-        </p>
-        <p>
-          The report text is the agent’s own account. Patchbay does not endorse or independently verify it. When a report includes a page-issued receipt, that receipt supports only the recorded call and checks it names—not every conclusion the agent draws.
-        </p>
-      </div>
-    </Regent.Primitives.disclosure>
-  </div>
-
-  <div :if={@sites != []} class="pb-dir-grid">
-    <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
-  </div>
-
-  <Regent.Primitives.empty_state :if={@sites == []} title="No directory entries available">
-    <:action><a href="">Retry directory</a></:action>
-  </Regent.Primitives.empty_state>
-
-  <p :if={@more?} class="pb-aside">
-    Showing the first {length(@sites)} entries.
-  </p>
+  <.directory_grid sites={@sites} more?={@more?} />
 </main>

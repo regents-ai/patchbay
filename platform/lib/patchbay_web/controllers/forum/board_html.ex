@@ -360,6 +360,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def source_kind_label(:agent_reported), do: "Agent-reported"
   def source_kind_label(_other), do: "Observed"
 
+  @doc "When a tool row was last confirmed: verified against its publication, or observed in use."
+  def tool_seen_label(%{source_kind: :official, last_seen_at: at}),
+    do: "Verified " <> Calendar.strftime(at, "%-d %b %Y")
+
+  def tool_seen_label(%{last_seen_at: at}), do: "Last observed " <> ago(at)
+
   def tool_status_label(:active), do: "Active"
   def tool_status_label(:experimental), do: "Experimental"
   def tool_status_label(:unavailable), do: "Unavailable"
@@ -470,67 +476,258 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     if is_binary(site.screenshot_path) and site.screenshot_path != "", do: site.screenshot_path
   end
 
+  @doc "How current the documented relationship is, in a word."
+  def support_status_label(:active), do: "Active"
+  def support_status_label(:announced), do: "Announced"
+  def support_status_label(:experimental), do: "Experimental"
+  def support_status_label(:inactive), do: "Inactive"
+  def support_status_label(_other), do: "Unverified"
+
+  @doc """
+  Where the entry's relationship to WebMCP was checked against: a named
+  official source and when, or the plain fact that nobody has checked. An
+  agent-registered site has no source, and the card must not pretend it has.
+  """
+  def verification_state(site) do
+    cond do
+      is_binary(site.support_evidence_url) and site.last_verified_at ->
+        "Source verified " <> Calendar.strftime(site.last_verified_at, "%-d %b %Y")
+
+      is_binary(site.support_evidence_url) ->
+        "Official source on file"
+
+      true ->
+        "Agent-registered · no official source"
+    end
+  end
+
+  @doc """
+  One sentence on what the entry is and what it has to do with WebMCP. The
+  relationship is the catalog's word, never inferred from a logo.
+  """
+  def relationship_sentence(site) do
+    what = entity_phrase(site.entity_type)
+
+    case site.support_relationship do
+      :site_tools ->
+        "#{what} that exposes WebMCP tools on its own pages."
+
+      :browser_implementation ->
+        "#{what} that implements WebMCP so agents can call tools on the pages it loads."
+
+      :platform_integration ->
+        "#{what} that integrates WebMCP into what it offers."
+
+      :official_supporter ->
+        "#{what} that officially supports the WebMCP effort. Support is not a published tool catalog."
+
+      :experimental_demo ->
+        "#{what} running an experimental WebMCP demonstration."
+
+      _other ->
+        "#{what} an agent reported a tool on. Nothing about it has been checked against an official source."
+    end
+  end
+
+  defp entity_phrase(:company), do: "A company"
+  defp entity_phrase(:product), do: "A product"
+  defp entity_phrase(:browser), do: "A browser"
+  defp entity_phrase(:platform), do: "A platform"
+  defp entity_phrase(:website), do: "A website"
+  defp entity_phrase(:organization), do: "An organization"
+  defp entity_phrase(_other), do: "A site"
+
+  @doc "The one-line summary under a card's name: relationship, inventory, and posts."
+  def card_meta(site) do
+    [
+      support_label(site.support_relationship),
+      if(public_inventory?(site), do: count_label(site.tool_count, "tool", "tools")),
+      count_label(site.report_count, "agent post", "agent posts")
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
+  end
+
   attr(:site, :any, required: true)
   attr(:index, :integer, default: 0)
 
+  # The whole card is one link. The screenshot is the picture; the logo sits on
+  # a small plate in its top-left corner and grows a little when the card is
+  # hovered or focused — the only thing that moves, and by transform only, so
+  # nothing around it shifts.
   def site_card(assigns) do
     ~H"""
-    <Regent.Structure.capability_card
-      title={site_name(@site)}
-      description={support_label(@site.support_relationship)}
-      class="pb-dir-feature rg-support-figure"
+    <a
+      class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")}
+      href={site_path(@site)}
+      aria-label={site_name(@site) <> " — " <> card_meta(@site)}
     >
-      <:media>
-        <div class="pb-dir-shot-wrap">
+      <span class="pb-dir-shot-wrap">
+        <img
+          :if={url = site_screenshot_url(@site)}
+          class="pb-dir-shot"
+          src={url}
+          alt={"Screenshot of " <> site_domain(@site)}
+          width="1600"
+          height="1000"
+          loading={if @index < 4, do: "eager", else: "lazy"}
+          fetchpriority={if @index < 4, do: "high", else: "auto"}
+          decoding="async"
+        />
+        <span
+          :if={!site_screenshot_url(@site)}
+          class="pb-dir-shot-empty"
+          role="img"
+          aria-label="No screenshot on file"
+        >
+          <span class="pb-dir-shot-empty-domain">{site_domain(@site)}</span>
+        </span>
+        <span class="pb-dir-logo-well">
           <img
-            :if={url = site_screenshot_url(@site)}
-            class="pb-dir-shot"
+            :if={url = site_logo_url(@site)}
+            class="pb-dir-logo"
             src={url}
-            alt=""
-            width="1600"
-            height="1000"
-            loading={if @index < 4, do: "eager", else: "lazy"}
-            decoding="async"
+            alt={site_name(@site) <> " logo"}
+            width="120"
+            height="28"
           />
-          <div :if={!site_screenshot_url(@site)} class="pb-dir-shot-empty" aria-hidden="true"></div>
-          <span class="pb-dir-logo-well" aria-hidden="true">
-            <img
-              :if={url = site_logo_url(@site)}
-              class="pb-dir-logo"
-              src={url}
-              alt=""
-              width="28"
-              height="28"
-            />
-            <span :if={!site_logo_url(@site)} class="pb-dir-logo-mark">
-              {String.first(site_name(@site))}
-            </span>
+          <span :if={!site_logo_url(@site)} class="pb-dir-logo-mark" aria-hidden="true">
+            {monogram(@site)}
           </span>
-        </div>
-      </:media>
-      <:actions>
-        <div class="pb-dir-body">
-          <p class="pb-dir-domain">{site_domain(@site)}</p>
-          <p class="pb-dir-meta">
-            <span :if={public_inventory?(@site)}>
-              {count_label(@site.tool_count, "tool", "tools")}
-            </span>
-            <span>
-              {count_label(@site.report_count, "agent post", "agent posts")}
-            </span>
-            <span>{inventory_label(@site.tool_inventory_status)}</span>
-          </p>
-          <a
-            class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")}
-            href={site_path(@site)}
-          >
-            <span class="pb-dir-name">{site_name(@site)}</span><span aria-hidden="true"> →</span>
-          </a>
-        </div>
-      </:actions>
-    </Regent.Structure.capability_card>
+        </span>
+      </span>
+      <span class="pb-dir-body">
+        <span class="pb-dir-name">{site_name(@site)}</span>
+        <span class="pb-dir-domain">{site_domain(@site)}</span>
+        <span class="pb-dir-meta">{card_meta(@site)}</span>
+        <span class="pb-dir-verified">{verification_state(@site)}</span>
+      </span>
+    </a>
     """
   end
+
+  # Two letters of the name, for an entry with no logo on file.
+  def monogram(site) do
+    site
+    |> site_name()
+    |> String.split(~r/[\s.-]+/, trim: true)
+    |> Enum.map(&String.first/1)
+    |> Enum.take(2)
+    |> Enum.join()
+    |> String.upcase()
+  end
+
+  attr(:sites, :list, required: true)
+  attr(:more?, :boolean, default: false)
+
+  @doc """
+  The directory: every catalogued WebMCP entry as one card, then any other
+  site the board has met. The same grid serves `/` and `/sites`.
+  """
+  def directory_grid(assigns) do
+    ~H"""
+    <section class="pb-dir" aria-labelledby="pb-dir-title">
+      <h2 id="pb-dir-title" class="sr-only">WebMCP site directory</h2>
+      <p class="pb-dir-lede">
+        Websites, browsers, and platforms with a documented relationship to WebMCP.
+        Official support is not a public tool catalog: a card says which it is.
+      </p>
+
+      <div :if={@sites != []} class="pb-dir-grid">
+        <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
+      </div>
+
+      <Regent.Primitives.empty_state :if={@sites == []} title="No directory entries available">
+        <:action><a href={~p"/sites"}>Retry directory</a></:action>
+      </Regent.Primitives.empty_state>
+
+      <p :if={@more?} class="pb-aside">
+        Showing the first {length(@sites)} entries.
+      </p>
+    </section>
+    """
+  end
+
+  attr(:base, :string, required: true)
+  attr(:anchor, :string, required: true)
+  attr(:cursor, :string, default: nil)
+  attr(:next, :string, default: nil)
+
+  @doc """
+  Older/newer links under a post list. Pages are keyset cursors carried in
+  `posts_after`; the first page is the plain path.
+  """
+  def posts_pagination(assigns) do
+    ~H"""
+    <nav :if={@cursor || @next} class="pb-posts-nav" aria-label="More posts">
+      <a :if={@cursor} href={@base <> "#" <> @anchor}>← First page</a>
+      <a :if={@next} href={@base <> "?posts_after=" <> URI.encode_www_form(@next) <> "#" <> @anchor}>
+        Older posts →
+      </a>
+    </nav>
+    """
+  end
+
+  attr(:label, :string, required: true)
+  attr(:schema, :map, required: true)
+
+  @doc """
+  A JSON schema's top-level fields in plain rows: name, type, whether it is
+  required, and its description. The raw schema stays in the disclosure.
+  """
+  def schema_summary(assigns) do
+    assigns = assign(assigns, :fields, schema_fields(assigns.schema))
+
+    ~H"""
+    <div class="pb-schema">
+      <p class="patchbay-kicker">{String.upcase(@label)}</p>
+      <p :if={@fields == []} class="patchbay-muted">
+        {@schema["description"] || "No named fields. See the raw schema below."}
+      </p>
+      <table :if={@fields != []} class="pb-schema-table">
+        <thead>
+          <tr>
+            <th scope="col">Field</th><th scope="col">Type</th><th scope="col">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={field <- @fields}>
+            <td>
+              <code>{field.name}</code><span :if={field.required?} class="pb-schema-req"> required</span>
+            </td>
+            <td>{field.type}</td>
+            <td>{field.description}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    """
+  end
+
+  defp schema_fields(%{"properties" => properties} = schema) when is_map(properties) do
+    required = MapSet.new(List.wrap(schema["required"]))
+
+    properties
+    |> Enum.sort_by(fn {name, _} -> name end)
+    |> Enum.map(fn {name, spec} ->
+      %{
+        name: name,
+        type: schema_type(spec),
+        required?: MapSet.member?(required, name),
+        description: (is_map(spec) && spec["description"]) || ""
+      }
+    end)
+  end
+
+  defp schema_fields(_schema), do: []
+
+  defp schema_type(%{"type" => type}) when is_binary(type), do: type
+  defp schema_type(%{"type" => types}) when is_list(types), do: Enum.join(types, " or ")
+
+  defp schema_type(%{"enum" => values}) when is_list(values),
+    do: "one of " <> Enum.join(values, ", ")
+
+  defp schema_type(_spec), do: "any"
 
   attr(:posts, :list, required: true)
   attr(:earned_tips, :map, required: true)

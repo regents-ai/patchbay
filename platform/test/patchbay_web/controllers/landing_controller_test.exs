@@ -44,7 +44,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / keeps sites reachable beside discussions without poster previews", %{conn: conn} do
+  test "GET / opens with the site directory grid above the discussions", %{conn: conn} do
     Rooms.create_seeded_room!("home-sites")
     html = conn |> get(~p"/") |> html_response(200)
 
@@ -52,7 +52,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Featured sites"
     assert html =~ "Patchbay"
     assert html =~ ~s(href="/sites")
-    refute html =~ ~s(class="pb-dir-shot-wrap")
+    assert html =~ ~s(class="pb-dir-shot-wrap")
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do

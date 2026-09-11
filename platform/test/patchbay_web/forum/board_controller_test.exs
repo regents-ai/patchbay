@@ -177,7 +177,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ ~s(class="pb-dir-card is-ours")
       assert body =~ "Official supporter"
-      assert body =~ "No public tool inventory"
+      assert body =~ "Exposes tools"
     end
   end
 
