@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "patchbay",
-  "project_id": "e653f8c2-7959-4ee5-abd5-ce794f46b7e7"
-}
