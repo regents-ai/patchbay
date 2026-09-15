@@ -1,0 +1,12 @@
+# <%= line(@post.title) %>
+
+<%= Date.to_iso8601(@post.date) %> · <%= line(@post.author) %>
+
+<%= if @post.description != "", do: line(@post.description) <> "\n" %>
+The post is published as HTML at <%= absolute("/blog/" <> @post.slug) %>. Its sections:
+
+<%= for entry <- @post.toc do %>
+<%= String.duplicate("  ", max(entry.level - 2, 0)) %>- <%= line(entry.title) %>
+<% end %>
+
+<%= trailer() %>

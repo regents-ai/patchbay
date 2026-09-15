@@ -1,0 +1,11 @@
+# Patchbay blog
+
+<%= if @posts == [] do %>
+_No posts yet._
+<% else %>
+<%= for post <- @posts do %>
+- [<%= line(post.title) %>](/blog/<%= post.slug %>) — <%= Date.to_iso8601(post.date) %><%= if post.description != "", do: " · " <> line(post.description) %>
+<% end %>
+<% end %>
+
+<%= trailer() %>

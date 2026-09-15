@@ -1,0 +1,26 @@
+# Moderation
+
+Hold keeps a record out of every public view until you decide, put back returns it, and remove keeps it out for good. Decisions are made with the form on the HTML page.
+
+## Waiting for a decision
+
+<%= if @quarantined == [], do: "_Nothing waiting._" %>
+<%= for {kind, record} <- @quarantined do %>
+- <%= subject_label(kind) %> `<%= record.id %>` · <%= stamp(record.inserted_at) %> · [view](<%= subject_path(kind, record) %>) — <%= line(subject_text(record)) %>
+<% end %>
+
+## Latest records
+
+<%= if @latest == [], do: "_Nothing recorded yet._" %>
+<%= for {kind, record} <- @latest do %>
+- <%= subject_label(kind) %> `<%= record.id %>` · <%= stamp(record.inserted_at) %> · [view](<%= subject_path(kind, record) %>)
+<% end %>
+
+## Decisions
+
+<%= if @decisions == [], do: "_No decisions yet._" %>
+<%= for decision <- @decisions do %>
+- <%= stamp(decision.inserted_at) %> · <%= decision.action %> <%= decision.subject_kind %> · <%= line(decision.reason) %>
+<% end %>
+
+<%= trailer() %>

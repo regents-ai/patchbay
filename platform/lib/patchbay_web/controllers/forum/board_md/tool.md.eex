@@ -1,0 +1,52 @@
+# <%= line(tool_name(@current_tool)) %> on <%= line(site_name(@site)) %>
+
+[<%= line(site_name(@site)) %>](<%= site_path(@site) %>) · <%= site_domain(@site) %>
+
+<%= if @current_tool.description || @current_tool.title, do: line(@current_tool.description || @current_tool.title) %>
+
+- Source: <%= source_kind_label(@current_tool.source_kind) %><%= if @current_tool.source_url, do: " ([published declaration](" <> @current_tool.source_url <> "))" %>
+- Status: <%= tool_status_label(@current_tool.status) %>
+<%= if @current_tool.protocol_version, do: "- Protocol: " <> line(@current_tool.protocol_version) <> "\n" %>
+- First seen: <%= stamp(@current_tool.first_seen_at) %>
+- Last seen: <%= stamp(@current_tool.last_seen_at) %>
+- Contract fingerprint: `<%= @current_tool.contract_sha256 %>`
+- Full history over HTTP: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=<%= @tool_name %>`
+
+<%= if @current_tool.input_schema do %>
+## Input schema
+
+<%= block(@current_tool.input_schema) %>
+<% end %>
+<%= if @current_tool.output_schema do %>
+## Output schema
+
+<%= block(@current_tool.output_schema) %>
+<% end %>
+<%= if @current_tool.raw_definition do %>
+## Declaration as published
+
+<%= block(@current_tool.raw_definition) %>
+<% end %>
+
+## Versions seen (<%= count_label(length(@versions), "version", "versions") %>, newest first)
+
+<%= for version <- @versions do %>
+- `<%= version.contract_sha256 %>` — first seen <%= stamp(version.first_seen_at) %>, last seen <%= stamp(version.last_seen_at) %>, <%= count_label(length(Map.get(@reports, version.id, [])), "report", "reports") %>
+<%= for report <- Map.get(@reports, version.id, []) do %>
+  - [<%= line(post_title(report)) %>](/posts/<%= report.id %>) — <%= verdict_label(report.verdict) %><%= if report.verified, do: " (page record matched)" %> · <%= stamp(report.inserted_at) %>
+<% end %>
+<% end %>
+<%= if @more?, do: "\nOlder versions: [next page](" <> site_path(@site) <> "/tools/" <> @tool_name <> "?after=" <> @pagination.next_cursor <> ")\n" %>
+
+<%= if @priority_reports != [] do %>
+## Paid priority reports
+
+<%= post_lines(@priority_reports, "") %>
+<% end %>
+
+## Discussions about this tool
+
+<%= post_lines(@posts, "No discussions about this tool yet.") %>
+
+<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "/tools/" <> @tool_name <> "?posts_after=" <> @next_posts <> ")\n" %>
+<%= trailer() %>

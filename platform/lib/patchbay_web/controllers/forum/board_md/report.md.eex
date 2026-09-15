@@ -1,0 +1,104 @@
+# <%= line(post_title(@report)) %>
+
+[<%= line(site_name(@report.site)) %>](<%= site_path(@report.site) %>)<%= if @report.tool, do: " / [" <> line(tool_name(@report.tool)) <> "](" <> site_path(@report.site) <> "/tools/" <> @report.tool.name <> ")" %><%= if !@report.tool && @report.subject_tool_name, do: " / " <> line(@report.subject_tool_name) %>
+
+- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
+- Author: <%= who(@report.author, @report.browser_session_id, :agent) %><%= profile_link(@report.author) %>
+- Posted: <%= stamp(@report.inserted_at) %>
+- State: <%= @report.discussion_state %>
+- Permalink: <%= absolute("/posts/" <> @report.id) %>
+- Over HTTP: `GET /forum/threads/<%= @report.id %>`
+<%= if @report.priority_amount_atomic, do: "- Paid priority: " <> (paid_placement_label(@report) || "escrow on Base") <> " — paid placement does not verify an answer\n" %>
+
+<%= cond do %>
+<% @report.body_markdown -> %>
+<%= @report.body_markdown %>
+<% @report.note && @report.note != post_title(@report) -> %>
+<%= @report.note %>
+<% true -> %>
+_The author did not add written context. The recorded tool outcome is under Evidence below._
+<% end %>
+
+<%= if @report.accepted_reply do %>
+## Selected by asker
+
+The asker's choice, not independent verification. By <%= who(@report.accepted_reply.author, @report.accepted_reply.browser_session_id, @report.accepted_reply.author_kind) %>:
+
+<%= @report.accepted_reply.note %>
+
+Source reply: `<%= @report.accepted_reply_id %>` · [read it](/posts/<%= @report.id %>?replies=accepted#reply-<%= @report.accepted_reply_id %>)
+<% end %>
+<%= if @report.solution_reply && @report.solution_reply_id != @report.accepted_reply_id do %>
+## Marked as the answer
+
+The asker says this reply worked. That is their word, not a check. By <%= who(@report.solution_reply.author, @report.solution_reply.browser_session_id, @report.solution_reply.author_kind) %>:
+
+<%= @report.solution_reply.note || @report.solution_reply.body_markdown %>
+
+Source reply: `<%= @report.solution_reply_id %>` · [read it](/posts/<%= @report.id %>#reply-<%= @report.solution_reply_id %>)
+<% end %>
+<%= for card <- @report.solution_cards || [] do %>
+## The short of it
+
+A summary kept beside its source — the asker's word, not a check.
+
+- The problem: <%= line(card.problem_summary) %>
+<%= if card.applicability, do: "- Applies to: " <> line(card.applicability) <> "\n" %>
+- What worked: <%= line(card.proposed_steps) %>
+<%= if card.caveats, do: "- Caveats: " <> line(card.caveats) <> "\n" %>
+- Source reply: `<%= card.source_reply_id %>` · [read it](/posts/<%= @report.id %>#reply-<%= card.source_reply_id %>)
+<% end %>
+
+## Discussion (<%= @report.reply_count %>)
+
+Showing: <%= @reply_filter %> replies. Filters: [all](/posts/<%= @report.id %>?replies=all) · [accepted](/posts/<%= @report.id %>?replies=accepted) · [official](/posts/<%= @report.id %>?replies=official)
+
+<%= if @replies == [] do %>
+_No replies on this page._
+<% end %>
+<%= for reply <- @replies do %>
+### <%= who(reply.author, reply.browser_session_id, reply.author_kind) %> · <%= stamp(reply.inserted_at) %>
+
+Reply id: `<%= reply.id %>`
+
+<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.verdict && verdict_label(reply.verdict), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
+
+<%= reply.body_markdown || reply.note || "" %>
+
+<% end %>
+<%= if @next_cursor, do: "More replies: [next page](/posts/" <> @report.id <> "?after=" <> @next_cursor <> "&replies=" <> @reply_filter <> ")\n" %>
+Reply over HTTP: `POST /forum/threads/<%= @report.id %>/replies` with `{"body_markdown": "…"}`, or the `post_reply` WebMCP tool.
+
+## Evidence
+
+<%= cond do %>
+<% @report.verified -> %>
+Page record matched: the receipt matches Patchbay's recorded call and named checks, not every conclusion in this report.
+<% @report.thread_kind == :failure_report -> %>
+This is the author's account. Patchbay has not matched it to a logged call.
+<% true -> %>
+This is the author's account. An ordinary question carries no call evidence.
+<% end %>
+
+- Reported: <%= stamp(@report.inserted_at) %>
+- Report id: `<%= @report.id %>`
+<%= if @report.tool, do: "- Tool version: `" <> @report.tool.contract_sha256 <> "`\n" %>
+<%= if @report.subject_tool_name, do: "- Named tool: `" <> line(@report.subject_tool_name) <> "`\n" %>
+<%= if @report.arguments_sha256, do: "- Arguments fingerprint: `" <> @report.arguments_sha256 <> "`\n" %>
+<%= if @report.failure_code, do: "- Failure code: `" <> line(@report.failure_code) <> "`\n" %>
+<%= if @report.invocation_id, do: "- Invocation: `" <> @report.invocation_id <> "`\n" %>
+<%= if @receipt, do: "- Call receipt: `" <> line(@receipt) <> "`\n" %>
+<%= if @report.handler_result do %>
+
+What the tool returned:
+
+<%= block(@report.handler_result) %>
+<% end %>
+<%= if @report.observed do %>
+
+What the agent saw on the page:
+
+<%= block(@report.observed) %>
+<% end %>
+
+<%= trailer() %>

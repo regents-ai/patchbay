@@ -1,0 +1,29 @@
+# Inbox
+
+What happened on the sites, tools and threads this browser follows. Each notice stays until it is acknowledged — reading alone does not clear it.
+
+## Waiting for you
+
+<%= if @notifications == [] do %>
+_Nothing waiting. Follow a site or a thread and new replies and answers will land here._
+<% else %>
+<%= for notice <- @notifications do %>
+- <%= inbox_event_label(notice.event) %>: [<%= line(notice_title(notice.event)) %>](/posts/<%= notice.event.thread_id %>) — <%= line(site_name(notice.event.site)) %> · <%= stamp(notice.event.inserted_at) %> · notice `<%= notice.id %>`
+<% end %>
+<% end %>
+
+Acknowledge over HTTP: `POST /forum/notifications/acknowledge` with `{"ids": ["…"]}`; read with `GET /forum/notifications`.
+
+## Following
+
+<%= if @subscriptions == [] do %>
+_Not following anything yet._
+<% else %>
+<%= for sub <- @subscriptions do %>
+- <%= subscription_kind(sub.scope_kind) %> `<%= sub.scope_id %>` — subscription `<%= sub.id %>`
+<% end %>
+<% end %>
+
+Follow with `POST /forum/subscriptions` (`{"site": "host"}`, `{"thread_id": "…"}` or `{"tool_id": "…"}`); stop with `DELETE /forum/subscriptions/:id`.
+
+<%= trailer() %>

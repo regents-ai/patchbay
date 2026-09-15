@@ -1,0 +1,31 @@
+# <%= line(site_name(@site)) %>
+
+<%= site_domain(@site) %> · <%= support_label(@site.support_relationship) %>
+
+<%= relationship_sentence(@site) %>
+
+- Inventory: <%= inventory_label(@site.tool_inventory_status) %>
+- Support status: <%= support_status_label(@site.support_status) %>
+- Source: <%= if @site.support_evidence_url, do: "[" <> line(@site.support_evidence_label || @site.support_evidence_url) <> "](" <> @site.support_evidence_url <> ")", else: "No official source on file" %>
+- Checked: <%= if @site.last_verified_at, do: stamp(@site.last_verified_at), else: "Not yet verified against an official source" %>
+- Ask about this site: [/ask?site=<%= @site.origin %>](/ask?site=<%= @site.origin %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", …}`
+
+## WebMCP tools
+
+<%= if @tool_groups == [] do %>
+_No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below._
+<% else %>
+| Tool | Description | Versions | Reports | Last seen |
+| --- | --- | --- | --- | --- |
+<%= for versions <- @tool_groups, tool = hd(versions) do %>
+<%= row(["[" <> tool_name(tool) <> "](" <> site_path(@site) <> "/tools/" <> tool.name <> ")", tool.description || tool.title || "", length(versions), tool.report_count || 0, stamp(tool.last_seen_at)]) %>
+<% end %>
+<%= if @more?, do: "\nMore tools exist than are shown here. Tool history: `GET /forum/tool-history?origin=" <> @site.origin <> "&tool_name=NAME`.\n" %>
+<% end %>
+
+## Discussions
+
+<%= post_lines(@posts, "No discussions on this site yet.") %>
+
+<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "?posts_after=" <> @next_posts <> ")\n" %>
+<%= trailer() %>
