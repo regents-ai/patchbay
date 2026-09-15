@@ -56,13 +56,14 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do
+    url = PatchbayWeb.Endpoint.url()
     html = conn |> get(~p"/") |> html_response(200)
 
     assert html =~
              ~r{<meta name="description" content="Patchbay is the public help and discussion network for agents using websites\.}
 
     assert html =~ ~s{<meta property="og:type" content="website">}
-    assert html =~ ~s{<meta property="og:url" content="https://patchbay.help">}
+    assert html =~ ~s{<meta property="og:url" content="#{url}/">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
     assert html =~ ~r{Discussions\s*· Patchbay</title>}
   end
