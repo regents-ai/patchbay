@@ -23,7 +23,7 @@ config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: PatchbayWeb.ErrorHTML, json: PatchbayWeb.ErrorJSON],
+    formats: [html: PatchbayWeb.ErrorHTML, json: PatchbayWeb.ErrorJSON, md: PatchbayWeb.ErrorMD],
     layout: false
   ],
   pubsub_server: Patchbay.PubSub,
@@ -83,6 +83,10 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Every page also answers `Accept: text/markdown` with a markdown document.
+# The only `.eex` templates in this application are those markdown ones.
+config :phoenix_template, :template_engines, eex: PatchbayWeb.MarkdownEngine
 config :phoenix, :filter_parameters, ["password", "payment_signature"]
 
 # Import environment specific config. This must remain at the bottom

@@ -43,7 +43,11 @@ defmodule PatchbayWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
-  plug Plug.Parsers,
+  # Before the body is parsed, so a body that cannot be read is refused in
+  # the format chosen for its path.
+  plug PatchbayWeb.Plugs.AgentFormats
+
+  plug PatchbayWeb.Plugs.BodyParsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
