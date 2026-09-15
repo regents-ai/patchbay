@@ -149,6 +149,14 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
+    read :for_sitemap do
+      description("Every tool with its site, newest version of each name first.")
+
+      prepare(
+        build(sort: [site_id: :asc, name: :asc, last_seen_at: :desc, id: :asc], load: [:site])
+      )
+    end
+
     read :history do
       argument(:site_id, :uuid, allow_nil?: false)
       argument(:name, :string, allow_nil?: false)

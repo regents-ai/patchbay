@@ -33,6 +33,7 @@ defmodule Patchbay.Forum do
       define(:get_tool, action: :read, get_by: [:id])
       define(:tool_history, action: :history, args: [:site_id, :name])
       define(:list_tools_for_site, action: :for_site, args: [:site_id])
+      define(:list_tools_for_sitemap, action: :for_sitemap)
     end
 
     resource Patchbay.Forum.Report do

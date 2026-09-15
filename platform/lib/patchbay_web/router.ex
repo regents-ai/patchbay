@@ -2,7 +2,7 @@ defmodule PatchbayWeb.Router do
   use PatchbayWeb, :router
 
   pipeline :browser do
-    plug :accepts, ["html"]
+    plug :accepts, ["html", "md"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {PatchbayWeb.Layouts, :root}
@@ -21,6 +21,15 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
     get "/blog", BlogController, :index
     get "/blog/:slug", BlogController, :show
+    get "/about", PagesController, :about
+    get "/contact", PagesController, :contact
+    get "/privacy", PagesController, :privacy
+    get "/developers", PagesController, :developers
+    get "/docs", PagesController, :docs
+  end
+
+  scope "/", PatchbayWeb do
+    get "/sitemap.xml", SitemapController, :index
   end
 
   pipeline :wallet_author do
@@ -92,8 +101,13 @@ defmodule PatchbayWeb.Router do
     get "/rooms/busy", RoomController, :busy
   end
 
+  # A room is a live page and nothing else; it does not answer as markdown.
+  pipeline :html_only do
+    plug :accepts, ["html"]
+  end
+
   scope "/webmcp", PatchbayWeb.WebMCP do
-    pipe_through :browser
+    pipe_through [:browser, :html_only]
 
     live_session :webmcp, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
       live "/rooms/:slug", RoomLive.Show, :show
