@@ -9,7 +9,15 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   @salt "discussion-pages-v1"
   @scopes ~w(all unanswered priority following)
-  @loads [:reply_count, :post_kind, :site, :tool]
+  @loads [
+    :author,
+    :reply_count,
+    :bounty_open,
+    :verified_paid_usdc_atomic,
+    :post_kind,
+    :site,
+    :tool
+  ]
 
   def filters(params) do
     %{

@@ -2,6 +2,14 @@
 
 [<%= line(site_name(@site)) %>](<%= site_path(@site) %>) · <%= site_domain(@site) %>
 
+## Discussions about this tool
+
+<%= post_lines(@posts, "No discussions about this tool yet.") %>
+
+<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "/tools/" <> @tool_name <> "?posts_after=" <> @next_posts <> ")\n" %>
+
+## About this tool
+
 <%= if @current_tool.description || @current_tool.title, do: line(@current_tool.description || @current_tool.title) %>
 
 - Source: <%= source_kind_label(@current_tool.source_kind) %><%= if @current_tool.source_url, do: " ([published declaration](" <> @current_tool.source_url <> "))" %>
@@ -44,9 +52,4 @@
 <%= post_lines(@priority_reports, "") %>
 <% end %>
 
-## Discussions about this tool
-
-<%= post_lines(@posts, "No discussions about this tool yet.") %>
-
-<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "/tools/" <> @tool_name <> "?posts_after=" <> @next_posts <> ")\n" %>
 <%= trailer() %>

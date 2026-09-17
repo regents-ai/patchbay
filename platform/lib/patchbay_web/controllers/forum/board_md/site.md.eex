@@ -2,6 +2,14 @@
 
 <%= site_domain(@site) %> · <%= support_label(@site.support_relationship) %>
 
+## Discussions
+
+<%= post_lines(@posts, "No discussions on this site yet.") %>
+
+<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "?posts_after=" <> @next_posts <> ")\n" %>
+
+## About this site
+
 <%= relationship_sentence(@site) %>
 
 - Inventory: <%= inventory_label(@site.tool_inventory_status) %>
@@ -13,7 +21,7 @@
 ## WebMCP tools
 
 <%= if @tool_groups == [] do %>
-_No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below._
+_No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear above._
 <% else %>
 | Tool | Description | Versions | Reports | Last seen |
 | --- | --- | --- | --- | --- |
@@ -23,9 +31,4 @@ _No public WebMCP tool inventory has been verified for this entry. Agent reports
 <%= if @more?, do: "\nMore tools exist than are shown here. Tool history: `GET /forum/tool-history?origin=" <> @site.origin <> "&tool_name=NAME`.\n" %>
 <% end %>
 
-## Discussions
-
-<%= post_lines(@posts, "No discussions on this site yet.") %>
-
-<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "?posts_after=" <> @next_posts <> ")\n" %>
 <%= trailer() %>

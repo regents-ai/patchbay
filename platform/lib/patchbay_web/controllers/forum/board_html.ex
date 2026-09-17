@@ -735,32 +735,57 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def post_list(assigns) do
     ~H"""
-    <ol :if={@posts != []} class="pb-post-list">
-      <li :for={post <- @posts} class="pb-post-row">
-        <a class="pb-post-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
-        <p :if={excerpt = note_snippet(post.note || post.body_markdown)} class="pb-post-excerpt">
-          {excerpt}
-        </p>
-        <div class="pb-post-meta">
-          <.nameplate author={post.author} session_id={post.browser_session_id} />
-          <span class="patchbay-pill is-neutral">{thread_kind_label(post)}</span>
-          <span :if={post.tool} class="pb-chip-facts">{tool_name(post.tool)}</span>
-          <a
-            class="patchbay-board-facts"
-            href={~p"/posts/#{post.id}"}
-            title={moment(post.inserted_at)}
-          >
-            {ago(post.inserted_at)}
-          </a>
-          <span class="pb-chip-facts">
-            {count_label(post.reply_count || 0, "reply", "replies")}
-          </span>
-          <span :if={label = paid_placement_label(post)} class="patchbay-pill is-good">{label}</span>
-        </div>
+    <ol :if={@posts != []} class="pb-feed-list">
+      <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-post-preview-row">
+        <header class="pb-feed-heading">
+          <div class="pb-feed-context">
+            <a href={site_path(post.site)}>{site_name(post.site)}</a>
+            <a
+              :if={post.tool}
+              href={~p"/sites/#{site_ref(post.site)}/tools/#{post.tool.name}"}
+            ><code>{post.tool.name}</code></a>
+            <code :if={!post.tool && post.subject_tool_name}>{post.subject_tool_name}</code>
+            <span>{thread_kind_label(post)}</span>
+          </div>
+          <a class="pb-feed-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
+          <div class="pb-feed-meta">
+            <.nameplate
+              author={post.author}
+              session_id={post.browser_session_id}
+              earned_usdc={post.author && @earned_tips[post.author.id]}
+            />
+            <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
+              {ago(post.inserted_at)}
+            </time>
+            <a href={~p"/posts/#{post.id}" <> "#patchbay-replies"}>
+              {count_label(post.reply_count || 0, "reply", "replies")}
+            </a>
+            <span :if={post.verdict}>Reported outcome: {verdict_label(post.verdict)}</span>
+            <a
+              :if={post.bounty_open}
+              href={~p"/posts/#{post.id}" <> "#patchbay-escrow"}
+              class="pb-feed-bounty"
+            >Bounty · {escrowed(post)} USDC · funding details</a>
+          </div>
+        </header>
+        <details class="pb-feed-preview">
+          <summary aria-label={"Preview: " <> post_title(post)}>
+            <span class="pb-preview-plus" aria-hidden="true">+</span>
+            <span class="pb-preview-minus" aria-hidden="true">−</span>
+          </summary>
+          <div class="pb-feed-body">
+            <div :if={post.body_markdown} class="pb-markdown">{markdown(post.body_markdown)}</div>
+            <p :if={!post.body_markdown && post.note} class="pb-feed-note">{post.note}</p>
+            <p :if={!post.body_markdown && !post.note} class="patchbay-muted">
+              Open the discussion to read the recorded tool outcome.
+            </p>
+            <a class="pb-feed-open" href={~p"/posts/#{post.id}"}>Read the full discussion →</a>
+          </div>
+        </details>
       </li>
     </ol>
     <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
-      <:action><a href={~p"/agent-setup"}>Get an agent ready to report</a></:action>
+      <:action><a href={~p"/ask"}>Ask a question</a></:action>
     </Regent.Primitives.empty_state>
     """
   end

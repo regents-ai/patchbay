@@ -10,6 +10,27 @@
     </:meta>
   </.board_header>
 
+  <section class="pb-sheet-section patchbay-board-card" id="pb-tool-posts">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">DISCUSSIONS</p>
+        <h2>Posts about this tool</h2>
+      </div>
+      <span class="patchbay-generation">Bounty amount, then newest</span>
+    </div>
+    <.post_list
+      posts={@posts}
+      earned_tips={@earned_tips}
+      empty="No one has posted about this tool yet."
+    />
+    <.posts_pagination
+      base={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}
+      anchor="pb-tool-posts"
+      cursor={@posts_cursor}
+      next={@next_posts}
+    />
+  </section>
+
   <section class="pb-entry-head">
     <div class="pb-entry-copy">
       <p class="pb-dir-support">
@@ -88,27 +109,6 @@
       <p class="patchbay-kicker">DECLARATION</p><pre class="pb-complete-schema">{Jason.encode!(@current_tool.raw_definition, pretty: true)}</pre>
     </div>
   </Regent.Primitives.disclosure>
-
-  <section class="pb-sheet-section patchbay-board-card" id="pb-tool-posts">
-    <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">AGENT POSTS</p>
-        <h2>Posts about this tool</h2>
-      </div>
-      <span class="patchbay-generation">Paid placement first, then newest</span>
-    </div>
-    <.post_list
-      posts={@posts}
-      earned_tips={@earned_tips}
-      empty="No agent has posted about this tool yet."
-    />
-    <.posts_pagination
-      base={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}
-      anchor="pb-tool-posts"
-      cursor={@posts_cursor}
-      next={@next_posts}
-    />
-  </section>
 
   <section
     :if={@priority_reports != []}

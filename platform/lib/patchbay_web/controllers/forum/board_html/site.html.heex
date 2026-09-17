@@ -7,108 +7,13 @@
     </:meta>
   </.board_header>
 
-  <header class="pb-entry-head">
-    <div class="pb-entry-mark">
-      <img
-        :if={url = site_logo_url(@site)}
-        src={url}
-        alt={site_name(@site) <> " logo"}
-        width="120"
-        height="28"
-      />
-      <span :if={!site_logo_url(@site)} aria-hidden="true">{monogram(@site)}</span>
-    </div>
-    <div class="pb-entry-copy">
-      <p class="pb-dir-support">
-        {support_label(@site.support_relationship)}
-        <span class="pb-entry-dot" aria-hidden="true">·</span>
-        <span class="pb-entry-domain">{site_domain(@site)}</span>
-      </p>
-      <p class="patchbay-muted">{relationship_sentence(@site)}</p>
-      <dl class="pb-entry-facts">
-        <dt>Inventory</dt>
-        <dd>{inventory_label(@site.tool_inventory_status)}</dd>
-        <dt>Support status</dt>
-        <dd>{support_status_label(@site.support_status)}</dd>
-        <dt>Source</dt>
-        <dd>
-          <a :if={@site.support_evidence_url} href={@site.support_evidence_url} rel="noreferrer">
-            {@site.support_evidence_label || @site.support_evidence_url}
-          </a>
-          <span :if={!@site.support_evidence_url}>No official source on file</span>
-        </dd>
-        <dt>Checked</dt>
-        <dd>
-          <time
-            :if={@site.last_verified_at}
-            datetime={DateTime.to_iso8601(@site.last_verified_at)}
-          >
-            {Calendar.strftime(@site.last_verified_at, "%-d %b %Y")}
-          </time>
-          <span :if={!@site.last_verified_at}>Not yet verified against an official source</span>
-        </dd>
-      </dl>
-    </div>
-    <figure :if={url = site_screenshot_url(@site)} class="pb-entry-shot">
-      <img
-        src={url}
-        alt={"Screenshot of " <> site_domain(@site)}
-        width="1600"
-        height="1000"
-        loading="lazy"
-        decoding="async"
-      />
-      <figcaption :if={@site.screenshot_captured_at}>
-        Captured {Calendar.strftime(@site.screenshot_captured_at, "%-d %b %Y")}
-      </figcaption>
-    </figure>
-  </header>
-
-  <section class="pb-sheet-section patchbay-board-card" id="pb-site-tools">
-    <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">TOOLS</p>
-        <h2>WebMCP tools</h2>
-      </div>
-      <span :if={@tool_groups != []} class="patchbay-generation">
-        {count_label(length(@tool_groups), "tool", "tools")}
-      </span>
-    </div>
-
-    <p :if={@tool_groups == []} class="patchbay-empty-state">
-      No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below.
-    </p>
-
-    <ol :if={@tool_groups != []} class="pb-tool-rows">
-      <li :for={versions <- @tool_groups}>
-        <% tool = hd(versions) %>
-        <a class="pb-tool-row" href={~p"/sites/#{site_ref(@site)}/tools/#{tool.name}"}>
-          <span class="pb-tool-row-main">
-            <span class="pb-tool-row-name">{tool_name(tool)}</span>
-            <span :if={tool.description || tool.title} class="pb-tool-row-desc">
-              {tool.description || tool.title}
-            </span>
-            <span class="pb-tool-row-meta">
-              <span>{source_kind_label(tool.source_kind)}</span>
-              <span>{tool_status_label(tool.status)}</span>
-              <span>{count_label(tool.report_count, "agent post", "agent posts")}</span>
-              <span>{tool_seen_label(tool)}</span>
-            </span>
-          </span>
-          <span class="pb-tool-row-go" aria-hidden="true">→</span>
-        </a>
-      </li>
-    </ol>
-    <p :if={@more?} class="pb-aside">This site has more tool versions than fit on one page.</p>
-  </section>
-
   <section class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
     <div class="patchbay-card-heading">
       <div>
-        <p class="patchbay-kicker">AGENT POSTS</p>
+        <p class="patchbay-kicker">DISCUSSIONS</p>
         <h2>Posts about this site</h2>
       </div>
-      <span class="patchbay-generation">Paid placement first, then newest</span>
+      <span class="patchbay-generation">Bounty amount, then newest</span>
     </div>
     <.post_list
       posts={@posts}
@@ -122,4 +27,101 @@
       next={@next_posts}
     />
   </section>
+
+  <Regent.Primitives.disclosure id="pb-site-inventory" summary="About this site and its tools">
+    <header class="pb-entry-head">
+      <div class="pb-entry-mark">
+        <img
+          :if={url = site_logo_url(@site)}
+          src={url}
+          alt={site_name(@site) <> " logo"}
+          width="120"
+          height="28"
+        />
+        <span :if={!site_logo_url(@site)} aria-hidden="true">{monogram(@site)}</span>
+      </div>
+      <div class="pb-entry-copy">
+        <p class="pb-dir-support">
+          {support_label(@site.support_relationship)}
+          <span class="pb-entry-dot" aria-hidden="true">·</span>
+          <span class="pb-entry-domain">{site_domain(@site)}</span>
+        </p>
+        <p class="patchbay-muted">{relationship_sentence(@site)}</p>
+        <dl class="pb-entry-facts">
+          <dt>Inventory</dt>
+          <dd>{inventory_label(@site.tool_inventory_status)}</dd>
+          <dt>Support status</dt>
+          <dd>{support_status_label(@site.support_status)}</dd>
+          <dt>Source</dt>
+          <dd>
+            <a :if={@site.support_evidence_url} href={@site.support_evidence_url} rel="noreferrer">
+              {@site.support_evidence_label || @site.support_evidence_url}
+            </a>
+            <span :if={!@site.support_evidence_url}>No official source on file</span>
+          </dd>
+          <dt>Checked</dt>
+          <dd>
+            <time
+              :if={@site.last_verified_at}
+              datetime={DateTime.to_iso8601(@site.last_verified_at)}
+            >
+              {Calendar.strftime(@site.last_verified_at, "%-d %b %Y")}
+            </time>
+            <span :if={!@site.last_verified_at}>Not yet verified against an official source</span>
+          </dd>
+        </dl>
+      </div>
+      <figure :if={url = site_screenshot_url(@site)} class="pb-entry-shot">
+        <img
+          src={url}
+          alt={"Screenshot of " <> site_domain(@site)}
+          width="1600"
+          height="1000"
+          loading="lazy"
+          decoding="async"
+        />
+        <figcaption :if={@site.screenshot_captured_at}>
+          Captured {Calendar.strftime(@site.screenshot_captured_at, "%-d %b %Y")}
+        </figcaption>
+      </figure>
+    </header>
+
+    <section class="pb-sheet-section patchbay-board-card" id="pb-site-tools">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">TOOLS</p>
+          <h2>WebMCP tools</h2>
+        </div>
+        <span :if={@tool_groups != []} class="patchbay-generation">
+          {count_label(length(@tool_groups), "tool", "tools")}
+        </span>
+      </div>
+
+      <p :if={@tool_groups == []} class="patchbay-empty-state">
+        No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear above.
+      </p>
+
+      <ol :if={@tool_groups != []} class="pb-tool-rows">
+        <li :for={versions <- @tool_groups}>
+          <% tool = hd(versions) %>
+          <a class="pb-tool-row" href={~p"/sites/#{site_ref(@site)}/tools/#{tool.name}"}>
+            <span class="pb-tool-row-main">
+              <span class="pb-tool-row-name">{tool_name(tool)}</span>
+              <span :if={tool.description || tool.title} class="pb-tool-row-desc">
+                {tool.description || tool.title}
+              </span>
+              <span class="pb-tool-row-meta">
+                <span>{source_kind_label(tool.source_kind)}</span>
+                <span>{tool_status_label(tool.status)}</span>
+                <span>{count_label(tool.report_count, "agent post", "agent posts")}</span>
+                <span>{tool_seen_label(tool)}</span>
+              </span>
+            </span>
+            <span class="pb-tool-row-go" aria-hidden="true">→</span>
+          </a>
+        </li>
+      </ol>
+      <p :if={@more?} class="pb-aside">This site has more tool versions than fit on one page.</p>
+    </section>
+  </Regent.Primitives.disclosure>
 </main>

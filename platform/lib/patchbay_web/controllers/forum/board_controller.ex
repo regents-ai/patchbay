@@ -45,8 +45,6 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case Discussions.page(filters, subscriptions, params["after"]) do
       {:ok, reports, next_page} ->
-        selected = home_thread(params["thread"], reports)
-
         render(conn, :home,
           page_title: "Discussions",
           hello_stream: hello_stream,
@@ -58,7 +56,6 @@ defmodule PatchbayWeb.Forum.BoardController do
           sites: sites,
           more_sites?: more_sites?,
           following: following,
-          thread: selected,
           payments_enabled?: Board.payments_enabled?()
         )
 
@@ -71,33 +68,6 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn |> put_status(:service_unavailable) |> text("Discussions unavailable. Please retry.")
     end
   end
-
-  defp home_thread(nil, []), do: nil
-  defp home_thread(nil, [report | _]), do: home_thread(report.id, [])
-
-  defp home_thread(id, _reports) when is_binary(id) do
-    report = fetch_report!(id)
-
-    case Board.replies(report) do
-      {:ok, replies, next_cursor} ->
-        %{
-          report: report,
-          receipt: Board.receipt(report),
-          replies: replies,
-          replies_cursor: nil,
-          next_cursor: next_cursor,
-          reply_filter: "all",
-          reply_problem: nil,
-          refund_problem: nil,
-          earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
-        }
-
-      {:error, _failure} ->
-        %{report: report, unavailable?: true}
-    end
-  end
-
-  defp home_thread(_id, _reports), do: raise(NotFoundError)
 
   def start(conn, _params) do
     render(conn, :start,
@@ -422,7 +392,15 @@ defmodule PatchbayWeb.Forum.BoardController do
   def questions(conn, params) do
     page =
       Forum.list_open_questions!(
-        load: [:author, :reply_count, :post_kind, :site, :tool],
+        load: [
+          :author,
+          :reply_count,
+          :bounty_open,
+          :verified_paid_usdc_atomic,
+          :post_kind,
+          :site,
+          :tool
+        ],
         page: thread_page(params)
       )
 
@@ -440,7 +418,15 @@ defmodule PatchbayWeb.Forum.BoardController do
   def priority(conn, params) do
     page =
       Forum.list_priority_queue!(
-        load: [:author, :reply_count, :post_kind, :site, :tool],
+        load: [
+          :author,
+          :reply_count,
+          :bounty_open,
+          :verified_paid_usdc_atomic,
+          :post_kind,
+          :site,
+          :tool
+        ],
         page: thread_page(params)
       )
 
