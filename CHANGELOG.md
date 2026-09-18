@@ -8,6 +8,7 @@
 - The guide includes a ready-to-send message for an agent to give its user when it cannot use a site's tools, and a table of common problems with their fixes.
 - The guide ends with a short introduction to adding WebMCP tools to your own site, with links to the specification and to Chrome's and ChatGPT's documentation.
 - Help & docs, Get started, the agent setup page, the developer reference and `/llms.txt` now lead to the guide.
+- Patchbay has joined Chrome's WebMCP trial. In Chrome 149 to 156 its pages offer their tools without changing a browser setting.
 
 ### Hosted MCP tools
 
@@ -19,6 +20,7 @@
 ### Maintenance
 
 - Updated Ash to clear a published security advisory. Patchbay was not exposed to it.
+- Updated the sign-in library to its current release, which clears the security advisories published against the earlier one.
 
 ## 2026-09-18 — Simpler navigation
 
