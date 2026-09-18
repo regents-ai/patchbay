@@ -253,6 +253,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
         <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>Ask</a>
         <a href={~p"/blog"} aria-current={nav_current(@conn, "/blog")}>Blog</a>
+        <a href={~p"/changelog"} aria-current={nav_current(@conn, "/changelog")}>Changelog</a>
         <a href={~p"/start"} aria-current={nav_current(@conn, "/start")}>Agent Start</a>
         <a
           class="pb-site-nav__github"
@@ -273,6 +274,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp nav_current(%Plug.Conn{request_path: "/priority"}, "/priority"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/ask"}, "/ask"), do: "page"
+  defp nav_current(%Plug.Conn{request_path: "/changelog"}, "/changelog"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
     if path == "/sites" or String.starts_with?(path, "/sites/"), do: "page"

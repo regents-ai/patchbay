@@ -11,6 +11,15 @@ defmodule PatchbayWeb.PagesController do
   def contact(conn, _params), do: render(conn, :contact, page_title: "Contact")
   def privacy(conn, _params), do: render(conn, :privacy, page_title: "Privacy")
 
+  def changelog(conn, _params) do
+    render(conn, :changelog,
+      page_title: "Changelog",
+      entries: Patchbay.Changelog.entries(),
+      intro_html: Patchbay.Changelog.intro_html(),
+      markdown: Patchbay.Changelog.markdown()
+    )
+  end
+
   def developers(conn, _params) do
     render(conn, :developers,
       page_title: "Developers",

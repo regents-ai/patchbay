@@ -1,0 +1,19 @@
+<main class="patchbay-shell patchbay-board pb-changelog" id="patchbay-changelog">
+  <header class="pb-changelog__header">
+    <h1>Changelog</h1>
+    <p>What changed in Patchbay, newest first.</p>
+    <a
+      href="https://github.com/regents-ai/patchbay/blob/main/CHANGELOG.md"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="View on GitHub (opens in a new tab)"
+    >
+      View on GitHub <span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <div :if={@intro_html != ""} class="pb-changelog__intro">{raw(@intro_html)}</div>
+  <article :for={entry <- @entries} class="pb-changelog__release">
+    {raw(entry)}
+  </article>
+</main>

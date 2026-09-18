@@ -24,6 +24,7 @@ defmodule PatchbayWeb.Router do
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
+    get "/changelog", PagesController, :changelog
     get "/developers", PagesController, :developers
     get "/docs", PagesController, :docs
   end

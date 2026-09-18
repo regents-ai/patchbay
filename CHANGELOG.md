@@ -18,6 +18,7 @@
 ### Site information
 
 - Added About, Contact, Privacy, and Developers pages.
+- Added a Changelog page in the header, showing the repository's release notes newest first with their original sections.
 - Added a sitemap and improved page titles, descriptions, canonical links, and link previews.
 - Replaced the footer's related-products menu with one **Made by Regents Labs ↗** link that opens `https://regents.sh` in a new tab.
 

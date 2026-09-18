@@ -62,6 +62,7 @@ RUN mix deps.compile
 
 COPY platform/priv priv
 COPY platform/lib lib
+COPY CHANGELOG.md /app/CHANGELOG.md
 COPY platform/vendor/regent_blog_content /app/blog
 COPY platform/assets assets
 
