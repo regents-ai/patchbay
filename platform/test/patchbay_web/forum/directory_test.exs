@@ -138,12 +138,12 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site and tool pages" do
-    test "the site page lists tools before posts", %{conn: conn} do
+    test "the site page lists posts before tools", %{conn: conn} do
       html = conn |> get(~p"/sites/chrome") |> html_response(200)
 
       {tools_at, _} = :binary.match(html, ~s(id="pb-site-tools"))
       {posts_at, _} = :binary.match(html, ~s(id="pb-site-posts"))
-      assert tools_at < posts_at
+      assert posts_at < tools_at
     end
 
     test "a tool row opens that tool's page", %{conn: conn} do
@@ -243,8 +243,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
       [twenty_five, five] = post_order(html, ["twenty five usdc post", "five usdc post"])
       assert twenty_five < five
-      assert html =~ "Paid placement · 25.00 USDC"
-      assert html =~ "Paid placement · 5.00 USDC"
+      assert html =~ "Bounty · 25.00 USDC · funding details"
+      assert html =~ "Bounty · 5.00 USDC · funding details"
     end
 
     test "5 USDC settled ranks above unpaid", %{
@@ -271,11 +271,12 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       paid_report!(tool, asker, 100_000_000, "pending hundred usdc post", credit: false)
 
       html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
-      refute html =~ "Paid placement · 100.00 USDC"
-      assert html =~ "Paid placement · 5.00 USDC"
+      assert html =~ "Bounty · 5.00 USDC · funding details"
+      assert html =~ "Bounty · 100.00 USDC · funding details"
 
-      # Money that has not settled buys nothing: the newer pending post sorts
-      # with the unpaid posts, below the settled one.
+      # The label names the bounty and links to its funding details whether or
+      # not the money has arrived. Money that has not settled buys nothing: the
+      # newer pending post sorts with the unpaid posts, below the settled one.
       [settled, pending] = post_order(html, ["five usdc settled", "pending hundred usdc post"])
       assert settled < pending
     end
@@ -318,7 +319,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert site =~ "No public tool inventory"
 
       assert site =~
-               "No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below."
+               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear above."
     end
 
     test "published inventories come from the owner's own publication", %{conn: conn} do

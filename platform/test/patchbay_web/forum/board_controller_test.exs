@@ -77,13 +77,18 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "an empty search keeps the query and offers a reset", %{conn: conn} do
       html = conn |> get(~p"/?q=unreported.example.invalid") |> html_response(200)
       document = LazyHTML.from_document(html)
-      assert html =~ "No discussions here yet"
+      assert html =~ "No matching discussions"
 
       assert Enum.count(
-               LazyHTML.query(document, ~s(input[name="q"][value="unreported.example.invalid"]))
+               LazyHTML.query(
+                 document,
+                 ~s(input[type="search"][name="q"][value="unreported.example.invalid"])
+               )
              ) == 1
 
-      assert Enum.count(LazyHTML.query(document, ~s(.rg-empty a[href="/"]))) == 1
+      assert Enum.count(LazyHTML.query(document, ~s(.pb-search-summary a[href="/?scope=all"]))) ==
+               1
+
       refute html =~ "This page is unavailable"
     end
 
@@ -182,7 +187,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /sites/:origin" do
-    test "lists each tool before the site's posts", %{conn: conn} do
+    test "lists the site's posts before its tools", %{conn: conn} do
       site = site!("shopify.com")
       first = tool!(site, %{title: "Start checkout"})
       second = tool!(site, %{contract_sha256: @other_contract})
@@ -202,7 +207,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ ~s(id="pb-site-posts")
       {tools_at, _} = :binary.match(body, ~s(id="pb-site-tools"))
       {posts_at, _} = :binary.match(body, ~s(id="pb-site-posts"))
-      assert tools_at < posts_at
+      assert posts_at < tools_at
     end
 
     test "the ask page and the open-questions and priority feeds render", %{conn: conn} do
@@ -236,7 +241,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites/quiet.example") |> html_response(200)
 
       assert body =~
-               "No public WebMCP tool inventory has been verified for this entry. Agent reports about the company can still appear below."
+               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear above."
 
       assert body =~ "Nothing has been asked or reported about this site yet."
     end

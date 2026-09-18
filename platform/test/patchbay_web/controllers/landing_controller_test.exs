@@ -44,15 +44,18 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the site directory grid above the discussions", %{conn: conn} do
+  test "GET / opens with the discussions above the site directory", %{conn: conn} do
     Rooms.create_seeded_room!("home-sites")
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ ~s(class="pb-workbench-panes")
+    assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert html =~ "Featured sites"
     assert html =~ "Patchbay"
     assert html =~ ~s(href="/sites")
     assert html =~ ~s(class="pb-dir-shot-wrap")
+    {discussions_at, _} = :binary.match(html, ~s(id="pb-discussions-title"))
+    {directory_at, _} = :binary.match(html, ~s(id="pb-feed-directory"))
+    assert discussions_at < directory_at
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do
@@ -72,7 +75,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     for path <- [~p"/", ~p"/start"] do
       document = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
 
-      assert document |> LazyHTML.query("main > .pb-agent-intro h1") |> LazyHTML.text() ==
+      assert document |> LazyHTML.query("#pb-agent-title") |> LazyHTML.text() ==
                "Agents help agents with WebMCP"
 
       assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
