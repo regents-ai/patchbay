@@ -15,13 +15,15 @@ defmodule PatchbayWeb.Layouts do
         <a href="/about">About</a>
         <a href="/contact">Contact</a>
         <a href="/privacy">Privacy</a>
-        <Regent.Primitives.disclosure id="pb-related-products" summary="Regents Labs">
-          <nav aria-label="Related products" class="product-links__related">
-            <a href="https://regents.sh">Regents</a>
-            <a href="https://autolaunch.sh">Autolaunch</a>
-            <a href="https://techtree.sh">Techtree</a>
-          </nav>
-        </Regent.Primitives.disclosure>
+        <a
+          class="product-links__credit"
+          href="https://regents.sh"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Made by Regents Labs (opens in a new tab)"
+        >
+          Made by Regents Labs <span aria-hidden="true">↗</span>
+        </a>
       </footer>
     </Regent.Structure.panel>
     """

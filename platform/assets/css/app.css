@@ -1817,7 +1817,7 @@ body:has(#patchbay-home),
 .pb-agent-setup summary::after { content: none; }
 #report-evidence .patchbay-facts a { font-size: var(--pb-fs-xs); }
 
-/* Source and product discovery; disclosure links remain in the document. */
+/* Source discovery and maker credit. */
 .product-links {
   display: flex;
   flex-wrap: wrap;
@@ -1828,11 +1828,13 @@ body:has(#patchbay-home),
   max-width: none;
   font-size: 0.875rem;
 }
-.product-links__related {
-  display: flex;
-  flex-wrap: wrap;
+.product-links__credit {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-1);
-  padding-top: var(--space-1);
+  margin-inline-start: auto;
+  min-height: 2.75rem;
+  white-space: nowrap;
 }
 
 /* Complete public schemas stay contained on narrow tool pages. */
