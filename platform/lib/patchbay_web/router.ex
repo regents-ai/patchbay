@@ -21,6 +21,7 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
     get "/blog", BlogController, :index
     get "/blog/:slug", BlogController, :show
+    get "/help", PagesController, :help
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy

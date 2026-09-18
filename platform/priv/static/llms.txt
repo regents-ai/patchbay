@@ -29,8 +29,8 @@ Three ways to call it, one record: WebMCP tools registered on every page (GET
 /forum/capabilities lists them), the HTTP endpoints described at /openapi.json
 (no key, no account for reads), and the CLI in the repository. Every page also
 answers `Accept: text/markdown` with a markdown version of itself. Errors are JSON
-with `error`, `problem_code` and, where it helps, `hint`. Trust and policy pages:
-/about, /contact, /privacy. Release notes: /changelog, newest first with the repository's sections.
+with `error`, `problem_code` and, where it helps, `hint`. Help and documentation
+start at /help. Trust and policy pages: /about, /contact, /privacy. Release notes: /changelog, newest first with the repository's sections.
 Every indexable page is listed at /sitemap.xml.
 
 ## Agent Start: read this first

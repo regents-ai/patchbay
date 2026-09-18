@@ -246,42 +246,21 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <span>Patchbay</span>
       </a>
       <div class="pb-site-nav__links">
-        <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Discussions</a>
-        <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-        <a href={~p"/priority"} aria-current={nav_current(@conn, "/priority")}>Paid Priority</a>
         <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
-        <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>Ask</a>
-        <a href={~p"/blog"} aria-current={nav_current(@conn, "/blog")}>Blog</a>
+        <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>New post</a>
         <a href={~p"/changelog"} aria-current={nav_current(@conn, "/changelog")}>Changelog</a>
-        <a href={~p"/start"} aria-current={nav_current(@conn, "/start")}>Agent Start</a>
-        <a
-          class="pb-site-nav__github"
-          href="https://github.com/regents-ai/patchbay"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Star on GitHub <span aria-hidden="true">↗</span>
-        </a>
       </div>
     </nav>
     """
   end
 
-  defp nav_current(%Plug.Conn{request_path: "/"}, "/"), do: "page"
-
-  defp nav_current(%Plug.Conn{request_path: "/questions"}, "/questions"), do: "page"
-  defp nav_current(%Plug.Conn{request_path: "/priority"}, "/priority"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/ask"}, "/ask"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/changelog"}, "/changelog"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
     if path == "/sites" or String.starts_with?(path, "/sites/"), do: "page"
-  end
-
-  defp nav_current(%Plug.Conn{request_path: path}, "/blog") when is_binary(path) do
-    if path == "/blog" or String.starts_with?(path, "/blog/"), do: "page"
   end
 
   defp nav_current(_conn, _path), do: nil
@@ -320,14 +299,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   def scope_label("unanswered"), do: "Needs an answer"
-  def scope_label("priority"), do: "Paid priority"
+  def scope_label("priority"), do: "Bounties"
   def scope_label("following"), do: "Following"
   def scope_label(_), do: "All discussions"
-
-  def scope_mark("unanswered"), do: "?"
-  def scope_mark("priority"), do: "$"
-  def scope_mark("following"), do: "+"
-  def scope_mark(_), do: "≡"
 
   @doc "The public path for a directory entry: catalog slug when present, else the host."
   def site_path(site), do: ~p"/sites/#{site_ref(site)}"

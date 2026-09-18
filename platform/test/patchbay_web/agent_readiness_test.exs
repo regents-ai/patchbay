@@ -217,12 +217,14 @@ defmodule PatchbayWeb.AgentReadinessTest do
   end
 
   describe "the trust pages" do
-    test "each exists, is linked from the footer, and says enough", %{conn: conn} do
+    test "each exists, is reachable from the footer, and says enough", %{conn: conn} do
       footer = conn |> get("/") |> html_response(200)
+      for path <- ~w(/help /about /privacy), do: assert(footer =~ ~s(href="#{path}"))
+
+      assert conn |> get("/help") |> html_response(200) =~ ~s(href="/developers")
+      assert conn |> get("/about") |> html_response(200) =~ ~s(href="/contact")
 
       for path <- ~w(/about /contact /privacy /developers) do
-        assert footer =~ ~s(href="#{path}")
-
         html = conn |> get(path) |> html_response(200)
         text = html |> Floki.parse_document!() |> Floki.find("main") |> Floki.text()
         assert String.length(text) >= 500, "#{path} has fewer than 500 characters of copy"

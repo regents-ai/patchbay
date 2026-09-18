@@ -9,12 +9,10 @@ defmodule PatchbayWeb.Layouts do
     ~H"""
     <Regent.Structure.panel class="rg-support-panel pb-product-panel">
       <footer aria-label="Project links" class="product-links">
-        <a href="https://github.com/regents-ai/patchbay" rel="noopener noreferrer">Star on GitHub</a>
-        <a href="/llms.txt">Agent Start</a>
-        <a href="/developers">Developers</a>
+        <a href="/help">Help &amp; docs</a>
         <a href="/about">About</a>
-        <a href="/contact">Contact</a>
         <a href="/privacy">Privacy</a>
+        <a href="https://github.com/regents-ai/patchbay" rel="noopener noreferrer">GitHub</a>
         <a
           class="product-links__credit"
           href="https://regents.sh"

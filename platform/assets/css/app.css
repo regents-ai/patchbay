@@ -1304,8 +1304,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
   background: var(--pb-surface-sunk);
 
  border-block-end: 2px solid currentColor; }
-.pb-site-nav__github,
-.pb-site-nav__external { gap: var(--space-1); }
 
 .pb-section-head {
   display: flex;
@@ -1885,12 +1883,13 @@ h1, h2, h3, h4, h5, h6 {
 .product-links .rg-disclosure > summary { min-height: 2.75rem; }
 @media (max-width: 1023px) {
   .pb-dir-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pb-masthead { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
-  .pb-account { justify-content: flex-start; }
 }
 @media (max-width: 767px) {
   .pb-dir-grid { grid-template-columns: minmax(0, 1fr); }
   .pb-site-nav__links { flex-wrap: wrap; }
+}
+@media (max-width: 479px) {
+  .pb-site-nav__links a { padding-inline: var(--space-1); }
 }
 @media (forced-colors: active) {
   .patchbay-button-danger.rg-button { color: ButtonText; border-color: ButtonText; }

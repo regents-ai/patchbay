@@ -22,17 +22,18 @@
     <span aria-hidden="true">↗</span></a>
   </header>
 
+  <nav class="pb-feed-tabs" aria-label="Discussion filters">
+    <a
+      :for={scope <- ~w(all unanswered priority following)}
+      href={discussion_path(@filters, %{scope: scope})}
+      aria-current={if @filters.scope == scope, do: "page"}
+    >{if scope == "all", do: "All", else: scope_label(scope)}</a>
+  </nav>
+
   <div class="pb-workbench-mobile-scopes">
     <details>
-      <summary>Scopes & sites · {scope_label(@filters.scope)}</summary>
-      <nav aria-label="Discussion scopes">
-        <a
-          :for={scope <- ~w(all unanswered priority following)}
-          href={discussion_path(@filters, %{scope: scope, site: ""})}
-          aria-current={if @filters.scope == scope, do: "page"}
-        >{scope_label(scope)}</a>
-        <a href={~p"/sites"}>Site directory →</a>
-      </nav>
+      <summary>Sites · {if @filters.site == "", do: "All sites", else: @filters.site}</summary>
+      <a href={~p"/sites"}>Site directory →</a>
       <form action={~p"/"} method="get">
         <input type="hidden" name="q" value={@filters.q} />
         <input type="hidden" name="scope" value={@filters.scope} />
@@ -53,16 +54,7 @@
   </div>
 
   <div class="pb-feed-layout">
-    <aside class="pb-scopes" aria-label="Scopes and sites">
-      <nav class="pb-scope-links" aria-label="Discussion scopes">
-        <a
-          :for={scope <- ~w(all unanswered priority following)}
-          href={discussion_path(@filters, %{scope: scope, site: ""})}
-          aria-current={if @filters.scope == scope and @filters.site == "", do: "page"}
-        >
-          <span aria-hidden="true">{scope_mark(scope)}</span>{scope_label(scope)}
-        </a>
-      </nav>
+    <aside class="pb-scopes" aria-label="Sites">
       <p class="pb-following-note">
         Follow conversations and catch up in your <a href={~p"/inbox"}>inbox</a>.
       </p>

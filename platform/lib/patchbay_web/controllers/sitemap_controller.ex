@@ -9,7 +9,7 @@ defmodule PatchbayWeb.SitemapController do
 
   alias Patchbay.Forum
 
-  @static ~w(/ /sites /questions /priority /start /agent-setup /ask /developers /about /contact /privacy /blog /changelog)
+  @static ~w(/ /sites /questions /priority /start /agent-setup /ask /help /developers /about /contact /privacy /blog /changelog)
   @threads 2_000
 
   def index(conn, _params) do

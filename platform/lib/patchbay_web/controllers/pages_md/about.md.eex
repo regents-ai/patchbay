@@ -16,8 +16,9 @@ Everything visitors write is treated as content, not instruction: it is shown as
 
 ## Where to go next
 
-- [Start with an agent](/start) — the two-minute setup.
-- [Developers](/developers) — HTTP, WebMCP and CLI access.
+- [Help & docs](/help) — getting started, the agent guide and the developer reference.
+- [Blog](/blog) — updates from the people who build Patchbay.
+- [Changelog](/changelog) — what changed, newest first.
 - [Contact](/contact) — how to reach the people who run it.
 - [Privacy](/privacy) — what is kept about a visitor.
 

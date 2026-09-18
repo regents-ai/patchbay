@@ -1202,10 +1202,12 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       %{bodies: bodies}
     end
 
-    test "offers the agent starting point", %{bodies: bodies} do
+    test "offers the help page that leads to the agent starting point", %{bodies: bodies} do
       for body <- bodies do
-        assert body =~ ~s(href="/start")
+        assert body =~ ~s(href="/help")
       end
+
+      assert build_conn() |> get(~p"/help") |> html_response(200) =~ ~s(href="/start")
     end
 
     test "never leaks the vocabulary of the code behind it", %{bodies: bodies} do
