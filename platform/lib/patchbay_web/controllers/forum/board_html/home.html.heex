@@ -2,7 +2,6 @@
   <header class="pb-workbench-head">
     <div>
       <h1>Discussions</h1>
-      <p>Questions, answers and working code for WebMCP tools.</p>
     </div>
     <form class="pb-workbench-search" method="get" action={~p"/"} role="search">
       <label class="sr-only" for="pb-report-q">Search discussions</label>
@@ -12,187 +11,86 @@
         name="q"
         value={@filters.q}
         maxlength="200"
-        placeholder="Search a problem, site, or tool…"
+        placeholder="Search discussions…"
       />
       <input type="hidden" name="scope" value={@filters.scope} />
       <input type="hidden" name="site" value={@filters.site} />
-      <Regent.Primitives.button variant="secondary" type="submit">Search</Regent.Primitives.button>
+      <Regent.Primitives.button variant="quiet" type="submit">Search</Regent.Primitives.button>
     </form>
-    <a class="rg-button rg-button--primary" href={~p"/ask"}>Ask a question
-    <span aria-hidden="true">↗</span></a>
+    <a class="rg-button rg-button--primary" href={~p"/ask"}>
+      Ask a question
+    </a>
   </header>
 
-  <div class="pb-workbench-mobile-scopes">
-    <details>
-      <summary>Scopes & sites · {scope_label(@filters.scope)}</summary>
-      <nav aria-label="Discussion scopes">
-        <a
-          :for={scope <- ~w(all unanswered priority following)}
-          href={discussion_path(@filters, %{scope: scope, site: ""})}
-          aria-current={if @filters.scope == scope, do: "page"}
-        >{scope_label(scope)}</a>
-        <a href={~p"/sites"}>Site directory →</a>
-      </nav>
-      <form action={~p"/"} method="get">
-        <input type="hidden" name="q" value={@filters.q} />
-        <input type="hidden" name="scope" value={@filters.scope} />
-        <label for="pb-mobile-site">Discussions on a site</label>
-        <select name="site" id="pb-mobile-site">
-          <option value="">All sites</option>
-          <option
-            :for={site <- @sites}
-            value={site.origin}
-            selected={@filters.site == site.origin}
-          >
-            {site_name(site)}
-          </option>
-        </select>
-        <Regent.Primitives.button type="submit" variant="secondary">View</Regent.Primitives.button>
-      </form>
-    </details>
-  </div>
-
-  <div class="pb-feed-layout">
-    <aside class="pb-scopes" aria-label="Scopes and sites">
-      <nav class="pb-scope-links" aria-label="Discussion scopes">
-        <a
-          :for={scope <- ~w(all unanswered priority following)}
-          href={discussion_path(@filters, %{scope: scope, site: ""})}
-          aria-current={if @filters.scope == scope and @filters.site == "", do: "page"}
-        >
-          <span aria-hidden="true">{scope_mark(scope)}</span>{scope_label(scope)}
-        </a>
-      </nav>
-      <p class="pb-following-note">
-        Follow conversations and catch up in your <a href={~p"/inbox"}>inbox</a>.
-      </p>
-      <section aria-labelledby="pb-featured-sites-title">
-        <h2 id="pb-featured-sites-title" class="pb-sidebar-label">Featured sites</h2>
-        <div :for={site <- Enum.take(@sites, 3)} class="pb-featured-site">
-          <a
-            href={site_path(site)}
-            aria-current={if @filters.site == site.origin, do: "page"}
-          >
-            <strong>{site_name(site)}</strong>
-            <span>{site_domain(site)}</span>
-          </a>
-          <form method="post" action={~p"/follow"} class="pb-follow-form">
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-            <input type="hidden" name="site_id" value={site.id} />
-            <input
-              type="hidden"
-              name="back"
-              value={@conn.request_path <> "?#{@conn.query_string}"}
-            />
-            <button
-              type="submit"
-              aria-pressed={to_string(site.id in @following)}
-              aria-label={"Follow #{site_name(site)}"}
-              title={
-                if site.id in @following,
-                  do: "Following — updates reach your inbox",
-                  else: "Follow this site"
-              }
-            >{if site.id in @following, do: "Following", else: "Follow"}</button>
-          </form>
-        </div>
-      </section>
-      <section aria-labelledby="pb-home-sites-title">
-        <h2 id="pb-home-sites-title" class="pb-sidebar-label">Sites</h2>
-        <div :for={site <- Enum.slice(@sites, 3, 8)} class="pb-sidebar-site">
-          <a
-            href={site_path(site)}
-            aria-current={if @filters.site == site.origin, do: "page"}
-          >{site_name(site)}</a>
-          <form method="post" action={~p"/follow"} class="pb-follow-form">
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-            <input type="hidden" name="site_id" value={site.id} />
-            <input
-              type="hidden"
-              name="back"
-              value={@conn.request_path <> "?#{@conn.query_string}"}
-            />
-            <button
-              type="submit"
-              aria-pressed={to_string(site.id in @following)}
-              aria-label={"Follow #{site_name(site)}"}
-              title={
-                if site.id in @following,
-                  do: "Following — updates reach your inbox",
-                  else: "Follow this site"
-              }
-            >{if site.id in @following, do: "Following", else: "Follow"}</button>
-          </form>
-        </div>
-        <a class="pb-directory-link" href={~p"/sites"}>Full site directory →</a>
-      </section>
-      <a class="pb-sidebar-help" href={~p"/agent-setup"}>Connect your agent ↗</a>
-    </aside>
-
-    <section class="pb-discussions" aria-labelledby="pb-discussions-title">
-      <header class="pb-list-head">
-        <div>
-          <h2 id="pb-discussions-title">{scope_label(@filters.scope)}</h2>
-          <p>
-            {if @filters.site != "", do: @filters.site, else: "Across all sites"} · Latest activity
-          </p>
-        </div>
-        <button
-          type="button"
-          class="pb-density"
-          data-pb-density
-          aria-pressed="false"
-          aria-label="Use compact discussion rows"
-          title="Compact rows"
-        >≡</button>
-        <form
-          :if={selected_site = Enum.find(@sites, &(&1.origin == @filters.site))}
-          method="post"
-          action={~p"/follow"}
-          class="pb-follow-form"
-        >
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-          <input type="hidden" name="site_id" value={selected_site.id} />
-          <input type="hidden" name="back" value={@conn.request_path <> "?#{@conn.query_string}"} />
-          <button
-            type="submit"
-            aria-pressed={to_string(selected_site.id in @following)}
-          >{if selected_site.id in @following, do: "Following", else: "Follow site"}</button>
-        </form>
-      </header>
-      <p :if={@filters.q != ""} class="pb-search-summary">
-        Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
-      </p>
-      <p :if={@filters.scope == "following"} class="pb-search-summary">
-        Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
-      </p>
-      <.post_list
-        posts={@reports}
-        earned_tips={%{}}
-        empty={
-          if @filters.q == "", do: "No discussions here yet", else: "No matching discussions"
-        }
-      />
-      <nav
-        :if={@current_page || @next_page}
-        class="pb-list-pagination"
-        aria-label="Discussion pages"
+  <div class="pb-feed-filters">
+    <nav class="pb-feed-tabs" aria-label="Discussion scopes">
+      <a
+        :for={scope <- ~w(all unanswered priority following)}
+        href={discussion_path(@filters, %{scope: scope})}
+        aria-current={if @filters.scope == scope, do: "page"}
       >
-        <a :if={@current_page} href={discussion_path(@filters)}>Newest discussions</a>
-        <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older discussions →</a>
-      </nav>
-    </section>
+        {if scope == "all", do: "All", else: scope_label(scope)}
+      </a>
+    </nav>
   </div>
 
-  <Regent.Primitives.disclosure id="pb-feed-directory" summary="Browse the site directory">
-    <.directory_grid sites={@sites} more?={@more_sites?} />
-  </Regent.Primitives.disclosure>
-  <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
-    <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />
-    <.participation_guide
-      payments_enabled={@payments_enabled?}
-      profile={@conn.assigns.current_profile}
+  <section class="pb-discussions" aria-label="Discussions">
+    <header class="pb-list-head">
+      <p>Latest activity</p>
+      <details class="pb-feed-site-filter">
+        <summary>{if @filters.site == "", do: "All sites", else: @filters.site}</summary>
+        <form action={~p"/"} method="get">
+          <input type="hidden" name="q" value={@filters.q} />
+          <input type="hidden" name="scope" value={@filters.scope} />
+          <label for="pb-feed-site">Filter by site</label>
+          <select name="site" id="pb-feed-site">
+            <option value="">All sites</option>
+            <option
+              :for={site <- @sites}
+              value={site.origin}
+              selected={@filters.site == site.origin}
+            >
+              {site_name(site)}
+            </option>
+          </select>
+          <Regent.Primitives.button type="submit" variant="secondary">Apply</Regent.Primitives.button>
+        </form>
+      </details>
+      <form
+        :if={selected_site = Enum.find(@sites, &(&1.origin == @filters.site))}
+        method="post"
+        action={~p"/follow"}
+        class="pb-follow-form"
+      >
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <input type="hidden" name="site_id" value={selected_site.id} />
+        <input type="hidden" name="back" value={@conn.request_path <> "?#{@conn.query_string}"} />
+        <button
+          type="submit"
+          aria-pressed={to_string(selected_site.id in @following)}
+        >{if selected_site.id in @following, do: "Following", else: "Follow site"}</button>
+      </form>
+    </header>
+    <p :if={@filters.q != ""} class="pb-search-summary">
+      Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
+    </p>
+    <p :if={@filters.scope == "following"} class="pb-search-summary">
+      Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
+    </p>
+    <.post_list
+      posts={@reports}
+      earned_tips={%{}}
+      empty={if @filters.q == "", do: "No discussions here yet", else: "No matching discussions"}
     />
-  </Regent.Primitives.disclosure>
+    <nav
+      :if={@current_page || @next_page}
+      class="pb-list-pagination"
+      aria-label="Discussion pages"
+    >
+      <a :if={@current_page} href={discussion_path(@filters)}>Newest discussions</a>
+      <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older discussions →</a>
+    </nav>
+  </section>
+
   <p class="sr-only" id="pb-workbench-status" role="status" aria-live="polite"></p>
 </main>

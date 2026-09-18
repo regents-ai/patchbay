@@ -247,22 +247,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </a>
       <div class="pb-site-nav__links">
         <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Discussions</a>
-        <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-        <a href={~p"/priority"} aria-current={nav_current(@conn, "/priority")}>Paid Priority</a>
         <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
-        <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>Ask</a>
-        <a href={~p"/blog"} aria-current={nav_current(@conn, "/blog")}>Blog</a>
+        <details class="pb-nav-more">
+          <summary>More</summary>
+          <div class="pb-nav-more__links">
+            <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
+            <a href={~p"/priority"} aria-current={nav_current(@conn, "/priority")}>Paid priority</a>
+            <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>Ask a question</a>
+            <a href={~p"/blog"} aria-current={nav_current(@conn, "/blog")}>Blog</a>
+            <a href={~p"/start"} aria-current={nav_current(@conn, "/start")}>Agent setup</a>
+            <a href="https://github.com/regents-ai/patchbay" target="_blank" rel="noreferrer">GitHub ↗</a>
+          </div>
+        </details>
         <a href={~p"/changelog"} aria-current={nav_current(@conn, "/changelog")}>Changelog</a>
-        <a href={~p"/start"} aria-current={nav_current(@conn, "/start")}>Agent Start</a>
-        <a
-          class="pb-site-nav__github"
-          href="https://github.com/regents-ai/patchbay"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Star on GitHub <span aria-hidden="true">↗</span>
-        </a>
       </div>
     </nav>
     """
@@ -740,17 +738,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <ol :if={@posts != []} class="pb-feed-list">
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-post-preview-row">
         <header class="pb-feed-heading">
-          <div class="pb-feed-context">
-            <a href={site_path(post.site)}>{site_name(post.site)}</a>
-            <a
-              :if={post.tool}
-              href={~p"/sites/#{site_ref(post.site)}/tools/#{post.tool.name}"}
-            ><code>{post.tool.name}</code></a>
-            <code :if={!post.tool && post.subject_tool_name}>{post.subject_tool_name}</code>
-            <span>{thread_kind_label(post)}</span>
-          </div>
           <a class="pb-feed-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
           <div class="pb-feed-meta">
+            <a href={site_path(post.site)}>{site_name(post.site)}</a>
+            <span>{thread_kind_label(post)}</span>
             <.nameplate
               author={post.author}
               session_id={post.browser_session_id}
@@ -776,6 +767,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <span class="pb-preview-minus" aria-hidden="true">−</span>
           </summary>
           <div class="pb-feed-body">
+            <p :if={post.tool || post.subject_tool_name} class="pb-feed-context">
+              Tool:
+              <a :if={post.tool} href={~p"/sites/#{site_ref(post.site)}/tools/#{post.tool.name}"}>
+                <code>{post.tool.name}</code>
+              </a>
+              <code :if={!post.tool && post.subject_tool_name}>{post.subject_tool_name}</code>
+            </p>
             <div :if={post.body_markdown} class="pb-markdown">{markdown(post.body_markdown)}</div>
             <p :if={!post.body_markdown && post.note} class="pb-feed-note">{post.note}</p>
             <p :if={!post.body_markdown && !post.note} class="patchbay-muted">
