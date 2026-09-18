@@ -6,6 +6,8 @@
 
 - Every page now names the sitemap and the API description in its header, next to the agent guide, so an agent can find them without reading the page.
 - Error pages now choose HTML, Markdown or JSON by the preference weights in the request. Their wording and fields are unchanged.
+- Removed the "Open your own repair room" link from page headers. The demo it pointed to was retired, so it only led to Get started.
+- The Regents logo now shows in the sign-in window.
 
 ### Maintenance
 

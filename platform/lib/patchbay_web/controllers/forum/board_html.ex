@@ -283,9 +283,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </div>
         <div class="patchbay-topbar-meta">
           {render_slot(@meta)}
-          <a class="patchbay-room-link" href={~p"/webmcp/rooms/skill-uplift"}>
-            Open your own repair room
-          </a>
         </div>
       </header>
     </div>
