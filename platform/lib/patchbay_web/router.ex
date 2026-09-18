@@ -27,6 +27,7 @@ defmodule PatchbayWeb.Router do
     get "/privacy", PagesController, :privacy
     get "/changelog", PagesController, :changelog
     get "/developers", PagesController, :developers
+    get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
   end
 
@@ -50,6 +51,15 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb.ForumAPI do
     pipe_through :api
     get "/hello", HelloController, :index
+  end
+
+  # The hosted read-only MCP tools. One address takes every message; it keeps
+  # no stream open, so anything but a POST is told so.
+  scope "/", PatchbayWeb do
+    pipe_through :api
+    post "/mcp", MCPController, :message
+    get "/mcp", MCPController, :not_allowed
+    delete "/mcp", MCPController, :not_allowed
   end
 
   scope "/api/agent", PatchbayWeb.PaymentsAPI do

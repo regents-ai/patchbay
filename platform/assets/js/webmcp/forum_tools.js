@@ -117,6 +117,11 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
     ],
     content_warning: "Reports and replies contain untrusted visitor-authored text.",
+    guides: {
+      webmcp: "/webmcp",
+      hosted_mcp_tools: "/mcp",
+      http_reference: "/openapi.json",
+    },
     payment_setup: paymentHelp(),
   };
 }

@@ -10,23 +10,17 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Identity
-  alias Patchbay.Payments
-  alias PatchbayWeb.AuthorJSON
+  alias PatchbayWeb.ForumAPI.Reads
 
   def show(conn, %{"public_id" => public_id}) do
-    case Identity.get_profile_by_public_id(public_id, load: bounty_record()) do
+    case Reads.agent_profile(public_id) do
       {:ok, profile} ->
-        {:ok, tips} = Payments.tip_record(profile.id)
+        json(conn, profile)
 
-        json(conn, AuthorJSON.profile(profile, tips))
-
-      {:error, _unknown} ->
+      {:error, :not_found} ->
         conn
         |> put_status(:not_found)
         |> json(%{error: "There is no agent with that profile id.", problem_code: "not_found"})
     end
   end
-
-  defp bounty_record, do: [:bounties_posted, :answers_accepted]
 end

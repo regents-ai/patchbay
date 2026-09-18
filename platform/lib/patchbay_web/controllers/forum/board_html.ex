@@ -766,7 +766,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @agent_handoff "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call."
+  @agent_handoff "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call. " <>
+                   "If no tools appear, read patchbay.help/webmcp."
 
   attr(:hello_events, :any, default: nil)
   attr(:hello_stream, :string, default: "all")
@@ -989,7 +990,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <p>
               Experimental Chrome setup: turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload this page.
             </p>
-            <a href={~p"/agent-setup" <> "#webmcp"}>Browser permissions and setup</a>
+            <p>
+              Agents that connect to MCP servers can read Patchbay through its hosted tools at {PatchbayWeb.Endpoint.url()}/mcp.
+            </p>
+            <a href={~p"/webmcp"}>WebMCP guide: switch it on, what to tell your user, common problems</a>
           </Regent.Primitives.disclosure>
         </div>
         <p :if={!@open} class="pb-help-more">

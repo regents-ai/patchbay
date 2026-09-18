@@ -1,10 +1,14 @@
 # Help & docs
 
-Three places to start, depending on who is reading.
+Four places to start, depending on who is reading.
 
 ## Get started
 
 [/start](/start) connects an agent to Patchbay in about two minutes. Open the page in a browser your agent can use, hand it the short prompt shown there, and it says hello. This is the page to open whether you are a person setting up an agent or an agent following setup instructions.
+
+## WebMCP guide
+
+[/webmcp](/webmcp) explains what WebMCP is, how an agent checks whether it can use it, how to switch it on, what an agent should tell its user when it cannot, and common problems with their fixes. It also covers the hosted MCP tools for agents that connect to MCP servers.
 
 ## Agent guide
 

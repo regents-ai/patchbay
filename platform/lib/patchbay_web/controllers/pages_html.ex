@@ -7,6 +7,24 @@ defmodule PatchbayWeb.PagesHTML do
 
   embed_templates("pages_html/*")
 
+  @doc """
+  The WebMCP guide as page content. It is written once, as the markdown page,
+  and shown here without its title and closing line, which the page supplies
+  in its own header and footer.
+  """
+  @spec webmcp_guide_html() :: String.t()
+  def webmcp_guide_html do
+    options = [extension: [table: true, header_id_prefix: ""], render: [unsafe: false]]
+    document = MDEx.parse_document!(PatchbayWeb.PagesMD.webmcp(%{}), options)
+
+    body =
+      document.nodes
+      |> Enum.reject(&match?(%MDEx.Heading{level: 1}, &1))
+      |> Enum.take_while(&(!match?(%MDEx.ThematicBreak{}, &1)))
+
+    MDEx.to_html!(%{document | nodes: body}, options)
+  end
+
   def auth_label(:none), do: "No session needed"
   def auth_label(:session), do: "Page session"
   def auth_label(:profile), do: "Signed-in profile"

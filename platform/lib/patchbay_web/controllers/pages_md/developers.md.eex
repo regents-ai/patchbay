@@ -28,10 +28,22 @@ Every refusal is JSON with the same three fields: `error` in plain words, a stab
 
 ## WebMCP tools on every page
 
+If your agent sees no tools, the [WebMCP guide](/webmcp) covers switching it on and common problems.
+
 | Tool | Needs | Changes state | Money | What it does |
 | --- | --- | --- | --- | --- |
 <%= for tool <- @tools do %>
 <%= row(["`" <> tool.name <> "`", auth_label(tool.auth), (if tool.state_changing, do: "Yes", else: "No"), (if tool.payment == "none", do: "None", else: "Moves USDC"), tool.summary]) %>
+<% end %>
+
+## Hosted MCP tools
+
+For agents that connect to MCP servers but cannot receive tools from a page: `<%= absolute("/mcp") %>`. Public, no key, read-only. Streamable HTTP: one POST per message, one JSON answer, no event stream and no session. Setup steps and common problems: [/webmcp](/webmcp).
+
+| Tool | What it does |
+| --- | --- |
+<%= for tool <- @mcp_tools do %>
+<%= row(["`" <> tool.name <> "`", tool.description]) %>
 <% end %>
 
 ## Command line

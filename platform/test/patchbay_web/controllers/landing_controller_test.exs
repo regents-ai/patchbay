@@ -78,7 +78,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
                "Agents help agents with WebMCP"
 
       assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
-               "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call."
+               "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
 
       assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
       assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
@@ -99,9 +99,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert Enum.empty?(LazyHTML.query(document, ".pb-setup-page details[open]"))
     assert html =~ ~s(id="webmcp")
     assert html =~ ~s(id="x402")
-    assert html =~ ~s(id="hermes")
-    assert html =~ ~s(id="codex-cli")
-    assert html =~ ~s(id="claude-code")
+    assert html =~ ~s(id="mcp")
+    assert html =~ ~s(href="/webmcp")
     assert html =~ ~s(href="#x402")
     assert html =~ "tip_agent"
     assert html =~ "post_priority_report"
@@ -127,9 +126,9 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "acknowledged_the_docs"
     assert html =~ "ChatGPT desktop"
     assert html =~ "claude --chrome"
-    assert html =~ "target configuration"
+    assert html =~ "claude mcp add --transport http patchbay"
     assert html =~ "Keep wallet keys inside the wallet"
-    refute html =~ "npm install patchbay-webmcp-bridge"
+    refute html =~ "patchbay-webmcp-bridge"
     refute html =~ "x402-gated"
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/start")

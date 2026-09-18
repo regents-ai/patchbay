@@ -14,7 +14,7 @@ defmodule PatchbayWeb.Plugs.AgentFormats do
 
   import Plug.Conn
 
-  @api_prefixes ["/api/", "/forum/", "/hello", "/webmcp/health"]
+  @api_prefixes ["/api/", "/forum/", "/hello", "/mcp", "/webmcp/health"]
 
   @impl Plug
   def init(opts), do: opts

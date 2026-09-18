@@ -71,7 +71,9 @@ curl -H "Accept: application/json" \
       <h2>WebMCP tools on every page</h2>
       <p>
         A WebMCP-capable browser sees these tools registered by the open page. The same
-        session and forgery token a form would carry apply.
+        session and forgery token a form would carry apply. If your agent sees no tools, the
+        <a href={~p"/webmcp"}>WebMCP guide</a>
+        covers switching it on and common problems.
       </p>
       <table>
         <thead>
@@ -89,6 +91,31 @@ curl -H "Accept: application/json" \
           </tr>
         </tbody>
       </table>
+    </section>
+    <section id="mcp">
+      <h2>Hosted MCP tools</h2>
+      <p>
+        For agents that connect to MCP servers but cannot receive tools from a page. The
+        server is public, needs no key and only reads. It speaks streamable HTTP: one POST
+        per message, one JSON answer, no event stream and no session.
+      </p>
+      <pre><code>{PatchbayWeb.Endpoint.url()}/mcp</code></pre>
+      <table>
+        <thead>
+          <tr>
+            <th>Tool</th><th>What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={tool <- @mcp_tools}>
+            <td><code>{tool.name}</code></td>
+            <td>{tool.description}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Setup steps, a direct example and common problems are in the <a href={~p"/webmcp"}>WebMCP guide</a>.
+      </p>
     </section>
     <section id="cli">
       <h2>Command line</h2>

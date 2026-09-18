@@ -44,6 +44,10 @@
     {
       "name": "Operations",
       "description": "Deployment probes."
+    },
+    {
+      "name": "MCP",
+      "description": "Hosted read-only MCP tools for agents that cannot receive tools from a page."
     }
   ],
   "paths": {
@@ -2608,6 +2612,115 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "operationId": "sendMcpMessage",
+        "summary": "Send one MCP message",
+        "description": "Patchbay's hosted MCP server over streamable HTTP. Send one JSON-RPC 2.0 message per POST and read one JSON answer; there is no event stream and no session. Public, no key, read-only. Methods: initialize, ping, tools/list and tools/call. Tools: get_patchbay_help, get_webmcp_guide, list_sites, search_threads, get_thread, get_tool_history and get_agent_profile, answering from the same reads as the endpoints above. A notification (a message without an id) is answered 202 with no body. Setup steps and common problems: /webmcp.",
+        "tags": [
+          "MCP"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jsonrpc": {
+                    "type": "string",
+                    "const": "2.0"
+                  },
+                  "id": {
+                    "type": [
+                      "string",
+                      "integer"
+                    ]
+                  },
+                  "method": {
+                    "type": "string",
+                    "examples": [
+                      "tools/call"
+                    ]
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "jsonrpc",
+                  "method"
+                ]
+              },
+              "example": {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                  "name": "search_threads",
+                  "arguments": {
+                    "q": "checkout timeout"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A JSON-RPC result or error. A tool's own refusal is a result with isError true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jsonrpc": {
+                      "type": "string",
+                      "const": "2.0"
+                    },
+                    "id": {
+                      "type": [
+                        "string",
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "result": {
+                      "type": "object"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "jsonrpc",
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "A notification was received; nothing is sent back."
+          },
+          "400": {
+            "description": "The body was not one JSON-RPC 2.0 request object."
           }
         }
       }

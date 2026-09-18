@@ -1801,6 +1801,12 @@ body:has(#patchbay-home),
 .pb-setup-page table { table-layout: fixed; }
 .pb-setup-page td, .pb-setup-page th { overflow-wrap: anywhere; }
 .pb-setup-page section > * + * { margin-top: var(--space-1); }
+.pb-guide h2 { margin-top: var(--space-3); }
+.pb-guide h2, .pb-guide h3 { scroll-margin-top: var(--pb-header-height); }
+.pb-guide ol { list-style: decimal; }
+.pb-guide ul { list-style: disc; }
+.pb-guide li + li { margin-top: var(--space-1); }
+.pb-guide blockquote { margin: 0; padding: var(--space-2); display: grid; gap: var(--space-1); border-left: 2px solid var(--pb-text); background: color-mix(in srgb, var(--pb-text) 6%, transparent); }
 #patchbay-report a:focus-visible, #patchbay-agent-setup a:focus-visible,
 #patchbay-agent-setup textarea:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
 

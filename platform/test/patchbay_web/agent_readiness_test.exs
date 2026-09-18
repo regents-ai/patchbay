@@ -237,7 +237,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       money =
         developers
         |> Floki.parse_document!()
-        |> Floki.find("table tbody tr")
+        |> Floki.find("#webmcp table tbody tr")
         |> Enum.map(fn row -> row |> Floki.find("td") |> Enum.map(&Floki.text/1) end)
         |> Map.new(fn [name, _, _, money, _] -> {name, money} end)
 
