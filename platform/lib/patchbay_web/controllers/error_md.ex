@@ -28,6 +28,14 @@ defmodule PatchbayWeb.ErrorMD do
     """
   end
 
+  def render("429.md", _assigns) do
+    """
+    # Too many reads from this address.
+
+    Patchbay gives each address a share of reads a minute. Wait a minute, then try again.
+    """
+  end
+
   def render("500.md", _assigns) do
     """
     # Patchbay could not answer that request.

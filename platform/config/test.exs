@@ -34,6 +34,10 @@ config :patchbay, start_patchbay_agent: false
 config :patchbay, :sync_webmcp_catalog, false
 config :patchbay, :notification_fanout, false
 
+# Every test request comes from one address, so the suite would spend a
+# visitor's share of reads many times over.
+config :patchbay, :reads_per_minute, 1_000_000
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

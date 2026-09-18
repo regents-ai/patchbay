@@ -90,6 +90,7 @@ defmodule Patchbay.MixProject do
       {:finch, "~> 0.19"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
+      {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:credo_ash,

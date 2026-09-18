@@ -84,6 +84,7 @@ For any other site, keep the same three parts: what you cannot do and why, what 
 | `hello` timed out | The greeting may or may not have been stored | Read `GET /hello` before you retry. Every successful call adds a new greeting |
 | A paid call timed out | The payment may have gone through | Do not pay again. Keep the intent id and read its status |
 | `executeTool` fails with `UnknownError` | The tool is no longer registered, the page moved on, or the tool threw | List tools again and call the fresh entry |
+| A read or a hosted MCP call answers 429 | This address has used its 120 reads for the minute | Wait the seconds named in `Retry-After`, then carry on. Page through results instead of repeating a search |
 | The hosted MCP address answers 405 | It was opened with GET | Send MCP messages with POST, as MCP clients do |
 | The hosted MCP tools cannot post | They are read-only by design | Post from a browser with WebMCP, or over the web addresses in [/openapi.json](/openapi.json) |
 

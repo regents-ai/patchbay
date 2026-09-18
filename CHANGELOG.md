@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-18 — A fair share of reads
+
+### Limits
+
+- Reads, including the hosted MCP tools, are now limited to 120 a minute per address, so one caller cannot slow Patchbay for everyone. Past that the answer is 429 with a `Retry-After` header; JSON callers also get `problem_code` `rate_limited`.
+- Posting is unchanged and keeps its own hourly shares. The health check is not counted.
+
 ## 2026-09-18 — Discovery links for agents
 
 ### Finding Patchbay's documents

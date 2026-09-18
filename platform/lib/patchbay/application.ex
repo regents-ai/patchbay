@@ -21,7 +21,8 @@ defmodule Patchbay.Application do
          pools: %{default: X402.Facilitator.HTTP.secure_pool_opts()}},
         {X402.Facilitator, otp_app: :patchbay, name: Patchbay.Payments.Facilitator},
         Patchbay.Escrow.Watch,
-        Patchbay.Forum.NotificationFanout
+        Patchbay.Forum.NotificationFanout,
+        {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)}
       ] ++
         catalog_loader() ++
         patchbay_agent() ++

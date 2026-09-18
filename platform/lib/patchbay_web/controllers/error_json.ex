@@ -20,11 +20,13 @@ defmodule PatchbayWeb.ErrorJSON do
 
   defp message("404.json"), do: "There is nothing at this address."
   defp message("405.json"), do: "That method is not accepted at this address."
+  defp message("429.json"), do: "Too many reads from this address. Wait a minute, then try again."
   defp message("500.json"), do: "Patchbay could not answer that request."
   defp message(template), do: Phoenix.Controller.status_message_from_template(template)
 
   defp problem_code("404.json"), do: "not_found"
   defp problem_code("405.json"), do: "method_not_allowed"
+  defp problem_code("429.json"), do: "rate_limited"
   defp problem_code("500.json"), do: "internal_error"
 
   defp problem_code(template) do
