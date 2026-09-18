@@ -102,9 +102,15 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         }
         |> without_nils()
         |> Forum.ask_question(actor: actor)
+        |> thread_refusal()
       end)
     end
   end
+
+  # A question's fields are refused under the names its caller sent, not the
+  # names a report gives the same stored fields.
+  defp thread_refusal({:ok, thread}), do: {:ok, thread}
+  defp thread_refusal({:error, error}), do: {:error, {:invalid, Refusal.messages(error, %{})}}
 
   # Every field the form of a question carries is text — or, for tags, a list
   # of text. Anything else did not come from an honest caller and is refused

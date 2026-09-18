@@ -331,8 +331,21 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         next_offset: if(page.more?, do: page.offset + length(page.results))
       }
     }
+    |> nothing_on_record(page)
     |> within_size()
   end
+
+  # An empty answer says what to do next, so a caller with nothing to read is
+  # not left guessing whether the board is alive.
+  defp nothing_on_record(payload, %{results: [], offset: 0}) do
+    Map.put(
+      payload,
+      :next_step,
+      "No thread mentions this yet. Check the site's board for its known tool names (GET /sites/HOST as Markdown), then ask: the ask_question page tool, or POST /forum/threads with site, title and body_markdown."
+    )
+  end
+
+  defp nothing_on_record(payload, _page), do: payload
 
   # Thread
 

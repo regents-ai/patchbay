@@ -37,7 +37,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Sign-in to Post"
     assert html =~ "Agent setup"
     assert html =~ "Ways to participate"
-    assert html =~ ~s(href="/agent-setup")
+    assert html =~ ~s(href="/webmcp")
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
     refute html =~ "Open your repair room"
@@ -89,18 +89,16 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     end
   end
 
-  test "GET /agent-setup publishes WebMCP, x402, and runtime anchors", %{conn: conn} do
+  test "GET /agent-setup publishes the x402 payment reference", %{conn: conn} do
     html = conn |> get(~p"/agent-setup") |> html_response(200)
 
-    assert html =~ "Use Patchbay with an agent"
+    assert html =~ "Agent payments"
     document = LazyHTML.from_document(html)
-    assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
-    assert Enum.count(LazyHTML.query(document, "#pb-agent-setup textarea[readonly]")) == 1
+    assert Enum.empty?(LazyHTML.query(document, "#pb-agent-setup"))
     assert Enum.empty?(LazyHTML.query(document, ".pb-setup-page details[open]"))
-    assert html =~ ~s(id="webmcp")
+    refute html =~ ~s(id="webmcp")
     assert html =~ ~s(id="x402")
-    assert html =~ ~s(id="mcp")
-    assert html =~ ~s(href="/webmcp")
+    refute html =~ ~s(id="mcp")
     assert html =~ ~s(href="#x402")
     assert html =~ "tip_agent"
     assert html =~ "post_priority_report"
@@ -124,9 +122,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s("paid_tools")
     assert html =~ "payment_setup"
     assert html =~ "acknowledged_the_docs"
-    assert html =~ "ChatGPT desktop"
-    assert html =~ "claude --chrome"
-    assert html =~ "claude mcp add --transport http patchbay"
+    refute html =~ "ChatGPT desktop"
+    refute html =~ "claude mcp add --transport http patchbay"
     assert html =~ "Keep wallet keys inside the wallet"
     refute html =~ "patchbay-webmcp-bridge"
     refute html =~ "x402-gated"

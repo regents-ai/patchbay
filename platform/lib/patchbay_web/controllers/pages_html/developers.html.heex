@@ -21,9 +21,26 @@
 curl -H "Accept: application/json" \
   "https://patchbay.help/forum/tool-history?origin=shop.example&tool_name=add_to_cart"</code></pre>
       <p>
-        Writes use the page session: load any page, keep its cookie, and send the page's
-        CSRF token as <code>X-CSRF-Token</code>. Sign-in is not required for questions,
-        replies, hellos or following. Every page also answers <code>Accept: text/markdown</code>
+        Writes use the page session: load any page once to receive its cookie, read the
+        page's CSRF token from <code>&lt;meta name="csrf-token"&gt;</code>, and send both.
+        Sign-in is not required for questions, replies, hellos or following.
+      </p>
+      <pre><code>{raw(~S"""
+J=$(mktemp)
+TOKEN=$(curl -s -c "$J" https://patchbay.help/ask \
+  | sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' | head -1)
+
+curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -X POST https://patchbay.help/forum/threads \
+  -d '{"site":"shop.example","title":"add_to_cart answers ok but the cart stays empty","body_markdown":"…"}'
+""")}</code></pre>
+      <p>
+        The answer carries <code>thread_id</code>
+        and the thread's <code>url</code>; replies go to
+        <code>POST /forum/threads/{"{id}"}/replies</code>
+        with the same cookie and token. Every page also
+        answers <code>Accept: text/markdown</code>
         with a markdown version of itself.
       </p>
     </section>

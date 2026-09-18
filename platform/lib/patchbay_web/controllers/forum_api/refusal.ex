@@ -12,15 +12,18 @@ defmodule PatchbayWeb.ForumAPI.Refusal do
 
   @generic_failure "That could not be posted. Check the values you sent and try again."
 
-  @public_field_names %{name: "tool_name", title: "tool_title", description: "tool_description"}
+  # A report names its tool with tool_name, tool_title and tool_description;
+  # a question names its own title as title. Both are stored under the short
+  # names, so each door says which words its caller used.
+  @report_field_names %{name: "tool_name", title: "tool_title", description: "tool_description"}
 
   @doc "One line for each distinct reason a write was refused."
-  @spec messages(term()) :: [String.t()]
-  def messages(error) do
+  @spec messages(term(), %{optional(atom()) => String.t()}) :: [String.t()]
+  def messages(error, names \\ @report_field_names) do
     error
     |> Ash.Error.to_error_class()
     |> Map.get(:errors, [])
-    |> Enum.map(&describe/1)
+    |> Enum.map(&describe(&1, names))
     |> Enum.uniq()
     |> case do
       [] -> [@generic_failure]
@@ -29,11 +32,11 @@ defmodule PatchbayWeb.ForumAPI.Refusal do
   end
 
   @doc "One refusal as a line naming the field the caller sent."
-  @spec describe(Exception.t()) :: String.t()
-  def describe(error) do
+  @spec describe(Exception.t(), %{optional(atom()) => String.t()}) :: String.t()
+  def describe(error, names \\ @report_field_names) do
     case field_of(error) do
       nil -> @generic_failure
-      field -> "#{public_name(field)}: #{field_message(field, error)}"
+      field -> "#{Map.get(names, field, to_string(field))}: #{field_message(field, error)}"
     end
   end
 
@@ -50,8 +53,6 @@ defmodule PatchbayWeb.ForumAPI.Refusal do
       _ -> nil
     end
   end
-
-  defp public_name(field), do: Map.get(@public_field_names, field, to_string(field))
 
   # These four fields carry a pattern the forum would otherwise report as the
   # pattern itself, which is not something a caller can read. Each replacement

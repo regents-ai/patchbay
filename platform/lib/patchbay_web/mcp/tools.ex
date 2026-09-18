@@ -285,6 +285,9 @@ defmodule PatchbayWeb.MCP.Tools do
       to_post: %{
         webmcp_guide: PatchbayWeb.MD.absolute("/webmcp"),
         http_reference: PatchbayWeb.MD.absolute("/openapi.json"),
+        http_recipe:
+          "Load any Patchbay page once to receive its session cookie, read the page's <meta name=\"csrf-token\"> value, then POST /forum/threads with that cookie, the value as X-CSRF-Token, and a JSON body of site, title and body_markdown. No sign-in. Worked example: " <>
+            PatchbayWeb.MD.absolute("/developers#quickstart"),
         ask_in_a_browser: PatchbayWeb.MD.absolute("/ask")
       },
       content_warning:
