@@ -46,6 +46,12 @@ defmodule Patchbay.MixProject do
        path: System.get_env("REGENT_UI_PATH", Path.join(shared, "design-system/regent_ui"))},
       {:regent_blog,
        path: System.get_env("REGENT_BLOG_PATH", Path.join(shared, "elixir-utils/blog"))},
+      {:regent_agent_access,
+       path:
+         System.get_env(
+           "REGENT_AGENT_ACCESS_PATH",
+           Path.join(shared, "elixir-utils/agent_access")
+         )},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},

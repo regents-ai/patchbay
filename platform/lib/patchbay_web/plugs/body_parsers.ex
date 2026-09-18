@@ -5,7 +5,7 @@ defmodule PatchbayWeb.Plugs.BodyParsers do
   Phoenix renders an error with the connection the endpoint started from, so
   a body that cannot be read would otherwise be refused in whatever `Accept`
   asks for. Re-raising through `Plug.Conn.WrapperError` hands Phoenix the
-  connection after `AgentFormats` ran, so a malformed body under an API
+  connection after `RegentAgentAccess.Plug` ran, so a malformed body under an API
   prefix is refused as JSON like every other error there.
   """
 

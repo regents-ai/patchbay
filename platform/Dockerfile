@@ -47,6 +47,7 @@ ENV REGENT_SIWA_PATH="/app/platform/vendor/siwa"
 ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
 ENV REGENT_BLOG_PATH="/app/platform/vendor/regent_blog"
+ENV REGENT_AGENT_ACCESS_PATH="/app/platform/vendor/regent_agent_access"
 
 # install mix dependencies
 COPY platform/mix.exs platform/mix.lock ./

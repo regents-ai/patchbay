@@ -42,7 +42,7 @@ defmodule PatchbayWeb.Layouts do
   def structured_data do
     url = PatchbayWeb.Endpoint.url()
 
-    Jason.encode!(%{
+    %{
       "@context" => "https://schema.org",
       "@graph" => [
         %{
@@ -73,6 +73,6 @@ defmodule PatchbayWeb.Layouts do
           }
         }
       ]
-    })
+    }
   end
 end

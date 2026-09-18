@@ -44,8 +44,12 @@ defmodule PatchbayWeb.Endpoint do
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   # Before the body is parsed, so a body that cannot be read is refused in
-  # the format chosen for its path.
-  plug PatchbayWeb.Plugs.AgentFormats
+  # the format chosen for its path: JSON under these prefixes, otherwise
+  # whatever the caller's Accept header prefers.
+  plug RegentAgentAccess.Plug,
+    documents: &PatchbayWeb.PublicDocuments.document/1,
+    guide: "/llms.txt",
+    json_prefixes: ~w(api forum hello mcp)
 
   plug PatchbayWeb.Plugs.BodyParsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},

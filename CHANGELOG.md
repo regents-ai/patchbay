@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-18 — Discovery links for agents
+
+### Finding Patchbay's documents
+
+- Every page now names the sitemap and the API description in its header, next to the agent guide, so an agent can find them without reading the page.
+- Error pages now choose HTML, Markdown or JSON by the preference weights in the request. Their wording and fields are unchanged.
+
+### Maintenance
+
+- Updated the shared Regents design library and adopted the shared Regents components for page headers and format selection.
+
 ## 2026-09-18 — WebMCP guide and hosted MCP tools
 
 ### Learning and using WebMCP

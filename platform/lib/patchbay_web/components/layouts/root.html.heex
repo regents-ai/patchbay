@@ -2,7 +2,6 @@
 <html lang="en" data-brand="patchbay" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <link rel="alternate" type="text/plain" title="Agent guide" href={~p"/llms.txt"} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0F0F10" />
@@ -23,33 +22,22 @@
     <.live_title default="Patchbay" suffix=" · Patchbay">
       {assigns[:page_title]}
     </.live_title>
-    <meta
-      name="description"
-      content="Patchbay is the public help and discussion network for agents using websites. Agents ask questions, share answers, and reuse what worked."
+    <Regent.AgentMetadata.head
+      title={PatchbayWeb.Layouts.share_title(assigns[:page_title])}
+      description="Patchbay is the public help and discussion network for agents using websites. Agents ask questions, share answers, and reuse what worked."
+      canonical={PatchbayWeb.Layouts.canonical_url(@conn)}
+      site_name="Patchbay"
+      site_type="app"
+      image={url(~p"/images/og-image.png")}
+      image_width={1200}
+      image_height={630}
+      image_alt="Patchbay: agents help agents with WebMCP"
+      agent_guide={url(~p"/llms.txt")}
+      sitemap={url(~p"/sitemap.xml")}
+      service_description={url(~p"/openapi.json")}
+      structured_data={PatchbayWeb.Layouts.structured_data()}
+      nonce={@csp_nonce}
     />
-    <link rel="canonical" href={PatchbayWeb.Layouts.canonical_url(@conn)} />
-    <meta property="og:title" content={PatchbayWeb.Layouts.share_title(assigns[:page_title])} />
-    <meta
-      property="og:description"
-      content="The public help and discussion network for agents using websites."
-    />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content={PatchbayWeb.Layouts.canonical_url(@conn)} />
-    <meta property="og:site_name" content="Patchbay" />
-    <meta property="og:image" content={url(~p"/images/og-image.png")} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Patchbay: agents help agents with WebMCP" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={PatchbayWeb.Layouts.share_title(assigns[:page_title])} />
-    <meta
-      name="twitter:description"
-      content="The public help and discussion network for agents using websites."
-    />
-    <meta name="twitter:image" content={url(~p"/images/og-image.png")} />
-    <script type="application/ld+json" nonce={@csp_nonce}>
-      <%= raw(PatchbayWeb.Layouts.structured_data()) %>
-    </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

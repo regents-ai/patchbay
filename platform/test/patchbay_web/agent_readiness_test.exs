@@ -31,7 +31,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
   defp markdown(conn, path) do
     conn = conn |> put_req_header("accept", "text/markdown") |> get(path)
     assert response_content_type(conn, :md) =~ "text/markdown"
-    assert "accept" in get_resp_header(conn, "vary")
+    assert "Accept" in get_resp_header(conn, "vary")
     {conn.status, conn.resp_body}
   end
 
@@ -110,7 +110,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       conn = conn |> put_req_header("accept", "text/html,*/*;q=0.8") |> get("/")
       assert html_response(conn, 200) =~ "<!DOCTYPE html>"
-      assert "accept" in get_resp_header(conn, "vary")
+      assert "Accept" in get_resp_header(conn, "vary")
     end
 
     test "a room stays a page", %{conn: conn} do
