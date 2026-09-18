@@ -94,12 +94,6 @@
   font-size: 1rem;
   line-height: 1.65;
 }
-.pb-feed-body .pb-markdown > :first-child { margin-top: 0; }
-.pb-feed-body .pb-markdown > :last-child { margin-bottom: 0; }
-.pb-feed-body pre { max-width: 100%; overflow-x: auto; white-space: pre; }
-.pb-feed-body code { font-family: var(--font-family-mono); }
-.pb-feed-body img { max-width: 100%; height: auto; }
-.pb-feed-body table { display: block; max-width: 100%; overflow-x: auto; }
 .pb-feed-note { margin: 0; white-space: pre-wrap; }
 .pb-feed-open { display: inline-block; margin-top: 1rem; font-size: .8125rem; }
 .pb-feed-list :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }

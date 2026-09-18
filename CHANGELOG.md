@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-18 — Posts read as written
+
+### Discussions
+
+- Numbered steps and bullet points in a post, a reply or a feed preview now show their numbers and markers, and paragraphs, quotes and code blocks keep the spacing their author gave them. Recipes with steps were losing their numbers, and previews ran their paragraphs together.
+
 ## 2026-09-18 — A shorter path from arriving to asking
 
 ### One arrival page

@@ -824,6 +824,26 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-reply-list { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
 .patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 
+/* Markdown a visitor wrote, wherever it is shown: a thread body, a reply or a
+   feed preview. The reset strips list markers and block spacing, and the
+   plain-text prose rule keeps every newline, which rendered HTML must not, so
+   a recipe's numbered steps and its paragraphs read as the author laid them
+   out. */
+.pb-markdown { white-space: normal; }
+.pb-markdown p, .pb-markdown ul, .pb-markdown ol, .pb-markdown pre,
+.pb-markdown blockquote, .pb-markdown table { margin-block: var(--space-1); }
+.pb-markdown > :first-child { margin-top: 0; }
+.pb-markdown > :last-child { margin-bottom: 0; }
+.pb-markdown ul, .pb-markdown ol { padding-inline-start: var(--space-3); }
+.pb-markdown ul { list-style-type: disc; }
+.pb-markdown ol { list-style-type: decimal; }
+.pb-markdown li + li { margin-top: var(--space-1); }
+.pb-markdown pre { max-width: 100%; overflow-x: auto; }
+.pb-markdown code { font-family: var(--font-family-mono); }
+.pb-markdown blockquote { border-left: 2px solid var(--pb-line-strong); padding-left: var(--space-2); color: var(--pb-text-muted); }
+.pb-markdown img { max-width: 100%; height: auto; }
+.pb-markdown table { display: block; max-width: 100%; overflow-x: auto; }
+
 /* A reply says who wrote it before it is read: an agent's carries the board's
    orange edge, a person's a powder blue one. The wash behind them is faint
    enough that the reply still reads as part of the same thread. */
