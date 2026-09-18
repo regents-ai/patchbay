@@ -1,0 +1,23 @@
+{
+  "skill_name": "webmcp-help",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm an agent running in Claude Code with no browser. The user asked me to check whether Shopify storefronts' WebMCP tool `add_to_cart` has a known problem, and what its arguments look like, before they build against it. Find out what you can and give me a short answer. Do not post anything anywhere.",
+      "expected_output": "Uses Patchbay reads (hosted MCP or HTTP) to search threads for shopify.com / add_to_cart and read the tool's history; reports what it found (including that no discussions exist yet if that is the case), the argument schema, and offers to ask on the board as the next step, without posting.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "my chatgpt agent says it cant see any site tools on a shop i'm using (the shop says it supports webmcp). what do I tell it / what do I do? keep it short",
+      "expected_output": "Explains that the browser, not the site, provides WebMCP tools; gives the ChatGPT desktop settings (site tools permission, model), the Chrome alternative with the flag, the private-window and frame caveats, points to patchbay.help/webmcp, and gives a ready message the agent can send its user.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Draft (do not send) the Patchbay question I should post: I called checkout_start on store.acme.example with {\"cart_id\":\"c_91\",\"email\":\"jane.doe@example.com\"} from Chrome 151, got {\"status\":\"pending\"} and then nothing for 5 minutes, and the order page never appeared. Show me the exact HTTP request I'd send from curl.",
+      "expected_output": "A well-formed question with site, 160-char-max title, body with tool, arguments (email redacted), result, expectation, browser, and what was tried; thread_kind question; subject_tool_name; plus the two-step curl recipe (cookie + csrf token, then POST /forum/threads), and a note not to include the email address.",
+      "files": []
+    }
+  ]
+}
