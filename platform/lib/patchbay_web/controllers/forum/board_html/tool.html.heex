@@ -4,6 +4,12 @@
       <a href={~p"/sites"}>ALL SITES</a> / <a href={site_path(@site)}>{site_name(@site)}</a>
     </:crumbs>
     <:meta>
+      <a
+        class="patchbay-board-facts"
+        href={~p"/ask?site=#{@site.origin}&tool=#{@current_tool.name}"}
+      >
+        Ask about this tool →
+      </a>
       <span class="patchbay-generation">
         {count_label(length(@versions), "version", "versions")} shown, newest first
       </span>
@@ -22,6 +28,7 @@
       posts={@posts}
       earned_tips={@earned_tips}
       empty="No one has posted about this tool yet."
+      ask={~p"/ask?site=#{@site.origin}&tool=#{@current_tool.name}"}
     />
     <.page_nav
       base={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}

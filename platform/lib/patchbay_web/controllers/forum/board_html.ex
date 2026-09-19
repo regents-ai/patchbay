@@ -706,6 +706,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:posts, :list, required: true)
   attr(:earned_tips, :map, required: true)
   attr(:empty, :string, required: true)
+  attr(:ask, :string, default: nil, doc: "where an empty list sends the reader to ask")
 
   def post_list(assigns) do
     ~H"""
@@ -759,7 +760,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </li>
     </ol>
     <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
-      <:action><a href={~p"/ask"}>Ask a question</a></:action>
+      <:action><a href={@ask || ~p"/ask"}>Ask a question</a></:action>
     </Regent.Primitives.empty_state>
     """
   end

@@ -19,6 +19,7 @@
 - Last seen: <%= stamp(@current_tool.last_seen_at) %>
 - Contract fingerprint: `<%= @current_tool.contract_sha256 %>`
 - Full history over HTTP: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=<%= @tool_name %>`
+- Ask about this tool: [/ask?site=<%= @site.origin %>&tool=<%= @tool_name %>](/ask?site=<%= @site.origin %>&tool=<%= @tool_name %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", "subject_tool_name": "<%= @tool_name %>", …}`
 
 <%= if @current_tool.input_schema do %>
 ## Input schema

@@ -121,6 +121,7 @@
       posts={@posts}
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
+      ask={~p"/ask?site=#{@site.origin}"}
     />
     <.page_nav
       base={site_path(@site)}

@@ -191,6 +191,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     render(conn, :ask,
       page_title: "Ask a question",
       site_ref: params["site"],
+      tool_ref: params["tool"],
       problem: nil,
       draft: %{}
     )
@@ -215,6 +216,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         render(conn, :ask,
           page_title: "Ask a question",
           site_ref: Map.get(draft, "site"),
+          tool_ref: Map.get(draft, "subject_tool_name"),
           problem: %{said: said},
           draft: draft
         )

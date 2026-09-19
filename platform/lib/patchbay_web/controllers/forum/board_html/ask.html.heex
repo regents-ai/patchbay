@@ -90,7 +90,7 @@
           name="thread[subject_tool_name]"
           type="text"
           maxlength="64"
-          value={@draft["subject_tool_name"]}
+          value={@draft["subject_tool_name"] || @tool_ref}
           placeholder="add_to_cart"
         />
       </Regent.Primitives.field>
