@@ -2,7 +2,9 @@ defmodule Patchbay.Repo.Migrations.AddJevReadings do
   @moduledoc """
   The table that holds what Jev made of each paid priority report.
 
-  Generated with `mix ash_postgres.generate_migrations`.
+  Generated with `mix ash_postgres.generate_migrations`. The reference names
+  no schema, like the migrations before it, so it follows the schema the
+  deployment's tables live in.
   """
 
   use Ecto.Migration
@@ -23,8 +25,7 @@ defmodule Patchbay.Repo.Migrations.AddJevReadings do
           references(:forum_reports,
             column: :id,
             name: "forum_jev_readings_report_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
     end
