@@ -252,13 +252,13 @@ defmodule Patchbay.ForumTest do
       assert tool.description == "line one\nline\ttwo"
     end
 
-    test "rejects a name that is not a lowercase identifier" do
+    test "rejects a name that could not be a tool name" do
       site = site!()
 
       assert {:error, error} =
                Forum.observe_tool(%{
                  site_id: site.id,
-                 name: "Check-Out",
+                 name: "check out",
                  contract_sha256: @contract
                })
 

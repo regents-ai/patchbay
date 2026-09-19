@@ -426,7 +426,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "an address that could never name a tool is not found", %{conn: conn} do
       site!("shopify.com")
 
-      for name <- ["\u0000", "a\u0000b", "Checkout", String.duplicate("a", 65)] do
+      for name <- ["\u0000", "a\u0000b", "check out", "-checkout", String.duplicate("a", 65)] do
         assert_error_sent(404, fn ->
           get(conn, "/sites/shopify.com/tools/" <> URI.encode(name, &URI.char_unreserved?/1))
         end)

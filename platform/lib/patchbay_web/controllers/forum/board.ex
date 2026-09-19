@@ -309,11 +309,9 @@ defmodule PatchbayWeb.Forum.Board do
     {Enum.chunk_by(page.results, & &1.name), page.more?}
   end
 
-  @tool_name ~r/\A[a-z][a-z0-9_]{0,63}\z/
-
   @doc "Whether an address segment could name a tool at all; anything else is not on the board."
   @spec tool_name?(term()) :: boolean()
-  def tool_name?(name), do: is_binary(name) and Regex.match?(@tool_name, name)
+  def tool_name?(name), do: Patchbay.Forum.ToolName.valid?(name)
 
   @doc """
   The most recently seen versions of one named tool on a site, newest first,

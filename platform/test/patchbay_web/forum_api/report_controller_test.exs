@@ -630,7 +630,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
   describe "searching" do
     test "a tool name that could never be stored is refused, not crashed", %{conn: conn} do
-      for name <- ["a\u0000b", "Checkout", String.duplicate("a", 65)] do
+      for name <- ["a\u0000b", "check out", "-checkout", String.duplicate("a", 65)] do
         conn = get(conn, "/forum/search", %{"tool_name" => name})
         assert %{"errors" => ["tool_name: " <> _]} = json_response(conn, 422)
       end

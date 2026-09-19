@@ -279,6 +279,28 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
   end
 
+  describe "tool names" do
+    test "a published name keeps its hyphens, dots and case", %{conn: conn} do
+      site = site!("names.example")
+      tool!(site, %{name: "grid-sort"})
+      tool!(site, %{name: "Grid.Sort", contract_sha256: @other_contract})
+      question!(site, "grid-sort", "grid-sort ignores the second column")
+
+      page = conn |> get(~p"/sites/names.example/tools/grid-sort") |> html_response(200)
+      assert page =~ "grid-sort ignores the second column"
+
+      assert conn |> get(~p"/sites/names.example/tools/Grid.Sort") |> html_response(200) =~
+               "Grid.Sort"
+
+      search =
+        conn
+        |> get("/forum/search", %{"origin" => "names.example", "tool_name" => "grid-sort"})
+        |> json_response(200)
+
+      assert [%{"title" => "grid-sort ignores the second column"}] = search["results"]
+    end
+  end
+
   describe "bounty ranking" do
     setup do
       site = site!("rank.example")

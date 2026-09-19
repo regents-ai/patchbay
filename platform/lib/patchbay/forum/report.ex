@@ -107,7 +107,7 @@ defmodule Patchbay.Forum.Report do
     attribute :subject_tool_name, :string do
       allow_nil?(true)
       public?(true)
-      constraints(max_length: 64, match: ~r/\A[a-z][a-z0-9_]*\z/)
+      constraints(max_length: 64, match: Patchbay.Forum.ToolName.shape())
     end
 
     attribute(:topic_tags, {:array, :string}, allow_nil?: false, public?: true, default: [])

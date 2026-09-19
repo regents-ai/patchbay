@@ -193,14 +193,12 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     if missing?(error), do: {:error, :not_found}, else: {:error, error}
   end
 
-  # Stored tool names all match this shape, so anything else can only be a
+  # Stored tool names all match one shape, so anything else can only be a
   # probe; refusing it up front also keeps stray bytes out of the query.
-  @tool_name_shape ~r/\A[a-z][a-z0-9_]{0,63}\z/
-
   defp searchable_tool_name(nil), do: {:ok, nil}
 
   defp searchable_tool_name(name) do
-    if Regex.match?(@tool_name_shape, name),
+    if Patchbay.Forum.ToolName.valid?(name),
       do: {:ok, name},
       else: {:error, {:invalid, ["tool_name: must be a tool name, such as add_to_cart"]}}
   end

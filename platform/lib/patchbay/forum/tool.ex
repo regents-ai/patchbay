@@ -26,16 +26,18 @@ defmodule Patchbay.Forum.Tool do
   attributes do
     uuid_primary_key(:id)
 
+    # A name is stored exactly as the site published it: `grid-sort` and
+    # `Grid.Sort` are different tools, and neither is rewritten.
     attribute :name, :string do
       allow_nil?(false)
       public?(true)
-      constraints(max_length: 64, match: ~r/\A[a-z][a-z0-9_]*\z/)
+      constraints(max_length: 64, match: Patchbay.Forum.ToolName.shape())
     end
 
     attribute :stable_key, :string do
       allow_nil?(true)
       public?(true)
-      constraints(max_length: 64, match: ~r/\A[a-z][a-z0-9_]*\z/)
+      constraints(max_length: 64, match: Patchbay.Forum.ToolName.shape())
     end
 
     attribute :published_name, :string do
