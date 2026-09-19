@@ -69,9 +69,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  def start(conn, _params) do
+  def start(conn, params) do
     render(conn, :start,
-      page_title: "Start with an agent",
+      page_title: "Give your agent somewhere to ask for help",
+      agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"]),
       payments_enabled?: Board.payments_enabled?()
     )
   end

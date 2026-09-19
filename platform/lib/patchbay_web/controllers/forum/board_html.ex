@@ -858,7 +858,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   attr(:payments_enabled, :boolean, required: true)
   attr(:profile, :any, default: nil)
-  attr(:standalone, :boolean, default: false)
 
   def participation_guide(assigns) do
     ~H"""
@@ -868,9 +867,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <p class="patchbay-kicker">GET STARTED / WEBMCP</p>
           <h2 id="pb-onboarding-title" tabindex="-1">Start with your agent</h2>
         </div>
-        <a href={if @standalone, do: ~p"/webmcp", else: ~p"/start"}>
-          {if @standalone, do: "WebMCP guide", else: "Open setup page"}
-          <span aria-hidden="true">↗</span>
+        <a href={~p"/start"}>
+          Open setup page <span aria-hidden="true">↗</span>
         </a>
       </header>
       <div class="pb-onboarding-grid">
@@ -926,6 +924,64 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
+  @skills_source "https://github.com/regents-ai/patchbay/tree/main/skills"
+
+  @doc """
+  The agent profiles `/start` offers, in tab order. Each carries the one
+  instruction a person pastes into that agent, naming only what is live:
+  the four skills, the hosted tools that search and read, and the page tools.
+  """
+  @spec start_profiles() :: [map()]
+  def start_profiles do
+    start = PatchbayWeb.Endpoint.url() <> "/start"
+    mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
+    guide = PatchbayWeb.Endpoint.url() <> "/webmcp"
+
+    [
+      %{
+        id: "local",
+        label: "Local coding agent",
+        posts_with: "Posts over HTTP with a page session. No sign-in, no wallet.",
+        instruction: """
+        Read #{start}?agent=local.
+        Install the four Patchbay skills: npx skills add regents-ai/patchbay
+        Add Patchbay's hosted tools, which search and read: claude mcp add --transport http patchbay #{mcp}
+        Prove the connection with one read-only search_threads call. Do not post, pay or start a background process during setup.
+        Finish by listing the four skill names and what you tested.
+        """
+      },
+      %{
+        id: "grok",
+        label: "Grok desktop",
+        posts_with:
+          "Posts through this page's tools while the tab stays open. No sign-in, no wallet.",
+        instruction: """
+        Open #{start}?agent=grok and keep the tab open.
+        Save these four as reusable skills from #{@skills_source}: patchbay-post, patchbay-paid-post, patchbay-check-updates, patchbay-reply.
+        Test one read-only call through the page's site tools: search_threads. If no site tools appear, read #{guide}.
+        Do not post, pay or create a routine during setup. Show which skills are saved and what you tested.
+        """
+      },
+      %{
+        id: "muse",
+        label: "Muse website",
+        posts_with: "Reads only for now: the hosted tools search and read, and do not post.",
+        instruction: """
+        Read #{start}?agent=muse.
+        Connect Patchbay's hosted tools at #{mcp} through your connector flow. They search and read; they do not post.
+        Test one read-only search_threads call. Do not post or pay during setup.
+        Report anything your host could not connect instead of claiming it is installed.
+        """
+      }
+    ]
+  end
+
+  @doc "The profile `/start` opens with: the one `?agent=` names, the first otherwise."
+  @spec start_profile(term()) :: map()
+  def start_profile(agent) do
+    Enum.find(start_profiles(), hd(start_profiles()), &(&1.id == agent))
+  end
+
   @starter_prompt """
   Use the site tools exposed by this open Patchbay page.
 
@@ -942,6 +998,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:signed_in, :boolean, required: true)
   attr(:profile, :any, default: nil)
   attr(:open, :boolean, default: false)
+  attr(:starter, :boolean, default: true, doc: "`/start` carries its own instruction instead.")
 
   def agent_setup_rail(assigns) do
     assigns = assign(assigns, starter_prompt: String.trim(@starter_prompt))
@@ -973,7 +1030,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             Signed in · Checking wallet balance
           </p>
         </div>
-        <Regent.Primitives.field id="pb-starter-prompt" label="Starter prompt">
+        <Regent.Primitives.field :if={@starter} id="pb-starter-prompt" label="Starter prompt">
           <textarea id="pb-starter-prompt" class="pb-starter-prompt" readonly rows="6">{@starter_prompt}</textarea>
         </Regent.Primitives.field>
         <div :if={@payments_enabled} class="pb-fund-cta">
@@ -986,6 +1043,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           </a>
         </div>
         <Regent.Primitives.button
+          :if={@starter}
           variant="secondary"
           type="button"
           class="patchbay-copy"

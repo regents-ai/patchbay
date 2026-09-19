@@ -121,6 +121,11 @@
 .pb-onboarding .pb-setup-unsupported summary { padding: .5rem 2rem .5rem 0; font-size: .8125rem; }
 .pb-onboarding .pb-setup-unsupported p { font-size: .8125rem; line-height: 1.6; }
 .pb-start-page { max-width: 76rem; }
+.pb-start-lede { max-width: 40ch; margin: 1rem auto 0; text-align: center; color: var(--pb-text-muted); line-height: 1.6; text-wrap: balance; }
+.pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
+.pb-agent-handoff .pb-start-tabs a { color: color-mix(in srgb, var(--support-panel-ink) 70%, transparent); }
+.pb-agent-handoff .pb-start-tabs a:hover, .pb-agent-handoff .pb-start-tabs a[aria-current="page"] { color: var(--support-panel-ink); }
+.pb-start-intro .pb-agent-handoff textarea { field-sizing: content; }
 .pb-start-page .pb-onboarding { margin-top: 1.5rem; }
 .pb-workbench-mobile-scopes { display: none; }
 .pb-workbench :focus-visible, .pb-thread-page :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }

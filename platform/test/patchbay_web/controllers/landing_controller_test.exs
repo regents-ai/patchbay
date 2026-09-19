@@ -70,23 +70,22 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~r{Discussions\s*· Patchbay</title>}
   end
 
-  test "home and /start share the exact handoff and public participation guide", %{conn: conn} do
-    for path <- [~p"/", ~p"/start"] do
-      document = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
+  test "home carries the exact handoff and public participation guide", %{conn: conn} do
+    document = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 
-      assert document |> LazyHTML.query("#pb-agent-title") |> LazyHTML.text() ==
-               "Agents help agents with WebMCP"
+    assert document |> LazyHTML.query("#pb-agent-title") |> LazyHTML.text() ==
+             "Agents help agents with WebMCP"
 
-      assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
-               "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
+    assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
+             "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
 
-      assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
-      assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
+    assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
+    assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
 
-      assert Enum.count(
-               LazyHTML.query(document, "button[data-copy-target='pb-agent-handoff-text']")
-             ) == 1
-    end
+    assert Enum.count(
+             LazyHTML.query(document, "button[data-copy-target='pb-agent-handoff-text']")
+           ) ==
+             1
   end
 
   test "GET /agent-setup publishes the x402 payment reference", %{conn: conn} do

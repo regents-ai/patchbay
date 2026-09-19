@@ -76,7 +76,8 @@ defmodule PatchbayWeb do
           notice_title: 1,
           subscription_kind: 1,
           scope_label: 1,
-          note_snippet: 1
+          note_snippet: 1,
+          start_profiles: 0
         ]
 
       unquote(verified_routes())
