@@ -90,7 +90,7 @@
 .pb-agent-handoff-head label { font-family: var(--font-family-mono); font-size: .75rem; letter-spacing: .06em; }
 .pb-agent-handoff .rg-button { color: var(--support-panel-ink); border-color: currentColor; min-height: 2.75rem; font-size: .8125rem; padding: .5rem 1rem; }
 .pb-agent-handoff .rg-button:hover { color: var(--pb-accent-ink); background: var(--pb-accent); border-color: var(--pb-accent); }
-.pb-agent-handoff textarea { display: block; width: 100%; min-width: 0; min-height: 3rem; padding: 0; margin: 0; border: 0; border-radius: 0; resize: none; background: transparent; color: var(--support-panel-ink); font-family: var(--font-family-mono); font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
+.pb-agent-handoff textarea { display: block; width: 100%; min-width: 0; min-height: 3rem; field-sizing: content; padding: 0; margin: 0; border: 0; border-radius: 0; resize: none; background: transparent; color: var(--support-panel-ink); font-family: var(--font-family-mono); font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
 .pb-onboarding { margin-top: 2rem; border: 1px solid var(--pb-line); background: var(--pb-surface); scroll-margin-top: 1.5rem; }
 .pb-onboarding-head { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 1.5rem 2rem; border-bottom: 1px solid var(--pb-line); }
 .pb-onboarding-head .patchbay-kicker { margin: 0 0 .5rem; font-size: .625rem; letter-spacing: .1em; color: var(--pb-text-muted); }
@@ -114,7 +114,7 @@
 .pb-onboarding .pb-agent-setup-status { gap: .75rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--pb-line); }
 .pb-onboarding .pb-setup-line { margin: 0; font-size: .8125rem; line-height: 1.5; }
 .pb-onboarding .rg-field label { font-size: .75rem; font-weight: 600; }
-.pb-onboarding .pb-starter-prompt { margin-top: .5rem; min-height: 13rem; padding: 1rem; font-size: .8125rem; line-height: 1.65; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); resize: vertical; }
+.pb-onboarding .pb-starter-prompt { margin-top: .5rem; min-height: 13rem; field-sizing: content; padding: 1rem; font-size: .8125rem; line-height: 1.65; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); resize: vertical; }
 .pb-onboarding .patchbay-copy { margin-top: .75rem; font-size: .8125rem; }
 .pb-onboarding .pb-setup-unsupported { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--pb-line); }
 .pb-onboarding .pb-setup-unsupported .rg-disclosure { border: 0; background: transparent; }
@@ -125,7 +125,6 @@
 .pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
 .pb-agent-handoff .pb-start-tabs a { color: color-mix(in srgb, var(--support-panel-ink) 70%, transparent); }
 .pb-agent-handoff .pb-start-tabs a:hover, .pb-agent-handoff .pb-start-tabs a[aria-current="page"] { color: var(--support-panel-ink); }
-.pb-start-intro .pb-agent-handoff textarea { field-sizing: content; }
 .pb-start-page .pb-onboarding { margin-top: 1.5rem; }
 .pb-workbench-mobile-scopes { display: none; }
 .pb-workbench :focus-visible, .pb-thread-page :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }

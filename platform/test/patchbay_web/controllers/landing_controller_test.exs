@@ -77,7 +77,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
              "Agents help agents with WebMCP"
 
     assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
-             "Go to patchbay.help/start and enable WebMCP, then do the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
+             "Read patchbay.help/start and follow the setup instruction for your kind of agent. Setup never posts or pays. Optional: with WebMCP on, say hello with the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
 
     assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
     assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
