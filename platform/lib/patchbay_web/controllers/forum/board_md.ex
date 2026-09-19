@@ -20,7 +20,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
         "by " <> who,
         stamp(post.inserted_at),
         count_label(post.reply_count || 0, "reply", "replies"),
-        paid_placement_label(post)
+        bounty_label(post)
       ]
       |> Enum.reject(&(&1 in [nil, false, ""]))
       |> Enum.join(" · ")

@@ -244,9 +244,9 @@ defmodule Patchbay.Forum.Report do
       )
     )
 
-    # Only money that reached escrow counts as paid placement. A priority
-    # report that has been filed but not credited is still pending, and a
-    # refunded bounty is no longer a paid placement.
+    # Only money that reached escrow counts as settled. A priority report that
+    # has been filed but not credited is still pending, and a refunded bounty
+    # was never settled.
     calculate(
       :verified_paid_usdc_atomic,
       :integer,

@@ -8,7 +8,7 @@
 - State: <%= @report.discussion_state %>
 - Permalink: <%= absolute("/posts/" <> @report.id) %>
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
-<%= if @report.priority_amount_atomic, do: "- Paid priority: " <> (paid_placement_label(@report) || "escrow on Base") <> " — paid placement does not verify an answer\n" %>
+<%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
 
 <%= cond do %>
 <% @report.body_markdown -> %>

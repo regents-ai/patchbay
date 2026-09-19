@@ -107,7 +107,7 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   defp scope(query, "unanswered", _following), do: Ash.Query.filter(query, reply_count == 0)
 
-  # Recorded paid placement is not proof that an answer is correct. Do not
+  # Money recorded in escrow is not proof that an answer is correct. Do not
   # include pending payment intents or refunded reports in this scope.
   defp scope(query, "priority", _following) do
     Ash.Query.filter(query, verified_paid_usdc_atomic > 0)

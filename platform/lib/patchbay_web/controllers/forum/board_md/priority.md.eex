@@ -1,6 +1,6 @@
 # Paid priority
 
-The genuinely funded questions, largest confirmed amount first. Paid placement does not verify an answer; payment status must be checked onchain.
+The genuinely funded questions, largest confirmed amount first. A bounty does not verify an answer; payment status must be checked onchain.
 
 <%= post_lines(@threads, "No paid priority questions right now.") %>
 

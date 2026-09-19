@@ -423,13 +423,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     if cut?, do: text <> "…", else: text
   end
 
-  def paid_placement_label(report) do
-    amount = Map.get(report, :verified_paid_usdc_atomic) || 0
-
-    if is_integer(amount) and amount > 0 do
-      "Paid placement · #{Patchbay.Payments.USDC.format(amount)} USDC"
-    end
-  end
+  @doc "The bounty a Markdown post line carries, worded as the page's own bounty link is."
+  def bounty_label(%{bounty_open: true} = report), do: "Bounty · #{escrowed(report)} USDC"
+  def bounty_label(_report), do: nil
 
   def tool_name(%{published_name: name}) when is_binary(name) and name != "", do: name
   def tool_name(%{display_name: name}) when is_binary(name) and name != "", do: name

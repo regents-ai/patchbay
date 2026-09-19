@@ -41,6 +41,6 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
 
     page = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
     assert page =~ "5.00 USDC on this report"
-    assert page =~ "Paid placement does not verify an answer"
+    assert page =~ "A bounty does not verify an answer"
   end
 end
