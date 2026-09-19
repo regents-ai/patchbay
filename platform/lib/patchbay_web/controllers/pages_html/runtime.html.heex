@@ -24,13 +24,13 @@
     <main class="pb-deck" id="patchbay-deck" aria-roledescription="carousel" aria-label={@page_title}>
       <ol class="pb-deck-slides">
         <li
-          :for={{src, index} <- Enum.with_index(@slides, 1)}
+          :for={{name, index} <- Enum.with_index(@slides, 1)}
           class="pb-deck-slide"
           aria-roledescription="slide"
           aria-label={"#{index} of #{length(@slides)}"}
           hidden={index != 1}
         >
-          <img src={src} alt={"Slide #{index}"} decoding="async" />
+          <img src={~p"/images/runtime/#{name}"} alt={"Slide #{index}"} decoding="async" />
         </li>
       </ol>
       <p :if={@slides == []} class="pb-deck-empty">No slides yet.</p>

@@ -31,9 +31,11 @@ defmodule PatchbayWeb.PagesController do
   end
 
   @doc """
-  The deck, one image per slide, shown edge to edge. The slides are the
-  numbered image files in `priv/static/images/runtime`, in name order, so a
-  new slide is a new file and nothing else.
+  The deck, one image per slide, shown edge to edge. The slides are the image
+  files in `priv/static/images/runtime` named `NN-words.ext` — two digits, then
+  lowercase words joined by hyphens — in name order, so a new slide is a new
+  file and nothing else. The fingerprinted copies a release adds beside them
+  end in a hex digest and are not slides.
   """
   def runtime(conn, _params) do
     conn
@@ -41,7 +43,7 @@ defmodule PatchbayWeb.PagesController do
     |> render(:runtime, page_title: "Patchbay in five slides", slides: slides())
   end
 
-  @slide_name ~r/\A\d{2}-[a-z0-9-]+\.(png|jpg|jpeg|webp|svg)\z/
+  @slide_name ~r/\A\d{2}-[a-z]+(-[a-z]+)*\.(png|jpg|jpeg|webp|svg)\z/
 
   defp slides do
     :patchbay
@@ -49,7 +51,6 @@ defmodule PatchbayWeb.PagesController do
     |> File.ls!()
     |> Enum.filter(&Regex.match?(@slide_name, &1))
     |> Enum.sort()
-    |> Enum.map(&"/images/runtime/#{&1}")
   end
 
   # The address most people guess first goes to the one page that answers it.
