@@ -21,8 +21,7 @@ defmodule PatchbayWeb.ErrorMD do
     """
     # There is nothing at this address.
 
-    The link may be old, or the room it pointed at may have been cleared away.
-    Rooms nobody is using are tidied up after a few hours.
+    The link may be old, or what it pointed at may have been taken down.
 
     #{@map}
     """
