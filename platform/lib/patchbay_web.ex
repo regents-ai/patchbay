@@ -68,6 +68,7 @@ defmodule PatchbayWeb do
           support_status_label: 1,
           relationship_sentence: 1,
           source_kind_label: 1,
+          tool_source_label: 2,
           tool_status_label: 1,
           bounty_label: 1,
           count_label: 3,

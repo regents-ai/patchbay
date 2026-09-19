@@ -55,8 +55,9 @@
         <dt>Source</dt>
         <dd>
           {source_kind_label(@current_tool.source_kind)}
+          <span :if={@current_tool.source_url} class="pb-entry-dot" aria-hidden="true">·</span>
           <a :if={@current_tool.source_url} href={@current_tool.source_url} rel="noreferrer">
-            (published declaration)
+            {tool_source_label(@current_tool, @site)}
           </a>
         </dd>
         <dt>Status</dt>

@@ -332,6 +332,19 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def source_kind_label(:agent_reported), do: "Agent-reported"
   def source_kind_label(_other), do: "Observed"
 
+  @doc """
+  What a tool's source link is called: the site's named publication when the
+  tool came from it, otherwise the address itself.
+  """
+  def tool_source_label(%{source_url: url}, %{
+        support_evidence_url: url,
+        support_evidence_label: label
+      })
+      when is_binary(label) and label != "",
+      do: label
+
+  def tool_source_label(%{source_url: url}, _site), do: url
+
   @doc "When a tool row was last confirmed: verified against its publication, or observed in use."
   def tool_seen_label(%{source_kind: :official, last_seen_at: at}),
     do: "Verified " <> Calendar.strftime(at, "%-d %b %Y")
