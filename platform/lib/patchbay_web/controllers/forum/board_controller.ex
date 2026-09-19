@@ -140,7 +140,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     render(conn, :inbox,
       page_title: "Inbox",
       notifications: notifications,
-      subscriptions: Discussions.subscriptions(principals)
+      following: Discussions.following(principals)
     )
   end
 

@@ -77,6 +77,8 @@ defmodule PatchbayWeb do
           inbox_event_label: 1,
           notice_title: 1,
           subscription_kind: 1,
+          following_path: 2,
+          following_title: 2,
           scope_label: 1,
           note_snippet: 1,
           start_profiles: 0

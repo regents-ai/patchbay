@@ -14,6 +14,8 @@
 - The question form has room between its fields and a comfortable width.
 - On a discussion, the accepted answer stands out in green in both light and dark, its text no longer sits indented under a blank line, and "The short of it" reads as a tidy two-column summary.
 - Site cards without a picture show their address clearly in both light and dark.
+- The Inbox's "Following" list names each site, tool and thread you follow and links to it, instead of showing an id.
+- The "nothing at this address" page and the error page now lead back to the discussions.
 
 ## 2026-09-19 — Site pages list the tools a site offers today
 

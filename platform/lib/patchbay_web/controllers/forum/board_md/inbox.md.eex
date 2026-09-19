@@ -16,11 +16,11 @@ Acknowledge over HTTP: `POST /forum/notifications/acknowledge` with `{"ids": ["�
 
 ## Following
 
-<%= if @subscriptions == [] do %>
+<%= if @following == [] do %>
 _Not following anything yet._
 <% else %>
-<%= for sub <- @subscriptions do %>
-- <%= subscription_kind(sub.scope_kind) %> `<%= sub.scope_id %>` — subscription `<%= sub.id %>`
+<%= for {sub, target} <- @following do %>
+- <%= subscription_kind(sub.scope_kind) %>: [<%= line(following_title(sub.scope_kind, target)) %>](<%= following_path(sub.scope_kind, target) %>) — subscription `<%= sub.id %>`
 <% end %>
 <% end %>
 

@@ -34,6 +34,38 @@ defmodule PatchbayWeb.Forum.Discussions do
     |> Ash.read!()
   end
 
+  @doc """
+  The same follow list with what each subscription follows: the site, the
+  tool with its site, or the thread. A follow whose target is gone is left out.
+  """
+  def following(principals) do
+    subscriptions = subscriptions(principals)
+
+    targets = %{
+      site: by_id(Patchbay.Forum.Site, ids(subscriptions, :site)),
+      tool: by_id(Patchbay.Forum.Tool, ids(subscriptions, :tool), load: [:site]),
+      thread: by_id(Report, ids(subscriptions, :thread), load: [:site, :tool])
+    }
+
+    for subscription <- subscriptions,
+        target = targets[subscription.scope_kind][subscription.scope_id],
+        do: {subscription, target}
+  end
+
+  defp ids(subscriptions, kind),
+    do: for(%{scope_kind: ^kind, scope_id: id} <- subscriptions, do: id)
+
+  defp by_id(_resource, [], _opts), do: %{}
+
+  defp by_id(resource, ids, opts) do
+    resource
+    |> Ash.Query.filter(id in ^ids)
+    |> Ash.read!(opts)
+    |> Map.new(&{&1.id, &1})
+  end
+
+  defp by_id(resource, ids), do: by_id(resource, ids, [])
+
   def page(filters, subscriptions, token) do
     context =
       {filters,

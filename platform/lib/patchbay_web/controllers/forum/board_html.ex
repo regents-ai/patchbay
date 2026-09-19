@@ -435,6 +435,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def subscription_kind(:tool), do: "Tool"
   def subscription_kind(:thread), do: "Thread"
 
+  @doc "Where a followed site, tool or thread lives, and what to call it."
+  def following_path(:site, site), do: site_path(site)
+  def following_path(:tool, tool), do: ~p"/sites/#{site_ref(tool.site)}/tools/#{tool.name}"
+  def following_path(:thread, report), do: ~p"/posts/#{report.id}"
+
+  def following_title(:site, site), do: site_name(site)
+  def following_title(:tool, tool), do: tool_name(tool)
+  def following_title(:thread, report), do: post_title(report)
+
   @doc "Whether the page's own profile or session is the one that asked this thread."
   def reader_asked?(report, assigns) do
     (assigns.current_profile && report.author_profile_id == assigns.current_profile.id) ||

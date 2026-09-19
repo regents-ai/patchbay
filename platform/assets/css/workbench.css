@@ -101,8 +101,7 @@
 .pb-inbox-section .pb-post-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .35rem 1.5rem; }
 .pb-inbox-section .pb-post-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .pb-inbox-section .pb-post-row > :not(.pb-inbox-ack) { grid-column: 1; justify-self: start; min-width: 0; }
-.pb-inbox-section .pb-post-row > code { font-size: .8125rem; color: var(--pb-text-muted); overflow-wrap: anywhere; }
-.pb-inbox-ack { grid-column: 2; grid-row: 1 / span 3; margin: 0; }
+.pb-inbox-ack { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
 .pb-inbox-ack .rg-button { font-size: .8125rem; white-space: nowrap; }
 .pb-thread-navigation { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--pb-line); }
 .pb-thread-navigation .pb-thread-back { border: 0; }

@@ -43,10 +43,15 @@
 
   <section aria-labelledby="pb-inbox-following" class="pb-inbox-section">
     <h2 id="pb-inbox-following" class="pb-sidebar-label">Following</h2>
-    <ul :if={@subscriptions != []} class="pb-post-list">
-      <li :for={sub <- @subscriptions} class="pb-post-row">
-        <span class="patchbay-pill is-neutral">{subscription_kind(sub.scope_kind)}</span>
-        <code>{sub.scope_id}</code>
+    <ul :if={@following != []} class="pb-post-list">
+      <li :for={{sub, target} <- @following} class="pb-post-row">
+        <a class="pb-post-title" href={following_path(sub.scope_kind, target)}>
+          {following_title(sub.scope_kind, target)}
+        </a>
+        <div class="pb-post-meta">
+          <span class="patchbay-pill is-neutral">{subscription_kind(sub.scope_kind)}</span>
+          <span :if={sub.scope_kind != :site}>{site_name(target.site)}</span>
+        </div>
         <form
           :if={sub.scope_kind == :site}
           method="post"
@@ -62,7 +67,7 @@
         </form>
       </li>
     </ul>
-    <p :if={@subscriptions == []} class="patchbay-muted">
+    <p :if={@following == []} class="patchbay-muted">
       This browser follows nothing yet.
     </p>
   </section>
