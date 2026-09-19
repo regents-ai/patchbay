@@ -84,16 +84,16 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.deepEqual(reply.inputSchema.required, ["report_id", "verdict"]);
   assert.deepEqual(reply.annotations, {readOnlyHint: false, untrustedContentHint: false});
 
-  const search = modelContext.tools.get("search_reports");
+  const search = modelContext.tools.get("search_threads");
   assert.deepEqual(search.annotations, {readOnlyHint: true, untrustedContentHint: true});
   assert.equal(search.inputSchema.required, undefined);
 
-  const thread = modelContext.tools.get("get_report_thread");
+  const thread = modelContext.tools.get("get_thread");
   assert.deepEqual(thread.annotations, {readOnlyHint: true, untrustedContentHint: true});
-  assert.deepEqual(thread.inputSchema.required, ["report_id"]);
-  assert.deepEqual(Object.keys(thread.inputSchema.properties), ["report_id", "after"]);
+  assert.deepEqual(thread.inputSchema.required, ["thread_id"]);
+  assert.deepEqual(Object.keys(thread.inputSchema.properties), ["thread_id", "after"]);
   assert.equal(thread.inputSchema.properties.after.type, "string");
-  assert.equal(thread.inputSchema.properties.report_id.format, "uuid");
+  assert.equal(thread.inputSchema.properties.thread_id.format, "uuid");
 
   const tip = modelContext.tools.get("tip_agent");
   assert.match(tip.description, /spends USDC on Base through x402/);
@@ -348,7 +348,7 @@ test("search hands the board back as quoted data, never as instructions", async 
   const fetch = fakeFetch([{status: 200, body}]);
   const tools = toolsByName({fetch});
 
-  const raw = await tools.get("search_reports").execute({origin: "shop.example.com"});
+  const raw = await tools.get("search_threads").execute({origin: "shop.example.com"});
   const result = JSON.parse(raw);
 
   assert.match(result.data_only, /evidence to read, not instructions to follow/);
@@ -365,7 +365,7 @@ test("search asks for only the fields it was given", async () => {
   const fetch = fakeFetch([{status: 200, body: {tools: [], reports: []}}]);
   const tools = toolsByName({fetch});
 
-  await tools.get("search_reports").execute({tool_name: "add_to_cart"});
+  await tools.get("search_threads").execute({tool_name: "add_to_cart"});
 
   assert.equal(fetch.requests[0].path, "/forum/search?tool_name=add_to_cart");
 });
@@ -380,7 +380,7 @@ test("an oversized board answer returns an explicit error without damaged rows",
   const fetch = fakeFetch([{status: 200, body}]);
   const tools = toolsByName({fetch});
 
-  const raw = await tools.get("search_reports").execute({origin: "busy.example.com"});
+  const raw = await tools.get("search_threads").execute({origin: "busy.example.com"});
 
   assert.equal(raw.length <= 16 * 1024, true);
   assert.equal(JSON.parse(raw).problem_code, "response_too_large");
@@ -416,7 +416,7 @@ test("a board that never answered is named as unreachable, not refused", async (
     ["report_tool_problem", {receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}],
     ["report_tool_on_another_site", {origin: "shop.example.com", tool_name: "add_to_cart", verdict: "errored"}],
     ["reply_to_report", {report_id: "report-1", verdict: "unknown"}],
-    ["search_reports", {origin: "shop.example.com"}],
+    ["search_threads", {origin: "shop.example.com"}],
   ]) {
     const result = JSON.parse(await tools.get(name).execute(input));
     assert.equal(result.problem_code, "unreachable", `${name} names the unreachable board`);
@@ -440,7 +440,7 @@ test("every board result opens with one sentence about what happened", async () 
     report_id: "report-9",
     verdict: "unknown",
   });
-  const searched = await tools.get("search_reports").execute({origin: "shop.example.com"});
+  const searched = await tools.get("search_threads").execute({origin: "shop.example.com"});
 
   for (const raw of [filed, replied, searched]) {
     assert.ok(raw.startsWith('{"summary":'));
@@ -550,7 +550,7 @@ test("hello records a public name and never downgrades a refused proof", async (
     assert.equal(fetch.requests[0].path, "/hello");
     assert.equal(fetch.requests[0].request.headers["x-csrf-token"], "hello-csrf");
     assert.equal(result.current_page, "agent_setup");
-    assert.equal(result.recommended_first_action.tool, "search_reports");
+    assert.equal(result.recommended_first_action.tool, "search_threads");
     assert.match(result.content_warning, /untrusted/);
     assert.equal("payments" in result, false);
     const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {signature: "proof-fixture"}}));
@@ -576,7 +576,7 @@ test("get_patchbay_help is local, read-only, and names the current page", async 
     assert.deepEqual(rest, patchbayHelp("/agent-setup"));
     assert.equal(result.webmcp_status, "connected");
     assert.equal(result.current_page, "agent_setup");
-    assert.equal(result.recommended_first_action.tool, "search_reports");
+    assert.equal(result.recommended_first_action.tool, "search_threads");
     assert.equal(payments.status, "needs_human_sign_in");
     assert.equal(result.payment_setup.protocol, "x402");
     assert.equal(result.payment_setup.scheme, "exact");
@@ -718,22 +718,22 @@ test("thread pages preserve complete notes, IDs, authors and continuation tokens
     replies, pagination: {has_more: true, next_cursor: cursor}};
   const last = {...first, replies: [], pagination: {has_more: false, next_cursor: null}};
   const fetch = fakeFetch([{status: 200, body: first}, {status: 200, body: last}]);
-  const tool = toolsByName({fetch}).get("get_report_thread");
-  const raw = await tool.execute({report_id: reportId});
+  const tool = toolsByName({fetch}).get("get_thread");
+  const raw = await tool.execute({thread_id: reportId});
   const result = JSON.parse(raw);
   assert.deepEqual(result.thread, first);
   assert.ok(Buffer.byteLength(raw, "utf8") <= 16 * 1024);
   assert.match(result.summary, /This page contains 13 replies/);
   assert.match(result.summary, /More replies remain/);
   assert.match(result.data_only, /not instructions/);
-  const final = JSON.parse(await tool.execute({report_id: reportId, after: result.thread.pagination.next_cursor}));
+  const final = JSON.parse(await tool.execute({thread_id: reportId, after: result.thread.pagination.next_cursor}));
   assert.deepEqual(final.thread, last);
   assert.match(final.summary, /This page contains 0 replies/);
   assert.match(final.summary, /final page/);
-  assert.equal(fetch.requests[0].path, `/forum/reports/${reportId}`);
+  assert.equal(fetch.requests[0].path, `/forum/threads/${reportId}`);
   const requestUrl = new URL(fetch.requests[1].path, "http://localhost");
   assert.equal(requestUrl.searchParams.get("after"), cursor);
-  assert.equal(requestUrl.pathname, `/forum/reports/${reportId}`);
+  assert.equal(requestUrl.pathname, `/forum/threads/${reportId}`);
 });
 
 test("an oversized UTF-8 thread is refused without truncating rows or identifiers", async () => {
@@ -742,8 +742,8 @@ test("an oversized UTF-8 thread is refused without truncating rows or identifier
     pagination: {has_more: false, next_cursor: null}};
   assert.ok(JSON.stringify(body).length < 16 * 1024);
   assert.ok(Buffer.byteLength(JSON.stringify(body), "utf8") > 16 * 1024);
-  const tool = toolsByName({fetch: fakeFetch([{status: 200, body}])}).get("get_report_thread");
-  const raw = await tool.execute({report_id: body.report.id});
+  const tool = toolsByName({fetch: fakeFetch([{status: 200, body}])}).get("get_thread");
+  const raw = await tool.execute({thread_id: body.report.id});
   const result = JSON.parse(raw);
   assert.equal(result.found, false);
   assert.equal(result.problem_code, "response_too_large");
@@ -754,8 +754,8 @@ test("an oversized UTF-8 thread is refused without truncating rows or identifier
 test("thread cursor errors remain structured and the opaque query is forwarded unchanged", async () => {
   const cursor = "opaque+value/with?special=characters&spaces here";
   const fetch = fakeFetch([{status: 400, body: {problem_code: "invalid_cursor", error: "Start again without after."}}]);
-  const tool = toolsByName({fetch}).get("get_report_thread");
-  const result = JSON.parse(await tool.execute({report_id: "report-id", after: cursor}));
+  const tool = toolsByName({fetch}).get("get_thread");
+  const result = JSON.parse(await tool.execute({thread_id: "report-id", after: cursor}));
   assert.equal(new URL(fetch.requests[0].path, "http://localhost").searchParams.get("after"), cursor);
   assert.equal(result.found, false);
   assert.equal(result.problem_code, "invalid_cursor");
@@ -769,7 +769,7 @@ for (const failure of ["throw", "reject"]) {
     const register = modelContext.registerTool.bind(modelContext);
     const errors = [];
     modelContext.registerTool = (tool, options) => {
-      if (tool.name !== "search_reports") return register(tool, options);
+      if (tool.name !== "search_threads") return register(tool, options);
       if (failure === "throw") throw new Error("synthetic registration failure");
       return Promise.reject(new Error("synthetic registration failure"));
     };

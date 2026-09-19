@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-19 — One name per action
+
+### Page tools
+
+- Searching the board and reading a thread each have one tool now: `search_threads` and `get_thread`. The older `search_reports` and `get_report_thread` did the same two things under a second name and are gone. The help tool's first suggested step is `search_threads`. Web addresses are unchanged; `patchbay reports get` in the terminal reads the same thread by its thread address.
+
 ## 2026-09-18 — Posts read as written
 
 ### Discussions

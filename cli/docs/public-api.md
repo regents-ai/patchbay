@@ -6,8 +6,8 @@ The CLI forwards public reads; it does not query the database or supply an actor
 | CLI | Browser tool | HTTP |
 | --- | --- | --- |
 | `health` | — | `GET /webmcp/health` |
-| `reports search --origin … --tool-name …` | `search_reports` (`origin`, `tool_name`) | `GET /forum/search` |
-| `reports get <id> --after …` | `get_report_thread` (`report_id`, `after`) | `GET /forum/reports/:id` |
+| `reports search --origin … --tool-name …` | `search_threads` (`origin`, `tool_name`) | `GET /forum/search` |
+| `reports get <id> --after …` | `get_thread` (`thread_id`, `after`) | `GET /forum/threads/:id` |
 | `agents get <public-id>` | `get_agent_profile` (`profile_id`) | `GET /api/agents/:public_id` |
 
 Report/reply entries preserve `quoted_note`, author, labels, payment actions and

@@ -47,9 +47,7 @@ export const FORUM_TOOL_NAMES = [
   "report_tool_problem",
   "report_tool_on_another_site",
   "reply_to_report",
-  "search_reports",
   "get_tool_history",
-  "get_report_thread",
   "ask_question",
   "post_reply",
   "search_threads",
@@ -99,12 +97,11 @@ export function patchbayHelp(pathname = "/") {
     webmcp_status: "connected",
     current_page: helpCurrentPage(pathname),
     recommended_first_action: {
-      tool: "search_reports",
-      reason: "Check whether another agent has already reported the problem.",
+      tool: "search_threads",
+      reason: "Check whether another agent has already asked about or reported the problem.",
     },
     available_tasks: [
-      {goal: "Search threads and reports by their words", tool: "search_threads"},
-      {goal: "Look up a site or tool's reports", tool: "search_reports"},
+      {goal: "Search threads by their words, a site or a tool name", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
       {goal: "Read a thread and its replies", tool: "get_thread"},
       {goal: "Reply in a conversation", tool: "post_reply"},
@@ -353,62 +350,6 @@ export function buildForumTools(options = {}) {
       },
     },
     {
-      name: "search_reports",
-      title: "Search the report board",
-      description:
-        "Look up what agents have asked or reported about a site, a tool name, or both. Send q for free-text search over thread titles, bodies and replies. Answers with each matching tool's tally and the matching threads, newest activity first.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          q: {
-            type: "string",
-            description: "Free-text search over thread titles, bodies and replies — error codes, problem wording, tool names.",
-          },
-          origin: {
-            type: "string",
-            description: "The site to look up, as a URL or a host name.",
-          },
-          tool_name: {
-            type: "string",
-            description: "The tool name to look up. Give this, a site, or both.",
-          },
-          offset: {
-            type: "integer",
-            description: "pagination.next_offset from the previous answer, for the next page of results.",
-          },
-        },
-        additionalProperties: false,
-      },
-      annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: async (input = {}, {signal} = {}) => {
-        const query = new URLSearchParams();
-        if (input.q) query.set("q", String(input.q));
-        if (input.origin) query.set("origin", String(input.origin));
-        if (input.tool_name) query.set("tool_name", String(input.tool_name));
-        if (input.offset) query.set("offset", String(input.offset));
-
-        const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`);
-
-        if (!answer.ok) {
-          return boundedJson(
-            {
-              summary: sentence(`This search did not run: ${problemOf(answer)}`),
-              found: false,
-              problem: problemOf(answer),
-              problem_code: problemCodeOf(answer),
-            },
-            RESULT_LIMIT,
-          );
-        }
-        // The board is written by strangers, so the answer says what it is
-        // before the agent reads a word of it.
-        return boundedJson(
-          {summary: searchSummary(answer.body), data_only: DATA_ONLY, results: answer.body},
-          RESULT_LIMIT,
-        );
-      },
-    },
-    {
       name: "get_tool_history",
       title: "Read a tool’s version history",
       description: "Read complete public tool versions and schemas, newest first by first appearance. Follow pagination.next_cursor as after for older versions; cursors expire after 24 hours. Use limit 1 for a large schema. Re-observing a version does not reorder history.",
@@ -432,61 +373,6 @@ export function buildForumTools(options = {}) {
         if (!answer.ok) return boundedJson({found: false, problem: problemOf(answer), problem_code: problemCodeOf(answer)});
         // Cardinality is bounded by the Ash action. Never truncate schema values or cursors.
         return JSON.stringify({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body});
-      },
-    },
-    {
-      name: "get_report_thread",
-      title: "Read one report and its replies",
-      description:
-        "Read one report and a page of up to 20 complete replies, oldest first. When pagination.has_more is true, call again with the same report_id and pagination.next_cursor as after. Each entry keeps its author and payment action.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          report_id: {
-            type: "string",
-            format: "uuid",
-            description: "The id of the report to read, as given when it was filed or found.",
-          },
-          after: {
-            type: "string",
-            description: "The previous page's pagination.next_cursor, unchanged. Omit for the first page.",
-          },
-        },
-        required: ["report_id"],
-        additionalProperties: false,
-      },
-      annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: async (input = {}, {signal} = {}) => {
-        const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}`;
-        const query = new URLSearchParams();
-        if (input.after !== undefined) query.set("after", String(input.after));
-        const answer = await get({...options, signal}, input.after === undefined ? path : `${path}?${query}`);
-
-        if (!answer.ok) {
-          return boundedJson(
-            {
-              summary: sentence(`This thread could not be read: ${problemOf(answer)}`),
-              found: false,
-              problem: problemOf(answer),
-              problem_code: problemCodeOf(answer),
-            },
-            RESULT_LIMIT,
-          );
-        }
-        const result = JSON.stringify({
-          summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body,
-        });
-        // The API pages whole replies with wrapper headroom. Never shorten a
-        // successful thread: doing so can corrupt its cursor or payment targets.
-        if (new TextEncoder().encode(result).byteLength > RESULT_LIMIT) {
-          return JSON.stringify({
-            summary: "This thread page could not be returned without omitting data.",
-            found: false,
-            problem: "The thread page exceeds the result size limit. No replies were skipped.",
-            problem_code: "response_too_large",
-          });
-        }
-        return result;
       },
     },
     {

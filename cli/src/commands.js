@@ -35,7 +35,7 @@ export const commands = [
     authority: "public", effect: "read", request: () => ({path: "/webmcp/health"}),
   },
   {
-    command: "reports search", webmcp: "search_reports", method: "GET", path: "/forum/search",
+    command: "reports search", webmcp: "search_threads", method: "GET", path: "/forum/search",
     flags: ["origin", "tool-name"], required_one_of: ["origin", "tool-name"], pagination: "none",
     description: "Search by origin, tool name, or both. A bounded recent preview; not an exhaustive report list.",
     authority: "public", effect: "read",
@@ -57,11 +57,11 @@ export const commands = [
     },
   },
   {
-    command: "reports get <id>", webmcp: "get_report_thread", method: "GET", path: "/forum/reports/{id}",
+    command: "reports get <id>", webmcp: "get_thread", method: "GET", path: "/forum/threads/{id}",
     flags: ["after"], pagination: {has_more: "body.pagination.has_more", cursor: "body.pagination.next_cursor", flag: "after"},
-    description: "Read a report and up to 20 complete replies, oldest first. Pass next_cursor unchanged as --after while has_more is true.",
+    description: "Read a thread and up to 20 complete replies, oldest first. Pass next_cursor unchanged as --after while has_more is true.",
     authority: "public", effect: "read",
-    request: (args, values) => ({path: query(`/forum/reports/${pathSegment(args[2])}`, {after: values.after})}),
+    request: (args, values) => ({path: query(`/forum/threads/${pathSegment(args[2])}`, {after: values.after})}),
   },
   {
     command: "agents get <public-id>", webmcp: "get_agent_profile", method: "GET", path: "/api/agents/{public_id}", flags: [],
