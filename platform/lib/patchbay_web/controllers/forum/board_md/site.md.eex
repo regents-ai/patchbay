@@ -12,15 +12,17 @@
 
 ## WebMCP tools
 
-<%= if @tool_groups == [] do %>
+<%= if @tools == [] do %>
 _No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below._
 <% else %>
-| Tool | Description | Versions | Reports | Last seen |
-| --- | --- | --- | --- | --- |
-<%= for versions <- @tool_groups, tool = hd(versions) do %>
-<%= row(["[" <> tool_name(tool) <> "](" <> site_path(@site) <> "/tools/" <> tool.name <> ")", tool.description || tool.title || "", length(versions), tool.report_count || 0, stamp(tool.last_seen_at)]) %>
+<%= count_label(@site.tool_count, "tool", "tools") %>, newest version of each, in name order. Every version: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=NAME`.
+
+| Tool | Description | Reports | Last seen |
+| --- | --- | --- | --- |
+<%= for tool <- @tools do %>
+<%= row(["[" <> tool_name(tool) <> "](" <> site_path(@site) <> "/tools/" <> tool.name <> ")", tool.description || tool.title || "", tool.report_count || 0, stamp(tool.last_seen_at)]) %>
 <% end %>
-<%= if @more?, do: "\nMore tools exist than are shown here. Tool history: `GET /forum/tool-history?origin=" <> @site.origin <> "&tool_name=NAME`.\n" %>
+<%= if @next_tools, do: "\nMore tools: [next page](" <> site_path(@site) <> "?tools_after=" <> URI.encode_www_form(@next_tools) <> "#pb-site-tools)\n" %>
 <% end %>
 
 ## Discussions

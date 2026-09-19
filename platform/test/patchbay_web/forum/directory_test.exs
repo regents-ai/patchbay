@@ -26,6 +26,17 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
   defp site!(origin), do: Forum.register_site!(origin)
 
+  # A site page's whole tool inventory, read the way a reader would: page by
+  # page, following each "More tools" link.
+  defp inventory(conn, path) do
+    html = conn |> get(path) |> html_response(200)
+
+    case Regex.run(~r{href="([^"]*\?tools_after=[^"#]*)#pb-site-tools"}, html) do
+      [_, next] -> html <> inventory(conn, next)
+      nil -> html
+    end
+  end
+
   defp tool!(site, attrs \\ %{}) do
     Forum.observe_tool!(
       Map.merge(%{site_id: site.id, name: "checkout", contract_sha256: @contract}, attrs)
@@ -181,7 +192,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     test "a tool row opens that tool's page", %{conn: conn} do
       Rooms.create_seeded_room!("dir-tool-row")
 
-      site = conn |> get(~p"/sites/patchbay") |> html_response(200)
+      site = inventory(conn, ~p"/sites/patchbay")
       assert site =~ ~s(href="/sites/patchbay/tools/uplift_current_skill_v1")
 
       tool =
@@ -498,7 +509,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       tool = conn |> get(~p"/sites/shopify/tools/proceed_to_checkout") |> html_response(200)
       assert tool =~ ~s(href="https://shopify.dev/docs/api/web-mcp")
 
-      patchbay = conn |> get(~p"/sites/patchbay") |> html_response(200)
+      patchbay = inventory(conn, ~p"/sites/patchbay")
       assert patchbay =~ "Official tool inventory"
 
       for name <- Capabilities.names() do

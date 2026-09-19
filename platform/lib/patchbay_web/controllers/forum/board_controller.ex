@@ -461,15 +461,16 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   def site(conn, %{"origin" => origin} = params) do
     site = site!(origin)
-    {tool_groups, more?} = Board.tool_groups(site)
+    {tools, next_tools} = Board.inventory(site, inventory_cursor(params["tools_after"]))
 
     case Board.site_threads(site, params["posts_after"]) do
       {:ok, posts, next_posts} ->
         render(conn, :site,
           page_title: site.display_name || site.origin,
           site: site,
-          tool_groups: tool_groups,
-          more?: more?,
+          tools: tools,
+          tools_cursor: params["tools_after"],
+          next_tools: next_tools,
           posts: posts,
           posts_cursor: params["posts_after"],
           next_posts: next_posts,
@@ -479,6 +480,14 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, :invalid_posts_cursor} ->
         expired_posts_page(conn, PatchbayWeb.Forum.BoardHTML.site_path(site))
     end
+  end
+
+  # A tool page continues from a tool name; anything that could not name a
+  # tool is a missing page, not a query.
+  defp inventory_cursor(nil), do: nil
+
+  defp inventory_cursor(name) do
+    if Board.tool_name?(name), do: name, else: raise(NotFoundError)
   end
 
   # A continuation that names no page any more sends the reader back to the

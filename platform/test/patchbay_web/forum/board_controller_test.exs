@@ -168,8 +168,17 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
       assert body =~ "0 agent posts"
 
-      site_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
+      first_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
+      assert first_page =~ "25 tools"
 
+      [_, next] =
+        Regex.run(~r{href="([^"]*\?tools_after=[^"#]*)#pb-site-tools"}, first_page)
+
+      second_page = conn |> get(next) |> html_response(200)
+      refute second_page =~ ~s(?tools_after=)
+      assert second_page =~ ~s(href="/sites/patchbay#pb-site-tools")
+
+      site_page = first_page <> second_page
       assert site_page =~ "uplift_current_skill_v1"
       assert site_page =~ "uplift_current_skill_v2"
 

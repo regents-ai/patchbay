@@ -32,7 +32,7 @@ defmodule PatchbayWeb.Forum.Board do
   alias PatchbayWeb.Forum.ReplyCursor
 
   @sites 200
-  @site_versions 200
+  @inventory_tools 20
   @priority_reports 20
   @ranked_posts 20
   @reports_per_version 10
@@ -289,13 +289,18 @@ defmodule PatchbayWeb.Forum.Board do
   defp slug?(value), do: Regex.match?(@slug, value)
 
   @doc """
-  Every tool version on a site, grouped so one tool's versions stay together,
-  and whether more remain.
+  One page of a site's tools, one row per name with its newest version, in
+  name order, and the name the next page continues from.
   """
-  @spec tool_groups(Site.t()) :: {[[Tool.t()]], boolean()}
-  def tool_groups(%Site{} = site) do
-    page = tool_page(site, [], @site_versions)
-    {Enum.chunk_by(page.results, & &1.name), page.more?}
+  @spec inventory(Site.t(), String.t() | nil) :: {[Tool.t()], String.t() | nil}
+  def inventory(%Site{} = site, after_name \\ nil) do
+    page =
+      Forum.site_inventory!(site.id, %{after_name: after_name},
+        load: @tool_loads,
+        page: [limit: @inventory_tools]
+      )
+
+    {page.results, if(page.more?, do: List.last(page.results).name)}
   end
 
   @doc "Whether an address segment could name a tool at all; anything else is not on the board."
@@ -314,13 +319,6 @@ defmodule PatchbayWeb.Forum.Board do
 
   def tool_history(%Site{} = site, name, cursor \\ nil) do
     PatchbayWeb.Forum.ToolHistory.page(site, name, cursor, 25, @tool_loads)
-  end
-
-  defp tool_page(%Site{} = site, query, limit) do
-    Forum.list_tools_for_site!(site.id,
-      query: Keyword.put(query, :load, @tool_loads),
-      page: [limit: limit]
-    )
   end
 
   @doc """

@@ -70,18 +70,17 @@
         <p class="patchbay-kicker">TOOLS</p>
         <h2>WebMCP tools</h2>
       </div>
-      <span :if={@tool_groups != []} class="patchbay-generation">
-        {count_label(length(@tool_groups), "tool", "tools")}
+      <span :if={@tools != []} class="patchbay-generation">
+        {count_label(@site.tool_count, "tool", "tools")}
       </span>
     </div>
 
-    <p :if={@tool_groups == []} class="patchbay-empty-state">
+    <p :if={@tools == []} class="patchbay-empty-state">
       No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below.
     </p>
 
-    <ol :if={@tool_groups != []} class="pb-tool-rows">
-      <li :for={versions <- @tool_groups}>
-        <% tool = hd(versions) %>
+    <ol :if={@tools != []} class="pb-tool-rows">
+      <li :for={tool <- @tools}>
         <a class="pb-tool-row" href={~p"/sites/#{site_ref(@site)}/tools/#{tool.name}"}>
           <span class="pb-tool-row-main">
             <span class="pb-tool-row-name">{tool_name(tool)}</span>
@@ -99,7 +98,15 @@
         </a>
       </li>
     </ol>
-    <p :if={@more?} class="pb-aside">This site has more tool versions than fit on one page.</p>
+    <.page_nav
+      base={site_path(@site)}
+      anchor="pb-site-tools"
+      param="tools_after"
+      cursor={@tools_cursor}
+      next={@next_tools}
+      label="More tools"
+      next_label="More tools →"
+    />
   </section>
 
   <section class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
@@ -115,11 +122,14 @@
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
     />
-    <.posts_pagination
+    <.page_nav
       base={site_path(@site)}
       anchor="pb-site-posts"
+      param="posts_after"
       cursor={@posts_cursor}
       next={@next_posts}
+      label="More posts"
+      next_label="Older posts →"
     />
   </section>
 </main>

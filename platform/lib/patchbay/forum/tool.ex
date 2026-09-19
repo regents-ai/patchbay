@@ -151,6 +151,20 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
+    read :inventory do
+      description("""
+      A site's tools one name at a time, each with its newest version, in name
+      order from an optional name onward.
+      """)
+
+      argument(:site_id, :uuid, allow_nil?: false)
+      argument(:after_name, :string)
+      filter(expr(site_id == ^arg(:site_id)))
+      filter(expr(is_nil(^arg(:after_name)) or name > ^arg(:after_name)))
+      pagination(offset?: true, default_limit: 20, max_page_size: 20)
+      prepare(build(distinct: [:name], sort: [name: :asc, last_seen_at: :desc, id: :asc]))
+    end
+
     read :for_sitemap do
       description("Every tool with its site, newest version of each name first.")
 

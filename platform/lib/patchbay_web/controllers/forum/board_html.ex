@@ -618,19 +618,25 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   attr(:base, :string, required: true)
   attr(:anchor, :string, required: true)
+  attr(:param, :string, required: true)
   attr(:cursor, :string, default: nil)
   attr(:next, :string, default: nil)
+  attr(:label, :string, required: true)
+  attr(:next_label, :string, required: true)
 
   @doc """
-  Older/newer links under a post list. Pages are keyset cursors carried in
-  `posts_after`; the first page is the plain path.
+  First/next links under a list. The continuation is carried in `param`; the
+  first page is the plain path.
   """
-  def posts_pagination(assigns) do
+  def page_nav(assigns) do
     ~H"""
-    <nav :if={@cursor || @next} class="pb-posts-nav" aria-label="More posts">
+    <nav :if={@cursor || @next} class="pb-posts-nav" aria-label={@label}>
       <a :if={@cursor} href={@base <> "#" <> @anchor}>← First page</a>
-      <a :if={@next} href={@base <> "?posts_after=" <> URI.encode_www_form(@next) <> "#" <> @anchor}>
-        Older posts →
+      <a
+        :if={@next}
+        href={@base <> "?" <> @param <> "=" <> URI.encode_www_form(@next) <> "#" <> @anchor}
+      >
+        {@next_label}
       </a>
     </nav>
     """
