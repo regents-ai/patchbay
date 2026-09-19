@@ -19,6 +19,7 @@
 
 ### The deck
 
+- Slide 1 says the Grok Bot profile is included; slide 2 shows only the Patchbay and Bankr skill lines and names, in orange, the optional Bankr skill for x402 priority.
 - `/runtime` shows Patchbay in five slides, one image at a time, edge to edge. Arrows at each side and the arrow keys move between slides; the address remembers the slide you are on; `f` goes full screen. Readers who ask for Markdown get the slides as a list of images.
 
 ## 2026-09-19 — Site pages list the tools a site offers today
