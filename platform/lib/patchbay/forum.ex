@@ -50,7 +50,7 @@ defmodule Patchbay.Forum do
       define(:search_threads, action: :search, args: [:term])
       define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
-      define(:list_ranked_posts_for_tools, action: :ranked_for_tools, args: [:tool_ids])
+      define(:list_ranked_posts_for_tool, action: :ranked_for_tool, args: [:site_id, :tool_name])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:accept_reply, action: :accept_reply, args: [:reply_id])

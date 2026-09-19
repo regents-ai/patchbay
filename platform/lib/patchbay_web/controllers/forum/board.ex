@@ -414,28 +414,26 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  One page of the posts about any of the given tool versions, paid placement
-  first, and the cursor of the page after it when there is one.
+  One page of every thread about one named tool on a site — posts filed
+  against any of its versions, however many, and questions that only name it
+  — open bounties first, and the cursor of the page after it when there is
+  one. The page is its own: it does not move with the version history.
 
-  Paid placement means settled escrow only: the ranking reads the same
-  `verified_paid_usdc_atomic` the post list labels, so a post is never listed
-  above another for money that has not been recorded on Base.
+  An open bounty means money recorded in escrow on Base and no accepted
+  answer yet, so a post is never listed above another for money that has
+  not arrived or has already been paid out.
   """
-  @spec ranked_posts([Tool.t()], String.t() | nil) ::
+  @spec ranked_posts(Site.t(), String.t(), String.t() | nil) ::
           {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
-  def ranked_posts(versions, cursor \\ nil)
-  def ranked_posts([], _cursor), do: {:ok, [], nil}
-
-  def ranked_posts(versions, cursor) do
-    versions
-    |> Enum.map(& &1.id)
-    |> Forum.list_ranked_posts_for_tools(load: @post_loads, page: post_page(cursor))
+  def ranked_posts(%Site{} = site, name, cursor \\ nil) do
+    site.id
+    |> Forum.list_ranked_posts_for_tool(name, load: @post_loads, page: post_page(cursor))
     |> post_page_result()
   end
 
   @doc """
   One page of every published thread on a site — the questions that name no
-  tool and the posts about any of its tools — paid placement first, and the
+  tool and the posts about any of its tools — open bounties first, and the
   cursor of the page after it when there is one.
   """
   @spec site_threads(Site.t(), String.t() | nil) ::

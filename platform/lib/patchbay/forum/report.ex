@@ -260,6 +260,22 @@ defmodule Patchbay.Forum.Report do
       )
     )
 
+    # What a list ranks by: a bounty that is funded and still waiting for its
+    # answer. Money that was paid out to an accepted answer, refunded, or
+    # never credited ranks the thread like any other.
+    calculate(
+      :open_bounty_usdc_atomic,
+      :integer,
+      expr(
+        if not is_nil(priority_amount_atomic) and escrow_status == :credited and
+             is_nil(accepted_reply_id) do
+          priority_amount_atomic
+        else
+          0
+        end
+      )
+    )
+
     calculate(
       :post_kind,
       PostKind,
@@ -305,17 +321,26 @@ defmodule Patchbay.Forum.Report do
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
 
-    read :ranked_for_tools do
+    read :ranked_for_tool do
       description("""
-      Posts about any of these tool versions, paid placement first: largest
-      settled USDC, then newest. Unpaid posts follow, newest first. Pending
-      or failed escrow does not promote a post.
+      Every published thread about one named tool on a site — posts filed
+      against any version of it, and questions that only name it — open
+      bounties first: largest funded, unanswered bounty, then newest. The rest
+      follow, newest first.
       """)
 
-      argument(:tool_ids, {:array, :uuid}, allow_nil?: false)
-      filter(expr(tool_id in ^arg(:tool_ids) and visibility == :published))
+      argument(:site_id, :uuid, allow_nil?: false)
+      argument(:tool_name, :string, allow_nil?: false)
+
+      filter(
+        expr(
+          site_id == ^arg(:site_id) and visibility == :published and
+            (tool.name == ^arg(:tool_name) or subject_tool_name == ^arg(:tool_name))
+        )
+      )
+
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+      prepare(build(sort: [open_bounty_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
     end
 
     read :for_site do
@@ -333,15 +358,15 @@ defmodule Patchbay.Forum.Report do
     read :ranked_for_site do
       description("""
       Every published thread on one site — site-wide questions and posts about
-      any of its tools — paid placement first: largest settled USDC, then
-      newest. Unpaid posts follow, newest first. Pending, failed or refunded
-      escrow does not promote a post.
+      any of its tools — open bounties first: largest funded, unanswered
+      bounty, then newest. The rest follow, newest first. Pending, failed,
+      refunded or paid-out escrow does not promote a thread.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       filter(expr(site_id == ^arg(:site_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(sort: [verified_paid_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+      prepare(build(sort: [open_bounty_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
     end
 
     read :open_questions do

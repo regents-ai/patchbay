@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.Forum.DirectoryTest do
   @moduledoc """
-  The WebMCP directory slice: catalog grid, site → tool → post, and paid
-  placement ranking from settled escrow only.
+  The WebMCP directory slice: catalog grid, site → tool → post, and bounty
+  ranking from funded, unanswered escrow only.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -51,6 +51,10 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       |> Map.reject(fn {_key, value} -> is_nil(value) end)
     )
   end
+
+  # A distinct, well-formed contract digest for the n-th version of a tool.
+  defp version_digest(n),
+    do: n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(64, "0")
 
   defp asker!(subject \\ "dir-asker") do
     Identity.upsert_from_privy!(%{
@@ -235,6 +239,37 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert html =~ "search returned nothing"
     end
 
+    test "the tool page lists questions that only name the tool", %{conn: conn} do
+      site = site!("named-tool.example")
+      tool!(site, %{name: "checkout"})
+      question!(site, "checkout", "Why does checkout drop the coupon?")
+      question!(site, "search", "Why does search ignore quotes?")
+
+      tool = conn |> get(~p"/sites/named-tool.example/tools/checkout") |> html_response(200)
+
+      assert tool =~ "Why does checkout drop the coupon?"
+      refute tool =~ "Why does search ignore quotes?"
+    end
+
+    test "the tool page lists posts about versions past the first page of its history",
+         %{conn: conn} do
+      site = site!("many-versions.example")
+
+      [oldest | _newer] =
+        for n <- 1..26 do
+          tool!(site, %{contract_sha256: version_digest(n)})
+        end
+
+      report!(oldest, %{note: "filed against the very first version"})
+
+      first = conn |> get(~p"/sites/many-versions.example/tools/checkout") |> html_response(200)
+
+      # The history shows 25 versions a page; the post's version is on the
+      # second page, and the post is still on the first page of posts.
+      assert first =~ "filed against the very first version"
+      assert first =~ "after="
+    end
+
     test "a site's post count includes questions that name no tool", %{conn: conn} do
       site = site!("counted.example")
       question!(site, nil, "Does this site have any tools at all?")
@@ -244,7 +279,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
   end
 
-  describe "paid placement ranking" do
+  describe "bounty ranking" do
     setup do
       site = site!("rank.example")
       tool = tool!(site)
@@ -323,6 +358,48 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
       [newer, older] = post_order(html, ["newer unpaid post", "older unpaid post"])
       assert newer < older
+    end
+
+    test "a bounty whose answer was accepted no longer ranks first", %{
+      conn: conn,
+      site: site,
+      tool: tool,
+      asker: asker
+    } do
+      answered = paid_report!(tool, asker, 25_000_000, "answered twenty five usdc post")
+      paid_report!(tool, asker, 5_000_000, "open five usdc post")
+      report!(tool, %{note: "plain newest post"})
+
+      answerer =
+        Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:dir-answerer",
+          wallet_address: "0x" <> String.duplicate("e", 40)
+        })
+
+      {:ok, reply} =
+        Forum.add_reply(
+          %{
+            report_id: answered.id,
+            browser_session_id: Ash.UUID.generate(),
+            verdict: :verified_failure,
+            note: "Retry with the other endpoint."
+          },
+          actor: answerer
+        )
+
+      {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
+      {:ok, _accepted} = Forum.accept_reply(answered, reply.id, actor: asker)
+
+      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+
+      [open, plain, answered] =
+        post_order(html, [
+          "open five usdc post",
+          "plain newest post",
+          "answered twenty five usdc post"
+        ])
+
+      assert open < plain and plain < answered
     end
   end
 

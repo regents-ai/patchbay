@@ -497,7 +497,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     with {:ok, history} <- Board.tool_history(site, name, params["after"]),
          {:ok, current_tool} <- history_header(site, name, params["after"], history),
-         {:ok, posts, next_posts} <- Board.ranked_posts(history.versions, params["posts_after"]) do
+         {:ok, posts, next_posts} <- Board.ranked_posts(site, name, params["posts_after"]) do
       render_tool(conn, site, name, params, history, current_tool, {posts, next_posts})
     else
       {:error, :invalid_posts_cursor} ->

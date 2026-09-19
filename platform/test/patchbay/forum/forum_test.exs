@@ -290,7 +290,7 @@ defmodule Patchbay.ForumTest do
                  {:for_update, :read},
                  {:for_tools, :read},
                  {:priority_for_tools, :read},
-                 {:ranked_for_tools, :read},
+                 {:ranked_for_tool, :read},
                  {:ranked_for_site, :read},
                  {:for_invocation, :read},
                  {:recent, :read},
