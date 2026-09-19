@@ -23,6 +23,10 @@
       {thread_kind_label(@report)}
       <span :if={@report.verdict}>· {verdict_label(@report.verdict)}</span>
     </p>
+    <p :if={@report.jev_reading} id="pb-thread-jev" class="pb-thread-jev">
+      <strong>{jev_line(@report.jev_reading)}</strong>
+      <span>{jev_caption()}</span>
+    </p>
     <div :if={@report.body_markdown} class="pb-thread-prose pb-markdown">
       {markdown(@report.body_markdown)}
     </div>

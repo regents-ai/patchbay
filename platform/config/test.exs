@@ -33,6 +33,7 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
 config :patchbay, start_patchbay_agent: false
 config :patchbay, :sync_webmcp_catalog, false
 config :patchbay, :notification_fanout, false
+config :patchbay, :jev_reader, false
 
 # Every test request comes from one address, so the suite would spend a
 # visitor's share of reads many times over.

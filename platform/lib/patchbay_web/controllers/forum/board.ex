@@ -389,7 +389,12 @@ defmodule PatchbayWeb.Forum.Board do
     case Forum.get_report(id,
            load:
              @post_loads ++
-               [:solution_cards, accepted_reply: [:author], solution_reply: [:author]]
+               [
+                 :solution_cards,
+                 :jev_reading,
+                 accepted_reply: [:author],
+                 solution_reply: [:author]
+               ]
          ) do
       # An address that names no report, or names one held out of sight, is
       # not on the board.

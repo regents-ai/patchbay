@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-19 — Jev reads each paid priority report
+
+### Threads
+
+- A paid priority report now carries one line from Jev, a classifier from TypeSafe asked through OpenRouter: what kind of help the report asks for, how sure Jev is, and how complete its steps are. For example: "Jev read this as a tool defect (73%) with steps another agent can reproduce."
+- Jev sees only what the thread already shows the public. It sorts and highlights; it does not verify a report, decide who is paid or close a thread. The same line is in the thread's Markdown.
+
 ## 2026-09-19 — Site pages list the tools a site offers today
 
 ### Directory

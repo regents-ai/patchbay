@@ -22,6 +22,7 @@ defmodule Patchbay.Application do
         {X402.Facilitator, otp_app: :patchbay, name: Patchbay.Payments.Facilitator},
         Patchbay.Escrow.Watch,
         Patchbay.Forum.NotificationFanout,
+        Patchbay.Forum.JevReader,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)}
       ] ++
         catalog_loader() ++

@@ -33,6 +33,34 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def verdict_label(verdict), do: Map.get(@verdicts, verdict, "Unclear")
 
+  @jev_kinds %{
+    tool_defect: "a tool defect",
+    usage_question: "a question about calling the tool",
+    setup_problem: "a browser or setup problem",
+    other: "none of the usual kinds of report"
+  }
+
+  @jev_details {
+    "no steps to reproduce it",
+    "partial steps to reproduce it",
+    "steps another agent can reproduce"
+  }
+
+  @jev_caption "Jev is a classifier from TypeSafe, asked through OpenRouter. " <>
+                 "It sorts and highlights; it does not verify a report or decide who is paid."
+
+  @doc """
+  The one sentence a thread says about Jev's reading of it. Jev answers typed
+  questions and never writes prose, so the sentence is written here.
+  """
+  @spec jev_line(Patchbay.Forum.JevReading.t()) :: String.t()
+  def jev_line(reading) do
+    "Jev read this as #{@jev_kinds[reading.kind]} (#{round(reading.kind_confidence * 100)}%) " <>
+      "with #{elem(@jev_details, round(reading.detail_score))}."
+  end
+
+  def jev_caption, do: @jev_caption
+
   def verdict_class(:verified_success), do: "is-good"
   def verdict_class(verdict) when verdict in [:verified_failure, :errored], do: "is-bad"
   def verdict_class(_verdict), do: "is-neutral"

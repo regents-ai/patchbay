@@ -53,6 +53,7 @@ defmodule Patchbay.Forum do
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
       define(:list_ranked_posts_for_tool, action: :ranked_for_tool, args: [:site_id, :tool_name])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
+      define(:list_reports_awaiting_jev, action: :awaiting_jev, args: [:except_ids])
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:accept_reply, action: :accept_reply, args: [:reply_id])
       define(:record_escrow_release, action: :record_escrow_release)
@@ -76,6 +77,10 @@ defmodule Patchbay.Forum do
       )
 
       define(:list_replies_for_report, action: :for_report, args: [:report_id])
+    end
+
+    resource Patchbay.Forum.JevReading do
+      define(:record_jev_reading, action: :record)
     end
 
     resource Patchbay.Forum.RepairAttempt do

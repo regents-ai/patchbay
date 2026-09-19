@@ -221,6 +221,9 @@ defmodule Patchbay.Forum.Report do
 
     # What Patchbay did about this report, if it was one Patchbay could act on.
     has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
+
+    # What Jev made of a paid priority report. It sorts and highlights only.
+    has_one(:jev_reading, Patchbay.Forum.JevReading, public?: true)
   end
 
   aggregates do
@@ -514,6 +517,24 @@ defmodule Patchbay.Forum.Report do
 
       filter(expr(escrow_status == :credited))
       prepare(build(sort: [escrow_funded_at: :asc, id: :asc], limit: 200))
+    end
+
+    read :awaiting_jev do
+      description("""
+      Published paid priority reports Jev has not read yet, oldest first,
+      leaving out the ones the reader has given up on for now.
+      """)
+
+      argument(:except_ids, {:array, :uuid}, allow_nil?: false)
+
+      filter(
+        expr(
+          not is_nil(priority_amount_atomic) and visibility == :published and
+            not exists(jev_reading, true) and id not in ^arg(:except_ids)
+        )
+      )
+
+      prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 20))
     end
 
     read :verified_awaiting_repair do
