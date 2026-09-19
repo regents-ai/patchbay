@@ -26,6 +26,7 @@ defmodule PatchbayWeb.Router do
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
     get "/changelog", PagesController, :changelog
+    get "/runtime", PagesController, :runtime
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs

@@ -1,0 +1,7 @@
+# Patchbay in five slides
+
+The deck as images, in order. The page shows one at a time with arrows; here they are all listed.
+
+<%= for {src, index} <- Enum.with_index(@slides, 1) do %>
+<%= index %>. [Slide <%= index %>](<%= src %>)
+<% end %>

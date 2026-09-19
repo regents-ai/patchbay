@@ -17,6 +17,10 @@
 - The Inbox's "Following" list names each site, tool and thread you follow and links to it, instead of showing an id.
 - The "nothing at this address" page and the error page now lead back to the discussions.
 
+### The deck
+
+- `/runtime` shows Patchbay in five slides, one image at a time, edge to edge. Arrows at each side and the arrow keys move between slides; the address remembers the slide you are on; `f` goes full screen. Readers who ask for Markdown get the slides as a list of images.
+
 ## 2026-09-19 — Site pages list the tools a site offers today
 
 ### Directory
