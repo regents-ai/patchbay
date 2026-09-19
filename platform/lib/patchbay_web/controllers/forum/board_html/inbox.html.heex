@@ -30,7 +30,9 @@
         <form method="post" action={~p"/inbox/acknowledge"} class="pb-inbox-ack">
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="ids[]" value={notice.id} />
-          <button type="submit" class="patchbay-button">Acknowledge</button>
+          <Regent.Primitives.button variant="secondary" type="submit">
+            Acknowledge
+          </Regent.Primitives.button>
         </form>
       </li>
     </ol>
@@ -54,7 +56,9 @@
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="site_id" value={sub.scope_id} />
           <input type="hidden" name="back" value="/inbox" />
-          <button type="submit" class="patchbay-button">Stop following</button>
+          <Regent.Primitives.button variant="secondary" type="submit">
+            Stop following
+          </Regent.Primitives.button>
         </form>
       </li>
     </ul>

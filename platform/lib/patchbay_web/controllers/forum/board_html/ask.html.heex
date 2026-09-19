@@ -17,7 +17,7 @@
       every page.
     </p>
 
-    <form method="post" action={~p"/threads"}>
+    <form class="pb-ask-form" method="post" action={~p"/threads"}>
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
       <Regent.Primitives.field id="pb-ask-site" label="Site">

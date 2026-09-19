@@ -1,0 +1,54 @@
+/* The main action fills from its base on hover or keyboard focus, its label
+   turns to the page colour, and a trailing arrow leans the way it points.
+   A press settles by two per cent. Regent still owns the shape, the outline
+   that draws round it and the warm sweep, which now crosses the fill. The
+   fill is a second paint layer under that sweep, so both states carry the
+   same two layers and only the fill's height moves. */
+@keyframes pb-button-sweep {
+  from { background-position: 160% 0, left bottom; }
+  to { background-position: -60% 0, left bottom; }
+}
+@media (forced-colors: none) {
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)) {
+    transition: color var(--duration-base) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+  }
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet))::before {
+    background-image: none, linear-gradient(var(--pb-text), var(--pb-text));
+    background-repeat: no-repeat;
+    background-position: 160% 0, left bottom;
+    background-size: 300% 100%, 100% 0;
+    transition: background-size var(--duration-base) var(--ease-out);
+  }
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)) > span[aria-hidden="true"] {
+    display: inline-block;
+    transition: transform var(--duration-base) var(--ease-out);
+  }
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):focus-visible { color: var(--pb-canvas); }
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):focus-visible::before {
+    background-image: var(--pb-button-sweep, none), linear-gradient(var(--pb-text), var(--pb-text));
+    background-size: 300% 100%, 100% 100%;
+    animation-name: pb-button-sweep;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):hover { color: var(--pb-canvas); }
+    .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):hover::before {
+      background-image: var(--pb-button-sweep, none), linear-gradient(var(--pb-text), var(--pb-text));
+      background-size: 300% 100%, 100% 100%;
+      animation-name: pb-button-sweep;
+    }
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)) {
+    --pb-button-sweep: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--palette-tangerine-tango) 45%, transparent) 50%, transparent 70%);
+  }
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):active { transform: scale(.98); }
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):focus-visible > span[aria-hidden="true"] { transform: translate(2px, -2px); }
+  @media (hover: hover) and (pointer: fine) {
+    .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):hover > span[aria-hidden="true"] { transform: translate(2px, -2px); }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)),
+  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet))::before { transition: none; }
+}
