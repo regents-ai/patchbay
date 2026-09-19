@@ -203,9 +203,11 @@ defmodule PatchbayWeb.Forum.BoardController do
         {:error, %{draft: typed}} -> typed
       end
 
+    # Who is asking is settled before the site is opened, so a refused
+    # question leaves no board behind.
     with {:ok, typed} <- thread_draft(params["thread"]),
-         {:ok, site} <- ask_site(typed["site"]),
          {:ok, _profile} <- require_signed_in(conn),
+         {:ok, site} <- ask_site(typed["site"]),
          {:ok, thread} <- ask_question(conn, site, typed) do
       redirect(conn, to: ~p"/posts/#{thread.id}")
     else

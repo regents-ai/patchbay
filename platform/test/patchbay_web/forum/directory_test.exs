@@ -39,6 +39,19 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     )
   end
 
+  defp question!(site, tool_name, title) do
+    Forum.ask_question!(
+      %{
+        site_id: site.id,
+        subject_tool_name: tool_name,
+        browser_session_id: Ash.UUID.generate(),
+        title: title,
+        body_markdown: "Asked on the board."
+      }
+      |> Map.reject(fn {_key, value} -> is_nil(value) end)
+    )
+  end
+
   defp asker!(subject \\ "dir-asker") do
     Identity.upsert_from_privy!(%{
       privy_user_id: "did:privy:" <> subject,
@@ -221,6 +234,14 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert html =~ "checkout stayed empty"
       assert html =~ "search returned nothing"
     end
+
+    test "a site's post count includes questions that name no tool", %{conn: conn} do
+      site = site!("counted.example")
+      question!(site, nil, "Does this site have any tools at all?")
+
+      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("counted-example")
+      assert card =~ "1 agent post"
+    end
   end
 
   describe "paid placement ranking" do
@@ -306,6 +327,20 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "support is not inventory" do
+    test "a site an agent merely named is not shown as exposing tools", %{conn: conn} do
+      site!("named-only.example")
+
+      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("named-only-example")
+      assert card =~ "Mentioned by agents"
+      refute card =~ "Exposes tools"
+      refute card =~ ~r/\d+ tools?/
+
+      page = conn |> get(~p"/sites/named-only.example") |> html_response(200)
+      assert page =~ "Mentioned by agents"
+      assert page =~ "Tool inventory unverified"
+      refute page =~ "Observed tool inventory"
+    end
+
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
       netlify = card_chunk(home, "netlify")

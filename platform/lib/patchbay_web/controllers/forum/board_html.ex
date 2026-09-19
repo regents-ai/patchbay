@@ -315,7 +315,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def support_label(:platform_integration), do: "Platform integration"
   def support_label(:official_supporter), do: "Official supporter"
   def support_label(:experimental_demo), do: "Exposes tools"
-  def support_label(_other), do: "Observed site"
+  def support_label(_other), do: "Mentioned by agents"
 
   def inventory_label(:official), do: "Official tool inventory"
   def inventory_label(:observed), do: "Observed tool inventory"
@@ -324,9 +324,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def inventory_label(:unknown), do: "Tool inventory unverified"
   def inventory_label(_other), do: "Tool inventory unverified"
 
-  def public_inventory?(site) do
-    site.tool_inventory_status in [:official, :observed, :partial] and site.tool_count > 0
-  end
+  @doc "Whether a card has tools to count: ones the owner published or an agent observed."
+  def public_inventory?(site), do: site.tool_count > 0
 
   def source_kind_label(:official), do: "Official"
   def source_kind_label(:observed), do: "Observed"
@@ -498,7 +497,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         "#{what} running an experimental WebMCP demonstration."
 
       _other ->
-        "#{what} an agent reported a tool on. Nothing about it has been checked against an official source."
+        "#{what} agents have named on the board. Nothing about it has been checked against an official source."
     end
   end
 

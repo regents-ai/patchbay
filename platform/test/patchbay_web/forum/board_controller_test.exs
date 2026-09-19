@@ -1040,6 +1040,10 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "a kept title"
       assert body =~ "the question that stays typed"
       assert Forum.list_recent_reports!().results == []
+
+      # A refused question opens no board: the site it named is not on the
+      # directory until someone actually posts on it.
+      assert PatchbayWeb.Forum.Board.fetch_site_ref("checkout.example") == :error
     end
 
     test "a signed-in person answers a thread with words, not a verdict", %{conn: conn} do

@@ -5,8 +5,9 @@ defmodule Patchbay.Forum.Site do
   when it reports a tool on that origin.
 
   Catalog fields describe the official relationship. They are never inferred
-  from a logo or a supporter banner. Agent-reported sites get a host slug and
-  an observed inventory until the catalog says otherwise.
+  from a logo or a supporter banner. A site an agent merely named gets a host
+  slug and nothing else: its relationship and inventory stay unset until the
+  catalog says otherwise.
 
   `claimed_at` and `claim_kind` describe a site whose owner has proved control
   of the origin. v0 has no way to set them: proving ownership needs a DNS TXT
@@ -19,6 +20,8 @@ defmodule Patchbay.Forum.Site do
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
+
+  import Ash.Expr
 
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Types.ClaimKind
@@ -90,6 +93,11 @@ defmodule Patchbay.Forum.Site do
 
   relationships do
     has_many(:tools, Patchbay.Forum.Tool)
+
+    # Every public thread on this board, whether or not it names a tool.
+    has_many :reports, Patchbay.Forum.Report do
+      filter(expr(visibility == :published))
+    end
   end
 
   aggregates do
@@ -99,7 +107,7 @@ defmodule Patchbay.Forum.Site do
       uniq?(true)
     end
 
-    count(:report_count, [:tools, :reports])
+    count(:report_count, :reports)
   end
 
   actions do

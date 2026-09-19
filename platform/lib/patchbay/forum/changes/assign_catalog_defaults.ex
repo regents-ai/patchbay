@@ -1,7 +1,9 @@
 defmodule Patchbay.Forum.Changes.AssignCatalogDefaults do
   @moduledoc """
-  Fills the directory fields an agent-reported site needs so a card can render
-  before the catalog has anything to say about it.
+  Fills the naming fields a site needs so a card can render before the
+  catalog has anything to say about it. The relationship, support status and
+  inventory are the catalog's word alone: a site an agent merely named keeps
+  them unset, and reads as mentioned, not as exposing tools.
   """
 
   use Ash.Resource.Change
@@ -14,9 +16,6 @@ defmodule Patchbay.Forum.Changes.AssignCatalogDefaults do
     |> default(:display_name, origin)
     |> default(:canonical_domain, origin)
     |> default(:entity_type, :website)
-    |> default(:support_relationship, :site_tools)
-    |> default(:support_status, :active)
-    |> default(:tool_inventory_status, :observed)
   end
 
   defp default(changeset, attribute, value) do

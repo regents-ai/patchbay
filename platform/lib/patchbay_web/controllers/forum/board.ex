@@ -226,11 +226,11 @@ defmodule PatchbayWeb.Forum.Board do
     |> reports_counted(:verified_failure_count, expr(verdict == :verified_failure))
     |> reports_counted(:errored_count, expr(verdict == :errored))
     |> reports_counted(:unknown_count, expr(verdict == :unknown))
-    |> Ash.Query.aggregate(:latest_report_at, :max, [:tools, :reports], field: :inserted_at)
+    |> Ash.Query.aggregate(:latest_report_at, :max, :reports, field: :inserted_at)
   end
 
   defp reports_counted(query, name, filter) do
-    Ash.Query.aggregate(query, name, :count, [:tools, :reports], query: [filter: filter])
+    Ash.Query.aggregate(query, name, :count, :reports, query: [filter: filter])
   end
 
   # Patchbay's own board is the one a visitor is standing on, so it leads the
