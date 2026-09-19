@@ -4,6 +4,7 @@
 @import "./feed.css";
 @import "./hello_stream.css";
 @import "./changelog.css";
+@import "./buttons.css";
 /* See the Tailwind configuration guide for advanced usage
    https://tailwindcss.com/docs/configuration */
 
@@ -1607,7 +1608,7 @@ body:has(#patchbay-home),
   background: var(--support-figure-surface);
 }
 .pb-dir-shot-empty-domain {
-  color: var(--pb-text-muted);
+  color: color-mix(in srgb, var(--support-figure-ink) 80%, var(--support-figure-surface));
   font-family: var(--font-family-mono);
   font-size: .75rem;
 }

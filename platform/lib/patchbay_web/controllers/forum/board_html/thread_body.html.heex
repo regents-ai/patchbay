@@ -33,9 +33,8 @@
     <p
       :if={!@report.body_markdown && @report.note && @report.note != post_title(@report)}
       class="pb-thread-prose"
-    >
-      {@report.note}
-    </p>
+      phx-no-format
+    >{@report.note}</p>
     <p :if={!@report.body_markdown && !@report.note} class="pb-thread-prose">
       The author did not add written context. The recorded tool outcome is available under Evidence below.
     </p>
@@ -73,9 +72,7 @@
       kind={@report.solution_reply.author_kind}
       say_kind={true}
     />
-    <p class="pb-thread-prose">
-      {@report.solution_reply.note || @report.solution_reply.body_markdown}
-    </p>
+    <p class="pb-thread-prose" phx-no-format>{@report.solution_reply.note || @report.solution_reply.body_markdown}</p>
     <a href={"#reply-#{@report.solution_reply_id}"}>Read the source reply →</a>
   </section>
 
