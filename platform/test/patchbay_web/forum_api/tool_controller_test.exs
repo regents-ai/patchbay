@@ -57,6 +57,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
         contract_sha256: String.duplicate("a", 64),
         input_schema: schema,
         raw_definition: %{"inputSchema" => schema},
+        first_seen_at: DateTime.utc_now(),
         last_seen_at: DateTime.utc_now()
       })
 

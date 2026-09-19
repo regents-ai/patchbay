@@ -58,6 +58,7 @@ defmodule Patchbay.Forum.Catalog do
       source_kind: :official,
       source_url: definition.source_url,
       status: :active,
+      first_seen_at: entry.last_verified_at,
       last_seen_at: entry.last_verified_at
     })
   end
@@ -90,6 +91,7 @@ defmodule Patchbay.Forum.Catalog do
         source_kind: :official,
         source_url: source_url,
         status: :active,
+        first_seen_at: now,
         last_seen_at: now
       })
     end)

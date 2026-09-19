@@ -207,6 +207,7 @@ defmodule Patchbay.Forum.Tool do
         :source_kind,
         :source_url,
         :status,
+        :first_seen_at,
         :last_seen_at
       ])
 
@@ -229,7 +230,10 @@ defmodule Patchbay.Forum.Tool do
         :last_seen_at
       ])
 
-      validate(present(:last_seen_at))
+      # Both dates come from the publication being imported: the catalog's
+      # checked date for a documented tool, this boot for our own manifest.
+      # A contract seen again keeps its first date and moves its last one.
+      validate(present([:first_seen_at, :last_seen_at]))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :description]})
       change(Patchbay.Forum.Changes.AssignToolIdentity)
     end
