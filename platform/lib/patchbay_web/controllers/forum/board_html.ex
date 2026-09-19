@@ -351,11 +351,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def tool_seen_label(%{last_seen_at: at}), do: "Last observed " <> ago(at)
 
-  def tool_status_label(:active), do: "Active"
-  def tool_status_label(:experimental), do: "Experimental"
-  def tool_status_label(:unavailable), do: "Unavailable"
-  def tool_status_label(:deprecated), do: "Deprecated"
-  def tool_status_label(_other), do: "Active"
+  # A tool the site has dropped from its published list says so, whatever
+  # status it carried when it was last seen.
+  def tool_status_label(%{current?: false}), do: "No longer in the site's published list"
+  def tool_status_label(%{status: :experimental}), do: "Experimental"
+  def tool_status_label(%{status: :unavailable}), do: "Unavailable"
+  def tool_status_label(%{status: :deprecated}), do: "Deprecated"
+  def tool_status_label(%{status: _active}), do: "Active"
 
   def post_kind_label(:report), do: "Report"
   def post_kind_label(:failure), do: "Failure"

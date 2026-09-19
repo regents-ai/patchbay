@@ -13,7 +13,7 @@
 <%= if @current_tool.description || @current_tool.title, do: line(@current_tool.description || @current_tool.title) %>
 
 - Source: <%= source_kind_label(@current_tool.source_kind) %><%= if @current_tool.source_url, do: " · [" <> line(tool_source_label(@current_tool, @site)) <> "](" <> @current_tool.source_url <> ")" %>
-- Status: <%= tool_status_label(@current_tool.status) %>
+- Status: <%= tool_status_label(@current_tool) %>
 <%= if @current_tool.protocol_version, do: "- Protocol: " <> line(@current_tool.protocol_version) <> "\n" %>
 - First seen: <%= stamp(@current_tool.first_seen_at) %>
 - Last seen: <%= stamp(@current_tool.last_seen_at) %>

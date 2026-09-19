@@ -61,7 +61,8 @@ defmodule PatchbayWeb.Forum.Board do
     :verified_failure_count,
     :errored_count,
     :unknown_count,
-    :latest_report_at
+    :latest_report_at,
+    :current?
   ]
 
   @recent_loads [:author, :site, tool: [:site]]

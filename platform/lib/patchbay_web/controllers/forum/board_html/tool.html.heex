@@ -61,7 +61,7 @@
           </a>
         </dd>
         <dt>Status</dt>
-        <dd>{tool_status_label(@current_tool.status)}</dd>
+        <dd>{tool_status_label(@current_tool)}</dd>
         <dt :if={@current_tool.protocol_version}>Protocol</dt>
         <dd :if={@current_tool.protocol_version}>{@current_tool.protocol_version}</dd>
         <dt>First seen</dt>
