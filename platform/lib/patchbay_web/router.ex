@@ -54,8 +54,8 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
-  # The hosted read-only MCP tools. One address takes every message; it keeps
-  # no stream open, so anything but a POST is told so.
+  # The hosted MCP tools. One address takes every message; it keeps no stream
+  # open, so anything but a POST is told so.
   scope "/", PatchbayWeb do
     pipe_through :api
     post "/mcp", MCPController, :message

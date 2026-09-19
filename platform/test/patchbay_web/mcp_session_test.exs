@@ -1,0 +1,151 @@
+defmodule PatchbayWeb.MCPSessionTest do
+  @moduledoc """
+  The identity a hosted MCP connection posts under: issued at `initialize`,
+  returned in the `Mcp-Session-Id` header, never chosen by the caller.
+  """
+
+  use PatchbayWeb.ConnCase, async: false
+
+  alias Patchbay.Forum.NotificationFanout
+  alias Patchbay.Forum.Report
+  alias PatchbayWeb.MCP.Session
+
+  describe "the session a connection posts under" do
+    test "initialize issues one, and the free writes stand under it", %{conn: conn} do
+      {session, _} = initialize(conn)
+      {:ok, session_id} = Session.verify(session)
+
+      asked =
+        call(conn, session, "ask_question", %{
+          "site" => "quiet.example.net",
+          "title" => "Can this site amend a reservation?",
+          "body_markdown" => "I found create_reservation but nothing to amend one.",
+          "topic_tags" => ["Reservations"]
+        })
+
+      refute asked["isError"]
+      %{"thread_id" => thread_id, "url" => url} = asked["structuredContent"]
+      assert url == PatchbayWeb.Endpoint.url() <> "/posts/#{thread_id}"
+
+      # The thread is filed under the session the server issued, with no
+      # profile: the same anonymous identity a page load gives a browser.
+      thread = Ash.get!(Report, thread_id)
+      assert thread.browser_session_id == session_id
+      assert is_nil(thread.author_profile_id)
+
+      followed = call(conn, session, "follow_scope", %{"thread_id" => thread_id})
+      assert %{"subscribed" => true, "scope_kind" => "thread"} = followed["structuredContent"]
+
+      # Somebody else answers from a browser; the reply reaches this session's
+      # inbox and nobody else's.
+      answered =
+        conn
+        |> recycle()
+        |> get("/")
+        |> recycle()
+        |> put_req_header("content-type", "application/json")
+        |> post(
+          "/forum/threads/#{thread_id}/replies",
+          Jason.encode!(%{"body_markdown" => "Call amend_reservation.", "reply_kind" => "answer"})
+        )
+        |> json_response(201)
+
+      NotificationFanout.process_events()
+
+      inbox = call(conn, session, "get_inbox", %{})["structuredContent"]
+
+      assert [%{"id" => notice_id, "kind" => "reply_posted", "thread_id" => ^thread_id}] =
+               inbox["notifications"]
+
+      assert hd(inbox["notifications"])["url"] == url
+
+      # Only the asker's session can name the reply that worked.
+      {other, _} = initialize(conn)
+
+      refused =
+        call(conn, other, "mark_solution", %{
+          "thread_id" => thread_id,
+          "reply_id" => answered["reply_id"]
+        })
+
+      assert refused["isError"]
+
+      marked =
+        call(conn, session, "mark_solution", %{
+          "thread_id" => thread_id,
+          "reply_id" => answered["reply_id"]
+        })
+
+      refute marked["isError"]
+      assert marked["structuredContent"]["marked"] == true
+
+      acknowledged = call(conn, session, "acknowledge_notifications", %{"ids" => [notice_id]})
+      assert acknowledged["structuredContent"] == %{"acknowledged" => 1}
+
+      assert %{"notifications" => []} = call(conn, session, "get_inbox", %{})["structuredContent"]
+    end
+
+    test "a connection without a session can read but not write", %{conn: conn} do
+      before = Ash.count!(Report)
+
+      refused =
+        call(conn, nil, "ask_question", %{
+          "site" => "quiet.example.net",
+          "title" => "Anyone home?",
+          "body_markdown" => "Testing."
+        })
+
+      assert refused["isError"]
+      assert refused["structuredContent"]["problem_code"] == "no_session"
+      assert Ash.count!(Report) == before
+
+      searched = call(conn, nil, "search_threads", %{"q" => "anything"})
+      refute searched["isError"]
+    end
+
+    test "a session the server did not sign is answered 404, and each initialize is fresh",
+         %{conn: conn} do
+      forged = Phoenix.Token.sign(PatchbayWeb.Endpoint, "not the mcp salt", Ash.UUID.generate())
+
+      response =
+        conn
+        |> recycle()
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("mcp-session-id", forged)
+        |> post("/mcp", Jason.encode!(%{jsonrpc: "2.0", id: 7, method: "ping"}))
+
+      assert %{"id" => 7, "error" => %{"code" => -32_000}} = json_response(response, 404)
+
+      {first, _} = initialize(conn)
+      {second, _} = initialize(conn)
+      assert first != second
+      assert {:ok, _} = Session.verify(first)
+      assert {:ok, _} = Session.verify(second)
+    end
+  end
+
+  defp initialize(conn) do
+    response = rpc(conn, nil, "initialize", %{"protocolVersion" => "2025-06-18"})
+    [session] = Plug.Conn.get_resp_header(response, "mcp-session-id")
+    {session, json_response(response, 200)}
+  end
+
+  defp call(conn, session, name, arguments) do
+    %{"result" => result} =
+      rpc(conn, session, "tools/call", %{"name" => name, "arguments" => arguments})
+      |> json_response(200)
+
+    result
+  end
+
+  defp rpc(conn, session, method, params) do
+    conn = conn |> recycle() |> put_req_header("content-type", "application/json")
+    conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
+
+    post(
+      conn,
+      "/mcp",
+      Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params})
+    )
+  end
+end

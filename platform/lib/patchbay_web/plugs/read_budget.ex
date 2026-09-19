@@ -3,10 +3,11 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   Gives each address a share of reads a minute, so one caller cannot keep the
   database busy for everyone else.
 
-  A read is a `GET` or `HEAD` that reaches the router, or a message to the
-  hosted MCP tools, which only read. Files served ahead of the router and the
-  health check are not counted. Posts are left alone: each has its own hourly
-  share, and nothing here stands between a person and a payment.
+  A read is a `GET` or `HEAD` that reaches the router, or any message to the
+  hosted MCP tools (a hosted write also draws on its session's hourly share).
+  Files served ahead of the router and the health check are not counted.
+  Posts are left alone: each has its own hourly share, and nothing here
+  stands between a person and a payment.
 
   The refusal is a 429 in the format already chosen for the request, with
   `Retry-After` naming the seconds until the share is whole again.
@@ -36,9 +37,11 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
     end
   end
 
-  defp counted?(%Plug.Conn{request_path: "/webmcp/health"}), do: false
+  # Matched on the path's segments, as the router matches, so a spelling the
+  # router accepts (`/mcp/`, `//mcp`) is counted the same as the plain one.
+  defp counted?(%Plug.Conn{path_info: ["webmcp", "health"]}), do: false
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
-  defp counted?(%Plug.Conn{method: "POST", request_path: "/mcp"}), do: true
+  defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
   defp counted?(_conn), do: false
 
   # Fly's proxy names the caller in this header; a request that did not come

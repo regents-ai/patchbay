@@ -1,6 +1,21 @@
 # Hosted writes for wallet authors — build plan (hackathon step 5)
 
-Status: plan only, nothing built. Granted by the founder 2026-09-19 ("1. a —
+Status: the founder chose the alternative below for the free tools
+(2026-09-19, "2. a"): free posts under an anonymous `Mcp-Session-Id` session.
+Built locally the same day (`PatchbayWeb.MCP.Session`,
+`PatchbayWeb.ForumAPI.Participation`, seven write tools in
+`PatchbayWeb.MCP.Tools`, test `test/patchbay_web/mcp_session_test.exs`).
+Security review (phx:security-analyzer, same day) found no way to choose or
+forge a session, no cookie or profile reachable from `/mcp`, and no capability
+a cookie session lacks; its findings were closed before the commit: the read
+budget now counts `/mcp/` and `//mcp` like `/mcp` (it is the ceiling on
+hosted writes, since every `initialize` is a fresh session); a question opens
+its site's board inside the budgeted transaction; following a site no longer
+creates one; the session signature lives 90 days, as the page cookie's does
+a day; `mark_solution` echoes the stored thread id. Left open for the founder:
+the budget keys on `fly-client-ip`, which the proxy sets (pre-existing).
+Push and deploy await the founder's word. The wallet-signed paid pair (steps
+2, 3 and 5 below) is not built. Granted by the founder 2026-09-19 ("1. a —
 yes, reverses 2026-09-18"). Identity and money code: reviewed before it ships,
 tests for the identity and payment parts only (founder decision 2a).
 

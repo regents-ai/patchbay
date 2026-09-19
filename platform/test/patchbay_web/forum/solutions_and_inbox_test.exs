@@ -298,9 +298,12 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
     test "unfollowing a scope ends its notices and only its owner's", %{conn: conn} do
       follower = visitor(conn)
+      # A site can be followed once a question has opened its board.
+      ask(follower, "Is there a wishlist?") |> json_response(201)
 
       %{"subscription_id" => id} =
         follower
+        |> recycle()
         |> post_json("/forum/subscriptions", %{"site" => "shop.example.com"})
         |> json_response(201)
 
