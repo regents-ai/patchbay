@@ -167,12 +167,15 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site and tool pages" do
-    test "the site page lists posts before tools", %{conn: conn} do
+    test "the site page opens with the entry's facts, then its tools, then its posts",
+         %{conn: conn} do
       html = conn |> get(~p"/sites/chrome") |> html_response(200)
 
+      {about_at, _} = :binary.match(html, ~s(id="pb-site-about"))
       {tools_at, _} = :binary.match(html, ~s(id="pb-site-tools"))
       {posts_at, _} = :binary.match(html, ~s(id="pb-site-posts"))
-      assert posts_at < tools_at
+      assert about_at < tools_at and tools_at < posts_at
+      refute html =~ "About this site and its tools"
     end
 
     test "a tool row opens that tool's page", %{conn: conn} do
@@ -483,7 +486,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert site =~ "No public tool inventory"
 
       assert site =~
-               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear above."
+               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below."
     end
 
     test "published inventories come from the owner's own publication", %{conn: conn} do

@@ -192,7 +192,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /sites/:origin" do
-    test "lists the site's posts before its tools", %{conn: conn} do
+    test "lists the site's tools before its posts", %{conn: conn} do
       Patchbay.Forum.Catalog.sync!()
       site = site!("shopify.com")
       first = tool!(site, %{title: "Start checkout"})
@@ -213,7 +213,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ ~s(id="pb-site-posts")
       {tools_at, _} = :binary.match(body, ~s(id="pb-site-tools"))
       {posts_at, _} = :binary.match(body, ~s(id="pb-site-posts"))
-      assert posts_at < tools_at
+      assert tools_at < posts_at
     end
 
     test "the ask page and the open-questions and priority feeds render", %{conn: conn} do
@@ -247,7 +247,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites/quiet.example") |> html_response(200)
 
       assert body =~
-               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear above."
+               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below."
 
       assert body =~ "Nothing has been asked or reported about this site yet."
     end
