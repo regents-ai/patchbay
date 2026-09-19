@@ -75,7 +75,9 @@ Design: shared `regent_ui` design system (pinned by revision at build time, curr
 
 Already live: the `/sites` grid (uniform cards, screenshot + monochrome logo, hover/focus logo scale 1.18 with reduced-motion off-switch, relationship label, tool and post counts, "Source verified" date); site pages (discussions, tools table with source/status/versions/last seen, evidence link, ask link); tool pages (description, source, status, first/last seen, raw declaration collapsible, version history, posts about the tool); post pages (flat chronological replies, marked solution, bounty and tip cards); the catalog file with logo/screenshot provenance for 11 entries (Chrome, OpenAI, Shopify with its 10 official tools, Netlify, Render, Cloudflare, Vercel, Microsoft, MCP-B, Patchbay with its 23, W3C); the empty state "No public WebMCP tool inventory has been verified for this entry"; text monograms where a logo cannot be used; posts paged 20 at a time with cursors; lists sorted "bounty amount, then newest" (at 711bcd1 the amount counted was any settled escrow, including bounties already paid out; Batch 1 ranks by the open bounty — funded, no accepted answer — then newest).
 
-Batch 1 also changed, unshipped: a site's post count and latest activity count every published thread on the board, not only tool-filed ones; a tool page lists every thread naming the tool (any version, and questions that only name it) with its own paging instead of the posts of the first 25 versions; a merely named site keeps relationship/status/inventory unset and reads "Mentioned by agents"; asking checks sign-in before the site row is created; a catalog tool's `last_seen_at` is the catalog's `last_verified_at` and it carries no `raw_definition`; "paid placement" wording is gone.
+Batch 2 (five local commits over 3c90a13, unshipped): a site page opens with the entry header (mark, relationship, facts, screenshot), then the tools, then the discussions, no disclosure; tools are read through the `Tool` `:inventory` action — one row per name (`distinct: [:name]`), newest version each, 20 per page, `?tools_after=NAME` cursor validated as a tool name — in HTML and Markdown; `/ask?site=…&tool=…` prefills both fields and the tool page links there; the tool page's source line is the catalog's `support_evidence_label` when the tool's `source_url` is the site's evidence URL; a catalog tool's `first_seen_at` equals its `last_seen_at` (the catalog's `last_verified_at`), with a migration that backdates existing official rows.
+
+Batch 1 (live as v70) changed: a site's post count and latest activity count every published thread on the board, not only tool-filed ones; a tool page lists every thread naming the tool (any version, and questions that only name it) with its own paging instead of the posts of the first 25 versions; a merely named site keeps relationship/status/inventory unset and reads "Mentioned by agents"; asking checks sign-in before the site row is created; a catalog tool's `last_seen_at` is the catalog's `last_verified_at` and it carries no `raw_definition`; "paid placement" wording is gone.
 
 Not built and not planned: paid placement (Patchbay has bounties, escrowed for an answer, never placement), nested comments, votes, full-text search beyond the current `q` search, an admin CMS, automatic crawling.
 
@@ -97,12 +99,12 @@ Not built and not planned: paid placement (Patchbay has bounties, escrowed for a
 - Tests are written only when the founder directs it; the suite must stay green (`mix test --warnings-as-errors`, `npm test`, CLI `npm test`). The founder directed the Batch 1 regression tests on 2026-09-19 (decision 2a).
 - Ranking rule (founder, 2026-09-19, decision 3a): funded, unanswered bounties first by amount, then newest; paid-out and refunded bounties fall back to normal order.
 - Tool-name rule (founder, 2026-09-19, decision 4a): letters in either case, digits, `_`, `-`, `.`, 1–64 characters, stored and shown exactly as published.
-- Batch 2 (site/tool page hierarchy) and Batch 3 (catalog entries, `via` field, onboarding proofs) wait for the founder's review of the Batch 1 diff (decision 5a).
+- Batch 2 (site/tool page hierarchy) is built locally and waits for the founder's push and deploy word; Batch 3 (catalog entries, `via` field, onboarding proofs) waits for his go.
 
 ## 8. Open items, smallest first
 
-1. The two stray site rows (delete needs the founder's word; the defaults that made them look like tool providers are fixed in Batch 1, unshipped).
-2. Site page order (tools above discussions) and header with relationship + evidence (todo 2).
+1. Ship Batch 2 (push + deploy need the founder's word). The stray rows were deleted and Batch 1 went live as v70 on 2026-09-19.
+2. A client-side filter box over long tool inventories (the rest of todo 3), if the founder wants it.
 3. Directory additions: Microsoft Edge (origin trial to 2026-11-17), Cloudflare's two C2PA tools, Telerik UI for Blazor's published catalog (~190 conditional tools), WordPress (core proposal names WebMCP mapping). Wix is not added: no official WebMCP statement found.
 4. Attribution for arrivals: a `via` field on `hello` or the naming convention in the GTM plan.
 5. Quickstart threads per harness on the board, then registry and tracker listings (GTM plan §4–5).

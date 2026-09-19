@@ -10,7 +10,9 @@ that day; none is approved. Part B is a **production data change** that needs th
 founder's word. Part C items are **recommendations** except where a line says
 otherwise. Updated later on 2026-09-19: todo 1 was built (as five local commits,
 not yet pushed or deployed) under the founder's decision to run the cloud review's
-Batch 1; the rest stand as written.
+Batch 1; the rest stand as written. Updated again later on 2026-09-19: Batch 1
+is live (v70); todos 2, 3 (paging only), 10, 11 and 12 were built as Batch 2 (five
+local commits, not pushed or deployed), with the status of each noted inline.
 
 ## Part A — directory entries to add or change (`platform/priv/data/webmcp_sites.json`)
 
@@ -58,13 +60,13 @@ Ordered by what a visitor or an agent hits first.
    unverified". Such sites still appear on `/sites`; hiding them until they have
    a thread was not built and stands as a separate recommendation.
 2. **Site page order: tools above discussions, header carries the relationship.**
-   Today the tools sit inside a collapsed "About this site and its tools" below
-   the posts. Put the compact site header (logo, name, domain, relationship label,
-   one evidence link, last-checked date) at the top, the tool table next, then the
-   discussions. No hero, no collapse.
-3. **Long inventories stay readable.** With Telerik's ~190 tools, the site table
-   needs a "Show all N tools" control after the first 20 rows, plus a one-line
-   filter box on the client. Nothing else.
+   BUILT 2026-09-19 (Batch 2, unshipped): entry header (mark, relationship,
+   domain, facts, screenshot) at the top, the tool list next, then the
+   discussions; the disclosure is gone.
+3. **Long inventories stay readable.** BUILT IN PART 2026-09-19 (Batch 2,
+   unshipped): tools are listed one per name, newest version each, 20 to a page
+   in name order with first/next-page links, in HTML and Markdown. Not built: the
+   client-side filter box; the founder decides whether it is wanted.
 4. **Add the four catalog changes from Part A** (Edge, Cloudflare tools, Telerik,
    WordPress) with logos/screenshots and evidence.
 5. **`/start` per-harness lines** linking to the quickstart threads, one line each
@@ -81,15 +83,16 @@ Ordered by what a visitor or an agent hits first.
    layout shift on `/sites`.
 9. **Tool row affordance.** Tool rows are links but show no direction cue; add the
    same chevron the discussion rows use, and make the whole row the hit target.
-10. **Tool page: post kinds visible.** The tool page lists "Posts about this tool"
-    but the row does not show the thread kind (question / working recipe /
-    discussion / report) the home feed shows. Reuse the same row component.
-11. **Empty tool page invites the right action.** "No one has posted about this
-    tool yet · Ask a question" should pre-fill `subject_tool_name` and `site` in
-    `/ask` (the query params exist for `site`; add the tool).
-12. **Evidence line on the tool page names the publication**, not just "Official
-    (published declaration)": link text is the catalog's `support_evidence_label`
-    with the date checked.
+10. **Tool page: post kinds visible.** ALREADY TRUE at 3c90a13: site and tool
+    pages render the same `post_list` rows as the home feed, kind label included.
+    No change needed.
+11. **Empty tool page invites the right action.** BUILT 2026-09-19 (Batch 2,
+    unshipped): `/ask?site=…&tool=…` prefills both fields; the tool page header
+    and its empty list link there, a site page's empty list prefills the site.
+12. **Evidence line on the tool page names the publication.** BUILT 2026-09-19
+    (Batch 2, unshipped): the link text is the catalog's `support_evidence_label`
+    when the tool came from that publication, otherwise the address; the checked
+    date is the tool's first/last-seen date (todo 1a).
 13. **Home "Sites with WebMCP tools" list is mislabelled**: the Markdown home lists
     every directory entry under that heading including official supporters with
     no tools. Rename the heading to "Sites in the directory" and keep the

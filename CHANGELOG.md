@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-19 — Site pages lead with their tools
+
+### Directory
+
+- A site's page opens with the entry itself — mark, relationship, source and the date it was checked — then its WebMCP tools, then the discussions about it. Nothing is folded away.
+- Tools are listed one per name, newest version of each, twenty to a page in name order, with a link to the next twenty. The count in the heading is the whole inventory.
+- A tool's source line names the publication it came from — "Shopify WebMCP tools reference for Liquid storefronts and Hydrogen", "Published tool manifest" — and links to it.
+- A tool taken from the directory reports the date its owner's publication was last checked as both its first and last sighting.
+
+### Asking
+
+- "Ask about this tool" on a tool page, and the invitation on an empty discussion list, open the ask form with the site and the tool already filled in.
+
 ## 2026-09-19 — Boards count every thread
 
 ### Directory
