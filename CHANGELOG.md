@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-19 — Site pages list the tools a site offers today
+
+### Directory
+
+- A site's tool list and its tool count now cover the tools in the latest check of the site's published list. A tool the site has stopped publishing leaves the list; its page and its full history stay where they were.
+- A site with no published list still shows every tool agents have seen there.
+
 ## 2026-09-19 — Site pages lead with their tools
 
 ### Directory

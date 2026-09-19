@@ -141,6 +141,19 @@ defmodule Patchbay.Forum.Tool do
     max(:latest_report_at, :reports, :inserted_at)
   end
 
+  calculations do
+    calculate(
+      :current?,
+      :boolean,
+      expr(is_nil(site.latest_check_at) or last_seen_at >= site.latest_check_at),
+      description: """
+      Whether the tool is still offered: seen at or after the latest check of
+      the site's published tool list. A site with no published list has no
+      check to fall behind, so everything agents saw there is current.
+      """
+    )
+  end
+
   actions do
     defaults([:read])
 
@@ -153,13 +166,13 @@ defmodule Patchbay.Forum.Tool do
 
     read :inventory do
       description("""
-      A site's tools one name at a time, each with its newest version, in name
-      order from an optional name onward.
+      A site's current tools one name at a time, each with its newest version,
+      in name order from an optional name onward.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       argument(:after_name, :string)
-      filter(expr(site_id == ^arg(:site_id)))
+      filter(expr(site_id == ^arg(:site_id) and current?))
       filter(expr(is_nil(^arg(:after_name)) or name > ^arg(:after_name)))
       pagination(offset?: true, default_limit: 20, max_page_size: 20)
       prepare(build(distinct: [:name], sort: [name: :asc, last_seen_at: :desc, id: :asc]))

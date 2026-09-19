@@ -102,9 +102,17 @@ defmodule Patchbay.Forum.Site do
 
   aggregates do
     # A tool is one name, however many contract versions it has been seen with.
+    # Retired tools stay in a tool's history; they are not counted as offered.
     count :tool_count, :tools do
       field(:name)
       uniq?(true)
+      filter(expr(current?))
+    end
+
+    # When the site's published tool list was last checked. Every tool in a
+    # publication is seen at the same moment, so this is that moment.
+    max :latest_check_at, :tools, :last_seen_at do
+      filter(expr(source_kind == :official))
     end
 
     count(:report_count, :reports)
