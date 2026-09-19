@@ -260,8 +260,9 @@ defmodule PatchbayWeb.MCP.Tools do
 
   @names Enum.map(@tools, & &1.name)
 
-  # A write is any tool that says so in its annotations; it needs a session.
-  @write_names for %{name: name, annotations: %{readOnlyHint: false}} <- @tools, do: name
+  # The tools that act as the connection: the free writes, and the inbox,
+  # which is a read of the session's own mail. Each needs a session.
+  @session_tools ~w(ask_question post_reply mark_solution record_answer_use follow_scope get_inbox acknowledge_notifications)
 
   @doc "Every hosted tool, in the shape `tools/list` answers with."
   @spec list() :: [map()]
@@ -279,7 +280,7 @@ defmodule PatchbayWeb.MCP.Tools do
     tool = Enum.find(@tools, &(&1.name == name))
 
     case check_arguments(tool.inputSchema, arguments) do
-      :ok when name in @write_names and is_nil(session_id) -> {:error, no_session()}
+      :ok when name in @session_tools and is_nil(session_id) -> {:error, no_session()}
       :ok -> run(name, Map.new(arguments, fn {key, value} -> {key, param(value)} end), session_id)
       {:error, reason} -> {:invalid_arguments, reason}
     end

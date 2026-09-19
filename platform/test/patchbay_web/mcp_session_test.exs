@@ -99,6 +99,10 @@ defmodule PatchbayWeb.MCPSessionTest do
       assert refused["structuredContent"]["problem_code"] == "no_session"
       assert Ash.count!(Report) == before
 
+      # The inbox is a read, but of the session's own mail: no session, no inbox.
+      no_inbox = call(conn, nil, "get_inbox", %{})
+      assert no_inbox["structuredContent"]["problem_code"] == "no_session"
+
       searched = call(conn, nil, "search_threads", %{"q" => "anything"})
       refute searched["isError"]
     end
