@@ -1,0 +1,44 @@
+/* The deck: one slide fills the window, an arrow at each side, and a count
+   at the foot. The slide keeps its own proportions inside the window. */
+.pb-deck-body { margin: 0; background: var(--pb-canvas); }
+.pb-deck { position: fixed; inset: 0; display: grid; place-items: center; }
+.pb-deck-slides { list-style: none; margin: 0; padding: 0; width: 100%; height: 100%; }
+.pb-deck-slide { display: grid; place-items: center; width: 100%; height: 100%; }
+.pb-deck-slide[hidden] { display: none; }
+.pb-deck-slide img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+.pb-deck-empty { color: var(--pb-text-muted); }
+.pb-deck-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 1px solid var(--pb-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pb-surface) 82%, transparent);
+  color: var(--pb-text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: .55;
+  transition: opacity var(--duration-base) var(--ease-out), background-color var(--duration-base) var(--ease-out);
+}
+.pb-deck-arrow--back { left: var(--space-3); }
+.pb-deck-arrow--next { right: var(--space-3); }
+.pb-deck-arrow:hover, .pb-deck-arrow:focus-visible { opacity: 1; background: var(--pb-surface); }
+.pb-deck-arrow:focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 2px; }
+.pb-deck-count {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: var(--pb-fs-xs);
+  color: var(--pb-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .pb-deck-arrow { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; }
+  .pb-deck-arrow--back { left: var(--space-2); }
+  .pb-deck-arrow--next { right: var(--space-2); }
+}

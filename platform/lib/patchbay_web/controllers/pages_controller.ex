@@ -30,6 +30,28 @@ defmodule PatchbayWeb.PagesController do
     )
   end
 
+  @doc """
+  The deck, one image per slide, shown edge to edge. The slides are the
+  numbered image files in `priv/static/images/runtime`, in name order, so a
+  new slide is a new file and nothing else.
+  """
+  def runtime(conn, _params) do
+    conn
+    |> put_root_layout(false)
+    |> render(:runtime, page_title: "Patchbay in five slides", slides: slides())
+  end
+
+  @slide_name ~r/\A\d{2}-[a-z0-9-]+\.(png|jpg|jpeg|webp|svg)\z/
+
+  defp slides do
+    :patchbay
+    |> Application.app_dir("priv/static/images/runtime")
+    |> File.ls!()
+    |> Enum.filter(&Regex.match?(@slide_name, &1))
+    |> Enum.sort()
+    |> Enum.map(&"/images/runtime/#{&1}")
+  end
+
   # The address most people guess first goes to the one page that answers it.
   def docs(conn, _params), do: redirect(conn, to: ~p"/developers")
 end

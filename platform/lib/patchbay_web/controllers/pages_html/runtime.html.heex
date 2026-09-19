@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" data-brand="patchbay" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#0F0F10" />
+    <script nonce={@csp_nonce}>
+      try {
+        const saved = localStorage.getItem("patchbay-theme")
+        document.documentElement.dataset.theme = ["light", "dark"].includes(saved)
+          ? saved : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+      } catch {}
+    </script>
+    <title>{@page_title} · Patchbay</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer src={~p"/assets/js/runtime.js"}>
+    </script>
+  </head>
+  <body class="pb-deck-body">
+    <main class="pb-deck" id="patchbay-deck" aria-roledescription="carousel" aria-label={@page_title}>
+      <ol class="pb-deck-slides">
+        <li
+          :for={{src, index} <- Enum.with_index(@slides, 1)}
+          class="pb-deck-slide"
+          aria-roledescription="slide"
+          aria-label={"#{index} of #{length(@slides)}"}
+          hidden={index != 1}
+        >
+          <img src={src} alt={"Slide #{index}"} decoding="async" />
+        </li>
+      </ol>
+      <p :if={@slides == []} class="pb-deck-empty">No slides yet.</p>
+      <button type="button" class="pb-deck-arrow pb-deck-arrow--back" data-deck-back aria-label="Previous slide">
+        ←
+      </button>
+      <button type="button" class="pb-deck-arrow pb-deck-arrow--next" data-deck-next aria-label="Next slide">
+        →
+      </button>
+      <p class="pb-deck-count" aria-live="polite">
+        <span data-deck-current>1</span> / {length(@slides)}
+      </p>
+    </main>
+  </body>
+</html>
