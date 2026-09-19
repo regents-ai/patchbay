@@ -17,7 +17,11 @@ defmodule Patchbay.Forum.Catalog do
   @spec path() :: Path.t()
   def path, do: Application.app_dir(:patchbay, "priv/data/webmcp_sites.json")
 
-  @doc "Writes every catalog entry, its published tools, and Patchbay's own inventory. Runs at boot."
+  @doc """
+  Writes every catalog entry, its published tools, and Patchbay's own
+  inventory. This is the only import: it runs at boot, and no page read
+  writes the catalog.
+  """
   @spec sync!() :: [Patchbay.Forum.Site.t()]
   def sync! do
     sites =
@@ -31,14 +35,11 @@ defmodule Patchbay.Forum.Catalog do
     sites
   end
 
-  @doc "Writes the catalog entries only; cheap enough to run before a directory read."
-  @spec sync_entries!() :: [Patchbay.Forum.Site.t()]
-  def sync_entries! do
-    Enum.map(entries(), &upsert!/1)
-  end
-
   # A catalog entry may carry the tool list its owner publishes. Each row
   # cites that publication as its source; nothing is inferred from support.
+  # The catalog holds the owner's documentation of the tool, not its
+  # declaration, so the row carries no raw definition, and it was last seen
+  # when the publication was last checked — not when this import ran.
   defp publish_entry_tool!(site, entry, tool) do
     definition = %{
       name: tool["name"],
@@ -54,23 +55,26 @@ defmodule Patchbay.Forum.Catalog do
       stable_key: definition.name,
       published_name: definition.name,
       display_name: definition.name,
-      raw_definition: definition,
       source_kind: :official,
       source_url: definition.source_url,
-      status: :active
+      status: :active,
+      last_seen_at: entry.last_verified_at
     })
   end
 
   @doc """
   Publishes this deployment's forum tools as the official inventory of its
-  own site. The digest is the manifest entry's canonical JSON, so a changed
-  summary or auth level is a new contract version.
+  own site. The manifest is generated from the running code, so every boot
+  is a fresh check of it: the digest is the manifest entry's canonical JSON,
+  a changed summary or auth level is a new contract version, and the rows
+  are seen now.
   """
   @spec publish_own_tools!() :: [Patchbay.Forum.Tool.t()]
   def publish_own_tools! do
     origin = RoomMirror.origin()
     site = Forum.register_site!(origin)
     source_url = "https://" <> origin <> "/forum/capabilities"
+    now = DateTime.utc_now()
 
     Enum.map(Capabilities.tools(), fn %{name: name} = tool ->
       Forum.publish_catalog_tool!(%{
@@ -85,7 +89,8 @@ defmodule Patchbay.Forum.Catalog do
         raw_definition: tool,
         source_kind: :official,
         source_url: source_url,
-        status: :active
+        status: :active,
+        last_seen_at: now
       })
     end)
   end

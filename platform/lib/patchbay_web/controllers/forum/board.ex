@@ -194,21 +194,12 @@ defmodule PatchbayWeb.Forum.Board do
 
   @doc """
   The public directory: catalogued WebMCP entries first, then any other site
-  the board has seen. The catalog is written before the read so a cold
-  database still has the researched rows.
+  the board has seen. The catalog itself is written once, at boot.
   """
   @spec list_directory() :: {[Site.t()], boolean()}
   def list_directory do
-    _ = sync_catalog()
     page = Forum.list_directory!(query: site_summary(), page: [limit: @sites])
     {page.results, page.more?}
-  end
-
-  # A cold or half-loaded catalog must not take down `/` or `/sites`.
-  defp sync_catalog do
-    Patchbay.Forum.Catalog.sync_entries!()
-  rescue
-    _ -> :ok
   end
 
   @doc "How many posts a site or tool list shows before it says there are more."
@@ -265,8 +256,6 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec fetch_site_ref(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site_ref(ref) when is_binary(ref) do
-    _ = sync_catalog()
-
     if slug?(ref) do
       case fetch_slug(ref) do
         {:ok, site} -> {:ok, site}

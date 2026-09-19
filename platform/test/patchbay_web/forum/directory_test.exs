@@ -17,6 +17,13 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
   @required_brands ~w(Render Netlify OpenAI Chrome Shopify)
 
+  # No page read writes the catalog any more; the directory is imported once,
+  # the way boot does it.
+  setup do
+    Catalog.sync!()
+    :ok
+  end
+
   defp site!(origin), do: Forum.register_site!(origin)
 
   defp tool!(site, attrs \\ %{}) do
@@ -55,6 +62,11 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   # A distinct, well-formed contract digest for the n-th version of a tool.
   defp version_digest(n),
     do: n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(64, "0")
+
+  defp catalog_tool!(slug, name) do
+    site = Forum.get_site_by_slug!(slug)
+    Enum.find(Forum.list_tools_for_site!(site.id).results, &(&1.name == name))
+  end
 
   defp asker!(subject \\ "dir-asker") do
     Identity.upsert_from_privy!(%{
@@ -440,6 +452,24 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       refute page =~ "Observed tool inventory"
     end
 
+    test "reimporting the catalog neither moves a documented tool's checked date nor invents its declaration",
+         %{conn: conn} do
+      first = catalog_tool!("shopify", "proceed_to_checkout")
+      Catalog.sync!()
+      again = catalog_tool!("shopify", "proceed_to_checkout")
+
+      entry = Enum.find(Catalog.entries(), &(&1.slug == "shopify"))
+      assert DateTime.compare(first.last_seen_at, entry.last_verified_at) == :eq
+      assert again.last_seen_at == first.last_seen_at
+      assert is_nil(again.raw_definition)
+
+      site = conn |> get(~p"/sites/shopify") |> html_response(200)
+      assert site =~ "Verified 11 Sep 2026"
+
+      tool = conn |> get(~p"/sites/shopify/tools/proceed_to_checkout") |> html_response(200)
+      refute tool =~ "Raw schemas and declaration"
+    end
+
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
       netlify = card_chunk(home, "netlify")
@@ -457,8 +487,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "published inventories come from the owner's own publication", %{conn: conn} do
-      Catalog.sync!()
-
       shopify = conn |> get(~p"/sites/shopify") |> html_response(200)
       assert shopify =~ "Official tool inventory"
       assert shopify =~ ~s(href="/sites/shopify/tools/proceed_to_checkout")

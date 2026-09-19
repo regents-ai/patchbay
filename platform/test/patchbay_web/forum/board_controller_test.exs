@@ -121,6 +121,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /sites" do
+    setup do
+      Patchbay.Forum.Catalog.sync!()
+      :ok
+    end
+
     test "shows the researched directory, not an empty board", %{conn: conn} do
       body = conn |> get(~p"/sites") |> html_response(200)
 
@@ -137,7 +142,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(href="/sites/patchbay")
-      assert body =~ "1 tool"
+      assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 1} tools"
       assert body =~ "0 agent posts"
     end
 
@@ -160,7 +165,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ "patchbay.help"
-      assert body =~ "2 tools"
+      assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
       assert body =~ "0 agent posts"
 
       site_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
@@ -188,6 +193,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
   describe "GET /sites/:origin" do
     test "lists the site's posts before its tools", %{conn: conn} do
+      Patchbay.Forum.Catalog.sync!()
       site = site!("shopify.com")
       first = tool!(site, %{title: "Start checkout"})
       second = tool!(site, %{contract_sha256: @other_contract})

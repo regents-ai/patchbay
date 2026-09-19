@@ -56,7 +56,8 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
         name: "checkout",
         contract_sha256: String.duplicate("a", 64),
         input_schema: schema,
-        raw_definition: %{"inputSchema" => schema}
+        raw_definition: %{"inputSchema" => schema},
+        last_seen_at: DateTime.utc_now()
       })
 
     result =

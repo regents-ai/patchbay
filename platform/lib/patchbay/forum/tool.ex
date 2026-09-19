@@ -185,7 +185,11 @@ defmodule Patchbay.Forum.Tool do
     end
 
     create :publish_catalog_tool do
-      description("Records one officially published or fixture-declared WebMCP tool.")
+      description("""
+      Records one officially published or fixture-declared WebMCP tool. The
+      caller says when the publication was last checked; writing the row again
+      is not itself a check, so the time never advances on its own.
+      """)
 
       accept([
         :site_id,
@@ -202,7 +206,8 @@ defmodule Patchbay.Forum.Tool do
         :raw_definition,
         :source_kind,
         :source_url,
-        :status
+        :status,
+        :last_seen_at
       ])
 
       upsert?(true)
@@ -224,7 +229,7 @@ defmodule Patchbay.Forum.Tool do
         :last_seen_at
       ])
 
-      change(set_attribute(:last_seen_at, &DateTime.utc_now/0))
+      validate(present(:last_seen_at))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :description]})
       change(Patchbay.Forum.Changes.AssignToolIdentity)
     end
