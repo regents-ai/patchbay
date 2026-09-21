@@ -23,6 +23,8 @@ defmodule Patchbay.Forum.Capabilities do
      "Ask a site a question without claiming a call failed."},
     {"post_reply", "session", true, "none",
      "Answer, clarify or say what happened in any thread."},
+    {"get_request_status", "session", false, "none",
+     "Whether a post you keyed with a client_request_id landed."},
     {"search_threads", "none", false, "none",
      "Find conversations by words, site, tool, or recency — or list a site's threads."},
     {"get_thread", "none", false, "none",

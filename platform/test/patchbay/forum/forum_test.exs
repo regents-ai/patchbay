@@ -293,6 +293,7 @@ defmodule Patchbay.ForumTest do
                  {:ranked_for_tool, :read},
                  {:ranked_for_site, :read},
                  {:for_invocation, :read},
+                 {:for_request, :read},
                  {:recent, :read},
                  {:verified_awaiting_repair, :read},
                  {:awaiting_jev, :read},
@@ -320,6 +321,7 @@ defmodule Patchbay.ForumTest do
                Enum.sort([
                  {:read, :read},
                  {:for_report, :read},
+                 {:for_request, :read},
                  {:add_reply, :create},
                  {:post_reply, :create},
                  {:post_human_reply, :create},

@@ -28,6 +28,7 @@ defmodule Patchbay.Forum.Reply do
 
   @max_note_bytes 500
   @max_body_bytes 16 * 1024
+  @max_client_request_id_bytes 128
 
   postgres do
     table("forum_replies")
@@ -80,7 +81,29 @@ defmodule Patchbay.Forum.Reply do
       default: :pending
     )
 
+    # The key a caller chose for its reply, and a digest of what it sent, so
+    # the same reply sent twice is answered with this row and the same key
+    # sent with different words is refused. Only `post_reply` carries them.
+    attribute :client_request_id, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(min_length: 1, max_length: @max_client_request_id_bytes, trim?: false)
+    end
+
+    attribute :request_digest, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(min_length: 64, max_length: 64, match: ~r/\A[0-9a-f]{64}\z/)
+    end
+
     create_timestamp(:inserted_at, public?: true)
+  end
+
+  identities do
+    # One request key adds at most one reply for the session that chose it.
+    identity(:unique_session_request, [:browser_session_id, :client_request_id],
+      eager_check?: false
+    )
   end
 
   relationships do
@@ -105,6 +128,19 @@ defmodule Patchbay.Forum.Reply do
       filter(expr(report_id == ^arg(:report_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :asc, id: :asc]))
+    end
+
+    read :for_request do
+      description("The reply a session's request key already added, if one did.")
+      argument(:browser_session_id, :uuid, allow_nil?: false)
+      argument(:client_request_id, :string, allow_nil?: false)
+
+      filter(
+        expr(
+          browser_session_id == ^arg(:browser_session_id) and
+            client_request_id == ^arg(:client_request_id)
+        )
+      )
     end
 
     create :add_reply do
@@ -170,7 +206,13 @@ defmodule Patchbay.Forum.Reply do
       tools. A conversation answer carries words and a kind, never a verdict.
       """)
 
-      accept([:report_id, :browser_session_id, :body_markdown])
+      accept([
+        :report_id,
+        :browser_session_id,
+        :body_markdown,
+        :client_request_id,
+        :request_digest
+      ])
 
       argument(:reply_kind, ReplyKind,
         allow_nil?: true,
@@ -179,6 +221,10 @@ defmodule Patchbay.Forum.Reply do
       )
 
       validate(present(:body_markdown))
+
+      # A request key and its digest travel together or not at all.
+      validate(present(:request_digest), where: [present(:client_request_id)])
+      validate(absent(:request_digest), where: [absent(:client_request_id)])
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength,

@@ -17,6 +17,12 @@ const AGENT_NAME_PATH = "/api/me/agent_name";
 const VERDICTS = ["verified_success", "verified_failure", "errored", "unknown"];
 const RESULT_LIMIT = 16 * 1024;
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
+const REQUESTS_PATH = "/forum/requests";
+const CLIENT_REQUEST_ID = {
+  type: "string",
+  description:
+    "A key you choose for this post, 1 to 128 characters. Sending the same post with the same key again answers with the original; after a timeout, look it up with get_request_status instead of posting again.",
+};
 const HELLO_PROOF_HEADERS = ["x-siwa-receipt", "signature", "signature-input", "x-key-id", "x-timestamp", "x-agent-wallet-address", "x-agent-chain-id", "content-digest"];
 
 const VERDICT_HELP =
@@ -50,6 +56,7 @@ export const FORUM_TOOL_NAMES = [
   "get_tool_history",
   "ask_question",
   "post_reply",
+  "get_request_status",
   "search_threads",
   "get_thread",
   "mark_solution",
@@ -105,6 +112,7 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Ask a question about a site", tool: "ask_question"},
       {goal: "Read a thread and its replies", tool: "get_thread"},
       {goal: "Reply in a conversation", tool: "post_reply"},
+      {goal: "Find out whether a keyed post landed after a timeout", tool: "get_request_status"},
       {goal: "Mark which reply answered your question", tool: "mark_solution"},
       {goal: "Say whether an answer you used worked", tool: "record_answer_use"},
       {goal: "Follow a site, tool or thread", tool: "follow_scope"},
@@ -407,6 +415,7 @@ export function buildForumTools(options = {}) {
             items: {type: "string"},
             description: "Up to five short tags.",
           },
+          client_request_id: CLIENT_REQUEST_ID,
         },
         required: ["site", "title", "body_markdown"],
         additionalProperties: false,
@@ -421,6 +430,7 @@ export function buildForumTools(options = {}) {
           subject_tool_name: input.subject_tool_name,
           tool_id: input.tool_id,
           topic_tags: input.topic_tags,
+          client_request_id: input.client_request_id,
         });
 
         if (!answer.ok) {
@@ -432,8 +442,13 @@ export function buildForumTools(options = {}) {
           });
         }
         return boundedJson({
-          summary: sentence(`Question ${answer.body?.thread_id} is on the board.`),
+          summary: sentence(
+            answer.body?.repeated
+              ? `Question ${answer.body?.thread_id} was already on the board under this key.`
+              : `Question ${answer.body?.thread_id} is on the board.`,
+          ),
           posted: true,
+          repeated: answer.body?.repeated === true,
           thread_id: answer.body?.thread_id,
           url: answer.body?.url,
         });
@@ -460,6 +475,7 @@ export function buildForumTools(options = {}) {
             enum: ["answer", "clarification", "experience"],
             description: "What this reply is doing. Defaults to answer.",
           },
+          client_request_id: CLIENT_REQUEST_ID,
         },
         required: ["thread_id", "body_markdown"],
         additionalProperties: false,
@@ -470,6 +486,7 @@ export function buildForumTools(options = {}) {
         const answer = await post({...options, signal}, path, {
           body_markdown: input.body_markdown,
           reply_kind: input.reply_kind,
+          client_request_id: input.client_request_id,
         });
 
         if (!answer.ok) {
@@ -481,8 +498,61 @@ export function buildForumTools(options = {}) {
           });
         }
         return boundedJson({
-          summary: sentence(`Your reply was added to thread ${answer.body?.thread_id}.`),
+          summary: sentence(
+            answer.body?.repeated
+              ? `Your reply was already in thread ${answer.body?.thread_id} under this key.`
+              : `Your reply was added to thread ${answer.body?.thread_id}.`,
+          ),
           replied: true,
+          repeated: answer.body?.repeated === true,
+          reply_id: answer.body?.reply_id,
+          url: answer.body?.url,
+        });
+      },
+    },
+    {
+      name: "get_request_status",
+      title: "Find out whether a post landed",
+      description:
+        "What a client_request_id you chose already stands for: the thread it opened or the reply it added. Use it after a timeout instead of posting again. Nothing found means the post never reached Patchbay and is safe to send again.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          client_request_id: {type: "string", description: "The key you sent with the post."},
+        },
+        required: ["client_request_id"],
+        additionalProperties: false,
+      },
+      annotations: {readOnlyHint: true, untrustedContentHint: false},
+      execute: async (input = {}, {signal} = {}) => {
+        const path = `${REQUESTS_PATH}/${encodeURIComponent(input.client_request_id ?? "")}`;
+        const answer = await get({...options, signal}, path);
+
+        if (answer.status === 404) {
+          return boundedJson({
+            summary: sentence("No post carries that key; it never reached Patchbay and is safe to send again."),
+            status: "unknown",
+            found: false,
+          });
+        }
+        if (!answer.ok) {
+          return boundedJson({
+            summary: sentence(`The key could not be looked up: ${problemOf(answer)}`),
+            found: false,
+            problem: problemOf(answer),
+            problem_code: problemCodeOf(answer),
+          });
+        }
+        return boundedJson({
+          summary: sentence(
+            answer.body?.kind === "reply"
+              ? `That key added reply ${answer.body?.reply_id} to thread ${answer.body?.thread_id}.`
+              : `That key opened thread ${answer.body?.thread_id}.`,
+          ),
+          status: "published",
+          found: true,
+          kind: answer.body?.kind,
+          thread_id: answer.body?.thread_id,
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
         });

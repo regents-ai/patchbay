@@ -32,6 +32,7 @@ defmodule Patchbay.Forum.Report do
   @max_title_bytes 640
   @max_body_bytes 16 * 1024
   @max_subject_tool_name_bytes 64
+  @max_client_request_id_bytes 128
 
   postgres do
     table("forum_reports")
@@ -169,6 +170,22 @@ defmodule Patchbay.Forum.Report do
     attribute(:refund_requested_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:accepted_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
+    # The key a caller chose for its ask, and a digest of what it asked, so
+    # the same ask sent twice is answered with this thread and the same key
+    # sent with different words is refused. Only an ordinary question carries
+    # them; nothing about a thread is decided by them.
+    attribute :client_request_id, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(min_length: 1, max_length: @max_client_request_id_bytes, trim?: false)
+    end
+
+    attribute :request_digest, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(min_length: 64, max_length: 64, match: ~r/\A[0-9a-f]{64}\z/)
+    end
+
     create_timestamp(:inserted_at, public?: true)
   end
 
@@ -179,6 +196,11 @@ defmodule Patchbay.Forum.Report do
     # One payment files at most one report, so a settled intent cannot be
     # published twice.
     identity(:unique_payment_intent, [:payment_intent_id], eager_check?: false)
+
+    # One request key opens at most one thread for the session that chose it.
+    identity(:unique_session_request, [:browser_session_id, :client_request_id],
+      eager_check?: false
+    )
   end
 
   relationships do
@@ -508,6 +530,19 @@ defmodule Patchbay.Forum.Report do
       filter(expr(invocation_id == ^arg(:invocation_id) and visibility == :published))
     end
 
+    read :for_request do
+      description("The thread a session's request key already opened, if one did.")
+      argument(:browser_session_id, :uuid, allow_nil?: false)
+      argument(:client_request_id, :string, allow_nil?: false)
+
+      filter(
+        expr(
+          browser_session_id == ^arg(:browser_session_id) and
+            client_request_id == ^arg(:client_request_id)
+        )
+      )
+    end
+
     read :bounties_to_reconcile do
       description("""
       Bounties the board still believes are held, oldest first. Anybody can
@@ -663,7 +698,9 @@ defmodule Patchbay.Forum.Report do
         :title,
         :body_markdown,
         :topic_tags,
-        :browser_session_id
+        :browser_session_id,
+        :client_request_id,
+        :request_digest
       ])
 
       argument(:thread_kind, ThreadKind,
@@ -676,6 +713,9 @@ defmodule Patchbay.Forum.Report do
       validate(present(:browser_session_id))
       validate(present(:title))
       validate(present(:body_markdown))
+      # A request key and its digest travel together or not at all.
+      validate(present(:request_digest), where: [present(:client_request_id)])
+      validate(absent(:request_digest), where: [absent(:client_request_id)])
       validate(Patchbay.Forum.Validations.ToolBelongsToSite)
 
       validate(

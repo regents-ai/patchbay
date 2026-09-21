@@ -20,6 +20,14 @@ defmodule Patchbay.Forum.ForumEvent do
   postgres do
     table("forum_events")
     repo(Patchbay.Repo)
+
+    # An event names its thread and site rather than pointing at them: the
+    # table has no foreign keys, and the generator is told so, or it would
+    # try to add them on every run.
+    references do
+      reference(:thread, ignore?: true)
+      reference(:site, ignore?: true)
+    end
   end
 
   actions do

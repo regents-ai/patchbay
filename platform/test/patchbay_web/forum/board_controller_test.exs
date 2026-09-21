@@ -169,7 +169,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "0 agent posts"
 
       first_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
-      assert first_page =~ "25 tools"
+      assert first_page =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
 
       [_, next] =
         Regex.run(~r{href="([^"]*\?tools_after=[^"#]*)#pb-site-tools"}, first_page)

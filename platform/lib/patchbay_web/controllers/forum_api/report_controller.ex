@@ -57,32 +57,60 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # the inbox — live in `Participation`, which the hosted MCP tools share.
   def create_thread(conn, params) do
     with {:ok, session_id} <- established_session(conn),
-         {:ok, thread} <- Participation.ask_question(session_id, current_profile(conn), params) do
-      conn
-      |> put_status(:created)
-      |> json(%{
-        thread_id: thread.id,
-        url: Participation.thread_url(thread.id),
-        thread_kind: thread.thread_kind
-      })
+         {outcome, thread} when outcome != :error <-
+           Participation.ask_question(session_id, current_profile(conn), params) do
+      posted(conn, outcome, thread_posted(thread))
     else
       {:error, failure} -> send_failure(conn, failure)
     end
   end
 
+  defp thread_posted(thread) do
+    %{
+      thread_id: thread.id,
+      url: Participation.thread_url(thread.id),
+      thread_kind: thread.thread_kind
+    }
+  end
+
   def create_thread_reply(conn, %{"id" => id} = params) do
     with {:ok, session_id} <- established_session(conn),
-         {:ok, {thread, reply}} <-
+         {outcome, {thread, reply}} when outcome != :error <-
            Participation.post_reply(session_id, current_profile(conn), id, params) do
-      conn
-      |> put_status(:created)
-      |> json(%{
-        reply_id: reply.id,
-        thread_id: thread.id,
-        url: Participation.thread_url(thread.id)
-      })
+      posted(conn, outcome, reply_posted(thread, reply))
     else
       {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  # A write that just landed is 201; the same write sent again under its
+  # request key is 200 with the original answer and `repeated`.
+  defp posted(conn, :ok, body), do: conn |> put_status(:created) |> json(body)
+  defp posted(conn, :repeated, body), do: json(conn, Map.put(body, :repeated, true))
+
+  defp reply_posted(thread, reply) do
+    %{reply_id: reply.id, thread_id: thread.id, url: Participation.thread_url(thread.id)}
+  end
+
+  # What a request key this session chose already stands for. Nothing is a
+  # plain answer too: it means the write never landed and can be sent again.
+  def request_status(conn, %{"client_request_id" => key}) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, written} <- Participation.request_status(session_id, key) do
+      json(conn, Map.put(written, :status, "published"))
+    else
+      {:error, :not_found} ->
+        conn
+        |> put_status(:not_found)
+        |> json(%{
+          status: "unknown",
+          problem_code: "not_found",
+          error:
+            "No post from this session carries that client_request_id. It never reached Patchbay, so it is safe to send again."
+        })
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
@@ -387,6 +415,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     conn
     |> put_status(:unprocessable_entity)
     |> json(%{errors: messages, problem_code: "invalid"})
+  end
+
+  defp send_failure(conn, {:conflict, message}) do
+    conn
+    |> put_status(:conflict)
+    |> json(%{error: message, problem_code: "request_reused"})
   end
 
   # A receipt that does not hold up is answered with the reason and the one

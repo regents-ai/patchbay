@@ -13,6 +13,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
+  alias Patchbay.Patchbay.{CanonicalJSON, Digest}
   alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -22,18 +23,37 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   # origin, the same way a report names one; an unknown origin opens its board.
   @thread_fields ~w(site title body_markdown thread_kind subject_tool_name tool_id topic_tags)
 
+  # A caller may name its own write with a key of its choosing, so a write it
+  # never heard back from can be sent again or looked up instead of posted
+  # twice. The key is scoped to the session that chose it.
+  @max_request_key_bytes 128
+
   @doc """
   Opens a thread under the session's hourly share of reports. The site's board
   is opened inside the same admitted transaction as the thread, so a question
   refused for its share leaves no board behind.
+
+  With a `client_request_id`, a thread this session already opened under the
+  same key and the same words is answered again as `{:repeated, thread}`;
+  the same key with different words is refused.
   """
   def ask_question(session_id, actor, params) do
-    with {:ok, draft} <- thread_draft(params) do
-      SessionBudget.admit_report(session_id, fn -> open_thread(session_id, actor, draft) end)
+    with {:ok, draft} <- thread_draft(params),
+         {:ok, key} <- request_key(params) do
+      SessionBudget.admit_report(session_id, fn ->
+        open_or_repeat(session_id, actor, draft, key)
+      end)
     end
   end
 
-  defp open_thread(session_id, actor, draft) do
+  defp open_or_repeat(session_id, actor, draft, key) do
+    case repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
+      :new -> open_thread(session_id, actor, draft, key)
+      answer -> answer
+    end
+  end
+
+  defp open_thread(session_id, actor, draft, key) do
     with {:ok, site} <- thread_site(draft["site"]) do
       %{
         site_id: site.id,
@@ -45,11 +65,53 @@ defmodule PatchbayWeb.ForumAPI.Participation do
         browser_session_id: session_id,
         thread_kind: draft["thread_kind"]
       }
+      |> Map.merge(request_fields(key, draft))
       |> without_nils()
       |> Forum.ask_question(actor: actor)
       |> thread_refusal()
     end
   end
+
+  # The write a key already stands for, if any: the same words again is the
+  # original answer, different words under the same key is a refusal. The
+  # lookup runs inside the admitted transaction, under the session's lock,
+  # so two copies of one request sent at once cannot both write.
+  defp repeated(nil, _draft, _lookup), do: :new
+
+  defp repeated(_key, draft, lookup) do
+    digest = request_digest(draft)
+
+    case lookup.() do
+      {:ok, %{request_digest: ^digest} = written} ->
+        {:repeated, written}
+
+      {:ok, _other_words} ->
+        {:error,
+         {:conflict,
+          "client_request_id: this key already stands for a different post from this session. Choose a new key for a new post."}}
+
+      {:error, _not_found} ->
+        :new
+    end
+  end
+
+  defp request_fields(nil, _draft), do: %{}
+
+  defp request_fields(key, draft),
+    do: %{client_request_id: key, request_digest: request_digest(draft)}
+
+  defp request_digest(draft), do: draft |> CanonicalJSON.encode() |> Digest.sha256()
+
+  defp request_key(%{"client_request_id" => key}) when is_binary(key) do
+    if byte_size(key) in 1..@max_request_key_bytes,
+      do: {:ok, key},
+      else: {:error, {:invalid, ["client_request_id: 1 to #{@max_request_key_bytes} characters"]}}
+  end
+
+  defp request_key(%{"client_request_id" => _}),
+    do: {:error, {:invalid, ["client_request_id: must be text"]}}
+
+  defp request_key(_params), do: {:ok, nil}
 
   # A question's fields are refused under the names its caller sent, not the
   # names a report gives the same stored fields.
@@ -87,29 +149,85 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   session's hourly share, the writer's own name, and no verdict invented for it.
   """
   def post_reply(session_id, actor, thread_id, params) do
-    SessionBudget.admit_reply(session_id, fn ->
-      with {:ok, report} <- Reads.fetch_report(thread_id),
-           {:ok, reply} <- conversation_reply(report, session_id, actor, params) do
-        {:ok, {report, reply}}
-      end
-    end)
+    with {:ok, draft} <- reply_draft(thread_id, params),
+         {:ok, key} <- request_key(params) do
+      SessionBudget.admit_reply(session_id, fn ->
+        reply_or_repeat(session_id, actor, thread_id, draft, key)
+      end)
+    end
   end
 
-  defp conversation_reply(report, session_id, actor, params) do
+  defp reply_or_repeat(session_id, actor, thread_id, draft, key) do
+    with {:ok, report} <- Reads.fetch_report(thread_id) do
+      key
+      |> repeated(draft, fn -> Forum.get_reply_for_request(session_id, key) end)
+      |> reply_answer(report, session_id, actor, draft, key)
+    end
+  end
+
+  defp reply_answer(:new, report, session_id, actor, draft, key),
+    do: conversation_reply(report, session_id, actor, draft, key)
+
+  defp reply_answer({:repeated, reply}, report, _session_id, _actor, _draft, _key),
+    do: {:repeated, {report, reply}}
+
+  defp reply_answer(refused, _report, _session_id, _actor, _draft, _key), do: refused
+
+  defp conversation_reply(report, session_id, actor, draft, key) do
+    with {:ok, reply} <-
+           %{
+             report_id: report.id,
+             browser_session_id: session_id,
+             body_markdown: draft["body_markdown"],
+             reply_kind: draft["reply_kind"]
+           }
+           |> Map.merge(request_fields(key, draft))
+           |> without_nils()
+           |> Forum.post_reply(actor: actor) do
+      {:ok, {report, reply}}
+    end
+  end
+
+  # The reply's words and kind, with the thread they answer, so a request key
+  # digests the reply as a whole.
+  defp reply_draft(thread_id, params) do
     body = params["body_markdown"]
     kind = params["reply_kind"]
 
     if (is_binary(body) or is_nil(body)) and (is_binary(kind) or is_nil(kind)) do
-      %{
-        report_id: report.id,
-        browser_session_id: session_id,
-        body_markdown: body,
-        reply_kind: kind
-      }
-      |> without_nils()
-      |> Forum.post_reply(actor: actor)
+      {:ok, %{"thread_id" => thread_id, "body_markdown" => body, "reply_kind" => kind}}
     else
       {:error, {:invalid, ["body_markdown and reply_kind must be text"]}}
+    end
+  end
+
+  @doc """
+  What a request key this session chose already stands for: the thread it
+  opened or the reply it added. Nothing, when the request never reached the
+  board, which is when it is safe to send again.
+  """
+  def request_status(session_id, key) do
+    with {:error, _} <- thread_for_request(session_id, key),
+         {:error, _} <- reply_for_request(session_id, key) do
+      {:error, :not_found}
+    end
+  end
+
+  defp thread_for_request(session_id, key) do
+    with {:ok, thread} <- Forum.get_thread_for_request(session_id, key) do
+      {:ok, %{kind: :thread, thread_id: thread.id, url: thread_url(thread.id)}}
+    end
+  end
+
+  defp reply_for_request(session_id, key) do
+    with {:ok, reply} <- Forum.get_reply_for_request(session_id, key) do
+      {:ok,
+       %{
+         kind: :reply,
+         reply_id: reply.id,
+         thread_id: reply.report_id,
+         url: thread_url(reply.report_id)
+       }}
     end
   end
 

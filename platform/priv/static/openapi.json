@@ -555,7 +555,7 @@
       "post": {
         "operationId": "askQuestion",
         "summary": "Ask a question",
-        "description": "Opens a question, recipe, request or discussion on a site's board. Needs the page session: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required.",
+        "description": "Opens a question, recipe, request or discussion on a site's board. Needs the page session: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required. Send a `client_request_id` of your own to make the post safe to repeat.",
         "tags": [
           "Forum"
         ],
@@ -577,6 +577,40 @@
                     },
                     "thread_kind": {
                       "$ref": "#/components/schemas/ThreadKind"
+                    }
+                  },
+                  "required": [
+                    "thread_id",
+                    "url",
+                    "thread_kind"
+                  ]
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Already posted under this client_request_id; the original answer, with `repeated: true`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thread_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "thread_kind": {
+                      "$ref": "#/components/schemas/ThreadKind"
+                    },
+                    "repeated": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
                     }
                   },
                   "required": [
@@ -625,6 +659,20 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "The key already stands for a different post from this session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "client_request_id: this key already stands for a different post from this session. Choose a new key for a new post.",
+                  "problem_code": "request_reused"
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -648,7 +696,7 @@
       "post": {
         "operationId": "replyToThread",
         "summary": "Reply to a thread",
-        "description": "Adds an answer or comment. Needs the page session: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required.",
+        "description": "Adds an answer or comment. Needs the page session: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required. Send a `client_request_id` of your own to make the post safe to repeat.",
         "tags": [
           "Forum"
         ],
@@ -671,6 +719,41 @@
                     "url": {
                       "type": "string",
                       "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "reply_id",
+                    "thread_id",
+                    "url"
+                  ]
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Already posted under this client_request_id; the original answer, with `repeated: true`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reply_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "thread_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "repeated": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
                     }
                   },
                   "required": [
@@ -730,6 +813,20 @@
                 "example": {
                   "error": "Too many requests from this session in the last hour.",
                   "problem_code": "rate_limited"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The key already stands for a different post from this session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "client_request_id: this key already stands for a different post from this session. Choose a new key for a new post.",
+                  "problem_code": "request_reused"
                 }
               }
             }
@@ -2724,6 +2821,68 @@
           }
         }
       }
+    },
+    "/forum/requests/{client_request_id}": {
+      "get": {
+        "operationId": "getRequestStatus",
+        "summary": "Find out whether a keyed post landed",
+        "description": "What a `client_request_id` this session chose already stands for: the thread it opened or the reply it added. Use it after a timeout instead of posting again. Needs the page session that sent the post: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "client_request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The post the key stands for.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No post from this session carries that key; it never reached Patchbay and is safe to send again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "status": "unknown",
+                  "error": "No post from this session carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
+                  "problem_code": "not_found"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No page session: load a page first and send its cookie and CSRF token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "No page session: load a page first and send its cookie and CSRF token.",
+                  "problem_code": "no_session"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3528,6 +3687,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "client_request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "A key you choose for this post. Sending the same post with the same key again answers 200 with the original and `repeated: true`; the same key with different content is refused 409. After a timeout, look the key up at /forum/requests/{client_request_id} instead of posting again."
           }
         },
         "required": [
@@ -3550,6 +3715,12 @@
               "clarification",
               "experience"
             ]
+          },
+          "client_request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "A key you choose for this post. Sending the same post with the same key again answers 200 with the original and `repeated: true`; the same key with different content is refused 409. After a timeout, look the key up at /forum/requests/{client_request_id} instead of posting again."
           }
         },
         "required": [
@@ -3720,6 +3891,43 @@
           "irreversible_after_settlement"
         ],
         "description": "A frozen payment and its outcome. Extra fields name the tip recipient or the report being funded."
+      },
+      "RequestStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "published"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "thread",
+              "reply"
+            ]
+          },
+          "thread_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reply_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Present when the key added a reply."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "status",
+          "kind",
+          "thread_id",
+          "url"
+        ]
       }
     },
     "securitySchemes": {

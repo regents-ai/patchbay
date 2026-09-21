@@ -142,6 +142,7 @@ defmodule PatchbayWeb.Router do
     get "/reports/:id", ReportController, :show
     post "/threads", ReportController, :create_thread
     post "/threads/:id/replies", ReportController, :create_thread_reply
+    get "/requests/:client_request_id", ReportController, :request_status
     post "/threads/:id/solution", ReportController, :mark_solution
     post "/replies/:id/uses", ReportController, :record_use
     post "/subscriptions", ReportController, :subscribe

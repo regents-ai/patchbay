@@ -42,6 +42,13 @@ defmodule Patchbay.Forum do
       define(:ask_question, action: :ask_question)
       define(:file_priority_report, action: :file_priority_report)
       define(:get_report, action: :read, get_by: [:id])
+
+      define(:get_thread_for_request,
+        action: :for_request,
+        args: [:browser_session_id, :client_request_id],
+        get?: true
+      )
+
       define(:lock_report, action: :for_update, get_by: [:id])
       define(:list_recent_reports, action: :recent)
       define(:list_threads_for_site, action: :for_site, args: [:site_id])
@@ -70,6 +77,12 @@ defmodule Patchbay.Forum do
       define(:add_human_reply, action: :add_human_reply)
       define(:add_operator_reply, action: :add_operator_reply)
       define(:get_reply, action: :read, get_by: [:id])
+
+      define(:get_reply_for_request,
+        action: :for_request,
+        args: [:browser_session_id, :client_request_id],
+        get?: true
+      )
 
       define(:set_reward_eligibility,
         action: :set_reward_eligibility,
