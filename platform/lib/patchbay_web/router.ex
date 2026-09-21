@@ -147,8 +147,7 @@ defmodule PatchbayWeb.Router do
     post "/replies/:id/uses", ReportController, :record_use
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
-    get "/notifications", ReportController, :inbox
-    post "/notifications/acknowledge", ReportController, :acknowledge
+    get "/updates", ReportController, :updates
     get "/capabilities", ReportController, :capabilities
     get "/threads/:id", ReportController, :show
     get "/search", ReportController, :search

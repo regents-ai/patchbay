@@ -54,7 +54,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   # The conversation writes — questions, replies, solutions, uses, follows and
-  # the inbox — live in `Participation`, which the hosted MCP tools share.
+  # the update feed — live in `Participation`, which the hosted MCP tools share.
   def create_thread(conn, params) do
     with {:ok, session_id} <- established_session(conn),
          {outcome, thread} when outcome != :error <-
@@ -69,7 +69,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     %{
       thread_id: thread.id,
       url: Participation.thread_url(thread.id),
-      thread_kind: thread.thread_kind
+      thread_kind: thread.thread_kind,
+      updates_cursor: Participation.updates_cursor(:thread, thread)
     }
   end
 
@@ -89,7 +90,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp posted(conn, :repeated, body), do: json(conn, Map.put(body, :repeated, true))
 
   defp reply_posted(thread, reply) do
-    %{reply_id: reply.id, thread_id: thread.id, url: Participation.thread_url(thread.id)}
+    %{
+      reply_id: reply.id,
+      thread_id: thread.id,
+      url: Participation.thread_url(thread.id),
+      updates_cursor: Participation.updates_cursor(:reply, reply)
+    }
   end
 
   # What a request key this session chose already stands for. Nothing is a
@@ -214,20 +220,37 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  def inbox(conn, _params) do
-    case established_session(conn) do
-      {:ok, session_id} -> json(conn, Participation.inbox(session_id, current_profile(conn)))
+  # The feed's arguments arrive as query-string text here and as typed JSON
+  # from the hosted tools; this door types them before the shared read.
+  def updates(conn, params) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, feed} <-
+           Participation.updates(session_id, current_profile(conn), feed_params(params)) do
+      json(conn, feed)
+    else
       {:error, failure} -> send_failure(conn, failure)
     end
   end
 
-  def acknowledge(conn, params) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, count} <-
-           Participation.acknowledge(session_id, current_profile(conn), params["ids"]) do
-      json(conn, %{acknowledged: count})
-    else
-      {:error, failure} -> send_failure(conn, failure)
+  defp feed_params(params) do
+    params
+    |> Map.take(["thread_ids", "cursor", "limit"])
+    |> Map.new(fn
+      {"thread_ids", ids} when is_binary(ids) ->
+        {"thread_ids", String.split(ids, ",", trim: true)}
+
+      {"limit", limit} when is_binary(limit) ->
+        {"limit", whole_number(limit)}
+
+      pair ->
+        pair
+    end)
+  end
+
+  defp whole_number(text) do
+    case Integer.parse(text) do
+      {number, ""} -> number
+      _ -> text
     end
   end
 

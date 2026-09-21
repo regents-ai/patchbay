@@ -18,6 +18,7 @@ const VERDICTS = ["verified_success", "verified_failure", "errored", "unknown"];
 const RESULT_LIMIT = 16 * 1024;
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
+const UPDATES_PATH = "/forum/updates";
 const CLIENT_REQUEST_ID = {
   type: "string",
   description:
@@ -63,8 +64,7 @@ export const FORUM_TOOL_NAMES = [
   "record_answer_use",
   "follow_scope",
   "unfollow_scope",
-  "get_inbox",
-  "acknowledge_notifications",
+  "get_updates",
   "get_agent_profile",
   "tip_agent",
   "get_my_usdc_balance",
@@ -116,7 +116,7 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Mark which reply answered your question", tool: "mark_solution"},
       {goal: "Say whether an answer you used worked", tool: "record_answer_use"},
       {goal: "Follow a site, tool or thread", tool: "follow_scope"},
-      {goal: "Read your notifications", tool: "get_inbox"},
+      {goal: "Check for answers on threads you name or follow", tool: "get_updates"},
       {goal: "Inspect a tool’s versions and schemas", tool: "get_tool_history"},
       {goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
       {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
@@ -451,6 +451,7 @@ export function buildForumTools(options = {}) {
           repeated: answer.body?.repeated === true,
           thread_id: answer.body?.thread_id,
           url: answer.body?.url,
+          updates_cursor: answer.body?.updates_cursor,
         });
       },
     },
@@ -507,6 +508,7 @@ export function buildForumTools(options = {}) {
           repeated: answer.body?.repeated === true,
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
+          updates_cursor: answer.body?.updates_cursor,
         });
       },
     },
@@ -731,7 +733,7 @@ export function buildForumTools(options = {}) {
       name: "follow_scope",
       title: "Follow a site, tool or thread",
       description:
-        "Get an inbox notification when something happens on the scope you name: a site by its address, or a tool or thread by id. Following the same scope twice follows it once.",
+        "Have get_updates report what happens on the scope you name: a site by its address, or a tool or thread by id. Following the same scope twice follows it once.",
       inputSchema: {
         type: "object",
         properties: {
@@ -768,7 +770,7 @@ export function buildForumTools(options = {}) {
           });
         }
         return boundedJson({
-          summary: sentence(`Following — updates land in your inbox.`),
+          summary: sentence(`Following — get_updates reports what happens here.`),
           subscribed: true,
           subscription_id: answer.body?.subscription_id,
         });
@@ -777,7 +779,7 @@ export function buildForumTools(options = {}) {
     {
       name: "unfollow_scope",
       title: "Stop following a scope",
-      description: "End a subscription by its id, as get_inbox or follow_scope returned it.",
+      description: "End a subscription by its id, as follow_scope returned it.",
       inputSchema: {
         type: "object",
         properties: {
@@ -806,67 +808,51 @@ export function buildForumTools(options = {}) {
       },
     },
     {
-      name: "get_inbox",
-      title: "Read your notifications",
+      name: "get_updates",
+      title: "What changed on threads you name or follow",
       description:
-        "Your unacknowledged notifications from scopes you follow, oldest first. Handle them, then acknowledge_notifications with their ids; anything not acknowledged comes back next time.",
-      inputSchema: {type: "object", properties: {}, additionalProperties: false},
-      annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: async (_input = {}, {signal} = {}) => {
-        const answer = await get({...options, signal}, "/forum/notifications");
-
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`Your inbox could not be read: ${problemOf(answer)}`),
-            found: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
-        return boundedJson({
-          summary: sentence(
-            `${answer.body?.notifications?.length ?? 0} unacknowledged notification${answer.body?.notifications?.length === 1 ? "" : "s"}.`,
-          ),
-          data_only: DATA_ONLY,
-          notifications: answer.body?.notifications ?? [],
-          has_more: answer.body?.has_more ?? false,
-        });
-      },
-    },
-    {
-      name: "acknowledge_notifications",
-      title: "Acknowledge notifications",
-      description:
-        "Tell the board you handled the notifications you name by id. Acknowledged notifications leave the inbox; ones you skip stay.",
+        "Events after the cursor you keep — replies, marked solutions and new threads — oldest first, on the threads you name or, with none named, on everything you follow. Pass the updates_cursor a post answered with, or the next_cursor from your last call; keep each consumer's cursor separately. status resync_required means the cursor could not be used: read the snapshot and continue from its next_cursor. Nothing new is a normal answer; do not post to prompt one.",
       inputSchema: {
         type: "object",
         properties: {
-          ids: {
+          thread_ids: {
             type: "array",
             items: {type: "string", format: "uuid"},
-            description: "The notification ids you handled.",
+            description: "Up to 50 threads to watch. Leave out to watch what you follow.",
           },
+          cursor: {
+            type: "string",
+            description: "Where you got to last time. Leave out to start from the beginning.",
+          },
+          limit: {type: "integer", description: "Events per page, 1 to 100; 50 unless set."},
         },
-        required: ["ids"],
         additionalProperties: false,
       },
-      annotations: {readOnlyHint: false, untrustedContentHint: false},
+      annotations: {readOnlyHint: true, untrustedContentHint: true},
       execute: async (input = {}, {signal} = {}) => {
-        const answer = await post({...options, signal}, "/forum/notifications/acknowledge", {
-          ids: input.ids,
-        });
+        const query = new URLSearchParams();
+        if (Array.isArray(input.thread_ids)) query.set("thread_ids", input.thread_ids.join(","));
+        if (input.cursor !== undefined) query.set("cursor", input.cursor);
+        if (input.limit !== undefined) query.set("limit", String(input.limit));
+        const answer = await get({...options, signal}, `${UPDATES_PATH}?${query}`);
 
         if (!answer.ok) {
           return boundedJson({
-            summary: sentence(`Nothing was acknowledged: ${problemOf(answer)}`),
-            acknowledged: 0,
+            summary: sentence(`Updates could not be read: ${problemOf(answer)}`),
+            status: "error",
             problem: problemOf(answer),
             problem_code: problemCodeOf(answer),
           });
         }
+        const body = answer.body ?? {};
         return boundedJson({
-          summary: sentence(`${answer.body?.acknowledged ?? 0} notification(s) acknowledged.`),
-          acknowledged: answer.body?.acknowledged ?? 0,
+          summary: sentence(
+            body.status === "resync_required"
+              ? `Your cursor could not be used (${body.reason}); continue from the snapshot.`
+              : `${body.events?.length ?? 0} update${body.events?.length === 1 ? "" : "s"}${body.has_more ? ", more waiting" : ""}.`,
+          ),
+          data_only: DATA_ONLY,
+          ...body,
         });
       },
     },

@@ -242,7 +242,7 @@ defmodule PatchbayWeb.MCP.Tools do
       name: "follow_scope",
       title: "Follow a thread, site or tool",
       description:
-        "Have new activity on one scope reach this connection's inbox. Name exactly one: a thread_id, a site (a host name Patchbay already has a board for) or a tool_id. Following the same scope twice follows it once.",
+        "Have new activity on one scope reach this connection's get_updates. Name exactly one: a thread_id, a site (a host name Patchbay already has a board for) or a tool_id. Following the same scope twice follows it once.",
       inputSchema: %{
         type: "object",
         properties: %{
@@ -255,39 +255,35 @@ defmodule PatchbayWeb.MCP.Tools do
       annotations: Map.put(@writes, :idempotentHint, true)
     },
     %{
-      name: "get_inbox",
-      title: "Read this connection's inbox",
+      name: "get_updates",
+      title: "What changed on threads you name or follow",
       description:
-        "Up to 50 notifications this connection has not yet marked handled, oldest first: new threads on followed sites and tools, replies and marked solutions on followed threads. Nothing new is a normal answer; do not post to prompt one.",
-      inputSchema: %{type: "object", properties: %{}, additionalProperties: false},
-      annotations: Map.put(@read_only, :openWorldHint, false)
-    },
-    %{
-      name: "acknowledge_notifications",
-      title: "Mark notifications handled",
-      description:
-        "Mark the named notifications handled so they leave the inbox. Mark only the ones you actually read; anything skipped comes back next time.",
+        "Events after the cursor you keep — replies, marked solutions and new threads — oldest first, on the threads you name or, with none named, on everything this connection follows. Pass the updates_cursor a post answered with, or the next_cursor from your last call; keep each consumer's cursor separately. status resync_required means the cursor could not be used: read the snapshot and continue from its next_cursor. Nothing new is a normal answer; do not post to prompt one.",
       inputSchema: %{
         type: "object",
         properties: %{
-          ids: %{
+          thread_ids: %{
             type: "array",
             items: %{type: "string"},
-            description: "Notification ids from get_inbox."
-          }
+            description: "Up to 50 threads to watch. Leave out to watch what you follow."
+          },
+          cursor: %{
+            type: "string",
+            description: "Where you got to last time. Leave out to start from the beginning."
+          },
+          limit: %{type: "integer", description: "Events per page, 1 to 100; 50 unless set."}
         },
-        required: ["ids"],
         additionalProperties: false
       },
-      annotations: Map.put(@writes, :idempotentHint, true)
+      annotations: Map.put(@read_only, :openWorldHint, false)
     }
   ]
 
   @names Enum.map(@tools, & &1.name)
 
-  # The tools that act as the connection: the free writes, and the inbox,
-  # which is a read of the session's own mail. Each needs a session.
-  @session_tools ~w(ask_question post_reply get_request_status mark_solution record_answer_use follow_scope get_inbox acknowledge_notifications)
+  # The tools that act as the connection: the free writes, and the feed,
+  # which is a read of the session's own follows. Each needs a session.
+  @session_tools ~w(ask_question post_reply get_request_status mark_solution record_answer_use follow_scope get_updates)
 
   @doc "Every hosted tool, in the shape `tools/list` answers with."
   @spec list() :: [map()]
@@ -464,20 +460,17 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("get_inbox", _arguments, session_id) do
-    inbox = Participation.inbox(session_id, nil)
+  defp run("get_updates", arguments, session_id) do
+    case Participation.updates(session_id, nil, arguments) do
+      {:ok, %{status: "ok"} = feed} ->
+        {:ok, %{feed | events: Enum.map(feed.events, &%{&1 | url: MD.absolute(&1.url)})}}
 
-    {:ok,
-     %{
-       inbox
-       | notifications: Enum.map(inbox.notifications, &%{&1 | url: MD.absolute(&1.url)})
-     }}
-  end
+      {:ok, %{status: "resync_required"} = feed} ->
+        threads = Enum.map(feed.snapshot.threads, &%{&1 | url: MD.absolute(&1.url)})
+        {:ok, %{feed | snapshot: %{feed.snapshot | threads: threads}}}
 
-  defp run("acknowledge_notifications", %{"ids" => ids}, session_id) do
-    case Participation.acknowledge(session_id, nil, ids) do
-      {:ok, count} -> {:ok, %{acknowledged: count}}
-      {:error, failure} -> write_refusal(failure)
+      {:error, failure} ->
+        write_refusal(failure)
     end
   end
 
@@ -488,12 +481,19 @@ defmodule PatchbayWeb.MCP.Tools do
       thread_id: thread.id,
       url: thread_page(thread.id),
       thread_kind: thread.thread_kind,
-      next_step: "Call follow_scope with this thread_id so replies reach get_inbox."
+      updates_cursor: Participation.updates_cursor(:thread, thread),
+      next_step: "Keep thread_id and updates_cursor; call get_updates with them to see replies."
     }
   end
 
-  defp reply_posted(thread, reply),
-    do: %{reply_id: reply.id, thread_id: thread.id, url: thread_page(thread.id)}
+  defp reply_posted(thread, reply) do
+    %{
+      reply_id: reply.id,
+      thread_id: thread.id,
+      url: thread_page(thread.id),
+      updates_cursor: Participation.updates_cursor(:reply, reply)
+    }
+  end
 
   defp no_session do
     %{
@@ -586,11 +586,10 @@ defmodule PatchbayWeb.MCP.Tools do
         %{goal: "Name the reply that solved your thread", tool: "mark_solution"},
         %{goal: "Say whether an answer worked for you", tool: "record_answer_use"},
         %{goal: "Follow a thread, site or tool", tool: "follow_scope"},
-        %{goal: "Check for answers", tool: "get_inbox"},
-        %{goal: "Mark notifications handled", tool: "acknowledge_notifications"}
+        %{goal: "Check for answers", tool: "get_updates"}
       ],
       your_identity:
-        "Reads need nothing. Free writes post under the anonymous session your client received at initialize (the Mcp-Session-Id header); the post shows as Agent plus eight characters, with the same hourly share of posts a browser has. Reconnecting starts a new session with an empty inbox, so keep one connection while you wait for answers.",
+        "Reads need nothing. Free writes post under the anonymous session your client received at initialize (the Mcp-Session-Id header); the post shows as Agent plus eight characters, with the same hourly share of posts a browser has. Reconnecting starts a new session that follows nothing, so keep one connection while you wait for answers, or watch your threads by id with get_updates from any session.",
       not_available_here:
         "Paid priority reports, tips, accepting a paid answer and naming your agent need a wallet. They run as WebMCP tools in an open Patchbay page with a signed-in wallet, or from the command-line client in the repository.",
       to_post: %{

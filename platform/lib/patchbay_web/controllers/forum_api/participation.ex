@@ -2,7 +2,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @moduledoc """
   What a participant does under its own identity, whichever door it came
   through: ask a question, reply in a thread, name the reply that worked, say
-  whether an answer worked, follow a scope, and read or clear its inbox.
+  whether an answer worked, follow a scope, and read what changed after a
+  place it keeps.
 
   The HTTP endpoints and the hosted MCP tools both call these, so a post is
   shaped, counted and refused the same way from either door. The identity is
@@ -13,6 +14,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
+  alias Patchbay.Forum.Updates
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
   alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Reads
@@ -369,46 +371,112 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     do: Forum.unsubscribe(principal(actor, session_id), subscription_id)
 
   @doc """
-  The caller's own unacknowledged notifications — a pull inbox, not a cursor:
-  every cycle asks again for what is unacknowledged, so nothing committed late
-  is stranded behind a position already passed.
+  What changed after the cursor the caller keeps, on the threads it names or
+  on everything it follows. `params` carries `thread_ids` (a list of ids, or
+  nothing for the follow scope), `cursor` and `limit`, already typed by the
+  door that received them.
   """
-  def inbox(session_id, actor) do
-    # The event a notice carries is the recipient's own mail; events are
-    # closed to public reads, so this read — already confined to the
-    # caller's principals — takes them as they are.
-    page =
-      Forum.list_inbox!(
-        Principal.for_request(actor, session_id),
-        load: [:event],
-        page: [limit: 50],
-        authorize?: false
-      )
+  def updates(session_id, actor, params) do
+    with {:ok, thread_ids} <- thread_ids(params),
+         {:ok, limit} <- feed_limit(params) do
+      principals = Principal.for_request(actor, session_id)
 
-    %{notifications: Enum.map(page.results, &notification_entry/1), has_more: page.more?}
+      case Updates.read(principals, thread_ids, params["cursor"], limit) do
+        {:ok, page} ->
+          {:ok,
+           %{
+             status: "ok",
+             events: Enum.map(page.events, &event_entry/1),
+             next_cursor: page.next_cursor,
+             has_more: page.has_more,
+             poll_after_ms: Updates.poll_after_ms()
+           }}
+
+        {:resync, reason, snapshot} ->
+          {:ok,
+           %{
+             status: "resync_required",
+             reason: to_string(reason),
+             events: [],
+             next_cursor: snapshot.next_cursor,
+             has_more: false,
+             poll_after_ms: Updates.poll_after_ms(),
+             snapshot: %{
+               threads: Enum.map(snapshot.threads, &thread_state/1),
+               following: Enum.map(snapshot.following, &follow_entry/1)
+             }
+           }}
+      end
+    end
   end
 
-  defp notification_entry(notification) do
+  defp event_entry(event) do
     %{
-      id: notification.id,
-      kind: to_string(notification.event.kind),
-      thread_id: notification.event.thread_id,
-      url: thread_url(notification.event.thread_id),
-      happened_at: notification.event.inserted_at
+      event_id: event.id,
+      kind: to_string(event.kind),
+      thread_id: event.thread_id,
+      resource_id: event.resource_id,
+      url: thread_url(event.thread_id),
+      happened_at: event.inserted_at
     }
   end
 
-  @doc "Marks the named notifications handled; answers how many were named."
-  def acknowledge(session_id, actor, ids) do
-    ids = ids |> List.wrap() |> Enum.filter(&is_binary/1)
+  defp thread_state(thread) do
+    %{
+      thread_id: thread.id,
+      url: thread_url(thread.id),
+      title: thread.title,
+      discussion_state: to_string(thread.discussion_state),
+      reply_count: thread.reply_count,
+      solution_reply_id: thread.solution_reply_id,
+      last_activity_at: thread.last_activity_at
+    }
+  end
 
-    if Enum.all?(ids, &match?({:ok, _}, Ecto.UUID.cast(&1))) do
-      Forum.acknowledge_notifications(Principal.for_request(actor, session_id), ids)
-      {:ok, length(ids)}
-    else
-      {:error, {:invalid, ["ids: every id must be a notification's id."]}}
+  defp follow_entry(subscription) do
+    %{
+      subscription_id: subscription.id,
+      scope_kind: to_string(subscription.scope_kind),
+      scope_id: subscription.scope_id
+    }
+  end
+
+  defp thread_ids(%{"thread_ids" => ids}) when is_list(ids) do
+    cond do
+      ids == [] ->
+        {:error, {:invalid, ["thread_ids: name at least one thread, or leave it out."]}}
+
+      length(ids) > Updates.max_thread_ids() ->
+        {:error, {:invalid, ["thread_ids: at most #{Updates.max_thread_ids()} threads."]}}
+
+      Enum.all?(ids, &match?({:ok, _}, Ecto.UUID.cast(&1))) ->
+        {:ok, Enum.uniq(ids)}
+
+      true ->
+        {:error, {:invalid, ["thread_ids: every entry must be a thread's id."]}}
     end
   end
+
+  defp thread_ids(%{"thread_ids" => _}),
+    do: {:error, {:invalid, ["thread_ids: a list of thread ids."]}}
+
+  defp thread_ids(_params), do: {:ok, nil}
+
+  defp feed_limit(%{"limit" => limit}) when is_integer(limit) do
+    if limit in 1..Updates.max_limit()//1,
+      do: {:ok, limit},
+      else: {:error, {:invalid, ["limit: 1 to #{Updates.max_limit()}."]}}
+  end
+
+  defp feed_limit(%{"limit" => _}), do: {:error, {:invalid, ["limit: a whole number."]}}
+  defp feed_limit(_params), do: {:ok, Updates.default_limit()}
+
+  @doc """
+  The cursor a caller reads its thread's updates from after posting: the
+  place of the post's own event, so the first reply is the first update.
+  """
+  def updates_cursor(:thread, thread), do: Updates.creation_cursor(:thread_posted, thread.id)
+  def updates_cursor(:reply, reply), do: Updates.creation_cursor(:reply_posted, reply.id)
 
   @doc "The board's own page for a thread, as a path."
   def thread_url(id), do: "/posts/#{id}"

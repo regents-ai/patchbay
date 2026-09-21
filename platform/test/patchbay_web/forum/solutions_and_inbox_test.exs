@@ -2,7 +2,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   @moduledoc """
   Gate 2's conversation loop end to end: an answer named as the solution, the
   card it leaves behind, a participant's word on whether it worked, and the
-  subscriptions and inbox that bring people back.
+  subscriptions and update feed that bring people back.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -10,7 +10,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   require Ash.Query
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.NotificationFanout
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.SolutionCard
 
@@ -194,12 +193,15 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
-  describe "subscriptions and the pull inbox" do
-    test "a followed site notifies its followers, exactly once, until acknowledged", %{
-      conn: conn
-    } do
+  describe "subscriptions and the update feed" do
+    test "a followed site's followers see a reply after their cursor, and the answerer does not",
+         %{
+           conn: conn
+         } do
       follower = visitor(conn)
-      %{"thread_id" => thread_id} = ask(follower, "Is there a wishlist?") |> json_response(201)
+
+      %{"thread_id" => thread_id, "updates_cursor" => cursor} =
+        ask(follower, "Is there a wishlist?") |> json_response(201)
 
       subscribed =
         follower
@@ -209,39 +211,68 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       assert subscribed["subscribed"] == true
 
-      # Somebody else answers; the worker runs (a restart changes nothing —
-      # the event waited on the row).
-      %{"reply_id" => _} =
-        answer(visitor(build_conn()), thread_id, "Yes — /wishlist.") |> json_response(201)
+      # Nothing after the post's own event yet.
+      assert %{"status" => "ok", "events" => [], "next_cursor" => ^cursor} =
+               follower
+               |> recycle()
+               |> get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+               |> json_response(200)
 
-      NotificationFanout.process_events()
+      # Somebody else answers.
+      answerer = visitor(build_conn())
 
-      # A second pass is a retry, not a second notice.
-      NotificationFanout.process_events()
+      %{"reply_id" => reply_id} =
+        answer(answerer, thread_id, "Yes — /wishlist.") |> json_response(201)
 
-      inbox =
+      # The follow scope and the thread scope both carry it, from the start
+      # and from the creation cursor.
+      followed = follower |> recycle() |> get("/forum/updates") |> json_response(200)
+
+      assert [%{"kind" => "reply_posted", "thread_id" => ^thread_id, "resource_id" => ^reply_id}] =
+               followed["events"]
+
+      watched =
         follower
         |> recycle()
-        |> get("/forum/notifications")
+        |> get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
         |> json_response(200)
 
-      assert [%{"id" => notice_id, "kind" => "reply_posted", "thread_id" => ^thread_id}] =
-               inbox["notifications"]
+      assert [%{"kind" => "reply_posted", "resource_id" => ^reply_id}] = watched["events"]
 
-      # Acknowledged is gone; the same call again acknowledges nothing new.
-      follower
-      |> recycle()
-      |> post_json("/forum/notifications/acknowledge", %{"ids" => [notice_id]})
-      |> json_response(200)
+      # Reading moves nothing on the server: the same cursor answers the same.
+      assert watched ==
+               follower
+               |> recycle()
+               |> get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+               |> json_response(200)
 
-      assert %{"notifications" => []} =
-               follower |> recycle() |> get("/forum/notifications") |> json_response(200)
+      # Continuing from next_cursor yields nothing new.
+      assert %{"events" => []} =
+               follower
+               |> recycle()
+               |> get("/forum/updates", %{thread_ids: thread_id, cursor: watched["next_cursor"]})
+               |> json_response(200)
+
+      # A cursor issued for another scope asks for a resync, with the state.
+      resync =
+        follower
+        |> recycle()
+        |> get("/forum/updates", %{cursor: watched["next_cursor"]})
+        |> json_response(200)
+
+      assert %{"status" => "resync_required", "reason" => "scope_changed", "events" => []} =
+               resync
+
+      assert is_binary(resync["next_cursor"])
 
       # Nothing came to the answerer about their own reply.
-      assert %{"notifications" => other} =
-               build_conn() |> visitor() |> get("/forum/notifications") |> json_response(200)
+      assert %{"events" => other} =
+               answerer
+               |> recycle()
+               |> get("/forum/updates", %{thread_ids: thread_id})
+               |> json_response(200)
 
-      refute Enum.any?(other, &(&1["thread_id"] == thread_id and &1["kind"] == "reply_posted"))
+      refute Enum.any?(other, &(&1["resource_id"] == reply_id))
     end
 
     test "a redacted answer takes its card down with it", %{conn: conn} do
@@ -282,21 +313,17 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       |> post_json("/forum/subscriptions", %{"thread_id" => thread_id})
       |> json_response(201)
 
-      NotificationFanout.process_events()
-
       asker
       |> recycle()
       |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
-      NotificationFanout.process_events()
-
-      inbox = watcher |> recycle() |> get("/forum/notifications") |> json_response(200)
-      kinds = Enum.map(inbox["notifications"], & &1["kind"])
+      feed = watcher |> recycle() |> get("/forum/updates") |> json_response(200)
+      kinds = Enum.map(feed["events"], & &1["kind"])
       assert "solution_marked" in kinds
     end
 
-    test "unfollowing a scope ends its notices and only its owner's", %{conn: conn} do
+    test "unfollowing a scope ends its updates and only its owner's", %{conn: conn} do
       follower = visitor(conn)
       # A site can be followed once a question has opened its board.
       ask(follower, "Is there a wishlist?") |> json_response(201)

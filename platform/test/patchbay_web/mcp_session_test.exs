@@ -6,7 +6,6 @@ defmodule PatchbayWeb.MCPSessionTest do
 
   use PatchbayWeb.ConnCase, async: false
 
-  alias Patchbay.Forum.NotificationFanout
   alias Patchbay.Forum.Report
   alias PatchbayWeb.MCP.Session
 
@@ -24,7 +23,10 @@ defmodule PatchbayWeb.MCPSessionTest do
         })
 
       refute asked["isError"]
-      %{"thread_id" => thread_id, "url" => url} = asked["structuredContent"]
+
+      %{"thread_id" => thread_id, "url" => url, "updates_cursor" => cursor} =
+        asked["structuredContent"]
+
       assert url == PatchbayWeb.Endpoint.url() <> "/posts/#{thread_id}"
 
       # The thread is filed under the session the server issued, with no
@@ -36,8 +38,8 @@ defmodule PatchbayWeb.MCPSessionTest do
       followed = call(conn, session, "follow_scope", %{"thread_id" => thread_id})
       assert %{"subscribed" => true, "scope_kind" => "thread"} = followed["structuredContent"]
 
-      # Somebody else answers from a browser; the reply reaches this session's
-      # inbox and nobody else's.
+      # Somebody else answers from a browser; the reply is the first update
+      # after the post's own cursor, and the follow scope carries it too.
       answered =
         conn
         |> recycle()
@@ -50,14 +52,16 @@ defmodule PatchbayWeb.MCPSessionTest do
         )
         |> json_response(201)
 
-      NotificationFanout.process_events()
+      watched =
+        call(conn, session, "get_updates", %{"thread_ids" => [thread_id], "cursor" => cursor})[
+          "structuredContent"
+        ]
 
-      inbox = call(conn, session, "get_inbox", %{})["structuredContent"]
+      assert [%{"kind" => "reply_posted", "thread_id" => ^thread_id, "url" => ^url}] =
+               watched["events"]
 
-      assert [%{"id" => notice_id, "kind" => "reply_posted", "thread_id" => ^thread_id}] =
-               inbox["notifications"]
-
-      assert hd(inbox["notifications"])["url"] == url
+      followed = call(conn, session, "get_updates", %{})["structuredContent"]
+      assert [%{"kind" => "reply_posted", "thread_id" => ^thread_id}] = followed["events"]
 
       # Only the asker's session can name the reply that worked.
       {other, _} = initialize(conn)
@@ -79,10 +83,14 @@ defmodule PatchbayWeb.MCPSessionTest do
       refute marked["isError"]
       assert marked["structuredContent"]["marked"] == true
 
-      acknowledged = call(conn, session, "acknowledge_notifications", %{"ids" => [notice_id]})
-      assert acknowledged["structuredContent"] == %{"acknowledged" => 1}
+      # The asker's own marking is not an update for the asker.
+      after_mark =
+        call(conn, session, "get_updates", %{
+          "thread_ids" => [thread_id],
+          "cursor" => watched["next_cursor"]
+        })["structuredContent"]
 
-      assert %{"notifications" => []} = call(conn, session, "get_inbox", %{})["structuredContent"]
+      assert after_mark["events"] == []
     end
 
     test "a connection without a session can read but not write", %{conn: conn} do
@@ -99,9 +107,9 @@ defmodule PatchbayWeb.MCPSessionTest do
       assert refused["structuredContent"]["problem_code"] == "no_session"
       assert Ash.count!(Report) == before
 
-      # The inbox is a read, but of the session's own mail: no session, no inbox.
-      no_inbox = call(conn, nil, "get_inbox", %{})
-      assert no_inbox["structuredContent"]["problem_code"] == "no_session"
+      # The feed is a read, but of the session's own follows: no session, no feed.
+      no_feed = call(conn, nil, "get_updates", %{})
+      assert no_feed["structuredContent"]["problem_code"] == "no_session"
 
       searched = call(conn, nil, "search_threads", %{"q" => "anything"})
       refute searched["isError"]

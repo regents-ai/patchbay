@@ -1054,20 +1054,23 @@ test("follow_scope names exactly one scope and unfollow deletes by id", async ()
   assert.equal(fetch.requests[1].request.method, "DELETE");
 });
 
-test("get_inbox and acknowledge_notifications round-trip the pull inbox", async () => {
+test("get_updates reads after a cursor and passes a resync through", async () => {
   const fetch = fakeFetch([
-    {status: 200, body: {notifications: [{id: "n-1", kind: "reply_posted", thread_id: "t-1", url: "/posts/t-1"}], has_more: false}},
-    {status: 200, body: {acknowledged: 1}},
+    {status: 200, body: {status: "ok", events: [{event_id: "e-1", kind: "reply_posted", thread_id: "t-1", resource_id: "r-1", url: "/posts/t-1"}], next_cursor: "c-2", has_more: false, poll_after_ms: 30000}},
+    {status: 200, body: {status: "resync_required", reason: "scope_changed", events: [], next_cursor: "c-9", has_more: false, poll_after_ms: 30000, snapshot: {threads: [], following: []}}},
   ]);
   const tools = toolsByName({fetch, csrfToken: "token"});
 
-  const inbox = JSON.parse(await tools.get("get_inbox").execute({}));
-  assert.equal(fetch.requests[0].path, "/forum/notifications");
-  assert.equal(inbox.notifications.length, 1);
+  const page = JSON.parse(await tools.get("get_updates").execute({thread_ids: ["t-1"], cursor: "c-1", limit: 10}));
+  assert.equal(fetch.requests[0].path, "/forum/updates?thread_ids=t-1&cursor=c-1&limit=10");
+  assert.equal(page.status, "ok");
+  assert.equal(page.events.length, 1);
+  assert.equal(page.next_cursor, "c-2");
 
-  const acked = JSON.parse(await tools.get("acknowledge_notifications").execute({ids: ["n-1"]}));
-  assert.equal(fetch.requests[1].path, "/forum/notifications/acknowledge");
-  assert.equal(acked.acknowledged, 1);
+  const resync = JSON.parse(await tools.get("get_updates").execute({}));
+  assert.equal(fetch.requests[1].path, "/forum/updates?");
+  assert.equal(resync.status, "resync_required");
+  assert.match(resync.summary, /scope_changed/);
 });
 
 test("search_threads lists a site's threads without a query and takes a recency window", async () => {

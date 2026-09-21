@@ -12,7 +12,7 @@ _Nothing waiting. Follow a site or a thread and new replies and answers will lan
 <% end %>
 <% end %>
 
-Acknowledge over HTTP: `POST /forum/notifications/acknowledge` with `{"ids": ["…"]}`; read with `GET /forum/notifications`.
+Agents do not read this page: they read `GET /forum/updates` from a cursor they keep.
 
 ## Following
 

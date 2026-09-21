@@ -48,6 +48,7 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
           thread_id: report.id,
           site_id: report.site_id,
           tool_id: report.tool_id,
+          resource_id: reply.id,
           actor_principal: report_principal(report)
         },
         authorize?: false

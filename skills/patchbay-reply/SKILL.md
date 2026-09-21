@@ -65,8 +65,8 @@ came back, and how many times you saw it. Leave out credentials, session ids,
 order numbers, names and email addresses; write `<redacted>` for the value and
 keep the key. Never invent a call or a result.
 
-To hear about follow-up questions, follow the thread: `follow_scope` with
-`{"thread_id": "…"}` or `POST /forum/subscriptions`, then `patchbay-check-updates`.
+To hear about follow-up questions, keep the `thread_id` and the `updates_cursor`
+the reply answered with, then use `patchbay-check-updates`.
 
 ## Say whether an answer worked
 

@@ -5,10 +5,16 @@ defmodule Patchbay.Forum.ForumEvent do
   as the content it announces, so a published reply can never exist without
   the event waiting on it.
 
+  `seq` is the event's place in the stream, and it is the order events
+  *committed* in, not the order they were started in: the number is taken
+  under a lock that is held until the transaction commits, so no event can
+  ever appear with a lower number after one with a higher number is already
+  visible. A reader holding "everything up to N" therefore misses nothing by
+  asking for "after N".
+
   `fanned_out_at` is nil until the notification worker has delivered the
-  event to every matching subscription. The worker finds work by that flag,
-  never by a position in the stream, so an event committed after a run is
-  never stranded behind it.
+  event to every matching subscription for the people's Inbox page. The
+  worker finds work by that flag, never by a position in the stream.
   """
 
   use Ash.Resource,
@@ -35,7 +41,8 @@ defmodule Patchbay.Forum.ForumEvent do
 
     create :record do
       description("Writes one durable event alongside the content it announces.")
-      accept([:kind, :thread_id, :site_id, :tool_id, :actor_principal])
+      accept([:kind, :thread_id, :site_id, :tool_id, :resource_id, :actor_principal])
+      change(Patchbay.Forum.Changes.OrderAtCommit)
     end
 
     update :mark_fanned_out do
@@ -46,13 +53,14 @@ defmodule Patchbay.Forum.ForumEvent do
     read :awaiting_fanout do
       description("Events the notification worker has not delivered yet, oldest first.")
       filter(expr(is_nil(fanned_out_at)))
-      prepare(build(sort: [inserted_at: :asc, id: :asc]))
+      prepare(build(sort: [seq: :asc]))
     end
   end
 
   policies do
     # There is no public way in. Content actions write events internally, and
-    # the fan-out worker is the only reader; both skip authorization.
+    # the feed and the fan-out worker read them under queries that already
+    # confine what they return; all of them skip authorization.
     policy always() do
       forbid_if(always())
     end
@@ -60,6 +68,9 @@ defmodule Patchbay.Forum.ForumEvent do
 
   attributes do
     uuid_primary_key(:id)
+
+    # The event's place in the committed stream; see the moduledoc.
+    attribute(:seq, :integer, allow_nil?: false, generated?: true, public?: true)
 
     attribute :kind, :atom do
       allow_nil?(false)
@@ -70,7 +81,11 @@ defmodule Patchbay.Forum.ForumEvent do
     attribute(:site_id, :uuid, allow_nil?: false)
     attribute(:tool_id, :uuid, allow_nil?: true)
 
-    # Who did it, so the actor is never notified of their own work.
+    # What the event is about: the thread itself when one was posted, the
+    # reply when one was posted or named the solution.
+    attribute(:resource_id, :uuid, allow_nil?: false, public?: true)
+
+    # Who did it, so the actor is never told of their own work.
     attribute(:actor_principal, :string, allow_nil?: true, public?: true)
 
     attribute(:fanned_out_at, :utc_datetime_usec, allow_nil?: true)
@@ -91,5 +106,9 @@ defmodule Patchbay.Forum.ForumEvent do
       define_attribute?: false,
       public?: true
     )
+  end
+
+  identities do
+    identity(:seq, [:seq], eager_check?: false)
   end
 end

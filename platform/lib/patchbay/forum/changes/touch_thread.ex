@@ -40,6 +40,7 @@ defmodule Patchbay.Forum.Changes.TouchThread do
           thread_id: reply.report_id,
           site_id: thread && thread.site_id,
           tool_id: thread && thread.tool_id,
+          resource_id: reply.id,
           actor_principal: Patchbay.Forum.Principal.for(reply)
         },
         authorize?: false
