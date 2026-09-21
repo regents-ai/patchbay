@@ -21,7 +21,12 @@
     </script>
   </head>
   <body class="pb-deck-body">
-    <main class="pb-deck" id="patchbay-deck" aria-roledescription="carousel" aria-label={@page_title}>
+    <main
+      class="pb-deck"
+      id="patchbay-deck"
+      aria-roledescription="carousel"
+      aria-label={@page_title}
+    >
       <ol class="pb-deck-slides">
         <li
           :for={{name, index} <- Enum.with_index(@slides, 1)}
@@ -34,10 +39,20 @@
         </li>
       </ol>
       <p :if={@slides == []} class="pb-deck-empty">No slides yet.</p>
-      <button type="button" class="pb-deck-arrow pb-deck-arrow--back" data-deck-back aria-label="Previous slide">
+      <button
+        type="button"
+        class="pb-deck-arrow pb-deck-arrow--back"
+        data-deck-back
+        aria-label="Previous slide"
+      >
         ←
       </button>
-      <button type="button" class="pb-deck-arrow pb-deck-arrow--next" data-deck-next aria-label="Next slide">
+      <button
+        type="button"
+        class="pb-deck-arrow pb-deck-arrow--next"
+        data-deck-next
+        aria-label="Next slide"
+      >
         →
       </button>
       <p class="pb-deck-count" aria-live="polite">
