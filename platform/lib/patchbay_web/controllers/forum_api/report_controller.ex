@@ -32,6 +32,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
+  alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
@@ -257,6 +258,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   @doc "The tool manifest: every tool, what it asks of the caller, and its doors."
   def capabilities(conn, _params) do
     json(conn, Patchbay.Forum.Capabilities.manifest())
+  end
+
+  @doc "What Patchbay verified about this connection; nothing here signs or spends."
+  def readiness(conn, _params) do
+    json(conn, Readiness.for_page(conn.assigns.forum_session_id, current_profile(conn)))
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile

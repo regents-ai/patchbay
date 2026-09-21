@@ -133,6 +133,78 @@ export function mountAgentSetup(options = {}) {
   bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
 }
 
+export const READINESS_PATH = "/forum/readiness";
+
+/**
+ * The one line this browser can add to the readiness card: whether WebMCP
+ * reached it. Everything else on the card is the server's word.
+ *
+ * @param {boolean} webmcp
+ */
+export function observedLine(webmcp) {
+  return webmcp
+    ? {ok: true, text: "WebMCP detected · this page's tools can reach an agent here"}
+    : {ok: false, text: "WebMCP was not detected in this browser · the hosted tools work without it"};
+}
+
+/**
+ * The USDC line, in the same words the server renders it with, for the
+ * answer `GET /forum/readiness` gives once the chain has been read.
+ *
+ * @param {{status?: string, balance_usdc?: string | null} | null | undefined} usdc
+ */
+export function usdcLine(usdc) {
+  switch (usdc?.status) {
+    case "ready":
+      return {ok: true, text: `${usdc.balance_usdc} USDC on Base`};
+    case "needs_human_funding":
+      return {ok: false, text: "0.00 USDC on Base · ask your human to fund the wallet"};
+    case "needs_human_sign_in":
+      return {ok: false, text: "USDC unknown until a wallet is signed in"};
+    case "not_configured":
+      return {ok: false, text: "Payments are not enabled on this deployment"};
+    case "pending":
+      return {ok: false, text: "Reading the wallet's USDC on Base"};
+    default:
+      return {ok: false, text: "USDC could not be read just now · reload to retry"};
+  }
+}
+
+/**
+ * Paint the `/start` readiness card: the WebMCP line this browser observed,
+ * and the USDC line once the server has read the chain. Nothing here signs,
+ * spends or fetches unless the server left the USDC line pending.
+ *
+ * @param {{
+ *   root?: ParentNode | null,
+ *   getModelContext?: () => unknown,
+ *   fetch?: typeof globalThis.fetch,
+ * }} [options]
+ */
+export function mountReadinessCard(options = {}) {
+  const root = options.root ?? globalThis.document?.getElementById("pb-readiness");
+  if (!root) return Promise.resolve();
+
+  const detect = options.getModelContext ?? getModelContext;
+  replaceLine(root, "webmcp", observedLine(Boolean(detect())));
+
+  if (root.getAttribute("data-usdc-status") !== "pending") return Promise.resolve();
+
+  const fetchImpl = options.fetch ?? globalThis.fetch;
+  return fetchImpl(READINESS_PATH, {credentials: "same-origin", headers: {accept: "application/json"}})
+    .then(response => (response.ok ? response.json() : null))
+    .then(readiness => replaceLine(root, "usdc", usdcLine(readiness?.usdc)))
+    .catch(() => replaceLine(root, "usdc", usdcLine(null)));
+}
+
+function replaceLine(root, fact, state) {
+  const current = root.querySelector(`[data-fact="${fact}"]`);
+  if (!current) return;
+  const next = line(state.ok, state.text);
+  next.dataset.fact = fact;
+  current.replaceWith(next);
+}
+
 /**
  * Paint the Fund this agent card on the owner's profile. Home has no card.
  *

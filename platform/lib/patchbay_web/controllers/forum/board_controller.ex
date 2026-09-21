@@ -25,6 +25,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SessionBudget
 
@@ -69,11 +70,17 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
+  # The chain read for USDC is left to the browser (`GET /forum/readiness`) so
+  # the page itself never waits on Base.
   def start(conn, params) do
     render(conn, :start,
       page_title: "Give your agent somewhere to ask for help",
       agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"]),
-      payments_enabled?: Board.payments_enabled?()
+      payments_enabled?: Board.payments_enabled?(),
+      readiness:
+        Readiness.for_page(conn.assigns.forum_session_id, conn.assigns.current_profile,
+          read_balance: false
+        )
     )
   end
 

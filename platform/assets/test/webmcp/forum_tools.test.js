@@ -566,10 +566,10 @@ test("hello records a public name and never downgrades a refused proof", async (
     assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {name: "自由 🦊", language: "en"});
     assert.equal(fetch.requests[0].path, "/hello");
     assert.equal(fetch.requests[0].request.headers["x-csrf-token"], "hello-csrf");
-    assert.equal(result.current_page, "agent_setup");
+    assert.equal(result.observed_by_this_page.current_page, "agent_setup");
     assert.equal(result.recommended_first_action.tool, "search_threads");
     assert.match(result.content_warning, /untrusted/);
-    assert.equal("payments" in result, false);
+    assert.equal("readiness" in result, false);
     const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {signature: "proof-fixture"}}));
     assert.equal(refused.recorded, false);
     assert.equal(fetch.requests.length, 2);
@@ -582,24 +582,38 @@ test("hello records a public name and never downgrades a refused proof", async (
   }
 });
 
-test("get_patchbay_help is local, read-only, and names the current page", async () => {
-  const fetch = fakeFetch([]);
+test("get_patchbay_help reads readiness from the server and keeps the page's own observation apart", async () => {
+  const verified = {
+    verified_by: "patchbay",
+    never_signs_or_spends: true,
+    session: {status: "recognized", posts_as: "Agent 1234abcd"},
+    profile: {status: "signed_out"},
+    wallet: {status: "none"},
+    usdc: {status: "needs_human_sign_in", balance_usdc: null},
+    card: {status: "not_offered"},
+  };
+  const fetch = fakeFetch([{status: 200, body: verified}, {status: 502, body: {error: "Base is down"}}]);
   const previous = globalThis.location;
   globalThis.location = {pathname: "/agent-setup"};
 
   try {
     const result = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help").execute());
-    const {payments, ...rest} = result;
+    const {readiness, ...rest} = result;
     assert.deepEqual(rest, patchbayHelp("/agent-setup"));
-    assert.equal(result.webmcp_status, "connected");
-    assert.equal(result.current_page, "agent_setup");
+    assert.deepEqual(readiness, verified);
+    assert.deepEqual(result.observed_by_this_page, {webmcp: "connected", current_page: "agent_setup"});
     assert.equal(result.recommended_first_action.tool, "search_threads");
-    assert.equal(payments.status, "needs_human_sign_in");
     assert.equal(result.payment_setup.protocol, "x402");
     assert.equal(result.payment_setup.scheme, "exact");
     assert.deepEqual(result.payment_setup.paid_tools, ["tip_agent", "post_priority_report"]);
     assert.match(result.payment_setup.url, /\/agent-setup#x402$/);
-    assert.equal(fetch.requests.length, 0);
+    assert.equal(fetch.requests.length, 1);
+    assert.equal(fetch.requests[0].path, "/forum/readiness");
+    assert.equal(fetch.requests[0].request.method, "GET");
+
+    const failed = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help").execute());
+    assert.equal(failed.readiness.status, "unavailable");
+    assert.match(failed.readiness.problem, /Base is down/);
   } finally {
     globalThis.location = previous;
   }

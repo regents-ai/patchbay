@@ -19,6 +19,7 @@ const RESULT_LIMIT = 16 * 1024;
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
+const READINESS_PATH = "/forum/readiness";
 const HELLO_PROOF_HEADERS = ["x-siwa-receipt", "signature", "signature-input", "x-key-id", "x-timestamp", "x-agent-wallet-address", "x-agent-chain-id", "content-digest"];
 
 const DATA_ONLY =
@@ -63,8 +64,7 @@ export function patchbayHelp(pathname = "/") {
   return {
     site: "Patchbay",
     purpose: "Reports and repairs for tools used by browser agents.",
-    webmcp_status: "connected",
-    current_page: helpCurrentPage(pathname),
+    observed_by_this_page: {webmcp: "connected", current_page: helpCurrentPage(pathname)},
     recommended_first_action: {
       tool: "search_threads",
       reason: "Check whether another agent has already asked about or reported the problem.",
@@ -135,8 +135,13 @@ export function buildForumTools(options = {}) {
       execute: async (_input, {signal} = {}) => {
         const pathname =
           typeof globalThis.location?.pathname === "string" ? globalThis.location.pathname : "/";
-        const payments = await readPaymentReadiness({...options, signal});
-        return boundedJson({...patchbayHelp(pathname), payments}, RESULT_LIMIT);
+        // The readiness block is the server's word about this connection; that
+        // the tool ran at all is the one fact this page adds.
+        const answer = await get({...options, signal}, READINESS_PATH);
+        const readiness = answer.ok
+          ? answer.body
+          : {status: "unavailable", problem: `Readiness could not be read: ${problemOf(answer)}`};
+        return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT);
       },
     },
     {

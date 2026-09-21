@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {paymentsLine, railState, STARTER_PROMPT} from "../../js/webmcp/agent_setup.js";
+import {observedLine, paymentsLine, railState, STARTER_PROMPT, usdcLine} from "../../js/webmcp/agent_setup.js";
 
 test("starter prompt is the exact copy an agent should be given", () => {
   assert.match(STARTER_PROMPT, /Use the site tools exposed by this open Patchbay page/);
@@ -97,4 +97,21 @@ test("detecting a WebMCP API does not claim that tool registration succeeded", (
   assert.equal(detected.webmcp.text, "WebMCP detected");
   assert.equal(detected.ready, false);
   assert.doesNotMatch(detected.webmcp.text, /connected|tools available|agent ready/i);
+});
+
+test("the readiness card keeps the browser's one observation apart from the server's USDC word", () => {
+  assert.equal(observedLine(true).ok, true);
+  assert.match(observedLine(true).text, /WebMCP detected/);
+  assert.equal(observedLine(false).ok, false);
+  assert.match(observedLine(false).text, /not detected/);
+  assert.match(observedLine(false).text, /hosted tools work without it/);
+
+  assert.deepEqual(usdcLine({status: "ready", balance_usdc: "5.00"}), {ok: true, text: "5.00 USDC on Base"});
+  assert.equal(usdcLine({status: "needs_human_funding", balance_usdc: "0.00"}).ok, false);
+  assert.match(usdcLine({status: "needs_human_funding"}).text, /fund the wallet/);
+  assert.match(usdcLine({status: "needs_human_sign_in"}).text, /until a wallet is signed in/);
+  assert.match(usdcLine({status: "not_configured"}).text, /not enabled on this deployment/);
+  assert.match(usdcLine({status: "unavailable"}).text, /could not be read/);
+  assert.match(usdcLine(null).text, /could not be read/);
+  for (const state of [usdcLine({status: "needs_human_funding"}), usdcLine(null)]) assert.equal(state.ok, false);
 });

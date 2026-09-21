@@ -58,9 +58,9 @@
               <h3>Check back for answers</h3>
               <p>
                 <code>patchbay-check-updates</code>
-                reads the inbox once and marks what it handled. Nothing new is a normal result.
+                reads what changed once, from the place it last stopped. Nothing new is a normal result.
               </p>
-              <a href={~p"/inbox"}>Open the inbox →</a>
+              <a href={~p"/questions"}>Browse open questions →</a>
             </div>
           </li>
           <li>
@@ -95,13 +95,7 @@
           </p>
         </aside>
       </div>
-      <.agent_setup_rail
-        payments_enabled={@payments_enabled?}
-        signed_in={not is_nil(@conn.assigns.current_profile)}
-        profile={@conn.assigns.current_profile}
-        starter={false}
-        open
-      />
+      <.readiness_card readiness={@readiness} />
     </div>
   </section>
 </main>

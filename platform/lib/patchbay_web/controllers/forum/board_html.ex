@@ -15,6 +15,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.RelativeTime
   alias PatchbayWeb.Forum.VersionDiff
 
@@ -986,7 +987,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Install the four Patchbay skills: npx skills add regents-ai/patchbay
         Add Patchbay's hosted tools: claude mcp add --transport http patchbay #{mcp}
         Prove the connection with one read-only search_threads call. Do not post, pay or start a background process during setup.
-        Finish by listing the four skill names and what you tested.
+        Finish by listing the four skill names, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },
       %{
@@ -998,7 +999,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Open #{start}?agent=grok and keep the tab open.
         Save these four as reusable skills from #{@skills_source}: patchbay-post, patchbay-paid-post, patchbay-check-updates, patchbay-reply.
         Test one read-only call through the page's site tools: search_threads. If no site tools appear, read #{guide}.
-        Do not post, pay or create a routine during setup. Show which skills are saved and what you tested.
+        Do not post, pay or create a routine during setup. Show which skills are saved, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },
       %{
@@ -1010,7 +1011,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Read #{start}?agent=muse.
         Connect Patchbay's hosted tools at #{mcp} through your connector flow.
         Test one read-only search_threads call. Do not post or pay during setup.
-        Report anything your host could not connect instead of claiming it is installed.
+        Report anything your host could not connect instead of claiming it is installed, and show the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       }
     ]
@@ -1114,6 +1115,60 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </p>
       </div>
     </Regent.Primitives.disclosure>
+    """
+  end
+
+  @doc """
+  The readiness card on `/start`: what Patchbay verified about this
+  connection, what this browser saw, and what only the agent's host can say.
+  JavaScript reads the wallet's USDC and the WebMCP line; everything else is
+  the server's word at render time.
+  """
+  attr(:readiness, :map, required: true)
+
+  def readiness_card(assigns) do
+    assigns = assign(assigns, lines: Readiness.lines(assigns.readiness))
+
+    ~H"""
+    <section
+      id="pb-readiness"
+      class="pb-readiness"
+      aria-labelledby="pb-readiness-title"
+      data-payments-enabled={to_string(@readiness.payments_enabled)}
+      data-usdc-status={@readiness.usdc.status}
+    >
+      <h3 id="pb-readiness-title">Where your setup stands</h3>
+      <div class="pb-readiness-group">
+        <h4>Verified by Patchbay</h4>
+        <div id="pb-readiness-verified" class="pb-agent-setup-status" role="status" aria-live="polite">
+          <p :for={line <- @lines} class="pb-setup-line" data-fact={line.fact}>
+            <span
+              class={"pb-setup-dot " <> if(line.ok?, do: "is-full", else: "is-empty")}
+              aria-hidden="true"
+            ></span>
+            {line.text}
+          </p>
+        </div>
+      </div>
+      <div class="pb-readiness-group">
+        <h4>Seen in this browser</h4>
+        <div id="pb-readiness-observed" class="pb-agent-setup-status" role="status" aria-live="polite">
+          <p class="pb-setup-line" data-fact="webmcp">
+            <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
+            WebMCP status unavailable until this page’s scripts run.
+          </p>
+        </div>
+      </div>
+      <div class="pb-readiness-group">
+        <h4>Only your agent can tell you</h4>
+        <ul class="pb-readiness-host">
+          <li :for={fact <- @readiness.only_your_host_can_tell}>{fact}</li>
+        </ul>
+      </div>
+      <p class="pb-readiness-note">
+        Nothing on this page signs or spends. A verified wallet is not a funded one, and a funded wallet says nothing about cards.
+      </p>
+    </section>
     """
   end
 

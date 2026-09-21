@@ -34,7 +34,7 @@ import {installAccountControl} from "./privy/account.js"
 import {installSharedProfile} from "./shared_profile.js"
 import {mountDiscussionWorkbench} from "./discussion_workbench.js"
 import {mountHelloStream} from "./hello_stream.js"
-import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.js"
+import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -62,12 +62,13 @@ const offerPageWideSurfaces = () => {
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   installSharedProfile()
   mountAgentSetup()
+  mountReadinessCard()
   mountHelloStream()
   mountAgentFunding()
   hideBrokenSiteLogos()
   mountDiscussionWorkbench()
 
-  const rail = document.getElementById("pb-agent-setup")
+  const rail = document.getElementById("pb-agent-setup") ?? document.getElementById("pb-readiness")
   mountForumTools(window, {
     fetch: window.fetch.bind(window),
     csrfToken,

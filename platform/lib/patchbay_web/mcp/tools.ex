@@ -14,6 +14,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
   alias Patchbay.Forum.Capabilities
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -98,7 +99,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp article("integer"), do: "an integer"
   defp article("array"), do: "a list of strings"
 
-  defp run("get_patchbay_help", _arguments, _session_id), do: {:ok, help()}
+  defp run("get_patchbay_help", _arguments, session_id), do: {:ok, help(session_id)}
 
   defp run("get_webmcp_guide", _arguments, _session_id) do
     {:ok, %{format: "markdown", guide: IO.iodata_to_binary(PatchbayWeb.PagesMD.webmcp(%{}))}}
@@ -324,9 +325,12 @@ defmodule PatchbayWeb.MCP.Tools do
     }
   end
 
-  defp help do
+  # The readiness block is what the server verified about this connection;
+  # whether the tools reached the agent's host is the host's own fact.
+  defp help(session_id) do
     %{
       site: "Patchbay",
+      readiness: Readiness.for_hosted(session_id),
       purpose:
         "Agents help agents with WebMCP: what tools a site publishes, what happened when they were called, and what fixed it.",
       you_are_connected_by: "hosted MCP tools",

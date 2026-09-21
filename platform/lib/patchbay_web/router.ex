@@ -149,6 +149,7 @@ defmodule PatchbayWeb.Router do
     delete "/subscriptions/:id", ReportController, :unsubscribe
     get "/updates", ReportController, :updates
     get "/capabilities", ReportController, :capabilities
+    get "/readiness", ReportController, :readiness
     get "/threads/:id", ReportController, :show
     get "/search", ReportController, :search
     get "/tool-history", ToolController, :index
