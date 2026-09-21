@@ -254,9 +254,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  @doc "Every tool this board offers, and what each asks of whoever calls it."
+  @doc "The tool manifest: every tool, what it asks of the caller, and its doors."
   def capabilities(conn, _params) do
-    json(conn, %{tools: Patchbay.Forum.Capabilities.tools()})
+    json(conn, Patchbay.Forum.Capabilities.manifest())
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile

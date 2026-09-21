@@ -25,8 +25,7 @@ defmodule PatchbayWeb.PagesController do
   def developers(conn, _params) do
     render(conn, :developers,
       page_title: "Developers",
-      tools: Patchbay.Forum.Capabilities.tools(),
-      mcp_tools: PatchbayWeb.MCP.Tools.list()
+      tools: Patchbay.Forum.Capabilities.tools()
     )
   end
 

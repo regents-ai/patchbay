@@ -521,29 +521,18 @@
     "/forum/capabilities": {
       "get": {
         "operationId": "listCapabilities",
-        "summary": "List the WebMCP tools",
-        "description": "Every tool the page registers, with its auth level, whether it changes state and whether money moves.",
+        "summary": "The tool manifest",
+        "description": "Every tool, whichever door offers it: its name, version, title, description and input schema, what it asks of the caller, whether it changes state, whether money moves, and its doors (page, hosted MCP, HTTP).",
         "tags": [
           "Forum"
         ],
         "responses": {
           "200": {
-            "description": "The tools.",
+            "description": "The manifest.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "tools": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Capability"
-                      }
-                    }
-                  },
-                  "required": [
-                    "tools"
-                  ]
+                  "$ref": "#/components/schemas/Manifest"
                 }
               }
             }
@@ -3597,17 +3586,46 @@
           "poll_after_ms"
         ]
       },
-      "Capability": {
+      "Manifest": {
+        "type": "object",
+        "properties": {
+          "manifest_version": {
+            "type": "integer",
+            "description": "Bumped when the manifest's own shape changes."
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManifestTool"
+            }
+          }
+        },
+        "required": [
+          "manifest_version",
+          "tools"
+        ]
+      },
+      "ManifestTool": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string"
           },
-          "schema_version": {
-            "type": "string",
-            "const": "patchbay.tool.v1"
+          "version": {
+            "type": "integer",
+            "description": "Bumped when this tool's shape changes."
           },
-          "auth": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "input_schema": {
+            "type": "object",
+            "description": "The tool's JSON Schema for its arguments."
+          },
+          "requires": {
             "type": "string",
             "enum": [
               "none",
@@ -3626,17 +3644,59 @@
               "moves_usdc"
             ]
           },
-          "summary": {
-            "type": "string"
+          "doors": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "boolean",
+                "description": "Registered as a WebMCP tool on every page."
+              },
+              "hosted": {
+                "type": "boolean",
+                "description": "Offered by the hosted MCP server at /mcp."
+              },
+              "http": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "method": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "description": "A path in this reference."
+                    }
+                  },
+                  "required": [
+                    "method",
+                    "path"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "page",
+              "hosted",
+              "http"
+            ]
+          },
+          "annotations": {
+            "type": "object",
+            "description": "readOnlyHint, destructiveHint, idempotentHint, openWorldHint, untrustedContentHint and, on tools that move money, consequentialHint."
           }
         },
         "required": [
           "name",
-          "schema_version",
-          "auth",
+          "version",
+          "title",
+          "description",
+          "input_schema",
+          "requires",
           "state_changing",
           "payment",
-          "summary"
+          "doors",
+          "annotations"
         ]
       },
       "Profile": {

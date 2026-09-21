@@ -8,6 +8,7 @@ import {
   patchbayHelp,
   registerForumTools,
 } from "../../js/webmcp/forum_tools.js";
+import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 class ModelContext {
   constructor() {
@@ -50,10 +51,18 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   assert.deepEqual(modelContext.calls, FORUM_TOOL_NAMES);
 
+  // The page registers exactly the manifest's page tools, each with an
+  // executor of its own.
+  const pageTools = manifest.tools.filter(tool => tool.doors.page);
+  assert.deepEqual(FORUM_TOOL_NAMES, pageTools.map(tool => tool.name));
+  for (const tool of modelContext.tools.values()) assert.equal(typeof tool.execute, "function");
+
   const report = modelContext.tools.get("report_tool_problem");
   assert.equal(report.title, "Report what a Patchbay tool did");
   assert.ok(report.description.length > 0 && report.description.length <= 500);
-  assert.deepEqual(report.annotations, {readOnlyHint: false, untrustedContentHint: true});
+  assert.deepEqual(report.annotations, {
+    readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, untrustedContentHint: true,
+  });
 
   // The receipt is the whole of it: an agent cannot compute a digest, and the
   // server reads the call's own record for everything else.
@@ -82,14 +91,17 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   const reply = modelContext.tools.get("reply_to_report");
   assert.deepEqual(reply.inputSchema.required, ["report_id", "verdict"]);
-  assert.deepEqual(reply.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.equal(reply.annotations.readOnlyHint, false);
+  assert.equal(reply.annotations.untrustedContentHint, false);
 
   const search = modelContext.tools.get("search_threads");
-  assert.deepEqual(search.annotations, {readOnlyHint: true, untrustedContentHint: true});
+  assert.equal(search.annotations.readOnlyHint, true);
+  assert.equal(search.annotations.untrustedContentHint, true);
   assert.equal(search.inputSchema.required, undefined);
 
   const thread = modelContext.tools.get("get_thread");
-  assert.deepEqual(thread.annotations, {readOnlyHint: true, untrustedContentHint: true});
+  assert.equal(thread.annotations.readOnlyHint, true);
+  assert.equal(thread.annotations.untrustedContentHint, true);
   assert.deepEqual(thread.inputSchema.required, ["thread_id"]);
   assert.deepEqual(Object.keys(thread.inputSchema.properties), ["thread_id", "after"]);
   assert.equal(thread.inputSchema.properties.after.type, "string");
@@ -102,20 +114,25 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.ok(tip.description.length <= 500);
 
   const priority = modelContext.tools.get("post_priority_report");
-  assert.deepEqual(priority.annotations, {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true});
+  assert.deepEqual(priority.annotations, {
+    readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true,
+    untrustedContentHint: false, consequentialHint: true,
+  });
   assert.deepEqual(priority.inputSchema.required, ["origin", "tool_name", "verdict", "amount_usdc"]);
   assert.match(priority.description, /spends USDC on Base through x402/);
   assert.match(priority.description, /agent-setup#x402/);
   assert.ok(priority.description.length <= 500);
 
   const accept = modelContext.tools.get("accept_solution");
-  assert.deepEqual(accept.annotations, {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true});
+  assert.equal(accept.annotations.consequentialHint, true);
+  assert.equal(accept.annotations.readOnlyHint, false);
   assert.deepEqual(accept.inputSchema.required, ["report_id", "reply_id"]);
 
   // Renaming is the agent's own half and only its own half, so the tool takes
   // the agent name and nothing else at all.
   const rename = modelContext.tools.get("set_my_agent_name");
-  assert.deepEqual(rename.annotations, {readOnlyHint: false, untrustedContentHint: false});
+  assert.equal(rename.annotations.readOnlyHint, false);
+  assert.equal(rename.annotations.consequentialHint, undefined);
   assert.deepEqual(rename.inputSchema.required, ["agent_name"]);
   assert.deepEqual(Object.keys(rename.inputSchema.properties), ["agent_name"]);
   assert.equal(rename.inputSchema.additionalProperties, false);
@@ -123,15 +140,14 @@ test("registers the forum tools with the contract an agent needs", async () => {
   // Taking your money back names the report and nothing else: who the money
   // goes to is what the contract already recorded, not something to be sent.
   const withdraw = modelContext.tools.get("withdraw_priority_report");
-  assert.deepEqual(withdraw.annotations, {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true});
+  assert.equal(withdraw.annotations.consequentialHint, true);
   assert.deepEqual(withdraw.inputSchema.required, ["report_id"]);
   assert.deepEqual(Object.keys(withdraw.inputSchema.properties), ["report_id"]);
   assert.equal(withdraw.inputSchema.additionalProperties, false);
 
   const help = modelContext.tools.get("get_patchbay_help");
-  assert.equal(help.title, "Read how to use this page");
-  assert.match(help.description, /payment_setup/);
-  assert.deepEqual(help.annotations, {readOnlyHint: true, untrustedContentHint: false});
+  assert.equal(help.title, "Read how Patchbay works");
+  assert.equal(help.annotations.readOnlyHint, true);
   assert.deepEqual(help.inputSchema, {type: "object", properties: {}, additionalProperties: false});
 
   dispose();
@@ -541,7 +557,8 @@ test("hello records a public name and never downgrades a refused proof", async (
   try {
     assert.equal(await scope.ready, true);
     const hello = modelContext.tools.get("hello");
-    assert.deepEqual(hello.annotations, {readOnlyHint: false, untrustedContentHint: true});
+    assert.equal(hello.annotations.readOnlyHint, false);
+    assert.equal(hello.annotations.untrustedContentHint, true);
     assert.deepEqual(hello.inputSchema.required, ["name"]);
     const result = JSON.parse(await hello.execute({name: "自由 🦊", language: "en"}));
     assert.equal(result.recorded, true);

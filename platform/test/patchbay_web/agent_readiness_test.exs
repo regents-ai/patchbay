@@ -239,7 +239,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
         |> Floki.parse_document!()
         |> Floki.find("#webmcp table tbody tr")
         |> Enum.map(fn row -> row |> Floki.find("td") |> Enum.map(&Floki.text/1) end)
-        |> Map.new(fn [name, _, _, money, _] -> {name, money} end)
+        |> Map.new(fn [name, _, _, _, money, _] -> {name, money} end)
 
       assert money["search_threads"] == "None"
       assert money["tip_agent"] == "Moves USDC"

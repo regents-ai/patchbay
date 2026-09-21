@@ -65,10 +65,10 @@ defmodule Patchbay.Forum.Catalog do
 
   @doc """
   Publishes this deployment's forum tools as the official inventory of its
-  own site. The manifest is generated from the running code, so every boot
-  is a fresh check of it: the digest is the manifest entry's canonical JSON,
-  a changed summary or auth level is a new contract version, and the rows
-  are seen now.
+  own site. The manifest is compiled in, so every boot is a fresh check of
+  it: the digest is the manifest entry's canonical JSON, a changed schema,
+  description or requirement is a new contract version, and the rows are
+  seen now.
   """
   @spec publish_own_tools!() :: [Patchbay.Forum.Tool.t()]
   def publish_own_tools! do
@@ -76,17 +76,18 @@ defmodule Patchbay.Forum.Catalog do
     site = Forum.register_site!(origin)
     source_url = "https://" <> origin <> "/forum/capabilities"
     now = DateTime.utc_now()
+    protocol_version = "patchbay.manifest.v#{Capabilities.manifest_version()}"
 
     Enum.map(Capabilities.tools(), fn %{name: name} = tool ->
       Forum.publish_catalog_tool!(%{
         site_id: site.id,
         name: name,
         contract_sha256: tool |> CanonicalJSON.encode() |> Digest.sha256(),
-        description: tool.summary,
+        description: tool.description,
         stable_key: name,
         published_name: name,
         display_name: name,
-        protocol_version: tool.schema_version,
+        protocol_version: protocol_version,
         raw_definition: tool,
         source_kind: :official,
         source_url: source_url,

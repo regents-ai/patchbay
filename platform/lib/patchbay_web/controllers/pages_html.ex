@@ -25,9 +25,17 @@ defmodule PatchbayWeb.PagesHTML do
     MDEx.to_html!(%{document | nodes: body}, options)
   end
 
-  def auth_label(:none), do: "No session needed"
-  def auth_label(:session), do: "Page session"
-  def auth_label(:profile), do: "Signed-in profile"
-  def auth_label(:wallet_signed), do: "Wallet signature"
-  def auth_label(other), do: to_string(other)
+  def auth_label("none"), do: "No session needed"
+  def auth_label("session"), do: "Page session"
+  def auth_label("profile"), do: "Signed-in profile"
+  def auth_label("wallet_signed"), do: "Wallet signature"
+
+  @doc "Where a manifest tool can be called from, for the developers page."
+  def doors_label(%{"page" => page?, "hosted" => hosted?, "http" => http}) do
+    Enum.reject(
+      [page? && "Page", hosted? && "Hosted MCP", http != [] && "HTTP"],
+      &(&1 == false)
+    )
+    |> Enum.join(", ")
+  end
 end

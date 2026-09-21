@@ -396,23 +396,4 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
                body["participants"]
     end
   end
-
-  describe "the capabilities manifest" do
-    test "promises exactly the tools the page registers" do
-      # The registered list is the page's own; the manifest must claim nothing
-      # beyond it and nothing less.
-      [_list, names_block] =
-        String.split(
-          File.read!("assets/js/webmcp/forum_tools.js"),
-          "FORUM_TOOL_NAMES = [",
-          parts: 2
-        )
-
-      [names_block | _] = String.split(names_block, "]", parts: 2)
-
-      registered = Regex.scan(~r/"([a-z_]+)"/, names_block) |> Enum.map(&Enum.at(&1, 1))
-
-      assert Enum.sort(registered) == Enum.sort(Patchbay.Forum.Capabilities.names())
-    end
-  end
 end
