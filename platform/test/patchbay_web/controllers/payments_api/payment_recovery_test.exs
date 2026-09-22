@@ -6,11 +6,28 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
 
   alias Patchbay.Identity
   alias Patchbay.Payments
+  alias Patchbay.Payments.SpecialPost
   alias Patchbay.Repo
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @endpoint PatchbayWeb.Endpoint
   @facilitator Patchbay.Payments.Facilitator
+
+  # What the synthetic Base node answers to every question but the two a
+  # test answers itself.
+  @fixed_rpc %{
+    "eth_chainId" => "0x7a69",
+    "eth_getTransactionCount" => "0x0",
+    "eth_estimateGas" => "0x186a0",
+    "eth_gasPrice" => "0x3b9aca00",
+    "eth_maxPriorityFeePerGas" => "0x1",
+    "eth_feeHistory" => %{
+      "oldestBlock" => "0x0",
+      "baseFeePerGas" => ["0x1", "0x1"],
+      "gasUsedRatio" => [0.5],
+      "reward" => [["0x1"]]
+    }
+  }
 
   setup do
     unless Repo.config()[:database] == "patchbay_test" <> System.get_env("MIX_TEST_PARTITION", "") do
@@ -300,6 +317,8 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
       {worker, ref} = execute(c)
       assert_receive {:settle, service, _}, 3_000
       send(service, {:reply, 200, settled("9")})
+      assert_receive {:landed?, landing}, 3_000
+      send(landing, {:rpc_reply, landed("9")})
       assert_receive {:credit, rpc}, 3_000
       # The only RPC is the loopback stub; its synthetic chain has no funds.
       assert recovery(c)["receipt"]["transaction_hash"] == settled("9")["transaction"]
@@ -343,49 +362,74 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     end
   end
 
+  test "the credit waits for the payment to land, and one Base would not take is sent again",
+       c do
+    c = priority(c)
+    {worker, _} = execute(c)
+    assert_receive {:settle, service, _}, 3_000
+    send(service, {:reply, 200, settled("a")})
+    assert_receive {:done, ^worker, response}, 3_000
+    assert json_response(response, 202)["status"] == "settled"
+    # No operator was set up when it was paid, so Base was never asked.
+    report = unboxed(fn -> Patchbay.Forum.get_report!(c.intent.target_id) end)
+    assert report.escrow_status == :credit_failed
+
+    Application.put_env(:patchbay, :escrow,
+      contract_address: "0x" <> String.duplicate("c", 40),
+      operator_private_key: Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
+      rpc_url: c.rpc_url
+    )
+
+    parent = self()
+
+    spawn(fn ->
+      send(parent, {:again, unboxed(fn -> SpecialPost.credit_again(report.id) end)})
+    end)
+
+    # Not in a block yet: the credit is not sent, and Base is asked again.
+    assert_receive {:landed?, landing}, 3_000
+    send(landing, {:rpc_reply, nil})
+    refute_receive {:credit, _}, 200
+    assert_receive {:landed?, landing}, 3_000
+    send(landing, {:rpc_reply, landed("a")})
+
+    assert_receive {:credit, rpc}, 3_000
+    hash = "0x" <> String.duplicate("e", 64)
+    send(rpc, {:rpc_reply, hash})
+    assert_receive {:again, {:ok, credited}}, 3_000
+    assert credited.escrow_status == :credit_submitted
+    assert credited.escrow_credit_tx_hash == hash
+
+    # Handed over once; a second ask leaves it as it is.
+    assert {:error, {:not_credit_failed, :credit_submitted}} =
+             unboxed(fn -> SpecialPost.credit_again(report.id) end)
+
+    refute_receive {:landed?, _}, 200
+  end
+
   defp rpc_answer(requests, owner) when is_list(requests),
     do: Enum.map(requests, &rpc_answer(&1, owner))
 
-  defp rpc_answer(%{"id" => id, "method" => method}, owner) do
-    value =
-      case method do
-        "eth_chainId" ->
-          "0x7a69"
+  defp rpc_answer(%{"id" => id, "method" => method}, owner),
+    do: %{"jsonrpc" => "2.0", "id" => id, "result" => rpc_value(method, owner)}
 
-        "eth_getTransactionCount" ->
-          "0x0"
+  # The two answers a test gives itself: whether the payment has landed, and
+  # the hash of the credit sent.
+  defp rpc_value("eth_getTransactionReceipt", owner), do: ask(owner, :landed?)
+  defp rpc_value("eth_sendRawTransaction", owner), do: ask(owner, :credit)
 
-        "eth_estimateGas" ->
-          "0x186a0"
+  defp rpc_value(method, _owner),
+    do:
+      Map.get_lazy(@fixed_rpc, method, fn -> raise "unexpected synthetic RPC method #{method}" end)
 
-        "eth_gasPrice" ->
-          "0x3b9aca00"
+  defp ask(owner, question) do
+    send(owner, {question, self()})
 
-        "eth_maxPriorityFeePerGas" ->
-          "0x1"
-
-        "eth_feeHistory" ->
-          %{
-            "oldestBlock" => "0x0",
-            "baseFeePerGas" => ["0x1", "0x1"],
-            "gasUsedRatio" => [0.5],
-            "reward" => [["0x1"]]
-          }
-
-        "eth_sendRawTransaction" ->
-          send(owner, {:credit, self()})
-
-          receive do
-            {:rpc_reply, hash} -> hash
-          after
-            5_000 -> raise "credit fixture timeout"
-          end
-
-        other ->
-          raise "unexpected synthetic RPC method #{other}"
-      end
-
-    %{"jsonrpc" => "2.0", "id" => id, "result" => value}
+    receive do
+      {:rpc_reply, value} -> value
+    after
+      5_000 -> raise "#{question} fixture timeout"
+    end
   end
 
   defp priority(c) do
@@ -489,6 +533,13 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
         privy_user_id: "did:privy:recovery-#{Ecto.UUID.generate()}",
         wallet_address: "0x" <> String.duplicate(letter, 40)
       })
+
+  defp landed(letter),
+    do: %{
+      "transactionHash" => "0x" <> String.duplicate(letter, 64),
+      "blockNumber" => "0x1",
+      "status" => "0x1"
+    }
 
   defp settled(letter),
     do: %{

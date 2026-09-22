@@ -290,7 +290,11 @@ Patchbay running to get their money out. `contracts/test/PatchbayEscrow.t.sol`
 is the Foundry suite over both payout paths and the refund window.
 
 The server side of that is `Patchbay.Escrow`, which signs one transaction
-locally per call and returns the hash without waiting for a receipt. If a credit,
+locally per call and returns the hash without waiting for a receipt. A credit
+is sent only once the payment it records is in a Base block
+(`Escrow.await_landed/1`, up to 15 seconds): the facilitator answers a moment
+before its transaction lands, and the contract refuses to record USDC it does
+not hold yet. If a credit,
 release or refund fails, the failure is written on the report for a person to
 re-run. The money is never lost, and a report is never rolled back after being
 paid for.
@@ -400,6 +404,11 @@ screen, and Patchbay's repair.
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.
   It is picked up as a paid run again; nothing is paid or forwarded twice.
+- A paid report whose escrow credit Base would not take (`credit_failed`; the
+  reason is in the log) is sent again from the payment that paid for it with
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Payments.SpecialPost.credit_again(\"<report id>\")'"`.
+  It is an operator transaction on Base and costs gas; a report in any other
+  state is left as it is.
 - `docs/GO_LIVE.md` is the ordered runbook for standing the money up: deploying
   the escrow contract on Base and setting the six secrets the paid paths need.
   `docs/DEPLOY.md` is the sheet for the site itself.

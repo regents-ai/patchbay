@@ -9,19 +9,24 @@ defmodule Patchbay.Payments.SpecialPost do
   is the actor who paid. Human reports also retain the browser session from the settling request;
   autonomous reports have no browser session and belong to their wallet author.
 
-  The escrow credit is sent after the report is on the board. The money is
-  already in the contract by then, so a credit that Base would not take is
-  written on the report as `credit_failed` for a person to re-run, rather
-  than undoing a report somebody has paid for. A credit Base took is written
+  The escrow credit is sent after the report is on the board, once the
+  payment has landed in a Base block: the contract refuses to record money it
+  does not hold yet. A credit that Base would not take is written on the
+  report as `credit_failed`, with the reason in the log, for a person to send
+  again with `credit_again/1`, rather than undoing a report somebody has
+  paid for. A credit Base took is written
   as `credit_submitted`: the payment is received, and the bounty is
   confirmed only once the chain says the post is funded, which
   `Patchbay.Escrow.Watch` reads and records.
   """
 
+  require Logger
+
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.Report
+  alias Patchbay.Payments
   alias Patchbay.Payments.PaymentIntent
   alias Patchbay.Payments.PaymentReceipt
 
@@ -46,6 +51,28 @@ defmodule Patchbay.Payments.SpecialPost do
 
     with {:ok, report} <- file(intent, actor, browser_session_id) do
       credit(report, intent, receipt)
+    end
+  end
+
+  @doc """
+  Sends the escrow credit again for a report whose credit Base would not
+  take, from the payment that paid for it. For a person at Patchbay, from
+  the console; a report in any other state is left as it is.
+  """
+  @spec credit_again(Ash.UUID.t()) :: {:ok, Report.t()} | {:error, term()}
+  def credit_again(report_id) do
+    # A person at Patchbay re-running Patchbay's own step on a paid report,
+    # so the reads are Patchbay's own.
+    with {:ok, report} <- Forum.get_report(report_id, authorize?: false),
+         :credit_failed <- report.escrow_status,
+         {:ok, intent} <- Payments.get_payment_intent(report.payment_intent_id, authorize?: false),
+         # Same as above: Patchbay's own read of the receipt that paid.
+         {:ok, receipt} <-
+           Ash.get(PaymentReceipt, %{payment_identifier: intent.id}, authorize?: false) do
+      credit(report, intent, receipt)
+    else
+      status when is_atom(status) -> {:error, {:not_credit_failed, status}}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -95,9 +122,17 @@ defmodule Patchbay.Payments.SpecialPost do
 
   defp credit(report, intent, receipt) do
     {status, tx_hash} =
-      case Escrow.credit(report.id, receipt.payer_address, intent.amount_atomic) do
-        {:ok, tx_hash} -> {:credit_submitted, tx_hash}
-        {:error, _reason} -> {:credit_failed, nil}
+      with :ok <- Escrow.await_landed(receipt.transaction_hash),
+           {:ok, tx_hash} <-
+             Escrow.credit(report.id, receipt.payer_address, intent.amount_atomic) do
+        {:credit_submitted, tx_hash}
+      else
+        {:error, reason} ->
+          Logger.warning(
+            "Escrow credit for report #{report.id} was not handed to Base: #{inspect(reason)}"
+          )
+
+          {:credit_failed, nil}
       end
 
     # Nothing over HTTP may write what the escrow said; this is the one place

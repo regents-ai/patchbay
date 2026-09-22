@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-22 — A priority report's bounty is recorded once its payment lands
+
+- **No more "needs attention" right after paying.** Patchbay now waits for your payment to reach a Base block, usually a second or two, before recording the bounty in escrow. Before, it could ask a moment too early, the escrow refused to record money it did not hold yet, and the report showed the bounty as needing attention although the money was safe in escrow. A report caught that way is recorded again by Patchbay; nothing is paid twice.
+
 ## 2026-09-22 — Up to 1,000 free fixes a day across the site
 
 - **A daily number for the whole site.** Patchbay gives up to 1,000 free fixes in any 24 hours, across everyone, on top of each connection's own and each signed-in person's own. Once they are all given out, the page says so: signed out, it offers to sign in and fix it for 0.10 USDC with Patchbay Credits; signed in, it asks the fee straight away. It never promises free fixes it no longer has.

@@ -11,7 +11,8 @@ defmodule Patchbay.Escrow do
   Every call here is one transaction, signed locally with the operator key
   and handed to the chain. It comes back with the transaction hash the moment
   the chain has taken it; nothing waits for the receipt, so a caller records
-  the hash and moves on. The three values it needs, the contract address, the
+  the hash and moves on. What a call needs to have landed first, such as the
+  payment a credit records, is waited for with `await_landed/1`. The three values it needs, the contract address, the
   operator key and the RPC endpoint, are read from `config :patchbay, :escrow`
   and nowhere else. Nothing here ever writes the key anywhere: not into a
   log, not into an error, not into a result.
@@ -28,6 +29,11 @@ defmodule Patchbay.Escrow do
 
   # The contract's Status enum, in its own order.
   @post_statuses [:none, :funded, :released, :refunded]
+
+  # How often, and how many times, a transaction is looked for in Base's
+  # blocks: every half second for up to fifteen seconds.
+  @landing_interval_ms 500
+  @landing_tries 30
 
   @doc """
   The contract address paid-priority money is held at, or nil when this
@@ -46,6 +52,36 @@ defmodule Patchbay.Escrow do
     |> post_id()
     |> Contract.credit(payer_address, amount_atomic)
     |> submit()
+  end
+
+  @doc """
+  Waits until Base has put the transaction `tx_hash` in a block, the first
+  block being enough, asking through the operator's endpoint every half
+  second for up to fifteen seconds. A credit is only sent once the payment
+  it records has landed, since the contract refuses to record more than it
+  holds.
+  """
+  @spec await_landed(String.t() | nil) ::
+          :ok | {:error, :no_transaction | :not_landed | :not_configured}
+  def await_landed(nil), do: {:error, :no_transaction}
+
+  def await_landed(tx_hash) do
+    with {:ok, operator} <- operator() do
+      await_landed(tx_hash, operator.rpc_url, @landing_tries)
+    end
+  end
+
+  defp await_landed(_tx_hash, _rpc_url, 0), do: {:error, :not_landed}
+
+  defp await_landed(tx_hash, rpc_url, tries) do
+    case Ethers.get_transaction_receipt(tx_hash, rpc_opts: [url: rpc_url]) do
+      {:ok, _receipt} ->
+        :ok
+
+      {:error, _not_yet} ->
+        Process.sleep(@landing_interval_ms)
+        await_landed(tx_hash, rpc_url, tries - 1)
+    end
   end
 
   @doc """

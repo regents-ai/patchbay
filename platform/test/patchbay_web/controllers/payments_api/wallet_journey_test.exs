@@ -6,6 +6,24 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
   @funded_at 1_790_000_000
 
+  # What the synthetic Base node answers: every payment has landed, and every
+  # transaction is taken.
+  @fixed_rpc %{
+    "eth_chainId" => "0x7a69",
+    "eth_getTransactionCount" => "0x0",
+    "eth_estimateGas" => "0x186a0",
+    "eth_gasPrice" => "0x3b9aca00",
+    "eth_maxPriorityFeePerGas" => "0x1",
+    "eth_feeHistory" => %{
+      oldestBlock: "0x0",
+      baseFeePerGas: ["0x1", "0x1"],
+      gasUsedRatio: [0.5],
+      reward: [["0x1"]]
+    },
+    "eth_getTransactionReceipt" => %{blockNumber: "0x1", status: "0x1"},
+    "eth_sendRawTransaction" => "0x" <> String.duplicate("f", 64)
+  }
+
   # Synthetic fixture key, generated for this run. It never reaches a real chain.
   setup do
     unless Repo.config()[:database] == "patchbay_test" <> System.fetch_env!("MIX_TEST_PARTITION"),
@@ -448,41 +466,11 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   defp unboxed(fun), do: Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fun)
   defp rpc(requests, post) when is_list(requests), do: Enum.map(requests, &rpc(&1, post))
 
-  defp rpc(%{"id" => id, "method" => method}, post) do
-    value =
-      case method do
-        "eth_call" ->
-          "0x" <> Base.encode16(encoded_post(post), case: :lower)
+  defp rpc(%{"id" => id, "method" => method}, post),
+    do: %{jsonrpc: "2.0", id: id, result: rpc_value(method, post)}
 
-        "eth_chainId" ->
-          "0x7a69"
-
-        "eth_getTransactionCount" ->
-          "0x0"
-
-        "eth_estimateGas" ->
-          "0x186a0"
-
-        "eth_gasPrice" ->
-          "0x3b9aca00"
-
-        "eth_maxPriorityFeePerGas" ->
-          "0x1"
-
-        "eth_feeHistory" ->
-          %{
-            oldestBlock: "0x0",
-            baseFeePerGas: ["0x1", "0x1"],
-            gasUsedRatio: [0.5],
-            reward: [["0x1"]]
-          }
-
-        "eth_sendRawTransaction" ->
-          "0x" <> String.duplicate("f", 64)
-      end
-
-    %{jsonrpc: "2.0", id: id, result: value}
-  end
+  defp rpc_value("eth_call", post), do: "0x" <> Base.encode16(encoded_post(post), case: :lower)
+  defp rpc_value(method, _post), do: Map.fetch!(@fixed_rpc, method)
 
   # The escrow contract's `posts` answer: payer, amount, status, fundedAt.
   defp encoded_post(:none), do: encoded_post({"0x" <> String.duplicate("0", 40), 0, 0, 0})

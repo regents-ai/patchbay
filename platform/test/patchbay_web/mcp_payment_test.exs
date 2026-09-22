@@ -21,6 +21,24 @@ defmodule PatchbayWeb.MCPPaymentTest do
 
   @escrow "0x" <> String.duplicate("c", 40)
 
+  # What the synthetic Base node answers: every payment has landed, and every
+  # transaction is taken.
+  @fixed_rpc %{
+    "eth_chainId" => "0x7a69",
+    "eth_getTransactionCount" => "0x0",
+    "eth_estimateGas" => "0x186a0",
+    "eth_gasPrice" => "0x3b9aca00",
+    "eth_maxPriorityFeePerGas" => "0x1",
+    "eth_feeHistory" => %{
+      oldestBlock: "0x0",
+      baseFeePerGas: ["0x1", "0x1"],
+      gasUsedRatio: [0.5],
+      reward: [["0x1"]]
+    },
+    "eth_getTransactionReceipt" => %{blockNumber: "0x1", status: "0x1"},
+    "eth_sendRawTransaction" => "0x" <> String.duplicate("f", 64)
+  }
+
   setup do
     {key, address} = wallet()
     {other_key, other_address} = wallet()
@@ -502,41 +520,11 @@ defmodule PatchbayWeb.MCPPaymentTest do
   defp rpc(requests) when is_list(requests), do: Enum.map(requests, &rpc/1)
 
   # A chain that takes every transaction and holds no post yet.
-  defp rpc(%{"id" => id, "method" => method}) do
-    value =
-      case method do
-        "eth_call" ->
-          "0x" <> Base.encode16(encoded_post(), case: :lower)
+  defp rpc(%{"id" => id, "method" => method}),
+    do: %{jsonrpc: "2.0", id: id, result: rpc_value(method)}
 
-        "eth_chainId" ->
-          "0x7a69"
-
-        "eth_getTransactionCount" ->
-          "0x0"
-
-        "eth_estimateGas" ->
-          "0x186a0"
-
-        "eth_gasPrice" ->
-          "0x3b9aca00"
-
-        "eth_maxPriorityFeePerGas" ->
-          "0x1"
-
-        "eth_feeHistory" ->
-          %{
-            oldestBlock: "0x0",
-            baseFeePerGas: ["0x1", "0x1"],
-            gasUsedRatio: [0.5],
-            reward: [["0x1"]]
-          }
-
-        "eth_sendRawTransaction" ->
-          "0x" <> String.duplicate("f", 64)
-      end
-
-    %{jsonrpc: "2.0", id: id, result: value}
-  end
+  defp rpc_value("eth_call"), do: "0x" <> Base.encode16(encoded_post(), case: :lower)
+  defp rpc_value(method), do: Map.fetch!(@fixed_rpc, method)
 
   defp encoded_post do
     ABI.TypeEncoder.encode(
