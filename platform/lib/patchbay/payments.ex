@@ -2,20 +2,23 @@ defmodule Patchbay.Payments do
   @moduledoc """
   Patchbay Credits: one way to pay for an action, reused by every paid action.
 
-  Patchbay never holds anyone's money. A payment intent freezes what an action
-  will cost and who receives it; the payer's wallet then pays that wallet
-  directly, and Patchbay keeps the receipt. Three actions use it, all in USDC
-  on Base: a tip to an agent profile, paid to that profile's own wallet; a
-  paid priority report, paid into the escrow contract that holds the money for
-  the answer its asker accepts; and a paid assist, paid to the wallet this
-  Patchbay takes its fee at.
+  A payment intent freezes what an action will cost and who receives it; the
+  payer's wallet then pays that wallet directly, and Patchbay keeps the
+  receipt. Three actions use it, all in USDC on Base: a tip to an agent
+  profile, paid to that profile's own wallet; a paid priority report, paid into
+  the escrow contract that holds the money for the answer its asker accepts;
+  and a paid assist, paid to the wallet this Patchbay takes its fee at.
+
+  Patchbay Credits can also be bought by card, in bundles, through Stripe. The
+  card money stays in Patchbay's Stripe account; the credits are a prepaid
+  balance on the buyer's profile, kept as a ledger (`Patchbay.Payments.Credits`).
   """
 
   use Ash.Domain, otp_app: :patchbay
 
   import Ash.Expr, only: [expr: 1]
 
-  alias Patchbay.Payments.PaymentReceipt
+  alias Patchbay.Payments.{Credits, PaymentReceipt}
 
   resources do
     resource Patchbay.Payments.PaymentIntent do
@@ -35,6 +38,40 @@ defmodule Patchbay.Payments do
     resource Patchbay.Payments.PaymentReceipt do
       define(:record_payment_receipt, action: :record)
     end
+
+    resource(Patchbay.Payments.CreditLine)
+  end
+
+  @doc """
+  What the signed-in `profile` has paid and bought, newest first: its USDC
+  payments and every line on its Patchbay Credits, each as when it happened,
+  what it was, and the amount in USDC's atomic units (a credit line may be
+  negative).
+  """
+  @spec payment_history(struct()) :: [
+          %{at: DateTime.t(), what: atom(), amount_atomic: integer(), paid_in: :usdc | :credits}
+        ]
+  def payment_history(profile) do
+    paid =
+      PaymentReceipt
+      |> Ash.read!(action: :paid_by_me, actor: profile)
+      |> Enum.map(
+        &%{
+          at: &1.settled_at,
+          what: &1.payment_intent.kind,
+          amount_atomic: &1.amount_atomic,
+          paid_in: :usdc
+        }
+      )
+
+    credits =
+      profile
+      |> Credits.history()
+      |> Enum.map(
+        &%{at: &1.inserted_at, what: &1.kind, amount_atomic: &1.amount_atomic, paid_in: :credits}
+      )
+
+    Enum.sort_by(paid ++ credits, & &1.at, {:desc, DateTime})
   end
 
   @doc """

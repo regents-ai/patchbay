@@ -5,7 +5,8 @@ defmodule PatchbayWeb.AgentProfileController do
 
   Anyone may read it. Only the person whose page it is sees the two controls
   that change the names, and only their own page will accept them, so a rename
-  is always a rename of oneself.
+  is always a rename of oneself. Only they see their Patchbay Credits and what
+  they have paid and bought.
   """
 
   use PatchbayWeb, :controller
@@ -13,6 +14,7 @@ defmodule PatchbayWeb.AgentProfileController do
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Payments
+  alias Patchbay.Payments.Credits
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -71,12 +73,14 @@ defmodule PatchbayWeb.AgentProfileController do
          ) do
       {:ok, profile} ->
         {:ok, tips} = Payments.tip_record(profile.id)
+        mine? = mine?(conn, profile)
 
         render(conn, :show,
           page_title: profile.agent_name,
           profile: profile,
           tips: tips,
-          mine?: mine?(conn, profile),
+          mine?: mine?,
+          credits: mine? && credits(profile, conn.params["credits"]),
           payments_enabled?: Board.payments_enabled?(),
           problem: problem
         )
@@ -84,6 +88,17 @@ defmodule PatchbayWeb.AgentProfileController do
       {:error, _unknown} ->
         raise NotFoundError
     end
+  end
+
+  # What only the person whose page it is sees: their Patchbay Credits, what
+  # they have paid and bought, and how a card purchase they just left went.
+  defp credits(profile, said) do
+    %{
+      balance_atomic: Credits.balance_atomic(profile.id),
+      history: Payments.payment_history(profile),
+      on_sale?: Patchbay.Stripe.configured?(),
+      said: said
+    }
   end
 
   defp mine?(%{assigns: %{current_profile: %{id: id}}}, %{id: id}), do: true

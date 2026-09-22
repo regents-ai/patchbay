@@ -1490,6 +1490,44 @@ a.patchbay-button { text-decoration: none; }
 .pb-fund-card-status:empty {
   display: none;
 }
+.pb-credits-said {
+  margin: var(--space-1) 0 0;
+  font-weight: var(--font-weight-semibold);
+}
+.pb-credits-bundles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+}
+.pb-credits-history-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--pb-fs-xs);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--pb-text-muted);
+}
+.pb-credits-history {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pb-credits-history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+}
+.pb-credits-history li > span:first-child {
+  min-width: 12rem;
+  color: var(--pb-text-muted);
+  font-size: var(--pb-fs-xs);
+}
+.pb-credits-history li > code {
+  margin-left: auto;
+}
 .pb-fund-card button {
   transition: transform 160ms var(--ease-out), background-color .15s ease, border-color .15s ease, color .15s ease;
 }

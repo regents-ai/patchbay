@@ -54,6 +54,8 @@
     payments_enabled={@payments_enabled?}
   />
 
+  <.credits_card :if={@credits} profile={@profile} credits={@credits} />
+
   <section :if={@mine?} class="pb-sheet-section patchbay-board-card" id="patchbay-my-names">
     <div class="patchbay-card-heading">
       <div>
