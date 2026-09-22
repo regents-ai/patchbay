@@ -19,15 +19,18 @@ defmodule Patchbay.Application do
         {Finch,
          name: Patchbay.Payments.Finch,
          pools: %{default: X402.Facilitator.HTTP.secure_pool_opts()}},
+        {Finch, name: Patchbay.Assist.Target.finch()},
         {X402.Facilitator, otp_app: :patchbay, name: Patchbay.Payments.Facilitator},
         Patchbay.Escrow.Watch,
         Patchbay.Forum.NotificationFanout,
         Patchbay.Forum.JevReader,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
-        {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)}
+        {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
+        {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()}
       ] ++
         catalog_loader() ++
         patchbay_agent() ++
+        assist_runner() ++
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
@@ -53,6 +56,16 @@ defmodule Patchbay.Application do
   defp patchbay_agent do
     if Application.get_env(:patchbay, :start_patchbay_agent, true) do
       [{Patchbay.Forum.PatchbayAgent, name: Patchbay.Forum.PatchbayAgent}]
+    else
+      []
+    end
+  end
+
+  # The boot-time sweep of runs left open, then each paid assist's worker.
+  # Tests drive the work directly and start neither.
+  defp assist_runner do
+    if Application.get_env(:patchbay, :start_assist_runner, true) do
+      [Patchbay.Assist.Sweep, Patchbay.Assist.Runner]
     else
       []
     end

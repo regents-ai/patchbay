@@ -349,6 +349,31 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert {:error, _} = Assist.open_run(%{intent: tip, browser_session_id: nil}, actor: c.payer)
   end
 
+  test "one assist at a time: a second request while one is open is refused, unpaid, with the first",
+       c do
+    {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args)
+    {:ok, settled} = Ash.update(intent, %{}, action: :mark_settled, actor: c.payer)
+    {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: c.payer)
+
+    # Paid and not yet picked up counts as open, as does under way.
+    assert {:error, {:assist_running, _run, _url}} = Purchase.prepare_jev_assist(c.payer, @args)
+    {:ok, _running} = Assist.start_run(run, authorize?: false)
+
+    refused =
+      c.payer
+      |> signed_in()
+      |> post(~p"/api/payment_intents", %{kind: "jev_assist", args: @args})
+      |> json_response(409)
+
+    assert refused["problem_code"] == "assist_running"
+    assert refused["run_id"] == run.id
+    assert refused["assist_url"] == url(~p"/api/assists/#{run.id}")
+    assert refused["error"] =~ "Nothing was charged"
+
+    # Another payer is not held up by it.
+    assert {:ok, _theirs} = Purchase.prepare_jev_assist(c.other, @args)
+  end
+
   defp payment(payer, terms) do
     [requirement] = terms["accepts"]
 

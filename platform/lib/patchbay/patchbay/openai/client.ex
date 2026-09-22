@@ -6,7 +6,7 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
   source Skill or model output. Tests may inject a `:request` function.
   """
 
-  alias Patchbay.Patchbay.OpenAI.{CandidateSchema, Prompts, RepairSchema}
+  alias Patchbay.Patchbay.OpenAI.{ArgumentsSchema, CandidateSchema, Prompts, RepairSchema}
 
   @endpoint "https://api.openai.com/v1/responses"
   @model "gpt-5.6-terra"
@@ -41,6 +41,27 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
         receive_timeout: 12_000,
         prompt_version: "patchbay-repair-v1",
         result: &repair_result/1
+      },
+      opts
+    )
+  end
+
+  @doc """
+  Drafts the arguments for one tool call from the tool's schema, the goal
+  and the expected result. The answer is one JSON object; whether it fits
+  the schema is checked by the caller.
+  """
+  @spec draft_arguments(map(), keyword()) :: {:ok, map()} | {:error, term()}
+  def draft_arguments(input, opts \\ []) when is_map(input) do
+    respond(
+      %{
+        system: Prompts.arguments_system(),
+        user: Prompts.arguments_user(input),
+        schema_name: "patchbay_arguments",
+        schema: ArgumentsSchema.schema(),
+        receive_timeout: 15_000,
+        prompt_version: "patchbay-arguments-v1",
+        result: &arguments_result/1
       },
       opts
     )
@@ -104,6 +125,15 @@ defmodule Patchbay.Patchbay.OpenAI.Client do
   end
 
   defp repair_result(output), do: {:ok, %{plan: output}}
+
+  defp arguments_result(%{"arguments_json" => json}) when is_binary(json) do
+    case Jason.decode(json) do
+      {:ok, arguments} when is_map(arguments) -> {:ok, %{arguments: arguments}}
+      _not_an_object -> {:error, :response_shape_invalid}
+    end
+  end
+
+  defp arguments_result(_output), do: {:error, :response_shape_invalid}
 
   defp request(payload, opts, endpoint) do
     api_key = Keyword.get(opts, :api_key) || System.get_env("OPENAI_API_KEY")

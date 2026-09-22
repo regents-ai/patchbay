@@ -235,6 +235,19 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     )
   end
 
+  defp send_failure(conn, {:assist_running, run, assist_url}) do
+    conn
+    |> put_status(:conflict)
+    |> json(%{
+      error:
+        "Patchbay is already working on an assist for you. Read it at assist_url; " <>
+          "ask for another once it has answered. Nothing was charged.",
+      problem_code: "assist_running",
+      run_id: run.id,
+      assist_url: assist_url
+    })
+  end
+
   defp send_failure(conn, :needs_sign_in) do
     conn
     |> put_status(:unprocessable_entity)

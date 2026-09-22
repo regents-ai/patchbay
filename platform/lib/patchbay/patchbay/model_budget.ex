@@ -9,14 +9,18 @@ defmodule Patchbay.Patchbay.ModelBudget do
   whole deployment may make `PATCHBAY_DAILY_MODEL_CALLS` in that window.
 
   Counting reads durable evidence, never a counter held in memory: invocations
-  that recorded live candidate provenance, and repair proposals that recorded a
-  live plan model. Two rows can share one paid call, because a candidate served
-  from the cache repeats the generation key of the call that produced it, so
-  candidate calls are counted as distinct generation keys rather than as rows.
+  that recorded live candidate provenance, repair proposals that recorded a
+  live plan model, and paid assists Patchbay started working on. Two rows can
+  share one paid call, because a candidate served from the cache repeats the
+  generation key of the call that produced it, so candidate calls are counted
+  as distinct generation keys rather than as rows. An assist counts once
+  against the deployment's ceiling when it starts; its own limits bound the
+  calls it makes after that.
   """
 
   require Ash.Query
 
+  alias Patchbay.Assist.Run
   alias Patchbay.Config
   alias Patchbay.Patchbay.{Invocation, RepairProposal}
 
@@ -27,7 +31,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   @window_seconds 24 * 60 * 60
 
-  @type call_kind :: :candidate | :repair
+  @type call_kind :: :candidate | :repair | :assist
 
   @doc """
   Decides whether a live model call may start for a room right now.
@@ -37,7 +41,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
   """
   @spec allow(binary() | nil, call_kind()) :: :ok | {:error, String.t()}
   def allow(room_id, kind)
-      when (is_binary(room_id) or is_nil(room_id)) and kind in [:candidate, :repair] do
+      when (is_binary(room_id) or is_nil(room_id)) and kind in [:candidate, :repair, :assist] do
     now = DateTime.utc_now()
     since = DateTime.add(now, -@window_seconds, :second)
 
@@ -94,8 +98,20 @@ defmodule Patchbay.Patchbay.ModelBudget do
   end
 
   defp live_calls(room_id, since) do
-    live_candidate_calls(room_id, since) + live_repair_calls(room_id, since)
+    live_candidate_calls(room_id, since) + live_repair_calls(room_id, since) +
+      started_assists(room_id, since)
   end
+
+  # A count of the deployment's own work, read for a limit and shown to no one.
+  defp started_assists(nil, since) do
+    Run
+    |> Ash.Query.for_read(:read)
+    |> Ash.Query.filter(started_at >= ^since)
+    |> Ash.count!(authorize?: false)
+  end
+
+  # An assist belongs to no room.
+  defp started_assists(_room_id, _since), do: 0
 
   defp live_candidate_calls(room_id, since) do
     live_candidates(room_id)

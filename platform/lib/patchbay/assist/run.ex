@@ -22,6 +22,8 @@ defmodule Patchbay.Assist.Run do
   postgres do
     table("assist_runs")
     repo(Patchbay.Repo)
+
+    identity_wheres_to_sql(one_open_run_per_payer: "status IN ('paid', 'running')")
   end
 
   attributes do
@@ -51,6 +53,9 @@ defmodule Patchbay.Assist.Run do
     # site's answer and what Jev made of it.
     attribute(:steps, {:array, :map}, allow_nil?: false, public?: true, default: [])
 
+    attribute(:started_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+    attribute(:finished_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+
     timestamps()
   end
 
@@ -58,6 +63,14 @@ defmodule Patchbay.Assist.Run do
     # One payment buys one run; a second opening of the same payment is
     # refused by the database rather than by a check a retry could race past.
     identity(:one_run_per_payment, [:payment_intent_id], eager_check?: false)
+
+    # One open run per payer: the check made before anyone pays is repeated
+    # by the database when the run is opened, so two payments settling at
+    # once still open one run now and the other on a later call.
+    identity(:one_open_run_per_payer, [:payer_profile_id],
+      where: expr(status in [:paid, :running]),
+      eager_check?: false
+    )
   end
 
   relationships do
@@ -69,6 +82,18 @@ defmodule Patchbay.Assist.Run do
 
   actions do
     defaults([:read])
+
+    read :open_runs do
+      description("Every run that is paid for and not yet answered.")
+      filter(expr(status in [:paid, :running]))
+    end
+
+    read :open_run_for_payer do
+      description("The run that is paid for and not yet answered for one payer, if any.")
+      argument(:payer_profile_id, :uuid, allow_nil?: false)
+
+      filter(expr(status in [:paid, :running] and payer_profile_id == ^arg(:payer_profile_id)))
+    end
 
     create :open do
       description("""
@@ -93,11 +118,55 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:browser_session_id, arg(:browser_session_id)))
       change(Patchbay.Assist.Changes.OpenFromIntent)
     end
+
+    update :start do
+      description("Patchbay picks a paid run up and starts working on it.")
+      accept([])
+      validate(attribute_equals(:status, :paid), message: "is not waiting to be started")
+      change(set_attribute(:status, :running))
+      change(set_attribute(:started_at, &DateTime.utc_now/0))
+    end
+
+    update :record_step do
+      description("Writes down one more thing Patchbay tried or found, after the ones before it.")
+      require_atomic?(false)
+      accept([])
+      argument(:step, :map, allow_nil?: false)
+      change(Patchbay.Assist.Changes.AppendStep)
+    end
+
+    update :finish do
+      description("Closes the run with what it found, or with why it stopped.")
+      require_atomic?(false)
+      accept([:status, :outcome])
+      validate(Patchbay.Assist.Validations.UnderWay)
+
+      validate(one_of(:status, [:finished, :assessment_pending, :failed]),
+        message: "must be finished, assessment_pending or failed"
+      )
+
+      change(set_attribute(:finished_at, &DateTime.utc_now/0))
+    end
+
+    update :interrupt do
+      description("""
+      Marks a run whose work died, with a restart or with its worker, as
+      failed: its calls are not made twice, and a person looks at it.
+      """)
+
+      accept([])
+      change(set_attribute(:status, :failed))
+      change(set_attribute(:finished_at, &DateTime.utc_now/0))
+    end
   end
 
   policies do
     # Only the settled payment's own payer opens its run, and only the
-    # purchase process holds a settled intent to open one from.
+    # purchase process holds a settled intent to open one from. The actions
+    # that move a run along (`start`, `record_step`, `finish`, `interrupt`)
+    # are named by no policy, so nothing that arrives over HTTP can reach
+    # them; Patchbay's own runner is their only caller and says so by
+    # skipping authorization deliberately.
     policy action(:open) do
       authorize_if(actor_present())
     end

@@ -32,6 +32,8 @@ defmodule PatchbayWeb.AssistAPI.Runs do
       steps: run.steps,
       payment_intent_id: run.payment_intent_id,
       requested_at: run.inserted_at,
+      started_at: run.started_at,
+      finished_at: run.finished_at,
       updated_at: run.updated_at
     }
   end
@@ -44,6 +46,11 @@ defmodule PatchbayWeb.AssistAPI.Runs do
   def next_action(%{status: :failed}),
     do:
       "Patchbay could not finish this assist. A person at Patchbay will look at it. Do not pay again."
+
+  def next_action(%{status: :assessment_pending}),
+    do:
+      "Patchbay's helper was unavailable; a person at Patchbay will finish this assist. " <>
+        "The payment stands; read this again later. Do not pay again."
 
   def next_action(_open),
     do:

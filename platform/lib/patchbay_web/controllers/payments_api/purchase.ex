@@ -205,6 +205,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   @spec prepare_jev_assist(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
   def prepare_jev_assist(actor, args) do
     with :ok <- assist_set_up(),
+         :ok <- no_assist_running(actor),
          {:ok, request} <- AssistRequest.draft(args) do
       Payments.prepare_jev_assist(%{request: request}, actor: actor)
     end
@@ -212,6 +213,18 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   defp assist_set_up do
     if Assist.pay_to_address(), do: :ok, else: {:error, :assist_not_configured}
+  end
+
+  # One assist at a time for each payer: a second is refused, with the one
+  # under way, before anyone is asked to pay. The database repeats the check
+  # when a run is opened, so a payment that slipped past this one opens its
+  # run on a later call instead.
+  defp no_assist_running(actor) do
+    case Assist.get_open_run_for_payer(actor.id, actor: actor) do
+      {:ok, nil} -> :ok
+      {:ok, run} -> {:error, {:assist_running, run, run_url(actor, run)}}
+      {:error, error} -> {:error, error}
+    end
   end
 
   # Executing a payment intent
@@ -512,10 +525,11 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   end
 
   defp carry_out(%{kind: :jev_assist} = settled, _receipt, actor, request) do
-    with {:ok, _run} <-
+    with {:ok, run} <-
            Assist.open_run(%{intent: settled, browser_session_id: request.browser_session_id},
              actor: actor
            ) do
+      :ok = Assist.Runner.start(run)
       {:ok, :complete}
     end
   end
@@ -733,7 +747,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     do: "Payment settled. Do not pay again. Check the report and reconcile any incomplete effect."
 
   defp settled_next_action(:jev_assist),
-    do: "Payment settled. Do not pay again. Patchbay will open the assist; keep reading this."
+    do:
+      "Payment settled. Do not pay again. The assist opens on your next call here, " <>
+        "once Patchbay has answered your earlier one."
 
   @doc """
   What the settled money did, per kind: the profile a tip reached, the
@@ -867,4 +883,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     do: url(~p"/api/agent/assists/#{found.target_id}")
 
   def assist_url(found), do: url(~p"/api/assists/#{found.target_id}")
+
+  @doc "Where `actor` reads the run `run` back, through the door the actor came in by."
+  @spec run_url(struct(), Assist.Run.t()) :: String.t()
+  def run_url(%{authentication_origin: :wallet}, run), do: url(~p"/api/agent/assists/#{run.id}")
+  def run_url(_actor, run), do: url(~p"/api/assists/#{run.id}")
 end

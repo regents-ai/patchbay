@@ -40,29 +40,42 @@ defmodule Patchbay.Forum.Jev do
   @doc "One Decisions call about `report`. `report` needs `:site` and `:tool` loaded."
   @spec read(Report.t()) :: {:ok, answers()} | {:error, term()}
   def read(%Report{} = report) do
-    case api_key() do
-      key when key in [nil, ""] -> {:error, :api_key_missing}
-      key -> ask(report, key)
+    with {:ok, body} <- decide(state(report), questions()) do
+      answers(body)
     end
   end
 
-  defp ask(report, key) do
+  @doc """
+  One Decisions call: Jev's answers to `questions` about `state`, as the
+  provider returned them. The caller reads the answers it asked for; `state`
+  must already be only what may leave Patchbay.
+  """
+  @spec decide(map(), map(), keyword()) :: {:ok, map()} | {:error, term()}
+  def decide(state, questions, opts \\ []) do
+    case api_key() do
+      key when key in [nil, ""] -> {:error, :api_key_missing}
+      key -> ask(state, questions, key, opts)
+    end
+  end
+
+  defp ask(state, questions, key, opts) do
     options =
       [
-        json: %{model: @model, state: state(report), questions: questions()},
+        json: %{model: @model, state: state, questions: questions},
         headers: [
           {"authorization", "Bearer " <> key},
           {"http-referer", PatchbayWeb.Endpoint.url()},
           {"x-title", "Patchbay"}
         ],
-        receive_timeout: @receive_timeout_ms,
+        receive_timeout: Keyword.get(opts, :receive_timeout, @receive_timeout_ms),
         retry: false
       ] ++ Application.get_env(:patchbay, :jev_req_options, [])
 
     # The request carries the key, so what went wrong is reduced to a status
     # or a reason before anything is returned or logged.
     case Req.post(@endpoint, options) do
-      {:ok, %Req.Response{status: 200, body: body}} -> answers(body)
+      {:ok, %Req.Response{status: 200, body: body}} when is_map(body) -> {:ok, body}
+      {:ok, %Req.Response{status: 200}} -> {:error, :unexpected_answers}
       {:ok, %Req.Response{status: status}} -> {:error, {:http_status, status}}
       {:error, %{reason: reason}} -> {:error, reason}
       {:error, _other} -> {:error, :request_failed}
