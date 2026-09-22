@@ -165,8 +165,7 @@ with an SPT is charged with one Stripe call:
 `payment_method_data[shared_payment_granted_token]=spt_…` and
 `confirm=true`. The money lands in Stripe like any card payment, with normal
 refunds and disputes, so `charge.refunded` and `charge.dispute.created` are
-handled as above. `shared_payment.granted_token.deactivated` tells when a
-token is used up or revoked.
+handled as above.
 - Stripe's own library for this (`mppx`) is Node only, so Patchbay writes the
   challenge and credential checks in Elixir from the mpp.dev spec (not yet
   read in full) and proves them with `npx mppx validate` against a test
@@ -207,31 +206,32 @@ price. Priority reports (1.00 and up) and bundles ($2 and up) are above it.
 - Size: about four to five days for bundles, plus two to three for Link
   payments by agents, with review, since this is money code.
 
-## Founder decisions
+## Founder decisions (all taken, 2026-09-22)
 
-1. **How an agent paying by Link pays for a fix** (0.10 is below Stripe's
-   $0.50 card minimum).
-   a) A fix paid by Link costs $0.50. No account and no balance: the agent
-   pays and the fix opens, the same as a USDC fix.
-   b) The agent buys a bundle by Link ($2 and up) and fixes come off that
-   balance. Needs the balance to belong to someone: a wallet signature, which
-   Muse and Grok Bot may not have.
-   c) Link pays for priority reports and bundles only; fixes stay USDC.
-   Recommendation: a. It is the only one that works for an agent with a card
-   and nothing else, and the person approves each purchase in Link anyway.
-2. **Priority reports paid by Link.** A report needs an asker who can later
-   accept an answer. Today that is a wallet signature or a signed-in person.
-   a) Later: Link pays for fixes (and bundles on the page) first, and reports
-   by Link wait until an asker without a wallet has a way to accept.
-   b) Now, for agents that also name a wallet or act for a signed-in person.
-   Recommendation: a. Fixes are what Muse and Grok Bot would buy first.
-3. **Go-ahead to build**, after 1 and 2: bundles and Link together, about a
-   week with review.
-4. **Stripe setup, by the founder.** In the Regents Labs Stripe account
-   under sean@regents.sh: a Stripe profile, the agentic commerce seller
-   terms, a restricted key for Patchbay alone, and a webhook to
-   `https://patchbay.help/webhooks/stripe` for
-   `checkout.session.completed`, `charge.refunded`,
-   `charge.dispute.created` and `shared_payment.granted_token.deactivated`;
-   then `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `STRIPE_PROFILE_ID`
-   on `patchbay-regents`. Card payments stay hidden until they are set.
+1. **An agent paying by Link for fixes: b.** The agent buys a bundle by Link
+   ($2 and up) for a wallet it names, and fixes come off that wallet's
+   balance with the wallet's signature. Agents get wallets through Bankr's
+   skills.
+2. **Priority reports paid by Link: b, now,** for agents that name a wallet.
+   The wallet is the asker and later signs to accept an answer or take the
+   bounty back.
+3. **Go-ahead: yes.** Bundles and Link are built together.
+4. **Stripe setup: done by the founder.** Regents Labs account under
+   sean@regents.sh; webhook to `https://patchbay.help/webhooks/stripe` on API
+   version `2026-08-26.dahlia` for `checkout.session.completed`,
+   `charge.refunded` and `charge.dispute.created` only (a Link charge by an
+   agent is answered in the same request, so it needs no event);
+   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `STRIPE_PROFILE_ID` are on
+   `patchbay-regents`. Privy card funding is switched on.
+
+## Build order
+
+1. Ledger and payment history (owner only, page only).
+2. Card bundles: bundles page, Stripe Checkout, the webhook.
+3. Fixes paid from the balance on the page (runs marked `:card`, nothing
+   forwarded to staking).
+4. Priority reports paid from the balance, bounty held on the ledger (award
+   90/10 on accept, return 90/10 after 30 days, each once).
+5. Agents spend a wallet's balance with a signature.
+6. Link: an agent buys a bundle for a named wallet.
+7. Link: an agent pays a priority report for a named wallet.
