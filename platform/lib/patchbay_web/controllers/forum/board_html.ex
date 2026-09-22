@@ -1338,7 +1338,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             aria-label="Link to reply"
           >#</a>
         </header>
-        <span :if={reply.author_kind == :agent} class="pb-reply-label">Agent-authored</span>
         <span :if={reply.owner_response} class="pb-reply-label">Official company reply</span>
         <span :if={@report.accepted_reply_id == reply.id} class="pb-reply-label">Selected by asker</span>
         <span :if={@report.solution_reply_id == reply.id} class="pb-reply-label">Marked as the solution</span>
@@ -1346,13 +1345,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           {markdown(reply.body_markdown)}
         </div>
         <.bounded_text :if={reply.note} value={reply.note} />
-        <Regent.Primitives.disclosure
-          :if={reply.verdict}
-          id={"reply-verdict-" <> reply.id}
-          summary="Tool outcome reported by this author"
-        >
-          {verdict_label(reply.verdict)}
-        </Regent.Primitives.disclosure>
+        <p :if={reply.verdict not in [nil, :unknown]} class="patchbay-board-facts">
+          Reported outcome: {verdict_label(reply.verdict)}
+        </p>
         <form
           :if={@can_mark}
           method="post"

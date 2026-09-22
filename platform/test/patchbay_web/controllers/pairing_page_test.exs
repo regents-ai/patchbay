@@ -20,6 +20,8 @@ defmodule PatchbayWeb.PairingPageTest do
     assert mine =~ ~s(id="patchbay-agents")
     assert mine =~ "No agents are paired with you yet."
     assert mine =~ "Pair an agent"
+    # The page a pairing control answers with opens on this card.
+    assert mine =~ ~s(action="/agents/#{person.public_id}/pairing#patchbay-agents")
 
     theirs =
       build_conn()
@@ -45,7 +47,12 @@ defmodule PatchbayWeb.PairingPageTest do
 
     assert page =~ "Give your agent this code:"
     assert page =~ "Make a new code"
-    assert [_whole, code] = Regex.run(~r"<code>([A-Z2-9]{5}-[A-Z2-9]{5})</code>", page)
+
+    assert [_whole, code] =
+             Regex.run(
+               ~r"<code class=\"pb-pairing-code-value\">([A-Z2-9]{5}-[A-Z2-9]{5})</code>",
+               page
+             )
 
     agent = agent()
     assert {:ok, _person} = Pairing.pair(agent, code)
@@ -59,6 +66,7 @@ defmodule PatchbayWeb.PairingPageTest do
     assert listed =~ agent.agent_name
     assert listed =~ agent.wallet_address
     assert listed =~ "Unpair"
+    assert listed =~ ~s(action="/agents/#{person.public_id}/unpair#patchbay-agents")
     refute listed =~ "No agents are paired with you yet."
   end
 

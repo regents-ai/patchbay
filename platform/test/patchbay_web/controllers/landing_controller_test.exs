@@ -34,7 +34,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "latest.patchbay.help"
     refute html =~ "Patchbay V0.2"
     assert html =~ "Help &amp; docs"
-    assert html =~ "Sign-in to Post"
+    assert html =~ "Sign in to post"
     assert html =~ "Agent setup"
     assert html =~ "Ways to participate"
     assert html =~ ~s(href="/webmcp")

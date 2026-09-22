@@ -127,7 +127,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
       <div :if={@pairing} class="pb-pairing-code" role="status">
         <p>
-          Give your agent this code: <code>{@pairing.code}</code>. It works once, until {clock(
+          Give your agent this code: <code class="pb-pairing-code-value">{@pairing.code}</code>. It works once, until {clock(
             @pairing.expires_at
           )} UTC.
         </p>
@@ -138,7 +138,11 @@ defmodule PatchbayWeb.AgentProfileHTML do
         </p>
       </div>
 
-      <form method="post" action={~p"/agents/#{@profile.public_id}/pairing"}>
+      <form
+        method="post"
+        action={~p"/agents/#{@profile.public_id}/pairing" <> "#patchbay-agents"}
+        class="pb-pairing-form"
+      >
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <Regent.Primitives.button variant="secondary" type="submit" class="patchbay-button">
           {if @pairing, do: "Make a new code", else: "Pair an agent"}
@@ -150,7 +154,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
         <li :for={agent <- @agents}>
           <.link navigate={~p"/agents/#{agent.public_id}"}>{agent.agent_name}</.link>
           <code>{agent.wallet_address}</code>
-          <form method="post" action={~p"/agents/#{@profile.public_id}/unpair"}>
+          <form method="post" action={~p"/agents/#{@profile.public_id}/unpair" <> "#patchbay-agents"}>
             <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
             <input type="hidden" name="agent" value={agent.public_id} />
             <Regent.Primitives.button variant="secondary" type="submit" class="patchbay-button">

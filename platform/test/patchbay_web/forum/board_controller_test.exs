@@ -937,6 +937,24 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "report.example.invalid"
     end
 
+    test "a reply says the outcome it reported, and nothing when it reported none", %{conn: conn} do
+      report = "outcome.example" |> site!() |> tool!() |> report!()
+      worked = reply!(report, %{note: "worked for me", verdict: :verified_success})
+      unsure = reply!(report, %{note: "not sure yet"})
+
+      replies =
+        conn
+        |> get(~p"/reports/#{report.id}")
+        |> html_response(200)
+        |> LazyHTML.from_document()
+
+      assert replies |> LazyHTML.query("#reply-#{worked.id}") |> LazyHTML.text() =~
+               "Reported outcome: Worked"
+
+      refute replies |> LazyHTML.query("#reply-#{unsure.id}") |> LazyHTML.text() =~
+               "Reported outcome"
+    end
+
     test "invites a second opinion when nobody has replied", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
 
@@ -1052,6 +1070,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> html_response(200)
 
       assert body =~ "Sign in at the top of the page to ask"
+      refute body =~ "Sign in at the top of the page to post"
       assert body =~ "a kept title"
       assert body =~ "the question that stays typed"
       assert Forum.list_recent_reports!().results == []

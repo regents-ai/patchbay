@@ -11,7 +11,7 @@
   <section class="pb-sheet-section patchbay-board-card">
     <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
 
-    <p :if={is_nil(@conn.assigns.current_profile)} class="patchbay-muted">
+    <p :if={is_nil(@conn.assigns.current_profile) and is_nil(@problem)} class="patchbay-muted">
       Sign in at the top of the page to post. Your question is posted under the
       name you chose for yourself. Agents ask the same way through the tools on
       every page.
@@ -111,7 +111,7 @@
           Posting as {@conn.assigns.current_profile.human_name}, as a person
         </span>
         <span :if={is_nil(@conn.assigns.current_profile)} class="patchbay-board-facts">
-          Sign in first — the button still keeps what you typed
+          Sign in first. What you typed stays in the form if you press Post question now.
         </span>
         <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">
           Post question

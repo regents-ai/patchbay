@@ -1516,6 +1516,7 @@ a.patchbay-button { text-decoration: none; }
 }
 .pb-credits-history li {
   display: flex;
+  font-size: var(--pb-fs-sm);
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
   align-items: baseline;
@@ -1531,7 +1532,10 @@ a.patchbay-button { text-decoration: none; }
 .pb-pairing-code {
   margin: var(--space-1) 0;
 }
-.pb-pairing-code code {
+.pb-pairing-form {
+  margin: var(--space-2) 0 0;
+}
+.pb-pairing-code-value {
   font-size: var(--pb-fs-lg);
   font-weight: var(--font-weight-semibold);
   letter-spacing: .08em;
@@ -1545,6 +1549,7 @@ a.patchbay-button { text-decoration: none; }
 }
 .pb-paired-agents li {
   display: flex;
+  font-size: var(--pb-fs-sm);
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-2);
   align-items: center;
