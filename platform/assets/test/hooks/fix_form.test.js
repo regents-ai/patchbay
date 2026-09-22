@@ -34,4 +34,5 @@ test("an applied payment or a fix already under way goes to the fix; anything el
   assert.match(fixOutcome({status: 402, body: {error: "Not enough USDC."}, intent: {run_id: "abc"}}).problem, /Not enough USDC/)
   assert.match(fixOutcome({status: 402, body: {}, intent: {}, unsigned: "closed"}).problem, /closed/)
   assert.match(fixOutcome({status: 0, body: null}).problem, /could not be paid/)
+  assert.match(fixOutcome({status: 402, body: {problem_code: "credits_short", error: "Your Patchbay Credits balance is 0.05."}, intent: {run_id: "abc"}}).problem, /balance is 0.05/)
 })

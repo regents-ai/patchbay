@@ -11,6 +11,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Payments.Credits
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias X402.PaymentRequired
@@ -58,9 +59,9 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   defp created({:error, failure}, conn), do: send_failure(conn, failure)
 
-  def execute(conn, %{"id" => id}) do
+  def execute(conn, %{"id" => id} = params) do
     request = %{
-      payment: payment_signature(conn),
+      payment: payment(conn, params),
       payer: nil,
       browser_session_id: conn.assigns.forum_session_id
     }
@@ -80,6 +81,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         send_failure(conn, failure)
     end
   end
+
+  # What pays: the payer's Patchbay Credits when the page asks for them, or
+  # the signed x402 payment, if any.
+  defp payment(_conn, %{"pay_with" => "credits"}), do: :credits
+  defp payment(conn, _params), do: payment_signature(conn)
 
   defp payment_signature(conn) do
     case get_req_header(conn, "payment-signature") do
@@ -122,20 +128,32 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   end
 
   defp send_answer(conn, {:applied, found, receipt}) do
-    {:ok, header} = PaymentResponse.encode(receipt.payment_response)
-
     answer =
-      Purchase.payment_help(%{
+      %{
         status: "applied",
         payment_intent_id: found.id,
-        receipt: Purchase.receipt_payload(receipt),
         amount_usdc: USDC.format(found.amount_atomic),
         effect_summary: found.effect_summary
-      })
+      }
+      |> Map.merge(Purchase.payment_payload(found, receipt))
+      |> Purchase.payment_help()
 
     conn
-    |> put_resp_header("payment-response", header)
+    |> payment_response(found, receipt)
     |> json(Map.merge(answer, Purchase.applied_effect(found)))
+  end
+
+  defp send_answer(conn, {:credits_short, found, balance}) do
+    conn
+    |> put_status(:payment_required)
+    |> json(%{
+      error:
+        "Your Patchbay Credits balance is #{Credits.written(balance)}, and this costs " <>
+          "#{USDC.format(found.amount_atomic)}. Buy credits on your profile page. Nothing was charged.",
+      problem_code: "credits_short",
+      payment_intent_id: found.id,
+      balance_credits: Credits.written(balance)
+    })
   end
 
   defp send_answer(conn, {:settled, found, receipt}) do
@@ -186,6 +204,15 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         next_action: "Do not pay again. Retry the same signed intent or check its status."
       })
     )
+  end
+
+  # A payment in USDC carries the payment service's answer back; one from
+  # Patchbay Credits has none.
+  defp payment_response(conn, %{paid_with: :credits}, _receipt), do: conn
+
+  defp payment_response(conn, %{paid_with: :usdc}, receipt) do
+    {:ok, header} = PaymentResponse.encode(receipt.payment_response)
+    put_resp_header(conn, "payment-response", header)
   end
 
   defp offer(conn, offered) do

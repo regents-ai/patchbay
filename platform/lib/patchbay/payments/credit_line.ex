@@ -3,12 +3,14 @@ defmodule Patchbay.Payments.CreditLine do
   One line on a profile's Patchbay Credits ledger.
 
   A balance is never stored: it is the sum of its lines, positive for credits
-  bought and negative for credits taken back. Lines are only ever added, and
-  every card payment they come from is named by its Stripe payment intent, so
-  the ledger can always be read against Stripe's own records.
+  bought and negative for credits taken back or spent. Lines are only ever
+  added. Every card payment they come from is named by its Stripe payment
+  intent, so the ledger can always be read against Stripe's own records, and
+  every spend names the payment intent it paid for.
 
-  The unique Stripe payment intent on a purchase, and the unique dispute on a
-  reversal, are what stop Stripe's retried events from being counted twice.
+  The unique Stripe payment intent on a purchase, the unique dispute on a
+  reversal and the unique payment intent on a spend are what stop a retried
+  event or a repeated call from being counted twice.
   """
 
   use Ash.Resource,
@@ -21,7 +23,10 @@ defmodule Patchbay.Payments.CreditLine do
     table("credit_lines")
     repo(Patchbay.Repo)
 
-    identity_wheres_to_sql(one_purchase_per_card_payment: "kind = 'card_purchase'")
+    identity_wheres_to_sql(
+      one_purchase_per_card_payment: "kind = 'card_purchase'",
+      one_spend_per_payment: "kind = 'spend'"
+    )
 
     custom_indexes do
       index([:profile_id])
@@ -38,7 +43,8 @@ defmodule Patchbay.Payments.CreditLine do
     # directly with what an action costs in USDC. Negative takes credits away.
     attribute(:amount_atomic, :integer, allow_nil?: false, public?: true)
 
-    attribute(:stripe_payment_intent_id, :string, allow_nil?: false, public?: true)
+    # The card payment a purchase or a reversal comes from; empty on a spend.
+    attribute(:stripe_payment_intent_id, :string, allow_nil?: true, public?: true)
 
     # Set on a reversal Stripe opened for a dispute; empty on one for a refund.
     attribute(:stripe_dispute_id, :string, allow_nil?: true, public?: true)
@@ -53,10 +59,18 @@ defmodule Patchbay.Payments.CreditLine do
     )
 
     identity(:one_reversal_per_dispute, [:stripe_dispute_id], eager_check?: false)
+
+    identity(:one_spend_per_payment, [:payment_intent_id],
+      where: expr(kind == :spend),
+      eager_check?: false
+    )
   end
 
   relationships do
     belongs_to(:profile, Patchbay.Identity.AgentProfile, allow_nil?: false, public?: true)
+
+    # The paid action a spend paid for; empty on a purchase or a reversal.
+    belongs_to(:payment_intent, Patchbay.Payments.PaymentIntent, allow_nil?: true, public?: true)
   end
 
   actions do
@@ -73,13 +87,14 @@ defmodule Patchbay.Payments.CreditLine do
       description("The signed-in profile's own lines, newest first.")
 
       filter(expr(profile_id == ^actor(:id)))
-      prepare(build(sort: [inserted_at: :desc, id: :desc], limit: 50))
+      prepare(build(sort: [inserted_at: :desc, id: :desc], limit: 50, load: [:payment_intent]))
     end
 
     create :record_card_purchase do
       description("Credits bought by a card payment Stripe has taken.")
 
       accept([:profile_id, :amount_atomic, :stripe_payment_intent_id])
+      require_attributes([:stripe_payment_intent_id])
       change(set_attribute(:kind, :card_purchase))
       validate(compare(:amount_atomic, greater_than: 0))
     end
@@ -88,7 +103,20 @@ defmodule Patchbay.Payments.CreditLine do
       description("Credits taken back because Stripe refunded or disputed the card payment.")
 
       accept([:profile_id, :amount_atomic, :stripe_payment_intent_id, :stripe_dispute_id])
+      require_attributes([:stripe_payment_intent_id])
       change(set_attribute(:kind, :card_reversal))
+      validate(compare(:amount_atomic, less_than: 0))
+    end
+
+    create :record_spend do
+      description(
+        "The actor's own credits spent on a payment intent; `Credits.spend/2` names the " <>
+          "actor's own intent, locked, after checking the balance under the actor's lock."
+      )
+
+      accept([:payment_intent_id, :amount_atomic])
+      change(relate_actor(:profile))
+      change(set_attribute(:kind, :spend))
       validate(compare(:amount_atomic, less_than: 0))
     end
   end
@@ -96,6 +124,10 @@ defmodule Patchbay.Payments.CreditLine do
   policies do
     policy action_type(:read) do
       authorize_if(expr(profile_id == ^actor(:id)))
+    end
+
+    policy action(:record_spend) do
+      authorize_if(actor_present())
     end
   end
 end

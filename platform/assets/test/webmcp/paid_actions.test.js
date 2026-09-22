@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {payForIntent, shouldReplaySigned} from "../../js/webmcp/paid_actions.js";
+import {payForIntent, payFromCredits, shouldReplaySigned} from "../../js/webmcp/paid_actions.js";
 
 function encodeChallenge(challenge) {
   return Buffer.from(JSON.stringify(challenge), "utf8").toString("base64");
@@ -317,4 +317,41 @@ test("a lost response after signing retains an unknown outcome and owner recover
   assert.equal(outcome.body.outcome, "unknown");
   assert.equal(outcome.body.recovery_required, true);
   assert.equal(outcome.body.status_url, `/api/payment_intents/${cancellationIntent}`);
+});
+
+test("paying from credits creates the intent and executes it from the balance, with no wallet", async () => {
+  const requests = [];
+  const fetchImpl = async (url, request) => {
+    requests.push({url, method: request.method, body: request.body, headers: request.headers});
+    if (url === "/api/payment_intents") return jsonResponse(201, {id: "int_2", run_id: "run_2"});
+    return jsonResponse(200, {status: "applied", paid_with: "patchbay_credits"});
+  };
+
+  const outcome = await payFromCredits(
+    {fetch: fetchImpl, csrfToken: "tok"},
+    {kind: "jev_assist", args: {goal: "x"}},
+  );
+
+  assert.equal(outcome.status, 200);
+  assert.equal(outcome.body.paid_with, "patchbay_credits");
+  assert.equal(outcome.intent.run_id, "run_2");
+  assert.deepEqual(requests.map(item => item.url), [
+    "/api/payment_intents",
+    "/api/payment_intents/int_2/execute",
+  ]);
+  assert.deepEqual(JSON.parse(requests[1].body), {pay_with: "credits"});
+  assert.equal(requests[1].headers["x-csrf-token"], "tok");
+  assert.equal(requests[1].headers["payment-signature"], undefined);
+});
+
+test("a balance that does not cover the price comes back as Patchbay said it", async () => {
+  const fetchImpl = async url =>
+    url === "/api/payment_intents"
+      ? jsonResponse(201, {id: "int_3"})
+      : jsonResponse(402, {problem_code: "credits_short", error: "Your balance is 0.00."});
+
+  const outcome = await payFromCredits({fetch: fetchImpl}, {kind: "jev_assist", args: {}});
+
+  assert.equal(outcome.status, 402);
+  assert.equal(outcome.body.problem_code, "credits_short");
 });

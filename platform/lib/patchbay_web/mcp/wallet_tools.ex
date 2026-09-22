@@ -250,13 +250,14 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
   defp purchase_answer({:applied, found, receipt}, _challenge) do
     answer =
-      Purchase.payment_help(%{
+      %{
         status: "applied",
         payment_intent_id: found.id,
-        receipt: Purchase.receipt_payload(receipt),
         amount_usdc: USDC.format(found.amount_atomic),
         effect_summary: found.effect_summary
-      })
+      }
+      |> Map.merge(Purchase.payment_payload(found, receipt))
+      |> Purchase.payment_help()
 
     effect = found |> Purchase.applied_effect() |> Map.merge(read_back_tool(found))
     {:paid, Map.merge(answer, effect), receipt.payment_response}

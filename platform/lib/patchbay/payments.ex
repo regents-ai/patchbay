@@ -30,6 +30,7 @@ defmodule Patchbay.Payments do
       define(:mark_payment_required, action: :mark_payment_required)
       define(:mark_settlement_pending, action: :mark_settlement_pending)
       define(:mark_settled, action: :mark_settled)
+      define(:settle_with_credits, action: :settle_with_credits)
       define(:mark_applied, action: :mark_applied)
       define(:mark_payment_failed, action: :mark_failed)
       define(:expire_payment_intent, action: :expire)
@@ -45,8 +46,8 @@ defmodule Patchbay.Payments do
   @doc """
   What the signed-in `profile` has paid and bought, newest first: its USDC
   payments and every line on its Patchbay Credits, each as when it happened,
-  what it was, and the amount in USDC's atomic units (a credit line may be
-  negative).
+  what it was (a spend is named by what it paid for), and the amount in
+  USDC's atomic units (a credit line may be negative).
   """
   @spec payment_history(struct()) :: [
           %{at: DateTime.t(), what: atom(), amount_atomic: integer(), paid_in: :usdc | :credits}
@@ -68,11 +69,20 @@ defmodule Patchbay.Payments do
       profile
       |> Credits.history()
       |> Enum.map(
-        &%{at: &1.inserted_at, what: &1.kind, amount_atomic: &1.amount_atomic, paid_in: :credits}
+        &%{
+          at: &1.inserted_at,
+          what: bought(&1),
+          amount_atomic: &1.amount_atomic,
+          paid_in: :credits
+        }
       )
 
     Enum.sort_by(paid ++ credits, & &1.at, {:desc, DateTime})
   end
+
+  # A spend is shown as what it paid for.
+  defp bought(%{kind: :spend, payment_intent: %{kind: kind}}), do: kind
+  defp bought(%{kind: kind}), do: kind
 
   @doc """
   A profile's whole history of tipping, both ways: how many settled tips it has

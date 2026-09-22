@@ -1,4 +1,4 @@
-import {payForIntent} from "./webmcp/paid_actions.js"
+import {payForIntent, payFromCredits} from "./webmcp/paid_actions.js"
 import {requestAccountAction} from "./privy/account.js"
 
 const DRAFT_KEY = "pb-fix-draft"
@@ -7,6 +7,7 @@ const MORE = ["site_url", "expected_result", "tool", "arguments"]
 
 const WORDS = {
   paying: "Asking the wallet you signed in with to approve the fee.",
+  spending: "Paying from your Patchbay Credits.",
   paid: "Paid. Opening your fix.",
   unconfigured: "Paying is not set up on this Patchbay.",
   unloadable: "The wallet window could not be loaded. Check your connection and try again.",
@@ -24,7 +25,8 @@ const WORDS = {
  * The fix form at the top of the home page. It folds its extra fields away
  * until the person starts typing, keeps what they typed across a sign-in,
  * and, once the free fixes are used, pays the fee with the wallet the page
- * is signed in with before opening the fix.
+ * is signed in with, or from the person's Patchbay Credits when they press
+ * that button, before opening the fix.
  *
  * @param {{document?: Document, fetch?: typeof globalThis.fetch, csrfToken?: string, storage?: Storage | null, navigate?: (url: string) => void}} [options]
  */
@@ -41,7 +43,7 @@ export function mountFixForm(options = {}) {
     const mode = form.dataset.pbFixMode
     if (mode === "pay") {
       event.preventDefault()
-      void pay(form, doc, options)
+      void pay(form, doc, options, event.submitter?.value === "credits")
     } else if (mode === "sign_in") {
       event.preventDefault()
       keepDraft(form, storage)
@@ -113,15 +115,15 @@ export function fixOutcome(outcome) {
   return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
 }
 
-async function pay(form, doc, options) {
+async function pay(form, doc, options, fromCredits) {
   const request = fixArguments(fieldsOf(form))
   if (!request.ok) return say(form, request.problem)
 
-  say(form, WORDS.paying)
-  const outcome = await payForIntent(
-    {fetch: options.fetch, csrfToken: options.csrfToken, document: doc},
-    {kind: "jev_assist", args: request.args},
-  )
+  const action = {kind: "jev_assist", args: request.args}
+  say(form, fromCredits ? WORDS.spending : WORDS.paying)
+  const outcome = fromCredits
+    ? await payFromCredits({fetch: options.fetch, csrfToken: options.csrfToken}, action)
+    : await payForIntent({fetch: options.fetch, csrfToken: options.csrfToken, document: doc}, action)
   const next = fixOutcome(outcome)
   if (next.navigate) {
     say(form, WORDS.paid)

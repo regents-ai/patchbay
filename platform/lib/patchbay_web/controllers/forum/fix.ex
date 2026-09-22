@@ -2,12 +2,15 @@ defmodule PatchbayWeb.Forum.Fix do
   @moduledoc """
   The fix form at the top of the home page: what it sends, turned into an
   assist request; which way the form works right now, free, after a sign-in
-  or for the fee; and what the page says when a fix cannot start.
+  or for the fee, and the person's Patchbay Credits once it is the fee; and
+  what the page says when a fix cannot start.
   """
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Allowance
   alias Patchbay.Assist.Request
+  alias Patchbay.Payments.Credits
+  alias Patchbay.Payments.PaymentIntent
   alias PatchbayWeb.ClientAddress
 
   @fields ~w(goal site_url expected_result sign_in tool arguments)
@@ -43,14 +46,49 @@ defmodule PatchbayWeb.Forum.Fix do
     end
   end
 
-  @doc "What is left for this request's connection and person, and which way the form works."
-  @spec offer(Plug.Conn.t()) :: %{allowance: Allowance.t(), mode: mode(), fee: String.t()}
+  @doc """
+  What is left for this request's connection and person, which way the form
+  works, and, once a fix costs the fee, the signed-in person's Patchbay
+  Credits.
+  """
+  @spec offer(Plug.Conn.t()) :: %{
+          allowance: Allowance.t(),
+          mode: mode(),
+          fee: String.t(),
+          credits: credits() | nil
+        }
   def offer(conn) do
     profile = conn.assigns.current_profile
     allowance = Allowance.remaining(ClientAddress.visitor_key(conn), profile)
+    mode = mode(allowance, profile)
 
-    %{allowance: allowance, mode: mode(allowance, profile), fee: @fee}
+    %{allowance: allowance, mode: mode, fee: @fee, credits: credits(mode, profile)}
   end
+
+  @typedoc """
+  The signed-in person's Patchbay Credits as the form shows them: the balance
+  written out, whether it covers a fix, whether more can be bought by card,
+  and where.
+  """
+  @type credits :: %{
+          balance: String.t(),
+          covers?: boolean(),
+          on_sale?: boolean(),
+          buy_at: String.t()
+        }
+
+  defp credits(:pay, profile) do
+    balance = Credits.balance_atomic(profile.id)
+
+    %{
+      balance: Credits.written(balance),
+      covers?: balance >= PaymentIntent.assist_fee_atomic(),
+      on_sale?: Patchbay.Stripe.configured?(),
+      buy_at: "/agents/#{profile.public_id}#patchbay-credits"
+    }
+  end
+
+  defp credits(_mode, _profile), do: nil
 
   @doc "The grant the next free fix from this request opens under, or why there is none."
   @spec grant(Plug.Conn.t()) :: {:ok, :visitor | :member} | {:error, problem()}

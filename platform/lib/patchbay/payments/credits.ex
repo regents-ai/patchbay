@@ -1,7 +1,7 @@
 defmodule Patchbay.Payments.Credits do
   @moduledoc """
   Patchbay Credits bought by card: the bundles on sale, a profile's balance,
-  and the lines Stripe's word writes to it.
+  the lines Stripe's word writes to it, and spending it.
 
   One credit pays for what one USDC pays for. Card money stays in Patchbay's
   Stripe account; what a profile holds here is prepaid credit, never USDC.
@@ -13,7 +13,7 @@ defmodule Patchbay.Payments.Credits do
 
   require Ash.Query
 
-  alias Patchbay.Payments.CreditLine
+  alias Patchbay.Payments.{CreditLine, USDC}
 
   @bundles_dollars [2, 5, 10, 20, 50]
 
@@ -31,6 +31,11 @@ defmodule Patchbay.Payments.Credits do
   @doc "A card amount in US cents, in USDC's atomic units."
   @spec atomic_from_cents(integer()) :: integer()
   def atomic_from_cents(cents), do: cents * @atomic_per_cent
+
+  @doc "A balance written out, with a minus sign when it is below zero."
+  @spec written(integer()) :: String.t()
+  def written(atomic) when atomic < 0, do: "-" <> USDC.format(-atomic)
+  def written(atomic), do: USDC.format(atomic)
 
   @doc """
   What a profile holds, in USDC's atomic units: the sum of its lines, added up
@@ -51,6 +56,31 @@ defmodule Patchbay.Payments.Credits do
   @spec history(struct()) :: [CreditLine.t()]
   def history(profile) do
     Ash.read!(CreditLine, action: :history, actor: profile)
+  end
+
+  @doc """
+  Spends `actor`'s own credits on `intent`, the actor's own payment intent,
+  when the balance covers it. Called inside the transaction that holds the
+  intent's row lock; the balance is read and the spend written under the
+  actor's credits lock, so two spends can never both take the last of it.
+  """
+  @spec spend(struct(), struct()) ::
+          {:ok, CreditLine.t()} | {:short, integer()} | {:error, term()}
+  def spend(actor, intent) do
+    hold(actor.id)
+    balance = balance_atomic(actor.id)
+
+    if balance >= intent.amount_atomic do
+      CreditLine
+      |> Ash.Changeset.for_create(
+        :record_spend,
+        %{payment_intent_id: intent.id, amount_atomic: -intent.amount_atomic},
+        actor: actor
+      )
+      |> Ash.create()
+    else
+      {:short, balance}
+    end
   end
 
   @doc """

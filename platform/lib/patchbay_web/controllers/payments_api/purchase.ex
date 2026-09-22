@@ -40,6 +40,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
   alias Patchbay.Payments
+  alias Patchbay.Payments.Credits
   alias Patchbay.Payments.PaymentIntent
   alias Patchbay.Payments.PaymentReceipt
   alias Patchbay.Payments.SpecialPost
@@ -70,14 +71,15 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   @unknown_profile "profile_id: there is no profile with that id"
 
   @typedoc """
-  What an execute carries besides the intent's id: the signed payment, if the
-  payer has signed (the x402 payment as a map, or the encoded
-  `payment-signature` header); the wallet the payment must have been signed by,
-  when the door knows nothing else about the caller; and the browser's forum
-  identity, which is what a report paid for on a page is filed under.
+  What an execute carries besides the intent's id: what pays, which is the
+  signed payment if the payer has signed (the x402 payment as a map, or the
+  encoded `payment-signature` header) or `:credits` to pay from the payer's
+  Patchbay Credits; the wallet the payment must have been signed by, when the
+  door knows nothing else about the caller; and the browser's forum identity,
+  which is what a report paid for on a page is filed under.
   """
   @type request :: %{
-          payment: map() | String.t() | nil,
+          payment: map() | String.t() | :credits | nil,
           payer: String.t() | nil,
           browser_session_id: String.t() | nil
         }
@@ -86,8 +88,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   @type answer ::
           {:payment_required, PaymentIntent.t()}
           | {:payment_rejected, PaymentIntent.t(), String.t()}
-          | {:applied, PaymentIntent.t(), PaymentReceipt.t()}
-          | {:settled, PaymentIntent.t(), PaymentReceipt.t()}
+          | {:applied, PaymentIntent.t(), PaymentReceipt.t() | nil}
+          | {:settled, PaymentIntent.t(), PaymentReceipt.t() | nil}
+          | {:credits_short, PaymentIntent.t(), integer()}
           | {:settlement_pending, PaymentIntent.t()}
           | {:expired, PaymentIntent.t()}
           | {:facilitator_unavailable, PaymentIntent.t(), String.t()}
@@ -292,6 +295,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
       {:ok, {:settled, {:dispatch, found, payment, requirement, request}}} ->
         settle(actor, found, payment, requirement, request)
 
+      {:ok, {:settled, {:paid_from_credits, settled}}} ->
+        complete(actor, settled, nil, request)
+
       {:ok, {:settled, answer}} ->
         answer
 
@@ -362,6 +368,26 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
       {:error, failure} -> {:error, failure}
     end
   end
+
+  # Patchbay Credits pay for a fix. The spend and the settlement commit
+  # together, under the intent's row lock, and what it bought is carried out
+  # after they have.
+  defp offer_or_settle(actor, %{kind: :jev_assist} = found, %{payment: :credits}) do
+    case Credits.spend(actor, found) do
+      {:ok, _spent} ->
+        with {:ok, settled} <- Payments.settle_with_credits(found, actor: actor),
+             do: {:paid_from_credits, settled}
+
+      {:short, balance} ->
+        {:credits_short, found, balance}
+
+      {:error, failure} ->
+        {:error, failure}
+    end
+  end
+
+  defp offer_or_settle(_actor, found, %{payment: :credits}),
+    do: {:payment_rejected, found, "Only a fix can be paid from Patchbay Credits."}
 
   defp offer_or_settle(actor, found, request) do
     requirement = requirement(found)
@@ -545,16 +571,22 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
     case persisted do
       {:ok, {settled, receipt}} ->
-        with {:ok, :complete} <- carry_out(settled, receipt, actor, request),
-             {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
-          {:applied, applied, receipt}
-        else
-          _incomplete -> {:settled, settled, receipt}
-        end
+        complete(actor, settled, receipt, request)
 
       {:error, _failed_write} ->
         # The already-committed pending marker survives. Never redispatch.
         {:settlement_pending, found}
+    end
+  end
+
+  # A settled payment, in USDC with its receipt or from Patchbay Credits with
+  # none, carries out what it bought.
+  defp complete(actor, settled, receipt, request) do
+    with {:ok, :complete} <- carry_out(settled, receipt, actor, request),
+         {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
+      {:applied, applied, receipt}
+    else
+      _incomplete -> {:settled, settled, receipt}
     end
   end
 
@@ -760,13 +792,21 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     |> Map.merge(intent_target(found))
   end
 
-  @doc "What was paid and when, as the receipt records it."
-  @spec receipt_payload(PaymentReceipt.t()) :: map()
-  def receipt_payload(receipt) do
+  @doc """
+  How a settled intent was paid: in USDC, with what was paid and when as the
+  receipt records it, or from the payer's Patchbay Credits.
+  """
+  @spec payment_payload(PaymentIntent.t(), PaymentReceipt.t() | nil) :: map()
+  def payment_payload(%{paid_with: :credits}, _receipt), do: %{paid_with: "patchbay_credits"}
+
+  def payment_payload(%{paid_with: :usdc}, receipt) do
     %{
-      transaction_hash: receipt.transaction_hash,
-      payer_address: receipt.payer_address,
-      settled_at: receipt.settled_at
+      paid_with: "usdc",
+      receipt: %{
+        transaction_hash: receipt.transaction_hash,
+        payer_address: receipt.payer_address,
+        settled_at: receipt.settled_at
+      }
     }
   end
 
@@ -778,20 +818,22 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   def recovery_payload(%{status: :applied} = found) do
     result = applied_effect(found)
 
-    %{
-      receipt: receipt_payload(found.receipt),
+    found
+    |> payment_payload(found.receipt)
+    |> Map.merge(%{
       result: result,
       recovery_required: Map.get(result, :result_available) == false
-    }
+    })
   end
 
   def recovery_payload(%{status: :settled} = found) do
-    %{
-      receipt: receipt_payload(found.receipt),
+    found
+    |> payment_payload(found.receipt)
+    |> Map.merge(%{
       result: applied_effect(found),
       recovery_required: found.kind != :agent_tip,
       next_action: settled_next_action(found.kind)
-    }
+    })
   end
 
   def recovery_payload(%{status: :settlement_pending}) do

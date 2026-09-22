@@ -127,6 +127,26 @@ export async function payForIntent(options, {kind, args}) {
   }
 }
 
+/**
+ * Pays for one action from the signed-in person's Patchbay Credits: creates
+ * the payment intent and asks Patchbay to execute it from the balance. No
+ * wallet is asked; Patchbay answers with the action carried out, or with the
+ * balance when it does not cover the price.
+ *
+ * @param {{fetch?: typeof globalThis.fetch, csrfToken?: string}} options
+ * @param {{kind: string, args: object}} action
+ * @returns {Promise<{status: number, body: object | null, intent?: object}>}
+ */
+export async function payFromCredits(options, {kind, args}) {
+  const created = await request(options, INTENTS_PATH, {method: "POST", json: {kind, args}});
+  if (created.status !== 201) return answer(created);
+
+  const intent = created.body;
+  const executePath = `${INTENTS_PATH}/${encodeURIComponent(intent.id)}/execute`;
+  const paid = await request(options, executePath, {method: "POST", json: {pay_with: "credits"}});
+  return answer(paid, intent);
+}
+
 /** Cancellation cannot undo an HTTP request or dismiss an issued wallet prompt. */
 export function paymentCancellation(intent, {dispatched = false, submitted = false} = {}) {
   return {
