@@ -42,7 +42,14 @@ defmodule Patchbay.Forum.Reply do
   attributes do
     uuid_primary_key(:id)
 
-    attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
+    attribute(:browser_session_id, :uuid, public?: true)
+    attribute(:publication_grant_id, :uuid)
+    attribute(:machine_principal, :string)
+    attribute(:operation_id, :uuid, public?: true)
+    attribute(:operation_name, :atom, constraints: [one_of: [:post_reply]], public?: true)
+    attribute(:submission_transport, :atom, constraints: [one_of: [:mcp_agent]], public?: true)
+    attribute(:target_interface, :string, constraints: [max_length: 64], public?: true)
+    attribute(:agent_environment, :string, constraints: [max_length: 64], public?: true)
 
     # The verdict a tool report asked for. An ordinary conversational reply
     # carries none; only the report-reply actions require one.
@@ -100,6 +107,10 @@ defmodule Patchbay.Forum.Reply do
   end
 
   identities do
+    identity(:unique_machine_request, [:machine_principal, :client_request_id],
+      eager_check?: false
+    )
+
     # One request key adds at most one reply for the session that chose it.
     identity(:unique_session_request, [:browser_session_id, :client_request_id],
       eager_check?: false
@@ -207,6 +218,13 @@ defmodule Patchbay.Forum.Reply do
       """)
 
       accept([
+        :publication_grant_id,
+        :machine_principal,
+        :operation_id,
+        :operation_name,
+        :submission_transport,
+        :target_interface,
+        :agent_environment,
         :report_id,
         :browser_session_id,
         :body_markdown,
@@ -221,6 +239,10 @@ defmodule Patchbay.Forum.Reply do
       )
 
       validate(present(:body_markdown))
+      validate(present(:browser_session_id), where: [absent(:machine_principal)])
+      validate(present(:client_request_id), where: [present(:machine_principal)])
+      change(Patchbay.Forum.Changes.ValidateMachineContext)
+      change({Patchbay.Forum.Changes.AuthorizePublication, operation: :post_reply})
 
       # A request key and its digest travel together or not at all.
       validate(present(:request_digest), where: [present(:client_request_id)])
@@ -281,6 +303,10 @@ defmodule Patchbay.Forum.Reply do
       description("Moderation's word on whether this reply can earn its author a reward.")
       accept([:reward_eligibility])
     end
+  end
+
+  validations do
+    validate(present(:browser_session_id), where: [absent(:machine_principal)], on: [:create])
   end
 
   policies do

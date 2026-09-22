@@ -72,6 +72,34 @@ defmodule Patchbay.Forum.Hellos do
     Map.take(event, [:id, :name, :language, :greeting, :color, :verified, :inserted_at])
   end
 
+  def prepare_machine(cs, actor) do
+    rate_key = digest("hello:siwa:" <> actor.wallet_address)
+    Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [rate_key])
+    since = DateTime.add(DateTime.utc_now(), -1, :hour)
+
+    count =
+      Hello |> Ash.Query.filter(rate_key == ^rate_key and inserted_at > ^since) |> Ash.count!()
+
+    if count >= 30 do
+      Ash.Changeset.add_error(cs, field: :name, message: "hello rate limit reached")
+    else
+      {language, greeting} = localize(Ash.Changeset.get_attribute(cs, :language))
+
+      Enum.reduce(
+        %{
+          language: language,
+          greeting: greeting,
+          rate_key: rate_key,
+          agent_key: rate_key,
+          verified: true,
+          color: agent_color(rate_key)
+        },
+        cs,
+        fn {key, value}, cs -> Ash.Changeset.force_change_attribute(cs, key, value) end
+      )
+    end
+  end
+
   defp record_locked(params, actor) do
     since = DateTime.add(DateTime.utc_now(), -1, :hour)
 

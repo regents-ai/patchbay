@@ -529,6 +529,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       author: author,
       payment_actions: payment_actions(author)
     }
+    |> operation_context(reply)
   end
 
   # The one payment an entry invites, spelled out as the tool call itself, so

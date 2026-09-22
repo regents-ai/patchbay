@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.Plugs.ConnectorAuthor do
-  @moduledoc "Exact-request SIWA admission for the two free connector writes."
+  @moduledoc "Exact-request SIWA identity admission; Forum actions separately require publication consent."
   @behaviour Plug
   @behaviour Siwa.AgentAuthPlug.Hooks
   alias PatchbayWeb.Plugs.WalletAuthor
@@ -7,7 +7,12 @@ defmodule PatchbayWeb.Plugs.ConnectorAuthor do
   def init(opts), do: opts
 
   def call(%{body_params: %{"method" => "tools/call", "params" => %{"name" => name}}} = conn, _)
-      when name in ["patchbay_post", "patchbay_record_outcome"] do
+      when name in [
+             "patchbay_post",
+             "patchbay_record_outcome",
+             "patchbay_reply",
+             "patchbay_hello"
+           ] do
     Siwa.AgentAuthPlug.call(conn,
       client: WalletAuthor,
       hooks: __MODULE__,

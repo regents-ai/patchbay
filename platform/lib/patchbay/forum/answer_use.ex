@@ -31,6 +31,7 @@ defmodule Patchbay.Forum.AnswerUse do
       """)
 
       accept([
+        :publication_grant_id,
         :reply_id,
         :principal,
         :task_token,
@@ -46,6 +47,15 @@ defmodule Patchbay.Forum.AnswerUse do
       ])
 
       change(Patchbay.Forum.Changes.ValidateMachineContext)
+      change({Patchbay.Forum.Changes.AuthorizePublication, operation: :record_answer_use})
+
+      change(fn cs, _ ->
+        Ash.Changeset.force_change_attribute(
+          cs,
+          :last_publication_grant_id,
+          Ash.Changeset.get_attribute(cs, :publication_grant_id)
+        )
+      end)
 
       validate({Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: 500})
 
@@ -53,7 +63,15 @@ defmodule Patchbay.Forum.AnswerUse do
 
       upsert?(true)
       upsert_identity(:principal_task)
-      upsert_fields([:outcome, :note, :same_author, :applicable_tool_version, :updated_at])
+
+      upsert_fields([
+        :outcome,
+        :note,
+        :same_author,
+        :applicable_tool_version,
+        :last_publication_grant_id,
+        :updated_at
+      ])
     end
 
     read :for_reply do
@@ -77,6 +95,9 @@ defmodule Patchbay.Forum.AnswerUse do
   end
 
   attributes do
+    # Initial authorization stays with the operation; corrections name their own grant.
+    attribute(:publication_grant_id, :uuid)
+    attribute(:last_publication_grant_id, :uuid)
     uuid_primary_key(:id)
     attribute(:operation_id, :uuid, public?: true)
     attribute(:operation_name, :atom, constraints: [one_of: [:record_answer_use]], public?: true)

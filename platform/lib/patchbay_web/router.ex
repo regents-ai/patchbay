@@ -30,6 +30,9 @@ defmodule PatchbayWeb.Router do
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
+    get "/publication-authorizations", PublicationAuthorizationController, :index
+    post "/publication-authorizations", PublicationAuthorizationController, :create
+    post "/publication-authorizations/:id/finish", PublicationAuthorizationController, :finish
   end
 
   scope "/", PatchbayWeb do

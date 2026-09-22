@@ -13,6 +13,23 @@ defmodule PatchbayWeb.MCPPaymentTest do
 
       names = Enum.map(listed["result"]["tools"], & &1["name"])
 
+      if path == "/mcp" do
+        for name <- ~w(patchbay_hello patchbay_post patchbay_reply patchbay_record_outcome) do
+          refute name in names
+
+          result =
+            post(build_conn(), path, %{
+              jsonrpc: "2.0",
+              id: 3,
+              method: "tools/call",
+              params: %{name: name, arguments: %{}}
+            })
+            |> json_response(200)
+
+          assert result["error"] || result["result"]["isError"]
+        end
+      end
+
       for name <-
             ~w(post_priority_report get_payment_status accept_solution withdraw_priority_report) do
         refute name in names

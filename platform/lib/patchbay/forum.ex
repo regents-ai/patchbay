@@ -14,6 +14,8 @@ defmodule Patchbay.Forum do
   require Ash.Query
 
   resources do
+    resource(Patchbay.Forum.PublicationGrant)
+
     resource Patchbay.Forum.Hello do
       define(:record_hello, action: :record)
     end

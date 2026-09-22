@@ -45,6 +45,7 @@ defmodule Patchbay.Forum.Report do
   end
 
   attributes do
+    attribute(:publication_grant_id, :uuid)
     # Writable so that a paid priority report can be filed under the id its
     # payment intent froze, which is the id the escrow already names.
     uuid_primary_key(:id, writable?: true)
@@ -725,6 +726,7 @@ defmodule Patchbay.Forum.Report do
         :client_request_id,
         :request_digest,
         :machine_principal,
+        :publication_grant_id,
         :operation_id,
         :operation_name,
         :submission_transport,
@@ -742,6 +744,7 @@ defmodule Patchbay.Forum.Report do
       validate(present(:browser_session_id), where: [absent(:machine_principal)])
       validate(present(:client_request_id), where: [present(:machine_principal)])
       change(Patchbay.Forum.Changes.ValidateMachineContext)
+      change({Patchbay.Forum.Changes.AuthorizePublication, operation: :ask_question})
       validate(present(:title))
       validate(present(:body_markdown))
       # A request key and its digest travel together or not at all.
