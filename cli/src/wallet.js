@@ -16,34 +16,39 @@ export function walletOrigin(value) {
   return url.origin;
 }
 
+// The operations that freeze terms, and the payment kind each one freezes.
+const prepares = {prepare: "special_post", assist_request: "jev_assist"};
+const reads = ["get", "assist_get"];
+
 export function walletTarget(operation, id, values = {}) {
   const phase = values.phase ?? "send";
   if (!["prepare", "send"].includes(phase)) fail();
-  if (["execute", "get"].includes(operation) && !uuidPattern.test(id ?? "")) fail();
+  if (["execute", ...reads].includes(operation) && !uuidPattern.test(id ?? "")) fail();
   return {operation, phase, id, siwaUrl: values["siwa-url"], walletAddress: values["wallet-address"]};
 }
 
 function targetFor(target) {
-  if (target.operation === "prepare") return {method: "POST", path: "/api/agent/payment_intents"};
+  if (target.operation in prepares) return {method: "POST", path: "/api/agent/payment_intents"};
   if (target.operation === "execute") return {method: "POST", path: `/api/agent/payment_intents/${target.id}/execute`};
   if (target.operation === "get") return {method: "GET", path: `/api/agent/payment_intents/${target.id}`};
+  if (target.operation === "assist_get") return {method: "GET", path: `/api/agent/assists/${target.id}`};
   fail();
 }
 
 function bodyFor(target, input) {
-  if (target.operation === "get") return undefined;
+  if (reads.includes(target.operation)) return undefined;
   if (target.operation === "execute") {
     if (input.payment_signature !== undefined && (typeof input.payment_signature !== "string" || input.payment_signature.length < 1 || input.payment_signature.length > 65536)) fail();
     return JSON.stringify(input.payment_signature === undefined ? {} : {payment_signature: input.payment_signature});
   }
   if (!object(input.args)) fail();
-  return JSON.stringify({kind: "special_post", args: input.args});
+  return JSON.stringify({kind: prepares[target.operation], args: input.args});
 }
 
 // This is a reviewable message for an external EOA personal_sign implementation.
 // It contains no private key and is never a local signing request.
 export function prepareWalletRequest(base, target, input, now = Math.floor(Date.now() / 1000), nonce = randomBytes(16).toString("hex")) {
-  const expected = ["receipt", "wallet_address", ...(target.operation === "prepare" ? ["args"] : target.operation === "execute" && input.payment_signature !== undefined ? ["payment_signature"] : [])];
+  const expected = ["receipt", "wallet_address", ...(target.operation in prepares ? ["args"] : target.operation === "execute" && input.payment_signature !== undefined ? ["payment_signature"] : [])];
   if (!exactKeys(input, expected) || !walletPattern.test(input.wallet_address) ||
       typeof input.receipt !== "string" || input.receipt.length > 32768 || !/^[A-Za-z0-9_.-]+$/.test(input.receipt)) fail();
   return unsignedRequest(base, targetFor(target), bodyFor(target, input), input.receipt, input.wallet_address, now, now + 120, nonce);
@@ -73,8 +78,8 @@ export function signedWalletRequest(base, target, input, now = Math.floor(Date.n
   if (method === "POST") {
     if (typeof r.body !== "string" || Buffer.byteLength(r.body) > 100000) fail();
     let body; try { body = JSON.parse(r.body); } catch { fail(); }
-    if (target.operation === "prepare") {
-      if (!exactKeys(body, ["kind", "args"]) || body.kind !== "special_post" || !object(body.args)) fail();
+    if (target.operation in prepares) {
+      if (!exactKeys(body, ["kind", "args"]) || body.kind !== prepares[target.operation] || !object(body.args)) fail();
     } else if (!object(body) || Object.keys(body).some(k => k !== "payment_signature") ||
       (body.payment_signature !== undefined && (typeof body.payment_signature !== "string" || body.payment_signature.length < 1 || body.payment_signature.length > 65536))) fail();
   }
@@ -171,5 +176,5 @@ export async function requestWallet(base, target, timeoutMs) {
   }
   const input = await readInput(timeoutMs);
   if (target.phase === "prepare") return {ok: true, request: prepareWalletRequest(base, target, input)};
-  return send(signedWalletRequest(base, target, input), timeoutMs, target.operation !== "get");
+  return send(signedWalletRequest(base, target, input), timeoutMs, !reads.includes(target.operation));
 }

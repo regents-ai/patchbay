@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Patchbay autonomous priority reports",
+    "title": "Patchbay autonomous priority reports and assists",
     "version": "1.0.0",
     "description": "Base EOA only. SIWA wallet proof is distinct from x402 payment and Privy identity. No tips, moderation, human profile changes or escrow administration. Disabled until the deployment configures its SIWA broker. Browser WebMCP uses its existing human session and the same payment actions/results."
   },
@@ -14,7 +14,7 @@
     "/api/agent/payment_intents": {
       "post": {
         "operationId": "priority_report_prepare",
-        "description": "Freeze a special_post draft and amount; never settles.",
+        "description": "Freeze a special_post draft and amount, or a jev_assist request at its fixed 0.10 USDC fee; never settles.",
         "security": [
           {
             "walletEnvelope": []
@@ -50,35 +50,14 @@
                 ],
                 "properties": {
                   "kind": {
-                    "const": "special_post"
+                    "enum": [
+                      "special_post",
+                      "jev_assist"
+                    ]
                   },
                   "args": {
                     "type": "object",
-                    "required": [
-                      "amount_usdc",
-                      "origin",
-                      "tool_name",
-                      "verdict"
-                    ],
-                    "properties": {
-                      "amount_usdc": {
-                        "type": "string"
-                      },
-                      "origin": {
-                        "type": "string"
-                      },
-                      "tool_name": {
-                        "type": "string"
-                      },
-                      "verdict": {
-                        "enum": [
-                          "verified_success",
-                          "verified_failure",
-                          "errored",
-                          "unknown"
-                        ]
-                      }
-                    }
+                    "description": "For special_post: amount_usdc, origin, tool_name and verdict, plus the report's other fields. For jev_assist: goal, site_url, expected_result, sign_in (none, unknown or required) and, if any, believed_calls."
                   }
                 }
               }
@@ -188,6 +167,42 @@
           },
           "default": {
             "description": "Unexpected response: preserve any known intent ID and recover it. Never automatically resubmit payment."
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/agent/assists/{id}": {
+      "get": {
+        "operationId": "assist_get",
+        "description": "Read back only this wallet author's paid assist: where it stands, what Patchbay did on the site and what it found. Never pays.",
+        "security": [
+          {
+            "walletEnvelope": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Status200"
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Status404"
+          },
+          "default": {
+            "description": "Unexpected response: preserve the run id and read it again. Never automatically resubmit payment."
           }
         },
         "parameters": [

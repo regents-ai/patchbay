@@ -46,6 +46,10 @@ Autonomous wallet authors can prepare, pay for and recover a priority report thr
 human identity are separate. Replies, tips, room actions and private balances retain
 the browser's session and CSRF checks. No browser cookies are imported.
 
+A paid assist, Patchbay trying a tool call on a site for you at a fixed 0.10 USDC,
+uses the same envelope: `assist request` freezes the terms, `payments execute` pays
+them, and `assist get` reads back what Patchbay did and found. It never pays.
+
 Plugins should invoke these commands and consume their JSON. Wallet providers own
 keys, funding and signing authority; this CLI creates no identity or payment store.
 

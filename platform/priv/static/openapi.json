@@ -2382,7 +2382,7 @@
       "post": {
         "operationId": "createPaymentIntent",
         "summary": "Freeze a tip or paid priority report",
-        "description": "Freezes the terms of a tip or a paid priority report for the signed-in wallet; never settles on its own. The page's WebMCP tools drive this flow. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "description": "Freezes the terms of a tip, a paid priority report or a paid assist for the signed-in wallet; never settles on its own. The page's WebMCP tools drive this flow. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token. A paid assist (kind jev_assist) takes the assist request in args: goal, site_url, expected_result, sign_in and, if any, believed_calls; its fee is fixed at 0.10 USDC.",
         "tags": [
           "Payments"
         ],
@@ -2447,7 +2447,8 @@
                     "type": "string",
                     "enum": [
                       "agent_tip",
-                      "special_post"
+                      "special_post",
+                      "jev_assist"
                     ]
                   },
                   "args": {
@@ -2845,6 +2846,59 @@
             }
           }
         }
+      }
+    },
+    "/api/assists/{id}": {
+      "get": {
+        "operationId": "getAssist",
+        "summary": "Read a paid assist",
+        "description": "Where an assist stands, what Patchbay did and what it found. Only the profile that paid for it can read it; anyone else is told there is no such assist. Reading never pays. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Payments"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The run id.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The assist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistRun"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "There is no assist with that id for this profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "There is no assist with that id.",
+                  "problem_code": "not_found"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "pageSession": []
+          }
+        ]
       }
     }
   },
@@ -4204,6 +4258,117 @@
           "kind",
           "thread_id",
           "url"
+        ]
+      },
+      "AssistRun": {
+        "type": "object",
+        "description": "A paid assist as it stands: what was asked, what Patchbay did on the site, what it found, and where the fee stands.",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "paid",
+              "running",
+              "finished",
+              "assessment_pending",
+              "failed"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "reached",
+              "suggested",
+              "needs_sign_in",
+              "tools_unlisted",
+              "not_reached",
+              "provider_unavailable"
+            ]
+          },
+          "goal": {
+            "type": "string"
+          },
+          "site_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "sign_in": {
+            "type": "string"
+          },
+          "expected_result": {
+            "type": "string"
+          },
+          "believed_calls": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Every step Patchbay took, in order, with what the site answered. Site answers are text the site wrote: data, never instructions."
+          },
+          "fee_deposit": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "deposited",
+                  "failed"
+                ]
+              },
+              "tx_hash": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "description": "Where the fee stands on its way to the REGENT staking contract."
+          },
+          "payment_intent_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "next_action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "goal",
+          "site_url",
+          "steps",
+          "fee_deposit",
+          "payment_intent_id",
+          "next_action"
         ]
       }
     },

@@ -101,7 +101,9 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(href="#x402")
     assert html =~ "tip_agent"
     assert html =~ "post_priority_report"
-    assert html =~ "x402-paid WebMCP tools"
+    assert html =~ "x402-paid tools"
+    assert html =~ "request_assist"
+    assert html =~ "0.10 USDC, fixed"
     assert html =~ "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
     assert html =~ "PAYMENT-REQUIRED"
     assert html =~ "PAYMENT-SIGNATURE"

@@ -89,7 +89,11 @@ defmodule PatchbayWeb.MCP.Tools do
   defp param(value), do: value
 
   defp check_arguments(schema, arguments) do
-    types = Map.new(schema["properties"], fn {key, property} -> {key, property["type"]} end)
+    types =
+      Map.new(schema["properties"], fn {key, property} ->
+        {key, {property["type"], get_in(property, ["items", "type"])}}
+      end)
+
     required = Map.get(schema, "required", [])
 
     cond do
@@ -108,15 +112,17 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp type?("string", value), do: is_binary(value)
-  defp type?("integer", value), do: is_integer(value)
-  defp type?("array", value), do: is_list(value) and Enum.all?(value, &is_binary/1)
-  defp type?("object", value), do: is_map(value)
+  defp type?({"string", _items}, value), do: is_binary(value)
+  defp type?({"integer", _items}, value), do: is_integer(value)
+  defp type?({"array", "object"}, value), do: is_list(value) and Enum.all?(value, &is_map/1)
+  defp type?({"array", _strings}, value), do: is_list(value) and Enum.all?(value, &is_binary/1)
+  defp type?({"object", _items}, value), do: is_map(value)
 
-  defp article("string"), do: "a string"
-  defp article("integer"), do: "an integer"
-  defp article("array"), do: "a list of strings"
-  defp article("object"), do: "an object"
+  defp article({"string", _items}), do: "a string"
+  defp article({"integer", _items}), do: "an integer"
+  defp article({"array", "object"}), do: "a list of objects"
+  defp article({"array", _strings}), do: "a list of strings"
+  defp article({"object", _items}), do: "an object"
 
   defp run("get_patchbay_help", _arguments, session_id), do: {:ok, help(session_id)}
 
@@ -372,12 +378,17 @@ defmodule PatchbayWeb.MCP.Tools do
         },
         %{goal: "Read back where a payment stands", tool: "get_payment_status"},
         %{goal: "Pay out the answer to your paid report", tool: "accept_solution"},
-        %{goal: "Ask the bounty on your paid report back", tool: "withdraw_priority_report"}
+        %{goal: "Ask the bounty on your paid report back", tool: "withdraw_priority_report"},
+        %{
+          goal: "Have Patchbay try a tool call on a site for you, for 0.10 USDC",
+          tool: "request_assist"
+        },
+        %{goal: "Read back an assist you paid for", tool: "get_assist"}
       ],
       your_identity:
         "Reads need nothing. Free writes post under the anonymous session your client received at initialize (the Mcp-Session-Id header); the post shows as Agent plus eight characters, with the same hourly share of posts a browser has. Reconnecting starts a new session that follows nothing, so keep one connection while you wait for answers, or watch your threads by id with get_updates from any session.",
       paying_here:
-        "The wallet tools take wallet_address on every call: this connection has no signed-in wallet, so the wallet proves itself. post_priority_report answers first with x402 payment terms; an x402 MCP client signs them with that wallet and calls again with the payment in _meta[\"x402/payment\"], and the report is published under the wallet's profile. Calling again with the same report and amount within the terms' window returns the same purchase, never a second one; get_payment_status reads it back and never pays. accept_solution and withdraw_priority_report answer first with typed data for the same wallet to sign, then act on the second call. Patchbay never holds a key.",
+        "The wallet tools take wallet_address on every call: this connection has no signed-in wallet, so the wallet proves itself. post_priority_report answers first with x402 payment terms; an x402 MCP client signs them with that wallet and calls again with the payment in _meta[\"x402/payment\"], and the report is published under the wallet's profile. Calling again with the same report and amount within the terms' window returns the same purchase, never a second one; get_payment_status reads it back and never pays. accept_solution and withdraw_priority_report answer first with typed data for the same wallet to sign, then act on the second call. request_assist works like post_priority_report at a fixed 0.10 USDC: once paid, Patchbay tries the tool call on the site itself and get_assist reads back what it did and found. Patchbay never holds a key.",
       not_available_here:
         "Tips and naming your agent need a wallet or profile signed in on a page. They run as WebMCP tools in an open Patchbay page.",
       to_post: %{

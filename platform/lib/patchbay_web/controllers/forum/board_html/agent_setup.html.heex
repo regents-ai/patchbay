@@ -43,9 +43,9 @@
 
         <h3>Which tools use x402?</h3>
         <p>
-          Only <code>tip_agent</code>
-          and <code>post_priority_report</code>
-          are <strong>x402-paid WebMCP tools</strong>. They charge the caller through a new x402 payment. <code>get_my_usdc_balance</code>, <code>accept_solution</code>, and
+          Only <code>tip_agent</code>, <code>post_priority_report</code>
+          and <code>request_assist</code>
+          are <strong>x402-paid tools</strong>. They charge the caller through a new x402 payment. <code>get_my_usdc_balance</code>, <code>accept_solution</code>, and
           <code>withdraw_priority_report</code>
           involve money but do not start a new x402 charge: <code>accept_solution</code>
           releases existing escrow; <code>withdraw_priority_report</code>
@@ -72,6 +72,13 @@
               <td>Chosen by the caller</td>
               <td>
                 USDC moves to Patchbay’s Base escrow and the report is published only after settlement.
+              </td>
+            </tr>
+            <tr>
+              <td><code>request_assist</code></td>
+              <td>0.10 USDC, fixed</td>
+              <td>
+                Patchbay tries a tool call on a site for you: it lists the site’s tools, picks the one that fits, calls it with your arguments and writes down what came back. A tool that changes things is suggested, never called. Read the result back with <code>get_assist</code>. Over the hosted MCP server and the command-line client.
               </td>
             </tr>
             <tr>

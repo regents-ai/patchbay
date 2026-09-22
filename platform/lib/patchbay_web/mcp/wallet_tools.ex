@@ -2,7 +2,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   @moduledoc """
   The hosted tools that act for a wallet: paying for a priority report,
   reading the payment back, accepting the answer to that report and asking
-  its bounty back.
+  its bounty back; and paying for an assist and reading it back.
 
   The hosted door carries no signed-in wallet, so every one of these names the
   wallet it acts for in `wallet_address`, and the wallet is proven per call,
@@ -23,19 +23,22 @@ defmodule PatchbayWeb.MCP.WalletTools do
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Identity
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.MCP.WalletProof
   alias PatchbayWeb.MD
   alias PatchbayWeb.PaymentsAPI.Purchase
 
-  @names ~w(post_priority_report get_payment_status accept_solution withdraw_priority_report)
+  @names ~w(post_priority_report get_payment_status accept_solution withdraw_priority_report request_assist get_assist)
 
   @wallet_shape "wallet_address: must be a Base wallet address, 0x followed by 40 hex characters"
 
-  @challenge_error "Payment is required to publish this priority report."
+  @report_challenge "Payment is required to publish this priority report."
+  @assist_challenge "Payment is required to open this assist."
 
   @not_set_up "Paid priority posts are not set up on this Patchbay."
+  @assists_not_set_up "Paid assists are not set up on this Patchbay."
 
   @suspended %{
     problem_code: "suspended",
@@ -106,9 +109,39 @@ defmodule PatchbayWeb.MCP.WalletTools do
          {:ok, found} <-
            Purchase.special_post_on_offer(actor, Map.delete(arguments, "wallet_address")) do
       request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
-      purchase_answer(Purchase.execute(actor, found.id, request))
+      purchase_answer(Purchase.execute(actor, found.id, request), @report_challenge)
     else
       {:error, failure} -> purchase_refusal(failure)
+    end
+  end
+
+  def run("request_assist", %{"wallet_address" => wallet} = arguments, meta) do
+    with {:ok, wallet} <- wallet_address(wallet),
+         {:ok, named} <- Identity.upsert_from_wallet(%{wallet_address: wallet}),
+         {:ok, actor} <- active(named),
+         {:ok, found} <- Purchase.assist_on_offer(actor, Map.delete(arguments, "wallet_address")) do
+      request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
+      purchase_answer(Purchase.execute(actor, found.id, request), @assist_challenge)
+    else
+      {:error, failure} -> purchase_refusal(failure)
+    end
+  end
+
+  def run("get_assist", %{"run_id" => id, "wallet_address" => wallet}, _meta) do
+    with {:ok, wallet} <- wallet_address(wallet),
+         {:ok, actor} <- wallet_profile(wallet),
+         {:ok, run} <- Runs.read(actor, id) do
+      {:ok, Map.put(Runs.payload(run), :next_action, Runs.next_action(run))}
+    else
+      {:error, :not_found} ->
+        {:error,
+         %{
+           problem_code: "not_found",
+           error: "There is no assist with that id for the wallet named."
+         }}
+
+      {:error, failure} ->
+        purchase_refusal(failure)
     end
   end
 
@@ -207,14 +240,15 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
   # Paying for a report
 
-  defp purchase_answer({:payment_required, found}),
-    do: {:payment_required, Purchase.terms(found, @challenge_error), handoff(found)}
+  # `challenge` is the sentence the terms carry when no payment came.
+  defp purchase_answer({:payment_required, found}, challenge),
+    do: {:payment_required, Purchase.terms(found, challenge), handoff(found)}
 
-  defp purchase_answer({:payment_rejected, found, reason}),
+  defp purchase_answer({:payment_rejected, found, reason}, _challenge),
     do:
       {:payment_required, Purchase.terms(found, reason), Map.put(handoff(found), :reason, reason)}
 
-  defp purchase_answer({:applied, found, receipt}) do
+  defp purchase_answer({:applied, found, receipt}, _challenge) do
     answer =
       Purchase.payment_help(%{
         status: "applied",
@@ -224,13 +258,14 @@ defmodule PatchbayWeb.MCP.WalletTools do
         effect_summary: found.effect_summary
       })
 
-    {:paid, Map.merge(answer, Purchase.applied_effect(found)), receipt.payment_response}
+    effect = found |> Purchase.applied_effect() |> Map.merge(read_back_tool(found))
+    {:paid, Map.merge(answer, effect), receipt.payment_response}
   end
 
-  defp purchase_answer({:settled, found, receipt}),
+  defp purchase_answer({:settled, found, receipt}, _challenge),
     do: {:paid, status_answer(%{found | receipt: receipt}), receipt.payment_response}
 
-  defp purchase_answer({:settlement_pending, found}) do
+  defp purchase_answer({:settlement_pending, found}, _challenge) do
     {:error,
      Purchase.payment_help(%{
        problem_code: "settlement_pending",
@@ -241,7 +276,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
      })}
   end
 
-  defp purchase_answer({:expired, found}) do
+  defp purchase_answer({:expired, found}, _challenge) do
     {:error,
      Purchase.payment_help(%{
        problem_code: "expired",
@@ -252,7 +287,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
      })}
   end
 
-  defp purchase_answer({:facilitator_unavailable, found, reason}) do
+  defp purchase_answer({:facilitator_unavailable, found, reason}, _challenge) do
     {:error,
      Purchase.payment_help(%{
        problem_code: "facilitator_unavailable",
@@ -264,7 +299,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
      })}
   end
 
-  defp purchase_answer({:error, failure}), do: purchase_refusal(failure)
+  defp purchase_answer({:error, failure}, _challenge), do: purchase_refusal(failure)
+
+  # The tool that reads back what the money bought, over this door.
+  defp read_back_tool(%{kind: :jev_assist}), do: %{assist_tool: "get_assist"}
+  defp read_back_tool(_found), do: %{}
 
   # What a client that cannot pay over MCP does with the terms: the same
   # purchase, paid from a terminal or read back here, never bought twice.
@@ -307,6 +346,39 @@ defmodule PatchbayWeb.MCP.WalletTools do
        error: @not_set_up,
        next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment."
      })}
+  end
+
+  defp purchase_refusal(:assist_not_configured) do
+    {:error,
+     Purchase.payment_help(%{
+       problem_code: "not_configured",
+       error: @assists_not_set_up,
+       next_action:
+         "Use the free Patchbay tools. Paid assists are not enabled on this deployment."
+     })}
+  end
+
+  defp purchase_refusal(:needs_sign_in) do
+    {:error,
+     %{
+       problem_code: "needs_sign_in",
+       error:
+         "That site needs a signed-in user, and Patchbay never acts on anyone's account. " <>
+           "Nothing was charged."
+     }}
+  end
+
+  defp purchase_refusal({:assist_running, run, _assist_url}) do
+    {:error,
+     %{
+       problem_code: "assist_running",
+       error:
+         "Patchbay is already working on an assist for this wallet. Read it with get_assist; " <>
+           "a new one can be asked for once it has finished.",
+       run_id: run.id,
+       run_status: run.status,
+       assist_tool: "get_assist"
+     }}
   end
 
   defp purchase_refusal({:invalid, messages}),

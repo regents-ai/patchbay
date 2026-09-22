@@ -211,6 +211,39 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
+  @doc """
+  The terms on offer to `actor` for this assist: the intent it already
+  prepared for the same request, while those terms still stand, or fresh
+  ones. A caller that asks again after a timeout is answered with the
+  purchase it started and never a second one.
+  """
+  @spec assist_on_offer(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
+  def assist_on_offer(actor, args) do
+    with :ok <- assist_set_up(),
+         {:ok, request} <- AssistRequest.draft(args) do
+      case assist_offered(actor, request) do
+        nil -> prepare_assist(actor, request)
+        found -> {:ok, found}
+      end
+    end
+  end
+
+  defp prepare_assist(actor, request) do
+    with :ok <- no_assist_running(actor) do
+      Payments.prepare_jev_assist(%{request: request}, actor: actor)
+    end
+  end
+
+  # The actor's own assist intents whose terms have not run out; the one for
+  # the same request, newest first, is the purchase already under way.
+  defp assist_offered(actor, request) do
+    PaymentIntent
+    |> Ash.Query.filter(kind == :jev_assist and expires_at > ^DateTime.utc_now())
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.read!(actor: actor)
+    |> Enum.find(&(&1.payload["request"] == request))
+  end
+
   defp assist_set_up do
     if Assist.pay_to_address(), do: :ok, else: {:error, :assist_not_configured}
   end

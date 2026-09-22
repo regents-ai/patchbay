@@ -33,6 +33,27 @@ test("recovery uses a fresh signed GET and cannot send a new payment", () => {
   for (const origin of ['http://remote.invalid', 'https://u:p@example.com', 'https://example.com/path']) assert.throws(() => walletOrigin(origin));
 });
 
+test("an assist request freezes the assist kind, and its read-back is a signed GET that cannot pay", () => {
+  const request = walletTarget("assist_request", null);
+  const args = {goal: "Book the 9am table", site_url: "https://bookings.example.com/app", sign_in: "unknown", expected_result: "A booking reference"};
+  const prepared = prepareWalletRequest(base, request, {receipt, wallet_address: address, args}, now, "b".repeat(32));
+  assert.equal(prepared.method, "POST"); assert.equal(prepared.path, "/api/agent/payment_intents");
+  assert.deepEqual(JSON.parse(prepared.body), {kind: "jev_assist", args});
+  assert.equal(signedWalletRequest(base, request, {request: prepared, signature}, now).body, prepared.body);
+  // A request signed for a priority report is not one for an assist, and the other way round.
+  assert.throws(() => signedWalletRequest(base, walletTarget("prepare", null), {request: prepared, signature}, now));
+  const report = prepareWalletRequest(base, walletTarget("prepare", null), {receipt, wallet_address: address, args}, now, "b".repeat(32));
+  assert.throws(() => signedWalletRequest(base, request, {request: report, signature}, now));
+  assert.throws(() => prepareWalletRequest(base, request, {receipt, wallet_address: address, args, payment_signature: "forbidden"}, now));
+
+  const read = walletTarget("assist_get", target.id);
+  const get = prepareWalletRequest(base, read, {receipt, wallet_address: address}, now);
+  assert.equal(get.method, "GET"); assert.equal(get.path, `/api/agent/assists/${target.id}`); assert.equal(get.body, undefined);
+  assert.equal(signedWalletRequest(base, read, {request: get, signature}, now).headers["content-digest"], undefined);
+  assert.throws(() => prepareWalletRequest(base, read, {receipt, wallet_address: address, payment_signature: "forbidden"}, now));
+  assert.throws(() => walletTarget("assist_get", "../profile"));
+});
+
 import {spawn} from "node:child_process";
 import {fixture} from "./helpers.js";
 import {fileURLToPath} from "node:url";
