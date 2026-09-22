@@ -3,6 +3,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   import Plug.Conn
   alias Patchbay.Escrow.Watch
   alias Patchbay.{Identity, Repo}
+  alias Patchbay.Identity.Pairing
 
   @funded_at 1_790_000_000
 
@@ -269,6 +270,41 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     # A different actual signing key cannot use this receipt to read the intent.
     other = %{c | key: :crypto.strong_rand_bytes(32)}
     assert dispatch(other, ["payments", "get", id], %{})["status"] == 401
+  end
+
+  test "a person's code pairs the signing wallet with them, once", c do
+    privy_user_id = "did:privy:journey-#{Ecto.UUID.generate()}"
+
+    # Removing the person ends the pairing and takes their code with them.
+    on_exit(fn ->
+      unboxed(fn ->
+        Repo.query!("DELETE FROM agent_profiles WHERE privy_user_id=$1", [privy_user_id])
+      end)
+    end)
+
+    {person, code} =
+      unboxed(fn ->
+        person =
+          Identity.upsert_from_privy!(%{
+            privy_user_id: privy_user_id,
+            wallet_address: "0x" <> String.duplicate("e", 40)
+          })
+
+        {:ok, %{code: code}} = Pairing.issue(person)
+        {person, code}
+      end)
+
+    paired = dispatch(c, ["agent", "pair"], %{code: code})
+    assert paired["status"] == 200, inspect(paired)
+    assert %{"paired" => true, "person" => %{"profile_id" => public_id}} = paired["body"]
+    assert public_id == person.public_id
+
+    used = dispatch(c, ["agent", "pair"], %{code: code})
+    assert used["status"] == 422
+    assert used["body"]["problem_code"] == "code_unknown"
+
+    assert {:ok, agent} = unboxed(fn -> Identity.get_wallet_profile(8453, c.address) end)
+    assert agent.paired_person_id == person.id
   end
 
   test "changed body and replay are refused by cryptographic verification", c do

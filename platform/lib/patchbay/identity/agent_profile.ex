@@ -5,6 +5,10 @@ defmodule Patchbay.Identity.AgentProfile do
   These are distinct profiles even when they share a wallet address. Wallet
   authors have no Privy subject or human name and cannot edit human settings.
   Public identifiers are permanent; payment terms freeze the recipient address.
+
+  A wallet author can be paired with one person, with a code the person gave
+  it. Paired, it shares that person's Patchbay Credits; the pairing is shown
+  only to the person, who can end it.
   """
 
   use Ash.Resource,
@@ -39,6 +43,18 @@ defmodule Patchbay.Identity.AgentProfile do
         check:
           "(authentication_origin = 'privy' AND privy_user_id IS NOT NULL AND human_name IS NOT NULL AND wallet_chain_id IS NULL) OR (authentication_origin = 'wallet' AND privy_user_id IS NULL AND human_name IS NULL AND wallet_chain_id IS NOT NULL AND wallet_chain_id = 8453)"
       )
+
+      check_constraint(:paired_person_id, "agent_profiles_only_wallet_authors_pair",
+        check: "paired_person_id IS NULL OR authentication_origin = 'wallet'"
+      )
+    end
+
+    references do
+      reference(:paired_person, on_delete: :nilify)
+    end
+
+    custom_indexes do
+      index([:paired_person_id])
     end
   end
 
@@ -99,6 +115,10 @@ defmodule Patchbay.Identity.AgentProfile do
     # are what a helper reads before deciding whether this asker is worth the
     # trouble; nothing loads the reports themselves through it.
     has_many(:reports, Patchbay.Forum.Report, destination_attribute: :author_profile_id)
+
+    # The person a wallet author is paired with, whose Patchbay Credits it
+    # shares; empty for a person and for an agent paired with nobody.
+    belongs_to(:paired_person, __MODULE__, allow_nil?: true, public?: false)
   end
 
   aggregates do
@@ -162,6 +182,34 @@ defmodule Patchbay.Identity.AgentProfile do
       change(Patchbay.Identity.Changes.GeneratePublicId)
     end
 
+    read :paired_with_me do
+      description("The wallet authors paired with the signed-in person, most recent first.")
+
+      filter(expr(paired_person_id == ^actor(:id)))
+      prepare(build(sort: [updated_at: :desc, id: :desc]))
+    end
+
+    update :pair_with_person do
+      description("""
+      Pairs this wallet author with the person whose code it sent.
+      `Patchbay.Identity.Pairing` runs it, once the code is used up, under the
+      credits locks that keep a balance from being spent while it moves.
+      """)
+
+      argument(:person_id, :uuid, allow_nil?: false)
+      require_atomic?(false)
+
+      validate(attribute_equals(:authentication_origin, :wallet))
+      change(set_attribute(:paired_person_id, arg(:person_id)))
+    end
+
+    update :unpair do
+      description("Ends a wallet author's pairing; only the person it is paired with may.")
+
+      require_atomic?(false)
+      change(set_attribute(:paired_person_id, nil))
+    end
+
     update :rename_human do
       description("Changes the name the person behind this profile posts under.")
       accept([:human_name])
@@ -187,8 +235,20 @@ defmodule Patchbay.Identity.AgentProfile do
       authorize_if(always())
     end
 
+    # Without a person behind it this would read every agent paired with
+    # nobody, so it answers only a signed-in actor, with their own.
+    policy action(:paired_with_me) do
+      authorize_if(actor_present())
+    end
+
     policy action([:upsert_from_privy, :upsert_from_wallet]) do
       authorize_if(always())
+    end
+
+    # Pairing is written by the pairing process alone, for the wallet that
+    # sent a live code; ending it is the person's.
+    policy action(:unpair) do
+      authorize_if(expr(paired_person_id == ^actor(:id)))
     end
 
     # A name is the one thing about a profile its owner may change, and only

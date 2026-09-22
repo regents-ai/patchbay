@@ -224,6 +224,50 @@ price. Priority reports (1.00 and up) and bundles ($2 and up) are above it.
    `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `STRIPE_PROFILE_ID` are on
    `patchbay-regents`. Privy card funding is switched on.
 
+5. **Whose balance (Q1): b, as pairing.** A person buys credits for their
+   agent. The agent pairs with the person using a one-time code from the
+   person's profile page, good for ten minutes, which the agent sends signed
+   by its wallet: the SIWA-signed agent API (`POST /api/agent/pairing`), the
+   hosted MCP tool `pair_with_person` (EIP-712 signature) or the command line
+   (`patchbay agent pair`). The person and every agent paired with them share
+   one balance, held on the person's profile. An agent that already holds
+   credits moves them into it when it pairs. The person can unpair from their
+   page, which stops that agent spending at once. An agent pairs with one
+   person at a time; a new code moves it to the new person.
+6. **People keep spending too.** The fix form and the page's priority-report
+   tool still pay from the signed-in person's balance.
+7. **The spend signature (Q2): a.** Agents spend only through Patchbay's own
+   agent connection: the SIWA-signed agent API, whose signed request is the
+   wallet's word for that exact purchase, and hosted MCP with a
+   `SpendCredits` EIP-712 signature.
+8. **Link for a wallet that proves nothing (Q3): a.** Anyone may add credits
+   to any wallet; nobody can take them out. Credits bought for a paired
+   agent's wallet land on its person's balance.
+9. **A Link charge whose write fails (Q4): a.** An idempotency key per
+   payment (sha256 of the shared payment token), and leftovers matched by
+   hand.
+10. **Credits passed through a bounty before a chargeback: accepted.** The
+    loss is at most one bundle and credits never become money.
+11. **A won dispute gives the credits back: yes.** The founder adds
+    `charge.dispute.closed` to the webhook; a dispute closed as won writes the
+    taken-back amount back once.
+
+## How pairing and the shared balance work
+
+- `agent_profiles.paired_person_id` points a wallet agent at the Privy person
+  it is paired with. A balance's holder is the person for a paired agent and
+  the profile itself otherwise; every credits line is written on the holder.
+  A spend by a paired agent is written on the person, naming the agent's own
+  payment intent, so the person's history shows every agent's spends.
+- `pairing_codes`: one live code per person, stored as a sha256 hash with its
+  expiry. Issuing a new one replaces the old; pairing uses it up.
+- Pairing, under both profiles' credits locks taken in a fixed order, moves
+  the agent's own balance, whatever its sign, onto the person with a
+  `pairing_move` line on each side.
+- Refunds and disputes are written on the current holder of the profile the
+  purchase was credited to. Bounty payouts go to the holder of the author or
+  the asker.
+
 ## Build order
 
 1. Ledger and payment history (owner only, page only).
@@ -232,6 +276,9 @@ price. Priority reports (1.00 and up) and bundles ($2 and up) are above it.
    forwarded to staking).
 4. Priority reports paid from the balance, bounty held on the ledger (award
    90/10 on accept, return 90/10 after 30 days, each once).
-5. Agents spend a wallet's balance with a signature.
-6. Link: an agent buys a bundle for a named wallet.
-7. Link: an agent pays a priority report for a named wallet.
+5. Pairing and the shared balance (P).
+6. Agents spend their balance: SIWA-signed agent API and hosted MCP with
+   `SpendCredits`; the balance read for agents (S5).
+7. Link: an agent buys a bundle for a named wallet (S6).
+8. Link: an agent pays a priority report for a named wallet (S7).
+9. A won dispute gives the credits back.

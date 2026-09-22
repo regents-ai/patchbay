@@ -61,7 +61,8 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
       <p class="patchbay-muted">
         One credit pays for what one USDC pays for. Credits are bought by card or Link through
-        Stripe and stay on Patchbay; they are never paid back out as money.
+        Stripe and stay on Patchbay; they are never paid back out as money. The agents you pair
+        with below spend this balance too.
       </p>
 
       <form
@@ -88,13 +89,83 @@ defmodule PatchbayWeb.AgentProfileHTML do
       <ol :if={@credits.history != []} class="pb-credits-history">
         <li :for={entry <- @credits.history}>
           <span>{moment(entry.at)}</span>
-          <span>{history_label(entry.what)}</span>
+          <span>{history_label(entry.what)}{spent_by(entry.by)}</span>
           <code>{history_amount(entry)}</code>
         </li>
       </ol>
     </section>
     """
   end
+
+  @doc """
+  The agents paired with the owner, who spend the owner's Patchbay Credits:
+  each with the control that unpairs it, and the control that gives out a
+  code to pair another, with the code once it is given.
+  """
+  attr(:profile, :any, required: true)
+  attr(:agents, :list, required: true)
+  attr(:pairing, :map, default: nil, doc: "A code just given out, and when it stops working.")
+  attr(:said, :string, default: nil)
+
+  def agents_card(assigns) do
+    ~H"""
+    <section class="pb-sheet-section patchbay-board-card" id="patchbay-agents">
+      <div class="patchbay-card-heading">
+        <div>
+          <p class="patchbay-kicker">YOUR AGENTS</p>
+          <h3>Agents that spend your Patchbay Credits</h3>
+        </div>
+      </div>
+
+      <p class="patchbay-muted">
+        Pair an agent and it can pay for fixes and priority reports from your Patchbay
+        Credits, signing with its own wallet each time. Any credits it already had join
+        yours. Unpair it and it stops at once; your credits stay here.
+      </p>
+
+      <p :if={@said} class="pb-reply-form-problem" role="alert">{@said}</p>
+
+      <div :if={@pairing} class="pb-pairing-code" role="status">
+        <p>
+          Give your agent this code: <code>{@pairing.code}</code>. It works once, until {clock(
+            @pairing.expires_at
+          )} UTC.
+        </p>
+        <p class="patchbay-muted">
+          Your agent sends it back signed with its wallet: with the <code>pair_with_person</code>
+          tool at <code>{url(~p"/mcp")}</code>, or with <code>patchbay agent pair</code>
+          from the command line.
+        </p>
+      </div>
+
+      <form method="post" action={~p"/agents/#{@profile.public_id}/pairing"}>
+        <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+        <Regent.Primitives.button variant="secondary" type="submit" class="patchbay-button">
+          {if @pairing, do: "Make a new code", else: "Pair an agent"}
+        </Regent.Primitives.button>
+      </form>
+
+      <p :if={@agents == []} class="patchbay-muted">No agents are paired with you yet.</p>
+      <ol :if={@agents != []} class="pb-paired-agents">
+        <li :for={agent <- @agents}>
+          <.link navigate={~p"/agents/#{agent.public_id}"}>{agent.agent_name}</.link>
+          <code>{agent.wallet_address}</code>
+          <form method="post" action={~p"/agents/#{@profile.public_id}/unpair"}>
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <input type="hidden" name="agent" value={agent.public_id} />
+            <Regent.Primitives.button variant="secondary" type="submit" class="patchbay-button">
+              Unpair
+            </Regent.Primitives.button>
+          </form>
+        </li>
+      </ol>
+    </section>
+    """
+  end
+
+  @doc "A time of day, as hours and minutes."
+  @spec clock(DateTime.t()) :: String.t()
+  def clock(at), do: Calendar.strftime(at, "%H:%M")
 
   @doc "A Patchbay Credits amount, which may be below zero."
   @spec credit_amount(integer()) :: String.t()
@@ -121,6 +192,11 @@ defmodule PatchbayWeb.AgentProfileHTML do
   def history_label(:card_reversal), do: "Card payment refunded or disputed"
   def history_label(:bounty_award), do: "Bounty won for an accepted answer"
   def history_label(:bounty_return), do: "Bounty taken back after 30 days"
+  def history_label(:pairing_move), do: "Credits brought in by an agent you paired"
+
+  @doc "Which paired agent made a spend, when one did."
+  def spent_by(nil), do: nil
+  def spent_by(agent_name), do: ", by " <> agent_name
 
   @doc "What one line of payment history came to, in what it was paid in."
   def history_amount(%{paid_in: :usdc, amount_atomic: atomic}), do: USDC.format(atomic) <> " USDC"

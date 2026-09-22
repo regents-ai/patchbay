@@ -55,7 +55,7 @@ defmodule Patchbay.Forum.SolutionAccept do
 
   defp award(%Report{bounty_paid_with: :credits} = accepted) do
     with {:ok, _line} <-
-           Credits.pay_bounty(:bounty_award, accepted, accepted.accepted_reply.author_profile_id),
+           Credits.award_bounty(accepted, accepted.accepted_reply.author_profile_id),
          {:ok, released} <- record_release(accepted, :released, nil) do
       {:ok, %{released | accepted_reply: accepted.accepted_reply}}
     end

@@ -13,6 +13,11 @@ defmodule PatchbayWeb.MCP.WalletProof do
   named, and the challenge has to be this server's and unexpired, so a
   signature proves one action on one report by one wallet, and nothing else.
 
+  Pairing an agent with a person is proven the same way, with its own typed
+  data naming the code the person gave and that person's public profile id,
+  so the wallet sees whose code it is signing for and a signature pairs with
+  that person and no other.
+
   Nothing here holds a key or moves money: the wallet signs, this checks.
   """
 
@@ -32,16 +37,24 @@ defmodule PatchbayWeb.MCP.WalletProof do
       %{name: "replyId", type: "string"},
       %{name: "wallet", type: "address"},
       %{name: "challenge", type: "string"}
+    ],
+    "PairWithPerson" => [
+      %{name: "code", type: "string"},
+      %{name: "person", type: "string"},
+      %{name: "wallet", type: "address"},
+      %{name: "challenge", type: "string"}
     ]
   }
 
-  @typedoc "One action on one report, by one wallet."
-  @type action :: %{
-          action: String.t(),
-          report_id: String.t(),
-          reply_id: String.t(),
-          wallet: String.t()
-        }
+  @typedoc "One action on one report, or pairing with one person's code, by one wallet."
+  @type action ::
+          %{
+            action: String.t(),
+            report_id: String.t(),
+            reply_id: String.t(),
+            wallet: String.t()
+          }
+          | %{action: String.t(), code: String.t(), person: String.t(), wallet: String.t()}
 
   @doc "How long a challenge stands, in seconds."
   @spec max_age_seconds() :: pos_integer()
@@ -92,20 +105,33 @@ defmodule PatchbayWeb.MCP.WalletProof do
     end
   end
 
+  defp typed_data(%{action: "pair_with_person"} = action, challenge) do
+    typed("PairWithPerson", %{
+      "code" => action.code,
+      "person" => action.person,
+      "wallet" => action.wallet,
+      "challenge" => challenge
+    })
+  end
+
   defp typed_data(action, challenge) do
+    typed("WalletAction", %{
+      "action" => action.action,
+      "reportId" => action.report_id,
+      "replyId" => action.reply_id,
+      "wallet" => action.wallet,
+      "challenge" => challenge
+    })
+  end
+
+  defp typed(primary_type, message) do
     {:ok, chain_id} = X402.EIP712.chain_id_from_caip2(USDC.network())
 
     Ethers.TypedData.new!(
-      types: @types,
-      primary_type: "WalletAction",
+      types: Map.take(@types, [primary_type]),
+      primary_type: primary_type,
       domain: [name: @domain_name, version: @domain_version, chain_id: chain_id],
-      message: %{
-        "action" => action.action,
-        "reportId" => action.report_id,
-        "replyId" => action.reply_id,
-        "wallet" => action.wallet,
-        "challenge" => challenge
-      }
+      message: message
     )
   end
 end

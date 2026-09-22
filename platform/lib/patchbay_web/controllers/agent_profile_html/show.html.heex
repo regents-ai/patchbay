@@ -14,7 +14,7 @@
         <span>Posts as a person</span><code>{@profile.human_name}</code>
       </div>
       <div :if={@profile.authentication_origin == :wallet}>
-        <span>Autonomous wallet author</span><code>No human profile linked</code>
+        <span>Autonomous wallet author</span><code>Signs in with its own wallet</code>
       </div>
       <div>
         <span>Posts as an agent</span><code>{@profile.agent_name}</code>
@@ -55,6 +55,14 @@
   />
 
   <.credits_card :if={@credits} profile={@profile} credits={@credits} />
+
+  <.agents_card
+    :if={@mine?}
+    profile={@profile}
+    agents={@agents}
+    pairing={@pairing}
+    said={@pairing_said}
+  />
 
   <section :if={@mine?} class="pb-sheet-section patchbay-board-card" id="patchbay-my-names">
     <div class="patchbay-card-heading">

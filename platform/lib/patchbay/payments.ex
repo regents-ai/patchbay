@@ -11,13 +11,17 @@ defmodule Patchbay.Payments do
 
   Patchbay Credits can also be bought by card, in bundles, through Stripe. The
   card money stays in Patchbay's Stripe account; the credits are a prepaid
-  balance on the buyer's profile, kept as a ledger (`Patchbay.Payments.Credits`).
+  balance on the buyer's profile, kept as a ledger (`Patchbay.Payments.Credits`),
+  and shared with the agents the buyer has paired with them.
   """
 
   use Ash.Domain, otp_app: :patchbay
 
   import Ash.Expr, only: [expr: 1]
 
+  require Ash.Query
+
+  alias Patchbay.Identity.AgentProfile
   alias Patchbay.Payments.{Credits, PaymentReceipt}
 
   resources do
@@ -46,11 +50,18 @@ defmodule Patchbay.Payments do
   @doc """
   What the signed-in `profile` has paid and bought, newest first: its USDC
   payments and every line on its Patchbay Credits, each as when it happened,
-  what it was (a spend is named by what it paid for), and the amount in
-  USDC's atomic units (a credit line may be negative).
+  what it was (a spend is named by what it paid for), the amount in USDC's
+  atomic units (a credit line may be negative), and, for a spend one of the
+  profile's paired agents made, that agent's name.
   """
   @spec payment_history(struct()) :: [
-          %{at: DateTime.t(), what: atom(), amount_atomic: integer(), paid_in: :usdc | :credits}
+          %{
+            at: DateTime.t(),
+            what: atom(),
+            amount_atomic: integer(),
+            paid_in: :usdc | :credits,
+            by: String.t() | nil
+          }
         ]
   def payment_history(profile) do
     paid =
@@ -61,19 +72,23 @@ defmodule Patchbay.Payments do
           at: &1.settled_at,
           what: &1.payment_intent.kind,
           amount_atomic: &1.amount_atomic,
-          paid_in: :usdc
+          paid_in: :usdc,
+          by: nil
         }
       )
 
+    lines = Credits.history(profile)
+    agents = agent_names(lines, profile)
+
     credits =
-      profile
-      |> Credits.history()
-      |> Enum.map(
+      Enum.map(
+        lines,
         &%{
           at: &1.inserted_at,
           what: bought(&1),
           amount_atomic: &1.amount_atomic,
-          paid_in: :credits
+          paid_in: :credits,
+          by: spent_by(&1, agents)
         }
       )
 
@@ -83,6 +98,26 @@ defmodule Patchbay.Payments do
   # A spend is shown as what it paid for.
   defp bought(%{kind: :spend, payment_intent: %{kind: kind}}), do: kind
   defp bought(%{kind: kind}), do: kind
+
+  # The names of the paired agents whose spends are among `lines`: the payers
+  # of spends on this profile's lines who are not the profile itself.
+  defp agent_names(lines, profile) do
+    payers =
+      for %{kind: :spend, payment_intent: %{actor_profile_id: payer}} <- lines,
+          payer != profile.id,
+          uniq: true,
+          do: payer
+
+    AgentProfile
+    |> Ash.Query.filter(id in ^payers)
+    |> Ash.read!()
+    |> Map.new(&{&1.id, &1.agent_name})
+  end
+
+  defp spent_by(%{kind: :spend, payment_intent: %{actor_profile_id: payer}}, agents),
+    do: Map.get(agents, payer)
+
+  defp spent_by(_line, _agents), do: nil
 
   @doc """
   A profile's whole history of tipping, both ways: how many settled tips it has

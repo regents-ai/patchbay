@@ -2,6 +2,10 @@ defmodule Patchbay.Payments.CreditLine do
   @moduledoc """
   One line on a profile's Patchbay Credits ledger.
 
+  Lines are written on the profile that holds the balance: a person, or an
+  agent paired with nobody. An agent paired with a person spends, and is
+  paid, on that person's lines.
+
   A balance is never stored: it is the sum of its lines, positive for credits
   bought and negative for credits taken back or spent. Lines are only ever
   added. Every card payment they come from is named by its Stripe payment
@@ -46,7 +50,8 @@ defmodule Patchbay.Payments.CreditLine do
     # directly with what an action costs in USDC. Negative takes credits away.
     attribute(:amount_atomic, :integer, allow_nil?: false, public?: true)
 
-    # The card payment a purchase or a reversal comes from; empty on a spend.
+    # The card payment a purchase or a reversal comes from; empty on every
+    # other line.
     attribute(:stripe_payment_intent_id, :string, allow_nil?: true, public?: true)
 
     # Set on a reversal Stripe opened for a dispute; empty on one for a refund.
@@ -81,7 +86,7 @@ defmodule Patchbay.Payments.CreditLine do
   relationships do
     belongs_to(:profile, Patchbay.Identity.AgentProfile, allow_nil?: false, public?: true)
 
-    # The paid action a spend paid for; empty on a purchase or a reversal.
+    # The paid action a spend paid for; empty on every other line.
     belongs_to(:payment_intent, Patchbay.Payments.PaymentIntent, allow_nil?: true, public?: true)
   end
 
@@ -95,11 +100,19 @@ defmodule Patchbay.Payments.CreditLine do
       filter(expr(stripe_payment_intent_id == ^arg(:stripe_payment_intent_id)))
     end
 
+    read :spend_for_payment do
+      description("The spend one payment intent was paid with, if it was paid in credits.")
+
+      argument(:payment_intent_id, :uuid, allow_nil?: false)
+      get?(true)
+      filter(expr(kind == :spend and payment_intent_id == ^arg(:payment_intent_id)))
+    end
+
     read :history do
       description("The signed-in profile's own lines, newest first.")
 
       filter(expr(profile_id == ^actor(:id)))
-      prepare(build(sort: [inserted_at: :desc, id: :desc], limit: 50, load: [:payment_intent]))
+      prepare(build(sort: [inserted_at: :desc, id: :desc], limit: 50))
     end
 
     create :record_card_purchase do
@@ -121,15 +134,27 @@ defmodule Patchbay.Payments.CreditLine do
     end
 
     create :record_spend do
-      description(
-        "The actor's own credits spent on a payment intent; `Credits.spend/2` names the " <>
-          "actor's own intent, locked, after checking the balance under the actor's lock."
-      )
+      description("""
+      Credits spent on a payment intent, written on the balance the payer
+      spends: `Credits.spend/2` names the payer's own intent, locked, after
+      checking that balance under its lock.
+      """)
 
-      accept([:payment_intent_id, :amount_atomic])
-      change(relate_actor(:profile))
+      accept([:profile_id, :payment_intent_id, :amount_atomic])
+      require_attributes([:payment_intent_id])
       change(set_attribute(:kind, :spend))
       validate(compare(:amount_atomic, less_than: 0))
+    end
+
+    create :record_pairing_move do
+      description("""
+      One side of an agent's own credits moving onto the person it paired
+      with: negative on the agent, positive on the person.
+      """)
+
+      accept([:profile_id, :amount_atomic])
+      change(set_attribute(:kind, :pairing_move))
+      validate(negate(attribute_equals(:amount_atomic, 0)))
     end
 
     create :record_bounty_payout do
@@ -150,8 +175,8 @@ defmodule Patchbay.Payments.CreditLine do
       authorize_if(expr(profile_id == ^actor(:id)))
     end
 
-    policy action(:record_spend) do
-      authorize_if(actor_present())
-    end
+    # Every line is written by `Patchbay.Payments.Credits` alone, from
+    # Stripe's signed word, a payer's own locked intent, a bounty's own rule or
+    # a pairing, so no request can write one in its own words.
   end
 end

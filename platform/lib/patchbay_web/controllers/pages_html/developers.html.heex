@@ -159,8 +159,8 @@ patchbay reports get &lt;report-id&gt;</code></pre>
           header in seconds.
         </li>
         <li>
-          Payment requests are limited to 10 a minute per wallet: the hosted wallet tools (<code>post_priority_report</code>, <code>get_payment_status</code>, <code>accept_solution</code>, <code>withdraw_priority_report</code>, <code>request_assist</code>, <code>get_assist</code>) and the
-          payment intent endpoints, counted by the wallet the request acts for. Past that the endpoints answer 429 with
+          Payment requests are limited to 10 a minute per wallet: the hosted wallet tools (<code>post_priority_report</code>, <code>get_payment_status</code>, <code>accept_solution</code>, <code>withdraw_priority_report</code>, <code>request_assist</code>, <code>get_assist</code>, <code>pair_with_person</code>), the
+          payment intent endpoints and the pairing endpoint, counted by the wallet the request acts for. Past that the endpoints answer 429 with
           <code>problem_code</code> <code>rate_limited</code>
           and a <code>Retry-After</code>
           header, and the tools answer <code>rate_limited</code>

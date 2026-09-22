@@ -7,9 +7,16 @@ defmodule Patchbay.Payments.Credits do
   One credit pays for what one USDC pays for. Card money stays in Patchbay's
   Stripe account; what a profile holds here is prepaid credit, never USDC.
 
-  Every change to one profile's balance is made under that profile's own lock,
-  held until the change commits, so a purchase, a reversal and anything that
-  reads the balance to spend it are taken one at a time.
+  A person and every agent paired with them share one balance, held on the
+  person's lines; an agent paired with nobody holds its own. Whatever a
+  profile buys, spends or is paid lands on the balance its holder keeps.
+
+  Every change to a balance is made under locks held until the change
+  commits: first the lock of the profile acting or being paid, then, when it
+  is an agent paired with a person, the person's. Pairing and unpairing take
+  the agent's lock first too, so while one of these holds an agent's lock the
+  agent's holder cannot change, and a purchase, a reversal, a pairing and
+  anything that reads the balance to spend it are taken one at a time.
   """
 
   require Ash.Query
@@ -39,68 +46,84 @@ defmodule Patchbay.Payments.Credits do
   def written(atomic), do: USDC.format(atomic)
 
   @doc """
-  What a profile holds, in USDC's atomic units: the sum of its lines, added up
-  by the database. It can be below zero once Stripe has taken back a card
-  payment whose credits were already spent.
+  What a profile can spend, in USDC's atomic units: the sum of its holder's
+  lines, added up by the database. It can be below zero once Stripe has taken
+  back a card payment whose credits were already spent.
   """
   @spec balance_atomic(Ash.UUID.t()) :: integer()
-  def balance_atomic(profile_id) do
-    # Patchbay's own sum, shown only to the profile it belongs to and read
-    # before anything is spent from it.
-    CreditLine
-    |> Ash.Query.filter(profile_id == ^profile_id)
-    |> Ash.sum!(:amount_atomic, authorize?: false)
-    |> Kernel.||(0)
-  end
+  def balance_atomic(profile_id), do: profile_id |> holder_of() |> sum_of_lines()
 
-  @doc "The signed-in profile's own lines, newest first."
+  @doc """
+  The signed-in profile's own lines, newest first, each spend with the
+  payment intent it paid for, whoever of the balance's sharers made it.
+  """
   @spec history(struct()) :: [CreditLine.t()]
   def history(profile) do
-    Ash.read!(CreditLine, action: :history, actor: profile)
+    # A paired agent's intent is its own to read, but what it spent was the
+    # person's balance, so the person sees what it paid for.
+    CreditLine
+    |> Ash.read!(action: :history, actor: profile)
+    |> Ash.load!(:payment_intent, authorize?: false)
   end
 
   @doc """
-  Spends `actor`'s own credits on `intent`, the actor's own payment intent,
-  when the balance covers it. Called inside the transaction that holds the
+  Spends the balance `actor` shares on `intent`, the actor's own payment
+  intent, when it covers it. Called inside the transaction that holds the
   intent's row lock; the balance is read and the spend written under the
-  actor's credits lock, so two spends can never both take the last of it.
+  balance's locks, so two spends can never both take the last of it.
   """
   @spec spend(struct(), struct()) ::
           {:ok, CreditLine.t()} | {:short, integer()} | {:error, term()}
   def spend(actor, intent) do
-    hold(actor.id)
-    balance = balance_atomic(actor.id)
+    holder = hold_balance(actor.id)
+    balance = sum_of_lines(holder)
 
-    if balance >= intent.amount_atomic do
-      CreditLine
-      |> Ash.Changeset.for_create(
-        :record_spend,
-        %{payment_intent_id: intent.id, amount_atomic: -intent.amount_atomic},
-        actor: actor
-      )
-      |> Ash.create()
-    else
-      {:short, balance}
-    end
+    # The actor's own locked intent, checked against the balance it shares.
+    if balance >= intent.amount_atomic,
+      do:
+        record(:record_spend, %{
+          profile_id: holder,
+          payment_intent_id: intent.id,
+          amount_atomic: -intent.amount_atomic
+        }),
+      else: {:short, balance}
   end
 
   @doc """
-  Pays a bounty held in credits out to `profile_id`: `:bounty_award` to the
-  author of the answer its asker accepted, `:bounty_return` back to the asker.
-  Either way 90% is paid and Patchbay keeps 10%, the split the escrow
-  contract pays a bounty held in USDC. Called inside the transaction that
-  holds the report's row lock; a report is paid out once, whichever way.
+  Pays a bounty held in credits to `profile_id`, the author of the answer its
+  asker accepted, onto the balance that author spends now. 90% is paid and
+  Patchbay keeps 10%, the split the escrow contract pays a bounty held in
+  USDC. Called inside the transaction that holds the report's row lock; a
+  report is paid out once, whether awarded or returned.
   """
-  @spec pay_bounty(:bounty_award | :bounty_return, struct(), Ash.UUID.t()) ::
-          {:ok, CreditLine.t()} | {:error, term()}
-  def pay_bounty(kind, report, profile_id) do
-    hold(profile_id)
+  @spec award_bounty(struct(), Ash.UUID.t()) :: {:ok, CreditLine.t()} | {:error, term()}
+  def award_bounty(report, profile_id),
+    do: pay_out(:bounty_award, report, hold_balance(profile_id))
 
-    # Patchbay's own rule pays the bounty out: the asker's accept or return
-    # was authorized on the report, and the author being paid is not acting.
+  @doc """
+  Pays a bounty held in credits back, 90% of it, to the balance that paid for
+  it, whoever the asker has been paired with since. Called like
+  `award_bounty/2`.
+  """
+  @spec return_bounty(struct()) :: {:ok, CreditLine.t()} | {:error, term()}
+  def return_bounty(report) do
+    # Patchbay's own rule finds who paid; the asker was authorized on the report.
+    with {:ok, spend} <-
+           CreditLine
+           |> Ash.Query.for_read(:spend_for_payment, %{
+             payment_intent_id: report.payment_intent_id
+           })
+           |> Ash.read_one(authorize?: false, not_found_error?: true) do
+      pay_out(:bounty_return, report, hold_balance(spend.profile_id))
+    end
+  end
+
+  # Patchbay's own rule pays the bounty out: the asker's accept or return was
+  # authorized on the report, and the profile being paid is not acting.
+  defp pay_out(kind, report, holder) do
     record(:record_bounty_payout, %{
       kind: kind,
-      profile_id: profile_id,
+      profile_id: holder,
       report_id: report.id,
       amount_atomic: bounty_share(report.priority_amount_atomic)
     })
@@ -119,8 +142,9 @@ defmodule Patchbay.Payments.Credits do
           {:ok, :credited | :already_credited} | {:error, term()}
   def record_card_purchase(profile_id, cents, stripe_payment_intent_id) do
     Ash.transact(CreditLine, fn ->
-      hold(profile_id)
-      credit_once(profile_id, cents, stripe_payment_intent_id)
+      profile_id
+      |> hold_balance()
+      |> credit_once(cents, stripe_payment_intent_id)
     end)
   end
 
@@ -178,10 +202,12 @@ defmodule Patchbay.Payments.Credits do
       [] ->
         nothing_bought
 
+      # Taken back from whoever holds the balance the purchase went to now.
       [%{profile_id: profile_id} | _lines] ->
         Ash.transact(CreditLine, fn ->
-          hold(profile_id)
-          reverse(profile_id, stripe_payment_intent_id, owed)
+          profile_id
+          |> hold_balance()
+          |> reverse(stripe_payment_intent_id, owed)
         end)
     end
   end
@@ -216,12 +242,76 @@ defmodule Patchbay.Payments.Credits do
     |> Ash.read!(authorize?: false)
   end
 
-  # Same: Stripe's signed word, or Patchbay's own bounty rule, writes the
-  # line, for no person acting.
+  # Same: Stripe's signed word, a payer's own locked intent, Patchbay's own
+  # bounty rule or a pairing writes the line.
   defp record(action, attributes) do
     CreditLine
     |> Ash.Changeset.for_create(action, attributes)
     |> Ash.create(authorize?: false)
+  end
+
+  @doc """
+  Takes the locks for pairing agent `agent_id` with person `person_id`:
+  the agent's first, as for anything the agent does, then the person it is
+  paired with now and the person it is pairing with, in one fixed order so
+  two pairings never wait on each other.
+  """
+  @spec hold_for_pairing(Ash.UUID.t(), Ash.UUID.t()) :: :ok
+  def hold_for_pairing(agent_id, person_id) do
+    hold(agent_id)
+
+    [holder_of(agent_id), person_id]
+    |> Enum.reject(&(&1 == agent_id))
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.each(&hold/1)
+  end
+
+  @doc """
+  Moves what agent `agent_id` holds on its own lines onto person
+  `person_id`, whatever its sign, as it pairs with them. Called under
+  `hold_for_pairing/2`'s locks; an agent holding nothing moves nothing.
+  """
+  @spec move_to_person(Ash.UUID.t(), Ash.UUID.t()) :: :ok | {:error, term()}
+  def move_to_person(agent_id, person_id) do
+    case sum_of_lines(agent_id) do
+      0 ->
+        :ok
+
+      held ->
+        with {:ok, _out} <-
+               record(:record_pairing_move, %{profile_id: agent_id, amount_atomic: -held}),
+             {:ok, _in} <-
+               record(:record_pairing_move, %{profile_id: person_id, amount_atomic: held}),
+             do: :ok
+    end
+  end
+
+  # The profile whose lines hold `profile_id`'s balance: the person an agent
+  # is paired with, or the profile itself.
+  defp holder_of(profile_id) do
+    case Patchbay.Identity.get_profile!(profile_id) do
+      %{paired_person_id: nil} -> profile_id
+      %{paired_person_id: person_id} -> person_id
+    end
+  end
+
+  # The profile's own lock first, which pins who holds its balance, then the
+  # holder's; answers the holder.
+  defp hold_balance(profile_id) do
+    hold(profile_id)
+    holder = holder_of(profile_id)
+    if holder != profile_id, do: hold(holder)
+    holder
+  end
+
+  # Patchbay's own sum, read under the balance's locks before anything is
+  # spent from it, and shown only to the person it belongs to.
+  defp sum_of_lines(profile_id) do
+    CreditLine
+    |> Ash.Query.filter(profile_id == ^profile_id)
+    |> Ash.sum!(:amount_atomic, authorize?: false)
+    |> Kernel.||(0)
   end
 
   defp hold(profile_id) do

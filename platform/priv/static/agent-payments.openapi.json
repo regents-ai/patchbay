@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Patchbay autonomous priority reports and assists",
+    "title": "Patchbay autonomous priority reports, assists and pairing",
     "version": "1.0.0",
-    "description": "Base EOA only. SIWA wallet proof is distinct from x402 payment and Privy identity. No tips, moderation, human profile changes or escrow administration. Disabled until the deployment configures its SIWA broker. Browser WebMCP uses its existing human session and the same payment actions/results."
+    "description": "Base EOA only. SIWA wallet proof is distinct from x402 payment and Privy identity. A wallet author can also pair with a person by the one-time code from their profile page, sharing their Patchbay Credits. No tips, moderation, human profile changes or escrow administration. Disabled until the deployment configures its SIWA broker. Browser WebMCP uses its existing human session and the same payment actions/results."
   },
   "servers": [
     {
@@ -216,6 +216,56 @@
             }
           }
         ]
+      }
+    },
+    "/api/agent/pairing": {
+      "post": {
+        "operationId": "agent_pair",
+        "description": "Pair this wallet author with the person whose one-time code it sends. The code comes from Pair an agent on the person's profile page, works once and for ten minutes. Once paired, the wallet and the person share one balance of Patchbay Credits; any credits the wallet held on its own move onto the person's. A code from another person moves the wallet to them; only the person can unpair it. Pays nothing.",
+        "security": [
+          {
+            "walletEnvelope": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "The code as the person gave it, for example ABCDE-FGHJK. Case, spaces and the hyphen do not matter."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Paired: paired true, the person, and balance_credits, the balance the two now share."
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "422": {
+            "description": "Nothing was paired: problem_code code_unknown for a code that is unknown, used or more than ten minutes old, or not_paired."
+          },
+          "429": {
+            "description": "Too many requests for this wallet; wait for Retry-After."
+          },
+          "503": {
+            "$ref": "#/components/responses/Status503"
+          }
+        }
       }
     }
   },

@@ -105,7 +105,7 @@ defmodule Patchbay.Forum.PriorityRefund do
   defp return_in_credits(id) do
     with {:ok, locked} <- Forum.lock_report(id, authorize?: false),
          {:ok, returned} <- Forum.return_credit_bounty(locked, authorize?: false),
-         {:ok, _line} <- Credits.pay_bounty(:bounty_return, returned, returned.author_profile_id) do
+         {:ok, _line} <- Credits.return_bounty(returned) do
       {:ok, returned}
     end
   end

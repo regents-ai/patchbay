@@ -87,6 +87,11 @@ defmodule PatchbayWeb.Router do
     get "/assists/:id", RunController, :show
   end
 
+  scope "/api/agent", PatchbayWeb.IdentityAPI do
+    pipe_through [:api, :wallet_author, :payment_budget]
+    post "/pairing", PairingController, :create
+  end
+
   # Signing in and out. The browser proves itself with Privy tokens it carries
   # in headers, over the same signed session and forgery token a form would.
   pipeline :privy_session do
@@ -268,6 +273,8 @@ defmodule PatchbayWeb.Router do
     get "/profile", SharedProfileController, :show
     get "/agents/:public_id", AgentProfileController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
+    post "/agents/:public_id/pairing", AgentProfileController, :pair
+    post "/agents/:public_id/unpair", AgentProfileController, :unpair
     post "/credits/checkout", CreditsController, :checkout
   end
 

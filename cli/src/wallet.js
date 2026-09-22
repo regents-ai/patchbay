@@ -19,6 +19,8 @@ export function walletOrigin(value) {
 // The operations that freeze terms, and the payment kind each one freezes.
 const prepares = {prepare: "special_post", assist_request: "jev_assist"};
 const reads = ["get", "assist_get"];
+// A pairing code as a person copies it: never empty, never longer than 64 characters.
+const pairingCode = code => typeof code === "string" && code.length >= 1 && code.length <= 64;
 
 export function walletTarget(operation, id, values = {}) {
   const phase = values.phase ?? "send";
@@ -32,11 +34,16 @@ function targetFor(target) {
   if (target.operation === "execute") return {method: "POST", path: `/api/agent/payment_intents/${target.id}/execute`};
   if (target.operation === "get") return {method: "GET", path: `/api/agent/payment_intents/${target.id}`};
   if (target.operation === "assist_get") return {method: "GET", path: `/api/agent/assists/${target.id}`};
+  if (target.operation === "pair") return {method: "POST", path: "/api/agent/pairing"};
   fail();
 }
 
 function bodyFor(target, input) {
   if (reads.includes(target.operation)) return undefined;
+  if (target.operation === "pair") {
+    if (!pairingCode(input.code)) fail();
+    return JSON.stringify({code: input.code});
+  }
   if (target.operation === "execute") {
     if (input.payment_signature !== undefined && (typeof input.payment_signature !== "string" || input.payment_signature.length < 1 || input.payment_signature.length > 65536)) fail();
     return JSON.stringify(input.payment_signature === undefined ? {} : {payment_signature: input.payment_signature});
@@ -48,7 +55,7 @@ function bodyFor(target, input) {
 // This is a reviewable message for an external EOA personal_sign implementation.
 // It contains no private key and is never a local signing request.
 export function prepareWalletRequest(base, target, input, now = Math.floor(Date.now() / 1000), nonce = randomBytes(16).toString("hex")) {
-  const expected = ["receipt", "wallet_address", ...(target.operation in prepares ? ["args"] : target.operation === "execute" && input.payment_signature !== undefined ? ["payment_signature"] : [])];
+  const expected = ["receipt", "wallet_address", ...(target.operation in prepares ? ["args"] : target.operation === "pair" ? ["code"] : target.operation === "execute" && input.payment_signature !== undefined ? ["payment_signature"] : [])];
   if (!exactKeys(input, expected) || !walletPattern.test(input.wallet_address) ||
       typeof input.receipt !== "string" || input.receipt.length > 32768 || !/^[A-Za-z0-9_.-]+$/.test(input.receipt)) fail();
   return unsignedRequest(base, targetFor(target), bodyFor(target, input), input.receipt, input.wallet_address, now, now + 120, nonce);
@@ -80,6 +87,8 @@ export function signedWalletRequest(base, target, input, now = Math.floor(Date.n
     let body; try { body = JSON.parse(r.body); } catch { fail(); }
     if (target.operation in prepares) {
       if (!exactKeys(body, ["kind", "args"]) || body.kind !== prepares[target.operation] || !object(body.args)) fail();
+    } else if (target.operation === "pair") {
+      if (!exactKeys(body, ["code"]) || !pairingCode(body.code)) fail();
     } else if (!object(body) || Object.keys(body).some(k => k !== "payment_signature") ||
       (body.payment_signature !== undefined && (typeof body.payment_signature !== "string" || body.payment_signature.length < 1 || body.payment_signature.length > 65536))) fail();
   }
@@ -176,5 +185,6 @@ export async function requestWallet(base, target, timeoutMs) {
   }
   const input = await readInput(timeoutMs);
   if (target.phase === "prepare") return {ok: true, request: prepareWalletRequest(base, target, input)};
-  return send(signedWalletRequest(base, target, input), timeoutMs, !reads.includes(target.operation));
+  // Only a request that can freeze or pay a charge has an outcome to recover.
+  return send(signedWalletRequest(base, target, input), timeoutMs, target.operation === "execute" || target.operation in prepares);
 }

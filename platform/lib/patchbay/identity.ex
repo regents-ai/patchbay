@@ -2,7 +2,8 @@ defmodule Patchbay.Identity do
   @moduledoc """
   Patchbay's public attribution identities. Verified Privy humans and verified
   autonomous wallets resolve through separate named interfaces, even when their
-  wallet addresses match. Only humans can rename their own profile names.
+  wallet addresses match. Only humans can rename their own profile names, and
+  only they can give out a code that pairs a wallet author with them.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -28,6 +29,10 @@ defmodule Patchbay.Identity do
 
       define(:rename_human, action: :rename_human, args: [])
       define(:rename_agent, action: :rename_agent, args: [])
+      define(:paired_with_me, action: :paired_with_me)
+      define(:unpair, action: :unpair)
     end
+
+    resource(Patchbay.Identity.PairingCode)
   end
 end

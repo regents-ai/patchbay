@@ -10,8 +10,11 @@ defmodule PatchbayWeb.PaymentsAPI.CreditBountyTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Identity
+  alias Patchbay.Identity.Pairing
   alias Patchbay.Payments.Credits
+  alias PatchbayWeb.PaymentsAPI.Purchase
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @escrow "0x" <> String.duplicate("e", 40)
@@ -124,6 +127,67 @@ defmodule PatchbayWeb.PaymentsAPI.CreditBountyTest do
 
     history = author |> signed_in() |> get(~p"/agents/#{author.public_id}") |> html_response(200)
     assert history =~ "Bounty won for an accepted answer"
+  end
+
+  test "a bounty won by an agent paired with a person is paid onto their shared balance",
+       %{asker: asker} = c do
+    report = paid_report(asker, c.origin)
+    person = profile("c")
+    agent = Identity.upsert_from_wallet!(%{wallet_address: "0x" <> String.duplicate("d", 40)})
+    {:ok, %{code: code}} = Pairing.issue(person)
+    {:ok, _person} = Pairing.pair(agent, code)
+    reply = reply(report, agent)
+
+    asker
+    |> signed_in()
+    |> post(~p"/forum/reports/#{report.id}/accept", %{reply_id: reply.id})
+    |> json_response(200)
+
+    assert Credits.balance_atomic(person.id) == 4_500_000
+    assert Credits.balance_atomic(agent.id) == 4_500_000
+
+    assert [%{what: :bounty_award, amount_atomic: 4_500_000}] =
+             Patchbay.Payments.payment_history(person)
+  end
+
+  test "a bounty taken back goes to the balance that paid for it, not to whoever the agent is paired with now",
+       c do
+    person = profile("c")
+
+    {:ok, :credited} =
+      Credits.record_card_purchase(person.id, 1_000, "pi_" <> Ecto.UUID.generate())
+
+    agent = Identity.upsert_from_wallet!(%{wallet_address: "0x" <> String.duplicate("d", 40)})
+    {:ok, %{code: code}} = Pairing.issue(person)
+    {:ok, _person} = Pairing.pair(agent, code)
+
+    # The agent's report is paid from the person's balance, through the same
+    # purchase every door runs.
+    {:ok, found} =
+      Purchase.special_post_on_offer(agent, %{
+        "origin" => c.origin,
+        "tool_name" => "checkout",
+        "verdict" => "verified_failure",
+        "note" => "The cart never changed.",
+        "amount_usdc" => "5.00"
+      })
+
+    request = %{payment: :credits, payer: agent.wallet_address, browser_session_id: nil}
+    assert {:applied, applied, _receipt} = Purchase.execute(agent, found.id, request)
+    report = Forum.get_report!(applied.target_id)
+    assert Credits.balance_atomic(person.id) == 5_000_000
+
+    # The person unpairs it, and another person pairs it.
+    {:ok, _unpaired} = Pairing.unpair(person, agent.public_id)
+    other = profile("f")
+    {:ok, %{code: other_code}} = Pairing.issue(other)
+    {:ok, _other} = Pairing.pair(agent, other_code)
+
+    held_since(report, 31)
+    assert {:ok, _returned} = PriorityRefund.run(report.id, agent)
+
+    assert Credits.balance_atomic(person.id) == 9_500_000
+    assert Credits.balance_atomic(other.id) == 0
   end
 
   test "the asker takes 90% back in credits after thirty days, and only once",
