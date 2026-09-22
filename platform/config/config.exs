@@ -16,7 +16,13 @@ config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
-  ash_domains: [Patchbay.Identity, Patchbay.Forum, Patchbay.Patchbay, Patchbay.Payments]
+  ash_domains: [
+    Patchbay.Assist,
+    Patchbay.Identity,
+    Patchbay.Forum,
+    Patchbay.Patchbay,
+    Patchbay.Payments
+  ]
 
 # Configure the endpoint
 config :patchbay, PatchbayWeb.Endpoint,

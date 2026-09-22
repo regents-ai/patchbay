@@ -13,11 +13,12 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   reading it back never pays.
 
   The money never passes through Patchbay. The payer's wallet pays the wallet
-  the terms name, a profile's own for a tip and the escrow contract for a paid
-  priority report, a payment service verifies and settles it, and what is
-  stored here is the record of what was promised and what happened. What the
-  money bought is then carried out per kind: a tip is complete once settled,
-  and a paid priority report is published from its frozen terms.
+  the terms name, a profile's own for a tip, the escrow contract for a paid
+  priority report and the assist wallet for a paid assist, a payment service
+  verifies and settles it, and what is stored here is the record of what was
+  promised and what happened. What the money bought is then carried out per
+  kind: a tip is complete once settled, a paid priority report is published
+  from its frozen terms, and a paid assist's run is opened from its.
 
   A short row lock commits the settlement attempt before external dispatch.
   A crash leaves an uncertain intent for reconciliation, never an automatic
@@ -29,6 +30,8 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   require Ash.Query
 
+  alias Patchbay.Assist
+  alias Patchbay.Assist.Request, as: AssistRequest
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
@@ -40,6 +43,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   alias Patchbay.Payments.PaymentReceipt
   alias Patchbay.Payments.SpecialPost
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
   alias X402.Extensions.PaymentIdentifier
@@ -194,6 +198,22 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
+  @doc """
+  Freezes the terms of a paid assist for `actor` from the request's fields.
+  The fee is fixed; the caller names no amount.
+  """
+  @spec prepare_jev_assist(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
+  def prepare_jev_assist(actor, args) do
+    with :ok <- assist_set_up(),
+         {:ok, request} <- AssistRequest.draft(args) do
+      Payments.prepare_jev_assist(%{request: request}, actor: actor)
+    end
+  end
+
+  defp assist_set_up do
+    if Assist.pay_to_address(), do: :ok, else: {:error, :assist_not_configured}
+  end
+
   # Executing a payment intent
 
   @doc """
@@ -237,6 +257,18 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   defp advance(_actor, %{status: :settled, kind: :agent_tip} = found, _request),
     do: {:applied, found, found.receipt}
+
+  # A settled assist whose run could not be opened is tried again on the
+  # next call: the run is opened from the same frozen terms, and one payment
+  # can never open two.
+  defp advance(actor, %{status: :settled, kind: :jev_assist} = found, request) do
+    with {:ok, :complete} <- carry_out(found, found.receipt, actor, request),
+         {:ok, applied} <- Payments.mark_applied(found, actor: actor) do
+      {:applied, applied, found.receipt}
+    else
+      _incomplete -> {:settled, found, found.receipt}
+    end
+  end
 
   defp advance(_actor, %{status: :settled} = found, _request),
     do: {:settled, found, found.receipt}
@@ -449,8 +481,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
     case persisted do
       {:ok, {settled, receipt}} ->
-        with {:ok, effect} when effect == :settled or effect.escrow_status == :credit_submitted <-
-               carry_out(settled, receipt, actor, request),
+        with {:ok, :complete} <- carry_out(settled, receipt, actor, request),
              {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
           {:applied, applied, receipt}
         else
@@ -463,16 +494,30 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
-  # What the money bought. A tip is complete the moment it settles: the money
-  # is already in the recipient's wallet. A paid priority report is published
-  # from its frozen terms and the settled money is recorded against it.
-  defp carry_out(%{kind: :agent_tip}, _receipt, _actor, _request), do: {:ok, :settled}
+  # What the money bought, and whether it is complete. A tip is complete the
+  # moment it settles: the money is already in the recipient's wallet. A paid
+  # priority report is published from its frozen terms and is complete once
+  # Base has been handed the settled money to record against it. A paid
+  # assist is complete once its run is open for Patchbay to work on.
+  defp carry_out(%{kind: :agent_tip}, _receipt, _actor, _request), do: {:ok, :complete}
 
   defp carry_out(%{kind: :special_post} = settled, receipt, actor, request) do
-    SpecialPost.publish(settled, receipt,
-      actor: actor,
-      browser_session_id: request.browser_session_id
-    )
+    with {:ok, report} <-
+           SpecialPost.publish(settled, receipt,
+             actor: actor,
+             browser_session_id: request.browser_session_id
+           ) do
+      {:ok, if(report.escrow_status == :credit_submitted, do: :complete, else: :incomplete)}
+    end
+  end
+
+  defp carry_out(%{kind: :jev_assist} = settled, _receipt, actor, request) do
+    with {:ok, _run} <-
+           Assist.open_run(%{intent: settled, browser_session_id: request.browser_session_id},
+             actor: actor
+           ) do
+      {:ok, :complete}
+    end
   end
 
   defp record_receipt(actor, found, payment, body) do
@@ -520,7 +565,8 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   # Ash filters out other payers' intents. Keep this ownership check as defense
   # in depth; denied reads reveal neither the record nor its existence.
   defp owned({:ok, found}, actor) do
-    permitted_kind = actor.authentication_origin != :wallet or found.kind == :special_post
+    permitted_kind =
+      actor.authentication_origin != :wallet or found.kind in [:special_post, :jev_assist]
 
     if found.actor_profile_id == actor.id and permitted_kind,
       do: {:ok, found},
@@ -667,12 +713,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
       receipt: receipt_payload(found.receipt),
       result: applied_effect(found),
       recovery_required: found.kind != :agent_tip,
-      next_action:
-        if(found.kind == :agent_tip,
-          do: "Payment settled. The tip is complete; do not pay again.",
-          else:
-            "Payment settled. Do not pay again. Check the report and reconcile any incomplete effect."
-        )
+      next_action: settled_next_action(found.kind)
     }
   end
 
@@ -685,11 +726,21 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   def recovery_payload(_found), do: %{}
 
+  defp settled_next_action(:agent_tip),
+    do: "Payment settled. The tip is complete; do not pay again."
+
+  defp settled_next_action(:special_post),
+    do: "Payment settled. Do not pay again. Check the report and reconcile any incomplete effect."
+
+  defp settled_next_action(:jev_assist),
+    do: "Payment settled. Do not pay again. Patchbay will open the assist; keep reading this."
+
   @doc """
-  What the settled money did, per kind: the profile a tip reached, or the
-  report a paid priority payment published and where its money stands.
-  Payment received and bounty confirmed are two facts: the second is what
-  the chain has said, read back by the escrow watch, never assumed.
+  What the settled money did, per kind: the profile a tip reached, the
+  report a paid priority payment published and where its money stands, or
+  the assist a payment opened and where it stands. Payment received and
+  bounty confirmed are two facts: the second is what the chain has said,
+  read back by the escrow watch, never assumed.
   """
   @spec applied_effect(PaymentIntent.t()) :: map()
   def applied_effect(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
@@ -722,6 +773,32 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
+  # The intent was read under its payer's own policy and the run is that
+  # intent's target, so the run is read here without an actor deliberately:
+  # nothing but the payer's own run can be named by it.
+  def applied_effect(%{kind: :jev_assist} = found) do
+    case Assist.get_run(found.target_id, authorize?: false) do
+      {:ok, %{} = run} ->
+        %{
+          run_id: run.id,
+          run_status: run.status,
+          outcome: run.outcome,
+          assist_url: assist_url(found),
+          next_action: Runs.next_action(run),
+          result_available: true
+        }
+
+      _unavailable ->
+        %{
+          run_id: found.target_id,
+          result_available: false,
+          assist_url: assist_url(found),
+          next_action:
+            "Payment received. The assist has not been opened yet; keep reading assist_url. Do not pay again."
+        }
+    end
+  end
+
   defp confirmation_next_action(:pending),
     do:
       "Payment received. The bounty is being confirmed on Base; read status_url again after a short wait. Do not pay again."
@@ -739,6 +816,14 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   defp intent_target(%{kind: :special_post} = found) do
     %{report_id: found.target_id, escrow_address: Map.fetch!(found.payload, "pay_to_address")}
+  end
+
+  defp intent_target(%{kind: :jev_assist} = found) do
+    %{
+      run_id: found.target_id,
+      site_url: get_in(found.payload, ["request", "site_url"]),
+      assist_url: assist_url(found)
+    }
   end
 
   # The profile as it stands now. The words shown to a reader are current; the
@@ -775,4 +860,11 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     do: url(~p"/api/agent/payment_intents/#{found.id}")
 
   def show_url(found), do: url(~p"/api/payment_intents/#{found.id}")
+
+  @doc "Where the assist an intent bought is read back, once it is open, likewise."
+  @spec assist_url(PaymentIntent.t()) :: String.t()
+  def assist_url(%{payload: %{"author_origin" => "wallet"}} = found),
+    do: url(~p"/api/agent/assists/#{found.target_id}")
+
+  def assist_url(found), do: url(~p"/api/assists/#{found.target_id}")
 end

@@ -9,9 +9,10 @@ defmodule Patchbay.Payments.PaymentIntent do
   proof of it.
 
   Patchbay never holds the money. The payment goes from the payer's wallet to
-  the wallet the terms name, a profile's own for a tip and the escrow contract
-  for a paid priority report; this row records what was promised, and the
-  receipt beside it records what happened.
+  the wallet the terms name, a profile's own for a tip, the escrow contract
+  for a paid priority report and the assist wallet for a paid assist; this
+  row records what was promised, and the receipt beside it records what
+  happened.
   """
 
   use Ash.Resource,
@@ -36,6 +37,10 @@ defmodule Patchbay.Payments.PaymentIntent do
   # than one call may put into escrow without a person deciding.
   @min_priority_atomic 1_000_000
   @max_priority_atomic 100_000_000
+
+  # A paid assist costs one fixed fee, named here and nowhere the caller can
+  # reach.
+  @assist_fee_atomic 100_000
 
   postgres do
     table("payment_intents")
@@ -178,6 +183,30 @@ defmodule Patchbay.Payments.PaymentIntent do
       change(Patchbay.Payments.Changes.FreezeSpecialPost)
     end
 
+    create :prepare_jev_assist do
+      description("""
+      Freezes the terms of a paid assist: the request as the agent wrote it,
+      the wallet the fixed fee goes to, and how much.
+      """)
+
+      accept([])
+
+      argument(:request, :map,
+        allow_nil?: false,
+        description: "The request as the agent wrote it, in the fields an assist request takes."
+      )
+
+      change(set_attribute(:actor_profile_id, actor(:id)))
+
+      change(set_attribute(:kind, :jev_assist))
+      change(set_attribute(:target_type, :assist_run))
+      change(set_attribute(:asset, USDC.asset()))
+      change(set_attribute(:network, USDC.network()))
+      change(set_attribute(:amount_atomic, @assist_fee_atomic))
+
+      change(Patchbay.Payments.Changes.FreezeAssist)
+    end
+
     update :mark_payment_required do
       description("The payer has been handed the terms and asked to sign for them.")
       accept([])
@@ -215,6 +244,10 @@ defmodule Patchbay.Payments.PaymentIntent do
     end
   end
 
+  @doc "What a paid assist costs, in USDC's atomic units."
+  @spec assist_fee_atomic() :: pos_integer()
+  def assist_fee_atomic, do: @assist_fee_atomic
+
   policies do
     policy action(:prepare_agent_tip) do
       forbid_if(expr(^actor(:authentication_origin) == :wallet))
@@ -222,6 +255,10 @@ defmodule Patchbay.Payments.PaymentIntent do
     end
 
     policy action(:prepare_special_post) do
+      authorize_if(actor_present())
+    end
+
+    policy action(:prepare_jev_assist) do
       authorize_if(actor_present())
     end
 

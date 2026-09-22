@@ -76,6 +76,11 @@ defmodule PatchbayWeb.Router do
     get "/payment_intents/:id", PaymentIntentController, :show
   end
 
+  scope "/api/agent", PatchbayWeb.AssistAPI do
+    pipe_through [:api, :wallet_author]
+    get "/assists/:id", RunController, :show
+  end
+
   # Signing in and out. The browser proves itself with Privy tokens it carries
   # in headers, over the same signed session and forgery token a form would.
   pipeline :privy_session do
@@ -202,6 +207,12 @@ defmodule PatchbayWeb.Router do
     post "/payment_intents", PaymentIntentController, :create
     post "/payment_intents/:id/execute", PaymentIntentController, :execute
     get "/payment_intents/:id", PaymentIntentController, :show
+  end
+
+  # Reading a paid assist back is not a payment request either.
+  scope "/api", PatchbayWeb.AssistAPI do
+    pipe_through [:forum_tools, :require_profile]
+    get "/assists/:id", RunController, :show
   end
 
   # Reading the wallet's balance is not a payment request; it is asked before

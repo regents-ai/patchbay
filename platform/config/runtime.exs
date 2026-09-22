@@ -112,6 +112,11 @@ config :patchbay, :escrow,
   operator_private_key: System.get_env("OPERATOR_PRIVATE_KEY"),
   rpc_url: System.get_env("BASE_RPC_URL")
 
+# Paid assists. ASSIST_WALLET_ADDRESS is the wallet on Base an assist's fixed
+# fee is paid to. A machine started without it serves every unpaid part of
+# Patchbay and says that paid assists are not set up.
+config :patchbay, :assist, pay_to_address: System.get_env("ASSIST_WALLET_ADDRESS")
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

@@ -4,10 +4,11 @@ defmodule Patchbay.Payments do
 
   Patchbay never holds anyone's money. A payment intent freezes what an action
   will cost and who receives it; the payer's wallet then pays that wallet
-  directly, and Patchbay keeps the receipt. Two actions use it, both in USDC on
-  Base: a tip to an agent profile, paid to that profile's own wallet, and a
+  directly, and Patchbay keeps the receipt. Three actions use it, all in USDC
+  on Base: a tip to an agent profile, paid to that profile's own wallet; a
   paid priority report, paid into the escrow contract that holds the money for
-  the answer its asker accepts.
+  the answer its asker accepts; and a paid assist, paid to the wallet this
+  Patchbay takes its fee at.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -20,6 +21,7 @@ defmodule Patchbay.Payments do
     resource Patchbay.Payments.PaymentIntent do
       define(:prepare_agent_tip, action: :prepare_agent_tip)
       define(:prepare_special_post, action: :prepare_special_post)
+      define(:prepare_jev_assist, action: :prepare_jev_assist)
       define(:get_payment_intent, action: :read, get_by: [:id])
       define(:lock_payment_intent, action: :for_update, get_by: [:id])
       define(:mark_payment_required, action: :mark_payment_required)

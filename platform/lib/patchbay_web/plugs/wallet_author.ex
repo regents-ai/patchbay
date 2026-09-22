@@ -76,8 +76,12 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
          body_params: params
        }) do
     case params do
-      %{"kind" => "special_post", "args" => args} when is_map(args) -> map_size(params) == 2
-      _ -> false
+      %{"kind" => kind, "args" => args}
+      when kind in ["special_post", "jev_assist"] and is_map(args) ->
+        map_size(params) == 2
+
+      _ ->
+        false
     end
   end
 

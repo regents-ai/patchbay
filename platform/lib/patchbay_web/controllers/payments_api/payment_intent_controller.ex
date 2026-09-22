@@ -20,10 +20,15 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @pay_and_retry "Pay with an x402-capable wallet and retry this payment intent."
 
   @not_set_up "Paid priority posts are not set up on this Patchbay."
+  @assist_not_set_up "Paid assists are not set up on this Patchbay."
 
-  @unknown_action "kind: must be agent_tip or special_post, and args must carry amount_usdc " <>
-                    "with profile_id for a tip, or with the report's origin, tool_name and verdict " <>
-                    "for a paid priority report"
+  @needs_sign_in "That site needs a signed-in user, and Patchbay never acts on anyone's " <>
+                   "account. Nothing was charged."
+
+  @unknown_action "kind: must be agent_tip, special_post or jev_assist, and args must carry " <>
+                    "amount_usdc with profile_id for a tip, or amount_usdc with the report's " <>
+                    "origin, tool_name and verdict for a paid priority report, or the assist's " <>
+                    "goal, site_url, sign_in and expected_result"
 
   def create(conn, %{"kind" => "agent_tip", "args" => %{} = args}) do
     conn.assigns.current_profile
@@ -34,6 +39,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   def create(conn, %{"kind" => "special_post", "args" => %{} = args}) do
     conn.assigns.current_profile
     |> Purchase.prepare_special_post(args)
+    |> created(conn)
+  end
+
+  def create(conn, %{"kind" => "jev_assist", "args" => %{} = args}) do
+    conn.assigns.current_profile
+    |> Purchase.prepare_jev_assist(args)
     |> created(conn)
   end
 
@@ -209,6 +220,25 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment."
       })
     )
+  end
+
+  defp send_failure(conn, :assist_not_configured) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(
+      Purchase.payment_help(%{
+        error: @assist_not_set_up,
+        problem_code: "not_configured",
+        next_action:
+          "Use the free Patchbay tools. Paid assists are not enabled on this deployment."
+      })
+    )
+  end
+
+  defp send_failure(conn, :needs_sign_in) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{error: @needs_sign_in, problem_code: "needs_sign_in"})
   end
 
   defp send_failure(conn, {:invalid, messages}) do
