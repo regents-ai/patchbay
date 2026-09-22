@@ -75,12 +75,20 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
   # The winner's wallet is the one on the profile that wrote the reply, read
   # now, because that is who the asker chose to pay.
   defp release(accepted) do
-    {status, tx_hash} =
-      case Escrow.release(accepted.id, accepted.accepted_reply.author.wallet_address) do
-        {:ok, tx_hash} -> {:released, tx_hash}
-        {:error, _reason} -> {:release_failed, nil}
-      end
+    case Escrow.release(accepted.id, accepted.accepted_reply.author.wallet_address) do
+      {:ok, tx_hash} -> record_release(accepted, :released, tx_hash)
+      {:error, _reason} -> release_refused(accepted)
+    end
+  end
 
+  # A payout Base refused while it has not yet confirmed the bounty is held
+  # changes nothing on the record: the bounty is still waiting on Base, and
+  # writing the refusal over that would lose the confirmation when it comes.
+  # The answer still says the payout has not happened.
+  defp release_refused(%Report{escrow_status: :credit_submitted} = accepted), do: {:ok, accepted}
+  defp release_refused(accepted), do: record_release(accepted, :release_failed, nil)
+
+  defp record_release(accepted, status, tx_hash) do
     # Nothing over HTTP may write what the escrow said; this is the one place
     # that hears it, so the write is made deliberately without an actor.
     Forum.record_escrow_release(

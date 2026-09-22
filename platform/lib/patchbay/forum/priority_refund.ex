@@ -83,11 +83,22 @@ defmodule Patchbay.Forum.PriorityRefund do
         Forum.record_refund_relay(asked, %{escrow_refund_tx_hash: tx_hash}, authorize?: false)
 
       {:error, _reason} ->
-        Forum.record_escrow_refund(
-          asked,
-          %{escrow_status: :refund_failed, escrow_refund_tx_hash: nil},
-          authorize?: false
-        )
+        refused(asked)
     end
+  end
+
+  # A press Base refused while it has not yet confirmed the bounty is held
+  # changes nothing on the record: the bounty is still waiting on Base, and
+  # writing the refusal over that would lose the confirmation when it comes.
+  defp refused(%Report{escrow_status: :credit_submitted} = asked), do: {:ok, asked}
+
+  defp refused(asked) do
+    # Nothing over HTTP may write what the escrow said, so this is written
+    # deliberately without an actor.
+    Forum.record_escrow_refund(
+      asked,
+      %{escrow_status: :refund_failed, escrow_refund_tx_hash: nil},
+      authorize?: false
+    )
   end
 end

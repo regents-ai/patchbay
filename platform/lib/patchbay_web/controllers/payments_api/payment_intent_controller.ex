@@ -413,7 +413,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
     case persisted do
       {:ok, {settled, receipt}} ->
-        with {:ok, effect} when effect == :settled or effect.escrow_status == :credited <-
+        with {:ok, effect} when effect == :settled or effect.escrow_status == :credit_submitted <-
                carry_out(settled, receipt, actor, request),
              {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
           {:applied, applied, receipt}
@@ -612,24 +612,48 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   # What the settled money did, per kind: the profile a tip reached, or the
   # report a paid priority payment published and where its money stands.
+  # Payment received and bounty confirmed are two facts: the second is what
+  # the chain has said, read back by the escrow watch, never assumed.
   defp applied_effect(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
 
   defp applied_effect(%{kind: :special_post} = found) do
     case Forum.get_report(found.target_id) do
       {:ok, %{} = report} ->
+        confirmation = SpecialPost.confirmation(report)
+
         %{
           report_id: report.id,
           url: url(~p"/reports/#{report.id}"),
           escrowed_usdc: USDC.format(report.priority_amount_atomic),
           escrow_status: report.escrow_status,
-          credit_confirmation: "unverified",
+          escrow_funded_at: report.escrow_funded_at,
+          credit_confirmation: to_string(confirmation),
+          status_url: show_url(found),
+          next_action: confirmation_next_action(confirmation),
           result_available: true
         }
 
       _unavailable ->
-        %{report_id: found.target_id, result_available: false, credit_confirmation: "unverified"}
+        %{
+          report_id: found.target_id,
+          result_available: false,
+          credit_confirmation: "needs_attention",
+          status_url: show_url(found),
+          next_action: confirmation_next_action(:needs_attention)
+        }
     end
   end
+
+  defp confirmation_next_action(:pending),
+    do:
+      "Payment received. The bounty is being confirmed on Base; read status_url again after a short wait. Do not pay again."
+
+  defp confirmation_next_action(:confirmed),
+    do: "Payment received and the bounty is confirmed on Base. Do not pay again."
+
+  defp confirmation_next_action(:needs_attention),
+    do:
+      "Payment received. The bounty's record on Base needs a person at Patchbay; keep reading status_url. Do not pay again."
 
   defp offer(conn, offered) do
     {:ok, header} = PaymentRequired.encode(offered)
@@ -727,6 +751,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     do: url(~p"/api/agent/payment_intents/#{found.id}/execute")
 
   defp execute_url(found), do: url(~p"/api/payment_intents/#{found.id}/execute")
+
+  defp show_url(%{payload: %{"author_origin" => "wallet"}} = found),
+    do: url(~p"/api/agent/payment_intents/#{found.id}")
+
+  defp show_url(found), do: url(~p"/api/payment_intents/#{found.id}")
 
   # Reading an intent
 

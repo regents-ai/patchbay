@@ -1522,6 +1522,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp escrow_standing_said(%{escrow_status: :credited}),
     do: "Held on Base until the asker accepts an answer. 90% goes to that answer's author."
 
+  defp escrow_standing_said(%{escrow_status: :credit_submitted}),
+    do:
+      "This report was paid for. Base has been asked to hold the money and has not confirmed it yet."
+
   defp escrow_standing_said(_report),
     do: "This report was paid for. The money is not recorded on Base yet."
 

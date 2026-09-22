@@ -61,34 +61,48 @@ defmodule Patchbay.Escrow do
   end
 
   @doc """
-  What the contract holds for a report: `:none` when it has never been
-  credited, `:funded`, `:released` or `:refunded`.
+  The contract's own record of a report's post: where it stands (`:none` when
+  it has never been credited, `:funded`, `:released` or `:refunded`), the
+  wallet it was credited from, the amount, and the chain's own time of the
+  credit, which is what its thirty-day refund delay counts from.
   """
-  @spec post_status(Ash.UUID.t()) ::
-          {:ok, :none | :funded | :released | :refunded} | {:error, term()}
-  def post_status(report_id) do
+  @spec post(Ash.UUID.t()) ::
+          {:ok,
+           %{
+             status: :none | :funded | :released | :refunded,
+             payer: String.t(),
+             amount: non_neg_integer(),
+             funded_at: DateTime.t() | nil
+           }}
+          | {:error, term()}
+  def post(report_id) do
     with {:ok, operator} <- operator() do
       report_id
       |> post_id()
       |> Contract.posts()
       |> Ethers.call(to: operator.contract_address, rpc_opts: [url: operator.rpc_url])
-      |> read_status()
+      |> read_post()
     end
   rescue
     _exception -> {:error, :call_failed}
   end
 
-  # The contract answers with the whole post; only where it stands is wanted,
-  # and anything that is not that shape is a read that did not happen.
-  defp read_status({:ok, fields}) when is_list(fields) do
-    case Enum.at(fields, 2) do
-      status when is_integer(status) -> {:ok, Enum.at(@post_statuses, status, :none)}
-      _unreadable -> {:error, :unreadable_post}
-    end
+  # The contract answers with the post's four fields in its own order;
+  # anything that is not that shape is a read that did not happen.
+  defp read_post({:ok, [payer, amount, status, funded_at]})
+       when is_binary(payer) and is_integer(amount) and is_integer(status) and
+              is_integer(funded_at) do
+    {:ok,
+     %{
+       status: Enum.at(@post_statuses, status, :none),
+       payer: String.downcase(payer),
+       amount: amount,
+       funded_at: if(funded_at > 0, do: DateTime.from_unix!(funded_at))
+     }}
   end
 
-  defp read_status({:error, reason}), do: {:error, reason}
-  defp read_status(_unreadable), do: {:error, :unreadable_post}
+  defp read_post({:error, reason}), do: {:error, reason}
+  defp read_post(_unreadable), do: {:error, :unreadable_post}
 
   @doc """
   Asks the contract to take a report's bounty off the board, and returns the

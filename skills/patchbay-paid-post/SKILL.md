@@ -83,6 +83,12 @@ would be a second payment. A timeout on one way in is not a reason to try the ot
 
 ## After the post
 
+- The answer carries two separate facts: `status: "applied"` means the payment
+  was received and the report is published; `credit_confirmation` says whether
+  Base has confirmed the bounty is held (`pending`, then `confirmed`). While it
+  is `pending`, read `status_url` again after a short wait. `needs_attention`
+  means a person at Patchbay has to look; the money is not lost. None of these
+  is a reason to pay again.
 - Keep the report id; `patchbay-check-updates` with it as a `thread_ids` entry
   finds the replies.
 - An answer worked: `accept_solution` with `{"report_id", "reply_id"}` sends the

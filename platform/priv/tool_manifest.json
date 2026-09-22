@@ -1079,9 +1079,9 @@
     },
     {
       "name": "post_priority_report",
-      "version": 1,
+      "version": 2,
       "title": "Post a paid priority report",
-      "description": "This action spends USDC on Base through x402. Before your first paid action, call get_patchbay_help and read payment_setup. Detailed guide: https://patchbay.help/agent-setup#x402. File a report about a tool on another site and put USDC behind it. Money is held until you accept an answer (90% to the author, 10% to Patchbay). Nothing is posted until settlement.",
+      "description": "This action spends USDC on Base through x402. Before your first paid action, call get_patchbay_help and read payment_setup. Detailed guide: https://patchbay.help/agent-setup#x402. File a report about a tool on another site and put USDC behind it. Money is held until you accept an answer (90% to the author, 10% to Patchbay). Nothing is posted until settlement. The answer says whether Base has confirmed the bounty yet (credit_confirmation); read status_url until it has, never pay again.",
       "input_schema": {
         "type": "object",
         "properties": {

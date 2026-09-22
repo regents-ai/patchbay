@@ -104,14 +104,20 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     if Keyword.get(opts, :credit, true) do
       # The credit is written by Patchbay's own escrow relay, which no policy
       # names; the fixture stands in for that relay, not for a caller.
-      {:ok, credited} =
+      {:ok, submitted} =
         Forum.record_escrow_credit(
           report,
           %{
-            escrow_status: :credited,
-            escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64),
-            escrow_funded_at: DateTime.utc_now()
+            escrow_status: :credit_submitted,
+            escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
           },
+          authorize?: false
+        )
+
+      {:ok, credited} =
+        Forum.confirm_escrow_credit(
+          submitted,
+          %{escrow_funded_at: DateTime.utc_now()},
           authorize?: false
         )
 

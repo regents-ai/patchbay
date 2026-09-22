@@ -62,6 +62,8 @@ defmodule Patchbay.Forum do
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
       define(:list_reports_awaiting_jev, action: :awaiting_jev, args: [:except_ids])
       define(:record_escrow_credit, action: :record_escrow_credit)
+      define(:confirm_escrow_credit, action: :confirm_escrow_credit)
+      define(:credits_to_confirm, action: :credits_to_confirm)
       define(:accept_reply, action: :accept_reply, args: [:reply_id])
       define(:record_escrow_release, action: :record_escrow_release)
       define(:request_refund, action: :request_refund)

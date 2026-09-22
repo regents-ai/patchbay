@@ -60,16 +60,18 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   defp credited(tool, asker, funded_at \\ DateTime.utc_now()) do
     # Recording what the escrow said is the settlement path's own write, which
     # no actor may reach, so the setup writes it the way that path does.
-    {:ok, report} =
+    {:ok, submitted} =
       Forum.record_escrow_credit(
         paid_report(tool, asker),
         %{
-          escrow_status: :credited,
-          escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64),
-          escrow_funded_at: funded_at
+          escrow_status: :credit_submitted,
+          escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
         },
         authorize?: false
       )
+
+    {:ok, report} =
+      Forum.confirm_escrow_credit(submitted, %{escrow_funded_at: funded_at}, authorize?: false)
 
     report
   end
@@ -103,6 +105,34 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert refused.escrow_status == :refund_failed
       assert is_nil(refused.escrow_refund_tx_hash)
       assert refused.refund_requested_at
+    end
+
+    test "a press before Base has confirmed the bounty leaves it waiting", %{tool: tool} do
+      asker = profile("aaa")
+
+      # The settlement path's own write, which no actor may reach.
+      {:ok, submitted} =
+        Forum.record_escrow_credit(
+          paid_report(tool, asker),
+          %{
+            escrow_status: :credit_submitted,
+            escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
+          },
+          authorize?: false
+        )
+
+      # The press reaches the chain and is refused; the refusal is not written
+      # over the waiting record, so the confirmation can still be written down.
+      assert {:ok, pressed} = PriorityRefund.run(submitted.id, asker)
+      assert pressed.escrow_status == :credit_submitted
+      assert pressed.refund_requested_at
+
+      assert {:ok, confirmed} =
+               Forum.confirm_escrow_credit(pressed, %{escrow_funded_at: DateTime.utc_now()},
+                 authorize?: false
+               )
+
+      assert confirmed.escrow_status == :credited
     end
 
     test "nothing about the money's state stops the next press", %{tool: tool} do

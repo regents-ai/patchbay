@@ -327,14 +327,15 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
         send(rpc, {:rpc_reply, hash})
         await_finish(worker)
         credited = unboxed(fn -> Patchbay.Forum.get_report!(report.id) end)
-        assert credited.escrow_status == :credited
+        assert credited.escrow_status == :credit_submitted
+        assert credited.escrow_funded_at == nil
         assert credited.escrow_credit_tx_hash == hash
       end
 
       recovered = recovery(c)
       assert recovered["status"] == "settled"
       assert recovered["recovery_required"]
-      assert recovered["result"]["credit_confirmation"] == "unverified"
+      assert recovered["result"]["credit_confirmation"] in ["pending", "needs_attention"]
       duplicate = unboxed(fn -> signed_in(c.payer) |> post(path(c.intent), %{}) end)
       assert json_response(duplicate, 202)["receipt"] == recovered["receipt"]
       refute_receive {:settle, _, _}, 200

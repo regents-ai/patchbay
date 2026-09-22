@@ -1,7 +1,10 @@
 defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   use ExUnit.Case, async: false
   import Plug.Conn
+  alias Patchbay.Escrow.Watch
   alias Patchbay.{Identity, Repo}
+
+  @funded_at 1_790_000_000
 
   # Synthetic fixture key, generated for this run. It never reaches a real chain.
   setup do
@@ -17,6 +20,9 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     old_wallet = Application.get_env(:patchbay, :wallet_author)
     old_escrow = Application.get_env(:patchbay, :escrow)
     old_facilitator = Application.fetch_env!(:patchbay, Patchbay.Payments.Facilitator)
+    # What the fake escrow contract answers about the report's post; the test
+    # moves it from nothing, through a wrong amount, to the funded record.
+    {:ok, chain} = Agent.start_link(fn -> :none end)
 
     broker =
       server(:wallet_broker, fn conn, _ ->
@@ -70,7 +76,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
             })
 
           "/rpc" ->
-            answer(conn, 200, rpc(request))
+            answer(conn, 200, rpc(request, Agent.get(chain, & &1)))
         end
       end)
 
@@ -138,6 +144,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       key: key,
       address: address,
       origin: origin,
+      chain: chain,
       other: %{app: app, receipt: other_receipt, key: other_key, address: other_address}
     }
   end
@@ -203,7 +210,38 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert profile.authentication_origin == :wallet
     assert profile.human_name == nil
     assert profile.privy_user_id == nil
-    assert report.escrow_status == :credited
+    # Payment received and bounty confirmed are two facts: the credit was
+    # handed to Base, and nothing is confirmed until the contract says so.
+    assert report.escrow_status == :credit_submitted
+    assert report.escrow_funded_at == nil
+    assert paid["body"]["credit_confirmation"] == "pending"
+    assert paid["body"]["status_url"] =~ "/api/agent/payment_intents/#{id}"
+    assert paid["body"]["next_action"] =~ "Do not pay again"
+
+    # The contract has no post yet: still waiting, nothing sent again.
+    assert unboxed(fn -> Watch.confirm() end) == {:ok, 0}
+
+    assert unboxed(fn -> Patchbay.Forum.get_report!(report.id) end).escrow_status ==
+             :credit_submitted
+
+    # A post funded for another amount is not this bounty's confirmation.
+    Agent.update(c.chain, fn _ -> {c.address, 2_000_000, 1, @funded_at} end)
+    assert unboxed(fn -> Watch.confirm() end) == {:ok, 0}
+
+    assert unboxed(fn -> Patchbay.Forum.get_report!(report.id) end).escrow_status ==
+             :credit_submitted
+
+    # The contract's record for this post, from this payer, for this amount.
+    Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
+    assert unboxed(fn -> Watch.confirm() end) == {:ok, 1}
+    confirmed = unboxed(fn -> Patchbay.Forum.get_report!(report.id) end)
+    assert confirmed.escrow_status == :credited
+    assert DateTime.to_unix(confirmed.escrow_funded_at) == @funded_at
+
+    assert dispatch(c, ["payments", "get", id], %{})["body"]["result"]["credit_confirmation"] ==
+             "confirmed"
+
+    refute_receive :settled, 100
 
     assert dispatch(c.other, ["payments", "get", id], %{})["status"] == 404
     assert dispatch(c.other, ["payments", "execute", id], %{})["status"] == 404
@@ -408,11 +446,14 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       conn |> put_resp_content_type("application/json") |> send_resp(status, Jason.encode!(body))
 
   defp unboxed(fun), do: Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fun)
-  defp rpc(requests) when is_list(requests), do: Enum.map(requests, &rpc/1)
+  defp rpc(requests, post) when is_list(requests), do: Enum.map(requests, &rpc(&1, post))
 
-  defp rpc(%{"id" => id, "method" => method}) do
+  defp rpc(%{"id" => id, "method" => method}, post) do
     value =
       case method do
+        "eth_call" ->
+          "0x" <> Base.encode16(encoded_post(post), case: :lower)
+
         "eth_chainId" ->
           "0x7a69"
 
@@ -441,6 +482,16 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       end
 
     %{jsonrpc: "2.0", id: id, result: value}
+  end
+
+  # The escrow contract's `posts` answer: payer, amount, status, fundedAt.
+  defp encoded_post(:none), do: encoded_post({"0x" <> String.duplicate("0", 40), 0, 0, 0})
+
+  defp encoded_post({payer, amount, status, funded_at}) do
+    ABI.TypeEncoder.encode(
+      [Base.decode16!(String.slice(payer, 2..-1//1), case: :mixed), amount, status, funded_at],
+      [:address, {:uint, 96}, {:uint, 8}, {:uint, 64}]
+    )
   end
 
   defp replace_facilitator(opts) do

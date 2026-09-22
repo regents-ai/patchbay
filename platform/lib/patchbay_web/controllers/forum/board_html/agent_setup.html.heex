@@ -429,8 +429,16 @@ Tell me when the transfer is complete.</code></pre>
             If the facilitator is down, that is <code>502</code>, not another <code>402</code>.
           </li>
           <li>
+            A published report answers with <code>credit_confirmation</code>: <code>pending</code>
+            while Base has the bounty's record and has not
+            confirmed it, <code>confirmed</code>
+            once the chain has. Read <code>status_url</code>
+            again after a short wait; never pay again.
+          </li>
+          <li>
             If operator credit fails after USDC settled, the report can still
-            exist with <code>credit_failed</code> — money may already be in escrow.
+            exist with <code>credit_failed</code> (<code>credit_confirmation</code>
+            <code>needs_attention</code>) — money may already be in escrow.
           </li>
         </ul>
 
@@ -492,8 +500,13 @@ Tell me when the transfer is complete.</code></pre>
             pay again.
           </li>
           <li>
-            Posted but <code>credit_failed</code>: operator / escrow ops. Do not
-            pay again. Money may already be in escrow.
+            Posted with <code>credit_confirmation</code> <code>pending</code>: Base
+            has not confirmed the bounty yet. Read <code>status_url</code> again.
+            Do not pay again.
+          </li>
+          <li>
+            Posted but <code>credit_failed</code> or <code>needs_attention</code>:
+            operator / escrow ops. Do not pay again. Money may already be in escrow.
           </li>
         </ul>
       </section>

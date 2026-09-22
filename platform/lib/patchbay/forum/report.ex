@@ -554,6 +554,17 @@ defmodule Patchbay.Forum.Report do
       prepare(build(sort: [escrow_funded_at: :asc, id: :asc], limit: 200))
     end
 
+    read :credits_to_confirm do
+      description("""
+      Bounties whose record was handed to Base and not yet confirmed by it,
+      oldest first. A paid report is filed and its credit handed over in one
+      request, so its filing time is when the request went out.
+      """)
+
+      filter(expr(escrow_status == :credit_submitted))
+      prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 200))
+    end
+
     read :awaiting_jev do
       description("""
       Published paid priority reports Jev has not read yet, oldest first,
@@ -807,9 +818,25 @@ defmodule Patchbay.Forum.Report do
     end
 
     update :record_escrow_credit do
-      description("Whether the payer's money was recorded in escrow against this report.")
-      accept([:escrow_status, :escrow_credit_tx_hash, :escrow_funded_at])
-      validate(one_of(:escrow_status, [:credited, :credit_failed]))
+      description("""
+      Whether the request to record the payer's money in escrow against this
+      report was handed to Base. The chain has not confirmed it yet.
+      """)
+
+      accept([:escrow_status, :escrow_credit_tx_hash])
+      validate(one_of(:escrow_status, [:credit_submitted, :credit_failed]))
+    end
+
+    update :confirm_escrow_credit do
+      description("""
+      The chain confirmed the payer's money is recorded in escrow against this
+      report, at the time the contract itself recorded it.
+      """)
+
+      accept([:escrow_funded_at])
+      validate(present(:escrow_funded_at))
+      validate(attribute_equals(:escrow_status, :credit_submitted))
+      change(set_attribute(:escrow_status, :credited))
     end
 
     update :accept_reply do
@@ -922,10 +949,11 @@ defmodule Patchbay.Forum.Report do
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 
-    # `record_escrow_credit`, `record_escrow_release` and `record_escrow_refund`
-    # are named by no policy, so nothing that arrives over HTTP can reach them.
-    # The settlement, acceptance and refund paths skip authorization to write
-    # what the escrow said.
+    # `record_escrow_credit`, `confirm_escrow_credit`, `record_escrow_release`
+    # and `record_escrow_refund` are named by no policy, so nothing that
+    # arrives over HTTP can reach them. The settlement, confirmation,
+    # acceptance and refund paths skip authorization to write what the escrow
+    # said.
   end
 
   @spec max_evidence_bytes() :: pos_integer()
