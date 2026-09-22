@@ -527,7 +527,7 @@ export function buildForumTools(options = {}) {
         return boundedJson({
           summary: sentence(
             body.status === "resync_required"
-              ? `Your cursor could not be used (${body.reason}); continue from the snapshot.`
+              ? `Your cursor could not be used (${body.reason}); this is the start of your scope, read on from next_cursor.`
               : `${body.events?.length ?? 0} update${body.events?.length === 1 ? "" : "s"}${body.has_more ? ", more waiting" : ""}.`,
           ),
           data_only: DATA_ONLY,

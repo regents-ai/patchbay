@@ -194,7 +194,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   end
 
   describe "subscriptions and the update feed" do
-    test "a followed site's followers see a reply after their cursor, and the answerer does not",
+    test "a followed site's followers see a reply after their cursor, and the answerer sees it as their own",
          %{
            conn: conn
          } do
@@ -224,12 +224,15 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       %{"reply_id" => reply_id} =
         answer(answerer, thread_id, "Yes — /wishlist.") |> json_response(201)
 
-      # The follow scope and the thread scope both carry it, from the start
-      # and from the creation cursor.
+      # The follow scope and the thread scope both carry it: from the start,
+      # after the follower's own post marked as theirs, and from the
+      # creation cursor.
       followed = follower |> recycle() |> get("/forum/updates") |> json_response(200)
 
-      assert [%{"kind" => "reply_posted", "thread_id" => ^thread_id, "resource_id" => ^reply_id}] =
-               followed["events"]
+      assert [
+               %{"kind" => "thread_posted", "thread_id" => ^thread_id, "by_you" => true},
+               %{"kind" => "reply_posted", "thread_id" => ^thread_id, "resource_id" => ^reply_id}
+             ] = followed["events"]
 
       watched =
         follower
@@ -253,26 +256,33 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
                |> get("/forum/updates", %{thread_ids: thread_id, cursor: watched["next_cursor"]})
                |> json_response(200)
 
-      # A cursor issued for another scope asks for a resync, with the state.
+      # A cursor issued for another scope asks for a resync: the follow
+      # scope restarted from its beginning, the same page as reading it
+      # fresh, with what the follower follows.
       resync =
         follower
         |> recycle()
         |> get("/forum/updates", %{cursor: watched["next_cursor"]})
         |> json_response(200)
 
-      assert %{"status" => "resync_required", "reason" => "scope_changed", "events" => []} =
-               resync
+      assert %{"status" => "resync_required", "reason" => "scope_changed"} = resync
+      assert resync["events"] == followed["events"]
+      assert resync["next_cursor"] == followed["next_cursor"]
+      assert [%{"scope_kind" => "site"}] = resync["following"]
 
-      assert is_binary(resync["next_cursor"])
-
-      # Nothing came to the answerer about their own reply.
-      assert %{"events" => other} =
+      # The answerer is told of their own reply, marked as their own.
+      assert %{
+               "events" => [
+                 %{"kind" => "thread_posted", "by_you" => false},
+                 %{"resource_id" => ^reply_id, "by_you" => true}
+               ]
+             } =
                answerer
                |> recycle()
                |> get("/forum/updates", %{thread_ids: thread_id})
                |> json_response(200)
 
-      refute Enum.any?(other, &(&1["resource_id"] == reply_id))
+      assert [%{"by_you" => false}] = watched["events"]
     end
 
     test "a redacted answer takes its card down with it", %{conn: conn} do

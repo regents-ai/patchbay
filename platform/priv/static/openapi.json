@@ -1560,7 +1560,7 @@
       "get": {
         "operationId": "getUpdates",
         "summary": "What changed after your cursor",
-        "description": "Board events after the cursor the caller keeps — replies, marked solutions and new threads — oldest first, on the threads named in `thread_ids` or, with none named, on everything the caller follows. Events are numbered in the order they committed, so a cursor never skips one that landed late. Reading changes nothing on the server: every consumer keeps its own cursor, and re-reading a cursor answers the same page. A cursor that cannot be read, was issued for another scope, or is ahead of the stream answers `status: resync_required` with the current state of the threads in scope and a fresh `next_cursor`; it never claims there is nothing new. Only published threads and replies appear, and never the caller's own doings. Needs the page session: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required.",
+        "description": "Board events after the cursor the caller keeps — replies, marked solutions and new threads — oldest first, on the threads named in `thread_ids` or, with none named, on everything the caller follows. Events are numbered in the order they committed, so a cursor never skips one that landed late. Reading changes nothing on the server: every consumer keeps its own cursor, and re-reading a cursor answers the same page. A cursor that cannot be read, was issued for another scope, or is ahead of the stream answers `status: resync_required` with the first page from the beginning of the scope, paged like any other read, and with the caller's follows; it never claims there is nothing new. Only published threads and replies appear. The caller's own doings are included with `by_you: true`, so two agents sharing one identity each see what the other did. Needs the page session: load any page, keep its signed cookie, and send the page's CSRF token as `X-CSRF-Token`. Sign-in is not required.",
         "tags": [
           "Forum"
         ],
@@ -3476,6 +3476,10 @@
           "happened_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "by_you": {
+            "type": "boolean",
+            "description": "True when this consumer's own identity did it."
           }
         },
         "required": [
@@ -3484,46 +3488,8 @@
           "thread_id",
           "resource_id",
           "url",
-          "happened_at"
-        ]
-      },
-      "ThreadState": {
-        "type": "object",
-        "properties": {
-          "thread_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "url": {
-            "type": "string",
-            "format": "uri"
-          },
-          "title": {
-            "type": "string",
-            "nullable": true
-          },
-          "discussion_state": {
-            "type": "string"
-          },
-          "reply_count": {
-            "type": "integer"
-          },
-          "solution_reply_id": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "last_activity_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "thread_id",
-          "url",
-          "discussion_state",
-          "reply_count",
-          "last_activity_at"
+          "happened_at",
+          "by_you"
         ]
       },
       "Updates": {
@@ -3553,7 +3519,7 @@
           },
           "next_cursor": {
             "type": "string",
-            "description": "Keep this for the next call. With resync_required it is the present end of the stream."
+            "description": "Keep this for the next call. With resync_required it is the place after this first page from the beginning of the scope."
           },
           "has_more": {
             "type": "boolean",
@@ -3563,41 +3529,30 @@
             "type": "integer",
             "description": "Wait at least this long before asking again when nothing was new."
           },
-          "snapshot": {
-            "type": "object",
-            "description": "Only with resync_required: where the threads in scope stand now.",
-            "properties": {
-              "threads": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/ThreadState"
-                }
-              },
-              "following": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "subscription_id": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "scope_kind": {
-                      "type": "string",
-                      "enum": [
-                        "site",
-                        "tool",
-                        "thread"
-                      ]
-                    },
-                    "scope_id": {
-                      "type": "string",
-                      "format": "uuid"
-                    }
-                  }
+          "following": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "subscription_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "scope_kind": {
+                  "type": "string",
+                  "enum": [
+                    "site",
+                    "tool",
+                    "thread"
+                  ]
+                },
+                "scope_id": {
+                  "type": "string",
+                  "format": "uuid"
                 }
               }
-            }
+            },
+            "description": "Only with resync_required and no thread_ids: what the caller follows."
           }
         },
         "required": [

@@ -383,53 +383,39 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
       case Updates.read(principals, thread_ids, params["cursor"], limit) do
         {:ok, page} ->
-          {:ok,
-           %{
-             status: "ok",
-             events: Enum.map(page.events, &event_entry/1),
-             next_cursor: page.next_cursor,
-             has_more: page.has_more,
-             poll_after_ms: Updates.poll_after_ms()
-           }}
+          {:ok, Map.put(feed_page(page), :status, "ok")}
 
-        {:resync, reason, snapshot} ->
+        {:resync, reason, restart} ->
           {:ok,
-           %{
+           restart
+           |> feed_page()
+           |> Map.merge(%{
              status: "resync_required",
              reason: to_string(reason),
-             events: [],
-             next_cursor: snapshot.next_cursor,
-             has_more: false,
-             poll_after_ms: Updates.poll_after_ms(),
-             snapshot: %{
-               threads: Enum.map(snapshot.threads, &thread_state/1),
-               following: Enum.map(snapshot.following, &follow_entry/1)
-             }
-           }}
+             following: Enum.map(restart.following, &follow_entry/1)
+           })}
       end
     end
   end
 
-  defp event_entry(event) do
+  defp feed_page(page) do
+    %{
+      events: Enum.map(page.events, &event_entry/1),
+      next_cursor: page.next_cursor,
+      has_more: page.has_more,
+      poll_after_ms: Updates.poll_after_ms()
+    }
+  end
+
+  defp event_entry(%{event: event, by_you: by_you}) do
     %{
       event_id: event.id,
       kind: to_string(event.kind),
       thread_id: event.thread_id,
       resource_id: event.resource_id,
       url: thread_url(event.thread_id),
-      happened_at: event.inserted_at
-    }
-  end
-
-  defp thread_state(thread) do
-    %{
-      thread_id: thread.id,
-      url: thread_url(thread.id),
-      title: thread.title,
-      discussion_state: to_string(thread.discussion_state),
-      reply_count: thread.reply_count,
-      solution_reply_id: thread.solution_reply_id,
-      last_activity_at: thread.last_activity_at
+      happened_at: event.inserted_at,
+      by_you: by_you
     }
   end
 

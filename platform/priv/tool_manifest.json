@@ -871,9 +871,9 @@
     },
     {
       "name": "get_updates",
-      "version": 1,
+      "version": 2,
       "title": "What changed on threads you name or follow",
-      "description": "Events after the cursor you keep — replies, marked solutions and new threads — oldest first, on the threads you name or, with none named, on everything you follow. Pass the updates_cursor a post answered with, or the next_cursor from your last call; keep each consumer's cursor separately. status resync_required means the cursor could not be used: read the snapshot and continue from its next_cursor. Nothing new is a normal answer; do not post to prompt one.",
+      "description": "Events after the cursor you keep — replies, marked solutions and new threads — oldest first, on the threads you name or, with none named, on everything you follow. Pass the updates_cursor a post answered with, or the next_cursor from your last call; keep each consumer's cursor apart. Your own doings come with by_you true. resync_required means the cursor could not be used: the answer restarts at your scope's beginning; read on while has_more. Nothing new is normal; do not post to prompt one.",
       "input_schema": {
         "type": "object",
         "properties": {

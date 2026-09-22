@@ -8,17 +8,19 @@ defmodule Patchbay.Forum.Updates do
   each keep their own place and neither can lose the other's updates. A
   cursor that cannot be read, was issued for another scope, or names a place
   the stream has not reached yet is answered with `resync_required` and the
-  current state of the threads in scope, never with "nothing new".
+  scope's events from the beginning, paged the same way as ordinary reading,
+  never with "nothing new".
 
   What a consumer may see is decided here, not by the cursor: only published
-  threads and published replies, and never the consumer's own doings.
+  threads and published replies. The consumer's own doings are included and
+  marked as its own, so two agents sharing one identity each see what the
+  other did.
   """
 
   require Ash.Query
 
   alias Patchbay.Forum.ForumEvent
   alias Patchbay.Forum.Reply
-  alias Patchbay.Forum.Report
   alias Patchbay.Forum.Subscription
   alias Patchbay.Forum.UpdatesCursor
 
@@ -34,28 +36,46 @@ defmodule Patchbay.Forum.Updates do
   def max_thread_ids, do: @max_thread_ids
   def poll_after_ms, do: @poll_after_ms
 
+  @typedoc "One page of the feed; each event says whether the consumer did it."
+  @type page :: %{
+          events: [%{event: ForumEvent.t(), by_you: boolean()}],
+          next_cursor: String.t(),
+          has_more: boolean()
+        }
+
+  @typedoc "The first page from the start of the scope, with the follows behind it."
+  @type restart :: %{
+          events: [%{event: ForumEvent.t(), by_you: boolean()}],
+          next_cursor: String.t(),
+          has_more: boolean(),
+          following: [Subscription.t()]
+        }
+
   @doc """
   One page of events after `cursor` for `principals`, on the threads named
   or, when none are, on everything the principals follow. `nil` for the
-  cursor starts at the beginning of the stream.
+  cursor starts at the beginning of the stream. A cursor that cannot be used
+  answers with a resync: the first page from the beginning of the scope, and
+  the follows behind a following scope.
   """
   @spec read([String.t()], [String.t()] | nil, String.t() | nil, pos_integer()) ::
-          {:ok, %{events: [ForumEvent.t()], next_cursor: String.t(), has_more: boolean()}}
-          | {:resync, atom(),
-             %{
-               next_cursor: String.t(),
-               threads: [Report.t()],
-               following: [Subscription.t()]
-             }}
+          {:ok, page()} | {:resync, atom(), restart()}
   def read(principals, thread_ids, cursor, limit) do
     scope = if thread_ids, do: {:threads, thread_ids}, else: {:following, principals}
     head = head_seq()
 
     case position(cursor, scope) do
-      {:ok, after_seq} when after_seq <= head -> {:ok, page(principals, scope, after_seq, limit)}
-      {:ok, _ahead} -> {:resync, :ahead_of_stream, snapshot(scope, head)}
-      :scope_changed -> {:resync, :scope_changed, snapshot(scope, head)}
-      :unknown -> {:resync, :unknown_cursor, snapshot(scope, head)}
+      {:ok, after_seq} when after_seq <= head ->
+        {:ok, page(principals, scope, after_seq, limit)}
+
+      {:ok, _ahead} ->
+        {:resync, :ahead_of_stream, restart(principals, scope, limit)}
+
+      :scope_changed ->
+        {:resync, :scope_changed, restart(principals, scope, limit)}
+
+      :unknown ->
+        {:resync, :unknown_cursor, restart(principals, scope, limit)}
     end
   end
 
@@ -81,12 +101,11 @@ defmodule Patchbay.Forum.Updates do
   defp position(cursor, scope), do: UpdatesCursor.decode(cursor, scope)
 
   defp page(principals, scope, after_seq, limit) do
-    # The feed read: confined to published threads, the scope, and other
-    # people's doings. Events carry no policy of their own.
+    # The feed read: confined to published threads and the scope. Events
+    # carry no policy of their own.
     events =
       ForumEvent
       |> Ash.Query.filter(seq > ^after_seq and thread.visibility == :published)
-      |> Ash.Query.filter(is_nil(actor_principal) or actor_principal not in ^principals)
       |> in_scope(scope)
       |> Ash.Query.sort(seq: :asc)
       |> Ash.Query.limit(limit + 1)
@@ -101,11 +120,14 @@ defmodule Patchbay.Forum.Updates do
       end
 
     %{
-      events: published_only(taken),
+      events: taken |> published_only() |> Enum.map(&%{event: &1, by_you: by?(&1, principals)}),
       next_cursor: UpdatesCursor.encode(next_seq, scope),
       has_more: rest != []
     }
   end
+
+  defp by?(%ForumEvent{actor_principal: nil}, _principals), do: false
+  defp by?(%ForumEvent{actor_principal: principal}, principals), do: principal in principals
 
   defp in_scope(query, {:threads, ids}), do: Ash.Query.filter(query, thread_id in ^ids)
 
@@ -168,36 +190,19 @@ defmodule Patchbay.Forum.Updates do
     end
   end
 
-  # Where things stand now, for a consumer that has to start over: the
-  # threads in scope with their current state, and the follows behind a
+  # The start of the scope, for a consumer that has to start over: the same
+  # page an ordinary read gives from the beginning, and the follows behind a
   # following scope.
-  defp snapshot({:threads, ids} = scope, head) do
-    %{next_cursor: UpdatesCursor.encode(head, scope), threads: threads(ids), following: []}
+  defp restart(principals, scope, limit) do
+    principals |> page(scope, 0, limit) |> Map.put(:following, following(scope))
   end
 
-  defp snapshot({:following, principals} = scope, head) do
+  defp following({:threads, _ids}), do: []
+
+  defp following({:following, principals}) do
     # The caller's own follow list, confined to its principals.
-    following =
-      Subscription
-      |> Ash.Query.filter(principal in ^principals)
-      |> Ash.read!(authorize?: false)
-
-    thread_ids = for %{scope_kind: :thread, scope_id: id} <- following, do: id
-
-    %{
-      next_cursor: UpdatesCursor.encode(head, scope),
-      threads: threads(thread_ids),
-      following: following
-    }
-  end
-
-  defp threads([]), do: []
-
-  defp threads(ids) do
-    Report
-    |> Ash.Query.filter(id in ^ids and visibility == :published)
-    |> Ash.Query.load(:reply_count)
-    |> Ash.Query.sort(last_activity_at: :desc, id: :desc)
-    |> Ash.read!()
+    Subscription
+    |> Ash.Query.filter(principal in ^principals)
+    |> Ash.read!(authorize?: false)
   end
 end

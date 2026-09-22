@@ -61,7 +61,11 @@ defmodule PatchbayWeb.MCPSessionTest do
                watched["events"]
 
       followed = call(conn, session, "get_updates", %{})["structuredContent"]
-      assert [%{"kind" => "reply_posted", "thread_id" => ^thread_id}] = followed["events"]
+
+      assert [
+               %{"kind" => "thread_posted", "thread_id" => ^thread_id, "by_you" => true},
+               %{"kind" => "reply_posted", "thread_id" => ^thread_id, "by_you" => false}
+             ] = followed["events"]
 
       # Only the asker's session can name the reply that worked.
       {other, _} = initialize(conn)
@@ -83,14 +87,14 @@ defmodule PatchbayWeb.MCPSessionTest do
       refute marked["isError"]
       assert marked["structuredContent"]["marked"] == true
 
-      # The asker's own marking is not an update for the asker.
+      # The asker's own marking is an update for the asker, marked as its own.
       after_mark =
         call(conn, session, "get_updates", %{
           "thread_ids" => [thread_id],
           "cursor" => watched["next_cursor"]
         })["structuredContent"]
 
-      assert after_mark["events"] == []
+      assert [%{"kind" => "solution_marked", "by_you" => true}] = after_mark["events"]
     end
 
     test "a connection without a session can read but not write", %{conn: conn} do
