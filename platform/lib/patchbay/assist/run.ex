@@ -163,6 +163,23 @@ defmodule Patchbay.Assist.Run do
       )
     end
 
+    update :reopen do
+      description("""
+      Hands a run that waited on a person back to Patchbay as a paid run it
+      picks up again: what was tried stays written, and nothing is paid twice.
+      """)
+
+      accept([])
+
+      validate(attribute_equals(:status, :assessment_pending),
+        message: "is not waiting on a person"
+      )
+
+      change(set_attribute(:status, :paid))
+      change(set_attribute(:outcome, nil))
+      change(set_attribute(:finished_at, nil))
+    end
+
     update :interrupt do
       description("""
       Marks a run whose work died, with a restart or with its worker, as
@@ -179,9 +196,10 @@ defmodule Patchbay.Assist.Run do
     # Only the settled payment's own payer opens its run, and only the
     # purchase process holds a settled intent to open one from. The actions
     # that move a run along (`start`, `record_step`, `finish`, `interrupt`,
-    # `record_deposit`) are named by no policy, so nothing that arrives over HTTP can reach
-    # them; Patchbay's own runner is their only caller and says so by
-    # skipping authorization deliberately.
+    # `record_deposit`, `reopen`) are named by no policy, so nothing that
+    # arrives over HTTP can reach them; Patchbay's own runner, and a person at
+    # its console, are their only callers and say so by skipping
+    # authorization deliberately.
     policy action(:open) do
       authorize_if(actor_present())
     end

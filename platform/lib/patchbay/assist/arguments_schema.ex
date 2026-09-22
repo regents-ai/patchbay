@@ -1,5 +1,8 @@
-defmodule Patchbay.Patchbay.OpenAI.ArgumentsSchema do
-  @moduledoc false
+defmodule Patchbay.Assist.ArgumentsSchema do
+  @moduledoc """
+  The shape the drafting model is held to when it writes a tool call's
+  arguments: one JSON object, carried as a string, and nothing else.
+  """
 
   @spec schema() :: map()
   def schema do

@@ -98,14 +98,7 @@ defmodule Patchbay.Assist.WorkTest do
       )
 
     run = paid_run(site, believed_calls: [])
-
-    Application.put_env(:patchbay, :assist_model_options,
-      request: fn _payload, _opts, _url ->
-        {:ok, %{"id" => "resp_1", "output_text" => Jason.encode!(%{"arguments_json" => "{}"})}}
-      end
-    )
-
-    on_exit(fn -> Application.delete_env(:patchbay, :assist_model_options) end)
+    drafter(fn -> drafted(%{}) end)
 
     jev(fn state, questions ->
       cond do
@@ -163,6 +156,43 @@ defmodule Patchbay.Assist.WorkTest do
     {:ok, unlisted} = Assist.get_run(private.id, authorize?: false)
     assert {unlisted.status, unlisted.outcome} == {:finished, :tools_unlisted}
     assert Enum.any?(unlisted.steps, &(&1["note"] =~ "public internet"))
+  end
+
+  test "a run that waited on a person is handed back and finished, with nothing paid twice" do
+    site = mcp_site(%{"lookup" => %{"found" => true}})
+    run = paid_run(site, believed_calls: [])
+
+    jev(fn _state, questions ->
+      if Map.has_key?(questions, "tool"),
+        do: %{"tool" => %{"choice" => "lookup", "confidence" => 0.9}},
+        else: %{"verdict" => %{"choice" => "reached", "confidence" => 0.9}}
+    end)
+
+    # The drafting model is away: the run waits on a person, and nothing was called.
+    drafter(fn -> {:error, {:http_status, 429}} end)
+    assert :ok = Work.run(run.id)
+    {:ok, waiting} = Assist.get_run(run.id, authorize?: false)
+    assert {waiting.status, waiting.outcome} == {:assessment_pending, :provider_unavailable}
+    assert calls(site, "tools/call") == []
+
+    # The model is back, and a person hands the run to Patchbay again.
+    drafter(fn -> drafted(%{"party" => 2}) end)
+    assert {:ok, again} = Assist.rerun(run.id)
+    assert {again.status, again.outcome, again.finished_at} == {:paid, nil, nil}
+    assert List.last(again.steps)["note"] =~ "picked this up again"
+
+    assert :ok = Work.run(run.id)
+    {:ok, done} = Assist.get_run(run.id, authorize?: false)
+    assert {done.status, done.outcome} == {:finished, :reached}
+    assert Enum.take(done.steps, length(waiting.steps)) == waiting.steps
+
+    assert [%{"params" => %{"name" => "lookup", "arguments" => %{"party" => 2}}}] =
+             calls(site, "tools/call")
+
+    # A run that is not waiting on a person is left as it is.
+    assert {:error, %Ash.Error.Invalid{}} = Assist.rerun(run.id)
+    {:ok, still} = Assist.get_run(run.id, authorize?: false)
+    assert still.steps == done.steps
   end
 
   test "a site's answer is kept as data: a stray NUL byte neither kills nor empties the run" do
@@ -276,6 +306,27 @@ defmodule Patchbay.Assist.WorkTest do
       "expected_result" => "A confirmation with a booking reference",
       "believed_calls" => believed_calls
     }
+  end
+
+  # The drafting model on OpenRouter, answered by `answer.()`; the request
+  # is checked to be the one the drafter is meant to send.
+  defp drafter(answer) do
+    Application.put_env(:patchbay, :assist_model_options,
+      request: fn payload, _opts, url ->
+        assert url == "https://openrouter.ai/api/v1/chat/completions"
+        assert payload.model == "openai/gpt-5.6-terra"
+        assert payload.response_format.json_schema.strict
+        assert [%{role: "system"}, %{role: "user"}] = payload.messages
+        answer.()
+      end
+    )
+
+    on_exit(fn -> Application.delete_env(:patchbay, :assist_model_options) end)
+  end
+
+  defp drafted(arguments) do
+    content = Jason.encode!(%{"arguments_json" => Jason.encode!(arguments)})
+    {:ok, %{"choices" => [%{"message" => %{"content" => content}}]}}
   end
 
   # Jev's Decisions endpoint, answered by `answer.(state, questions)`.

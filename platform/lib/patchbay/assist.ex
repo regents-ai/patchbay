@@ -13,6 +13,9 @@ defmodule Patchbay.Assist do
 
   require Ash.Query
 
+  alias Patchbay.Assist.Run
+  alias Patchbay.Assist.Runner
+
   resources do
     resource Patchbay.Assist.Run do
       define(:open_run, action: :open)
@@ -29,6 +32,7 @@ defmodule Patchbay.Assist do
       define(:record_step, action: :record_step, args: [:step])
       define(:finish_run, action: :finish)
       define(:record_deposit, action: :record_deposit)
+      define(:reopen_run, action: :reopen)
     end
   end
 
@@ -60,6 +64,29 @@ defmodule Patchbay.Assist do
     |> Ash.bulk_update!(:interrupt, %{}, authorize?: false, return_records?: false)
 
     :ok
+  end
+
+  @doc """
+  Hands a run that waited on a person back to Patchbay: the run is reopened
+  as paid, the fact is written on it, and the runner picks it up like any
+  other. Nothing is paid twice, and a fee already forwarded is not forwarded
+  again. A run that is not waiting on a person is left as it is. Run by a
+  person at Patchbay from the release's console:
+
+      bin/patchbay rpc 'Patchbay.Assist.rerun("<run id>")'
+  """
+  @spec rerun(Ash.UUID.t()) :: {:ok, Run.t()} | {:error, term()}
+  def rerun(run_id) do
+    # A person at Patchbay's console: the run answers to no request.
+    with {:ok, run} <- get_run(run_id, authorize?: false),
+         {:ok, reopened} <- reopen_run(run, authorize?: false),
+         {:ok, noted} <-
+           record_step(reopened, %{"note" => "A person at Patchbay picked this up again."},
+             authorize?: false
+           ) do
+      Runner.start(noted)
+      {:ok, noted}
+    end
   end
 
   @doc """

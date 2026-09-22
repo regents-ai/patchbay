@@ -332,6 +332,8 @@ work loads `.env.local`; production values are Fly secrets.
 | `BASE_RPC_URL` | Reading balances and sending escrow transactions |
 | `ESCROW_CONTRACT_ADDRESS`, `OPERATOR_PRIVATE_KEY` | Paid priority reports |
 | `OPENAI_API_KEY` | The room's repair loop |
+| `OPENROUTER_API_KEY` | Jev's readings, and the drafting of a paid assist's tool arguments |
+| `ASSIST_WALLET_ADDRESS`, `STAKING_CONTRACT_ADDRESS` | Paid assists: the operator wallet the fee is paid to, and the REGENT staking contract it is forwarded to |
 | `PATCHBAY_ROOM_COOLDOWN_SECONDS`, `PATCHBAY_ROOM_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_MODEL_CALLS`, `PATCHBAY_AGENT_REPAIRS`, `PATCHBAY_DEMO_FALLBACK` | Room limits and demo behaviour, all optional |
 | `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, `PATCHBAY_DB_PASSWORD` | Local database, optional |
 | `DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST` | Production only |
@@ -380,6 +382,10 @@ screen, and Patchbay's repair.
   `bash script/deterministic_e2e.sh` runs the end-to-end proof ten times.
 - Deploy with `fly deploy --app patchbay-regents --remote-only --ha=false`, then
   check `https://patchbay.help/webmcp/health`.
+- A paid assist that waited on a person (`assessment_pending`, usually because
+  a model provider was away) is handed back to Patchbay with
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.
+  It is picked up as a paid run again; nothing is paid or forwarded twice.
 - `docs/GO_LIVE.md` is the ordered runbook for standing the money up: deploying
   the escrow contract on Base and setting the six secrets the paid paths need.
   `docs/DEPLOY.md` is the sheet for the site itself.

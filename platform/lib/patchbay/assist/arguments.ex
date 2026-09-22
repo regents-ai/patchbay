@@ -6,9 +6,9 @@ defmodule Patchbay.Assist.Arguments do
   before anything is called. Jev is never asked to write them.
   """
 
+  alias Patchbay.Assist.Drafter
   alias Patchbay.Assist.Run
   alias Patchbay.Assist.Schema
-  alias Patchbay.Patchbay.OpenAI.Client
 
   @type source :: :believed | :drafted
 
@@ -43,8 +43,8 @@ defmodule Patchbay.Assist.Arguments do
       expected_result: run.expected_result
     }
 
-    case Client.draft_arguments(input, opts) do
-      {:ok, %{arguments: arguments}} ->
+    case Drafter.draft(input, opts) do
+      {:ok, arguments} ->
         case Schema.check(arguments, tool.input_schema) do
           :ok -> {:ok, arguments, :drafted}
           {:error, _why} -> {:error, :arguments_unusable}
