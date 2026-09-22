@@ -922,12 +922,14 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
   assert.equal(paid.paid, true);
   assert.equal(paid.payment_intent_id, id);
   outcome = {status: 200, intent, body: {status: "applied", report_id: id, url: `/reports/${id}`,
-    escrowed_usdc: intent.amount_usdc, escrow_status: "credited", receipt}};
+    bounty_amount: intent.amount_usdc, bounty_paid_with: "usdc", escrow_status: "credited", receipt}};
   const priority = JSON.parse(await tools.get("post_priority_report").execute({amount_usdc: intent.amount_usdc}));
   assert.deepEqual(priority.receipt, receipt);
   assert.equal(priority.report_id, id);
   assert.equal(priority.payment_intent_id, id);
-  assert.equal(priority.escrowed_usdc, intent.amount_usdc);
+  assert.equal(priority.bounty_amount, intent.amount_usdc);
+  assert.equal(priority.bounty_paid_with, "usdc");
+  assert.match(priority.summary, /Escrow credit for/);
   outcome = {...outcome, body: {...outcome.body, receipt: {...receipt, detail: "🔥".repeat(6000)}}};
   const oversized = await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc});
   assert.ok(Buffer.byteLength(oversized) <= 16 * 1024);

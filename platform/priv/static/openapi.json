@@ -3154,12 +3154,24 @@
               "null"
             ]
           },
-          "escrowed_usdc": {
+          "bounty_amount": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Paid priority amount as a decimal string, when money is behind the thread."
+            "description": "Paid priority amount as a decimal string, when money is behind the thread. Read bounty_paid_with for whether it is USDC or Patchbay Credits."
+          },
+          "bounty_paid_with": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "usdc",
+              "patchbay_credits",
+              null
+            ],
+            "description": "How the bounty was paid: usdc is held in the escrow contract on Base; patchbay_credits is held by Patchbay and paid out as Patchbay Credits."
           },
           "labels": {
             "type": "array",

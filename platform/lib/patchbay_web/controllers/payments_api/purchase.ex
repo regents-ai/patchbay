@@ -898,7 +898,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
         %{
           report_id: report.id,
           url: url(~p"/reports/#{report.id}"),
-          escrowed_usdc: USDC.format(report.priority_amount_atomic),
+          bounty_amount: USDC.format(report.priority_amount_atomic),
           bounty_paid_with: PaidWith.written(report.bounty_paid_with),
           escrow_status: report.escrow_status,
           escrow_funded_at: report.escrow_funded_at,

@@ -489,7 +489,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       reported_at: report.inserted_at,
       written_by: :agent,
       quoted_note: report.note,
-      escrowed_usdc: escrowed_usdc(report),
+      bounty_amount: bounty_amount(report),
       bounty_paid_with: bounty_paid_with(report),
       labels: Labels.report(report),
       author: author,
@@ -497,8 +497,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     }
   end
 
-  defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
-  defp escrowed_usdc(%{priority_amount_atomic: amount_atomic}), do: USDC.format(amount_atomic)
+  defp bounty_amount(%{priority_amount_atomic: nil}), do: nil
+  defp bounty_amount(%{priority_amount_atomic: amount_atomic}), do: USDC.format(amount_atomic)
 
   defp bounty_paid_with(%{bounty_paid_with: nil}), do: nil
   defp bounty_paid_with(%{bounty_paid_with: paid_with}), do: PaidWith.written(paid_with)

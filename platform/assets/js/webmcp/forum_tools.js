@@ -856,7 +856,9 @@ function priorityResult({status, body, intent, unsigned}) {
       summary: sentence(
         body.result_available === false
           ? "Payment settled, but the report is unavailable. Do not pay again"
-          : `Your report is on the board. Escrow credit for ${body.escrowed_usdc} USDC was submitted; on-chain confirmation is unverified.`,
+          : body.bounty_paid_with === "patchbay_credits"
+            ? `Your report is on the board, with a bounty of ${body.bounty_amount} Patchbay Credits held by Patchbay.`
+            : `Your report is on the board. Escrow credit for ${body.bounty_amount} USDC was submitted; on-chain confirmation is unverified.`,
       ),
       posted: body.result_available === false ? null : true,
       recovery_required: body.result_available === false,
@@ -864,7 +866,8 @@ function priorityResult({status, body, intent, unsigned}) {
       ...shared,
       report_id: body.report_id,
       url: body.url,
-      escrowed_usdc: body.escrowed_usdc,
+      bounty_amount: body.bounty_amount,
+      bounty_paid_with: body.bounty_paid_with,
       escrow_status: body.escrow_status,
       credit_confirmation: body.credit_confirmation,
       receipt: body.receipt,

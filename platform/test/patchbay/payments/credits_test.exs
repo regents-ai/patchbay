@@ -66,8 +66,18 @@ defmodule Patchbay.Payments.CreditsTest do
              profile |> Credits.history() |> Enum.map(& &1.amount_atomic)
   end
 
-  test "a card payment that was not a bundle writes nothing", %{payment: payment} do
-    assert {:ok, :not_ours} = Credits.record_card_refund(payment, 500)
+  test "a refund that comes before its purchase is refused, to come again", %{
+    profile: profile,
+    payment: payment
+  } do
+    assert {:error, :purchase_not_written} = Credits.record_card_refund(payment, 500)
+
+    {:ok, :credited} = Credits.record_card_purchase(profile.id, 1_000, payment)
+    assert {:ok, :reversed} = Credits.record_card_refund(payment, 500)
+    assert Credits.balance_atomic(profile.id) == 5 * @credit
+  end
+
+  test "a dispute of a card payment that was not a bundle writes nothing", %{payment: payment} do
     assert {:ok, :not_ours} = Credits.record_card_dispute(payment, "du_2", 500)
   end
 

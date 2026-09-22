@@ -143,12 +143,14 @@ defmodule Patchbay.Payments.Credits do
   Takes back what Stripe has refunded of card payment
   `stripe_payment_intent_id`. `refunded_cents` is Stripe's running total for
   the payment, so each refund event takes back only what earlier ones did
-  not. A payment Patchbay never credited is not Patchbay's to answer for.
+  not. The payment is a bundle's, so until its purchase is written there is
+  nothing to take back yet, and the refund is refused for Stripe to send
+  again.
   """
   @spec record_card_refund(String.t(), non_neg_integer()) ::
-          {:ok, :reversed | :already_reversed | :not_ours} | {:error, term()}
+          {:ok, :reversed | :already_reversed} | {:error, term()}
   def record_card_refund(stripe_payment_intent_id, refunded_cents) do
-    take_back(stripe_payment_intent_id, fn lines ->
+    take_back(stripe_payment_intent_id, {:error, :purchase_not_written}, fn lines ->
       refunded = Enum.sum(for line <- lines, reversal_for_refund?(line), do: -line.amount_atomic)
       {atomic_from_cents(refunded_cents) - refunded, nil}
     end)
@@ -156,12 +158,14 @@ defmodule Patchbay.Payments.Credits do
 
   @doc """
   Takes back `cents` of card payment `stripe_payment_intent_id` for dispute
-  `stripe_dispute_id`, once for each dispute.
+  `stripe_dispute_id`, once for each dispute. A dispute does not say whether
+  its payment was a bundle, so one for a payment Patchbay never credited is
+  not Patchbay's to answer for.
   """
   @spec record_card_dispute(String.t(), String.t(), pos_integer()) ::
           {:ok, :reversed | :already_reversed | :not_ours} | {:error, term()}
   def record_card_dispute(stripe_payment_intent_id, stripe_dispute_id, cents) do
-    take_back(stripe_payment_intent_id, fn lines ->
+    take_back(stripe_payment_intent_id, {:ok, :not_ours}, fn lines ->
       if Enum.any?(lines, &(&1.stripe_dispute_id == stripe_dispute_id)),
         do: {0, stripe_dispute_id},
         else: {atomic_from_cents(cents), stripe_dispute_id}
@@ -169,10 +173,10 @@ defmodule Patchbay.Payments.Credits do
   end
 
   # Never more is taken back from a card payment, in all, than it bought.
-  defp take_back(stripe_payment_intent_id, owed) do
+  defp take_back(stripe_payment_intent_id, nothing_bought, owed) do
     case lines_for(stripe_payment_intent_id) do
       [] ->
-        {:ok, :not_ours}
+        nothing_bought
 
       [%{profile_id: profile_id} | _lines] ->
         Ash.transact(CreditLine, fn ->

@@ -9,6 +9,12 @@ defmodule PatchbayWeb.StripeWebhookController do
   written is left as it is. Events for card payments that are not Patchbay
   bundles (the Stripe account also sells other things) are answered and left
   alone.
+
+  A bundle's payment carries its buyer's profile id, and Stripe copies it onto
+  the charge, so a refund of a bundle whose purchase is not written yet is
+  answered with an error and comes again once it is. A dispute carries no
+  such label; it comes days after the payment, when the purchase is long
+  written.
   """
 
   use PatchbayWeb, :controller
@@ -52,10 +58,13 @@ defmodule PatchbayWeb.StripeWebhookController do
   defp apply_event(%{
          "type" => "charge.refunded",
          "data" => %{
-           "object" => %{"payment_intent" => payment_intent_id, "amount_refunded" => cents}
+           "object" => %{
+             "metadata" => %{"patchbay_profile_id" => _profile_id},
+             "payment_intent" => payment_intent_id,
+             "amount_refunded" => cents
+           }
          }
-       })
-       when is_binary(payment_intent_id),
+       }),
        do: Credits.record_card_refund(payment_intent_id, cents)
 
   defp apply_event(%{

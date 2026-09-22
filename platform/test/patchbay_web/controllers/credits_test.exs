@@ -153,12 +153,7 @@ defmodule PatchbayWeb.CreditsTest do
       payment = "pi_" <> Ecto.UUID.generate()
       checkout_completed(buyer.id, 1_000, payment) |> webhook() |> json_response(200)
 
-      %{
-        "type" => "charge.refunded",
-        "data" => %{"object" => %{"payment_intent" => payment, "amount_refunded" => 200}}
-      }
-      |> webhook()
-      |> json_response(200)
+      buyer.id |> refunded(payment, 200) |> webhook() |> json_response(200)
 
       %{
         "type" => "charge.dispute.created",
@@ -168,6 +163,20 @@ defmodule PatchbayWeb.CreditsTest do
       |> json_response(200)
 
       assert Credits.balance_atomic(buyer.id) == 0
+    end
+
+    test "a refund that comes before its bundle's purchase is sent again until it lands", %{
+      buyer: buyer
+    } do
+      payment = "pi_" <> Ecto.UUID.generate()
+      refund = refunded(buyer.id, payment, 400)
+
+      assert %{"error" => "not_recorded"} = refund |> webhook() |> json_response(500)
+
+      checkout_completed(buyer.id, 1_000, payment) |> webhook() |> json_response(200)
+      assert %{"received" => true} = refund |> webhook() |> json_response(200)
+
+      assert Credits.balance_atomic(buyer.id) == 6_000_000
     end
 
     test "an event Stripe did not sign, or signed too long ago, writes nothing", %{buyer: buyer} do
@@ -207,6 +216,20 @@ defmodule PatchbayWeb.CreditsTest do
                }
                |> webhook()
                |> json_response(200)
+
+      assert %{"received" => true} =
+               %{
+                 "type" => "charge.refunded",
+                 "data" => %{
+                   "object" => %{
+                     "metadata" => %{},
+                     "payment_intent" => "pi_other",
+                     "amount_refunded" => 900
+                   }
+                 }
+               }
+               |> webhook()
+               |> json_response(200)
     end
 
     test "there is no webhook when card payments are not set up", %{buyer: buyer} do
@@ -229,6 +252,19 @@ defmodule PatchbayWeb.CreditsTest do
           "payment_status" => "paid",
           "amount_total" => cents,
           "payment_intent" => payment
+        }
+      }
+    }
+  end
+
+  defp refunded(profile_id, payment, cents) do
+    %{
+      "type" => "charge.refunded",
+      "data" => %{
+        "object" => %{
+          "metadata" => %{"patchbay_profile_id" => profile_id},
+          "payment_intent" => payment,
+          "amount_refunded" => cents
         }
       }
     }
