@@ -5,97 +5,31 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
   goes to that reply's author.
 
   Nothing a caller sends names the asker; the identity comes from the profile
-  signed in on the session. The report is held under a row lock while the
-  reply is checked and marked, so two accepts arriving at once cannot both
-  get through, and the payout is only sent once the mark is written. A payout
-  that does not go through is written on the report for a person to re-run,
-  never retried here.
+  signed in on the session. Everything else is `Patchbay.Forum.SolutionAccept`,
+  which the hosted MCP tool of the same name comes through too.
   """
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Escrow
-  alias Patchbay.Forum
-  alias Patchbay.Forum.Report
+  alias Patchbay.Forum.SolutionAccept
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
 
   def create(conn, %{"id" => id} = params) do
-    actor = conn.assigns.current_profile
+    case SolutionAccept.run(id, params["reply_id"], conn.assigns.current_profile) do
+      {:ok, released} ->
+        json(conn, %{
+          accepted: true,
+          report_id: released.id,
+          reply_id: released.accepted_reply_id,
+          escrow_status: released.escrow_status,
+          release_tx_hash: released.escrow_release_tx_hash,
+          winner: AuthorJSON.author(released.accepted_reply.author)
+        })
 
-    with {:ok, accepted} <- accept(actor, id, params["reply_id"]),
-         {:ok, released} <- release(accepted) do
-      json(conn, %{
-        accepted: true,
-        report_id: released.id,
-        reply_id: released.accepted_reply_id,
-        escrow_status: released.escrow_status,
-        release_tx_hash: released.escrow_release_tx_hash,
-        winner: AuthorJSON.author(accepted.accepted_reply.author)
-      })
-    else
-      {:error, failure} -> send_failure(conn, failure)
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
-  end
-
-  # The check and the mark happen under one row lock, so a second accept that
-  # arrives while the first is being written waits for it and is then refused,
-  # before anything reaches the chain.
-  defp accept(actor, id, reply_id) do
-    case Ash.transact([Report], fn -> mark(actor, id, reply_id) end) do
-      {:ok, {:ok, accepted}} -> {:ok, accepted}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp mark(actor, id, reply_id) do
-    with {:ok, report} <- locked_report(actor, id) do
-      Forum.accept_reply(report, reply_id, actor: actor, load: [accepted_reply: [:author]])
-    end
-  end
-
-  defp locked_report(actor, id) do
-    case Ecto.UUID.cast(id) do
-      {:ok, uuid} -> found_or_missing(Forum.lock_report(uuid, actor: actor))
-      :error -> {:error, :not_found}
-    end
-  end
-
-  defp found_or_missing({:ok, nil}), do: {:error, :not_found}
-  defp found_or_missing({:ok, record}), do: {:ok, record}
-
-  defp found_or_missing({:error, error}) do
-    if missing?(error), do: {:error, :not_found}, else: {:error, error}
-  end
-
-  defp missing?(%Ash.Error.Query.NotFound{}), do: true
-  defp missing?(%{errors: errors}) when is_list(errors), do: Enum.any?(errors, &missing?/1)
-  defp missing?(_error), do: false
-
-  # The winner's wallet is the one on the profile that wrote the reply, read
-  # now, because that is who the asker chose to pay.
-  defp release(accepted) do
-    case Escrow.release(accepted.id, accepted.accepted_reply.author.wallet_address) do
-      {:ok, tx_hash} -> record_release(accepted, :released, tx_hash)
-      {:error, _reason} -> release_refused(accepted)
-    end
-  end
-
-  # A payout Base refused while it has not yet confirmed the bounty is held
-  # changes nothing on the record: the bounty is still waiting on Base, and
-  # writing the refusal over that would lose the confirmation when it comes.
-  # The answer still says the payout has not happened.
-  defp release_refused(%Report{escrow_status: :credit_submitted} = accepted), do: {:ok, accepted}
-  defp release_refused(accepted), do: record_release(accepted, :release_failed, nil)
-
-  defp record_release(accepted, status, tx_hash) do
-    # Nothing over HTTP may write what the escrow said; this is the one place
-    # that hears it, so the write is made deliberately without an actor.
-    Forum.record_escrow_release(
-      accepted,
-      %{escrow_status: status, escrow_release_tx_hash: tx_hash},
-      authorize?: false
-    )
   end
 
   defp send_failure(conn, :not_found) do
@@ -114,7 +48,7 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
   end
 
   defp send_failure(conn, error) do
-    if missing?(error) do
+    if SolutionAccept.missing?(error) do
       send_failure(conn, :not_found)
     else
       conn

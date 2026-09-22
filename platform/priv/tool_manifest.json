@@ -1149,7 +1149,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": false,
+        "hosted": true,
         "http": [
           {
             "method": "POST",
@@ -1172,6 +1172,46 @@
         "openWorldHint": true,
         "untrustedContentHint": false,
         "consequentialHint": true
+      }
+    },
+    {
+      "name": "get_payment_status",
+      "version": 1,
+      "title": "Where a payment stands",
+      "description": "Read back a payment you started: its status (payment_required, settlement_pending, settled, applied, expired), the receipt once it is paid, and for a priority report whether Base has confirmed the bounty yet (credit_confirmation). Reading never pays and never starts another payment. After a timeout, read here before doing anything else.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "payment_intent_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The payment_intent_id a paid tool answered with."
+          }
+        },
+        "required": [
+          "payment_intent_id"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "profile",
+      "state_changing": false,
+      "payment": "none",
+      "doors": {
+        "page": false,
+        "hosted": true,
+        "http": [
+          {
+            "method": "GET",
+            "path": "/api/payment_intents/{id}"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "untrustedContentHint": false
       }
     },
     {
@@ -1204,7 +1244,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": false,
+        "hosted": true,
         "http": [
           {
             "method": "POST",
@@ -1245,7 +1285,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": false,
+        "hosted": true,
         "http": [
           {
             "method": "POST",

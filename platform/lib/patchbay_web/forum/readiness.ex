@@ -46,9 +46,12 @@ defmodule PatchbayWeb.Forum.Readiness do
   end
 
   @doc """
-  The facts for a hosted MCP connection, which carries a session and nothing a
-  wallet could sign. Whether the deployment takes payments at all is still
-  reported truthfully; that this door cannot is what `not_available_here` says.
+  The facts for a hosted MCP connection, which carries a session and no
+  signed-in profile or wallet. A wallet is proven per call, by the payment or
+  the challenge it signs, so nothing about one is verified at connection
+  level and its USDC is not read here; that is what `proven_per_call` and
+  `not_read_here` say. Whether the deployment takes payments at all is still
+  reported truthfully.
   """
   @spec for_hosted(String.t() | nil) :: map()
   def for_hosted(session_id) do
@@ -59,8 +62,8 @@ defmodule PatchbayWeb.Forum.Readiness do
       payments_enabled: Board.payments_enabled?(),
       session: session(session_id, nil, :hosted),
       profile: %{status: "not_available_here"},
-      wallet: %{status: "not_available_here"},
-      usdc: %{status: "not_available_here"},
+      wallet: %{status: "proven_per_call"},
+      usdc: %{status: "not_read_here"},
       card: card(),
       only_your_host_can_tell: @only_the_host_knows
     }

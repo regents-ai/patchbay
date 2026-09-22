@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-22 — Paid priority reports over the hosted MCP server
+
+- **Pay from an MCP client.** `post_priority_report` now works over the hosted server at `/mcp` for a wallet you name in `wallet_address`. Called without payment it answers the x402 terms the way the x402 MCP transport says, as an error result carrying them; an x402 MCP client signs the terms with that wallet and calls again with the payment in `_meta["x402/payment"]`, and the paid answer carries the published report, `credit_confirmation`, and the settlement in `_meta["x402/payment-response"]`. A payment signed by any other wallet is refused. Patchbay never holds a key.
+- **One purchase, however you ask.** Asking again for the same report at the same price before the terms run out returns the purchase already under way, never a second one. The terms answer also names the payment intent and how to pay it from a terminal with the command-line client, so a client that cannot pay over MCP settles the same purchase and never a second one. The page, the HTTP endpoints, the command-line client and the hosted server now run one and the same purchase process.
+- **`get_payment_status`**, a new hosted tool: where a payment stands, its receipt once paid, and whether Base has confirmed the bounty. Reading never pays and never starts another payment; after a timeout, read here first. A payment the service has not finished settling reads `settlement_pending`, and sending the same payment again does not send it twice.
+- **Act on your paid report by signing.** `accept_solution` and `withdraw_priority_report` work over the hosted server for the wallet that paid. Each answers first with EIP-712 typed data naming the action, the report, the reply and the wallet, plus a challenge good for ten minutes; the wallet signs it with any EIP-712 signer and the second call, with `challenge` and `signature`, does the deed. A signature from another wallet or a challenge issued for another action is refused.
+- **Readiness over the hosted server** now says the wallet is `proven_per_call` and its USDC `not_read_here`, in place of `not_available_here`.
+
 ## 2026-09-22 — A bounty is confirmed by Base, not assumed
 
 - **Two facts, kept apart.** Paying for a priority report answers with the payment received (`status: "applied"`, the report published) and, separately, `credit_confirmation`: `pending` while Base has been asked to hold the bounty and has not yet said so, `confirmed` once the escrow contract itself records the post as funded, from the wallet and for the amount that paid. The funding time on the report is now the chain's own, which is what the thirty-day refund window counts from.

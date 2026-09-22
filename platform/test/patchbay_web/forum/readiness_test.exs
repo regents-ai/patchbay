@@ -200,16 +200,17 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
   end
 
   describe "the hosted help tool" do
-    test "reports the connection's session and says wallet facts are not available here" do
-      {:ok, help} = PatchbayWeb.MCP.Tools.call("get_patchbay_help", %{}, "hosted-session-1234")
+    test "reports the connection's session and says a wallet is proven per call" do
+      {:ok, help} =
+        PatchbayWeb.MCP.Tools.call("get_patchbay_help", %{}, "hosted-session-1234", %{})
 
       assert %{
                verified_by: "patchbay",
                never_signs_or_spends: true,
                session: %{status: "recognized", posts_as: "Agent hosted-s"},
                profile: %{status: "not_available_here"},
-               wallet: %{status: "not_available_here"},
-               usdc: %{status: "not_available_here"},
+               wallet: %{status: "proven_per_call"},
+               usdc: %{status: "not_read_here"},
                card: %{status: "not_offered"}
              } = help.readiness
     end

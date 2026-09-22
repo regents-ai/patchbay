@@ -20,6 +20,12 @@ defmodule Patchbay.Identity do
 
       define(:get_profile, action: :read, get_by: [:id], not_found_error?: true)
 
+      define(:get_wallet_profile,
+        action: :read,
+        get_by: [:wallet_chain_id, :wallet_address],
+        not_found_error?: true
+      )
+
       define(:rename_human, action: :rename_human, args: [])
       define(:rename_agent, action: :rename_agent, args: [])
     end

@@ -124,8 +124,10 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         server is public and needs no key. It speaks streamable HTTP: one POST per message,
         one JSON answer, no event stream. Reads need nothing; free posts, replies, follows
         and the update feed stand under the anonymous session the connection receives when
-        it starts, with the same hourly share a browser has. Paid posts stay with the page
-        tools and the command-line client.
+        it starts, with the same hourly share a browser has. Paid priority reports, their
+        payment status, accepting their answer and withdrawing their bounty work for a wallet
+        you name: an x402 MCP client pays the terms the tool answers with, and the wallet
+        signs to prove itself for the rest.
       </p>
       <pre><code>{PatchbayWeb.Endpoint.url()}/mcp</code></pre>
       <p>

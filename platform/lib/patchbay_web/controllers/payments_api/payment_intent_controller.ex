@@ -1,68 +1,23 @@
 defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @moduledoc """
   The three endpoints behind a paid action: prepare one, pay for it, and read
-  it back.
+  it back. Each is one call into `PatchbayWeb.PaymentsAPI.Purchase`, the same
+  purchase process the hosted MCP tools run; what is here is the HTTP shape of
+  its answers: the status codes, the x402 headers and the JSON.
 
-  Preparing an action freezes what it will cost and who receives the money.
-  Executing it hands back the x402 terms to sign, and then, once a signature
-  arrives, checks that signature against those same frozen terms before any
-  money moves. Nothing the caller sends can change the amount or the
-  destination after the fact: the terms are read from the stored intent every
-  time, never from the request.
-
-  The money never passes through Patchbay. The payer's wallet pays the wallet
-  the terms name, a profile's own for a tip and the escrow contract for a paid
-  priority report, a payment service verifies and settles it, and what is
-  stored here is the record of what was promised and what happened. What the
-  money bought is then carried out per kind: a tip is complete once settled,
-  and a paid priority report is published from its frozen terms.
-
-  A short row lock commits the settlement attempt before external dispatch.
-  A crash leaves an uncertain intent for reconciliation, never an automatic
-  second payment. Settlement evidence commits before publication and escrow
-  submission, so those later failures cannot erase the payment receipt.
+  The payer is whoever the pipeline signed in, a page's profile or a
+  SIWA-verified wallet, and never a value the request carries.
   """
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Escrow
-  alias Patchbay.Forum
-  alias Patchbay.Forum.OtherSiteReport
-  alias Patchbay.Forum.Site
-  alias Patchbay.Forum.Tool
-  alias Patchbay.Identity
-  alias Patchbay.Payments
-  alias Patchbay.Payments.PaymentIntent
-  alias Patchbay.Payments.PaymentReceipt
-  alias Patchbay.Payments.SpecialPost
   alias Patchbay.Payments.USDC
-  alias PatchbayWeb.AuthorJSON
-  alias PatchbayWeb.ForumAPI.Refusal
-  alias X402.Extensions.PaymentIdentifier
-  alias X402.Facilitator
+  alias PatchbayWeb.PaymentsAPI.Purchase
   alias X402.PaymentRequired
   alias X402.PaymentResponse
-  alias X402.PaymentSignature
-  alias X402.Scheme.ExactEVM
-
-  # The registered name of the payment service client, configured in
-  # config/runtime.exs and started with the application.
-  @facilitator Patchbay.Payments.Facilitator
-
-  # How long the payment service may take to settle a signed payment. It is
-  # advertised in the terms, so a wallet knows what window it is signing for.
-  @max_timeout_seconds 300
 
   @challenge_error "Payment is required to carry out this action."
   @pay_and_retry "Pay with an x402-capable wallet and retry this payment intent."
-  @generic_failure "That could not be done. Check the values you sent and try again."
-
-  @amount_shape "amount_usdc: must be an amount of dollars written as text, " <>
-                  "such as \"2.00\", with at most six decimal places"
-
-  @profile_shape "profile_id: must be the public id of the profile being paid, such as \"agt_2f9c1d\""
-
-  @unknown_profile "profile_id: there is no profile with that id"
 
   @not_set_up "Paid priority posts are not set up on this Patchbay."
 
@@ -71,443 +26,66 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
                     "for a paid priority report"
 
   def create(conn, %{"kind" => "agent_tip", "args" => %{} = args}) do
-    actor = conn.assigns.current_profile
-
-    with {:ok, amount_atomic} <- amount(args),
-         {:ok, recipient} <- tip_recipient(args),
-         {:ok, intent} <- Payments.prepare_agent_tip(tip(recipient, amount_atomic), actor: actor) do
-      created(conn, intent)
-    else
-      {:error, failure} -> send_failure(conn, failure)
-    end
+    conn.assigns.current_profile
+    |> Purchase.prepare_agent_tip(args)
+    |> created(conn)
   end
 
   def create(conn, %{"kind" => "special_post", "args" => %{} = args}) do
-    actor = conn.assigns.current_profile
-
-    with :ok <- escrow_set_up(),
-         {:ok, amount_atomic} <- amount(args),
-         {:ok, draft} <- OtherSiteReport.draft(Map.delete(args, "amount_usdc")),
-         {:ok, intent} <- prepare_special_post(actor, draft, amount_atomic) do
-      created(conn, intent)
-    else
-      {:error, failure} -> send_failure(conn, failure)
-    end
+    conn.assigns.current_profile
+    |> Purchase.prepare_special_post(args)
+    |> created(conn)
   end
 
   def create(conn, _params), do: send_failure(conn, {:invalid, [@unknown_action]})
 
-  defp created(conn, intent) do
+  defp created({:ok, intent}, conn) do
     conn
     |> put_status(:created)
-    |> json(intent_payload(intent))
+    |> json(Purchase.intent_payload(intent))
   end
 
-  def execute(conn, %{"id" => id}) do
-    actor = conn.assigns.current_profile
+  defp created({:error, failure}, conn), do: send_failure(conn, failure)
 
-    case under_lock(actor, id, request(conn)) do
+  def execute(conn, %{"id" => id}) do
+    request = %{
+      payment: payment_signature(conn),
+      payer: nil,
+      browser_session_id: conn.assigns.forum_session_id
+    }
+
+    case Purchase.execute(conn.assigns.current_profile, id, request) do
       {:error, failure} -> send_failure(conn, failure)
       answer -> send_answer(conn, answer)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    actor = conn.assigns.current_profile
+    case Purchase.read(conn.assigns.current_profile, id) do
+      {:ok, found} ->
+        json(conn, Map.merge(Purchase.intent_payload(found), Purchase.recovery_payload(found)))
 
-    read = fn id, opts ->
-      Payments.get_payment_intent(id, Keyword.put(opts, :load, [:receipt]))
-    end
-
-    case intent(actor, id, read) do
-      {:ok, found} -> json(conn, Map.merge(intent_payload(found), recovery_payload(found)))
-      {:error, failure} -> send_failure(conn, failure)
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
-  # Preparing a payment
-
-  defp amount(%{"amount_usdc" => written}) when is_binary(written) do
-    case USDC.parse(written) do
-      {:ok, amount_atomic} -> {:ok, amount_atomic}
-      :error -> {:error, {:invalid, [@amount_shape]}}
+  defp payment_signature(conn) do
+    case get_req_header(conn, "payment-signature") do
+      [value | _rest] when is_binary(value) and value != "" -> value
+      _absent -> nil
     end
-  end
-
-  defp amount(_args), do: {:error, {:invalid, [@amount_shape]}}
-
-  defp tip(recipient, amount_atomic), do: %{recipient: recipient, amount_atomic: amount_atomic}
-
-  defp tip_recipient(%{"profile_id" => public_id}) when is_binary(public_id) do
-    case found_or_missing(Identity.get_profile_by_public_id(public_id)) do
-      {:ok, recipient} -> {:ok, recipient}
-      {:error, :not_found} -> {:error, {:invalid, [@unknown_profile]}}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp tip_recipient(_args), do: {:error, {:invalid, [@profile_shape]}}
-
-  defp escrow_set_up do
-    if Escrow.contract_address(), do: :ok, else: {:error, :not_configured}
-  end
-
-  # The site and the tool the draft names are registered alongside the terms,
-  # so a draft that is refused leaves no empty board behind it. The draft
-  # itself is checked by the terms' own action, against the forum's rules,
-  # before anything is written.
-  defp prepare_special_post(actor, draft, amount_atomic) do
-    case Ash.transact([Site, Tool, PaymentIntent], fn -> frozen(actor, draft, amount_atomic) end) do
-      {:ok, {:ok, intent}} -> {:ok, intent}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp frozen(actor, draft, amount_atomic) do
-    with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
-      Payments.prepare_special_post(
-        %{tool: tool, draft: draft, amount_atomic: amount_atomic},
-        actor: actor
-      )
-    end
-  end
-
-  # Executing a payment intent
-
-  # What an execute call carries besides the intent's id: the signature, if
-  # the payer has signed, and the browser's forum identity, which is what a
-  # report paid for here is filed under.
-  defp request(conn) do
-    %{signature: payment_signature(conn), browser_session_id: conn.assigns.forum_session_id}
-  end
-
-  # Only the caller that commits the pending transition receives dispatch
-  # data. External settlement runs after the transaction has committed.
-  defp under_lock(actor, id, request) do
-    case Ash.transact([PaymentIntent, PaymentReceipt], fn -> attempt(actor, id, request) end) do
-      {:ok, {:settled, {:dispatch, found, payment, requirement, request}}} ->
-        settle(actor, found, payment, requirement, request)
-
-      {:ok, {:settled, answer}} ->
-        answer
-
-      {:error, failed_write} ->
-        {:error, failed_write}
-    end
-  end
-
-  # A refusal is an answer, and the status it wrote down travels out with it.
-  # Only a write that genuinely failed undoes the transaction.
-  defp attempt(actor, id, request) do
-    case locked(actor, id, request) do
-      {:error, failure} when is_exception(failure) -> {:error, failure}
-      answer -> {:settled, answer}
-    end
-  end
-
-  defp locked(actor, id, request) do
-    case intent(actor, id, &Payments.lock_payment_intent/2) do
-      {:ok, found} -> advance(actor, found, request)
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp advance(_actor, %{status: :applied} = found, _request),
-    do: {:applied, found, found.receipt}
-
-  defp advance(_actor, %{status: :settled, kind: :agent_tip} = found, _request),
-    do: {:applied, found, found.receipt}
-
-  defp advance(_actor, %{status: :settled} = found, _request),
-    do: {:settled, found, found.receipt}
-
-  defp advance(_actor, %{status: :settlement_pending} = found, _request) do
-    {:settlement_pending, found}
-  end
-
-  defp advance(actor, found, request) do
-    if DateTime.before?(found.expires_at, DateTime.utc_now()) do
-      expire(actor, found)
-    else
-      offer_or_settle(actor, found, request)
-    end
-  end
-
-  defp expire(actor, found) do
-    case Payments.expire_payment_intent(found, actor: actor) do
-      {:ok, expired} -> {:expired, expired}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp offer_or_settle(actor, found, %{signature: nil}) do
-    case Payments.mark_payment_required(found, actor: actor) do
-      {:ok, waiting} -> {:payment_required, waiting}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp offer_or_settle(actor, found, request) do
-    requirement = requirement(found)
-
-    case checked_payment(request.signature, found, requirement) do
-      {:ok, payment} ->
-        with {:ok, pending} <- Payments.mark_settlement_pending(found, actor: actor) do
-          {:dispatch, pending, payment, requirement, request}
-        end
-
-      {:refused, reason} ->
-        {:payment_rejected, found, reason}
-
-      {:unavailable, reason} ->
-        {:facilitator_unavailable, found, reason}
-    end
-  end
-
-  # Checking a signature against the frozen terms
-
-  defp checked_payment(signature, found, requirement) do
-    with {:ok, payment} <- decoded(signature, requirement),
-         :ok <- names_this_intent(payment, found),
-         :ok <- prechecked(payment, requirement),
-         :ok <- verified(payment, requirement) do
-      {:ok, payment}
-    end
-  end
-
-  # Decoding matches the signed `accepted` terms against this intent's own
-  # requirement field for field, so a signature made for any other amount,
-  # asset, network or wallet is refused before anything else happens.
-  defp decoded(signature, requirement) do
-    case PaymentSignature.decode_and_validate(signature, requirement) do
-      {:ok, payment} ->
-        {:ok, payment}
-
-      {:error, :no_matching_requirements} ->
-        {:refused, "That payment was signed for different terms than this payment intent's."}
-
-      {:error, _reason} ->
-        {:refused, "That payment signature could not be read as an x402 version 2 payment."}
-    end
-  end
-
-  defp names_this_intent(payment, found) do
-    case echoed_identifier(payment) do
-      :absent -> :ok
-      {:ok, identifier} -> matching_identifier(identifier, found.payment_identifier)
-      :error -> {:refused, "The payment identifier in that signature could not be read."}
-    end
-  end
-
-  defp matching_identifier(identifier, identifier), do: :ok
-
-  defp matching_identifier(_identifier, _expected),
-    do: {:refused, "That payment signature names a different payment."}
-
-  defp echoed_identifier(payment) do
-    case get_in(payment, ["extensions", "paymentIdentifier"]) do
-      nil -> :absent
-      encoded when is_binary(encoded) -> decoded_identifier(encoded)
-      _other -> :error
-    end
-  end
-
-  defp decoded_identifier(encoded) do
-    case PaymentIdentifier.decode(encoded) do
-      {:ok, identifier} -> {:ok, identifier}
-      {:error, _reason} -> :error
-    end
-  end
-
-  # The local check of the signed authorization: the wallet it pays, the exact
-  # amount, and the window it is valid for.
-  defp prechecked(payment, requirement) do
-    case ExactEVM.precheck(payment, requirement, []) do
-      :ok -> :ok
-      {:error, {:precheck_failed, reason}} -> {:refused, precheck_message(reason)}
-    end
-  end
-
-  defp precheck_message(:pay_to_mismatch),
-    do: "That payment pays a different wallet than these terms."
-
-  defp precheck_message(:amount_mismatch),
-    do: "That payment is for a different amount than these terms."
-
-  defp precheck_message(:authorization_expired),
-    do: "That payment authorization has already expired."
-
-  defp precheck_message(:authorization_not_yet_valid),
-    do: "That payment authorization is not valid yet."
-
-  defp precheck_message(_reason), do: "That payment authorization could not be read."
-
-  defp verified(payment, requirement) do
-    case Facilitator.verify(@facilitator, payment, requirement) do
-      {:ok, %{status: status, body: %{"isValid" => true}}} when status in 200..299 ->
-        :ok
-
-      {:ok, %{status: status, body: %{"isValid" => false} = body}} when status in 200..299 ->
-        {:refused, invalid_message(body)}
-
-      _unclear ->
-        {:unavailable, "The payment service could not be reached before a settlement result."}
-    end
-  end
-
-  defp invalid_message(%{"invalidReason" => reason}) when is_binary(reason) do
-    "The payment service would not accept that payment: #{reason}."
-  end
-
-  defp invalid_message(_body), do: "The payment service would not accept that payment."
-
-  # Settling
-
-  defp settle(actor, found, payment, requirement, request) do
-    case Facilitator.settle(@facilitator, payment, requirement) do
-      {:ok, %{status: status, body: %{"success" => true} = body}} when status in 200..299 ->
-        apply_payment(actor, found, payment, body, request)
-
-      {:ok, %{status: status, body: %{"success" => false} = body}} when status in 200..299 ->
-        refused_settlement(actor, found, body)
-
-      _unclear ->
-        hold(actor, found)
-    end
-  end
-
-  # A payment service that has not finished settling may still move the money,
-  # so nothing here retries or refuses it. A person reconciles it by hand.
-  defp refused_settlement(actor, found, %{"errorReason" => "settlement_pending"}) do
-    hold(actor, found)
-  end
-
-  defp refused_settlement(actor, found, body) do
-    case Payments.mark_payment_failed(found, actor: actor) do
-      {:ok, failed} -> {:payment_rejected, failed, settlement_message(body)}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp settlement_message(%{"errorReason" => reason}) when is_binary(reason) do
-    "The payment service could not settle that payment: #{reason}."
-  end
-
-  defp settlement_message(_body), do: "The payment service could not settle that payment."
-
-  defp hold(actor, found) do
-    case Payments.mark_settlement_pending(found, actor: actor) do
-      {:ok, pending} -> {:settlement_pending, pending}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp apply_payment(actor, found, payment, body, request) do
-    persisted =
-      Ash.transact([PaymentIntent, PaymentReceipt], fn ->
-        with {:ok, receipt} <- record_receipt(actor, found, payment, body),
-             {:ok, settled} <- Payments.mark_settled(found, actor: actor) do
-          {settled, receipt}
-        end
-      end)
-
-    case persisted do
-      {:ok, {settled, receipt}} ->
-        with {:ok, effect} when effect == :settled or effect.escrow_status == :credit_submitted <-
-               carry_out(settled, receipt, actor, request),
-             {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
-          {:applied, applied, receipt}
-        else
-          _incomplete -> {:settled, settled, receipt}
-        end
-
-      {:error, _failed_write} ->
-        # The already-committed pending marker survives. Never redispatch.
-        {:settlement_pending, found}
-    end
-  end
-
-  # What the money bought. A tip is complete the moment it settles: the money
-  # is already in the recipient's wallet. A paid priority report is published
-  # from its frozen terms and the settled money is recorded against it.
-  defp carry_out(%{kind: :agent_tip}, _receipt, _actor, _request), do: {:ok, :settled}
-
-  defp carry_out(%{kind: :special_post} = settled, receipt, actor, request) do
-    SpecialPost.publish(settled, receipt,
-      actor: actor,
-      browser_session_id: request.browser_session_id
-    )
-  end
-
-  defp record_receipt(actor, found, payment, body) do
-    Payments.record_payment_receipt(
-      %{
-        payment_intent_id: found.id,
-        payment_identifier: found.payment_identifier,
-        payer_address: get_in(payment, ["payload", "authorization", "from"]),
-        network: found.network,
-        asset: found.asset,
-        amount_atomic: found.amount_atomic,
-        facilitator: facilitator_url(),
-        transaction_hash: transaction_hash(body),
-        payment_response: body,
-        settled_at: DateTime.utc_now()
-      },
-      actor: actor
-    )
-  end
-
-  defp transaction_hash(%{"transaction" => hash}) when is_binary(hash) and hash != "", do: hash
-  defp transaction_hash(_body), do: nil
-
-  defp facilitator_url do
-    :patchbay |> Application.get_env(@facilitator, []) |> Keyword.fetch!(:url)
-  end
-
-  # The terms
-
-  defp terms(found, error) do
-    %{
-      "x402Version" => 2,
-      "error" => error,
-      "resource" => %{
-        "url" => execute_url(found),
-        "description" => found.effect_summary,
-        "mimeType" => "application/json"
-      },
-      "accepts" => [requirement(found)],
-      "extensions" => %{"paymentIdentifier" => identifier_extension(found)}
-    }
-  end
-
-  # Read from the stored intent every time, so what a payer signs for is what
-  # was frozen when the intent was prepared.
-  defp requirement(found) do
-    %{
-      "scheme" => "exact",
-      "network" => found.network,
-      "amount" => Integer.to_string(found.amount_atomic),
-      "asset" => found.asset,
-      "payTo" => Map.fetch!(found.payload, "pay_to_address"),
-      "maxTimeoutSeconds" => @max_timeout_seconds,
-      "extra" => USDC.signing_domain()
-    }
-  end
-
-  defp identifier_extension(found) do
-    {:ok, encoded} = PaymentIdentifier.encode(found.payment_identifier)
-    encoded
   end
 
   # Answers
 
   defp send_answer(conn, {:payment_required, found}) do
-    offered = terms(found, @challenge_error)
+    offered = Purchase.terms(found, @challenge_error)
 
     conn
     |> offer(offered)
     |> json(
-      with_payment_help(%{
+      Purchase.payment_help(%{
         status: "payment_required",
         payment_intent_id: found.id,
         payment_terms: offered,
@@ -517,12 +95,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   end
 
   defp send_answer(conn, {:payment_rejected, found, reason}) do
-    offered = terms(found, reason)
+    offered = Purchase.terms(found, reason)
 
     conn
     |> offer(offered)
     |> json(
-      with_payment_help(%{
+      Purchase.payment_help(%{
         status: "payment_required",
         payment_intent_id: found.id,
         payment_terms: offered,
@@ -536,25 +114,25 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     {:ok, header} = PaymentResponse.encode(receipt.payment_response)
 
     answer =
-      with_payment_help(%{
+      Purchase.payment_help(%{
         status: "applied",
         payment_intent_id: found.id,
-        receipt: receipt_payload(receipt),
+        receipt: Purchase.receipt_payload(receipt),
         amount_usdc: USDC.format(found.amount_atomic),
         effect_summary: found.effect_summary
       })
 
     conn
     |> put_resp_header("payment-response", header)
-    |> json(Map.merge(answer, applied_effect(found)))
+    |> json(Map.merge(answer, Purchase.applied_effect(found)))
   end
 
   defp send_answer(conn, {:settled, found, receipt}) do
     conn
     |> put_status(:accepted)
     |> json(
-      intent_payload(found)
-      |> Map.merge(recovery_payload(%{found | receipt: receipt}))
+      Purchase.intent_payload(found)
+      |> Map.merge(Purchase.recovery_payload(%{found | receipt: receipt}))
       |> Map.put(:payment_intent_id, found.id)
     )
   end
@@ -563,7 +141,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:conflict)
     |> json(
-      with_payment_help(%{
+      Purchase.payment_help(%{
         status: "settlement_pending",
         payment_intent_id: found.id,
         next_action:
@@ -576,7 +154,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:gone)
     |> json(
-      with_payment_help(%{
+      Purchase.payment_help(%{
         status: "expired",
         payment_intent_id: found.id,
         next_action:
@@ -589,7 +167,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:bad_gateway)
     |> json(
-      with_payment_help(%{
+      Purchase.payment_help(%{
         status: "facilitator_unavailable",
         payment_intent_id: found.id,
         problem_code: "facilitator_unavailable",
@@ -599,62 +177,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     )
   end
 
-  defp with_payment_help(fields) do
-    Map.merge(
-      %{
-        payment_help_url: url(~p"/agent-setup") <> "#x402",
-        protocol: "x402",
-        x402_version: 2
-      },
-      fields
-    )
-  end
-
-  # What the settled money did, per kind: the profile a tip reached, or the
-  # report a paid priority payment published and where its money stands.
-  # Payment received and bounty confirmed are two facts: the second is what
-  # the chain has said, read back by the escrow watch, never assumed.
-  defp applied_effect(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
-
-  defp applied_effect(%{kind: :special_post} = found) do
-    case Forum.get_report(found.target_id) do
-      {:ok, %{} = report} ->
-        confirmation = SpecialPost.confirmation(report)
-
-        %{
-          report_id: report.id,
-          url: url(~p"/reports/#{report.id}"),
-          escrowed_usdc: USDC.format(report.priority_amount_atomic),
-          escrow_status: report.escrow_status,
-          escrow_funded_at: report.escrow_funded_at,
-          credit_confirmation: to_string(confirmation),
-          status_url: show_url(found),
-          next_action: confirmation_next_action(confirmation),
-          result_available: true
-        }
-
-      _unavailable ->
-        %{
-          report_id: found.target_id,
-          result_available: false,
-          credit_confirmation: "needs_attention",
-          status_url: show_url(found),
-          next_action: confirmation_next_action(:needs_attention)
-        }
-    end
-  end
-
-  defp confirmation_next_action(:pending),
-    do:
-      "Payment received. The bounty is being confirmed on Base; read status_url again after a short wait. Do not pay again."
-
-  defp confirmation_next_action(:confirmed),
-    do: "Payment received and the bounty is confirmed on Base. Do not pay again."
-
-  defp confirmation_next_action(:needs_attention),
-    do:
-      "Payment received. The bounty's record on Base needs a person at Patchbay; keep reading status_url. Do not pay again."
-
   defp offer(conn, offered) do
     {:ok, header} = PaymentRequired.encode(offered)
 
@@ -662,139 +184,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     |> put_resp_header("payment-required", header)
     |> put_status(:payment_required)
   end
-
-  defp intent_payload(found) do
-    %{
-      id: found.id,
-      status: found.status,
-      kind: found.kind,
-      amount_usdc: USDC.format(found.amount_atomic),
-      effect_summary: found.effect_summary,
-      irreversible_after_settlement: true,
-      execute_url: execute_url(found),
-      expires_at: found.expires_at
-    }
-    |> Map.merge(intent_target(found))
-  end
-
-  defp receipt_payload(receipt) do
-    %{
-      transaction_hash: receipt.transaction_hash,
-      payer_address: receipt.payer_address,
-      settled_at: receipt.settled_at
-    }
-  end
-
-  defp recovery_payload(%{status: :applied} = found) do
-    result = applied_effect(found)
-
-    %{
-      receipt: receipt_payload(found.receipt),
-      result: result,
-      recovery_required: Map.get(result, :result_available) == false
-    }
-  end
-
-  defp recovery_payload(%{status: :settled} = found) do
-    %{
-      receipt: receipt_payload(found.receipt),
-      result: applied_effect(found),
-      recovery_required: found.kind != :agent_tip,
-      next_action:
-        if(found.kind == :agent_tip,
-          do: "Payment settled. The tip is complete; do not pay again.",
-          else:
-            "Payment settled. Do not pay again. Check the report and reconcile any incomplete effect."
-        )
-    }
-  end
-
-  defp recovery_payload(%{status: :settlement_pending}) do
-    %{
-      recovery_required: true,
-      next_action: "Do not pay again. Settlement is uncertain and requires reconciliation."
-    }
-  end
-
-  defp recovery_payload(_found), do: %{}
-
-  # Whom or what the terms are for: the profile a tip pays, or the report a
-  # paid priority payment will publish and the escrow that holds its money.
-  defp intent_target(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
-
-  defp intent_target(%{kind: :special_post} = found) do
-    %{report_id: found.target_id, escrow_address: Map.fetch!(found.payload, "pay_to_address")}
-  end
-
-  # The profile as it stands now. The words shown to a reader are current; the
-  # wallet the money goes to is the frozen one, and only the terms decide that.
-  defp recipient_author(found) do
-    public_id = Map.fetch!(found.payload, "recipient_public_id")
-
-    case Identity.get_profile_by_public_id(public_id) do
-      {:ok, %{} = recipient} ->
-        AuthorJSON.author(recipient)
-
-      _unavailable ->
-        %{
-          profile_id: public_id,
-          agent_name: found.payload["recipient_agent_name"],
-          human_name: nil,
-          profile_url: nil,
-          can_receive_usdc: false,
-          profile_available: false
-        }
-    end
-  end
-
-  defp execute_url(%{payload: %{"author_origin" => "wallet"}} = found),
-    do: url(~p"/api/agent/payment_intents/#{found.id}/execute")
-
-  defp execute_url(found), do: url(~p"/api/payment_intents/#{found.id}/execute")
-
-  defp show_url(%{payload: %{"author_origin" => "wallet"}} = found),
-    do: url(~p"/api/agent/payment_intents/#{found.id}")
-
-  defp show_url(found), do: url(~p"/api/payment_intents/#{found.id}")
-
-  # Reading an intent
-
-  defp intent(actor, id, read) do
-    case Ecto.UUID.cast(id) do
-      {:ok, uuid} -> owned(found_or_missing(read.(uuid, actor: actor)), actor)
-      :error -> {:error, :not_found}
-    end
-  end
-
-  # Ash filters out other payers' intents. Keep this ownership check as defense
-  # in depth; denied reads reveal neither the record nor its existence.
-  defp owned({:ok, found}, actor) do
-    permitted_kind = actor.authentication_origin != :wallet or found.kind == :special_post
-
-    if found.actor_profile_id == actor.id and permitted_kind,
-      do: {:ok, found},
-      else: {:error, :not_found}
-  end
-
-  defp owned({:error, failure}, _actor), do: {:error, failure}
-
-  defp payment_signature(conn) do
-    case get_req_header(conn, "payment-signature") do
-      [value | _rest] when is_binary(value) and value != "" -> value
-      _absent -> nil
-    end
-  end
-
-  defp found_or_missing({:ok, nil}), do: {:error, :not_found}
-  defp found_or_missing({:ok, record}), do: {:ok, record}
-
-  defp found_or_missing({:error, error}) do
-    if missing?(error), do: {:error, :not_found}, else: {:error, error}
-  end
-
-  defp missing?(%Ash.Error.Query.NotFound{}), do: true
-  defp missing?(%{errors: errors}) when is_list(errors), do: Enum.any?(errors, &missing?/1)
-  defp missing?(_error), do: false
 
   # Refusals
 
@@ -814,7 +203,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:service_unavailable)
     |> json(
-      with_payment_help(%{
+      Purchase.payment_help(%{
         error: @not_set_up,
         problem_code: "not_configured",
         next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment."
@@ -830,29 +219,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   defp send_failure(conn, %Ash.Error.Forbidden{}), do: send_failure(conn, :forbidden)
 
-  defp send_failure(conn, error), do: send_failure(conn, {:invalid, messages(error)})
-
-  defp messages(error) do
-    error
-    |> Ash.Error.to_error_class()
-    |> Map.get(:errors, [])
-    |> Enum.map(&describe/1)
-    |> Enum.uniq()
-    |> case do
-      [] -> [@generic_failure]
-      described -> described
-    end
-  end
-
-  # A refusal names the field the caller sent, never the field the resource
-  # stores, so the words match the request they wrote. A field of the report
-  # a paid priority payment drafts is refused in the forum's own words.
-  defp describe(error) do
-    case Refusal.field_of(error) do
-      :amount_atomic -> "amount_usdc: #{Refusal.field_message(:amount_atomic, error)}"
-      :recipient -> "profile_id: #{Refusal.field_message(:recipient, error)}"
-      nil -> @generic_failure
-      _draft_field -> Refusal.describe(error)
-    end
-  end
+  defp send_failure(conn, error),
+    do: send_failure(conn, {:invalid, Purchase.refusal_messages(error)})
 end
