@@ -9,7 +9,11 @@ fixes and priority reports ("2. b"), agents may spend it too ("3. b"),
 bundles start at $2 ("4. start at $2 for stripe"), and an existing Regents
 Labs Stripe account is used ("5. b"). On the second draft: a card-paid
 report's bounty stays in Patchbay Credits ("3. b") and the Stripe account is
-the Regents Labs one under sean@regents.sh ("4. sean@regents.sh").
+the Regents Labs one under sean@regents.sh ("4. sean@regents.sh"). Then:
+Privy's card top-up ships first ("2. a"; commit 7a6de3d), and Stripe Link must
+be supported because Link's agent wallet is what Muse and Grok Bot pay with
+("1. https://stripe.com/payments/link is usable by muse agents and grok
+bots, so we need to support it").
 
 ## What is there today
 
@@ -134,6 +138,51 @@ person holds, and never "Rewards". The buy page says plainly that credits pay
 for Patchbay fixes and priority reports, are not refundable as cash, cannot
 be sent to anyone else, and do not expire.
 
+## Stripe Link, for people and for agents
+
+Read from Stripe's docs on 2026-09-22 (docs.stripe.com/payments/link,
+link.com/agents, /agentic-commerce/link-cli, /payments/machine,
+/payments/machine/mpp, /agentic-commerce/concepts/shared-payment-tokens).
+
+**People.** Link is Stripe's saved-card wallet. Stripe Checkout includes it
+with no extra work, so the bundles page above offers Link as it stands.
+
+**Agents.** Link's agent wallet (live today for Muse, Grok Bot and Instinct;
+US consumers) pays in two ways, and the person approves each purchase in the
+Link app:
+- a one-time virtual card, which works on any card form, the bundles page
+  included, with nothing more built;
+- a shared payment token (SPT) over HTTP 402, through the Machine Payments
+  Protocol (MPP, mpp.dev, by Stripe and Tempo). This is the path an agent
+  takes on an endpoint, with no page.
+
+**What Patchbay adds for MPP.** The agent doors already answer 402 with x402
+terms; they would also carry an MPP challenge
+(`WWW-Authenticate: Payment id=…, realm=…, method="stripe", intent="charge",
+request=…`, bound to the server with an HMAC secret). An agent that answers
+with an SPT is charged with one Stripe call:
+`POST /v1/payment_intents` with `amount`, `currency=usd`,
+`payment_method_data[shared_payment_granted_token]=spt_…` and
+`confirm=true`. The money lands in Stripe like any card payment, with normal
+refunds and disputes, so `charge.refunded` and `charge.dispute.created` are
+handled as above. `shared_payment.granted_token.deactivated` tells when a
+token is used up or revoked.
+- Stripe's own library for this (`mppx`) is Node only, so Patchbay writes the
+  challenge and credential checks in Elixir from the mpp.dev spec (not yet
+  read in full) and proves them with `npx mppx validate` against a test
+  server, then live.
+- Needs: a Stripe profile (its `profile_…` id becomes
+  `STRIPE_PROFILE_ID`), and the founder accepting Stripe's agentic commerce
+  seller preview terms in the dashboard. Once working, Patchbay can be listed
+  in the Stripe Directory (machine-payments@stripe.com, with the llms.txt
+  link) so agents find it.
+- Limits: $0.50 is the smallest card charge through an SPT, and SPTs work in
+  the US, Canada and most of Europe.
+
+**What that means for prices.** A fix is 0.10, below Stripe's $0.50 card
+minimum, so an agent paying by Link cannot pay for one fix at its USDC
+price. Priority reports (1.00 and up) and bundles ($2 and up) are above it.
+
 ## What changes in the code (estimate)
 
 - New: `CreditLine` resource + migration, `Patchbay.Payments.Credits`
@@ -152,19 +201,37 @@ be sent to anyone else, and do not expire.
   its owner, a fix paid from the balance opens and is marked `:card`, a
   report paid from the balance publishes, an agent's spend with the right
   and the wrong wallet's signature.
-- Size: about four to five days of work with review, since this is money
-  code and now covers reports and agents.
+- With Link for agents: an MPP challenge beside the x402 one on the agent
+  doors, the SPT charge, and tests against Stripe's test tokens
+  (`/v1/test_helpers/shared_payment/granted_tokens`).
+- Size: about four to five days for bundles, plus two to three for Link
+  payments by agents, with review, since this is money code.
 
 ## Founder decisions
 
-All taken. What is left before building:
-
-1. **Go-ahead to build.** Nothing is built yet; this is about four to five
-   days of money code, with review.
-2. **Keys, by the founder.** In the Regents Labs Stripe account under
-   sean@regents.sh: a restricted key for Patchbay alone (Checkout Sessions
-   and charges), and a webhook to `https://patchbay.help/webhooks/stripe` for
-   `checkout.session.completed`, `charge.refunded` and
-   `charge.dispute.created`; then `STRIPE_SECRET_KEY` and
-   `STRIPE_WEBHOOK_SECRET` on `patchbay-regents`. Card bundles stay hidden
-   until both are set.
+1. **How an agent paying by Link pays for a fix** (0.10 is below Stripe's
+   $0.50 card minimum).
+   a) A fix paid by Link costs $0.50. No account and no balance: the agent
+   pays and the fix opens, the same as a USDC fix.
+   b) The agent buys a bundle by Link ($2 and up) and fixes come off that
+   balance. Needs the balance to belong to someone: a wallet signature, which
+   Muse and Grok Bot may not have.
+   c) Link pays for priority reports and bundles only; fixes stay USDC.
+   Recommendation: a. It is the only one that works for an agent with a card
+   and nothing else, and the person approves each purchase in Link anyway.
+2. **Priority reports paid by Link.** A report needs an asker who can later
+   accept an answer. Today that is a wallet signature or a signed-in person.
+   a) Later: Link pays for fixes (and bundles on the page) first, and reports
+   by Link wait until an asker without a wallet has a way to accept.
+   b) Now, for agents that also name a wallet or act for a signed-in person.
+   Recommendation: a. Fixes are what Muse and Grok Bot would buy first.
+3. **Go-ahead to build**, after 1 and 2: bundles and Link together, about a
+   week with review.
+4. **Stripe setup, by the founder.** In the Regents Labs Stripe account
+   under sean@regents.sh: a Stripe profile, the agentic commerce seller
+   terms, a restricted key for Patchbay alone, and a webhook to
+   `https://patchbay.help/webhooks/stripe` for
+   `checkout.session.completed`, `charge.refunded`,
+   `charge.dispute.created` and `shared_payment.granted_token.deactivated`;
+   then `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `STRIPE_PROFILE_ID`
+   on `patchbay-regents`. Card payments stay hidden until they are set.
