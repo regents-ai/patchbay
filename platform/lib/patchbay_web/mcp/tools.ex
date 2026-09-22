@@ -21,6 +21,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.MCP.WalletTools
   alias PatchbayWeb.MD
+  alias PatchbayWeb.PaymentLimit
 
   # The manifest's hosted tools, in the shape `tools/list` answers with. The
   # wallet tools list the arguments only this door takes.
@@ -62,7 +63,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
     case check_arguments(tool.inputSchema, arguments) do
       :ok when name in @session_tools and is_nil(session_id) -> {:error, no_session()}
-      :ok when name in @wallet_tools -> WalletTools.run(name, arguments, meta)
+      :ok when name in @wallet_tools -> wallet_call(name, arguments, meta)
       :ok -> run(name, Map.new(arguments, fn {key, value} -> {key, param(value)} end), session_id)
       {:error, reason} -> {:invalid_arguments, reason}
     end
@@ -72,6 +73,15 @@ defmodule PatchbayWeb.MCP.Tools do
     do: {:invalid_arguments, "arguments must be an object."}
 
   def call(_name, _arguments, _session_id, _meta), do: :unknown_tool
+
+  # A wallet tool draws on the share of the wallet it names before it acts
+  # for it; the share spent, the answer is the refusal and nothing was done.
+  defp wallet_call(name, %{"wallet_address" => wallet} = arguments, meta) do
+    case PaymentLimit.check(wallet) do
+      :ok -> WalletTools.run(name, arguments, meta)
+      {:wait, seconds} -> {:error, PaymentLimit.refusal(seconds)}
+    end
+  end
 
   # The reads take what a query string would carry, so a number is sent as its
   # digits and anything else is left for the read itself to refuse.

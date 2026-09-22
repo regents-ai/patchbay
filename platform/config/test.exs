@@ -39,6 +39,10 @@ config :patchbay, :jev_reader, false
 # visitor's share of reads many times over.
 config :patchbay, :reads_per_minute, 1_000_000
 
+# The payment tests act for a few wallets many times over; the share itself
+# is proved with a small limit set by its own test.
+config :patchbay, :payments_per_minute, 1_000_000
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

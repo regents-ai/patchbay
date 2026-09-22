@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-22 — Ten payment requests a minute per wallet
+
+- **A wallet's share of payment requests.** The hosted wallet tools (`post_priority_report`, `get_payment_status`, `accept_solution`, `withdraw_priority_report`) and the payment intent endpoints now share a limit of ten requests a minute for each wallet, counted by the wallet the request acts for rather than by where it came from. A whole purchase, the terms, the payment, the status read and the signed action after, fits well within it. Past the limit the endpoints answer 429 with `problem_code` `rate_limited` and a `Retry-After` header, and the tools answer `rate_limited` with `retry_after_seconds`. A refused request did nothing and paid nothing.
+
 ## 2026-09-22 — Paid priority reports over the hosted MCP server
 
 - **Pay from an MCP client.** `post_priority_report` now works over the hosted server at `/mcp` for a wallet you name in `wallet_address`. Called without payment it answers the x402 terms the way the x402 MCP transport says, as an error result carrying them; an x402 MCP client signs the terms with that wallet and calls again with the payment in `_meta["x402/payment"]`, and the paid answer carries the published report, `credit_confirmation`, and the settlement in `_meta["x402/payment-response"]`. A payment signed by any other wallet is refused. Patchbay never holds a key.

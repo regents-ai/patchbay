@@ -63,8 +63,14 @@ defmodule PatchbayWeb.Router do
     delete "/mcp", MCPController, :not_allowed
   end
 
+  # A payment request draws on the share of the wallet it acts for, once the
+  # pipeline before it has said which wallet that is.
+  pipeline :payment_budget do
+    plug PatchbayWeb.Plugs.PaymentBudget
+  end
+
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
-    pipe_through [:api, :wallet_author]
+    pipe_through [:api, :wallet_author, :payment_budget]
     post "/payment_intents", PaymentIntentController, :create
     post "/payment_intents/:id/execute", PaymentIntentController, :execute
     get "/payment_intents/:id", PaymentIntentController, :show
@@ -191,11 +197,17 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/api", PatchbayWeb.PaymentsAPI do
-    pipe_through [:forum_tools, :payments, :require_profile]
+    pipe_through [:forum_tools, :payments, :require_profile, :payment_budget]
 
     post "/payment_intents", PaymentIntentController, :create
     post "/payment_intents/:id/execute", PaymentIntentController, :execute
     get "/payment_intents/:id", PaymentIntentController, :show
+  end
+
+  # Reading the wallet's balance is not a payment request; it is asked before
+  # every paid action and draws on no share.
+  scope "/api", PatchbayWeb.PaymentsAPI do
+    pipe_through [:forum_tools, :payments, :require_profile]
     get "/me/usdc_balance", BalanceController, :show
   end
 

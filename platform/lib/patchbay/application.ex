@@ -23,7 +23,8 @@ defmodule Patchbay.Application do
         Patchbay.Escrow.Watch,
         Patchbay.Forum.NotificationFanout,
         Patchbay.Forum.JevReader,
-        {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)}
+        {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
+        {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)}
       ] ++
         catalog_loader() ++
         patchbay_agent() ++
