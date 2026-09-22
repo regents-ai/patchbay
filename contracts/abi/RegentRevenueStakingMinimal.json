@@ -1,0 +1,13 @@
+[
+  {
+    "type": "function",
+    "name": "depositUSDC",
+    "inputs": [
+      { "name": "amount", "type": "uint256", "internalType": "uint256" },
+      { "name": "sourceTag", "type": "bytes32", "internalType": "bytes32" },
+      { "name": "sourceRef", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [{ "name": "received", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "nonpayable"
+  }
+]

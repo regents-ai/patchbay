@@ -28,6 +28,7 @@ defmodule Patchbay.Assist do
       define(:start_run, action: :start)
       define(:record_step, action: :record_step, args: [:step])
       define(:finish_run, action: :finish)
+      define(:record_deposit, action: :record_deposit)
     end
   end
 
@@ -66,8 +67,18 @@ defmodule Patchbay.Assist do
   none set.
   """
   @spec pay_to_address() :: String.t() | nil
-  def pay_to_address do
-    case Application.get_env(:patchbay, :assist, [])[:pay_to_address] do
+  def pay_to_address, do: setting(:pay_to_address)
+
+  @doc """
+  The REGENT staking contract each fee is forwarded to as revenue, or nil
+  when this Patchbay has none set, in which case fees stay in the wallet
+  they were paid to.
+  """
+  @spec staking_contract_address() :: String.t() | nil
+  def staking_contract_address, do: setting(:staking_contract_address)
+
+  defp setting(name) do
+    case Application.get_env(:patchbay, :assist, [])[name] do
       value when is_binary(value) ->
         case String.trim(value) do
           "" -> nil

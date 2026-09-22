@@ -15,6 +15,7 @@ defmodule Patchbay.Assist.Run do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
+  alias Patchbay.Assist.Types.DepositStatus
   alias Patchbay.Assist.Types.Outcome
   alias Patchbay.Assist.Types.RunStatus
   alias Patchbay.Assist.Types.SignIn
@@ -55,6 +56,11 @@ defmodule Patchbay.Assist.Run do
 
     attribute(:started_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:finished_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+
+    # Where the fee stands on its way from the operator wallet to the REGENT
+    # staking contract, and the deposit's transaction once it is there.
+    attribute(:deposit_status, DepositStatus, allow_nil?: false, public?: true, default: :pending)
+    attribute(:deposit_tx_hash, :string, allow_nil?: true, public?: true)
 
     timestamps()
   end
@@ -148,6 +154,15 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:finished_at, &DateTime.utc_now/0))
     end
 
+    update :record_deposit do
+      description("Writes down what came of forwarding the fee to the staking contract.")
+      accept([:deposit_status, :deposit_tx_hash])
+
+      validate(one_of(:deposit_status, [:deposited, :failed]),
+        message: "must be deposited or failed"
+      )
+    end
+
     update :interrupt do
       description("""
       Marks a run whose work died, with a restart or with its worker, as
@@ -163,8 +178,8 @@ defmodule Patchbay.Assist.Run do
   policies do
     # Only the settled payment's own payer opens its run, and only the
     # purchase process holds a settled intent to open one from. The actions
-    # that move a run along (`start`, `record_step`, `finish`, `interrupt`)
-    # are named by no policy, so nothing that arrives over HTTP can reach
+    # that move a run along (`start`, `record_step`, `finish`, `interrupt`,
+    # `record_deposit`) are named by no policy, so nothing that arrives over HTTP can reach
     # them; Patchbay's own runner is their only caller and says so by
     # skipping authorization deliberately.
     policy action(:open) do

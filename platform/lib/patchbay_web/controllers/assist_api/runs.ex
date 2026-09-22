@@ -34,7 +34,8 @@ defmodule PatchbayWeb.AssistAPI.Runs do
       requested_at: run.inserted_at,
       started_at: run.started_at,
       finished_at: run.finished_at,
-      updated_at: run.updated_at
+      updated_at: run.updated_at,
+      fee_deposit: %{status: run.deposit_status, tx_hash: run.deposit_tx_hash}
     }
   end
 

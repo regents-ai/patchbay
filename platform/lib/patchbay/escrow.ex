@@ -146,23 +146,34 @@ defmodule Patchbay.Escrow do
     _exception -> {:error, :submit_failed}
   end
 
-  # The operator as configured, or `:not_configured` when any of the three
-  # values is missing. The key is only ever handed to the signer.
-  defp operator do
+  @doc """
+  The operator account that signs Patchbay's transactions on Base: its
+  address, its key and the endpoint they are sent through, or
+  `:not_configured` when either value is missing. The key is only ever
+  handed to a signer; nothing that receives this may write it anywhere.
+  """
+  @spec signer() ::
+          {:ok, %{address: String.t(), private_key: String.t(), rpc_url: String.t()}}
+          | {:error, :not_configured}
+  def signer do
     settings = settings()
 
-    with contract_address when is_binary(contract_address) <-
-           present(settings[:contract_address]),
-         rpc_url when is_binary(rpc_url) <- present(settings[:rpc_url]),
+    with rpc_url when is_binary(rpc_url) <- present(settings[:rpc_url]),
          private_key when is_binary(private_key) <- private_key(settings[:operator_private_key]),
          {:ok, [address]} <- Ethers.Signer.Local.accounts(private_key: private_key) do
-      {:ok,
-       %{
-         address: address,
-         contract_address: contract_address,
-         private_key: private_key,
-         rpc_url: rpc_url
-       }}
+      {:ok, %{address: address, private_key: private_key, rpc_url: rpc_url}}
+    else
+      _missing -> {:error, :not_configured}
+    end
+  end
+
+  # The operator as configured for the escrow contract, or `:not_configured`
+  # when any of the three values is missing.
+  defp operator do
+    with contract_address when is_binary(contract_address) <-
+           present(settings()[:contract_address]),
+         {:ok, signer} <- signer() do
+      {:ok, Map.put(signer, :contract_address, contract_address)}
     else
       _missing -> {:error, :not_configured}
     end

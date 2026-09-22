@@ -19,6 +19,7 @@ defmodule Patchbay.Assist.Work do
   alias Patchbay.Assist
   alias Patchbay.Assist.Arguments
   alias Patchbay.Assist.Discovery
+  alias Patchbay.Assist.Forward
   alias Patchbay.Assist.Judge
   alias Patchbay.Assist.McpClient
   alias Patchbay.Assist.Run
@@ -28,13 +29,18 @@ defmodule Patchbay.Assist.Work do
   @max_questions 14
   @max_seconds 120
 
-  @doc "Whether the run with `run_id` is one Patchbay picked up now, and everything after that."
+  @doc """
+  Whether the run with `run_id` is one Patchbay picked up now, and everything
+  after that: the work, then the fee's forward to the staking contract, which
+  comes after the answer so it never delays it.
+  """
   @spec run(Ash.UUID.t()) :: :ok
   def run(run_id) do
     # Patchbay's own worker: the run was bought and answers to no request now.
     with {:ok, %Run{} = run} <- Assist.get_run(run_id, authorize?: false),
          {:ok, run} <- Assist.start_run(run, authorize?: false) do
-      work(run)
+      :ok = work(run)
+      Forward.run(run_id)
     else
       _not_waiting -> :ok
     end
