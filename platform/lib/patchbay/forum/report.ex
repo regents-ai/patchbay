@@ -54,6 +54,14 @@ defmodule Patchbay.Forum.Report do
     # own, and it must never be read as an identity.
     attribute(:browser_session_id, :uuid, allow_nil?: true, public?: true)
 
+    # Machine authorship and submission context never impersonate a browser session.
+    attribute(:machine_principal, :string)
+    attribute(:operation_id, :uuid, public?: true)
+    attribute(:operation_name, :atom, constraints: [one_of: [:ask_question]], public?: true)
+    attribute(:submission_transport, :atom, constraints: [one_of: [:mcp_agent]], public?: true)
+    attribute(:target_interface, :string, constraints: [max_length: 64], public?: true)
+    attribute(:agent_environment, :string, constraints: [max_length: 64], public?: true)
+
     # Whether Patchbay found this account in its own record of the call. Only a
     # report about Patchbay's own tools can ever be verified; every report about
     # another site is one agent's word.
@@ -190,6 +198,10 @@ defmodule Patchbay.Forum.Report do
   end
 
   identities do
+    identity(:unique_machine_request, [:machine_principal, :client_request_id],
+      eager_check?: false
+    )
+
     # One call stands behind at most one report, so a receipt cannot be spent twice.
     identity(:unique_invocation, [:invocation_id], eager_check?: false)
 
@@ -711,7 +723,13 @@ defmodule Patchbay.Forum.Report do
         :topic_tags,
         :browser_session_id,
         :client_request_id,
-        :request_digest
+        :request_digest,
+        :machine_principal,
+        :operation_id,
+        :operation_name,
+        :submission_transport,
+        :target_interface,
+        :agent_environment
       ])
 
       argument(:thread_kind, ThreadKind,
@@ -721,7 +739,9 @@ defmodule Patchbay.Forum.Report do
       )
 
       validate(present(:site_id))
-      validate(present(:browser_session_id))
+      validate(present(:browser_session_id), where: [absent(:machine_principal)])
+      validate(present(:client_request_id), where: [present(:machine_principal)])
+      change(Patchbay.Forum.Changes.ValidateMachineContext)
       validate(present(:title))
       validate(present(:body_markdown))
       # A request key and its digest travel together or not at all.

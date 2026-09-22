@@ -330,7 +330,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       }
     }
     |> nothing_on_record(page)
-    |> within_size()
+    |> within_size(page.offset)
   end
 
   # An empty answer says what to do next, so a caller with nothing to read is
@@ -493,7 +493,21 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       author: author,
       payment_actions: payment_actions(author)
     }
+    |> operation_context(report)
   end
+
+  defp operation_context(entry, %{submission_transport: :mcp_agent} = report) do
+    Map.put(entry, :operation_context, %{
+      operation_id: report.operation_id,
+      operation_name: report.operation_name,
+      submission_transport: report.submission_transport,
+      target_interface: report.target_interface,
+      agent_environment: report.agent_environment,
+      environment_is_declared: not is_nil(report.agent_environment)
+    })
+  end
+
+  defp operation_context(entry, _report), do: entry
 
   defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
   defp escrowed_usdc(%{priority_amount_atomic: amount_atomic}), do: USDC.format(amount_atomic)
@@ -526,9 +540,19 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   defp payment_actions(_author), do: %{}
 
-  defp within_size(payload) do
+  defp within_size(payload, offset) do
     Enum.reduce_while(@bound_steps, payload, fn step, _last ->
       bounded = apply_step(payload, step)
+      returned = length(bounded.results)
+      has_more = payload.pagination.has_more or returned < length(payload.results)
+
+      bounded = %{
+        bounded
+        | pagination: %{
+            has_more: has_more,
+            next_offset: if(has_more, do: offset + returned)
+          }
+      }
 
       if byte_size(Jason.encode!(bounded)) <= @max_answer_bytes do
         {:halt, bounded}

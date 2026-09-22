@@ -19,6 +19,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
+  require Ash.Query
 
   # An ordinary question needs words and a site, and nothing else is borrowed
   # from a call: no digest, no verdict, no outcome. The site is named by its
@@ -39,12 +40,52 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   same key and the same words is answered again as `{:repeated, thread}`;
   the same key with different words is refused.
   """
-  def ask_question(session_id, actor, params) do
+  def ask_question(session_id, actor, params, context \\ %{}) do
     with {:ok, draft} <- thread_draft(params),
          {:ok, key} <- request_key(params) do
-      SessionBudget.admit_report(session_id, fn ->
-        open_or_repeat(session_id, actor, draft, key)
-      end)
+      if map_size(context) == 0 do
+        SessionBudget.admit_report(session_id, fn ->
+          open_or_repeat(session_id, actor, draft, key)
+        end)
+      else
+        principal = Principal.for_profile(actor.id)
+        draft = Map.put(draft, "machine_context", Map.drop(context, [:operation_id]))
+
+        SessionBudget.admit_machine_report(principal, fn admission ->
+          result =
+            repeated(key, draft, fn ->
+              Patchbay.Forum.Report
+              |> Ash.Query.filter(machine_principal == ^principal and client_request_id == ^key)
+              |> Ash.read_one()
+              |> case do
+                {:ok, nil} -> {:error, :not_found}
+                result -> result
+              end
+            end)
+
+          case result do
+            :new ->
+              with :ok <- admission.(),
+                   do:
+                     open_thread(
+                       nil,
+                       actor,
+                       draft,
+                       key,
+                       Map.put(context, :machine_principal, principal)
+                     )
+
+            {:repeated, %{visibility: :published}} = repeated ->
+              repeated
+
+            {:repeated, _} ->
+              {:error, :not_found}
+
+            other ->
+              other
+          end
+        end)
+      end
     end
   end
 
@@ -55,7 +96,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     end
   end
 
-  defp open_thread(session_id, actor, draft, key) do
+  defp open_thread(session_id, actor, draft, key, context \\ %{}) do
     with {:ok, site} <- thread_site(draft["site"]) do
       %{
         site_id: site.id,
@@ -68,6 +109,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
         thread_kind: draft["thread_kind"]
       }
       |> Map.merge(request_fields(key, draft))
+      |> Map.merge(context)
       |> without_nils()
       |> Forum.ask_question(actor: actor)
       |> thread_refusal()
@@ -261,13 +303,14 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   or not tried — self-reported, stored under the caller's own principal and a
   task token of their choosing, so reporting twice records once.
   """
-  def record_answer_use(session_id, actor, reply_id, params) do
+  def record_answer_use(session_id, actor, reply_id, params, context \\ %{}) do
     with {:ok, reply} <- published_reply(reply_id),
+         {:ok, _report} <- Reads.fetch_report(reply.report_id),
          {:ok, draft} <- use_draft(params) do
       reply = Ash.load!(reply, report: [:tool])
       principal = principal(actor, session_id)
 
-      Forum.record_answer_use(%{
+      attrs = %{
         reply_id: reply.id,
         principal: principal,
         task_token: draft.task_token,
@@ -276,7 +319,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
         same_author: principal == Principal.for(reply),
         applicable_tool_version:
           get_in(reply.report, [Access.key(:tool), Access.key(:contract_sha256)])
-      })
+      }
+
+      Forum.record_answer_use(Map.merge(attrs, context), actor: actor)
     end
   end
 
@@ -301,7 +346,10 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     if outcome in @use_outcomes do
       {:ok,
        %{
-         outcome: String.to_existing_atom(outcome),
+         outcome:
+           %{"worked" => :worked, "did_not_work" => :did_not_work, "not_tried" => :not_tried}[
+             outcome
+           ],
          task_token: token,
          note: if(is_binary(params["note"]), do: params["note"], else: nil)
        }}

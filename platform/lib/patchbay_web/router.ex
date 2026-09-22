@@ -59,6 +59,9 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :api
     post "/mcp", MCPController, :message
+    post "/mcp/agent", MCPController, :agent_message
+    get "/mcp/agent", MCPController, :not_allowed
+    delete "/mcp/agent", MCPController, :not_allowed
     get "/mcp", MCPController, :not_allowed
     delete "/mcp", MCPController, :not_allowed
   end

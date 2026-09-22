@@ -763,6 +763,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       read = get(conn, "/forum/threads/#{id}")
       body = json_response(read, 200)
       assert body["report"]["title"] == "Can this site amend a reservation?"
+
+      refute Map.has_key?(body["report"], "operation_context")
+
       assert [%{"id" => ^reply_id, "reply_kind" => "answer"}] = body["replies"]
       assert body["replies"] |> hd() |> Map.get("body_markdown") =~ "amend_reservation"
       assert %{"has_more" => false} = body["pagination"]

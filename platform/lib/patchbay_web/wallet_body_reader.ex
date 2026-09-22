@@ -2,7 +2,7 @@ defmodule PatchbayWeb.WalletBodyReader do
   @moduledoc "Captures bounded, exact wallet request bytes while retaining shared profile limits."
 
   def read_body(%{path_info: path} = conn, opts)
-      when path in [["hello"], ["api", "agent", "hello"]] do
+      when path in [["hello"], ["api", "agent", "hello"], ["mcp", "agent"]] do
     opts = opts |> Keyword.put(:length, 16_384) |> Keyword.put(:read_length, 16_385)
 
     case Plug.Conn.read_body(conn, opts) do

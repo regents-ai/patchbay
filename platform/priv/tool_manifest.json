@@ -467,7 +467,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -524,7 +524,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -563,7 +563,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "GET",
@@ -708,7 +708,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -767,7 +767,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -813,7 +813,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -901,7 +901,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "GET",
@@ -1149,7 +1149,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -1198,7 +1198,7 @@
       "payment": "none",
       "doors": {
         "page": false,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "GET",
@@ -1244,7 +1244,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -1285,7 +1285,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",

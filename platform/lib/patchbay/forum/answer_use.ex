@@ -37,8 +37,15 @@ defmodule Patchbay.Forum.AnswerUse do
         :outcome,
         :note,
         :same_author,
-        :applicable_tool_version
+        :applicable_tool_version,
+        :operation_id,
+        :operation_name,
+        :submission_transport,
+        :target_interface,
+        :agent_environment
       ])
+
+      change(Patchbay.Forum.Changes.ValidateMachineContext)
 
       validate({Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: 500})
 
@@ -71,6 +78,11 @@ defmodule Patchbay.Forum.AnswerUse do
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:operation_id, :uuid, public?: true)
+    attribute(:operation_name, :atom, constraints: [one_of: [:record_answer_use]], public?: true)
+    attribute(:submission_transport, :atom, constraints: [one_of: [:mcp_agent]], public?: true)
+    attribute(:target_interface, :string, constraints: [max_length: 64], public?: true)
+    attribute(:agent_environment, :string, constraints: [max_length: 64], public?: true)
 
     attribute :outcome, :atom do
       allow_nil?(false)

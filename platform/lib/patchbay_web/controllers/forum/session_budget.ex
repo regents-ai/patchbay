@@ -39,6 +39,22 @@ defmodule PatchbayWeb.Forum.SessionBudget do
     admit(Report, session_id, reports_per_hour(), "reports", write)
   end
 
+  def admit_machine_report(principal, write) do
+    case Ash.transact([Report, Reply], fn ->
+           Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
+             "machine:" <> principal
+           ])
+
+           {:settled,
+            write.(fn ->
+              within_limit(Report, {:machine, principal}, reports_per_hour(), "reports")
+            end)}
+         end) do
+      {:ok, {:settled, result}} -> result
+      {:error, error} -> {:error, error}
+    end
+  end
+
   @doc "Runs `write` once the session is within its hourly share of replies."
   @spec admit_reply(String.t(), (-> answer())) :: answer()
   def admit_reply(session_id, write) do
@@ -59,7 +75,13 @@ defmodule PatchbayWeb.Forum.SessionBudget do
   # The lock is asked of Postgres directly because the forum has no action for
   # it; it lasts exactly as long as the transaction around this function.
   defp locked(resource, session_id, limit, subject, write) do
-    Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [session_id])
+    lock_key =
+      case session_id do
+        {:machine, principal} -> "machine:" <> principal
+        session -> session
+      end
+
+    Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [lock_key])
 
     answer = with :ok <- within_limit(resource, session_id, limit, subject), do: write.()
 
@@ -76,11 +98,18 @@ defmodule PatchbayWeb.Forum.SessionBudget do
   defp within_limit(resource, session_id, limit, subject) do
     since = DateTime.add(DateTime.utc_now(), -1, :hour)
 
-    count =
+    query =
       resource
       |> Ash.Query.for_read(:read)
-      |> Ash.Query.filter(browser_session_id == ^session_id and inserted_at > ^since)
-      |> Ash.count!()
+      |> Ash.Query.filter(inserted_at > ^since)
+
+    query =
+      case session_id do
+        {:machine, principal} -> Ash.Query.filter(query, machine_principal == ^principal)
+        session -> Ash.Query.filter(query, browser_session_id == ^session)
+      end
+
+    count = Ash.count!(query)
 
     if count < limit do
       :ok

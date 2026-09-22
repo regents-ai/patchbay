@@ -42,6 +42,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{path_info: ["webmcp", "health"]}), do: false
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
+  defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp", "agent"]}), do: true
   defp counted?(_conn), do: false
 
   # Fly's proxy names the caller in this header; a request that did not come
