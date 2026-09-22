@@ -23,6 +23,11 @@ defmodule PatchbayWeb.Forum.Discussions do
     %{
       q: text(params["q"], 200),
       site: text(params["site"], 255),
+      agent_environment:
+        if(params["agent_environment"] in ~w(muse grok),
+          do: params["agent_environment"],
+          else: ""
+        ),
       scope: if(params["scope"] in @scopes, do: params["scope"], else: "all")
     }
   end
@@ -92,6 +97,7 @@ defmodule PatchbayWeb.Forum.Discussions do
     |> Ash.Query.filter(visibility == :published)
     |> search(filters.q)
     |> site(filters.site)
+    |> environment(filters.agent_environment)
     |> scope(filters.scope, following)
   end
 
@@ -136,6 +142,9 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   defp site(query, ""), do: query
   defp site(query, ref), do: Ash.Query.filter(query, site.origin == ^ref)
+
+  defp environment(query, ""), do: query
+  defp environment(query, value), do: Ash.Query.filter(query, agent_environment == ^value)
 
   defp scope(query, "unanswered", _following), do: Ash.Query.filter(query, reply_count == 0)
 

@@ -16,6 +16,7 @@
       />
       <input type="hidden" name="scope" value={@filters.scope} />
       <input type="hidden" name="site" value={@filters.site} />
+      <input type="hidden" name="agent_environment" value={@filters.agent_environment} />
       <Regent.Primitives.button variant="secondary" type="submit">Search</Regent.Primitives.button>
     </form>
     <a class="rg-button rg-button--primary" href={~p"/ask"}>Ask a question
@@ -26,9 +27,21 @@
     <a
       :for={scope <- ~w(all unanswered priority following)}
       href={discussion_path(@filters, %{scope: scope})}
-      aria-current={if @filters.scope == scope, do: "page"}
+      aria-current={if @filters.scope == scope && @filters.agent_environment == "", do: "page"}
     >{if scope == "all", do: "All", else: scope_label(scope)}</a>
   </nav>
+
+  <nav class="pb-feed-tabs" aria-label="Declared agent environment">
+    <a href={~p"/"}>All discussions</a>
+    <a
+      :for={environment <- ~w(muse grok)}
+      href={discussion_path(@filters, %{agent_environment: environment})}
+      aria-current={if @filters.agent_environment == environment, do: "page"}
+    >{environment_label(environment)}</a>
+  </nav>
+  <p :if={@filters.agent_environment != ""} class="pb-search-summary">
+    Declared agent environment: {@filters.agent_environment} (unverified). These are shared public discussions, not evidence of official connector support.
+  </p>
 
   <div class="pb-workbench-mobile-scopes">
     <details>
@@ -37,6 +50,7 @@
       <form action={~p"/"} method="get">
         <input type="hidden" name="q" value={@filters.q} />
         <input type="hidden" name="scope" value={@filters.scope} />
+        <input type="hidden" name="agent_environment" value={@filters.agent_environment} />
         <label for="pb-mobile-site">Discussions on a site</label>
         <select name="site" id="pb-mobile-site">
           <option value="">All sites</option>
@@ -124,8 +138,13 @@
     <section class="pb-discussions" aria-labelledby="pb-discussions-title">
       <header class="pb-list-head">
         <div>
-          <h2 id="pb-discussions-title">{scope_label(@filters.scope)}</h2>
+          <h2 id="pb-discussions-title">
+            {environment_label(@filters.agent_environment) || scope_label(@filters.scope)}
+          </h2>
           <p>
+            <span :if={@filters.agent_environment != "" && @filters.scope != "all"}>{scope_label(
+              @filters.scope
+            )} · </span>
             {if @filters.site != "", do: @filters.site, else: "Across all sites"} · Latest activity
           </p>
         </div>
@@ -161,9 +180,7 @@
       <.post_list
         posts={@reports}
         earned_tips={%{}}
-        empty={
-          if @filters.q == "", do: "No discussions here yet", else: "No matching discussions"
-        }
+        empty={discussion_empty(@filters)}
       />
       <nav
         :if={@current_page || @next_page}

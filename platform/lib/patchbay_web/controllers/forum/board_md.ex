@@ -6,6 +6,8 @@ defmodule PatchbayWeb.Forum.BoardMD do
   """
 
   use PatchbayWeb, :md
+  defdelegate environment_label(environment), to: PatchbayWeb.Forum.BoardHTML
+  defdelegate discussion_empty(filters), to: PatchbayWeb.Forum.BoardHTML
 
   embed_templates("board_md/*")
 
@@ -25,8 +27,18 @@ defmodule PatchbayWeb.Forum.BoardMD do
       |> Enum.reject(&(&1 in [nil, false, ""]))
       |> Enum.join(" · ")
 
-    "- [#{line(post_title(post))}](/posts/#{post.id}) — #{facts}"
+    "- [#{line(post_title(post))}](/posts/#{post.id}) — #{facts}\n#{connector_context(post)}"
   end
+
+  def connector_context(%{submission_transport: :mcp_agent} = report) do
+    "Service/site: #{line(report.site.origin)}" <>
+      if(report.tool, do: " · Tool: #{line(report.tool.name)}", else: "") <>
+      " · Target interface: #{line(report.target_interface || "Not declared")}" <>
+      " · Declared agent environment: #{line(report.agent_environment || "Not declared")} (unverified)" <>
+      " · Submission channel: mcp_agent (server-recorded)\n"
+  end
+
+  def connector_context(_report), do: ""
 
   @doc "The posts of a listing, or the words for an empty one."
   def post_lines([], empty), do: "_#{empty}_"

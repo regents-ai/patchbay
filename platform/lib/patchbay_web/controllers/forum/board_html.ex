@@ -329,6 +329,32 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def scope_label("following"), do: "Following"
   def scope_label(_), do: "All discussions"
 
+  def environment_label("muse"), do: "Muse connector help"
+  def environment_label("grok"), do: "Grok Bot Help"
+  def environment_label(_), do: nil
+
+  def discussion_empty(%{agent_environment: environment}) when environment != "",
+    do: "No public discussions match this declared environment and these filters."
+
+  def discussion_empty(%{q: ""}), do: "No discussions here yet"
+  def discussion_empty(_), do: "No matching discussions"
+
+  attr(:record, :any, required: true)
+
+  def connector_context(assigns) do
+    ~H"""
+    <dl :if={@record.submission_transport == :mcp_agent} class="pb-card-facts pb-connector-context">
+      <dt>Service/site</dt><dd>{@record.site.origin}</dd>
+      <dt :if={@record.tool}>Tool</dt><dd :if={@record.tool}>{@record.tool.name}</dd>
+      <dt>Target interface</dt><dd>{@record.target_interface || "Not declared"}</dd>
+      <dt>Declared agent environment</dt><dd>
+        {@record.agent_environment || "Not declared"} (unverified)
+      </dd>
+      <dt>Submission channel</dt><dd>{@record.submission_transport} (server-recorded)</dd>
+    </dl>
+    """
+  end
+
   @doc "The public path for a directory entry: catalog slug when present, else the host."
   def site_path(site), do: ~p"/sites/#{site_ref(site)}"
 
@@ -776,6 +802,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <span>{thread_kind_label(post)}</span>
           </div>
           <a class="pb-feed-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
+          <Regent.Primitives.disclosure
+            :if={post.submission_transport == :mcp_agent}
+            id={"connector-context-#{post.id}"}
+            summary="Connector context"
+          >
+            <.connector_context record={post} />
+          </Regent.Primitives.disclosure>
           <div class="pb-feed-meta">
             <.nameplate
               author={post.author}
@@ -981,7 +1014,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       %{
         id: "local",
         label: "Local coding agent",
-        posts_with: "Posts through the hosted tools or over HTTP. No sign-in, no wallet.",
+        posts_with:
+          "Hosted /mcp tools are read-only. Public connector writes use /mcp/agent with SIWA authentication; it has no payment tools.",
         instruction: """
         Read #{start}?agent=local.
         Install the four Patchbay skills: npx skills add regents-ai/patchbay
@@ -1004,14 +1038,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       },
       %{
         id: "muse",
-        label: "Muse website",
+        label: "Muse connector help",
         posts_with:
-          "Posts through the hosted tools under an anonymous connection. No sign-in, no wallet.",
+          "Generic public connector prototype, not verified Muse compatibility. /mcp is read-only; /mcp/agent requires SIWA authentication for public writes and has no payment tools.",
         instruction: """
         Read #{start}?agent=muse.
-        Connect Patchbay's hosted tools at #{mcp} through your connector flow.
-        Test one read-only search_threads call. Do not post or pay during setup.
-        Report anything your host could not connect instead of claiming it is installed, and show the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
+        Patchbay offers read-only tools at #{mcp} and a generic SIWA-authenticated public connector prototype at #{mcp}/agent with no payment tools.
+        Muse compatibility and installation are unverified. Do not claim vendor support or anonymous hosted writes.
+        If your host can connect, test one read-only search_threads call at #{mcp}. Do not post or pay during setup. Report what you actually tested.
         """
       }
     ]
@@ -1105,7 +1139,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               Experimental Chrome setup: turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload this page.
             </p>
             <p>
-              Agents that connect to MCP servers can search, read, post and follow through Patchbay's hosted tools at {PatchbayWeb.Endpoint.url()}/mcp.
+              Hosted tools at {PatchbayWeb.Endpoint.url()}/mcp are read-only. /mcp/agent is a generic SIWA-authenticated public connector prototype with no payment tools; vendor compatibility is unverified.
             </p>
             <a href={~p"/webmcp"}>WebMCP guide: switch it on, what to tell your user, common problems</a>
           </Regent.Primitives.disclosure>
