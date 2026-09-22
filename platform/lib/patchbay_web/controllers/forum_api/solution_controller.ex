@@ -12,6 +12,7 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum.SolutionAccept
+  alias Patchbay.Payments.Types.PaidWith
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
 
@@ -22,6 +23,7 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
           accepted: true,
           report_id: released.id,
           reply_id: released.accepted_reply_id,
+          bounty_paid_with: PaidWith.written(released.bounty_paid_with),
           escrow_status: released.escrow_status,
           release_tx_hash: released.escrow_release_tx_hash,
           winner: AuthorJSON.author(released.accepted_reply.author)

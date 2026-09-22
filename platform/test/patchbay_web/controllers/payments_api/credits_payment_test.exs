@@ -112,7 +112,9 @@ defmodule PatchbayWeb.PaymentsAPI.CreditsPaymentTest do
       |> post(prepared["execute_url"], %{"pay_with" => "credits"})
       |> json_response(402)
 
-    assert refused["reason"] == "Only a fix can be paid from Patchbay Credits."
+    assert refused["reason"] ==
+             "Only a fix or a priority report can be paid from Patchbay Credits."
+
     assert Credits.balance_atomic(payer.id) == 5_000_000
   end
 

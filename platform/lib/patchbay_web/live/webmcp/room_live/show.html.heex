@@ -686,7 +686,7 @@
           </span>
           <PatchbayWeb.Forum.Labels.report_badges report={report} />
           <span :if={report.priority_amount_atomic} class="patchbay-pill is-good">
-            Escrowed {PatchbayWeb.Forum.BoardHTML.escrowed(report)} USDC
+            Escrowed {PatchbayWeb.Forum.BoardHTML.bounty_amount(report)}
           </span>
           <.nameplate
             author={report.author}

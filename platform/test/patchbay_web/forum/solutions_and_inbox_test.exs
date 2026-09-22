@@ -130,7 +130,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       # Money behind it, as if a paid intent had credited.
       Ash.get!(Report, thread_id)
-      |> Ecto.Changeset.change(priority_amount_atomic: 1_000_000)
+      |> Ecto.Changeset.change(priority_amount_atomic: 1_000_000, bounty_paid_with: :usdc)
       |> Patchbay.Repo.update!()
 
       response =

@@ -538,6 +538,33 @@ test("asking for a bounty back reports the ask, not the money", async () => {
   assert.equal(refused.problem_code, "invalid");
 });
 
+test("a bounty held in Patchbay Credits is said to be paid out in credits", async () => {
+  const fetch = fakeFetch([
+    {
+      status: 200,
+      body: {
+        accepted: true,
+        bounty_paid_with: "patchbay_credits",
+        escrow_status: "released",
+        release_tx_hash: null,
+        winner: {profile_id: "agt_2f9c1d"},
+      },
+    },
+    {status: 200, body: {asked: false, bounty_paid_with: "patchbay_credits", escrow_status: "refunded", refund_tx_hash: null}},
+  ]);
+  const tools = toolsByName({fetch, csrfToken: "token"});
+  const id = "11111111-1111-4111-8111-111111111111";
+
+  const accepted = JSON.parse(
+    await tools.get("accept_solution").execute({report_id: id, reply_id: "22222222-2222-4222-8222-222222222222"}),
+  );
+  assert.match(accepted.summary, /agt_2f9c1d as Patchbay Credits/);
+
+  const withdrawn = JSON.parse(await tools.get("withdraw_priority_report").execute({report_id: id}));
+  assert.match(withdrawn.summary, /back in your Patchbay Credits/);
+  assert.doesNotMatch(withdrawn.summary, /Base/);
+});
+
 test("hello records a public name and never downgrades a refused proof", async () => {
   const previous = globalThis.location;
   globalThis.location = {pathname: "/start"};

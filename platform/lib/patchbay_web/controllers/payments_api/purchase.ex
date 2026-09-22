@@ -24,6 +24,11 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   A crash leaves an uncertain intent for reconciliation, never an automatic
   second payment. Settlement evidence commits before publication and escrow
   submission, so those later failures cannot erase the payment receipt.
+
+  A fix or a priority report can instead be paid from the payer's Patchbay
+  Credits. No payment service is involved: the spend and the settlement
+  commit together under the intent's row lock, and a priority report paid
+  that way is published in the same transaction.
   """
 
   use PatchbayWeb, :verified_routes
@@ -44,6 +49,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   alias Patchbay.Payments.PaymentIntent
   alias Patchbay.Payments.PaymentReceipt
   alias Patchbay.Payments.SpecialPost
+  alias Patchbay.Payments.Types.PaidWith
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
@@ -369,25 +375,21 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
-  # Patchbay Credits pay for a fix. The spend and the settlement commit
-  # together, under the intent's row lock, and what it bought is carried out
-  # after they have.
-  defp offer_or_settle(actor, %{kind: :jev_assist} = found, %{payment: :credits}) do
+  # Patchbay Credits pay for a fix or a priority report. The spend and the
+  # settlement commit together, under the intent's row lock.
+  defp offer_or_settle(actor, %{kind: kind} = found, %{payment: :credits} = request)
+       when kind in [:jev_assist, :special_post] do
     case Credits.spend(actor, found) do
-      {:ok, _spent} ->
-        with {:ok, settled} <- Payments.settle_with_credits(found, actor: actor),
-             do: {:paid_from_credits, settled}
-
-      {:short, balance} ->
-        {:credits_short, found, balance}
-
-      {:error, failure} ->
-        {:error, failure}
+      {:ok, _spent} -> settled_from_credits(actor, found, request)
+      {:short, balance} -> {:credits_short, found, balance}
+      {:error, failure} -> {:error, failure}
     end
   end
 
   defp offer_or_settle(_actor, found, %{payment: :credits}),
-    do: {:payment_rejected, found, "Only a fix can be paid from Patchbay Credits."}
+    do:
+      {:payment_rejected, found,
+       "Only a fix or a priority report can be paid from Patchbay Credits."}
 
   defp offer_or_settle(actor, found, request) do
     requirement = requirement(found)
@@ -552,6 +554,27 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   end
 
   defp settlement_message(_body), do: "The payment service could not settle that payment."
+
+  # A fix's run is opened once the spend has committed, since opening it
+  # starts work outside the database. A priority report is published in the
+  # same transaction as the spend, so a report that cannot be filed spends
+  # nothing.
+  defp settled_from_credits(actor, %{kind: :jev_assist} = found, _request) do
+    with {:ok, settled} <- Payments.settle_with_credits(found, actor: actor),
+         do: {:paid_from_credits, settled}
+  end
+
+  defp settled_from_credits(actor, %{kind: :special_post} = found, request) do
+    with {:ok, settled} <- Payments.settle_with_credits(found, actor: actor),
+         {:ok, _report} <-
+           SpecialPost.publish(settled, nil,
+             actor: actor,
+             browser_session_id: request.browser_session_id
+           ),
+         {:ok, applied} <- Payments.mark_applied(settled, actor: actor) do
+      {:applied, applied, nil}
+    end
+  end
 
   defp hold(actor, found) do
     case Payments.mark_settlement_pending(found, actor: actor) do
@@ -861,7 +884,8 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   report a paid priority payment published and where its money stands, or
   the assist a payment opened and where it stands. Payment received and
   bounty confirmed are two facts: the second is what the chain has said,
-  read back by the escrow watch, never assumed.
+  read back by the escrow watch, never assumed. A bounty paid from Patchbay
+  Credits is held on Patchbay's own ledger from the moment it is published.
   """
   @spec applied_effect(PaymentIntent.t()) :: map()
   def applied_effect(%{kind: :agent_tip} = found), do: %{recipient: recipient_author(found)}
@@ -875,11 +899,12 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
           report_id: report.id,
           url: url(~p"/reports/#{report.id}"),
           escrowed_usdc: USDC.format(report.priority_amount_atomic),
+          bounty_paid_with: PaidWith.written(report.bounty_paid_with),
           escrow_status: report.escrow_status,
           escrow_funded_at: report.escrow_funded_at,
           credit_confirmation: to_string(confirmation),
           status_url: show_url(found),
-          next_action: confirmation_next_action(confirmation),
+          next_action: confirmation_next_action(report.bounty_paid_with, confirmation),
           result_available: true
         }
 
@@ -889,7 +914,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
           result_available: false,
           credit_confirmation: "needs_attention",
           status_url: show_url(found),
-          next_action: confirmation_next_action(:needs_attention)
+          next_action: confirmation_next_action(found.paid_with, :needs_attention)
         }
     end
   end
@@ -920,14 +945,22 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
-  defp confirmation_next_action(:pending),
+  defp confirmation_next_action(:credits, :confirmed),
+    do:
+      "Paid from Patchbay Credits, and the bounty is held in Patchbay Credits. Do not pay again."
+
+  defp confirmation_next_action(:credits, :needs_attention),
+    do:
+      "Paid from Patchbay Credits. The report needs a person at Patchbay; keep reading status_url. Do not pay again."
+
+  defp confirmation_next_action(:usdc, :pending),
     do:
       "Payment received. The bounty is being confirmed on Base; read status_url again after a short wait. Do not pay again."
 
-  defp confirmation_next_action(:confirmed),
+  defp confirmation_next_action(:usdc, :confirmed),
     do: "Payment received and the bounty is confirmed on Base. Do not pay again."
 
-  defp confirmation_next_action(:needs_attention),
+  defp confirmation_next_action(:usdc, :needs_attention),
     do:
       "Payment received. The bounty's record on Base needs a person at Patchbay; keep reading status_url. Do not pay again."
 

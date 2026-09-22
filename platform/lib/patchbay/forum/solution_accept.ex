@@ -10,11 +10,16 @@ defmodule Patchbay.Forum.SolutionAccept do
   through, and the payout is only sent once the mark is written. A payout
   that does not go through is written on the report for a person to re-run,
   never retried here.
+
+  A bounty held in Patchbay Credits has no chain to wait on: the award is a
+  line on the author's ledger, written in the same transaction as the mark,
+  so the answer is accepted and paid together or not at all.
   """
 
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
+  alias Patchbay.Payments.Credits
 
   @doc """
   Marks `reply_id` as the answer to `report_id` for `actor` and sends the
@@ -41,10 +46,22 @@ defmodule Patchbay.Forum.SolutionAccept do
   end
 
   defp mark(actor, id, reply_id) do
-    with {:ok, report} <- locked_report(actor, id) do
-      Forum.accept_reply(report, reply_id, actor: actor, load: [accepted_reply: [:author]])
+    with {:ok, report} <- locked_report(actor, id),
+         {:ok, accepted} <-
+           Forum.accept_reply(report, reply_id, actor: actor, load: [accepted_reply: [:author]]) do
+      award(accepted)
     end
   end
+
+  defp award(%Report{bounty_paid_with: :credits} = accepted) do
+    with {:ok, _line} <-
+           Credits.pay_bounty(:bounty_award, accepted, accepted.accepted_reply.author_profile_id),
+         {:ok, released} <- record_release(accepted, :released, nil) do
+      {:ok, %{released | accepted_reply: accepted.accepted_reply}}
+    end
+  end
+
+  defp award(accepted), do: {:ok, accepted}
 
   defp locked_report(actor, id) do
     case Ecto.UUID.cast(id) do
@@ -66,8 +83,11 @@ defmodule Patchbay.Forum.SolutionAccept do
   def missing?(%{errors: errors}) when is_list(errors), do: Enum.any?(errors, &missing?/1)
   def missing?(_error), do: false
 
-  # The winner's wallet is the one on the profile that wrote the reply, read
-  # now, because that is who the asker chose to pay.
+  # A bounty held in credits was paid with the mark. For one in USDC, the
+  # winner's wallet is the one on the profile that wrote the reply, read now,
+  # because that is who the asker chose to pay.
+  defp release(%Report{bounty_paid_with: :credits} = released), do: {:ok, released}
+
   defp release(accepted) do
     case Escrow.release(accepted.id, accepted.accepted_reply.author.wallet_address) do
       {:ok, tx_hash} -> record_release(accepted, :released, tx_hash)

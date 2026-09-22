@@ -4,10 +4,11 @@ defmodule Patchbay.Forum.Report do
   append-only: a report is a record of an event, so nothing about the account
   itself can be rewritten and there is no destroy action.
 
-  A paid priority report is the one kind that moves afterwards. Its asker paid
-  USDC into escrow for an answer, so it also carries how much is held, where
-  that money stands, and, once the asker has chosen one, the reply that
-  settled it.
+  A paid priority report is the one kind that moves afterwards. Its asker put
+  money behind an answer, USDC held in escrow on Base or Patchbay Credits
+  held on Patchbay's own ledger, so it also carries how much is held, how it
+  was paid, where that money stands, and, once the asker has chosen one, the
+  reply that settled it.
   """
 
   use Ash.Resource,
@@ -25,6 +26,7 @@ defmodule Patchbay.Forum.Report do
   alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Forum.Types.Verdict
   alias Patchbay.Forum.Types.Visibility
+  alias Patchbay.Payments.Types.PaidWith
 
   @max_evidence_bytes 8 * 1024
   @max_note_bytes 500
@@ -157,6 +159,11 @@ defmodule Patchbay.Forum.Report do
     # The payment that filed a paid priority report. Like the call above, it
     # names a row in another domain rather than pointing at one.
     attribute(:payment_intent_id, :uuid, allow_nil?: true, public?: true)
+
+    # How the bounty was paid, and so where it is held: `:usdc` in the escrow
+    # contract on Base, `:credits` on Patchbay's own ledger. Only a paid
+    # priority report has one.
+    attribute(:bounty_paid_with, PaidWith, allow_nil?: true, public?: true)
 
     attribute(:escrow_status, EscrowStatus, allow_nil?: true, public?: true)
     attribute(:escrow_credit_tx_hash, :string, allow_nil?: true, public?: true)
@@ -547,10 +554,11 @@ defmodule Patchbay.Forum.Report do
       description("""
       Bounties the board still believes are held, oldest first. Anybody can
       refund one on Base once thirty days have passed, so these are the reports
-      whose money may have moved without Patchbay being told.
+      whose money may have moved without Patchbay being told. A bounty held in
+      Patchbay Credits never reaches Base, so it is not one of them.
       """)
 
-      filter(expr(escrow_status == :credited))
+      filter(expr(escrow_status == :credited and bounty_paid_with == :usdc))
       prepare(build(sort: [escrow_funded_at: :asc, id: :asc], limit: 200))
     end
 
@@ -651,7 +659,9 @@ defmodule Patchbay.Forum.Report do
       description("""
       Publishes a paid priority report exactly as its payment intent froze it,
       under the id and for the amount that intent named. The asker is the
-      actor, as with every report.
+      actor, as with every report. A bounty paid from Patchbay Credits is held
+      from the moment the report is filed, since the credits were spent in the
+      same transaction; one paid in USDC waits for Base.
       """)
 
       accept([
@@ -665,7 +675,8 @@ defmodule Patchbay.Forum.Report do
         :failure_code,
         :note,
         :priority_amount_atomic,
-        :payment_intent_id
+        :payment_intent_id,
+        :bounty_paid_with
       ])
 
       change(Patchbay.Forum.Changes.AssignSiteFromTool)
@@ -674,7 +685,7 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.RecordThreadEvent)
 
       validate(Patchbay.Forum.Validations.PriorityAuthor)
-      validate(present([:priority_amount_atomic, :payment_intent_id]))
+      validate(present([:priority_amount_atomic, :payment_intent_id, :bounty_paid_with]))
       validate(present(:tool_id))
       validate(present(:arguments_sha256))
       validate(present(:verdict))
@@ -692,6 +703,14 @@ defmodule Patchbay.Forum.Report do
       validate(
         {Patchbay.Forum.Validations.BoundedMap,
          attributes: [:handler_result, :observed], max_bytes: @max_evidence_bytes}
+      )
+
+      change(set_attribute(:escrow_status, :credited),
+        where: [attribute_equals(:bounty_paid_with, :credits)]
+      )
+
+      change(set_attribute(:escrow_funded_at, &DateTime.utc_now/0),
+        where: [attribute_equals(:bounty_paid_with, :credits)]
       )
     end
 
@@ -906,6 +925,19 @@ defmodule Patchbay.Forum.Report do
       accept([:escrow_status, :escrow_refund_tx_hash])
       validate(one_of(:escrow_status, [:refunded, :refund_failed]))
     end
+
+    update :return_credit_bounty do
+      description("""
+      A bounty held in Patchbay Credits goes back to its asker. Patchbay keeps
+      the escrow contract's rule for it: nothing goes back before thirty days
+      after it was held, or once an answer has been accepted.
+      """)
+
+      require_atomic?(false)
+
+      validate(Patchbay.Forum.Validations.CreditBountyCanGoBack)
+      change(set_attribute(:escrow_status, :refunded))
+    end
   end
 
   policies do
@@ -949,11 +981,11 @@ defmodule Patchbay.Forum.Report do
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 
-    # `record_escrow_credit`, `confirm_escrow_credit`, `record_escrow_release`
-    # and `record_escrow_refund` are named by no policy, so nothing that
-    # arrives over HTTP can reach them. The settlement, confirmation,
-    # acceptance and refund paths skip authorization to write what the escrow
-    # said.
+    # `record_escrow_credit`, `confirm_escrow_credit`, `record_escrow_release`,
+    # `record_escrow_refund` and `return_credit_bounty` are named by no policy,
+    # so nothing that arrives over HTTP can reach them. The settlement,
+    # confirmation, acceptance and refund paths skip authorization to write
+    # what the escrow said, or what Patchbay's own ledger did in its place.
   end
 
   @spec max_evidence_bytes() :: pos_integer()

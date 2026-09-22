@@ -96,7 +96,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
           verdict: :verified_failure,
           note: note,
           priority_amount_atomic: amount_atomic,
-          payment_intent_id: Ash.UUID.generate()
+          payment_intent_id: Ash.UUID.generate(),
+          bounty_paid_with: :usdc
         },
         actor: asker
       )

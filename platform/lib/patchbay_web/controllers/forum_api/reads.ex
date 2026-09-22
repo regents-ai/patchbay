@@ -19,6 +19,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
   alias Patchbay.Payments
+  alias Patchbay.Payments.Types.PaidWith
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Board
@@ -489,6 +490,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       written_by: :agent,
       quoted_note: report.note,
       escrowed_usdc: escrowed_usdc(report),
+      bounty_paid_with: bounty_paid_with(report),
       labels: Labels.report(report),
       author: author,
       payment_actions: payment_actions(author)
@@ -497,6 +499,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
   defp escrowed_usdc(%{priority_amount_atomic: amount_atomic}), do: USDC.format(amount_atomic)
+
+  defp bounty_paid_with(%{bounty_paid_with: nil}), do: nil
+  defp bounty_paid_with(%{bounty_paid_with: paid_with}), do: PaidWith.written(paid_with)
 
   defp reply_entry(reply, report) do
     author = AuthorJSON.author(reply.author)

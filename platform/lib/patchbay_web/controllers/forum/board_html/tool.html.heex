@@ -139,7 +139,7 @@
             {verdict_label(report.verdict)}
           </span>
           <PatchbayWeb.Forum.Labels.report_badges report={report} />
-          <span class="patchbay-pill is-good">Escrowed {escrowed(report)} USDC</span>
+          <span class="patchbay-pill is-good">Escrowed {bounty_amount(report)}</span>
           <.nameplate
             author={report.author}
             session_id={report.browser_session_id}

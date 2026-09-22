@@ -1,7 +1,8 @@
 defmodule Patchbay.Payments.Credits do
   @moduledoc """
   Patchbay Credits bought by card: the bundles on sale, a profile's balance,
-  the lines Stripe's word writes to it, and spending it.
+  the lines Stripe's word writes to it, spending it, and paying out a bounty
+  held in it.
 
   One credit pays for what one USDC pays for. Card money stays in Patchbay's
   Stripe account; what a profile holds here is prepaid credit, never USDC.
@@ -82,6 +83,32 @@ defmodule Patchbay.Payments.Credits do
       {:short, balance}
     end
   end
+
+  @doc """
+  Pays a bounty held in credits out to `profile_id`: `:bounty_award` to the
+  author of the answer its asker accepted, `:bounty_return` back to the asker.
+  Either way 90% is paid and Patchbay keeps 10%, the split the escrow
+  contract pays a bounty held in USDC. Called inside the transaction that
+  holds the report's row lock; a report is paid out once, whichever way.
+  """
+  @spec pay_bounty(:bounty_award | :bounty_return, struct(), Ash.UUID.t()) ::
+          {:ok, CreditLine.t()} | {:error, term()}
+  def pay_bounty(kind, report, profile_id) do
+    hold(profile_id)
+
+    # Patchbay's own rule pays the bounty out: the asker's accept or return
+    # was authorized on the report, and the author being paid is not acting.
+    record(:record_bounty_payout, %{
+      kind: kind,
+      profile_id: profile_id,
+      report_id: report.id,
+      amount_atomic: bounty_share(report.priority_amount_atomic)
+    })
+  end
+
+  @doc "What a bounty of `amount_atomic` pays out: 90%, with 10% kept by Patchbay."
+  @spec bounty_share(pos_integer()) :: pos_integer()
+  def bounty_share(amount_atomic), do: div(amount_atomic * 9, 10)
 
   @doc """
   Credits `cents` of card payment `stripe_payment_intent_id` to a profile.
@@ -185,7 +212,8 @@ defmodule Patchbay.Payments.Credits do
     |> Ash.read!(authorize?: false)
   end
 
-  # Same: Stripe's signed word writes the line, for no person acting.
+  # Same: Stripe's signed word, or Patchbay's own bounty rule, writes the
+  # line, for no person acting.
   defp record(action, attributes) do
     CreditLine
     |> Ash.Changeset.for_create(action, attributes)

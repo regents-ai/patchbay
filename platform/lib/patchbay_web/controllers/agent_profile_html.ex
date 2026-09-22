@@ -119,6 +119,8 @@ defmodule PatchbayWeb.AgentProfileHTML do
   def history_label(:jev_assist), do: "Fix"
   def history_label(:card_purchase), do: "Credits bought by card"
   def history_label(:card_reversal), do: "Card payment refunded or disputed"
+  def history_label(:bounty_award), do: "Bounty won for an accepted answer"
+  def history_label(:bounty_return), do: "Bounty taken back after 30 days"
 
   @doc "What one line of payment history came to, in what it was paid in."
   def history_amount(%{paid_in: :usdc, amount_atomic: atomic}), do: USDC.format(atomic) <> " USDC"

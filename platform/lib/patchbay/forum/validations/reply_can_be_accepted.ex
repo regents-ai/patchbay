@@ -3,8 +3,9 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
   Refuses to accept an answer that cannot settle a paid priority report: a
   report already answered, a report whose bounty has gone back to its asker, a
   reply that is not on this report, the asker's own reply, a reply nobody
-  signed in wrote, one moderation set aside, or one whose author cannot be
-  paid.
+  signed in wrote, one moderation set aside, or, for a bounty held in USDC,
+  one whose author cannot be paid in USDC. A bounty held in Patchbay Credits
+  is paid to the author's profile, which every signed-in author has.
 
   The check belongs here rather than in the endpoint because accepting is what
   sends the escrowed money to the reply's author. Every rule that decides who
@@ -62,7 +63,7 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
       reply.reward_eligibility in [:ineligible_spam, :removed] ->
         refuse("was set aside by moderation and cannot be accepted")
 
-      not AgentProfile.can_receive_usdc?(reply.author) ->
+      report.bounty_paid_with == :usdc and not AgentProfile.can_receive_usdc?(reply.author) ->
         refuse("was written by an author who cannot be paid right now")
 
       true ->

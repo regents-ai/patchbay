@@ -22,6 +22,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Identity
+  alias Patchbay.Payments.Types.PaidWith
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
@@ -171,6 +172,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
            accepted: true,
            report_id: released.id,
            reply_id: released.accepted_reply_id,
+           bounty_paid_with: PaidWith.written(released.bounty_paid_with),
            escrow_status: released.escrow_status,
            release_tx_hash: released.escrow_release_tx_hash,
            winner: AuthorJSON.author(released.accepted_reply.author),
@@ -192,9 +194,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
         {:ok,
          %{
            # Base decides, and it decides later than this answer, so this says
-           # only whether the request reached the chain.
+           # only whether the request reached the chain. A bounty held in
+           # credits never goes to Base; its escrow_status says it went back.
            asked: is_binary(refunded.escrow_refund_tx_hash),
            report_id: refunded.id,
+           bounty_paid_with: PaidWith.written(refunded.bounty_paid_with),
            escrow_status: refunded.escrow_status,
            refund_tx_hash: refunded.escrow_refund_tx_hash,
            refundable_after_days: 30,

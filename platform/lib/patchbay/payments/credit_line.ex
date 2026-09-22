@@ -6,11 +6,13 @@ defmodule Patchbay.Payments.CreditLine do
   bought and negative for credits taken back or spent. Lines are only ever
   added. Every card payment they come from is named by its Stripe payment
   intent, so the ledger can always be read against Stripe's own records, and
-  every spend names the payment intent it paid for.
+  every spend names the payment intent it paid for, and every bounty payout
+  the report whose bounty it pays.
 
   The unique Stripe payment intent on a purchase, the unique dispute on a
-  reversal and the unique payment intent on a spend are what stop a retried
-  event or a repeated call from being counted twice.
+  reversal, the unique payment intent on a spend and the one payout per
+  report are what stop a retried event or a repeated call from being counted
+  twice, and a bounty from being both awarded and taken back.
   """
 
   use Ash.Resource,
@@ -25,7 +27,8 @@ defmodule Patchbay.Payments.CreditLine do
 
     identity_wheres_to_sql(
       one_purchase_per_card_payment: "kind = 'card_purchase'",
-      one_spend_per_payment: "kind = 'spend'"
+      one_spend_per_payment: "kind = 'spend'",
+      one_payout_per_bounty: "kind IN ('bounty_award', 'bounty_return')"
     )
 
     custom_indexes do
@@ -49,6 +52,10 @@ defmodule Patchbay.Payments.CreditLine do
     # Set on a reversal Stripe opened for a dispute; empty on one for a refund.
     attribute(:stripe_dispute_id, :string, allow_nil?: true, public?: true)
 
+    # The paid priority report whose bounty a payout pays; empty on every
+    # other line. It names a row in another domain rather than pointing at one.
+    attribute(:report_id, :uuid, allow_nil?: true, public?: true)
+
     create_timestamp(:inserted_at, public?: true)
   end
 
@@ -62,6 +69,11 @@ defmodule Patchbay.Payments.CreditLine do
 
     identity(:one_spend_per_payment, [:payment_intent_id],
       where: expr(kind == :spend),
+      eager_check?: false
+    )
+
+    identity(:one_payout_per_bounty, [:report_id],
+      where: expr(kind in [:bounty_award, :bounty_return]),
       eager_check?: false
     )
   end
@@ -118,6 +130,18 @@ defmodule Patchbay.Payments.CreditLine do
       change(relate_actor(:profile))
       change(set_attribute(:kind, :spend))
       validate(compare(:amount_atomic, less_than: 0))
+    end
+
+    create :record_bounty_payout do
+      description("""
+      A bounty held in credits paid out, once per report: awarded to the
+      author of the accepted answer, or returned to the asker.
+      """)
+
+      accept([:profile_id, :report_id, :kind, :amount_atomic])
+      require_attributes([:report_id])
+      validate(one_of(:kind, [:bounty_award, :bounty_return]))
+      validate(compare(:amount_atomic, greater_than: 0))
     end
   end
 

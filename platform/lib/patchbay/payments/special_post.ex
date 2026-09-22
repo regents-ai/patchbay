@@ -18,6 +18,10 @@ defmodule Patchbay.Payments.SpecialPost do
   as `credit_submitted`: the payment is received, and the bounty is
   confirmed only once the chain says the post is funded, which
   `Patchbay.Escrow.Watch` reads and records.
+
+  A report paid from Patchbay Credits has nothing to send to Base: the
+  credits were spent in the same transaction that publishes it, and the
+  report is filed with its bounty already held on Patchbay's own ledger.
   """
 
   require Logger
@@ -36,15 +40,20 @@ defmodule Patchbay.Payments.SpecialPost do
   @attention_after_minutes 30
 
   @doc """
-  Publishes the report a settled intent paid for and hands over its escrow
-  credit. The actor is the payer; the session is the one the settling request
-  carries.
+  Publishes the report a settled intent paid for and, for one paid in USDC,
+  hands over its escrow credit. The actor is the payer; the session is the
+  one the settling request carries. A report paid from Patchbay Credits has
+  no receipt.
   """
-  @spec publish(PaymentIntent.t(), PaymentReceipt.t(),
+  @spec publish(PaymentIntent.t(), PaymentReceipt.t() | nil,
           actor: struct(),
           browser_session_id: String.t() | nil
         ) ::
           {:ok, Report.t()} | {:error, term()}
+  def publish(%PaymentIntent{kind: :special_post, paid_with: :credits} = intent, nil, opts) do
+    file(intent, Keyword.fetch!(opts, :actor), Keyword.fetch!(opts, :browser_session_id))
+  end
+
   def publish(%PaymentIntent{kind: :special_post} = intent, %PaymentReceipt{} = receipt, opts) do
     actor = Keyword.fetch!(opts, :actor)
     browser_session_id = Keyword.fetch!(opts, :browser_session_id)
@@ -115,7 +124,8 @@ defmodule Patchbay.Payments.SpecialPost do
       id: report_id,
       browser_session_id: browser_session_id,
       priority_amount_atomic: intent.amount_atomic,
-      payment_intent_id: intent.id
+      payment_intent_id: intent.id,
+      bounty_paid_with: intent.paid_with
     })
     |> Forum.file_priority_report(actor: actor)
   end

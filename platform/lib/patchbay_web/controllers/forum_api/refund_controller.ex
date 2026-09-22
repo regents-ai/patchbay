@@ -8,12 +8,15 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
   signed in on the session. Everything else is `Patchbay.Forum.PriorityRefund`,
   which the report page's own control comes through too. The contract refuses
   a refund until thirty days after the money was recorded, so a request going
-  through is an answer about the request and not about the money.
+  through is an answer about the request and not about the money. A bounty
+  held in Patchbay Credits goes back as soon as the thirty days are up, and
+  is refused with the date before then.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum.PriorityRefund
+  alias Patchbay.Payments.Types.PaidWith
   alias PatchbayWeb.ForumAPI.Refusal
 
   def create(conn, %{"id" => id}) do
@@ -21,9 +24,11 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
       {:ok, refunded} ->
         json(conn, %{
           # Base decides, and it decides later than this answer, so this says
-          # only whether the request reached the chain.
+          # only whether the request reached the chain. A bounty held in
+          # credits never goes to Base; its escrow_status says it went back.
           asked: is_binary(refunded.escrow_refund_tx_hash),
           report_id: refunded.id,
+          bounty_paid_with: PaidWith.written(refunded.bounty_paid_with),
           escrow_status: refunded.escrow_status,
           refund_tx_hash: refunded.escrow_refund_tx_hash,
           refundable_after_days: 30

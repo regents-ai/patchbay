@@ -211,9 +211,7 @@
     summary="Paid priority · separate from evidence"
     open={not is_nil(@refund_problem)}
   >
-    <p class="pb-thread-caption">
-      A bounty does not verify an answer. Payment status and refund eligibility must be checked onchain.
-    </p>
+    <p class="pb-thread-caption">{payment_caption(@report)}</p>
     <.escrow_standing
       report={@report}
       profile={@conn.assigns.current_profile}

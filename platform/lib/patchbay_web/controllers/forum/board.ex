@@ -410,8 +410,8 @@ defmodule PatchbayWeb.Forum.Board do
   — open bounties first, and the cursor of the page after it when there is
   one. The page is its own: it does not move with the version history.
 
-  An open bounty means money recorded in escrow on Base and no accepted
-  answer yet, so a post is never listed above another for money that has
+  An open bounty means money held, in escrow on Base or in Patchbay
+  Credits, and no accepted answer yet, so a post is never listed above another for money that has
   not arrived or has already been paid out.
   """
   @spec ranked_posts(Site.t(), String.t(), String.t() | nil) ::
