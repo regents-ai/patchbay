@@ -16,6 +16,8 @@ const WORDS = {
   no_wallet: "Sign in with a wallet first, at the top of the page.",
   unsupported_challenge: "This Patchbay asked for a payment this page cannot make.",
   canceled: "That was canceled before it finished.",
+  unopened: "Paid, and you will not be charged again. The fix could not be opened just now; " +
+    "a person at Patchbay will open it for you.",
 }
 
 /**
@@ -90,7 +92,8 @@ export function fixArguments(fields) {
 
 /**
  * What to do with Patchbay's last word on a paid fix: go to the fix once
- * the payment was applied, or say what stood in the way.
+ * the payment was applied, or to the fix already under way, which nothing
+ * was charged for; otherwise say what stood in the way.
  *
  * @param {{status: number, body: object | null, intent?: object, unsigned?: string}} outcome
  * @returns {{navigate: string} | {problem: string}}
@@ -98,10 +101,13 @@ export function fixArguments(fields) {
 export function fixOutcome(outcome) {
   if (outcome.unsigned) return {problem: WORDS[outcome.unsigned] ?? WORDS.refused}
   if (outcome.status === 200 && outcome.body?.status === "applied" && outcome.intent?.run_id) {
-    return {navigate: `/fixes/${encodeURIComponent(outcome.intent.run_id)}`}
+    return {navigate: fixPath(outcome.intent.run_id)}
+  }
+  if (outcome.status === 409 && outcome.body?.problem_code === "assist_running" && outcome.body.run_id) {
+    return {navigate: fixPath(outcome.body.run_id)}
   }
   if (outcome.status === 202 && outcome.intent?.run_id) {
-    return {problem: "Paid. Patchbay is opening your fix; reload this page in a moment."}
+    return {problem: WORDS.unopened}
   }
   const said = outcome.body?.error
   return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
@@ -123,6 +129,10 @@ async function pay(form, doc, options) {
   } else {
     say(form, next.problem)
   }
+}
+
+function fixPath(runId) {
+  return `/fixes/${encodeURIComponent(runId)}`
 }
 
 function foldUntilFocus(form) {

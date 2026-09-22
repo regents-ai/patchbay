@@ -238,7 +238,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
   test "a wallet author's assist is paid and read back through the agent door", c do
     wallet = Identity.upsert_from_wallet!(%{wallet_address: "0x" <> String.duplicate("e", 40)})
 
-    assert {:ok, intent} = Purchase.prepare_jev_assist(wallet, @args)
+    assert {:ok, intent} = Purchase.prepare_jev_assist(wallet, @args, nil)
     assert intent.amount_atomic == 100_000
     assert intent.payload["author_origin"] == "wallet"
     assert intent.payload["pay_to_address"] == @wallet
@@ -273,7 +273,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
   end
 
   test "a settled assist whose run was not opened is opened on the next call", c do
-    assert {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args)
+    assert {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args, nil)
 
     {:ok, _receipt} =
       Payments.record_payment_receipt(
@@ -309,7 +309,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
   end
 
   test "a run opens only from the payer's own settled assist payment", c do
-    assert {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args)
+    assert {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args, nil)
 
     # Not settled yet.
     assert {:error, _} =
@@ -351,12 +351,14 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
 
   test "one assist at a time: a second request while one is open is refused, unpaid, with the first",
        c do
-    {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args)
+    {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args, nil)
     {:ok, settled} = Ash.update(intent, %{}, action: :mark_settled, actor: c.payer)
     {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: c.payer)
 
     # Paid and not yet picked up counts as open, as does under way.
-    assert {:error, {:assist_running, _run, _url}} = Purchase.prepare_jev_assist(c.payer, @args)
+    assert {:error, {:assist_running, _run, _url}} =
+             Purchase.prepare_jev_assist(c.payer, @args, nil)
+
     {:ok, _running} = Assist.start_run(run, authorize?: false)
 
     refused =
@@ -371,7 +373,29 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert refused["error"] =~ "Nothing was charged"
 
     # Another payer is not held up by it.
-    assert {:ok, _theirs} = Purchase.prepare_jev_assist(c.other, @args)
+    assert {:ok, _theirs} = Purchase.prepare_jev_assist(c.other, @args, nil)
+  end
+
+  test "a browser with a fix under way, asked before signing in, is refused before paying", c do
+    browser = Ash.UUID.generate()
+    visitor_key = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+
+    {:ok, fix} =
+      Assist.request_free_run(
+        Map.put(@args, "believed_calls", []),
+        :visitor,
+        visitor_key,
+        browser,
+        nil
+      )
+
+    # The fix has no payer, so only the browser ties it to this payment,
+    # which would otherwise settle and then find its run unable to open.
+    assert {:error, {:assist_running, %{id: id}, _url}} =
+             Purchase.prepare_jev_assist(c.payer, @args, browser)
+
+    assert id == fix.id
+    assert {:ok, _elsewhere} = Purchase.prepare_jev_assist(c.payer, @args, nil)
   end
 
   defp payment(payer, terms) do

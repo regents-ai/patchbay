@@ -4,10 +4,12 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   database busy for everyone else.
 
   A read is a `GET` or `HEAD` that reaches the router, or any message to the
-  hosted MCP tools (a hosted write also draws on its session's hourly share).
-  Files served ahead of the router and the health check are not counted.
-  Posts are left alone: each has its own hourly share, and nothing here
-  stands between a person and a payment.
+  hosted MCP tools (a hosted write also draws on its session's hourly share),
+  or a fix asked for from the home page, which counts free fixes and draws
+  the page again when it is refused. Files served ahead of the router and
+  the health check are not counted. Other posts are left alone: each has
+  its own hourly share, and nothing here stands between a person and a
+  payment.
 
   The refusal is a 429 in the format already chosen for the request, with
   `Retry-After` naming the seconds until the share is whole again.
@@ -43,6 +45,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{path_info: ["webmcp", "health"]}), do: false
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
+  defp counted?(%Plug.Conn{method: "POST", path_info: ["fixes"]}), do: true
   defp counted?(_conn), do: false
 
   defp refuse(conn, wait) do

@@ -29,6 +29,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   use PatchbayWeb, :verified_routes
 
   require Ash.Query
+  require Logger
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Request, as: AssistRequest
@@ -199,13 +200,16 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   end
 
   @doc """
-  Freezes the terms of a paid assist for `actor` from the request's fields.
-  The fee is fixed; the caller names no amount.
+  Freezes the terms of a paid assist for `actor` from the request's fields,
+  asked from the browser `browser_session_id` names, if any. The fee is
+  fixed; the caller names no amount.
   """
-  @spec prepare_jev_assist(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
-  def prepare_jev_assist(actor, args) do
+  @spec prepare_jev_assist(struct(), map(), Ash.UUID.t() | nil) ::
+          {:ok, PaymentIntent.t()} | {:error, term()}
+  def prepare_jev_assist(actor, args, browser_session_id) do
     with :ok <- assist_set_up(),
          :ok <- no_assist_running(actor),
+         :ok <- no_fix_running(actor, browser_session_id),
          {:ok, request} <- AssistRequest.draft(args) do
       Payments.prepare_jev_assist(%{request: request}, actor: actor)
     end
@@ -254,6 +258,20 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   # run on a later call instead.
   defp no_assist_running(actor) do
     case Assist.get_open_run_for_payer(actor.id, actor: actor) do
+      {:ok, nil} -> :ok
+      {:ok, run} -> {:error, {:assist_running, run, run_url(actor, run)}}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # The same for the browser: a fix it asked for before signing in has no
+  # payer, and the run a payment from it opens is one open run too.
+  defp no_fix_running(_actor, nil), do: :ok
+
+  defp no_fix_running(actor, browser_session_id) do
+    # Patchbay's own look-up for the browser, by the identity in its signed
+    # cookie; only the run's id and address go back, to that same browser.
+    case Assist.get_open_run_for_browser(browser_session_id, authorize?: false) do
       {:ok, nil} -> :ok
       {:ok, run} -> {:error, {:assist_running, run, run_url(actor, run)}}
       {:error, error} -> {:error, error}
@@ -557,13 +575,25 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
+  # A settled assist whose run could not open is written to the log with
+  # what a person needs to open it by hand: the next execute call on the
+  # same intent, as the same payer and from the same browser.
   defp carry_out(%{kind: :jev_assist} = settled, _receipt, actor, request) do
-    with {:ok, run} <-
-           Assist.open_run(%{intent: settled, browser_session_id: request.browser_session_id},
-             actor: actor
-           ) do
-      :ok = Assist.Runner.start(run)
-      {:ok, :complete}
+    case Assist.open_run(%{intent: settled, browser_session_id: request.browser_session_id},
+           actor: actor
+         ) do
+      {:ok, run} ->
+        :ok = Assist.Runner.start(run)
+        {:ok, :complete}
+
+      {:error, error} ->
+        Logger.warning(
+          "Assist payment #{settled.id} settled but its run did not open " <>
+            "(payer #{actor.id}, browser #{inspect(request.browser_session_id)}): " <>
+            Exception.message(error)
+        )
+
+        {:error, error}
     end
   end
 

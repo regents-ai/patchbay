@@ -26,9 +26,11 @@ test("arguments that are not a JSON object are refused in words", () => {
   }
 })
 
-test("an applied payment goes to the fix; anything else is said, not navigated", () => {
+test("an applied payment or a fix already under way goes to the fix; anything else is said", () => {
   assert.deepEqual(fixOutcome({status: 200, body: {status: "applied"}, intent: {run_id: "abc"}}), {navigate: "/fixes/abc"})
-  assert.match(fixOutcome({status: 202, body: {status: "settled"}, intent: {run_id: "abc"}}).problem, /reload/)
+  assert.deepEqual(fixOutcome({status: 409, body: {problem_code: "assist_running", run_id: "def"}}), {navigate: "/fixes/def"})
+  assert.match(fixOutcome({status: 409, body: {status: "settlement_pending", error: "Wait."}, intent: {run_id: "abc"}}).problem, /Wait/)
+  assert.match(fixOutcome({status: 202, body: {status: "settled"}, intent: {run_id: "abc"}}).problem, /not be charged again/)
   assert.match(fixOutcome({status: 402, body: {error: "Not enough USDC."}, intent: {run_id: "abc"}}).problem, /Not enough USDC/)
   assert.match(fixOutcome({status: 402, body: {}, intent: {}, unsigned: "closed"}).problem, /closed/)
   assert.match(fixOutcome({status: 0, body: null}).problem, /could not be paid/)

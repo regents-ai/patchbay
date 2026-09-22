@@ -4324,7 +4324,8 @@
                 "enum": [
                   "pending",
                   "deposited",
-                  "failed"
+                  "failed",
+                  "no_fee"
                 ]
               },
               "tx_hash": {
@@ -4332,11 +4333,13 @@
                 "nullable": true
               }
             },
-            "description": "Where the fee stands on its way to the REGENT staking contract."
+            "description": "Where the fee stands on its way to the REGENT staking contract; no_fee for a free fix asked for from the home page."
           },
           "payment_intent_id": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "nullable": true,
+            "description": "The payment that bought the assist; empty for a free fix."
           },
           "requested_at": {
             "type": "string",

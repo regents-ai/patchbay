@@ -15,25 +15,36 @@ defmodule PatchbayWeb.FixLive.Show do
   @impl true
   def mount(%{"id" => id}, session, socket) do
     case find(id, session, socket.assigns.current_profile) do
-      {:ok, run} ->
-        if connected?(socket), do: Phoenix.PubSub.subscribe(Patchbay.PubSub, Run.topic(run.id))
-        {:ok, show(socket, run)}
-
-      :none ->
-        {:ok, redirect(socket, to: ~p"/")}
+      {:ok, run} -> {:ok, follow(socket, run)}
+      :none -> {:ok, redirect(socket, to: ~p"/")}
     end
   end
 
   # The run changed: it is read again as it stands now.
   @impl true
   def handle_info({:assist_run_changed, id}, %{assigns: %{run: %Run{id: id}}} = socket) do
-    # The page was granted this run when it opened, so the re-read is
-    # Patchbay's own.
-    {:ok, run} = Assist.get_run(id, authorize?: false)
-    {:noreply, show(socket, run)}
+    {:noreply, show(socket, reread(id))}
   end
 
   def handle_info(_other, socket), do: {:noreply, socket}
+
+  # A connected page listens first and reads the run again after, so a
+  # change written in between is on the page rather than missed.
+  defp follow(socket, run) do
+    if connected?(socket) do
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Run.topic(run.id))
+      show(socket, reread(run.id))
+    else
+      show(socket, run)
+    end
+  end
+
+  defp reread(id) do
+    # The page was granted this run when it opened, so the re-read is
+    # Patchbay's own.
+    {:ok, run} = Assist.get_run(id, authorize?: false)
+    run
+  end
 
   defp show(socket, run) do
     assign(socket,

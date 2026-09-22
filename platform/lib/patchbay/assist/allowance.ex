@@ -6,9 +6,10 @@ defmodule Patchbay.Assist.Allowance do
   address; nothing here knows the address itself.
 
   Both counts are read from the runs themselves, so a restart forgets
-  nothing. The count is read, then the run is opened, so two requests that
-  arrive in the same instant can both pass: the worst case is one free fix
-  more, which is accepted rather than locked against.
+  nothing. `Patchbay.Assist.request_free_run/5` reads them and opens the run
+  under one lock on the connection's key, so requests that arrive together
+  from one connection take its free fix one at a time; a signed-in person's
+  are held to one open run at a time by the database.
   """
 
   require Ash.Query

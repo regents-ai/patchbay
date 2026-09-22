@@ -138,6 +138,13 @@ defmodule PatchbayWeb.Forum.FixTest do
              ~s(data-pb-fix-mode="free")
   end
 
+  test "an IPv6 connection is counted by its network, so a new address in it is no new free fix" do
+    assert key("2001:db8:1:2::1") == key("2001:db8:1:2:ffff:ffff:ffff:fffe")
+    refute key("2001:db8:1:2::1") == key("2001:db8:1:3::1")
+    assert key("::ffff:203.0.113.9") == key("203.0.113.9")
+    refute key("203.0.113.9") == key("203.0.113.10")
+  end
+
   defp from(conn, address), do: put_req_header(conn, "fly-client-ip", address)
 
   defp signed_in(conn, person) do

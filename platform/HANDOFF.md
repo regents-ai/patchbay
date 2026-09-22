@@ -390,6 +390,12 @@ screen, and Patchbay's repair.
   `/fixes/:id` is a LiveView fed by the run's own PubSub channel,
   `Patchbay.Assist.Run.topic/1`. A stuck free run is handed back with the
   same `rerun` command as a paid one.
+- A paid assist whose run did not open after the payment settled (the log
+  says "settled but its run did not open", with the intent, payer and
+  browser) is opened by executing the same intent again as that payer, from
+  that browser:
+  `PatchbayWeb.PaymentsAPI.Purchase.execute(Patchbay.Identity.get_profile!("<payer id>", authorize?: false), "<intent id>", %{payment: nil, payer: nil, browser_session_id: "<browser id or nil>"})`.
+  Nothing is paid twice; one payment opens at most one run.
 - A paid assist that waited on a person (`assessment_pending`, usually because
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.

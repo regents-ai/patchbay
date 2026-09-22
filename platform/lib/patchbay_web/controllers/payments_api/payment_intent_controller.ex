@@ -44,7 +44,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   def create(conn, %{"kind" => "jev_assist", "args" => %{} = args}) do
     conn.assigns.current_profile
-    |> Purchase.prepare_jev_assist(args)
+    |> Purchase.prepare_jev_assist(args, conn.assigns.forum_session_id)
     |> created(conn)
   end
 

@@ -35,6 +35,8 @@ defmodule Patchbay.Assist.AllowanceTest do
     assert first.payer_profile_id == person.id
     assert first.status == :paid
     assert is_nil(first.payment_intent_id)
+    # No fee, so nothing for the operator to forward.
+    assert first.deposit_status == :no_fee
     close(first)
 
     assert Allowance.remaining(key, nil) == %{free: 0, sign_in_adds: 2}
