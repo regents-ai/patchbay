@@ -134,16 +134,10 @@ body {
    single element rule: anything with a class can still say something different
    without a fight. pre is in the list because an evidence pane that is taller
    than its box becomes a scroll region, and a browser puts those in the tab
-   order; one that fits never matches and is left alone. On a dark panel the
-   ring switches to the accent itself, which the deep tone is too dark for. */
+   order; one that fits never matches and is left alone. */
 :where(a, button, input, textarea, select, summary, pre, [tabindex]):focus-visible {
   outline: 3px solid var(--pb-accent-deep);
   outline-offset: 2px;
-}
-.pb-skip-link:focus,
-.patchbay-board .patchbay-topbar :focus-visible,
-.patchbay-result-box :focus-visible {
-  outline-color: var(--pb-accent);
 }
 
 /* Skip to the content: the first thing a keyboard reaches on every page, and
@@ -206,7 +200,6 @@ body {
 }
 .pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: var(--font-weight-regular); }
 .pb-account-note:empty { display: none; }
-.pb-account :focus-visible { outline-color: var(--pb-accent); }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
@@ -389,7 +382,6 @@ body {
 .patchbay-result-box { margin-top: var(--space-2); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-ink); color: var(--pb-text-on-ink); }
 .patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); }
 .patchbay-evidence-grid > .patchbay-result-box { min-width: 0; }
-.patchbay-result-box .patchbay-kicker { color: var(--pb-accent); }
 .patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: var(--pb-fs-micro); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); margin-top: var(--space-1); }
 .patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface-sunk); }

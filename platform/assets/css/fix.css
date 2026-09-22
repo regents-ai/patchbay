@@ -45,26 +45,33 @@
 }
 
 /* The live fix page. */
-.pb-fix-page { display: grid; gap: 1.25rem; max-width: 64rem; margin: 0 auto 3rem; }
+.pb-fix-page { display: grid; align-content: start; gap: 1.25rem; max-width: 64rem; margin: 0 auto 3rem; }
 .pb-fix-head h1 { margin: .2rem 0 .4rem; font-family: var(--font-family-title); font-weight: 400; font-size: clamp(1.35rem, 2.6vw, 1.9rem); line-height: 1.15; }
 .pb-fix-request { margin: 0; color: var(--pb-text-muted); font-size: .875rem; overflow-wrap: anywhere; }
 .pb-fix-panel { border: 1px solid var(--pb-line); background: var(--pb-ink); color: var(--pb-text-on-ink); }
 .pb-fix-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-fix-panel-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; }
 .pb-fix-working { font-size: .75rem; color: var(--pb-text-on-ink-muted); }
-.pb-fix-working::before { content: "●"; margin-right: .4rem; color: var(--pb-accent); animation: pb-fix-pulse 1.2s ease-in-out infinite; }
+.pb-fix-working::before { content: "●"; margin-right: .4rem; color: var(--pb-accent-deep); animation: pb-fix-pulse 1.2s ease-in-out infinite; }
 @keyframes pb-fix-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 .pb-fix-log { padding: .75rem 1rem 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); }
 .pb-fix-line { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-fix-at { color: var(--pb-text-on-ink-muted); }
+/* On a phone the time column is as wide as "+10.3s" and no wider. */
+@media (max-width: 40rem) {
+  .pb-fix-log { padding: .6rem .75rem .8rem; }
+  .pb-fix-line { grid-template-columns: 3.25rem minmax(0, 1fr); }
+}
 .pb-fix-line--head { color: var(--pb-text-on-ink-muted); }
 .pb-fix-line--note { color: var(--pb-text-on-ink-muted); font-style: italic; }
-.pb-fix-line--call { color: var(--pb-accent); }
-.pb-fix-line--jev { color: var(--pb-human-edge); }
+.pb-fix-line--call { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); }
+/* Jev's reading, in the person colour mixed toward the text so it reads on either theme. */
+.pb-fix-line--jev { color: color-mix(in srgb, var(--pb-human-edge) 50%, var(--pb-text)); }
 .pb-fix-line--done { color: var(--pb-good); font-weight: var(--font-weight-semibold); }
 .pb-fix-line--wait, .pb-fix-line--fail { color: var(--pb-bad); }
 .pb-fix-answer { border: 1px solid var(--pb-line); background: var(--pb-surface); }
 .pb-fix-answer-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-fix-answer-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1rem; }
+.pb-fix-answer-head .rg-button { flex: none; white-space: nowrap; }
 .pb-fix-answer-text { margin: 0; padding: 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-fix-again { margin: 0; padding: .6rem 1rem .9rem; font-size: .8125rem; color: var(--pb-text-muted); }
