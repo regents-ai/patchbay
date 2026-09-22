@@ -3,7 +3,8 @@ defmodule PatchbayWeb.Forum.FixTest do
   The fix form at the top of the home page: a free fix opens for the
   connection and the page goes to it; a second one waits for the first; a
   used-up connection is told to sign in, and a signed-in person gets two
-  more, then the fee; and a request Patchbay would not act on comes back to
+  more, then the fee; once the site's free fixes for the day are given out,
+  everyone is told so and offered the fee; and a request Patchbay would not act on comes back to
   the form with the words for it and what was typed.
   """
 
@@ -112,6 +113,49 @@ defmodule PatchbayWeb.Forum.FixTest do
       build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"fix" => @form})
 
     assert html_response(refused, 200) =~ "The next one is 0.10 USDC with Patchbay Credits."
+  end
+
+  test "once the site's free fixes are given out, the page says so and offers the fee",
+       %{conn: conn} do
+    old = Application.get_env(:patchbay, :daily_free_fixes)
+    Application.put_env(:patchbay, :daily_free_fixes, 1)
+
+    on_exit(fn ->
+      if old,
+        do: Application.put_env(:patchbay, :daily_free_fixes, old),
+        else: Application.delete_env(:patchbay, :daily_free_fixes)
+    end)
+
+    {:ok, used} =
+      Assist.request_free_run(request(), :visitor, key(address()), Ash.UUID.generate(), nil)
+
+    close(used)
+
+    # A new connection, signed out: no free fix, and signing in leads to the fee.
+    address = address()
+    html = conn |> from(address) |> get(~p"/") |> html_response(200)
+    assert html =~ ~s(data-pb-fix-mode="sign_in")
+    assert html =~ "Sign in to fix it"
+    assert html =~ "all given out. Sign in to fix it for 0.10 USDC with Patchbay Credits."
+    refute html =~ "more free fixes"
+
+    refused = build_conn() |> from(address) |> post(~p"/fixes", %{"fix" => @form})
+    html = html_response(refused, 200)
+    assert html =~ "all given out. Sign in to fix it for 0.10 USDC"
+    assert html =~ ~s(value="#{@form["goal"]}")
+
+    # Signed in: the fee, straight away.
+    html =
+      build_conn() |> from(address) |> signed_in(person()) |> get(~p"/") |> html_response(200)
+
+    assert html =~ ~s(data-pb-fix-mode="pay")
+    assert html =~ "all given out. This one is 0.10 USDC, paid with Patchbay Credits"
+
+    # With no way to pay set up, the page says to come back tomorrow.
+    Application.put_env(:patchbay, :assist, pay_to_address: nil)
+    html = build_conn() |> from(address) |> get(~p"/") |> html_response(200)
+    assert html =~ ~s(data-pb-fix-mode="closed")
+    assert html =~ "all given out. Come back tomorrow."
   end
 
   test "a request Patchbay would not act on comes back to the form", %{conn: conn} do

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-22 — Up to 1,000 free fixes a day across the site
+
+- **A daily number for the whole site.** Patchbay gives up to 1,000 free fixes in any 24 hours, across everyone, on top of each connection's own and each signed-in person's own. Once they are all given out, the page says so: signed out, it offers to sign in and fix it for 0.10 USDC with Patchbay Credits; signed in, it asks the fee straight away. It never promises free fixes it no longer has.
+- **Requests that arrive together.** Free fixes are handed out one at a time, so two people asking at the same moment can never both take the last one.
+- **More room for paid fixes.** Patchbay's daily model allowance rises to 2,000, so paid fixes still have room after every free one of the day is used.
+
 ## 2026-09-22 — Ask for a fix from the front page, a few free every day
 
 - **Issues with MCP? Patchbay will fix it fast with Jev.** The home page now opens on one question: what were you trying to do on a site? Answer it and the form unfolds for the site's address, what should happen, whether the site needs you signed in, and a tool you tried with its arguments, if any. Patchbay works the request the same way a paid assist is worked: Jev lists the site's tools, picks the one that fits, tries the call and reads what came back.

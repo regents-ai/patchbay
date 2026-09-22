@@ -64,7 +64,7 @@ defmodule Patchbay.Assist do
   def request_free_run(request, grant, visitor_key, browser_session_id, actor) do
     opened =
       Ash.transact(Run, fn ->
-        hold_free_fixes(visitor_key)
+        hold_free_fixes()
 
         with {:ok, run} <-
                open_free_run(
@@ -85,12 +85,13 @@ defmodule Patchbay.Assist do
     end
   end
 
-  # The connection's free fixes are counted and the run opened under one
-  # lock on its key, held until the opening commits, so two requests that
-  # arrive together from the same connection cannot both take its last one.
-  defp hold_free_fixes(visitor_key) do
+  # Free fixes are counted and the run opened under one lock every free fix
+  # takes, held until the opening commits, so requests that arrive together
+  # cannot both take the last one, whether it is the connection's, the
+  # person's or the site's.
+  defp hold_free_fixes do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
-      "patchbay free fix " <> visitor_key
+      "patchbay free fixes"
     ])
   end
 

@@ -47,7 +47,8 @@ defmodule Patchbay.Config do
 
   def moderator?(_profile), do: false
 
-  @default_daily_model_calls 300
+  @default_daily_model_calls 2000
+  @default_daily_free_fixes 1000
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
   @default_max_rooms 2000
@@ -119,6 +120,14 @@ defmodule Patchbay.Config do
       "PATCHBAY_DAILY_MODEL_CALLS",
       @default_daily_model_calls
     )
+  end
+
+  @doc """
+  How many free fixes the whole deployment gives in 24 hours, kept under
+  `daily_model_calls/0` so paid fixes always have model calls left.
+  """
+  def daily_free_fixes do
+    whole_number(:daily_free_fixes, "PATCHBAY_DAILY_FREE_FIXES", @default_daily_free_fixes)
   end
 
   @doc """

@@ -94,14 +94,15 @@ values are never displayed.
 ### Spend limits
 
 The room is public and needs no sign-in, so anyone with the link can ask for a
-model call, and every call is billed to the key above. Three limits bound that,
-and all three have working defaults that need no configuration:
+model call, and every call is billed to the key above. Four limits bound that,
+and all four have working defaults that need no configuration:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `PATCHBAY_ROOM_COOLDOWN_SECONDS` | `20` | Shortest gap between two candidate generations in one room |
 | `PATCHBAY_ROOM_DAILY_MODEL_CALLS` | `30` | Model calls one room may make in any rolling 24 hours |
-| `PATCHBAY_DAILY_MODEL_CALLS` | `300` | Model calls the whole deployment may make in that window |
+| `PATCHBAY_DAILY_MODEL_CALLS` | `2000` | Model calls the whole deployment may make in that window |
+| `PATCHBAY_DAILY_FREE_FIXES` | `1000` | Free fixes the home page gives in that window, across every visitor |
 
 Rooms are created on demand, so two more limits bound how many can exist:
 

@@ -55,9 +55,12 @@ defmodule PatchbayWeb.Forum.Fix do
   @doc "The grant the next free fix from this request opens under, or why there is none."
   @spec grant(Plug.Conn.t()) :: {:ok, :visitor | :member} | {:error, problem()}
   def grant(conn) do
-    case Allowance.grant(ClientAddress.visitor_key(conn), conn.assigns.current_profile) do
+    profile = conn.assigns.current_profile
+
+    case Allowance.grant(ClientAddress.visitor_key(conn), profile) do
       {:ok, grant} -> {:ok, grant}
-      :none -> {:error, %{said: used_up(conn.assigns.current_profile)}}
+      :none -> {:error, %{said: used_up(profile)}}
+      :given_out -> {:error, %{said: given_out(mode(%{free: 0, given_out: true}, profile))}}
     end
   end
 
@@ -71,35 +74,49 @@ defmodule PatchbayWeb.Forum.Fix do
     "#{left}#{more}. After that, #{@fee} USDC a fix with Patchbay Credits."
   end
 
+  def terms(%{mode: mode, allowance: %{given_out: true}}), do: given_out(mode)
+
   def terms(%{mode: :sign_in, allowance: %{sign_in_adds: adds}}),
     do: "This connection's free fix for today is used. Sign in for #{adds} more free fixes today."
 
-  def terms(%{mode: :pay}),
-    do:
-      "Your free fixes for today are used. This one is #{@fee} USDC, paid with Patchbay Credits " <>
-        "from the wallet you signed in with."
+  def terms(%{mode: :pay}), do: "Your free fixes for today are used. " <> paid_with_credits()
 
   def terms(%{mode: :closed}), do: "Your free fixes for today are used. Come back tomorrow."
 
   @doc "What the form's button says."
-  @spec button(mode()) :: String.t()
-  def button(:free), do: "Fix it free"
-  def button(:sign_in), do: "Sign in for free fixes"
-  def button(:pay), do: "Fix it for #{@fee} USDC"
-  def button(:closed), do: "Free fixes used for today"
+  @spec button(%{allowance: Allowance.t(), mode: mode()}) :: String.t()
+  def button(%{mode: :free}), do: "Fix it free"
+  def button(%{mode: :sign_in, allowance: %{given_out: true}}), do: "Sign in to fix it"
+  def button(%{mode: :sign_in}), do: "Sign in for free fixes"
+  def button(%{mode: :pay}), do: "Fix it for #{@fee} USDC"
+  def button(%{mode: :closed}), do: "Free fixes used for today"
 
-  @doc "What the page says when the run could not be opened."
-  @spec refused(term(), struct() | nil) :: problem()
-  def refused(%Ash.Error.Forbidden{}, profile), do: %{said: used_up(profile)}
+  @doc """
+  What the page says when the run could not be opened: when the free fix
+  was taken by another request in the meantime, the words for what is left
+  now.
+  """
+  @spec refused(term(), Plug.Conn.t()) :: problem()
+  def refused(%Ash.Error.Forbidden{}, conn) do
+    case grant(conn) do
+      {:error, problem} -> problem
+      {:ok, _grant} -> not_started()
+    end
+  end
 
-  def refused(_failure, _profile),
-    do: %{said: "That fix could not be started just now. Try again in a moment."}
+  def refused(_failure, _conn), do: not_started()
+
+  defp not_started, do: %{said: "That fix could not be started just now. Try again in a moment."}
 
   defp mode(%{free: free}, _profile) when free > 0, do: :free
-  defp mode(_used, nil), do: :sign_in
+  defp mode(%{given_out: false}, nil), do: :sign_in
 
-  defp mode(_used, _profile) do
-    if Assist.pay_to_address(), do: :pay, else: :closed
+  defp mode(_used, profile) do
+    cond do
+      is_nil(Assist.pay_to_address()) -> :closed
+      is_nil(profile) -> :sign_in
+      true -> :pay
+    end
   end
 
   defp used_up(nil),
@@ -111,6 +128,16 @@ defmodule PatchbayWeb.Forum.Fix do
         "Your free fixes for today are used. The next one is #{@fee} USDC with Patchbay Credits.",
       else: "Your free fixes for today are used. Come back tomorrow."
   end
+
+  defp given_out(:sign_in),
+    do:
+      "Today's free fixes are all given out. Sign in to fix it for #{@fee} USDC with Patchbay Credits."
+
+  defp given_out(:pay), do: "Today's free fixes are all given out. " <> paid_with_credits()
+  defp given_out(:closed), do: "Today's free fixes are all given out. Come back tomorrow."
+
+  defp paid_with_credits,
+    do: "This one is #{@fee} USDC, paid with Patchbay Credits from the wallet you signed in with."
 
   defp text(value) when is_binary(value), do: String.trim(value)
   defp text(_other), do: ""

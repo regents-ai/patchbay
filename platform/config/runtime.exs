@@ -170,9 +170,9 @@ if config_env() == :prod do
   # optional; see docs/DEPLOY.md.
   #
   # The spend limits are read the same way, on demand, so a machine picks up
-  # whatever it was started with: PATCHBAY_DAILY_MODEL_CALLS (default 300),
-  # PATCHBAY_ROOM_DAILY_MODEL_CALLS (default 30) and
-  # PATCHBAY_ROOM_COOLDOWN_SECONDS (default 20). Setting any of them to
+  # whatever it was started with: PATCHBAY_DAILY_MODEL_CALLS (default 2000),
+  # PATCHBAY_DAILY_FREE_FIXES (default 1000), PATCHBAY_ROOM_DAILY_MODEL_CALLS
+  # (default 30) and PATCHBAY_ROOM_COOLDOWN_SECONDS (default 20). Setting any of them to
   # something that is not a whole number leaves its default standing, so read
   # the value back with `fly secrets list` after changing one.
 

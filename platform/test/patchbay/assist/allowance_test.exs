@@ -1,9 +1,10 @@
 defmodule Patchbay.Assist.AllowanceTest do
   @moduledoc """
   Free fixes from the page: one a day for each connection, two more a day
-  once signed in, counted from the runs themselves; a free run opens only
-  under the grant that is left; and a run is read back by the browser that
-  asked for it or the person who did, and by nobody else.
+  once signed in, and none once the site has given its day's worth, counted
+  from the runs themselves; a free run opens only under the grant that is
+  left; and a run is read back by the browser that asked for it or the
+  person who did, and by nobody else.
   """
 
   use Patchbay.DataCase, async: false
@@ -24,8 +25,8 @@ defmodule Patchbay.Assist.AllowanceTest do
     key = key()
     person = person()
 
-    assert Allowance.remaining(key, nil) == %{free: 1, sign_in_adds: 2}
-    assert Allowance.remaining(key, person) == %{free: 3, sign_in_adds: 0}
+    assert Allowance.remaining(key, nil) == %{free: 1, sign_in_adds: 2, given_out: false}
+    assert Allowance.remaining(key, person) == %{free: 3, sign_in_adds: 0, given_out: false}
     assert Allowance.grant(key, nil) == {:ok, :visitor}
 
     # The connection's own fix goes first, whoever is signed in.
@@ -39,9 +40,9 @@ defmodule Patchbay.Assist.AllowanceTest do
     assert first.deposit_status == :no_fee
     close(first)
 
-    assert Allowance.remaining(key, nil) == %{free: 0, sign_in_adds: 2}
+    assert Allowance.remaining(key, nil) == %{free: 0, sign_in_adds: 2, given_out: false}
     assert Allowance.grant(key, nil) == :none
-    assert Allowance.remaining(key, person) == %{free: 2, sign_in_adds: 0}
+    assert Allowance.remaining(key, person) == %{free: 2, sign_in_adds: 0, given_out: false}
     assert Allowance.grant(key, person) == {:ok, :member}
 
     # Then the person's own two, once the connection's is used.
@@ -50,7 +51,7 @@ defmodule Patchbay.Assist.AllowanceTest do
     {:ok, third} = Assist.request_free_run(@request, :member, key, browser(), person)
     close(third)
 
-    assert Allowance.remaining(key, person) == %{free: 0, sign_in_adds: 0}
+    assert Allowance.remaining(key, person) == %{free: 0, sign_in_adds: 0, given_out: false}
     assert Allowance.grant(key, person) == :none
 
     # Another connection still has its own.
@@ -79,6 +80,37 @@ defmodule Patchbay.Assist.AllowanceTest do
     # A paid grant is not a free run's to claim.
     assert {:error, %Ash.Error.Invalid{}} =
              Assist.request_free_run(@request, :paid, key(), browser(), nil)
+  end
+
+  test "once the site has given its free fixes for the day, nobody gets one" do
+    old = Application.get_env(:patchbay, :daily_free_fixes)
+    Application.put_env(:patchbay, :daily_free_fixes, 2)
+    on_exit(fn -> restore(:daily_free_fixes, old) end)
+
+    person = person()
+    {:ok, first} = Assist.request_free_run(@request, :visitor, key(), browser(), nil)
+    close(first)
+
+    # One left for the site: a new connection still gets it.
+    key = key()
+    assert Allowance.grant(key, nil) == {:ok, :visitor}
+    {:ok, second} = Assist.request_free_run(@request, :visitor, key, browser(), nil)
+    close(second)
+
+    # Given out: a new connection and a signed-in person get none, and the
+    # page is not told that signing in adds any.
+    fresh = key()
+    assert Allowance.grant(fresh, nil) == :given_out
+    assert Allowance.grant(fresh, person) == :given_out
+    assert Allowance.remaining(fresh, nil) == %{free: 0, sign_in_adds: 0, given_out: true}
+    assert Allowance.remaining(fresh, person) == %{free: 0, sign_in_adds: 0, given_out: true}
+
+    assert {:error, %Ash.Error.Forbidden{}} =
+             Assist.request_free_run(@request, :visitor, fresh, browser(), nil)
+
+    # The site's number is read on every ask: raised, there is one to give.
+    Application.put_env(:patchbay, :daily_free_fixes, 3)
+    assert Allowance.grant(fresh, nil) == {:ok, :visitor}
   end
 
   test "one open run per browser is the database's rule" do
@@ -127,6 +159,9 @@ defmodule Patchbay.Assist.AllowanceTest do
     {:ok, _done} =
       Assist.finish_run(running, %{status: :finished, outcome: :not_possible}, authorize?: false)
   end
+
+  defp restore(setting, nil), do: Application.delete_env(:patchbay, setting)
+  defp restore(setting, value), do: Application.put_env(:patchbay, setting, value)
 
   defp key, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
   defp browser, do: Ash.UUID.generate()

@@ -10,10 +10,10 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   Counting reads durable evidence, never a counter held in memory: invocations
   that recorded live candidate provenance, repair proposals that recorded a
-  live plan model, and paid assists Patchbay started working on. Two rows can
-  share one paid call, because a candidate served from the cache repeats the
-  generation key of the call that produced it, so candidate calls are counted
-  as distinct generation keys rather than as rows. An assist counts once
+  live plan model, and assists, free or paid, Patchbay started working on.
+  Two rows can share one paid call, because a candidate served from the cache
+  repeats the generation key of the call that produced it, so candidate calls
+  are counted as distinct generation keys rather than as rows. An assist counts once
   against the deployment's ceiling when it starts; its own limits bound the
   calls it makes after that.
   """

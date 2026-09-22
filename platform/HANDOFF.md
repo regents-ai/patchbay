@@ -334,7 +334,7 @@ work loads `.env.local`; production values are Fly secrets.
 | `OPENAI_API_KEY` | The room's repair loop |
 | `OPENROUTER_API_KEY` | Jev's readings, and the drafting of a paid assist's tool arguments |
 | `ASSIST_WALLET_ADDRESS`, `STAKING_CONTRACT_ADDRESS` | Paid assists: the operator wallet the fee is paid to, and the REGENT staking contract it is forwarded to |
-| `PATCHBAY_ROOM_COOLDOWN_SECONDS`, `PATCHBAY_ROOM_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_MODEL_CALLS`, `PATCHBAY_AGENT_REPAIRS`, `PATCHBAY_DEMO_FALLBACK` | Room limits and demo behaviour, all optional |
+| `PATCHBAY_ROOM_COOLDOWN_SECONDS`, `PATCHBAY_ROOM_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_FREE_FIXES`, `PATCHBAY_AGENT_REPAIRS`, `PATCHBAY_DEMO_FALLBACK` | Room limits and demo behaviour, all optional |
 | `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, `PATCHBAY_DB_PASSWORD` | Local database, optional |
 | `DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST` | Production only |
 | `USDC`, `TREASURY`, `OPERATOR`, `ETHERSCAN_API_KEY` | Deploying the contract with Foundry, not needed by the server |

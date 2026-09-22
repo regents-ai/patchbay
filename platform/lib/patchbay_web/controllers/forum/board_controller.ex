@@ -45,7 +45,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   """
   def fix(conn, params) do
     draft = Fix.draft(params["fix"])
-    profile = conn.assigns.current_profile
 
     with :none <- running_for(conn),
          {:ok, request} <- Fix.request(draft),
@@ -60,7 +59,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         render_home(conn, %{}, %{problem: problem, draft: draft})
 
       {:error, failure} ->
-        render_home(conn, %{}, %{problem: Fix.refused(failure, profile), draft: draft})
+        render_home(conn, %{}, %{problem: Fix.refused(failure, conn), draft: draft})
     end
   end
 
