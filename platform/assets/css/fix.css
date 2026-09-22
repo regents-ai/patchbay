@@ -1,0 +1,66 @@
+/* The fix hero at the top of the home page, and the live fix page. */
+.pb-fix {
+  display: grid;
+  grid-template-columns: minmax(16rem, 2fr) minmax(20rem, 3fr);
+  gap: 2rem;
+  align-items: start;
+  margin: 1.25rem 0 1.5rem;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid var(--pb-line);
+  background: var(--pb-surface);
+}
+.pb-fix-lead h1 {
+  margin: 0 0 .6rem;
+  font-family: var(--font-family-title);
+  font-size: clamp(1.5rem, 3vw, 2.15rem);
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -.02em;
+}
+.pb-fix-lead p { margin: 0; color: var(--pb-text-muted); font-size: .9rem; line-height: 1.5; max-width: 34rem; }
+.pb-fix-form { display: grid; gap: .75rem; min-width: 0; }
+.pb-fix-ask { display: flex; gap: .5rem; min-width: 0; }
+.pb-fix-ask input { min-width: 0; flex: 1; min-height: 3rem; padding: .7rem .9rem; border: 1px solid var(--pb-line-strong); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: 1rem; }
+.pb-fix-ask .rg-button { flex: 0 0 auto; white-space: nowrap; }
+.pb-fix-more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem .9rem; }
+.pb-fix-more .rg-field:first-child { grid-column: 1 / -1; }
+.pb-fix-more input, .pb-fix-more select { width: 100%; min-height: 2.5rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
+.pb-fix-more label { display: block; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-fix-more .rg-muted { margin-top: .3rem; font-size: .6875rem; color: var(--pb-text-muted); }
+/* Until the person starts typing, the form is one line; the script folds
+   the rest away and unfolds it on focus. Without the script every field shows. */
+.pb-fix-form[data-pb-collapsed] .pb-fix-more { display: none; }
+.pb-fix-terms { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-fix-status { margin: 0; min-height: 1.2em; font-size: .8125rem; }
+.pb-fix-status:empty { display: none; }
+.pb-workbench-head--discussions { padding-top: .25rem; }
+@media (max-width: 60rem) {
+  .pb-fix { grid-template-columns: 1fr; gap: 1.25rem; padding: 1.25rem; }
+  .pb-fix-ask { flex-direction: column; }
+  .pb-fix-more { grid-template-columns: 1fr; }
+}
+
+/* The live fix page. */
+.pb-fix-page { display: grid; gap: 1.25rem; max-width: 64rem; margin: 0 auto 3rem; }
+.pb-fix-head h1 { margin: .2rem 0 .4rem; font-family: var(--font-family-title); font-weight: 400; font-size: clamp(1.35rem, 2.6vw, 1.9rem); line-height: 1.15; }
+.pb-fix-request { margin: 0; color: var(--pb-text-muted); font-size: .875rem; overflow-wrap: anywhere; }
+.pb-fix-panel { border: 1px solid var(--pb-line); background: var(--pb-ink); color: var(--pb-text-on-ink); }
+.pb-fix-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem 1rem; border-bottom: 1px solid var(--pb-line); }
+.pb-fix-panel-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; }
+.pb-fix-working { font-size: .75rem; color: var(--pb-text-on-ink-muted); }
+.pb-fix-working::before { content: "●"; margin-right: .4rem; color: var(--pb-accent); animation: pb-fix-pulse 1.2s ease-in-out infinite; }
+@keyframes pb-fix-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+.pb-fix-log { padding: .75rem 1rem 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); }
+.pb-fix-line { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pb-fix-at { color: var(--pb-text-on-ink-muted); }
+.pb-fix-line--head { color: var(--pb-text-on-ink-muted); }
+.pb-fix-line--note { color: var(--pb-text-on-ink-muted); font-style: italic; }
+.pb-fix-line--call { color: var(--pb-accent); }
+.pb-fix-line--jev { color: var(--pb-human-edge); }
+.pb-fix-line--done { color: var(--pb-good); font-weight: var(--font-weight-semibold); }
+.pb-fix-line--wait, .pb-fix-line--fail { color: var(--pb-bad); }
+.pb-fix-answer { border: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-fix-answer-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem 1rem; border-bottom: 1px solid var(--pb-line); }
+.pb-fix-answer-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1rem; }
+.pb-fix-answer-text { margin: 0; padding: 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.pb-fix-again { margin: 0; padding: .6rem 1rem .9rem; font-size: .8125rem; color: var(--pb-text-muted); }

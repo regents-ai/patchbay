@@ -2,6 +2,7 @@
 @import "../vendor/regent_ui/primitives.css";
 @import "./workbench.css";
 @import "./feed.css";
+@import "./fix.css";
 @import "./hello_stream.css";
 @import "./changelog.css";
 @import "./buttons.css";

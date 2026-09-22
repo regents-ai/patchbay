@@ -1,6 +1,6 @@
 defmodule Patchbay.Payments.USDC do
   @moduledoc """
-  The one currency Patchbay Rewards pays in, and the arithmetic for it.
+  The one currency Patchbay Credits pays in, and the arithmetic for it.
 
   USDC has six decimal places, so every amount is carried as a whole number of
   its smallest unit — a tip of 2.00 is the integer 2_000_000 from the moment it

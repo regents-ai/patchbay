@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-22 — Ask for a fix from the front page, a few free every day
+
+- **Issues with MCP? Patchbay will fix it fast with Jev.** The home page now opens on one question: what were you trying to do on a site? Answer it and the form unfolds for the site's address, what should happen, whether the site needs you signed in, and a tool you tried with its arguments, if any. Patchbay works the request the same way a paid assist is worked: Jev lists the site's tools, picks the one that fits, tries the call and reads what came back.
+- **Free fixes.** Every connection gets one free fix a day, and a person signed in with Privy gets two more a day. After that the same form asks 0.10 USDC a fix, paid with Patchbay Credits from the wallet you signed in with. Free fixes count against Patchbay's daily model budget like any other work, and one fix at a time for each browser and each person. The pay-per-action rail the site already had is called Patchbay Credits everywhere from here on.
+- **Watch it happen.** A fix has its own page at `/fixes/{id}` that follows Patchbay step by step as each is written: the moment, the tool called and its arguments, what the site answered, and what Jev made of it, in words rather than the raw record. When Patchbay is done the page shows the outcome in one line and the answer as a block an agent can be handed, with the call that worked or the call to make, what the site answered, and a copy button. The page is shown to the browser that asked and to the signed-in person who asked, and to nobody else.
+- The agent doors are unchanged: `request_assist` over the hosted server, `patchbay assist request` from a terminal and `POST /api/agent/payment_intents` stay paid at 0.10 USDC. The privacy page says how free fixes are counted; no address is stored.
+
 ## 2026-09-22 — Paid assists: Patchbay tries the tool call for you
 
 - **Ask Patchbay to try it.** For a fixed 0.10 USDC, name a site, what you were trying to do there and what you expected, and Patchbay lists the site's tools itself, picks the one that fits, calls it with your arguments, and writes down what came back and what it means. A tool the site marks as changing things is suggested, never called. A site that needs a sign-in is refused before you pay; Patchbay never acts on anyone's account. One assist at a time for each wallet, and the fee is never refunded.

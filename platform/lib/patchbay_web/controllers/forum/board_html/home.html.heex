@@ -1,7 +1,106 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
-  <header class="pb-workbench-head">
+  <section class="pb-fix" id="pb-fix" aria-labelledby="pb-fix-title">
+    <div class="pb-fix-lead">
+      <h1 id="pb-fix-title">Issues with MCP? Patchbay will fix it fast with Jev</h1>
+      <p>
+        Tell Patchbay what you were trying to do on a site. Jev finds the site's tools, picks the
+        right one, tries the call and shows you what worked, step by step.
+      </p>
+    </div>
+    <form
+      id="pb-fix-form"
+      class="pb-fix-form"
+      method="post"
+      action={~p"/fixes"}
+      data-pb-fix-mode={@fix.mode}
+      data-pb-fix-fee={@fix.fee}
+    >
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <p :if={@fix.problem} class="pb-reply-form-problem" role="alert">{@fix.problem.said}</p>
+      <div class="pb-fix-ask">
+        <label class="sr-only" for="pb-fix-goal">What were you trying to do?</label>
+        <input
+          id="pb-fix-goal"
+          name="fix[goal]"
+          type="text"
+          required
+          maxlength="1000"
+          value={@fix.draft["goal"]}
+          placeholder="What were you trying to do? e.g. Book a table for two on Friday at 9"
+          autocomplete="off"
+        />
+        <Regent.Primitives.button
+          variant="primary"
+          type="submit"
+          disabled={@fix.mode == :closed}
+        >
+          {PatchbayWeb.Forum.Fix.button(@fix.mode)}
+        </Regent.Primitives.button>
+      </div>
+      <div class="pb-fix-more">
+        <Regent.Primitives.field id="pb-fix-site" label="The site">
+          <input
+            id="pb-fix-site"
+            name="fix[site_url]"
+            type="url"
+            required
+            maxlength="2048"
+            value={@fix.draft["site_url"]}
+            placeholder="https://example.com/app"
+          />
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-expected" label="What should happen">
+          <input
+            id="pb-fix-expected"
+            name="fix[expected_result]"
+            type="text"
+            required
+            maxlength="1000"
+            value={@fix.draft["expected_result"]}
+            placeholder="A confirmation with a booking reference"
+          />
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-sign-in" label="Does the site need you signed in?">
+          <select id="pb-fix-sign-in" name="fix[sign_in]">
+            <option value="unknown" selected={@fix.draft["sign_in"] in ["", "unknown"]}>
+              Not sure
+            </option>
+            <option value="none" selected={@fix.draft["sign_in"] == "none"}>No</option>
+            <option value="required" selected={@fix.draft["sign_in"] == "required"}>Yes</option>
+          </select>
+          <:hint>
+            Patchbay never acts on anyone's account, so a site that needs you signed in is out.
+          </:hint>
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-tool" label="A tool you tried, if any">
+          <input
+            id="pb-fix-tool"
+            name="fix[tool]"
+            type="text"
+            maxlength="128"
+            value={@fix.draft["tool"]}
+            placeholder="reserve_table"
+          />
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-arguments" label="Its arguments, as JSON">
+          <input
+            id="pb-fix-arguments"
+            name="fix[arguments]"
+            type="text"
+            maxlength="8192"
+            value={@fix.draft["arguments"]}
+            placeholder={~s({"party": 2, "time": "09:00"})}
+          />
+        </Regent.Primitives.field>
+      </div>
+      <p class="pb-fix-terms">{PatchbayWeb.Forum.Fix.terms(@fix)}</p>
+      <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <header class="pb-workbench-head pb-workbench-head--discussions">
     <div>
-      <h1>Discussions</h1>
+      <h2>Discussions</h2>
       <p>Questions, answers and working code for WebMCP tools.</p>
     </div>
     <form class="pb-workbench-search" method="get" action={~p"/"} role="search">

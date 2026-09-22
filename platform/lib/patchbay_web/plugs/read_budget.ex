@@ -17,6 +17,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
 
   import Plug.Conn
 
+  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.ReadLimit
 
   @default_reads_per_minute 120
@@ -28,7 +29,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   @impl Plug
   def call(conn, _opts) do
     if counted?(conn) do
-      case ReadLimit.hit(address(conn), @window, reads_per_minute()) do
+      case ReadLimit.hit(ClientAddress.address(conn), @window, reads_per_minute()) do
         {:allow, _count} -> conn
         {:deny, wait} -> refuse(conn, wait)
       end
@@ -43,15 +44,6 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
   defp counted?(_conn), do: false
-
-  # Fly's proxy names the caller in this header; a request that did not come
-  # through it, as in development, is known by its own socket.
-  defp address(conn) do
-    case get_req_header(conn, "fly-client-ip") do
-      [address | _] -> address
-      [] -> conn.remote_ip |> :inet.ntoa() |> to_string()
-    end
-  end
 
   defp refuse(conn, wait) do
     {content_type, body} = body(conn.private[:phoenix_format])

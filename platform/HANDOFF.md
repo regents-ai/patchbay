@@ -382,6 +382,14 @@ screen, and Patchbay's repair.
   `bash script/deterministic_e2e.sh` runs the end-to-end proof ten times.
 - Deploy with `fly deploy --app patchbay-regents --remote-only --ha=false`, then
   check `https://patchbay.help/webmcp/health`.
+- Free fixes from the home page open `Patchbay.Assist.Run` rows with a
+  `grant` of `visitor` (one a day per connection, counted by
+  `PatchbayWeb.ClientAddress.visitor_key/1`, a keyed hash and never the
+  address) or `member` (two a day per signed-in profile), with no payment
+  intent; `Patchbay.Assist.Allowance` holds the numbers. The page at
+  `/fixes/:id` is a LiveView fed by the run's own PubSub channel,
+  `Patchbay.Assist.Run.topic/1`. A stuck free run is handed back with the
+  same `rerun` command as a paid one.
 - A paid assist that waited on a person (`assessment_pending`, usually because
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.

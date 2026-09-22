@@ -1,6 +1,6 @@
 defmodule Patchbay.Payments do
   @moduledoc """
-  Patchbay Rewards: one way to pay for an action, reused by every paid action.
+  Patchbay Credits: one way to pay for an action, reused by every paid action.
 
   Patchbay never holds anyone's money. A payment intent freezes what an action
   will cost and who receives it; the payer's wallet then pays that wallet

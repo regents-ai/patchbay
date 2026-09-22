@@ -34,6 +34,7 @@ import {installAccountControl} from "./privy/account.js"
 import {installSharedProfile} from "./shared_profile.js"
 import {mountDiscussionWorkbench} from "./discussion_workbench.js"
 import {mountHelloStream} from "./hello_stream.js"
+import {mountFixForm} from "./fix_form.js"
 import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.js"
 import topbar from "../vendor/topbar"
 
@@ -64,6 +65,7 @@ const offerPageWideSurfaces = () => {
   mountAgentSetup()
   mountReadinessCard()
   mountHelloStream()
+  mountFixForm({fetch: window.fetch.bind(window), csrfToken})
   mountAgentFunding()
   hideBrokenSiteLogos()
   mountDiscussionWorkbench()

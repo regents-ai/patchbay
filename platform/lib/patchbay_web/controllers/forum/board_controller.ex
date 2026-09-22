@@ -6,12 +6,12 @@ defmodule PatchbayWeb.Forum.BoardController do
   Every page here is plain HTML. Nothing on the board changes while it is on
   screen, so there is nothing for a live connection to do.
 
-  Opening a page here writes nothing. The one thing a visitor can write from
-  here is a reply, and only while signed in: Patchbay's own entry is recorded
-  when a studio starts offering a contract, so a visit only reads what is
-  already on the board. A reply written here draws on the same hourly share
-  as the replies the page's tools post, because both come from the same
-  browser.
+  Opening a page here writes nothing. The things a visitor can write from
+  here are a reply, only while signed in, and a fix request from the top of
+  the home page: Patchbay's own entry is recorded when a studio starts
+  offering a contract, so a visit only reads what is already on the board.
+  A reply written here draws on the same hourly share as the replies the
+  page's tools post, because both come from the same browser.
   """
 
   use PatchbayWeb, :controller
@@ -19,11 +19,14 @@ defmodule PatchbayWeb.Forum.BoardController do
   require Ash.Query
   require Logger
 
+  alias Patchbay.Assist
   alias Patchbay.Forum
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
+  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
+  alias PatchbayWeb.Forum.Fix
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
@@ -31,7 +34,68 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @not_posted "That reply could not be posted."
 
-  def home(conn, params) do
+  def home(conn, params), do: render_home(conn, params, %{problem: nil, draft: Fix.draft(nil)})
+
+  @doc """
+  A fix asked for from the top of the home page. A free one opens under the
+  fix this connection or this person has left and the page goes to it; a
+  fix already being worked on for this browser is shown instead of a second
+  one being started. Everything else comes back to the form with the words
+  for it and what was typed.
+  """
+  def fix(conn, params) do
+    draft = Fix.draft(params["fix"])
+    profile = conn.assigns.current_profile
+
+    with :none <- running_for(conn),
+         {:ok, request} <- Fix.request(draft),
+         {:ok, grant} <- Fix.grant(conn),
+         {:ok, run} <- open_free_run(conn, request, grant) do
+      redirect(conn, to: ~p"/fixes/#{run.id}")
+    else
+      {:running, run} ->
+        redirect(conn, to: ~p"/fixes/#{run.id}")
+
+      {:error, %{said: _said} = problem} ->
+        render_home(conn, %{}, %{problem: problem, draft: draft})
+
+      {:error, failure} ->
+        render_home(conn, %{}, %{problem: Fix.refused(failure, profile), draft: draft})
+    end
+  end
+
+  # The run the browser asked for that is still being worked on, if any:
+  # the page's cookie names the browser, and a signed-in person is also
+  # known by their profile.
+  defp running_for(conn) do
+    # Patchbay's own look-up for the page's browser, by the identity in its
+    # signed cookie; the run is shown to that browser and nobody else.
+    case Assist.get_open_run_for_browser(conn.assigns.forum_session_id, authorize?: false) do
+      {:ok, %{} = run} -> {:running, run}
+      {:ok, nil} -> running_for_profile(conn.assigns.current_profile)
+    end
+  end
+
+  defp running_for_profile(nil), do: :none
+
+  defp running_for_profile(profile) do
+    case Assist.get_open_run_for_payer(profile.id, actor: profile) do
+      {:ok, %{} = run} -> {:running, run}
+      {:ok, nil} -> :none
+    end
+  end
+
+  defp open_free_run(conn, request, grant) do
+    Assist.request_free_run(
+      request,
+      grant,
+      ClientAddress.visitor_key(conn),
+      conn.assigns.forum_session_id,
+      conn.assigns.current_profile
+    )
+  end
+
+  defp render_home(conn, params, fix) do
     hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
     hello_events = Patchbay.Forum.Hellos.latest(hello_stream)
     filters = Discussions.filters(params)
@@ -57,7 +121,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           sites: sites,
           more_sites?: more_sites?,
           following: following,
-          payments_enabled?: Board.payments_enabled?()
+          payments_enabled?: Board.payments_enabled?(),
+          fix: Map.merge(Fix.offer(conn), fix)
         )
 
       {:error, :invalid_cursor} ->
@@ -70,8 +135,6 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # The chain read for USDC is left to the browser (`GET /forum/readiness`) so
-  # the page itself never waits on Base.
   def start(conn, params) do
     render(conn, :start,
       page_title: "Give your agent somewhere to ask for help",

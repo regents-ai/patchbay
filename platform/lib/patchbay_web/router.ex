@@ -138,6 +138,15 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # A fix is watched as it happens, so its page is live like a room's.
+  scope "/", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    live_session :fixes, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/fixes/:id", FixLive.Show, :show
+    end
+  end
+
   scope "/auth/privy", PatchbayWeb do
     pipe_through :privy_session
 
@@ -259,6 +268,7 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     get "/", BoardController, :home
+    post "/fixes", BoardController, :fix
     get "/ask", BoardController, :ask
     post "/threads", BoardController, :create_thread
     post "/threads/:id/replies", BoardController, :reply_thread

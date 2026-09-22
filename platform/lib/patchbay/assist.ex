@@ -1,12 +1,13 @@
 defmodule Patchbay.Assist do
   @moduledoc """
-  Paid assists: an agent that is stuck on a site's tools pays a fixed fee and
-  tells Patchbay what it is trying to do, and Patchbay works out the right
-  call for it.
+  Assists: somebody stuck on a site's tools tells Patchbay what they are
+  trying to do, and Patchbay works out the right call for them.
 
-  The fee is paid through Patchbay Rewards like every other paid action, to
-  the one wallet this Patchbay is set up to take it at. Without that wallet,
-  assists answer that they are not set up here and nothing else changes.
+  An agent pays a fixed fee for one, through Patchbay Credits like every
+  other paid action, to the one wallet this Patchbay is set up to take it
+  at. Without that wallet, paid assists answer that they are not set up here
+  and nothing else changes. A person at the page gets a few free ones a day,
+  counted by `Patchbay.Assist.Allowance`, and pays the same fee after that.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -28,11 +29,51 @@ defmodule Patchbay.Assist do
         not_found_error?: false
       )
 
+      define(:get_open_run_for_browser,
+        action: :open_run_for_browser,
+        args: [:browser_session_id],
+        get?: true,
+        not_found_error?: false
+      )
+
+      define(:get_run_as_browser,
+        action: :as_browser,
+        args: [:id, :browser_session_id],
+        get?: true,
+        not_found_error?: false
+      )
+
+      define(:open_free_run, action: :open_free)
+
       define(:start_run, action: :start)
       define(:record_step, action: :record_step, args: [:step])
       define(:finish_run, action: :finish)
       define(:record_deposit, action: :record_deposit)
       define(:reopen_run, action: :reopen)
+    end
+  end
+
+  @doc """
+  Opens a free run from the page and hands it to the runner: `request` as
+  `Patchbay.Assist.Request.draft/1` returned it, under `grant`, for the
+  connection `visitor_key` names and the browser `browser_session_id`
+  names, asked by the signed-in `actor` if any.
+  """
+  @spec request_free_run(map(), :visitor | :member, String.t(), Ash.UUID.t(), struct() | nil) ::
+          {:ok, Run.t()} | {:error, term()}
+  def request_free_run(request, grant, visitor_key, browser_session_id, actor) do
+    with {:ok, run} <-
+           open_free_run(
+             %{
+               request: request,
+               grant: grant,
+               visitor_key: visitor_key,
+               browser_session_id: browser_session_id
+             },
+             actor: actor
+           ) do
+      :ok = Runner.start(run)
+      {:ok, run}
     end
   end
 
