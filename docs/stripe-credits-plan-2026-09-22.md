@@ -7,7 +7,9 @@ payment history, card money stays in Stripe payouts, USDC fee forwarding to
 staking stays as it is, and on this plan's first draft: the balance pays for
 fixes and priority reports ("2. b"), agents may spend it too ("3. b"),
 bundles start at $2 ("4. start at $2 for stripe"), and an existing Regents
-Labs Stripe account is used ("5. b"). Two decisions remain, at the end.
+Labs Stripe account is used ("5. b"). On the second draft: a card-paid
+report's bounty stays in Patchbay Credits ("3. b") and the Stripe account is
+the Regents Labs one under sean@regents.sh ("4. sean@regents.sh").
 
 ## What is there today
 
@@ -62,8 +64,8 @@ The sizes are a fixed list on the server. The page never sends an amount.
 
 **Ledger (new Ash resource `Patchbay.Payments.CreditLine`, table
 `credit_lines`).** One row per change to a balance, never edited:
-`profile_id`, `kind` (`card_purchase | spend | card_reversal`, plus the
-bounty kinds if decision 1 is b), `amount_atomic` (signed, 6 decimals like
+`profile_id`, `kind` (`card_purchase | spend | card_reversal | bounty_award |
+bounty_fee | bounty_return`), `report_id` (bounty lines only), `amount_atomic` (signed, 6 decimals like
 USDC), `stripe_checkout_session_id` (unique, card purchases only),
 `payment_intent_id` (unique, spends only), `inserted_at`. The balance is the
 sum of a profile's lines, read from the rows. Nothing is cached in memory.
@@ -90,8 +92,16 @@ staking for it; its money is in Stripe.
 
 **Spending on a priority report.** Same `settle_with: :credits` on the
 `special_post` intent: the spend line and the settled intent commit
-together, then the report is published from its frozen draft as today. What
-happens to the bounty depends on decision 1.
+together, then the report is published from its frozen draft as today. No
+USDC moves and the escrow contract is not used: the spend line is the held
+bounty. The report's bounty follows the escrow's rules on the ledger instead.
+Accepting an answer writes `bounty_award` (90%) to the answer author's
+profile and `bounty_fee` (10%) as Patchbay's; after 30 days without an
+accepted answer the asker may take it back as `bounty_return` (90%) plus
+`bounty_fee` (10%), the same split the contract uses. Each is written once
+per report under a per-report lock. An author who wants USDC is paid in USDC
+on reports the asker paid in USDC. This closes the stolen-card cash-out: card
+money can never leave Patchbay as USDC.
 
 **Agents spending the balance.** An agent door (`post_priority_report`,
 `request_assist`, `POST /api/agent/payment_intents`) takes
@@ -147,28 +157,14 @@ be sent to anyone else, and do not expire.
 
 ## Founder decisions
 
-1. **Where the bounty of a report paid from a card balance goes.** A card
-   balance paying a priority report opens a way to turn a card into USDC:
-   buy credits with a stolen card, post a report, answer it from a second
-   account, accept, and the USDC is out long before the chargeback lands.
-   a) As for USDC reports: Patchbay's operator wallet sends the USDC to the
-   escrow and records it, and the accepted author is paid in USDC. Needs a
-   USDC float in the operator wallet that you top up by hand, since card
-   money arrives in Stripe, and is open to the stolen-card cash-out above.
-   b) The bounty stays in Patchbay Credits: it is held on the ledger, the
-   accepted author gets 90% as balance and the treasury 10%, and the asker
-   gets it back as balance after 30 days, the same rules as the escrow. No
-   USDC moves, nothing can be cashed out, and no float is needed.
-   c) Reports paid from a card balance, with bounties capped at $5 each and
-   $20 per person a week, paid in USDC as in a.
-   Recommendation: b. It keeps your answer (the balance pays for reports)
-   and removes the cash-out path. An answer's author who wants USDC can still
-   be paid in USDC on reports the asker paid in USDC.
-2. **The Stripe account.** Which Regents Labs Stripe account should
-   Patchbay use (its name, or the email it is under)? Once the webhook
-   address exists, you create the secret key and webhook in Stripe's
-   dashboard and add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to
-   `patchbay-regents` yourself.
-   Recommendation: a restricted key limited to Checkout Sessions and charges,
-   made for Patchbay alone, so it can be turned off without touching the
-   other Regents sites.
+All taken. What is left before building:
+
+1. **Go-ahead to build.** Nothing is built yet; this is about four to five
+   days of money code, with review.
+2. **Keys, by the founder.** In the Regents Labs Stripe account under
+   sean@regents.sh: a restricted key for Patchbay alone (Checkout Sessions
+   and charges), and a webhook to `https://patchbay.help/webhooks/stripe` for
+   `checkout.session.completed`, `charge.refunded` and
+   `charge.dispute.created`; then `STRIPE_SECRET_KEY` and
+   `STRIPE_WEBHOOK_SECRET` on `patchbay-regents`. Card bundles stay hidden
+   until both are set.
