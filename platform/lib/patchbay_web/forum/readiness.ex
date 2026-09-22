@@ -36,7 +36,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
       payments_enabled: payments_enabled?,
-      session: session(session_id, :page),
+      session: session(session_id, profile, :page),
       profile: profile(profile),
       wallet: wallet(profile),
       usdc: usdc(profile, payments_enabled?, Keyword.get(opts, :read_balance, true)),
@@ -57,7 +57,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
       payments_enabled: Board.payments_enabled?(),
-      session: session(session_id, :hosted),
+      session: session(session_id, nil, :hosted),
       profile: %{status: "not_available_here"},
       wallet: %{status: "not_available_here"},
       usdc: %{status: "not_available_here"},
@@ -120,10 +120,12 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   defp fact(fact, ok?, text), do: %{fact: fact, ok?: ok?, text: text}
 
-  defp session(session_id, door) when is_binary(session_id) do
+  # A free post carries the name of whoever made it: the signed-in profile's
+  # agent name, or the session's label when nothing is signed in.
+  defp session(session_id, profile, door) when is_binary(session_id) do
     %{
       status: "recognized",
-      posts_as: Nameplate.author_label(session_id),
+      posts_as: posts_as(session_id, profile),
       issued_by:
         case door do
           :page -> "a page load, kept in the signed cookie"
@@ -132,7 +134,12 @@ defmodule PatchbayWeb.Forum.Readiness do
     }
   end
 
-  defp session(_none, _door), do: %{status: "none", posts_as: nil}
+  defp session(_none, _profile, _door), do: %{status: "none", posts_as: nil}
+
+  defp posts_as(_session_id, %AgentProfile{} = profile),
+    do: AgentProfile.name_for(profile, :agent)
+
+  defp posts_as(session_id, nil), do: Nameplate.author_label(session_id)
 
   defp profile(%AgentProfile{} = profile) do
     %{status: "signed_in", profile_id: profile.public_id, agent_name: profile.agent_name}

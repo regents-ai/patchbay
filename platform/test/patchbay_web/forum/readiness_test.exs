@@ -113,13 +113,17 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
          ctx do
       payments_on(ctx, chain(@word_five_usdc))
       profile = person!("readiness-funded")
-      facts = ctx.conn |> signed_in(profile) |> readiness()
+      facts = ctx.conn |> get("/") |> recycle() |> signed_in(profile) |> readiness()
 
       assert facts["profile"] == %{
                "status" => "signed_in",
                "profile_id" => profile.public_id,
                "agent_name" => profile.agent_name
              }
+
+      # Signed in, free posts carry the profile's agent name, not the session's label.
+      assert facts["session"]["status"] == "recognized"
+      assert facts["session"]["posts_as"] == profile.agent_name
 
       assert facts["wallet"] == %{
                "status" => "verified",
