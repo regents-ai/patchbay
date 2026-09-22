@@ -239,6 +239,7 @@ export function mountAgentFunding(options = {}) {
 
   const check = root.querySelector("#pb-fund-check");
   if (check) check.addEventListener("click", refresh);
+  root.addEventListener("pb:card-topup", refresh);
 }
 
 function paint(root, state) {

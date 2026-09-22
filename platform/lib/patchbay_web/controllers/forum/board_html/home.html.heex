@@ -94,6 +94,12 @@
         </Regent.Primitives.field>
       </div>
       <p class="pb-fix-terms">{PatchbayWeb.Forum.Fix.terms(@fix)}</p>
+      <p :if={@fix.mode == :pay} class="pb-fix-topup">
+        No USDC in that wallet?
+        <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">
+          Add USDC with a card
+        </button>
+      </p>
       <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
     </form>
   </section>

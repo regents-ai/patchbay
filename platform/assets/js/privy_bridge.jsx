@@ -1,8 +1,9 @@
 import {createElement, useEffect} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useFiatOnramp, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
+import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.js"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
 // page fetches only when somebody asks to sign in. Everything it does is driven
@@ -52,6 +53,7 @@ function Bridge() {
   const privy = usePrivy()
   const {identityToken} = useIdentityToken()
   const {wallets, ready: walletsReady} = useWallets()
+  const {fund} = useFiatOnramp()
   const {login} = useLogin({
     onComplete: () => finishLogin({ok: true}),
     onError: code => finishLogin({ok: false, code}),
@@ -84,6 +86,7 @@ function Bridge() {
       linkTwitter,
       wallets,
       walletsReady,
+      fund,
     })
   })
 
@@ -267,6 +270,39 @@ export async function signTypedData(appId, typedData) {
     return {ok: true, signature, address: wallet.address}
   } catch (error) {
     return {ok: false, reason: error?.code === REJECTED_BY_USER ? "refused" : "failed"}
+  }
+}
+
+/**
+ * Opens Privy's card top-up for the wallet this browser signed in with: the
+ * person buys USDC on Base by card from one of Privy's card partners, and it
+ * is delivered to that wallet. Patchbay sees no card details and moves no
+ * money; the wallet then pays Patchbay the usual way.
+ *
+ * @param {string} appId
+ * @returns {Promise<{ok: true, status: "submitted" | "confirmed"} | {ok: false, reason: string}>}
+ */
+export async function addFundsByCard(appId) {
+  start(appId)
+
+  let state
+  try {
+    state = await waitFor(one => one.ready, READY_TIMEOUT_MS)
+  } catch {
+    return {ok: false, reason: "unready"}
+  }
+
+  const address = state.authenticated ? state.user?.wallet?.address : null
+  if (!address) return {ok: false, reason: "no_wallet"}
+
+  try {
+    const {status} = await state.fund({
+      source: {assets: ["usd"], defaultAsset: "usd"},
+      destination: {asset: USDC_CONTRACT, chain: NETWORK_CAIP2, address},
+    })
+    return {ok: true, status}
+  } catch {
+    return {ok: false, reason: "unfinished"}
   }
 }
 

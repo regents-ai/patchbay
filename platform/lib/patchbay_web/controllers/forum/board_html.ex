@@ -1242,7 +1242,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         >
           Check again
         </Regent.Primitives.button>
+        <Regent.Primitives.button
+          :if={@payments_enabled}
+          variant="secondary"
+          type="button"
+          class="patchbay-button patchbay-button-quiet"
+          data-pb-card-topup="pb-fund-card-status"
+        >
+          Add USDC with a card
+        </Regent.Primitives.button>
       </div>
+      <p id="pb-fund-card-status" class="pb-fund-card-status" role="status" aria-live="polite"></p>
     </section>
     """
   end

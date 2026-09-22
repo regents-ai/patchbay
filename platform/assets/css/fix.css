@@ -32,6 +32,10 @@
 .pb-fix-form[data-pb-collapsed] .pb-fix-more { display: none; }
 .pb-fix-terms { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-status { margin: 0; min-height: 1.2em; font-size: .8125rem; }
+.pb-fix-topup { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-fix-topup-button { padding: 0; border: 0; background: none; color: var(--pb-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.pb-fix-topup-button:hover { text-decoration-thickness: 2px; }
+.pb-fix-topup-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .pb-fix-status:empty { display: none; }
 .pb-workbench-head--discussions { padding-top: .25rem; }
 @media (max-width: 60rem) {

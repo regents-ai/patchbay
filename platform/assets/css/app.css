@@ -1483,6 +1483,13 @@ a.patchbay-button { text-decoration: none; }
   gap: var(--space-1);
   margin: var(--space-1) 0 0;
 }
+.pb-fund-card-status {
+  margin: var(--space-1) 0 0;
+  font-size: var(--pb-fs-xs);
+}
+.pb-fund-card-status:empty {
+  display: none;
+}
 .pb-fund-card button {
   transition: transform 160ms var(--ease-out), background-color .15s ease, border-color .15s ease, color .15s ease;
 }

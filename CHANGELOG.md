@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-22 — Add USDC with a card
+
+- **Buy USDC by card.** Signed in, a person with no USDC in their wallet can press **Add USDC with a card**: under the fix form once free fixes are used, and in **Fund this agent** on their own profile. Privy's window opens with one of its card partners, the person pays by card, Apple Pay or Google Pay, and the USDC is delivered on Base to the wallet they signed in with. Patchbay never sees card details and holds nothing; the wallet then pays Patchbay with Patchbay Credits as before. The card partner sets its own fee and may ask the person to verify who they are the first time.
+
 ## 2026-09-22 — A priority report's bounty is recorded once its payment lands
 
 - **No more "needs attention" right after paying.** Patchbay now waits for your payment to reach a Base block, usually a second or two, before recording the bounty in escrow. Before, it could ask a moment too early, the escrow refused to record money it did not hold yet, and the report showed the bounty as needing attention although the money was safe in escrow. A report caught that way is recorded again by Patchbay; nothing is paid twice.

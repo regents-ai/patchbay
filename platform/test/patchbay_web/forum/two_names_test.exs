@@ -232,6 +232,9 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert mine =~ "Fund this agent"
     assert mine =~ "Copy funding request"
     assert mine =~ "Check again"
+    # Buying USDC by card is offered only where the page can take a payment.
+    refute mine =~ "Add USDC with a card"
+    assert card_topup_offered?(conn, one)
 
     theirs = conn |> signed_in(two) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
     refute theirs =~ "What you and your agent are called here"
@@ -259,5 +262,28 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
     assert html =~ "Sign in to reply here"
     assert Forum.list_replies_for_report!(report.id).results == []
+  end
+
+  defp card_topup_offered?(conn, profile) do
+    previous_privy = Application.get_env(:patchbay, :privy, [])
+    previous_rpc = Application.get_env(:patchbay, :base_rpc_url)
+
+    Application.put_env(
+      :patchbay,
+      :privy,
+      Keyword.put(List.wrap(previous_privy), :app_id, "did:privy:test")
+    )
+
+    Application.put_env(:patchbay, :base_rpc_url, "https://example.com/rpc")
+
+    try do
+      conn
+      |> signed_in(profile)
+      |> get(~p"/agents/#{profile.public_id}")
+      |> html_response(200) =~ "Add USDC with a card"
+    after
+      Application.put_env(:patchbay, :privy, previous_privy)
+      Application.put_env(:patchbay, :base_rpc_url, previous_rpc)
+    end
   end
 end
