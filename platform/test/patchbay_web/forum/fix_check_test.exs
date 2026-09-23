@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
   The quiet look for WebMCP tools a free fix takes: the form asks as an
   address is typed, and the fix asks again when it is pressed. A free fix is
   kept, not spent, on an address without tools; after two such addresses the
-  WebMCP Site Directory is offered; after more than three the connection
-  waits. An address that cannot be a site, or cannot be reached, is not
+  WebMCP Site Directory is offered; after more than three in an hour the
+  connection waits a full hour. An address that cannot be a site, or cannot be reached, is not
   counted against anyone.
   """
 
@@ -64,7 +64,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     limited = ask.("https://docs.example.com/d") |> json_response(429)
     assert limited["status"] == "limited"
     assert limited["said"] =~ "Too many addresses without WebMCP tools"
-    assert limited["said"] =~ "minutes"
+    assert limited["said"] =~ "Try again in 60 minutes."
 
     # Waiting means waiting, even for an address with tools, and even for the fix itself.
     assert %{"status" => "limited"} = ask.("https://docs.example.com/") |> json_response(429)
