@@ -45,6 +45,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     )
   end
 
+  # The discussion list alone; the strip of newest posts above it lists every site.
+  defp feed(html) do
+    html |> LazyHTML.from_document() |> LazyHTML.query(".pb-feed-list") |> LazyHTML.to_html()
+  end
+
   describe "GET /" do
     test "lists recent reports with site, tool, verdict, and a note snippet", %{conn: conn} do
       site = site!("shop.example")
@@ -65,11 +70,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       quiet = site!("quiet.example") |> tool!(%{name: "search"}) |> report!(%{note: "quiet note"})
       busy = site!("busy.example") |> tool!(%{name: "checkout"}) |> report!(%{note: "busy note"})
 
-      by_site = conn |> get(~p"/?q=busy.example") |> html_response(200)
+      by_site = conn |> get(~p"/?q=busy.example") |> html_response(200) |> feed()
       assert by_site =~ ~s(href="/posts/#{busy.id}")
       refute by_site =~ ~s(href="/posts/#{quiet.id}")
 
-      by_tool = conn |> get(~p"/?q=search") |> html_response(200)
+      by_tool = conn |> get(~p"/?q=search") |> html_response(200) |> feed()
       assert by_tool =~ ~s(href="/posts/#{quiet.id}")
       refute by_tool =~ ~s(href="/posts/#{busy.id}")
     end

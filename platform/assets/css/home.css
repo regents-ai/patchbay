@@ -1,0 +1,142 @@
+/* The front page: the newest posts in a strip, the busiest sites in a
+   gallery, then the fix and the discussions, each with room to breathe. */
+:root { --pb-hard-shadow: var(--pb-text); }
+:root[data-theme="dark"] { --pb-hard-shadow: color-mix(in srgb, var(--pb-text) 35%, transparent); }
+
+.pb-feed-home { padding-top: var(--space-3); }
+
+/* The strip: one thin line the width of the page, newest post first. */
+.pb-newest {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 2.75rem;
+  border-block: 1px solid var(--pb-text);
+}
+.pb-newest-label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: none;
+  margin: 0;
+  padding: 0 var(--space-2) 0 0;
+  border-right: 1px dashed var(--pb-line-strong);
+  color: var(--pb-text);
+  font: 600 .6875rem/1 var(--font-family-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pb-newest-dot {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--brand-accent);
+}
+.pb-newest-list {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
+}
+.pb-newest-list::-webkit-scrollbar { display: none; }
+.pb-newest-list li { display: flex; flex: none; }
+.pb-newest-list li + li { border-left: 1px dashed var(--pb-line-strong); }
+.pb-newest-list a {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: 0 var(--space-2);
+  color: var(--pb-text);
+  font-size: .8125rem;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pb-newest-list a:hover .pb-newest-title { text-decoration: underline; text-underline-offset: 2px; }
+.pb-newest-list a:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
+.pb-newest-site { color: var(--pb-text-muted); font: .6875rem/1 var(--font-family-mono); }
+.pb-newest-title { max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
+.pb-newest-list time { color: var(--pb-text-muted); font-size: .6875rem; }
+.pb-newest-empty { display: flex; align-items: center; margin: 0; padding: 0 var(--space-2); font-size: .8125rem; color: var(--pb-text-muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .pb-newest-dot { animation: pb-newest-pulse 2s ease-in-out infinite; }
+  .pb-newest-list li { animation: pb-newest-in 480ms cubic-bezier(.2, .8, .2, 1) both; }
+}
+@keyframes pb-newest-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes pb-newest-in { from { opacity: 0; transform: translateX(-.75rem); } to { opacity: 1; transform: none; } }
+
+/* The gallery: a large heading, then the busiest sites as cards. */
+.pb-gallery { margin-top: var(--space-6); }
+.pb-gallery-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.pb-gallery-head h1 {
+  grid-column: 1 / -1;
+  max-width: 18ch;
+  margin: 0;
+  font-family: var(--font-family-title);
+  font-size: clamp(2.25rem, 5.2vw, 4.25rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.03em;
+  text-wrap: balance;
+}
+.pb-gallery-head p { max-width: 52ch; margin: 0; color: var(--pb-text-muted); font-size: 1rem; line-height: 1.55; }
+.pb-gallery-all {
+  color: var(--pb-text);
+  font: 600 .75rem/1 var(--font-family-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pb-gallery-all:hover { text-decoration: underline; text-underline-offset: 3px; }
+.pb-gallery-grid { gap: var(--space-3); }
+
+/* The fix: one boxed panel on the same hard shadow. */
+.pb-feed-home .pb-fix {
+  margin: var(--space-7) 0 var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border-color: var(--pb-text);
+  box-shadow: 4px 4px 0 var(--pb-hard-shadow);
+}
+.pb-feed-home .pb-workbench-head--discussions { padding: 0 0 var(--space-2); }
+.pb-feed-home .pb-workbench-head--discussions h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); letter-spacing: -.02em; }
+
+@media (max-width: 899px) {
+  .pb-feed-home { padding-top: var(--space-2); }
+  .pb-gallery { margin-top: var(--space-4); }
+  .pb-gallery-head { grid-template-columns: minmax(0, 1fr); margin-bottom: var(--space-3); }
+  .pb-feed-home .pb-fix { margin: var(--space-5) 0 var(--space-4); padding: var(--space-3); }
+}
+/* On a phone the gallery is one row that swipes sideways, so the fix and
+   the discussions stay near the top. */
+@media (max-width: 599px) {
+  .pb-newest-label { padding-right: var(--space-1); }
+  .pb-newest-title { max-width: 22ch; }
+  .pb-dir-grid.pb-gallery-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 78%;
+    gap: var(--space-2);
+    padding: 0 6px 6px 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+  }
+  .pb-gallery-grid .pb-dir-card { scroll-snap-align: start; }
+}
+@media (forced-colors: active) {
+  .pb-newest-dot { background: CanvasText; }
+}

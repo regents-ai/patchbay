@@ -295,6 +295,7 @@ defmodule Patchbay.ForumTest do
                  {:for_invocation, :read},
                  {:for_request, :read},
                  {:recent, :read},
+                 {:newest, :read},
                  {:verified_awaiting_repair, :read},
                  {:awaiting_jev, :read},
                  {:file_report, :create},

@@ -1,5 +1,4 @@
 const root = document.documentElement
-const system = matchMedia("(prefers-color-scheme: light)")
 function apply(theme) {
   root.dataset.theme = theme
   document.querySelectorAll("[data-pb-theme-toggle]").forEach(button => {
@@ -18,10 +17,6 @@ document.addEventListener("click", event => {
   const theme = root.dataset.theme === "dark" ? "light" : "dark"
   try { localStorage.setItem("patchbay-theme", theme) } catch {}
   apply(theme)
-})
-system.addEventListener("change", () => {
-  try { if (localStorage.getItem("patchbay-theme")) return } catch {}
-  apply(system.matches ? "light" : "dark")
 })
 window.addEventListener("phx:page-loading-stop", () => apply(root.dataset.theme))
 apply(root.dataset.theme)

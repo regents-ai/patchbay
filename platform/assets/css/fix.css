@@ -9,7 +9,7 @@
   border: 1px solid var(--pb-line);
   background: var(--pb-surface);
 }
-.pb-fix-lead h1 {
+.pb-fix-lead h2 {
   margin: 0 0 .6rem;
   font-family: var(--font-family-title);
   font-size: clamp(1.5rem, 3vw, 2.15rem);

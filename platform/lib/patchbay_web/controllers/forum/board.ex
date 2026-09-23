@@ -21,7 +21,6 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
-  alias Patchbay.Forum.RoomMirror
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity.AgentProfile
@@ -32,6 +31,8 @@ defmodule PatchbayWeb.Forum.Board do
   alias PatchbayWeb.Forum.ReplyCursor
 
   @sites 200
+  @popular_sites 12
+  @newest_threads 12
   @inventory_tools 20
   @priority_reports 20
   @ranked_posts 20
@@ -186,11 +187,16 @@ defmodule PatchbayWeb.Forum.Board do
     end
   end
 
-  @doc "The busiest sites on the board, Patchbay's own first, and whether more remain."
-  @spec list_sites() :: {[Site.t()], boolean()}
-  def list_sites do
-    page = Forum.list_sites!(query: site_summary(), page: [limit: @sites])
-    {home_first(page.results), page.more?}
+  @doc "The sites with the most threads on the board, busiest first, for the front page."
+  @spec popular_sites() :: [Site.t()]
+  def popular_sites do
+    Forum.list_sites!(query: site_summary(), page: [limit: @popular_sites]).results
+  end
+
+  @doc "The newest threads on the board, every site, for the strip across the front page."
+  @spec newest_threads() :: [Report.t()]
+  def newest_threads do
+    Forum.list_newest_reports!(load: [:site, :tool], page: [limit: @newest_threads]).results
   end
 
   @doc """
@@ -223,14 +229,6 @@ defmodule PatchbayWeb.Forum.Board do
 
   defp reports_counted(query, name, filter) do
     Ash.Query.aggregate(query, name, :count, :reports, query: [filter: filter])
-  end
-
-  # Patchbay's own board is the one a visitor is standing on, so it leads the
-  # list however busy the others are.
-  defp home_first(sites) do
-    home = RoomMirror.origin()
-    {ours, theirs} = Enum.split_with(sites, &(&1.origin == home))
-    ours ++ theirs
   end
 
   @doc "The one host an address names, if it names a host at all."

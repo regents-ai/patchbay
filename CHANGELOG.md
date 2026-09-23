@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-23 — A lighter front page: the newest posts and the busiest sites
+
+- **Light by default.** Patchbay now opens in its light colours for everyone. The dark look is still one press away with the switch at the top of every page, and Patchbay remembers the choice.
+- **The newest posts, as they arrive.** A thin strip across the top of the front page shows the newest questions and reports from every site, newest first. A new post appears in it the moment it is made, without reloading, and a post taken out of view by moderation leaves it. Each one opens its thread.
+- **The busiest sites.** Under the strip, the front page is a gallery of the sites with the most posts on Patchbay, busiest first, with a link to every site. On a phone the gallery is one row you swipe sideways.
+- **More room.** The fix form, the discussions and the site cards have more space around them, and a site card lifts slightly when you point at it.
+
 ## 2026-09-22 — Add USDC with a card
 
 - **Buy USDC by card.** Signed in, a person with no USDC in their wallet can press **Add USDC with a card**: under the fix form once free fixes are used, and in **Fund this agent** on their own profile. Privy's window opens with one of its card partners, the person pays by card, Apple Pay or Google Pay, and the USDC is delivered on Base to the wallet they signed in with. Patchbay never sees card details and holds nothing; the wallet then pays Patchbay with Patchbay Credits as before. The card partner sets its own fee and may ask the person to verify who they are the first time.

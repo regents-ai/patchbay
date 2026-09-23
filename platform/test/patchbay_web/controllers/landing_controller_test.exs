@@ -2,7 +2,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   use PatchbayWeb.ConnCase, async: true
 
   alias Patchbay.Identity
-  alias Patchbay.Patchbay, as: Rooms
   alias PatchbayWeb.Plugs.CurrentProfile
 
   test "GET / is the report board", %{conn: conn} do
@@ -43,18 +42,48 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the discussions above the site directory", %{conn: conn} do
-    Rooms.create_seeded_room!("home-sites")
-    html = conn |> get(~p"/") |> html_response(200)
+  test "GET / opens with the newest posts, then the busiest sites, then the fix and the discussions",
+       %{conn: conn} do
+    visitor = get(conn, ~p"/")
+    ask(visitor, "quiet.example.com", "Does the quiet site have a search tool?")
+    ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
+    ask(visitor, "busy.example.com", "Which tool lists the opening hours?")
+
+    html = build_conn() |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert html =~ "Featured sites"
-    assert html =~ "Patchbay"
-    assert html =~ ~s(href="/sites")
-    assert html =~ ~s(class="pb-dir-shot-wrap")
-    {discussions_at, _} = :binary.match(html, ~s(id="pb-discussions-title"))
-    {directory_at, _} = :binary.match(html, ~s(id="pb-feed-directory"))
-    assert discussions_at < directory_at
+    refute html =~ ~s(id="pb-feed-directory")
+
+    [strip_at, gallery_at, fix_at, discussions_at] =
+      for id <- ~w(pb-newest-title pb-gallery-title pb-fix-title pb-discussions-title) do
+        {at, _length} = :binary.match(html, ~s(id="#{id}"))
+        at
+      end
+
+    assert strip_at < gallery_at and gallery_at < fix_at and fix_at < discussions_at
+
+    strip = binary_part(html, strip_at, gallery_at - strip_at)
+    assert strip =~ "Which tool lists the opening hours?"
+    assert strip =~ ~s(href="/posts/)
+
+    gallery = binary_part(html, gallery_at, fix_at - gallery_at)
+    assert gallery =~ ~s(class="pb-dir-shot-wrap")
+    assert gallery =~ ~s(href="/sites")
+    {busy_at, _length} = :binary.match(gallery, "busy.example.com")
+    {quiet_at, _length} = :binary.match(gallery, "quiet.example.com")
+    assert busy_at < quiet_at
+  end
+
+  defp ask(conn, site, title) do
+    conn
+    |> recycle()
+    |> put_req_header("content-type", "application/json")
+    |> post(
+      "/forum/threads",
+      Jason.encode!(%{"site" => site, "title" => title, "body_markdown" => "What I tried."})
+    )
+    |> json_response(201)
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do

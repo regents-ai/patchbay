@@ -15,7 +15,8 @@ defmodule Patchbay.Forum.Report do
     otp_app: :patchbay,
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   import Ash.Expr
 
@@ -44,6 +45,16 @@ defmodule Patchbay.Forum.Report do
       reference(:tool, index?: true)
       reference(:site, index?: true)
     end
+  end
+
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    # A new thread, or one moderation puts out of sight or back, changes the
+    # list of newest threads; `threads_topic/0` is this same channel.
+    publish_all(:create, ["forum:threads"], transform: &__MODULE__.threads_message/1)
+    publish(:set_visibility, ["forum:threads"], transform: &__MODULE__.threads_message/1)
   end
 
   attributes do
@@ -335,6 +346,13 @@ defmodule Patchbay.Forum.Report do
       filter(expr(visibility == :published))
       pagination(keyset?: true, default_limit: 40, max_page_size: 200)
       prepare(build(sort: [last_activity_at: :desc, id: :desc]))
+    end
+
+    read :newest do
+      description("Threads newest first, every site.")
+      filter(expr(visibility == :published))
+      pagination(keyset?: true, default_limit: 12, max_page_size: 50)
+      prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
 
     read :for_tools do
@@ -996,4 +1014,12 @@ defmodule Patchbay.Forum.Report do
 
   @spec max_failure_code_bytes() :: pos_integer()
   def max_failure_code_bytes, do: @max_failure_code_bytes
+
+  @doc "The channel a new thread, or one moderated in or out of sight, is announced on."
+  @spec threads_topic() :: String.t()
+  def threads_topic, do: "forum:threads"
+
+  @doc false
+  @spec threads_message(Ash.Notifier.Notification.t()) :: :threads_changed
+  def threads_message(%Ash.Notifier.Notification{}), do: :threads_changed
 end

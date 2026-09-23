@@ -3,6 +3,7 @@
 @import "./workbench.css";
 @import "./feed.css";
 @import "./fix.css";
+@import "./home.css";
 @import "./hello_stream.css";
 @import "./changelog.css";
 @import "./buttons.css";
@@ -1650,15 +1651,17 @@ body:has(#patchbay-home),
   color: var(--pb-text);
   text-decoration: none;
   overflow: hidden;
-  transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
+/* A card lifts onto a hard shadow when it is pointed at or reached. */
 .pb-dir-card:hover,
 .pb-dir-card:focus-visible {
-  border-color: var(--pb-line-strong);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--pb-ink) 8%, transparent);
+  border-color: var(--pb-text);
+  box-shadow: 4px 4px 0 var(--pb-hard-shadow);
+  transform: translate(-2px, -2px);
   outline: none;
 }
-.pb-dir-card:focus-visible { border-color: var(--pb-accent); }
+.pb-dir-card:focus-visible { border-color: var(--pb-accent-deep); }
 .pb-dir-card.is-ours { border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line)); }
 .pb-dir-shot-wrap {
   position: relative;
@@ -1868,6 +1871,8 @@ body:has(#patchbay-home),
 @media (prefers-reduced-motion: reduce) {
   .pb-dir-card,
   .pb-dir-logo { transition: none; }
+  .pb-dir-card:hover,
+  .pb-dir-card:focus-visible,
   .pb-dir-card:hover .pb-dir-logo,
   .pb-dir-card:focus-visible .pb-dir-logo { transform: none; }
 }

@@ -1,15 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" data-brand="patchbay" data-theme="dark">
+<html lang="en" data-brand="patchbay" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#0F0F10" />
+    <meta name="theme-color" content="#F6F4EA" />
     <script nonce={@csp_nonce}>
       try {
         const saved = localStorage.getItem("patchbay-theme")
-        document.documentElement.dataset.theme = ["light", "dark"].includes(saved)
-          ? saved : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+        document.documentElement.dataset.theme = saved === "dark" ? "dark" : "light"
       } catch {}
     </script>
     <title>{@page_title} · Patchbay</title>

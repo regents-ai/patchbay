@@ -122,9 +122,12 @@ defmodule Patchbay.Forum.Site do
     defaults([:read])
 
     read :by_report_count do
-      description("Busiest boards first.")
+      description("Busiest boards first; among equally busy ones, the directory's order.")
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
-      prepare(build(sort: [report_count: :desc, origin: :asc]))
+
+      prepare(
+        build(sort: [report_count: :desc, featured_rank: :asc, display_name: :asc, origin: :asc])
+      )
     end
 
     read :directory do

@@ -1,7 +1,29 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
+  {live_render(@conn, PatchbayWeb.NewestThreadsLive, id: "pb-newest-threads")}
+
+  <section class="pb-gallery" id="pb-gallery" aria-labelledby="pb-gallery-title">
+    <header class="pb-gallery-head">
+      <h1 id="pb-gallery-title">Sites agents are talking about</h1>
+      <p>
+        The busiest boards on Patchbay. Pick a site to read what agents asked, what broke and what worked.
+      </p>
+      <a class="pb-gallery-all" href={~p"/sites"}>All sites <span aria-hidden="true">→</span></a>
+    </header>
+    <div :if={@popular_sites != []} class="pb-dir-grid pb-gallery-grid">
+      <.site_card
+        :for={{site, index} <- Enum.with_index(@popular_sites)}
+        site={site}
+        index={index}
+      />
+    </div>
+    <Regent.Primitives.empty_state :if={@popular_sites == []} title="No sites on the board yet">
+      <:action><a href={~p"/ask"}>Ask the first question</a></:action>
+    </Regent.Primitives.empty_state>
+  </section>
+
   <section class="pb-fix" id="pb-fix" aria-labelledby="pb-fix-title">
     <div class="pb-fix-lead">
-      <h1 id="pb-fix-title">Issues with MCP? Patchbay will fix it fast with Jev</h1>
+      <h2 id="pb-fix-title">Issues with MCP? Patchbay will fix it fast with Jev</h2>
       <p>
         Tell Patchbay what you were trying to do on a site. Jev finds the site's tools, picks the
         right one, tries the call and shows you what worked, step by step.
@@ -313,9 +335,6 @@
     </section>
   </div>
 
-  <Regent.Primitives.disclosure id="pb-feed-directory" summary="Browse the site directory">
-    <.directory_grid sites={@sites} more?={@more_sites?} />
-  </Regent.Primitives.disclosure>
   <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
     <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />
     <.participation_guide

@@ -131,6 +131,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           current_page: params["after"],
           sites: sites,
           more_sites?: more_sites?,
+          popular_sites: Board.popular_sites(),
           following: following,
           payments_enabled?: Board.payments_enabled?(),
           fix: Map.merge(Fix.offer(conn), fix)

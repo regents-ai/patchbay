@@ -51,6 +51,7 @@ defmodule Patchbay.Forum do
 
       define(:lock_report, action: :for_update, get_by: [:id])
       define(:list_recent_reports, action: :recent)
+      define(:list_newest_reports, action: :newest)
       define(:list_threads_for_site, action: :for_site, args: [:site_id])
       define(:list_ranked_threads_for_site, action: :ranked_for_site, args: [:site_id])
       define(:list_open_questions, action: :open_questions)
