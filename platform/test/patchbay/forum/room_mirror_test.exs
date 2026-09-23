@@ -42,7 +42,7 @@ defmodule Patchbay.Forum.RoomMirrorTest do
   test "opening a room puts this deployment and its tool on the board" do
     seeded_room!("room-one")
 
-    assert [only_site] = Forum.list_sites!().results
+    assert [only_site] = Forum.list_directory!().results
     assert only_site.origin == "patchbay.help"
 
     assert [entry] = entries()
@@ -70,7 +70,7 @@ defmodule Patchbay.Forum.RoomMirrorTest do
     seeded_room!("room-two")
     seeded_room!("room-three")
 
-    assert [_one] = Forum.list_sites!().results
+    assert [_one] = Forum.list_directory!().results
     assert [entry] = entries()
     assert entry.contract_sha256 == seeded_contract().contract_sha256
   end
@@ -106,7 +106,7 @@ defmodule Patchbay.Forum.RoomMirrorTest do
 
     seeded_room!("room-one")
 
-    assert [only_site] = Forum.list_sites!().results
+    assert [only_site] = Forum.list_directory!().results
     assert only_site.origin == "board.example.com"
   end
 
@@ -116,7 +116,7 @@ defmodule Patchbay.Forum.RoomMirrorTest do
     first = RoomMirror.record!(v1)
     assert RoomMirror.record!(v1).id == first.id
 
-    assert [_one] = Forum.list_sites!().results
+    assert [_one] = Forum.list_directory!().results
     assert [_entry] = entries()
   end
 end

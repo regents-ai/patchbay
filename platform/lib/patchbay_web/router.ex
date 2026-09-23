@@ -34,6 +34,7 @@ defmodule PatchbayWeb.Router do
 
   scope "/", PatchbayWeb do
     get "/sitemap.xml", SitemapController, :index
+    get "/site-screenshots/:site_id", SiteScreenshotController, :show
   end
 
   pipeline :wallet_author do

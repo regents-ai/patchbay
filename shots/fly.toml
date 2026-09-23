@@ -1,0 +1,25 @@
+# Fly.io configuration for Patchbay's screenshot machine.
+#
+# It has no public address: Patchbay reaches it privately at
+# http://patchbay-shots.flycast. Deploy from this directory with
+# `fly deploy --no-public-ips`; steps are in README.md.
+
+app = "patchbay-shots"
+primary_region = "ewr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = false
+  auto_start_machines = true
+  auto_stop_machines = "stop"
+  # Pictures are needed only now and then, so the machine sleeps between them.
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

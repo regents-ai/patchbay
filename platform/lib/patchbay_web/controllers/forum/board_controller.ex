@@ -23,6 +23,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
+  alias Patchbay.Forum.SiteCheck
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
@@ -374,9 +375,16 @@ defmodule PatchbayWeb.Forum.BoardController do
       end)
 
     case admitted do
-      {:ok, thread} -> {:ok, thread}
-      {:error, {:rate_limited, said}} -> {:error, %{said: said}}
-      {:error, refused} -> {:error, %{said: thread_refusal(refused)}}
+      {:ok, thread} ->
+        # Once the thread is saved, so the check can see its site.
+        SiteCheck.check(thread.site_id)
+        {:ok, thread}
+
+      {:error, {:rate_limited, said}} ->
+        {:error, %{said: said}}
+
+      {:error, refused} ->
+        {:error, %{said: thread_refusal(refused)}}
     end
   end
 

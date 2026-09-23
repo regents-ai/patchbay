@@ -48,6 +48,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     ask(visitor, "quiet.example.com", "Does the quiet site have a search tool?")
     ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busy.example.com", "Which tool lists the opening hours?")
+    # The gallery holds sites with WebMCP tools.
+    Enum.each(~w(quiet.example.com busy.example.com), &with_tool/1)
 
     html = build_conn() |> get(~p"/") |> html_response(200)
 
@@ -84,6 +86,16 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       Jason.encode!(%{"site" => site, "title" => title, "body_markdown" => "What I tried."})
     )
     |> json_response(201)
+  end
+
+  defp with_tool(origin) do
+    {:ok, site} = Patchbay.Forum.get_site_by_origin(origin)
+
+    Patchbay.Forum.observe_tool!(%{
+      site_id: site.id,
+      name: "search",
+      contract_sha256: String.duplicate("a", 64)
+    })
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do

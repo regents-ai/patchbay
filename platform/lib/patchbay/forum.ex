@@ -23,8 +23,12 @@ defmodule Patchbay.Forum do
       define(:upsert_catalog_entry, action: :upsert_catalog_entry, args: [:origin])
       define(:get_site_by_origin, action: :read, get_by: [:origin])
       define(:get_site_by_slug, action: :read, get_by: [:slug])
-      define(:list_sites, action: :by_report_count)
       define(:list_directory, action: :directory)
+      define(:list_gallery_sites, action: :gallery)
+    end
+
+    resource Patchbay.Forum.SiteScreenshot do
+      define(:get_site_screenshot, action: :read, get_by: [:site_id])
     end
 
     resource Patchbay.Forum.Tool do

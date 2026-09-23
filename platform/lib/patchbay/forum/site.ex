@@ -77,6 +77,10 @@ defmodule Patchbay.Forum.Site do
 
     attribute(:featured_rank, :integer, allow_nil?: true, public?: true)
 
+    # When Patchbay first read the site's page for WebMCP tools, after the
+    # first question about it. Set once; the page is not read again.
+    attribute(:page_checked_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+
     attribute(:claimed_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:claim_kind, ClaimKind, allow_nil?: false, public?: true, default: :none)
 
@@ -121,9 +125,14 @@ defmodule Patchbay.Forum.Site do
   actions do
     defaults([:read])
 
-    read :by_report_count do
-      description("Busiest boards first; among equally busy ones, the directory's order.")
-      pagination(keyset?: true, default_limit: 50, max_page_size: 200)
+    read :gallery do
+      description("""
+      The front page's gallery, busiest first: the directory's own entries and
+      every site with at least one WebMCP tool on record.
+      """)
+
+      filter(expr(not is_nil(support_relationship) or tool_count > 0))
+      pagination(keyset?: true, default_limit: 12, max_page_size: 50)
 
       prepare(
         build(sort: [report_count: :desc, featured_rank: :asc, display_name: :asc, origin: :asc])
@@ -150,6 +159,31 @@ defmodule Patchbay.Forum.Site do
       change(Patchbay.Forum.Changes.NormalizeOrigin)
       change(Patchbay.Forum.Changes.AssignOriginSlug)
       change(Patchbay.Forum.Changes.AssignCatalogDefaults)
+    end
+
+    update :claim_page_check do
+      description("""
+      Marks a site's page as being read for tools. Only a site with no card
+      yet, never read before, is claimed, so one question starts one read.
+      """)
+
+      accept([])
+
+      change(
+        filter(
+          expr(
+            is_nil(page_checked_at) and is_nil(support_relationship) and
+              is_nil(screenshot_path)
+          )
+        )
+      )
+
+      change(set_attribute(:page_checked_at, &DateTime.utc_now/0))
+    end
+
+    update :record_screenshot do
+      description("Points the site's card at the picture Patchbay took of its page.")
+      accept([:screenshot_path, :screenshot_source_url, :screenshot_captured_at])
     end
 
     create :upsert_catalog_entry do

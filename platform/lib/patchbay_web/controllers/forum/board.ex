@@ -187,10 +187,13 @@ defmodule PatchbayWeb.Forum.Board do
     end
   end
 
-  @doc "The sites with the most threads on the board, busiest first, for the front page."
+  @doc """
+  The front page's gallery, busiest first: the directory's entries and the
+  sites with WebMCP tools on record.
+  """
   @spec popular_sites() :: [Site.t()]
   def popular_sites do
-    Forum.list_sites!(query: site_summary(), page: [limit: @popular_sites]).results
+    Forum.list_gallery_sites!(query: site_summary(), page: [limit: @popular_sites]).results
   end
 
   @doc "The newest threads on the board, every site, for the strip across the front page."

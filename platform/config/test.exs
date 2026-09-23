@@ -32,6 +32,7 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
 # run its pass directly.
 config :patchbay, start_patchbay_agent: false
 config :patchbay, start_assist_runner: false
+config :patchbay, check_new_sites: false
 config :patchbay, :sync_webmcp_catalog, false
 config :patchbay, :notification_fanout, false
 config :patchbay, :jev_reader, false

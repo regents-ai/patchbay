@@ -99,6 +99,10 @@ config :phoenix, :filter_parameters, ["password", "payment_signature"]
 # it is part of every logo address on the page.
 config :patchbay, :brandfetch_client_id, "1idVbUBAKPkFD9MEPEc"
 
+# The screenshot machine: a separate Fly app on the private network that
+# runs the browser for site cards and holds no keys.
+config :patchbay, :shots_url, "http://patchbay-shots.flycast"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

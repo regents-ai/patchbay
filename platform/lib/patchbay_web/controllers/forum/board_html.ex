@@ -583,10 +583,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:site, :any, required: true)
   attr(:index, :integer, default: 0)
 
-  # The whole card is one link. The screenshot is the picture; the logo sits on
-  # a small plate in its top-left corner and grows a little when the card is
-  # hovered or focused — the only thing that moves, and by transform only, so
-  # nothing around it shifts.
+  # The whole card is one link. The screenshot is the picture; when the card is
+  # hovered or focused it darkens and the brand's logo fades in over it.
   def site_card(assigns) do
     ~H"""
     <a

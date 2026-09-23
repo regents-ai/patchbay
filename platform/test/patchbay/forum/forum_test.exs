@@ -110,7 +110,7 @@ defmodule Patchbay.ForumTest do
       second = Forum.register_site!("http://shopify.com")
 
       assert first.id == second.id
-      assert [_only_one] = results(Forum.list_sites!())
+      assert [_only_one] = results(Forum.list_directory!())
     end
 
     test "re-registering leaves the stored site untouched" do
@@ -136,16 +136,18 @@ defmodule Patchbay.ForumTest do
       assert action_names(Patchbay.Forum.Site) ==
                [
                  {:read, :read},
-                 {:by_report_count, :read},
+                 {:gallery, :read},
                  {:directory, :read},
                  {:register_site, :create},
-                 {:upsert_catalog_entry, :create}
+                 {:upsert_catalog_entry, :create},
+                 {:claim_page_check, :update},
+                 {:record_screenshot, :update}
                ]
                |> Enum.sort()
     end
   end
 
-  describe "get_site_by_origin/1 and list_sites/0" do
+  describe "get_site_by_origin/1 and the gallery" do
     test "finds a site by its normalized origin" do
       site = Forum.register_site!("https://Shopify.com/path")
 
@@ -153,9 +155,11 @@ defmodule Patchbay.ForumTest do
       assert found.id == site.id
     end
 
-    test "orders sites by report count, busiest first" do
+    test "orders sites with tools by report count, busiest first, and leaves out the rest" do
       quiet = site!("quiet.example")
       busy = site!("busy.example")
+      # Asked about, but no tool on record and no directory entry.
+      site!("bare.example")
 
       busy_tool = tool!(busy)
       report!(busy_tool)
@@ -163,7 +167,7 @@ defmodule Patchbay.ForumTest do
       report!(tool!(quiet))
 
       assert [%{id: first}, %{id: second}] =
-               results(Forum.list_sites!(load: [:report_count, :tool_count]))
+               results(Forum.list_gallery_sites!(load: [:report_count, :tool_count]))
 
       assert first == busy.id
       assert second == quiet.id
@@ -188,12 +192,12 @@ defmodule Patchbay.ForumTest do
       site!("two.example")
       site!("three.example")
 
-      first_page = Forum.list_sites!(page: [limit: 2])
+      first_page = Forum.list_directory!(page: [limit: 2])
       assert length(first_page.results) == 2
       assert first_page.more?
 
       cursor = List.last(first_page.results).__metadata__.keyset
-      second_page = Forum.list_sites!(page: [limit: 2, after: cursor])
+      second_page = Forum.list_directory!(page: [limit: 2, after: cursor])
 
       assert length(second_page.results) == 1
       refute second_page.more?
