@@ -38,7 +38,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     assert html =~ "Issues with MCP? Patchbay will fix it fast with Jev"
     assert html =~ ~s(data-pb-fix-mode="free")
     assert html =~ "1 free fix left today from this connection, and 2 more when you sign in"
-    assert html =~ "Patchbay Credits"
+    assert html =~ "After that, a fix is 0.10 USDC from your wallet, or 0.10 in Patchbay Credits."
     refute html =~ "Rewards"
   end
 
@@ -107,14 +107,15 @@ defmodule PatchbayWeb.Forum.FixTest do
     html = build_conn() |> from(address) |> signed_in(person) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="pay")
     assert html =~ "Fix it for 0.10 USDC"
-    assert html =~ "paid with Patchbay Credits from the wallet you signed in with"
+    assert html =~ "This one is 0.10 USDC from the wallet you signed in with."
     # A wallet with no USDC can be topped up by card from the form.
     assert html =~ "Add USDC with a card"
 
     refused =
       build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"fix" => @form})
 
-    assert html_response(refused, 200) =~ "The next one is 0.10 USDC with Patchbay Credits."
+    assert html_response(refused, 200) =~
+             "The next one is 0.10 USDC from your wallet, or 0.10 in Patchbay Credits."
   end
 
   test "once the site's free fixes are given out, the page says so and offers the fee",
@@ -138,7 +139,10 @@ defmodule PatchbayWeb.Forum.FixTest do
     html = conn |> from(address) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="sign_in")
     assert html =~ "Sign in to fix it"
-    assert html =~ "all given out. Sign in to fix it for 0.10 USDC with Patchbay Credits."
+
+    assert html =~
+             "all given out. Sign in to fix it for 0.10 USDC from your wallet, or 0.10 in Patchbay Credits."
+
     refute html =~ "Add USDC with a card"
     refute html =~ "more free fixes"
 
@@ -152,7 +156,7 @@ defmodule PatchbayWeb.Forum.FixTest do
       build_conn() |> from(address) |> signed_in(person()) |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(data-pb-fix-mode="pay")
-    assert html =~ "all given out. This one is 0.10 USDC, paid with Patchbay Credits"
+    assert html =~ "all given out. This one is 0.10 USDC from the wallet you signed in with."
 
     # With no way to pay set up, the page says to come back tomorrow.
     Application.put_env(:patchbay, :assist, pay_to_address: nil)

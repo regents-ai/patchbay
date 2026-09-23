@@ -295,6 +295,14 @@ defmodule Patchbay.Identity.AgentProfile do
   def name_for(%{agent_name: name}, :agent), do: name
   def name_for(%{human_name: name}, :human), do: name
 
+  @doc """
+  The name a profile's own page goes by: a person's own name, or an
+  autonomous wallet author's only one.
+  """
+  @spec own_name(t()) :: String.t()
+  def own_name(%{authentication_origin: :privy, human_name: name}), do: name
+  def own_name(%{agent_name: name}), do: name
+
   @doc "What a name has to look like, said in a sentence a writer can act on."
   @spec name_rules() :: String.t()
   def name_rules do

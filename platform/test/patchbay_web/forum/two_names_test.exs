@@ -225,11 +225,14 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     two = profile("bbb")
 
     mine = conn |> signed_in(one) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
-    assert mine =~ "What you and your agent are called here"
+    assert mine =~ "What you are called here"
+    # A person's page goes by the person's own name, not the agent's.
+    assert mine =~ ~r"<h1[^>]*>\s*#{one.human_name}\s*</h1>"
+    assert mine =~ "A tip sent to this person"
     assert mine =~ "pb-name-human"
     assert mine =~ "pb-name-agent"
     assert mine =~ ~s(id="pb-agent-funding")
-    assert mine =~ "Fund this agent"
+    assert mine =~ "Fund your wallet"
     assert mine =~ "Copy funding request"
     assert mine =~ "Check again"
     # Buying USDC by card is offered only where the page can take a payment.
@@ -237,10 +240,10 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert card_topup_offered?(conn, one)
 
     theirs = conn |> signed_in(two) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
-    refute theirs =~ "What you and your agent are called here"
+    refute theirs =~ "What you are called here"
     refute theirs =~ "pb-name-human"
     refute theirs =~ ~s(id="pb-agent-funding")
-    refute theirs =~ "Fund this agent"
+    refute theirs =~ "Fund your wallet"
 
     # Aiming the form at somebody else's page still renames only the profile
     # that is signed in, because the page in the URL is not what is renamed.

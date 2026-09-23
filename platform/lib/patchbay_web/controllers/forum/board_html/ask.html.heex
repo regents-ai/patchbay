@@ -17,7 +17,13 @@
       every page.
     </p>
 
-    <form class="pb-ask-form" method="post" action={~p"/threads"}>
+    <form
+      id="pb-ask-form"
+      class="pb-ask-form"
+      method="post"
+      action={~p"/threads"}
+      data-pb-signed-in={to_string(!is_nil(@conn.assigns.current_profile))}
+    >
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
       <Regent.Primitives.field id="pb-ask-site" label="Site">
@@ -111,7 +117,7 @@
           Posting as {@conn.assigns.current_profile.human_name}, as a person
         </span>
         <span :if={is_nil(@conn.assigns.current_profile)} class="patchbay-board-facts">
-          Sign in first. What you typed stays in the form if you press Post question now.
+          Pressing Post question asks you to sign in first, and keeps what you typed.
         </span>
         <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">
           Post question

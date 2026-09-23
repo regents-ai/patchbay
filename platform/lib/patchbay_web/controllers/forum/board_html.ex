@@ -1172,7 +1172,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "The Fund this agent card. Lives on the owner's profile; JavaScript fills the live balance."
+  @doc "The Fund your wallet card. Lives on the owner's profile; JavaScript fills the live balance."
   attr(:wallet, :string, default: "")
   attr(:payments_enabled, :boolean, required: true)
 
@@ -1186,7 +1186,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <div class="patchbay-card-heading">
         <div>
           <p class="patchbay-kicker">FUNDING</p>
-          <h3>Fund this agent</h3>
+          <h3>Fund your wallet</h3>
         </div>
       </div>
       <dl class="pb-fund-facts">

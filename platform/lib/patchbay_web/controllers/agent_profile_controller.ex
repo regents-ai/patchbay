@@ -113,7 +113,7 @@ defmodule PatchbayWeb.AgentProfileController do
         mine? = mine?(conn, profile)
 
         render(conn, :show,
-          page_title: profile.agent_name,
+          page_title: AgentProfile.own_name(profile),
           profile: profile,
           tips: tips,
           mine?: mine?,

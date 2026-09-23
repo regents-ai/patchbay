@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {observedLine, paymentsLine, railState, STARTER_PROMPT, usdcLine} from "../../js/webmcp/agent_setup.js";
+import {mountPairingCode, observedLine, paymentsLine, railState, STARTER_PROMPT, usdcLine} from "../../js/webmcp/agent_setup.js";
 
 test("starter prompt is the exact copy an agent should be given", () => {
   assert.match(STARTER_PROMPT, /Use the site tools exposed by this open Patchbay page/);
@@ -114,4 +114,24 @@ test("the readiness card keeps the browser's one observation apart from the serv
   assert.match(usdcLine({status: "unavailable"}).text, /could not be read/);
   assert.match(usdcLine(null).text, /could not be read/);
   for (const state of [usdcLine({status: "needs_human_funding"}), usdcLine(null)]) assert.equal(state.ok, false);
+});
+
+test("the pairing code's Copy button copies it and says so", async () => {
+  const listeners = {};
+  const button = {
+    dataset: {copyTarget: "pb-pairing-code", idle: "Copy"},
+    textContent: "Copy",
+    addEventListener: (name, fn) => (listeners[name] = fn),
+  };
+  const root = {querySelectorAll: selector => (selector === "[data-copy-target]" ? [button] : [])};
+  const copied = [];
+
+  globalThis.window ??= globalThis;
+  mountPairingCode({root, copyPrompt: pressed => (copied.push(pressed), Promise.resolve("copied"))});
+  listeners.click();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(copied, [button]);
+  assert.equal(button.textContent, "Copied");
 });

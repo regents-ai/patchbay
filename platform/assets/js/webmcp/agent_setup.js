@@ -206,7 +206,7 @@ function replaceLine(root, fact, state) {
 }
 
 /**
- * Paint the Fund this agent card on the owner's profile. Home has no card.
+ * Paint the Fund your wallet card on the owner's profile. Home has no card.
  *
  * @param {{
  *   root?: ParentNode | null,
@@ -216,6 +216,17 @@ function replaceLine(root, fact, state) {
  *   readPaymentReadiness?: typeof readPaymentReadiness,
  * }} [options]
  */
+/**
+ * The Copy button beside a pairing code on the person's own profile.
+ *
+ * @param {{root?: Element | null, copyPrompt?: (button: Element) => Promise<string>}} [options]
+ */
+export function mountPairingCode(options = {}) {
+  const root = options.root ?? globalThis.document?.getElementById("patchbay-agents");
+  if (!root) return;
+  bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
+}
+
 export function mountAgentFunding(options = {}) {
   const root = options.root ?? globalThis.document?.getElementById("pb-agent-funding");
   if (!root) return;

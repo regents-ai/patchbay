@@ -47,3 +47,21 @@ test("does nothing when the prompt is missing", async () => {
 
   assert.equal(await copyPrompt(button, {document, navigator: {}}), "missing")
 })
+
+test("selects plain text on the page, like a code, as a range when the clipboard is refused", async () => {
+  const code = {textContent: "FTB88-NB2P4"}
+  const ranges = []
+  const selection = {removeAllRanges: () => ranges.splice(0), addRange: range => ranges.push(range)}
+  const document = {
+    getElementById: () => code,
+    getSelection: () => selection,
+    createRange: () => ({selectNodeContents: node => (ranges.node = node)}),
+  }
+
+  assert.equal(await copyPrompt({dataset: {copyTarget: "pb-pairing-code"}}, {document, navigator: {}}), "selected")
+  assert.equal(ranges.length, 1)
+  assert.equal(ranges.node, code)
+
+  const bare = {getElementById: () => code}
+  assert.equal(await copyPrompt({dataset: {copyTarget: "pb-pairing-code"}}, {document: bare, navigator: {}}), "missing")
+})

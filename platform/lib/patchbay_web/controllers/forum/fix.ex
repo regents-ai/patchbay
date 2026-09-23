@@ -109,7 +109,7 @@ defmodule PatchbayWeb.Forum.Fix do
       "#{free} free #{if free == 1, do: "fix", else: "fixes"} left today from this connection"
 
     more = if adds > 0, do: ", and #{adds} more when you sign in", else: ""
-    "#{left}#{more}. After that, #{@fee} USDC a fix with Patchbay Credits."
+    "#{left}#{more}. After that, a fix is #{@fee} #{either_way()}."
   end
 
   def terms(%{mode: mode, allowance: %{given_out: true}}), do: given_out(mode)
@@ -117,7 +117,7 @@ defmodule PatchbayWeb.Forum.Fix do
   def terms(%{mode: :sign_in, allowance: %{sign_in_adds: adds}}),
     do: "This connection's free fix for today is used. Sign in for #{adds} more free fixes today."
 
-  def terms(%{mode: :pay}), do: "Your free fixes for today are used. " <> paid_with_credits()
+  def terms(%{mode: :pay}), do: "Your free fixes for today are used. " <> paid_from_wallet()
 
   def terms(%{mode: :closed}), do: "Your free fixes for today are used. Come back tomorrow."
 
@@ -162,20 +162,19 @@ defmodule PatchbayWeb.Forum.Fix do
 
   defp used_up(_profile) do
     if Assist.pay_to_address(),
-      do:
-        "Your free fixes for today are used. The next one is #{@fee} USDC with Patchbay Credits.",
+      do: "Your free fixes for today are used. The next one is #{@fee} #{either_way()}.",
       else: "Your free fixes for today are used. Come back tomorrow."
   end
 
   defp given_out(:sign_in),
-    do:
-      "Today's free fixes are all given out. Sign in to fix it for #{@fee} USDC with Patchbay Credits."
+    do: "Today's free fixes are all given out. Sign in to fix it for #{@fee} #{either_way()}."
 
-  defp given_out(:pay), do: "Today's free fixes are all given out. " <> paid_with_credits()
+  defp given_out(:pay), do: "Today's free fixes are all given out. " <> paid_from_wallet()
   defp given_out(:closed), do: "Today's free fixes are all given out. Come back tomorrow."
 
-  defp paid_with_credits,
-    do: "This one is #{@fee} USDC, paid with Patchbay Credits from the wallet you signed in with."
+  defp paid_from_wallet, do: "This one is #{@fee} USDC from the wallet you signed in with."
+
+  defp either_way, do: "USDC from your wallet, or #{@fee} in Patchbay Credits"
 
   defp text(value) when is_binary(value), do: String.trim(value)
   defp text(_other), do: ""

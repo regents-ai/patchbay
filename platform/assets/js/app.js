@@ -35,8 +35,9 @@ import {installSharedProfile} from "./shared_profile.js"
 import {mountDiscussionWorkbench} from "./discussion_workbench.js"
 import {mountHelloStream} from "./hello_stream.js"
 import {mountFixForm} from "./fix_form.js"
+import {mountAskForm} from "./ask_form.js"
 import {mountCardTopUp} from "./card_topup.js"
-import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.js"
+import {mountAgentFunding, mountAgentSetup, mountPairingCode, mountReadinessCard} from "./webmcp/agent_setup.js"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -67,7 +68,9 @@ const offerPageWideSurfaces = () => {
   mountReadinessCard()
   mountHelloStream()
   mountFixForm({fetch: window.fetch.bind(window), csrfToken})
+  mountAskForm()
   mountAgentFunding()
+  mountPairingCode()
   mountCardTopUp()
   hideBrokenSiteLogos()
   mountDiscussionWorkbench()

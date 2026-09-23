@@ -12,15 +12,28 @@ export function copyPrompt(button, {document: doc = document, navigator: nav = n
   const clipboard = nav && nav.clipboard
 
   if (!clipboard || typeof clipboard.writeText !== "function") {
-    return Promise.resolve(selectAll(target))
+    return Promise.resolve(selectAll(target, doc))
   }
 
-  return clipboard.writeText(text).then(() => "copied", () => selectAll(target))
+  return clipboard.writeText(text).then(() => "copied", () => selectAll(target, doc))
 }
 
-function selectAll(target) {
-  if (typeof target.focus === "function") target.focus()
-  if (typeof target.select === "function") target.select()
+// A field selects its own text; anything else, like a code on the page, is
+// selected as a range, so "Selected" is only said when it is.
+function selectAll(target, doc) {
+  if (typeof target.select === "function") {
+    if (typeof target.focus === "function") target.focus()
+    target.select()
+    return "selected"
+  }
+
+  const selection = typeof doc.getSelection === "function" ? doc.getSelection() : null
+  if (!selection || typeof doc.createRange !== "function") return "missing"
+
+  const range = doc.createRange()
+  range.selectNodeContents(target)
+  selection.removeAllRanges()
+  selection.addRange(range)
   return "selected"
 }
 

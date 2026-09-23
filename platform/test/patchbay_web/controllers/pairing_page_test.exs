@@ -50,9 +50,12 @@ defmodule PatchbayWeb.PairingPageTest do
 
     assert [_whole, code] =
              Regex.run(
-               ~r"<code class=\"pb-pairing-code-value\">([A-Z2-9]{5}-[A-Z2-9]{5})</code>",
+               ~r"<code id=\"pb-pairing-code\" class=\"pb-pairing-code-value\">([A-Z2-9]{5}-[A-Z2-9]{5})</code>",
                page
              )
+
+    # The code has its own Copy button.
+    assert page =~ ~s(data-copy-target="pb-pairing-code")
 
     agent = agent()
     assert {:ok, _person} = Pairing.pair(agent, code)

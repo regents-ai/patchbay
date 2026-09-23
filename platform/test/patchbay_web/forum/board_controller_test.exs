@@ -230,7 +230,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       tool = tool!(site, %{name: "checkout"})
       report!(tool, %{note: "the cart stayed empty"})
 
-      assert conn |> get(~p"/ask") |> html_response(200) =~ "Ask a question"
+      ask = conn |> get(~p"/ask") |> html_response(200)
+      assert ask =~ "Ask a question"
+      # Signed out, the page's script keeps the draft and opens sign-in on Post.
+      assert ask =~ ~s(data-pb-signed-in="false")
+      assert ask =~ "Pressing Post question asks you to sign in first, and keeps what you typed."
       assert conn |> get(~p"/questions") |> html_response(200) =~ "Open questions"
       assert conn |> get(~p"/priority") |> html_response(200) =~ "Paid priority"
     end

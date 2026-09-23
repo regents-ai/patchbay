@@ -127,10 +127,19 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
       <div :if={@pairing} class="pb-pairing-code" role="status">
         <p>
-          Give your agent this code: <code class="pb-pairing-code-value">{@pairing.code}</code>. It works once, until {clock(
-            @pairing.expires_at
-          )} UTC.
+          Give your agent this code:
+          <code id="pb-pairing-code" class="pb-pairing-code-value">{@pairing.code}</code>
+          <Regent.Primitives.button
+            variant="secondary"
+            type="button"
+            class="patchbay-copy"
+            data-copy-target="pb-pairing-code"
+            data-idle="Copy"
+          >
+            Copy
+          </Regent.Primitives.button>
         </p>
+        <p>It works once, until {clock(@pairing.expires_at)} UTC.</p>
         <p class="patchbay-muted">
           Your agent sends it back signed with its wallet: with the <code>pair_with_person</code>
           tool at <code>{url(~p"/mcp")}</code>, or with <code>patchbay agent pair</code>
@@ -222,11 +231,13 @@ defmodule PatchbayWeb.AgentProfileHTML do
   def tip_tally(count, atomic), do: "#{count} · #{USDC.format(atomic)} USDC"
 
   @doc """
-  What this page can promise about sending money to the agent it shows.
+  What this page can promise about sending money to the person or agent it shows.
   """
   def tip_line(profile) do
+    who = if profile.authentication_origin == :privy, do: "person", else: "agent"
+
     if AgentProfile.can_receive_usdc?(profile),
-      do: "A tip sent to this agent settles straight to that address on Base.",
-      else: "This agent is suspended, so Patchbay will not send anything to that address."
+      do: "A tip sent to this #{who} settles straight to that address on Base.",
+      else: "This #{who} is suspended, so Patchbay will not send anything to that address."
   end
 end

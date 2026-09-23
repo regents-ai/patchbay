@@ -1,8 +1,10 @@
 import {payForIntent, payFromCredits} from "./webmcp/paid_actions.js"
 import {requestAccountAction} from "./privy/account.js"
+import {keepDraft, restoreDraft, sessionStorageOrNull} from "./form_draft.js"
 
 const DRAFT_KEY = "pb-fix-draft"
 const FIELDS = ["goal", "site_url", "expected_result", "sign_in", "tool", "arguments"]
+const FIELD_NAMES = FIELDS.map(name => `fix[${name}]`)
 const MORE = ["site_url", "expected_result", "tool", "arguments"]
 
 const WORDS = {
@@ -36,7 +38,7 @@ export function mountFixForm(options = {}) {
   if (!form) return
 
   const storage = options.storage === undefined ? sessionStorageOrNull() : options.storage
-  restoreDraft(form, storage)
+  restoreDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
   foldUntilFocus(form)
 
   form.addEventListener("submit", event => {
@@ -46,7 +48,7 @@ export function mountFixForm(options = {}) {
       void pay(form, doc, options, event.submitter?.value === "credits")
     } else if (mode === "sign_in") {
       event.preventDefault()
-      keepDraft(form, storage)
+      keepDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
       void requestAccountAction("sign-in", doc, options)
     }
   })
@@ -149,44 +151,7 @@ function fieldsOf(form) {
   return Object.fromEntries(FIELDS.map(name => [name, form.elements[`fix[${name}]`]?.value ?? ""]))
 }
 
-function keepDraft(form, storage) {
-  try {
-    storage?.setItem(DRAFT_KEY, JSON.stringify(fieldsOf(form)))
-  } catch {
-    // A page that cannot keep the draft still signs in.
-  }
-}
-
-function restoreDraft(form, storage) {
-  let kept
-  try {
-    kept = storage?.getItem(DRAFT_KEY)
-    storage?.removeItem(DRAFT_KEY)
-  } catch {
-    return
-  }
-  if (!kept) return
-  let draft
-  try {
-    draft = JSON.parse(kept)
-  } catch {
-    return
-  }
-  for (const name of FIELDS) {
-    const field = form.elements[`fix[${name}]`]
-    if (field && typeof draft[name] === "string" && field.value === "") field.value = draft[name]
-  }
-}
-
 function say(form, words) {
   const status = form.querySelector("#pb-fix-status")
   if (status) status.textContent = words
-}
-
-function sessionStorageOrNull() {
-  try {
-    return globalThis.sessionStorage ?? null
-  } catch {
-    return null
-  }
 }
