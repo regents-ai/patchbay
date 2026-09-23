@@ -1,6 +1,7 @@
 import {payForIntent, payFromCredits} from "./webmcp/paid_actions.js"
 import {requestAccountAction} from "./privy/account.js"
 import {keepDraft, restoreDraft, sessionStorageOrNull} from "./form_draft.js"
+import {mountSiteCheck} from "./site_check.js"
 
 const DRAFT_KEY = "pb-fix-draft"
 const FIELDS = ["goal", "site_url", "expected_result", "sign_in", "tool", "arguments"]
@@ -26,7 +27,8 @@ const WORDS = {
 /**
  * The fix form at the top of the home page. It folds its extra fields away
  * until the person starts typing, keeps what they typed across a sign-in,
- * and, once the free fixes are used, pays the fee with the wallet the page
+ * looks for WebMCP tools at the site while the fix is free, and, once the
+ * free fixes are used, pays the fee with the wallet the page
  * is signed in with, or from the person's Patchbay Credits when they press
  * that button, before opening the fix.
  *
@@ -40,6 +42,7 @@ export function mountFixForm(options = {}) {
   const storage = options.storage === undefined ? sessionStorageOrNull() : options.storage
   restoreDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
   foldUntilFocus(form)
+  mountSiteCheck(form, options)
 
   form.addEventListener("submit", event => {
     const mode = form.dataset.pbFixMode

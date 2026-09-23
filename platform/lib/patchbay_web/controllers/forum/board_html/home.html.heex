@@ -30,6 +30,7 @@
           autocomplete="off"
         />
         <Regent.Primitives.button
+          id="pb-fix-submit"
           variant="primary"
           type="submit"
           disabled={@fix.mode == :closed}
@@ -47,7 +48,26 @@
             maxlength="2048"
             value={@fix.draft["site_url"]}
             placeholder="https://example.com/app"
+            aria-describedby={@fix.mode == :free && "pb-fix-site-check"}
           />
+          <p
+            :if={@fix.mode == :free}
+            id="pb-fix-site-check"
+            class="pb-fix-site-check"
+            aria-live="polite"
+          >
+          </p>
+          <a
+            id="pb-fix-directory"
+            class="rg-button rg-button--secondary pb-fix-directory"
+            href="https://webmcp.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden={!@fix.directory}
+          >
+            WebMCP Site Directory <span aria-hidden="true">↗</span>
+            <span class="sr-only">(opens in a new tab)</span>
+          </a>
         </Regent.Primitives.field>
         <Regent.Primitives.field id="pb-fix-expected" label="What should happen">
           <input

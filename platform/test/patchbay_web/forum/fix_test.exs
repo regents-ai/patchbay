@@ -29,7 +29,9 @@ defmodule PatchbayWeb.Forum.FixTest do
     old_assist = Application.get_env(:patchbay, :assist)
     Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
     on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
-    :ok
+
+    # The booking site's page signs up the tool the form names.
+    Patchbay.PageSite.serve(%{"/app" => Patchbay.PageSite.with_tool("reserve_table")})
   end
 
   test "the home page opens on the fix form, free for a new connection", %{conn: conn} do

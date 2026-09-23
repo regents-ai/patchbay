@@ -27,6 +27,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.Fix
+  alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
@@ -38,7 +39,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @doc """
   A fix asked for from the top of the home page. A free one opens under the
-  fix this connection or this person has left and the page goes to it; a
+  fix this connection or this person has left, at an address where Patchbay
+  finds WebMCP tools, and the page goes to it; a
   fix already being worked on for this browser is shown instead of a second
   one being started. Everything else comes back to the form with the words
   for it and what was typed.
@@ -49,6 +51,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     with :none <- running_for(conn),
          {:ok, request} <- Fix.request(draft),
          {:ok, grant} <- Fix.grant(conn),
+         :ok <- tools_found(conn, request),
          {:ok, run} <- open_free_run(conn, request, grant) do
       redirect(conn, to: ~p"/fixes/#{run.id}")
     else
@@ -60,6 +63,15 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       {:error, failure} ->
         render_home(conn, %{}, %{problem: Fix.refused(failure, conn), draft: draft})
+    end
+  end
+
+  # A free fix starts only where Patchbay finds WebMCP tools; anywhere else
+  # it is kept for another address.
+  defp tools_found(conn, %{"site_url" => site_url}) do
+    case FixCheck.check(conn, site_url) do
+      {:found, _names} -> :ok
+      answer -> {:error, %{said: FixCheck.said(answer)}}
     end
   end
 

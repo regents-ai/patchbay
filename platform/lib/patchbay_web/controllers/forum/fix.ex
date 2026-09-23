@@ -2,8 +2,9 @@ defmodule PatchbayWeb.Forum.Fix do
   @moduledoc """
   The fix form at the top of the home page: what it sends, turned into an
   assist request; which way the form works right now, free, after a sign-in
-  or for the fee, and the person's Patchbay Credits once it is the fee; and
-  what the page says when a fix cannot start.
+  or for the fee, and the person's Patchbay Credits once it is the fee;
+  whether the WebMCP Site Directory is offered; and what the page says when
+  a fix cannot start.
   """
 
   alias Patchbay.Assist
@@ -12,6 +13,7 @@ defmodule PatchbayWeb.Forum.Fix do
   alias Patchbay.Payments.Credits
   alias Patchbay.Payments.PaymentIntent
   alias PatchbayWeb.ClientAddress
+  alias PatchbayWeb.Forum.FixCheck
 
   @fields ~w(goal site_url expected_result sign_in tool arguments)
   @sign_ins ~w(none unknown required)
@@ -55,14 +57,21 @@ defmodule PatchbayWeb.Forum.Fix do
           allowance: Allowance.t(),
           mode: mode(),
           fee: String.t(),
-          credits: credits() | nil
+          credits: credits() | nil,
+          directory: boolean()
         }
   def offer(conn) do
     profile = conn.assigns.current_profile
     allowance = Allowance.remaining(ClientAddress.visitor_key(conn), profile)
     mode = mode(allowance, profile)
 
-    %{allowance: allowance, mode: mode, fee: @fee, credits: credits(mode, profile)}
+    %{
+      allowance: allowance,
+      mode: mode,
+      fee: @fee,
+      credits: credits(mode, profile),
+      directory: FixCheck.directory?(conn)
+    }
   end
 
   @typedoc """

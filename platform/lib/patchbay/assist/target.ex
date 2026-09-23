@@ -32,7 +32,8 @@ defmodule Patchbay.Assist.Target do
 
   `resolve` is how a name becomes addresses; the default asks the resolver.
   `req_options` are added to every call's options, for a test to route the
-  calls to a fixture.
+  calls to a fixture. `max_body_bytes` is the most of an answer read, when a
+  caller reads more than a tool's answer, like a whole page.
   """
   @spec connect(String.t(), keyword()) ::
           {:ok, target()} | {:error, :unresolvable | :not_public}
@@ -44,7 +45,8 @@ defmodule Patchbay.Assist.Target do
          host = host |> String.downcase() |> String.trim_trailing("."),
          [_ | _] = addresses <- resolve.(host),
          true <- Enum.all?(addresses, &public_address?/1) do
-      {:ok, pinned(uri, host, hd(addresses), Keyword.get(opts, :req_options, []))}
+      bound = Keyword.get(opts, :max_body_bytes, @max_body_bytes)
+      {:ok, pinned(uri, host, hd(addresses), bound, Keyword.get(opts, :req_options, []))}
     else
       [] -> {:error, :unresolvable}
       _not_a_public_https_name -> {:error, :not_public}
@@ -109,7 +111,7 @@ defmodule Patchbay.Assist.Target do
   def public_address?({_, _, _, _, _, _, _, _}), do: true
   def public_address?(_not_an_address), do: false
 
-  @doc "The most bytes of a site's answer an assist reads; the rest is dropped."
+  @doc "The most bytes of a tool's answer an assist reads; the rest is dropped."
   @spec max_body_bytes() :: pos_integer()
   def max_body_bytes, do: @max_body_bytes
 
@@ -119,7 +121,7 @@ defmodule Patchbay.Assist.Target do
   # socket opens where the check looked, and TLS still verifies the name.
   # The pool for that pair is started under Patchbay's own Finch, tagged
   # with the name, and is reaped once it has sat idle.
-  defp pinned(uri, host, address, req_options) do
+  defp pinned(uri, host, address, bound, req_options) do
     url = URI.to_string(%{uri | host: address |> :inet.ntoa() |> to_string()})
 
     :ok =
@@ -137,17 +139,17 @@ defmodule Patchbay.Assist.Target do
           headers: [{"host", host}],
           redirect: false,
           retry: false,
-          into: &take_bounded/2
+          into: fn chunk, acc -> take_bounded(chunk, acc, bound) end
         ] ++ req_options
     }
   end
 
   # Reads a body up to the bound and stops there; a site's answer past it is
   # noted as cut rather than kept.
-  defp take_bounded({:data, data}, {request, response}) do
+  defp take_bounded({:data, data}, {request, response}, bound) do
     body = [response.body || [], data]
 
-    if IO.iodata_length(body) > @max_body_bytes do
+    if IO.iodata_length(body) > bound do
       {:halt,
        {request,
         %{

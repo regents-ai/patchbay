@@ -86,19 +86,19 @@ defmodule Patchbay.Assist.Work do
   # What a run carries between steps: how the site's tools are reached, the
   # tools, the ones tried so far, and how much of the run's limits is left.
   defp discover(run, budget) do
-    case Discovery.find(run, target_options()) do
+    case Discovery.find(run.site_url, target_options()) do
       {:live, client, tools} ->
         run
         |> note("The site answers as an MCP server and lists #{length(tools)} tools.")
         |> attempt(%{mode: {:live, client}, tools: tools, tried: [], budget: budget})
 
-      {:directory, tools} ->
+      {:in_pages, tools} ->
         run
         |> note(
-          "The site's tools live in its pages, which Patchbay cannot call from here; " <>
-            "the #{length(tools)} tools Patchbay knows for it stand in, so the answer is a suggestion."
+          "The site's tools live in its pages, which Patchbay cannot call from here. " <>
+            "Patchbay found #{length(tools)} of them, so the answer is a suggestion."
         )
-        |> attempt(%{mode: :directory, tools: tools, tried: [], budget: budget})
+        |> attempt(%{mode: :in_pages, tools: tools, tried: [], budget: budget})
 
       {:unlisted, why} ->
         run
@@ -166,7 +166,7 @@ defmodule Patchbay.Assist.Work do
 
   # A tool that cannot be called from here, or that the site marks as one
   # that changes things, is suggested rather than called.
-  defp call(run, tool, arguments, %{mode: :directory}) do
+  defp call(run, tool, arguments, %{mode: :in_pages}) do
     run
     |> step(tool.name, arguments, nil, nil, "Suggested: call this tool with these arguments.")
     |> finish(:finished, :suggested)
@@ -285,8 +285,10 @@ defmodule Patchbay.Assist.Work do
 
   defp unlisted(:no_tools_offered), do: "The site answers as an MCP server but offers no tools."
 
-  defp unlisted(:no_tools_known),
-    do: "The site does not answer as an MCP server, and Patchbay knows no tools for it."
+  defp unlisted(:no_tools_found),
+    do:
+      "The site does not answer as an MCP server, no tools are written into its page, " <>
+        "and the directory holds none for it."
 
   defp unlisted(:unresolvable), do: "The site's name does not resolve to any address."
 

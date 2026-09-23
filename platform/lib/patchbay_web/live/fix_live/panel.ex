@@ -160,7 +160,7 @@ defmodule PatchbayWeb.FixLive.Panel do
   defp outcome_words(:needs_sign_in),
     do: "This site needs a signed-in user, and Patchbay never acts on anyone's account."
 
-  defp outcome_words(:tools_unlisted), do: "The site lists no tools Patchbay can reach."
+  defp outcome_words(:tools_unlisted), do: "Patchbay found no WebMCP tools at this address."
 
   defp outcome_words(:provider_unavailable),
     do: "Jev was unavailable. A person at Patchbay will finish this; keep this page."

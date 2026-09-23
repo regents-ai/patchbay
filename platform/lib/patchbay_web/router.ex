@@ -69,6 +69,12 @@ defmodule PatchbayWeb.Router do
     delete "/mcp", MCPController, :not_allowed
   end
 
+  # The free fix's look for a site's WebMCP tools, asked as an address is typed.
+  scope "/", PatchbayWeb.Forum do
+    pipe_through :api
+    get "/fix-check", FixCheckController, :show
+  end
+
   # A payment request draws on the share of the wallet it acts for, once the
   # pipeline before it has said which wallet that is.
   pipeline :payment_budget do

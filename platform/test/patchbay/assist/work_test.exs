@@ -158,6 +158,34 @@ defmodule Patchbay.Assist.WorkTest do
     assert Enum.any?(unlisted.steps, &(&1["note"] =~ "public internet"))
   end
 
+  test "a site whose tools live in its pages: the tool in its code is suggested, never called" do
+    run = paid_run(mcp_site(%{}), believed_calls: [])
+    Patchbay.PageSite.serve(%{"/mcp" => Patchbay.PageSite.with_tool("reserve_table")})
+    drafter(fn -> drafted(%{"party" => 2}) end)
+
+    jev(fn state, _questions ->
+      assert state["goal"] == run.goal
+      %{"tool" => %{"choice" => "reserve_table", "confidence" => 0.8}}
+    end)
+
+    assert :ok = Work.run(run.id)
+    {:ok, done} = Assist.get_run(run.id, authorize?: false)
+    assert {done.status, done.outcome} == {:finished, :suggested}
+    assert Enum.any?(done.steps, &(&1["note"] =~ "Patchbay found 1 of them"))
+
+    suggested = Enum.find(done.steps, &(&1["tool"] == "reserve_table"))
+    assert suggested["arguments"] == %{"party" => 2}
+    assert suggested["answer"] == nil
+
+    # A site with nothing in its pages ends the run without a suggestion.
+    empty = paid_run(mcp_site(%{}), believed_calls: [])
+    Patchbay.PageSite.serve(%{"/mcp" => Patchbay.PageSite.without_tools()})
+    assert :ok = Work.run(empty.id)
+    {:ok, unlisted} = Assist.get_run(empty.id, authorize?: false)
+    assert {unlisted.status, unlisted.outcome} == {:finished, :tools_unlisted}
+    assert Enum.any?(unlisted.steps, &(&1["note"] =~ "no tools are written into its page"))
+  end
+
   test "a run that waited on a person is handed back and finished, with nothing paid twice" do
     site = mcp_site(%{"lookup" => %{"found" => true}})
     run = paid_run(site, believed_calls: [])

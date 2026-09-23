@@ -26,6 +26,7 @@ defmodule Patchbay.Application do
         Patchbay.Forum.JevReader,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
+        {PatchbayWeb.FixCheckLimit, clean_period: :timer.minutes(1)},
         {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()}
       ] ++
         catalog_loader() ++

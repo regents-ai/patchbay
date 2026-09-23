@@ -37,6 +37,17 @@
 .pb-fix-topup-button:hover { text-decoration-thickness: 2px; }
 .pb-fix-topup-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .pb-fix-status:empty { display: none; }
+/* The quiet look for WebMCP tools, written under the site's address. */
+.pb-fix-site-check { margin: .3rem 0 0; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-fix-site-check:empty { display: none; }
+.pb-fix-site-check[data-pb-check="found"] { color: var(--pb-good); }
+.pb-fix-site-check[data-pb-check="none"], .pb-fix-site-check[data-pb-check="limited"] { color: var(--pb-text); }
+.pb-fix-directory { width: fit-content; margin-top: .5rem; }
+.pb-fix-directory[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .pb-fix-directory[data-pb-arrived] { animation: pb-fix-directory-in 420ms cubic-bezier(.2, .8, .2, 1) both; }
+}
+@keyframes pb-fix-directory-in { from { opacity: 0; transform: translateY(.4rem) scale(.96); } to { opacity: 1; transform: none; } }
 .pb-workbench-head--discussions { padding-top: .25rem; }
 @media (max-width: 60rem) {
   .pb-fix { grid-template-columns: 1fr; gap: 1.25rem; padding: 1.25rem; }
