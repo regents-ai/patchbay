@@ -1259,10 +1259,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
     test "never leaks the vocabulary of the code behind it", %{bodies: bodies} do
       # The board is written for people, so the words the code uses for itself
-      # must never reach the page.
+      # must never reach the page. Link and image addresses are not read.
       for body <- bodies,
+          copy = Regex.replace(~r/\s(?:src|href)="[^"]*"/, body, ""),
           word <- ~w(LiveView fallback upsert keyset cookie slug session hook server) do
-        refute String.contains?(String.downcase(body), String.downcase(word)),
+        refute String.contains?(String.downcase(copy), String.downcase(word)),
                "#{word} appears in board copy"
       end
     end

@@ -43,8 +43,9 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
         "base-uri 'self'",
         "object-src 'none'",
         "frame-ancestors 'none'",
-        # regents.sh hosts the logo the Privy sign-in window shows.
-        "img-src 'self' data: blob: https://explorer-api.walletconnect.com https://www.google.com https://*.gstatic.com https://regents.sh",
+        # regents.sh hosts the logo the Privy sign-in window shows;
+        # cdn.brandfetch.io serves the brand logos on the site cards.
+        "img-src 'self' data: blob: https://explorer-api.walletconnect.com https://www.google.com https://*.gstatic.com https://regents.sh https://cdn.brandfetch.io",
         "font-src 'self' data:",
         # Tailwind and daisyUI ship as a linked stylesheet, but element-level
         # styles written by the progress bar and by LiveView transitions still

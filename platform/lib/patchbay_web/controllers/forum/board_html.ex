@@ -493,6 +493,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     end
   end
 
+  @doc """
+  The brand's light logo, drawn for dark backgrounds, from Brandfetch's logo
+  service, shown over a card's darkened screenshot. A brand with no light
+  logo there comes back as a see-through image.
+  """
+  def brand_logo_url(site) do
+    client_id = Application.fetch_env!(:patchbay, :brandfetch_client_id)
+
+    "https://cdn.brandfetch.io/domain/#{site_domain(site)}/h/160/theme/light/fallback/transparent/type/logo?c=#{client_id}"
+  end
+
   def site_screenshot_url(site) do
     if is_binary(site.screenshot_path) and site.screenshot_path != "", do: site.screenshot_path
   end
@@ -603,19 +614,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         >
           <span class="pb-dir-shot-empty-domain">{site_domain(@site)}</span>
         </span>
-        <span class="pb-dir-logo-well">
-          <img
-            :if={url = site_logo_url(@site)}
-            class="pb-dir-logo"
-            src={url}
-            alt={site_name(@site) <> " logo"}
-            width="120"
-            height="28"
-          />
-          <span :if={!site_logo_url(@site)} class="pb-dir-logo-mark" aria-hidden="true">
-            {monogram(@site)}
-          </span>
-        </span>
+        <img class="pb-dir-brand" src={brand_logo_url(@site)} alt="" loading="lazy" decoding="async" />
       </span>
       <span class="pb-dir-body">
         <span class="pb-dir-name">{site_name(@site)}</span>

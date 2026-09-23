@@ -95,6 +95,10 @@ config :phoenix, :json_library, Jason
 config :phoenix_template, :template_engines, eex: PatchbayWeb.MarkdownEngine
 config :phoenix, :filter_parameters, ["password", "payment_signature"]
 
+# Brandfetch's logo service identifies the site by this public client ID;
+# it is part of every logo address on the page.
+config :patchbay, :brandfetch_client_id, "1idVbUBAKPkFD9MEPEc"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

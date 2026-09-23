@@ -524,16 +524,14 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       end
     end
 
-    test "a missing screenshot or logo falls back in place", %{conn: conn} do
+    test "a missing screenshot shows the domain on a plain plate", %{conn: conn} do
       site!("bare-plate.example")
 
       html = conn |> get(~p"/sites") |> html_response(200)
       card = card_chunk(html, "bare-plate-example")
 
       assert card =~ "pb-dir-shot-empty"
-      assert card =~ "pb-dir-logo-mark"
-      refute card =~ ~s(<img)
-      refute card =~ ~s(class="pb-dir-logo")
+      refute card =~ ~s(class="pb-dir-shot")
     end
   end
 

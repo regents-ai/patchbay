@@ -1689,39 +1689,34 @@ body:has(#patchbay-home),
   font-family: var(--font-family-mono);
   font-size: .75rem;
 }
-/* The logo sits on a small neutral plate, 14px in from the corner. */
-.pb-dir-logo-well {
+/* Pointed at or reached, the screenshot darkens and the brand's logo comes
+   up over it, in grey and white. */
+.pb-dir-shot-wrap::after {
+  content: "";
   position: absolute;
-  top: 14px;
-  left: 14px;
-  display: flex;
-  align-items: center;
-  height: 36px;
-  padding: 4px 6px;
-  border: 1px solid var(--pb-line);
-  border-radius: var(--radius);
-  background: var(--pb-surface);
+  inset: 0;
+  background: rgb(10 10 10 / 0);
+  transition: background 180ms var(--ease-out);
 }
-.pb-dir-logo {
-  display: block;
+.pb-dir-brand {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   width: auto;
-  height: 28px;
-  max-width: 120px;
+  height: auto;
+  max-width: 56%;
+  max-height: 28%;
+  margin: auto;
   object-fit: contain;
-  object-position: left center;
   filter: grayscale(1);
-  transform-origin: top left;
-  transition: transform 180ms var(--ease-out);
+  opacity: 0;
+  transform: scale(.94);
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
 }
-.pb-dir-card:hover .pb-dir-logo,
-.pb-dir-card:focus-visible .pb-dir-logo { transform: scale(1.18); }
-.pb-dir-logo-mark {
-  color: var(--pb-text);
-  font-family: var(--font-family-ui);
-  font-size: .8rem;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: .04em;
-}
+.pb-dir-card:hover .pb-dir-shot-wrap::after,
+.pb-dir-card:focus-visible .pb-dir-shot-wrap::after { background: rgb(10 10 10 / .78); }
+.pb-dir-card:hover .pb-dir-brand,
+.pb-dir-card:focus-visible .pb-dir-brand { opacity: 1; transform: none; }
 .pb-dir-body {
   display: flex;
   flex-direction: column;
@@ -1777,7 +1772,6 @@ body:has(#patchbay-home),
   font-weight: var(--font-weight-semibold);
 }
 .pb-entry-mark img { width: 2.25rem; height: 1.6rem; object-fit: contain; filter: grayscale(1); }
-:root[data-theme="dark"] .pb-dir-logo,
 :root[data-theme="dark"] .pb-entry-mark img { filter: grayscale(1) invert(1); }
 .pb-entry-copy { display: grid; gap: var(--space-1); min-width: 0; }
 .pb-entry-copy:only-child { grid-column: 1 / -1; }
@@ -1870,11 +1864,12 @@ body:has(#patchbay-home),
 }
 @media (prefers-reduced-motion: reduce) {
   .pb-dir-card,
-  .pb-dir-logo { transition: none; }
+  .pb-dir-shot-wrap::after,
+  .pb-dir-brand { transition: none; }
   .pb-dir-card:hover,
   .pb-dir-card:focus-visible,
-  .pb-dir-card:hover .pb-dir-logo,
-  .pb-dir-card:focus-visible .pb-dir-logo { transform: none; }
+  .pb-dir-card:hover .pb-dir-brand,
+  .pb-dir-card:focus-visible .pb-dir-brand { transform: none; }
 }
 
 @media (max-width: 760px) {

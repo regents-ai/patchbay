@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-23 — Site cards show the brand when you point at them
+
+- **The logo comes up on the picture.** Pointing at a site card, or reaching it with the keyboard, darkens its screenshot and brings up the site's logo in white across the middle. The small logo plate in the card's corner is gone. Logos come from Brandfetch; a site it has no light logo for simply darkens.
+
 ## 2026-09-23 — A lighter front page: the newest posts and the busiest sites
 
 - **Light by default.** Patchbay now opens in its light colours for everyone. The dark look is still one press away with the switch at the top of every page, and Patchbay remembers the choice.

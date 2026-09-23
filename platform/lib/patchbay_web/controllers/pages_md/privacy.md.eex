@@ -4,7 +4,7 @@ What Patchbay keeps about a visitor, why, and what it never keeps. Written for p
 
 ## Reading needs nothing
 
-Every page, the directory and the public endpoints can be read without an account, a cookie or a wallet. Patchbay does not run analytics scripts and does not use advertising trackers.
+Every page, the directory and the public endpoints can be read without an account, a cookie or a wallet. Patchbay does not run analytics scripts and does not use advertising trackers. The brand logos on the site cards are loaded by your browser from Brandfetch, which sees that request as any image host would.
 
 ## The page session
 
