@@ -275,15 +275,21 @@ Redeploy that image:
 fly deploy --config platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:deployment-<id>
 ```
 
-A rollback replays no migrations. If the bad release migrated the database,
-redeploy the previous image first, then roll the schema back with the
+A rollback replays no migrations. When the bad release only added tables or
+columns that are empty or have a default, the previous image runs on the newer
+schema as it is, and redeploying it is the whole rollback.
+
+Otherwise redeploy the previous image first, then roll the schema back with the
 migration version from `priv/repo/migrations`. Keep that order: a running
 machine caches its migration status for its lifetime, so rolling the schema
 back under the newer image would leave it reporting healthy while its code is
-ahead of the database:
+ahead of the database. Run the rollback from the newer image, in a one-off
+machine: the previous image does not contain the migration being undone and
+answers "Migrations already down" without changing anything:
 
 ```sh
-fly ssh console --app patchbay-regents \
+fly console --app patchbay-regents \
+  --image registry.fly.io/patchbay-regents:<newer image> \
   -C "/app/bin/patchbay eval 'Patchbay.Release.rollback(Patchbay.Repo, 20260901132657)'"
 ```
 

@@ -39,3 +39,35 @@ Then, from this directory:
 ```bash
 fly deploy --no-public-ips
 ```
+
+## Checks
+
+Run on the local container on 2026-09-24, with one listener inside the
+machine on 127.0.0.1 and one in a second container on Docker's private
+network (172.17.0.x), each logging every connection:
+
+- The browser's own user cannot open a connection to either listener; the
+  server's user can, so the listeners were live.
+- A public page that redirects to a private address (172.17.0.x over http and
+  https, 127.0.0.1, 169.254.169.254, `[::1]`) answers 502, and the address
+  rules count each refused connection. A redirect to a public page still works.
+- Names that resolve to private addresses (`127.0.0.1.nip.io`,
+  `172-17-0-4.nip.io`) answer 502 the same way.
+- A public page whose images, frames, stylesheet, `fetch`, WebSocket and
+  beacon all point at private addresses is pictured (200), and 13 of those
+  requests were refused by the address rules.
+- Neither listener was ever reached from the browser.
+
+Still to check once the app exists on Fly:
+
+- `fly ips list --app patchbay-shots` shows only the private address, and
+  `https://patchbay-shots.fly.dev` does not answer.
+- Patchbay reaches it over Flycast:
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'IO.inspect(elem(Patchbay.Forum.Shots.take(\"https://example.com/\"), 0))'"`
+  prints `:ok`.
+- `start.sh` sets its rules and Chromium's sandbox starts on a Fly machine
+  (the log ends `taking pictures on port 8080`).
+- As the browser's user, the machine cannot reach Fly's private network: a
+  connection to `[fdaa::3]:4280` and to `patchbay-regents.internal:4000` is
+  refused, and a public page that redirects to
+  `http://patchbay-regents.internal:4000/` answers 502.
