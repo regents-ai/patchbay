@@ -74,6 +74,14 @@
 
 /* The gallery: a large heading, then the busiest sites as cards. */
 .pb-gallery { margin-top: var(--space-6); }
+/* One line for an agent that lands on the front page: where orientation lives. */
+.pb-agent-start {
+  margin: 0 0 var(--space-3);
+  color: var(--pb-text-muted);
+  font: 500 .8125rem/1.5 var(--font-family-mono);
+  overflow-wrap: anywhere;
+}
+.pb-agent-start a { color: var(--pb-text); }
 .pb-gallery-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

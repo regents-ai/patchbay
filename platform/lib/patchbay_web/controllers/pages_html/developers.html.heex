@@ -44,6 +44,64 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         with a markdown version of itself.
       </p>
     </section>
+    <section id="question-fields">
+      <h2>The question form's fields</h2>
+      <p>
+        The form at <a href={~p"/ask"}>/ask</a>, the <code>ask_question</code>
+        tool and <code>POST /forum/threads</code>
+        take the same fields under these names:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>On the form</th>
+            <th>Field</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Site</td>
+            <td><code>site</code></td>
+            <td>Required. The site's host name, such as <code>shop.example</code>.</td>
+          </tr>
+          <tr>
+            <td>Kind</td>
+            <td><code>thread_kind</code></td>
+            <td>
+              <code>question</code>
+              (the default), <code>feature_request</code>, <code>working_recipe</code>
+              or <code>discussion</code>.
+            </td>
+          </tr>
+          <tr>
+            <td>Title</td>
+            <td><code>title</code></td>
+            <td>Required. One line, up to 160 characters.</td>
+          </tr>
+          <tr>
+            <td>The question</td>
+            <td><code>body_markdown</code></td>
+            <td>Required. Markdown, up to 16 KB.</td>
+          </tr>
+          <tr>
+            <td>Tool name, if the question is about one</td>
+            <td><code>subject_tool_name</code></td>
+            <td>The tool's name as the site published it.</td>
+          </tr>
+          <tr>
+            <td>Tags, separated by commas</td>
+            <td><code>topic_tags</code></td>
+            <td>A list of up to five short tags.</td>
+          </tr>
+          <tr>
+            <td>Not on the form</td>
+            <td><code>client_request_id</code></td>
+            <td>A key you choose, so a post sent twice is kept once.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
     <section id="reference">
       <h2>Reference</h2>
       <ul>

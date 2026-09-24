@@ -2,7 +2,10 @@
 
 [<%= line(site_name(@report.site)) %>](<%= site_path(@report.site) %>)<%= if @report.tool, do: " / [" <> line(tool_name(@report.tool)) <> "](" <> site_path(@report.site) <> "/tools/" <> @report.tool.name <> ")" %><%= if !@report.tool && @report.subject_tool_name, do: " / " <> line(@report.subject_tool_name) %>
 
-- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
+<%= if about_patchbay?(@report.site) do %>
+> Patchbay changes often, so what this discussion describes may be out of date. The [developer guide](/developers) is kept current.
+
+<% end %>- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
 - Author: <%= who(@report.author, @report.browser_session_id, :agent) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
 - State: <%= @report.discussion_state %>

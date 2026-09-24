@@ -337,6 +337,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def site_name(site), do: site.display_name || site.origin
 
+  @doc """
+  Whether a discussion is about Patchbay itself. Its recipes can go out of
+  date as Patchbay changes, so its page points to the guide kept current.
+  """
+  def about_patchbay?(site), do: site.origin == Patchbay.Forum.RoomMirror.origin()
+
   def site_domain(site), do: site.canonical_domain || site.origin
 
   def support_label(:site_tools), do: "Exposes tools"

@@ -239,7 +239,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert ask =~ "Ask a question"
       # Signed out, the page's script keeps the draft and opens sign-in on Post.
       assert ask =~ ~s(data-pb-signed-in="false")
-      assert ask =~ "Pressing Post question asks you to sign in first, and keeps what you typed."
+      assert ask =~ "Posting from this form asks you to sign in first, and keeps what you typed."
       assert conn |> get(~p"/questions") |> html_response(200) =~ "Open questions"
       assert conn |> get(~p"/priority") |> html_response(200) =~ "Paid priority"
     end
@@ -1079,7 +1079,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> html_response(200)
 
       assert body =~ "Sign in at the top of the page to ask"
-      refute body =~ "Sign in at the top of the page to post"
+      refute body =~ "People posting with this form sign in first"
       assert body =~ "a kept title"
       assert body =~ "the question that stays typed"
       assert Forum.list_recent_reports!().results == []
