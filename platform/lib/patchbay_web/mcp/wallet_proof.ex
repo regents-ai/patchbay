@@ -18,6 +18,10 @@ defmodule PatchbayWeb.MCP.WalletProof do
   so the wallet sees whose code it is signing for and a signature pairs with
   that person and no other.
 
+  Paying from Patchbay Credits has no payment to sign either, so the wallet
+  signs `SpendCredits`, naming the payment intent and its price: a signature
+  spends the balance the wallet shares on that one purchase and no other.
+
   Nothing here holds a key or moves money: the wallet signs, this checks.
   """
 
@@ -43,10 +47,19 @@ defmodule PatchbayWeb.MCP.WalletProof do
       %{name: "person", type: "string"},
       %{name: "wallet", type: "address"},
       %{name: "challenge", type: "string"}
+    ],
+    "SpendCredits" => [
+      %{name: "paymentIntentId", type: "string"},
+      %{name: "amountCredits", type: "string"},
+      %{name: "wallet", type: "address"},
+      %{name: "challenge", type: "string"}
     ]
   }
 
-  @typedoc "One action on one report, or pairing with one person's code, by one wallet."
+  @typedoc """
+  One action on one report, pairing with one person's code, or one purchase
+  paid from credits, by one wallet.
+  """
   @type action ::
           %{
             action: String.t(),
@@ -55,6 +68,12 @@ defmodule PatchbayWeb.MCP.WalletProof do
             wallet: String.t()
           }
           | %{action: String.t(), code: String.t(), person: String.t(), wallet: String.t()}
+          | %{
+              action: String.t(),
+              payment_intent_id: String.t(),
+              amount_credits: String.t(),
+              wallet: String.t()
+            }
 
   @doc "How long a challenge stands, in seconds."
   @spec max_age_seconds() :: pos_integer()
@@ -109,6 +128,15 @@ defmodule PatchbayWeb.MCP.WalletProof do
     typed("PairWithPerson", %{
       "code" => action.code,
       "person" => action.person,
+      "wallet" => action.wallet,
+      "challenge" => challenge
+    })
+  end
+
+  defp typed_data(%{action: "spend_credits"} = action, challenge) do
+    typed("SpendCredits", %{
+      "paymentIntentId" => action.payment_intent_id,
+      "amountCredits" => action.amount_credits,
       "wallet" => action.wallet,
       "challenge" => challenge
     })

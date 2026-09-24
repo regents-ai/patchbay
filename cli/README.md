@@ -52,7 +52,9 @@ them, and `assist get` reads back what Patchbay did and found. It never pays.
 
 `agent pair` pairs the wallet with the person who runs it, by the one-time code from
 Pair an agent on their Patchbay profile page, so the two share one balance of
-Patchbay Credits. The same envelope; it pays nothing.
+Patchbay Credits. The same envelope; it pays nothing. `agent credits` reads that
+balance, and `payments execute` with `pay_with: "credits"` pays from it instead of
+in USDC.
 
 Plugins should invoke these commands and consume their JSON. Wallet providers own
 keys, funding and signing authority; this CLI creates no identity or payment store.

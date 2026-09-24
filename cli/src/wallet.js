@@ -18,14 +18,18 @@ export function walletOrigin(value) {
 
 // The operations that freeze terms, and the payment kind each one freezes.
 const prepares = {prepare: "special_post", assist_request: "jev_assist"};
-const reads = ["get", "assist_get"];
+const reads = ["get", "assist_get", "credits"];
 // A pairing code as a person copies it: never empty, never longer than 64 characters.
 const pairingCode = code => typeof code === "string" && code.length >= 1 && code.length <= 64;
+// What an execute body may carry: nothing, one x402 payment, or the ask to pay from Patchbay Credits.
+const executeBody = body => exactKeys(body, []) ||
+  (exactKeys(body, ["payment_signature"]) && typeof body.payment_signature === "string" && body.payment_signature.length >= 1 && body.payment_signature.length <= 65536) ||
+  (exactKeys(body, ["pay_with"]) && body.pay_with === "credits");
 
 export function walletTarget(operation, id, values = {}) {
   const phase = values.phase ?? "send";
   if (!["prepare", "send"].includes(phase)) fail();
-  if (["execute", ...reads].includes(operation) && !uuidPattern.test(id ?? "")) fail();
+  if (["execute", "get", "assist_get"].includes(operation) && !uuidPattern.test(id ?? "")) fail();
   return {operation, phase, id, siwaUrl: values["siwa-url"], walletAddress: values["wallet-address"]};
 }
 
@@ -35,6 +39,7 @@ function targetFor(target) {
   if (target.operation === "get") return {method: "GET", path: `/api/agent/payment_intents/${target.id}`};
   if (target.operation === "assist_get") return {method: "GET", path: `/api/agent/assists/${target.id}`};
   if (target.operation === "pair") return {method: "POST", path: "/api/agent/pairing"};
+  if (target.operation === "credits") return {method: "GET", path: "/api/agent/credits"};
   fail();
 }
 
@@ -45,8 +50,9 @@ function bodyFor(target, input) {
     return JSON.stringify({code: input.code});
   }
   if (target.operation === "execute") {
-    if (input.payment_signature !== undefined && (typeof input.payment_signature !== "string" || input.payment_signature.length < 1 || input.payment_signature.length > 65536)) fail();
-    return JSON.stringify(input.payment_signature === undefined ? {} : {payment_signature: input.payment_signature});
+    const {receipt: _receipt, wallet_address: _wallet, ...body} = input;
+    if (!executeBody(body)) fail();
+    return JSON.stringify(body);
   }
   if (!object(input.args)) fail();
   return JSON.stringify({kind: prepares[target.operation], args: input.args});
@@ -55,7 +61,7 @@ function bodyFor(target, input) {
 // This is a reviewable message for an external EOA personal_sign implementation.
 // It contains no private key and is never a local signing request.
 export function prepareWalletRequest(base, target, input, now = Math.floor(Date.now() / 1000), nonce = randomBytes(16).toString("hex")) {
-  const expected = ["receipt", "wallet_address", ...(target.operation in prepares ? ["args"] : target.operation === "pair" ? ["code"] : target.operation === "execute" && input.payment_signature !== undefined ? ["payment_signature"] : [])];
+  const expected = ["receipt", "wallet_address", ...(target.operation in prepares ? ["args"] : target.operation === "pair" ? ["code"] : target.operation === "execute" ? Object.keys(input).filter(k => ["payment_signature", "pay_with"].includes(k)) : [])];
   if (!exactKeys(input, expected) || !walletPattern.test(input.wallet_address) ||
       typeof input.receipt !== "string" || input.receipt.length > 32768 || !/^[A-Za-z0-9_.-]+$/.test(input.receipt)) fail();
   return unsignedRequest(base, targetFor(target), bodyFor(target, input), input.receipt, input.wallet_address, now, now + 120, nonce);
@@ -89,8 +95,7 @@ export function signedWalletRequest(base, target, input, now = Math.floor(Date.n
       if (!exactKeys(body, ["kind", "args"]) || body.kind !== prepares[target.operation] || !object(body.args)) fail();
     } else if (target.operation === "pair") {
       if (!exactKeys(body, ["code"]) || !pairingCode(body.code)) fail();
-    } else if (!object(body) || Object.keys(body).some(k => k !== "payment_signature") ||
-      (body.payment_signature !== undefined && (typeof body.payment_signature !== "string" || body.payment_signature.length < 1 || body.payment_signature.length > 65536))) fail();
+    } else if (!executeBody(body)) fail();
   }
   const receipt = r.headers["x-siwa-receipt"], address = r.headers["x-agent-wallet-address"];
   if (!walletPattern.test(address ?? "") || typeof receipt !== "string" || receipt.length > 32768 || !/^[A-Za-z0-9_.-]+$/.test(receipt)) fail();

@@ -4,6 +4,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   alias Patchbay.Escrow.Watch
   alias Patchbay.{Identity, Repo}
   alias Patchbay.Identity.Pairing
+  alias Patchbay.Payments.Credits
 
   @funded_at 1_790_000_000
 
@@ -305,6 +306,73 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     assert {:ok, agent} = unboxed(fn -> Identity.get_wallet_profile(8453, c.address) end)
     assert agent.paired_person_id == person.id
+  end
+
+  test "a paired wallet reads and spends its person's credits from a terminal, once", c do
+    privy_user_id = "did:privy:journey-credits-#{Ecto.UUID.generate()}"
+
+    # The person's credit lines go before the person, and before the intents
+    # the setup removes.
+    on_exit(fn ->
+      unboxed(fn ->
+        Repo.query!(
+          "DELETE FROM credit_lines WHERE profile_id IN (SELECT id FROM agent_profiles WHERE privy_user_id=$1)",
+          [privy_user_id]
+        )
+
+        Repo.query!("DELETE FROM agent_profiles WHERE privy_user_id=$1", [privy_user_id])
+      end)
+    end)
+
+    {person, code} =
+      unboxed(fn ->
+        person =
+          Identity.upsert_from_privy!(%{
+            privy_user_id: privy_user_id,
+            wallet_address: "0x" <> String.duplicate("e", 40)
+          })
+
+        {:ok, :credited} =
+          Credits.record_card_purchase(person.id, 300, "pi_" <> Ecto.UUID.generate())
+
+        {:ok, %{code: code}} = Pairing.issue(person)
+        {person, code}
+      end)
+
+    assert dispatch(c, ["agent", "credits"], %{})["body"] == %{
+             "paired" => false,
+             "balance_credits" => "0.00"
+           }
+
+    assert dispatch(c, ["agent", "pair"], %{code: code})["status"] == 200
+    read = dispatch(c, ["agent", "credits"], %{})
+    assert %{"paired" => true, "balance_credits" => "3.00"} = read["body"]
+    assert read["body"]["person"]["profile_id"] == person.public_id
+
+    prepared =
+      dispatch(c, ["payments", "prepare"], %{
+        args: %{amount_usdc: "2.00", origin: c.origin, tool_name: "fixture", verdict: "unknown"}
+      })
+
+    id = prepared["body"]["id"]
+    paid = dispatch(c, ["payments", "execute", id], %{pay_with: "credits"})
+    assert paid["status"] == 200, inspect(paid)
+    assert paid["body"]["paid_with"] == "patchbay_credits"
+    again = dispatch(c, ["payments", "execute", id], %{pay_with: "credits"})
+    assert again["body"]["report_id"] == paid["body"]["report_id"]
+    assert dispatch(c, ["agent", "credits"], %{})["body"]["balance_credits"] == "1.00"
+
+    # More than is left pays nothing.
+    more =
+      dispatch(c, ["payments", "prepare"], %{
+        args: %{amount_usdc: "2.00", origin: c.origin, tool_name: "other", verdict: "unknown"}
+      })
+
+    short = dispatch(c, ["payments", "execute", more["body"]["id"]], %{pay_with: "credits"})
+    assert short["status"] == 402
+    assert short["body"]["problem_code"] == "credits_short"
+    assert dispatch(c, ["agent", "credits"], %{})["body"]["balance_credits"] == "1.00"
+    refute_receive :settled, 100
   end
 
   test "changed body and replay are refused by cryptographic verification", c do

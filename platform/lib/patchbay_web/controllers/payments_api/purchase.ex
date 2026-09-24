@@ -799,6 +799,38 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     )
   end
 
+  @doc """
+  What every door answers when the balance `actor` spends does not cover
+  `found`: the balance, the price and who can add to it.
+  """
+  @spec credits_short(struct(), PaymentIntent.t(), integer()) :: map()
+  def credits_short(actor, found, balance) do
+    {whose, who_adds} = short_of_credits(actor)
+
+    %{
+      error:
+        "#{whose} is #{Credits.written(balance)}, and this costs " <>
+          "#{USDC.format(found.amount_atomic)}. #{who_adds} Nothing was charged.",
+      status: "payment_required",
+      problem_code: "credits_short",
+      payment_intent_id: found.id,
+      balance_credits: Credits.written(balance)
+    }
+  end
+
+  defp short_of_credits(%{paired_person_id: person_id}) when is_binary(person_id),
+    do:
+      {"The Patchbay Credits balance this wallet shares",
+       "The person it is paired with can add credits on their profile page."}
+
+  defp short_of_credits(%{authentication_origin: :wallet}),
+    do:
+      {"This wallet's own Patchbay Credits balance",
+       "A wallet spends the credits of the person it is paired with: ask them for a pairing code from their profile page."}
+
+  defp short_of_credits(_person),
+    do: {"Your Patchbay Credits balance", "Buy credits on your profile page."}
+
   @doc "The intent as prepared: what it costs, what it does, where to pay."
   @spec intent_payload(PaymentIntent.t()) :: map()
   def intent_payload(found) do

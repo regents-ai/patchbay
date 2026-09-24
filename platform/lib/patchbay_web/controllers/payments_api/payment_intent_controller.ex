@@ -11,7 +11,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Payments.Credits
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias X402.PaymentRequired
@@ -146,14 +145,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   defp send_answer(conn, {:credits_short, found, balance}) do
     conn
     |> put_status(:payment_required)
-    |> json(%{
-      error:
-        "Your Patchbay Credits balance is #{Credits.written(balance)}, and this costs " <>
-          "#{USDC.format(found.amount_atomic)}. Buy credits on your profile page. Nothing was charged.",
-      problem_code: "credits_short",
-      payment_intent_id: found.id,
-      balance_credits: Credits.written(balance)
-    })
+    |> json(Purchase.credits_short(conn.assigns.current_profile, found, balance))
   end
 
   defp send_answer(conn, {:settled, found, receipt}) do

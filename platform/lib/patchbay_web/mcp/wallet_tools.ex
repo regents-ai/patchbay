@@ -13,7 +13,9 @@ defmodule PatchbayWeb.MCP.WalletTools do
   answered with the terms. Accepting an answer and asking the bounty back
   move money without a payment, so the wallet signs for the exact action
   instead (`PatchbayWeb.MCP.WalletProof`); pairing is signed for the same
-  way, naming the code.
+  way, naming the code, and so is paying a report or an assist from the
+  Patchbay Credits the wallet shares with the person it is paired with,
+  naming the purchase and its price.
 
   The purchase itself is `PatchbayWeb.PaymentsAPI.Purchase`, the one process
   every door runs, so asking for the same report at the same price again
@@ -58,6 +60,13 @@ defmodule PatchbayWeb.MCP.WalletTools do
       "The wallet this call acts for, as its Base address. This connection has no signed-in wallet; the wallet is proven by the payment it signs, or by signing the challenge this tool answers with."
   }
 
+  @pay_with %{
+    "type" => "string",
+    "enum" => ["credits"],
+    "description" =>
+      "Leave out to pay in USDC over x402. \"credits\" pays from the Patchbay Credits balance the wallet shares with the person it is paired with: the first call answers with typed_data naming this purchase and its price, and the call again with challenge and signature pays."
+  }
+
   @proof %{
     "challenge" => %{
       "type" => "string",
@@ -83,9 +92,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
   @spec hosted_schema(String.t(), map()) :: map()
   def hosted_schema(name, schema) when name in @names do
     proof =
-      if name in ~w(accept_solution withdraw_priority_report pair_with_person),
-        do: @proof,
-        else: %{}
+      cond do
+        name in ~w(accept_solution withdraw_priority_report pair_with_person) -> @proof
+        name in ~w(post_priority_report request_assist) -> Map.put(@proof, "pay_with", @pay_with)
+        true -> %{}
+      end
 
     schema
     |> Map.update!(
@@ -114,10 +125,8 @@ defmodule PatchbayWeb.MCP.WalletTools do
     with {:ok, wallet} <- wallet_address(wallet),
          {:ok, named} <- Identity.upsert_from_wallet(%{wallet_address: wallet}),
          {:ok, actor} <- active(named),
-         {:ok, found} <-
-           Purchase.special_post_on_offer(actor, Map.delete(arguments, "wallet_address")) do
-      request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
-      purchase_answer(Purchase.execute(actor, found.id, request), @report_challenge)
+         {:ok, found} <- Purchase.special_post_on_offer(actor, terms(arguments)) do
+      pay(actor, found, wallet, arguments, meta, @report_challenge)
     else
       {:error, failure} -> purchase_refusal(failure)
     end
@@ -127,9 +136,8 @@ defmodule PatchbayWeb.MCP.WalletTools do
     with {:ok, wallet} <- wallet_address(wallet),
          {:ok, named} <- Identity.upsert_from_wallet(%{wallet_address: wallet}),
          {:ok, actor} <- active(named),
-         {:ok, found} <- Purchase.assist_on_offer(actor, Map.delete(arguments, "wallet_address")) do
-      request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
-      purchase_answer(Purchase.execute(actor, found.id, request), @assist_challenge)
+         {:ok, found} <- Purchase.assist_on_offer(actor, terms(arguments)) do
+      pay(actor, found, wallet, arguments, meta, @assist_challenge)
     else
       {:error, failure} -> purchase_refusal(failure)
     end
@@ -257,6 +265,42 @@ defmodule PatchbayWeb.MCP.WalletTools do
   defp active(%{status: :active} = profile), do: {:ok, profile}
   defp active(_suspended), do: {:error, :suspended}
 
+  # What is being bought, without how it is paid for or who pays.
+  defp terms(arguments),
+    do: Map.drop(arguments, ~w(wallet_address pay_with challenge signature))
+
+  # Paid from credits once the wallet has signed for exactly this purchase at
+  # this price; otherwise in USDC with the x402 payment the call carries.
+  defp pay(actor, found, wallet, %{"pay_with" => "credits"} = arguments, _meta, challenge) do
+    action = %{
+      action: "spend_credits",
+      payment_intent_id: found.id,
+      amount_credits: USDC.format(found.amount_atomic),
+      wallet: wallet
+    }
+
+    case proof(action, Map.take(arguments, ["challenge", "signature"]), fn _wallet -> :ok end) do
+      :ok ->
+        request = %{payment: :credits, payer: wallet, browser_session_id: nil}
+
+        case Purchase.execute(actor, found.id, request) do
+          {:credits_short, found, balance} ->
+            {:error, Purchase.credits_short(actor, found, balance)}
+
+          answer ->
+            purchase_answer(answer, challenge)
+        end
+
+      {:error, failure} ->
+        proof_refusal(failure)
+    end
+  end
+
+  defp pay(actor, found, wallet, _arguments, meta, challenge) do
+    request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
+    purchase_answer(Purchase.execute(actor, found.id, request), challenge)
+  end
+
   defp payment(meta) do
     case X402.MCP.fetch_payment(%{"_meta" => meta}) do
       {:ok, payment} -> payment
@@ -286,11 +330,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
       |> Purchase.payment_help()
 
     effect = found |> Purchase.applied_effect() |> Map.merge(read_back_tool(found))
-    {:paid, Map.merge(answer, effect), receipt.payment_response}
+    paid(Map.merge(answer, effect), receipt)
   end
 
   defp purchase_answer({:settled, found, receipt}, _challenge),
-    do: {:paid, status_answer(%{found | receipt: receipt}), receipt.payment_response}
+    do: paid(status_answer(%{found | receipt: receipt}), receipt)
 
   defp purchase_answer({:settlement_pending, found}, _challenge) do
     {:error,
@@ -327,6 +371,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
   end
 
   defp purchase_answer({:error, failure}, _challenge), do: purchase_refusal(failure)
+
+  # A payment in USDC carries the payment service's answer back in the
+  # result's `_meta`; one from Patchbay Credits has none.
+  defp paid(answer, nil), do: {:ok, answer}
+  defp paid(answer, receipt), do: {:paid, answer, receipt.payment_response}
 
   # The tool that reads back what the money bought, over this door.
   defp read_back_tool(%{kind: :jev_assist}), do: %{assist_tool: "get_assist"}

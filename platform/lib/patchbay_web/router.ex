@@ -94,6 +94,12 @@ defmodule PatchbayWeb.Router do
     get "/assists/:id", RunController, :show
   end
 
+  # Reading the balance a signed agent spends is not a payment request either.
+  scope "/api/agent", PatchbayWeb.PaymentsAPI do
+    pipe_through [:api, :wallet_author]
+    get "/credits", AgentCreditsController, :show
+  end
+
   scope "/api/agent", PatchbayWeb.IdentityAPI do
     pipe_through [:api, :wallet_author, :payment_budget]
     post "/pairing", PairingController, :create

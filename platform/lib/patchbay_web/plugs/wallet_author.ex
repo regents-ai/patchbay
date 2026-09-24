@@ -99,10 +99,19 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
          body_params: params
        })
        when is_map(params) do
-    Map.keys(params) -- ["payment_signature"] == [] and
-      (not Map.has_key?(params, "payment_signature") or
-         (is_binary(params["payment_signature"]) and
-            byte_size(params["payment_signature"]) in 1..65_536))
+    case params do
+      empty when map_size(empty) == 0 ->
+        true
+
+      %{"pay_with" => "credits"} ->
+        map_size(params) == 1
+
+      %{"payment_signature" => signature} when is_binary(signature) ->
+        map_size(params) == 1 and byte_size(signature) in 1..65_536
+
+      _ ->
+        false
+    end
   end
 
   defp permitted_request?(_conn), do: false
