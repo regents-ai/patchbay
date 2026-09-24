@@ -1,16 +1,23 @@
 defmodule Patchbay.Forum.SiteCheck do
   @moduledoc """
-  Gives a site its gallery card the first time an agent asks about it.
+  Gives a site with WebMCP tools its gallery card, starting from a question
+  about it.
 
-  After the first question on a site with no card, Patchbay reads the site's
-  front page for the WebMCP tools it signs up and records them on the site.
-  A site with at least one tool on record, from its page or from agents'
-  reports, then has the screenshot machine take a picture of the page, and
-  the tools put it in the gallery. A site with none keeps its board and stays
-  out of the gallery. The page is read once; a later question does not read
-  it again.
+  Every new question hands its site here, and two separate steps each run
+  at most when they are due:
 
-  Sites are read one at a time, in the order they were asked about.
+  - Reading the page. The first question about a site outside the directory
+    has its front page read for the WebMCP tools it signs up, and those are
+    recorded on the site. This happens once per site, whatever it finds.
+  - Taking the picture. A site with at least one tool on record, from its
+    page or from agents' reports, and no picture yet has the screenshot
+    machine take one. A try that fails, say while that machine is away, is
+    tried again by a later question an hour or more on, three tries at most.
+
+  A site joins the gallery once it has both tools and a picture; one without
+  tools keeps its board and stays out. Each step is claimed by one UPDATE
+  that only a due site matches, so questions arriving together start each
+  step once. Sites are handled one at a time, in the order asked about.
   """
 
   use GenServer
@@ -28,7 +35,7 @@ defmodule Patchbay.Forum.SiteCheck do
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, nil, name: __MODULE__)
 
-  @doc "Asks for the site's page to be read, if it never has been. Returns at once."
+  @doc "Hands a site to the queue after a question about it. Returns at once."
   @spec check(Ecto.UUID.t()) :: :ok
   def check(site_id), do: GenServer.cast(__MODULE__, {:check, site_id})
 
@@ -41,32 +48,33 @@ defmodule Patchbay.Forum.SiteCheck do
     {:noreply, state}
   end
 
-  @doc "Reads the site's page and fills in its card: the work `check/1` queues."
+  @doc "Reads the page and takes the picture, each if due: the work `check/1` queues."
   @spec run(Ecto.UUID.t()) :: term()
   def run(site_id) do
-    with [site] <- claim(site_id) do
-      page_url = "https://#{site.origin}/"
-      found = page_tools(page_url)
-      Enum.each(found, &record_tool(site, &1))
-      if found != [] or site.tool_count > 0, do: picture(site, page_url)
+    with [site] <- claim(site_id, :claim_page_check) do
+      page_url = page_url(site)
+      page_url |> page_tools() |> Enum.each(&record_tool(site, &1))
     end
+
+    with [site] <- claim(site_id, :claim_picture), do: picture(site, page_url(site))
   end
 
-  # One UPDATE that matches only an unread site with no card, so of two
+  # One UPDATE that matches only a site the step is due for, so of two
   # checks racing for the same site exactly one gets it back.
-  defp claim(site_id) do
+  defp claim(site_id, action) do
     %Ash.BulkResult{status: :success, records: records} =
       Site
       |> Ash.Query.filter(id == ^site_id)
-      |> Ash.bulk_update!(:claim_page_check, %{},
+      |> Ash.bulk_update!(action, %{},
         authorize?: false,
         strategy: :atomic,
-        return_records?: true,
-        load: [:tool_count]
+        return_records?: true
       )
 
     records
   end
+
+  defp page_url(site), do: "https://#{site.origin}/"
 
   # A page that cannot be read signs up no tools that Patchbay can see.
   defp page_tools(page_url) do

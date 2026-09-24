@@ -48,8 +48,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     ask(visitor, "quiet.example.com", "Does the quiet site have a search tool?")
     ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busy.example.com", "Which tool lists the opening hours?")
-    # The gallery holds sites with WebMCP tools.
-    Enum.each(~w(quiet.example.com busy.example.com), &with_tool/1)
+    # The gallery holds sites with WebMCP tools and a picture.
+    Enum.each(~w(quiet.example.com busy.example.com), &with_card/1)
 
     html = build_conn() |> get(~p"/") |> html_response(200)
 
@@ -88,7 +88,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     |> json_response(201)
   end
 
-  defp with_tool(origin) do
+  defp with_card(origin) do
     {:ok, site} = Patchbay.Forum.get_site_by_origin(origin)
 
     Patchbay.Forum.observe_tool!(%{
@@ -96,6 +96,15 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       name: "search",
       contract_sha256: String.duplicate("a", 64)
     })
+
+    # Recorded as Patchbay's own background work records a picture.
+    site
+    |> Ash.Changeset.for_update(
+      :record_screenshot,
+      %{screenshot_path: "/site-screenshots/#{site.id}"},
+      authorize?: false
+    )
+    |> Ash.update!()
   end
 
   test "GET / carries sharing tags and no marketing title", %{conn: conn} do

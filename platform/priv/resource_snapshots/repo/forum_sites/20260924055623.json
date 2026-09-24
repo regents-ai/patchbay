@@ -253,6 +253,30 @@
       "type": "utc_datetime_usec"
     },
     {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "picture_attempts",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "picture_tried_at",
+      "type": "utc_datetime_usec"
+    },
+    {
       "allow_nil?": true,
       "default": "nil",
       "generated?": false,
@@ -307,7 +331,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "2F921FD79459F99C3BB351E9945D652CB54DDB083DAF233002591A8DC95868B6",
+  "hash": "A5C7AAC80409A243EE17D5704410329CB255BA2DA3A044E83D7105707EB2C07C",
   "identities": [
     {
       "all_tenants?": false,

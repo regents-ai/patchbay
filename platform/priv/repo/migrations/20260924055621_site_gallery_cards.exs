@@ -1,7 +1,8 @@
-defmodule Patchbay.Repo.Migrations.SitePageCheck do
+defmodule Patchbay.Repo.Migrations.SiteGalleryCards do
   @moduledoc """
   Lets Patchbay read a site's page once, after the first question about it,
-  and keep the picture it took for the site's card.
+  and keep the picture it took for the site's card. A picture that fails is
+  tried again on a later question, a few times at most, spaced apart.
 
   Generated with `mix ash_postgres.generate_migrations`. The reference names
   no schema, like the migrations before it, so it follows the schema the
@@ -31,11 +32,15 @@ defmodule Patchbay.Repo.Migrations.SitePageCheck do
 
     alter table(:forum_sites) do
       add :page_checked_at, :utc_datetime_usec
+      add :picture_attempts, :bigint, null: false, default: 0
+      add :picture_tried_at, :utc_datetime_usec
     end
   end
 
   def down do
     alter table(:forum_sites) do
+      remove :picture_tried_at
+      remove :picture_attempts
       remove :page_checked_at
     end
 

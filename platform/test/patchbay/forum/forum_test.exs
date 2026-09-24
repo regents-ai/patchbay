@@ -41,6 +41,17 @@ defmodule Patchbay.ForumTest do
 
   defp results(%Ash.Page.Keyset{results: results}), do: results
 
+  # The picture a site's card shows, as Patchbay's own background work records it.
+  defp pictured!(site) do
+    site
+    |> Ash.Changeset.for_update(
+      :record_screenshot,
+      %{screenshot_path: "/site-screenshots/#{site.id}"},
+      authorize?: false
+    )
+    |> Ash.update!()
+  end
+
   # Only a verified report names a call, and only the forum's own action can
   # mark one. Writing the column straight is how the stored guarantee itself —
   # rather than the path that normally sets it — gets exercised.
@@ -141,6 +152,7 @@ defmodule Patchbay.ForumTest do
                  {:register_site, :create},
                  {:upsert_catalog_entry, :create},
                  {:claim_page_check, :update},
+                 {:claim_picture, :update},
                  {:record_screenshot, :update}
                ]
                |> Enum.sort()
@@ -155,11 +167,13 @@ defmodule Patchbay.ForumTest do
       assert found.id == site.id
     end
 
-    test "orders sites with tools by report count, busiest first, and leaves out the rest" do
-      quiet = site!("quiet.example")
-      busy = site!("busy.example")
+    test "orders sites with tools and a picture by report count, busiest first, and leaves out the rest" do
+      quiet = pictured!(site!("quiet.example"))
+      busy = pictured!(site!("busy.example"))
       # Asked about, but no tool on record and no directory entry.
-      site!("bare.example")
+      pictured!(site!("bare.example"))
+      # Tools on record, but no picture yet.
+      report!(tool!(site!("unpictured.example")))
 
       busy_tool = tool!(busy)
       report!(busy_tool)

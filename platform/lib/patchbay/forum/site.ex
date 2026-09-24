@@ -81,6 +81,12 @@ defmodule Patchbay.Forum.Site do
     # first question about it. Set once; the page is not read again.
     attribute(:page_checked_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
+    # Tries at a picture of the site's page for its card, and when the last
+    # began. A failed try is tried again by a later question, a few times
+    # at most and never sooner than `claim_picture` allows.
+    attribute(:picture_attempts, :integer, allow_nil?: false, default: 0, public?: true)
+    attribute(:picture_tried_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+
     attribute(:claimed_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:claim_kind, ClaimKind, allow_nil?: false, public?: true, default: :none)
 
@@ -128,10 +134,14 @@ defmodule Patchbay.Forum.Site do
     read :gallery do
       description("""
       The front page's gallery, busiest first: the directory's own entries and
-      every site with at least one WebMCP tool on record.
+      every site with at least one WebMCP tool on record and a picture of its
+      page.
       """)
 
-      filter(expr(not is_nil(support_relationship) or tool_count > 0))
+      filter(
+        expr(not is_nil(support_relationship) or (tool_count > 0 and not is_nil(screenshot_path)))
+      )
+
       pagination(keyset?: true, default_limit: 12, max_page_size: 50)
 
       prepare(
@@ -163,8 +173,22 @@ defmodule Patchbay.Forum.Site do
 
     update :claim_page_check do
       description("""
-      Marks a site's page as being read for tools. Only a site with no card
-      yet, never read before, is claimed, so one question starts one read.
+      Marks a site's page as being read for tools. Only a site outside the
+      directory, never read before, is claimed, so one question starts one read.
+      """)
+
+      accept([])
+      change(filter(expr(is_nil(page_checked_at) and is_nil(support_relationship))))
+      change(set_attribute(:page_checked_at, &DateTime.utc_now/0))
+    end
+
+    update :claim_picture do
+      description("""
+      Marks a try at a picture of a site's page for its card. Only a site
+      outside the directory, with a tool on record and no picture yet, is
+      claimed, at most three times and an hour apart, so a picture that
+      failed while the screenshot machine was away is tried again by a later
+      question, and questions arriving together start one try.
       """)
 
       accept([])
@@ -172,13 +196,15 @@ defmodule Patchbay.Forum.Site do
       change(
         filter(
           expr(
-            is_nil(page_checked_at) and is_nil(support_relationship) and
-              is_nil(screenshot_path)
+            is_nil(support_relationship) and is_nil(screenshot_path) and tool_count > 0 and
+              picture_attempts < 3 and
+              (is_nil(picture_tried_at) or picture_tried_at < ago(1, :hour))
           )
         )
       )
 
-      change(set_attribute(:page_checked_at, &DateTime.utc_now/0))
+      change(atomic_update(:picture_attempts, expr(picture_attempts + 1)))
+      change(set_attribute(:picture_tried_at, &DateTime.utc_now/0))
     end
 
     update :record_screenshot do
