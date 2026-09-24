@@ -16,7 +16,9 @@ defmodule Patchbay.Forum.Shots do
         json: %{url: page_url},
         receive_timeout: 60_000,
         retry: false,
-        decode_body: false
+        decode_body: false,
+        # The machine's private address on Fly is IPv6 only.
+        connect_options: [transport_opts: [inet6: true]]
       ] ++ Application.get_env(:patchbay, :shots_req_options, [])
 
     case Req.post(options) do
