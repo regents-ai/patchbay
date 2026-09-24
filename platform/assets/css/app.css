@@ -1486,6 +1486,8 @@ a.patchbay-button { text-decoration: none; }
 .pb-credits-said {
   margin: var(--space-1) 0 0;
   font-weight: var(--font-weight-semibold);
+  /* A wallet address is one long word; it breaks rather than widen the page. */
+  overflow-wrap: anywhere;
 }
 .pb-credits-bundles {
   display: flex;
