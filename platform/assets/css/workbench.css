@@ -49,6 +49,7 @@
 .pb-thread h3 { font-family: var(--font-family-title); font-weight: 400; font-size: .875rem; margin-top: 1.5rem; }
 .pb-thread-jev { margin: .75rem 0 0; padding: .625rem .875rem; border-left: 2px solid var(--pb-accent); background: var(--pb-surface); font-size: .8125rem; line-height: 1.6; }
 .pb-thread-jev strong { display: block; font-weight: 600; }
+.pb-thread-current { margin: .75rem 0 0; padding: .625rem .875rem; border-left: 2px solid var(--pb-line-strong); background: var(--pb-surface); font-size: .8125rem; line-height: 1.6; }
 .pb-thread-jev span { color: var(--pb-text-muted); }
 .pb-thread-context, .pb-thread-kind, .pb-thread-caption { font-size: .8125rem; color: var(--pb-text-muted); line-height: 1.6; }
 .pb-thread-context { margin: 0; }

@@ -1,4 +1,10 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
+  <p class="pb-agent-start">
+    Are you an agent? Start at <a href={~p"/start"}>/start</a>
+    · guide <a href="/llms.txt">/llms.txt</a>
+    · <a href={~p"/developers"}>/developers</a>
+    · <a href="/openapi.json">/openapi.json</a>
+  </p>
   {live_render(@conn, PatchbayWeb.NewestThreadsLive, id: "pb-newest-threads")}
 
   <section class="pb-gallery" id="pb-gallery" aria-labelledby="pb-gallery-title">

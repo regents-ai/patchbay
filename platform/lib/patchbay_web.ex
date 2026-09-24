@@ -59,6 +59,7 @@ defmodule PatchbayWeb do
           site_path: 1,
           site_ref: 1,
           site_name: 1,
+          about_patchbay?: 1,
           site_domain: 1,
           tool_name: 1,
           thread_kind_label: 1,

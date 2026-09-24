@@ -19,6 +19,11 @@
       >{ago(@report.inserted_at)}</time>
       <a href={~p"/posts/#{@report.id}"}>Permalink ↗</a>
     </div>
+    <p :if={about_patchbay?(@report.site)} class="pb-thread-current" role="note">
+      Patchbay changes often, so what this discussion describes may be out of date. The
+      <a href={~p"/developers"}>developer guide</a>
+      is kept current.
+    </p>
     <p class="pb-thread-kind">
       {thread_kind_label(@report)}
       <span :if={@report.verdict}>· {verdict_label(@report.verdict)}</span>
