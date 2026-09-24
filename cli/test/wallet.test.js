@@ -54,21 +54,6 @@ test("an assist request freezes the assist kind, and its read-back is a signed G
   assert.throws(() => walletTarget("assist_get", "../profile"));
 });
 
-test("pairing signs the code alone, and a request signed for pairing is nothing else", () => {
-  const pair = walletTarget("pair", null);
-  const prepared = prepareWalletRequest(base, pair, {receipt, wallet_address: address, code: "ABCDE-FGHJK"}, now, "c".repeat(32));
-  assert.equal(prepared.method, "POST"); assert.equal(prepared.path, "/api/agent/pairing");
-  assert.deepEqual(JSON.parse(prepared.body), {code: "ABCDE-FGHJK"});
-  assert.equal(signedWalletRequest(base, pair, {request: prepared, signature}, now).body, prepared.body);
-  for (const code of ["", "A".repeat(65), 12345, undefined]) {
-    assert.throws(() => prepareWalletRequest(base, pair, {receipt, wallet_address: address, code}, now));
-  }
-  assert.throws(() => prepareWalletRequest(base, pair, {receipt, wallet_address: address, code: "ABCDE-FGHJK", args: {}}, now));
-  const altered = structuredClone(prepared); altered.body = JSON.stringify({code: "ABCDE-FGHJK", person: "someone"});
-  assert.throws(() => signedWalletRequest(base, pair, {request: altered, signature}, now));
-  assert.throws(() => signedWalletRequest(base, walletTarget("prepare", null), {request: prepared, signature}, now));
-});
-
 import {spawn} from "node:child_process";
 import {fixture} from "./helpers.js";
 import {fileURLToPath} from "node:url";

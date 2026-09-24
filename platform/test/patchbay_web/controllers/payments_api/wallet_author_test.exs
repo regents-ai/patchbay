@@ -129,27 +129,4 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
 
     assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
   end
-
-  test "a pairing request carries the code and nothing else" do
-    conn =
-      Plug.Test.conn(:post, "/api/agent/pairing", "{}")
-      |> assign(:raw_body, "{}")
-      |> put_private(:wallet_body_complete, true)
-      |> put_req_header("content-type", "application/json")
-
-    pairing = &%{conn | body_params: &1}
-
-    assert {:ok, nil} = WalletAuthor.before_verify(pairing.(%{"code" => "ABCDE-FGHJK"}), %{})
-
-    for refused <- [
-          %{},
-          %{"code" => ""},
-          %{"code" => String.duplicate("A", 65)},
-          %{"code" => 12_345},
-          %{"code" => "ABCDE-FGHJK", "person" => "someone else"}
-        ] do
-      assert {:error, %{reason: :unsupported_action}} =
-               WalletAuthor.before_verify(pairing.(refused), %{})
-    end
-  end
 end

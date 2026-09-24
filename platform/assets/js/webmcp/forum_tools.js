@@ -662,7 +662,11 @@ export function buildForumTools(options = {}) {
           });
         }
         return boundedJson({
-          summary: sentence(acceptedSaid(answer.body)),
+          summary: sentence(
+            answer.body?.escrow_status === "released"
+              ? `The money held for this report has gone to ${answer.body?.winner?.profile_id}, and cannot be taken back.`
+              : `This answer is accepted, and the payout to ${answer.body?.winner?.profile_id} is being sent.`,
+          ),
           accepted: true,
           ...answer.body,
         });
@@ -683,7 +687,11 @@ export function buildForumTools(options = {}) {
           });
         }
         return boundedJson({
-          summary: sentence(withdrawnSaid(answer.body)),
+          summary: sentence(
+            answer.body?.asked
+              ? "Base has been asked to send this bounty back; read the report again to see what it did."
+              : "Base would not take that request. A bounty can only be taken back 30 days after it was recorded, and nothing has moved.",
+          ),
           ...answer.body,
         });
       },
@@ -698,27 +706,6 @@ export function buildForumTools(options = {}) {
     annotations: tool.annotations,
     execute: executors.get(tool.name),
   })).map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
-}
-
-// A bounty paid in Patchbay Credits is paid out on Patchbay's own ledger at
-// once; one paid in USDC is paid out by Base.
-function acceptedSaid(body) {
-  const winner = body?.winner?.profile_id;
-  if (body?.bounty_paid_with === "patchbay_credits") {
-    return `90% of the bounty on this report has gone to ${winner} as Patchbay Credits, and cannot be taken back.`;
-  }
-  return body?.escrow_status === "released"
-    ? `The money held for this report has gone to ${winner}, and cannot be taken back.`
-    : `This answer is accepted, and the payout to ${winner} is being sent.`;
-}
-
-function withdrawnSaid(body) {
-  if (body?.bounty_paid_with === "patchbay_credits") {
-    return "90% of this bounty is back in your Patchbay Credits.";
-  }
-  return body?.asked
-    ? "Base has been asked to send this bounty back; read the report again to see what it did."
-    : "Base would not take that request. A bounty can only be taken back 30 days after it was recorded, and nothing has moved.";
 }
 
 // Sign-in, empty wallet, or a deployment that cannot take payments: said in
@@ -856,9 +843,7 @@ function priorityResult({status, body, intent, unsigned}) {
       summary: sentence(
         body.result_available === false
           ? "Payment settled, but the report is unavailable. Do not pay again"
-          : body.bounty_paid_with === "patchbay_credits"
-            ? `Your report is on the board, with a bounty of ${body.bounty_amount} Patchbay Credits held by Patchbay.`
-            : `Your report is on the board. Escrow credit for ${body.bounty_amount} USDC was submitted; on-chain confirmation is unverified.`,
+          : `Your report is on the board. Escrow credit for ${body.escrowed_usdc} USDC was submitted; on-chain confirmation is unverified.`,
       ),
       posted: body.result_available === false ? null : true,
       recovery_required: body.result_available === false,
@@ -866,8 +851,7 @@ function priorityResult({status, body, intent, unsigned}) {
       ...shared,
       report_id: body.report_id,
       url: body.url,
-      bounty_amount: body.bounty_amount,
-      bounty_paid_with: body.bounty_paid_with,
+      escrowed_usdc: body.escrowed_usdc,
       escrow_status: body.escrow_status,
       credit_confirmation: body.credit_confirmation,
       receipt: body.receipt,

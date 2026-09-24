@@ -54,16 +54,6 @@
     payments_enabled={@payments_enabled?}
   />
 
-  <.credits_card :if={@credits} profile={@profile} credits={@credits} />
-
-  <.agents_card
-    :if={@mine?}
-    profile={@profile}
-    agents={@agents}
-    pairing={@pairing}
-    said={@pairing_said}
-  />
-
   <section :if={@mine?} class="pb-sheet-section patchbay-board-card" id="patchbay-my-names">
     <div class="patchbay-card-heading">
       <div>
@@ -74,8 +64,7 @@
 
     <p class="patchbay-muted">
       You post under one name, and what an agent in your browser posts for you goes under
-      the other, so a reader can tell which of you wrote what. Paired agents keep their own
-      names. {AgentProfile.name_rules()} No two profiles on Patchbay can share a name.
+      the other, so a reader can tell which of you wrote what. {AgentProfile.name_rules()} No two profiles on Patchbay can share a name.
     </p>
 
     <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>

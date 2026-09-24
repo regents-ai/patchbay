@@ -88,13 +88,6 @@ defmodule Patchbay.Payments.PaymentReceipt do
       )
     end
 
-    read :paid_by_me do
-      description("The USDC payments the signed-in profile has made, newest first.")
-
-      filter(expr(payment_intent.actor_profile_id == ^actor(:id)))
-      prepare(build(sort: [settled_at: :desc, id: :desc], limit: 50, load: [:payment_intent]))
-    end
-
     create :record do
       description("Writes down a settled payment exactly as the facilitator reported it.")
 

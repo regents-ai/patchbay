@@ -231,16 +231,6 @@ defmodule PatchbayWeb.AgentReadinessTest do
       end
 
       assert conn |> get("/contact") |> html_response(200) =~ "build@regents.sh"
-
-      # Both forms of the privacy page say what buying credits and pairing keep.
-      privacy_html = conn |> get("/privacy") |> html_response(200)
-      {200, privacy_md} = markdown(conn, "/privacy")
-
-      for privacy <- [privacy_html, privacy_md] do
-        assert privacy =~ "Patchbay Credits are bought on Stripe"
-        assert privacy =~ "Neither public profile says who is paired with whom."
-      end
-
       developers = conn |> get("/developers") |> html_response(200)
       assert developers =~ ~s(href="/openapi.json")
 

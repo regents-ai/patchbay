@@ -33,9 +33,9 @@ defmodule Patchbay.Payments.Validations.DraftFilesAsReport do
     [message: "would not be filed as a report", vars: []]
   end
 
-  # The filing is only built, never run. The ids, the session and the way it
-  # is paid that it is built with stand in for the ones the settlement request
-  # will carry; none of them is what the forum's rules are about.
+  # The filing is only built, never run. The ids and the session it is built
+  # with stand in for the ones the settlement request will carry; none of
+  # them is what the forum's rules are about.
   defp files?(draft, tool, amount_atomic, actor) do
     filing =
       Ash.Changeset.for_create(
@@ -48,8 +48,7 @@ defmodule Patchbay.Payments.Validations.DraftFilesAsReport do
           browser_session_id:
             if(actor.authentication_origin == :wallet, do: nil, else: Ash.UUID.generate()),
           priority_amount_atomic: amount_atomic,
-          payment_intent_id: Ash.UUID.generate(),
-          bounty_paid_with: :usdc
+          payment_intent_id: Ash.UUID.generate()
         }),
         actor: actor
       )

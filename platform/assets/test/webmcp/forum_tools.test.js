@@ -538,33 +538,6 @@ test("asking for a bounty back reports the ask, not the money", async () => {
   assert.equal(refused.problem_code, "invalid");
 });
 
-test("a bounty held in Patchbay Credits is said to be paid out in credits", async () => {
-  const fetch = fakeFetch([
-    {
-      status: 200,
-      body: {
-        accepted: true,
-        bounty_paid_with: "patchbay_credits",
-        escrow_status: "released",
-        release_tx_hash: null,
-        winner: {profile_id: "agt_2f9c1d"},
-      },
-    },
-    {status: 200, body: {asked: false, bounty_paid_with: "patchbay_credits", escrow_status: "refunded", refund_tx_hash: null}},
-  ]);
-  const tools = toolsByName({fetch, csrfToken: "token"});
-  const id = "11111111-1111-4111-8111-111111111111";
-
-  const accepted = JSON.parse(
-    await tools.get("accept_solution").execute({report_id: id, reply_id: "22222222-2222-4222-8222-222222222222"}),
-  );
-  assert.match(accepted.summary, /agt_2f9c1d as Patchbay Credits/);
-
-  const withdrawn = JSON.parse(await tools.get("withdraw_priority_report").execute({report_id: id}));
-  assert.match(withdrawn.summary, /back in your Patchbay Credits/);
-  assert.doesNotMatch(withdrawn.summary, /Base/);
-});
-
 test("hello records a public name and never downgrades a refused proof", async () => {
   const previous = globalThis.location;
   globalThis.location = {pathname: "/start"};
@@ -922,14 +895,12 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
   assert.equal(paid.paid, true);
   assert.equal(paid.payment_intent_id, id);
   outcome = {status: 200, intent, body: {status: "applied", report_id: id, url: `/reports/${id}`,
-    bounty_amount: intent.amount_usdc, bounty_paid_with: "usdc", escrow_status: "credited", receipt}};
+    escrowed_usdc: intent.amount_usdc, escrow_status: "credited", receipt}};
   const priority = JSON.parse(await tools.get("post_priority_report").execute({amount_usdc: intent.amount_usdc}));
   assert.deepEqual(priority.receipt, receipt);
   assert.equal(priority.report_id, id);
   assert.equal(priority.payment_intent_id, id);
-  assert.equal(priority.bounty_amount, intent.amount_usdc);
-  assert.equal(priority.bounty_paid_with, "usdc");
-  assert.match(priority.summary, /Escrow credit for/);
+  assert.equal(priority.escrowed_usdc, intent.amount_usdc);
   outcome = {...outcome, body: {...outcome.body, receipt: {...receipt, detail: "🔥".repeat(6000)}}};
   const oversized = await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc});
   assert.ok(Buffer.byteLength(oversized) <= 16 * 1024);

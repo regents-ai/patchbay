@@ -15,17 +15,11 @@ defmodule Patchbay.Forum.PriorityRefund do
   the thirty days and a second press while an earlier one is in flight, and
   what the chain says is written down. A press the chain refuses costs gas and
   changes nothing, which is an accepted outcome.
-
-  A bounty held in Patchbay Credits never reached Base, so Patchbay keeps the
-  contract's rule for it itself: after thirty days, and only while no answer
-  is accepted, 90% goes back to the asker's credits as a ledger line written
-  with the report under its row lock. Before then the asker is told when.
   """
 
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
-  alias Patchbay.Payments.Credits
 
   @doc """
   Relays `actor`'s request to take the bounty on `report_id` back, and returns
@@ -77,13 +71,6 @@ defmodule Patchbay.Forum.PriorityRefund do
   def missing?(%{errors: errors}) when is_list(errors), do: Enum.any?(errors, &missing?/1)
   def missing?(_error), do: false
 
-  defp send_back(%Report{bounty_paid_with: :credits} = asked) do
-    case Ash.transact([Report], fn -> return_in_credits(asked.id) end) do
-      {:ok, {:ok, returned}} -> {:ok, returned}
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
   # The money goes back to the payer the contract already recorded, so nothing
   # here says where it goes. A transaction Base accepted is not money that
   # moved, so the relay writes down the transaction and leaves the money where
@@ -97,16 +84,6 @@ defmodule Patchbay.Forum.PriorityRefund do
 
       {:error, _reason} ->
         refused(asked)
-    end
-  end
-
-  # The asker was authorized on the request; what goes back, and whether it
-  # can yet, is Patchbay's own rule, read against the report held under lock.
-  defp return_in_credits(id) do
-    with {:ok, locked} <- Forum.lock_report(id, authorize?: false),
-         {:ok, returned} <- Forum.return_credit_bounty(locked, authorize?: false),
-         {:ok, _line} <- Credits.return_bounty(returned) do
-      {:ok, returned}
     end
   end
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {mountPairingCode, observedLine, paymentsLine, railState, STARTER_PROMPT, usdcLine} from "../../js/webmcp/agent_setup.js";
+import {observedLine, paymentsLine, railState, STARTER_PROMPT, usdcLine} from "../../js/webmcp/agent_setup.js";
 
 test("starter prompt is the exact copy an agent should be given", () => {
   assert.match(STARTER_PROMPT, /Use the site tools exposed by this open Patchbay page/);
@@ -21,7 +21,7 @@ test("railState is unsigned and unsupported when WebMCP and a wallet are missing
   assert.equal(state.webmcp.ok, false);
   assert.equal(state.payments.kind, "unsigned");
   assert.match(state.payments.text, /Wallet not connected/);
-  assert.match(state.payments.text, /USDC balance unavailable/);
+  assert.match(state.payments.text, /Regents Balance unavailable/);
 });
 
 test("railState reads payments from the page, not a hardcoded off switch", () => {
@@ -31,7 +31,7 @@ test("railState reads payments from the page, not a hardcoded off switch", () =>
     "Payments are not enabled on this deployment",
   );
   assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).kind, "connected");
-  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Signed in · Checking wallet balance");
+  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Signed in · Checking your Regents Balance");
 });
 
 test("railState stays open until a positive USDC balance is known", () => {
@@ -114,24 +114,4 @@ test("the readiness card keeps the browser's one observation apart from the serv
   assert.match(usdcLine({status: "unavailable"}).text, /could not be read/);
   assert.match(usdcLine(null).text, /could not be read/);
   for (const state of [usdcLine({status: "needs_human_funding"}), usdcLine(null)]) assert.equal(state.ok, false);
-});
-
-test("the pairing code's Copy button copies it and says so", async () => {
-  const listeners = {};
-  const button = {
-    dataset: {copyTarget: "pb-pairing-code", idle: "Copy"},
-    textContent: "Copy",
-    addEventListener: (name, fn) => (listeners[name] = fn),
-  };
-  const root = {querySelectorAll: selector => (selector === "[data-copy-target]" ? [button] : [])};
-  const copied = [];
-
-  globalThis.window ??= globalThis;
-  mountPairingCode({root, copyPrompt: pressed => (copied.push(pressed), Promise.resolve("copied"))});
-  listeners.click();
-  await Promise.resolve();
-  await Promise.resolve();
-
-  assert.deepEqual(copied, [button]);
-  assert.equal(button.textContent, "Copied");
 });

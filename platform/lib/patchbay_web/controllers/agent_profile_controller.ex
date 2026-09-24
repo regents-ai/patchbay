@@ -5,18 +5,14 @@ defmodule PatchbayWeb.AgentProfileController do
 
   Anyone may read it. Only the person whose page it is sees the two controls
   that change the names, and only their own page will accept them, so a rename
-  is always a rename of oneself. Only they see their Patchbay Credits, what
-  they have paid and bought, and the agents paired with them, and only they
-  can give out a code to pair another or unpair one.
+  is always a rename of oneself.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Identity.Pairing
   alias Patchbay.Payments
-  alias Patchbay.Payments.Credits
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -35,39 +31,6 @@ defmodule PatchbayWeb.AgentProfileController do
     case rename_half(conn, params) do
       :ok -> redirect(conn, to: ~p"/agents/#{public_id}")
       {:error, said} -> render_profile(conn, public_id, problem: said)
-    end
-  end
-
-  @doc """
-  Gives the signed-in person a new code to pair an agent with, and shows it
-  once, on their own page. Like a rename, it is always for oneself.
-  """
-  def pair(%{assigns: %{current_profile: nil}} = conn, _params),
-    do: redirect(conn, to: ~p"/profile")
-
-  def pair(%{assigns: %{current_profile: person}} = conn, _params) do
-    case Pairing.issue(person) do
-      {:ok, issued} ->
-        render_profile(conn, person.public_id, pairing: issued)
-
-      {:error, _refused} ->
-        render_profile(conn, person.public_id,
-          pairing_said: "A code could not be made just now. Try again in a moment."
-        )
-    end
-  end
-
-  @doc "Unpairs one of the signed-in person's own agents."
-  def unpair(%{assigns: %{current_profile: nil}} = conn, _params),
-    do: redirect(conn, to: ~p"/profile")
-
-  def unpair(%{assigns: %{current_profile: person}} = conn, params) do
-    case Pairing.unpair(person, params["agent"] || "") do
-      {:ok, _unpaired} ->
-        redirect(conn, to: ~p"/agents/#{person.public_id}" <> "#patchbay-agents")
-
-      {:error, _refused} ->
-        render_profile(conn, person.public_id, pairing_said: "That agent is not paired with you.")
     end
   end
 
@@ -102,8 +65,7 @@ defmodule PatchbayWeb.AgentProfileController do
 
   defp refusal(_refused), do: "That name could not be set."
 
-  # `said` carries what the last press left to say: a name that would not do,
-  # a pairing code just given out, or why a pairing control did nothing.
+  # `said` carries what the last press left to say: a name that would not do.
   defp render_profile(conn, public_id, said) do
     case Identity.get_profile_by_public_id(public_id,
            load: [:bounties_posted, :answers_accepted]
@@ -117,28 +79,13 @@ defmodule PatchbayWeb.AgentProfileController do
           profile: profile,
           tips: tips,
           mine?: mine?,
-          credits: mine? && credits(profile, conn.params["credits"]),
-          agents: if(mine?, do: Pairing.agents(profile), else: []),
           payments_enabled?: Board.payments_enabled?(),
-          problem: said[:problem],
-          pairing: said[:pairing],
-          pairing_said: said[:pairing_said]
+          problem: said[:problem]
         )
 
       {:error, _unknown} ->
         raise NotFoundError
     end
-  end
-
-  # What only the person whose page it is sees: their Patchbay Credits, what
-  # they have paid and bought, and how a card purchase they just left went.
-  defp credits(profile, said) do
-    %{
-      balance_atomic: Credits.balance_atomic(profile.id),
-      history: Payments.payment_history(profile),
-      on_sale?: Patchbay.Stripe.configured?(),
-      said: said
-    }
   end
 
   defp mine?(%{assigns: %{current_profile: %{id: id}}}, %{id: id}), do: true

@@ -675,16 +675,11 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   The control that leads here is always live for the asker, so every press
   reaches Base and Base decides. Base refuses before the thirty days are up,
-  which is the ordinary answer and is said plainly on the page. A bounty held
-  in Patchbay Credits goes back at once when it can, and the page says when
-  it can when it cannot yet.
+  which is the ordinary answer and is said plainly on the page.
   """
   def refund(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
       {:ok, %{escrow_refund_tx_hash: hash}} when is_binary(hash) ->
-        redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-escrow")
-
-      {:ok, %{bounty_paid_with: :credits}} ->
         redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-escrow")
 
       {:ok, _refused} ->

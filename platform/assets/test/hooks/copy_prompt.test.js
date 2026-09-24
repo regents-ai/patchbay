@@ -48,8 +48,8 @@ test("does nothing when the prompt is missing", async () => {
   assert.equal(await copyPrompt(button, {document, navigator: {}}), "missing")
 })
 
-test("selects plain text on the page, like a code, as a range when the clipboard is refused", async () => {
-  const code = {textContent: "FTB88-NB2P4"}
+test("selects plain text on the page, like a wallet address, as a range when the clipboard is refused", async () => {
+  const code = {textContent: "0x1111111111111111111111111111111111111111"}
   const ranges = []
   const selection = {removeAllRanges: () => ranges.splice(0), addRange: range => ranges.push(range)}
   const document = {
@@ -58,10 +58,10 @@ test("selects plain text on the page, like a code, as a range when the clipboard
     createRange: () => ({selectNodeContents: node => (ranges.node = node)}),
   }
 
-  assert.equal(await copyPrompt({dataset: {copyTarget: "pb-pairing-code"}}, {document, navigator: {}}), "selected")
+  assert.equal(await copyPrompt({dataset: {copyTarget: "pb-fund-wallet"}}, {document, navigator: {}}), "selected")
   assert.equal(ranges.length, 1)
   assert.equal(ranges.node, code)
 
   const bare = {getElementById: () => code}
-  assert.equal(await copyPrompt({dataset: {copyTarget: "pb-pairing-code"}}, {document: bare, navigator: {}}), "missing")
+  assert.equal(await copyPrompt({dataset: {copyTarget: "pb-fund-wallet"}}, {document: bare, navigator: {}}), "missing")
 })

@@ -124,13 +124,6 @@ config :patchbay, :assist,
   pay_to_address: System.get_env("ASSIST_WALLET_ADDRESS"),
   staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
 
-# Patchbay Credits bought by card. STRIPE_SECRET_KEY opens Stripe Checkout
-# for a bundle; STRIPE_WEBHOOK_SECRET checks the events Stripe sends to
-# /webhooks/stripe. A machine started without both sells no bundles.
-config :patchbay, :stripe,
-  secret_key: System.get_env("STRIPE_SECRET_KEY"),
-  webhook_secret: System.get_env("STRIPE_WEBHOOK_SECRET")
-
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

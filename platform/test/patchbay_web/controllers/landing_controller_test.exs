@@ -19,7 +19,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Payments are not enabled on this deployment"
     refute html =~ "Go to Profile"
     refute html =~ ~s(id="pb-agent-funding")
-    refute html =~ "Fund your wallet"
+    refute html =~ "Your Regents Balance"
     refute html =~ "Copy funding request"
     refute html =~ "Check again"
     assert html =~ "Copy starter prompt"

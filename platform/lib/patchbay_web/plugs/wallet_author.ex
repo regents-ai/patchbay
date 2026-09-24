@@ -1,7 +1,6 @@
 defmodule PatchbayWeb.Plugs.WalletAuthor do
   @moduledoc """
-  A narrow SIWA wallet-author entry point for priority report and assist
-  payment intents, and for pairing the wallet with a person by their code.
+  A narrow SIWA wallet-author entry point for priority report payment intents.
   The broker verifies exact request bytes; only its typed wallet principal can
   resolve an author. Cookies and unsigned payment headers grant no authority.
   """
@@ -85,13 +84,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
         false
     end
   end
-
-  defp permitted_request?(%{
-         method: "POST",
-         path_info: ["api", "agent", "pairing"],
-         body_params: %{"code" => code} = params
-       }),
-       do: is_binary(code) and byte_size(code) in 1..64 and map_size(params) == 1
 
   defp permitted_request?(%{
          method: "POST",

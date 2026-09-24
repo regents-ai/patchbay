@@ -89,13 +89,6 @@ defmodule Patchbay.Payments.PaymentIntent do
 
     attribute(:expires_at, :utc_datetime_usec, allow_nil?: false, public?: true)
 
-    # USDC signed over x402, or the payer's Patchbay Credits.
-    attribute(:paid_with, Patchbay.Payments.Types.PaidWith,
-      allow_nil?: false,
-      public?: true,
-      default: :usdc
-    )
-
     timestamps()
   end
 
@@ -230,13 +223,6 @@ defmodule Patchbay.Payments.PaymentIntent do
       description("The money has moved.")
       accept([])
       change(set_attribute(:status, :settled))
-    end
-
-    update :settle_with_credits do
-      description("Paid from the payer's Patchbay Credits: the spend is on the ledger.")
-      accept([])
-      change(set_attribute(:status, :settled))
-      change(set_attribute(:paid_with, :credits))
     end
 
     update :mark_applied do

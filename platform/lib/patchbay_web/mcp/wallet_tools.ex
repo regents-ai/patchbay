@@ -2,8 +2,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   @moduledoc """
   The hosted tools that act for a wallet: paying for a priority report,
   reading the payment back, accepting the answer to that report and asking
-  its bounty back; paying for an assist and reading it back; and pairing the
-  wallet with a person by the code they gave it.
+  its bounty back; and paying for an assist and reading it back.
 
   The hosted door carries no signed-in wallet, so every one of these names the
   wallet it acts for in `wallet_address`, and the wallet is proven per call,
@@ -12,8 +11,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   `_meta["x402/payment"]` as the x402 MCP transport says, after a first call
   answered with the terms. Accepting an answer and asking the bounty back
   move money without a payment, so the wallet signs for the exact action
-  instead (`PatchbayWeb.MCP.WalletProof`); pairing is signed for the same
-  way, naming the code.
+  instead (`PatchbayWeb.MCP.WalletProof`).
 
   The purchase itself is `PatchbayWeb.PaymentsAPI.Purchase`, the one process
   every door runs, so asking for the same report at the same price again
@@ -24,18 +22,15 @@ defmodule PatchbayWeb.MCP.WalletTools do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Identity
-  alias Patchbay.Identity.Pairing
-  alias Patchbay.Payments.Types.PaidWith
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
-  alias PatchbayWeb.IdentityAPI
   alias PatchbayWeb.MCP.WalletProof
   alias PatchbayWeb.MD
   alias PatchbayWeb.PaymentsAPI.Purchase
 
-  @names ~w(post_priority_report get_payment_status accept_solution withdraw_priority_report request_assist get_assist pair_with_person)
+  @names ~w(post_priority_report get_payment_status accept_solution withdraw_priority_report request_assist get_assist)
 
   @wallet_shape "wallet_address: must be a Base wallet address, 0x followed by 40 hex characters"
 
@@ -82,10 +77,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   """
   @spec hosted_schema(String.t(), map()) :: map()
   def hosted_schema(name, schema) when name in @names do
-    proof =
-      if name in ~w(accept_solution withdraw_priority_report pair_with_person),
-        do: @proof,
-        else: %{}
+    proof = if name in ~w(accept_solution withdraw_priority_report), do: @proof, else: %{}
 
     schema
     |> Map.update!(
@@ -179,7 +171,6 @@ defmodule PatchbayWeb.MCP.WalletTools do
            accepted: true,
            report_id: released.id,
            reply_id: released.accepted_reply_id,
-           bounty_paid_with: PaidWith.written(released.bounty_paid_with),
            escrow_status: released.escrow_status,
            release_tx_hash: released.escrow_release_tx_hash,
            winner: AuthorJSON.author(released.accepted_reply.author),
@@ -201,11 +192,9 @@ defmodule PatchbayWeb.MCP.WalletTools do
         {:ok,
          %{
            # Base decides, and it decides later than this answer, so this says
-           # only whether the request reached the chain. A bounty held in
-           # credits never goes to Base; its escrow_status says it went back.
+           # only whether the request reached the chain.
            asked: is_binary(refunded.escrow_refund_tx_hash),
            report_id: refunded.id,
-           bounty_paid_with: PaidWith.written(refunded.bounty_paid_with),
            escrow_status: refunded.escrow_status,
            refund_tx_hash: refunded.escrow_refund_tx_hash,
            refundable_after_days: 30,
@@ -214,21 +203,6 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
       {:error, failure} ->
         report_refusal(failure, PriorityRefund, "ask its money back")
-    end
-  end
-
-  def run("pair_with_person", %{"code" => code} = arguments, _meta) do
-    with {:ok, wallet} <- wallet_address(arguments["wallet_address"]),
-         :ok <- code_shape(code),
-         {:ok, person} <- Pairing.person_for(code) do
-      action = %{action: "pair_with_person", code: code, person: person.public_id, wallet: wallet}
-
-      action
-      |> proof(Map.take(arguments, ["challenge", "signature"]), &pair(&1, code))
-      |> pairing_answer(person)
-    else
-      {:error, :code_unknown} -> IdentityAPI.Pairing.code_unknown()
-      {:error, failure} -> proof_refusal(failure)
     end
   end
 
@@ -276,14 +250,13 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
   defp purchase_answer({:applied, found, receipt}, _challenge) do
     answer =
-      %{
+      Purchase.payment_help(%{
         status: "applied",
         payment_intent_id: found.id,
+        receipt: Purchase.receipt_payload(receipt),
         amount_usdc: USDC.format(found.amount_atomic),
         effect_summary: found.effect_summary
-      }
-      |> Map.merge(Purchase.payment_payload(found, receipt))
-      |> Purchase.payment_help()
+      })
 
     effect = found |> Purchase.applied_effect() |> Map.merge(read_back_tool(found))
     {:paid, Map.merge(answer, effect), receipt.payment_response}
@@ -419,33 +392,6 @@ defmodule PatchbayWeb.MCP.WalletTools do
   defp purchase_refusal(error),
     do: purchase_refusal({:invalid, Purchase.refusal_messages(error)})
 
-  # Pairing with a person
-
-  # The same bounds the signed agent API holds a code to.
-  defp code_shape(code) when byte_size(code) in 1..64, do: :ok
-  defp code_shape(_code), do: {:error, {:invalid, ["code: the code the person gave you"]}}
-
-  # The first answer names the person whose code it is, so the agent can
-  # stop before signing for someone it does not know.
-  defp pairing_answer({:ok, paired}, _person), do: {:ok, paired}
-  defp pairing_answer({:error, %{paired: false} = refused}, _person), do: {:error, refused}
-
-  defp pairing_answer({:error, {:sign, _challenge} = sign}, person) do
-    {:error, answer} = proof_refusal(sign)
-    {:error, Map.put(answer, :person, AuthorJSON.author(person))}
-  end
-
-  defp pairing_answer({:error, failure}, _person), do: proof_refusal(failure)
-
-  # Pairing may be the first thing a wallet does here, so its profile is made
-  # for it, as the signed agent API makes one.
-  defp pair(wallet, code) do
-    with {:ok, named} <- Identity.upsert_from_wallet(%{wallet_address: wallet}),
-         {:ok, agent} <- active(named) do
-      IdentityAPI.Pairing.run(agent, code)
-    end
-  end
-
   # Proving the wallet for an action that moves money without a payment
 
   # Without a challenge and signature, the answer is what to sign. With both,
@@ -456,13 +402,8 @@ defmodule PatchbayWeb.MCP.WalletTools do
     with {:ok, wallet} <- wallet_address(arguments["wallet_address"]),
          :ok <- ids(report_id, reply_id) do
       action = %{action: name, report_id: report_id, reply_id: reply_id, wallet: wallet}
-
-      proof(action, Map.take(arguments, ["challenge", "signature"]), &as_payer(&1, act))
+      proof(action, Map.take(arguments, ["challenge", "signature"]), act)
     end
-  end
-
-  defp as_payer(wallet, act) do
-    with {:ok, actor} <- payer_profile(wallet), do: act.(actor)
   end
 
   # The challenge carries the ids as given, so only ids shaped like a report's
@@ -476,9 +417,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
       else: {:error, :not_found}
   end
 
-  # `act` is given the wallet once the signature has proven it.
   defp proof(action, %{"challenge" => challenge, "signature" => signature}, act) do
-    with :ok <- WalletProof.verify(action, challenge, signature), do: act.(action.wallet)
+    with :ok <- WalletProof.verify(action, challenge, signature),
+         {:ok, actor} <- payer_profile(action.wallet) do
+      act.(actor)
+    end
   end
 
   defp proof(action, unsigned, _act) when map_size(unsigned) == 0,
@@ -499,25 +442,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
     end
   end
 
-  defp report_refusal(:not_found, _process, _act),
-    do: {:error, %{problem_code: "not_found", error: "There is no report with that id."}}
-
-  defp report_refusal(%Ash.Error.Forbidden{}, _process, act) do
-    {:error,
-     %{
-       problem_code: "forbidden",
-       error: "Only the wallet that paid for this report can #{act}."
-     }}
-  end
-
-  defp report_refusal(failure, process, act) do
-    if process.missing?(failure),
-      do: report_refusal(:not_found, process, act),
-      else: proof_refusal(failure)
-  end
-
-  # What either kind of signed action answers while the wallet is being proven.
-  defp proof_refusal({:sign, %{challenge: challenge, typed_data: typed_data}}) do
+  defp report_refusal({:sign, %{challenge: challenge, typed_data: typed_data}}, _process, _act) do
     {:error,
      %{
        problem_code: "signature_required",
@@ -530,10 +455,10 @@ defmodule PatchbayWeb.MCP.WalletTools do
      }}
   end
 
-  defp proof_refusal({:invalid, messages}),
+  defp report_refusal({:invalid, messages}, _process, _act),
     do: {:error, %{problem_code: "invalid", errors: messages}}
 
-  defp proof_refusal(:challenge_expired) do
+  defp report_refusal(:challenge_expired, _process, _act) do
     {:error,
      %{
        problem_code: "challenge_expired",
@@ -542,16 +467,16 @@ defmodule PatchbayWeb.MCP.WalletTools do
      }}
   end
 
-  defp proof_refusal(:challenge_mismatch) do
+  defp report_refusal(:challenge_mismatch, _process, _act) do
     {:error,
      %{
        problem_code: "challenge_mismatch",
        error:
-         "That challenge was not issued for exactly this call and wallet. Call again without challenge and signature for one that is."
+         "That challenge was not issued for this action, report, reply and wallet. Call again without challenge and signature for one that is."
      }}
   end
 
-  defp proof_refusal(:signature_unreadable),
+  defp report_refusal(:signature_unreadable, _process, _act),
     do:
       {:error,
        %{
@@ -559,7 +484,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
          errors: ["signature: could not be read as an EIP-712 signature"]
        }}
 
-  defp proof_refusal(:other_wallet) do
+  defp report_refusal(:other_wallet, _process, _act) do
     {:error,
      %{
        problem_code: "other_wallet",
@@ -567,9 +492,24 @@ defmodule PatchbayWeb.MCP.WalletTools do
      }}
   end
 
-  defp proof_refusal(:suspended), do: {:error, @suspended}
+  defp report_refusal(:not_found, _process, _act),
+    do: {:error, %{problem_code: "not_found", error: "There is no report with that id."}}
 
-  defp proof_refusal(error), do: proof_refusal({:invalid, Refusal.messages(error)})
+  defp report_refusal(:suspended, _process, _act), do: {:error, @suspended}
+
+  defp report_refusal(%Ash.Error.Forbidden{}, _process, act) do
+    {:error,
+     %{
+       problem_code: "forbidden",
+       error: "Only the wallet that paid for this report can #{act}."
+     }}
+  end
+
+  defp report_refusal(error, process, act) do
+    if process.missing?(error),
+      do: report_refusal(:not_found, process, act),
+      else: report_refusal({:invalid, Refusal.messages(error)}, process, act)
+  end
 
   defp report_page(id), do: MD.absolute("/reports/#{id}")
 end

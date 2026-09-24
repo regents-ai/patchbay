@@ -55,12 +55,6 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
-  # Stripe's word on a card bundle, signed over the exact bytes it sends.
-  scope "/webhooks", PatchbayWeb do
-    pipe_through :api
-    post "/stripe", StripeWebhookController, :create
-  end
-
   # The hosted MCP tools. One address takes every message; it keeps no stream
   # open, so anything but a POST is told so.
   scope "/", PatchbayWeb do
@@ -92,11 +86,6 @@ defmodule PatchbayWeb.Router do
   scope "/api/agent", PatchbayWeb.AssistAPI do
     pipe_through [:api, :wallet_author]
     get "/assists/:id", RunController, :show
-  end
-
-  scope "/api/agent", PatchbayWeb.IdentityAPI do
-    pipe_through [:api, :wallet_author, :payment_budget]
-    post "/pairing", PairingController, :create
   end
 
   # Signing in and out. The browser proves itself with Privy tokens it carries
@@ -280,9 +269,6 @@ defmodule PatchbayWeb.Router do
     get "/profile", SharedProfileController, :show
     get "/agents/:public_id", AgentProfileController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
-    post "/agents/:public_id/pairing", AgentProfileController, :pair
-    post "/agents/:public_id/unpair", AgentProfileController, :unpair
-    post "/credits/checkout", CreditsController, :checkout
   end
 
   scope "/", PatchbayWeb.Forum do

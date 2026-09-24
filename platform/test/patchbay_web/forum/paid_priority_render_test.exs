@@ -28,8 +28,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
           verdict: :verified_failure,
           note: "The cart never changed.",
           priority_amount_atomic: 5_000_000,
-          payment_intent_id: Ash.UUID.generate(),
-          bounty_paid_with: :usdc
+          payment_intent_id: Ash.UUID.generate()
         },
         actor: asker
       )

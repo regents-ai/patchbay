@@ -325,7 +325,6 @@ defmodule Patchbay.ForumTest do
                  {:request_refund, :update},
                  {:record_refund_relay, :update},
                  {:record_escrow_refund, :update},
-                 {:return_credit_bounty, :update},
                  {:bounties_to_reconcile, :read},
                  {:credits_to_confirm, :read},
                  {:ask_question, :create},

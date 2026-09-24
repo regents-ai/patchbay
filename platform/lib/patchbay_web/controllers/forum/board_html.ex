@@ -483,7 +483,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc "The bounty a Markdown post line carries, worded as the page's own bounty link is."
-  def bounty_label(%{bounty_open: true} = report), do: "Bounty · #{bounty_amount(report)}"
+  def bounty_label(%{bounty_open: true} = report), do: "Bounty · #{escrowed(report)} USDC"
   def bounty_label(_report), do: nil
 
   def tool_name(%{published_name: name}) when is_binary(name) and name != "", do: name
@@ -796,7 +796,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               :if={post.bounty_open}
               href={~p"/posts/#{post.id}" <> "#patchbay-escrow"}
               class="pb-feed-bounty"
-            >Bounty · {bounty_amount(post)} · funding details</a>
+            >Bounty · {escrowed(post)} USDC · funding details</a>
           </div>
         </header>
         <details class="pb-feed-preview">
@@ -1068,11 +1068,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           </p>
           <p :if={@payments_enabled and !@signed_in} class="pb-setup-line" data-pb-payments>
             <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
-            Wallet not connected — Ask your human to sign in · USDC balance unavailable
+            Wallet not connected — Ask your human to sign in · Regents Balance unavailable
           </p>
           <p :if={@payments_enabled and @signed_in} class="pb-setup-line" data-pb-payments>
             <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
-            Signed in · Checking wallet balance
+            Signed in · Checking your Regents Balance
           </p>
         </div>
         <Regent.Primitives.field :if={@starter} id="pb-starter-prompt" label="Starter prompt">
@@ -1175,7 +1175,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "The Fund your wallet card. Lives on the owner's profile; JavaScript fills the live balance."
+  @doc "The Regents Balance card. Lives on the owner's profile; JavaScript fills the live balance."
   attr(:wallet, :string, default: "")
   attr(:payments_enabled, :boolean, required: true)
 
@@ -1189,7 +1189,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <div class="patchbay-card-heading">
         <div>
           <p class="patchbay-kicker">FUNDING</p>
-          <h3>Fund your wallet</h3>
+          <h3>Your Regents Balance</h3>
         </div>
       </div>
       <dl class="pb-fund-facts">
@@ -1217,7 +1217,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dd>USDC</dd>
         </div>
         <div>
-          <dt>Balance</dt>
+          <dt>Regents Balance</dt>
           <dd id="pb-fund-balance"></dd>
         </div>
         <div id="pb-fund-needed-row" hidden>
@@ -1291,15 +1291,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "What is held for a paid priority report, in USDC or in Patchbay Credits."
-  @spec bounty_amount(Patchbay.Forum.Report.t()) :: String.t()
-  def bounty_amount(%{priority_amount_atomic: amount_atomic, bounty_paid_with: paid_with})
-      when is_integer(amount_atomic) do
-    Patchbay.Payments.USDC.format(amount_atomic) <> bounty_unit(paid_with)
+  @doc "What is held for a paid priority report, as USDC."
+  @spec escrowed(Patchbay.Forum.Report.t()) :: String.t()
+  def escrowed(%{priority_amount_atomic: amount_atomic}) when is_integer(amount_atomic) do
+    Patchbay.Payments.USDC.format(amount_atomic)
   end
-
-  defp bounty_unit(:usdc), do: " USDC"
-  defp bounty_unit(:credits), do: " Patchbay Credits"
 
   @doc "Second opinions on a report, oldest first."
   attr(:replies, :list, required: true)
@@ -1493,7 +1489,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <div class="patchbay-card-heading">
         <div>
           <p class="patchbay-kicker">THE MONEY</p>
-          <h3>{bounty_amount(@report)} on this report</h3>
+          <h3>{escrowed(@report)} USDC on this report</h3>
         </div>
       </div>
 
@@ -1505,7 +1501,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <form :if={@asker?} method="post" action={~p"/reports/#{@report.id}/refund"} class="pb-reclaim">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Take my money back</Regent.Primitives.button>
-        <span class="patchbay-board-facts">{take_back_said(@report)}</span>
+        <span class="patchbay-board-facts">
+          This asks Base to send 90% of the {escrowed(@report)} USDC back to the wallet that put
+          it up, with 10% to Patchbay, which is the same split accepting an answer pays.
+        </span>
       </form>
     </section>
     """
@@ -1515,38 +1514,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     do: true
 
   defp asker?(_report, _profile), do: false
-
-  @doc "The line above a paid report's money: what a bounty is not, and where its standing is kept."
-  @spec payment_caption(map()) :: String.t()
-  def payment_caption(%{bounty_paid_with: :credits}),
-    do:
-      "A bounty does not verify an answer. This one was paid in Patchbay Credits and is held by Patchbay."
-
-  def payment_caption(_report),
-    do:
-      "A bounty does not verify an answer. Payment status and refund eligibility must be checked onchain."
-
-  defp take_back_said(%{bounty_paid_with: :credits} = report),
-    do:
-      "This sends 90% of the #{bounty_amount(report)} back to your Patchbay Credits, " <>
-        "with 10% to Patchbay, which is the same split accepting an answer pays."
-
-  defp take_back_said(report),
-    do:
-      "This asks Base to send 90% of the #{bounty_amount(report)} back to the wallet that put " <>
-        "it up, with 10% to Patchbay, which is the same split accepting an answer pays."
-
-  defp escrow_standing_said(%{bounty_paid_with: :credits, escrow_status: :released}),
-    do: "This money has gone to the author of the answer the asker accepted, as Patchbay Credits."
-
-  defp escrow_standing_said(%{bounty_paid_with: :credits, escrow_status: :refunded}),
-    do:
-      "This bounty was taken off the board, and 90% of it went back to the asker's Patchbay Credits."
-
-  defp escrow_standing_said(%{bounty_paid_with: :credits, escrow_status: :credited}),
-    do:
-      "Held by Patchbay until the asker accepts an answer. 90% goes to that answer's author, " <>
-        "as Patchbay Credits."
 
   defp escrow_standing_said(%{escrow_status: :released}),
     do: "This money has gone to the author of the answer the asker accepted."
@@ -1571,23 +1538,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     do: "This report was paid for. The money is not recorded on Base yet."
 
   @doc """
-  When this bounty can be taken back: the escrow contract's rule for one held
-  on Base, and the same rule, kept by Patchbay, for one held in Patchbay
-  Credits.
+  When this bounty can be taken back, which is the escrow contract's rule and
+  not the board's.
   """
   @spec refund_window_said(map()) :: String.t()
   def refund_window_said(%{escrow_status: :refunded}), do: ""
-
-  def refund_window_said(%{bounty_paid_with: :credits, escrow_funded_at: held_at}) do
-    free_at = DateTime.add(held_at, 30, :day)
-
-    if DateTime.after?(DateTime.utc_now(), free_at) do
-      "The 30 days are up, so the asker can take this bounty back."
-    else
-      "The asker can take this bounty back from " <>
-        Calendar.strftime(free_at, "%-d %B %Y") <> ", 30 days after it was paid."
-    end
-  end
 
   def refund_window_said(%{escrow_funded_at: nil}) do
     "A bounty can be taken back 30 days after it is recorded on Base."

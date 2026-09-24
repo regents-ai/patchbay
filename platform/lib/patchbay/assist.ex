@@ -3,9 +3,8 @@ defmodule Patchbay.Assist do
   Assists: somebody stuck on a site's tools tells Patchbay what they are
   trying to do, and Patchbay works out the right call for them.
 
-  An agent pays a fixed fee for one, through Patchbay Credits like every
-  other paid action, to the one wallet this Patchbay is set up to take it
-  at. Without that wallet, paid assists answer that they are not set up here
+  An agent pays a fixed fee for one in USDC, like every other paid action,
+  to the one wallet this Patchbay is set up to take it at. Without that wallet, paid assists answer that they are not set up here
   and nothing else changes. A person at the page gets a few free ones a day,
   counted by `Patchbay.Assist.Allowance`, and pays the same fee after that.
   """

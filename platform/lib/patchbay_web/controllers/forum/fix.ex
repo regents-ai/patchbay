@@ -2,16 +2,13 @@ defmodule PatchbayWeb.Forum.Fix do
   @moduledoc """
   The fix form at the top of the home page: what it sends, turned into an
   assist request; which way the form works right now, free, after a sign-in
-  or for the fee, and the person's Patchbay Credits once it is the fee;
-  whether the WebMCP Site Directory is offered; and what the page says when
+  or for the fee; whether the WebMCP Site Directory is offered; and what the page says when
   a fix cannot start.
   """
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Allowance
   alias Patchbay.Assist.Request
-  alias Patchbay.Payments.Credits
-  alias Patchbay.Payments.PaymentIntent
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.FixCheck
 
@@ -49,15 +46,13 @@ defmodule PatchbayWeb.Forum.Fix do
   end
 
   @doc """
-  What is left for this request's connection and person, which way the form
-  works, and, once a fix costs the fee, the signed-in person's Patchbay
-  Credits.
+  What is left for this request's connection and person, and which way the
+  form works.
   """
   @spec offer(Plug.Conn.t()) :: %{
           allowance: Allowance.t(),
           mode: mode(),
           fee: String.t(),
-          credits: credits() | nil,
           directory: boolean()
         }
   def offer(conn) do
@@ -69,35 +64,9 @@ defmodule PatchbayWeb.Forum.Fix do
       allowance: allowance,
       mode: mode,
       fee: @fee,
-      credits: credits(mode, profile),
       directory: FixCheck.directory?(conn)
     }
   end
-
-  @typedoc """
-  The signed-in person's Patchbay Credits as the form shows them: the balance
-  written out, whether it covers a fix, whether more can be bought by card,
-  and where.
-  """
-  @type credits :: %{
-          balance: String.t(),
-          covers?: boolean(),
-          on_sale?: boolean(),
-          buy_at: String.t()
-        }
-
-  defp credits(:pay, profile) do
-    balance = Credits.balance_atomic(profile.id)
-
-    %{
-      balance: Credits.written(balance),
-      covers?: balance >= PaymentIntent.assist_fee_atomic(),
-      on_sale?: Patchbay.Stripe.configured?(),
-      buy_at: "/agents/#{profile.public_id}#patchbay-credits"
-    }
-  end
-
-  defp credits(_mode, _profile), do: nil
 
   @doc "The grant the next free fix from this request opens under, or why there is none."
   @spec grant(Plug.Conn.t()) :: {:ok, :visitor | :member} | {:error, problem()}
@@ -118,7 +87,7 @@ defmodule PatchbayWeb.Forum.Fix do
       "#{free} free #{if free == 1, do: "fix", else: "fixes"} left today from this connection"
 
     more = if adds > 0, do: ", and #{adds} more when you sign in", else: ""
-    "#{left}#{more}. After that, a fix is #{@fee} #{either_way()}."
+    "#{left}#{more}. After that, a fix is #{@fee} USDC from your Regents Balance."
   end
 
   def terms(%{mode: mode, allowance: %{given_out: true}}), do: given_out(mode)
@@ -171,19 +140,19 @@ defmodule PatchbayWeb.Forum.Fix do
 
   defp used_up(_profile) do
     if Assist.pay_to_address(),
-      do: "Your free fixes for today are used. The next one is #{@fee} #{either_way()}.",
+      do:
+        "Your free fixes for today are used. The next one is #{@fee} USDC from your Regents Balance.",
       else: "Your free fixes for today are used. Come back tomorrow."
   end
 
   defp given_out(:sign_in),
-    do: "Today's free fixes are all given out. Sign in to fix it for #{@fee} #{either_way()}."
+    do:
+      "Today's free fixes are all given out. Sign in to fix it for #{@fee} USDC from your Regents Balance."
 
   defp given_out(:pay), do: "Today's free fixes are all given out. " <> paid_from_wallet()
   defp given_out(:closed), do: "Today's free fixes are all given out. Come back tomorrow."
 
-  defp paid_from_wallet, do: "This one is #{@fee} USDC from the wallet you signed in with."
-
-  defp either_way, do: "USDC from your wallet, or #{@fee} in Patchbay Credits"
+  defp paid_from_wallet, do: "This one is #{@fee} USDC from your Regents Balance."
 
   defp text(value) when is_binary(value), do: String.trim(value)
   defp text(_other), do: ""

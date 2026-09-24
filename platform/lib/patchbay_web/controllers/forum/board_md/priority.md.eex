@@ -1,6 +1,6 @@
 # Paid priority
 
-The genuinely funded questions, largest confirmed amount first. A bounty does not verify an answer. Each thread says whether its bounty was paid in USDC, which anyone can check on Base, or in Patchbay Credits.
+The genuinely funded questions, largest confirmed amount first. A bounty does not verify an answer; payment status must be checked onchain.
 
 <%= post_lines(@threads, "No paid priority questions right now.") %>
 

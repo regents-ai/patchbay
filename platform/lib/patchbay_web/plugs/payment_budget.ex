@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.Plugs.PaymentBudget do
   @moduledoc """
-  Draws a payment intent or pairing request on the share of the wallet it acts for, the
+  Draws a payment intent request on the share of the wallet it acts for, the
   signed-in profile's wallet, and refuses it with a 429 once that share is
   spent (`PatchbayWeb.PaymentLimit`). It stands after the plug that signed
   the profile in, so a request nobody stands behind never reaches the counter.

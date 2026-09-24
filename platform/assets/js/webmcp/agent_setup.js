@@ -61,7 +61,7 @@ export function paymentsLine({paymentsEnabled, signedIn, readiness = null}) {
   if (!signedIn) {
     return {
       kind: "unsigned",
-      text: "Wallet not connected — Ask your human to sign in · USDC balance unavailable",
+      text: "Wallet not connected — Ask your human to sign in · Regents Balance unavailable",
     };
   }
 
@@ -74,14 +74,14 @@ export function paymentsLine({paymentsEnabled, signedIn, readiness = null}) {
   }
 
   if (readiness?.status === "needs_human_sign_in") {
-    return {kind: "unsigned", text: "Sign in again to check your wallet · USDC balance unavailable"};
+    return {kind: "unsigned", text: "Sign in again to check your wallet · Regents Balance unavailable"};
   }
 
   if (readiness) {
-    return {kind: "unavailable", text: "USDC balance unavailable · Reload this page to retry"};
+    return {kind: "unavailable", text: "Regents Balance unavailable · Reload this page to retry"};
   }
 
-  return {kind: "connected", text: "Signed in · Checking wallet balance"};
+  return {kind: "connected", text: "Signed in · Checking your Regents Balance"};
 }
 
 /**
@@ -206,7 +206,7 @@ function replaceLine(root, fact, state) {
 }
 
 /**
- * Paint the Fund your wallet card on the owner's profile. Home has no card.
+ * Paint the Regents Balance card on the owner's profile. Home has no card.
  *
  * @param {{
  *   root?: ParentNode | null,
@@ -216,17 +216,6 @@ function replaceLine(root, fact, state) {
  *   readPaymentReadiness?: typeof readPaymentReadiness,
  * }} [options]
  */
-/**
- * The Copy button beside a pairing code on the person's own profile.
- *
- * @param {{root?: Element | null, copyPrompt?: (button: Element) => Promise<string>}} [options]
- */
-export function mountPairingCode(options = {}) {
-  const root = options.root ?? globalThis.document?.getElementById("patchbay-agents");
-  if (!root) return;
-  bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
-}
-
 export function mountAgentFunding(options = {}) {
   const root = options.root ?? globalThis.document?.getElementById("pb-agent-funding");
   if (!root) return;
