@@ -58,16 +58,24 @@ network (172.17.0.x), each logging every connection:
   requests were refused by the address rules.
 - Neither listener was ever reached from the browser.
 
-Still to check once the app exists on Fly:
+Run on Fly on 2026-09-24, after `fly apps create` and the first deploy:
 
-- `fly ips list --app patchbay-shots` shows only the private address, and
+- `fly ips list --app patchbay-shots` shows only a private address, and
   `https://patchbay-shots.fly.dev` does not answer.
-- Patchbay reaches it over Flycast:
-  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'IO.inspect(elem(Patchbay.Forum.Shots.take(\"https://example.com/\"), 0))'"`
-  prints `:ok`.
-- `start.sh` sets its rules and Chromium's sandbox starts on a Fly machine
-  (the log ends `taking pictures on port 8080`).
-- As the browser's user, the machine cannot reach Fly's private network: a
-  connection to `[fdaa::3]:4280` and to `patchbay-regents.internal:4000` is
-  refused, and a public page that redirects to
-  `http://patchbay-regents.internal:4000/` answers 502.
+- Fly's kernel has no iptables owner match, so the rules are written for
+  nftables, and only packets the browser's user sends are checked: the
+  machine's own IPv6 neighbour lookups belong to no user and must pass, or
+  the machine drops off Fly's network. With the rules set, the log ends
+  `taking pictures on port 8080`, so Chromium's sandbox starts.
+- As the browser's user, connections to `[fdaa::3]:4280`,
+  `patchbay-regents.internal:4000` and the machine's own port are refused,
+  and a public address is reached.
+- `https://example.com/` is pictured (200); a public page redirecting to
+  `http://patchbay-regents.internal:4000/` and `https://127.0.0.1.nip.io/`
+  answer 502, and the rules' counters rise.
+- Patchbay reaches it at `http://patchbay-shots.flycast`: a request from the
+  live app answered 200 with a WebP picture. That address is IPv6 only, so
+  Patchbay looks it up as IPv6.
+
+After Patchbay's next deploy, this prints `:ok`:
+`fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'IO.inspect(elem(Patchbay.Forum.Shots.take(\"https://example.com/\"), 0))'"`
