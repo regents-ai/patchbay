@@ -14,13 +14,15 @@ path dependencies; use their exact commits, not their current working directorie
 | --- | --- | --- |
 | `regents-ai/design-system` | `0818c4af559947ebbe6bd5f1d92264941efa6342` | `regent_ui` |
 | `regents-ai/regents` | `e183c52df9f46193e66b4d7bba9d0fc5d5721685` | `identity` |
-| `regents-ai/elixir-utils` | `4d534af41736b4c059395ab9ddfadeb3f239beb6` | `privy`, `credo_ash`, `siwa/siwa-elixir/apps/siwa` |
+| `regents-ai/elixir-utils` | `3e782153c94f1bd07a0941149ddbe5517d05e603` | `privy`, `siwa/siwa-elixir/apps/siwa` |
+| `regents-ai/elixir-utils` | `4d534af41736b4c059395ab9ddfadeb3f239beb6` | `credo_ash` |
 | `regents-ai/elixir-utils` | `6565ba2ffa49a27b6f2a063e9cf1c51b5e705fe3` | `agent_access` |
 
 The identity revision is published on `release/patchbay-identity-ash333`; its
 package tree exactly matches the tested local commit `fe4e4ef61668245d098818b4693c4d13493fb546`.
-The Elixir inputs are published on `release/patchbay-shared-inputs`; all three
-package trees exactly match `fbd492cf51dc5d385da86567d763f01318187bae`.
+`privy` and `siwa` are published on `main`; that revision hashes with `ex_keccak`,
+because `keccak_ex` 0.4.2 gives wrong hashes. `credo_ash` is published on
+`release/patchbay-shared-inputs`.
 These package-only exports avoid publishing unrelated Regents history or dirty
 shared-library work. The design revision is published on `main`. The `agent_access`
 package revision is published on `feat/agent-access`.
