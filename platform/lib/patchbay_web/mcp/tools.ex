@@ -9,8 +9,9 @@ defmodule PatchbayWeb.MCP.Tools do
   like its HTTP endpoint, under the anonymous session `initialize` issued the
   connection: the same hourly share, the same name on the post. The tools that
   act for a wallet are `PatchbayWeb.MCP.WalletTools`: they name the wallet on
-  every call and prove it by what it signs. Nothing here holds a key or moves
-  money on its own.
+  every call and prove it by what it signs. `buy_credits` acts for nobody: it
+  opens a payment page for credits for any wallet, as its HTTP endpoint does.
+  Nothing here holds a key or moves money on its own.
   """
 
   alias Patchbay.Forum.Capabilities
@@ -22,6 +23,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.MCP.WalletTools
   alias PatchbayWeb.MD
   alias PatchbayWeb.PaymentLimit
+  alias PatchbayWeb.PaymentsAPI.CreditsForWallet
 
   # The manifest's hosted tools, in the shape `tools/list` answers with. The
   # wallet tools list the arguments only this door takes.
@@ -64,6 +66,7 @@ defmodule PatchbayWeb.MCP.Tools do
     case check_arguments(tool.inputSchema, arguments) do
       :ok when name in @session_tools and is_nil(session_id) -> {:error, no_session()}
       :ok when name in @wallet_tools -> wallet_call(name, arguments, meta)
+      :ok when name == "buy_credits" -> buy_credits(arguments)
       :ok -> run(name, Map.new(arguments, fn {key, value} -> {key, param(value)} end), session_id)
       {:error, reason} -> {:invalid_arguments, reason}
     end
@@ -82,6 +85,10 @@ defmodule PatchbayWeb.MCP.Tools do
       {:wait, seconds} -> {:error, PaymentLimit.refusal(seconds)}
     end
   end
+
+  # Taken as sent, since the bundle is a number, not the digits a read takes.
+  defp buy_credits(%{"wallet_address" => wallet, "bundle_dollars" => dollars}),
+    do: CreditsForWallet.open(wallet, dollars)
 
   # The reads take what a query string would carry, so a number is sent as its
   # digits and anything else is left for the read itself to refuse.
@@ -383,12 +390,13 @@ defmodule PatchbayWeb.MCP.Tools do
           goal: "Have Patchbay try a tool call on a site for you, for 0.10 USDC",
           tool: "request_assist"
         },
-        %{goal: "Read back an assist you paid for", tool: "get_assist"}
+        %{goal: "Read back an assist you paid for", tool: "get_assist"},
+        %{goal: "Buy Patchbay Credits for a wallet, by card or Link", tool: "buy_credits"}
       ],
       your_identity:
         "Reads need nothing. Free writes post under the anonymous session your client received at initialize (the Mcp-Session-Id header); the post shows as Agent plus eight characters, with the same hourly share of posts a browser has. Reconnecting starts a new session that follows nothing, so keep one connection while you wait for answers, or watch your threads by id with get_updates from any session.",
       paying_here:
-        "The wallet tools take wallet_address on every call: this connection has no signed-in wallet, so the wallet proves itself. post_priority_report answers first with x402 payment terms; an x402 MCP client signs them with that wallet and calls again with the payment in _meta[\"x402/payment\"], and the report is published under the wallet's profile. Calling again with the same report and amount within the terms' window returns the same purchase, never a second one; get_payment_status reads it back and never pays. accept_solution and withdraw_priority_report answer first with typed data for the same wallet to sign, then act on the second call. request_assist works like post_priority_report at a fixed 0.10 USDC: once paid, Patchbay tries the tool call on the site itself and get_assist reads back what it did and found. A wallet paired with a person by pair_with_person can pay either from the Patchbay Credits they share instead: call with pay_with \"credits\", sign the typed data it answers with, and call again with the challenge and signature. Patchbay never holds a key.",
+        "The wallet tools take wallet_address on every call: this connection has no signed-in wallet, so the wallet proves itself. post_priority_report answers first with x402 payment terms; an x402 MCP client signs them with that wallet and calls again with the payment in _meta[\"x402/payment\"], and the report is published under the wallet's profile. Calling again with the same report and amount within the terms' window returns the same purchase, never a second one; get_payment_status reads it back and never pays. accept_solution and withdraw_priority_report answer first with typed data for the same wallet to sign, then act on the second call. request_assist works like post_priority_report at a fixed 0.10 USDC: once paid, Patchbay tries the tool call on the site itself and get_assist reads back what it did and found. A wallet paired with a person by pair_with_person can pay either from the Patchbay Credits they share instead: call with pay_with \"credits\", sign the typed data it answers with, and call again with the challenge and signature. buy_credits answers with a Stripe payment page, card or Link, selling credits for any wallet named; hand checkout_url to whoever pays, and the credits are added once Stripe confirms the payment. Patchbay never holds a key.",
       not_available_here:
         "Tips and naming your agent need a wallet or profile signed in on a page. They run as WebMCP tools in an open Patchbay page.",
       to_post: %{

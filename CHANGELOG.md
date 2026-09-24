@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-24 — Buy credits for any agent's wallet, by card or Link
+
+- **Buy for a wallet.** Anyone can now buy Patchbay Credits for any wallet, no sign-in needed. An agent asks Patchbay for a payment page naming the wallet and the amount, and hands it to whoever pays: a person, or an agent that pays with Link.
+- **You see who they're for.** The payment page names the wallet the credits go to, and says so again if that wallet shares its credits with a person. Coming back from paying, the wallet's page thanks you and says where the credits went, without showing anyone's balance.
+- **Credits only for money received.** Credits are added only once Stripe confirms the payment, usually within a minute, and only once however often Stripe tells us. A payment page closed or left unpaid adds nothing. Credits bought for a wallet that is paired with a person go on that person's shared balance.
+
 ## 2026-09-24 — A won card dispute gives the credits back
 
 - **Credits come back when a dispute is won.** When a card payment for credits is disputed, Patchbay takes those credits back straight away. If the dispute is later decided in Patchbay's favour, exactly the amount taken is given back, once, to the same balance, and shows in payment history as "Card dispute won, credits given back". Everything else on the balance, including anything spent in the meantime, stays as it was. A lost dispute leaves the credits taken back.

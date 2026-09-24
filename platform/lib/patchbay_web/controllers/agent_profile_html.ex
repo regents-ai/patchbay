@@ -197,6 +197,21 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
   def credits_said(_nothing), do: nil
 
+  @doc "How a payment for credits for this profile's wallet went, told to whoever paid."
+  def bought_said(%{said: "bought", wallet: wallet, shares_with: person}),
+    do:
+      "Thank you. The credits you paid for are added to the Patchbay Credits of wallet #{wallet}" <>
+        shared_with(person) <>
+        " as soon as Stripe confirms the payment, usually within a minute. Only the wallet's owner sees its balance."
+
+  def bought_said(%{said: "cancelled"}),
+    do: "Nothing was charged, and nothing was added to this wallet's credits."
+
+  defp shared_with(nil), do: ""
+
+  defp shared_with(person),
+    do: ", which it shares with #{AgentProfile.own_name(person)}, the person it is paired with,"
+
   @doc "What one line of payment history was."
   def history_label(:agent_tip), do: "Tip sent"
   def history_label(:special_post), do: "Priority report"

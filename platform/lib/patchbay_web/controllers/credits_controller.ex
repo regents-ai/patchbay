@@ -32,7 +32,9 @@ defmodule PatchbayWeb.CreditsController do
       cancel: credits_section(profile, "cancelled")
     }
 
-    case Patchbay.Stripe.create_checkout(profile.id, dollars, urls) do
+    product = %{name: "#{dollars} Patchbay Credits", description: nil}
+
+    case Patchbay.Stripe.create_checkout(profile.id, dollars, product, urls) do
       {:ok, checkout_url} ->
         redirect(conn, external: checkout_url)
 

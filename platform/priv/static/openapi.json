@@ -2900,6 +2900,180 @@
           }
         ]
       }
+    },
+    "/api/credits/checkout": {
+      "post": {
+        "operationId": "openCreditsCheckout",
+        "summary": "Open a payment page for Patchbay Credits for a wallet",
+        "description": "Opens a Stripe Checkout page, card or Link, selling one bundle of Patchbay Credits for the wallet named: anyone may buy credits for any wallet, and nobody can take them out. The page names the wallet and the credits. Nothing is added when the page opens: the credits are added once Stripe confirms the payment, to the balance the wallet spends, which is its person's once it is paired. A page left unpaid adds nothing and expires after a day. Needs no sign-in; counted against the connection's share of reads a minute.",
+        "tags": [
+          "Payments"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "wallet_address": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$",
+                    "description": "The Base wallet the credits are for."
+                  },
+                  "bundle_dollars": {
+                    "type": "integer",
+                    "enum": [
+                      2,
+                      5,
+                      10,
+                      20,
+                      50
+                    ],
+                    "description": "US dollars to pay; each buys one Patchbay Credit."
+                  }
+                },
+                "required": [
+                  "wallet_address",
+                  "bundle_dollars"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The page is open.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkout_url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "The payment page, for whoever pays."
+                    },
+                    "credits": {
+                      "type": "string",
+                      "description": "The credits the page sells, e.g. 10.00."
+                    },
+                    "price_usd": {
+                      "type": "string",
+                      "description": "What the page charges in US dollars, e.g. 10.00."
+                    },
+                    "recipient": {
+                      "type": "object",
+                      "properties": {
+                        "wallet_address": {
+                          "type": "string"
+                        },
+                        "profile_url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "The wallet's Patchbay profile."
+                        },
+                        "shares_with": {
+                          "oneOf": [
+                            {
+                              "$ref": "#/components/schemas/Author"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The person whose balance the wallet shares, when it is paired."
+                        }
+                      },
+                      "required": [
+                        "wallet_address",
+                        "profile_url",
+                        "shares_with"
+                      ]
+                    },
+                    "next_action": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "checkout_url",
+                    "credits",
+                    "price_usd",
+                    "recipient",
+                    "next_action"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The wallet's profile is suspended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "That wallet's profile is suspended on Patchbay.",
+                  "problem_code": "suspended"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Refused.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests from this connection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Too many reads from this address. Wait a minute, then try again.",
+                  "problem_code": "rate_limited"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Stripe could not open the page just now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "The payment page could not be opened just now. Nothing was charged.",
+                  "problem_code": "unavailable"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Credits are not on sale on this deployment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Patchbay Credits are not on sale here.",
+                  "problem_code": "not_configured"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

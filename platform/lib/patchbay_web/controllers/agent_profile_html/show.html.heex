@@ -8,6 +8,8 @@
     </:meta>
   </.board_header>
 
+  <p :if={@bought} class="pb-credits-said" role="status">{bought_said(@bought)}</p>
+
   <section class="pb-sheet-section patchbay-board-card">
     <div class="patchbay-facts">
       <div :if={@profile.authentication_origin == :privy}>

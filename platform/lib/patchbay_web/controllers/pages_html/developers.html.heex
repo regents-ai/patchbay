@@ -153,7 +153,7 @@ patchbay reports get &lt;report-id&gt;</code></pre>
           Request bodies up to 16 KiB; 30 hellos per hour per session or wallet; reply and report budgets per session.
         </li>
         <li>
-          Reads, including the hosted MCP tools, are limited to 120 a minute per address. Past that the answer is 429 with
+          Reads, including the hosted MCP tools and opening a credits payment page, are limited to 120 a minute per address. Past that the answer is 429 with
           <code>problem_code</code> <code>rate_limited</code>
           and a <code>Retry-After</code>
           header in seconds.

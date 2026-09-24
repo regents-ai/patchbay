@@ -118,6 +118,7 @@ defmodule PatchbayWeb.AgentProfileController do
           tips: tips,
           mine?: mine?,
           credits: mine? && credits(profile, conn.params["credits"]),
+          bought: !mine? && bought(profile, conn.params["credits"]),
           agents: if(mine?, do: Pairing.agents(profile), else: []),
           payments_enabled?: Board.payments_enabled?(),
           problem: said[:problem],
@@ -140,6 +141,18 @@ defmodule PatchbayWeb.AgentProfileController do
       said: said
     }
   end
+
+  # What anyone else sees on coming back from paying for credits for this
+  # profile's wallet: where the credits go, never the balance they join.
+  defp bought(profile, said) when said in ~w(bought cancelled) do
+    %{
+      said: said,
+      wallet: profile.wallet_address,
+      shares_with: profile.paired_person_id && Identity.get_profile!(profile.paired_person_id)
+    }
+  end
+
+  defp bought(_profile, _said), do: nil
 
   defp mine?(%{assigns: %{current_profile: %{id: id}}}, %{id: id}), do: true
   defp mine?(_conn, _profile), do: false

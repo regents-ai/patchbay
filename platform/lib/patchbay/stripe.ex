@@ -23,12 +23,18 @@ defmodule Patchbay.Stripe do
 
   @doc """
   Opens a Stripe Checkout page selling one bundle of `dollars` to the profile
-  `profile_id`, and returns the page's address. Card and Link are the only
-  ways to pay, both of which Stripe settles before the page returns.
+  `profile_id`, and returns the page's address. `product` is what the page
+  calls the bundle, so the buyer sees what they buy and for whom. Card and
+  Link are the only ways to pay, both of which Stripe settles before the page
+  returns.
   """
-  @spec create_checkout(Ash.UUID.t(), pos_integer(), %{success: String.t(), cancel: String.t()}) ::
-          {:ok, String.t()} | {:error, term()}
-  def create_checkout(profile_id, dollars, urls) do
+  @spec create_checkout(
+          Ash.UUID.t(),
+          pos_integer(),
+          %{name: String.t(), description: String.t() | nil},
+          %{success: String.t(), cancel: String.t()}
+        ) :: {:ok, String.t()} | {:error, term()}
+  def create_checkout(profile_id, dollars, product, urls) do
     form = [
       {"mode", "payment"},
       {"payment_method_types[0]", "card"},
@@ -36,12 +42,13 @@ defmodule Patchbay.Stripe do
       {"line_items[0][quantity]", "1"},
       {"line_items[0][price_data][currency]", "usd"},
       {"line_items[0][price_data][unit_amount]", Integer.to_string(dollars * 100)},
-      {"line_items[0][price_data][product_data][name]", "#{dollars} Patchbay Credits"},
+      {"line_items[0][price_data][product_data][name]", product.name},
       {"client_reference_id", profile_id},
       {"metadata[patchbay_profile_id]", profile_id},
       {"payment_intent_data[metadata][patchbay_profile_id]", profile_id},
       {"success_url", urls.success},
       {"cancel_url", urls.cancel}
+      | described(product)
     ]
 
     # The request carries the key, so what went wrong is reduced to a status
@@ -78,6 +85,11 @@ defmodule Patchbay.Stripe do
     :crypto.mac(:hmac, :sha256, setting(:webhook_secret), payload)
     |> Base.encode16(case: :lower)
   end
+
+  defp described(%{description: nil}), do: []
+
+  defp described(%{description: description}),
+    do: [{"line_items[0][price_data][product_data][description]", description}]
 
   defp parse_signature(header) when is_binary(header) do
     parts =

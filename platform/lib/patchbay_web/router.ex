@@ -94,6 +94,13 @@ defmodule PatchbayWeb.Router do
     get "/assists/:id", RunController, :show
   end
 
+  # Anyone may open a card or Link page for credits for any wallet; nothing
+  # is written until Stripe says the payment was taken.
+  scope "/api/credits", PatchbayWeb.PaymentsAPI do
+    pipe_through [:api]
+    post "/checkout", CreditsCheckoutController, :create
+  end
+
   # Reading the balance a signed agent spends is not a payment request either.
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
     pipe_through [:api, :wallet_author]
