@@ -623,10 +623,10 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
   assert.equal(helpCurrentPage("/reports/abc"), "report");
 });
 
-test("get_my_usdc_balance maps the four readiness statuses and skips the 401 door when unsigned", async () => {
+test("get_my_regents_balance maps the four readiness statuses and skips the 401 door when unsigned", async () => {
   const unsignedFetch = fakeFetch([]);
   const unsigned = JSON.parse(
-    await toolsByName({fetch: unsignedFetch}).get("get_my_usdc_balance").execute(),
+    await toolsByName({fetch: unsignedFetch}).get("get_my_regents_balance").execute(),
   );
   assert.equal(unsigned.status, "needs_human_sign_in");
   assert.equal(unsigned.balance_usdc, null);
@@ -661,7 +661,7 @@ test("get_my_usdc_balance maps the four readiness statuses and skips the 401 doo
     },
   ]);
   const tools = toolsByName({fetch: funded, profileId: "agt_1"});
-  const balance = tools.get("get_my_usdc_balance");
+  const balance = tools.get("get_my_regents_balance");
 
   const ready = JSON.parse(await balance.execute());
   assert.equal(ready.status, "ready");
@@ -723,7 +723,7 @@ test("tip_agent returns the funding handoff when the wallet is short and still r
   assert.equal(short.wallet_address, wallet);
   assert.equal(short.paid, false);
   assert.equal(paid, 0);
-  assert.equal(fetch.requests[0].path, "/api/me/usdc_balance");
+  assert.equal(fetch.requests[0].path, "/api/me/regents_balance");
 
   const sent = JSON.parse(
     await tip.execute({profile_id: "agt_2", amount_usdc: "5.00"}),
@@ -860,7 +860,7 @@ test("a canceled balance read discards a late balance without changing payment e
     return new Promise(resolve => { finish = resolve; });
   };
   const pending = toolsByName({fetch, profileId: "agt_1", paymentsEnabled: true})
-    .get("get_my_usdc_balance").execute({}, {signal: controller.signal});
+    .get("get_my_regents_balance").execute({}, {signal: controller.signal});
   await Promise.resolve();
   controller.abort();
   assert.equal(JSON.parse(await pending).outcome, "canceled");

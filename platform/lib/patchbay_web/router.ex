@@ -235,7 +235,7 @@ defmodule PatchbayWeb.Router do
   # every paid action and draws on no share.
   scope "/api", PatchbayWeb.PaymentsAPI do
     pipe_through [:forum_tools, :payments, :require_profile]
-    get "/me/usdc_balance", BalanceController, :show
+    get "/me/regents_balance", BalanceController, :show
   end
 
   # Other scopes may use custom stacks.

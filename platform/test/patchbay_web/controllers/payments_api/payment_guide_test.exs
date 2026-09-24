@@ -5,7 +5,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
   alias PatchbayWeb.Plugs.CurrentProfile
 
   test "unsigned payment doors say sign-in is required and point at the guide", %{conn: conn} do
-    conn = get(conn, ~p"/api/me/usdc_balance")
+    conn = get(conn, ~p"/api/me/regents_balance")
 
     assert conn.status == 401
     body = json_response(conn, 401)
@@ -27,7 +27,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
       conn
       |> Plug.Test.init_test_session(%{})
       |> Plug.Conn.put_session(CurrentProfile.session_key(), profile.id)
-      |> get(~p"/api/me/usdc_balance")
+      |> get(~p"/api/me/regents_balance")
 
     body = json_response(conn, conn.status)
 

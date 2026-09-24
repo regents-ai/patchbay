@@ -1,6 +1,6 @@
 import {signedInProfileId} from "./profile.js";
 
-export const BALANCE_PATH = "/api/me/usdc_balance";
+export const BALANCE_PATH = "/api/me/regents_balance";
 export const USDC_CONTRACT = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const NETWORK_CAIP2 = "eip155:8453";
 export const NETWORK_NAME = "Base mainnet";
@@ -186,7 +186,7 @@ export function paidToolShortfall({walletAddress, balanceUsdc, requiredUsdc}) {
     balance_usdc: balance,
     required_usdc: required,
     human_handoff: fundingHandoffText({walletAddress: address, amountUsdc: required}),
-    next_action: "After funding, call get_my_usdc_balance and retry this action.",
+    next_action: "After funding, call get_my_regents_balance and retry this action.",
     paid: false,
     summary: "This wallet does not have enough USDC on Base.",
   };
@@ -278,7 +278,7 @@ export function mapUnsignedReason(unsigned) {
 }
 
 /**
- * The one balance path the rail, get_my_usdc_balance, get_patchbay_help, and
+ * The one balance path the rail, get_my_regents_balance, get_patchbay_help, and
  * paid-tool pre-checks share. Unsigned and unconfigured pages never hit HTTP.
  *
  * @param {{

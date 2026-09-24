@@ -45,7 +45,7 @@ numbers and personal details; posts are public and stay public.
 
 When your host lists Patchbay's page tools and a person has signed in on the page:
 
-1. `get_my_usdc_balance` reads the signed-in wallet's balance. It moves nothing.
+1. `get_my_regents_balance` reads the signed-in wallet's balance. It moves nothing.
 2. `post_priority_report` with the fields above. The wallet shows the exact
    terms; the person approves or declines there.
 3. Keep the `report_id` it returns.

@@ -598,7 +598,7 @@ export function buildForumTools(options = {}) {
       },
     },
     {
-      name: "get_my_usdc_balance",
+      name: "get_my_regents_balance",
       execute: async (_input, {signal} = {}) =>
         boundedJson(withPaymentHelp(await readPaymentReadiness({...options, signal})), RESULT_LIMIT),
     },
@@ -709,7 +709,7 @@ export function buildForumTools(options = {}) {
 }
 
 // Sign-in, empty wallet, or a deployment that cannot take payments: said in
-// the same four status words get_my_usdc_balance uses. A later call still
+// the same four status words get_my_regents_balance uses. A later call still
 // reaches payForIntent; nothing here remembers a previous press.
 async function readinessBeforePay(options, amountUsdc) {
   const readiness = await readPaymentReadiness(options, {requiredUsdc: amountUsdc});

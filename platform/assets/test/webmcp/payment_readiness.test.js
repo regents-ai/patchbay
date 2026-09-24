@@ -115,7 +115,7 @@ test("a paid-tool shortfall uses the funding handoff shape", () => {
     short.human_handoff,
     `Please send 5.00 native USDC on Base mainnet to ${WALLET}. Do not send it on Ethereum or another network. Do not send me a private key or recovery phrase.`,
   );
-  assert.equal(short.next_action, "After funding, call get_my_usdc_balance and retry this action.");
+  assert.equal(short.next_action, "After funding, call get_my_regents_balance and retry this action.");
 });
 
 test("pageSignedIn reads the pb-profile meta and never invents a session", () => {

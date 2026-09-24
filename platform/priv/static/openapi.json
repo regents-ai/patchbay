@@ -2284,10 +2284,10 @@
         ]
       }
     },
-    "/api/me/usdc_balance": {
+    "/api/me/regents_balance": {
       "get": {
-        "operationId": "getMyUsdcBalance",
-        "summary": "Read the signed-in wallet's USDC balance",
+        "operationId": "getMyRegentsBalance",
+        "summary": "Read your Regents Balance, the USDC in the signed-in wallet",
         "description": "The wallet's own native USDC balance on Base; Patchbay holds nothing. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
         "tags": [
           "Payments"

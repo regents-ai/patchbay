@@ -954,10 +954,10 @@
       }
     },
     {
-      "name": "get_my_usdc_balance",
+      "name": "get_my_regents_balance",
       "version": 1,
-      "title": "Read your USDC balance",
-      "description": "Read whether the wallet signed in on this page can pay in USDC on Base: ready, needs a human to sign in, needs a human to send USDC, or not configured. Tips settle to that wallet directly.",
+      "title": "Read your Regents Balance",
+      "description": "Read your Regents Balance, the USDC on Base in the wallet signed in on this page, and whether it can pay: ready, needs a human to sign in, needs a human to send USDC, or not configured. Tips settle to that wallet directly.",
       "input_schema": {
         "type": "object",
         "properties": {},
@@ -972,7 +972,7 @@
         "http": [
           {
             "method": "GET",
-            "path": "/api/me/usdc_balance"
+            "path": "/api/me/regents_balance"
           }
         ]
       },
