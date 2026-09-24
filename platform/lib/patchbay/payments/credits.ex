@@ -164,134 +164,148 @@ defmodule Patchbay.Payments.Credits do
   end
 
   @doc """
-  Takes back what Stripe has refunded of card payment
-  `stripe_payment_intent_id`. `refunded_cents` is Stripe's running total for
-  the payment, so each refund event takes back only what earlier ones did
-  not. The payment is a bundle's, so until its purchase is written there is
-  nothing to take back yet, and the refund is refused for Stripe to send
-  again.
+  Records what Stripe has refunded of card payment
+  `stripe_payment_intent_id` and takes those credits back. `refunded_cents`
+  is Stripe's running total for the payment, so each refund event records
+  only what earlier ones did not. The payment is a bundle's, so until its
+  purchase is written there is nothing to take back yet, and the refund is
+  refused for Stripe to send again.
   """
   @spec record_card_refund(String.t(), non_neg_integer()) ::
           {:ok, :reversed | :already_reversed} | {:error, term()}
   def record_card_refund(stripe_payment_intent_id, refunded_cents) do
-    take_back(stripe_payment_intent_id, {:error, :purchase_not_written}, fn lines ->
-      refunded = Enum.sum(for line <- lines, reversal_for_refund?(line), do: -line.amount_atomic)
-      {atomic_from_cents(refunded_cents) - refunded, nil}
+    settle(stripe_payment_intent_id, {:error, :purchase_not_written}, fn lines ->
+      case atomic_from_cents(refunded_cents) - refunded(lines) do
+        new when new > 0 -> {:take, nil, new}
+        _recorded -> :already_reversed
+      end
     end)
   end
 
   @doc """
-  Takes back `cents` of card payment `stripe_payment_intent_id` for dispute
-  `stripe_dispute_id`, once for each dispute. A dispute does not say whether
-  its payment was a bundle, so one for a payment Patchbay never credited is
-  not Patchbay's to answer for.
+  Records dispute `stripe_dispute_id` of `cents` on card payment
+  `stripe_payment_intent_id` and takes those credits back, once for each
+  dispute. A dispute does not say whether its payment was a bundle, so one
+  for a payment Patchbay never credited is not Patchbay's to answer for.
   """
   @spec record_card_dispute(String.t(), String.t(), pos_integer()) ::
           {:ok, :reversed | :already_reversed | :not_ours} | {:error, term()}
   def record_card_dispute(stripe_payment_intent_id, stripe_dispute_id, cents) do
-    take_back(stripe_payment_intent_id, {:ok, :not_ours}, fn lines ->
-      if Enum.any?(lines, &(&1.stripe_dispute_id == stripe_dispute_id)),
-        do: {0, stripe_dispute_id},
-        else: {atomic_from_cents(cents), stripe_dispute_id}
+    settle(stripe_payment_intent_id, {:ok, :not_ours}, fn lines ->
+      if dispute_reversal(lines, stripe_dispute_id),
+        do: :already_reversed,
+        else: {:take, stripe_dispute_id, atomic_from_cents(cents)}
     end)
   end
 
   @doc """
-  Gives back what dispute `stripe_dispute_id` of card payment
-  `stripe_payment_intent_id` took, once, when Stripe closes it as won: the
-  exact amount its reversal took, to the balance it was taken from, whoever
-  that balance's agents are paired with since. Nothing else on that balance
-  is touched. A dispute Patchbay never took anything for is not Patchbay's
-  to answer for; one whose reversal is not written yet, while the payment
-  still had credits to take, is refused for Stripe to send again.
+  Gives back, once, what dispute `stripe_dispute_id` of card payment
+  `stripe_payment_intent_id` took, when Stripe closes it without the money
+  leaving: a dispute won, or an inquiry closed. Only what no refund of the
+  same payment has taken since is given back, to the balance it was taken
+  from, whoever that balance's agents are paired with since; nothing else
+  on that balance is touched. A dispute on a payment Patchbay never credited
+  is not Patchbay's to answer for; one whose opening is not written yet is
+  refused for Stripe to send again.
   """
   @spec record_dispute_won(String.t(), String.t()) ::
           {:ok, :restored | :already_restored | :not_ours} | {:error, term()}
   def record_dispute_won(stripe_payment_intent_id, stripe_dispute_id) do
-    lines = lines_for(stripe_payment_intent_id)
+    settle(stripe_payment_intent_id, {:ok, :not_ours}, fn lines ->
+      cond do
+        is_nil(dispute_reversal(lines, stripe_dispute_id)) -> :dispute_not_written
+        dispute_closed?(lines, stripe_dispute_id) -> :already_restored
+        true -> {:give_back, dispute_reversal(lines, stripe_dispute_id)}
+      end
+    end)
+  end
 
-    case Enum.find(
-           lines,
-           &(&1.kind == :card_reversal and &1.stripe_dispute_id == stripe_dispute_id)
-         ) do
-      nil ->
-        # The reversal takes only what is left of the payment, so with nothing
-        # left it would take nothing, and there is nothing to give back.
-        if Enum.sum_by(lines, & &1.amount_atomic) > 0,
-          do: {:error, :dispute_not_written},
-          else: {:ok, :not_ours}
+  # Every Stripe event about one card payment is weighed under that
+  # payment's own lock, against its lines read under it, so events arriving
+  # together or in any order are counted one after another.
+  defp settle(stripe_payment_intent_id, nothing_bought, decide) do
+    CreditLine
+    |> Ash.transact(fn ->
+      hold("card payment " <> stripe_payment_intent_id)
 
-      reversal ->
-        Ash.transact(CreditLine, fn ->
-          reversal.profile_id
-          |> hold_balance()
-          |> restore_once(reversal)
-        end)
+      case lines_for(stripe_payment_intent_id) do
+        [] -> :nothing_bought
+        lines -> lines |> decide.() |> write(stripe_payment_intent_id, lines)
+      end
+    end)
+    |> case do
+      {:ok, :nothing_bought} -> nothing_bought
+      {:ok, :dispute_not_written} -> {:error, :dispute_not_written}
+      settled -> settled
     end
   end
 
-  # Read again under the balance's lock, so two deliveries never both write it.
-  defp restore_once(profile_id, reversal) do
-    restored? =
-      reversal.stripe_payment_intent_id
-      |> lines_for()
-      |> Enum.any?(
-        &(&1.kind == :dispute_restore and &1.stripe_dispute_id == reversal.stripe_dispute_id)
-      )
+  # What Stripe's events took from the payment decides what is taken back:
+  # every refund and every dispute still open, never more than the payment
+  # bought. Each line takes back the difference that event makes, so a
+  # refund of money a dispute already took back takes nothing more, and a
+  # dispute closed later gives back only what the refund does not cover.
+  defp write({:take, stripe_dispute_id, stripe_amount}, stripe_payment_intent_id, lines) do
+    purchase = Enum.find(lines, &(&1.kind == :card_purchase))
+    owed = min(bought(lines), claimed(lines) + stripe_amount) - taken(lines)
 
-    with false <- restored?,
-         {:ok, _line} <-
-           record(:record_dispute_restore, %{
-             profile_id: profile_id,
-             amount_atomic: -reversal.amount_atomic,
-             stripe_payment_intent_id: reversal.stripe_payment_intent_id,
-             stripe_dispute_id: reversal.stripe_dispute_id
-           }) do
-      :restored
-    else
-      true -> :already_restored
-      {:error, error} -> {:error, error}
-    end
+    record(:record_card_reversal, %{
+      profile_id: hold_balance(purchase.profile_id),
+      amount_atomic: -owed,
+      stripe_amount_atomic: stripe_amount,
+      stripe_payment_intent_id: stripe_payment_intent_id,
+      stripe_dispute_id: stripe_dispute_id
+    })
+    |> written(:reversed)
   end
 
-  # Never more is taken back from a card payment, in all, than it bought.
-  defp take_back(stripe_payment_intent_id, nothing_bought, owed) do
-    case lines_for(stripe_payment_intent_id) do
-      [] ->
-        nothing_bought
+  defp write({:give_back, reversal}, stripe_payment_intent_id, lines) do
+    still_owed = min(bought(lines), claimed(lines) - reversal.stripe_amount_atomic)
 
-      # Taken back from whoever holds the balance the purchase went to now.
-      [%{profile_id: profile_id} | _lines] ->
-        Ash.transact(CreditLine, fn ->
-          profile_id
-          |> hold_balance()
-          |> reverse(stripe_payment_intent_id, owed)
-        end)
-    end
+    record(:record_dispute_restore, %{
+      profile_id: hold_balance(reversal.profile_id),
+      amount_atomic: taken(lines) - still_owed,
+      stripe_payment_intent_id: stripe_payment_intent_id,
+      stripe_dispute_id: reversal.stripe_dispute_id
+    })
+    |> written(:restored)
   end
 
-  defp reverse(profile_id, stripe_payment_intent_id, owed) do
-    lines = lines_for(stripe_payment_intent_id)
-    {amount, dispute_id} = owed.(lines)
-    amount = min(amount, Enum.sum_by(lines, & &1.amount_atomic))
+  defp write(settled, _stripe_payment_intent_id, _lines), do: settled
 
-    with true <- amount > 0,
-         {:ok, _line} <-
-           record(:record_card_reversal, %{
-             profile_id: profile_id,
-             amount_atomic: -amount,
-             stripe_payment_intent_id: stripe_payment_intent_id,
-             stripe_dispute_id: dispute_id
-           }) do
-      :reversed
-    else
-      false -> :already_reversed
-      {:error, error} -> {:error, error}
-    end
+  defp written({:ok, _line}, outcome), do: outcome
+  defp written({:error, error}, _outcome), do: {:error, error}
+
+  defp bought(lines), do: lines |> Enum.filter(&(&1.kind == :card_purchase)) |> sum_amounts()
+
+  defp refunded(lines) do
+    lines
+    |> Enum.filter(&(&1.kind == :card_reversal and is_nil(&1.stripe_dispute_id)))
+    |> Enum.sum_by(& &1.stripe_amount_atomic)
   end
 
-  defp reversal_for_refund?(line),
-    do: line.kind == :card_reversal and is_nil(line.stripe_dispute_id)
+  # Every refund, and every dispute not closed in the buyer's disfavour.
+  defp claimed(lines) do
+    lines
+    |> Enum.filter(&(&1.kind == :card_reversal))
+    |> Enum.reject(&(&1.stripe_dispute_id && dispute_closed?(lines, &1.stripe_dispute_id)))
+    |> Enum.sum_by(& &1.stripe_amount_atomic)
+  end
+
+  defp taken(lines) do
+    lines
+    |> Enum.filter(&(&1.kind in [:card_reversal, :dispute_restore]))
+    |> sum_amounts()
+    |> Kernel.-()
+  end
+
+  defp sum_amounts(lines), do: Enum.sum_by(lines, & &1.amount_atomic)
+
+  defp dispute_reversal(lines, dispute_id),
+    do: Enum.find(lines, &(&1.kind == :card_reversal and &1.stripe_dispute_id == dispute_id))
+
+  defp dispute_closed?(lines, dispute_id),
+    do: Enum.any?(lines, &(&1.kind == :dispute_restore and &1.stripe_dispute_id == dispute_id))
 
   # Stripe's signed word is what writes these lines, with no person acting.
   defp lines_for(stripe_payment_intent_id) do
@@ -372,9 +386,9 @@ defmodule Patchbay.Payments.Credits do
     |> Kernel.||(0)
   end
 
-  defp hold(profile_id) do
+  defp hold(name) do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
-      "patchbay credits " <> profile_id
+      "patchbay credits " <> name
     ])
   end
 end

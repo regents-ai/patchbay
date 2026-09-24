@@ -8,7 +8,8 @@
 
 ## 2026-09-24 — A won card dispute gives the credits back
 
-- **Credits come back when a dispute is won.** When a card payment for credits is disputed, Patchbay takes those credits back straight away. If the dispute is later decided in Patchbay's favour, exactly the amount taken is given back, once, to the same balance, and shows in payment history as "Card dispute won, credits given back". Everything else on the balance, including anything spent in the meantime, stays as it was. A lost dispute leaves the credits taken back.
+- **Credits come back when a dispute is won.** When a card payment for credits is disputed, Patchbay takes those credits back straight away. If the dispute is later decided in Patchbay's favour, or a card-issuer inquiry closes without becoming a dispute, the amount taken is given back, once, to the same balance, and shows in payment history as "Card dispute closed, credits given back". Everything else on the balance, including anything spent in the meantime, stays as it was. A lost dispute leaves the credits taken back.
+- **Refunds and disputes never count twice.** If the same money was both refunded and disputed, the credits are taken back once, and a dispute won afterwards gives back only what the refund didn't cover, whatever order Stripe's messages arrive in.
 
 ## 2026-09-24 — Agents pay from their person's credits
 

@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.DisputeWonTest do
   @moduledoc """
-  A card dispute Stripe closes as won gives back exactly what its reversal
-  took, once, however often or in whatever order Stripe sends the events, to
-  the balance it was taken from even after the buyer pairs with a person,
-  and leaves every other line on that balance as it was.
+  A card dispute Stripe closes without the money leaving gives back what its
+  reversal took and no refund has taken since, once, however often or in
+  whatever order Stripe sends the events, to the balance it was taken from
+  even after the buyer pairs with a person, and leaves every other line on
+  that balance as it was.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -74,6 +75,45 @@ defmodule PatchbayWeb.DisputeWonTest do
     assert webhook(opened(other, 200, "du_lost")).status == 200
     assert webhook(closed(other, "lost", "du_lost")).status == 200
     assert Credits.balance_atomic(person.id) == 11_000_000
+  end
+
+  test "a refund arriving after the dispute that took the same money is never given back" do
+    person =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:dispute-#{Ecto.UUID.generate()}",
+        wallet_address: "0x" <> String.duplicate("b", 40)
+      })
+
+    payment = "pi_" <> Ecto.UUID.generate()
+    {:ok, :credited} = Credits.record_card_purchase(person.id, 1_000, payment)
+
+    assert webhook(opened(payment, 1_000)).status == 200
+    assert webhook(refunded(person.id, payment, 1_000)).status == 200
+    assert Credits.balance_atomic(person.id) == 0
+
+    # Won, but the money went back to the buyer as a refund: nothing to give back.
+    assert webhook(closed(payment, "won")).status == 200
+    assert webhook(closed(payment, "won")).status == 200
+    assert Credits.balance_atomic(person.id) == 0
+
+    # Part refunded, then an inquiry on the rest closes: the rest comes back.
+    other = "pi_" <> Ecto.UUID.generate()
+    {:ok, :credited} = Credits.record_card_purchase(person.id, 1_000, other)
+    assert webhook(opened(other, 1_000, "du_inquiry")).status == 200
+    assert webhook(refunded(person.id, other, 400)).status == 200
+    assert Credits.balance_atomic(person.id) == 0
+    assert webhook(closed(other, "warning_closed", "du_inquiry")).status == 200
+    assert Credits.balance_atomic(person.id) == 6_000_000
+  end
+
+  defp refunded(profile_id, payment, cents) do
+    object = %{
+      "metadata" => %{"patchbay_profile_id" => profile_id},
+      "payment_intent" => payment,
+      "amount_refunded" => cents
+    }
+
+    %{"type" => "charge.refunded", "data" => %{"object" => object}}
   end
 
   defp spend(agent, amount) do

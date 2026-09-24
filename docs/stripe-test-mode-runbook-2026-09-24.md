@@ -92,8 +92,8 @@ the credits appear on the person's balance.
   Stripe opens a dispute on its own; the credits are taken back at once.
 - **Won dispute:** in the dashboard, open that dispute and submit evidence
   with the text `winning_evidence`. Stripe closes it as won within a few
-  minutes; exactly the amount taken is given back once, shown as "Card
-  dispute won, credits given back". Resending that `charge.dispute.closed`
+  minutes; the amount taken is given back once, shown as "Card dispute
+  closed, credits given back". Resending that `charge.dispute.closed`
   event gives nothing more.
 
 ## Before production

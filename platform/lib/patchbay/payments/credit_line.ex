@@ -57,8 +57,15 @@ defmodule Patchbay.Payments.CreditLine do
     attribute(:stripe_payment_intent_id, :string, allow_nil?: true, public?: true)
 
     # Set on a reversal Stripe opened for a dispute and on the restore when
-    # the dispute is won; empty on a reversal for a refund.
+    # the dispute is closed in the buyer's disfavour; empty on a reversal for
+    # a refund.
     attribute(:stripe_dispute_id, :string, allow_nil?: true, public?: true)
+
+    # On a reversal, what Stripe's event took from the payment: the refund's
+    # new part or the dispute's amount. It can be more than the line takes
+    # back, when a refund and a dispute cover the same money, and it is what
+    # a later dispute outcome is weighed against. Empty on every other line.
+    attribute(:stripe_amount_atomic, :integer, allow_nil?: true, public?: true)
 
     # The paid priority report whose bounty a payout pays; empty on every
     # other line. It names a row in another domain rather than pointing at one.
@@ -136,21 +143,37 @@ defmodule Patchbay.Payments.CreditLine do
     end
 
     create :record_card_reversal do
-      description("Credits taken back because Stripe refunded or disputed the card payment.")
+      description("""
+      Stripe refunded or disputed the card payment: what it took, and the
+      credits taken back for it, which are none when the same money was
+      already taken back for another reason.
+      """)
 
-      accept([:profile_id, :amount_atomic, :stripe_payment_intent_id, :stripe_dispute_id])
-      require_attributes([:stripe_payment_intent_id])
+      accept([
+        :profile_id,
+        :amount_atomic,
+        :stripe_amount_atomic,
+        :stripe_payment_intent_id,
+        :stripe_dispute_id
+      ])
+
+      require_attributes([:stripe_payment_intent_id, :stripe_amount_atomic])
       change(set_attribute(:kind, :card_reversal))
-      validate(compare(:amount_atomic, less_than: 0))
+      validate(compare(:amount_atomic, less_than_or_equal_to: 0))
+      validate(compare(:stripe_amount_atomic, greater_than: 0))
     end
 
     create :record_dispute_restore do
-      description("Credits a dispute took back, given back because the dispute was won.")
+      description("""
+      A dispute closed without the money leaving: the credits its reversal
+      took that no refund has taken since, given back. None when a refund
+      covers them all.
+      """)
 
       accept([:profile_id, :amount_atomic, :stripe_payment_intent_id, :stripe_dispute_id])
       require_attributes([:stripe_payment_intent_id, :stripe_dispute_id])
       change(set_attribute(:kind, :dispute_restore))
-      validate(compare(:amount_atomic, greater_than: 0))
+      validate(compare(:amount_atomic, greater_than_or_equal_to: 0))
     end
 
     create :record_spend do
