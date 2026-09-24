@@ -203,6 +203,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
   def history_label(:jev_assist), do: "Fix"
   def history_label(:card_purchase), do: "Credits bought by card"
   def history_label(:card_reversal), do: "Card payment refunded or disputed"
+  def history_label(:dispute_restore), do: "Card dispute won, credits given back"
   def history_label(:bounty_award), do: "Bounty won for an accepted answer"
   def history_label(:bounty_return), do: "Bounty taken back after 30 days"
   def history_label(:pairing_move), do: "Credits brought in by an agent you paired"

@@ -14,7 +14,7 @@ defmodule Patchbay.Payments.CreditLine do
   the report whose bounty it pays.
 
   The unique Stripe payment intent on a purchase, the unique dispute on a
-  reversal, the unique payment intent on a spend and the one payout per
+  reversal and on a restore, the unique payment intent on a spend and the one payout per
   report are what stop a retried event or a repeated call from being counted
   twice, and a bounty from being both awarded and taken back.
   """
@@ -31,6 +31,8 @@ defmodule Patchbay.Payments.CreditLine do
 
     identity_wheres_to_sql(
       one_purchase_per_card_payment: "kind = 'card_purchase'",
+      one_reversal_per_dispute: "kind = 'card_reversal'",
+      one_restore_per_dispute: "kind = 'dispute_restore'",
       one_spend_per_payment: "kind = 'spend'",
       one_payout_per_bounty: "kind IN ('bounty_award', 'bounty_return')"
     )
@@ -50,11 +52,12 @@ defmodule Patchbay.Payments.CreditLine do
     # directly with what an action costs in USDC. Negative takes credits away.
     attribute(:amount_atomic, :integer, allow_nil?: false, public?: true)
 
-    # The card payment a purchase or a reversal comes from; empty on every
-    # other line.
+    # The card payment a purchase, a reversal or a restore comes from; empty
+    # on every other line.
     attribute(:stripe_payment_intent_id, :string, allow_nil?: true, public?: true)
 
-    # Set on a reversal Stripe opened for a dispute; empty on one for a refund.
+    # Set on a reversal Stripe opened for a dispute and on the restore when
+    # the dispute is won; empty on a reversal for a refund.
     attribute(:stripe_dispute_id, :string, allow_nil?: true, public?: true)
 
     # The paid priority report whose bounty a payout pays; empty on every
@@ -70,7 +73,15 @@ defmodule Patchbay.Payments.CreditLine do
       eager_check?: false
     )
 
-    identity(:one_reversal_per_dispute, [:stripe_dispute_id], eager_check?: false)
+    identity(:one_reversal_per_dispute, [:stripe_dispute_id],
+      where: expr(kind == :card_reversal),
+      eager_check?: false
+    )
+
+    identity(:one_restore_per_dispute, [:stripe_dispute_id],
+      where: expr(kind == :dispute_restore),
+      eager_check?: false
+    )
 
     identity(:one_spend_per_payment, [:payment_intent_id],
       where: expr(kind == :spend),
@@ -131,6 +142,15 @@ defmodule Patchbay.Payments.CreditLine do
       require_attributes([:stripe_payment_intent_id])
       change(set_attribute(:kind, :card_reversal))
       validate(compare(:amount_atomic, less_than: 0))
+    end
+
+    create :record_dispute_restore do
+      description("Credits a dispute took back, given back because the dispute was won.")
+
+      accept([:profile_id, :amount_atomic, :stripe_payment_intent_id, :stripe_dispute_id])
+      require_attributes([:stripe_payment_intent_id, :stripe_dispute_id])
+      change(set_attribute(:kind, :dispute_restore))
+      validate(compare(:amount_atomic, greater_than: 0))
     end
 
     create :record_spend do

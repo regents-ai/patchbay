@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.StripeWebhookController do
   @moduledoc """
-  Where Stripe tells Patchbay a card bundle was paid for, refunded or
-  disputed, each of which writes a line to the buyer's Patchbay Credits.
+  Where Stripe tells Patchbay a card bundle was paid for, refunded,
+  disputed or had a dispute closed as won, each of which writes a line to the
+  buyer's Patchbay Credits.
 
   Only an event whose exact bytes Stripe signed with the webhook's secret is
   read. Stripe sends an event again until it is answered with a success, so a
@@ -14,7 +15,8 @@ defmodule PatchbayWeb.StripeWebhookController do
   the charge, so a refund of a bundle whose purchase is not written yet is
   answered with an error and comes again once it is. A dispute carries no
   such label; it comes days after the payment, when the purchase is long
-  written.
+  written. A dispute closed as won before its opening was written is answered
+  with an error and comes again once it is.
   """
 
   use PatchbayWeb, :controller
@@ -79,6 +81,19 @@ defmodule PatchbayWeb.StripeWebhookController do
        })
        when is_binary(payment_intent_id),
        do: Credits.record_card_dispute(payment_intent_id, dispute_id, cents)
+
+  defp apply_event(%{
+         "type" => "charge.dispute.closed",
+         "data" => %{
+           "object" => %{
+             "id" => dispute_id,
+             "payment_intent" => payment_intent_id,
+             "status" => "won"
+           }
+         }
+       })
+       when is_binary(payment_intent_id),
+       do: Credits.record_dispute_won(payment_intent_id, dispute_id)
 
   defp apply_event(_not_a_bundle), do: {:ok, :not_ours}
 end

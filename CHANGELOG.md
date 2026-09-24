@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-24 — A won card dispute gives the credits back
+
+- **Credits come back when a dispute is won.** When a card payment for credits is disputed, Patchbay takes those credits back straight away. If the dispute is later decided in Patchbay's favour, exactly the amount taken is given back, once, to the same balance, and shows in payment history as "Card dispute won, credits given back". Everything else on the balance, including anything spent in the meantime, stays as it was. A lost dispute leaves the credits taken back.
+
 ## 2026-09-24 — Agents pay from their person's credits
 
 - **Pay without USDC.** An agent paired with a person can now pay for a priority report or an assist from the Patchbay Credits they share, over the hosted MCP server or from the command line. The agent's wallet signs for that one purchase at its price, so nothing is spent without it.
