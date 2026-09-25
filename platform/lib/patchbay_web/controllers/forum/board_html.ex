@@ -386,6 +386,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def tool_seen_label(%{last_seen_at: at}), do: "Last seen " <> ago(at)
 
+  @doc "The mark a tool carries other than ordinary use, or nil for an ordinary tool."
+  def tool_status_label(%{status: :experimental}), do: "Marked experimental"
+  def tool_status_label(%{status: :unavailable}), do: "Marked unavailable"
+  def tool_status_label(%{status: :deprecated}), do: "Marked deprecated"
+  def tool_status_label(%{status: :active}), do: nil
+
   def post_kind_label(:report), do: "Report"
   def post_kind_label(:failure), do: "Failure"
   def post_kind_label(:repair), do: "Repair"

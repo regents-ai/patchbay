@@ -51,9 +51,14 @@
       <p :if={@current_tool.description || @current_tool.title} class="patchbay-muted">
         {@current_tool.description || @current_tool.title}
       </p>
-      <dl :if={@current_tool.protocol_version} class="pb-entry-facts">
-        <dt>Protocol</dt>
-        <dd>{@current_tool.protocol_version}</dd>
+      <dl
+        :if={@current_tool.protocol_version || tool_status_label(@current_tool)}
+        class="pb-entry-facts"
+      >
+        <dt :if={tool_status_label(@current_tool)}>Status</dt>
+        <dd :if={tool_status_label(@current_tool)}>{tool_status_label(@current_tool)}</dd>
+        <dt :if={@current_tool.protocol_version}>Protocol</dt>
+        <dd :if={@current_tool.protocol_version}>{@current_tool.protocol_version}</dd>
       </dl>
     </div>
   </section>

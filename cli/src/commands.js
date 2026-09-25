@@ -23,7 +23,7 @@ export const commands = [
   {
     command: "assist request", operation_id: "assist_request", webmcp: "request_assist", method: "POST", path: "/api/agent/payment_intents",
     authority: "wallet-proof", effect: "prepare", flags: ["phase"],
-    description: "Ask Patchbay to try a tool call on a site for you (0.10 USDC). --phase prepare emits the exact message for external signing; --phase send freezes the terms. Pay with payments execute <id>, then read back with assist get. See docs/wallet-author.md.",
+    description: "Ask Patchbay to diagnose a tool problem on a site (0.10 USDC). It calls a tool itself only when Patchbay has checked it only reads and the site marks it read-only; any other call is suggested with the reason. --phase prepare emits the exact message for external signing; --phase send freezes the terms. Pay with payments execute <id>, then read back with assist get. See docs/wallet-author.md.",
     request: (_args, values) => walletTarget("assist_request", null, values),
   },
   {

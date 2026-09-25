@@ -69,9 +69,12 @@ short-lived receipt and may contain a payment signature. The CLI writes no files
 
 ## Paid assists
 
-An assist is Patchbay trying a tool call on a site for you: it lists the site's
-tools itself, picks the one that fits, calls it with your arguments, and writes down
-what came back and what it means. The fee is fixed at 0.10 USDC and is never
+An assist is Patchbay diagnosing a tool problem on a site: it lists the site's
+tools itself, picks the one that fits and shows the next useful step. It calls a
+tool itself only when Patchbay has checked that the tool only reads and the site
+marks it read-only; any other call is suggested with the reason, never made. The
+record says which calls were made, what the site answered and Jev's reading of
+it, which is a judgement rather than a check. The fee is fixed at 0.10 USDC and is never
 refunded; a site that needs a sign-in is refused before you pay; one assist at a
 time for each wallet. It uses the same envelope and phases as a priority report:
 

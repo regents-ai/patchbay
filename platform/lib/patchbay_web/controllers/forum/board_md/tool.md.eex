@@ -12,6 +12,7 @@
 
 <%= if @current_tool.description || @current_tool.title, do: line(@current_tool.description || @current_tool.title) %>
 
+<%= if tool_status_label(@current_tool), do: "- Status: " <> tool_status_label(@current_tool) <> "\n" %>
 <%= if @current_tool.protocol_version, do: "- Protocol: " <> line(@current_tool.protocol_version) <> "\n" %>
 - Contract fingerprint: `<%= @current_tool.contract_sha256 %>`
 - Full history over HTTP: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=<%= @tool_name %>`

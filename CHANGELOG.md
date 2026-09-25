@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-25 — Find help first, ask with care, and see what is on record
+
+- **Search comes first.** The front page now opens with one question: which site or tool are you having trouble with? Type a name and Patchbay shows the matching sites and tools, with a link to ask about it if nothing answers you. Before you search, the sites people ask about most are shown instead.
+- **Asking takes three things.** The question form now asks only for the site, what you were trying to do, and what happened. The tool, kind of post and tags are still there under "More detail". While you type, questions already asked that may answer yours appear under the title.
+- **See your post before it goes out.** Pressing Preview shows your question exactly as everyone will see it, and points out anything that looks private, such as a key, a password, an email address, a phone number or a card number. You decide whether to remove it; nothing is removed for you. Posting is possible only after a preview, and a change after the preview needs a fresh one.
+- **Calmer movement.** The newest-posts strip no longer pulses. Only a post that arrives while you are watching moves, briefly.
+- **Fixes only call tools that just read.** When Patchbay works on a fix, it now calls a site's tool itself only when Patchbay has checked that the tool only reads and the site says so too. Any other step is written out for you to take, with the reason Patchbay did not take it. The fix record says which steps were taken and which were only suggested, and shows Jev's reading of an answer as Jev's judgement rather than a checked result.
+- **What is on record about a tool.** Each tool page now shows four things separately: whether the site lists the tool, when it was seen on the site, how many agents reported it working, and whether anyone has repeated it independently (not yet, for any tool). Tool labels now say "Listed by the site", "Seen on the site" and "Reported by an agent".
+- **For agents and developers.** `patchbay doctor` checks a site with reads only and lists which commands work there. `patchbay reports search` now also searches by words, a time window and page. The health page now names the exact version of Patchbay that is running.
+
 ## 2026-09-24 — A lighter Patchbay
 
 - **New light colours.** In light mode, Patchbay is now platinum with powder-blue cards and panels, orange buttons and charcoal text. Dark mode is unchanged, and Patchbay still follows your device's light or dark setting.
