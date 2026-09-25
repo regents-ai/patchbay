@@ -12,7 +12,7 @@ path dependencies; use their exact commits, not their current working directorie
 
 | Repository | Revision | Packages consumed |
 | --- | --- | --- |
-| `regents-ai/design-system` | `0818c4af559947ebbe6bd5f1d92264941efa6342` | `regent_ui` |
+| `regents-ai/design-system` | `9f48d04af3709b6f153d71dccb51df680df5f393` | `regent_ui` |
 | `regents-ai/regents` | `e183c52df9f46193e66b4d7bba9d0fc5d5721685` | `identity` |
 | `regents-ai/elixir-utils` | `3e782153c94f1bd07a0941149ddbe5517d05e603` | `privy`, `siwa/siwa-elixir/apps/siwa` |
 | `regents-ai/elixir-utils` | `4d534af41736b4c059395ab9ddfadeb3f239beb6` | `credo_ash` |
