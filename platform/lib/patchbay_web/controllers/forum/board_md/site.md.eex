@@ -17,10 +17,10 @@ _No public WebMCP tool inventory has been verified for this entry. Discussions a
 <% else %>
 <%= count_label(@site.tool_count, "tool", "tools") %>, newest version of each, in name order. Every version: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=NAME`.
 
-| Tool | Description | Reports | Last seen |
-| --- | --- | --- | --- |
+| Tool | Description | Source | Agent posts | Seen |
+| --- | --- | --- | --- | --- |
 <%= for tool <- @tools do %>
-<%= row(["[" <> tool_name(tool) <> "](" <> site_path(@site) <> "/tools/" <> tool.name <> ")", tool.description || tool.title || "", tool.report_count || 0, stamp(tool.last_seen_at)]) %>
+<%= row(["[" <> tool_name(tool) <> "](" <> site_path(@site) <> "/tools/" <> tool.name <> ")", tool.description || tool.title || "", source_kind_label(tool.source_kind), tool.report_count || 0, tool_seen_label(tool)]) %>
 <% end %>
 <%= if @next_tools, do: "\nMore tools: [next page](" <> site_path(@site) <> "?tools_after=" <> URI.encode_www_form(@next_tools) <> "#pb-site-tools)\n" %>
 <% end %>
