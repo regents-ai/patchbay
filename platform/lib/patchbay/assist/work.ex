@@ -3,12 +3,18 @@ defmodule Patchbay.Assist.Work do
   One paid assist, from the payment landing to the answer.
 
   Patchbay finds out what tools the site offers, asks Jev which one fits,
-  calls it with arguments that fit its schema, asks Jev what the answer
-  means, and tries the next tool while there is one and the run is within
-  its limits. Every step is written down as it happens, so a run that stops
-  short still says what was tried and why it stopped. A site whose tools
-  cannot be reached from here gets the call Patchbay would have made,
-  marked as a suggestion.
+  writes arguments that fit its schema, and calls it only when
+  `Patchbay.Assist.ReadOnlyTools` allows: a tool on Patchbay's own checked
+  list of tools that only read, which the site also marks read-only. It
+  asks Jev what the answer means and tries the next tool while there is one
+  and the run is within its limits. Any other tool, and every tool of a
+  site that cannot be reached from here, ends the run with the call to
+  make, marked as a suggestion with the reason it was not made.
+
+  Every step is written down as it happens, so a run that stops short still
+  says what was tried and why it stopped. A step about a tool says whether
+  the call was made or only suggested; what Jev made of an answer is kept
+  as Jev's reading, a model's judgement rather than a checked result.
 
   Nothing here retries on its own, and nothing is sent to the site but the
   run's own request: no cookies, no credentials, no agent identity.
@@ -22,6 +28,7 @@ defmodule Patchbay.Assist.Work do
   alias Patchbay.Assist.Forward
   alias Patchbay.Assist.Judge
   alias Patchbay.Assist.McpClient
+  alias Patchbay.Assist.ReadOnlyTools
   alias Patchbay.Assist.Run
   alias Patchbay.Patchbay.ModelBudget
 
@@ -164,28 +171,31 @@ defmodule Patchbay.Assist.Work do
     end
   end
 
-  # A tool that cannot be called from here, or that the site marks as one
-  # that changes things, is suggested rather than called.
-  defp call(run, tool, arguments, %{mode: :in_pages}) do
-    run
-    |> step(tool.name, arguments, nil, nil, "Suggested: call this tool with these arguments.")
-    |> finish(:finished, :suggested)
-  end
-
-  defp call(run, %{destructive?: true} = tool, arguments, _ctx) do
-    run
-    |> step(
-      tool.name,
-      arguments,
-      nil,
-      nil,
-      "Suggested, not called: the site marks this tool as one that changes things, " <>
-        "and Patchbay does not make such calls on anyone's behalf."
-    )
-    |> finish(:finished, :suggested)
-  end
+  # A tool is called only when it can be reached from here and
+  # `ReadOnlyTools` allows it; any other is suggested, with the reason.
+  defp call(run, tool, arguments, %{mode: :in_pages}),
+    do:
+      suggest(
+        run,
+        tool,
+        arguments,
+        "the site's tools live in its pages, which Patchbay cannot call from here"
+      )
 
   defp call(run, tool, arguments, %{mode: {:live, client}} = ctx) do
+    case ReadOnlyTools.decide(client.target.host, tool) do
+      :call -> make_call(run, tool, arguments, client, ctx)
+      {:suggest, why} -> suggest(run, tool, arguments, why)
+    end
+  end
+
+  defp suggest(run, tool, arguments, why) do
+    run
+    |> step(tool.name, arguments, :suggested, nil, nil, "Suggested, not called: #{why}.")
+    |> finish(:finished, :suggested)
+  end
+
+  defp make_call(run, tool, arguments, client, ctx) do
     ctx = spend(ctx, :calls)
 
     case McpClient.call_tool(client, tool.name, arguments) do
@@ -197,6 +207,7 @@ defmodule Patchbay.Assist.Work do
         |> step(
           tool.name,
           arguments,
+          :made,
           nil,
           nil,
           "The site did not answer this call: #{why(reason)}"
@@ -211,12 +222,12 @@ defmodule Patchbay.Assist.Work do
     case Judge.judge_answer(run, tool.name, answer, error?) do
       {:ok, %{verdict: verdict, confidence: confidence}} ->
         run
-        |> step(tool.name, arguments, answer, reading(verdict, confidence), nil)
+        |> step(tool.name, arguments, :made, answer, reading(verdict, confidence), nil)
         |> conclude(verdict, tried(ctx, tool))
 
       {:error, reason} ->
         run
-        |> step(tool.name, arguments, answer, nil, nil)
+        |> step(tool.name, arguments, :made, answer, nil, nil)
         |> provider_unavailable(reason)
     end
   end
@@ -251,10 +262,18 @@ defmodule Patchbay.Assist.Work do
   # Writing the run down. Every write is Patchbay's own, on a run it is working on.
   defp note(run, text), do: record(run, %{"note" => text})
 
-  defp step(run, tool, arguments, answer, reading, text) do
+  # A step about a tool: whether the call was `made` or only `suggested`,
+  # what the site answered to a call made, and Jev's reading of that answer.
+  defp step(run, tool, arguments, call, answer, reading, text) do
     record(
       run,
-      %{"tool" => tool, "arguments" => arguments, "answer" => answer, "reading" => reading}
+      %{
+        "tool" => tool,
+        "arguments" => arguments,
+        "call" => Atom.to_string(call),
+        "answer" => answer,
+        "reading" => reading
+      }
       |> then(&if(text, do: Map.put(&1, "note", text), else: &1))
     )
   end
@@ -278,10 +297,10 @@ defmodule Patchbay.Assist.Work do
     do: %{"verdict" => Atom.to_string(verdict), "confidence" => confidence, "by" => "jev"}
 
   defp arguments_note(tool, :believed),
-    do: "Calling #{tool} with the arguments the agent gave for it."
+    do: "Arguments for #{tool}: the ones the agent gave for it."
 
   defp arguments_note(tool, :drafted),
-    do: "Calling #{tool} with arguments drafted from its schema and the goal."
+    do: "Arguments for #{tool}: drafted from its schema and the goal."
 
   defp unlisted(:no_tools_offered), do: "The site answers as an MCP server but offers no tools."
 

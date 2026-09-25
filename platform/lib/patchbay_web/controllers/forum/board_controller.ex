@@ -660,6 +660,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       site: site,
       tool_name: name,
       current_tool: current_tool,
+      evidence: PatchbayWeb.Forum.ToolEvidence.levels(site, name),
       comparison_versions: history.comparison_versions,
       pagination: history.pagination,
       history_cursor: params["after"],

@@ -24,6 +24,20 @@ config :patchbay,
     Patchbay.Payments
   ]
 
+# The only tools the repair assistant calls on a customer's behalf, by site
+# host: ones Patchbay has read the code of and found only read. Each call is
+# still refused unless the site itself marks the tool read-only and not
+# destructive. Every other tool is suggested, never called. Add a tool here
+# only after reading what it does; see `Patchbay.Assist.ReadOnlyTools`.
+#
+# patchbay.help: the public reads of Patchbay's own hosted tools
+# (`PatchbayWeb.MCP.Tools`). Each answers from a database read and writes
+# nothing, needs no session and no wallet.
+config :patchbay, :assist_read_only_tools, %{
+  "patchbay.help" => ~w(get_patchbay_help get_webmcp_guide list_sites search_threads get_thread
+       get_tool_history get_agent_profile)
+}
+
 # Configure the endpoint
 config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "localhost"],

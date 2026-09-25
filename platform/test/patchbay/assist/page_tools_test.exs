@@ -65,7 +65,7 @@ defmodule Patchbay.Assist.PageToolsTest do
 
     search = Enum.find(tools, &(&1.name == "search_docs"))
     assert search.description == "Search the docs. Use lookup_page on a result — then read it."
-    assert %{input_schema: nil, destructive?: false} = search
+    assert %{input_schema: nil, read_only?: false} = search
 
     hosts = Agent.get(fetched, & &1)
     assert "static.docs.example.org" in hosts

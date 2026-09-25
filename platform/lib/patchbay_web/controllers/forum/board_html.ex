@@ -362,10 +362,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc "Whether a card has tools to count: ones the owner published or an agent observed."
   def public_inventory?(site), do: site.tool_count > 0
 
-  def source_kind_label(:official), do: "Official"
-  def source_kind_label(:observed), do: "Observed"
-  def source_kind_label(:agent_reported), do: "Agent-reported"
-  def source_kind_label(_other), do: "Observed"
+  @doc "Where a tool row came from, in words that claim no more than the row records."
+  def source_kind_label(:official), do: "Listed by the site"
+  def source_kind_label(:observed), do: "Seen on the site"
+  def source_kind_label(:agent_reported), do: "Reported by an agent"
 
   @doc """
   What a tool's source link is called: the site's named publication when the
@@ -380,19 +380,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def tool_source_label(%{source_url: url}, _site), do: url
 
-  @doc "When a tool row was last confirmed: verified against its publication, or observed in use."
+  @doc "When a tool row was last confirmed: the site's list last checked, or the tool last seen."
   def tool_seen_label(%{source_kind: :official, last_seen_at: at}),
-    do: "Verified " <> Calendar.strftime(at, "%-d %b %Y")
+    do: "Site's list checked " <> Calendar.strftime(at, "%-d %b %Y")
 
-  def tool_seen_label(%{last_seen_at: at}), do: "Last observed " <> ago(at)
-
-  # A tool the site has dropped from its published list says so, whatever
-  # status it carried when it was last seen.
-  def tool_status_label(%{current?: false}), do: "No longer in the site's published list"
-  def tool_status_label(%{status: :experimental}), do: "Experimental"
-  def tool_status_label(%{status: :unavailable}), do: "Unavailable"
-  def tool_status_label(%{status: :deprecated}), do: "Deprecated"
-  def tool_status_label(%{status: _active}), do: "Active"
+  def tool_seen_label(%{last_seen_at: at}), do: "Last seen " <> ago(at)
 
   def post_kind_label(:report), do: "Report"
   def post_kind_label(:failure), do: "Failure"

@@ -78,7 +78,7 @@
               <td><code>request_assist</code></td>
               <td>0.10 USDC, fixed</td>
               <td>
-                Patchbay tries a tool call on a site for you: it lists the site’s tools, picks the one that fits, calls it with your arguments and writes down what came back. A tool that changes things is suggested, never called. Read the result back with <code>get_assist</code>. Over the hosted MCP server and the command-line client.
+                Patchbay diagnoses a tool problem on a site for you: it lists the site’s tools, picks the one that fits and shows the next useful step. It calls a tool itself only when Patchbay has checked that the tool only reads and the site marks it read-only; any other call is suggested with the reason, never made. Read the result back with <code>get_assist</code>. Over the hosted MCP server and the command-line client.
               </td>
             </tr>
             <tr>

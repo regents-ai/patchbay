@@ -51,34 +51,14 @@
       <p :if={@current_tool.description || @current_tool.title} class="patchbay-muted">
         {@current_tool.description || @current_tool.title}
       </p>
-      <dl class="pb-entry-facts">
-        <dt>Source</dt>
-        <dd>
-          {source_kind_label(@current_tool.source_kind)}
-          <span :if={@current_tool.source_url} class="pb-entry-dot" aria-hidden="true">·</span>
-          <a :if={@current_tool.source_url} href={@current_tool.source_url} rel="noreferrer">
-            {tool_source_label(@current_tool, @site)}
-          </a>
-        </dd>
-        <dt>Status</dt>
-        <dd>{tool_status_label(@current_tool)}</dd>
-        <dt :if={@current_tool.protocol_version}>Protocol</dt>
-        <dd :if={@current_tool.protocol_version}>{@current_tool.protocol_version}</dd>
-        <dt>First seen</dt>
-        <dd>
-          <time datetime={DateTime.to_iso8601(@current_tool.first_seen_at)}>{moment(
-            @current_tool.first_seen_at
-          )}</time>
-        </dd>
-        <dt>Last seen</dt>
-        <dd>
-          <time datetime={DateTime.to_iso8601(@current_tool.last_seen_at)}>{moment(
-            @current_tool.last_seen_at
-          )}</time>
-        </dd>
+      <dl :if={@current_tool.protocol_version} class="pb-entry-facts">
+        <dt>Protocol</dt>
+        <dd>{@current_tool.protocol_version}</dd>
       </dl>
     </div>
   </section>
+
+  <PatchbayWeb.Forum.EvidencePanel.evidence_panel levels={@evidence} />
 
   <section
     :if={@current_tool.input_schema || @current_tool.output_schema}

@@ -3,8 +3,9 @@ defmodule Patchbay.Assist.WorkTest do
   A paid assist's run against a site's own MCP server: the tools are listed
   live, Jev picks one, it is called with the agent's own arguments, Jev
   reads the answer, and the run's record says what happened. What the site
-  answers is data; a tool the site marks as changing things is suggested,
-  never called; and a run whose helper is away waits for a person.
+  answers is data; only a tool on Patchbay's read-only list that the site
+  also marks read-only is called, any other is suggested; and a run whose
+  helper is away waits for a person.
   """
 
   use Patchbay.DataCase, async: false
@@ -22,14 +23,22 @@ defmodule Patchbay.Assist.WorkTest do
     old_assist = Application.get_env(:patchbay, :assist)
     old_jev = Application.get_env(:patchbay, :jev_req_options)
     old_target = Application.get_env(:patchbay, :assist_target)
+    old_listed = Application.fetch_env!(:patchbay, :assist_read_only_tools)
     old_key = System.get_env("OPENROUTER_API_KEY")
     Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
+
+    # The fixture site's tools Patchbay treats as checked read-only ones.
+    Application.put_env(:patchbay, :assist_read_only_tools, %{
+      "bookings.example.com" => ~w(find_table lookup book)
+    })
+
     System.put_env("OPENROUTER_API_KEY", "test-key-never-sent")
 
     on_exit(fn ->
       Application.put_env(:patchbay, :assist, old_assist)
       Application.put_env(:patchbay, :jev_req_options, old_jev)
       Application.put_env(:patchbay, :assist_target, old_target)
+      Application.put_env(:patchbay, :assist_read_only_tools, old_listed)
 
       if old_key,
         do: System.put_env("OPENROUTER_API_KEY", old_key),
@@ -40,23 +49,23 @@ defmodule Patchbay.Assist.WorkTest do
   end
 
   test "a live MCP site: Jev picks the tool, the agent's arguments are used, the answer is read" do
-    site = mcp_site(%{"reserve_table" => %{"ok" => true, "reference" => "R-42"}})
+    site = mcp_site(%{"find_table" => %{"ok" => true, "reference" => "R-42"}})
 
     run =
       paid_run(site,
-        believed_calls: [%{"tool" => "reserve_table", "arguments" => %{"party" => 2}}]
+        believed_calls: [%{"tool" => "find_table", "arguments" => %{"party" => 2}}]
       )
 
     jev(fn state, questions ->
       cond do
         Map.has_key?(questions, "tool") ->
           assert state["goal"] == run.goal
-          assert state["tools_the_agent_believed_in"] == ["reserve_table"]
+          assert state["tools_the_agent_believed_in"] == ["find_table"]
           refute Map.has_key?(state, "wallet_address")
-          %{"tool" => %{"choice" => "reserve_table", "confidence" => 0.9}}
+          %{"tool" => %{"choice" => "find_table", "confidence" => 0.9}}
 
         Map.has_key?(questions, "verdict") ->
-          assert state["tool"] == "reserve_table"
+          assert state["tool"] == "find_table"
           assert state["tool_answer_written_by_the_site"] =~ "R-42"
           %{"verdict" => %{"choice" => "reached", "confidence" => 0.8}}
       end
@@ -71,14 +80,15 @@ defmodule Patchbay.Assist.WorkTest do
     assert done.started_at
     assert done.finished_at
 
-    called = Enum.find(done.steps, &(&1["tool"] == "reserve_table"))
+    called = Enum.find(done.steps, &(&1["tool"] == "find_table"))
+    assert called["call"] == "made"
     assert called["arguments"] == %{"party" => 2}
     assert called["answer"] =~ "R-42"
     assert called["reading"] == %{"verdict" => "reached", "confidence" => 0.8, "by" => "jev"}
     assert Enum.all?(done.steps, &Map.has_key?(&1, "at"))
 
     # The site saw one call, with only the run's own request on it.
-    assert [%{"method" => "tools/call", "params" => %{"name" => "reserve_table"}} = call] =
+    assert [%{"method" => "tools/call", "params" => %{"name" => "find_table"}} = call] =
              calls(site, "tools/call")
 
     assert call["params"]["arguments"] == %{"party" => 2}
@@ -119,8 +129,36 @@ defmodule Patchbay.Assist.WorkTest do
     assert done.outcome == :suggested
     assert [%{"params" => %{"name" => "lookup"}}] = calls(site, "tools/call")
     suggested = Enum.find(done.steps, &(&1["tool"] == "delete_booking"))
+    assert suggested["call"] == "suggested"
     assert suggested["note"] =~ "not called"
     assert suggested["answer"] == nil
+  end
+
+  test "a tool not on Patchbay's read-only list, or not marked read-only by the site, is suggested and never called" do
+    for {name, marks} <- [
+          # Marked read-only by the site, but Patchbay never checked it.
+          {"count_tables", %{"readOnlyHint" => true}},
+          # On the list, but the site does not say it only reads.
+          {"lookup", %{}},
+          # On the list, but the site says it destroys things too.
+          {"book", %{"readOnlyHint" => true, "destructiveHint" => true}}
+        ] do
+      site = mcp_site(%{name => %{"ok" => true}}, annotations: %{name => marks})
+      run = paid_run(site, believed_calls: [%{"tool" => name, "arguments" => %{}}])
+
+      jev(fn _state, questions ->
+        assert Map.has_key?(questions, "tool")
+        %{"tool" => %{"choice" => name, "confidence" => 0.9}}
+      end)
+
+      assert :ok = Work.run(run.id)
+      {:ok, done} = Assist.get_run(run.id, authorize?: false)
+      assert {done.status, done.outcome} == {:finished, :suggested}
+      assert calls(site, "tools/call") == []
+
+      assert %{"call" => "suggested", "answer" => nil, "reading" => nil} =
+               Enum.find(done.steps, &(&1["tool"] == name))
+    end
   end
 
   test "sign-in, provider failure and an unreachable site each end the run honestly" do
@@ -374,8 +412,9 @@ defmodule Patchbay.Assist.WorkTest do
     )
   end
 
-  # A site's MCP server: lists `tools` and answers each call with its canned
-  # result. Everything it receives is kept for the test to read.
+  # A site's MCP server: lists `tools`, each marked read-only unless
+  # `annotations` names other marks for it, and answers each call with its
+  # canned result. Everything it receives is kept for the test to read.
   defp mcp_site(results, opts \\ []) do
     annotations = Keyword.get(opts, :annotations, %{})
     seen = start_supervised!({Agent, fn -> [] end}, id: make_ref())
@@ -393,7 +432,7 @@ defmodule Patchbay.Assist.WorkTest do
             "type" => "object",
             "properties" => %{"party" => %{"type" => "integer"}}
           },
-          "annotations" => Map.get(annotations, name, %{})
+          "annotations" => Map.get(annotations, name, %{"readOnlyHint" => true})
         }
       end)
 

@@ -1,0 +1,23 @@
+/* The evidence panel on a tool page: one row per level, a level the records
+   hold marked with a filled square, one they do not with an empty one. */
+.pb-evidence-levels { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--pb-line); }
+.pb-evidence-level {
+  display: grid;
+  grid-template-columns: .75rem minmax(0, 1fr) auto;
+  gap: .25rem var(--space-2);
+  align-items: baseline;
+  padding: .65rem 0;
+  border-bottom: 1px solid var(--pb-line);
+}
+.pb-evidence-mark { width: .6rem; height: .6rem; border: 1px solid var(--pb-line-strong); background: transparent; }
+.pb-evidence-level.is-held .pb-evidence-mark { border-color: var(--pb-good); background: var(--pb-good); }
+.pb-evidence-copy { min-width: 0; }
+.pb-evidence-name { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-sm); font-weight: 400; letter-spacing: -.01em; }
+.pb-evidence-detail { margin: .15rem 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; overflow-wrap: anywhere; }
+.pb-evidence-detail a { color: var(--pb-text); }
+.pb-evidence-state { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); white-space: nowrap; text-align: right; }
+.pb-evidence-level.is-held .pb-evidence-state { color: var(--pb-text); }
+@media (max-width: 40rem) {
+  .pb-evidence-level { grid-template-columns: .75rem minmax(0, 1fr); }
+  .pb-evidence-state { grid-column: 2; white-space: normal; text-align: left; }
+}

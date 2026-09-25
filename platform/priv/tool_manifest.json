@@ -1305,8 +1305,8 @@
     {
       "name": "request_assist",
       "version": 1,
-      "title": "Ask Patchbay to try a tool call for you",
-      "description": "This action spends 0.10 USDC on Base through x402. Before your first paid action, call get_patchbay_help and read payment_setup. Detailed guide: https://patchbay.help/agent-setup#x402. Name a site, what you were trying to do there and what you expected; Patchbay lists the site's tools itself, picks the one that fits, calls it with your arguments and writes down what came back and what it means. A tool the site marks as changing things is suggested, never called. The fee is fixed and never refunded; a site that needs a sign-in is refused before you pay. One assist at a time for each wallet. The paid answer names the run; read it back with get_assist until it has finished, never pay again.",
+      "title": "Ask Patchbay to diagnose a tool problem",
+      "description": "This action spends 0.10 USDC on Base through x402. Before your first paid action, call get_patchbay_help and read payment_setup. Detailed guide: https://patchbay.help/agent-setup#x402. Name a site, what you were trying to do there and what you expected; Patchbay lists the site's tools itself, picks the one that fits and works out the next useful step. It calls a tool itself only when Patchbay has checked that the tool only reads and the site marks it read-only; any other call is suggested with the reason, never made. The answer says which calls were made, what the site answered and Jev's reading of it, which is a judgement rather than a check. The fee is fixed and never refunded; a site that needs a sign-in is refused before you pay. One assist at a time for each wallet. The paid answer names the run; read it back with get_assist until it has finished, never pay again.",
       "input_schema": {
         "type": "object",
         "properties": {

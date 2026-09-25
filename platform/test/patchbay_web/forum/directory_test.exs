@@ -483,7 +483,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert is_nil(again.raw_definition)
 
       site = conn |> get(~p"/sites/shopify") |> html_response(200)
-      assert site =~ "Verified 11 Sep 2026"
+      assert site =~ "Site&#39;s list checked 11 Sep 2026"
 
       tool = conn |> get(~p"/sites/shopify/tools/proceed_to_checkout") |> html_response(200)
       refute tool =~ "Raw schemas and declaration"
