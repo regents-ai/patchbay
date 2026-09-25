@@ -411,6 +411,25 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def thread_kind_label(%{thread_kind: :discussion}), do: "Discussion"
   def thread_kind_label(_other), do: "Discussion"
 
+  # The question form's optional details open by themselves when any of them
+  # already holds something, so nothing typed is hidden.
+  defp more_detail?(draft) do
+    Enum.any?(
+      [draft["subject_tool_name"], tags_line(draft["topic_tags"])],
+      &(&1 not in [nil, ""])
+    ) or
+      draft["thread_kind"] not in [nil, "", "question"]
+  end
+
+  @form_kinds %{
+    "question" => :question,
+    "feature_request" => :feature_request,
+    "working_recipe" => :working_recipe,
+    "discussion" => :discussion
+  }
+
+  defp preview_kind(kind), do: Map.get(@form_kinds, kind, :question)
+
   defp tags_line(nil), do: nil
   defp tags_line(tags) when is_list(tags), do: Enum.join(tags, ", ")
   defp tags_line(line) when is_binary(line), do: line
@@ -585,6 +604,60 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     |> Enum.reject(&is_nil/1)
     |> Enum.join(" · ")
   end
+
+  @doc "A site's size in a few words: the tools on record and the posts about it."
+  def site_counts(site) do
+    [
+      if(public_inventory?(site), do: count_label(site.tool_count, "tool", "tools")),
+      count_label(site.report_count, "post", "posts")
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
+  end
+
+  attr(:q, :string, required: true)
+  attr(:matches, :map, required: true)
+
+  # What the front page's search found besides discussions: the sites and
+  # tools by that name, and a question already started for when none of it
+  # is the answer.
+  def find_answers(assigns) do
+    assigns = assign(assigns, :ask_path, ask_path(assigns.q, assigns.matches.sites))
+
+    ~H"""
+    <div class="pb-find-answers" aria-label={"What matches “#{@q}”"} role="region">
+      <section :if={@matches.sites != []} aria-labelledby="pb-find-sites-title">
+        <h2 id="pb-find-sites-title" class="pb-sidebar-label">Sites</h2>
+        <ul>
+          <li :for={site <- @matches.sites}>
+            <a href={site_path(site)}><strong>{site_name(site)}</strong></a>
+            <span>{site_domain(site)} · {site_counts(site)}</span>
+          </li>
+        </ul>
+      </section>
+      <section :if={@matches.tools != []} aria-labelledby="pb-find-tools-title">
+        <h2 id="pb-find-tools-title" class="pb-sidebar-label">Tools</h2>
+        <ul>
+          <li :for={tool <- @matches.tools}>
+            <a href={~p"/sites/#{site_ref(tool.site)}/tools/#{tool.name}"}><code>{tool.name}</code></a>
+            <span>on {site_name(tool.site)}</span>
+          </li>
+        </ul>
+      </section>
+      <p class="pb-find-ask">
+        <span :if={@matches.sites == [] and @matches.tools == []}>
+          No site or tool by that name yet.
+        </span>
+        Not answered below? <a href={@ask_path}>Ask about “{@q}” <span aria-hidden="true">→</span></a>
+      </p>
+    </div>
+    """
+  end
+
+  # The question form, started with what was searched for; the site too, when
+  # the search named exactly one.
+  defp ask_path(q, [site]), do: ~p"/ask?#{[site: site.origin, goal: q]}"
+  defp ask_path(q, _sites), do: ~p"/ask?#{[goal: q]}"
 
   attr(:site, :any, required: true)
   attr(:index, :integer, default: 0)

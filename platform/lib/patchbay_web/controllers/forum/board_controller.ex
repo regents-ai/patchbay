@@ -30,6 +30,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Fix
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.Forum.PostPreview
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SessionBudget
@@ -133,6 +134,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           sites: sites,
           more_sites?: more_sites?,
           popular_sites: Board.popular_sites(),
+          matches: Board.matches(filters.q),
           following: following,
           payments_enabled?: Board.payments_enabled?(),
           fix: Map.merge(Fix.offer(conn), fix)
@@ -267,44 +269,60 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   @doc """
-  The form a person asks a question with: a site, a title, and the question in
-  their own words. Agents ask through the page's tools; this is the same write
-  for whoever is reading.
+  The form a person asks a question with: the site, what they were trying to
+  do, and what happened. A search that found no answer can start it with the
+  words searched for. Agents ask through the page's tools; this is the same
+  write for whoever is reading.
   """
   def ask(conn, params) do
-    render(conn, :ask,
-      page_title: "Ask a question",
-      site_ref: params["site"],
-      tool_ref: params["tool"],
-      problem: nil,
-      draft: %{}
-    )
+    draft =
+      %{
+        "site" => params["site"],
+        "title" => params["goal"],
+        "subject_tool_name" => params["tool"]
+      }
+      |> Map.filter(fn {_field, value} -> is_binary(value) and value != "" end)
+
+    render_ask(conn, draft, nil, nil)
   end
 
+  @doc """
+  A question is posted only after its author has seen it as it will appear.
+  Pressing Preview, or posting something changed since the last preview, shows
+  the page again with the post as the public will read it and anything in it
+  that looks private; posting what was previewed publishes it.
+  """
   def create_thread(conn, params) do
-    draft =
-      case thread_draft(params["thread"]) do
-        {:ok, typed} -> typed
-        {:error, %{draft: typed}} -> typed
-      end
+    case thread_draft(params["thread"]) do
+      {:ok, typed} ->
+        if params["step"] == "post" and params["previewed"] == PostPreview.digest(typed),
+          do: publish_thread(conn, typed),
+          else: render_ask(conn, typed, nil, PostPreview.build(typed))
 
-    # Who is asking is settled before the site is opened, so a refused
-    # question leaves no board behind.
-    with {:ok, typed} <- thread_draft(params["thread"]),
-         {:ok, _profile} <- require_signed_in(conn),
+      {:error, %{said: said, draft: typed}} ->
+        render_ask(conn, typed, %{said: said}, nil)
+    end
+  end
+
+  # Who is asking is settled before the site is opened, so a refused
+  # question leaves no board behind.
+  defp publish_thread(conn, typed) do
+    with {:ok, _profile} <- require_signed_in(conn),
          {:ok, site} <- ask_site(typed["site"]),
          {:ok, thread} <- ask_question(conn, site, typed) do
       redirect(conn, to: ~p"/posts/#{thread.id}")
     else
-      {:error, %{said: said}} ->
-        render(conn, :ask,
-          page_title: "Ask a question",
-          site_ref: Map.get(draft, "site"),
-          tool_ref: Map.get(draft, "subject_tool_name"),
-          problem: %{said: said},
-          draft: draft
-        )
+      {:error, %{said: said}} -> render_ask(conn, typed, %{said: said}, PostPreview.build(typed))
     end
+  end
+
+  defp render_ask(conn, draft, problem, preview) do
+    render(conn, :ask,
+      page_title: "Ask a question",
+      draft: draft,
+      problem: problem,
+      preview: preview
+    )
   end
 
   @thread_form_fields ~w(site title body_markdown subject_tool_name topic_tags thread_kind)
@@ -326,7 +344,9 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp thread_draft(_thread), do: {:error, %{said: @not_posted, draft: %{}}}
 
-  defp split_tags(line) when is_binary(line), do: String.split(line, ",")
+  defp split_tags(line) when is_binary(line),
+    do: line |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+
   defp split_tags(_other), do: []
 
   defp ask_site(site) when is_binary(site) and site != "" do
@@ -391,10 +411,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp thread_refusal(%Ash.Error.Invalid{errors: errors}) do
     cond do
       Enum.any?(errors, &(Map.get(&1, :field) == :title)) ->
-        "Give the question a title — a short line, not the whole question."
+        "Say what you were trying to do in one short line."
 
       Enum.any?(errors, &(Map.get(&1, :field) == :body_markdown)) ->
-        "Write the question itself, up to about 16,000 characters."
+        "Say what happened, in up to about 16,000 characters."
 
       Enum.any?(errors, &(Map.get(&1, :field) == :subject_tool_name)) ->
         "A tool name is lowercase letters, digits and underscores."

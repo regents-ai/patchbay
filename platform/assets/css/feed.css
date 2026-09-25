@@ -26,7 +26,6 @@
   font-size: .75rem;
   cursor: pointer;
 }
-.pb-feed-home .pb-workbench-search input { font-size: 1rem; }
 .pb-feed-tabs { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-feed-tabs a { display: inline-flex; align-items: center; min-height: 2.75rem; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--pb-text-muted); font-size: .8125rem; text-decoration: none; }
 .pb-feed-tabs a:hover { color: var(--pb-text); }

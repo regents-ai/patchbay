@@ -25,6 +25,7 @@ defmodule Patchbay.Forum do
       define(:get_site_by_slug, action: :read, get_by: [:slug])
       define(:list_directory, action: :directory)
       define(:list_gallery_sites, action: :gallery)
+      define(:find_sites, action: :find, args: [:text])
     end
 
     resource Patchbay.Forum.SiteScreenshot do
@@ -37,6 +38,7 @@ defmodule Patchbay.Forum do
       define(:get_tool, action: :read, get_by: [:id])
       define(:tool_history, action: :history, args: [:site_id, :name])
       define(:list_tools_for_site, action: :for_site, args: [:site_id])
+      define(:find_tools, action: :find, args: [:text])
       define(:site_inventory, action: :inventory, args: [:site_id])
       define(:list_tools_for_sitemap, action: :for_sitemap)
     end

@@ -3,7 +3,9 @@ defmodule PatchbayWeb.NewestThreadsLive do
   The strip across the top of the front page: the newest threads on the
   board, newest first, each one a link to its thread. It listens for a new
   thread, or one moderation takes out of sight or puts back, and reads the
-  list again the moment either happens.
+  list again the moment either happens. Only a thread that arrives while the
+  page is open is marked as new, so the strip moves when something happens
+  and is still otherwise.
   """
 
   use PatchbayWeb, :live_view
@@ -18,12 +20,16 @@ defmodule PatchbayWeb.NewestThreadsLive do
     if connected?(socket),
       do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Report.threads_topic())
 
-    {:ok, assign(socket, threads: Board.newest_threads())}
+    {:ok, assign(socket, threads: Board.newest_threads(), arrived: MapSet.new())}
   end
 
   @impl true
   def handle_info(:threads_changed, socket) do
-    {:noreply, assign(socket, threads: Board.newest_threads())}
+    shown = MapSet.new(socket.assigns.threads, & &1.id)
+    threads = Board.newest_threads()
+    arrived = for thread <- threads, thread.id not in shown, into: MapSet.new(), do: thread.id
+
+    {:noreply, assign(socket, threads: threads, arrived: arrived)}
   end
 
   @impl true
@@ -34,7 +40,11 @@ defmodule PatchbayWeb.NewestThreadsLive do
         <span class="pb-newest-dot" aria-hidden="true"></span> Newest posts
       </h2>
       <ol :if={@threads != []} class="pb-newest-list">
-        <li :for={thread <- @threads} id={"pb-newest-#{thread.id}"}>
+        <li
+          :for={thread <- @threads}
+          id={"pb-newest-#{thread.id}"}
+          class={thread.id in @arrived && "is-arriving"}
+        >
           <a href={~p"/posts/#{thread.id}"}>
             <span class="pb-newest-site">{site_name(thread.site)}</span>
             <span class="pb-newest-title">{post_title(thread)}</span>

@@ -178,6 +178,32 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(distinct: [:name], sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
+    read :find do
+      description("""
+      Tools still offered whose name or title contains the words a visitor
+      typed, one entry per site and name, with the site to link it under.
+      """)
+
+      argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])
+
+      filter(
+        expr(
+          current? and
+            (contains(string_downcase(name), string_downcase(^arg(:text))) or
+               contains(string_downcase(title), string_downcase(^arg(:text))))
+        )
+      )
+
+      prepare(
+        build(
+          distinct: [:site_id, :name],
+          sort: [site_id: :asc, name: :asc, last_seen_at: :desc, id: :asc],
+          load: [:site],
+          limit: 8
+        )
+      )
+    end
+
     read :for_sitemap do
       description("Every tool with its site, newest version of each name first.")
 

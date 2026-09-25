@@ -31,7 +31,7 @@ defmodule PatchbayWeb.Forum.Board do
   alias PatchbayWeb.Forum.ReplyCursor
 
   @sites 200
-  @popular_sites 12
+  @popular_sites 6
   @newest_threads 12
   @inventory_tools 20
   @priority_reports 20
@@ -194,6 +194,25 @@ defmodule PatchbayWeb.Forum.Board do
   @spec popular_sites() :: [Site.t()]
   def popular_sites do
     Forum.list_gallery_sites!(query: site_summary(), page: [limit: @popular_sites]).results
+  end
+
+  @doc """
+  The sites and tools whose names match what a visitor typed into the front
+  page's search, for the answers shown above the matching discussions. Fewer
+  than two letters matches nothing.
+  """
+  @spec matches(String.t()) :: %{sites: [Site.t()], tools: [Tool.t()]}
+  def matches(q) do
+    case String.trim(q) do
+      text when byte_size(text) >= 2 ->
+        %{
+          sites: Forum.find_sites!(text, load: [:tool_count, :report_count]),
+          tools: Forum.find_tools!(text)
+        }
+
+      _too_short ->
+        %{sites: [], tools: []}
+    end
   end
 
   @doc "The newest threads on the board, every site, for the strip across the front page."

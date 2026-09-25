@@ -42,39 +42,56 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the newest posts, then the busiest sites, then the fix and the discussions",
+  test "GET / opens with the search and the busiest sites, then the newest posts, the discussions and the fix",
        %{conn: conn} do
     visitor = get(conn, ~p"/")
     ask(visitor, "quiet.example.com", "Does the quiet site have a search tool?")
     ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busy.example.com", "Which tool lists the opening hours?")
-    # The gallery holds sites with WebMCP tools and a picture.
+    # The busiest sites are those with WebMCP tools and a picture.
     Enum.each(~w(quiet.example.com busy.example.com), &with_card/1)
 
     html = build_conn() |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert html =~ "Featured sites"
-    refute html =~ ~s(id="pb-feed-directory")
 
-    [strip_at, gallery_at, fix_at, discussions_at] =
-      for id <- ~w(pb-newest-title pb-gallery-title pb-fix-title pb-discussions-title) do
+    [find_at, strip_at, discussions_at, fix_at] =
+      for id <- ~w(pb-find-title pb-newest-title pb-discussions-title pb-fix-title) do
         {at, _length} = :binary.match(html, ~s(id="#{id}"))
         at
       end
 
-    assert strip_at < gallery_at and gallery_at < fix_at and fix_at < discussions_at
+    assert find_at < strip_at and strip_at < discussions_at and discussions_at < fix_at
 
-    strip = binary_part(html, strip_at, gallery_at - strip_at)
+    find = binary_part(html, find_at, strip_at - find_at)
+    assert find =~ "Which site or tool are you having trouble with?"
+    assert find =~ ~s(href="/sites")
+    {busy_at, _length} = :binary.match(find, "busy.example.com")
+    {quiet_at, _length} = :binary.match(find, "quiet.example.com")
+    assert busy_at < quiet_at
+
+    strip = binary_part(html, strip_at, discussions_at - strip_at)
     assert strip =~ "Which tool lists the opening hours?"
     assert strip =~ ~s(href="/posts/)
+  end
 
-    gallery = binary_part(html, gallery_at, fix_at - gallery_at)
-    assert gallery =~ ~s(class="pb-dir-shot-wrap")
-    assert gallery =~ ~s(href="/sites")
-    {busy_at, _length} = :binary.match(gallery, "busy.example.com")
-    {quiet_at, _length} = :binary.match(gallery, "quiet.example.com")
-    assert busy_at < quiet_at
+  test "a search on the front page names the matching sites and tools and offers the question",
+       %{conn: conn} do
+    visitor = get(conn, ~p"/")
+    ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
+    with_card("busy.example.com")
+
+    html = build_conn() |> get(~p"/?q=Busy") |> html_response(200)
+    assert html =~ ~s(href="/sites/busy-example-com")
+    assert html =~ ~s(href="/ask?goal=Busy&amp;site=busy.example.com")
+
+    tools = build_conn() |> get(~p"/?q=search") |> html_response(200)
+    assert tools =~ ~s(href="/sites/busy-example-com/tools/search")
+
+    none = build_conn() |> get(~p"/?q=nowhere-at-all") |> html_response(200)
+    assert none =~ "No site or tool by that name yet."
+    assert none =~ ~s(href="/ask?goal=nowhere-at-all")
   end
 
   defp ask(conn, site, title) do

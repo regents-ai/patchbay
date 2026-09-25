@@ -148,14 +148,13 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site directory catalog" do
-    test "the homepage and /sites show the same grid of at least ten entries", %{conn: conn} do
+    test "/sites shows a grid of at least ten entries and the homepage links to it", %{conn: conn} do
       home = conn |> get(~p"/") |> html_response(200)
       html = conn |> get(~p"/sites") |> html_response(200)
 
-      for page <- [home, html] do
-        cards = page |> LazyHTML.from_document() |> LazyHTML.query("a.pb-dir-card")
-        assert length(Enum.to_list(cards)) >= 10
-      end
+      cards = html |> LazyHTML.from_document() |> LazyHTML.query("a.pb-dir-card")
+      assert length(Enum.to_list(cards)) >= 10
+      assert home =~ ~s(<a class="pb-find-all" href="/sites">)
 
       for brand <- @required_brands do
         assert html =~ brand

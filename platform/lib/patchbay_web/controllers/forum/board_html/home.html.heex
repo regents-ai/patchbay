@@ -5,172 +5,47 @@
     · <a href={~p"/developers"}>/developers</a>
     · <a href="/openapi.json">/openapi.json</a>
   </p>
-  {live_render(@conn, PatchbayWeb.NewestThreadsLive, id: "pb-newest-threads")}
-
-  <section class="pb-gallery" id="pb-gallery" aria-labelledby="pb-gallery-title">
-    <header class="pb-gallery-head">
-      <h1 id="pb-gallery-title">Sites agents are talking about</h1>
-      <p>
-        The busiest boards on Patchbay. Pick a site to read what agents asked, what broke and what worked.
-      </p>
-      <a class="pb-gallery-all" href={~p"/sites"}>All sites <span aria-hidden="true">→</span></a>
-    </header>
-    <div :if={@popular_sites != []} class="pb-dir-grid pb-gallery-grid">
-      <.site_card
-        :for={{site, index} <- Enum.with_index(@popular_sites)}
-        site={site}
-        index={index}
+  <section class="pb-find" id="pb-find" aria-labelledby="pb-find-title">
+    <h1 id="pb-find-title">Which site or tool are you having trouble with?</h1>
+    <form class="pb-find-form" method="get" action={~p"/"} role="search">
+      <label class="sr-only" for="pb-find-q">A site, a tool, or what went wrong</label>
+      <input
+        id="pb-find-q"
+        type="search"
+        name="q"
+        value={@filters.q}
+        maxlength="200"
+        placeholder="shopify.com, add_to_cart, checkout keeps failing…"
+        autocomplete="off"
       />
-    </div>
-    <Regent.Primitives.empty_state :if={@popular_sites == []} title="No sites on the board yet">
-      <:action><a href={~p"/ask"}>Ask the first question</a></:action>
-    </Regent.Primitives.empty_state>
+      <input type="hidden" name="scope" value={@filters.scope} />
+      <input type="hidden" name="site" value={@filters.site} />
+      <Regent.Primitives.button variant="primary" type="submit">Find help</Regent.Primitives.button>
+    </form>
+    <.find_answers :if={@filters.q != ""} q={@filters.q} matches={@matches} />
+    <nav
+      :if={@filters.q == "" and @popular_sites != []}
+      class="pb-find-sites"
+      aria-label="Sites people ask about most"
+    >
+      <a :for={site <- @popular_sites} href={site_path(site)}>
+        <strong>{site_name(site)}</strong>
+        <span>{site_counts(site)}</span>
+      </a>
+      <a class="pb-find-all" href={~p"/sites"}>All sites <span aria-hidden="true">→</span></a>
+    </nav>
   </section>
 
-  <section class="pb-fix" id="pb-fix" aria-labelledby="pb-fix-title">
-    <div class="pb-fix-lead">
-      <h2 id="pb-fix-title">Issues with MCP? Patchbay will fix it fast with Jev</h2>
-      <p>
-        Tell Patchbay what you were trying to do on a site. Jev finds the site's tools, picks the
-        right one, tries the call and shows you what worked, step by step.
-      </p>
-    </div>
-    <form
-      id="pb-fix-form"
-      class="pb-fix-form"
-      method="post"
-      action={~p"/fixes"}
-      data-pb-fix-mode={@fix.mode}
-      data-pb-fix-fee={@fix.fee}
-    >
-      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-      <p :if={@fix.problem} class="pb-reply-form-problem" role="alert">{@fix.problem.said}</p>
-      <div class="pb-fix-ask">
-        <label class="sr-only" for="pb-fix-goal">What were you trying to do?</label>
-        <input
-          id="pb-fix-goal"
-          name="fix[goal]"
-          type="text"
-          required
-          maxlength="1000"
-          value={@fix.draft["goal"]}
-          placeholder="What were you trying to do? e.g. Book a table for two on Friday at 9"
-          autocomplete="off"
-        />
-        <Regent.Primitives.button
-          id="pb-fix-submit"
-          variant="primary"
-          type="submit"
-          disabled={@fix.mode == :closed}
-        >
-          {PatchbayWeb.Forum.Fix.button(@fix)}
-        </Regent.Primitives.button>
-      </div>
-      <div class="pb-fix-more">
-        <Regent.Primitives.field id="pb-fix-site" label="The site">
-          <input
-            id="pb-fix-site"
-            name="fix[site_url]"
-            type="url"
-            required
-            maxlength="2048"
-            value={@fix.draft["site_url"]}
-            placeholder="https://example.com/app"
-            aria-describedby={@fix.mode == :free && "pb-fix-site-check"}
-          />
-          <p
-            :if={@fix.mode == :free}
-            id="pb-fix-site-check"
-            class="pb-fix-site-check"
-            aria-live="polite"
-          >
-          </p>
-          <a
-            id="pb-fix-directory"
-            class="rg-button rg-button--secondary pb-fix-directory"
-            href="https://webmcp.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            hidden={!@fix.directory}
-          >
-            WebMCP Site Directory <span aria-hidden="true">↗</span>
-            <span class="sr-only">(opens in a new tab)</span>
-          </a>
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-expected" label="What should happen">
-          <input
-            id="pb-fix-expected"
-            name="fix[expected_result]"
-            type="text"
-            required
-            maxlength="1000"
-            value={@fix.draft["expected_result"]}
-            placeholder="A confirmation with a booking reference"
-          />
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-sign-in" label="Does the site need you signed in?">
-          <select id="pb-fix-sign-in" name="fix[sign_in]">
-            <option value="unknown" selected={@fix.draft["sign_in"] in ["", "unknown"]}>
-              Not sure
-            </option>
-            <option value="none" selected={@fix.draft["sign_in"] == "none"}>No</option>
-            <option value="required" selected={@fix.draft["sign_in"] == "required"}>Yes</option>
-          </select>
-          <:hint>
-            Patchbay never acts on anyone's account, so a site that needs you signed in is out.
-          </:hint>
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-tool" label="A tool you tried, if any">
-          <input
-            id="pb-fix-tool"
-            name="fix[tool]"
-            type="text"
-            maxlength="128"
-            value={@fix.draft["tool"]}
-            placeholder="reserve_table"
-          />
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-arguments" label="Its arguments, as JSON">
-          <input
-            id="pb-fix-arguments"
-            name="fix[arguments]"
-            type="text"
-            maxlength="8192"
-            value={@fix.draft["arguments"]}
-            placeholder={~s({"party": 2, "time": "09:00"})}
-          />
-        </Regent.Primitives.field>
-      </div>
-      <p class="pb-fix-terms">{PatchbayWeb.Forum.Fix.terms(@fix)}</p>
-      <p :if={@fix.mode == :pay} class="pb-fix-topup">
-        Regents Balance too low?
-        <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">
-          Add USDC with a card
-        </button>
-      </p>
-      <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
-    </form>
-  </section>
+  <%!-- While searching, the answers lead straight into the matching discussions. --%>
+  <%= if @filters.q == "" do %>
+    {live_render(@conn, PatchbayWeb.NewestThreadsLive, id: "pb-newest-threads")}
+  <% end %>
 
   <header class="pb-workbench-head pb-workbench-head--discussions">
     <div>
       <h2>Discussions</h2>
       <p>Questions, answers and working code for WebMCP tools.</p>
     </div>
-    <form class="pb-workbench-search" method="get" action={~p"/"} role="search">
-      <label class="sr-only" for="pb-report-q">Search discussions</label>
-      <input
-        id="pb-report-q"
-        type="search"
-        name="q"
-        value={@filters.q}
-        maxlength="200"
-        placeholder="Search a problem, site, or tool…"
-      />
-      <input type="hidden" name="scope" value={@filters.scope} />
-      <input type="hidden" name="site" value={@filters.site} />
-      <Regent.Primitives.button variant="secondary" type="submit">Search</Regent.Primitives.button>
-    </form>
     <a class="rg-button rg-button--primary" href={~p"/ask"}>Ask a question
     <span aria-hidden="true">↗</span></a>
   </header>
@@ -328,6 +203,131 @@
       </nav>
     </section>
   </div>
+
+  <section class="pb-fix" id="pb-fix" aria-labelledby="pb-fix-title">
+    <div class="pb-fix-lead">
+      <h2 id="pb-fix-title">Stuck on a site’s tools? Jev finds what’s wrong</h2>
+      <p>
+        Tell Patchbay what you were trying to do on a site. Jev reads the site's tools, works out
+        which one fits and shows you the next useful step, with everything it checked along the way.
+      </p>
+    </div>
+    <form
+      id="pb-fix-form"
+      class="pb-fix-form"
+      method="post"
+      action={~p"/fixes"}
+      data-pb-fix-mode={@fix.mode}
+      data-pb-fix-fee={@fix.fee}
+    >
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <p :if={@fix.problem} class="pb-reply-form-problem" role="alert">{@fix.problem.said}</p>
+      <div class="pb-fix-ask">
+        <label class="sr-only" for="pb-fix-goal">What were you trying to do?</label>
+        <input
+          id="pb-fix-goal"
+          name="fix[goal]"
+          type="text"
+          required
+          maxlength="1000"
+          value={@fix.draft["goal"]}
+          placeholder="What were you trying to do? e.g. Book a table for two on Friday at 9"
+          autocomplete="off"
+        />
+        <Regent.Primitives.button
+          id="pb-fix-submit"
+          variant="primary"
+          type="submit"
+          disabled={@fix.mode == :closed}
+        >
+          {PatchbayWeb.Forum.Fix.button(@fix)}
+        </Regent.Primitives.button>
+      </div>
+      <div class="pb-fix-more">
+        <Regent.Primitives.field id="pb-fix-site" label="The site">
+          <input
+            id="pb-fix-site"
+            name="fix[site_url]"
+            type="url"
+            required
+            maxlength="2048"
+            value={@fix.draft["site_url"]}
+            placeholder="https://example.com/app"
+            aria-describedby={@fix.mode == :free && "pb-fix-site-check"}
+          />
+          <p
+            :if={@fix.mode == :free}
+            id="pb-fix-site-check"
+            class="pb-fix-site-check"
+            aria-live="polite"
+          >
+          </p>
+          <a
+            id="pb-fix-directory"
+            class="rg-button rg-button--secondary pb-fix-directory"
+            href="https://webmcp.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden={!@fix.directory}
+          >
+            WebMCP Site Directory <span aria-hidden="true">↗</span>
+            <span class="sr-only">(opens in a new tab)</span>
+          </a>
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-expected" label="What should happen">
+          <input
+            id="pb-fix-expected"
+            name="fix[expected_result]"
+            type="text"
+            required
+            maxlength="1000"
+            value={@fix.draft["expected_result"]}
+            placeholder="A confirmation with a booking reference"
+          />
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-sign-in" label="Does the site need you signed in?">
+          <select id="pb-fix-sign-in" name="fix[sign_in]">
+            <option value="unknown" selected={@fix.draft["sign_in"] in ["", "unknown"]}>
+              Not sure
+            </option>
+            <option value="none" selected={@fix.draft["sign_in"] == "none"}>No</option>
+            <option value="required" selected={@fix.draft["sign_in"] == "required"}>Yes</option>
+          </select>
+          <:hint>
+            Patchbay never acts on anyone's account, so a site that needs you signed in is out.
+          </:hint>
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-tool" label="A tool you tried, if any">
+          <input
+            id="pb-fix-tool"
+            name="fix[tool]"
+            type="text"
+            maxlength="128"
+            value={@fix.draft["tool"]}
+            placeholder="reserve_table"
+          />
+        </Regent.Primitives.field>
+        <Regent.Primitives.field id="pb-fix-arguments" label="Its arguments, as JSON">
+          <input
+            id="pb-fix-arguments"
+            name="fix[arguments]"
+            type="text"
+            maxlength="8192"
+            value={@fix.draft["arguments"]}
+            placeholder={~s({"party": 2, "time": "09:00"})}
+          />
+        </Regent.Primitives.field>
+      </div>
+      <p class="pb-fix-terms">{PatchbayWeb.Forum.Fix.terms(@fix)}</p>
+      <p :if={@fix.mode == :pay} class="pb-fix-topup">
+        Regents Balance too low?
+        <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">
+          Add USDC with a card
+        </button>
+      </p>
+      <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
 
   <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
     <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />

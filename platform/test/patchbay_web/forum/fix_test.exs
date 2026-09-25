@@ -34,10 +34,10 @@ defmodule PatchbayWeb.Forum.FixTest do
     Patchbay.PageSite.serve(%{"/app" => Patchbay.PageSite.with_tool("reserve_table")})
   end
 
-  test "the home page opens on the fix form, free for a new connection", %{conn: conn} do
+  test "the home page offers the fix form, free for a new connection", %{conn: conn} do
     html = conn |> from(address()) |> get(~p"/") |> html_response(200)
 
-    assert html =~ "Issues with MCP? Patchbay will fix it fast with Jev"
+    assert html =~ "Stuck on a site’s tools? Jev finds what’s wrong"
     assert html =~ ~s(data-pb-fix-mode="free")
     assert html =~ "1 free fix left today from this connection, and 2 more when you sign in"
     assert html =~ "After that, a fix is 0.10 USDC from your Regents Balance."

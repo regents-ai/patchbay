@@ -239,7 +239,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert ask =~ "Ask a question"
       # Signed out, the page's script keeps the draft and opens sign-in on Post.
       assert ask =~ ~s(data-pb-signed-in="false")
-      assert ask =~ "Posting from this form asks you to sign in first, and keeps what you typed."
+      assert ask =~ "Posting asks you to sign in first and keeps what you typed."
       assert conn |> get(~p"/questions") |> html_response(200) =~ "Open questions"
       assert conn |> get(~p"/priority") |> html_response(200) =~ "Paid priority"
     end
@@ -1042,44 +1042,70 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "asking and answering as a person" do
-    test "a signed-in person asks a question and lands on it", %{conn: conn} do
+    test "a signed-in person previews a question, then posts exactly that and lands on it",
+         %{conn: conn} do
       conn = signed_in(conn, person!("aaa"))
 
-      conn =
-        post(conn, ~p"/threads", %{
-          "thread" => %{
-            "site" => "checkout.example",
-            "title" => "Where does a declined card go?",
-            "body_markdown" => "I tried twice and the cart stayed empty each time.",
-            "topic_tags" => "Checkout, Cards"
-          }
-        })
+      typed = %{
+        "site" => "checkout.example",
+        "title" => "Where does a declined card go?",
+        "body_markdown" =>
+          "I tried twice and the cart stayed empty. My key was sk-abcdefghijklmnopqrstuvwxyz.",
+        "topic_tags" => "Checkout, Cards"
+      }
 
-      [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(conn))
+      preview = post(conn, ~p"/threads", %{"thread" => typed, "step" => "preview"})
+      html = html_response(preview, 200)
+      assert html =~ "Your post, exactly as everyone will see it"
+      assert html =~ "This looks like a key or sign-in token for an account."
+      assert Forum.list_recent_reports!().results == []
+
+      [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, html)
+
+      # Changed after the preview: shown again rather than posted.
+      changed = Map.put(typed, "title", "Where does a refused card go?")
+
+      assert conn
+             |> post(~p"/threads", %{"thread" => changed, "step" => "post", "previewed" => digest})
+             |> html_response(200) =~ "Where does a refused card go?"
+
+      assert Forum.list_recent_reports!().results == []
+
+      posted =
+        post(conn, ~p"/threads", %{"thread" => typed, "step" => "post", "previewed" => digest})
+
+      [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(posted))
 
       thread = Ash.get!(Report, id)
       assert thread.thread_kind == :question
       assert thread.author_profile_id == person!("aaa").id
       assert thread.topic_tags == ["checkout", "cards"]
 
-      assert conn |> recycle() |> get(~p"/posts/#{id}") |> html_response(200) =~
+      assert posted |> recycle() |> get(~p"/posts/#{id}") |> html_response(200) =~
                "Where does a declined card go?"
     end
 
     test "a visitor is told to sign in, keeping what they typed", %{conn: conn} do
+      typed = %{
+        "site" => "checkout.example",
+        "title" => "a kept title",
+        "body_markdown" => "the question that stays typed"
+      }
+
+      preview =
+        conn
+        |> post(~p"/threads", %{"thread" => typed, "step" => "preview"})
+        |> html_response(200)
+
+      [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, preview)
+
       body =
         conn
-        |> post(~p"/threads", %{
-          "thread" => %{
-            "site" => "checkout.example",
-            "title" => "a kept title",
-            "body_markdown" => "the question that stays typed"
-          }
-        })
+        |> recycle()
+        |> post(~p"/threads", %{"thread" => typed, "step" => "post", "previewed" => digest})
         |> html_response(200)
 
       assert body =~ "Sign in at the top of the page to ask"
-      refute body =~ "People posting with this form sign in first"
       assert body =~ "a kept title"
       assert body =~ "the question that stays typed"
       assert Forum.list_recent_reports!().results == []

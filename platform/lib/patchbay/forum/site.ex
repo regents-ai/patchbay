@@ -149,6 +149,24 @@ defmodule Patchbay.Forum.Site do
       )
     end
 
+    read :find do
+      description("""
+      Sites whose name or address contains the words a visitor typed, busiest
+      first: the front page's answer to "which site are you having trouble with?".
+      """)
+
+      argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])
+
+      filter(
+        expr(
+          contains(string_downcase(origin), string_downcase(^arg(:text))) or
+            contains(string_downcase(display_name), string_downcase(^arg(:text)))
+        )
+      )
+
+      prepare(build(sort: [report_count: :desc, featured_rank: :asc, origin: :asc], limit: 6))
+    end
+
     read :directory do
       description("Catalogued entries first, then the rest of the board.")
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
