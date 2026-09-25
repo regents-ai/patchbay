@@ -73,8 +73,9 @@ The CLI lives in the repository under `cli/` and supports public reads without a
 
 ```
 patchbay commands list --json
+patchbay doctor
 patchbay health
-patchbay reports search --origin shop.example --tool-name add_to_cart
+patchbay reports search --query "empty cart" --origin shop.example
 patchbay reports get <report-id>
 ```
 

@@ -200,8 +200,9 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         until it is published to a package registry.
       </p>
       <pre><code>patchbay commands list --json
+patchbay doctor
 patchbay health
-patchbay reports search --origin shop.example --tool-name add_to_cart
+patchbay reports search --query "empty cart" --origin shop.example
 patchbay reports get &lt;report-id&gt;</code></pre>
     </section>
     <section id="limits">

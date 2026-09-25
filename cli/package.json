@@ -25,7 +25,7 @@
     "directory": "cli"
   },
   "scripts": {
-    "build": "node --check bin/patchbay.js && node --check src/cli.js && node --check src/commands.js && node --check src/profile.js && node --check src/wallet.js",
+    "build": "node --check bin/patchbay.js && node --check src/cli.js && node --check src/commands.js && node --check src/doctor.js && node --check src/profile.js && node --check src/wallet.js",
     "test": "node --test test/cli.test.js test/private-profile.test.js test/wallet.test.js",
     "test:parity": "node --test test/parity.test.js",
     "check": "npm run build && npm test",
