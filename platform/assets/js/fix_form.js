@@ -2,6 +2,7 @@ import {payForIntent} from "./webmcp/paid_actions.js"
 import {requestAccountAction} from "./privy/account.js"
 import {keepDraft, restoreDraft, sessionStorageOrNull} from "./form_draft.js"
 import {mountSiteCheck} from "./site_check.js"
+import {deny} from "./hooks/motion/press.js"
 
 const DRAFT_KEY = "pb-fix-draft"
 const FIELDS = ["goal", "site_url", "expected_result", "sign_in", "tool", "arguments"]
@@ -120,7 +121,7 @@ export function fixOutcome(outcome) {
 
 async function pay(form, doc, options) {
   const request = fixArguments(fieldsOf(form))
-  if (!request.ok) return say(form, request.problem)
+  if (!request.ok) return refuse(form, request.problem)
 
   say(form, WORDS.paying)
   const outcome = await payForIntent(
@@ -132,7 +133,7 @@ async function pay(form, doc, options) {
     say(form, WORDS.paid)
     ;(options.navigate ?? (url => globalThis.location.assign(url)))(next.navigate)
   } else {
-    say(form, next.problem)
+    refuse(form, next.problem)
   }
 }
 
@@ -155,4 +156,10 @@ function fieldsOf(form) {
 function say(form, words) {
   const status = form.querySelector("#pb-fix-status")
   if (status) status.textContent = words
+}
+
+// The reason is said beside the button, and the button shakes its head.
+function refuse(form, words) {
+  say(form, words)
+  deny(form.querySelector("[type=submit]"))
 }

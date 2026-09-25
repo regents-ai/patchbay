@@ -3,8 +3,8 @@
  * moves and a thread that is marked solved. The page renders every result
  * first; these islands only animate from the old picture to the new one.
  */
-import {animate, createDrawable, createLayout, spring, splitText, stagger} from "animejs"
-import {BASE, EASE_IN_OUT, EASE_OUT, SLOW, calm, motionScope} from "./shared.js"
+import {animate, createDrawable, createLayout, createScope, spring, splitText, stagger} from "animejs"
+import {BASE, EASE_IN_OUT, EASE_OUT, SLOW, still} from "./shared.js"
 import {centre, spawn, sweep, sweepAll} from "./fx.js"
 
 // How a list moves when the server adds, reorders or hides its items. Each
@@ -54,7 +54,7 @@ const LAYOUTS = {
  */
 export const PatchbayLayout = {
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
 
     this.scope = scope.add(() => {
       const layout = createLayout(this.el, {children: this.el.dataset.children})
@@ -68,7 +68,7 @@ export const PatchbayLayout = {
   },
 
   updated() {
-    if (!calm(this.scope, this.el)) this.scope.methods.glide()
+    if (!still(this.el)) this.scope.methods.glide()
   },
 
   destroyed() {
@@ -96,7 +96,7 @@ const worth = text => Number(text.replace(/\D/g, ""))
  */
 export const PatchbayCounter = {
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
 
     this.scope = scope.add(() => {
       scope.add("roll", (split, digits, up) => {
@@ -117,7 +117,7 @@ export const PatchbayCounter = {
   updated() {
     const before = this.before
     const after = this.el.textContent
-    if (before === after || calm(this.scope, this.el)) return
+    if (before === after || still(this.el)) return
 
     const {wrap} = ROLLS[this.el.dataset.variant]
     const split = splitText(this.el, {words: false, chars: wrap ? {wrap: "clip"} : true})
@@ -178,7 +178,7 @@ const STAMPS = {
  */
 export const PatchbayStamp = {
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
 
     this.scope = scope.add(() => {
       scope.add("stamp", () => {
@@ -192,7 +192,7 @@ export const PatchbayStamp = {
     })
 
     this.handleEvent("motion:solved", () => {
-      if (!calm(this.scope, this.el)) this.scope.methods.stamp()
+      if (!still(this.el)) this.scope.methods.stamp()
     })
   },
 

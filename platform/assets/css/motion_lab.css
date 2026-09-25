@@ -315,3 +315,14 @@
   .pb-lab-card { padding: var(--space-2); }
   .pb-lab-cascade ul { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* The version the real pages use. */
+.pb-lab-standard {
+  margin-left: .45em;
+  padding: .1em .35em;
+  border: 1px solid currentColor;
+  font: .625rem/1 var(--font-family-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}

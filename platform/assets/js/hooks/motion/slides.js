@@ -9,8 +9,8 @@
  * them back when the panel closes, so switching variants never leaves a
  * stray tilt or offset behind.
  */
-import {animate, spring, stagger, utils} from "animejs"
-import {BASE, EASE_OUT, FAST, SLOW, byPointer, calm, motionScope} from "./shared.js"
+import {animate, createScope, spring, stagger, utils} from "animejs"
+import {BASE, EASE_OUT, FAST, SLOW, byPointer, still} from "./shared.js"
 
 const CLOSE = {duration: BASE, ease: "in(3)"}
 
@@ -44,7 +44,7 @@ const rest = away => Object.fromEntries(Object.keys(away).map(key => [key, REST[
 
 export const PatchbaySlides = {
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
     const moving = new Map()
     const openers = new Map()
 
@@ -141,7 +141,7 @@ export const PatchbaySlides = {
       }
 
       const onClick = event => {
-        const animated = byPointer(event) && !calm(scope, this.el)
+        const animated = byPointer(event) && !still(this.el)
         const opener = event.target.closest("[data-open]")
         const closer = event.target.closest("[data-close]")
 

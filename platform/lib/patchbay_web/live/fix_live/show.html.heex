@@ -23,8 +23,22 @@
       <h2 id="pb-fix-panel-title">What Jev is doing</h2>
       <span :if={@working?} class="pb-fix-working" role="status">Working · this page updates itself</span>
     </div>
-    <div id="pb-fix-log" class="pb-fix-log" role="log" aria-live="polite">
-      <div :for={line <- @lines} class={"pb-fix-line pb-fix-line--#{line.kind}"}>
+    <div
+      id="pb-fix-log"
+      class="pb-fix-log"
+      role="log"
+      aria-live="polite"
+      phx-hook="PatchbayLayout"
+      data-layout-id="pb-fix-log"
+      data-children="[data-line]"
+      data-variant={Motion.standard("list")}
+    >
+      <div
+        :for={{line, index} <- Enum.with_index(@lines)}
+        data-line
+        data-layout-id={"pb-fix-line-#{index}"}
+        class={"pb-fix-line pb-fix-line--#{line.kind}"}
+      >
         <span class="pb-fix-at">{line.at}</span><span class="pb-fix-text">{line.text}</span>
       </div>
     </div>

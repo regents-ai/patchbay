@@ -1,3 +1,5 @@
+import {deny} from "./motion/press.js"
+
 /**
  * Copy one of the room's agent prompts. The clipboard is not available on every
  * browser or every connection, so when writing fails the prompt itself is
@@ -55,6 +57,7 @@ export const PatchbayCopy = {
     copyPrompt(this.el).then(outcome => {
       this.el.textContent = WORDS[outcome] || this.idle
       this.el.dataset.state = outcome === "missing" ? "idle" : "done"
+      if (outcome === "missing") deny(this.el)
       clearTimeout(this.timer)
       this.timer = setTimeout(() => {
         this.el.textContent = this.idle

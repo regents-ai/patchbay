@@ -11,6 +11,7 @@ defmodule PatchbayWeb.FixLive.Show do
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
   alias PatchbayWeb.FixLive.Panel
+  alias PatchbayWeb.Motion
 
   @impl true
   def mount(%{"id" => id}, session, socket) do

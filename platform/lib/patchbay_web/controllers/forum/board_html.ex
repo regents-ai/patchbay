@@ -728,7 +728,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Official support is not a public tool catalog: a card says which it is.
       </p>
 
-      <div :if={@sites != []} class="pb-dir-grid">
+      <div :if={@sites != []} class="pb-dir-grid" data-cascade>
         <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
       </div>
 
@@ -837,7 +837,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def post_list(assigns) do
     ~H"""
-    <ol :if={@posts != []} class="pb-feed-list">
+    <ol :if={@posts != []} class="pb-feed-list" data-cascade>
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-post-preview-row">
         <header class="pb-feed-heading">
           <div class="pb-feed-context">

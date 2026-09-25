@@ -3,8 +3,8 @@
     <p class="patchbay-kicker"><a href={~p"/"}>PATCHBAY</a> / MOTION LAB</p>
     <h1>Motion lab</h1>
     <p class="pb-lab-lede">
-      Little movements we might use around Patchbay, side by side. Press things, switch between
-      versions and keep the ones that feel right.
+      Little movements for Patchbay, side by side. The version marked standard is the one the
+      real pages use; the others stay here to compare. Press things and switch between them.
     </p>
     <div class="pb-lab-controls">
       <button type="button" class="pb-lab-key" phx-click={JS.dispatch("pb-motion:replay")}>
@@ -26,15 +26,20 @@
       <h2 id="lab-presses-title"><span>1</span> Presses</h2>
       <p>
         A mouse or finger press gets a small answer. Pressing Enter or Space works the same, just without the show.
+        Every button squishes, and one that says no shakes its head.
       </p>
     </header>
     <div id="lab-presses" class="pb-lab-row" phx-hook="PatchbayPress">
-      <button type="button" class="pb-lab-key" data-press="squish">Squish</button>
+      <button type="button" class="pb-lab-key" data-press="squish">
+        Squish<span class="pb-lab-standard">standard</span>
+      </button>
       <button type="button" class="pb-lab-key" data-press="jelly">Jelly</button>
       <button type="button" class="pb-lab-key" data-press="sparks">Sparks</button>
       <button type="button" class="pb-lab-key" data-press="ping">Ping</button>
       <button type="button" class="pb-lab-key" data-press="stitches">Stitches</button>
-      <button type="button" class="pb-lab-key" data-press="nope">Nope</button>
+      <button type="button" class="pb-lab-key" data-press="nope">
+        Nope<span class="pb-lab-standard">standard</span>
+      </button>
     </div>
   </section>
 

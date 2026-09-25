@@ -32,6 +32,7 @@ import {PatchbayPress} from "./hooks/motion/press.js"
 import {PatchbaySlides} from "./hooks/motion/slides.js"
 import {PatchbayLayout, PatchbayCounter, PatchbayStamp} from "./hooks/motion/moments.js"
 import {PatchbayTabs, PatchbayHeadline, PatchbayCascade} from "./hooks/motion/reveals.js"
+import {mountMotion} from "./motion.js"
 import {mountForumTools} from "./webmcp/forum_lifecycle.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
@@ -74,11 +75,12 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
-// The account strip and the report board tools both belong to every Patchbay
-// page rather than to the room, so they are set up here. The tools are handed
-// the profile the page is signed in as, so one that charges for an answer knows
-// who to charge.
+// The account strip, the report board tools and the standard motion all
+// belong to every Patchbay page rather than to the room, so they are set up
+// here. The tools are handed the profile the page is signed in as, so one that
+// charges for an answer knows who to charge.
 const offerPageWideSurfaces = () => {
+  mountMotion()
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   installSharedProfile()
   mountAgentSetup()

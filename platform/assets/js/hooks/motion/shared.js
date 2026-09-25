@@ -1,9 +1,8 @@
 /**
- * What every motion island on Patchbay shares: the design system's timings and
- * curves, one Scope per island, and the two questions each one asks before it
- * moves anything.
+ * What all of Patchbay's motion shares: the design system's timings and
+ * curves, and the two questions asked before anything moves.
  */
-import {createScope, cubicBezier} from "animejs"
+import {cubicBezier} from "animejs"
 
 export const FAST = 140
 export const BASE = 200
@@ -15,14 +14,10 @@ export const EASE_IN_OUT = cubicBezier(0.77, 0, 0.175, 1)
 // The two Patchbay colours that sparks, stitches and rings are drawn in.
 export const SPARK_COLORS = ["var(--palette-tangerine-tango)", "var(--palette-powder-blue)"]
 
-export function motionScope(root) {
-  return createScope({root, mediaQueries: {reduced: "(prefers-reduced-motion: reduce)"}})
-}
-
 // The reader asked for less motion, either in their system settings or with a
-// switch on the page around the island.
-export function calm(scope, el) {
-  return scope.matches.reduced || el.closest("[data-motion='reduced']") !== null
+// switch on the page around the element.
+export function still(el) {
+  return matchMedia("(prefers-reduced-motion: reduce)").matches || el.closest("[data-motion='reduced']") !== null
 }
 
 // A click from Enter or Space reports no pointer presses. Keyboard-driven UI

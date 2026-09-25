@@ -3,22 +3,41 @@
  * instant it is pressed; the motion only plays alongside it. A press from the
  * keyboard, or a reader who asked for less motion, gets no motion at all.
  *
- * Each button names its answer with `data-press`. Sparks, pings and stitches
- * are removed as soon as they finish.
+ * Squish is Patchbay's standard press and nope its standard answer when
+ * something is refused; every page uses them from `motion.js`. The lab's
+ * other presses are named with `data-press`. Sparks, pings and stitches are
+ * removed as soon as they finish.
  */
-import {animate, random, stagger} from "animejs"
-import {EASE_OUT, byPointer, calm, motionScope} from "./shared.js"
+import {animate, createScope, random, stagger, utils} from "animejs"
+import {EASE_OUT, byPointer, still} from "./shared.js"
 import {spawn, sweep, sweepAll} from "./fx.js"
+
+// Both end where they began, then hand the element back to its stylesheet,
+// so a hover or press style that moves it still can. One pressed again
+// mid-move starts over from wherever it is.
+const tidy = animation => utils.cleanInlineStyles(animation)
+
+export const squish = el =>
+  animate(el, {
+    scale: [{to: 0.9, duration: 90, ease: "out(3)"}, {to: 1, duration: 360, ease: "outBack(3)"}],
+    onComplete: tidy,
+  })
+
+export const nope = el =>
+  animate(el, {x: [0, -7, 6, -4, 2, 0], duration: 380, ease: "inOut(2)", onComplete: tidy})
+
+// Something was refused. Unlike a press, the shake plays however the refused
+// thing was asked for, because it is the answer, not decoration.
+export function deny(el) {
+  if (!still(el)) nope(el)
+}
 
 export const PatchbayPress = {
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
 
     const PRESSES = {
-      squish: button =>
-        animate(button, {
-          scale: [{to: 0.9, duration: 90, ease: "out(3)"}, {to: 1, duration: 360, ease: "outBack(3)"}],
-        }),
+      squish,
 
       jelly: button =>
         animate(button, {
@@ -28,15 +47,10 @@ export const PatchbayPress = {
           ease: "inOut(2)",
         }),
 
-      nope: button =>
-        animate(button, {
-          x: [0, -7, 6, -4, 2, 0],
-          duration: 380,
-          ease: "inOut(2)",
-        }),
+      nope,
 
       sparks: (button, x, y) => {
-        PRESSES.squish(button)
+        squish(button)
         const sparks = spawn(this.el, 10, "pb-fx-spark", x, y)
         const flights = sparks.map((_spark, i) => {
           const angle = (i / sparks.length) * Math.PI * 2 + random(-0.25, 0.25, 2)
@@ -54,7 +68,7 @@ export const PatchbayPress = {
       },
 
       ping: (button, x, y) => {
-        PRESSES.squish(button)
+        squish(button)
         const rings = spawn(this.el, 2, "pb-fx-ring", x, y)
         animate(rings, {
           scale: [0.2, 3.2],
@@ -67,7 +81,7 @@ export const PatchbayPress = {
       },
 
       stitches: (button, x, y) => {
-        PRESSES.squish(button)
+        squish(button)
         const stitches = spawn(this.el, 5, "pb-fx-stitch", x, y)
         for (const stitch of stitches) stitch.textContent = "+"
         animate(stitches, {
@@ -89,7 +103,7 @@ export const PatchbayPress = {
 
       const onClick = event => {
         const button = event.target.closest("[data-press]")
-        if (button === null || !byPointer(event) || calm(scope, this.el)) return
+        if (button === null || !byPointer(event) || still(this.el)) return
         scope.methods.press(button.dataset.press, button, event.clientX, event.clientY)
       }
 

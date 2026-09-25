@@ -3,8 +3,8 @@
  * underline travels to the chosen tab, a headline that writes itself in and a
  * grid of cards that settles into place.
  */
-import {animate, spring, splitText, stagger, utils} from "animejs"
-import {EASE_IN_OUT, EASE_OUT, SLOW, byPointer, calm, motionScope, onReplay} from "./shared.js"
+import {animate, createScope, spring, splitText, stagger, utils} from "animejs"
+import {EASE_IN_OUT, EASE_OUT, SLOW, byPointer, onReplay, still} from "./shared.js"
 
 // How the underline travels and how the new panel arrives. `step` is 1 when
 // the chosen tab is to the right of the last one and -1 when it is to the left.
@@ -39,7 +39,7 @@ const TABS = {
  */
 export const PatchbayTabs = {
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
     this.active = this.el.dataset.active
     this.pointer = false
 
@@ -79,7 +79,7 @@ export const PatchbayTabs = {
     this.active = to
     if (from === to) return
 
-    if (this.pointer && !calm(this.scope, this.el)) this.scope.methods.move(from, to)
+    if (this.pointer && !still(this.el)) this.scope.methods.move(from, to)
     else this.scope.methods.place()
     this.pointer = false
   },
@@ -91,7 +91,7 @@ export const PatchbayTabs = {
 
 // Moves in percent name both ends, so they stay a share of each piece's own
 // height instead of being converted to pixels from its width.
-const HEADLINES = {
+export const HEADLINES = {
   rise: split =>
     animate(split.words, {y: ["100%", "0%"], delay: stagger(50), duration: SLOW, ease: EASE_OUT}),
   cascade: split =>
@@ -107,7 +107,7 @@ const HEADLINES = {
     animate(split.chars, {opacity: {from: 0}, delay: stagger(24), duration: 60, ease: "linear"}),
 }
 
-const GRIDS = {
+export const GRIDS = {
   cascade: cards =>
     animate(cards, {y: {from: 16}, opacity: {from: 0}, delay: stagger(45), duration: SLOW, ease: EASE_OUT}),
   bloom: cards =>
@@ -136,14 +136,14 @@ const GRIDS = {
  */
 const entrance = (variants, pieces) => ({
   mounted() {
-    const scope = motionScope(this.el)
+    const scope = createScope({root: this.el})
     this.variant = this.el.dataset.variant
 
     this.scope = scope.add(() => {
       const targets = pieces(this.el)
 
       scope.add("play", () => {
-        if (!calm(scope, this.el)) variants[this.el.dataset.variant](targets)
+        if (!still(this.el)) variants[this.el.dataset.variant](targets)
       })
 
       const onClick = event => {

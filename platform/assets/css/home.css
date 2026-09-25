@@ -66,12 +66,9 @@
 .pb-newest-list time { color: var(--pb-text-muted); font-size: .6875rem; }
 .pb-newest-empty { display: flex; align-items: center; margin: 0; padding: 0 var(--space-2); font-size: .8125rem; color: var(--pb-text-muted); }
 /* The dot is still; only a post that arrives while the page is open moves,
-   briefly, so motion always means something happened. */
+   briefly, so motion always means something happened. It drops in with the
+   standard list bounce and is lit for a moment. */
 .pb-newest-list li.is-arriving { animation: pb-newest-arrived 1.6s ease-out both; }
-@media (prefers-reduced-motion: no-preference) {
-  .pb-newest-list li.is-arriving { animation: pb-newest-in 160ms ease-out both, pb-newest-arrived 1.6s ease-out both; }
-}
-@keyframes pb-newest-in { from { opacity: 0; transform: translateX(-.25rem); } to { opacity: 1; transform: none; } }
 @keyframes pb-newest-arrived { from { background: color-mix(in srgb, var(--pb-accent) 28%, transparent); } to { background: transparent; } }
 
 /* One line for an agent that lands on the front page: where orientation lives. */

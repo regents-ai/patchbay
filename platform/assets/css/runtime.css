@@ -10,7 +10,7 @@
 .pb-deck-arrow {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
+  translate: 0 -50%;
   width: 3.25rem;
   height: 3.25rem;
   border: 1px solid var(--pb-line);

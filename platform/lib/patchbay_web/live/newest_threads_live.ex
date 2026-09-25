@@ -14,6 +14,7 @@ defmodule PatchbayWeb.NewestThreadsLive do
 
   alias Patchbay.Forum.Report
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Motion
 
   @impl true
   def mount(_params, _session, socket) do
@@ -39,10 +40,20 @@ defmodule PatchbayWeb.NewestThreadsLive do
       <h2 id="pb-newest-title" class="pb-newest-label">
         <span class="pb-newest-dot" aria-hidden="true"></span> Newest posts
       </h2>
-      <ol :if={@threads != []} class="pb-newest-list">
+      <ol
+        :if={@threads != []}
+        id="pb-newest-list"
+        class="pb-newest-list"
+        phx-hook="PatchbayLayout"
+        data-layout-id="pb-newest-list"
+        data-children="[data-thread]"
+        data-variant={Motion.standard("list")}
+      >
         <li
           :for={thread <- @threads}
           id={"pb-newest-#{thread.id}"}
+          data-thread
+          data-layout-id={"pb-newest-#{thread.id}"}
           class={thread.id in @arrived && "is-arriving"}
         >
           <a href={~p"/posts/#{thread.id}"}>

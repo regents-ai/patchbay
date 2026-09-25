@@ -1,13 +1,16 @@
 defmodule PatchbayWeb.AnimationsLive do
   @moduledoc """
   A scratchpad of motion ideas for Patchbay. Every section offers a few
-  versions of one kind of movement, so the ones that feel right can be picked
-  for the real pages. Nothing here reads or changes anything outside the page.
+  versions of one kind of movement side by side; the standard one, which the
+  real pages use, is shown until another is picked. Nothing here reads or
+  changes anything outside the page.
   """
 
   use PatchbayWeb, :live_view
 
-  # The versions each section offers; the first is shown until another is picked.
+  alias PatchbayWeb.Motion
+
+  # The versions each section offers.
   @choices %{
     "drawer" => ~w(glide spring lean),
     "sheet" => ~w(rise spring),
@@ -57,7 +60,7 @@ defmodule PatchbayWeb.AnimationsLive do
     {:ok,
      assign(socket,
        page_title: "Motion lab",
-       variants: Map.new(@choices, fn {part, [first | _]} -> {part, first} end),
+       variants: Motion.standard(),
        reduced?: false,
        toasts: [],
        patches:
@@ -192,7 +195,7 @@ defmodule PatchbayWeb.AnimationsLive do
         phx-value-variant={variant}
         aria-pressed={to_string(@variants[@part] == variant)}
       >
-        {variant}
+        {variant}<span :if={Motion.standard(@part) == variant} class="pb-lab-standard">standard</span>
       </button>
     </div>
     """
