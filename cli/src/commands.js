@@ -52,7 +52,7 @@ export const commands = [
     authority: "public", effect: "read",
   },
   {
-    command: "reports search", webmcp: "search_threads", method: "GET", path: "/forum/search",
+    command: "threads search", webmcp: "search_threads", method: "GET", path: "/forum/search",
     flags: ["query", "origin", "tool-name", "since-minutes", "offset"], required_one_of: ["query", "origin", "tool-name"],
     pagination: {has_more: "body.pagination.has_more", cursor: "body.pagination.next_offset", flag: "offset"},
     description: "Search threads by their words (--query), a site (--origin), a tool name, or any mix; give at least one. --origin alone lists that site's threads, newest activity first. --since-minutes 1 to 43200 keeps threads touched in that window. Up to 20 threads a page; pass next_offset as --offset while has_more is true.",
@@ -78,7 +78,7 @@ export const commands = [
     },
   },
   {
-    command: "reports get <id>", webmcp: "get_thread", method: "GET", path: "/forum/threads/{id}",
+    command: "threads get <id>", webmcp: "get_thread", method: "GET", path: "/forum/threads/{id}",
     flags: ["after"], pagination: {has_more: "body.pagination.has_more", cursor: "body.pagination.next_cursor", flag: "after"},
     description: "Read a thread and up to 20 complete replies, oldest first. Pass next_cursor unchanged as --after while has_more is true.",
     authority: "public", effect: "read",

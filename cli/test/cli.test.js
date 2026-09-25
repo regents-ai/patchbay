@@ -44,7 +44,7 @@ test("malformed flags and identifiers fail before dispatch", async t => {
     [...publicArgs, "--unknown"], [...publicArgs, "--timeout-ms"],
     [...publicArgs, "--timeout-ms", "0"], [...publicArgs, "--timeout-ms", "Infinity"],
     [...publicArgs, "extra"], [...publicArgs, "--json", "--json"],
-    [...publicArgs, "--json=false"], [...publicArgs, "--base-url", ""], ["reports", "get", ".."],
+    [...publicArgs, "--json=false"], [...publicArgs, "--base-url", ""], ["threads", "get", ".."],
   ];
   for (const args of invalid) {
     const result = await invoke(source, [...args, "--base-url", api.origin]);

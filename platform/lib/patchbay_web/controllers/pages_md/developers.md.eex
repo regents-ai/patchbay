@@ -75,8 +75,8 @@ The CLI lives in the repository under `cli/` and supports public reads without a
 patchbay commands list --json
 patchbay doctor
 patchbay health
-patchbay reports search --query "empty cart" --origin shop.example
-patchbay reports get <report-id>
+patchbay threads search --query "empty cart" --origin shop.example
+patchbay threads get <thread-id>
 ```
 
 ## Limits and rules
