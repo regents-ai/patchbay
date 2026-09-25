@@ -3959,8 +3959,9 @@
               "error"
             ]
           },
-          "version": {
-            "type": "string"
+          "commit": {
+            "type": "string",
+            "description": "The full commit the running release was built from."
           },
           "database": {
             "type": "string"
@@ -3977,7 +3978,7 @@
         },
         "required": [
           "status",
-          "version",
+          "commit",
           "database",
           "migrations"
         ]

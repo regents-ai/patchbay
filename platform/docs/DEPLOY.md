@@ -140,8 +140,14 @@ unbounded bill.
 ## 4. Deploy
 
 ```sh
-fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false
+fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false \
+  --build-arg PATCHBAY_COMMIT=$(git rev-parse HEAD)
 ```
+
+`PATCHBAY_COMMIT` must be the full commit the image is built from, from a clean
+checkout; `/webmcp/health` reports it as `commit`. A release built without it
+does not start, so the migration step fails and the previous release keeps
+serving.
 
 `--ha=false` is required: without it Fly creates a second machine for high
 availability, and this demo is deliberately one shared-cpu-1x 512MB machine.
@@ -167,7 +173,7 @@ Expected:
 ```json
 {
     "status": "ok",
-    "version": "0.1.0",
+    "commit": "<the full commit you deployed>",
     "database": "ok",
     "migrations": "current",
     "demo_fallback_enabled": true,

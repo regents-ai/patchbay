@@ -111,6 +111,11 @@ ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/platform/_build/${MIX_ENV}/rel/patchbay ./
 
+# The commit this image is built from, reported by /webmcp/health. Build with
+# --build-arg PATCHBAY_COMMIT=<full commit>; a release without it does not start.
+ARG PATCHBAY_COMMIT
+ENV PATCHBAY_COMMIT="${PATCHBAY_COMMIT}"
+
 USER nobody
 
 # If using an environment that doesn't automatically reap zombie processes, it is

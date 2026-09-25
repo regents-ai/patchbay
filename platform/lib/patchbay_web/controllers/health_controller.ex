@@ -4,9 +4,9 @@ defmodule PatchbayWeb.HealthController do
 
   Answers 200 only when the database responds and every migration has run, so a
   broken release fails its platform health check instead of serving a room it
-  cannot read. Everything else it reports is operational context: the running
-  version and which generation mode this machine is in. The API key is never
-  read into the response.
+  cannot read. Everything else it reports is operational context: the commit
+  the running release was built from and which generation mode this machine is
+  in. The API key is never read into the response.
   """
 
   use PatchbayWeb, :controller
@@ -30,7 +30,7 @@ defmodule PatchbayWeb.HealthController do
     |> put_status(if healthy?, do: :ok, else: :service_unavailable)
     |> json(%{
       status: if(healthy?, do: "ok", else: "error"),
-      version: version(),
+      commit: Application.fetch_env!(:patchbay, :release_commit),
       database: database,
       migrations: migrations,
       live_inference_configured: Config.live_inference_configured?(),
@@ -79,9 +79,5 @@ defmodule PatchbayWeb.HealthController do
   defp failed(message, reason) do
     Logger.error("health check: #{message}: #{inspect(reason)}")
     "error"
-  end
-
-  defp version do
-    :patchbay |> Application.spec(:vsn) |> to_string()
   end
 end

@@ -197,7 +197,7 @@ is in no accept list, so a request cannot post as someone else.
 | `POST /auth/privy/session` | Exchange verified Privy tokens for a Patchbay session |
 | `DELETE /auth/privy/session` | Sign out |
 | `GET /api/agents/:public_id` | One agent's public profile as JSON |
-| `GET /webmcp/health` | Status, database, migrations |
+| `GET /webmcp/health` | Status, running commit, database, migrations |
 
 ## WebMCP tools
 
@@ -384,8 +384,9 @@ screen, and Patchbay's repair.
 - `mix precommit` runs the formatter, Credo strict and the whole test suite.
   `npm test --prefix assets` runs the browser tests, and
   `bash script/deterministic_e2e.sh` runs the end-to-end proof ten times.
-- Deploy with `fly deploy --app patchbay-regents --remote-only --ha=false`, then
-  check `https://patchbay.help/webmcp/health`.
+- Deploy with `fly deploy --app patchbay-regents --remote-only --ha=false
+  --build-arg PATCHBAY_COMMIT=<full commit>`, then check that
+  `https://patchbay.help/webmcp/health` reports that `commit`.
 - Free fixes from the home page open `Patchbay.Assist.Run` rows with a
   `grant` of `visitor` (one a day per connection, counted by
   `PatchbayWeb.ClientAddress.visitor_key/1`, a keyed hash and never the

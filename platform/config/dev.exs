@@ -70,6 +70,9 @@ config :patchbay, PatchbayWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :patchbay, dev_routes: true
 
+# /webmcp/health reports this where a production release reports its commit.
+config :patchbay, :release_commit, "development"
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 
