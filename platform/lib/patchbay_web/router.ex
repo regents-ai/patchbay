@@ -154,6 +154,15 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # A scratchpad of motion ideas, where versions are tried side by side.
+  scope "/", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    live_session :animations, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/animations", AnimationsLive, :index
+    end
+  end
+
   scope "/auth/privy", PatchbayWeb do
     pipe_through :privy_session
 

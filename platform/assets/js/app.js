@@ -28,6 +28,10 @@ import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.js"
 import {PatchbayCopy} from "./hooks/copy_prompt.js"
 import {PatchbayRelativeTime} from "./hooks/relative_time.js"
+import {PatchbayPress} from "./hooks/motion/press.js"
+import {PatchbaySlides} from "./hooks/motion/slides.js"
+import {PatchbayLayout, PatchbayCounter, PatchbayStamp} from "./hooks/motion/moments.js"
+import {PatchbayTabs, PatchbayHeadline, PatchbayCascade} from "./hooks/motion/reveals.js"
 import {mountForumTools} from "./webmcp/forum_lifecycle.js"
 import {signedInProfileId} from "./webmcp/profile.js"
 import {installAccountControl} from "./privy/account.js"
@@ -44,7 +48,20 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, PatchbayWebMCP, PatchbayCopy, PatchbayRelativeTime},
+  hooks: {
+    ...colocatedHooks,
+    PatchbayWebMCP,
+    PatchbayCopy,
+    PatchbayRelativeTime,
+    PatchbayPress,
+    PatchbaySlides,
+    PatchbayLayout,
+    PatchbayCounter,
+    PatchbayStamp,
+    PatchbayTabs,
+    PatchbayHeadline,
+    PatchbayCascade,
+  },
 })
 
 // Show progress bar on live navigation and form submits, in Patchbay's own

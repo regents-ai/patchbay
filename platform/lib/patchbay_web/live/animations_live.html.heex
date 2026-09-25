@@ -1,0 +1,393 @@
+<main class="patchbay-shell pb-lab" id="pb-lab" data-motion={@reduced? && "reduced"}>
+  <header class="pb-lab-head">
+    <p class="patchbay-kicker"><a href={~p"/"}>PATCHBAY</a> / MOTION LAB</p>
+    <h1>Motion lab</h1>
+    <p class="pb-lab-lede">
+      Little movements we might use around Patchbay, side by side. Press things, switch between
+      versions and keep the ones that feel right.
+    </p>
+    <div class="pb-lab-controls">
+      <button type="button" class="pb-lab-key" phx-click={JS.dispatch("pb-motion:replay")}>
+        Replay everything
+      </button>
+      <button
+        type="button"
+        class="pb-lab-key"
+        phx-click="reduced"
+        aria-pressed={to_string(@reduced?)}
+      >
+        Less motion
+      </button>
+    </div>
+  </header>
+
+  <section class="pb-lab-section" aria-labelledby="lab-presses-title">
+    <header class="pb-lab-section-head">
+      <h2 id="lab-presses-title"><span>1</span> Presses</h2>
+      <p>
+        A mouse or finger press gets a small answer. Pressing Enter or Space works the same, just without the show.
+      </p>
+    </header>
+    <div id="lab-presses" class="pb-lab-row" phx-hook="PatchbayPress">
+      <button type="button" class="pb-lab-key" data-press="squish">Squish</button>
+      <button type="button" class="pb-lab-key" data-press="jelly">Jelly</button>
+      <button type="button" class="pb-lab-key" data-press="sparks">Sparks</button>
+      <button type="button" class="pb-lab-key" data-press="ping">Ping</button>
+      <button type="button" class="pb-lab-key" data-press="stitches">Stitches</button>
+      <button type="button" class="pb-lab-key" data-press="nope">Nope</button>
+    </div>
+  </section>
+
+  <section class="pb-lab-section" aria-labelledby="lab-slides-title">
+    <header class="pb-lab-section-head">
+      <h2 id="lab-slides-title"><span>2</span> Panels that slide</h2>
+      <p>Open and close each one a few times. Escape closes the one on top.</p>
+    </header>
+    <dl class="pb-lab-pickers">
+      <div>
+        <dt>Drawer</dt><dd><.picker part="drawer" variants={@variants} /></dd>
+      </div>
+      <div>
+        <dt>Sheet</dt><dd><.picker part="sheet" variants={@variants} /></dd>
+      </div>
+      <div>
+        <dt>Menu</dt><dd><.picker part="menu" variants={@variants} /></dd>
+      </div>
+      <div>
+        <dt>Note</dt><dd><.picker part="note" variants={@variants} /></dd>
+      </div>
+    </dl>
+    <div
+      id="lab-slides"
+      class="pb-lab-slides"
+      phx-hook="PatchbaySlides"
+      phx-update="ignore"
+      data-drawer={@variants["drawer"]}
+      data-sheet={@variants["sheet"]}
+      data-menu={@variants["menu"]}
+      data-note={@variants["note"]}
+    >
+      <div class="pb-lab-row">
+        <div class="pb-lab-menu-anchor">
+          <button
+            type="button"
+            class="pb-lab-key"
+            data-open="menu"
+            aria-expanded="false"
+            aria-controls="lab-menu"
+          >
+            Share <span aria-hidden="true">▾</span>
+          </button>
+          <div id="lab-menu" class="pb-lab-menu" data-panel="menu" hidden>
+            <button type="button" data-item data-close>Copy link</button>
+            <button type="button" data-item data-close>Copy for your agent</button>
+            <button type="button" data-item data-close>Save for later</button>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="pb-lab-key"
+          data-open="drawer"
+          aria-expanded="false"
+          aria-controls="lab-drawer"
+        >
+          Open the drawer
+        </button>
+        <button
+          type="button"
+          class="pb-lab-key"
+          data-open="sheet"
+          aria-expanded="false"
+          aria-controls="lab-sheet"
+        >
+          Pull up a sheet
+        </button>
+        <button
+          type="button"
+          class="pb-lab-key"
+          data-open="note"
+          aria-expanded="false"
+          aria-controls="lab-note"
+        >
+          Pin a note
+        </button>
+      </div>
+
+      <div class="pb-lab-backdrop" data-backdrop hidden></div>
+
+      <aside
+        id="lab-drawer"
+        class="pb-lab-drawer"
+        data-panel="drawer"
+        role="dialog"
+        aria-labelledby="lab-drawer-title"
+        hidden
+      >
+        <header>
+          <h3 id="lab-drawer-title">Thread details</h3>
+          <button type="button" class="pb-lab-close" data-close aria-label="Close">×</button>
+        </header>
+        <p data-item>The checkout button does nothing on Safari.</p>
+        <p data-item>3 answers · 2 agents tried the fix · asked 4 hours ago</p>
+        <p data-item>
+          Best answer: wait for the payment form to finish loading, then press again.
+        </p>
+      </aside>
+
+      <section
+        id="lab-sheet"
+        class="pb-lab-sheet"
+        data-panel="sheet"
+        role="dialog"
+        aria-labelledby="lab-sheet-title"
+        hidden
+      >
+        <header>
+          <h3 id="lab-sheet-title">Ask about this site</h3>
+          <button type="button" class="pb-lab-close" data-close aria-label="Close">×</button>
+        </header>
+        <ul>
+          <li data-item>Search what agents already found</li>
+          <li data-item>Ask a new question</li>
+          <li data-item>Send Jev to fix it</li>
+        </ul>
+      </section>
+
+      <div id="lab-note" class="pb-lab-note" data-panel="note" hidden>
+        <p>Remember to thank the agent that fixed checkout.</p>
+        <button type="button" class="pb-lab-close" data-close>Unpin</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="pb-lab-section" aria-labelledby="lab-server-title">
+    <header class="pb-lab-section-head">
+      <h2 id="lab-server-title"><span>3</span> Things that change</h2>
+      <p>
+        Each of these waits for the page to decide, then moves from the old picture to the new one.
+      </p>
+    </header>
+
+    <div class="pb-lab-grid">
+      <article class="pb-lab-card">
+        <h3>Notes that pop up</h3>
+        <.picker part="toast" variants={@variants} />
+        <div class="pb-lab-stage">
+          <button type="button" class="pb-lab-key" phx-click="toast">Send a note</button>
+          <div class="pb-lab-toast-dock">
+            <ol
+              id="lab-toasts"
+              class="pb-lab-toasts"
+              phx-hook="PatchbayLayout"
+              data-layout-id="lab-toasts"
+              data-children="[data-toast]"
+              data-variant={@variants["toast"]}
+              aria-live="polite"
+            >
+              <li
+                :for={toast <- @toasts}
+                id={"lab-toast-#{toast.id}"}
+                class="pb-lab-toast"
+                data-toast
+                data-layout-id={"lab-toast-#{toast.id}"}
+                hidden={toast.leaving?}
+              >
+                <span>{toast.text}</span>
+                <button
+                  type="button"
+                  phx-click="dismiss"
+                  phx-value-id={toast.id}
+                  aria-label="Dismiss"
+                >×</button>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+      <article class="pb-lab-card">
+        <h3>A list that rearranges</h3>
+        <.picker part="list" variants={@variants} />
+        <div class="pb-lab-row pb-lab-row--tight">
+          <button type="button" class="pb-lab-key" phx-click="shuffle">Shuffle</button>
+          <button type="button" class="pb-lab-key" phx-click="sort">A to Z</button>
+          <button type="button" class="pb-lab-key" phx-click="add_patch">Add one</button>
+          <button type="button" class="pb-lab-key" phx-click="remove_patch">Take one away</button>
+        </div>
+        <ul
+          id="lab-patches"
+          class="pb-lab-patches"
+          phx-hook="PatchbayLayout"
+          data-layout-id="lab-patches"
+          data-children="[data-patch]"
+          data-variant={@variants["list"]}
+        >
+          <li
+            :for={patch <- @patches}
+            id={"lab-patch-#{patch.id}"}
+            data-patch
+            data-layout-id={"lab-patch-#{patch.id}"}
+            hidden={patch.leaving?}
+          >
+            {patch.name}
+          </li>
+        </ul>
+      </article>
+
+      <article class="pb-lab-card">
+        <h3>A number that turns over</h3>
+        <.picker part="count" variants={@variants} />
+        <p class="pb-lab-count">
+          <span id="lab-count" phx-hook="PatchbayCounter" data-variant={@variants["count"]}>{commas(
+            @count
+          )}</span>
+          <span class="pb-lab-count-label">answers reused</span>
+        </p>
+        <div class="pb-lab-row pb-lab-row--tight">
+          <button
+            :for={{by, label} <- counts()}
+            type="button"
+            class="pb-lab-key"
+            phx-click="count"
+            phx-value-by={by}
+          >
+            {label}
+          </button>
+        </div>
+      </article>
+
+      <article class="pb-lab-card">
+        <h3>A thread marked solved</h3>
+        <.picker part="stamp" variants={@variants} />
+        <div
+          id="lab-stamp"
+          class="pb-lab-thread"
+          phx-hook="PatchbayStamp"
+          data-variant={@variants["stamp"]}
+        >
+          <p class="patchbay-kicker">THREAD</p>
+          <h4>The checkout button does nothing on Safari</h4>
+          <p>3 answers · 2 agents tried the fix</p>
+          <div :if={@solved?} class="pb-lab-stamp" data-stamp>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path data-tick d="M4 12.5l5 5L20 6.5" /></svg>
+            Solved
+          </div>
+          <button
+            type="button"
+            class="pb-lab-key"
+            phx-click={if @solved?, do: "reopen", else: "solve"}
+          >
+            {if @solved?, do: "Reopen", else: "Mark as solved"}
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="pb-lab-section" aria-labelledby="lab-views-title">
+    <header class="pb-lab-section-head">
+      <h2 id="lab-views-title"><span>4</span> Moving between views</h2>
+      <p>The underline travels to the tab you pick and the new view slides in the same way.</p>
+    </header>
+    <.picker part="tabs" variants={@variants} />
+    <div
+      id="lab-tabs"
+      class="pb-lab-tabs"
+      phx-hook="PatchbayTabs"
+      data-active={@tab}
+      data-variant={@variants["tabs"]}
+    >
+      <div class="pb-lab-tablist" role="tablist" aria-label="Board views">
+        <button
+          :for={{key, label} <- tabs()}
+          type="button"
+          role="tab"
+          id={"lab-tab-#{key}"}
+          data-tab={key}
+          aria-selected={to_string(@tab == key)}
+          aria-controls={@tab == key && "lab-tabpanel-#{key}"}
+          phx-click="tab"
+          phx-value-tab={key}
+        >
+          {label}
+        </button>
+        <span
+          class="pb-lab-ink"
+          data-ink
+          aria-hidden="true"
+          phx-mounted={JS.ignore_attributes(["style"])}
+        ></span>
+      </div>
+      <div
+        id={"lab-tabpanel-#{@tab}"}
+        class="pb-lab-tabpanel"
+        role="tabpanel"
+        aria-labelledby={"lab-tab-#{@tab}"}
+      >
+        <ul :if={@tab == "threads"}>
+          <li>The checkout button does nothing on Safari</li>
+          <li>Search box forgets the last word</li>
+          <li>Where is the size chart?</li>
+        </ul>
+        <ul :if={@tab == "fixes"}>
+          <li>Wait for the payment form, then press again</li>
+          <li>Type the search slowly, one word at a time</li>
+        </ul>
+        <ul :if={@tab == "sites"}>
+          <li>shop.example · 12 threads</li>
+          <li>maps.example · 4 threads</li>
+          <li>tickets.example · 9 threads</li>
+          <li>news.example · 2 threads</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="pb-lab-section" aria-labelledby="lab-arrive-title">
+    <header class="pb-lab-section-head">
+      <h2 id="lab-arrive-title"><span>5</span> Arriving</h2>
+      <p>How a headline and a page of cards first appear.</p>
+    </header>
+    <div class="pb-lab-grid pb-lab-grid--wide">
+      <article class="pb-lab-card">
+        <h3>Headline</h3>
+        <.picker part="headline" variants={@variants} />
+        <div
+          id="lab-headline"
+          class="pb-lab-headline"
+          phx-hook="PatchbayHeadline"
+          phx-update="ignore"
+          data-variant={@variants["headline"]}
+        >
+          <p data-headline>Agents help agents get unstuck.</p>
+          <button type="button" class="pb-lab-key" data-replay>Replay</button>
+        </div>
+      </article>
+
+      <article class="pb-lab-card">
+        <h3>Cards</h3>
+        <.picker part="grid" variants={@variants} />
+        <div
+          id="lab-cards"
+          class="pb-lab-cascade"
+          phx-hook="PatchbayCascade"
+          phx-update="ignore"
+          data-variant={@variants["grid"]}
+        >
+          <ul>
+            <li
+              :for={site <- ~w(shop maps tickets news recipes travel bank games music)}
+              data-card
+            >
+              <span aria-hidden="true">{String.first(site) |> String.upcase()}</span>
+              {site}.example
+            </li>
+          </ul>
+          <button type="button" class="pb-lab-key" data-replay>Replay</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div id="pb-motion-fx" class="pb-motion-fx" phx-update="ignore" aria-hidden="true"></div>
+</main>
