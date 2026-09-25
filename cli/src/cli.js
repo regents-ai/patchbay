@@ -1,6 +1,7 @@
 import {requestWallet} from "./wallet.js";
 import {requestProfile, ProfileInputError} from "./profile.js";
 import {parseArgs} from "node:util";
+import {doctor, printDoctor} from "./doctor.js";
 
 export class UsageError extends Error {}
 
@@ -59,7 +60,7 @@ function origin(value) {
   return url.origin;
 }
 
-async function request(base, target, timeoutMs) {
+export async function request(base, target, timeoutMs) {
   const controller = new AbortController();
   const interrupt = () => controller.abort();
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -95,17 +96,21 @@ async function request(base, target, timeoutMs) {
   }
 }
 
+function contract({request: _request, ...fields}) {
+  return fields;
+}
+
 export async function run({product, version, defaultOrigin, commands, notes, argv = process.argv.slice(2)}) {
   try {
     const {values, positionals} = argumentsFor(argv, commands);
     if (values.version) return {product, version};
     if (positionals.join(" ") === "commands list") {
       if (Object.keys(values).some(key => key !== "json")) throw new UsageError("commands list takes only --json.");
-      return {product, version, commands: commands.map(({request: _request, ...contract}) => contract), notes};
+      return {product, version, commands: commands.map(contract), notes};
     }
     const command = selectCommand(positionals, commands);
     if (values.help || positionals.join(" ") === "help" || positionals.length === 0) {
-      const help = {product, version, commands: (command ? [command] : commands).map(({request: _request, ...contract}) => contract), notes};
+      const help = {product, version, commands: (command ? [command] : commands).map(contract), notes};
       if (values.json) return help;
       process.stdout.write(`${product} ${version}\n\n` + help.commands.map(c => `  ${product} ${c.command}${c.flags.length ? "  " + c.flags.map(f => (c.required_flags?.includes(f) ? "" : "[") + "--" + f + " <value>" + (c.required_flags?.includes(f) ? "" : "]")).join(" ") : ""}\n    ${c.description}`).join("\n") +
         `\n\n  ${product} commands list --json\n  --base-url <origin>  --timeout-ms <milliseconds>  --json  --help  --version\n\n` + notes.join("\n") + "\n");
@@ -120,6 +125,13 @@ export async function run({product, version, defaultOrigin, commands, notes, arg
     const privateProfile = command.authority === "privy-proof-pair";
     const wallet = command.authority === "wallet-proof";
     const base = origin(values["base-url"] ?? ((privateProfile || wallet) ? defaultOrigin : process.env[`${product.toUpperCase()}_BASE_URL`] ?? defaultOrigin));
+    if (command.command === "doctor") {
+      const report = await doctor({base, timeoutMs, version, commands});
+      process.exitCode = report.canceled ? 130 : report.ok ? 0 : 1;
+      if (values.json) return report;
+      printDoctor(report);
+      return undefined;
+    }
     const target = command.request(positionals, values);
     const result = wallet ? await requestWallet(base, target, timeoutMs) : privateProfile ? await requestProfile(base, target, timeoutMs) : await request(base, target, timeoutMs);
     if (!result.ok) process.exitCode = result.error?.code === "aborted" ? 130 : 1;

@@ -37,6 +37,9 @@ config :patchbay, :sync_webmcp_catalog, false
 config :patchbay, :notification_fanout, false
 config :patchbay, :jev_reader, false
 
+# /webmcp/health reports this where a production release reports its commit.
+config :patchbay, :release_commit, "test"
+
 # Every test request comes from one address, so the suite would spend a
 # visitor's share of reads many times over.
 config :patchbay, :reads_per_minute, 1_000_000

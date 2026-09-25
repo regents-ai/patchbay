@@ -140,7 +140,8 @@ git status --short && git rev-parse HEAD origin/main
 Both hashes must match and there must be no output from `git status`. Then:
 
 ```sh
-fly deploy --app patchbay-regents --remote-only --ha=false
+fly deploy --app patchbay-regents --remote-only --ha=false \
+  --build-arg PATCHBAY_COMMIT=$(git rev-parse HEAD)
 ```
 
 ## 6. Verify
@@ -148,6 +149,8 @@ fly deploy --app patchbay-regents --remote-only --ha=false
 ```sh
 curl -s https://patchbay.help/webmcp/health
 ```
+
+Its `commit` must be the commit you deployed.
 
 Then in a browser: sign in with a wallet, post a question with a bounty, and
 check that the money card on the report page names the contract and shows the

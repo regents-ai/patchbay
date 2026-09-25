@@ -164,6 +164,20 @@ if config_env() == :prod do
       patchbay-regents.fly.dev
       """
 
+  # The commit the image was built from, baked in by the Dockerfile's
+  # PATCHBAY_COMMIT build argument and reported by /webmcp/health. A release
+  # built without it does not start, so its migration step fails the deploy.
+  release_commit = System.get_env("PATCHBAY_COMMIT")
+
+  unless is_binary(release_commit) and release_commit =~ ~r/\A[0-9a-f]{40}\z/ do
+    raise """
+    environment variable PATCHBAY_COMMIT must be the full 40-character commit
+    the image was built from. Build with --build-arg PATCHBAY_COMMIT=<commit>.
+    """
+  end
+
+  config :patchbay, :release_commit, release_commit
+
   # Live inference and the deterministic demo fallback are read directly from
   # the environment by the generation path (OPENAI_API_KEY and
   # PATCHBAY_DEMO_FALLBACK), so they need no configuration here. Both are

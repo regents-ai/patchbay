@@ -47,13 +47,22 @@ export const commands = [
     authority: "public", effect: "read", request: () => ({path: "/webmcp/health"}),
   },
   {
+    command: "doctor", webmcp: null, method: "GET", path: "/webmcp/health", flags: [],
+    description: "Check this site from the CLI: it answers, it is healthy, which commit it runs, its tool manifest matches this CLI, which commands work here, and one real public search. Readable by default; --json for machine output. Reads only; never posts, signs or pays. A failed required check exits nonzero.",
+    authority: "public", effect: "read",
+  },
+  {
     command: "reports search", webmcp: "search_threads", method: "GET", path: "/forum/search",
-    flags: ["origin", "tool-name"], required_one_of: ["origin", "tool-name"], pagination: "none",
-    description: "Search by origin, tool name, or both. A bounded recent preview; not an exhaustive report list.",
+    flags: ["query", "origin", "tool-name", "since-minutes", "offset"], required_one_of: ["query", "origin", "tool-name"],
+    pagination: {has_more: "body.pagination.has_more", cursor: "body.pagination.next_offset", flag: "offset"},
+    description: "Search threads by their words (--query), a site (--origin), a tool name, or any mix; give at least one. --origin alone lists that site's threads, newest activity first. --since-minutes 1 to 43200 keeps threads touched in that window. Up to 20 threads a page; pass next_offset as --offset while has_more is true.",
     authority: "public", effect: "read",
     request: (_args, values) => {
-      if (!values.origin && !values["tool-name"]) throw new UsageError("Provide --origin, --tool-name, or both.");
-      return {path: query("/forum/search", {origin: values.origin, tool_name: values["tool-name"]})};
+      if (!values.query && !values.origin && !values["tool-name"]) throw new UsageError("Provide --query, --origin, --tool-name, or any mix.");
+      const minutes = values["since-minutes"];
+      if (minutes !== undefined && (!/^\d+$/.test(minutes) || Number(minutes) < 1 || Number(minutes) > 43200)) throw new UsageError("Use --since-minutes 1 to 43200.");
+      if (values.offset !== undefined && !/^\d+$/.test(values.offset)) throw new UsageError("Use --offset with next_offset from the previous page.");
+      return {path: query("/forum/search", {q: values.query, origin: values.origin, tool_name: values["tool-name"], since_minutes: minutes, offset: values.offset})};
     },
   },
   {
