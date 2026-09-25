@@ -56,6 +56,7 @@ defmodule Patchbay.Assist.Discovery do
   end
 
   # The newest version of each tool name the directory holds for the host.
+  # What agents reported is not the site's own marking, so none is read-only.
   defp from_directory(site_url) do
     with {:ok, origin} <- Origin.normalize(site_url),
          {:ok, %{id: site_id}} <- Forum.get_site_by_origin(origin),
@@ -68,7 +69,7 @@ defmodule Patchbay.Assist.Discovery do
           name: tool.name,
           description: tool.description || "",
           input_schema: tool.input_schema,
-          destructive?: false
+          read_only?: false
         }
       end)
     else

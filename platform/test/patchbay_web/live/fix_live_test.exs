@@ -40,6 +40,7 @@ defmodule PatchbayWeb.FixLiveTest do
         %{
           "tool" => "reserve_table",
           "arguments" => %{"party" => 2},
+          "call" => "made",
           "answer" => "Booked, reference R-42",
           "reading" => %{"verdict" => "reached", "confidence" => 0.9, "by" => "jev"}
         },
@@ -48,23 +49,26 @@ defmodule PatchbayWeb.FixLiveTest do
       )
 
     html = render(view)
-    assert html =~ ~s(call     reserve_table {&quot;party&quot;:2})
+    assert html =~ ~s(called   reserve_table {&quot;party&quot;:2})
     assert html =~ "answer   Booked, reference R-42"
-    assert html =~ "jev      reached: the call did what was asked · 90% sure"
+
+    assert html =~
+             "jev      reads the answer as what was asked for · 90% sure (a judgement, not a check)"
 
     # The worker closing its own run.
     {:ok, _done} =
       Assist.finish_run(noted, %{status: :finished, outcome: :reached}, authorize?: false)
 
     html = render(view)
-    assert html =~ "Done. The call below did what you asked."
+    assert html =~ "Jev reads the site&#39;s answer below as what you asked for."
     assert has_element?(view, "#pb-fix-copy[data-copy-target=pb-fix-answer-text]")
     answer = view |> element("#pb-fix-answer-text") |> render()
     assert answer =~ "PATCHBAY FIX  #{PatchbayWeb.Endpoint.url()}/fixes/#{run.id}"
     assert answer =~ "outcome: reached"
-    assert answer =~ "call: reserve_table"
+    assert answer =~ "call made: reserve_table"
     assert answer =~ ~s(arguments: {&quot;party&quot;:2})
     assert answer =~ "site answered: Booked, reference R-42"
+    assert answer =~ "jev&#39;s reading: what was asked for"
   end
 
   test "another browser is sent to the front, and the signed-in person who asked is not",

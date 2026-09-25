@@ -23,7 +23,7 @@ defmodule Patchbay.Assist.McpClient do
           name: String.t(),
           description: String.t(),
           input_schema: map() | nil,
-          destructive?: boolean()
+          read_only?: boolean()
         }
 
   @doc """
@@ -126,7 +126,7 @@ defmodule Patchbay.Assist.McpClient do
 
   # A tool as the run keeps it: name and description cut to size, the schema
   # kept only when it is small enough to draft from, and whether the site
-  # marks the tool as one that changes things.
+  # marks the tool as one that only reads.
   defp shaped_tool(%{"name" => name} = tool) when is_binary(name) do
     description = if is_binary(tool["description"]), do: tool["description"], else: ""
 
@@ -135,12 +135,19 @@ defmodule Patchbay.Assist.McpClient do
         name: String.slice(name, 0, 128),
         description: String.slice(description, 0, 1_000),
         input_schema: bounded_schema(tool["inputSchema"]),
-        destructive?: get_in(tool, ["annotations", "destructiveHint"]) == true
+        read_only?: marked_read_only?(tool)
       }
     ]
   end
 
   defp shaped_tool(_not_a_tool), do: []
+
+  # Read-only only when the site says so outright and does not also say the
+  # tool destroys anything. A tool it leaves unmarked is not read-only.
+  defp marked_read_only?(%{"annotations" => %{"readOnlyHint" => true} = marks}),
+    do: marks["destructiveHint"] != true
+
+  defp marked_read_only?(_unmarked), do: false
 
   defp bounded_schema(%{} = schema) do
     if byte_size(Jason.encode!(schema)) <= @max_schema_bytes, do: schema, else: nil

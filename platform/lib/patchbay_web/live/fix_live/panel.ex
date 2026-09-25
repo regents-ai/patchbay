@@ -3,6 +3,10 @@ defmodule PatchbayWeb.FixLive.Panel do
   A fix as the page shows it: the run's record, one line at a time with the
   moment each was written, in words for a person watching rather than the
   record itself, and the answer at the end in a form an agent can be handed.
+
+  Each tool line says whether the call was made or only suggested, and
+  what Jev made of an answer is shown as Jev's reading: a model's judgement
+  of the site's answer, never a checked result.
   """
 
   alias Patchbay.Assist.Run
@@ -41,8 +45,8 @@ defmodule PatchbayWeb.FixLive.Panel do
 
   @doc """
   The answer for an agent, once the run is closed: the outcome in one line,
-  the call that did it or the call to make, what the site answered, and
-  where this run lives. Nothing while Patchbay is still working.
+  the call made or the call to make, what the site answered, Jev's reading
+  of it, and where this run lives. Nothing while Patchbay is still working.
   """
   @spec answer(Run.t(), String.t()) :: String.t() | nil
   def answer(%Run{status: status}, _url) when status in [:paid, :running], do: nil
@@ -60,10 +64,10 @@ defmodule PatchbayWeb.FixLive.Panel do
   end
 
   # One step of the record as the page reads it.
-  defp step_lines(%{"tool" => tool} = step, start) when is_binary(tool) do
+  defp step_lines(%{"tool" => tool, "call" => call} = step, start) when is_binary(tool) do
     at = at(step, start)
 
-    [line(at, "call", "call     #{tool} #{arguments(step["arguments"])}")]
+    [line(at, "call", "#{call_word(call)} #{tool} #{arguments(step["arguments"])}")]
     |> Kernel.++(answer_line(at, step["answer"]))
     |> Kernel.++(reading_line(at, step["reading"]))
     |> Kernel.++(note_line(at, step["note"]))
@@ -79,7 +83,7 @@ defmodule PatchbayWeb.FixLive.Panel do
   defp reading_line(_at, nil), do: []
 
   defp reading_line(at, %{"verdict" => verdict, "confidence" => confidence}) do
-    [line(at, "jev", "jev      #{verdict_words(verdict)} · #{percent(confidence)} sure")]
+    [line(at, "jev", "jev      reads the answer as #{reading_words(verdict, confidence)}")]
   end
 
   defp reading_line(_at, _unreadable), do: []
@@ -139,17 +143,25 @@ defmodule PatchbayWeb.FixLive.Panel do
   defp percent(confidence) when is_number(confidence), do: "#{round(confidence * 100)}%"
   defp percent(_other), do: "?%"
 
-  defp verdict_words("reached"), do: "reached: the call did what was asked"
+  defp call_word("made"), do: "called  "
+  defp call_word("suggested"), do: "suggest "
+
+  # Jev's reading is a model's judgement of the site's answer, and says so.
+  defp reading_words(verdict, confidence),
+    do: "#{verdict_words(verdict)} · #{percent(confidence)} sure (a judgement, not a check)"
+
+  defp verdict_words("reached"), do: "what was asked for"
   defp verdict_words("try_next"), do: "not this one; trying the next tool"
   defp verdict_words("not_possible"), do: "not possible with these tools"
   defp verdict_words("confusing_instructions"), do: "too unclear to be sure"
   defp verdict_words("needs_sign_in"), do: "the site wants a signed-in user"
   defp verdict_words(other), do: to_string(other)
 
-  defp outcome_words(:reached), do: "Done. The call below did what you asked."
+  defp outcome_words(:reached),
+    do: "Jev reads the site's answer below as what you asked for. Check it before relying on it."
 
   defp outcome_words(:suggested),
-    do: "Patchbay could not make this call from here. Here is the call to make."
+    do: "Patchbay did not make this call. Here is the call to make, and why."
 
   defp outcome_words(:not_possible),
     do: "Not possible with this site's tools. Everything tried is written below."
@@ -176,19 +188,23 @@ defmodule PatchbayWeb.FixLive.Panel do
   defp outcome_line(%Run{status: :failed}),
     do: "failed — Patchbay hit an error; a person at Patchbay will look at it"
 
-  # The call the run ends on: the one that reached the goal, or the one
-  # suggested, with what the site answered to it.
+  # The call the run ends on: the one made, with what the site answered and
+  # Jev's reading of it, or the one suggested, with why it was not made.
   defp call_lines(%Run{outcome: outcome} = run) when outcome in [:reached, :suggested] do
-    case Enum.reverse(run.steps) |> Enum.find(&is_binary(&1["tool"])) do
+    case Enum.reverse(run.steps) |> Enum.find(&is_binary(&1["call"])) do
+      %{"call" => "made"} = step ->
+        ["call made: #{step["tool"]}", "arguments: #{arguments(step["arguments"])}"] ++
+          answer_lines(step["answer"]) ++ jev_lines(step["reading"])
+
+      %{"call" => "suggested"} = step ->
+        [
+          "call to make: #{step["tool"]}",
+          "arguments: #{arguments(step["arguments"])}",
+          step["note"]
+        ]
+
       nil ->
         []
-
-      step ->
-        ["call: #{step["tool"]}", "arguments: #{arguments(step["arguments"])}"] ++
-          if(step["answer"],
-            do: ["site answered: #{one_line(step["answer"], @answer_chars)}"],
-            else: []
-          )
     end
   end
 
@@ -198,4 +214,12 @@ defmodule PatchbayWeb.FixLive.Panel do
 
     if tried == [], do: [], else: ["tried: #{Enum.join(tried, ", ")}"]
   end
+
+  defp answer_lines(nil), do: []
+  defp answer_lines(answer), do: ["site answered: #{one_line(answer, @answer_chars)}"]
+
+  defp jev_lines(%{"verdict" => verdict, "confidence" => confidence}),
+    do: ["jev's reading: #{reading_words(verdict, confidence)}"]
+
+  defp jev_lines(_no_reading), do: []
 end

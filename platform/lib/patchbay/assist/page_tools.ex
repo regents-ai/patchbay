@@ -38,7 +38,7 @@ defmodule Patchbay.Assist.PageTools do
           name: String.t(),
           description: String.t(),
           input_schema: nil,
-          destructive?: false
+          read_only?: false
         }
 
   @doc """
@@ -218,7 +218,7 @@ defmodule Patchbay.Assist.PageTools do
       name: name,
       description: description |> unescape() |> String.slice(0, @max_description_chars),
       input_schema: nil,
-      destructive?: false
+      read_only?: false
     }
   end
 
