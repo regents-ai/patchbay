@@ -10,7 +10,7 @@
  * stray tilt or offset behind.
  */
 import {animate, createScope, spring, stagger, utils} from "animejs"
-import {BASE, EASE_OUT, FAST, SLOW, byPointer, still} from "./shared.js"
+import {BASE, EASE_OUT, FAST, SLOW, byPointer, play, still} from "./shared.js"
 
 const CLOSE = {duration: BASE, ease: "in(3)"}
 
@@ -62,7 +62,8 @@ export const PatchbaySlides = {
       moving.set(el, animate(el, params))
     }
 
-    const opened = () => Object.keys(PANELS).filter(name => !panel(name).hidden)
+    const opened = () =>
+      Object.keys(PANELS).filter(name => openers.get(name)?.getAttribute("aria-expanded") === "true")
 
     this.scope = scope.add(() => {
       scope.add("open", (name, animated) => {
@@ -92,7 +93,7 @@ export const PatchbaySlides = {
         move(el, {...rest(away), ...open})
         const items = el.querySelectorAll("[data-item]")
         if (items.length > 0) {
-          animate(items, {
+          play([...items], {
             opacity: {from: 0},
             y: {from: 10},
             delay: stagger(40, {start: 80}),
@@ -147,7 +148,7 @@ export const PatchbaySlides = {
 
         if (opener !== null) {
           const name = opener.dataset.open
-          panel(name).hidden ? open(name, opener, animated) : close(name, animated)
+          opener.getAttribute("aria-expanded") === "true" ? close(name, animated) : open(name, opener, animated)
         } else if (closer !== null) {
           close(closer.closest("[data-panel]").dataset.panel, animated)
         } else if (event.target.closest("[data-backdrop]") !== null) {

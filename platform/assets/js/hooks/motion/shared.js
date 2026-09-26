@@ -2,7 +2,7 @@
  * What all of Patchbay's motion shares: the design system's timings and
  * curves, and the two questions asked before anything moves.
  */
-import {cubicBezier} from "animejs"
+import {animate, cubicBezier, utils} from "animejs"
 
 export const FAST = 140
 export const BASE = 200
@@ -33,4 +33,19 @@ export const REPLAY = "pb-motion:replay"
 export function onReplay(callback) {
   window.addEventListener(REPLAY, callback)
   return () => window.removeEventListener(REPLAY, callback)
+}
+
+// Anime.js hands an element back to its stylesheet by restoring the inline
+// style it found when the animation began. One begun over another's
+// half-way frame would end on that frame, so each run first puts its
+// elements back as they were before the last run on them began. Every run
+// then starts from rest, and ends there with no inline style left behind.
+const playing = new WeakMap()
+
+export function play(targets, params) {
+  const els = [targets].flat()
+  for (const el of els) playing.get(el)?.revert()
+  const animation = animate(els, {...params, onComplete: done => utils.cleanInlineStyles(done)})
+  for (const el of els) playing.set(el, animation)
+  return animation
 }

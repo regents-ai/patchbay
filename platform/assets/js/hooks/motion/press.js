@@ -8,23 +8,17 @@
  * other presses are named with `data-press`. Sparks, pings and stitches are
  * removed as soon as they finish.
  */
-import {animate, createScope, random, stagger, utils} from "animejs"
-import {EASE_OUT, byPointer, still} from "./shared.js"
+import {animate, createScope, random, stagger} from "animejs"
+import {EASE_OUT, byPointer, play, still} from "./shared.js"
 import {spawn, sweep, sweepAll} from "./fx.js"
 
 // Both end where they began, then hand the element back to its stylesheet,
 // so a hover or press style that moves it still can. One pressed again
-// mid-move starts over from wherever it is.
-const tidy = animation => utils.cleanInlineStyles(animation)
-
+// mid-move starts over from rest.
 export const squish = el =>
-  animate(el, {
-    scale: [{to: 0.9, duration: 90, ease: "out(3)"}, {to: 1, duration: 360, ease: "outBack(3)"}],
-    onComplete: tidy,
-  })
+  play(el, {scale: [{to: 0.9, duration: 90, ease: "out(3)"}, {to: 1, duration: 360, ease: "outBack(3)"}]})
 
-export const nope = el =>
-  animate(el, {x: [0, -7, 6, -4, 2, 0], duration: 380, ease: "inOut(2)", onComplete: tidy})
+export const nope = el => play(el, {x: [0, -7, 6, -4, 2, 0], duration: 380, ease: "inOut(2)"})
 
 // Something was refused. Unlike a press, the shake plays however the refused
 // thing was asked for, because it is the answer, not decoration.
@@ -40,7 +34,7 @@ export const PatchbayPress = {
       squish,
 
       jelly: button =>
-        animate(button, {
+        play(button, {
           scaleX: [1, 1.2, 0.9, 1.05, 0.98, 1],
           scaleY: [1, 0.82, 1.1, 0.96, 1.02, 1],
           duration: 560,

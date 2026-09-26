@@ -7,7 +7,7 @@
  * A live page draws its own parts again whenever it changes, so only what the
  * server drew once moves as the page opens; live lists move from their hooks.
  */
-import {splitText, utils} from "animejs"
+import {splitText} from "animejs"
 import {byPointer, still} from "./hooks/motion/shared.js"
 import {deny, nope, squish} from "./hooks/motion/press.js"
 import {GRIDS, HEADLINES} from "./hooks/motion/reveals.js"
@@ -29,7 +29,7 @@ export function mountMotion(doc = document) {
   const headline = main.querySelector("h1")
   if (headline !== null) rise(headline)
 
-  for (const list of main.querySelectorAll("[data-cascade]")) cascade([...list.children].slice(0, CASCADE))
+  for (const list of main.querySelectorAll("[data-cascade]")) GRIDS.cascade([...list.children].slice(0, CASCADE))
 
   // A form the server sent back refused says why, and the reason shakes once.
   for (const reason of main.querySelectorAll("[role='alert']")) deny(reason)
@@ -48,9 +48,4 @@ function press(event) {
 function rise(headline) {
   const split = splitText(headline, {words: {wrap: "clip"}})
   HEADLINES.rise(split).then(() => split.revert())
-}
-
-function cascade(cards) {
-  const animation = GRIDS.cascade(cards)
-  animation.then(() => utils.cleanInlineStyles(animation))
 }

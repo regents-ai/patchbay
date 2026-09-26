@@ -4,7 +4,7 @@
  * grid of cards that settles into place.
  */
 import {animate, createScope, spring, splitText, stagger, utils} from "animejs"
-import {EASE_IN_OUT, EASE_OUT, SLOW, byPointer, onReplay, still} from "./shared.js"
+import {EASE_IN_OUT, EASE_OUT, SLOW, byPointer, onReplay, play, still} from "./shared.js"
 
 // How the underline travels and how the new panel arrives. `step` is 1 when
 // the chosen tab is to the right of the last one and -1 when it is to the left.
@@ -55,7 +55,7 @@ export const PatchbayTabs = {
         const style = TABS[this.el.dataset.variant]
         animate(ink, style.ink(spot(from), spot(to), ink.offsetWidth))
         const step = tabs.indexOf(tab(to)) > tabs.indexOf(tab(from)) ? 1 : -1
-        animate(this.el.querySelector("[role=tabpanel]"), style.panel(step))
+        play(this.el.querySelector("[role=tabpanel]"), style.panel(step))
       })
 
       const onClick = event => {
@@ -93,9 +93,9 @@ export const PatchbayTabs = {
 // height instead of being converted to pixels from its width.
 export const HEADLINES = {
   rise: split =>
-    animate(split.words, {y: ["100%", "0%"], delay: stagger(50), duration: SLOW, ease: EASE_OUT}),
+    play(split.words, {y: ["100%", "0%"], delay: stagger(50), duration: SLOW, ease: EASE_OUT}),
   cascade: split =>
-    animate(split.chars, {
+    play(split.chars, {
       y: ["-100%", "0%"],
       rotate: {from: -20},
       opacity: {from: 0},
@@ -104,21 +104,21 @@ export const HEADLINES = {
       ease: "outBack(1.8)",
     }),
   type: split =>
-    animate(split.chars, {opacity: {from: 0}, delay: stagger(24), duration: 60, ease: "linear"}),
+    play(split.chars, {opacity: {from: 0}, delay: stagger(24), duration: 60, ease: "linear"}),
 }
 
 export const GRIDS = {
   cascade: cards =>
-    animate(cards, {y: {from: 16}, opacity: {from: 0}, delay: stagger(45), duration: SLOW, ease: EASE_OUT}),
+    play(cards, {y: {from: 16}, opacity: {from: 0}, delay: stagger(45), duration: SLOW, ease: EASE_OUT}),
   bloom: cards =>
-    animate(cards, {
+    play(cards, {
       scale: {from: 0.8},
       opacity: {from: 0},
-      delay: stagger(60, {grid: true, from: "center"}),
+      delay: stagger(60, {grid: [3, Math.ceil(cards.length / 3)], from: "center"}),
       ease: spring({bounce: 0.4, duration: 360}),
     }),
   drop: cards =>
-    animate(cards, {
+    play(cards, {
       y: {from: -40},
       rotate: {from: (_el, i) => (i % 2 ? 6 : -6)},
       opacity: {from: 0},
