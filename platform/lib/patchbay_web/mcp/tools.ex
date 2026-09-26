@@ -78,7 +78,7 @@ defmodule PatchbayWeb.MCP.Tools do
   # for it; the share spent, the answer is the refusal and nothing was done.
   defp wallet_call(name, %{"wallet_address" => wallet} = arguments, meta) do
     case PaymentLimit.check(wallet) do
-      :ok -> WalletTools.run(name, arguments, meta)
+      {:ok, _left} -> WalletTools.run(name, arguments, meta)
       {:wait, seconds} -> {:error, PaymentLimit.refusal(seconds)}
     end
   end

@@ -11,8 +11,10 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   its own hourly share, and nothing here stands between a person and a
   payment.
 
-  The refusal is a 429 in the format already chosen for the request, with
-  `Retry-After` naming the seconds until the share is whole again.
+  Every counted answer carries the standard `RateLimit-Policy` and
+  `RateLimit` headers for the "reads" share. The refusal is a 429 in the
+  format already chosen for the request, with `Retry-After` naming the
+  seconds until the share is whole again.
   """
 
   @behaviour Plug
@@ -20,6 +22,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   import Plug.Conn
 
   alias PatchbayWeb.ClientAddress
+  alias PatchbayWeb.RateLimitHeaders
   alias PatchbayWeb.ReadLimit
 
   @default_reads_per_minute 120
@@ -31,9 +34,11 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   @impl Plug
   def call(conn, _opts) do
     if counted?(conn) do
-      case ReadLimit.hit(ClientAddress.address(conn), @window, reads_per_minute()) do
-        {:allow, _count} -> conn
-        {:deny, wait} -> refuse(conn, wait)
+      quota = reads_per_minute()
+
+      case ReadLimit.hit(ClientAddress.address(conn), @window, quota) do
+        {:allow, count} -> RateLimitHeaders.add(conn, "reads", quota, @window, quota - count)
+        {:deny, wait} -> conn |> RateLimitHeaders.add("reads", quota, @window, 0) |> refuse(wait)
       end
     else
       conn
@@ -52,7 +57,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
     {content_type, body} = body(conn.private[:phoenix_format])
 
     conn
-    |> put_resp_header("retry-after", wait |> div(1000) |> max(1) |> Integer.to_string())
+    |> put_resp_header("retry-after", wait |> RateLimitHeaders.seconds() |> Integer.to_string())
     |> put_resp_content_type(content_type)
     |> send_resp(:too_many_requests, body)
     |> halt()

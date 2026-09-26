@@ -14,19 +14,31 @@ defmodule PatchbayWeb.PaymentLimit do
 
   use Hammer, backend: :ets
 
+  alias PatchbayWeb.RateLimitHeaders
+
   @default_payments_per_minute 10
   @window :timer.minutes(1)
 
   @error "Too many payment requests for this wallet. Wait a minute, then try again."
 
-  @doc "Draws one request on the wallet's share; `{:wait, seconds}` once it is spent."
-  @spec check(String.t()) :: :ok | {:wait, pos_integer()}
+  @doc """
+  Draws one request on the wallet's share: `{:ok, left}` with the requests
+  left in it, or `{:wait, seconds}` once it is spent.
+  """
+  @spec check(String.t()) :: {:ok, non_neg_integer()} | {:wait, pos_integer()}
   def check(wallet) when is_binary(wallet) do
-    case hit(String.downcase(wallet), @window, payments_per_minute()) do
-      {:allow, _count} -> :ok
-      {:deny, wait} -> {:wait, wait |> div(1000) |> max(1)}
+    quota = payments_per_minute()
+
+    case hit(String.downcase(wallet), @window, quota) do
+      {:allow, count} -> {:ok, quota - count}
+      {:deny, wait} -> {:wait, RateLimitHeaders.seconds(wait)}
     end
   end
+
+  @doc "The standard rate-limit headers for the wallet's \"payments\" share."
+  @spec add_headers(Plug.Conn.t(), non_neg_integer()) :: Plug.Conn.t()
+  def add_headers(conn, left),
+    do: RateLimitHeaders.add(conn, "payments", payments_per_minute(), @window, left)
 
   @doc "The refusal every door answers with, naming the seconds until the share is whole again."
   @spec refusal(pos_integer()) :: map()

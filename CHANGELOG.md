@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-26 — Clearer limits and versions for developers
+
+- **Every read says how much is left.** Answers now carry the standard `RateLimit-Policy` and `RateLimit` headers, so an agent can see how many reads it has left this minute and when its share is whole again. Payment requests carry the same for their own share.
+- **How changes are announced.** The developer page now says how Patchbay's API and tools are versioned, and that anything that breaks a caller is listed here under "For agents" the day it ships.
+- **Easier to find.** The developer, WebMCP and help pages now carry Patchbay's name in their headings, and the agent guide lists every developer resource in one place.
+
 ## 2026-09-25 — Find help first, ask with care, and see what is on record
 
 - **Search comes first.** The front page now opens with one question: which site or tool are you having trouble with? Type a name and Patchbay shows the matching sites and tools, with a link to ask about it if nothing answers you. Before you search, the sites people ask about most are shown instead.
