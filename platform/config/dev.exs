@@ -27,8 +27,7 @@ config :patchbay, PatchbayWeb.Endpoint,
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
     crown_island: {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
-    privy_bridge: {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:patchbay, ~w(--watch)]}
+    privy_bridge: {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]}
   ]
 
 # ## SSL Support

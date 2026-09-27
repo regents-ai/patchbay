@@ -68,7 +68,6 @@ defmodule Patchbay.MixProject do
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
@@ -111,7 +110,6 @@ defmodule Patchbay.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": [
-        "tailwind.install --if-missing",
         "esbuild.install --if-missing",
         "cmd npm ci --prefix assets"
       ],
@@ -120,7 +118,6 @@ defmodule Patchbay.MixProject do
         "regent_ui.assets",
         "regent_blog.assets",
         "regent_identity.assets",
-        "tailwind patchbay",
         "esbuild patchbay",
         "esbuild patchbay_crown",
         "esbuild patchbay_privy"
@@ -129,7 +126,6 @@ defmodule Patchbay.MixProject do
         "regent_ui.assets",
         "regent_blog.assets",
         "regent_identity.assets",
-        "tailwind patchbay --minify",
         "esbuild patchbay --minify",
         "esbuild patchbay_crown --minify",
         "esbuild patchbay_privy --minify",

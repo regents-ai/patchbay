@@ -68,7 +68,7 @@ config :esbuild,
   version: "0.25.4",
   patchbay: [
     args:
-      ~w(js/app.js js/error_theme.js js/runtime.js --bundle --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+      ~w(js/app.js js/error_theme.js js/runtime.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ],
@@ -83,17 +83,6 @@ config :esbuild,
       ~w(js/privy_bridge.jsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
-  ]
-
-# Configure tailwind (the version is required)
-config :tailwind,
-  version: "4.3.3",
-  patchbay: [
-    args: ~w(
-      --input=assets/css/app.css
-      --output=priv/static/assets/css/app.css
-    ),
-    cd: Path.expand("..", __DIR__)
   ]
 
 # Configure Elixir's Logger

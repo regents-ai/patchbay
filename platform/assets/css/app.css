@@ -1,3 +1,4 @@
+@import "./base.css";
 @import "../vendor/regent_ui/design_system_tokens.css";
 @import "../vendor/regent_ui/primitives.css";
 @import "./workbench.css";
@@ -10,70 +11,22 @@
 @import "./buttons.css";
 @import "./runtime.css";
 @import "./motion_lab.css";
-/* See the Tailwind configuration guide for advanced usage
-   https://tailwindcss.com/docs/configuration */
-
-@import "tailwindcss" source(none);
-@source "../css";
-@source "../js";
-@source "../../lib/patchbay_web";
-
-/* daisyUI Tailwind Plugin. You can update this file by fetching the latest version with:
-   curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.js
-   Make sure to look at the daisyUI changelog: https://daisyui.com/docs/changelog/ */
-@plugin "../vendor/daisyui" {
-  themes: false;
-}
-
-/* daisyUI theme plugin. You can update this file by fetching the latest version with:
-   curl -sLO https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.js
-   Patchbay paints every element of every page itself. The one thing left to
-   this block is the sheet behind the page, which the not-found page sits
-   straight on, so it is handed Patchbay's own tokens and the shared corner
-   and follows the palette into the dark. */
-@plugin "../vendor/daisyui-theme" {
-  name: "light";
-  default: true;
-  prefersdark: false;
-  color-scheme: "light";
-  --color-base-100: var(--pb-canvas);
-  --color-base-200: var(--pb-canvas-deep);
-  --color-base-300: var(--pb-line);
-  --color-base-content: var(--pb-text);
-  --color-primary: var(--pb-accent);
-  --color-primary-content: var(--pb-accent-ink);
-  --color-secondary: var(--pb-good);
-  --color-secondary-content: var(--pb-surface);
-  --color-accent: var(--pb-ink);
-  --color-accent-content: var(--pb-text-on-ink);
-  --color-neutral: var(--pb-text-muted);
-  --color-neutral-content: var(--pb-surface);
-  --color-info: var(--pb-good);
-  --color-info-content: var(--pb-surface);
-  --color-success: var(--pb-good);
-  --color-success-content: var(--pb-surface);
-  --color-warning: var(--pb-accent);
-  --color-warning-content: var(--pb-accent-ink);
-  --color-error: var(--pb-bad);
-  --color-error-content: var(--pb-surface);
-  --radius-selector: var(--radius);
-  --radius-field: var(--radius);
-  --radius-box: var(--radius);
-  --border: 1px;
-  --depth: 0;
-  --noise: 0;
-}
-
-/* Add variants based on LiveView classes */
-@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
-@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
-@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
 
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
-/* This file is for your main application CSS */
-
+/* Read by assistive technology, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 :root {
   --pb-ink: var(--color-surface);
@@ -428,7 +381,6 @@ body {
 .patchbay-footer strong { color: var(--pb-text); }
 .patchbay-footer code { font-size: var(--pb-fs-micro); }
 #patchbay-room-id code { overflow-wrap: anywhere; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* ---------------------------------------------------------------------------
    The room. Everything below is scoped to the room page, which tells one story

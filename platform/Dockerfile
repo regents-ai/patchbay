@@ -65,11 +65,11 @@ COPY platform/assets assets
 # ABI has to be in the image before anything is compiled.
 COPY contracts/abi ../contracts/abi
 
-# The asset build reads colocated hooks out of the build directory and Tailwind
-# sources out of lib, so the application is compiled first.
+# The asset build reads colocated hooks out of the build directory, so the
+# application is compiled first.
 RUN mix compile
 
-# download the esbuild and tailwind binaries, then build and digest the assets
+# download the esbuild binary, then build and digest the assets
 RUN mix assets.setup
 RUN mix assets.deploy
 

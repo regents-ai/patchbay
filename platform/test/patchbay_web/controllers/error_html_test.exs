@@ -9,7 +9,7 @@ defmodule PatchbayWeb.ErrorHTMLTest do
 
     assert html =~ "There is nothing at this address."
     assert html =~ ~s{class="pb-error"}
-    assert html =~ ~r{<link rel="stylesheet" href="/assets/css/app.css[^"]*">}
+    assert html =~ ~r{<link rel="stylesheet" href="/assets/js/app.css[^"]*">}
 
     assert html =~
              ~r{<a class="pb-cta rg-button rg-button--primary" href="/">\s*<span class="rg-button__label">Back to discussions</span>\s*</a>}

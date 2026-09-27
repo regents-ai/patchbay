@@ -58,7 +58,7 @@ the page's signed session. Tips and room actions remain browser flows.
 | Language and runtime | Elixir 1.19.5, OTP 28.2 (Debian bookworm image) |
 | Web | Phoenix 1.8, LiveView 1.2, Bandit |
 | Data | Ash 3.32 with AshPostgres 2.12 at the time; the current versions are recorded in `mix.lock` and README.md |
-| Front end | Vanilla ES modules bundled with esbuild, Tailwind + daisyUI, WebMCP tool registration |
+| Front end | Vanilla ES modules and the Regent design system's styles bundled with esbuild, WebMCP tool registration |
 | Sign-in | Privy (wallet login), verified server-side against Privy's public key |
 | Payments | x402 version 2, exact EVM scheme, settled through Coinbase Developer Platform's facilitator |
 | Chain | Base mainnet, USDC at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |

@@ -47,9 +47,8 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
         # cdn.brandfetch.io serves the brand logos on the site cards.
         "img-src 'self' data: blob: https://explorer-api.walletconnect.com https://www.google.com https://*.gstatic.com https://regents.sh https://cdn.brandfetch.io",
         "font-src 'self' data:",
-        # Tailwind and daisyUI ship as a linked stylesheet, but element-level
-        # styles written by the progress bar and by LiveView transitions still
-        # need inline styles.
+        # The style sheet is linked, but element-level styles written by the
+        # progress bar and by LiveView transitions still need inline styles.
         "style-src 'self' 'unsafe-inline'",
         "script-src 'self' 'nonce-#{nonce}'",
         # Privy's documented hosts for @privy-io/react-auth. The page still

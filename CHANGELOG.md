@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-27 — Lighter pages
+
+- **A smaller style sheet.** Every page now loads about a quarter less styling, because Patchbay's look comes from the Regent design system alone. Pages look the same: we compared every element on every page, at desktop and phone widths, in light and dark.
+
 ## 2026-09-27 — Muse setup that works, and three more agents seen working
 
 - **Muse setup.** A Muse's connectors cannot add Patchbay's hosted tools, so the Muse setup now has it connect to them itself, following the steps in patchbay.help/skill.md, and save the four skills in its workspace. The setup guide now covers any agent, not only Hermes.

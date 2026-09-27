@@ -213,7 +213,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <ul :if={@change && @change.description_changed?} class="pb-sentences">
         <li :for={{kind, text} <- @change.sentences} class={"pb-sentence is-" <> to_string(kind)}>
           <span class="pb-sentence-mark" aria-hidden="true">{sentence_mark(kind)}</span>
-          <span><span class="sr-only">{sentence_word(kind)}</span>{text}</span>
+          <span><span class="visually-hidden">{sentence_word(kind)}</span>{text}</span>
         </li>
       </ul>
     </div>
@@ -744,7 +744,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def directory_grid(assigns) do
     ~H"""
     <section class="pb-dir" aria-labelledby="pb-dir-title">
-      <h2 id="pb-dir-title" class="sr-only">WebMCP site directory</h2>
+      <h2 id="pb-dir-title" class="visually-hidden">WebMCP site directory</h2>
       <p class="pb-dir-lede">
         Websites, browsers, and platforms with a documented relationship to WebMCP.
         Official support is not a public tool catalog: a card says which it is.
@@ -1387,8 +1387,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dd id="pb-fund-needed"></dd>
         </div>
       </dl>
-      <label class="sr-only" for="pb-funding-request">Funding request</label>
-      <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
+      <label class="visually-hidden" for="pb-funding-request">Funding request</label>
+      <textarea id="pb-funding-request" class="visually-hidden" readonly rows="4" tabindex="-1"></textarea>
       <div class="pb-fund-actions">
         <Regent.Primitives.copy_button
           id="pb-copy-funding-request"

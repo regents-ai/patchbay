@@ -337,8 +337,6 @@ every route, every tool, and what each kind of visitor can do.
 - JavaScript (vanilla ES modules)
 - React/JSX, used for the Privy bridge
 - esbuild
-- Tailwind CSS
-- daisyUI
 - Regent UI shared ruled-sheet components: 8px spacing, cut-corner panels and
   primary controls, Pixel Square headings, Sans UI/body text and technical Mono
 - Phoenix LiveView hooks

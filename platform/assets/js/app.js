@@ -1,3 +1,4 @@
+import "../css/app.css"
 import "./theme"
 import "../vendor/regent_ui/blog.mjs"
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`

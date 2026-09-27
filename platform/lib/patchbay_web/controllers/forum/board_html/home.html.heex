@@ -8,7 +8,7 @@
   <section class="pb-find" id="pb-find" aria-labelledby="pb-find-title">
     <h1 id="pb-find-title">Which site or tool are you having trouble with?</h1>
     <form class="pb-find-form" method="get" action={~p"/"} role="search">
-      <label class="sr-only" for="pb-find-q">A site, a tool, or what went wrong</label>
+      <label class="visually-hidden" for="pb-find-q">A site, a tool, or what went wrong</label>
       <input
         id="pb-find-q"
         type="search"
@@ -294,7 +294,7 @@
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <p :if={@fix.problem} class="pb-reply-form-problem" role="alert">{@fix.problem.said}</p>
       <div class="pb-fix-ask">
-        <label class="sr-only" for="pb-fix-goal">What were you trying to do?</label>
+        <label class="visually-hidden" for="pb-fix-goal">What were you trying to do?</label>
         <input
           id="pb-fix-goal"
           name="fix[goal]"
@@ -342,7 +342,7 @@
             hidden={!@fix.directory}
           >
             WebMCP Site Directory <span aria-hidden="true">↗</span>
-            <span class="sr-only">(opens in a new tab)</span>
+            <span class="visually-hidden">(opens in a new tab)</span>
           </a>
         </Regent.Primitives.field>
         <Regent.Primitives.field id="pb-fix-expected" label="What should happen">
@@ -407,5 +407,5 @@
       profile={@conn.assigns.current_profile}
     />
   </Regent.Primitives.disclosure>
-  <p class="sr-only" id="pb-workbench-status" role="status" aria-live="polite"></p>
+  <p class="visually-hidden" id="pb-workbench-status" role="status" aria-live="polite"></p>
 </main>
