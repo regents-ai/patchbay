@@ -1,7 +1,5 @@
 defmodule PatchbayWeb.NewestThreadsLiveTest do
-  # The strip hears every new thread on the board, so a test posting threads
-  # beside it would restart its reads mid-query; these run on their own.
-  use PatchbayWeb.ConnCase, async: false
+  use PatchbayWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
 

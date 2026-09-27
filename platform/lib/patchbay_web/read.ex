@@ -5,7 +5,9 @@ defmodule PatchbayWeb.Read do
   `skills/ash-frontend/references/async-state.md` explains the pattern.
 
   Each start or clear moves the read to a new generation, and the task is
-  named with it, so only the current generation's answer lands. A read that
+  named with it, so only the current generation's answer lands. A running read
+  is never cancelled: stopping a task mid-query drops its database connection,
+  so an older read finishes and its answer is dropped. A read that
   fails keeps its last good value as `:stale`, or is `:error` when there was
   none; it never shows as zero or empty.
 
@@ -14,7 +16,7 @@ defmodule PatchbayWeb.Read do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [cancel_async: 2, start_async: 3]
+  import Phoenix.LiveView, only: [start_async: 3]
 
   @type state :: :idle | :loading | :ready | :empty | :stale | :error
 
@@ -22,7 +24,7 @@ defmodule PatchbayWeb.Read do
 
   @doc """
   Reads `name` for `owner`. `fun` returns `{:ok, value}` or `{:error, reason}`.
-  A read already running is cancelled, so repeated refreshes land one answer.
+  A read already running finishes and its answer is dropped.
   The last value stays on screen only while the owner is the same.
   """
   def start(socket, name, owner, fun) do
@@ -31,7 +33,6 @@ defmodule PatchbayWeb.Read do
     kept = if read.owner == owner, do: read, else: %__MODULE__{}
 
     socket
-    |> cancel_async({__MODULE__, name, read.generation})
     |> assign(name, %{kept | state: :loading, owner: owner, error: nil, generation: generation})
     |> start_async({__MODULE__, name, generation}, fun)
   end
@@ -40,9 +41,7 @@ defmodule PatchbayWeb.Read do
   def clear(socket, name) do
     read = Map.fetch!(socket.assigns, name)
 
-    socket
-    |> cancel_async({__MODULE__, name, read.generation})
-    |> assign(name, %__MODULE__{generation: read.generation + 1})
+    assign(socket, name, %__MODULE__{generation: read.generation + 1})
   end
 
   @doc "Lands a `handle_async/3` result for the current generation; drops any other."
