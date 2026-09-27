@@ -44,25 +44,13 @@ dismiss it or reverse a payment.
 
 ## Shared dependencies
 
-Use the published, exact revisions in [the baseline dependency record](docs/BASELINE_DEPENDENCIES.md).
-That record also distinguishes current source verification from live deployment readiness.
-
-From a directory containing sibling product repositories, acquire the shared libraries:
-
-```sh
-git clone https://github.com/regents-ai/design-system.git
-git clone https://github.com/regents-ai/elixir-utils.git
-git clone https://github.com/regents-ai/regents.git
-```
-
-The expected layout is `<workspace>/<product>/platform`,
-`<workspace>/design-system/regent_ui`, `<workspace>/elixir-utils/` and
-`<workspace>/regents/identity`.
-From this component directory, `REGENT_DEPS_ROOT` may point at `<workspace>` when
-it is elsewhere. Individual packages may instead be selected with `REGENT_UI_PATH`,
-`REGENT_PRIVY_PATH` and `REGENT_IDENTITY_PATH`. Record all three repository commit IDs with check results;
-release builds and isolated agent worktrees must use their selected immutable
-revisions, rather than updating sibling checkouts during verification.
+The shared Regent libraries (`regent_ui`, `regent_identity`, `regent_privy`,
+`regent_blog`, `regent_agent_access`, `siwa` and `credo_ash`) are git
+dependencies pinned in `mix.exs` to one published commit per repository:
+design-system, regents and elixir-utils. `mix deps.get` fetches them; no sibling
+checkout is needed. To move a pin, change its ref and run `mix deps.update <name>`.
+`make check-required-fixes` checks the pins and Hex versions against ash-template's
+list of required security fixes.
 Do not clone recursive Solidity submodules for a web-only change.
 
 ## Quick start
@@ -70,7 +58,7 @@ Do not clone recursive Solidity submodules for a web-only change.
 Requirements: Elixir/Erlang, PostgreSQL, and Node.js/npm. The application uses
 the versions accepted by `mix.exs` and stores local data in PostgreSQL.
 
-After acquiring the shared dependencies, run from `platform/` against a fresh local
+Run from `platform/` against a fresh local
 `patchbay_dev` database:
 
 ```sh
@@ -408,8 +396,7 @@ The handoff names one hosting provider: Fly.io.
 - Hosting: Fly.io
 - Fly application: `patchbay-regents`
 - Production domain: [patchbay.help](https://patchbay.help)
-- Release preparation: `mix regent_ui.stage` with the selected `REGENT_UI_PATH` includes the shared UI in the build context.
-- Deployment from the monorepo root after preparation: `fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false --build-arg PATCHBAY_COMMIT=<full commit>`
+- Deployment from the monorepo root: `fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false --build-arg PATCHBAY_COMMIT=<full commit>`
 - Secrets/configuration: Fly secrets
 - Database connection: PostgreSQL through `DATABASE_URL`
 - Health endpoint: `/webmcp/health`
@@ -466,17 +453,7 @@ for the judge walkthrough, and [docs/DEPLOY.md](docs/DEPLOY.md) for hosting. The
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 
-## Shared UI in release builds
-
-The UI source remains in `design-system/regent_ui`. Before a standalone Docker or
-Fly build, prepare the release worktree and run
-`mix regent_ui.stage`.
-Staging requires the selected pinned dependency snapshot, verifies package content,
-and records its revision and SHA256 in `.regent-ui-generated`. Keep that evidence
-with the release. This creates ignored `vendor/regent_ui`; the Dockerfile uses that generated
-copy through `REGENT_UI_PATH`. Staging performs no remote action. Previous generated
-copies remain in ignored `vendor/.regent-ui-history`, excluded from Docker contexts.
-For isolated verification, `REGENT_DEPS_ROOT` selects the worktree's pinned libraries.
+## Shared UI in builds
 
 In every build, `mix regent_ui.assets` (part of `mix assets.build`) copies the shared
 stylesheets into ignored `assets/vendor/regent_ui/` and stages the shared images and
@@ -486,15 +463,9 @@ shared tokens; `app.css` declares no fonts of its own.
 
 ## Shared profile release inputs
 
-Run `mix regent_identity.stage` through the prepared worktree with pinned
-`REGENT_IDENTITY_REVISION` and `REGENT_PRIVY_REVISION`, alongside `mix regent_ui.stage`.
-Also run `mix regent_blog.stage` with the selected `REGENT_BLOG_PATH` and exact
-`REGENT_BLOG_REVISION` before every Docker/Fly build. It refreshes both
-`vendor/regent_blog` and `vendor/regent_blog_content`; reusing old generated blog
-content can otherwise ship stale posts. See [`../blog/README.md`](../blog/README.md).
-Shared packages must match their snapshot manifests. The generated vendor
-packages are build inputs; staging does not migrate a database or deploy.
-The Regents release owner alone runs `RegentIdentity.Migrator.up(Repo)` on the
+The image build fetches the pinned identity, Privy and blog libraries like any
+other dependency and copies this repository's `blog/` folder in directly; see
+[`../blog/README.md`](../blog/README.md). The Regents release owner alone runs `RegentIdentity.Migrator.up(Repo)` on the
 identified shared destination, before enabling profiles on consumers.
 
 For the reviewed shared-database cutover, `PATCHBAY_DB_SCHEMA=patchbay` selects the
@@ -511,13 +482,8 @@ See [the CLI wallet flow](../cli/docs/wallet-author.md) and the served
 trusted SIWA broker; its Patchbay wallet audience must also be enabled. No receipt
 secret belongs in Patchbay. HTTPS is required outside loopback fixtures.
 
-Local builds resolve SIWA from the same pinned `REGENT_DEPS_ROOT` as other shared
-libraries; `REGENT_SIWA_PATH` can select the frozen package directly. Before Docker
-packaging, copy the reviewed snapshot's `elixir-utils/siwa/siwa-elixir/apps/siwa`
-package into ignored `platform/vendor/siwa` in the release worktree, alongside the
-existing staged identity and UI packages. Record its full elixir-utils revision
-and content digest with release evidence. Docker resolves `REGENT_SIWA_PATH` to
-that package. Never substitute a mutable sibling checkout.
+SIWA is pinned in `mix.exs` with the other elixir-utils libraries, at the same
+commit.
 
 The additive wallet-author migration keeps historical Privy rows intact. A rollback
 with autonomous authors or sessionless reports deliberately fails instead of dropping

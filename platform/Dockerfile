@@ -41,17 +41,10 @@ RUN mix local.hex --force && \
 
 # set build ENV
 ENV MIX_ENV="prod"
-ENV REGENT_PRIVY_PATH="/app/platform/vendor/regent_privy_shared"
-ENV REGENT_IDENTITY_PATH="/app/platform/vendor/regent_identity"
-ENV REGENT_SIWA_PATH="/app/platform/vendor/siwa"
-ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
-ENV REGENT_BLOG_PATH="/app/platform/vendor/regent_blog"
-ENV REGENT_AGENT_ACCESS_PATH="/app/platform/vendor/regent_agent_access"
-
-# install mix dependencies
+# install mix dependencies; the shared Regent libraries come from GitHub at the
+# commits mix.exs pins
 COPY platform/mix.exs platform/mix.lock ./
-COPY platform/vendor vendor
 RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
@@ -64,7 +57,7 @@ RUN mix deps.compile
 COPY platform/priv priv
 COPY platform/lib lib
 COPY CHANGELOG.md /app/CHANGELOG.md
-COPY platform/vendor/regent_blog_content /app/blog
+COPY blog /app/blog
 COPY platform/assets assets
 
 # The escrow module compiles the contract's ABI straight into itself, so the
@@ -105,8 +98,6 @@ RUN chown nobody /app
 
 # set runner ENV
 ENV MIX_ENV="prod"
-ENV REGENT_SIWA_PATH="/app/platform/vendor/siwa"
-ENV REGENT_UI_PATH="/app/platform/vendor/regent_ui"
 
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/platform/_build/${MIX_ENV}/rel/patchbay ./

@@ -1,6 +1,15 @@
 defmodule Patchbay.MixProject do
   use Mix.Project
 
+  # Shared Regent libraries, each pinned to one published commit. To move a pin,
+  # change its ref and run `mix deps.update <name>`.
+  @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
+  @elixir_utils_ref "b8691b1ae91797f9acd5b2c9f6aa392d111cbd54"
+  @design_system "https://github.com/regents-ai/design-system.git"
+  @design_system_ref "a64ec86721a171faea39ae525a9478daa1f66847"
+  @regents "https://github.com/regents-ai/regents.git"
+  @regents_ref "0d5d18c2f4501a6a5bd00b0bedb005677d8876cc"
+
   def project do
     [
       app: :patchbay,
@@ -39,19 +48,10 @@ defmodule Patchbay.MixProject do
   #
   # Type `mix help deps` for examples and options.
   defp deps do
-    shared = System.get_env("REGENT_DEPS_ROOT", Path.expand("../..", __DIR__))
-
     [
-      {:regent_ui,
-       path: System.get_env("REGENT_UI_PATH", Path.join(shared, "design-system/regent_ui"))},
-      {:regent_blog,
-       path: System.get_env("REGENT_BLOG_PATH", Path.join(shared, "elixir-utils/blog"))},
-      {:regent_agent_access,
-       path:
-         System.get_env(
-           "REGENT_AGENT_ACCESS_PATH",
-           Path.join(shared, "elixir-utils/agent_access")
-         )},
+      {:regent_ui, git: @design_system, ref: @design_system_ref, sparse: "regent_ui"},
+      {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
+      {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -75,15 +75,9 @@ defmodule Patchbay.MixProject do
       {:jason, "~> 1.2"},
       {:mdex, "~> 0.13"},
       {:regent_privy,
-       path: System.get_env("REGENT_PRIVY_PATH", Path.join(shared, "elixir-utils/privy"))},
-      {:regent_identity,
-       path: System.get_env("REGENT_IDENTITY_PATH", Path.join(shared, "regents/identity"))},
-      {:siwa,
-       path:
-         System.get_env(
-           "REGENT_SIWA_PATH",
-           Path.join(shared, "elixir-utils/siwa/siwa-elixir/apps/siwa")
-         )},
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
+      {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},
+      {:siwa, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "siwa/siwa-elixir/apps/siwa"},
       {:x402, "0.6.0"},
       {:ethers, "0.8.0"},
       {:ex_secp256k1, "~> 0.7"},
@@ -94,7 +88,11 @@ defmodule Patchbay.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:credo_ash,
-       path: Path.join(shared, "elixir-utils/credo_ash"), only: [:dev, :test], runtime: false}
+       git: @elixir_utils,
+       ref: @elixir_utils_ref,
+       sparse: "credo_ash",
+       only: [:dev, :test],
+       runtime: false}
     ]
   end
 
