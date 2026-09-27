@@ -106,6 +106,9 @@ config :patchbay, :brandfetch_client_id, "1idVbUBAKPkFD9MEPEc"
 # runs the browser for site cards and holds no keys.
 config :patchbay, :shots_url, "http://patchbay-shots.flycast"
 
+# Rate limits key on the direct peer. Production turns on Fly's client header.
+config :patchbay, :behind_fly_proxy, false
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

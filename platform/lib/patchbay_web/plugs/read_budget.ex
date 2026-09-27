@@ -35,8 +35,9 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   def call(conn, _opts) do
     if counted?(conn) do
       quota = reads_per_minute()
+      {address, _source} = ClientAddress.key(conn)
 
-      case ReadLimit.hit(ClientAddress.address(conn), @window, quota) do
+      case ReadLimit.hit(address, @window, quota) do
         {:allow, count} -> RateLimitHeaders.add(conn, "reads", quota, @window, quota - count)
         {:deny, wait} -> conn |> RateLimitHeaders.add("reads", quota, @window, 0) |> refuse(wait)
       end

@@ -1,58 +1,65 @@
 defmodule PatchbayWeb.ClientAddress do
   @moduledoc """
-  The connection a request came in on, and the key Patchbay counts that
-  connection's free fixes by.
+  The address a request's rate limits are keyed by.
 
-  Fly's proxy names the caller in a header; a request that did not come
-  through it, as in development, is known by its own socket. The key is
-  derived from the address with the application's secret, so a run can be
-  counted against the connection it came from without the address itself
-  being written anywhere, and nothing can turn the key back into it.
-
-  An IPv6 connection is counted by its first 64 bits: one home or one
-  server is handed a whole block of that size and can pick any address in
-  it, so a key per address would be a free fix per address.
+  Production runs only behind Fly's proxy, which terminates the connection, so
+  the peer is the proxy and the client address arrives in the one header the
+  proxy sets itself, replacing any value a client sent. Anywhere else nothing
+  replaces that header, so the direct peer decides and no request header is
+  read. `X-Forwarded-For` is never read: a client writes its first entries.
   """
 
-  import Plug.Conn, only: [get_req_header: 2]
+  @behind_fly_proxy Application.compile_env!(:patchbay, :behind_fly_proxy)
+
+  @doc """
+  The limiter key for `conn` and where it came from.
+
+  Behind Fly, anything but exactly one parseable `Fly-Client-IP` keys the
+  proxy-wide peer bucket rather than a second header a client could forge
+  itself a private budget with.
+  """
+  @spec key(Plug.Conn.t()) :: {:inet.ip_address(), :client_header | :peer | :peer_fallback}
+  def key(conn) do
+    if @behind_fly_proxy, do: fly_client(conn), else: {normalized(conn.remote_ip), :peer}
+  end
+
+  defp fly_client(conn) do
+    with [value] <- Plug.Conn.get_req_header(conn, "fly-client-ip"),
+         {:ok, address} <- value |> :binary.bin_to_list() |> :inet.parse_strict_address() do
+      {normalized(address), :client_header}
+    else
+      _absent_duplicated_or_unparseable -> {normalized(conn.remote_ip), :peer_fallback}
+    end
+  end
+
+  # The mapped and compatible IPv6 spellings of one IPv4 address share its
+  # bucket, and a genuine IPv6 client is keyed by its /64 so one host cannot
+  # spend the budget once per address in the block it was handed. The key is
+  # never persisted, rendered or logged; it lives only in the limiter.
+  defp normalized({_, _, _, _} = ipv4), do: ipv4
+
+  defp normalized({0, 0, 0, 0, 0, embedding, high, low}) when embedding in [0, 0xFFFF] do
+    <<a, b, c, d>> = <<high::16, low::16>>
+    {a, b, c, d}
+  end
+
+  defp normalized({a, b, c, d, _, _, _, _}), do: {a, b, c, d, 0, 0, 0, 0}
 
   @salt "patchbay visitor key"
 
-  @doc "The address the request came from, as text."
-  @spec address(Plug.Conn.t()) :: String.t()
-  def address(conn) do
-    case get_req_header(conn, "fly-client-ip") do
-      [address | _] -> address
-      [] -> conn.remote_ip |> :inet.ntoa() |> to_string()
-    end
-  end
-
-  @doc "The key the request's connection is counted by: keyed, one way, never the address."
+  @doc """
+  The key a connection's free fixes are counted by (Patchbay only): the
+  limiter key's address, run one way through the application's secret, so
+  runs can store it and nothing can turn it back into the address.
+  """
   @spec visitor_key(Plug.Conn.t()) :: String.t()
   def visitor_key(conn) do
+    {address, _source} = key(conn)
     secret = PatchbayWeb.Endpoint.config(:secret_key_base)
-    key = Plug.Crypto.KeyGenerator.generate(secret, @salt, cache: Plug.Crypto.Keys)
+    hmac_key = Plug.Crypto.KeyGenerator.generate(secret, @salt, cache: Plug.Crypto.Keys)
 
     :hmac
-    |> :crypto.mac(:sha256, key, counted(address(conn)))
+    |> :crypto.mac(:sha256, hmac_key, address |> :inet.ntoa() |> to_string())
     |> Base.encode16(case: :lower)
-  end
-
-  # The part of the address a connection is counted by: all of an IPv4
-  # address, the network half of an IPv6 one.
-  defp counted(address) do
-    case :inet.parse_address(String.to_charlist(address)) do
-      {:ok, {0, 0, 0, 0, 0, 0xFFFF, high, low}} ->
-        to_string(:inet.ntoa({div(high, 256), rem(high, 256), div(low, 256), rem(low, 256)}))
-
-      {:ok, {a, b, c, d, _e, _f, _g, _h}} ->
-        to_string(:inet.ntoa({a, b, c, d, 0, 0, 0, 0})) <> "/64"
-
-      {:ok, ipv4} ->
-        to_string(:inet.ntoa(ipv4))
-
-      {:error, :einval} ->
-        address
-    end
   end
 end

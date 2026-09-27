@@ -7,6 +7,9 @@ import Config
 # before starting your production server.
 config :patchbay, PatchbayWeb.Endpoint, cache_static_manifest: "priv/static/cache_manifest.json"
 
+# Every request reaches production through Fly's proxy, which sets Fly-Client-IP.
+config :patchbay, :behind_fly_proxy, true
+
 # Force using SSL in production. This also sets the "strict-transport-security" header,
 # known as HSTS. Note `:force_ssl` is required to be set at compile-time.
 #

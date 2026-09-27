@@ -65,7 +65,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     again =
       conn
       |> recycle()
-      |> put_req_header("fly-client-ip", address)
+      |> from(address)
       |> post(~p"/fixes", %{"fix" => @form})
 
     assert redirected_to(again) == "/fixes/#{id}"
@@ -198,7 +198,10 @@ defmodule PatchbayWeb.Forum.FixTest do
     refute key("203.0.113.9") == key("203.0.113.10")
   end
 
-  defp from(conn, address), do: put_req_header(conn, "fly-client-ip", address)
+  defp from(conn, address) do
+    {:ok, ip} = :inet.parse_address(String.to_charlist(address))
+    %{conn | remote_ip: ip}
+  end
 
   defp signed_in(conn, person) do
     conn

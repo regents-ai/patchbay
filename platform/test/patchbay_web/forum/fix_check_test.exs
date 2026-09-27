@@ -154,7 +154,10 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
 
   defp fix(site_url), do: Map.put(@form, "site_url", site_url)
 
-  defp from(conn, address), do: put_req_header(conn, "fly-client-ip", address)
+  defp from(conn, address) do
+    {:ok, ip} = :inet.parse_address(String.to_charlist(address))
+    %{conn | remote_ip: ip}
+  end
 
   defp address, do: "198.51.100.#{System.unique_integer([:positive]) |> rem(250) |> Kernel.+(1)}"
 end
