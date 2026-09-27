@@ -5,7 +5,7 @@ defmodule PatchbayWeb.ErrorHTMLTest do
   import Phoenix.Template, only: [render_to_string: 4]
 
   test "renders 404.html as a styled page with a way home" do
-    html = render_to_string(PatchbayWeb.ErrorHTML, "404", "html", [])
+    html = render_to_string(PatchbayWeb.ErrorHTML, "404", "html", conn: build_conn())
 
     assert html =~ "There is nothing at this address."
     assert html =~ ~s{class="pb-error"}
@@ -22,7 +22,7 @@ defmodule PatchbayWeb.ErrorHTMLTest do
   end
 
   test "renders 500.html" do
-    html = render_to_string(PatchbayWeb.ErrorHTML, "500", "html", [])
+    html = render_to_string(PatchbayWeb.ErrorHTML, "500", "html", conn: build_conn())
     assert html =~ "This page is unavailable."
     assert html =~ ~s(href="")
     assert html =~ ~s(role="alert")

@@ -14,4 +14,7 @@ defmodule PatchbayWeb.ErrorHTML do
   def render(template, _assigns) do
     Phoenix.Controller.status_message_from_template(template)
   end
+
+  # The theme the visitor chose, read from their cookie as every page reads it.
+  defp theme(conn), do: PatchbayWeb.Plugs.Theme.call(conn, []).assigns.theme
 end

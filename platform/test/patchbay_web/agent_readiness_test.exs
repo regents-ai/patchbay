@@ -201,7 +201,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       [json] =
         Regex.run(
-          ~r{<script type="application/ld\+json" nonce="[^"]+">\s*(.*?)\s*</script>}s,
+          ~r{<script type="application/ld\+json">\s*(.*?)\s*</script>}s,
           html,
           capture: :all_but_first
         )

@@ -1,15 +1,21 @@
 defmodule PatchbayWeb.Router do
   use PatchbayWeb, :router
 
-  # PatchbayWeb.Plugs.BrowserPolicy sets the Content-Security-Policy, with a nonce.
-  # sobelow_skip ["Config.CSP"]
+  alias PatchbayWeb.ContentSecurityPolicy
+
   pipeline :browser do
     plug :accepts, ["html", "md"]
     plug :fetch_session
     plug :fetch_live_flash
+    plug PatchbayWeb.Plugs.Theme
     plug :put_root_layout, html: {PatchbayWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+
+    # Every page carries the sign-in button.
+    plug :put_secure_browser_headers, %{
+      "content-security-policy" => ContentSecurityPolicy.sign_in()
+    }
+
     plug PatchbayWeb.Plugs.BrowserPolicy
     plug PatchbayWeb.Plugs.ForumSession, issue: true
     plug PatchbayWeb.Plugs.CurrentProfile
@@ -274,12 +280,18 @@ defmodule PatchbayWeb.Router do
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
-    scope "/dev" do
-      pipe_through :browser
+    # The dashboard and the mailbox write their own script and style elements.
+    pipeline :dev_tools do
+      plug :put_secure_browser_headers, %{
+        "content-security-policy" =>
+          "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      }
+    end
 
-      live_dashboard "/dashboard",
-        metrics: PatchbayWeb.Telemetry,
-        csp_nonce_assign_key: :csp_nonce
+    scope "/dev" do
+      pipe_through [:browser, :dev_tools]
+
+      live_dashboard "/dashboard", metrics: PatchbayWeb.Telemetry
 
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end

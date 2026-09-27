@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-brand="patchbay" data-theme="light">
+<html lang="en" data-brand="patchbay" data-theme={theme(@conn)}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="stylesheet" href={~p"/assets/js/app.css"} />
-    <script defer src={~p"/assets/js/error_theme.js"}>
+    <script defer src={~p"/assets/js/theme.js"}>
     </script>
   </head>
   <body>

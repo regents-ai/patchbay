@@ -23,11 +23,10 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert [policy] = get_resp_header(conn, "content-security-policy")
 
     refute policy =~ "unsafe-eval"
-    assert policy =~ "default-src 'self'"
-    assert policy =~ "object-src 'none'"
+    assert policy =~ "default-src 'none'"
+    assert policy =~ "script-src 'self' https://challenges.cloudflare.com;"
     assert policy =~ "frame-ancestors 'none'"
-    assert policy =~ "connect-src 'self' ws://www.example.com wss://www.example.com"
-    assert policy =~ "https://auth.privy.io"
+    assert policy =~ "connect-src 'self' https://auth.privy.io"
     assert policy =~ "https://explorer-api.walletconnect.com"
     assert policy =~ "https://www.google.com"
     assert policy =~ "https://*.gstatic.com"

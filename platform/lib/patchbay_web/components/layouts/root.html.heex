@@ -1,16 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-brand="patchbay" data-theme="light">
+<html lang="en" data-brand="patchbay" data-theme={@theme}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#F6F4EA" />
-    <script nonce={@csp_nonce}>
-      try {
-        const saved = localStorage.getItem("patchbay-theme")
-        document.documentElement.dataset.theme = saved === "dark" ? "dark" : "light"
-      } catch {}
-    </script>
+    <meta name="theme-color" content={if @theme == "dark", do: "#0F0F10", else: "#F6F4EA"} />
     <meta name="csrf-token" content={get_csrf_token()} />
     <%!-- Who the page is being read by, and which Privy application it signs
     in against. The bridge that does the signing in is fetched only when
@@ -35,7 +29,6 @@
       sitemap={url(~p"/sitemap.xml")}
       service_description={url(~p"/openapi.json")}
       structured_data={PatchbayWeb.Layouts.structured_data()}
-      nonce={@csp_nonce}
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />

@@ -29,6 +29,10 @@ defmodule PatchbayWeb.Endpoint do
     only: PatchbayWeb.static_paths(),
     raise_on_missing_only: code_reloading?
 
+  # Everything else, error pages included, is served under the strict policy
+  # unless its pipeline sets another.
+  plug :put_reading_policy
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
@@ -64,4 +68,8 @@ defmodule PatchbayWeb.Endpoint do
   plug Plug.Session, @session_options
   plug PatchbayWeb.Plugs.ReadBudget
   plug PatchbayWeb.Router
+
+  defp put_reading_policy(conn, _opts) do
+    put_resp_header(conn, "content-security-policy", PatchbayWeb.ContentSecurityPolicy.reading())
+  end
 end
