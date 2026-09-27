@@ -26,16 +26,20 @@
         <p>
           Patchbay uses <strong>x402 version 2</strong>, the <strong>exact EVM</strong>
           payment scheme, and native <strong>USDC on Base mainnet</strong>. The WebMCP tool runs in the open page. The page already
-          has the session and Privy wallet: it creates the payment intent, receives the 402, asks the
-          connected wallet to sign the exact EIP-3009 authorization those terms name, retries the same
-          intent with <code>PAYMENT-SIGNATURE</code>, and returns one structured result to the agent.
+          has the session and Privy wallet: it creates the payment intent and receives a 402 whose
+          <code>review</code>
+          holds the EIP-3009 authorization Patchbay wrote for the wallet the page has
+          open, when that wallet is on the signed-in account. The page asks that wallet to sign exactly
+          the review, sends back <code>active_wallet</code>, <code>review_id</code>
+          and <code>signature</code>
+          for the same intent, and returns one structured result to the agent.
         </p>
         <pre><code>WebMCP call
 → Patchbay freezes the terms
-→ 402 Payment Required
-→ the page asks the signed-in wallet to authorize exactly those terms
-→ the page retries the same payment intent
-→ Patchbay verifies and settles it
+→ 402 Payment Required, with the authorization Patchbay wrote for the open wallet
+→ the page asks that wallet to sign exactly that authorization
+→ the page sends the signature back for the same payment intent
+→ Patchbay checks who signed, then verifies and settles it
 → the tool returns a receipt</code></pre>
         <p>
           The agent should not construct a payment transaction, alter the amount or recipient, or ask a human for a private key. The paying wallet needs USDC. It does not need Base ETH for this x402 authorization: the wallet signs an EIP-3009 authorization offchain and the facilitator submits the settlement transaction.
@@ -132,12 +136,14 @@
               <td>EIP-3009 <code>TransferWithAuthorization</code></td>
             </tr>
             <tr>
-              <th>Challenge header</th>
-              <td><code>PAYMENT-REQUIRED</code></td>
+              <th>What the page signs</th>
+              <td>The <code>review</code> in the 402 answer</td>
             </tr>
             <tr>
-              <th>Payment header</th>
-              <td><code>PAYMENT-SIGNATURE</code></td>
+              <th>What the page sends back</th>
+              <td>
+                <code>active_wallet</code>, <code>review_id</code> and <code>signature</code>
+              </td>
             </tr>
             <tr>
               <th>Settlement header</th>
@@ -150,8 +156,10 @@
           </tbody>
         </table>
         <p>
-          Use these header names and the CAIP-2 network id. Do not send older
-          <code>X-PAYMENT-REQUIRED</code>
+          The hosted MCP server and <code>/api/agent</code>
+          use the x402 headers <code>PAYMENT-REQUIRED</code>, <code>PAYMENT-SIGNATURE</code>
+          and <code>PAYMENT-RESPONSE</code>
+          and the CAIP-2 network id. Do not send older <code>X-PAYMENT-REQUIRED</code>
           headers or a <code>"network": "base"</code>
           field.
         </p>
@@ -297,7 +305,7 @@ Tell me when the transfer is complete.</code></pre>
         <h3>Safe retries</h3>
         <p>
           Never create a fresh payment merely because the signed retry returned a server error. If the
-          payment may have reached the facilitator, repeat the same intent with the same <code>PAYMENT-SIGNATURE</code>, or read that intent’s state. Do not generate a second
+          payment may have reached the facilitator, repeat the same intent with the same signature and review id, or read that intent’s state. Do not generate a second
           authorization until Patchbay has established that the first payment did not settle. On a 5xx
           with no <code>PAYMENT-RESPONSE</code>, this page replays that same signed execute a bounded
           number of times.

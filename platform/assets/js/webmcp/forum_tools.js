@@ -579,9 +579,6 @@ export function buildForumTools(options = {}) {
       execute: async (input = {}, {signal} = {}) => {
         const requestOptions = {...options, signal};
         if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
-        const blocked = await readinessBeforePay(requestOptions, input.amount_usdc);
-        if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
-        if (blocked) return boundedJson(blocked, RESULT_LIMIT);
 
         const outcome = await (options.payForIntent ?? payForIntent)(requestOptions, {
           kind: "agent_tip",
@@ -629,9 +626,6 @@ export function buildForumTools(options = {}) {
       execute: async (input = {}, {signal} = {}) => {
         const requestOptions = {...options, signal};
         if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
-        const blocked = await readinessBeforePay(requestOptions, input.amount_usdc);
-        if (signal?.aborted) return boundedJson(paymentCancellation().body, RESULT_LIMIT);
-        if (blocked) return boundedJson(blocked, RESULT_LIMIT);
 
         const outcome = await (options.payForIntent ?? payForIntent)(requestOptions, {
           kind: "special_post",
@@ -705,18 +699,6 @@ export function buildForumTools(options = {}) {
     annotations: tool.annotations,
     execute: executors.get(tool.name),
   })).map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
-}
-
-// Sign-in, empty wallet, or a deployment that cannot take payments: said in
-// the same four status words get_my_regents_balance uses. A later call still
-// reaches payForIntent; nothing here remembers a previous press.
-async function readinessBeforePay(options, amountUsdc) {
-  const readiness = await readPaymentReadiness(options, {requiredUsdc: amountUsdc});
-  if (readiness.status === "needs_human_funding") return withPaymentHelp(readiness);
-  if (readiness.status === "needs_human_sign_in" || readiness.status === "not_configured") {
-    return withPaymentHelp({...readiness, paid: false});
-  }
-  return null;
 }
 
 function unsignedReadiness(unsigned) {

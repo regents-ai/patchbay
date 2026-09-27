@@ -97,6 +97,7 @@ defmodule PatchbayDev.PaymentsLab do
       <label><input type="checkbox" name="lab-refuse-switch"> Refuse to switch network</label>
       <label><input type="checkbox" name="lab-decline"> Decline in the wallet</label>
       <label><input type="checkbox" name="lab-slow"> Answer slowly (1.5 s a request)</label>
+      <label><input type="checkbox" name="lab-low-v"> End signatures with 0 or 1, not 27 or 28</label>
       <p data-lab-log aria-live="polite"></p>
     </section>
 

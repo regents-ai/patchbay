@@ -40,9 +40,9 @@ config :patchbay, :assist_read_only_tools, %{
 
 # The network a page's wallet signs a payment on, as the wallet is told it:
 # Base, with Base's public endpoint for a wallet that has to add the network.
-# Only the wallet uses the endpoint; Patchbay reads Base through its own.
+# Only the wallet uses the endpoint; Patchbay reads Base through its own. The
+# chain id comes from `Patchbay.Payments.USDC.network/0`.
 config :patchbay, :payment_chain, %{
-  chain_id: 8453,
   name: "Base",
   rpc_url: "https://mainnet.base.org"
 }

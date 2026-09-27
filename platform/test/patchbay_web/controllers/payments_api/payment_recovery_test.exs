@@ -49,6 +49,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
                  {200, rpc_answer(Jason.decode!(body), owner)}
 
                conn.request_path == "/verify" ->
+                 send(owner, {:verify, Jason.decode!(body)})
                  {200, %{"isValid" => true}}
 
                true ->
@@ -414,6 +415,94 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
              unboxed(fn -> SpecialPost.credit_again(report.id) end)
 
     refute_receive {:landed?, _}, 200
+  end
+
+  # Only the wallet a review was written for can pay it, with a signature
+  # Patchbay can check; anything else is refused before the payment service
+  # is asked.
+  describe "a signed payment Patchbay refuses never reaches the payment service" do
+    test "a signature from another key", c do
+      review = review(c)
+      forged = WalletSigner.sign(WalletSigner.new(), review)
+
+      refused =
+        pay(c, %{active_wallet: c.wallet.address, review_id: review["id"], signature: forged})
+
+      assert %{"problem_code" => "payment_refused", "reason" => reason} =
+               json_response(refused, 402)
+
+      assert reason =~ "not from the wallet"
+      nothing_sent(c)
+    end
+
+    test "an active wallet not on the account, unsigned and signed", c do
+      stranger = WalletSigner.new()
+
+      unsigned = json_response(pay(c, %{active_wallet: stranger.address}), 402)
+      assert unsigned["problem_code"] == "wallet_mismatch"
+      assert unsigned["wallet_note"] =~ RegentFormat.short_address(stranger.address)
+      refute Map.has_key?(unsigned, "review")
+
+      review = review(c)
+
+      signed =
+        pay(c, %{
+          active_wallet: stranger.address,
+          review_id: review["id"],
+          signature: WalletSigner.sign(stranger, review)
+        })
+
+      assert json_response(signed, 402)["problem_code"] == "wallet_mismatch"
+      nothing_sent(c)
+    end
+
+    test "a stale review id", c do
+      review = review(c)
+
+      stale =
+        pay(c, %{
+          active_wallet: c.wallet.address,
+          review_id: Ecto.UUID.generate(),
+          signature: WalletSigner.sign(c.wallet, review)
+        })
+
+      assert %{"problem_code" => "payment_refused", "reason" => reason} =
+               json_response(stale, 402)
+
+      assert reason =~ "changed since your wallet saw them"
+      nothing_sent(c)
+    end
+
+    test "a malformed signature", c do
+      review = review(c)
+
+      for signature <- [
+            "0x1234",
+            "0x" <> String.duplicate("z", 130),
+            "0x" <> String.duplicate("0", 130),
+            7
+          ] do
+        refused =
+          pay(c, %{active_wallet: c.wallet.address, review_id: review["id"], signature: signature})
+
+        assert json_response(refused, 402)["problem_code"] == "payment_refused"
+      end
+
+      nothing_sent(c)
+    end
+  end
+
+  defp review(c) do
+    %{"review" => review} = c |> pay(%{active_wallet: c.wallet.address}) |> json_response(402)
+    review
+  end
+
+  defp pay(c, body), do: unboxed(fn -> signed_in(c.payer) |> post(path(c.intent), body) end)
+
+  defp nothing_sent(c) do
+    refute_receive {:verify, _}, 200
+    refute_receive {:settle, _, _}, 200
+    assert recovery(c)["status"] == "payment_required"
   end
 
   defp rpc_answer(requests, owner) when is_list(requests),

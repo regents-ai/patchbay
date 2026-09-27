@@ -20,6 +20,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
   """
 
   alias Patchbay.Payments.PaymentIntent
+  alias Patchbay.Payments.USDC
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias RegentChain.Review
   alias X402.EIP3009
@@ -103,24 +104,38 @@ defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
       not Regex.match?(@signature, signature) ->
         {:refused, "That signature could not be read."}
 
-      recovered(typed_data, signature) != {:ok, signer} ->
-        {:refused, "That signature is not from the wallet it was asked of."}
-
       true ->
-        {:ok,
-         %{
-           "x402Version" => 2,
-           "accepted" => Purchase.requirement(found),
-           "payload" => %{
-             "signature" => String.downcase(signature),
-             "authorization" => typed_data["message"]
-           },
-           "extensions" => %{"paymentIdentifier" => Purchase.identifier_extension(found)}
-         }}
+        signed(found, signer, typed_data, with_recovery_id(signature))
     end
   end
 
   def payment(_found, _signer, _params), do: {:refused, "That signature could not be read."}
+
+  defp signed(found, signer, typed_data, signature) do
+    if recovered(typed_data, signature) == {:ok, signer} do
+      {:ok,
+       %{
+         "x402Version" => 2,
+         "accepted" => Purchase.requirement(found),
+         "payload" => %{"signature" => signature, "authorization" => typed_data["message"]},
+         "extensions" => %{"paymentIdentifier" => Purchase.identifier_extension(found)}
+       }}
+    else
+      {:refused, "That signature is not from the wallet it was asked of."}
+    end
+  end
+
+  # Some wallets end a signature with 0 or 1 where USDC reads 27 or 28; both
+  # say the same thing, and USDC takes only the second.
+  defp with_recovery_id("0x" <> hex) do
+    {rs, v} = hex |> String.downcase() |> String.split_at(128)
+
+    case v do
+      "00" -> "0x" <> rs <> "1b"
+      "01" -> "0x" <> rs <> "1c"
+      v -> "0x" <> rs <> v
+    end
+  end
 
   defp typed_data(found, signer) do
     requirement = Purchase.requirement(found)
@@ -162,7 +177,15 @@ defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
     end
   end
 
-  defp chain, do: Application.fetch_env!(:patchbay, :payment_chain)
+  defp chain do
+    "eip155:" <> chain_id = USDC.network()
+
+    Map.put(
+      Application.fetch_env!(:patchbay, :payment_chain),
+      :chain_id,
+      String.to_integer(chain_id)
+    )
+  end
 
   defp short(address), do: RegentFormat.short_address(address)
 end

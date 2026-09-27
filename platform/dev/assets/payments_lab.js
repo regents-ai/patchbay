@@ -1,9 +1,9 @@
 // The payments lab's stand-in wallet app, after the template's
 // `onchain_lab.ts`. It holds anvil's first three accounts, one provider each,
 // and signs through the lab page on the lab's copy of Base; the network, a
-// refused switch, a decline and a slow answer are the tester's to set. The
-// Tip button runs the page's own `payForIntent` with this wallet in Privy's
-// place, and every press reaches it.
+// refused switch, a decline, a slow answer and a signature ending in 0 or 1
+// are the tester's to set. The Tip button runs the page's own `payForIntent`
+// with this wallet in Privy's place, and every press reaches it.
 import {payForIntent} from "./webmcp/paid_actions.js"
 
 const LAB_CHAIN_ID = 8453
@@ -50,7 +50,7 @@ function provider(address) {
           const reply = await response.json()
           if (reply.error) throw rpcError(reply.error.code, reply.error.message)
           log("The wallet signed.")
-          return reply.result
+          return ticked("lab-low-v") ? lowRecoveryId(reply.result) : reply.result
         }
         default:
           throw rpcError(4200, `The lab wallet does not support ${method}.`)
@@ -89,6 +89,12 @@ form.addEventListener("submit", async event => {
   )
   line.textContent = JSON.stringify({status: outcome.status, unsigned: outcome.unsigned, body: outcome.body})
 })
+
+// Some wallets end a signature with 0 or 1 where others write 27 or 28.
+function lowRecoveryId(signature) {
+  const v = parseInt(signature.slice(-2), 16) - 27
+  return signature.slice(0, -2) + v.toString(16).padStart(2, "0")
+}
 
 function rpcError(code, message) {
   return Object.assign(new Error(message), {code})
