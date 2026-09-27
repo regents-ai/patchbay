@@ -165,29 +165,57 @@ defmodule PatchbayWeb.Forum.BoardController do
   @doc """
   Follows a site, or stops following it, for whoever is on this page — the
   signed-in profile when there is one, the page's own session otherwise.
-  Following is what the inbox reads from.
+  The form names the state it wants, so the same press sent twice lands in
+  the same place. Following is what the inbox reads from.
   """
-  def follow(conn, %{"site_id" => site_id} = params) do
+  def follow(conn, %{"site_id" => site_id, "follow" => wanted} = params)
+      when wanted in ["true", "false"] do
     principal =
       case conn.assigns.current_profile do
         %{id: id} -> Principal.for_profile(id)
         _ -> Principal.for_session(conn.assigns.forum_session_id)
       end
 
-    existing =
-      Patchbay.Forum.Subscription
-      |> Ash.Query.filter(
-        principal == ^principal and scope_kind == :site and scope_id == ^site_id
-      )
-      |> Ash.read_one!()
+    case set_following(principal, site_id, wanted == "true") do
+      :ok ->
+        redirect(conn, to: back(params["back"]))
 
-    if existing do
-      Forum.unsubscribe(principal, existing.id)
-    else
-      Forum.subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id})
+      {:error, failure} ->
+        Logger.warning("Following a site was not saved", error_type: inspect(error_type(failure)))
+
+        conn
+        |> put_flash(:error, "That change to what you follow was not saved. Try again.")
+        |> redirect(to: back(params["back"]))
     end
+  end
 
-    redirect(conn, to: back(params["back"]))
+  # Following twice follows once: the subscription is an upsert on its
+  # principal and scope, so a repeated or concurrent press keeps one row.
+  defp set_following(principal, site_id, true) do
+    case Forum.subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id}) do
+      {:ok, _subscription} -> :ok
+      {:error, failure} -> {:error, failure}
+    end
+  end
+
+  defp set_following(principal, site_id, false) do
+    Patchbay.Forum.Subscription
+    |> Ash.Query.filter(principal == ^principal and scope_kind == :site and scope_id == ^site_id)
+    |> Ash.read_one()
+    |> case do
+      {:ok, nil} -> :ok
+      {:ok, subscription} -> stop_following(principal, subscription)
+      {:error, failure} -> {:error, failure}
+    end
+  end
+
+  # Already gone, by another press or tab, is the state that was asked for.
+  defp stop_following(principal, subscription) do
+    case Forum.unsubscribe(principal, subscription.id) do
+      :ok -> :ok
+      {:error, :not_found} -> :ok
+      {:error, failure} -> {:error, failure}
+    end
   end
 
   defp back(path) when is_binary(path) do

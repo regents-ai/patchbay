@@ -4,6 +4,7 @@
     <form method="post" action={~p"/follow"} class="pb-follow-form">
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <input type="hidden" name="site_id" value={@report.site.id} />
+      <input type="hidden" name="follow" value={to_string(@report.site.id not in @following)} />
       <input type="hidden" name="back" value={@conn.request_path} />
       <button
         type="submit"

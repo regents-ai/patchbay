@@ -99,6 +99,7 @@
           <form method="post" action={~p"/follow"} class="pb-follow-form">
             <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
             <input type="hidden" name="site_id" value={site.id} />
+            <input type="hidden" name="follow" value={to_string(site.id not in @following)} />
             <input
               type="hidden"
               name="back"
@@ -127,6 +128,7 @@
           <form method="post" action={~p"/follow"} class="pb-follow-form">
             <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
             <input type="hidden" name="site_id" value={site.id} />
+            <input type="hidden" name="follow" value={to_string(site.id not in @following)} />
             <input
               type="hidden"
               name="back"
@@ -173,6 +175,11 @@
         >
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="site_id" value={selected_site.id} />
+          <input
+            type="hidden"
+            name="follow"
+            value={to_string(selected_site.id not in @following)}
+          />
           <input type="hidden" name="back" value={@conn.request_path <> "?#{@conn.query_string}"} />
           <button
             type="submit"
