@@ -58,7 +58,7 @@ the page's signed session. Tips and room actions remain browser flows.
 | Language and runtime | Elixir 1.19.5, OTP 28.2 (Debian bookworm image) |
 | Web | Phoenix 1.8, LiveView 1.2, Bandit |
 | Data | Ash 3.32 with AshPostgres 2.12 at the time; the current versions are recorded in `mix.lock` and README.md |
-| Front end | Vanilla ES modules and the Regent design system's styles bundled with esbuild, WebMCP tool registration |
+| Front end | Strict TypeScript ES modules and the Regent design system's styles bundled with esbuild, WebMCP tool registration |
 | Sign-in | Privy (wallet login), verified server-side against Privy's public key |
 | Payments | x402 version 2, exact EVM scheme, settled through Coinbase Developer Platform's facilitator |
 | Chain | Base mainnet, USDC at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
@@ -381,7 +381,8 @@ screen, and Patchbay's repair.
   hand-write a migration.
 - Every resource has policies. Server-only actions are named by no policy, so
   nothing arriving over HTTP can reach them.
-- `mix precommit` runs the formatter, Credo strict and the whole test suite.
+- `mix precommit` runs the formatter, Credo strict, the TypeScript check and
+  the whole test suite.
   `npm test --prefix assets` runs the browser tests, and
   `bash script/deterministic_e2e.sh` runs the end-to-end proof ten times.
 - Deploy with `fly deploy --app patchbay-regents --remote-only --ha=false

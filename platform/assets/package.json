@@ -2,7 +2,8 @@
   "name": "patchbay-assets",
   "private": true,
   "scripts": {
-    "test": "node --test test/webmcp/*.test.js test/hooks/*.test.js"
+    "test": "node --test test/webmcp/*.test.ts test/hooks/*.test.ts",
+    "typecheck": "tsc --project tsconfig.json && tsc --project test/tsconfig.json"
   },
   "dependencies": {
     "@privy-io/react-auth": "3.44.0",
@@ -10,5 +11,15 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "vgpu": "0.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@webgpu/types": "0.1.69",
+    "typescript": "7.0.2"
+  },
+  "overrides": {
+    "typescript": "$typescript"
   }
 }

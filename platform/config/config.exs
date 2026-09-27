@@ -68,19 +68,19 @@ config :esbuild,
   version: "0.25.4",
   patchbay: [
     args:
-      ~w(js/app.js js/error_theme.js js/runtime.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.ts js/error_theme.ts js/runtime.ts --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ],
   patchbay_crown: [
     args:
-      ~w(js/crown_island.js --bundle --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+      ~w(js/crown_island.ts --bundle --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ],
   patchbay_privy: [
     args:
-      ~w(js/privy_bridge.jsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+      ~w(js/privy_bridge.tsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ]

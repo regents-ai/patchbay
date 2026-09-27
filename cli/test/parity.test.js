@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {test} from "node:test";
 import {fileURLToPath} from "node:url";
 import {fixture, invoke} from "./helpers.js";
-import {buildForumTools} from "../../platform/assets/js/webmcp/forum_tools.js";
+import {buildForumTools} from "../../platform/assets/js/webmcp/forum_tools.ts";
 
 const bin = fileURLToPath(new URL("../bin/patchbay.js", import.meta.url));
 

@@ -31,6 +31,6 @@ Product source: `platform/lib/patchbay_web/controllers/forum_api/report_controll
 `platform/lib/patchbay_web/controllers/health_controller.ex` and the tool manifest
 `platform/priv/tool_manifest.json`. `/webmcp/health` names the running release as
 `commit`.
-Browser mapping: `platform/assets/js/webmcp/forum_tools.js`.
+Browser mapping: `platform/assets/js/webmcp/forum_tools.ts`.
 `npm run test:parity` runs the actual public browser adapters and CLI against the
 same HTTP fixtures. No native WebMCP host, database, wallet or payment is exercised.

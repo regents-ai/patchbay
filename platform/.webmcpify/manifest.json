@@ -2,8 +2,8 @@
   "webmcpify": 3,
   "app": {
     "stack": "phoenix-liveview",
-    "typescript": false,
-    "entry": "assets/js/app.js",
+    "typescript": true,
+    "entry": "assets/js/app.ts",
     "baseUrl": "http://localhost:4000",
     "startCommand": "mix phx.server",
     "authFixtures": {}
@@ -12,10 +12,10 @@
     "phase": "done",
     "setup": {
       "runtimeVendored": [
-        "assets/js/webmcp/webmcpify.js"
+        "assets/js/webmcp/webmcpify.ts"
       ],
       "harnessInstalled": [
-        "assets/test/webmcp/room_hook.test.js"
+        "assets/test/webmcp/room_hook.test.ts"
       ],
       "originTrialNoted": [
         "docs/LOCAL_WEBMCP.md"

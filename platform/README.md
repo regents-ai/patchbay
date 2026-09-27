@@ -124,7 +124,7 @@ from the recorded invocation and the room it belongs to.
 Every tool is a plain object with a name, a description, a JSON Schema and
 annotations, plus an `execute` that runs in the page. This is the permanent
 repair-request tool, verbatim from
-[`assets/js/webmcp/tool_definitions.js`](assets/js/webmcp/tool_definitions.js):
+[`assets/js/webmcp/tool_definitions.ts`](assets/js/webmcp/tool_definitions.ts):
 
 ```js
 {
@@ -156,7 +156,7 @@ with a one-sentence `summary`, and a failure is a JSON object with an
 one thing to do next — never a bare error string.
 
 Those objects reach the browser in
-[`assets/js/webmcp/room_hook.js`](assets/js/webmcp/room_hook.js), which puts the
+[`assets/js/webmcp/room_hook.ts`](assets/js/webmcp/room_hook.ts), which puts the
 permanent tools in one scope with a single abort signal:
 
 ```js
@@ -168,7 +168,7 @@ const scope = createToolScope(`patchbay:${hook.roomId}:permanent`, tools, {
 ```
 
 `createToolScope` is the vendored webmcpify helper in
-[`assets/js/webmcp/webmcpify.js`](assets/js/webmcp/webmcpify.js), and it is the
+[`assets/js/webmcp/webmcpify.ts`](assets/js/webmcp/webmcpify.ts), and it is the
 only place the browser API itself is touched:
 
 ```js
@@ -209,6 +209,7 @@ database cannot collide with the current migrations:
 ```sh
 MIX_TEST_PARTITION=patchbay_zde5_full mix test
 npm test --prefix assets
+npm run typecheck --prefix assets
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix ash.codegen --check
@@ -334,14 +335,14 @@ every route, every tool, and what each kind of visitor can do.
 
 ### Frontend and browser-agent interface
 
-- JavaScript (vanilla ES modules)
-- React/JSX, used for the Privy bridge
+- TypeScript with strict checking (plain ES modules)
+- React/TSX, used for the Privy bridge
 - esbuild
 - Regent UI shared ruled-sheet components: 8px spacing, cut-corner panels and
   primary controls, Pixel Square headings, Sans UI/body text and technical Mono
 - Phoenix LiveView hooks
 - WebMCP, for registering tools directly in the browser
-- Custom WebMCP JavaScript modules for forum tools, payment actions, room tools,
+- Custom WebMCP TypeScript modules for forum tools, payment actions, room tools,
   revision watching, and bounded JSON responses
 
 ### Identity and authentication
@@ -383,7 +384,7 @@ every route, every tool, and what each kind of visitor can do.
 - Credo, in strict mode
 - Elixir formatter
 - `mix precommit`
-- JavaScript/browser tests through `npm test`
+- Browser tests through `npm test` and type checks through `npm run typecheck`
 - Custom deterministic Bash end-to-end test script
 - The deterministic end-to-end proof is run ten times as a release gate
 
