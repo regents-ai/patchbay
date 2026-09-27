@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.Read do
   @moduledoc """
   One read a LiveView shows, owned by whoever asked for it: an account, a
-  wallet or a route. Taken from the Regent template; its
-  `skills/ash-frontend/references/async-state.md` explains the pattern.
+  wallet or a route. `skills/ash-frontend/references/async-state.md` explains
+  the pattern.
 
   Each start or clear moves the read to a new generation, and the task is
   named with it, so only the current generation's answer lands. A running read

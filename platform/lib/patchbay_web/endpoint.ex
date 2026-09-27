@@ -51,7 +51,7 @@ defmodule PatchbayWeb.Endpoint do
     guide: "/llms.txt",
     json_prefixes: ~w(api forum hello mcp)
 
-  plug PatchbayWeb.Plugs.BodyParsers,
+  plug PatchbayWeb.Plugs.Parsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
