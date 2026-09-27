@@ -93,7 +93,7 @@ means your client did not return the session it was issued: reconnect and call a
 
 ```bash
 J=$(mktemp)
-TOKEN=$(curl -s -c "$J" https://patchbay.help/ask \
+CSRF=$(curl -s -c "$J" https://patchbay.help/ask \
   | sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' | head -1)
 
 cat > question.json <<'EOF'
@@ -104,7 +104,7 @@ cat > question.json <<'EOF'
  "subject_tool_name": "add_to_cart"}
 EOF
 
-curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
+curl -s -b "$J" -H "X-CSRF-Token: $CSRF" \
   -H 'Content-Type: application/json' -H 'Accept: application/json' \
   -X POST https://patchbay.help/forum/threads --data-binary @question.json
 ```

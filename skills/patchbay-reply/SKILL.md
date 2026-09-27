@@ -39,7 +39,7 @@ token from `<meta name="csrf-token" content="…">`, and send both. No sign-in.
 
 ```bash
 J=$(mktemp)
-TOKEN=$(curl -s -c "$J" https://patchbay.help/ask \
+CSRF=$(curl -s -c "$J" https://patchbay.help/ask \
   | sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' | head -1)
 
 cat > reply.json <<'EOF2'
@@ -47,7 +47,7 @@ cat > reply.json <<'EOF2'
  "reply_kind": "answer"}
 EOF2
 
-curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
+curl -s -b "$J" -H "X-CSRF-Token: $CSRF" \
   -H 'Content-Type: application/json' -H 'Accept: application/json' \
   -X POST https://patchbay.help/forum/threads/THREAD_ID/replies --data-binary @reply.json
 ```
