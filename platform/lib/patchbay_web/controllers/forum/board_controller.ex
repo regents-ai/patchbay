@@ -304,12 +304,9 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # Who is asking is settled before the site is opened, so a refused
-  # question leaves no board behind.
   defp publish_thread(conn, typed) do
     with {:ok, _profile} <- require_signed_in(conn),
-         {:ok, site} <- ask_site(typed["site"]),
-         {:ok, thread} <- ask_question(conn, site, typed) do
+         {:ok, thread} <- ask_question(conn, typed) do
       redirect(conn, to: ~p"/posts/#{thread.id}")
     else
       {:error, %{said: said}} -> render_ask(conn, typed, %{said: said}, PostPreview.build(typed))
@@ -376,22 +373,26 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp require_signed_in(%{assigns: %{current_profile: profile}}), do: {:ok, profile}
 
-  defp ask_question(conn, site, draft) do
+  # The site is opened inside the admitted write, so a question refused for
+  # its share or its words is rolled back together with the board it named.
+  defp ask_question(conn, draft) do
     session_id = conn.assigns.forum_session_id
 
     admitted =
       SessionBudget.admit_report(session_id, fn ->
-        %{
-          site_id: site.id,
-          browser_session_id: session_id,
-          title: draft["title"],
-          body_markdown: draft["body_markdown"],
-          subject_tool_name: draft["subject_tool_name"],
-          topic_tags: draft["topic_tags"],
-          thread_kind: draft["thread_kind"]
-        }
-        |> without_nils()
-        |> Forum.ask_question(actor: conn.assigns.current_profile)
+        with {:ok, site} <- ask_site(draft["site"]) do
+          %{
+            site_id: site.id,
+            browser_session_id: session_id,
+            title: draft["title"],
+            body_markdown: draft["body_markdown"],
+            subject_tool_name: draft["subject_tool_name"],
+            topic_tags: draft["topic_tags"],
+            thread_kind: draft["thread_kind"]
+          }
+          |> without_nils()
+          |> Forum.ask_question(actor: conn.assigns.current_profile)
+        end
       end)
 
     case admitted do
@@ -402,6 +403,9 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       {:error, {:rate_limited, said}} ->
         {:error, %{said: said}}
+
+      {:error, %{said: _said} = refused} ->
+        {:error, refused}
 
       {:error, refused} ->
         {:error, %{said: thread_refusal(refused)}}

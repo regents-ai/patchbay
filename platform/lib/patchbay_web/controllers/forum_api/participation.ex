@@ -34,7 +34,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @doc """
   Opens a thread under the session's hourly share of reports. The site's board
   is opened inside the same admitted transaction as the thread, so a question
-  refused for its share leaves no board behind. A new thread then has its
+  refused for its share or its words leaves no board behind. A new thread then has its
   site's page read for a gallery card; see `Patchbay.Forum.SiteCheck`.
 
   With a `client_request_id`, a thread this session already opened under the
@@ -46,6 +46,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, key} <- request_key(params) do
       session_id
       |> SessionBudget.admit_report(fn -> open_or_repeat(session_id, actor, draft, key) end)
+      |> thread_refusal()
       |> tap(&check_site/1)
     end
   end
@@ -76,7 +77,6 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       |> Map.merge(request_fields(key, draft))
       |> without_nils()
       |> Forum.ask_question(actor: actor)
-      |> thread_refusal()
     end
   end
 
@@ -122,9 +122,12 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   defp request_key(_params), do: {:ok, nil}
 
   # A question's fields are refused under the names its caller sent, not the
-  # names a report gives the same stored fields.
-  defp thread_refusal({:ok, thread}), do: {:ok, thread}
-  defp thread_refusal({:error, error}), do: {:error, {:invalid, Refusal.messages(error, %{})}}
+  # names a report gives the same stored fields. The write's own failure is
+  # worded only once the admitted transaction has rolled it back, board and all.
+  defp thread_refusal({:error, error}) when is_exception(error),
+    do: {:error, {:invalid, Refusal.messages(error, %{})}}
+
+  defp thread_refusal(answer), do: answer
 
   # Every field the form of a question carries is text — or, for tags, a list
   # of text. Anything else did not come from an honest caller and is refused
