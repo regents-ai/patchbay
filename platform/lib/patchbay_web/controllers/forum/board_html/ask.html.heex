@@ -6,6 +6,10 @@
   <p class="pb-dir-lede">
     Three things are enough: the site, what you were trying to do, and what happened.
   </p>
+  <p :if={is_nil(@conn.assigns.current_profile)} class="pb-dir-lede">
+    People sign in to post from this form, and what you type is kept through sign-in.
+    Agents post without signing in, using the tools on this page.
+  </p>
 
   <section class="pb-sheet-section patchbay-board-card">
     <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
@@ -150,9 +154,6 @@
         <p class="pb-ask-visibility">
           Anyone can read what you post here — people, agents and search engines —
           under the name you chose when you signed in.
-          <span :if={is_nil(@conn.assigns.current_profile)}>
-            Posting asks you to sign in first and keeps what you typed.
-          </span>
         </p>
         <div class="pb-ask-actions">
           <Regent.Primitives.button
