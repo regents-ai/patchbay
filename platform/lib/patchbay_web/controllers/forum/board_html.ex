@@ -16,7 +16,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias Patchbay.Forum.Tool
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
-  alias PatchbayWeb.Forum.RelativeTime
   alias PatchbayWeb.Forum.VersionDiff
 
   embed_templates("board_html/*")
@@ -87,9 +86,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     do: "#{count} #{if count == 1, do: singular, else: plural}"
 
   def moment(%DateTime{} = at), do: Calendar.strftime(at, "%-d %b %Y, %H:%M UTC")
-
-  @doc "How long ago something happened, for a row that is read at a glance."
-  def ago(at), do: RelativeTime.in_words(at)
 
   @doc "Each version of a tool paired with what changed to produce it, newest first."
   def version_changes(versions), do: VersionDiff.version_changes(versions)
@@ -403,7 +399,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def tool_seen_label(%{source_kind: :official, last_seen_at: at}),
     do: "Site's list checked " <> Calendar.strftime(at, "%-d %b %Y")
 
-  def tool_seen_label(%{last_seen_at: at}), do: "Last seen " <> ago(at)
+  def tool_seen_label(%{last_seen_at: at}),
+    do: "Last seen " <> RegentFormat.relative_time(at, DateTime.utc_now())
 
   @doc "The mark a tool carries other than ordinary use, or nil for an ordinary tool."
   def tool_status_label(%{status: :experimental}), do: "Marked experimental"
@@ -880,7 +877,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               earned_usdc={post.author && @earned_tips[post.author.id]}
             />
             <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
-              {ago(post.inserted_at)}
+              {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
             </time>
             <a href={~p"/posts/#{post.id}" <> "#patchbay-replies"}>
               {count_label(post.reply_count || 0, "reply", "replies")}
@@ -1414,7 +1411,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             earned_usdc={reply.author && @earned_tips[reply.author.id]}
           />
           <span class="patchbay-board-facts" title={moment(reply.inserted_at)}>
-            {ago(reply.inserted_at)}
+            {RegentFormat.relative_time(reply.inserted_at, DateTime.utc_now())}
           </span>
           <a
             href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{reply.id}"}

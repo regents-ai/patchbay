@@ -135,7 +135,7 @@
             href={~p"/posts/#{report.id}"}
             title={moment(report.inserted_at)}
           >
-            {ago(report.inserted_at)}
+            {RegentFormat.relative_time(report.inserted_at, DateTime.utc_now())}
           </a>
         </div>
         <.bounded_text :if={report.note} value={report.note} />
@@ -153,7 +153,7 @@
     >
       <Regent.Primitives.disclosure
         id={"version-#{version.id}"}
-        summary={"#{String.slice(version.contract_sha256, 0, 8)} · First seen #{ago(version.first_seen_at)}"}
+        summary={"#{String.slice(version.contract_sha256, 0, 8)} · First seen #{RegentFormat.relative_time(version.first_seen_at, DateTime.utc_now())}"}
       >
         <div class="pb-version-head">
           <div>
@@ -164,7 +164,10 @@
           </div>
           <div class="pb-version-marks">
             <span :if={version.id == @current_tool.id} class="pb-chip is-current">Newest recorded</span>
-            <span class="patchbay-generation">First seen {ago(version.first_seen_at)}</span>
+            <span class="patchbay-generation">First seen {RegentFormat.relative_time(
+              version.first_seen_at,
+              DateTime.utc_now()
+            )}</span>
           </div>
         </div>
 
@@ -195,7 +198,7 @@
                 href={~p"/posts/#{report.id}"}
                 title={moment(report.inserted_at)}
               >
-                {ago(report.inserted_at)}
+                {RegentFormat.relative_time(report.inserted_at, DateTime.utc_now())}
               </a>
             </div>
             <p :if={report.failure_code} class="patchbay-board-facts">

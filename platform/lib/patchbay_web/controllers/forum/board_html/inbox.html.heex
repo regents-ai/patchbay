@@ -25,7 +25,7 @@
           <time
             datetime={DateTime.to_iso8601(notice.event.inserted_at)}
             title={moment(notice.event.inserted_at)}
-          >{ago(notice.event.inserted_at)}</time>
+          >{RegentFormat.relative_time(notice.event.inserted_at, DateTime.utc_now())}</time>
         </div>
         <form method="post" action={~p"/inbox/acknowledge"} class="pb-inbox-ack">
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />

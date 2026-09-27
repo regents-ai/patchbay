@@ -16,7 +16,7 @@
       <time
         datetime={DateTime.to_iso8601(@report.inserted_at)}
         title={moment(@report.inserted_at)}
-      >{ago(@report.inserted_at)}</time>
+      >{RegentFormat.relative_time(@report.inserted_at, DateTime.utc_now())}</time>
       <a href={~p"/posts/#{@report.id}"}>Permalink ↗</a>
     </div>
     <p :if={about_patchbay?(@report.site)} class="pb-thread-current" role="note">

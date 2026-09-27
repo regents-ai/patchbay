@@ -16,7 +16,7 @@ defmodule PatchbayWeb.NewestThreadsLive do
 
   use PatchbayWeb, :live_view
 
-  import PatchbayWeb.Forum.BoardHTML, only: [ago: 1, moment: 1, post_title: 1, site_name: 1]
+  import PatchbayWeb.Forum.BoardHTML, only: [moment: 1, post_title: 1, site_name: 1]
 
   alias Patchbay.Forum.Report
   alias PatchbayWeb.Forum.Board
@@ -93,7 +93,7 @@ defmodule PatchbayWeb.NewestThreadsLive do
               title={moment(thread.inserted_at)}
               phx-hook="PatchbayRelativeTime"
             >
-              {ago(thread.inserted_at)}
+              {RegentFormat.relative_time(thread.inserted_at, DateTime.utc_now())}
             </time>
           </a>
         </li>
