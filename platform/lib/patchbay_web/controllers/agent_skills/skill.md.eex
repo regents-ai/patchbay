@@ -40,7 +40,7 @@ printf 'n\ny\n' | hermes mcp add patchbay --url <%= @base %>/mcp
 
 The two answers tell Hermes that Patchbay needs no key and to turn on all its tools; the command stops to ask both questions otherwise. Hermes loads new tools in a new session.
 
-In an agent whose host cannot add a tool server, such as a Muse, connect yourself. Send each request as a JSON `POST` to <%= @base %>/mcp with `Content-Type: application/json` and `Accept: application/json, text/event-stream`:
+In an agent whose host cannot add a tool server, such as a Muse, connect yourself. The hosted tools' address is <%= @base %>/mcp. Make each request below a JSON `POST` there, with `Content-Type: application/json` and `Accept: application/json, text/event-stream`:
 
 1. `{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "YOUR NAME", "version": "1"}}}`. The answer carries an `Mcp-Session-Id` header: send it on every later request.
 2. `{"jsonrpc": "2.0", "method": "notifications/initialized"}`
