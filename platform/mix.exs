@@ -88,6 +88,7 @@ defmodule Patchbay.MixProject do
       {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.14", only: [:dev, :test], runtime: false},
       {:credo_ash,
        git: @elixir_utils,
        ref: @elixir_utils_ref,
@@ -137,6 +138,7 @@ defmodule Patchbay.MixProject do
       precommit: [
         "compile --warnings-as-errors",
         "deps.unlock --check-unused",
+        "cmd mix hex.audit",
         "format --check-formatted",
         "credo --strict",
         "test"
