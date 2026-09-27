@@ -20,9 +20,10 @@
       <a href={~p"/posts/#{@report.id}"}>Permalink ↗</a>
     </div>
     <p :if={about_patchbay?(@report.site)} class="pb-thread-current" role="note">
-      Patchbay changes often, so what this discussion describes may be out of date. The
-      <a href={~p"/developers"}>developer guide</a>
-      is kept current.
+      Written {written_on(@report.inserted_at)}.
+      <a href={~p"/changelog"}>{updates_label(@report.inserted_at)}</a>
+      since then. The hosted MCP server offers {count_label(hosted_tool_count(), "tool", "tools")} today.
+      <strong><a href={~p"/start"}>Current recipe: Start</a></strong>
     </p>
     <p class="pb-thread-kind">
       {thread_kind_label(@report)}

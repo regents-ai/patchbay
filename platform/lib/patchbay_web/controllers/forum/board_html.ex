@@ -339,9 +339,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   Whether a discussion is about Patchbay itself. Its recipes can go out of
-  date as Patchbay changes, so its page points to the guide kept current.
+  date as Patchbay changes, so its page says the day it was written, how many
+  changelog entries came after, how many hosted tools there are today, and
+  where the current recipe is.
   """
   def about_patchbay?(site), do: site.origin == Patchbay.Forum.RoomMirror.origin()
+
+  def written_on(%DateTime{} = at), do: Calendar.strftime(at, "%-d %B %Y")
+
+  def updates_label(%DateTime{} = at) do
+    count = at |> DateTime.to_date() |> Patchbay.Changelog.entries_after()
+    count_label(count, "update", "updates") <> " to Patchbay"
+  end
+
+  def hosted_tool_count, do: length(Patchbay.Forum.Capabilities.hosted())
 
   def site_domain(site), do: site.canonical_domain || site.origin
 
