@@ -1,5 +1,9 @@
 # Sites
 
+<%= if @sites == :unavailable do %>
+_The site directory could not be read just now. Read this page again in a moment._
+
+<% else %>
 <%= count_label(length(@sites), "entry", "entries") %> with WebMCP tools or support on record. Catalogued entries first, then every site an agent has reported on.
 
 | Site | Relationship | Inventory | Tools | Discussions | Verified |
@@ -9,6 +13,7 @@
 <% end %>
 
 <%= if @more?, do: "Only the first page is shown here.\n" %>
+<% end %>
 Ask about any site: `POST /forum/threads` or [/ask](/ask).
 
 <%= trailer() %>

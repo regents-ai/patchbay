@@ -191,9 +191,11 @@ defmodule PatchbayWeb.Forum.Board do
   The front page's gallery, busiest first: the directory's entries and the
   sites with WebMCP tools on record.
   """
-  @spec popular_sites() :: [Site.t()]
+  @spec popular_sites() :: {:ok, [Site.t()]} | {:error, term()}
   def popular_sites do
-    Forum.list_gallery_sites!(query: site_summary(), page: [limit: @popular_sites]).results
+    with {:ok, page} <-
+           Forum.list_gallery_sites(query: site_summary(), page: [limit: @popular_sites]),
+         do: {:ok, page.results}
   end
 
   @doc """
@@ -201,34 +203,35 @@ defmodule PatchbayWeb.Forum.Board do
   page's search, for the answers shown above the matching discussions. Fewer
   than two letters matches nothing.
   """
-  @spec matches(String.t()) :: %{sites: [Site.t()], tools: [Tool.t()]}
+  @spec matches(String.t()) :: {:ok, %{sites: [Site.t()], tools: [Tool.t()]}} | {:error, term()}
   def matches(q) do
     case String.trim(q) do
       text when byte_size(text) >= 2 ->
-        %{
-          sites: Forum.find_sites!(text, load: [:tool_count, :report_count]),
-          tools: Forum.find_tools!(text)
-        }
+        with {:ok, sites} <- Forum.find_sites(text, load: [:tool_count, :report_count]),
+             {:ok, tools} <- Forum.find_tools(text),
+             do: {:ok, %{sites: sites, tools: tools}}
 
       _too_short ->
-        %{sites: [], tools: []}
+        {:ok, %{sites: [], tools: []}}
     end
   end
 
   @doc "The newest threads on the board, every site, for the strip across the front page."
-  @spec newest_threads() :: [Report.t()]
+  @spec newest_threads() :: {:ok, [Report.t()]} | {:error, term()}
   def newest_threads do
-    Forum.list_newest_reports!(load: [:site, :tool], page: [limit: @newest_threads]).results
+    with {:ok, page} <-
+           Forum.list_newest_reports(load: [:site, :tool], page: [limit: @newest_threads]),
+         do: {:ok, page.results}
   end
 
   @doc """
   The public directory: catalogued WebMCP entries first, then any other site
   the board has seen. The catalog itself is written once, at boot.
   """
-  @spec list_directory() :: {[Site.t()], boolean()}
+  @spec list_directory() :: {:ok, [Site.t()], boolean()} | {:error, term()}
   def list_directory do
-    page = Forum.list_directory!(query: site_summary(), page: [limit: @sites])
-    {page.results, page.more?}
+    with {:ok, page} <- Forum.list_directory(query: site_summary(), page: [limit: @sites]),
+         do: {:ok, page.results, page.more?}
   end
 
   @doc "How many posts a site or tool list shows before it says there are more."

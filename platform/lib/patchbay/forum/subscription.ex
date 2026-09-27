@@ -38,6 +38,12 @@ defmodule Patchbay.Forum.Subscription do
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
 
+    read :for_principals do
+      description("Every subscription held by any of a request's own principals.")
+      argument(:principals, {:array, :string}, allow_nil?: false)
+      filter(expr(principal in ^arg(:principals)))
+    end
+
     read :deliver_to do
       description("""
       Every subscription an event matches: its thread, its site, or its tool.

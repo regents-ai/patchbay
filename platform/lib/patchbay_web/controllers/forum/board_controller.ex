@@ -117,46 +117,81 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
+  # Each part of the home page is read on its own. A part that could not be
+  # read is `:unavailable` and says so where it would have been; the rest of
+  # the page, the navigation and the fix form with what was typed still show.
+  # Only the discussions are the page itself, so only their failure is a 503.
   defp render_home(conn, params, fix) do
     hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
-    hello_events = Patchbay.Forum.Hellos.latest(hello_stream)
     filters = Discussions.filters(params)
 
-    subscriptions =
-      Discussions.subscriptions(
-        Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
-      )
+    following =
+      conn.assigns.current_profile
+      |> Principal.for_request(conn.assigns.forum_session_id)
+      |> Forum.list_subscriptions_for_principals()
+      |> section("Follow list")
 
-    following = for %{scope_kind: :site, scope_id: id} <- subscriptions, do: id
-    {sites, more_sites?} = Board.list_directory()
+    case discussions(filters, following, params["after"]) do
+      {:error, :invalid_cursor} ->
+        conn
+        |> put_flash(:error, "That discussion page has expired or does not match these filters.")
+        |> redirect(to: ~p"/?#{filters}")
 
-    case Discussions.page(filters, subscriptions, params["after"]) do
-      {:ok, reports, next_page} ->
-        render(conn, :home,
+      {reports, next_page} ->
+        {sites, more_sites?} = directory()
+
+        conn
+        |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
+        |> render(:home,
           page_title: "Discussions",
           hello_stream: hello_stream,
-          hello_events: hello_events,
+          hello_events: Patchbay.Forum.Hellos.latest(hello_stream),
           filters: filters,
           reports: reports,
           next_page: next_page,
           current_page: params["after"],
           sites: sites,
           more_sites?: more_sites?,
-          popular_sites: Board.popular_sites(),
-          matches: Board.matches(filters.q),
-          following: following,
+          popular_sites: section(Board.popular_sites(), "Popular sites"),
+          matches: section(Board.matches(filters.q), "Search matches"),
+          following: followed_site_ids(following),
           payments_enabled?: Board.payments_enabled?(),
           fix: Map.merge(Fix.offer(conn), fix)
         )
-
-      {:error, :invalid_cursor} ->
-        conn
-        |> put_flash(:error, "That discussion page has expired or does not match these filters.")
-        |> redirect(to: ~p"/?#{filters}")
-
-      {:error, _failure} ->
-        conn |> put_status(:service_unavailable) |> text("Discussions unavailable. Please retry.")
     end
+  end
+
+  # The "following" feed is read from the follow list, so it cannot be shown
+  # when the follow list could not be read; every other feed does not need it.
+  defp discussions(%{scope: "following"}, :unavailable, _after), do: {:unavailable, nil}
+
+  defp discussions(filters, following, after_token) do
+    subscriptions = if following == :unavailable, do: [], else: following
+
+    case Discussions.page(filters, subscriptions, after_token) do
+      {:ok, reports, next_page} -> {reports, next_page}
+      {:error, :invalid_cursor} -> {:error, :invalid_cursor}
+      {:error, failure} -> {section({:error, failure}, "Discussions"), nil}
+    end
+  end
+
+  defp directory do
+    case Board.list_directory() do
+      {:ok, sites, more?} -> {sites, more?}
+      {:error, failure} -> {section({:error, failure}, "Site directory"), false}
+    end
+  end
+
+  defp followed_site_ids(:unavailable), do: :unavailable
+
+  defp followed_site_ids(subscriptions),
+    do: for(%{scope_kind: :site, scope_id: id} <- subscriptions, do: id)
+
+  defp section({:ok, value}, _name), do: value
+
+  defp section({:error, failure}, name) do
+    Logger.warning(name <> " could not be read", error_type: inspect(error_type(failure)))
+    :unavailable
   end
 
   def start(conn, params) do
@@ -238,7 +273,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp followed_sites(conn) do
     conn.assigns.current_profile
     |> Principal.for_request(conn.assigns.forum_session_id)
-    |> Discussions.subscriptions()
+    |> Forum.list_subscriptions_for_principals!()
     |> Enum.filter(&(&1.scope_kind == :site))
     |> Enum.map(& &1.scope_id)
   end
@@ -634,9 +669,15 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def sites(conn, _params) do
-    {sites, more?} = Board.list_directory()
+    case directory() do
+      {:unavailable, _more?} ->
+        conn
+        |> put_status(:service_unavailable)
+        |> render(:sites, page_title: "Sites", sites: :unavailable, more?: false)
 
-    render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
+      {sites, more?} ->
+        render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
+    end
   end
 
   def site(conn, %{"origin" => origin} = params) do

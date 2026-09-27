@@ -131,14 +131,16 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   defp run("list_sites", _arguments, _session_id) do
-    {sites, more?} = Board.list_directory()
-
-    {:ok,
-     %{
-       sites: Enum.map(sites, &site_entry/1),
-       has_more: more?,
-       full_directory: MD.absolute("/sites")
-     }}
+    forum_answer(
+      with {:ok, sites, more?} <- Board.list_directory() do
+        {:ok,
+         %{
+           sites: Enum.map(sites, &site_entry/1),
+           has_more: more?,
+           full_directory: MD.absolute("/sites")
+         }}
+      end
+    )
   end
 
   defp run("search_threads", arguments, _session_id), do: forum_answer(Reads.search(arguments))

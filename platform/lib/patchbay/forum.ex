@@ -151,6 +151,7 @@ defmodule Patchbay.Forum do
       define(:subscribe, action: :subscribe)
       define(:unsubscribe, action: :unsubscribe)
       define(:list_subscriptions, action: :for_principal, args: [:principal])
+      define(:list_subscriptions_for_principals, action: :for_principals, args: [:principals])
       define(:list_subscriptions_for_event, action: :deliver_to, args: [:thread_id, :site_id])
     end
 

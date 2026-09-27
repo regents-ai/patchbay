@@ -16,7 +16,7 @@ defmodule PatchbayWeb.NewestThreadsLiveTest do
 
     %{"thread_id" => thread_id} = conn |> get(~p"/") |> ask("Can totals be negative?")
 
-    assert render(view) =~ "Can totals be negative?"
+    assert render_async(view) =~ "Can totals be negative?"
     assert has_element?(view, ~s(a[href="/posts/#{thread_id}"]), "shop.example.com")
 
     moderator =
@@ -28,7 +28,7 @@ defmodule PatchbayWeb.NewestThreadsLiveTest do
     {:ok, _hidden} =
       Forum.moderate(Ash.get!(Report, thread_id), :quarantine, "Checking it.", moderator)
 
-    refute render(view) =~ "Can totals be negative?"
+    refute render_async(view) =~ "Can totals be negative?"
   end
 
   test "the newest thread comes first", %{conn: conn} do

@@ -27,19 +27,12 @@ defmodule PatchbayWeb.Forum.Discussions do
     }
   end
 
-  @doc "The subscriptions a request's own principals hold — the durable follow list."
-  def subscriptions(principals) do
-    Patchbay.Forum.Subscription
-    |> Ash.Query.filter(principal in ^principals)
-    |> Ash.read!()
-  end
-
   @doc """
   The same follow list with what each subscription follows: the site, the
   tool with its site, or the thread. A follow whose target is gone is left out.
   """
   def following(principals) do
-    subscriptions = subscriptions(principals)
+    subscriptions = Forum.list_subscriptions_for_principals!(principals)
 
     targets = %{
       site: by_id(Patchbay.Forum.Site, ids(subscriptions, :site)),

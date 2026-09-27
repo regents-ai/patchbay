@@ -25,8 +25,11 @@ defmodule Patchbay.Assist.AllowanceTest do
     key = key()
     person = person()
 
-    assert Allowance.remaining(key, nil) == %{free: 1, sign_in_adds: 2, given_out: false}
-    assert Allowance.remaining(key, person) == %{free: 3, sign_in_adds: 0, given_out: false}
+    assert Allowance.remaining(key, nil) == {:ok, %{free: 1, sign_in_adds: 2, given_out: false}}
+
+    assert Allowance.remaining(key, person) ==
+             {:ok, %{free: 3, sign_in_adds: 0, given_out: false}}
+
     assert Allowance.grant(key, nil) == {:ok, :visitor}
 
     # The connection's own fix goes first, whoever is signed in.
@@ -40,9 +43,12 @@ defmodule Patchbay.Assist.AllowanceTest do
     assert first.deposit_status == :no_fee
     close(first)
 
-    assert Allowance.remaining(key, nil) == %{free: 0, sign_in_adds: 2, given_out: false}
+    assert Allowance.remaining(key, nil) == {:ok, %{free: 0, sign_in_adds: 2, given_out: false}}
     assert Allowance.grant(key, nil) == :none
-    assert Allowance.remaining(key, person) == %{free: 2, sign_in_adds: 0, given_out: false}
+
+    assert Allowance.remaining(key, person) ==
+             {:ok, %{free: 2, sign_in_adds: 0, given_out: false}}
+
     assert Allowance.grant(key, person) == {:ok, :member}
 
     # Then the person's own two, once the connection's is used.
@@ -51,7 +57,9 @@ defmodule Patchbay.Assist.AllowanceTest do
     {:ok, third} = Assist.request_free_run(@request, :member, key, browser(), person)
     close(third)
 
-    assert Allowance.remaining(key, person) == %{free: 0, sign_in_adds: 0, given_out: false}
+    assert Allowance.remaining(key, person) ==
+             {:ok, %{free: 0, sign_in_adds: 0, given_out: false}}
+
     assert Allowance.grant(key, person) == :none
 
     # Another connection still has its own.
@@ -102,8 +110,10 @@ defmodule Patchbay.Assist.AllowanceTest do
     fresh = key()
     assert Allowance.grant(fresh, nil) == :given_out
     assert Allowance.grant(fresh, person) == :given_out
-    assert Allowance.remaining(fresh, nil) == %{free: 0, sign_in_adds: 0, given_out: true}
-    assert Allowance.remaining(fresh, person) == %{free: 0, sign_in_adds: 0, given_out: true}
+    assert Allowance.remaining(fresh, nil) == {:ok, %{free: 0, sign_in_adds: 0, given_out: true}}
+
+    assert Allowance.remaining(fresh, person) ==
+             {:ok, %{free: 0, sign_in_adds: 0, given_out: true}}
 
     assert {:error, %Ash.Error.Forbidden{}} =
              Assist.request_free_run(@request, :visitor, fresh, browser(), nil)

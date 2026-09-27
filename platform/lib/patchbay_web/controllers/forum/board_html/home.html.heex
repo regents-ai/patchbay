@@ -22,9 +22,21 @@
       <input type="hidden" name="site" value={@filters.site} />
       <Regent.Primitives.button variant="primary" type="submit">Find help</Regent.Primitives.button>
     </form>
-    <.find_answers :if={@filters.q != ""} q={@filters.q} matches={@matches} />
+    <.find_answers
+      :if={@filters.q != "" and @matches != :unavailable}
+      q={@filters.q}
+      matches={@matches}
+    />
+    <Regent.Primitives.notice
+      :if={@filters.q != "" and @matches == :unavailable}
+      tone="warning"
+      class="pb-section-unavailable"
+    >
+      Sites and tools matching “{@filters.q}” could not be loaded just now.
+      <a href={discussion_path(@filters)}>Try again</a>
+    </Regent.Primitives.notice>
     <nav
-      :if={@filters.q == "" and @popular_sites != []}
+      :if={@filters.q == "" and @popular_sites not in [[], :unavailable]}
       class="pb-find-sites"
       aria-label="Sites people ask about most"
     >
@@ -34,6 +46,14 @@
       </a>
       <a class="pb-find-all" href={~p"/sites"}>All sites <span aria-hidden="true">→</span></a>
     </nav>
+    <Regent.Primitives.notice
+      :if={@filters.q == "" and @popular_sites == :unavailable}
+      tone="warning"
+      class="pb-section-unavailable"
+    >
+      The sites people ask about most could not be loaded just now.
+      <a href={~p"/sites"}>All sites</a>
+    </Regent.Primitives.notice>
   </section>
 
   <%!-- While searching, the answers lead straight into the matching discussions. --%>
@@ -62,7 +82,15 @@
     <details>
       <summary>Sites · {if @filters.site == "", do: "All sites", else: @filters.site}</summary>
       <a href={~p"/sites"}>Site directory →</a>
-      <form action={~p"/"} method="get">
+      <Regent.Primitives.notice
+        :if={@sites == :unavailable}
+        tone="warning"
+        class="pb-section-unavailable"
+      >
+        The list of sites could not be loaded just now.
+        <a href={discussion_path(@filters)}>Try again</a>
+      </Regent.Primitives.notice>
+      <form :if={@sites != :unavailable} action={~p"/"} method="get">
         <input type="hidden" name="q" value={@filters.q} />
         <input type="hidden" name="scope" value={@filters.scope} />
         <label for="pb-mobile-site">Discussions on a site</label>
@@ -86,7 +114,23 @@
       <p class="pb-following-note">
         Follow conversations and catch up in your <a href={~p"/inbox"}>inbox</a>.
       </p>
-      <section aria-labelledby="pb-featured-sites-title">
+      <Regent.Primitives.notice
+        :if={@following == :unavailable}
+        tone="warning"
+        class="pb-section-unavailable"
+      >
+        Patchbay could not read what you follow just now, so Follow buttons are hidden.
+        <a href={discussion_path(@filters)}>Try again</a>
+      </Regent.Primitives.notice>
+      <Regent.Primitives.notice
+        :if={@sites == :unavailable}
+        tone="warning"
+        class="pb-section-unavailable"
+      >
+        Sites could not be loaded just now. <a href={discussion_path(@filters)}>Try again</a>
+        · <a href={~p"/sites"}>Full site directory</a>
+      </Regent.Primitives.notice>
+      <section :if={@sites != :unavailable} aria-labelledby="pb-featured-sites-title">
         <h2 id="pb-featured-sites-title" class="pb-sidebar-label">Featured sites</h2>
         <div :for={site <- Enum.take(@sites, 3)} class="pb-featured-site">
           <a
@@ -96,7 +140,12 @@
             <strong>{site_name(site)}</strong>
             <span>{site_domain(site)}</span>
           </a>
-          <form method="post" action={~p"/follow"} class="pb-follow-form">
+          <form
+            :if={@following != :unavailable}
+            method="post"
+            action={~p"/follow"}
+            class="pb-follow-form"
+          >
             <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
             <input type="hidden" name="site_id" value={site.id} />
             <input type="hidden" name="follow" value={to_string(site.id not in @following)} />
@@ -118,14 +167,19 @@
           </form>
         </div>
       </section>
-      <section aria-labelledby="pb-home-sites-title">
+      <section :if={@sites != :unavailable} aria-labelledby="pb-home-sites-title">
         <h2 id="pb-home-sites-title" class="pb-sidebar-label">Sites</h2>
         <div :for={site <- Enum.slice(@sites, 3, 8)} class="pb-sidebar-site">
           <a
             href={site_path(site)}
             aria-current={if @filters.site == site.origin, do: "page"}
           >{site_name(site)}</a>
-          <form method="post" action={~p"/follow"} class="pb-follow-form">
+          <form
+            :if={@following != :unavailable}
+            method="post"
+            action={~p"/follow"}
+            class="pb-follow-form"
+          >
             <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
             <input type="hidden" name="site_id" value={site.id} />
             <input type="hidden" name="follow" value={to_string(site.id not in @following)} />
@@ -168,7 +222,7 @@
           title="Compact rows"
         >≡</button>
         <form
-          :if={selected_site = Enum.find(@sites, &(&1.origin == @filters.site))}
+          :if={selected_site = followable_site(@sites, @following, @filters.site)}
           method="post"
           action={~p"/follow"}
           class="pb-follow-form"
@@ -193,7 +247,17 @@
       <p :if={@filters.scope == "following"} class="pb-search-summary">
         Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
       </p>
+      <Regent.Primitives.notice
+        :if={@reports == :unavailable}
+        tone="error"
+        class="pb-section-unavailable pb-discussions-unavailable"
+      >
+        <strong>The discussions could not be loaded just now.</strong>
+        Nothing you typed on this page is lost.
+        <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
+      </Regent.Primitives.notice>
       <.post_list
+        :if={@reports != :unavailable}
         posts={@reports}
         earned_tips={%{}}
         empty={

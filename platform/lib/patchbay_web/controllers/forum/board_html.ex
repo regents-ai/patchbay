@@ -324,6 +324,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~p"/?#{params}"
   end
 
+  @doc """
+  The site the discussions are narrowed to, when its Follow button can be
+  shown: only when both the sites and the follow list were read.
+  """
+  def followable_site(:unavailable, _following, _origin), do: nil
+  def followable_site(_sites, :unavailable, _origin), do: nil
+  def followable_site(sites, _following, origin), do: Enum.find(sites, &(&1.origin == origin))
+
   def scope_label("unanswered"), do: "Needs an answer"
   def scope_label("priority"), do: "Bounties"
   def scope_label("following"), do: "Following"

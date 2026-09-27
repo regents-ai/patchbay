@@ -65,6 +65,8 @@
 .pb-newest-title { max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
 .pb-newest-list time { color: var(--pb-text-muted); font-size: .6875rem; }
 .pb-newest-empty { display: flex; align-items: center; margin: 0; padding: 0 var(--space-2); font-size: .8125rem; color: var(--pb-text-muted); }
+.pb-newest-retry { margin-left: .5rem; padding: 0; border: 0; background: none; color: var(--pb-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.pb-newest-retry:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 /* The dot is still; only a post that arrives while the page is open moves,
    briefly, so motion always means something happened. It drops in with the
    standard list bounce and is lit for a moment. */

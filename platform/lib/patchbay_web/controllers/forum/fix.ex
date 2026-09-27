@@ -6,6 +6,8 @@ defmodule PatchbayWeb.Forum.Fix do
   a fix cannot start.
   """
 
+  require Logger
+
   alias Patchbay.Assist
   alias Patchbay.Assist.Allowance
   alias Patchbay.Assist.Request
@@ -17,7 +19,7 @@ defmodule PatchbayWeb.Forum.Fix do
   @fee "0.10"
 
   @type draft :: %{String.t() => String.t()}
-  @type mode :: :free | :sign_in | :pay | :closed
+  @type mode :: :free | :sign_in | :pay | :closed | :unknown
   @type problem :: %{said: String.t()}
 
   @doc "The fee a fix costs once the free ones are used, in USDC."
@@ -47,18 +49,27 @@ defmodule PatchbayWeb.Forum.Fix do
 
   @doc """
   What is left for this request's connection and person, and which way the
-  form works.
+  form works. When the free fixes could not be counted the form still takes
+  a request, and Patchbay counts again when it is sent.
   """
   @spec offer(Plug.Conn.t()) :: %{
-          allowance: Allowance.t(),
+          allowance: Allowance.t() | nil,
           mode: mode(),
           fee: String.t(),
           directory: boolean()
         }
   def offer(conn) do
     profile = conn.assigns.current_profile
-    allowance = Allowance.remaining(ClientAddress.visitor_key(conn), profile)
-    mode = mode(allowance, profile)
+
+    {allowance, mode} =
+      case Allowance.remaining(ClientAddress.visitor_key(conn), profile) do
+        {:ok, allowance} ->
+          {allowance, mode(allowance, profile)}
+
+        {:error, failure} ->
+          log_uncounted(failure)
+          {nil, :unknown}
+      end
 
     %{
       allowance: allowance,
@@ -77,11 +88,12 @@ defmodule PatchbayWeb.Forum.Fix do
       {:ok, grant} -> {:ok, grant}
       :none -> {:error, %{said: used_up(profile)}}
       :given_out -> {:error, %{said: given_out(mode(%{free: 0, given_out: true}, profile))}}
+      {:error, failure} -> {:error, uncounted(failure)}
     end
   end
 
   @doc "The words for the free fixes left, or for what the next fix costs."
-  @spec terms(%{allowance: Allowance.t(), mode: mode()}) :: String.t()
+  @spec terms(%{allowance: Allowance.t() | nil, mode: mode()}) :: String.t()
   def terms(%{mode: :free, allowance: %{free: free, sign_in_adds: adds}}) do
     left =
       "#{free} free #{if free == 1, do: "fix", else: "fixes"} left today from this connection"
@@ -99,13 +111,18 @@ defmodule PatchbayWeb.Forum.Fix do
 
   def terms(%{mode: :closed}), do: "Your free fixes for today are used. Come back tomorrow."
 
+  def terms(%{mode: :unknown}),
+    do:
+      "Patchbay could not check your free fixes just now. Send the request and Patchbay checks again before starting anything."
+
   @doc "What the form's button says."
-  @spec button(%{allowance: Allowance.t(), mode: mode()}) :: String.t()
+  @spec button(%{allowance: Allowance.t() | nil, mode: mode()}) :: String.t()
   def button(%{mode: :free}), do: "Fix it free"
   def button(%{mode: :sign_in, allowance: %{given_out: true}}), do: "Sign in to fix it"
   def button(%{mode: :sign_in}), do: "Sign in for free fixes"
   def button(%{mode: :pay}), do: "Fix it for #{@fee} USDC"
   def button(%{mode: :closed}), do: "Free fixes used for today"
+  def button(%{mode: :unknown}), do: "Fix it"
 
   @doc """
   What the page says when the run could not be opened: when the free fix
@@ -140,6 +157,22 @@ defmodule PatchbayWeb.Forum.Fix do
       true -> :pay
     end
   end
+
+  defp uncounted(failure) do
+    log_uncounted(failure)
+
+    %{
+      said:
+        "Patchbay could not check your free fixes just now, so it did not start a fix. Try again in a moment."
+    }
+  end
+
+  defp log_uncounted(failure),
+    do:
+      Logger.warning("Free fixes could not be counted", error_type: inspect(error_type(failure)))
+
+  defp error_type(failure) when is_struct(failure), do: failure.__struct__
+  defp error_type(failure), do: failure
 
   defp used_up(nil),
     do: "This connection's free fix for today is used. Sign in for two more free fixes today."
