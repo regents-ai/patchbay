@@ -3,7 +3,7 @@ defmodule PatchbayWeb.PagesHTML do
 
   use PatchbayWeb, :html
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1]
+  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, count_label: 3, site_path: 1]
 
   embed_templates("pages_html/*")
 
@@ -23,6 +23,15 @@ defmodule PatchbayWeb.PagesHTML do
       |> Enum.take_while(&(!match?(%MDEx.ThematicBreak{}, &1)))
 
     MDEx.to_html!(%{document | nodes: body}, options)
+  end
+
+  @doc """
+  Tool arguments as JSON for a code block. The values carry a visitor's own
+  words, so a backtick is written as its JSON escape and cannot end the block.
+  """
+  @spec call_json(Jason.OrderedObject.t()) :: String.t()
+  def call_json(arguments) do
+    arguments |> Jason.encode!(pretty: true) |> String.replace("`", "\\u0060")
   end
 
   def auth_label("none"), do: "No session needed"

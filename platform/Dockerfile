@@ -58,6 +58,7 @@ COPY platform/priv priv
 COPY platform/lib lib
 COPY CHANGELOG.md /app/CHANGELOG.md
 COPY blog /app/blog
+COPY skills /app/skills
 COPY platform/assets assets
 
 # The escrow module compiles the contract's ABI straight into itself, so the

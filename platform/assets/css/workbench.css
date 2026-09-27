@@ -149,6 +149,15 @@
 .pb-onboarding-note { margin-top: 1.5rem; padding-left: 1rem; border-left: 2px solid var(--pb-accent); font-size: .75rem; line-height: 1.6; }
 .pb-onboarding-note strong { font-weight: 600; }
 .pb-onboarding-note p { margin: .5rem 0 0; color: var(--pb-text-muted); }
+.pb-capabilities-note { margin: 0; padding: 1rem 2rem; font-size: .8125rem; line-height: 1.6; color: var(--pb-text-muted); }
+.pb-capabilities-scroll { overflow-x: auto; padding: 0 2rem 1.5rem; }
+.pb-capabilities-table { width: 100%; min-width: 44rem; border-collapse: collapse; font-size: .8125rem; line-height: 1.5; }
+.pb-capabilities-table th, .pb-capabilities-table td { padding: .75rem .75rem .75rem 0; border-bottom: 1px solid var(--pb-line); text-align: left; vertical-align: top; }
+.pb-capabilities-table thead th { font-weight: 600; font-size: .75rem; }
+.pb-capabilities-table tbody th { font-weight: 600; white-space: nowrap; }
+.pb-capabilities-table code { color: var(--pb-text); background: var(--pb-accent-wash); padding: .125rem .3rem; }
+.pb-capabilities-table small { display: block; margin-top: .25rem; color: var(--pb-text-muted); }
+.pb-capability-none { color: var(--pb-text-muted); }
 .pb-onboarding .pb-agent-setup { padding: 1.5rem 2rem; border: 0; border-left: 1px solid var(--pb-line); background: var(--pb-canvas); min-width: 0; }
 .pb-onboarding .pb-agent-setup > summary { font-family: var(--font-family-title); font-size: 1.125rem; padding: 0 2rem 1rem 0; }
 .pb-onboarding .pb-help-body { padding-top: 0; }
@@ -206,6 +215,8 @@
   .pb-onboarding-grid { grid-template-columns: minmax(0, 1fr); }
   .pb-onboarding-head { padding: 1.5rem; }
   .pb-onboarding-instructions { padding: 0 1.5rem 1.5rem; }
+  .pb-capabilities-note { padding: 1rem 1.5rem; }
+  .pb-capabilities-scroll { padding: 0 1.5rem 1.5rem; }
   .pb-onboarding .pb-agent-setup, .pb-onboarding .pb-readiness { border-left: 0; border-top: 1px solid var(--pb-line); padding: 1.5rem; }
   .pb-workbench-head > .rg-button { font-size: .75rem; min-height: 2.75rem; gap: .4rem; }
   .pb-workbench-head .patchbay-kicker { display: none; }
@@ -226,6 +237,8 @@
   .pb-onboarding-head { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.25rem; }
   .pb-onboarding-head h2 { font-size: 1.5rem; }
   .pb-onboarding-instructions { padding: 0 1.25rem 1.25rem; }
+  .pb-capabilities-note { padding: 1rem 1.25rem; }
+  .pb-capabilities-scroll { padding: 0 1.25rem 1.25rem; }
   .pb-onboarding .pb-agent-setup, .pb-onboarding .pb-readiness { padding: 1.25rem; }
   .pb-onboarding-steps li { grid-template-columns: 1.25rem minmax(0, 1fr); gap: .75rem; }
 }

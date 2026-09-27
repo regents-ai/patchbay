@@ -1,0 +1,9 @@
+# Stuck on a site
+
+That site address <%= @problem %>. Give the site as it appears in the address bar, for example:
+
+```text
+<%= absolute("/help?site=example.com&goal=add%20a%20jacket%20to%20my%20cart&error=the%20add_to_cart%20tool%20timed%20out") %>
+```
+
+<%= trailer() %>

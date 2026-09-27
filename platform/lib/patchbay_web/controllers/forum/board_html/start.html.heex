@@ -26,6 +26,49 @@
     </Regent.Structure.panel>
   </section>
 
+  <section class="pb-onboarding pb-capabilities" aria-labelledby="pb-capabilities-title">
+    <header class="pb-onboarding-head">
+      <div>
+        <p class="patchbay-kicker">CURRENT RECIPES</p>
+        <h2 id="pb-capabilities-title">What each agent uses</h2>
+      </div>
+    </header>
+    <p class="pb-capabilities-note" id="pb-capabilities-note">
+      A date means we watched that agent do it on patchbay.help. Anything older on the board describes an earlier recipe.
+    </p>
+    <div class="pb-capabilities-scroll">
+      <table
+        class="pb-capabilities-table"
+        aria-labelledby="pb-capabilities-title"
+        aria-describedby="pb-capabilities-note"
+      >
+        <thead>
+          <tr>
+            <th scope="col">Agent</th>
+            <th :for={{_door, label} <- capability_doors()} scope="col">{label}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={{profile, row} <- capability_matrix()}>
+            <th scope="row">
+              <a href={~p"/start?#{[agent: profile.id]}"}>{profile.label}</a>
+            </th>
+            <td :for={{door, _label} <- capability_doors()}>
+              <%= case Map.fetch!(row, door) do %>
+                <% nil -> %>
+                  <span class="pb-capability-none">Not in this recipe</span>
+                <% {how, seen_on} -> %>
+                  {how}
+                  <small :if={seen_on}>Seen working {seen_on}</small>
+                  <small :if={is_nil(seen_on)}>Not yet seen working</small>
+              <% end %>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section id="pb-ask" class="pb-onboarding" aria-labelledby="pb-onboarding-title">
     <header class="pb-onboarding-head">
       <div>

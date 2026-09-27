@@ -37,6 +37,9 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     get "/sitemap.xml", SitemapController, :index
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
+    get "/skill.md", AgentSkillsController, :guide
+    get "/.well-known/skills/index.json", AgentSkillsController, :index
+    get "/.well-known/skills/:name/SKILL.md", AgentSkillsController, :show
   end
 
   pipeline :wallet_author do
