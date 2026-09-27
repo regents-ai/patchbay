@@ -103,6 +103,9 @@ defmodule Patchbay.Payments do
           {:ok, %{String.t() => pos_integer()}} | {:error, Ash.Error.t()}
   def earned_usdc_atomic_by_profile([]), do: {:ok, %{}}
 
+  # The atoms are earned_0, earned_1, … by position, so every call reuses the same
+  # few names; nothing a caller sends becomes an atom.
+  # sobelow_skip ["DOS.BinToAtom"]
   def earned_usdc_atomic_by_profile(profile_ids) do
     named =
       Enum.with_index(profile_ids, fn profile_id, index -> {:"earned_#{index}", profile_id} end)

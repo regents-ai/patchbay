@@ -452,6 +452,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   Author-written Markdown as safe HTML. Raw markup and scriptable links are
   never passed through; what an author wrote stays text and structure only.
   """
+  # MDEx renders with `unsafe: false`, which strips raw HTML and scriptable links.
+  # sobelow_skip ["XSS.Raw"]
   def markdown(text) when is_binary(text) do
     MDEx.to_html!(text,
       extension: [table: true, strikethrough: true, autolink: true],

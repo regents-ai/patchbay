@@ -776,6 +776,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   # The uploaded file feeds the same source update as pasting, so the digest and
   # the timeline event are produced by exactly one path.
+  # `path` is the temporary file LiveView wrote for this upload.
+  # sobelow_skip ["Traversal.FileModule"]
   defp consume_skill_upload(socket) do
     case uploaded_entries(socket, :skill) do
       {[_entry], []} ->

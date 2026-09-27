@@ -69,6 +69,8 @@ defmodule Patchbay.Patchbay.Fixtures do
     })
   end
 
+  # Every caller names one of the fixture files here; no name comes from a request.
+  # sobelow_skip ["Traversal.FileModule"]
   defp fixture!(name) do
     :patchbay
     |> :code.priv_dir()

@@ -106,6 +106,8 @@ defmodule Patchbay.Forum.Catalog do
     Enum.map(document["entries"], &normalize_entry(&1, verified))
   end
 
+  # The path is the fixed catalog file in priv (`path/0`), never a caller's.
+  # sobelow_skip ["Traversal.FileModule"]
   defp document do
     path()
     |> File.read!()

@@ -53,6 +53,8 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{method: "POST", path_info: ["fixes"]}), do: true
   defp counted?(_conn), do: false
 
+  # The type and body are the fixed refusals in `body/1`; nothing from the request.
+  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   defp refuse(conn, wait) do
     {content_type, body} = body(conn.private[:phoenix_format])
 

@@ -141,6 +141,7 @@ defmodule Patchbay.MixProject do
         "cmd mix hex.audit",
         "format --check-formatted",
         "credo --strict",
+        "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
         "test"
       ]
     ]

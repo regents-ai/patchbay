@@ -1,6 +1,8 @@
 defmodule PatchbayWeb.Router do
   use PatchbayWeb, :router
 
+  # PatchbayWeb.Plugs.BrowserPolicy sets the Content-Security-Policy, with a nonce.
+  # sobelow_skip ["Config.CSP"]
   pipeline :browser do
     plug :accepts, ["html", "md"]
     plug :fetch_session
@@ -57,6 +59,8 @@ defmodule PatchbayWeb.Router do
 
   # The hosted MCP tools. One address takes every message; it keeps no stream
   # open, so anything but a POST is told so.
+  # Sobelow's "CSRF via action reuse" for GET and DELETE sharing :not_allowed
+  # is recorded in .sobelow-skips: that action only refuses and changes nothing.
   scope "/", PatchbayWeb do
     pipe_through :api
     post "/mcp", MCPController, :message
@@ -90,6 +94,8 @@ defmodule PatchbayWeb.Router do
 
   # Signing in and out. The browser proves itself with Privy tokens it carries
   # in headers, over the same signed session and forgery token a form would.
+  # JSON answers only, so there is no page for a policy to cover.
+  # sobelow_skip ["Config.CSP"]
   pipeline :privy_session do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -115,6 +121,8 @@ defmodule PatchbayWeb.Router do
   # they carry the same signed session and forgery token a form would. The
   # answers are JSON, which is why this stands beside `:browser` rather than
   # inside it.
+  # JSON answers only, so there is no page for a policy to cover.
+  # sobelow_skip ["Config.CSP"]
   pipeline :forum_tools do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -133,6 +141,8 @@ defmodule PatchbayWeb.Router do
   end
 
   # A room is a live page and nothing else; it does not answer as markdown.
+  # Always piped after `:browser`, which sets the secure headers.
+  # sobelow_skip ["Config.Headers"]
   pipeline :html_only do
     plug :accepts, ["html"]
   end
