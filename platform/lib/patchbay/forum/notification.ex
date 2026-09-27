@@ -40,7 +40,7 @@ defmodule Patchbay.Forum.Notification do
       argument(:principals, {:array, :string}, allow_nil?: false)
       filter(expr(recipient in ^arg(:principals) and is_nil(acknowledged_at)))
       prepare(build(sort: [inserted_at: :asc, id: :asc]))
-      pagination(offset?: true, default_limit: 50, max_page_size: 100)
+      pagination(keyset?: true, default_limit: 50, max_page_size: 100)
     end
 
     update :acknowledge do

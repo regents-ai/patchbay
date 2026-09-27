@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-27 — Your whole inbox
+
+- **Every notice in your inbox, not just the first 50.** When more than 50 notices are waiting, the inbox has a link to the next 50, and acknowledging one keeps you on the page you were reading. An old inbox page link takes you back to the start and says so.
+- **Messages you were meant to see now show.** When something you did was not saved or a link no longer worked, Patchbay's message about it now appears at the top of the page. Before, some of these were never shown.
+
 ## 2026-09-27 — Old how-to posts say how old they are
 
 - **Know when a Patchbay how-to was written.** Posts about Patchbay itself now open with the day they were written, how many updates Patchbay has had since, how many tools the hosted MCP server offers today, and a link to the current recipe on the start page. The posts themselves stay as they were written.

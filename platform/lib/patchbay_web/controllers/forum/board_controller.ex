@@ -242,28 +242,50 @@ defmodule PatchbayWeb.Forum.BoardController do
     |> Enum.map(& &1.scope_id)
   end
 
-  @doc "Whoever is on this page's own unacknowledged notifications."
-  def inbox(conn, _params) do
+  @doc """
+  Whoever is on this page's own unacknowledged notifications, 50 at a time,
+  with a link to the next 50 when there are more.
+  """
+  def inbox(conn, params) do
     principals =
       Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
 
+    cursor = if is_binary(params["after"]), do: params["after"]
+
     # Confined to the caller's own principals; the event join reads the
-    # caller's own mail.
-    page =
-      Forum.list_inbox!(principals,
-        load: [event: [:thread, :site]],
-        page: [limit: 50],
-        authorize?: false
-      )
+    # caller's own mail. A page link that names no page is said so.
+    case Forum.list_inbox(principals,
+           load: [event: [:thread, :site]],
+           page: inbox_page(cursor),
+           authorize?: false
+         ) do
+      {:ok, page} ->
+        render(conn, :inbox,
+          page_title: "Inbox",
+          notifications: page.results,
+          next_page: if(page.more?, do: List.last(page.results).__metadata__.keyset),
+          current_page: cursor,
+          following: Discussions.following(principals)
+        )
 
-    notifications = page.results
+      {:error, %Ash.Error.Invalid{errors: errors} = invalid} ->
+        if Enum.any?(errors, &match?(%Ash.Error.Page.InvalidKeyset{}, &1)),
+          do:
+            conn
+            |> put_flash(
+              :error,
+              "That inbox page link no longer works. Here is the start of your inbox."
+            )
+            |> redirect(to: ~p"/inbox"),
+          else: raise(invalid)
 
-    render(conn, :inbox,
-      page_title: "Inbox",
-      notifications: notifications,
-      following: Discussions.following(principals)
-    )
+      {:error, failure} ->
+        raise failure
+    end
   end
+
+  defp inbox_page(nil), do: [limit: 50]
+  defp inbox_page(cursor), do: [limit: 50, after: cursor]
 
   def acknowledge(conn, params) do
     ids =
@@ -276,7 +298,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       ids
     )
 
-    redirect(conn, to: ~p"/inbox")
+    redirect(conn, to: back(params["back"]))
   end
 
   @doc """

@@ -30,15 +30,23 @@
         <form method="post" action={~p"/inbox/acknowledge"} class="pb-inbox-ack">
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="ids[]" value={notice.id} />
+          <input type="hidden" name="back" value={inbox_path(@current_page)} />
           <Regent.Primitives.button variant="secondary" type="submit">
             Acknowledge
           </Regent.Primitives.button>
         </form>
       </li>
     </ol>
-    <p :if={@notifications == []} class="patchbay-muted">
+    <p :if={@notifications == [] and is_nil(@current_page)} class="patchbay-muted">
       Nothing waiting. Follow a site or a thread and new replies and answers will land here.
     </p>
+    <p :if={@notifications == [] and @current_page} class="patchbay-muted">
+      Nothing further waiting.
+    </p>
+    <nav :if={@current_page || @next_page} class="pb-list-pagination" aria-label="Inbox pages">
+      <a :if={@current_page} href={~p"/inbox"}>← Back to the start</a>
+      <a :if={@next_page} href={inbox_path(@next_page)}>Next 50 →</a>
+    </nav>
   </section>
 
   <section aria-labelledby="pb-inbox-following" class="pb-inbox-section">

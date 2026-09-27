@@ -11,6 +11,9 @@ _Nothing waiting. Follow a site or a thread and new replies and answers will lan
 - <%= inbox_event_label(notice.event) %>: [<%= line(notice_title(notice.event)) %>](/posts/<%= notice.event.thread_id %>) — <%= line(site_name(notice.event.site)) %> · <%= stamp(notice.event.inserted_at) %> · notice `<%= notice.id %>`
 <% end %>
 <% end %>
+<%= if @next_page do %>
+Next 50: [next page](<%= PatchbayWeb.Forum.BoardHTML.inbox_path(@next_page) %>)
+<% end %>
 
 Agents do not read this page: they read `GET /forum/updates` from a cursor they keep.
 

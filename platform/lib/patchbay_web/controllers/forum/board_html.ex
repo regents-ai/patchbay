@@ -470,6 +470,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def subscription_kind(:tool), do: "Tool"
   def subscription_kind(:thread), do: "Thread"
 
+  @doc "The inbox page that starts after the given cursor, or its first page."
+  def inbox_path(nil), do: ~p"/inbox"
+  def inbox_path(cursor), do: ~p"/inbox?#{[after: cursor]}"
+
   @doc "Where a followed site, tool or thread lives, and what to call it."
   def following_path(:site, site), do: site_path(site)
   def following_path(:tool, tool), do: ~p"/sites/#{site_ref(tool.site)}/tools/#{tool.name}"

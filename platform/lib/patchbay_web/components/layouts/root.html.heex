@@ -93,6 +93,9 @@
       </Regent.Structure.row>
       <Regent.Structure.row rail={false}>
         <div id="pb-content" tabindex="-1">
+          <p :if={Phoenix.Flash.get(@flash, :error)} class="pb-flash" role="alert">
+            {Phoenix.Flash.get(@flash, :error)}
+          </p>
           {@inner_content}
         </div>
       </Regent.Structure.row>
