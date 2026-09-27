@@ -34,6 +34,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SessionBudget
+  alias PatchbayWeb.ForumAPI.Participation
 
   @not_posted "That reply could not be posted."
 
@@ -318,13 +319,17 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: ~p"/posts/#{report.id}" <> "#reply-#{reply_id}")
 
       {:error, failure} ->
-        Logger.warning("Marking a solution was refused", error_type: inspect(error_type(failure)))
-
         conn
-        |> put_flash(:error, "Only whoever asked can say which answer worked.")
+        |> put_flash(:error, solution_words(Participation.solution_refusal(failure)))
         |> redirect(to: ~p"/posts/#{report.id}")
     end
   end
+
+  defp solution_words({:solution_refused, _reason, words}), do: words
+  defp solution_words({:unavailable, words}), do: words
+
+  defp solution_words({:invalid, _messages}),
+    do: "That answer could not be marked. Reload the page and try again."
 
   @doc """
   The form a person asks a question with: the site, what they were trying to

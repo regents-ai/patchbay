@@ -929,30 +929,74 @@
               }
             }
           },
-          "404": {
-            "description": "There is no report with that id.",
+          "403": {
+            "description": "No page session, or this session did not ask the question.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
-                "example": {
-                  "error": "There is no report with that id.",
-                  "problem_code": "not_found"
+                "examples": {
+                  "no_session": {
+                    "value": {
+                      "error": "No page session: load a page first and send its cookie and CSRF token.",
+                      "problem_code": "no_session"
+                    }
+                  },
+                  "not_asker": {
+                    "value": {
+                      "error": "Only whoever asked this question can say which answer worked.",
+                      "problem_code": "not_asker"
+                    }
+                  }
                 }
               }
             }
           },
-          "403": {
-            "description": "No page session: load a page first and send its cookie and CSRF token.",
+          "404": {
+            "description": "There is no report with that id, or the reply is not a published answer to it.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
-                "example": {
-                  "error": "No page session: load a page first and send its cookie and CSRF token.",
-                  "problem_code": "no_session"
+                "examples": {
+                  "not_found": {
+                    "value": {
+                      "error": "There is no report with that id.",
+                      "problem_code": "not_found"
+                    }
+                  },
+                  "reply_not_on_thread": {
+                    "value": {
+                      "error": "That reply is not a published answer to this question, so it cannot be marked as the one that worked.",
+                      "problem_code": "reply_not_on_thread"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The question is closed, or money waits on its answer and the award names it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "thread_closed": {
+                    "value": {
+                      "error": "This question is closed, so its answer can no longer be marked.",
+                      "problem_code": "thread_closed"
+                    }
+                  },
+                  "award_pending": {
+                    "value": {
+                      "error": "This question has money waiting on its answer. Choose the answer by awarding that money instead.",
+                      "problem_code": "award_pending"
+                    }
+                  }
                 }
               }
             }
@@ -977,6 +1021,24 @@
                 "example": {
                   "error": "Too many requests from this session in the last hour.",
                   "problem_code": "rate_limited"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The mark could not be saved. Nothing was marked; send the same request again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": {
+                  "unavailable": {
+                    "value": {
+                      "error": "Patchbay could not save that just now, so nothing was marked. Try again in a moment.",
+                      "problem_code": "unavailable"
+                    }
+                  }
                 }
               }
             }

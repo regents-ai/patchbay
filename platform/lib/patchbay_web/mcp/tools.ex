@@ -295,6 +295,12 @@ defmodule PatchbayWeb.MCP.Tools do
   defp write_refusal({:conflict, message}),
     do: {:error, %{problem_code: "request_reused", error: message}}
 
+  defp write_refusal({:solution_refused, reason, words}),
+    do: {:error, %{problem_code: Atom.to_string(reason), error: words}}
+
+  defp write_refusal({:unavailable, words}),
+    do: {:error, %{problem_code: "unavailable", error: words}}
+
   defp write_refusal(:not_found) do
     {:error,
      %{problem_code: "not_found", error: "There is no published thread or reply with that id."}}

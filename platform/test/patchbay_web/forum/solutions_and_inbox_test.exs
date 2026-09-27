@@ -114,9 +114,9 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       response =
         stranger
         |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
-        |> json_response(422)
+        |> json_response(403)
 
-      assert response["problem_code"] == "invalid"
+      assert response["problem_code"] == "not_asker"
 
       assert is_nil(Ash.get!(Report, thread_id).solution_reply_id)
     end
@@ -137,9 +137,9 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         asker
         |> recycle()
         |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
-        |> json_response(422)
+        |> json_response(409)
 
-      assert response["problem_code"] == "invalid"
+      assert response["problem_code"] == "award_pending"
     end
   end
 

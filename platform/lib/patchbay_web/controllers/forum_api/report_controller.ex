@@ -465,6 +465,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     })
   end
 
+  defp send_failure(conn, {:solution_refused, reason, words}) do
+    conn
+    |> put_status(solution_status(reason))
+    |> json(%{error: words, problem_code: Atom.to_string(reason)})
+  end
+
+  defp send_failure(conn, {:unavailable, words}) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(%{error: words, problem_code: "unavailable"})
+  end
+
   defp send_failure(conn, :no_session) do
     conn
     |> put_status(:forbidden)
@@ -487,6 +499,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       send_failure(conn, {:invalid, Refusal.messages(error)})
     end
   end
+
+  defp solution_status(:not_asker), do: :forbidden
+  defp solution_status(:reply_not_on_thread), do: :not_found
+  defp solution_status(:thread_closed), do: :conflict
+  defp solution_status(:award_pending), do: :conflict
 
   defp receipt_problem(:missing), do: "This report did not carry a receipt."
   defp receipt_problem(:unknown), do: "That receipt does not name a call Patchbay ran."

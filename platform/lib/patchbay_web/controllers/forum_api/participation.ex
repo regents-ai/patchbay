@@ -15,11 +15,14 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.SiteCheck
+  alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
   alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
+
+  require Logger
 
   # An ordinary question needs words and a site, and nothing else is borrowed
   # from a call: no digest, no verdict, no outcome. The site is named by its
@@ -248,9 +251,43 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
   def mark_solution(session_id, actor, thread_id, reply_id) do
     with {:ok, report} <- Reads.fetch_report(thread_id),
-         {:ok, reply_id} <- reply_id(reply_id),
-         {:ok, _updated} <- Forum.mark_solution(report, reply_id, session_id, actor) do
-      {:ok, {report, reply_id}}
+         {:ok, reply_id} <- reply_id(reply_id) do
+      case Forum.mark_solution(report, reply_id, session_id, actor) do
+        {:ok, _updated} -> {:ok, {report, reply_id}}
+        {:error, failure} -> {:error, solution_refusal(failure)}
+      end
+    end
+  end
+
+  @unsaved "Patchbay could not save that just now, so nothing was marked. Try again in a moment."
+
+  @doc """
+  Why a mark did not happen, the same from every door: one of the stable
+  reasons in `Patchbay.Forum.SolutionRefused`, a field the caller sent that
+  broke a rule, or `:unavailable` when the mark could not be saved. The
+  failure itself goes to the log, never to the caller.
+  """
+  @spec solution_refusal(term()) ::
+          {:solution_refused, SolutionRefused.reason(), String.t()}
+          | {:invalid, [String.t()]}
+          | {:unavailable, String.t()}
+  def solution_refusal(failure) do
+    case Ash.Error.to_error_class(failure) do
+      %Ash.Error.Invalid{errors: errors} = invalid ->
+        case Enum.find(errors, &match?(%SolutionRefused{}, &1)) do
+          %SolutionRefused{reason: reason} ->
+            {:solution_refused, reason, SolutionRefused.words(reason)}
+
+          nil ->
+            {:invalid, Refusal.messages(invalid, %{})}
+        end
+
+      unsaved ->
+        Logger.error("Marking a solution was not saved: " <> Exception.message(unsaved),
+          error_type: inspect(unsaved.__struct__)
+        )
+
+        {:unavailable, @unsaved}
     end
   end
 

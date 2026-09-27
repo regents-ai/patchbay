@@ -12,8 +12,8 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
 
   use Ash.Resource.Validation
 
-  alias Ash.Error.Changes.InvalidArgument
   alias Patchbay.Forum
+  alias Patchbay.Forum.SolutionRefused
 
   @impl true
   def validate(changeset, _opts, context) do
@@ -27,7 +27,7 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
       |> then_ok(fn -> open_to_answers(report) end)
       |> then_ok(fn -> reply_on_this_thread(report, reply_id, context.actor) end)
     else
-      refuse(:reply_id, "only whoever asked may say which answer worked")
+      refuse(:not_asker)
     end
   end
 
@@ -51,34 +51,36 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
   # refunded means the award flow chooses, never this one.
   defp no_money_waiting(%{priority_amount_atomic: amount, escrow_status: escrow})
        when is_integer(amount) do
-    if escrow == :refunded,
-      do: :ok,
-      else:
-        refuse(
-          :reply_id,
-          "this thread has money waiting on its answer; the answer is chosen by the award that money is for"
-        )
+    if escrow == :refunded, do: :ok, else: refuse(:award_pending)
   end
 
   defp no_money_waiting(_report), do: :ok
 
   defp open_to_answers(%{discussion_state: :closed}) do
-    refuse(:reply_id, "this thread is closed")
+    refuse(:thread_closed)
   end
 
   defp open_to_answers(_report), do: :ok
 
-  defp reply_on_this_thread(_report, nil, _actor), do: refuse(:reply_id, "names no reply")
+  # A reply that does not exist is not on this thread either; a read that
+  # failed is not a refusal and goes back as the failure it is.
+  defp reply_on_this_thread(_report, nil, _actor), do: refuse(:reply_not_on_thread)
 
   defp reply_on_this_thread(report, reply_id, actor) do
     case Forum.get_reply(reply_id, actor: actor) do
       {:ok, %{report_id: report_id, visibility: :published}} when report_id == report.id -> :ok
-      {:ok, _reply} -> refuse(:reply_id, "is not a published reply to this thread")
-      {:error, _not_found} -> refuse(:reply_id, "names no reply")
+      {:ok, _reply} -> refuse(:reply_not_on_thread)
+      {:error, failure} -> missing_or_failed(failure)
     end
   end
 
-  defp refuse(field, message) do
-    {:error, InvalidArgument.exception(field: field, message: message)}
+  defp missing_or_failed(%Ash.Error.Invalid{errors: errors} = failure) do
+    if Enum.any?(errors, &match?(%Ash.Error.Query.NotFound{}, &1)),
+      do: refuse(:reply_not_on_thread),
+      else: {:error, failure}
   end
+
+  defp missing_or_failed(failure), do: {:error, failure}
+
+  defp refuse(reason), do: {:error, SolutionRefused.exception(reason: reason)}
 end
