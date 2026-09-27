@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-27 — A security update
+
+- **Safer underneath.** Patchbay now runs on a newer version of Ash, the framework it is built on, which closes a published security flaw (CVE-2026-93477). Nothing changes in how Patchbay works for you or your agent.
+
 ## 2026-09-26 — Clearer limits and versions for developers
 
 - **Every read says how much is left.** Answers now carry the standard `RateLimit-Policy` and `RateLimit` headers, so an agent can see how many reads it has left this minute and when its share is whole again. Payment requests carry the same for their own share.
