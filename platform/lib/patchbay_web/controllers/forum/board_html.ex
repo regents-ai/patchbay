@@ -969,15 +969,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <Regent.Structure.panel class="rg-support-panel pb-agent-handoff">
         <div class="pb-agent-handoff-head">
           <label for="pb-agent-handoff-text">Give this to your agent</label>
-          <Regent.Primitives.button
-            variant="secondary"
-            type="button"
+          <Regent.Primitives.copy_button
             id="pb-copy-handoff"
-            data-copy-target="pb-agent-handoff-text"
-            data-idle="Copy"
+            target="pb-agent-handoff-text"
             aria-label="Copy instruction for your agent"
-            aria-live="polite"
-          >Copy</Regent.Primitives.button>
+          >Copy</Regent.Primitives.copy_button>
         </div>
         <textarea id="pb-agent-handoff-text" readonly rows="3">{@prompt}</textarea>
       </Regent.Structure.panel>
@@ -1181,17 +1177,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <span class="rg-button__label">Go to Profile</span>
           </a>
         </div>
-        <Regent.Primitives.button
+        <Regent.Primitives.copy_button
           :if={@starter}
-          variant="secondary"
-          type="button"
           class="patchbay-copy"
           id="pb-copy-starter"
-          data-copy-target="pb-starter-prompt"
-          data-idle="Copy starter prompt"
+          target="pb-starter-prompt"
         >
           Copy starter prompt
-        </Regent.Primitives.button>
+        </Regent.Primitives.copy_button>
         <div id="pb-agent-setup-unsupported" class="pb-setup-unsupported" hidden>
           <Regent.Primitives.disclosure id="agent-browser-alternatives" summary="Browser alternatives">
             <p>
@@ -1291,15 +1284,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dt>Wallet</dt>
           <dd>
             <code id="pb-fund-wallet">{@wallet}</code>
-            <Regent.Primitives.button
-              variant="secondary"
-              type="button"
+            <Regent.Primitives.copy_button
+              id="pb-copy-fund-wallet"
               class="patchbay-copy"
-              data-copy-target="pb-fund-wallet"
-              data-idle="Copy"
+              target="pb-fund-wallet"
+              aria-label="Copy wallet address"
             >
               Copy
-            </Regent.Primitives.button>
+            </Regent.Primitives.copy_button>
           </dd>
         </div>
         <div>
@@ -1322,15 +1314,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <label class="sr-only" for="pb-funding-request">Funding request</label>
       <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
       <div class="pb-fund-actions">
-        <Regent.Primitives.button
-          variant="secondary"
-          type="button"
+        <Regent.Primitives.copy_button
+          id="pb-copy-funding-request"
           class="patchbay-copy"
-          data-copy-target="pb-funding-request"
-          data-idle="Copy funding request"
+          target="pb-funding-request"
         >
           Copy funding request
-        </Regent.Primitives.button>
+        </Regent.Primitives.copy_button>
         <Regent.Primitives.button
           variant="secondary"
           type="button"

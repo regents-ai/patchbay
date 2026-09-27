@@ -1,4 +1,3 @@
-import {copyPrompt} from "../hooks/copy_prompt.js";
 import {signedInProfileId} from "./profile.js";
 import {fundingRequestText, readPaymentReadiness} from "./payment_readiness.js";
 import {getModelContext} from "./webmcpify.js";
@@ -91,14 +90,11 @@ export function paymentsLine({paymentsEnabled, signedIn, readiness = null}) {
  *   root?: ParentNode | null,
  *   getModelContext?: () => unknown,
  *   signedInProfileId?: (doc?: Document) => string | null,
- *   copyPrompt?: typeof copyPrompt,
  *   fetch?: typeof globalThis.fetch,
  *   readPaymentReadiness?: typeof readPaymentReadiness,
  * }} [options]
  */
 export function mountAgentSetup(options = {}) {
-  const handoff = globalThis.document?.querySelector(".pb-agent-handoff");
-  if (handoff) bindCopyButtons(handoff, options.copyPrompt ?? copyPrompt);
   const root = options.root ?? globalThis.document?.getElementById("pb-agent-setup");
   if (!root) return;
 
@@ -129,8 +125,6 @@ export function mountAgentSetup(options = {}) {
       paymentsEnabled: true,
     }).then(paintAll);
   }
-
-  bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
 }
 
 export const READINESS_PATH = "/forum/readiness";
@@ -211,7 +205,6 @@ function replaceLine(root, fact, state) {
  * @param {{
  *   root?: ParentNode | null,
  *   signedInProfileId?: (doc?: Document) => string | null,
- *   copyPrompt?: typeof copyPrompt,
  *   fetch?: typeof globalThis.fetch,
  *   readPaymentReadiness?: typeof readPaymentReadiness,
  * }} [options]
@@ -235,7 +228,6 @@ export function mountAgentFunding(options = {}) {
   };
 
   refresh();
-  bindCopyButtons(root, options.copyPrompt ?? copyPrompt);
 
   const check = root.querySelector("#pb-fund-check");
   if (check) check.addEventListener("click", refresh);
@@ -280,21 +272,6 @@ function paintFunding(root, readiness) {
   if (neededRow) {
     neededRow.hidden = !readiness?.required_usdc;
     if (needed && readiness?.required_usdc) needed.textContent = `${readiness.required_usdc} USDC`;
-  }
-}
-
-function bindCopyButtons(root, copy) {
-  for (const button of root.querySelectorAll("[data-copy-target]")) {
-    button.addEventListener("click", () => {
-      copy(button).then(outcome => {
-        const idle = button.dataset.idle || button.textContent;
-        const words = {copied: "Copied", selected: "Selected", missing: idle};
-        button.textContent = words[outcome] || idle;
-        window.setTimeout(() => {
-          button.textContent = idle;
-        }, 1600);
-      });
-    });
   }
 }
 

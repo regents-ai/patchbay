@@ -26,7 +26,6 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.js"
-import {PatchbayCopy} from "./hooks/copy_prompt.js"
 import {PatchbayRelativeTime} from "./hooks/relative_time.js"
 import {PatchbayPress} from "./hooks/motion/press.js"
 import {PatchbaySlides} from "./hooks/motion/slides.js"
@@ -43,6 +42,7 @@ import {mountFixForm} from "./fix_form.js"
 import {mountAskForm} from "./ask_form.js"
 import {mountCardTopUp} from "./card_topup.js"
 import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.js"
+import {installCopyButtons} from "./copy_buttons"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -52,7 +52,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     ...colocatedHooks,
     PatchbayWebMCP,
-    PatchbayCopy,
     PatchbayRelativeTime,
     PatchbayPress,
     PatchbaySlides,
@@ -74,6 +73,9 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
+
+// One listener serves every copy button on every page, live or not.
+installCopyButtons()
 
 // The account strip, the report board tools and the standard motion all
 // belong to every Patchbay page rather than to the room, so they are set up

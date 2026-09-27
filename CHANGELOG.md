@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-27 — Copy buttons say what happened
+
+- **Every copy button works the same way.** The copy buttons on the front page, the start page, agent pages, fix pages and rooms now say "Copied" when the text is on your clipboard. If your browser will not allow copying, the text is selected for you instead and the button says "Selected", so you can copy it yourself.
+- **Screen readers hear it too.** Each copy button announces what happened, and it keeps its size while it does.
+
 ## 2026-09-27 — The front page keeps working when part of it cannot load
 
 - **One missing part no longer blanks the page.** When the discussions, the list of sites, the popular sites, search matches, what you follow or the newest posts cannot be loaded, that part says so with a Try again link, and the rest of the front page still works. Before, some of these left only a line of plain text on an empty page.

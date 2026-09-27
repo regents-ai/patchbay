@@ -62,15 +62,11 @@
           </label>
           <textarea id="patchbay-prompt-uplift" class="patchbay-prompt" rows="2" readonly>Call {active_tool_name(@active_tool)} with instructions: make the greeting warmer.</textarea>
         </div>
-        <Regent.Primitives.button
-          variant="secondary"
+        <Regent.Primitives.copy_button
           id="patchbay-copy-uplift"
           class="patchbay-copy"
-          type="button"
-          phx-hook="PatchbayCopy"
-          data-copy-target="patchbay-prompt-uplift"
-          aria-live="polite"
-        >Copy</Regent.Primitives.button>
+          target="patchbay-prompt-uplift"
+        >Copy</Regent.Primitives.copy_button>
       </li>
       <li
         class={"patchbay-prompt-chip " <> step_state(@room, 2)}
@@ -84,15 +80,11 @@
           </label>
           <textarea id="patchbay-prompt-repair" class="patchbay-prompt" rows="3" readonly>That tool reported success but changed nothing on the page. Call report_tool_problem with receipt set to the patchbay_receipt value from that result; that is all it needs.</textarea>
         </div>
-        <Regent.Primitives.button
-          variant="secondary"
+        <Regent.Primitives.copy_button
           id="patchbay-copy-repair"
           class="patchbay-copy"
-          type="button"
-          phx-hook="PatchbayCopy"
-          data-copy-target="patchbay-prompt-repair"
-          aria-live="polite"
-        >Copy</Regent.Primitives.button>
+          target="patchbay-prompt-repair"
+        >Copy</Regent.Primitives.copy_button>
       </li>
       <li
         class={"patchbay-prompt-chip " <> step_state(@room, 3)}
@@ -106,15 +98,11 @@
           </label>
           <textarea id="patchbay-prompt-retry" class="patchbay-prompt" rows="2" readonly>The site's tools changed. Inspect the current tools and retry the uplift.</textarea>
         </div>
-        <Regent.Primitives.button
-          variant="secondary"
+        <Regent.Primitives.copy_button
           id="patchbay-copy-retry"
           class="patchbay-copy"
-          type="button"
-          phx-hook="PatchbayCopy"
-          data-copy-target="patchbay-prompt-retry"
-          aria-live="polite"
-        >Copy</Regent.Primitives.button>
+          target="patchbay-prompt-retry"
+        >Copy</Regent.Primitives.copy_button>
       </li>
     </ol>
 

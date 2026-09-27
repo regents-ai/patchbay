@@ -581,7 +581,6 @@ body:has(#patchbay-room) {
 .patchbay-prompt { display: block; width: 100%; border: 0; border-radius: var(--radius); padding: var(--space-1) var(--space-2); color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.5 var(--font-family-ui); resize: none; }
 .patchbay-copy { align-self: center; font-size: var(--pb-fs-xs); }
 .patchbay-copy:hover { align-self: center; font-size: var(--pb-fs-xs); }
-.patchbay-copy[data-state="done"] { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
 
 .patchbay-guide-watch { grid-column: 1 / -1; margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-xs); line-height: 1.6; }
 .patchbay-guide-watch b { color: var(--pb-text); }

@@ -47,15 +47,9 @@
   <section :if={@answer} class="pb-fix-answer" aria-labelledby="pb-fix-answer-title">
     <div class="pb-fix-answer-head">
       <h2 id="pb-fix-answer-title">The answer, ready for your agent</h2>
-      <button
-        type="button"
-        id="pb-fix-copy"
-        class="rg-button rg-button--secondary"
-        phx-hook="PatchbayCopy"
-        data-copy-target="pb-fix-answer-text"
-      >
+      <Regent.Primitives.copy_button id="pb-fix-copy" target="pb-fix-answer-text">
         Copy
-      </button>
+      </Regent.Primitives.copy_button>
     </div>
     <pre id="pb-fix-answer-text" class="pb-fix-answer-text">{@answer}</pre>
     <p class="pb-fix-again">Another one? <a href={~p"/"}>Ask Patchbay for the next fix</a>.</p>

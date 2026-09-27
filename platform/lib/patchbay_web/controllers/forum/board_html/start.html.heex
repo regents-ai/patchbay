@@ -16,15 +16,11 @@
       </nav>
       <div class="pb-agent-handoff-head">
         <label for="pb-agent-handoff-text">Give this to your agent</label>
-        <Regent.Primitives.button
-          variant="secondary"
-          type="button"
+        <Regent.Primitives.copy_button
           id="pb-copy-handoff"
-          data-copy-target="pb-agent-handoff-text"
-          data-idle="Copy"
+          target="pb-agent-handoff-text"
           aria-label="Copy instruction for your agent"
-          aria-live="polite"
-        >Copy</Regent.Primitives.button>
+        >Copy</Regent.Primitives.copy_button>
       </div>
       <textarea id="pb-agent-handoff-text" readonly rows="10">{String.trim(@agent.instruction)}</textarea>
     </Regent.Structure.panel>
