@@ -77,24 +77,15 @@ export function normalizeUsdc(amount) {
   return atomic === null ? null : formatUsdcAtomic(atomic);
 }
 
-export function isShortOf(available, required) {
-  const have = parseUsdcAtomic(available);
-  const need = parseUsdcAtomic(required);
-  if (have === null || need === null) return false;
-  return have < need;
-}
-
-export function fundingHandoffText({walletAddress, amountUsdc} = {}) {
-  const what = amountUsdc ? `${amountUsdc} native USDC` : "native USDC";
+export function fundingHandoffText({walletAddress} = {}) {
   const to = walletAddress ?? "the signed-in wallet";
-  return `Please send ${what} on Base mainnet to ${to}. Do not send it on Ethereum or another network. Do not send me a private key or recovery phrase.`;
+  return `Please send native USDC on Base mainnet to ${to}. Do not send it on Ethereum or another network. Do not send me a private key or recovery phrase.`;
 }
 
-export function fundingRequestText({walletAddress, amountUsdc} = {}) {
-  const amount = amountUsdc ?? "{AMOUNT}";
+export function fundingRequestText({walletAddress} = {}) {
   const wallet = walletAddress ?? "{WALLET_ADDRESS}";
   return [
-    `Please send ${amount} native USDC on Base mainnet to:`,
+    "Please send {AMOUNT} native USDC on Base mainnet to:",
     "",
     wallet,
     "",
@@ -157,38 +148,16 @@ export function notConfigured({message} = {}) {
   };
 }
 
-export function needsFunding({balanceUsdc, walletAddress, requiredUsdc} = {}) {
-  const balance = normalizeUsdc(balanceUsdc) ?? "0.00";
-  const required = requiredUsdc ? normalizeUsdc(requiredUsdc) ?? String(requiredUsdc) : null;
+export function needsFunding({balanceUsdc, walletAddress} = {}) {
   return {
     status: "needs_human_funding",
-    balance_usdc: balance,
+    balance_usdc: normalizeUsdc(balanceUsdc) ?? "0.00",
     wallet_address: walletAddress ?? null,
     network: NETWORK_CAIP2,
     asset: ASSET_SYMBOL,
-    funding_request: fundingRequestText({walletAddress, amountUsdc: required}),
-    human_handoff: fundingHandoffText({walletAddress, amountUsdc: required}),
+    funding_request: fundingRequestText({walletAddress}),
+    human_handoff: fundingHandoffText({walletAddress}),
     summary: "This wallet needs USDC on Base before the agent can pay.",
-    ...(required ? {required_usdc: required} : {}),
-  };
-}
-
-export function paidToolShortfall({walletAddress, balanceUsdc, requiredUsdc}) {
-  const balance = normalizeUsdc(balanceUsdc) ?? String(balanceUsdc ?? "0.00");
-  const required = normalizeUsdc(requiredUsdc) ?? String(requiredUsdc);
-  const address = walletAddress ?? null;
-  return {
-    status: "needs_human_funding",
-    message: "This wallet does not have enough USDC on Base.",
-    wallet_address: address,
-    network: {name: NETWORK_NAME, caip2: NETWORK_CAIP2, chain_id: CHAIN_ID},
-    asset: {symbol: ASSET_SYMBOL, contract: USDC_CONTRACT},
-    balance_usdc: balance,
-    required_usdc: required,
-    human_handoff: fundingHandoffText({walletAddress: address, amountUsdc: required}),
-    next_action: "After funding, call get_my_regents_balance and retry this action.",
-    paid: false,
-    summary: "This wallet does not have enough USDC on Base.",
   };
 }
 
@@ -245,28 +214,6 @@ export function mapBalanceHttp(answer) {
   };
 }
 
-/**
- * Upgrade a balance readout into a paid-tool shortfall when the known amount
- * is more than the wallet holds. Ready stays ready when the amount is covered.
- *
- * @param {object} readiness
- * @param {string | undefined} requiredUsdc
- */
-export function withRequiredAmount(readiness, requiredUsdc) {
-  if (!requiredUsdc) return readiness;
-  if (readiness?.status !== "ready" && readiness?.status !== "needs_human_funding") {
-    return readiness;
-  }
-  if (readiness.status === "ready" && !isShortOf(readiness.balance_usdc, requiredUsdc)) {
-    return readiness;
-  }
-  return paidToolShortfall({
-    walletAddress: readiness.wallet_address,
-    balanceUsdc: readiness.balance_usdc,
-    requiredUsdc,
-  });
-}
-
 export function mapUnsignedReason(unsigned) {
   if (unsigned === "unconfigured") {
     return notConfigured({
@@ -278,8 +225,8 @@ export function mapUnsignedReason(unsigned) {
 }
 
 /**
- * The one balance path the rail, get_my_regents_balance, get_patchbay_help, and
- * paid-tool pre-checks share. Unsigned and unconfigured pages never hit HTTP.
+ * The one balance path the rail, get_my_regents_balance and get_patchbay_help
+ * share. Unsigned and unconfigured pages never hit HTTP.
  *
  * @param {{
  *   fetch?: typeof globalThis.fetch,
@@ -288,14 +235,12 @@ export function mapUnsignedReason(unsigned) {
  *   paymentsEnabled?: boolean,
  *   document?: Document,
  * }} [options]
- * @param {{requiredUsdc?: string}} [extras]
  */
-export async function readPaymentReadiness(options = {}, {requiredUsdc} = {}) {
+export async function readPaymentReadiness(options = {}) {
   if (resolvePaymentsEnabled(options) === false) return notConfigured();
   if (!pageSignedIn(options)) return needsSignIn();
 
-  const http = await fetchBalanceHttp(options);
-  return withRequiredAmount(mapBalanceHttp(http), requiredUsdc);
+  return mapBalanceHttp(await fetchBalanceHttp(options));
 }
 
 async function fetchBalanceHttp(options = {}) {

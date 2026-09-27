@@ -8,10 +8,8 @@ import {
   mapUnsignedReason,
   needsSignIn,
   notConfigured,
-  paidToolShortfall,
   pageSignedIn,
   readPaymentReadiness,
-  withRequiredAmount,
 } from "../../js/webmcp/payment_readiness.js";
 
 const WALLET = `0x${"1".repeat(40)}`;
@@ -94,28 +92,6 @@ test("BalanceController not_configured and a disabled rail map to not_configured
     },
   });
   assert.deepEqual(fromRail, notConfigured());
-});
-
-test("a paid-tool shortfall uses the funding handoff shape", () => {
-  const ready = mapBalanceHttp(
-    httpOk({available_usdc: "1.00", verified_payout_address: WALLET, network: "eip155:8453"}),
-  );
-  const short = withRequiredAmount(ready, "5.00");
-
-  assert.deepEqual(short, paidToolShortfall({
-    walletAddress: WALLET,
-    balanceUsdc: "1.00",
-    requiredUsdc: "5.00",
-  }));
-  assert.equal(short.status, "needs_human_funding");
-  assert.equal(short.required_usdc, "5.00");
-  assert.equal(short.network.caip2, "eip155:8453");
-  assert.equal(short.asset.contract, USDC_CONTRACT);
-  assert.equal(
-    short.human_handoff,
-    `Please send 5.00 native USDC on Base mainnet to ${WALLET}. Do not send it on Ethereum or another network. Do not send me a private key or recovery phrase.`,
-  );
-  assert.equal(short.next_action, "After funding, call get_my_regents_balance and retry this action.");
 });
 
 test("pageSignedIn reads the pb-profile meta and never invents a session", () => {

@@ -166,13 +166,18 @@
 
         <h3>Fund the agent’s wallet</h3>
         <p>
-          First call <code>get_my_regents_balance</code>. A successful result names the profile, Base network, current Regents Balance, and the wallet address verified for the signed-in profile.
+          Do not check a balance before paying: every paid call goes to the wallet. When the paying
+          wallet is short, the wallet or the payment service turns the payment down, nothing is paid,
+          and the result says so. <code>get_my_regents_balance</code>
+          names the account's main wallet and what it holds, for the handoff below.
         </p>
         <p>
           If no profile is signed in, ask the human to use <strong>Sign in</strong>
           on the current Patchbay page. Never ask the human to send a private key, recovery phrase, or wallet export.
         </p>
-        <p>If the balance is too low, give the human this exact handoff:</p>
+        <p>
+          When a payment is turned down for a short balance, give the human this exact handoff:
+        </p>
         <pre><code>Please send {"{AMOUNT}"} native USDC on Base mainnet to:
 
 {"{WALLET_ADDRESS}"}
@@ -186,9 +191,9 @@ Do not send USDC on Ethereum or another network.
 Do not send me a private key or recovery phrase.
 Tell me when the transfer is complete.</code></pre>
         <p>
-          After the human confirms funding, call <code>get_my_regents_balance</code>
-          again before attempting the paid action. Obtain <code>{"{WALLET_ADDRESS}"}</code>
-          from that tool.
+          Take <code>{"{WALLET_ADDRESS}"}</code>
+          from <code>get_my_regents_balance</code>, or use the wallet the human pays from. After the
+          human confirms funding, call the paid tool again.
         </p>
 
         <h3>Call a paid WebMCP tool</h3>
@@ -258,9 +263,9 @@ Tell me when the transfer is complete.</code></pre>
               </td>
             </tr>
             <tr>
-              <td>Insufficient USDC</td>
+              <td>Turned down for a short balance</td>
               <td>
-                Call <code>get_my_regents_balance</code>, prepare the funding handoff, and wait for the human to confirm funding.
+                Nothing was paid. Give the human the funding handoff, wait for them to confirm funding, then call again.
               </td>
             </tr>
             <tr>
@@ -387,7 +392,7 @@ Tell me when the transfer is complete.</code></pre>
         <ul>
           <li>Sign in on this page.</li>
           <li>
-            Fund native USDC on Base to the address from <code>get_my_regents_balance</code>. Use the <a href="#x402">funding handoff</a>,
+            Fund native USDC on Base to the wallet they pay from. Use the <a href="#x402">funding handoff</a>,
             or buy it by card with <strong>Add USDC with a card</strong>
             on their Patchbay profile.
           </li>
@@ -404,7 +409,7 @@ Tell me when the transfer is complete.</code></pre>
         <h3>What does the agent do?</h3>
         <ul>
           <li>
-            Call <code>get_patchbay_help</code> and <code>get_my_regents_balance</code> first.
+            Call <code>get_patchbay_help</code> first.
           </li>
           <li>
             For paid work, only <code>tip_agent</code>

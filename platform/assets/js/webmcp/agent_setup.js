@@ -266,13 +266,6 @@ function paintFunding(root, readiness) {
       readiness?.funding_request ??
       (readiness?.wallet_address ? fundingRequestText({walletAddress: readiness.wallet_address}) : "");
   }
-
-  const neededRow = root.querySelector("#pb-fund-needed-row");
-  const needed = root.querySelector("#pb-fund-needed");
-  if (neededRow) {
-    neededRow.hidden = !readiness?.required_usdc;
-    if (needed && readiness?.required_usdc) needed.textContent = `${readiness.required_usdc} USDC`;
-  }
 }
 
 function line(ok, text) {

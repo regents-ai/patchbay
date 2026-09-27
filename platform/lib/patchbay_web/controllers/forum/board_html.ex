@@ -1305,10 +1305,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dt>Regents Balance</dt>
           <dd id="pb-fund-balance"></dd>
         </div>
-        <div id="pb-fund-needed-row" hidden>
-          <dt>Needed now</dt>
-          <dd id="pb-fund-needed"></dd>
-        </div>
       </dl>
       <label class="sr-only" for="pb-funding-request">Funding request</label>
       <textarea id="pb-funding-request" class="sr-only" readonly rows="4" tabindex="-1"></textarea>
