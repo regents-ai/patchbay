@@ -5,9 +5,11 @@ defmodule PatchbayWeb.RateLimitHeaders do
   how many requests it holds and its window in seconds; `RateLimit` says how
   many are left and the seconds until the share is whole again.
 
-  Patchbay's shares are fixed windows on the wall clock, the clock Hammer
-  counts them by, so every share is whole again when its window ends. A
-  request drawn on two shares (a payment read is a read too) lists both.
+  The reads and payments shares are fixed windows on the wall clock, the
+  clock Hammer counts them by, so each is whole again when its window ends.
+  The hourly posting shares roll, so they say when they are whole again
+  themselves. A request drawn on two shares (a payment read is a read too)
+  lists both.
   """
 
   import Plug.Conn
@@ -15,10 +17,25 @@ defmodule PatchbayWeb.RateLimitHeaders do
   @doc "Adds the share, its size and window, what is left of it and when it is whole again."
   @spec add(Plug.Conn.t(), String.t(), pos_integer(), pos_integer(), non_neg_integer()) ::
           Plug.Conn.t()
-  def add(conn, name, quota, window, remaining) do
+  def add(conn, name, quota, window, remaining),
+    do: add(conn, name, quota, window, remaining, seconds_left(window))
+
+  @doc """
+  The same for a share whose window rolls, which says itself how many
+  seconds until it is whole again.
+  """
+  @spec add(
+          Plug.Conn.t(),
+          String.t(),
+          pos_integer(),
+          pos_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: Plug.Conn.t()
+  def add(conn, name, quota, window, remaining, whole_in_seconds) do
     conn
     |> append("ratelimit-policy", ~s("#{name}";q=#{quota};w=#{div(window, 1000)}))
-    |> append("ratelimit", ~s("#{name}";r=#{remaining};t=#{seconds_left(window)}))
+    |> append("ratelimit", ~s("#{name}";r=#{remaining};t=#{whole_in_seconds}))
   end
 
   @doc "Whole seconds, rounded up, so a caller who waits them is never early."

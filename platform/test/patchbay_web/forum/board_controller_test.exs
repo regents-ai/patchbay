@@ -900,7 +900,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         })
         |> html_response(200)
 
-      assert refused =~ "You have already posted 2 replies in the past hour."
+      assert refused =~ "This session has already posted 2 replies in the past hour."
       assert refused =~ "kept while waiting"
 
       assert %{"problem_code" => "rate_limited"} =

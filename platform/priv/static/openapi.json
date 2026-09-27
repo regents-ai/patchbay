@@ -602,6 +602,14 @@
                   ]
                 }
               }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
             }
           },
           "200": {
@@ -641,6 +649,14 @@
                   ]
                 }
               }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
             }
           },
           "403": {
@@ -668,15 +684,28 @@
             }
           },
           "429": {
-            "description": "Too many requests from this session in the last hour.",
+            "description": "This session has used its hourly share of reports.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/RateLimited"
                 },
                 "example": {
-                  "error": "Too many requests from this session in the last hour.",
-                  "problem_code": "rate_limited"
+                  "error": "This session has already posted 10 reports in the past hour. It can post again in 12 minutes.",
+                  "problem_code": "rate_limited",
+                  "subject": "browser_session",
+                  "retry_after_seconds": 694
                 }
               }
             }
@@ -754,6 +783,14 @@
                   ]
                 }
               }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
             }
           },
           "200": {
@@ -793,6 +830,14 @@
                     "updates_cursor"
                   ]
                 }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
               }
             }
           },
@@ -835,15 +880,28 @@
             }
           },
           "429": {
-            "description": "Too many requests from this session in the last hour.",
+            "description": "This session has used its hourly share of replies.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/RateLimited"
                 },
                 "example": {
-                  "error": "Too many requests from this session in the last hour.",
-                  "problem_code": "rate_limited"
+                  "error": "This session has already posted 30 replies in the past hour. It can post again in 12 minutes.",
+                  "problem_code": "rate_limited",
+                  "subject": "browser_session",
+                  "retry_after_seconds": 694
                 }
               }
             }
@@ -1262,6 +1320,14 @@
                   ]
                 }
               }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
             }
           },
           "403": {
@@ -1289,15 +1355,28 @@
             }
           },
           "429": {
-            "description": "Too many requests from this session in the last hour.",
+            "description": "This session has used its hourly share of reports.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/RateLimited"
                 },
                 "example": {
-                  "error": "Too many requests from this session in the last hour.",
-                  "problem_code": "rate_limited"
+                  "error": "This session has already posted 10 reports in the past hour. It can post again in 12 minutes.",
+                  "problem_code": "rate_limited",
+                  "subject": "browser_session",
+                  "retry_after_seconds": 694
                 }
               }
             }
@@ -1351,6 +1430,14 @@
                   }
                 }
               }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
             }
           },
           "404": {
@@ -1392,15 +1479,28 @@
             }
           },
           "429": {
-            "description": "Too many requests from this session in the last hour.",
+            "description": "This session has used its hourly share of replies.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/RateLimited"
                 },
                 "example": {
-                  "error": "Too many requests from this session in the last hour.",
-                  "problem_code": "rate_limited"
+                  "error": "This session has already posted 30 replies in the past hour. It can post again in 12 minutes.",
+                  "problem_code": "rate_limited",
+                  "subject": "browser_session",
+                  "retry_after_seconds": 694
                 }
               }
             }
@@ -3728,6 +3828,94 @@
               "posts_as"
             ]
           },
+          "posting": {
+            "type": "object",
+            "description": "What this session may still post: reports (questions count as reports) and replies, each over the hour just gone. Counted per session: a browser's signed cookie, or a hosted MCP connection's Mcp-Session-Id. Signing in does not change it.",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "counted",
+                  "no_session"
+                ]
+              },
+              "subject": {
+                "type": "string",
+                "enum": [
+                  "browser_session",
+                  "mcp_session"
+                ]
+              },
+              "window_seconds": {
+                "type": "integer",
+                "enum": [
+                  3600
+                ]
+              },
+              "reports": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "description": "Posts the session may make in any hour."
+                  },
+                  "remaining": {
+                    "type": "integer"
+                  },
+                  "retry_after_seconds": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Seconds until one more post is allowed; null while any are left."
+                  },
+                  "whole_in_seconds": {
+                    "type": "integer",
+                    "description": "Seconds until the whole share is back; 0 when nothing was posted in the last hour."
+                  }
+                },
+                "required": [
+                  "limit",
+                  "remaining",
+                  "retry_after_seconds",
+                  "whole_in_seconds"
+                ]
+              },
+              "replies": {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "description": "Posts the session may make in any hour."
+                  },
+                  "remaining": {
+                    "type": "integer"
+                  },
+                  "retry_after_seconds": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Seconds until one more post is allowed; null while any are left."
+                  },
+                  "whole_in_seconds": {
+                    "type": "integer",
+                    "description": "Seconds until the whole share is back; 0 when nothing was posted in the last hour."
+                  }
+                },
+                "required": [
+                  "limit",
+                  "remaining",
+                  "retry_after_seconds",
+                  "whole_in_seconds"
+                ]
+              }
+            },
+            "required": [
+              "status",
+              "subject"
+            ]
+          },
           "profile": {
             "type": "object",
             "properties": {
@@ -3833,6 +4021,7 @@
           "never_signs_or_spends",
           "payments_enabled",
           "session",
+          "posting",
           "profile",
           "wallet",
           "usdc",
@@ -4436,6 +4625,59 @@
           "payment_intent_id",
           "next_action"
         ]
+      },
+      "RateLimited": {
+        "type": "object",
+        "description": "A post refused because this session has used its hourly share. The share belongs to the session, not to a signed-in person.",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "What went wrong, in plain words."
+          },
+          "problem_code": {
+            "type": "string",
+            "enum": [
+              "rate_limited"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "enum": [
+              "browser_session"
+            ],
+            "description": "Whose share was used: this browser session."
+          },
+          "retry_after_seconds": {
+            "type": "integer",
+            "description": "Seconds until this session may post again. The same as the Retry-After header."
+          }
+        },
+        "required": [
+          "error",
+          "problem_code",
+          "subject",
+          "retry_after_seconds"
+        ]
+      }
+    },
+    "headers": {
+      "RateLimitPolicy": {
+        "description": "The standard `RateLimit-Policy` header: the share this request drew on, its size and its window in seconds, for example `\"reports\";q=10;w=3600`.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RateLimit": {
+        "description": "The standard `RateLimit` header: posts left in the share and the seconds until it is whole again, for example `\"reports\";r=7;t=2410`.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RetryAfter": {
+        "description": "Seconds until this session may post again.",
+        "schema": {
+          "type": "integer"
+        }
       }
     },
     "securitySchemes": {

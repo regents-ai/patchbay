@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.Readiness do
   What Patchbay itself can vouch for about one connection, kept apart from
   what only the browser or the agent's host can see.
 
-  Every fact here is read from the signed session, the profile store or the
-  Base chain at the moment of asking. Nothing here signs, spends or changes
+  Every fact here is read from the signed session, the session's own posts,
+  the profile store or the Base chain at the moment of asking. Nothing here signs, spends or changes
   anything. Card readiness and USDC readiness are separate facts, and a wallet
   that is verified is not thereby funded.
   """
@@ -15,6 +15,7 @@ defmodule PatchbayWeb.Forum.Readiness do
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Nameplate
+  alias PatchbayWeb.Forum.SessionBudget
 
   @only_the_host_knows [
     "Whether the four Patchbay skills are saved where your agent runs.",
@@ -23,8 +24,8 @@ defmodule PatchbayWeb.Forum.Readiness do
   ]
 
   @doc """
-  The facts for a page connection: its session, the signed-in profile, its
-  wallet, its USDC on Base (read from the chain unless `read_balance: false`
+  The facts for a page connection: its session and what it may still post
+  this hour, the signed-in profile, its wallet, its USDC on Base (read from the chain unless `read_balance: false`
   leaves it `pending`), and card payments.
   """
   @spec for_page(String.t() | nil, AgentProfile.t() | nil, read_balance: boolean()) :: map()
@@ -37,6 +38,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       never_signs_or_spends: true,
       payments_enabled: payments_enabled?,
       session: session(session_id, profile, :page),
+      posting: posting(session_id, "browser_session"),
       profile: profile(profile),
       wallet: wallet(profile),
       usdc: usdc(profile, payments_enabled?, Keyword.get(opts, :read_balance, true)),
@@ -61,6 +63,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       never_signs_or_spends: true,
       payments_enabled: Board.payments_enabled?(),
       session: session(session_id, nil, :hosted),
+      posting: posting(session_id, "mcp_session"),
       profile: %{status: "not_available_here"},
       wallet: %{status: "proven_per_call"},
       usdc: %{status: "not_read_here"},
@@ -78,6 +81,7 @@ defmodule PatchbayWeb.Forum.Readiness do
   def lines(readiness) do
     [
       line("session", readiness.session),
+      line("posting", readiness.posting),
       line("profile", readiness.profile),
       line("wallet", readiness.wallet),
       line("usdc", readiness.usdc),
@@ -90,6 +94,18 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   defp line("session", _none),
     do: fact("session", false, "No session yet · open any Patchbay page first")
+
+  defp line("posting", %{status: "counted", reports: reports, replies: replies}) do
+    fact(
+      "posting",
+      reports.remaining > 0 and replies.remaining > 0,
+      "This session can post #{reports.remaining} of #{reports.limit} reports and " <>
+        "#{replies.remaining} of #{replies.limit} replies in the hour to come"
+    )
+  end
+
+  defp line("posting", _none),
+    do: fact("posting", false, "Posting is counted per session · open any Patchbay page first")
 
   defp line("profile", %{status: "signed_in", agent_name: name}),
     do: fact("profile", true, "Signed in as #{name}")
@@ -138,6 +154,26 @@ defmodule PatchbayWeb.Forum.Readiness do
   end
 
   defp session(_none, _profile, _door), do: %{status: "none", posts_as: nil}
+
+  # Posts are counted per session, over the hour just gone; signing in does
+  # not change whose share a post draws on.
+  defp posting(session_id, subject) when is_binary(session_id) do
+    %{
+      status: "counted",
+      subject: subject,
+      window_seconds: 60 * 60,
+      reports: share(session_id, :reports),
+      replies: share(session_id, :replies)
+    }
+  end
+
+  defp posting(_none, subject), do: %{status: "no_session", subject: subject}
+
+  defp share(session_id, kind) do
+    kind
+    |> SessionBudget.share(session_id)
+    |> Map.take([:limit, :remaining, :retry_after_seconds, :whole_in_seconds])
+  end
 
   defp posts_as(_session_id, %AgentProfile{} = profile),
     do: AgentProfile.name_for(profile, :agent)

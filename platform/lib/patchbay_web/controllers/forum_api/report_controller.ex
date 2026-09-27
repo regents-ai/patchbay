@@ -39,6 +39,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias PatchbayWeb.ForumAPI.Refusal
 
   def create(conn, params) do
+    conn = with_share_headers(conn, :reports)
+
     with {:ok, session_id} <- established_session(conn),
          {:ok, report} <- file_report(session_id, conn.assigns.current_profile, params) do
       conn
@@ -57,6 +59,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # The conversation writes — questions, replies, solutions, uses, follows and
   # the update feed — live in `Participation`, which the hosted MCP tools share.
   def create_thread(conn, params) do
+    conn = with_share_headers(conn, :reports)
+
     with {:ok, session_id} <- established_session(conn),
          {outcome, thread} when outcome != :error <-
            Participation.ask_question(session_id, current_profile(conn), params) do
@@ -76,6 +80,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def create_thread_reply(conn, %{"id" => id} = params) do
+    conn = with_share_headers(conn, :replies)
+
     with {:ok, session_id} <- established_session(conn),
          {outcome, {thread, reply}} when outcome != :error <-
            Participation.post_reply(session_id, current_profile(conn), id, params) do
@@ -122,6 +128,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def create_reply(conn, %{"id" => id} = params) do
+    conn = with_share_headers(conn, :replies)
+
     with {:ok, session_id} <- established_session(conn),
          {:ok, {report, reply}} <-
            file_reply(session_id, conn.assigns.current_profile, id, params) do
@@ -266,6 +274,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile
+
+  # A post answers with its session's hourly share as it stands once the post
+  # is settled, whether it landed or was refused.
+  defp with_share_headers(%{assigns: %{forum_session_id: id}} = conn, kind) when is_binary(id),
+    do: register_before_send(conn, &SessionBudget.add_headers(&1, kind, id))
+
+  defp with_share_headers(conn, _kind), do: conn
 
   # Only a page load issues a forum identity, so a caller without one has not
   # come through a Patchbay page.
@@ -434,10 +449,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     })
   end
 
-  defp send_failure(conn, {:rate_limited, message}) do
+  defp send_failure(conn, {:rate_limited, message, seconds}) do
     conn
+    |> put_resp_header("retry-after", Integer.to_string(seconds))
     |> put_status(:too_many_requests)
-    |> json(%{error: message, problem_code: "rate_limited"})
+    |> json(%{
+      error: message,
+      problem_code: "rate_limited",
+      subject: "browser_session",
+      retry_after_seconds: seconds
+    })
   end
 
   defp send_failure(conn, {:invalid, messages}) do

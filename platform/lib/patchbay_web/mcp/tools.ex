@@ -286,8 +286,15 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # The same refusals the HTTP endpoints give, as a tool answer.
-  defp write_refusal({:rate_limited, message}),
-    do: {:error, %{problem_code: "rate_limited", error: message}}
+  defp write_refusal({:rate_limited, message, seconds}) do
+    {:error,
+     %{
+       problem_code: "rate_limited",
+       error: message,
+       subject: "mcp_session",
+       retry_after_seconds: seconds
+     }}
+  end
 
   defp write_refusal({:invalid, messages}),
     do: {:error, %{problem_code: "invalid", errors: messages}}

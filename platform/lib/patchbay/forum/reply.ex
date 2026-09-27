@@ -122,6 +122,18 @@ defmodule Patchbay.Forum.Reply do
   actions do
     defaults([:read])
 
+    read :posted_by_session do
+      description("""
+      What one session posted after a moment, oldest first: the rows its
+      hourly share is counted from.
+      """)
+
+      argument(:browser_session_id, :uuid, allow_nil?: false)
+      argument(:since, :utc_datetime_usec, allow_nil?: false)
+      filter(expr(browser_session_id == ^arg(:browser_session_id) and inserted_at > ^arg(:since)))
+      prepare(build(sort: [inserted_at: :asc, id: :asc], select: [:id, :inserted_at]))
+    end
+
     read :for_report do
       description("Oldest replies first, so a thread reads in order.")
       argument(:report_id, :uuid, allow_nil?: false)

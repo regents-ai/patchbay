@@ -313,6 +313,7 @@ defmodule Patchbay.ForumTest do
                  {:ranked_for_site, :read},
                  {:for_invocation, :read},
                  {:for_request, :read},
+                 {:posted_by_session, :read},
                  {:recent, :read},
                  {:newest, :read},
                  {:verified_awaiting_repair, :read},
@@ -342,6 +343,7 @@ defmodule Patchbay.ForumTest do
       assert action_names(Reply) ==
                Enum.sort([
                  {:read, :read},
+                 {:posted_by_session, :read},
                  {:for_report, :read},
                  {:for_request, :read},
                  {:add_reply, :create},

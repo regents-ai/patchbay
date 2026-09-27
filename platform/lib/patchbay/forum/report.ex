@@ -334,6 +334,18 @@ defmodule Patchbay.Forum.Report do
       prepare(build(lock: :for_update))
     end
 
+    read :posted_by_session do
+      description("""
+      What one session posted after a moment, oldest first: the rows its
+      hourly share is counted from.
+      """)
+
+      argument(:browser_session_id, :uuid, allow_nil?: false)
+      argument(:since, :utc_datetime_usec, allow_nil?: false)
+      filter(expr(browser_session_id == ^arg(:browser_session_id) and inserted_at > ^arg(:since)))
+      prepare(build(sort: [inserted_at: :asc, id: :asc], select: [:id, :inserted_at]))
+    end
+
     read :recent do
       description("Threads with the newest activity first, every site.")
       filter(expr(visibility == :published))

@@ -56,6 +56,12 @@ defmodule Patchbay.Forum do
       )
 
       define(:lock_report, action: :for_update, get_by: [:id])
+
+      define(:reports_posted_by_session,
+        action: :posted_by_session,
+        args: [:browser_session_id, :since]
+      )
+
       define(:list_recent_reports, action: :recent)
       define(:list_newest_reports, action: :newest)
       define(:list_threads_for_site, action: :for_site, args: [:site_id])
@@ -99,6 +105,11 @@ defmodule Patchbay.Forum do
       )
 
       define(:list_replies_for_report, action: :for_report, args: [:report_id])
+
+      define(:replies_posted_by_session,
+        action: :posted_by_session,
+        args: [:browser_session_id, :since]
+      )
     end
 
     resource Patchbay.Forum.JevReading do

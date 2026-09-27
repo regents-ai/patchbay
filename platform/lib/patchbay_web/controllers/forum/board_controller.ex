@@ -464,7 +464,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         SiteCheck.check(thread.site_id)
         {:ok, thread}
 
-      {:error, {:rate_limited, said}} ->
+      {:error, {:rate_limited, said, _seconds}} ->
         {:error, %{said: said}}
 
       {:error, %{said: _said} = refused} ->
@@ -553,7 +553,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case admitted do
       {:ok, reply} -> {:ok, reply}
-      {:error, {:rate_limited, said}} -> {:error, %{said: said, draft: draft}}
+      {:error, {:rate_limited, said, _seconds}} -> {:error, %{said: said, draft: draft}}
       {:error, refused} -> {:error, %{said: conversation_refusal(refused), draft: draft}}
     end
   end
@@ -897,7 +897,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case admitted do
       {:ok, reply} -> {:ok, reply}
-      {:error, {:rate_limited, said}} -> {:error, %{said: said, draft: draft}}
+      {:error, {:rate_limited, said, _seconds}} -> {:error, %{said: said, draft: draft}}
       {:error, refused} -> {:error, %{said: refusal(refused), draft: draft}}
     end
   end
