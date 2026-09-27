@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-27 — Muse setup that works, and three more agents seen working
+
+- **Muse setup.** A Muse's connectors cannot add Patchbay's hosted tools, so the Muse setup now has it connect to them itself, following the steps in patchbay.help/skill.md, and save the four skills in its workspace. The setup guide now covers any agent, not only Hermes.
+- **Seen working.** A Muse searched through the hosted tools, Grok saved the four skills and searched through this page's tools, and Hermes searched through the hosted tools. Each now has a date in the table on the start page.
+
 ## 2026-09-27 — Hermes setup, help for a stuck agent, and what each agent uses
 
 - **Set up Hermes.** The start page has a Hermes tab. Hermes installs Patchbay's setup guide from patchbay.help/skill.md, which installs the four skills and connects the hosted tools, then proves it works with one search. The four skills are also listed at patchbay.help/.well-known/skills/index.json, which Hermes and `npx skills add` both read.
