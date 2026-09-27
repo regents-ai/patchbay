@@ -110,9 +110,15 @@ defmodule PatchbayWeb.Forum.Fix do
   @doc """
   What the page says when the run could not be opened: when the free fix
   was taken by another request in the meantime, the words for what is left
-  now.
+  now; when Patchbay could not tell whether a fix is already under way, that.
   """
   @spec refused(term(), Plug.Conn.t()) :: problem()
+  def refused(:open_run_unknown, _conn),
+    do: %{
+      said:
+        "Patchbay could not check whether a fix is already under way for you, so it did not start another. Try again in a moment."
+    }
+
   def refused(%Ash.Error.Forbidden{}, conn) do
     case grant(conn) do
       {:error, problem} -> problem

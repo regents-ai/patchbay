@@ -79,13 +79,15 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # The run the browser asked for that is still being worked on, if any:
   # the page's cookie names the browser, and a signed-in person is also
-  # known by their profile.
+  # known by their profile. A look-up that fails is not an answer of "none":
+  # no second run starts when Patchbay cannot tell whether one is under way.
   defp running_for(conn) do
     # Patchbay's own look-up for the page's browser, by the identity in its
     # signed cookie; the run is shown to that browser and nobody else.
     case Assist.get_open_run_for_browser(conn.assigns.forum_session_id, authorize?: false) do
       {:ok, %{} = run} -> {:running, run}
       {:ok, nil} -> running_for_profile(conn.assigns.current_profile)
+      {:error, failure} -> open_run_unknown(failure)
     end
   end
 
@@ -95,7 +97,13 @@ defmodule PatchbayWeb.Forum.BoardController do
     case Assist.get_open_run_for_payer(profile.id, actor: profile) do
       {:ok, %{} = run} -> {:running, run}
       {:ok, nil} -> :none
+      {:error, failure} -> open_run_unknown(failure)
     end
+  end
+
+  defp open_run_unknown(failure) do
+    Logger.warning("Open fix look-up failed", error_type: inspect(error_type(failure)))
+    {:error, :open_run_unknown}
   end
 
   defp open_free_run(conn, request, grant) do
