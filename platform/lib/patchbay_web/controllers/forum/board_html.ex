@@ -1159,7 +1159,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         page_tools: nil,
         hosted: {"Added with hermes mcp add", nil},
         http: nil,
-        skills: {"Installed from /skill.md", nil},
+        skills: {"Installed from /skill.md", ~D[2026-09-27]},
         paid: nil
       }
     }
