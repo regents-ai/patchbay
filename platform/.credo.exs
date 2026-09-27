@@ -3,7 +3,7 @@
     %{
       name: "default",
       files: %{
-        included: ["mix.exs", "config/", "lib/", "test/"],
+        included: ["mix.exs", "config/", "dev/", "lib/", "test/"],
         excluded: [
           # Build artifacts are generated and are not application source.
           ~r"/_build/",

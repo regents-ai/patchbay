@@ -710,9 +710,13 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     }
   end
 
-  # Read from the stored intent every time, so what a payer signs for is what
-  # was frozen when the intent was prepared.
-  defp requirement(found) do
+  @doc """
+  The one x402 requirement an intent accepts. It is read from the stored
+  intent every time, so what a payer signs for is what was frozen when the
+  intent was prepared.
+  """
+  @spec requirement(PaymentIntent.t()) :: map()
+  def requirement(found) do
     %{
       "scheme" => "exact",
       "network" => found.network,
@@ -724,7 +728,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     }
   end
 
-  defp identifier_extension(found) do
+  @doc "The intent's payment identifier as the x402 extension carries it."
+  @spec identifier_extension(PaymentIntent.t()) :: String.t()
+  def identifier_extension(found) do
     {:ok, encoded} = PaymentIdentifier.encode(found.payment_identifier)
     encoded
   end

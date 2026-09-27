@@ -10,15 +10,17 @@ const FIELD_NAMES = FIELDS.map(name => `fix[${name}]`)
 const MORE = ["site_url", "expected_result", "tool", "arguments"]
 
 const WORDS = {
-  paying: "Asking the wallet you signed in with to approve the fee.",
+  paying: "Asking your wallet to approve the fee.",
   paid: "Paid. Opening your fix.",
   unconfigured: "Paying is not set up on this Patchbay.",
   unloadable: "The wallet window could not be loaded. Check your connection and try again.",
   unready: "The wallet did not answer in time. Try again.",
-  closed: "That approval was closed before it finished.",
-  refused: "The wallet did not approve the fee.",
-  no_wallet: "Sign in with a wallet first, at the top of the page.",
-  unsupported_challenge: "This Patchbay asked for a payment this page cannot make.",
+  signed_out: "Sign in with a wallet first, at the top of the page.",
+  wallet_unavailable: "Connect your wallet, then press again. Nothing was sent.",
+  wallet_mismatch: "Switch to a wallet on your account in your wallet app, then press again. Nothing was sent.",
+  network_mismatch: "Your wallet is on a different network. Switch it to Base, then press again. Nothing was sent.",
+  wallet_declined: "Your wallet declined this. Nothing was sent.",
+  sign_unconfirmed: "Your wallet didn't finish approving the fee. Nothing was paid.",
   canceled: "That was canceled before it finished.",
   unopened: "Paid, and you will not be charged again. The fix could not be opened just now; " +
     "a person at Patchbay will open it for you.",
@@ -102,10 +104,12 @@ export function fixArguments(fields) {
  * was charged for; otherwise say what stood in the way.
  *
  * @param {{status: number, body: object | null, intent?: object, unsigned?: string}} outcome
- * @returns {{navigate: string} | {problem: string}}
+ * @returns {{navigate: string} | {problem: string, note?: string}}
  */
 export function fixOutcome(outcome) {
-  if (outcome.unsigned) return {problem: WORDS[outcome.unsigned] ?? WORDS.refused}
+  if (outcome.unsigned) {
+    return {problem: WORDS[outcome.unsigned], note: outcome.body?.wallet_note}
+  }
   if (outcome.status === 200 && outcome.body?.status === "applied" && outcome.intent?.run_id) {
     return {navigate: fixPath(outcome.intent.run_id)}
   }
@@ -115,7 +119,7 @@ export function fixOutcome(outcome) {
   if (outcome.status === 202 && outcome.intent?.run_id) {
     return {problem: WORDS.unopened}
   }
-  const said = outcome.body?.error
+  const said = outcome.body?.reason ?? outcome.body?.error
   return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
 }
 
@@ -124,6 +128,7 @@ async function pay(form, doc, options) {
   if (!request.ok) return refuse(form, request.problem)
 
   say(form, WORDS.paying)
+  note(form, null)
   const outcome = await payForIntent(
     {fetch: options.fetch, csrfToken: options.csrfToken, document: doc},
     {kind: "jev_assist", args: request.args},
@@ -133,6 +138,7 @@ async function pay(form, doc, options) {
     say(form, WORDS.paid)
     ;(options.navigate ?? (url => globalThis.location.assign(url)))(next.navigate)
   } else {
+    note(form, next.note)
     refuse(form, next.problem)
   }
 }
@@ -156,6 +162,15 @@ function fieldsOf(form) {
 function say(form, words) {
   const status = form.querySelector("#pb-fix-status")
   if (status) status.textContent = words
+}
+
+// The wallet the account does not know, named beside the button. The line is
+// always in the page and only shown or hidden, so nothing moves the button.
+function note(form, words) {
+  const line = form.querySelector("#pb-fix-wallet-note")
+  if (!line) return
+  line.textContent = words ?? ""
+  line.hidden = !words
 }
 
 // The reason is said beside the button, and the button shakes its head.

@@ -15,6 +15,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.Plugs.WalletAuthor
+  alias PatchbayWeb.WalletSigner
 
   @facilitator Patchbay.Payments.Facilitator
   @wallet "0x" <> String.duplicate("d", 40)
@@ -55,7 +56,13 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       replace_facilitator(old_facilitator)
     end)
 
-    %{payer: profile("a"), other: profile("b")}
+    wallet = WalletSigner.new()
+
+    %{
+      payer: profile(wallet.address),
+      wallet: wallet,
+      other: profile("0x" <> String.duplicate("b", 40))
+    }
   end
 
   test "a page profile buys an assist at the fixed fee and its run opens for the payer alone",
@@ -77,19 +84,22 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     # Nothing is open before the money lands.
     assert c.payer |> signed_in() |> get(prepared["assist_url"]) |> json_response(404)
 
-    challenge =
-      c.payer |> signed_in() |> post(prepared["execute_url"], %{}) |> json_response(402)
+    %{"review" => review} =
+      c.payer
+      |> signed_in()
+      |> post(prepared["execute_url"], %{active_wallet: c.wallet.address})
+      |> json_response(402)
 
-    assert [requirement] = challenge["payment_terms"]["accepts"]
-    assert requirement["payTo"] == @wallet
-    assert requirement["amount"] == "100000"
-    assert requirement["network"] == "eip155:8453"
+    assert [%{"typed_data" => %{"message" => authorization}}] = review["steps"]
+    assert authorization["from"] == c.wallet.address
+    assert authorization["to"] == @wallet
+    assert authorization["value"] == "100000"
+    assert review["chain"]["chain_id"] == 8453
 
     applied =
       c.payer
       |> signed_in()
-      |> put_req_header("payment-signature", payment(c.payer, challenge["payment_terms"]))
-      |> post(prepared["execute_url"], %{})
+      |> post(prepared["execute_url"], signed(c.wallet, review))
       |> json_response(200)
 
     assert applied["status"] == "applied"
@@ -143,8 +153,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     again =
       c.payer
       |> signed_in()
-      |> put_req_header("payment-signature", payment(c.payer, challenge["payment_terms"]))
-      |> post(prepared["execute_url"], %{})
+      |> post(prepared["execute_url"], signed(c.wallet, review))
       |> json_response(200)
 
     assert again["status"] == "applied"
@@ -398,28 +407,12 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert {:ok, _elsewhere} = Purchase.prepare_jev_assist(c.payer, @args, nil)
   end
 
-  defp payment(payer, terms) do
-    [requirement] = terms["accepts"]
-
-    %{
-      "x402Version" => 2,
-      "accepted" => requirement,
-      "extensions" => terms["extensions"],
-      "payload" => %{
-        "signature" => "0x" <> String.duplicate("1", 130),
-        "authorization" => %{
-          "from" => payer.wallet_address,
-          "to" => requirement["payTo"],
-          "value" => requirement["amount"],
-          "validAfter" => "0",
-          "validBefore" => Integer.to_string(System.system_time(:second) + 60),
-          "nonce" => "0x" <> Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)
-        }
-      }
+  defp signed(wallet, review),
+    do: %{
+      active_wallet: wallet.address,
+      review_id: review["id"],
+      signature: WalletSigner.sign(wallet, review)
     }
-    |> Jason.encode!()
-    |> Base.encode64()
-  end
 
   defp signed_in(profile),
     do:
@@ -427,11 +420,11 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       |> Plug.Test.init_test_session(%{})
       |> put_session(CurrentProfile.session_key(), profile.id)
 
-  defp profile(letter),
+  defp profile(address),
     do:
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:assist-#{Ecto.UUID.generate()}",
-        wallet_address: "0x" <> String.duplicate(letter, 40)
+        wallet_address: address
       })
 
   defp server(plug) do

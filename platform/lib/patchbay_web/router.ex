@@ -240,7 +240,7 @@ defmodule PatchbayWeb.Router do
     pipe_through [:forum_tools, :payments, :require_profile, :payment_budget]
 
     post "/payment_intents", PaymentIntentController, :create
-    post "/payment_intents/:id/execute", PaymentIntentController, :execute
+    post "/payment_intents/:id/execute", PaymentIntentController, :pay
     get "/payment_intents/:id", PaymentIntentController, :show
   end
 
@@ -279,6 +279,26 @@ defmodule PatchbayWeb.Router do
         csp_nonce_assign_key: :csp_nonce
 
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
+
+  # The payments lab, on a machine of ours only; its code is not in a release.
+  if Application.compile_env(:patchbay, :payments_lab) do
+    scope "/dev/lab/payments", PatchbayDev do
+      pipe_through :browser
+      get "/", PaymentsLab, :show
+      post "/sign-in", PaymentsLab, :sign_in
+    end
+
+    scope "/dev/lab/payments", PatchbayDev do
+      pipe_through :forum_tools
+      post "/wallet", PaymentsLab, :wallet
+    end
+
+    scope "/dev/lab/payments", PatchbayDev do
+      get "/js/*path", PaymentsLab, :script
+      post "/facilitator/verify", LabFacilitator, :verify
+      post "/facilitator/settle", LabFacilitator, :settle
     end
   end
 

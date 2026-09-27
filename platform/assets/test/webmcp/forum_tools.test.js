@@ -875,16 +875,19 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
     id, recipient: {profile_id: `agt_${"c".repeat(32)}`, profile_url: `/agents/agt_${"c".repeat(32)}`},
     amount_usdc: "1.000001", effect_summary: "A synthetic tip", irreversible_after_settlement: true,
   };
-  const terms = {network: "eip155:8453", pay_to: address, amount: "1000001", asset: address, nonce: hash};
+  const note = "You're signed in with 0xaa…aa, but your wallet app has 0xee…ee open.";
   const receipt = {transaction: hash, payer: address, network: "eip155:8453"};
-  let outcome = {status: 402, intent, body: {status: "payment_required", payment_terms: terms}};
+  let outcome = {status: 402, intent, unsigned: "wallet_mismatch",
+    body: {status: "payment_required", problem_code: "wallet_mismatch", wallet_note: note}};
   let payCalls = 0;
   const fetch = async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})});
   const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true, fetch,
     payForIntent: async () => { payCalls++; return outcome; }});
   const tip = tools.get("tip_agent");
   const unpaid = JSON.parse(await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc}));
-  assert.deepEqual(unpaid.payment_terms, terms);
+  assert.equal(unpaid.wallet_reason, "wallet_mismatch");
+  assert.equal(unpaid.wallet_note, note);
+  assert.match(unpaid.summary, /not one on this account/);
   assert.deepEqual(unpaid.recipient, intent.recipient);
   assert.equal(unpaid.payment_intent_id, id);
   assert.equal(unpaid.amount_usdc, intent.amount_usdc);

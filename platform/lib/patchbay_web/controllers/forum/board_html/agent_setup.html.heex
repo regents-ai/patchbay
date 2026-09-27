@@ -227,16 +227,27 @@ Tell me when the transfer is complete.</code></pre>
               <td>Ask the human to sign in on the current Patchbay page, then retry once.</td>
             </tr>
             <tr>
-              <td>Wallet reason <code>signed_out</code> or <code>no_wallet</code></td>
-              <td>Ask the human to connect the intended wallet in the page.</td>
+              <td>
+                <code>wallet_reason: "wallet_unavailable"</code> or <code>"wallet_mismatch"</code>
+              </td>
+              <td>
+                Ask the human to connect a wallet on their account, or switch to one in their wallet app,
+                then call again. <code>wallet_note</code> names both wallets when they differ.
+              </td>
             </tr>
             <tr>
-              <td>Wallet reason <code>wrong_chain</code></td>
-              <td>Ask the human to approve switching the wallet to Base.</td>
+              <td><code>wallet_reason: "network_mismatch"</code></td>
+              <td>Ask the human to approve switching the wallet to Base, then call again.</td>
             </tr>
             <tr>
-              <td>Wallet reason <code>refused</code></td>
+              <td><code>wallet_reason: "wallet_declined"</code></td>
               <td>Stop. The human declined the payment.</td>
+            </tr>
+            <tr>
+              <td><code>wallet_reason: "sign_unconfirmed"</code></td>
+              <td>
+                The wallet did not finish signing and nothing was paid. Call again when the human is ready.
+              </td>
             </tr>
             <tr>
               <td>Insufficient USDC</td>
@@ -245,10 +256,10 @@ Tell me when the transfer is complete.</code></pre>
               </td>
             </tr>
             <tr>
-              <td>HTTP <code>402</code>, payment missing or invalid</td>
+              <td>HTTP <code>402</code> with a <code>reason</code></td>
               <td>
-                The signed retry did not match the frozen terms. This is not a facilitator outage.
-                Read the reason. Do not pay a second time unless Patchbay says the old terms were never accepted.
+                Patchbay or the payment service refused the signed payment, and nothing was paid.
+                Read the reason. A new call starts a new payment.
               </td>
             </tr>
             <tr>

@@ -273,7 +273,7 @@ export function mapUnsignedReason(unsigned) {
       message: "Signing in is not set up on this Patchbay, so no wallet can sign here.",
     });
   }
-  if (unsigned === "signed_out" || unsigned === "no_wallet") return needsSignIn();
+  if (unsigned === "signed_out") return needsSignIn();
   return null;
 }
 

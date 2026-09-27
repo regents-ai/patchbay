@@ -70,6 +70,10 @@ config :patchbay, PatchbayWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :patchbay, dev_routes: true
 
+# The payments lab at /dev/lab/payments: a stand-in wallet app and payment
+# service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
+config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
+
 # /webmcp/health reports this where a production release reports its commit.
 config :patchbay, :release_commit, "development"
 

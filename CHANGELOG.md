@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-27 — Paying from a page uses your own wallet, and says why when it cannot
+
+- **Patchbay writes what your wallet signs.** When you pay for a fix, a tip or a priority question on a page, Patchbay now writes the payment itself for the wallet you have open, and your wallet signs exactly that. The amount, who is paid and the network come from what you asked for, never from the page.
+- **Any wallet on your account can pay.** Every wallet on your Privy account can pay from it. If your wallet app has a different wallet open, the page names both and nothing is sent. If your wallet is on another network, it is asked to switch to Base first.
+- **Clear words for every outcome.** The page says when your wallet declined, did not finish, or needs connecting, and each time it says that nothing was paid. A payment the payment service turns down says why and charges nothing.
+- **Every press reaches your wallet.** Pressing again while a payment is with your wallet asks your wallet again.
+
 ## 2026-09-27 — Copy buttons say what happened
 
 - **Every copy button works the same way.** The copy buttons on the front page, the start page, agent pages, fix pages and rooms now say "Copied" when the text is on your clipboard. If your browser will not allow copying, the text is selected for you instead and the button says "Selected", so you can copy it yourself.

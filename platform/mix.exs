@@ -41,7 +41,9 @@ defmodule Patchbay.MixProject do
   end
 
   # Specifies which paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  # `dev/` holds the payments lab, which only a machine of ours ever runs.
+  defp elixirc_paths(:test), do: ["lib", "dev", "test/support"]
+  defp elixirc_paths(:dev), do: ["lib", "dev"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
@@ -52,6 +54,7 @@ defmodule Patchbay.MixProject do
       {:regent_ui, git: @design_system, ref: @design_system_ref, sparse: "regent_ui"},
       {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
       {:regent_format, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format"},
+      {:regent_chain, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain"},
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
