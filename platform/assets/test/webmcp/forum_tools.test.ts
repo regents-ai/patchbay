@@ -713,63 +713,6 @@ test("get_my_regents_balance maps the four readiness statuses and skips the 401 
   assert.equal(missing.status, "not_configured");
 });
 
-test("tip_agent returns the funding handoff when the wallet is short and still reaches payForIntent later", async () => {
-  const wallet = `0x${"b".repeat(40)}`;
-  let paid = 0;
-  const fetch = fakeFetch([
-    {
-      status: 200,
-      body: {
-        available_usdc: "0.00",
-        verified_payout_address: wallet,
-        network: "eip155:8453",
-      },
-    },
-    {
-      status: 200,
-      body: {
-        available_usdc: "8.40",
-        verified_payout_address: wallet,
-        network: "eip155:8453",
-      },
-    },
-  ]);
-  const payForIntent = async () => {
-    paid += 1;
-    return {
-      status: 200,
-      body: {status: "applied", receipt: {tx: "0x1"}},
-      intent: {
-        id: "int_1",
-        amount_usdc: "5.00",
-        recipient: {profile_id: "agt_2"},
-        effect_summary: "tip",
-        irreversible_after_settlement: true,
-      },
-    };
-  };
-  const tip = toolsByName({fetch, profileId: "agt_1", payForIntent}).get("tip_agent")!;
-
-  const short = JSON.parse(
-    await tip.execute({profile_id: "agt_2", amount_usdc: "5.00"}),
-  );
-  assert.equal(short.status, "needs_human_funding");
-  assert.equal(short.required_usdc, "5.00");
-  assert.equal(short.wallet_address, wallet);
-  assert.equal(short.paid, false);
-  assert.equal(paid, 0);
-  assert.equal(fetch.requests[0].path, "/api/me/regents_balance");
-
-  const sent = JSON.parse(
-    await tip.execute({profile_id: "agt_2", amount_usdc: "5.00"}),
-  );
-  assert.equal(sent.paid, true);
-  assert.equal(paid, 1);
-  assert.equal(sent.payment_help.scheme, "exact");
-  assert.deepEqual(sent.payment_help.paid_tools, ["tip_agent", "post_priority_report"]);
-});
-
-
 test("thread pages preserve complete notes, IDs, authors and continuation tokens", async () => {
   const reportId = "f3b8abe0-4a24-4ba8-b3f3-a56cb4045c91";
   const cursor = "opaque-" + "aB_09-".repeat(70);
@@ -910,16 +853,18 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
     id, recipient: {profile_id: `agt_${"c".repeat(32)}`, profile_url: `/agents/agt_${"c".repeat(32)}`},
     amount_usdc: "1.000001", effect_summary: "A synthetic tip", irreversible_after_settlement: true,
   };
-  const terms = {network: "eip155:8453", pay_to: address, amount: "1000001", asset: address, nonce: hash};
+  const note = "You're signed in with 0xaa…aa, but your wallet app has 0xee…ee open.";
   const receipt = {transaction: hash, payer: address, network: "eip155:8453"};
-  let outcome: PayOutcome = {status: 402, intent, body: {status: "payment_required", payment_terms: terms}};
+  let outcome: PayOutcome = {status: 402, intent, unsigned: "wallet_mismatch",
+    body: {status: "payment_required", problem_code: "wallet_mismatch", wallet_note: note}};
   let payCalls = 0;
-  const fetch = async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})});
-  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true, fetch,
+  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
     payForIntent: async () => { payCalls++; return outcome; }});
   const tip = tools.get("tip_agent")!;
   const unpaid = JSON.parse(await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc}));
-  assert.deepEqual(unpaid.payment_terms, terms);
+  assert.equal(unpaid.wallet_reason, "wallet_mismatch");
+  assert.equal(unpaid.wallet_note, note);
+  assert.match(unpaid.summary, /not one on this account/);
   assert.deepEqual(unpaid.recipient, intent.recipient);
   assert.equal(unpaid.payment_intent_id, id);
   assert.equal(unpaid.amount_usdc, intent.amount_usdc);
@@ -948,7 +893,7 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
   }
 });
 
-test("all paid tool entry points honor a pre-aborted signal before readiness or HTTP", async () => {
+test("all paid tool entry points honor a pre-aborted signal before HTTP", async () => {
   const controller = new AbortController();
   controller.abort();
   const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
@@ -963,31 +908,17 @@ test("all paid tool entry points honor a pre-aborted signal before readiness or 
 });
 
 for (const name of ["tip_agent", "post_priority_report"]) {
-  test(`${name} stops after canceled readiness and retains a known canceled intent`, async () => {
+  test(`${name} retains a known intent when canceled during payment`, async () => {
     const controller = new AbortController();
-    let payCalls = 0;
-    const fetch = async (_path: string, request: SentRequest) => {
-      assert.equal(request.signal, controller.signal);
-      controller.abort();
-      return {ok: true, status: 200, json: async () => ({available_usdc: "10.00"})};
-    };
-    const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true, fetch,
-      payForIntent: () => { payCalls++; }});
-    const result = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}, {signal: controller.signal}));
-    assert.equal(result.problem_code, "canceled");
-    assert.equal(payCalls, 0);
-    assert.equal(result.paid, undefined);
-
-    const second = new AbortController();
     const intentId = "12345678-1234-4234-8234-123456789012";
-    const signed = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-      fetch: async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})}),
+    const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
+      fetch: () => assert.fail("unexpected HTTP request"),
       payForIntent: async options => {
-        assert.equal(options.signal, second.signal);
-        second.abort();
+        assert.equal(options.signal, controller.signal);
+        controller.abort();
         return {status: 200, intent: {id: intentId}, body: {status: "applied"}};
       }});
-    const canceled = JSON.parse(await signed.get(name)!.execute({amount_usdc: "1.00"}, {signal: second.signal}));
+    const canceled = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}, {signal: controller.signal}));
     assert.equal(canceled.problem_code, "canceled");
     assert.equal(canceled.outcome, "unknown");
     assert.equal(canceled.payment_intent_id, intentId);
@@ -1026,7 +957,6 @@ test("paid tools preserve settled and uncertain recovery outcomes without claimi
   const intent = {id: "intent", amount_usdc: "1.00", recipient: {profile_id: "agt_recipient"}};
   let body: NonNullable<PayOutcome["body"]>;
   const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-    fetch: async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})}),
     payForIntent: async () => ({status: body.status === "settled" ? 202 : 409, intent, body})});
   for (const name of ["tip_agent", "post_priority_report"]) {
     body = {outcome: "unknown", recovery_required: true, payment_intent_id: "intent", status_url: "/api/payment_intents/intent"};
@@ -1051,7 +981,6 @@ test("paid tools preserve settled and uncertain recovery outcomes without claimi
 test("an unavailable applied report keeps its receipt without claiming it is on the board", async () => {
   const receipt = {transaction_hash: `0x${"e".repeat(64)}`};
   const tool = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-    fetch: async () => ({ok: true, status: 200, json: async () => ({available_usdc: "10.00"})}),
     payForIntent: async () => ({status: 200, intent: {id: "intent", amount_usdc: "1.00"},
       body: {status: "applied", report_id: "report", result_available: false, receipt}})
   }).get("post_priority_report")!;

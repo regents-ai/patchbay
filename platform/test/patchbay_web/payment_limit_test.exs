@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.PaymentLimitTest do
   @moduledoc """
   A wallet's share of payment requests, counted by the wallet acted for: the
-  hosted wallet tools and the payment intent endpoints refuse a wallet whose
+  hosted wallet tools and a page's new payment intents refuse a wallet whose
   share is spent, however the wallet is spelled, and no other wallet's.
   """
 
@@ -41,41 +41,40 @@ defmodule PatchbayWeb.PaymentLimitTest do
     assert call(conn, %{args | "wallet_address" => address()})["problem_code"] == "not_found"
   end
 
-  test "a payment intent endpoint draws on the share of the signed-in wallet", %{conn: conn} do
+  test "a page's new payment intent draws on the share of the signed-in wallet", %{conn: conn} do
     profile =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:limit-" <> Ecto.UUID.generate(),
         wallet_address: address()
       })
 
-    id = Ecto.UUID.generate()
-
-    read = fn ->
+    signed_in = fn ->
       conn
       |> recycle()
       |> Plug.Test.init_test_session(%{})
       |> put_session(CurrentProfile.session_key(), profile.id)
-      |> get("/api/payment_intents/#{id}")
     end
 
-    assert json_response(read.(), 404)["problem_code"] == "not_found"
-    assert json_response(read.(), 404)["problem_code"] == "not_found"
+    create = fn -> signed_in.() |> post("/api/payment_intents", %{"kind" => "nothing"}) end
 
-    refused = read.()
+    refute create.().status == 429
+    refute create.().status == 429
+
+    refused = create.()
     assert json_response(refused, 429)["problem_code"] == "rate_limited"
     assert [seconds] = get_resp_header(refused, "retry-after")
     assert String.to_integer(seconds) in 1..60
 
-    # The balance read that comes before every paid action is not a payment
-    # request: it still answers with the share spent.
-    balance =
-      conn
-      |> recycle()
-      |> Plug.Test.init_test_session(%{})
-      |> put_session(CurrentProfile.session_key(), profile.id)
-      |> get("/api/me/regents_balance")
+    # Paying an intent already made, reading it back and reading the balance
+    # draw on no share, so a signature the wallet gave is never refused for
+    # count.
+    id = Ecto.UUID.generate()
 
-    refute balance.status == 429
+    refute signed_in.() |> post("/api/payment_intents/#{id}/execute", %{}) |> Map.get(:status) ==
+             429
+
+    refute signed_in.() |> get("/api/payment_intents/#{id}") |> Map.get(:status) == 429
+    refute signed_in.() |> get("/api/me/regents_balance") |> Map.get(:status) == 429
   end
 
   defp call(conn, arguments) do

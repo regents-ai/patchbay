@@ -1,13 +1,14 @@
 import {createElement, useEffect} from "react"
 import type {ComponentProps} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useFiatOnramp, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useActiveWallet, useConnectWallet, useFiatOnramp, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
+import type {SelectedWallet} from "./wallet_actions/sign_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
 // page fetches only when somebody asks to sign in. Everything it does is driven
@@ -19,8 +20,6 @@ const READY_TIMEOUT_MS = 20000
 const TOKEN_TIMEOUT_MS = 15000
 // Privy's own code for a person who closed the window instead of signing in.
 const CLOSED_BY_USER = "exited_auth_flow"
-// The wallet's own code (EIP-1193) for a person who declined to sign.
-const REJECTED_BY_USER = 4001
 
 // What Privy's hooks currently say, as the Bridge component publishes it.
 type BridgeState = {
@@ -34,6 +33,8 @@ type BridgeState = {
   linkTwitter: ReturnType<typeof useLinkAccount>["linkTwitter"]
   wallets: ConnectedWallet[]
   walletsReady: boolean
+  activeWallet: ReturnType<typeof useActiveWallet>["wallet"]
+  connectWallet: ReturnType<typeof useConnectWallet>["connectWallet"]
   fund: ReturnType<typeof useFiatOnramp>["fund"]
 }
 
@@ -76,6 +77,8 @@ function Bridge() {
   const privy = usePrivy()
   const {identityToken} = useIdentityToken()
   const {wallets, ready: walletsReady} = useWallets()
+  const {wallet: activeWallet} = useActiveWallet()
+  const {connectWallet} = useConnectWallet()
   const {fund} = useFiatOnramp()
   const {login} = useLogin({
     onComplete: () => finishLogin({ok: true}),
@@ -109,6 +112,8 @@ function Bridge() {
       linkTwitter,
       wallets,
       walletsReady,
+      activeWallet,
+      connectWallet,
       fund,
     })
   })
@@ -252,42 +257,31 @@ export async function signOut(appId: string): Promise<void> {
 }
 
 /**
- * The address of the wallet this browser signed in with, as Privy holds it
- * connected right now.
+ * Privy's active wallet, when it is an Ethereum wallet still connected in this
+ * browser: its address and the provider a payment is signed through. With none,
+ * Privy's connect step opens and nothing is signed; the person presses again.
+ * The server decides whether this wallet may pay for the account.
  */
-export async function walletAddress(appId: string): Promise<{ok: true, address: string} | Refusal> {
-  const found = await connectedWallet(appId)
-  return found.ok ? {ok: true, address: found.wallet.address} : found
-}
+export async function activeWallet(appId: string): Promise<{ok: true, wallet: SelectedWallet} | Refusal> {
+  start(appId)
 
-/**
- * Signs EIP-712 typed data with the wallet this browser signed in with, on the
- * chain the typed data's domain names. Whatever that wallet shows its owner
- * before signing is the whole confirmation; nothing is drawn here.
- */
-export async function signTypedData(appId: string, typedData: {domain: {chainId: number}}): Promise<{ok: true, signature: string, address: string} | Refusal> {
-  const found = await connectedWallet(appId)
-  if (!found.ok) return found
-
-  const {wallet} = found
-
+  let state
   try {
-    await wallet.switchChain(Number(typedData.domain.chainId))
+    state = await waitFor(one => one.ready && one.walletsReady, READY_TIMEOUT_MS)
   } catch {
-    return {ok: false, reason: "wrong_chain"}
+    return {ok: false, reason: "unready"}
   }
 
-  try {
-    const provider = await wallet.getEthereumProvider()
-    const signature: string = await provider.request({
-      method: "eth_signTypedData_v4",
-      params: [wallet.address, JSON.stringify(typedData)],
-    })
+  if (!state.authenticated) return {ok: false, reason: "signed_out"}
 
-    return {ok: true, signature, address: wallet.address}
-  } catch (error) {
-    return {ok: false, reason: (error as {code?: unknown} | null | undefined)?.code === REJECTED_BY_USER ? "refused" : "failed"}
+  const active = eligibleActiveWallet(state.activeWallet, state.wallets)
+  if (!active) {
+    state.connectWallet()
+    return {ok: false, reason: "wallet_unavailable"}
   }
+
+  const provider = await active.getEthereumProvider()
+  return {ok: true, wallet: {address: active.address.toLowerCase(), provider}}
 }
 
 /**
@@ -320,26 +314,12 @@ export async function addFundsByCard(appId: string): Promise<{ok: true, status: 
   }
 }
 
-// The connected wallet behind the signed-in address: the one Privy names as
-// the person's wallet, found among the wallets it holds connected. A person
-// whose Privy session is gone, or whose wallet is not connected in this
-// browser, has nothing to sign with here.
-async function connectedWallet(appId: string): Promise<{ok: true, wallet: ConnectedWallet} | Refusal> {
-  start(appId)
-
-  let state
-  try {
-    state = await waitFor(one => one.ready && one.walletsReady, READY_TIMEOUT_MS)
-  } catch {
-    return {ok: false, reason: "unready"}
-  }
-
-  if (!state.authenticated) return {ok: false, reason: "signed_out"}
-
-  const address = state.user?.wallet?.address
-  const wallet = state.wallets.find(one => sameAddress(one.address, address))
-
-  return wallet ? {ok: true, wallet} : {ok: false, reason: "no_wallet"}
+// An Ethereum wallet Privy has selected and still holds connected. A Solana
+// selection, or one the wallet app has dropped, is no wallet rather than a
+// reason to pick another.
+function eligibleActiveWallet(active: BridgeState["activeWallet"], wallets: ConnectedWallet[]): ConnectedWallet | null {
+  if (!active || active.type !== "ethereum") return null
+  return wallets.some(one => sameAddress(one.address, active.address)) ? active : null
 }
 
 function sameAddress(left: unknown, right: unknown): boolean {

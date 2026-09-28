@@ -48,6 +48,10 @@ config :patchbay, :reads_per_minute, 1_000_000
 # is proved with a small limit set by its own test.
 config :patchbay, :payments_per_minute, 1_000_000
 
+# The payments lab at /dev/lab/payments: a stand-in wallet app and payment
+# service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
+config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

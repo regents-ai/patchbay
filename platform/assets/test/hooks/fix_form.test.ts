@@ -32,6 +32,10 @@ test("an applied payment or a fix already under way goes to the fix; anything el
   assert.match(fixOutcome({status: 409, body: {status: "settlement_pending", error: "Wait."}, intent: {run_id: "abc"}}).problem!, /Wait/)
   assert.match(fixOutcome({status: 202, body: {status: "settled"}, intent: {run_id: "abc"}}).problem!, /not be charged again/)
   assert.match(fixOutcome({status: 402, body: {error: "Not enough USDC."}, intent: {run_id: "abc"}}).problem!, /Not enough USDC/)
-  assert.match(fixOutcome({status: 402, body: {}, intent: {}, unsigned: "closed"}).problem!, /closed/)
+  assert.match(fixOutcome({status: 402, body: {reason: "Not enough USDC."}, intent: {run_id: "abc"}}).problem!, /Not enough USDC/)
+  assert.deepEqual(fixOutcome({status: 402, body: {problem_code: "wallet_declined"}, intent: {}, unsigned: "wallet_declined"}),
+    {problem: "Your wallet declined this. Nothing was sent.", note: undefined})
+  const note = "You're signed in with 0xcc…cc, but your wallet app has 0xee…ee open."
+  assert.equal(fixOutcome({status: 402, body: {problem_code: "wallet_mismatch", wallet_note: note}, intent: {}, unsigned: "wallet_mismatch"}).note, note)
   assert.match(fixOutcome({status: 0, body: null}).problem!, /could not be paid/)
 })

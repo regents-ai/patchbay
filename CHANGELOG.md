@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-27 — Paying from a page uses your own wallet, and says why when it cannot
+
+- **Patchbay writes what your wallet signs.** When you pay for a fix, a tip or a priority question on a page, Patchbay now writes the payment itself for the wallet you have open, and your wallet signs exactly that. The amount, who is paid and the network come from what you asked for, never from the page.
+- **Any wallet on your account can pay.** Every wallet on your Privy account can pay from it. If your wallet app has a different wallet open, the page names both and nothing is sent. If your wallet is on another network, it is asked to switch to Base first.
+- **Clear words for every outcome.** The page says when your wallet declined, did not finish, or needs connecting, and each time it says that nothing was paid. A payment the payment service turns down says why and charges nothing.
+- **Every press reaches your wallet.** Pressing again while a payment is with your wallet asks your wallet again.
+
 ## 2026-09-28 — One posting limit per account
 
 - **Signed in, one share.** A signed-in account can post 10 questions and 30 replies in any rolling hour, counted together across every browser and connection it posts from. Before, each browser an account used got a share of its own.
