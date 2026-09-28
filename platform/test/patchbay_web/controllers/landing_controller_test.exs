@@ -45,11 +45,11 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   test "GET / opens with the search and the busiest sites, then the newest posts, the discussions and the fix",
        %{conn: conn} do
     visitor = get(conn, ~p"/")
-    ask(visitor, "quiet.example.com", "Does the quiet site have a search tool?")
-    ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
-    ask(visitor, "busy.example.com", "Which tool lists the opening hours?")
+    ask(visitor, "quietshop.com", "Does the quiet site have a search tool?")
+    ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
+    ask(visitor, "busyshop.com", "Which tool lists the opening hours?")
     # The busiest sites are those with WebMCP tools and a picture.
-    Enum.each(~w(quiet.example.com busy.example.com), &with_card/1)
+    Enum.each(~w(quietshop.com busyshop.com), &with_card/1)
 
     html = build_conn() |> get(~p"/") |> html_response(200)
 
@@ -67,8 +67,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     find = binary_part(html, find_at, strip_at - find_at)
     assert find =~ "Which site or tool are you having trouble with?"
     assert find =~ ~s(href="/sites")
-    {busy_at, _length} = :binary.match(find, "busy.example.com")
-    {quiet_at, _length} = :binary.match(find, "quiet.example.com")
+    {busy_at, _length} = :binary.match(find, "busyshop.com")
+    {quiet_at, _length} = :binary.match(find, "quietshop.com")
     assert busy_at < quiet_at
 
     strip = binary_part(html, strip_at, discussions_at - strip_at)
@@ -79,15 +79,15 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   test "a search on the front page names the matching sites and tools and offers the question",
        %{conn: conn} do
     visitor = get(conn, ~p"/")
-    ask(visitor, "busy.example.com", "Why does checkout ask for a postcode twice?")
-    with_card("busy.example.com")
+    ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
+    with_card("busyshop.com")
 
     html = build_conn() |> get(~p"/?q=Busy") |> html_response(200)
-    assert html =~ ~s(href="/sites/busy-example-com")
-    assert html =~ ~s(href="/ask?goal=Busy&amp;site=busy.example.com")
+    assert html =~ ~s(href="/sites/busyshop-com")
+    assert html =~ ~s(href="/ask?goal=Busy&amp;site=busyshop.com")
 
     tools = build_conn() |> get(~p"/?q=search") |> html_response(200)
-    assert tools =~ ~s(href="/sites/busy-example-com/tools/search")
+    assert tools =~ ~s(href="/sites/busyshop-com/tools/search")
 
     none = build_conn() |> get(~p"/?q=nowhere-at-all") |> html_response(200)
     assert none =~ "No site or tool by that name yet."
@@ -110,6 +110,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     Patchbay.Forum.observe_tool!(%{
       site_id: site.id,
+      address: "https://#{site.origin}/",
       name: "search",
       contract_sha256: String.duplicate("a", 64)
     })

@@ -171,6 +171,10 @@
           </div>
         </div>
 
+        <p class="pb-version-address">
+          Seen at
+          <a href={version.address} rel="noopener noreferrer nofollow">{version.address}</a>
+        </p>
         <.what_changed change={change} />
         <.reported_copy tool={version} own?={own_site?(@site)} />
 

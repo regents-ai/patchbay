@@ -8,6 +8,7 @@ defmodule PatchbayWeb.Forum.Hero do
   address they typed the exact page it was on.
   """
 
+  alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostPicture
 
   @max_title 160
@@ -96,18 +97,10 @@ defmodule PatchbayWeb.Forum.Hero do
     do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] not in ["", "question"]))
 
   # The exact page, when the address names more of the site than its home.
-  defp page_url(""), do: nil
-
   defp page_url(address) do
-    url = if String.contains?(address, "://"), do: address, else: "https://" <> address
-
-    case URI.new(url) do
-      {:ok, %URI{scheme: "https", path: path, query: query}}
-      when path not in [nil, "", "/"] or is_binary(query) ->
-        url
-
-      _home_or_unreadable ->
-        nil
+    case Origin.address(address) do
+      {:ok, page} -> if URI.parse(page).path == "/", do: nil, else: page
+      {:error, _unreadable} -> nil
     end
   end
 

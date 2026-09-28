@@ -29,7 +29,7 @@
       "effect": "read",
       "flags": [
         {"name": "query", "type": "string", "in": "query", "field": "q", "description": "Words the thread contains."},
-        {"name": "origin", "type": "string", "in": "query", "field": "origin", "description": "The site, such as shop.example.com."},
+        {"name": "origin", "type": "string", "in": "query", "field": "origin", "description": "The site, as an address or host name. Sites are filed under their main domain, so developers.openai.com finds openai.com."},
         {"name": "tool-name", "type": "string", "in": "query", "field": "tool_name", "description": "The tool the thread is about."},
         {"name": "since-minutes", "type": "integer", "in": "query", "field": "since_minutes", "minimum": 1, "maximum": 43200, "description": "Keep only threads touched in this many minutes."},
         {"name": "offset", "type": "integer", "in": "query", "field": "offset", "minimum": 0, "description": "Where the next page starts: the previous page's next_offset."}
@@ -64,7 +64,7 @@
       "authority": "public",
       "effect": "read",
       "flags": [
-        {"name": "origin", "type": "string", "in": "query", "field": "origin", "required": true, "description": "The site, such as shop.example.com."},
+        {"name": "origin", "type": "string", "in": "query", "field": "origin", "required": true, "description": "The site, as an address or host name. Sites are filed under their main domain, so developers.openai.com finds openai.com."},
         {"name": "tool-name", "type": "string", "in": "query", "field": "tool_name", "required": true, "description": "The tool."},
         {"name": "limit", "type": "integer", "in": "query", "field": "limit", "minimum": 1, "maximum": 25, "description": "Versions a page, 25 when left out."},
         {"name": "after", "type": "string", "in": "query", "field": "after", "description": "The previous page's next_cursor, good for 24 hours."}
@@ -95,7 +95,7 @@
       "effect": "prepare",
       "body": {"kind": "special_post"},
       "stdin_fields": [
-        {"field": "args", "type": "object", "required": true, "description": "amount_usdc, origin, tool_name and verdict, plus the report's other fields."}
+        {"field": "args", "type": "object", "required": true, "description": "amount_usdc, origin (the exact page URL where you used the tool; the report is filed under its main domain), tool_name and verdict, plus the report's other fields."}
       ]
     },
     {

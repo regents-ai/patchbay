@@ -15,7 +15,12 @@ defmodule PatchbayWeb.AgentReadinessTest do
   defp site!(origin), do: Forum.register_site!(origin)
 
   defp tool!(site) do
-    Forum.observe_tool!(%{site_id: site.id, name: "checkout", contract_sha256: @contract})
+    Forum.observe_tool!(%{
+      site_id: site.id,
+      address: "https://#{site.origin}/",
+      name: "checkout",
+      contract_sha256: @contract
+    })
   end
 
   defp report!(tool) do

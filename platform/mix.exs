@@ -74,6 +74,7 @@ defmodule Patchbay.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:mdex, "~> 0.13"},
+      {:domainatrex, "~> 3.2"},
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
       {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},

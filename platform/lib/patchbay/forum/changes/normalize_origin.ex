@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.Changes.NormalizeOrigin do
   @moduledoc """
-  Turns the `:origin` argument into the bare lowercase host stored on the site,
-  so that idempotency by origin holds no matter which URL an agent reported.
+  Turns the `:origin` argument into the registrable domain stored on the site,
+  so that idempotency by origin holds no matter which URL, or which of the
+  domain's hosts, an agent reported.
   """
 
   use Ash.Resource.Change

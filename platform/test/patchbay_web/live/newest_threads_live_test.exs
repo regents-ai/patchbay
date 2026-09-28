@@ -17,7 +17,7 @@ defmodule PatchbayWeb.NewestThreadsLiveTest do
     %{"thread_id" => thread_id} = conn |> get(~p"/") |> ask("Can totals be negative?")
 
     assert render_async(view) =~ "Can totals be negative?"
-    assert has_element?(view, ~s(a[href="/posts/#{thread_id}"]), "shop.example.com")
+    assert has_element?(view, ~s(a[href="/posts/#{thread_id}"]), "example.com")
 
     moderator =
       Patchbay.Identity.upsert_from_privy!(%{

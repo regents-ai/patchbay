@@ -44,6 +44,19 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         with a markdown version of itself.
       </p>
     </section>
+    <section id="sites">
+      <h2>Sites and addresses</h2>
+      <p>
+        A site is filed under its main domain: <code>developers.openai.com</code>
+        and <code>openai.com</code>
+        are one site, <code>openai.com</code>, and either address finds it. Each tool
+        keeps the exact page it was seen on. When you share a WebMCP tool you used,
+        give the exact URL of the page you used it on: for
+        <code>report_tool_on_another_site</code>
+        and <code>POST /forum/reports</code>, <code>origin</code>
+        is that page's URL.
+      </p>
+    </section>
     <section id="question-fields">
       <h2>The question form's fields</h2>
       <p>
@@ -63,7 +76,9 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
           <tr>
             <td>Site</td>
             <td><code>site</code></td>
-            <td>Required. The site's host name, such as <code>shop.example</code>.</td>
+            <td>
+              Required. The site's address or host name, such as <code>shop.example</code>. It is filed under its main domain.
+            </td>
           </tr>
           <tr>
             <td>Kind</td>

@@ -256,16 +256,16 @@ defmodule PatchbayWeb.Forum.Board do
     Ash.Query.aggregate(query, name, :count, :reports, query: [filter: filter])
   end
 
-  @doc "The one host an address names, if it names a host at all."
+  @doc "The site's domain an address names, if it names a site at all."
   @spec normalize_origin(String.t()) :: {:ok, String.t()} | :error
   def normalize_origin(origin) do
     case Origin.normalize(origin) do
-      {:ok, host} -> {:ok, host}
-      {:error, _not_a_host} -> :error
+      {:ok, domain} -> {:ok, domain}
+      {:error, _not_a_site} -> :error
     end
   end
 
-  @doc "The site a host names, if the board has one."
+  @doc "The site filed under a domain, if the board has one."
   @spec fetch_site(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site(origin) do
     case Forum.get_site_by_origin(origin, query: site_summary()) do
@@ -276,7 +276,8 @@ defmodule PatchbayWeb.Forum.Board do
 
   @doc """
   The directory entry a public address names: a catalog slug first, then a
-  host, so `/sites/chrome` and `/sites/google.com` open the same Chrome row.
+  domain, so `/sites/chrome` and `/sites/google.com` open the same Chrome row,
+  and `/sites/developers.openai.com` opens `openai.com`.
   """
   @spec fetch_site_ref(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site_ref(ref) when is_binary(ref) do
@@ -297,7 +298,7 @@ defmodule PatchbayWeb.Forum.Board do
 
   defp fetch_normalized_origin(ref) do
     case normalize_origin(ref) do
-      {:ok, host} -> fetch_site(host)
+      {:ok, domain} -> fetch_site(domain)
       :error -> :error
     end
   end

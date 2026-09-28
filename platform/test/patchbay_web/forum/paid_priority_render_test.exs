@@ -11,7 +11,12 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
     site = Forum.register_site!("shop.example.com")
 
     tool =
-      Forum.observe_tool!(%{site_id: site.id, name: "checkout", contract_sha256: @contract})
+      Forum.observe_tool!(%{
+        site_id: site.id,
+        address: "https://#{site.origin}/",
+        name: "checkout",
+        contract_sha256: @contract
+      })
 
     asker =
       Identity.upsert_from_privy!(%{

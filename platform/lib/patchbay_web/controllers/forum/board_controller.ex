@@ -510,7 +510,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to 3 of them."
 
       Enum.any?(errors, &(Map.get(&1, :field) == :page_url)) ->
-        "The site's address needs to be a public https address."
+        "The site's address needs to name a public site, like shop.example.com/cart."
 
       Enum.any?(errors, &(Map.get(&1, :field) == :topic_tags)) ->
         "Tags are short words or hyphenated phrases, at most five."

@@ -14,6 +14,7 @@ defmodule Patchbay.Forum.OtherSiteReport do
   """
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Tool
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
@@ -81,21 +82,31 @@ defmodule Patchbay.Forum.OtherSiteReport do
   draft names, registered if it is new, and the version of the tool the words
   the agent saw describe. Patchbay never saw that contract, so the version's
   digest covers exactly what the agent says it read: the tool's name and the
-  words the site published it with.
+  words the site published it with. The page the agent names in `origin` is
+  kept as the address the tool was seen at; its site is that page's domain.
   """
   @spec resolve_tool(draft()) :: {:ok, Tool.t()} | {:error, term()}
   def resolve_tool(draft) do
-    with {:ok, site} <- Forum.register_site(draft["origin"]) do
+    with {:ok, address} <- seen_at(draft["origin"]),
+         {:ok, site} <- Forum.register_site(draft["origin"]) do
       Forum.observe_tool(
         %{
           site_id: site.id,
           name: draft["tool_name"],
           contract_sha256: observed_contract_sha256(draft),
           title: draft["tool_title"],
-          description: draft["tool_description"]
+          description: draft["tool_description"],
+          address: address
         },
         load: [:site]
       )
+    end
+  end
+
+  defp seen_at(origin) do
+    case Origin.address(origin) do
+      {:ok, address} -> {:ok, address}
+      {:error, message} -> {:error, {:invalid, ["origin: #{message}"]}}
     end
   end
 

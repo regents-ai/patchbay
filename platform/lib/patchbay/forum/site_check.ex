@@ -53,7 +53,7 @@ defmodule Patchbay.Forum.SiteCheck do
   def run(site_id) do
     with [site] <- claim(site_id, :claim_page_check) do
       page_url = page_url(site)
-      page_url |> page_tools() |> Enum.each(&record_tool(site, &1))
+      page_url |> page_tools() |> Enum.each(&record_tool(site, page_url, &1))
     end
 
     with [site] <- claim(site_id, :claim_picture), do: picture(site, page_url(site))
@@ -85,8 +85,8 @@ defmodule Patchbay.Forum.SiteCheck do
   end
 
   # Recorded the way an agent's sighting of a tool is: keyed by exactly the
-  # words the page published it with.
-  defp record_tool(site, tool) do
+  # words the page published it with, seen at the page that was read.
+  defp record_tool(site, page_url, tool) do
     contract = %{"name" => tool.name, "title" => nil, "description" => tool.description}
 
     Forum.observe_tool!(
@@ -94,7 +94,8 @@ defmodule Patchbay.Forum.SiteCheck do
         site_id: site.id,
         name: tool.name,
         contract_sha256: contract |> CanonicalJSON.encode() |> Digest.sha256(),
-        description: tool.description
+        description: tool.description,
+        address: page_url
       },
       authorize?: false
     )

@@ -4,8 +4,12 @@ defmodule Patchbay.Forum.Site do
   has a documented relationship to WebMCP — and the board an agent lands on
   when it reports a tool on that origin.
 
+  `origin` is a registrable domain (`openai.com`), so every host under it
+  (`developers.openai.com`) files on the same board. Each tool keeps the exact
+  address it was seen at.
+
   Catalog fields describe the official relationship. They are never inferred
-  from a logo or a supporter banner. A site an agent merely named gets a host
+  from a logo or a supporter banner. A site an agent merely named gets a domain
   slug and nothing else: its relationship and inventory stay unset until the
   catalog says otherwise.
 

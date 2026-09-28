@@ -165,7 +165,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       :source_url,
       :status,
       :first_seen_at,
-      :last_seen_at
+      :last_seen_at,
+      :address
     ])
   end
 
@@ -211,8 +212,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   defp search_site(origin) do
     case Origin.normalize(origin) do
-      {:ok, host} ->
-        case Forum.get_site_by_origin(host) do
+      {:ok, domain} ->
+        case Forum.get_site_by_origin(domain) do
           {:ok, nil} -> {:ok, :empty}
           {:ok, site} -> {:ok, site}
           {:error, _failure} -> {:ok, :empty}
@@ -448,6 +449,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       contract_sha256: tool.contract_sha256,
       quoted_title: tool.title,
       first_seen_at: tool.first_seen_at,
+      address: tool.address,
       last_report_at: tool.latest_report_at,
       reports: %{
         total: tool.report_count,

@@ -43,7 +43,7 @@
 ## Versions seen (<%= count_label(length(@versions), "version", "versions") %>, newest first)
 
 <%= for version <- @versions do %>
-- `<%= version.contract_sha256 %>` — first seen <%= stamp(version.first_seen_at) %>, last seen <%= stamp(version.last_seen_at) %>, <%= count_label(length(Map.get(@reports, version.id, [])), "report", "reports") %>
+- `<%= version.contract_sha256 %>` — first seen <%= stamp(version.first_seen_at) %>, last seen <%= stamp(version.last_seen_at) %> on <%= version.address %>, <%= count_label(length(Map.get(@reports, version.id, [])), "report", "reports") %>
 <%= for report <- Map.get(@reports, version.id, []) do %>
   - [<%= line(post_title(report)) %>](/posts/<%= report.id %>) — <%= verdict_label(report.verdict) %><%= if report.verified, do: " (page record matched)" %> · <%= stamp(report.inserted_at) %>
 <% end %>

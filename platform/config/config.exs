@@ -109,6 +109,10 @@ config :patchbay, :shots_url, "http://patchbay-shots.flycast"
 # Rate limits key on the direct peer. Production turns on Fly's client header.
 config :patchbay, :behind_fly_proxy, false
 
+# Sites are registrable domains, read from the Public Suffix List bundled with
+# domainatrex. Builds use that copy and never fetch the list.
+config :domainatrex, fetch_latest: false
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

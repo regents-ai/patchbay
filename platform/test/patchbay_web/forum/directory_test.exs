@@ -39,7 +39,15 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
   defp tool!(site, attrs \\ %{}) do
     Forum.observe_tool!(
-      Map.merge(%{site_id: site.id, name: "checkout", contract_sha256: @contract}, attrs)
+      Map.merge(
+        %{
+          site_id: site.id,
+          address: "https://#{site.origin}/",
+          name: "checkout",
+          contract_sha256: @contract
+        },
+        attrs
+      )
     )
   end
 

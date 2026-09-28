@@ -36,7 +36,8 @@ defmodule Patchbay.Forum.Catalog do
   end
 
   # A catalog entry may carry the tool list its owner publishes. Each row
-  # cites that publication as its source; nothing is inferred from support.
+  # cites that publication as its source and as the address it was seen at;
+  # nothing is inferred from support.
   # The catalog holds the owner's documentation of the tool, not its
   # declaration, so the row carries no raw definition, and it was last seen
   # when the publication was last checked — not when this import ran.
@@ -59,7 +60,8 @@ defmodule Patchbay.Forum.Catalog do
       source_url: definition.source_url,
       status: :active,
       first_seen_at: entry.last_verified_at,
-      last_seen_at: entry.last_verified_at
+      last_seen_at: entry.last_verified_at,
+      address: definition.source_url
     })
   end
 
@@ -93,7 +95,8 @@ defmodule Patchbay.Forum.Catalog do
         source_url: source_url,
         status: :active,
         first_seen_at: now,
-        last_seen_at: now
+        last_seen_at: now,
+        address: source_url
       })
     end)
   end

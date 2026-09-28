@@ -32,7 +32,6 @@ defmodule Patchbay.Forum.Report do
   @max_failure_code_bytes 64
   @max_title_bytes 640
   @max_body_bytes 16 * 1024
-  @max_page_url_bytes 2048
   @max_client_request_id_bytes 128
 
   postgres do
@@ -776,7 +775,6 @@ defmodule Patchbay.Forum.Report do
       # A request key and its digest travel together or not at all.
       validate(present(:request_digest), where: [present(:client_request_id)])
       validate(absent(:request_digest), where: [absent(:client_request_id)])
-      validate(Patchbay.Forum.Validations.PageUrl)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :title, max_bytes: @max_title_bytes}
@@ -787,13 +785,9 @@ defmodule Patchbay.Forum.Report do
          attribute: :body_markdown, max_bytes: @max_body_bytes}
       )
 
-      validate(
-        {Patchbay.Forum.Validations.MaxByteLength,
-         attribute: :page_url, max_bytes: @max_page_url_bytes}
-      )
-
       change(Patchbay.Forum.Changes.NormalizeTopicTags)
       change(Patchbay.Forum.Changes.NormalizeToolNames)
+      change(Patchbay.Forum.Changes.NormalizePageUrl)
 
       # A question is the default kind; naming a failure report here is
       # refused because evidence-backed reports go through file_report.

@@ -17,6 +17,7 @@ defmodule Patchbay.Assist.PageTools do
   """
 
   alias Patchbay.Assist.Target
+  alias Patchbay.Forum.Origin
 
   @max_page_bytes 2 * 1024 * 1024
   @max_script_bytes 2 * 1024 * 1024
@@ -153,21 +154,24 @@ defmodule Patchbay.Assist.PageTools do
 
   defp absolute(path, base), do: base |> URI.merge(path) |> URI.to_string()
 
-  # Scripts from the page's own site: the same name, or a name under the
-  # same parent, like static.example.com for www.example.com.
+  # Scripts from the page's own site: the same name, or another name under
+  # the same registrable domain, like static.example.co.uk for
+  # www.example.co.uk. Two shared-host names such as a.vercel.app and
+  # b.vercel.app are different sites.
   defp own_site(urls, host) do
-    parent = parent(host)
+    site = Origin.normalize(host)
 
     Enum.filter(urls, fn url ->
       case URI.parse(url) do
         %URI{scheme: "https", host: ^host} -> true
-        %URI{scheme: "https", host: other} when is_binary(other) -> parent(other) == parent
+        %URI{scheme: "https", host: other} when is_binary(other) -> same_site?(other, site)
         _elsewhere -> false
       end
     end)
   end
 
-  defp parent(host), do: host |> String.split(".") |> Enum.take(-2) |> Enum.join(".")
+  defp same_site?(other, {:ok, site}), do: Origin.normalize(other) == {:ok, site}
+  defp same_site?(_other, {:error, _not_a_site}), do: false
 
   # Forms the page marks as tools, by the attributes WebMCP reads.
   defp form_tools(html) do

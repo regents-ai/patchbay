@@ -443,6 +443,7 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
 
     Forum.observe_tool!(%{
       site_id: site.id,
+      address: "https://#{site.origin}/",
       name: revision.name,
       contract_sha256: revision.contract_sha256,
       title: revision.title,

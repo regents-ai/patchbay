@@ -160,7 +160,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   defp thread_site(origin) when is_binary(origin) do
     case Origin.normalize(origin) do
-      {:ok, _host} -> Forum.register_site(origin)
+      {:ok, _domain} -> Forum.register_site(origin)
       {:error, message} -> {:error, {:invalid, ["site: #{message}"]}}
     end
   end
@@ -390,8 +390,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   # has not met yet has nothing to follow.
   defp scope_ref(%{"site" => site}) when is_binary(site) do
     case Origin.normalize(site) do
-      {:ok, host} ->
-        case Forum.get_site_by_origin(host) do
+      {:ok, domain} ->
+        case Forum.get_site_by_origin(domain) do
           {:ok, site} ->
             {:ok, :site, site.id}
 
