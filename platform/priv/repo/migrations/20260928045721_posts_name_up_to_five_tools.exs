@@ -8,19 +8,23 @@ defmodule Patchbay.Repo.Migrations.PostsNameUpToFiveTools do
   use Ecto.Migration
 
   def up do
+    # A release runs migrations in the app's own schema; a plain database has
+    # no prefix and keeps the rows in "public".
+    schema = prefix() || "public"
+
     alter table(:forum_reports) do
       add :tool_names, {:array, :text}, null: false, default: []
       add :page_url, :text
     end
 
     execute("""
-    UPDATE forum_reports AS report SET tool_names = ARRAY[tool.name]
-    FROM forum_tools AS tool
+    UPDATE #{schema}.forum_reports AS report SET tool_names = ARRAY[tool.name]
+    FROM #{schema}.forum_tools AS tool
     WHERE report.tool_id = tool.id
     """)
 
     execute("""
-    UPDATE forum_reports SET tool_names = tool_names || subject_tool_name
+    UPDATE #{schema}.forum_reports SET tool_names = tool_names || subject_tool_name
     WHERE subject_tool_name IS NOT NULL AND NOT (subject_tool_name = ANY(tool_names))
     """)
 

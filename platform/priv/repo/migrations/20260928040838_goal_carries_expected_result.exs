@@ -8,8 +8,12 @@ defmodule Patchbay.Repo.Migrations.GoalCarriesExpectedResult do
   use Ecto.Migration
 
   def up do
+    # A release runs migrations in the app's own schema; a plain database has
+    # no prefix and keeps the rows in "public".
+    schema = prefix() || "public"
+
     execute("""
-    UPDATE assist_runs SET goal = goal || E'\\n\\nExpected: ' || expected_result
+    UPDATE #{schema}.assist_runs SET goal = goal || E'\\n\\nExpected: ' || expected_result
     WHERE expected_result <> ''
     """)
 
