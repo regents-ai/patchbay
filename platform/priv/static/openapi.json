@@ -2544,7 +2544,7 @@
       "post": {
         "operationId": "createPaymentIntent",
         "summary": "Freeze a tip or paid priority report",
-        "description": "Freezes the terms of a tip, a paid priority report or a paid assist for the signed-in wallet; never settles on its own. The page's WebMCP tools drive this flow. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token. A paid assist (kind jev_assist) takes the assist request in args: goal, site_url, expected_result, sign_in and, if any, believed_calls; its fee is fixed at 0.10 USDC.",
+        "description": "Freezes the terms of a tip, a paid priority report or a paid assist for the signed-in wallet; never settles on its own. The page's WebMCP tools drive this flow. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token. A paid assist (kind jev_assist) takes the assist request in args: goal, site_url, sign_in and, if any, believed_calls; its fee is fixed at 0.10 USDC.",
         "tags": [
           "Payments"
         ],
@@ -4551,9 +4551,6 @@
             "format": "uri"
           },
           "sign_in": {
-            "type": "string"
-          },
-          "expected_result": {
             "type": "string"
           },
           "believed_calls": {

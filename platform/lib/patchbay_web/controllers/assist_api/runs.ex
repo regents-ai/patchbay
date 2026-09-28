@@ -27,7 +27,6 @@ defmodule PatchbayWeb.AssistAPI.Runs do
       goal: run.goal,
       site_url: run.site_url,
       sign_in: run.sign_in,
-      expected_result: run.expected_result,
       believed_calls: run.believed_calls,
       steps: run.steps,
       payment_intent_id: run.payment_intent_id,

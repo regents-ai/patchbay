@@ -279,8 +279,9 @@
     <div class="pb-fix-lead">
       <h2 id="pb-fix-title">Stuck on a site’s tools? Jev finds what’s wrong</h2>
       <p>
-        Tell Patchbay what you were trying to do on a site. Jev reads the site's tools, works out
-        which one fits and shows you the next useful step, with everything it checked along the way.
+        Tell Patchbay what you are trying to do on a site, or the result you expect. Jev reads the
+        site's tools, works out which one fits and shows you the next useful step, with everything
+        it checked along the way.
       </p>
     </div>
     <form
@@ -294,7 +295,9 @@
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <p :if={@fix.problem} class="pb-reply-form-problem" role="alert">{@fix.problem.said}</p>
       <div class="pb-fix-ask">
-        <label class="visually-hidden" for="pb-fix-goal">What were you trying to do?</label>
+        <label class="visually-hidden" for="pb-fix-goal">
+          What are you trying to do, or what result do you expect?
+        </label>
         <input
           id="pb-fix-goal"
           name="fix[goal]"
@@ -302,8 +305,9 @@
           required
           maxlength="1000"
           value={@fix.draft["goal"]}
-          placeholder="What were you trying to do? e.g. Book a table for two on Friday at 9"
+          placeholder="What are you trying to do?"
           autocomplete="off"
+          aria-describedby="pb-fix-goal-hint"
         />
         <Regent.Primitives.button
           id="pb-fix-submit"
@@ -315,6 +319,10 @@
         </Regent.Primitives.button>
       </div>
       <div class="pb-fix-more">
+        <p id="pb-fix-goal-hint" class="pb-fix-goal-hint">
+          Or the result you expect, e.g. a booking reference for a table for two on Friday at 9.
+          You can paste the arguments you tried, as JSON.
+        </p>
         <Regent.Primitives.field id="pb-fix-site" label="The site">
           <input
             id="pb-fix-site"
@@ -328,10 +336,9 @@
             maxlength="2048"
             value={@fix.draft["site_url"]}
             placeholder="example.com/app"
-            aria-describedby={@fix.mode == :free && "pb-fix-site-check"}
+            aria-describedby="pb-fix-site-check"
           />
           <p
-            :if={@fix.mode == :free}
             id="pb-fix-site-check"
             class="pb-fix-site-check"
             aria-live="polite"
@@ -349,49 +356,21 @@
             <span class="visually-hidden">(opens in a new tab)</span>
           </a>
         </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-expected" label="What should happen">
-          <input
-            id="pb-fix-expected"
-            name="fix[expected_result]"
-            type="text"
-            required
-            maxlength="1000"
-            value={@fix.draft["expected_result"]}
-            placeholder="A confirmation with a booking reference"
-          />
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-sign-in" label="Does the site need you signed in?">
-          <select id="pb-fix-sign-in" name="fix[sign_in]">
-            <option value="unknown" selected={@fix.draft["sign_in"] in ["", "unknown"]}>
-              Not sure
-            </option>
-            <option value="none" selected={@fix.draft["sign_in"] == "none"}>No</option>
-            <option value="required" selected={@fix.draft["sign_in"] == "required"}>Yes</option>
-          </select>
-          <:hint>
-            Patchbay never acts on anyone's account, so a site that needs you signed in is out.
-          </:hint>
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-tool" label="A tool you tried, if any">
-          <input
-            id="pb-fix-tool"
-            name="fix[tool]"
-            type="text"
-            maxlength="128"
-            value={@fix.draft["tool"]}
-            placeholder="reserve_table"
-          />
-        </Regent.Primitives.field>
-        <Regent.Primitives.field id="pb-fix-arguments" label="Its arguments, as JSON">
-          <input
-            id="pb-fix-arguments"
-            name="fix[arguments]"
-            type="text"
-            maxlength="8192"
-            value={@fix.draft["arguments"]}
-            placeholder={~s({"party": 2, "time": "09:00"})}
-          />
-        </Regent.Primitives.field>
+        <fieldset
+          id="pb-fix-tools"
+          class="pb-fix-tools"
+          data-pb-picked={Enum.join(@fix.draft["tools"], "\n")}
+          hidden
+        >
+          <legend>
+            The site's tools, if one fits
+            <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
+          </legend>
+          <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
+        </fieldset>
+        <p class="pb-fix-notice">
+          Patchbay never signs in or acts on anyone's account, so it only uses what works signed out.
+        </p>
       </div>
       <p class="pb-fix-terms">{PatchbayWeb.Forum.Fix.terms(@fix)}</p>
       <p :if={@fix.mode == :pay} class="pb-fix-topup">

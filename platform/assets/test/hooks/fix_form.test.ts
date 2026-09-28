@@ -3,27 +3,15 @@ import {test} from "node:test"
 
 import {fixArguments, fixOutcome} from "../../js/fix_form.ts"
 
-test("the form's fields become one assist request, with a tried tool as a believed call", () => {
-  const made = fixArguments({
-    goal: " Book the 9am table ", site_url: "https://bookings.example.com/app",
-    expected_result: "A booking reference", sign_in: "", tool: "reserve_table", arguments: '{"party": 2}',
-  })
-  assert.equal(made.ok, true)
-  assert.deepEqual(made.args, {
-    goal: "Book the 9am table", site_url: "https://bookings.example.com/app",
-    expected_result: "A booking reference", sign_in: "unknown",
-    believed_calls: [{tool: "reserve_table", arguments: {party: 2}}],
-  })
-  assert.deepEqual(fixArguments({goal: "x", tool: "", arguments: "junk"}).args!.believed_calls, [])
-  assert.deepEqual(fixArguments({goal: "x", tool: "t", arguments: ""}).args!.believed_calls, [{tool: "t", arguments: {}}])
-})
-
-test("arguments that are not a JSON object are refused in words", () => {
-  for (const raw of ["junk", "[1]", "3", "null"]) {
-    const made = fixArguments({goal: "x", tool: "t", arguments: raw})
-    assert.equal(made.ok, false)
-    assert.match(made.problem, /JSON object/)
-  }
+test("the form's two texts and the picked tools become one assist request", () => {
+  assert.deepEqual(
+    fixArguments({goal: " Book the 9am table ", site_url: " bookings.example.com/app "}, ["reserve_table", "list_tables"]),
+    {
+      goal: "Book the 9am table", site_url: "bookings.example.com/app", sign_in: "unknown",
+      believed_calls: [{tool: "reserve_table"}, {tool: "list_tables"}],
+    },
+  )
+  assert.deepEqual(fixArguments({goal: "x", site_url: "y"}, []).believed_calls, [])
 })
 
 test("an applied payment or a fix already under way goes to the fix; anything else is said", () => {

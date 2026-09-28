@@ -19,7 +19,6 @@ defmodule Patchbay.Assist.Changes.OpenFree do
       deposit_status: :no_fee,
       goal: request["goal"],
       site_url: request["site_url"],
-      expected_result: request["expected_result"],
       sign_in: request["sign_in"],
       believed_calls: request["believed_calls"]
     })

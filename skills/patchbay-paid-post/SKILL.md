@@ -141,16 +141,17 @@ on anyone's account. One assist at a time for each wallet.
 The request:
 
 ```json
-{"goal": "Book the 9am table for two on Friday",
+{"goal": "Book the 9am table for two on Friday and get a booking reference",
  "site_url": "https://bookings.example.com/app",
  "sign_in": "unknown",
- "expected_result": "A confirmation with a booking reference",
  "believed_calls": [{"tool": "reserve_table", "arguments": {"party": 2}}]}
 ```
 
-`goal`, `site_url` (a public https address: the page you were on or the site's
-MCP endpoint), `sign_in` (`none`, `unknown` or `required`) and `expected_result`
-are required; `believed_calls` (up to 5) is what you tried or believe is needed.
+`goal` (what you are trying to do or the result you expect, in one text),
+`site_url` (a public https address: the page you were on or the site's MCP
+endpoint) and `sign_in` (`none`, `unknown` or `required`) are required;
+`believed_calls` (up to 5) names the tools you tried or believe are needed, each
+with its arguments when you know them.
 Leave out credentials, session ids and personal details.
 
 - Over the hosted MCP server (Way in C): `request_assist` with the fields above
@@ -161,7 +162,7 @@ Leave out credentials, session ids and personal details.
   `regents patchbay assist request`, pay with `regents patchbay payments execute <id>`
   as above, and read back with `regents patchbay assist get <run_id>`.
 
-The result: `outcome` is `reached` (the expected result was reached), `suggested`
+The result: `outcome` is `reached` (the goal was reached), `suggested`
 (Patchbay found the tool that would do it but it changes things, so it is named
 for you to call), `needs_sign_in`, `tools_unlisted` (the site publishes no tools
 Patchbay could reach) or `not_reached`; `steps` say what was called, with what the

@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.Forum.FixCheckTest do
   @moduledoc """
-  The quiet look for WebMCP tools a free fix takes: the form asks as an
-  address is typed, and the fix asks again when it is pressed. A free fix is
+  The quiet look for WebMCP tools the fix form takes: the form asks as an
+  address is typed and lists the tools found, and a free fix asks again
+  when it is pressed. A free fix is
   kept, not spent, on an address without tools; after two such addresses the
   WebMCP Site Directory is offered; after more than three in an hour the
   connection waits a full hour. An address that cannot be a site, or cannot be reached, is not
@@ -14,9 +15,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
   alias Patchbay.PageSite
 
   @form %{
-    "goal" => "Search the docs for the Responses API",
-    "expected_result" => "A link to the right page",
-    "sign_in" => "none"
+    "goal" => "Search the docs for the Responses API and get a link to the right page"
   }
 
   setup do
@@ -33,12 +32,13 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     })
   end
 
-  test "names the tools found at an address", %{conn: conn} do
+  test "lists the tools found at an address", %{conn: conn} do
     body = conn |> from(address()) |> check("https://docs.example.com/") |> json_response(200)
 
     assert body == %{
              "status" => "found",
-             "said" => "Patchbay found 1 WebMCP tool here: search_docs.",
+             "said" => "Patchbay found 1 WebMCP tool here.",
+             "tools" => [%{"name" => "search_docs", "description" => "The search_docs tool."}],
              "directory" => false
            }
   end
@@ -94,6 +94,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     assert invalid == %{
              "status" => "invalid",
              "said" => "The site needs a public https address, like https://example.com/app.",
+             "tools" => [],
              "directory" => false
            }
 
@@ -143,10 +144,11 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     assert {:ok, %{site_url: "https://docs.example.com/"}} = Assist.get_run(id, authorize?: false)
   end
 
-  test "the page offers the look only while the fix is free", %{conn: conn} do
+  test "the page offers the look and a place for the tools", %{conn: conn} do
     html = conn |> from(address()) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(id="pb-fix-site-check")
     assert html =~ ~s(aria-describedby="pb-fix-site-check")
+    assert html =~ ~r/id="pb-fix-tools"[^>]*hidden/
     assert html =~ ~r/id="pb-fix-directory"[^>]*hidden/
   end
 

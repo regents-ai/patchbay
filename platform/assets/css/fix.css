@@ -22,11 +22,29 @@
 .pb-fix-ask { display: flex; gap: .5rem; min-width: 0; }
 .pb-fix-ask input { min-width: 0; flex: 1; min-height: 3rem; padding: .7rem .9rem; border: 1px solid var(--pb-line-strong); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: 1rem; }
 .pb-fix-ask .rg-button { flex: 0 0 auto; white-space: nowrap; }
-.pb-fix-more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem .9rem; }
-.pb-fix-more .rg-field:first-child { grid-column: 1 / -1; }
-.pb-fix-more input, .pb-fix-more select { width: 100%; min-height: 2.5rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
+.pb-fix-more { display: grid; gap: .6rem; }
+.pb-fix-more input:not([type=checkbox]) { width: 100%; min-height: 2.5rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
 .pb-fix-more label { display: block; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-more .rg-muted { margin-top: .3rem; font-size: .6875rem; color: var(--pb-text-muted); }
+.pb-fix-goal-hint, .pb-fix-notice { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
+/* The site's tools, A to Z: a scrolling list of rows, each picked or unpicked
+   with a press; a picked row takes the accent. */
+.pb-fix-tools { min-width: 0; margin: 0; padding: 0; border: 0; }
+.pb-fix-tools[hidden] { display: none; }
+.pb-fix-tools legend { display: flex; justify-content: space-between; width: 100%; padding: 0; margin-bottom: .3rem; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-fix-tools-count { font-variant-numeric: tabular-nums; color: var(--pb-text); }
+.pb-fix-tools-list { max-height: 15rem; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; border: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-fix-tools-list li + li { border-top: 1px solid var(--pb-line); }
+.pb-fix-more .pb-fix-tools-list label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .1rem .6rem; margin: 0; padding: .5rem .7rem; font-size: .8125rem; color: var(--pb-text); cursor: pointer; }
+.pb-fix-tools-list input { grid-row: span 2; margin: .15rem 0 0; accent-color: var(--pb-accent-deep); }
+.pb-fix-tools-list code { overflow-wrap: anywhere; }
+.pb-fix-tools-list span { color: var(--pb-text-muted); font-size: .75rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.pb-fix-tools-list li:hover { background: var(--pb-accent-wash); }
+.pb-fix-tools-list li[data-pb-picked] { background: var(--pb-accent); }
+.pb-fix-tools-list li[data-pb-picked] label, .pb-fix-tools-list li[data-pb-picked] span { color: var(--pb-accent-ink); }
+.pb-fix-tools-list input:disabled + code, .pb-fix-tools-list input:disabled ~ span { opacity: .55; }
+.pb-fix-tools-list input:disabled { cursor: not-allowed; }
+.pb-fix-tools-list label:has(input:disabled) { cursor: not-allowed; }
 /* Until the person starts typing, the form is one line; the script folds
    the rest away and unfolds it on focus. Without the script every field shows. */
 .pb-fix-form[data-pb-collapsed] .pb-fix-more { display: none; }
@@ -52,7 +70,6 @@
 @media (max-width: 60rem) {
   .pb-fix { grid-template-columns: 1fr; gap: 1.25rem; padding: 1.25rem; }
   .pb-fix-ask { flex-direction: column; }
-  .pb-fix-more { grid-template-columns: 1fr; }
 }
 
 /* The live fix page. */

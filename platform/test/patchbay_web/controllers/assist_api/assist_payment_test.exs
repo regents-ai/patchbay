@@ -23,7 +23,6 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     "goal" => "Book the 9am table for two on Friday",
     "site_url" => "https://bookings.example.com/app",
     "sign_in" => "unknown",
-    "expected_result" => "A confirmation with a booking reference",
     "believed_calls" => [%{"tool" => " reserve_table ", "arguments" => %{"party" => 2}}]
   }
 
@@ -106,7 +105,6 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert run["goal"] == @args["goal"]
     assert run["site_url"] == @args["site_url"]
     assert run["sign_in"] == "unknown"
-    assert run["expected_result"] == @args["expected_result"]
     assert run["believed_calls"] == [%{"tool" => "reserve_table", "arguments" => %{"party" => 2}}]
     assert run["steps"] == []
     assert run["payment_intent_id"] == prepared["id"]
@@ -188,7 +186,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
           {Map.put(@args, "site_url", "https://user:pw@bookings.example.com"), "site_url"},
           {Map.put(@args, "goal", String.duplicate("x", 1_001)), "goal"},
           {Map.put(@args, "goal", "   "), "goal"},
-          {Map.delete(@args, "expected_result"), "expected_result"},
+          {Map.delete(@args, "goal"), "goal"},
           {Map.put(@args, "sign_in", "maybe"), "sign_in"},
           {Map.put(@args, "believed_calls", List.duplicate(%{"tool" => "t"}, 6)),
            "believed_calls"},

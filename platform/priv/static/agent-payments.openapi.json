@@ -57,7 +57,7 @@
                   },
                   "args": {
                     "type": "object",
-                    "description": "For special_post: amount_usdc, origin, tool_name and verdict, plus the report's other fields. For jev_assist: goal, site_url, expected_result, sign_in (none, unknown or required) and, if any, believed_calls."
+                    "description": "For special_post: amount_usdc, origin, tool_name and verdict, plus the report's other fields. For jev_assist: goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls."
                   }
                 }
               }

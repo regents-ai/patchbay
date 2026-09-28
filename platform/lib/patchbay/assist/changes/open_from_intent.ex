@@ -37,7 +37,6 @@ defmodule Patchbay.Assist.Changes.OpenFromIntent do
       payment_intent_id: intent.id,
       goal: request["goal"],
       site_url: request["site_url"],
-      expected_result: request["expected_result"],
       sign_in: request["sign_in"],
       believed_calls: request["believed_calls"]
     })

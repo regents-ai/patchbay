@@ -1,11 +1,11 @@
 defmodule PatchbayWeb.Forum.FixCheck do
   @moduledoc """
-  The quiet look a free fix takes at a site before it starts: whether
-  Patchbay finds any WebMCP tools at the address. A free fix is kept, not
-  spent, on an address without tools, and a connection that keeps naming
-  such addresses is pointed to the WebMCP Site Directory, then asked to wait.
-  The form asks as soon as an address is typed, and again when the button
-  is pressed.
+  The quiet look the fix form takes at a site: the WebMCP tools Patchbay
+  finds at the address, listed A to Z for the person to pick from. A free
+  fix is kept, not spent, on an address without tools, and a connection
+  that keeps naming such addresses is pointed to the WebMCP Site Directory,
+  then asked to wait. The form asks as soon as an address is typed, and a
+  free fix asks again when the button is pressed.
   """
 
   alias Patchbay.Assist.Discovery
@@ -16,10 +16,10 @@ defmodule PatchbayWeb.Forum.FixCheck do
   # A site that was read and has no tools, as opposed to one not reached.
   @no_tools [:no_tools_found, :no_tools_offered]
   @directory_after 2
-  @names_shown 3
 
+  @type tool :: %{name: String.t(), description: String.t()}
   @type answer ::
-          {:found, [String.t()]}
+          {:found, [tool()]}
           | {:none, non_neg_integer()}
           | {:unreachable, atom()}
           | {:limited, pos_integer()}
@@ -51,13 +51,8 @@ defmodule PatchbayWeb.Forum.FixCheck do
 
   @doc "The words for an answer, as the form shows them."
   @spec said(answer()) :: String.t()
-  def said({:found, [name]}), do: "Patchbay found 1 WebMCP tool here: #{name}."
-
-  def said({:found, names}) do
-    shown = names |> Enum.take(@names_shown) |> Enum.join(", ")
-    more = if length(names) > @names_shown, do: " and more", else: ""
-    "Patchbay found #{length(names)} WebMCP tools here: #{shown}#{more}."
-  end
+  def said({:found, [_tool]}), do: "Patchbay found 1 WebMCP tool here."
+  def said({:found, tools}), do: "Patchbay found #{length(tools)} WebMCP tools here."
 
   def said({:none, _misses}),
     do: "Patchbay found no WebMCP tools at this address, so a free fix cannot start here."
@@ -77,7 +72,14 @@ defmodule PatchbayWeb.Forum.FixCheck do
 
   def said(:invalid), do: "The site needs a public https address, like https://example.com/app."
 
-  defp found(tools), do: {:found, Enum.map(tools, & &1.name)}
+  defp found(tools) do
+    listed =
+      tools
+      |> Enum.map(&%{name: &1.name, description: &1.description})
+      |> Enum.sort_by(&String.downcase(&1.name))
+
+    {:found, listed}
+  end
 
   defp missed(visitor, site_url) do
     case FixCheckLimit.missed(visitor, site_url) do

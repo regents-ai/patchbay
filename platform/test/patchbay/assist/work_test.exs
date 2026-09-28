@@ -369,7 +369,6 @@ defmodule Patchbay.Assist.WorkTest do
       "goal" => "Book the 9am table for two on Friday",
       "site_url" => "https://bookings.example.com/mcp",
       "sign_in" => "unknown",
-      "expected_result" => "A confirmation with a booking reference",
       "believed_calls" => believed_calls
     }
   end

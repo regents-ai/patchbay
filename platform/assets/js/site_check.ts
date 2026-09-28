@@ -5,7 +5,9 @@ const CHECKING = "Looking for WebMCP tools at this address…"
 // Answers that keep the free fix's button from being pressed.
 const LOCKED = new Set<string | undefined>(["none", "limited", "unreachable", "invalid"])
 
-export type SiteAnswer = {status: string; said?: string; directory?: boolean}
+export type SiteTool = {name: string; description: string}
+
+export type SiteAnswer = {status: string; said?: string; tools?: SiteTool[]; directory?: boolean}
 
 type SiteField = {value: string; addEventListener(type: "input" | "change", listener: () => void): void}
 
@@ -23,18 +25,19 @@ type SiteCheckOptions = {
   fetch?: Fetcher
   setTimeout?: (callback: () => void, ms: number) => number
   clearTimeout?: (timer: number | null) => void
+  onTools?: (tools: SiteTool[]) => void
 }
 
 /**
- * The quiet look for WebMCP tools at the site's address, on a form offering
- * a free fix: as soon as an address is typed, Patchbay says under the field
- * what it found, the button cannot be pressed for an address without tools,
- * and after a second such address the WebMCP Site Directory is offered. Each
- * address is asked about once per page. A paid fix is never held back, so
- * the form only looks while the fix is free.
+ * The quiet look for WebMCP tools at the site's address: as soon as an
+ * address is typed, Patchbay says under the field what it found and hands
+ * the tools on to be listed, and after a second address without tools the
+ * WebMCP Site Directory is offered. Each address is asked about once per
+ * page. Only a free fix is held back: its button cannot be pressed for an
+ * address without tools. A paid fix is never held back.
  */
 export function mountSiteCheck(form: SiteCheckForm, options: SiteCheckOptions = {}) {
-  if (form.dataset.pbFixMode !== "free") return null
+  const free = form.dataset.pbFixMode === "free"
   const field = form.elements["fix[site_url]"]
   const line = form.querySelector("#pb-fix-site-check")
   const submit = form.querySelector("#pb-fix-submit")
@@ -51,7 +54,8 @@ export function mountSiteCheck(form: SiteCheckForm, options: SiteCheckOptions = 
     line.textContent = answer?.said ?? ""
     if (answer) line.dataset.pbCheck = answer.status
     else delete line.dataset.pbCheck
-    submit.disabled = LOCKED.has(answer?.status)
+    if (free) submit.disabled = LOCKED.has(answer?.status)
+    if (answer?.status !== "checking") options.onTools?.(answer?.tools ?? [])
     if (answer?.directory && directory?.hidden) {
       directory.hidden = false
       directory.dataset.pbArrived = "true"

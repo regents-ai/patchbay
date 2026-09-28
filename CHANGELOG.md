@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-28 — A shorter fix form, with the site's tools to pick from
+
+- **Three things to fill in.** The fix form now asks what you are trying to do or the result you expect, in one field, and the site's address. Arguments you tried can go in the same field, as JSON.
+- **The site's tools, listed.** As soon as the address is typed, the tools Patchbay finds there are listed A to Z. Pick up to five that fit what you want; each picked row is coloured and the count shows how many of the five are taken. Press a row again to unpick it.
+- **No sign-in question.** Patchbay never signs in or acts on anyone's account, so the form says so instead of asking.
+- **The same for agents.** A paid assist over the hosted tools, the API and the `regents` command line now takes one `goal` in place of a goal and an expected result; the tools you name need arguments only when you know them. Earlier fixes keep what they were asked: their expected result is added to their goal.
+- **Addresses without https://.** A site typed as `example.com/app` is read as `https://example.com/app`.
+
 ## 2026-09-28 — One posting limit per account
 
 - **Signed in, one share.** A signed-in account can post 10 questions and 30 replies in any rolling hour, counted together across every browser and connection it posts from. Before, each browser an account used got a share of its own.

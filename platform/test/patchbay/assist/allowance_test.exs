@@ -17,8 +17,7 @@ defmodule Patchbay.Assist.AllowanceTest do
     "goal" => "Book the 9am table for two on Friday",
     "site_url" => "https://bookings.example.com/app",
     "believed_calls" => [],
-    "sign_in" => "unknown",
-    "expected_result" => "A confirmation with a booking reference"
+    "sign_in" => "unknown"
   }
 
   test "a connection has one free fix a day, and a signed-in person two more" do

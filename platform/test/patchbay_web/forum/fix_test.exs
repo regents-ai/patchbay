@@ -17,12 +17,9 @@ defmodule PatchbayWeb.Forum.FixTest do
   @wallet "0x" <> String.duplicate("d", 40)
 
   @form %{
-    "goal" => "Book the 9am table for two on Friday",
+    "goal" => "Book the 9am table for two on Friday and get a booking reference",
     "site_url" => "https://bookings.example.com/app",
-    "expected_result" => "A confirmation with a booking reference",
-    "sign_in" => "unknown",
-    "tool" => "reserve_table",
-    "arguments" => ~s({"party": 2})
+    "tools" => ["reserve_table"]
   }
 
   setup do
@@ -55,7 +52,8 @@ defmodule PatchbayWeb.Forum.FixTest do
     assert run.status == :paid
     assert run.goal == @form["goal"]
     assert run.site_url == @form["site_url"]
-    assert run.believed_calls == [%{"tool" => "reserve_table", "arguments" => %{"party" => 2}}]
+    assert run.believed_calls == [%{"tool" => "reserve_table"}]
+    assert run.sign_in == :unknown
     assert run.browser_session_id == get_session(conn, "forum_session_id")
     assert is_nil(run.payer_profile_id)
     assert is_binary(run.visitor_key)
@@ -171,10 +169,9 @@ defmodule PatchbayWeb.Forum.FixTest do
     address = address()
 
     for {change, words} <- [
-          {%{"sign_in" => "required"}, "never acts on anyone"},
-          {%{"arguments" => "junk"}, "JSON object"},
           {%{"site_url" => "http://bookings.example.com"}, "public https address"},
-          {%{"goal" => ""}, "Say what you were trying to do"}
+          {%{"goal" => ""}, "Say what you are trying to do"},
+          {%{"tools" => ~w(a b c d e reserve_table)}, "Pick up to 5"}
         ] do
       html =
         build_conn()
@@ -183,7 +180,8 @@ defmodule PatchbayWeb.Forum.FixTest do
         |> html_response(200)
 
       assert html =~ words, "#{inspect(change)} should say #{words}"
-      assert html =~ ~s(value="#{@form["expected_result"]}")
+      # The picked tools come back with the form.
+      assert html =~ ~r/data-pb-picked="[^"]*reserve_table"/
     end
 
     # Nothing was opened, and the connection's free fix is still there.
@@ -218,8 +216,7 @@ defmodule PatchbayWeb.Forum.FixTest do
       "goal" => @form["goal"],
       "site_url" => @form["site_url"],
       "believed_calls" => [],
-      "sign_in" => "unknown",
-      "expected_result" => @form["expected_result"]
+      "sign_in" => "unknown"
     }
   end
 

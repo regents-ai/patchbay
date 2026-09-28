@@ -1,9 +1,9 @@
 defmodule Patchbay.Assist.Arguments do
   @moduledoc """
   The arguments a chosen tool is called with: the agent's own when it named
-  the tool and they fit its schema, otherwise a draft written from the
-  schema, the goal and the expected result, checked against the schema
-  before anything is called. Jev is never asked to write them.
+  the tool with arguments that fit its schema, otherwise a draft written
+  from the schema and the goal, checked against the schema before anything
+  is called. Jev is never asked to write them.
   """
 
   alias Patchbay.Assist.Drafter
@@ -39,8 +39,7 @@ defmodule Patchbay.Assist.Arguments do
       tool: tool.name,
       description: tool.description,
       input_schema: tool.input_schema || %{},
-      goal: run.goal,
-      expected_result: run.expected_result
+      goal: run.goal
     }
 
     case Drafter.draft(input, opts) do

@@ -35,8 +35,7 @@ defmodule PatchbayWeb.FixLive.Panel do
 
     head = [
       line("", "head", "site     #{run.site_url}"),
-      line("", "head", "goal     #{run.goal}"),
-      line("", "head", "expect   #{run.expected_result}")
+      line("", "head", "goal     #{run.goal}")
     ]
 
     steps = Enum.flat_map(run.steps, &step_lines(&1, start))

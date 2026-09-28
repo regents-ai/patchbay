@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import {test} from "node:test"
 
-import {addressLike, mountSiteCheck, type SiteAnswer} from "../../js/site_check.ts"
+import {addressLike, mountSiteCheck, type SiteAnswer, type SiteTool} from "../../js/site_check.ts"
 
 type Fixture = {mode?: string; value?: string; answers?: Record<string, SiteAnswer | "offline">}
 
@@ -26,11 +26,18 @@ function fixture({mode = "free", value = "", answers = {}}: Fixture = {}) {
     return {json: async () => answer}
   }
   const timers: Array<() => void> = []
-  const options = {fetch, setTimeout: (fn: () => void) => timers.push(fn), clearTimeout: () => {}}
-  return {form, field, line, submit, directory, asked, listeners, timers, options}
+  const listed: string[][] = []
+  const options = {
+    fetch,
+    setTimeout: (fn: () => void) => timers.push(fn),
+    clearTimeout: () => {},
+    onTools: (tools: SiteTool[]) => listed.push(tools.map(tool => tool.name)),
+  }
+  return {form, field, line, submit, directory, asked, listeners, timers, listed, options}
 }
 
-const found = {status: "found", said: "Patchbay found 5 WebMCP tools here.", directory: false}
+const tools = [{name: "search_docs", description: "Searches the docs."}, {name: "open_page", description: "Opens a page."}]
+const found = {status: "found", said: "Patchbay found 2 WebMCP tools here.", tools, directory: false}
 const none = {status: "none", said: "Patchbay found no WebMCP tools at this address.", directory: false}
 
 test("an address with tools is said under the field and the button stays pressable", async () => {
@@ -123,12 +130,16 @@ test("typing waits for a pause; leaving the field asks at once; a typed-in addre
   assert.equal(f.timers.length, 1)
 })
 
-test("a paid fix is never looked at or held back", () => {
+test("a fix that is not free is looked at for its tools but never held back", async () => {
   for (const mode of ["pay", "sign_in", "closed"]) {
-    const f = fixture({mode, value: "https://example.com/"})
-    assert.equal(mountSiteCheck(f.form, f.options), null)
+    const f = fixture({mode, answers: {"https://example.com/": none, "https://developers.openai.com/": found}})
+    const check = mountSiteCheck(f.form, f.options)!
+    f.field.value = "https://example.com/"
+    await check.check()
     assert.equal(f.submit.disabled, false)
-    assert.deepEqual(f.asked, [])
+    f.field.value = "https://developers.openai.com/"
+    await check.check()
+    assert.deepEqual(f.listed.at(-1), ["search_docs", "open_page"])
   }
 })
 

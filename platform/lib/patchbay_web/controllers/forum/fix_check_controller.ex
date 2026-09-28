@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.Forum.FixCheckController do
   @moduledoc """
-  The free fix form's look for WebMCP tools at an address, asked as soon as
-  the address is typed: the words to show under the field, and whether the
-  WebMCP Site Directory should be offered.
+  The fix form's look for WebMCP tools at an address, asked as soon as the
+  address is typed: the words to show under the field, the tools found, and
+  whether the WebMCP Site Directory should be offered.
   """
 
   use PatchbayWeb, :controller
@@ -17,9 +17,13 @@ defmodule PatchbayWeb.Forum.FixCheckController do
     |> json(%{
       status: name(answer),
       said: FixCheck.said(answer),
+      tools: tools(answer),
       directory: FixCheck.directory?(conn)
     })
   end
+
+  defp tools({:found, tools}), do: tools
+  defp tools(_answer), do: []
 
   defp status({:limited, _seconds}), do: 429
   defp status(:invalid), do: 422

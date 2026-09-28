@@ -64,11 +64,10 @@ defmodule Patchbay.Assist.Run do
 
     attribute(:goal, :string, allow_nil?: false, public?: true)
     attribute(:site_url, :string, allow_nil?: false, public?: true)
-    attribute(:expected_result, :string, allow_nil?: false, public?: true)
     attribute(:sign_in, SignIn, allow_nil?: false, public?: true)
 
-    # The calls the agent believed would work, each a tool name and its
-    # arguments, in the order the agent gave them.
+    # The calls the agent believed would work, each a tool name and, when
+    # the agent knew them, its arguments, in the order the agent gave them.
     attribute(:believed_calls, {:array, :map}, allow_nil?: false, public?: true, default: [])
 
     attribute(:status, RunStatus, allow_nil?: false, public?: true, default: :paid)

@@ -23,7 +23,6 @@ defmodule PatchbayWeb.MCPAssistTest do
     "goal" => "Book the 9am table for two on Friday",
     "site_url" => "https://bookings.example.com/app",
     "sign_in" => "unknown",
-    "expected_result" => "A confirmation with a booking reference",
     "believed_calls" => [%{"tool" => "reserve_table", "arguments" => %{"party" => 2}}]
   }
 

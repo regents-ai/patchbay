@@ -137,7 +137,7 @@
       "effect": "prepare",
       "body": {"kind": "jev_assist"},
       "stdin_fields": [
-        {"field": "args", "type": "object", "required": true, "description": "goal, site_url, expected_result, sign_in (none, unknown or required) and, if any, believed_calls."}
+        {"field": "args", "type": "object", "required": true, "description": "goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls."}
       ]
     },
     {

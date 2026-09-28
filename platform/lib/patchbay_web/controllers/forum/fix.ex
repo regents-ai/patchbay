@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.Forum.Fix do
   @moduledoc """
-  The fix form at the top of the home page: what it sends, turned into an
-  assist request; which way the form works right now, free, after a sign-in
-  or for the fee; whether the WebMCP Site Directory is offered; and what the page says when
-  a fix cannot start.
+  The fix form at the top of the home page: what it sends (what the person
+  is trying to do or expects, the site, and up to five of the site's tools
+  they picked), turned into an assist request; which way the form works
+  right now, free, after a sign-in or for the fee; whether the WebMCP Site
+  Directory is offered; and what the page says when a fix cannot start.
   """
 
   require Logger
@@ -14,11 +15,9 @@ defmodule PatchbayWeb.Forum.Fix do
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.FixCheck
 
-  @fields ~w(goal site_url expected_result sign_in tool arguments)
-  @sign_ins ~w(none unknown required)
   @fee "0.10"
 
-  @type draft :: %{String.t() => String.t()}
+  @type draft :: %{String.t() => String.t() | [String.t()]}
   @type mode :: :free | :sign_in | :pay | :closed | :unknown
   @type problem :: %{said: String.t()}
 
@@ -26,25 +25,32 @@ defmodule PatchbayWeb.Forum.Fix do
   @spec fee() :: String.t()
   def fee, do: @fee
 
-  @doc "The form's fields as text, and nothing else."
+  @doc "The form's fields: its two texts and the names of the tools picked."
   @spec draft(term()) :: draft()
-  def draft(params) when is_map(params), do: Map.new(@fields, &{&1, text(params[&1])})
-  def draft(_absent), do: Map.new(@fields, &{&1, ""})
+  def draft(params) when is_map(params) do
+    %{
+      "goal" => text(params["goal"]),
+      "site_url" => text(params["site_url"]),
+      "tools" => tools(params["tools"])
+    }
+  end
 
-  @doc "The request the form asks for, or why it cannot be one."
+  def draft(_absent), do: %{"goal" => "", "site_url" => "", "tools" => []}
+
+  @doc """
+  The request the form asks for, or why it cannot be one. The page never
+  asks about signing in: Patchbay acts on no one's account, and says so.
+  """
   @spec request(draft()) :: {:ok, Request.request()} | {:error, problem()}
   def request(draft) do
-    with {:ok, believed_calls} <- believed_calls(draft["tool"], draft["arguments"]) do
-      %{
-        "goal" => draft["goal"],
-        "site_url" => draft["site_url"],
-        "expected_result" => draft["expected_result"],
-        "sign_in" => sign_in(draft["sign_in"]),
-        "believed_calls" => believed_calls
-      }
-      |> Request.draft()
-      |> refusal()
-    end
+    %{
+      "goal" => draft["goal"],
+      "site_url" => draft["site_url"],
+      "sign_in" => "unknown",
+      "believed_calls" => Enum.map(draft["tools"], &%{"tool" => &1})
+    }
+    |> Request.draft()
+    |> refusal()
   end
 
   @doc """
@@ -196,43 +202,22 @@ defmodule PatchbayWeb.Forum.Fix do
   defp text(value) when is_binary(value), do: String.trim(value)
   defp text(_other), do: ""
 
-  defp sign_in(value) when value in @sign_ins, do: value
-  defp sign_in(_blank), do: "unknown"
-
-  # A tool the person tried, with its arguments as they wrote them, or no
-  # believed calls at all. Arguments have to be a JSON object.
-  defp believed_calls("", _arguments), do: {:ok, []}
-  defp believed_calls(tool, ""), do: {:ok, [%{"tool" => tool, "arguments" => %{}}]}
-
-  defp believed_calls(tool, arguments) do
-    case Jason.decode(arguments) do
-      {:ok, %{} = decoded} ->
-        {:ok, [%{"tool" => tool, "arguments" => decoded}]}
-
-      _not_an_object ->
-        {:error, %{said: "Write the arguments as a JSON object, like {\"party\": 2}."}}
-    end
-  end
+  defp tools(names) when is_list(names), do: for(name <- names, is_binary(name), do: name)
+  defp tools(_none), do: []
 
   defp refusal({:ok, request}), do: {:ok, request}
-
-  defp refusal({:error, :needs_sign_in}) do
-    {:error,
-     %{
-       said:
-         "That site needs a signed-in user, and Patchbay never acts on anyone's account. " <>
-           "Try what works signed out."
-     }}
-  end
 
   defp refusal({:error, {:invalid, [rule | _rest]}}) do
     said =
       case String.split(rule, ":", parts: 2) do
-        ["goal" | _] -> "Say what you were trying to do, in up to 1,000 characters."
-        ["expected_result" | _] -> "Say what should happen, in up to 1,000 characters."
-        ["site_url" | _] -> "The site needs a public https address, like https://example.com/app."
-        ["sign_in" | _] -> "Say whether the site needs you signed in."
-        _believed_calls -> "The tool name or its arguments could not be read."
+        ["goal" | _] ->
+          "Say what you are trying to do or the result you expect, in up to 1,000 characters."
+
+        ["site_url" | _] ->
+          "The site needs a public https address, like https://example.com/app."
+
+        _believed_calls ->
+          "Pick up to 5 of the site's tools."
       end
 
     {:error, %{said: said}}

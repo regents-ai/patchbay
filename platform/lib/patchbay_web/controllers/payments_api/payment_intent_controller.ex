@@ -28,7 +28,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @unknown_action "kind: must be agent_tip, special_post or jev_assist, and args must carry " <>
                     "amount_usdc with profile_id for a tip, or amount_usdc with the report's " <>
                     "origin, tool_name and verdict for a paid priority report, or the assist's " <>
-                    "goal, site_url, sign_in and expected_result"
+                    "goal, site_url and sign_in"
 
   def create(conn, %{"kind" => "agent_tip", "args" => %{} = args}) do
     conn.assigns.current_profile

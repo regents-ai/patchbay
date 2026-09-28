@@ -2,12 +2,13 @@ import {payForIntent} from "./webmcp/paid_actions.ts"
 import {requestAccountAction} from "./privy/account.ts"
 import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./form_draft.ts"
 import {mountSiteCheck} from "./site_check.ts"
+import {mountToolPicker} from "./tool_picker.ts"
 import {deny} from "./hooks/motion/press.ts"
 
 const DRAFT_KEY = "pb-fix-draft"
-const FIELDS = ["goal", "site_url", "expected_result", "sign_in", "tool", "arguments"]
+const PICKS_KEY = "pb-fix-draft-tools"
+const FIELDS = ["goal", "site_url"]
 const FIELD_NAMES = FIELDS.map(name => `fix[${name}]`)
-const MORE = ["site_url", "expected_result", "tool", "arguments"]
 
 const WORDS: Record<string, string> = {
   paying: "Asking the wallet you signed in with to approve the fee.",
@@ -32,17 +33,12 @@ type FixFormOptions = {
   navigate?: (url: string) => void
 }
 
-type BelievedCall = {tool: string; arguments: object}
-
 type FixRequest = {
   goal: string
   site_url: string
-  expected_result: string
-  sign_in: string
-  believed_calls: BelievedCall[]
+  sign_in: "unknown"
+  believed_calls: {tool: string}[]
 }
-
-type FixArguments = {ok: true; args: FixRequest; problem?: undefined} | {ok: false; problem: string; args?: undefined}
 
 // Patchbay's last word on a paid fix, as `payForIntent` answers it.
 type PaidFix = {
@@ -56,10 +52,10 @@ type NextStep = {navigate: string; problem?: undefined} | {problem: string; navi
 
 /**
  * The fix form at the top of the home page. It folds its extra fields away
- * until the person starts typing, keeps what they typed across a sign-in,
- * looks for WebMCP tools at the site while the fix is free, and, once the
- * free fixes are used, pays the fee with the wallet the page is signed in
- * with before opening the fix.
+ * until the person starts typing, keeps what they typed and the tools they
+ * picked across a sign-in, lists the WebMCP tools found at the site to pick
+ * from, and, once the free fixes are used, pays the fee with the wallet the
+ * page is signed in with before opening the fix.
  */
 export function mountFixForm(options: FixFormOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -68,8 +64,10 @@ export function mountFixForm(options: FixFormOptions = {}) {
 
   const storage = options.storage === undefined ? sessionStorageOrNull() : options.storage
   restoreDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
+  restorePicks(form, storage)
   foldUntilFocus(form)
-  mountSiteCheck(form, options)
+  const picker = mountToolPicker(form)
+  mountSiteCheck(form, {...options, onTools: picker?.show})
 
   form.addEventListener("submit", event => {
     const mode = form.dataset.pbFixMode
@@ -79,45 +77,24 @@ export function mountFixForm(options: FixFormOptions = {}) {
     } else if (mode === "sign_in") {
       event.preventDefault()
       keepDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
+      keepPicks(form, storage)
       void requestAccountAction("sign-in", doc, options)
     }
   })
 }
 
 /**
- * The request the form's fields make, in the shape Patchbay takes, or the
- * words for why they cannot make one.
+ * The request the form's two texts and the picked tools make, in the shape
+ * Patchbay takes. The page never asks about signing in: Patchbay acts on no
+ * one's account, and the form says so.
  */
-export function fixArguments(fields: Record<string, string>): FixArguments {
+export function fixArguments(fields: Record<string, string>, tools: string[]): FixRequest {
   const text = (name: string) => (fields[name] ?? "").trim()
-  const tool = text("tool")
-  let believed_calls: BelievedCall[] = []
-
-  if (tool !== "") {
-    const raw = text("arguments")
-    let parsed: unknown = {}
-    if (raw !== "") {
-      try {
-        parsed = JSON.parse(raw)
-      } catch {
-        parsed = null
-      }
-    }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {ok: false, problem: 'Write the arguments as a JSON object, like {"party": 2}.'}
-    }
-    believed_calls = [{tool, arguments: parsed}]
-  }
-
   return {
-    ok: true,
-    args: {
-      goal: text("goal"),
-      site_url: text("site_url"),
-      expected_result: text("expected_result"),
-      sign_in: text("sign_in") || "unknown",
-      believed_calls,
-    },
+    goal: text("goal"),
+    site_url: text("site_url"),
+    sign_in: "unknown",
+    believed_calls: tools.map(tool => ({tool})),
   }
 }
 
@@ -142,13 +119,10 @@ export function fixOutcome(outcome: PaidFix): NextStep {
 }
 
 async function pay(form: PageForm, doc: Document, options: FixFormOptions) {
-  const request = fixArguments(fieldsOf(form))
-  if (!request.ok) return refuse(form, request.problem)
-
   say(form, WORDS.paying)
   const outcome = await payForIntent(
     {fetch: options.fetch, csrfToken: options.csrfToken, document: doc},
-    {kind: "jev_assist", args: request.args},
+    {kind: "jev_assist", args: fixArguments(fieldsOf(form), picksOf(form))},
   )
   const next = fixOutcome(outcome)
   if (next.navigate) {
@@ -164,7 +138,7 @@ function fixPath(runId: string) {
 }
 
 function foldUntilFocus(form: PageForm) {
-  const typed = MORE.some(name => (form.elements[`fix[${name}]`]?.value ?? "") !== "")
+  const typed = (form.elements["fix[site_url]"]?.value ?? "") !== ""
   if (typed || form.querySelector("[role=alert]")) return
   form.dataset.pbCollapsed = "true"
   const unfold = () => delete form.dataset.pbCollapsed
@@ -173,6 +147,31 @@ function foldUntilFocus(form: PageForm) {
 
 function fieldsOf(form: PageForm) {
   return Object.fromEntries(FIELDS.map(name => [name, form.elements[`fix[${name}]`]?.value ?? ""]))
+}
+
+function picksOf(form: PageForm) {
+  return Array.from(form.querySelectorAll<HTMLInputElement>("input[name='fix[tools][]']:checked"), input => input.value)
+}
+
+// The picked tools ride across a sign-in the way the texts do, and the
+// list takes them back once it is shown again.
+function keepPicks(form: PageForm, storage: Storage | null) {
+  try {
+    storage?.setItem(PICKS_KEY, picksOf(form).join("\n"))
+  } catch {
+    // A page that cannot keep the picks still signs in.
+  }
+}
+
+function restorePicks(form: PageForm, storage: Storage | null) {
+  const box = form.querySelector<HTMLElement>("#pb-fix-tools")
+  try {
+    const kept = storage?.getItem(PICKS_KEY)
+    storage?.removeItem(PICKS_KEY)
+    if (box && kept) box.dataset.pbPicked = kept
+  } catch {
+    // Nothing kept, nothing to put back.
+  }
 }
 
 function say(form: PageForm, words: string) {

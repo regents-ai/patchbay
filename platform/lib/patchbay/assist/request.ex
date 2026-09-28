@@ -3,8 +3,10 @@ defmodule Patchbay.Assist.Request do
   The rules for what an agent asks a paid assist to do, in the one place
   every door reads them from.
 
-  A request names the goal, the site, what "done" looks like, whether the
-  site needs a signed-in user, and the calls the agent believes will work.
+  A request names the goal (what the agent is trying to do and what result
+  it expects, in one text), the site, whether the site needs a signed-in
+  user, and the tools the agent believes will work, with their arguments
+  when known.
   Everything is text the agent wrote, so every field is bounded before it is
   frozen into payment terms, and a site is only ever a public `https` name:
   Patchbay will not be pointed at an address inside anybody's network. A site
@@ -17,7 +19,7 @@ defmodule Patchbay.Assist.Request do
   @type request :: %{String.t() => term()}
   @type refusal :: {:invalid, [String.t()]} | :needs_sign_in
 
-  @fields ~w(goal site_url believed_calls sign_in expected_result)
+  @fields ~w(goal site_url believed_calls sign_in)
 
   @max_text_chars 1_000
   @max_site_url_bytes 2_048
@@ -45,7 +47,6 @@ defmodule Patchbay.Assist.Request do
   def draft(params) when is_map(params) do
     with :ok <- fields_only(params),
          {:ok, goal} <- text("goal", params["goal"]),
-         {:ok, expected_result} <- text("expected_result", params["expected_result"]),
          {:ok, site_url} <- site_url(params["site_url"]),
          {:ok, sign_in} <- sign_in(params["sign_in"]),
          {:ok, believed_calls} <- believed_calls(params["believed_calls"]) do
@@ -54,8 +55,7 @@ defmodule Patchbay.Assist.Request do
          "goal" => goal,
          "site_url" => site_url,
          "believed_calls" => believed_calls,
-         "sign_in" => sign_in,
-         "expected_result" => expected_result
+         "sign_in" => sign_in
        }}
     end
   end
@@ -73,7 +73,7 @@ defmodule Patchbay.Assist.Request do
 
   defp unknown_field(field) do
     "#{field}: an assist request does not take #{field}. " <>
-      "It takes goal, site_url, believed_calls, sign_in and expected_result."
+      "It takes goal, site_url, believed_calls and sign_in."
   end
 
   defp text(field, value) when is_binary(value) do
@@ -191,8 +191,11 @@ defmodule Patchbay.Assist.Request do
       not is_map(arguments) ->
         {:error, {:invalid, ["believed_calls: arguments must be an object of named values"]}}
 
-      true ->
+      Map.has_key?(call, "arguments") ->
         {:ok, %{"tool" => trimmed, "arguments" => arguments}}
+
+      true ->
+        {:ok, %{"tool" => trimmed}}
     end
   end
 

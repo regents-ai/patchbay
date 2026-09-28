@@ -17,8 +17,7 @@ defmodule PatchbayWeb.FixLiveTest do
     "goal" => "Book the 9am table for two on Friday",
     "site_url" => "https://bookings.example.com/app",
     "believed_calls" => [],
-    "sign_in" => "unknown",
-    "expected_result" => "A confirmation with a booking reference"
+    "sign_in" => "unknown"
   }
 
   test "the browser that asked follows the fix to its answer", %{conn: conn} do
