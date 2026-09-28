@@ -281,10 +281,10 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       report = credited(tool, asker)
 
       refused = conn |> signed_in(stranger) |> post(~p"/forum/reports/#{report.id}/refund")
-      assert json_response(refused, 403)["problem_code"] == "forbidden"
+      assert json_response(refused, 403)["error"]["code"] == "forbidden"
 
       missing = conn |> signed_in(asker) |> post(~p"/forum/reports/#{Ash.UUID.generate()}/refund")
-      assert json_response(missing, 404)["problem_code"] == "not_found"
+      assert json_response(missing, 404)["error"]["code"] == "not_found"
     end
   end
 

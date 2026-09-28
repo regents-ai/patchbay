@@ -143,9 +143,9 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
       |> post(~p"/api/me/agent_name", %{"agent_name" => "kettle"})
       |> json_response(422)
 
-    assert answer["renamed"] == false
-    assert answer["error"] =~ "already taken"
-    assert answer["next_action"] =~ "lowercase letters"
+    assert answer["error"]["code"] == "invalid"
+    assert answer["error"]["message"] =~ "already taken"
+    assert answer["error"]["hint"] =~ "lowercase letters"
   end
 
   test "a signed-out visitor is asked to sign in rather than given a form", %{

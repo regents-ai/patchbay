@@ -158,8 +158,8 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       |> post(~p"/api/payment_intents", %{kind: "jev_assist", args: signed_in_required})
       |> json_response(422)
 
-    assert refused["problem_code"] == "needs_sign_in"
-    assert refused["error"] =~ "Nothing was charged"
+    assert refused["error"]["code"] == "needs_sign_in"
+    assert refused["error"]["message"] =~ "Nothing was charged"
 
     for {bad, words} <- [
           {Map.put(@args, "site_url", "http://bookings.example.com"), "site_url"},
@@ -202,8 +202,8 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
         |> post(~p"/api/payment_intents", %{kind: "jev_assist", args: bad})
         |> json_response(422)
 
-      assert body["problem_code"] == "invalid"
-      assert [message] = body["errors"]
+      assert body["error"]["code"] == "invalid"
+      assert [message] = body["error"]["details"]
       assert String.starts_with?(message, words <> ":")
     end
 
@@ -229,8 +229,8 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       |> post(~p"/api/payment_intents", %{kind: "jev_assist", args: @args})
       |> json_response(503)
 
-    assert off["problem_code"] == "not_configured"
-    assert off["error"] == "Paid assists are not set up on this Patchbay."
+    assert off["error"]["code"] == "not_configured"
+    assert off["error"]["message"] == "Paid assists are not set up on this Patchbay."
   end
 
   test "a wallet author's assist is paid and read back through the agent door", c do
@@ -365,10 +365,10 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       |> post(~p"/api/payment_intents", %{kind: "jev_assist", args: @args})
       |> json_response(409)
 
-    assert refused["problem_code"] == "assist_running"
-    assert refused["run_id"] == run.id
-    assert refused["assist_url"] == url(~p"/api/assists/#{run.id}")
-    assert refused["error"] =~ "Nothing was charged"
+    assert refused["error"]["code"] == "assist_running"
+    assert refused["error"]["run_id"] == run.id
+    assert refused["error"]["assist_url"] == url(~p"/api/assists/#{run.id}")
+    assert refused["error"]["message"] =~ "Nothing was charged"
 
     # Another payer is not held up by it.
     assert {:ok, _theirs} = Purchase.prepare_jev_assist(c.other, @args, nil)

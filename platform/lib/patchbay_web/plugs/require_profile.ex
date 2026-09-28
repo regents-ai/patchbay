@@ -11,6 +11,8 @@ defmodule PatchbayWeb.Plugs.RequireProfile do
 
   import Plug.Conn
 
+  alias PatchbayWeb.ApiError
+
   @impl Plug
   def init(opts), do: opts
 
@@ -22,13 +24,14 @@ defmodule PatchbayWeb.Plugs.RequireProfile do
         |> put_resp_content_type("application/json")
         |> send_resp(
           401,
-          Jason.encode!(%{
-            error: "Sign in on this page to do that.",
-            problem_code: "sign_in_required",
-            next_action:
+          Jason.encode!(
+            ApiError.body(
+              "sign_in_required",
+              "Sign in on this page to do that.",
               "Ask the human to sign in on the current Patchbay page. Never ask for wallet secrets.",
-            payment_help_url: "#{PatchbayWeb.Endpoint.url()}/agent-setup#x402"
-          })
+              %{payment_help_url: "#{PatchbayWeb.Endpoint.url()}/agent-setup#x402"}
+            )
+          )
         )
         |> halt()
 

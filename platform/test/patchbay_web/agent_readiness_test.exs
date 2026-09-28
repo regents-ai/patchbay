@@ -60,7 +60,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
     test "answers an API caller with the JSON error shape whatever it accepts", %{conn: conn} do
       conn = conn |> put_req_header("accept", "text/html") |> get("/api/no-such-endpoint")
 
-      assert %{"error" => _, "problem_code" => "not_found", "hint" => hint} =
+      assert %{"error" => %{"message" => _, "code" => "not_found", "hint" => hint}} =
                json_response(conn, 404)
 
       assert hint =~ "/openapi.json"
@@ -68,7 +68,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
     test "answers a JSON reader anywhere with the JSON error shape", %{conn: conn} do
       conn = conn |> put_req_header("accept", "application/json") |> get("/no-such-page")
-      assert %{"problem_code" => "not_found"} = json_response(conn, 404)
+      assert %{"error" => %{"code" => "not_found"}} = json_response(conn, 404)
     end
   end
 
@@ -151,10 +151,10 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert operations == Enum.uniq(operations)
       assert length(operations) >= 25
 
-      assert get_in(spec, ["components", "schemas", "Error", "required"]) == [
-               "error",
-               "problem_code"
-             ]
+      assert get_in(spec, ["components", "schemas", "Error", "required"]) == ["error"]
+
+      assert get_in(spec, ["components", "schemas", "Error", "properties", "error", "required"]) ==
+               ["code", "message", "hint"]
     end
 
     test "sitemap.xml lists the fixed pages, sites, tools and posts with last-change times", %{

@@ -32,11 +32,15 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
+
+  @try_again "Try the same call again in a moment."
+  @wait_then_retry "Wait retry_after_seconds, then send it again."
 
   def create(conn, params) do
     conn = with_share_headers(conn, :reports)
@@ -115,12 +119,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
-        |> json(%{
-          status: "unknown",
-          problem_code: "not_found",
-          error:
-            "No post from this session carries that client_request_id. It never reached Patchbay, so it is safe to send again."
-        })
+        |> json(
+          ApiError.body(
+            "not_found",
+            "No post from this session carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
+            "Send the post again with the same client_request_id.",
+            %{status: "unknown"}
+          )
+        )
 
       {:error, failure} ->
         send_failure(conn, failure)
@@ -165,10 +171,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     conn
     |> put_status(:service_unavailable)
-    |> json(%{
-      error: "This thread could not be loaded. Try again with the same report and cursor.",
-      problem_code: "unavailable"
-    })
+    |> json(
+      ApiError.body(
+        "unavailable",
+        "This thread could not be loaded. Try again with the same report and cursor.",
+        @try_again
+      )
+    )
   end
 
   def mark_solution(conn, %{"id" => id} = params) do
@@ -432,49 +441,61 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Answers
 
-  # Every refusal carries a short `problem_code` beside its words, so a browser
-  # agent can branch on the reason without reading English.
+  # Every refusal is one `error` object with a short `code` beside its words
+  # and a hint (`PatchbayWeb.ApiError`), so a browser agent can branch on the
+  # reason without reading English, and act on it when it does.
   defp send_failure(conn, :invalid_cursor) do
     conn
     |> put_status(:bad_request)
-    |> json(%{
-      error: "This reply cursor is invalid or expired. Start again without after.",
-      problem_code: "invalid_cursor"
-    })
+    |> json(
+      ApiError.body(
+        "invalid_cursor",
+        "This reply cursor is invalid or expired. Start again without after.",
+        "Read the thread again without after, and use the cursor it gives."
+      )
+    )
   end
 
   defp send_failure(conn, :response_too_large) do
     conn
     |> put_status(:internal_server_error)
-    |> json(%{
-      error:
+    |> json(
+      ApiError.body(
+        "response_too_large",
         "This thread page is too large to return without omitting data. No replies were skipped.",
-      problem_code: "response_too_large"
-    })
+        "Read the thread on the website instead."
+      )
+    )
   end
 
   defp send_failure(conn, {:rate_limited, counted, message, seconds}) do
     conn
     |> put_resp_header("retry-after", Integer.to_string(seconds))
     |> put_status(:too_many_requests)
-    |> json(%{
-      error: message,
-      problem_code: "rate_limited",
-      subject: rate_subject(counted),
-      retry_after_seconds: seconds
-    })
+    |> json(
+      ApiError.body("rate_limited", message, @wait_then_retry, %{
+        subject: rate_subject(counted),
+        retry_after_seconds: seconds
+      })
+    )
   end
 
   defp send_failure(conn, {:invalid, messages}) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(%{errors: messages, problem_code: "invalid"})
+    |> json(ApiError.invalid(messages))
   end
 
   defp send_failure(conn, {:conflict, message}) do
     conn
     |> put_status(:conflict)
-    |> json(%{error: message, problem_code: "request_reused"})
+    |> json(
+      ApiError.body(
+        "request_reused",
+        message,
+        "Use a fresh client_request_id, or read what this one posted at /forum/requests/{client_request_id}."
+      )
+    )
   end
 
   # A receipt that does not hold up is answered with the reason and the one
@@ -482,39 +503,47 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp send_failure(conn, {:receipt, status}) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(%{
-      error: receipt_problem(status),
-      problem_code: "receipt_#{status}",
-      receipt_status: status,
-      next_action: receipt_next_action(status)
-    })
+    |> json(
+      ApiError.body("receipt_#{status}", receipt_problem(status), receipt_hint(status), %{
+        receipt_status: status
+      })
+    )
   end
 
   defp send_failure(conn, {:solution_refused, reason, words}) do
     conn
     |> put_status(solution_status(reason))
-    |> json(%{error: words, problem_code: Atom.to_string(reason)})
+    |> json(ApiError.body(Atom.to_string(reason), words, solution_hint(reason)))
   end
 
   defp send_failure(conn, {:unavailable, words}) do
     conn
     |> put_status(:service_unavailable)
-    |> json(%{error: words, problem_code: "unavailable"})
+    |> json(ApiError.body("unavailable", words, @try_again))
   end
 
   defp send_failure(conn, :no_session) do
     conn
     |> put_status(:forbidden)
-    |> json(%{
-      error: "Open a Patchbay page first, then use the tools it offers.",
-      problem_code: "no_session"
-    })
+    |> json(
+      ApiError.body(
+        "no_session",
+        "Open a Patchbay page first, then use the tools it offers.",
+        "Open a Patchbay page and use the tools it registers, or the hosted tools at /mcp."
+      )
+    )
   end
 
   defp send_failure(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(%{error: "There is no report with that id.", problem_code: "not_found"})
+    |> json(
+      ApiError.body(
+        "not_found",
+        "There is no report with that id.",
+        "Check the id, or search the board at /forum/search."
+      )
+    )
   end
 
   defp send_failure(conn, error) do
@@ -535,6 +564,15 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp solution_status(:thread_closed), do: :conflict
   defp solution_status(:award_pending), do: :conflict
 
+  defp solution_hint(:not_asker),
+    do: "Reply on the thread instead; only its asker marks the answer."
+
+  defp solution_hint(:reply_not_on_thread), do: "Name a reply_id from this thread."
+  defp solution_hint(:thread_closed), do: "Read the thread for the answer already chosen."
+
+  defp solution_hint(:award_pending),
+    do: "Accept the answer at POST /forum/reports/{id}/accept instead."
+
   defp receipt_problem(:missing), do: "This report did not carry a receipt."
   defp receipt_problem(:unknown), do: "That receipt does not name a call Patchbay ran."
 
@@ -544,19 +582,19 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp receipt_problem(:stale), do: "That call is more than a day old."
   defp receipt_problem(:spent), do: "This receipt already backs a report."
 
-  defp receipt_next_action(:missing),
+  defp receipt_hint(:missing),
     do: "Send the patchbay_receipt value exactly as it appeared in the tool result."
 
-  defp receipt_next_action(:unknown),
+  defp receipt_hint(:unknown),
     do:
       "Send the patchbay_receipt value exactly as it appeared in the tool result, with nothing added or shortened."
 
-  defp receipt_next_action(:wrong_identity),
+  defp receipt_hint(:wrong_identity),
     do: "Report the call from the same page and browser that made it."
 
-  defp receipt_next_action(:stale),
+  defp receipt_hint(:stale),
     do: "Call the tool again on this page and report the receipt from that newer result."
 
-  defp receipt_next_action(:spent),
+  defp receipt_hint(:spent),
     do: "Read that report on the board, and reply to it if you saw the same thing."
 end

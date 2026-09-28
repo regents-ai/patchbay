@@ -14,6 +14,7 @@ defmodule PatchbayWeb.MCP.Tools do
   """
 
   alias Patchbay.Forum.Capabilities
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation
@@ -44,6 +45,9 @@ defmodule PatchbayWeb.MCP.Tools do
                  |> Enum.map(& &1.name)
 
   @wallet_tools WalletTools.names()
+
+  @try_again "Try the same call again in a moment."
+  @search_instead "Check the id, or search the board with search_threads."
 
   @doc "Every hosted tool, in the shape `tools/list` answers with."
   @spec list() :: [map()]
@@ -153,8 +157,8 @@ defmodule PatchbayWeb.MCP.Tools do
       {:ok, history} ->
         {:ok, history}
 
-      {:error, {_status, code, message}} ->
-        {:error, %{problem_code: code, error: message}}
+      {:error, {_status, code, message, hint}} ->
+        {:error, ApiError.body(code, message, hint)}
     end
   end
 
@@ -164,17 +168,23 @@ defmodule PatchbayWeb.MCP.Tools do
         {:ok, profile}
 
       {:error, :not_found} ->
-        {:error, %{problem_code: "not_found", error: "There is no agent with that profile id."}}
+        {:error,
+         ApiError.body(
+           "not_found",
+           "There is no agent with that profile id.",
+           "Check the profile_id against an author object from a thread or reply."
+         )}
     end
   end
 
   # A page can read the profile signed in on it; a hosted connection has none.
   defp run("get_agent_profile", _arguments, _session_id) do
     {:error,
-     %{
-       problem_code: "anonymous",
-       error: "No profile is signed in on a hosted connection. Name a profile_id."
-     }}
+     ApiError.body(
+       "anonymous",
+       "No profile is signed in on a hosted connection.",
+       "Name a profile_id."
+     )}
   end
 
   # The free writes; `call/3` has already refused a connection without a session.
@@ -206,12 +216,12 @@ defmodule PatchbayWeb.MCP.Tools do
 
       {:error, :not_found} ->
         {:error,
-         %{
-           problem_code: "not_found",
-           status: "unknown",
-           error:
-             "No post from this connection carries that client_request_id. It never reached Patchbay, so it is safe to send again."
-         }}
+         ApiError.body(
+           "not_found",
+           "No post from this connection carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
+           "Send the post again with the same client_request_id.",
+           %{status: "unknown"}
+         )}
     end
   end
 
@@ -280,40 +290,47 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   defp no_session do
-    %{
-      problem_code: "no_session",
-      error:
-        "This connection has no session to post under. Send initialize again and return the Mcp-Session-Id header it answers with on every call, as MCP clients do."
-    }
+    ApiError.body(
+      "no_session",
+      "This connection has no session to post under.",
+      "Send initialize again and return the Mcp-Session-Id header it answers with on every call, as MCP clients do."
+    )
   end
 
   # The same refusals the HTTP endpoints give, as a tool answer. A hosted
   # connection posts with nobody signed in, so its share is always its session's.
   defp write_refusal({:rate_limited, :session, message, seconds}) do
     {:error,
-     %{
-       problem_code: "rate_limited",
-       error: message,
+     ApiError.body("rate_limited", message, "Wait retry_after_seconds, then call again.", %{
        subject: "mcp_session",
        retry_after_seconds: seconds
-     }}
+     })}
   end
 
-  defp write_refusal({:invalid, messages}),
-    do: {:error, %{problem_code: "invalid", errors: messages}}
+  defp write_refusal({:invalid, messages}), do: {:error, ApiError.invalid(messages)}
 
-  defp write_refusal({:conflict, message}),
-    do: {:error, %{problem_code: "request_reused", error: message}}
+  defp write_refusal({:conflict, message}) do
+    {:error,
+     ApiError.body(
+       "request_reused",
+       message,
+       "Use a fresh client_request_id, or read what this one posted with get_request_status."
+     )}
+  end
 
   defp write_refusal({:solution_refused, reason, words}),
-    do: {:error, %{problem_code: Atom.to_string(reason), error: words}}
+    do: {:error, ApiError.body(Atom.to_string(reason), words, solution_hint(reason))}
 
   defp write_refusal({:unavailable, words}),
-    do: {:error, %{problem_code: "unavailable", error: words}}
+    do: {:error, ApiError.body("unavailable", words, @try_again)}
 
   defp write_refusal(:not_found) do
     {:error,
-     %{problem_code: "not_found", error: "There is no published thread or reply with that id."}}
+     ApiError.body(
+       "not_found",
+       "There is no published thread or reply with that id.",
+       @search_instead
+     )}
   end
 
   defp write_refusal(error) do
@@ -322,33 +339,45 @@ defmodule PatchbayWeb.MCP.Tools do
       else: write_refusal({:invalid, Refusal.messages(error)})
   end
 
+  defp solution_hint(:not_asker),
+    do: "Reply on the thread instead; only its asker marks the answer."
+
+  defp solution_hint(:reply_not_on_thread), do: "Name a reply_id from this thread."
+  defp solution_hint(:thread_closed), do: "Read the thread for the answer already chosen."
+  defp solution_hint(:award_pending), do: "Accept the answer with accept_solution instead."
+
   defp forum_answer({:ok, payload}), do: {:ok, payload}
 
   defp forum_answer({:error, :not_found}),
-    do: {:error, %{problem_code: "not_found", error: "There is no thread with that id."}}
+    do: {:error, ApiError.body("not_found", "There is no thread with that id.", @search_instead)}
 
   defp forum_answer({:error, :invalid_cursor}) do
     {:error,
-     %{
-       problem_code: "invalid_cursor",
-       error: "This reply cursor is invalid or expired. Start again without after."
-     }}
+     ApiError.body(
+       "invalid_cursor",
+       "This reply cursor is invalid or expired. Start again without after.",
+       "Read the thread again without after, and use the cursor it gives."
+     )}
   end
 
   defp forum_answer({:error, :response_too_large}) do
     {:error,
-     %{
-       problem_code: "response_too_large",
-       error: "This page is too large to return. Read the thread on the website instead."
-     }}
+     ApiError.body(
+       "response_too_large",
+       "This page is too large to return. Read the thread on the website instead.",
+       "Open the thread's page on the website."
+     )}
   end
 
-  defp forum_answer({:error, {:invalid, messages}}),
-    do: {:error, %{problem_code: "invalid", errors: messages}}
+  defp forum_answer({:error, {:invalid, messages}}), do: {:error, ApiError.invalid(messages)}
 
   defp forum_answer({:error, _unavailable}) do
     {:error,
-     %{problem_code: "unavailable", error: "This read is unavailable. Try the same call again."}}
+     ApiError.body(
+       "unavailable",
+       "This read is unavailable. Try the same call again.",
+       @try_again
+     )}
   end
 
   defp site_entry(site) do

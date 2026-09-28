@@ -1,3 +1,5 @@
+import {errorIn, isErrorBody, refusal} from "../api_error.ts";
+import type {ErrorBody, Refusal} from "../api_error.ts";
 import {signedInProfileId} from "./profile.ts";
 
 export const BALANCE_PATH = "/api/me/regents_balance";
@@ -26,9 +28,7 @@ export type ReadinessOptions = {
 // What `GET /api/me/regents_balance` answers with. The fields this file checks
 // before use are left unknown; the rest are passed on as the server wrote them.
 type BalanceBody = {
-  problem_code?: string;
-  error?: unknown;
-  errors?: unknown;
+  error?: ErrorBody;
   balance_usdc?: unknown;
   available_usdc?: unknown;
   wallet_address?: string | null;
@@ -37,12 +37,12 @@ type BalanceBody = {
   profile_id?: string | null;
 };
 
+// `error` is the refusal this page made itself when Patchbay never answered.
 type BalanceAnswer = {
   ok?: boolean;
   status?: number;
   body?: BalanceBody | null;
-  problem?: string;
-  problemCode?: string;
+  error?: ErrorBody;
 };
 
 export type NeedsSignIn = {
@@ -85,12 +85,7 @@ export type PaidToolShortfall = {
   summary: string;
 };
 
-export type BalanceUnread = {
-  status?: undefined;
-  summary: string;
-  problem: string;
-  problem_code: string;
-};
+export type BalanceUnread = Refusal & {status?: undefined};
 
 export type Ready = {
   status: "ready";
@@ -223,6 +218,14 @@ export function withPaymentHelp<T extends object>(result: T): T & {payment_help:
   return {...result, payment_help: paymentHelp()};
 }
 
+// The payment help rides inside a refusal, because nothing stands beside
+// its `error`; on any other result it rides beside the fields.
+export function withHelp(result: object) {
+  return "error" in result && isErrorBody(result.error)
+    ? {error: {...result.error, payment_help: paymentHelp()}}
+    : withPaymentHelp(result);
+}
+
 export function needsSignIn(): NeedsSignIn {
   return {
     status: "needs_human_sign_in",
@@ -294,21 +297,20 @@ export function paidToolShortfall(
  * know the page is signed out must not hit the API; use `needsSignIn` first.
  */
 export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
-  const code = answer?.body?.problem_code ?? answer?.problemCode;
-  if (code === "not_configured" || answer?.status === 503) {
+  const refused = answer?.error ?? errorIn(answer?.body);
+  if (refused?.code === "not_configured" || answer?.status === 503) {
     return notConfigured({
-      message: typeof answer?.body?.error === "string"
-        ? answer.body.error
-        : "Reading balances is not set up on this Patchbay.",
+      message: refused?.message ?? "Reading balances is not set up on this Patchbay.",
     });
   }
 
   if (answer?.ok !== true) {
-    const problem = problemText(answer);
     return {
-      summary: `Your balance could not be read: ${problem}`,
-      problem,
-      problem_code: code ?? answer?.problemCode ?? "refused",
+      error: refused ?? {
+        code: "refused",
+        message: `Your balance could not be read: Patchbay gave status ${answer?.status ?? 0}.`,
+        hint: "Call get_my_regents_balance again in a moment.",
+      },
     };
   }
 
@@ -316,11 +318,11 @@ export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
   const wallet = answer.body?.wallet_address ?? answer.body?.verified_payout_address ?? null;
   const atomic = parseUsdcAtomic(raw);
   if (atomic === null) {
-    return {
-      summary: "Your balance could not be read: the page got an unreadable amount.",
-      problem: "The balance response was unreadable.",
-      problem_code: "unreadable",
-    };
+    return refusal(
+      "unreadable",
+      "Your balance could not be read: the page got an unreadable amount.",
+      "Call get_my_regents_balance again in a moment.",
+    );
   }
 
   const balance = normalizeUsdc(raw);
@@ -387,12 +389,7 @@ export async function readPaymentReadiness(
 async function fetchBalanceHttp(options: ReadinessOptions = {}): Promise<BalanceAnswer> {
   const fetchImpl = options.fetch ?? globalThis.fetch;
   if (typeof fetchImpl !== "function") {
-    return {
-      ok: false,
-      status: 0,
-      problem: "This page cannot reach Patchbay.",
-      problemCode: "unreachable",
-    };
+    return {ok: false, status: 0, ...unreachable("This page cannot reach Patchbay.")};
   }
 
   try {
@@ -407,10 +404,15 @@ async function fetchBalanceHttp(options: ReadinessOptions = {}): Promise<Balance
     return {
       ok: false,
       status: 0,
-      problem: `Patchbay could not be reached: ${String((error as {message?: unknown} | null | undefined)?.message ?? error).slice(0, 200)}`,
-      problemCode: "unreachable",
+      ...unreachable(
+        `Patchbay could not be reached: ${String((error as {message?: unknown} | null | undefined)?.message ?? error).slice(0, 200)}`,
+      ),
     };
   }
+}
+
+function unreachable(message: string): Refusal {
+  return refusal("unreachable", message, "Check the page is open and online, then call again.");
 }
 
 async function readBody(response: Response): Promise<BalanceBody | null> {
@@ -419,13 +421,4 @@ async function readBody(response: Response): Promise<BalanceBody | null> {
   } catch {
     return null;
   }
-}
-
-function problemText(answer: BalanceAnswer): string {
-  if (typeof answer?.problem === "string") return answer.problem;
-  if (Array.isArray(answer?.body?.errors) && answer.body.errors.length) {
-    return answer.body.errors.join(" ");
-  }
-  if (typeof answer?.body?.error === "string") return answer.body.error;
-  return `The report board refused this, and gave status ${answer?.status ?? 0}.`;
 }

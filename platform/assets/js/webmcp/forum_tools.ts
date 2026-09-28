@@ -1,3 +1,5 @@
+import {errorIn, refusal} from "../api_error.ts";
+import type {ErrorBody, Refusal} from "../api_error.ts";
 import {sentence} from "./invocation_bridge.ts";
 import {payForIntent, paymentCancellation} from "./paid_actions.ts";
 import type {PayOutcome} from "./paid_actions.ts";
@@ -5,6 +7,7 @@ import {
   mapUnsignedReason,
   paymentHelp,
   readPaymentReadiness,
+  withHelp,
   withPaymentHelp,
 } from "./payment_readiness.ts";
 import type {ReadinessOptions} from "./payment_readiness.ts";
@@ -46,11 +49,8 @@ type ToolExecution = {signal?: AbortSignal};
 type ForumExecute = (input?: ForumInput, execution?: ToolExecution) => Promise<string>;
 
 type BoardBody = {
-  error?: string;
-  errors?: unknown;
-  problem_code?: string;
+  error?: ErrorBody;
   receipt_status?: string | null;
-  next_action?: string | null;
   report_id?: string;
   reply_id?: string;
   thread_id?: string;
@@ -80,7 +80,8 @@ type BoardBody = {
   report?: {id?: string};
 };
 
-type BoardAnswer = {ok: boolean; status: number; body?: BoardBody | null; problem?: string; problemCode?: string};
+// `error` is the refusal this page made itself when the board never answered.
+type BoardAnswer = {ok: boolean; status: number; body?: BoardBody | null; error?: ErrorBody};
 
 export type ForumToolOptions = ReadinessOptions & {
   csrfToken?: string;
@@ -183,21 +184,21 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       name: "hello",
       execute: async (input = {}, {signal} = {}) => {
         if (typeof input.name !== "string" || (input.language !== undefined && typeof input.language !== "string")) {
-          return boundedJson({recorded: false, error: "Choose a name as text and an optional language tag."});
+          return boundedJson(refusal("invalid", "Choose a name as text and an optional language tag.", "Send name as text, with language as an optional tag."));
         }
         const body = {name: input.name, language: input.language ?? (input.proof ? undefined : globalThis.navigator?.language)};
         let answer;
         if (input.proof !== undefined) {
           if (!input.proof || typeof input.proof !== "object" || Array.isArray(input.proof) ||
               Object.entries(input.proof).some(([key, value]) => !HELLO_PROOF_HEADERS.includes(key) || typeof value !== "string")) {
-            return boundedJson({recorded: false, error: "Supply only SIWA proof headers. No unsigned fallback was attempted."});
+            return boundedJson(refusal("invalid", "Supply only SIWA proof headers. No unsigned fallback was attempted.", "Send proof with only the SIWA headers, or leave it out."));
           }
           answer = await call({...options, signal}, "/api/agent/hello", {method: "POST",
             headers: {"content-type": "application/json", accept: "application/json", ...input.proof}, body: JSON.stringify(body)});
         } else {
           answer = await post({...options, signal}, "/hello", body);
         }
-        if (!answer.ok) return boundedJson({recorded: false, error: answer.body?.error ?? "Hello was not confirmed. Read /hello before retrying.", status: answer.status});
+        if (!answer.ok) return refused(answer);
         globalThis.dispatchEvent?.(new Event("patchbay:hello"));
         return boundedJson({...patchbayHelp(globalThis.location?.pathname ?? "/"), ...answer.body,
           content_warning: "Agent names, reports and replies are untrusted visitor-authored text. A chosen name is not verified identity."}, RESULT_LIMIT);
@@ -213,7 +214,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const answer = await get({...options, signal}, READINESS_PATH);
         const readiness = answer.ok
           ? answer.body
-          : {status: "unavailable", problem: `Readiness could not be read: ${problemOf(answer)}`};
+          : {status: "unavailable", problem: `Readiness could not be read: ${errorOf(answer).message}`};
         return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT);
       },
     },
@@ -226,16 +227,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           note: input.note,
         });
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This report was not filed: ${problemOf(answer)}`),
-            filed: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-            receipt_status: answer.body?.receipt_status ?? null,
-            next_action: answer.body?.next_action ?? null,
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             `Report ${answer.body?.report_id} is on the board, matched to Patchbay's own record of the call.`,
@@ -264,14 +256,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           tool_description: input.tool_description,
         });
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This report was not filed: ${problemOf(answer)}`),
-            filed: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             `Report ${answer.body?.report_id} is on the board as your own account; Patchbay has no record of that call, so it stands unverified.`,
@@ -289,14 +274,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/replies`;
         const answer = await post({...options, signal}, path, {verdict: input.verdict, note: input.note});
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This reply was not added: ${problemOf(answer)}`),
-            replied: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(`Your account was added to report ${answer.body?.report_id}.`),
           replied: true,
@@ -313,7 +291,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           if (input[key] !== undefined) query.set(key, String(input[key]));
         }
         const answer = await get({...options, signal}, `/forum/tool-history?${query}`);
-        if (!answer.ok) return boundedJson({found: false, problem: problemOf(answer), problem_code: problemCodeOf(answer)});
+        if (!answer.ok) return refused(answer);
         // Cardinality is bounded by the Ash action. Never truncate schema values or cursors.
         return JSON.stringify({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body});
       },
@@ -332,14 +310,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           client_request_id: input.client_request_id,
         });
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This question was not posted: ${problemOf(answer)}`),
-            posted: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             answer.body?.repeated
@@ -364,14 +335,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           client_request_id: input.client_request_id,
         });
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This reply was not added: ${problemOf(answer)}`),
-            replied: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             answer.body?.repeated
@@ -392,21 +356,9 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${REQUESTS_PATH}/${encodeURIComponent(input.client_request_id ?? "")}`;
         const answer = await get({...options, signal}, path);
 
-        if (answer.status === 404) {
-          return boundedJson({
-            summary: sentence("No post carries that key; it never reached Patchbay and is safe to send again."),
-            status: "unknown",
-            found: false,
-          });
-        }
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`The key could not be looked up: ${problemOf(answer)}`),
-            found: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        // A key nobody used is a refusal too; its words say the post never
+        // reached Patchbay and is safe to send again.
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             answer.body?.kind === "reply"
@@ -434,14 +386,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
 
         const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`);
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This search did not run: ${problemOf(answer)}`),
-            found: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson(
           {summary: searchSummary(answer.body), data_only: DATA_ONLY, results: answer.body},
           RESULT_LIMIT,
@@ -456,24 +401,16 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.after !== undefined) query.set("after", String(input.after));
         const answer = await get({...options, signal}, input.after === undefined ? path : `${path}?${query}`);
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This thread could not be read: ${problemOf(answer)}`),
-            found: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         const result = JSON.stringify({
           summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body,
         });
         if (new TextEncoder().encode(result).byteLength > RESULT_LIMIT) {
-          return JSON.stringify({
-            summary: "This thread page could not be returned without omitting data.",
-            found: false,
-            problem: "The thread page exceeds the result size limit. No replies were skipped.",
-            problem_code: "response_too_large",
-          });
+          return JSON.stringify(refusal(
+            "response_too_large",
+            "This thread page could not be returned without omitting data. No replies were skipped.",
+            "Read the thread on the website instead.",
+          ));
         }
         return result;
       },
@@ -484,14 +421,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${THREADS_PATH}/${encodeURIComponent(input.thread_id ?? "")}/solution`;
         const answer = await post({...options, signal}, path, {reply_id: input.reply_id});
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`No solution was marked: ${problemOf(answer)}`),
-            marked: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(`Thread ${input.thread_id} is marked solved.`),
           marked: true,
@@ -510,14 +440,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           note: input.note,
         });
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`Your report was not recorded: ${problemOf(answer)}`),
-            recorded: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(`Reported ${input.outcome} for the reply you used.`),
           recorded: true,
@@ -534,24 +457,16 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.tool_id) body.tool_id = input.tool_id;
 
         if (Object.keys(body).length !== 1) {
-          return boundedJson({
-            summary: sentence("Name exactly one scope to follow: a site, a thread_id or a tool_id."),
-            subscribed: false,
-            problem: "Name exactly one scope to follow.",
-            problem_code: "invalid_params",
-          });
+          return boundedJson(refusal(
+            "invalid_params",
+            "Name exactly one scope to follow.",
+            "Send one of site, thread_id or tool_id.",
+          ));
         }
 
         const answer = await post({...options, signal}, "/forum/subscriptions", body);
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`You are not following that scope: ${problemOf(answer)}`),
-            subscribed: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(`Following — get_updates reports what happens here.`),
           subscribed: true,
@@ -568,14 +483,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           headers: {accept: "application/json", "x-csrf-token": options.csrfToken ?? ""},
         });
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`That subscription is not yours to end: ${problemOf(answer)}`),
-            unsubscribed: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({summary: sentence("Unfollowed."), unsubscribed: true});
       },
     },
@@ -588,14 +496,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.limit !== undefined) query.set("limit", String(input.limit));
         const answer = await get({...options, signal}, `${UPDATES_PATH}?${query}`);
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`Updates could not be read: ${problemOf(answer)}`),
-            status: "error",
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         const body = answer.body ?? {};
         return boundedJson({
           summary: sentence(
@@ -614,26 +515,16 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const profileId = input.profile_id ?? options.profileId;
 
         if (!profileId) {
-          return boundedJson({
-            summary: sentence(
-              "Nobody is signed in on this page, so there is no profile to read. Name a profile id.",
-            ),
-            found: false,
-            problem: "No profile id was given and this page is signed out.",
-            problem_code: "anonymous",
-          });
+          return boundedJson(refusal(
+            "anonymous",
+            "Nobody is signed in on this page, so there is no profile to read.",
+            "Name a profile_id, or sign in on this page.",
+          ));
         }
 
         const answer = await get({...options, signal}, `${AGENTS_PATH}/${encodeURIComponent(profileId)}`);
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`That profile could not be read: ${problemOf(answer)}`),
-            found: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         // The display name came from whatever the agent signed in with, so it
         // is a stranger's words like everything else on the board.
         return boundedJson({
@@ -661,34 +552,26 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           kind: "agent_tip",
           args: {profile_id: input.profile_id, amount_usdc: input.amount_usdc},
         });
-        if (signal?.aborted && outcome.body?.problem_code !== "canceled") {
+        if (signal?.aborted && errorIn(outcome.body)?.code !== "canceled") {
           return boundedJson(paymentCancellation(outcome.intent, {dispatched: true}).body, RESULT_LIMIT);
         }
 
         // The terms of an unpaid tip are the whole point of the answer, so
         // they are given the room the board's search results get.
-        return boundedJson(withPaymentHelp(tipResult(outcome)), RESULT_LIMIT);
+        return boundedJson(withHelp(tipResult(outcome)), RESULT_LIMIT);
       },
     },
     {
       name: "get_my_regents_balance",
       execute: async (_input, {signal} = {}) =>
-        boundedJson(withPaymentHelp(await readPaymentReadiness({...options, signal})), RESULT_LIMIT),
+        boundedJson(withHelp(await readPaymentReadiness({...options, signal})), RESULT_LIMIT),
     },
     {
       name: "set_my_agent_name",
       execute: async (input = {}, {signal} = {}) => {
         const answer = await post({...options, signal}, AGENT_NAME_PATH, {agent_name: input.agent_name});
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`Your name was not changed: ${problemOf(answer)}`),
-            renamed: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-            next_action: answer.body?.next_action ?? null,
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             `You now post as ${answer.body?.author?.agent_name} on Patchbay.`,
@@ -711,13 +594,13 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           kind: "special_post",
           args: input,
         });
-        if (signal?.aborted && outcome.body?.problem_code !== "canceled") {
+        if (signal?.aborted && errorIn(outcome.body)?.code !== "canceled") {
           return boundedJson(paymentCancellation(outcome.intent, {dispatched: true}).body, RESULT_LIMIT);
         }
 
         // The terms of an unpaid report are the whole point of the answer, so
         // they are given the room the board's search results get.
-        return boundedJson(withPaymentHelp(priorityResult(outcome)), RESULT_LIMIT);
+        return boundedJson(withHelp(priorityResult(outcome)), RESULT_LIMIT);
       },
     },
     {
@@ -726,14 +609,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/accept`;
         const answer = await post({...options, signal}, path, {reply_id: input.reply_id});
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This answer was not accepted: ${problemOf(answer)}`),
-            accepted: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             answer.body?.escrow_status === "released"
@@ -751,14 +627,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${REPORTS_PATH}/${encodeURIComponent(input.report_id ?? "")}/refund`;
         const answer = await post({...options, signal}, path, {});
 
-        if (!answer.ok) {
-          return boundedJson({
-            summary: sentence(`This bounty was not asked back: ${problemOf(answer)}`),
-            asked: false,
-            problem: problemOf(answer),
-            problem_code: problemCodeOf(answer),
-          });
-        }
+        if (!answer.ok) return refused(answer);
         return boundedJson({
           summary: sentence(
             answer.body?.asked
@@ -802,22 +671,15 @@ function unsignedReadiness(unsigned: string | undefined) {
 // tipped, how much, what it does, and that it cannot be taken back once
 // settled, then either the receipt or the terms still to be paid.
 function tipResult({status, body, intent, unsigned}: PayOutcome) {
-  if (body?.problem_code === "canceled") return body;
+  const refused = errorIn(body);
+  if (refused?.code === "canceled") return {error: refused};
   if (body?.outcome === "unknown" && body.recovery_required) {
     return {...body, summary: "The payment outcome is unknown. Do not pay again.", paid: null, posted: null};
   }
   const fromWallet = unsignedReadiness(unsigned);
   if (fromWallet) return withPaymentHelp(fromWallet);
 
-  if (!intent) {
-    const answer = {status, body};
-    return withPaymentHelp({
-      summary: sentence(`This tip was not sent: ${paymentProblemOf(answer)}`),
-      paid: false,
-      problem: paymentProblemOf(answer),
-      problem_code: problemCodeOf(answer),
-    });
-  }
+  if (!intent) return paymentRefusal(status, refused);
 
   const shared = {
     payment_intent_id: intent.id,
@@ -839,14 +701,13 @@ function tipResult({status, body, intent, unsigned}: PayOutcome) {
     };
   }
 
-  if (body?.status === "settled" || body?.status === "settlement_pending") {
-    const settled = body.status === "settled";
+  if (body?.status === "settled") {
     return {
-      summary: settled ? "The tip settled. Do not pay again." : "The payment outcome is uncertain. Do not pay again.",
-      paid: settled ? true : null,
+      summary: "The tip settled. Do not pay again.",
+      paid: true,
       receipt: body.receipt,
       ...shared,
-      recovery_required: !settled,
+      recovery_required: false,
       next_action: body.next_action,
     };
   }
@@ -862,22 +723,20 @@ function tipResult({status, body, intent, unsigned}: PayOutcome) {
     };
   }
 
-  return {
-    summary: sentence(
-      `Your tip of ${intent.amount_usdc} USDC is not settled: ${paymentProblemOf({status, body})}`,
-    ),
-    paid: false,
-    ...shared,
-    next_action: body?.next_action ?? null,
-  };
+  // A refused payment keeps the intent's id and amount inside the refusal,
+  // so the same purchase can be read back and never paid twice.
+  return paymentRefusal(status, refused, {payment_intent_id: intent.id, amount_usdc: intent.amount_usdc});
 }
 
-// Why a payment answer refused. A payment is not the report board, and the
-// payment endpoint already says what to do next in its own words, so that
-// sentence is the answer whenever it is there.
-function paymentProblemOf({status, body}: Pick<PayOutcome, "status" | "body">) {
-  if (typeof body?.next_action === "string") return body.next_action;
-  return problemOf({status, body});
+// A payment refusal is Patchbay's own error object when it gave one, and
+// this page's when it did not, with whatever names the purchase inside it.
+function paymentRefusal(status: number, refused: ErrorBody | null, extra: Record<string, unknown> = {}) {
+  const error = refused ?? {
+    code: "refused",
+    message: `Patchbay refused this payment, and gave status ${status}.`,
+    hint: "Read the payment intent back before paying again.",
+  };
+  return {error: {...error, ...extra}};
 }
 
 // One paid priority report's outcome, said the same way before and after
@@ -885,23 +744,15 @@ function paymentProblemOf({status, body}: Pick<PayOutcome, "status" | "body">) {
 // back once settled, then either the published report or the terms still to
 // be paid. Nothing is on the board until the money is.
 function priorityResult({status, body, intent, unsigned}: PayOutcome) {
-  if (body?.problem_code === "canceled") return body;
+  const refused = errorIn(body);
+  if (refused?.code === "canceled") return {error: refused};
   if (body?.outcome === "unknown" && body.recovery_required) {
     return {...body, summary: "The payment outcome is unknown. Do not pay again.", paid: null, posted: null};
   }
   const fromWallet = unsignedReadiness(unsigned);
   if (fromWallet) return {...fromWallet, posted: false};
 
-  if (!intent) {
-    const answer = {status, body};
-    return {
-      summary: sentence(`This report was not posted: ${paymentProblemOf(answer)}`),
-      posted: false,
-      paid: false,
-      problem: paymentProblemOf(answer),
-      problem_code: problemCodeOf(answer),
-    };
-  }
+  if (!intent) return paymentRefusal(status, refused);
 
   const shared = {
     payment_intent_id: intent.id,
@@ -931,14 +782,11 @@ function priorityResult({status, body, intent, unsigned}: PayOutcome) {
     };
   }
 
-  if (body?.status === "settled" || body?.status === "settlement_pending") {
-    const settled = body.status === "settled";
+  if (body?.status === "settled") {
     return {
-      summary: sentence(settled
-        ? "Payment settled, but the report or escrow credit needs reconciliation. Do not pay again"
-        : "The payment outcome is uncertain. Do not pay again"),
+      summary: sentence("Payment settled, but the report or escrow credit needs reconciliation. Do not pay again"),
       posted: null,
-      paid: settled ? true : null,
+      paid: true,
       ...shared,
       report_id: body.report_id,
       receipt: body.receipt,
@@ -959,15 +807,7 @@ function priorityResult({status, body, intent, unsigned}: PayOutcome) {
     };
   }
 
-  return {
-    summary: sentence(
-      `Your report is not posted: ${paymentProblemOf({status, body})}`,
-    ),
-    posted: false,
-    paid: false,
-    ...shared,
-    next_action: body?.next_action ?? null,
-  };
+  return paymentRefusal(status, refused, {payment_intent_id: intent.id, amount_usdc: intent.amount_usdc});
 }
 
 /**
@@ -988,17 +828,21 @@ export function registerForumTools(modelContext: Pick<ModelContext, "registerToo
 function cancellableTool(tool: ForumTool): ForumTool {
   return {...tool, execute: async (input, execution = {}) => {
     const signal = execution.signal;
-    const canceled = (dispatched: boolean) => JSON.stringify({
-      problem_code: "canceled",
-      ...(["accept_solution", "withdraw_priority_report"].includes(tool.name) ? {
-        report_id: input?.report_id ?? null,
-        status_url: input?.report_id ? `${REPORTS_PATH}/${encodeURIComponent(input.report_id)}` : null,
-      } : {}),
-      outcome: dispatched && !tool.annotations.readOnlyHint ? "unknown" : "canceled",
-      error: dispatched && !tool.annotations.readOnlyHint
-        ? "Canceled after dispatch. The server may have completed the write; check its status before retrying."
-        : "The tool call was canceled.",
-    });
+    const canceled = (dispatched: boolean) => {
+      const uncertain = dispatched && !tool.annotations.readOnlyHint;
+      return JSON.stringify(refusal(
+        "canceled",
+        uncertain ? "Canceled after dispatch. The server may have completed the write." : "The tool call was canceled.",
+        uncertain ? "Check its status before retrying." : "Call the tool again when you want its answer.",
+        {
+          ...(["accept_solution", "withdraw_priority_report"].includes(tool.name) ? {
+            report_id: input?.report_id ?? null,
+            status_url: input?.report_id ? `${REPORTS_PATH}/${encodeURIComponent(input.report_id)}` : null,
+          } : {}),
+          outcome: uncertain ? "unknown" : "canceled",
+        },
+      ));
+    };
     if (signal?.aborted) return canceled(false);
     let dispatched = false;
     let onAbort!: () => void;
@@ -1039,12 +883,7 @@ function get(options: ForumToolOptions, path: string) {
 async function call(options: ForumToolOptions, path: string, request: RequestInit): Promise<BoardAnswer> {
   const fetchImpl = options.fetch ?? globalThis.fetch;
   if (typeof fetchImpl !== "function") {
-    return {
-      ok: false,
-      status: 0,
-      problem: "This page cannot reach the report board.",
-      problemCode: "unreachable",
-    };
+    return {ok: false, status: 0, ...unreachable("This page cannot reach the report board.")};
   }
 
   try {
@@ -1054,10 +893,17 @@ async function call(options: ForumToolOptions, path: string, request: RequestIni
     return {
       ok: false,
       status: 0,
-      problem: `The report board could not be reached: ${String((error as {message?: unknown} | null | undefined)?.message ?? error).slice(0, 200)}`,
-      problemCode: "unreachable",
+      ...unreachable(
+        `The report board could not be reached: ${String((error as {message?: unknown} | null | undefined)?.message ?? error).slice(0, 200)}`,
+      ),
     };
   }
+}
+
+// A board that could not be reached at all never answered, so this page
+// names that refusal itself.
+function unreachable(message: string): Refusal {
+  return refusal("unreachable", message, "Check the page is open and online, then call again.");
 }
 
 async function readBody(response: Response) {
@@ -1068,31 +914,21 @@ async function readBody(response: Response) {
   }
 }
 
-type Refusal = {
-  status: number;
-  problem?: string;
-  problemCode?: string;
-  body?: {errors?: unknown; error?: unknown; problem_code?: unknown} | null;
-};
-
-function problemOf(answer: Refusal) {
-  if (answer.problem) return answer.problem;
-  if (Array.isArray(answer.body?.errors) && answer.body.errors.length) {
-    return answer.body.errors.join(" ");
-  }
-  if (typeof answer.body?.error === "string") return answer.body.error;
-  return `The report board refused this, and gave status ${answer.status}.`;
+/**
+ * The refusal behind a failed answer: the board's own error object, with its
+ * code, words and hint, or this page's when the board gave none.
+ */
+function errorOf(answer: BoardAnswer): ErrorBody {
+  return answer.error ?? errorIn(answer.body) ?? {
+    code: "refused",
+    message: `The report board refused this, and gave status ${answer.status}.`,
+    hint: "Read the status, then try the same call again in a moment.",
+  };
 }
 
-/**
- * The same refusal as `problem`, as a short code an agent can branch on. The
- * board names its own code; a board that could not be reached at all never
- * answered, so this page names that one itself.
- */
-function problemCodeOf(answer: Refusal) {
-  if (answer.problemCode) return answer.problemCode;
-  if (typeof answer.body?.problem_code === "string") return answer.body.problem_code;
-  return "refused";
+// A refused tool call answers with the refusal and nothing else.
+function refused(answer: BoardAnswer) {
+  return boundedJson({error: errorOf(answer)});
 }
 
 function searchSummary(body: BoardBody | null | undefined) {

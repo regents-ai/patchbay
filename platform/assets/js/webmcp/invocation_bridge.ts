@@ -1,3 +1,4 @@
+import {refusal} from "../api_error.ts";
 import {captureRoomState} from "./state_snapshot.ts";
 import {ExecutionAbortedError, waitForRevision} from "./revision_waiter.ts";
 
@@ -351,8 +352,7 @@ function invocationSummary(verified: RoomReply, start: RoomReply) {
 
 /**
  * What an agent should do about each failure, so a refusal carries its own way
- * forward rather than only a name. Errors are shaped like successes: a summary
- * first, then structure.
+ * forward rather than only a name.
  */
 const ERROR_GUIDANCE = {
   BUSY: [true, "Wait for the call already in flight to finish, then read the page before calling again."],
@@ -369,21 +369,20 @@ const ERROR_GUIDANCE = {
 export type ErrorCode = keyof typeof ERROR_GUIDANCE;
 
 /**
- * A failure in the same shape as a success: a summary sentence, then a code an
- * agent can branch on, the detail behind it, whether calling again could help,
- * and the one thing to do next.
+ * A failure in the one shape every refusal takes: a code an agent can branch
+ * on, a sentence saying what did not complete, the one thing to do next, and
+ * inside them the detail behind it and whether calling again could help.
  */
 export function errorResult(errorCode: ErrorCode, detail: unknown): string {
-  const [retryable, nextAction] = ERROR_GUIDANCE[errorCode];
+  const [retryable, hint] = ERROR_GUIDANCE[errorCode];
   const flatDetail = sentence(detail, MAX_DETAIL_LENGTH);
 
-  return JSON.stringify({
-    summary: sentence(`This call did not complete: ${flatDetail}`),
-    error_code: errorCode,
-    detail: flatDetail,
-    retryable,
-    next_action: nextAction,
-  });
+  return JSON.stringify(refusal(
+    errorCode,
+    sentence(`This call did not complete: ${flatDetail}`),
+    hint,
+    {detail: flatDetail, retryable},
+  ));
 }
 
 /** The busy answer webmcpify hands back while a call is already in flight. */

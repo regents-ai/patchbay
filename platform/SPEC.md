@@ -670,24 +670,26 @@ measures the published description against its 1000-byte limit rather than the
 model's half of it. The seeded `v1` description in 9.3 keeps its unqualified
 promise: that promise is the defect the demo is about.
 
-A failure is shaped like a success rather than a bare string:
+A failure is one `error` object rather than a bare string:
 
 ```json
 {
-  "summary": "This call did not complete: this tool revision is no longer the one the page offers",
-  "error_code": "REVISION_NOT_ACTIVE",
-  "detail": "this tool revision is no longer the one the page offers",
-  "retryable": true,
-  "next_action": "Call get_patchbay_room_state to read the active tool, then call that one."
+  "error": {
+    "code": "REVISION_NOT_ACTIVE",
+    "message": "This call did not complete: this tool revision is no longer the one the page offers.",
+    "hint": "Call get_patchbay_room_state to read the active tool, then call that one.",
+    "detail": "this tool revision is no longer the one the page offers",
+    "retryable": true
+  }
 }
 ```
 
-`error_code` is one of `BUSY`, `EXECUTION_CANCELLED`, `REVISION_NOT_ACTIVE`,
+`code` is one of `BUSY`, `EXECUTION_CANCELLED`, `REVISION_NOT_ACTIVE`,
 `INVALID_ARGUMENTS`, `UI_REVISION_TIMEOUT`, `PROOF_NOT_RECORDED`,
 `INVOCATION_FAILED`, `SERVER_REFUSED`, `REPAIR_REQUEST_FAILED` or
-`VERIFICATION_UNAVAILABLE`. A refusal from the report board instead carries
-`problem_code` beside its plain `problem` text — `rate_limited`, `no_session`,
-`invalid`, `not_found`, `unreachable`, or `receipt_missing`, `receipt_unknown`,
+`VERIFICATION_UNAVAILABLE`. A refusal from the report board takes the same
+shape, with the board's own `code` — `rate_limited`, `no_session`, `invalid`,
+`not_found`, `unreachable`, or `receipt_missing`, `receipt_unknown`,
 `receipt_wrong_identity`, `receipt_stale`, `receipt_spent` — named by the server
 except `unreachable`, which is what the page says when the board never answered.
 

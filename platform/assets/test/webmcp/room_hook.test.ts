@@ -523,11 +523,12 @@ test("a dropped execute acknowledgement durably cancels the begun invocation", a
     () => value.events.find(event => event.event === "webmcp_invocation_cancel"),
   );
 
-  // A failure arrives in the same shape as a success: a sentence, then a code.
-  assert.equal(result.error_code, "INVOCATION_FAILED");
-  assert.equal(result.retryable, true);
-  assert.match(result.summary, /did not complete/);
-  assert.match(result.next_action, /get_patchbay_room_state/);
+  // A failure arrives in the one shape every refusal takes: a code, a sentence
+  // and the thing to do next.
+  assert.equal(result.error.code, "INVOCATION_FAILED");
+  assert.equal(result.error.retryable, true);
+  assert.match(result.error.message, /did not complete/);
+  assert.match(result.error.hint, /get_patchbay_room_state/);
   assert.equal(cancellation.payload.invocation_id, "invocation-1");
   assert.equal(cancellation.payload.invocation_epoch, 0);
 });
@@ -553,8 +554,8 @@ test("reset rejects pending invocation work and ignores its stale result", async
     invocation_epoch: 1,
   });
   const reset = JSON.parse(await call);
-  assert.equal(reset.error_code, "INVOCATION_FAILED");
-  assert.match(reset.detail, /^Patchbay reset/);
+  assert.equal(reset.error.code, "INVOCATION_FAILED");
+  assert.match(reset.error.detail, /^Patchbay reset/);
 
   value.callbacks.get("patchbay:reset-invocation-room:invocation_result")!({
     request_uuid: requestUuid,
@@ -927,17 +928,18 @@ test("bounded results preserve complete scalar fields and count UTF-8 bytes", ()
   const exact = JSON.stringify(value);
   assert.deepEqual(JSON.parse(boundedJson(value, Buffer.byteLength(exact))), value);
   const error = JSON.parse(boundedJson(value, Buffer.byteLength(exact) - 1));
-  assert.equal(error.problem_code, "response_too_large");
+  assert.equal(error.error.code, "response_too_large");
+  assert.equal(error.error.outcome, "unknown");
   assert.equal(error.id, undefined);
   const unicode = boundedJson({note: "🔥".repeat(6000)}, 16 * 1024);
   assert.ok(Buffer.byteLength(unicode) <= 16 * 1024);
-  assert.equal(JSON.parse(unicode).problem_code, "response_too_large");
+  assert.equal(JSON.parse(unicode).error.code, "response_too_large");
   assert.throws(() => boundedJson(value, 1), RangeError);
   const circular: {self?: unknown} = {};
   circular.self = circular;
-  assert.equal(JSON.parse(boundedJson(circular)).problem_code, "invalid_result");
+  assert.equal(JSON.parse(boundedJson(circular)).error.code, "invalid_result");
   const rows = Array.from({length: 10}, () => ({id: value.id, digest: value.digest}));
-  assert.equal(JSON.parse(boundedJson({rows})).problem_code, "response_too_large");
+  assert.equal(JSON.parse(boundedJson({rows})).error.code, "response_too_large");
 });
 
 test("reconciliation reports a Patchbay tool the browser no longer holds", async () => {
@@ -1349,8 +1351,8 @@ test("a repair request reports the room's answer and never claims approval", asy
     await refused.context.tools.get("request_patchbay_repair")!.execute!({}),
   );
   assert.equal(result.status, undefined);
-  assert.equal(result.error_code, "REPAIR_REQUEST_FAILED");
-  assert.match(result.detail, /another room/);
+  assert.equal(result.error.code, "REPAIR_REQUEST_FAILED");
+  assert.match(result.error.detail, /another room/);
 });
 
 /** Run `body` with console.info captured, and hand back what it logged. */
@@ -1431,9 +1433,9 @@ test("a second call while one is in flight is refused in the error shape", async
   const first = tool.execute!({instructions: "hold the line"});
   const second = JSON.parse(await tool.execute!({instructions: "cut in"}));
 
-  assert.equal(second.error_code, "BUSY");
-  assert.equal(second.retryable, true);
-  assert.match(second.next_action, /Wait for the call already in flight/);
+  assert.equal(second.error.code, "BUSY");
+  assert.equal(second.error.retryable, true);
+  assert.match(second.error.hint, /Wait for the call already in flight/);
 
   await value.callbacks.get("patchbay:busy-room:reset_browser_registry")!({
     room_id: "busy-room",
@@ -1452,8 +1454,8 @@ test("arguments the tool does not accept are refused with the rule they broke", 
     await value.context.tools.get(v1.name)!.execute!({instructions: "", extra: true}),
   );
 
-  assert.equal(result.error_code, "INVALID_ARGUMENTS");
-  assert.match(result.next_action, /instructions field/);
+  assert.equal(result.error.code, "INVALID_ARGUMENTS");
+  assert.match(result.error.hint, /instructions field/);
   assert.equal(
     value.events.some(event => event.event === "webmcp_invocation_begin"),
     false,

@@ -23,6 +23,7 @@ defmodule PatchbayWeb.MCPController do
 
   use PatchbayWeb, :controller
 
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.MCP.Tools
 
@@ -54,10 +55,13 @@ defmodule PatchbayWeb.MCPController do
     conn
     |> put_resp_header("allow", "POST")
     |> put_status(:method_not_allowed)
-    |> json(%{
-      error: "Send MCP messages to this address with POST. Setup steps are at /webmcp.",
-      problem_code: "method_not_allowed"
-    })
+    |> json(
+      ApiError.body(
+        "method_not_allowed",
+        "Send MCP messages to this address with POST. Setup steps are at /webmcp.",
+        "Send the message again with POST, after reading /webmcp."
+      )
+    )
   end
 
   defp answer(conn, method, request, session_id) do
@@ -153,12 +157,22 @@ defmodule PatchbayWeb.MCPController do
   defp meta(_params), do: %{}
 
   # The answer travels twice, as the protocol suggests: as text for a model to
-  # read, and as the same object for a client that wants the fields.
-  defp tool_result(answer, error?) do
+  # read, and as the same object for a client that wants the fields. A refusal
+  # is the one `error` object every door answers with; its text is the words
+  # and the hint, which is all a model needs to act on it.
+  defp tool_result(%{error: %{message: message, hint: hint}} = refusal, true) do
+    %{
+      "content" => [%{"type" => "text", "text" => message <> " " <> hint}],
+      "structuredContent" => refusal,
+      "isError" => true
+    }
+  end
+
+  defp tool_result(answer, false) do
     %{
       "content" => [%{"type" => "text", "text" => Jason.encode!(answer)}],
       "structuredContent" => answer,
-      "isError" => error?
+      "isError" => false
     }
   end
 

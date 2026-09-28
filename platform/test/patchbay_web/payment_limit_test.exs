@@ -23,22 +23,22 @@ defmodule PatchbayWeb.PaymentLimitTest do
     wallet = address()
     args = %{"payment_intent_id" => Ecto.UUID.generate(), "wallet_address" => wallet}
 
-    assert call(conn, args)["problem_code"] == "not_found"
-    assert call(conn, args)["problem_code"] == "not_found"
+    assert call(conn, args)["error"]["code"] == "not_found"
+    assert call(conn, args)["error"]["code"] == "not_found"
 
     refused = call(conn, args)
-    assert refused["problem_code"] == "rate_limited"
-    assert refused["retry_after_seconds"] in 1..60
-    assert refused["error"] =~ "this wallet"
+    assert refused["error"]["code"] == "rate_limited"
+    assert refused["error"]["retry_after_seconds"] in 1..60
+    assert refused["error"]["message"] =~ "this wallet"
 
     # The same wallet in other letters is the same share.
     "0x" <> hex = wallet
 
-    assert call(conn, %{args | "wallet_address" => "0x" <> String.upcase(hex)})["problem_code"] ==
+    assert call(conn, %{args | "wallet_address" => "0x" <> String.upcase(hex)})["error"]["code"] ==
              "rate_limited"
 
     # Another wallet's share is untouched.
-    assert call(conn, %{args | "wallet_address" => address()})["problem_code"] == "not_found"
+    assert call(conn, %{args | "wallet_address" => address()})["error"]["code"] == "not_found"
   end
 
   test "a payment intent endpoint draws on the share of the signed-in wallet", %{conn: conn} do
@@ -58,11 +58,11 @@ defmodule PatchbayWeb.PaymentLimitTest do
       |> get("/api/payment_intents/#{id}")
     end
 
-    assert json_response(read.(), 404)["problem_code"] == "not_found"
-    assert json_response(read.(), 404)["problem_code"] == "not_found"
+    assert json_response(read.(), 404)["error"]["code"] == "not_found"
+    assert json_response(read.(), 404)["error"]["code"] == "not_found"
 
     refused = read.()
-    assert json_response(refused, 429)["problem_code"] == "rate_limited"
+    assert json_response(refused, 429)["error"]["code"] == "rate_limited"
     assert [seconds] = get_resp_header(refused, "retry-after")
     assert String.to_integer(seconds) in 1..60
 

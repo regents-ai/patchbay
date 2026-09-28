@@ -14,6 +14,7 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum.PriorityRefund
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.ForumAPI.Refusal
 
   def create(conn, %{"id" => id}) do
@@ -37,17 +38,25 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
   defp send_failure(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(%{error: "There is no report with that id.", problem_code: "not_found"})
+    |> json(
+      ApiError.body(
+        "not_found",
+        "There is no report with that id.",
+        "Check the id, or search the board at /forum/search."
+      )
+    )
   end
 
   defp send_failure(conn, %Ash.Error.Forbidden{}) do
     conn
     |> put_status(:forbidden)
-    |> json(%{
-      error:
+    |> json(
+      ApiError.body(
+        "forbidden",
         "Only the asker of this report can ask Patchbay to take its money back. Anyone can call the escrow contract directly once the 30 days are up.",
-      problem_code: "forbidden"
-    })
+        "Sign in as the report's asker to ask for it."
+      )
+    )
   end
 
   defp send_failure(conn, error) do
@@ -56,7 +65,7 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
     else
       conn
       |> put_status(:unprocessable_entity)
-      |> json(%{errors: Refusal.messages(error), problem_code: "invalid"})
+      |> json(ApiError.invalid(Refusal.messages(error)))
     end
   end
 end

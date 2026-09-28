@@ -31,6 +31,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @thread_reply_limit 20
   # The WebMCP result adds a summary and content warning outside this body.
   @thread_payload_bytes 15 * 1024
+  @correct_query "Correct the query, then send it again."
 
   @tool_loads [
     :site,
@@ -88,11 +89,11 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   @doc """
   Every public version of one tool on one site, newest first by first
-  appearance. A refusal names the HTTP status it answers with, a short code and
-  a sentence.
+  appearance. A refusal names the HTTP status it answers with, a short code,
+  a sentence and the hint that says what to do about it.
   """
   @spec tool_history(map()) ::
-          {:ok, map()} | {:error, {pos_integer(), String.t(), String.t()}}
+          {:ok, map()} | {:error, {pos_integer(), String.t(), String.t(), String.t()}}
   def tool_history(params) do
     with true <- Enum.all?(Map.keys(params), &(&1 in ~w(origin tool_name after limit))),
          {:ok, origin} <- Origin.normalize(params["origin"]),
@@ -102,7 +103,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          false <- is_nil(site),
          {:ok, history} <- ToolHistory.page(site, params["tool_name"], params["after"], limit) do
       if history.versions == [] and is_nil(params["after"]) do
-        {:error, {404, "not_found", "Tool not found."}}
+        {:error,
+         {404, "not_found", "Tool not found.",
+          "Check the tool_name against the site's page under /sites."}}
       else
         {:ok,
          %{
@@ -114,25 +117,31 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       end
     else
       true ->
-        {:error, {404, "not_found", "Site not found."}}
+        {:error,
+         {404, "not_found", "Site not found.",
+          "Check the origin against the directory at /sites."}}
 
       false ->
         {:error,
-         {400, "invalid_request", "Use an origin, tool_name and optional limit from 1 to 25."}}
+         {400, "invalid_request", "Use an origin, tool_name and optional limit from 1 to 25.",
+          @correct_query}}
 
       {:error, :invalid_cursor} ->
         {:error,
          {400, "invalid_cursor",
-          "This cursor is invalid or expired. Restart the same tool history."}}
+          "This cursor is invalid or expired. Restart the same tool history.",
+          "Read the history again without after, and use the cursor it gives."}}
 
       {:error, :invalid_limit} ->
-        {:error, {400, "invalid_request", "Use a limit from 1 to 25."}}
+        {:error, {400, "invalid_request", "Use a limit from 1 to 25.", @correct_query}}
 
       {:error, reason} when is_binary(reason) ->
-        {:error, {400, "invalid_request", "Use a public site origin."}}
+        {:error, {400, "invalid_request", "Use a public site origin.", @correct_query}}
 
       {:error, _} ->
-        {:error, {503, "unavailable", "Tool history is unavailable. Retry the same query."}}
+        {:error,
+         {503, "unavailable", "Tool history is unavailable. Retry the same query.",
+          "Try the same call again in a moment."}}
     end
   end
 

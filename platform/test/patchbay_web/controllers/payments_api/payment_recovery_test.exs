@@ -123,10 +123,10 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     assert_receive {:settle, service, _payload}, 3_000
     assert recovery(c)["status"] == "settlement_pending"
     duplicate = unboxed(fn -> signed_in(c.payer) |> post(path(c.intent), %{}) end)
-    assert json_response(duplicate, 409)["status"] == "settlement_pending"
+    assert json_response(duplicate, 409)["error"]["status"] == "settlement_pending"
     send(service, {:reply, 503, %{error: "uncertain"}})
     assert_receive {:done, ^worker, response}, 3_000
-    assert json_response(response, 409)["status"] == "settlement_pending"
+    assert json_response(response, 409)["error"]["status"] == "settlement_pending"
     assert_receive {:DOWN, ^ref, :process, ^worker, :normal}
     refute_receive {:settle, _, _}, 200
     assert recovery(c)["recovery_required"]
@@ -140,7 +140,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     send(service, {:reply, 200, settled("1")})
     assert recovery(c)["status"] == "settlement_pending"
     duplicate = unboxed(fn -> signed_in(c.payer) |> post(path(c.intent), %{}) end)
-    assert json_response(duplicate, 409)["status"] == "settlement_pending"
+    assert json_response(duplicate, 409)["error"]["status"] == "settlement_pending"
     refute_receive {:settle, _, _}, 200
   end
 
@@ -167,7 +167,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     hidden =
       unboxed(fn -> signed_in(c.recipient) |> get("/api/payment_intents/#{c.intent.id}") end)
 
-    assert json_response(hidden, 404)["problem_code"] == "not_found"
+    assert json_response(hidden, 404)["error"]["code"] == "not_found"
   end
 
   test "receipt persistence failure leaves the already committed pending marker", c do
@@ -198,7 +198,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
 
     assert recovery(c)["status"] == "settlement_pending"
     duplicate = unboxed(fn -> signed_in(c.payer) |> post(path(c.intent), %{}) end)
-    assert json_response(duplicate, 409)["status"] == "settlement_pending"
+    assert json_response(duplicate, 409)["error"]["status"] == "settlement_pending"
     refute_receive {:settle, _, _}, 200
   end
 

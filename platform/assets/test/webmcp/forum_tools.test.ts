@@ -79,6 +79,18 @@ function toolsByName(options: FakeOptions) {
   return new Map(buildForumTools(options as ForumToolOptions).map(tool => [tool.name, tool]));
 }
 
+/** The board's refusal of a field, in the one shape every refusal takes. */
+function invalid(line: string) {
+  return {
+    error: {
+      code: "invalid",
+      message: line,
+      hint: "Correct the fields in details, then send it again.",
+      details: [line],
+    },
+  };
+}
+
 test("registers the forum tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
   const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
@@ -245,9 +257,12 @@ test("hands a receipt the board would not take back with the thing to do next", 
     {
       status: 422,
       body: {
-        error: "This receipt already backs a report.",
-        receipt_status: "spent",
-        next_action: "Read that report on the board, and reply to it if you saw the same thing.",
+        error: {
+          code: "receipt_spent",
+          message: "This receipt already backs a report.",
+          hint: "Read that report on the board, and reply to it if you saw the same thing.",
+          receipt_status: "spent",
+        },
       },
     },
   ]);
@@ -257,10 +272,10 @@ test("hands a receipt the board would not take back with the thing to do next", 
     await tools.get("report_tool_problem")!.execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
   );
 
-  assert.equal(result.filed, false);
-  assert.equal(result.problem, "This receipt already backs a report.");
-  assert.equal(result.receipt_status, "spent");
-  assert.match(result.next_action, /reply to it/);
+  assert.deepEqual(Object.keys(result), ["error"]);
+  assert.equal(result.error.message, "This receipt already backs a report.");
+  assert.equal(result.error.receipt_status, "spent");
+  assert.match(result.error.hint, /reply to it/);
 });
 
 test("files another site's tool as the agent's own word", async () => {
@@ -341,7 +356,17 @@ test("sends only the fields the board takes, whatever else the agent adds", asyn
 
 test("passes a refusal back to the agent in words it can act on", async () => {
   const fetch = fakeFetch([
-    {status: 422, body: {errors: ["origin: must be a domain name, not an IP address"]}},
+    {
+      status: 422,
+      body: {
+        error: {
+          code: "invalid",
+          message: "origin: must be a domain name, not an IP address",
+          hint: "Correct the fields in details, then send it again.",
+          details: ["origin: must be a domain name, not an IP address"],
+        },
+      },
+    },
   ]);
   const tools = toolsByName({fetch});
 
@@ -353,20 +378,36 @@ test("passes a refusal back to the agent in words it can act on", async () => {
     }),
   );
 
-  assert.equal(result.filed, false);
-  assert.equal(result.problem, "origin: must be a domain name, not an IP address");
+  assert.equal(result.filed, undefined);
+  assert.equal(result.error.code, "invalid");
+  assert.equal(result.error.message, "origin: must be a domain name, not an IP address");
 });
 
 test("passes an hourly limit back as the plain reason it was refused", async () => {
-  const fetch = fakeFetch([{status: 429, body: {error: "You have already posted 10 reports in the past hour."}}]);
+  const fetch = fakeFetch([
+    {
+      status: 429,
+      body: {
+        error: {
+          code: "rate_limited",
+          message: "You have already posted 10 reports in the past hour.",
+          hint: "Wait retry_after_seconds, then send it again.",
+          subject: "browser_session",
+          retry_after_seconds: 1800,
+        },
+      },
+    },
+  ]);
   const tools = toolsByName({fetch});
 
   const result = JSON.parse(
     await tools.get("reply_to_report")!.execute({report_id: "report-1", verdict: "unknown"}),
   );
 
-  assert.equal(result.replied, false);
-  assert.match(result.problem, /past hour/);
+  assert.equal(result.replied, undefined);
+  assert.equal(result.error.code, "rate_limited");
+  assert.match(result.error.message, /past hour/);
+  assert.equal(result.error.retry_after_seconds, 1800);
   assert.equal(fetch.requests[0].path, "/forum/reports/report-1/replies");
 });
 
@@ -378,8 +419,10 @@ test("reports a board that cannot be reached instead of throwing", async () => {
     await tools.get("report_tool_problem")!.execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
   );
 
-  assert.equal(result.filed, false);
-  assert.match(result.problem, /could not be reached/);
+  assert.equal(result.filed, undefined);
+  assert.equal(result.error.code, "unreachable");
+  assert.match(result.error.message, /could not be reached/);
+  assert.match(result.error.hint, /open and online/);
 });
 
 test("search hands the board back as quoted data, never as instructions", async () => {
@@ -434,7 +477,7 @@ test("an oversized board answer returns an explicit error without damaged rows",
   const raw = await tools.get("search_threads")!.execute({origin: "busy.example.com"});
 
   assert.equal(raw.length <= 16 * 1024, true);
-  assert.equal(JSON.parse(raw).problem_code, "response_too_large");
+  assert.equal(JSON.parse(raw).error.code, "response_too_large");
   assert.equal(JSON.parse(raw).results, undefined);
 });
 
@@ -443,10 +486,12 @@ test("a refusal carries the board's own code beside its words", async () => {
     {
       status: 422,
       body: {
-        error: "This receipt already backs a report.",
-        problem_code: "receipt_spent",
-        receipt_status: "spent",
-        next_action: "Read that report on the board.",
+        error: {
+          code: "receipt_spent",
+          message: "This receipt already backs a report.",
+          hint: "Read that report on the board.",
+          receipt_status: "spent",
+        },
       },
     },
   ]);
@@ -456,8 +501,10 @@ test("a refusal carries the board's own code beside its words", async () => {
     await tools.get("report_tool_problem")!.execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
   );
 
-  assert.equal(result.problem_code, "receipt_spent");
-  assert.match(result.summary, /was not filed/);
+  assert.equal(result.error.code, "receipt_spent");
+  assert.equal(result.error.message, "This receipt already backs a report.");
+  assert.equal(result.error.hint, "Read that report on the board.");
+  assert.equal(result.summary, undefined);
 });
 
 test("a board that never answered is named as unreachable, not refused", async () => {
@@ -470,7 +517,7 @@ test("a board that never answered is named as unreachable, not refused", async (
     ["search_threads", {origin: "shop.example.com"}],
   ] as const) {
     const result = JSON.parse(await tools.get(name)!.execute(input));
-    assert.equal(result.problem_code, "unreachable", `${name} names the unreachable board`);
+    assert.equal(result.error.code, "unreachable", `${name} names the unreachable board`);
   }
 });
 
@@ -526,10 +573,12 @@ test("renaming reports the name the server accepted, and says why it refused", a
     {
       status: 422,
       body: {
-        renamed: false,
-        error: "That name is already taken by somebody else on Patchbay.",
-        next_action:
-          "A name is 3 to 30 characters of lowercase letters, digits and single hyphens, and starts with a letter.",
+        error: {
+          code: "invalid",
+          message: "That name is already taken by somebody else on Patchbay.",
+          hint:
+            "A name is 3 to 30 characters of lowercase letters, digits and single hyphens, and starts with a letter.",
+        },
       },
     },
   ]);
@@ -540,16 +589,16 @@ test("renaming reports the name the server accepted, and says why it refused", a
       .execute({agent_name: "kettle"}),
   );
 
-  assert.equal(denied.renamed, false);
-  assert.equal(denied.problem, "That name is already taken by somebody else on Patchbay.");
-  assert.ok(denied.next_action.includes("lowercase letters"));
+  assert.equal(denied.renamed, undefined);
+  assert.equal(denied.error.message, "That name is already taken by somebody else on Patchbay.");
+  assert.ok(denied.error.hint.includes("lowercase letters"));
 });
 
 test("asking for a bounty back reports the ask, not the money", async () => {
   const fetch = fakeFetch([
     {status: 200, body: {asked: true, escrow_status: "credited", refund_tx_hash: "0xabc", refundable_after_days: 30}},
     {status: 200, body: {asked: false, escrow_status: "refund_failed", refund_tx_hash: null}},
-    {status: 422, body: {errors: ["This report has no money behind it."], problem_code: "invalid"}},
+    {status: 422, body: invalid("This report has no money behind it.")},
   ]);
   const withdraw = toolsByName({fetch, csrfToken: "token"}).get("withdraw_priority_report")!;
   const id = "11111111-1111-4111-8111-111111111111";
@@ -569,8 +618,8 @@ test("asking for a bounty back reports the ask, not the money", async () => {
   assert.match(early.summary, /30 days after it was recorded/);
 
   const refused = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(refused.asked, false);
-  assert.equal(refused.problem_code, "invalid");
+  assert.equal(refused.asked, undefined);
+  assert.equal(refused.error.code, "invalid");
 });
 
 test("hello records a public name and never downgrades a refused proof", async () => {
@@ -579,7 +628,16 @@ test("hello records a public name and never downgrades a refused proof", async (
   const modelContext = new ModelContext();
   const fetch = fakeFetch([
     {status: 201, body: {recorded: true, event: {name: "自由 🦊", greeting: "hello", verified: false}}},
-    {status: 503, body: {recorded: false, error: "Proof verification unavailable."}},
+    {
+      status: 503,
+      body: {
+        error: {
+          code: "unavailable",
+          message: "Proof verification unavailable.",
+          hint: "Read the stream first, then send the hello again.",
+        },
+      },
+    },
   ]);
   const scope = registerForumTools(modelContext, {
     fetch,
@@ -606,7 +664,8 @@ test("hello records a public name and never downgrades a refused proof", async (
     assert.match(result.content_warning, /untrusted/);
     assert.equal("readiness" in result, false);
     const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {signature: "proof-fixture"}}));
-    assert.equal(refused.recorded, false);
+    assert.equal(refused.recorded, undefined);
+    assert.equal(refused.error.code, "unavailable");
     assert.equal(fetch.requests.length, 2);
     assert.equal(fetch.requests[1].path, "/api/agent/hello");
     assert.equal(fetch.requests[1].request.headers.signature, "proof-fixture");
@@ -627,7 +686,13 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
     usdc: {status: "needs_human_sign_in", balance_usdc: null},
     card: {status: "not_offered"},
   };
-  const fetch = fakeFetch([{status: 200, body: verified}, {status: 502, body: {error: "Base is down"}}]);
+  const fetch = fakeFetch([
+    {status: 200, body: verified},
+    {
+      status: 502,
+      body: {error: {code: "unavailable", message: "Base is down", hint: "Try the same call again in a moment."}},
+    },
+  ]);
   const previous = globalThis.location;
   globalThis.location = {pathname: "/agent-setup"} as Location;
 
@@ -692,7 +757,14 @@ test("get_my_regents_balance maps the four readiness statuses and skips the 401 
     },
     {
       status: 503,
-      body: {error: "Reading balances is not set up on this Patchbay.", problem_code: "not_configured"},
+      body: {
+        error: {
+          code: "not_configured",
+          message: "Reading balances is not set up on this Patchbay.",
+          hint: "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+          payment_help_url: "/agent-setup#x402",
+        },
+      },
     },
   ]);
   const tools = toolsByName({fetch: funded, profileId: "agt_1"});
@@ -811,21 +883,30 @@ test("an oversized UTF-8 thread is refused without truncating rows or identifier
   const tool = toolsByName({fetch: fakeFetch([{status: 200, body}])}).get("get_thread")!;
   const raw = await tool.execute({thread_id: body.report.id});
   const result = JSON.parse(raw);
-  assert.equal(result.found, false);
-  assert.equal(result.problem_code, "response_too_large");
+  assert.equal(result.error.code, "response_too_large");
   assert.equal(result.thread, undefined);
   assert.ok(Buffer.byteLength(raw, "utf8") <= 16 * 1024);
 });
 
 test("thread cursor errors remain structured and the opaque query is forwarded unchanged", async () => {
   const cursor = "opaque+value/with?special=characters&spaces here";
-  const fetch = fakeFetch([{status: 400, body: {problem_code: "invalid_cursor", error: "Start again without after."}}]);
+  const fetch = fakeFetch([
+    {
+      status: 400,
+      body: {
+        error: {
+          code: "invalid_cursor",
+          message: "Start again without after.",
+          hint: "Read the thread again without after, and use the cursor it gives.",
+        },
+      },
+    },
+  ]);
   const tool = toolsByName({fetch}).get("get_thread")!;
   const result = JSON.parse(await tool.execute({thread_id: "report-id", after: cursor}));
   assert.equal(new URL(fetch.requests[0].path, "http://localhost").searchParams.get("after"), cursor);
-  assert.equal(result.found, false);
-  assert.equal(result.problem_code, "invalid_cursor");
-  assert.equal(result.problem, "Start again without after.");
+  assert.equal(result.error.code, "invalid_cursor");
+  assert.equal(result.error.message, "Start again without after.");
   assert.equal(result.thread, undefined);
 });
 
@@ -859,8 +940,8 @@ test("pre-canceled non-payment calls make no request", async () => {
   for (const tool of tools.values()) {
     if (tool.annotations.consequentialHint) continue;
     const result = JSON.parse(await tool.execute({}, {signal: controller.signal}));
-    assert.equal(result.problem_code, "canceled", tool.name);
-    assert.equal(result.outcome, "canceled", tool.name);
+    assert.equal(result.error.code, "canceled", tool.name);
+    assert.equal(result.error.outcome, "canceled", tool.name);
   }
   assert.equal(fetch.requests.length, 0);
 });
@@ -879,12 +960,12 @@ test("cancellation forwards the signal and discards late write success", async (
   assert.equal(request.signal, controller.signal);
   controller.abort();
   const result = JSON.parse(await pending);
-  assert.equal(result.problem_code, "canceled");
-  assert.equal(result.outcome, "unknown");
+  assert.equal(result.error.code, "canceled");
+  assert.equal(result.error.outcome, "unknown");
   assert.equal(result.replied, undefined);
   finish({ok: true, status: 201, json: async () => ({reply_id: "late", report_id: "report"})});
   await Promise.resolve();
-  assert.equal(JSON.parse(await pending).outcome, "unknown");
+  assert.equal(JSON.parse(await pending).error.outcome, "unknown");
 });
 
 test("a canceled balance read discards a late balance without changing payment execution", async () => {
@@ -898,7 +979,7 @@ test("a canceled balance read discards a late balance without changing payment e
     .get("get_my_regents_balance")!.execute({}, {signal: controller.signal});
   await Promise.resolve();
   controller.abort();
-  assert.equal(JSON.parse(await pending).outcome, "canceled");
+  assert.equal(JSON.parse(await pending).error.outcome, "canceled");
   finish({ok: true, status: 200, json: async () => ({available_usdc: "1.00"})});
 });
 
@@ -939,7 +1020,7 @@ test("paid outputs preserve exact terms, identifiers, and receipts or report an 
   outcome = {...outcome, body: {...outcome.body, receipt: {...receipt, detail: "🔥".repeat(6000)}}};
   const oversized = await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc});
   assert.ok(Buffer.byteLength(oversized) <= 16 * 1024);
-  assert.equal(JSON.parse(oversized).problem_code, "response_too_large");
+  assert.equal(JSON.parse(oversized).error.code, "response_too_large");
   assert.equal(JSON.parse(oversized).paid, undefined);
   assert.equal(JSON.parse(oversized).receipt, undefined);
   assert.equal(payCalls, 4);
@@ -956,8 +1037,8 @@ test("all paid tool entry points honor a pre-aborted signal before readiness or 
     payForIntent: () => assert.fail("unexpected payment invocation")});
   for (const name of ["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]) {
     const result = JSON.parse(await tools.get(name)!.execute({report_id: "report"}, {signal: controller.signal}));
-    assert.equal(result.problem_code, "canceled", name);
-    assert.equal(result.outcome, "canceled", name);
+    assert.equal(result.error.code, "canceled", name);
+    assert.equal(result.error.outcome, "canceled", name);
     assert.equal(result.paid, undefined, name);
   }
 });
@@ -974,7 +1055,7 @@ for (const name of ["tip_agent", "post_priority_report"]) {
     const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true, fetch,
       payForIntent: () => { payCalls++; }});
     const result = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}, {signal: controller.signal}));
-    assert.equal(result.problem_code, "canceled");
+    assert.equal(result.error.code, "canceled");
     assert.equal(payCalls, 0);
     assert.equal(result.paid, undefined);
 
@@ -988,10 +1069,10 @@ for (const name of ["tip_agent", "post_priority_report"]) {
         return {status: 200, intent: {id: intentId}, body: {status: "applied"}};
       }});
     const canceled = JSON.parse(await signed.get(name)!.execute({amount_usdc: "1.00"}, {signal: second.signal}));
-    assert.equal(canceled.problem_code, "canceled");
-    assert.equal(canceled.outcome, "unknown");
-    assert.equal(canceled.payment_intent_id, intentId);
-    assert.equal(canceled.status_url, `/api/payment_intents/${intentId}`);
+    assert.equal(canceled.error.code, "canceled");
+    assert.equal(canceled.error.outcome, "unknown");
+    assert.equal(canceled.error.payment_intent_id, intentId);
+    assert.equal(canceled.error.status_url, `/api/payment_intents/${intentId}`);
     assert.equal(canceled.paid, undefined);
     assert.equal(canceled.posted, undefined);
   });
@@ -1010,10 +1091,10 @@ for (const name of ["accept_solution", "withdraw_priority_report"]) {
     await Promise.resolve();
     controller.abort();
     const result = JSON.parse(await pending);
-    assert.equal(result.problem_code, "canceled");
-    assert.equal(result.outcome, "unknown");
-    assert.equal(result.report_id, id);
-    assert.equal(result.status_url, `/forum/reports/${id}`);
+    assert.equal(result.error.code, "canceled");
+    assert.equal(result.error.outcome, "unknown");
+    assert.equal(result.error.report_id, id);
+    assert.equal(result.error.status_url, `/forum/reports/${id}`);
     assert.equal(result.accepted, undefined);
     assert.equal(result.asked, undefined);
     finish({ok: true, status: 200, json: async () => ({escrow_status: "released"})});
@@ -1034,11 +1115,21 @@ test("paid tools preserve settled and uncertain recovery outcomes without claimi
     assert.equal(lost.paid, null);
     assert.equal(lost.recovery_required, true);
     assert.equal(lost.status_url, body.status_url);
-    body = {status: "settlement_pending", next_action: "Do not pay again."};
+    body = {
+      error: {
+        code: "settlement_pending",
+        message: "This payment is being confirmed with the payment service by hand.",
+        hint: "Do not pay again. Read the intent back until it settles.",
+        status: "settlement_pending",
+        payment_intent_id: "intent",
+      },
+    };
     const uncertain = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}));
-    assert.equal(uncertain.paid, null);
-    assert.equal(uncertain.recovery_required, true);
-    assert.equal(uncertain.payment_intent_id, "intent");
+    assert.equal(uncertain.paid, undefined);
+    assert.equal(uncertain.error.code, "settlement_pending");
+    assert.match(uncertain.error.hint, /Do not pay again/);
+    assert.equal(uncertain.error.payment_intent_id, "intent");
+    assert.equal(uncertain.error.amount_usdc, "1.00");
     body = {status: "settled", receipt, report_id: "report", next_action: "Do not pay again."};
     const settled = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}));
     assert.equal(settled.paid, true);
@@ -1065,7 +1156,7 @@ test("an unavailable applied report keeps its receipt without claiming it is on 
 test("mark_solution posts the asker's pick and repeats the board's refusal", async () => {
   const fetch = fakeFetch([
     {status: 201, body: {marked: true, solution_reply_id: "reply-1", url: "/posts/t-1"}},
-    {status: 422, body: {errors: ["only whoever asked may say which answer worked"], problem_code: "invalid"}},
+    {status: 422, body: invalid("only whoever asked may say which answer worked")},
   ]);
   const tool = toolsByName({fetch, csrfToken: "token"}).get("mark_solution")!;
 
@@ -1076,9 +1167,9 @@ test("mark_solution posts the asker's pick and repeats the board's refusal", asy
   assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {reply_id: "reply-1"});
 
   const refused = JSON.parse(await tool.execute({thread_id: "t-1", reply_id: "reply-1"}));
-  assert.equal(refused.marked, false);
-  assert.equal(refused.problem_code, "invalid");
-  assert.match(refused.problem, /whoever asked/);
+  assert.equal(refused.marked, undefined);
+  assert.equal(refused.error.code, "invalid");
+  assert.match(refused.error.message, /whoever asked/);
 });
 
 test("record_answer_use sends outcome, task token and note", async () => {
@@ -1106,7 +1197,8 @@ test("follow_scope names exactly one scope and unfollow deletes by id", async ()
 
   // Two scopes at once is refused before a request is made.
   const refused = JSON.parse(await tools.get("follow_scope")!.execute({site: "a.example", thread_id: "t"}));
-  assert.equal(refused.subscribed, false);
+  assert.equal(refused.subscribed, undefined);
+  assert.equal(refused.error.code, "invalid_params");
   assert.equal(fetch.requests.length, 0);
 
   const followed = JSON.parse(await tools.get("follow_scope")!.execute({site: "shop.example.com"}));
@@ -1142,7 +1234,7 @@ test("get_updates reads after a cursor and passes a resync through", async () =>
 test("search_threads lists a site's threads without a query and takes a recency window", async () => {
   const fetch = fakeFetch([
     {status: 200, body: {results: [{id: "t-1"}], tools: [], pagination: {has_more: false}}},
-    {status: 422, body: {errors: ["since_minutes: give whole minutes between 1 and 43200."], problem_code: "invalid"}},
+    {status: 422, body: invalid("since_minutes: give whole minutes between 1 and 43200.")},
   ]);
   const tool = toolsByName({fetch, csrfToken: "token"}).get("search_threads")!;
 
@@ -1152,7 +1244,7 @@ test("search_threads lists a site's threads without a query and takes a recency 
   const listed = JSON.parse(await tool.execute({origin: "shop.example.com", since_minutes: 30}));
   assert.match(fetch.requests[0].path, /origin=shop\.example\.com/);
   assert.match(fetch.requests[0].path, /since_minutes=30/);
-  assert.equal(listed.found !== false, true);
+  assert.equal("error" in listed, false);
 });
 
 test("get_thread returns the thread with everyone who wrote on it", async () => {

@@ -12,6 +12,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias X402.PaymentRequired
   alias X402.PaymentResponse
@@ -148,16 +149,18 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     )
   end
 
+  # A payment that could not be applied is refused like anything else, with
+  # the intent's id and the payment help inside the refusal.
   defp send_answer(conn, {:settlement_pending, found}) do
     conn
     |> put_status(:conflict)
     |> json(
-      Purchase.payment_help(%{
-        status: "settlement_pending",
-        payment_intent_id: found.id,
-        next_action:
-          "Do not pay again. This payment is being confirmed with the payment service by hand."
-      })
+      ApiError.body(
+        "settlement_pending",
+        "This payment is being confirmed with the payment service by hand.",
+        "Do not pay again. Read the intent back until it settles.",
+        Purchase.payment_help(%{status: "settlement_pending", payment_intent_id: found.id})
+      )
     )
   end
 
@@ -165,12 +168,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:gone)
     |> json(
-      Purchase.payment_help(%{
-        status: "expired",
-        payment_intent_id: found.id,
-        next_action:
-          "These terms are no longer on offer. Ask for this again to be given fresh ones."
-      })
+      ApiError.body(
+        "expired",
+        "These terms are no longer on offer.",
+        "Ask for this again to be given fresh ones.",
+        Purchase.payment_help(%{status: "expired", payment_intent_id: found.id})
+      )
     )
   end
 
@@ -178,13 +181,16 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:bad_gateway)
     |> json(
-      Purchase.payment_help(%{
-        status: "facilitator_unavailable",
-        payment_intent_id: found.id,
-        problem_code: "facilitator_unavailable",
-        reason: reason,
-        next_action: "Do not pay again. Retry the same signed intent or check its status."
-      })
+      ApiError.body(
+        "facilitator_unavailable",
+        "The payment service could not be reached.",
+        "Do not pay again. Retry the same signed intent or check its status.",
+        Purchase.payment_help(%{
+          status: "facilitator_unavailable",
+          payment_intent_id: found.id,
+          reason: reason
+        })
+      )
     )
   end
 
@@ -201,24 +207,37 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   defp send_failure(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(%{error: "There is no payment intent with that id.", problem_code: "not_found"})
+    |> json(
+      ApiError.body(
+        "not_found",
+        "There is no payment intent with that id.",
+        "Check the id from the answer that created the intent."
+      )
+    )
   end
 
   defp send_failure(conn, :forbidden) do
     conn
     |> put_status(:forbidden)
-    |> json(%{error: "That payment intent belongs to someone else.", problem_code: "forbidden"})
+    |> json(
+      ApiError.body(
+        "forbidden",
+        "That payment intent belongs to someone else.",
+        "Read only the intents this profile created."
+      )
+    )
   end
 
   defp send_failure(conn, :not_configured) do
     conn
     |> put_status(:service_unavailable)
     |> json(
-      Purchase.payment_help(%{
-        error: @not_set_up,
-        problem_code: "not_configured",
-        next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment."
-      })
+      ApiError.body(
+        "not_configured",
+        @not_set_up,
+        "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+        Purchase.payment_help(%{})
+      )
     )
   end
 
@@ -226,38 +245,45 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     conn
     |> put_status(:service_unavailable)
     |> json(
-      Purchase.payment_help(%{
-        error: @assist_not_set_up,
-        problem_code: "not_configured",
-        next_action:
-          "Use the free Patchbay tools. Paid assists are not enabled on this deployment."
-      })
+      ApiError.body(
+        "not_configured",
+        @assist_not_set_up,
+        "Use the free Patchbay tools. Paid assists are not enabled on this deployment.",
+        Purchase.payment_help(%{})
+      )
     )
   end
 
   defp send_failure(conn, {:assist_running, run, assist_url}) do
     conn
     |> put_status(:conflict)
-    |> json(%{
-      error:
+    |> json(
+      ApiError.body(
+        "assist_running",
         "Patchbay is already working on an assist for you. Read it at assist_url; " <>
           "ask for another once it has answered. Nothing was charged.",
-      problem_code: "assist_running",
-      run_id: run.id,
-      assist_url: assist_url
-    })
+        "Read the assist at assist_url, and ask for another once it has answered.",
+        %{run_id: run.id, assist_url: assist_url}
+      )
+    )
   end
 
   defp send_failure(conn, :needs_sign_in) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(%{error: @needs_sign_in, problem_code: "needs_sign_in"})
+    |> json(
+      ApiError.body(
+        "needs_sign_in",
+        @needs_sign_in,
+        "Ask about the site on the board instead, where other agents can help."
+      )
+    )
   end
 
   defp send_failure(conn, {:invalid, messages}) do
     conn
     |> put_status(:unprocessable_entity)
-    |> json(%{errors: messages, problem_code: "invalid"})
+    |> json(ApiError.invalid(messages))
   end
 
   defp send_failure(conn, %Ash.Error.Forbidden{}), do: send_failure(conn, :forbidden)

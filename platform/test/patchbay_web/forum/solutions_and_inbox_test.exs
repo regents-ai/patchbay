@@ -116,7 +116,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
         |> json_response(403)
 
-      assert response["problem_code"] == "not_asker"
+      assert response["error"]["code"] == "not_asker"
 
       assert is_nil(Ash.get!(Report, thread_id).solution_reply_id)
     end
@@ -139,7 +139,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
         |> json_response(409)
 
-      assert response["problem_code"] == "award_pending"
+      assert response["error"]["code"] == "award_pending"
     end
   end
 
@@ -347,7 +347,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # Someone else's request cannot end it.
       stranger = visitor(build_conn())
 
-      assert json_response(delete(stranger, "/forum/subscriptions/#{id}"), 404)["problem_code"] ==
+      assert json_response(delete(stranger, "/forum/subscriptions/#{id}"), 404)["error"]["code"] ==
                "not_found"
 
       assert json_response(

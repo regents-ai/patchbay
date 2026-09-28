@@ -1,6 +1,7 @@
 defmodule PatchbayWeb.ForumAPI.ToolController do
   use PatchbayWeb, :controller
 
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.ForumAPI.Reads
 
   def index(conn, params) do
@@ -8,8 +9,8 @@ defmodule PatchbayWeb.ForumAPI.ToolController do
       {:ok, payload} ->
         json(conn, payload)
 
-      {:error, {status, code, message}} ->
-        conn |> put_status(status) |> json(%{problem_code: code, error: message})
+      {:error, {status, code, message, hint}} ->
+        conn |> put_status(status) |> json(ApiError.body(code, message, hint))
     end
   end
 end

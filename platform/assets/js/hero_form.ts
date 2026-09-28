@@ -1,3 +1,4 @@
+import {errorIn} from "./api_error.ts"
 import {payForIntent} from "./webmcp/paid_actions.ts"
 import {requestAccountAction} from "./privy/account.ts"
 import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./form_draft.ts"
@@ -149,13 +150,14 @@ export function fixOutcome(outcome: PaidFix): NextStep {
   if (outcome.status === 200 && outcome.body?.status === "applied" && outcome.intent?.run_id) {
     return {navigate: fixPath(outcome.intent.run_id as string)}
   }
-  if (outcome.status === 409 && outcome.body?.problem_code === "assist_running" && outcome.body.run_id) {
-    return {navigate: fixPath(outcome.body.run_id as string)}
+  const refused = errorIn(outcome.body)
+  if (outcome.status === 409 && refused?.code === "assist_running" && typeof refused.run_id === "string") {
+    return {navigate: fixPath(refused.run_id)}
   }
   if (outcome.status === 202 && outcome.intent?.run_id) {
     return {problem: WORDS.unopened}
   }
-  const said = outcome.body?.error
+  const said = refused?.message
   return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
 }
 

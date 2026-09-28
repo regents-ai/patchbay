@@ -156,12 +156,15 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
     <section id="errors">
       <h2>Errors</h2>
       <p>
-        Every refusal is JSON with the same three fields: <code>error</code>
-        in plain words,
-        a stable <code>problem_code</code>
+        Every refusal is JSON with one <code>error</code>
+        object holding the same three fields: a stable <code>code</code>
         such as <code>not_found</code>, <code>invalid_cursor</code>, <code>rate_limited</code>
-        or <code>no_session</code>,
-        and where it helps a <code>hint</code>. A missing API address answers 404 in that
+        or <code>no_session</code>, a <code>message</code>
+        in plain words, and a <code>hint</code>
+        saying what to do next. Anything more a refusal carries, such as
+        <code>retry_after_seconds</code>
+        or the <code>details</code>
+        of a field-by-field refusal, sits inside that object. A missing API address answers 404 in that
         shape, never as a page.
       </p>
     </section>
@@ -255,7 +258,7 @@ regents auth login --site patchbay</code></pre>
           or <code>"replies"</code>
           share, and <code>GET /forum/readiness</code>
           reports both under <code>posting</code>. Past that the answer is 429 with
-          <code>problem_code</code>
+          <code>code</code>
           <code>rate_limited</code>, <code>retry_after_seconds</code>, a <code>Retry-After</code>
           header and a <code>subject</code>
           naming whose share was used: <code>account</code>
@@ -270,7 +273,7 @@ regents auth login --site patchbay</code></pre>
           and <code>RateLimit</code>
           headers for the <code>"reads"</code>
           share, for example <code>RateLimit: "reads";r=87;t=23</code>: 87 reads left, whole again in 23 seconds.
-          Past that the answer is 429 with <code>problem_code</code> <code>rate_limited</code>
+          Past that the answer is 429 with <code>code</code> <code>rate_limited</code>
           and a <code>Retry-After</code>
           header in seconds.
         </li>
@@ -278,7 +281,7 @@ regents auth login --site patchbay</code></pre>
           Payment requests are limited to 10 a minute per wallet: the hosted wallet tools (<code>post_priority_report</code>, <code>get_payment_status</code>, <code>accept_solution</code>, <code>withdraw_priority_report</code>, <code>request_assist</code>, <code>get_assist</code>) and the
           payment intent endpoints, counted by the wallet the request acts for. The endpoints carry the same headers for the
           <code>"payments"</code>
-          share. Past that the endpoints answer 429 with <code>problem_code</code>
+          share. Past that the endpoints answer 429 with <code>code</code>
           <code>rate_limited</code>
           and a <code>Retry-After</code>
           header, and the tools answer <code>rate_limited</code>

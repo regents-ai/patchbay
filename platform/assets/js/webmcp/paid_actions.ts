@@ -1,3 +1,4 @@
+import {errorIn, refusal} from "../api_error.ts";
 import {loadPrivyBridge, privyAppId} from "../privy/account.ts";
 import type {MetaDocument} from "../privy/account.ts";
 
@@ -166,11 +167,16 @@ export async function payForIntent(options: PayOptions, {kind, args}: {kind: str
       if (signal?.aborted) return canceled();
     }
 
+    // A payment that was applied, settled or challenged says so in its
+    // status; one that was refused says so in its error's code.
     const knownOutcome = {
       200: "applied", 202: "settled", 409: "settlement_pending",
       402: "payment_required", 410: "expired",
     }[settled.status];
-    if (!knownOutcome || settled.body?.status !== knownOutcome) {
+    const said = settled.status === 409 || settled.status === 410
+      ? errorIn(settled.body)?.code
+      : settled.body?.status;
+    if (!knownOutcome || said !== knownOutcome) {
       return {
         status: settled.status,
         body: {
@@ -199,18 +205,20 @@ export function paymentCancellation(
   return {
     status: 0,
     ...(intent && {intent}),
-    body: {
-      problem_code: "canceled",
-      outcome: dispatched ? "unknown" : "canceled",
-      payment_intent_id: intent?.id ?? null,
-      status_url: intent?.id ? `${INTENTS_PATH}/${encodeURIComponent(intent.id)}` : null,
-      error: submitted
+    body: refusal(
+      "canceled",
+      submitted
         ? "Canceled after signed submission began. Payment may have settled; cancellation does not reverse it."
         : "The payment call was canceled. An issued server request or wallet prompt may still finish.",
-      next_action: intent?.id
+      intent?.id
         ? "Read this intent's status before taking another payment action. Do not pay again automatically."
         : "Check the current page before retrying. No payment intent ID was returned.",
-    },
+      {
+        outcome: dispatched ? "unknown" : "canceled",
+        payment_intent_id: intent?.id ?? null,
+        status_url: intent?.id ? `${INTENTS_PATH}/${encodeURIComponent(intent.id)}` : null,
+      },
+    ),
   };
 }
 
@@ -335,7 +343,7 @@ async function request(
 function unreachable(problem: string): HttpAnswer {
   return {
     status: 0,
-    body: {error: problem, problem_code: "unreachable"},
+    body: refusal("unreachable", problem, "Check the page is open and online, then try again."),
     challenge: null,
     paymentResponse: null,
   };
