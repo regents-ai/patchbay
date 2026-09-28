@@ -24,7 +24,10 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
 
     refute policy =~ "unsafe-eval"
     assert policy =~ "default-src 'none'"
-    assert policy =~ "script-src 'self' https://challenges.cloudflare.com;"
+
+    assert policy =~
+             "script-src 'self' https://challenges.cloudflare.com https://js.stripe.com https://*.js.stripe.com;"
+
     assert policy =~ "frame-ancestors 'none'"
     assert policy =~ "connect-src 'self' https://auth.privy.io"
     assert policy =~ "https://explorer-api.walletconnect.com"
