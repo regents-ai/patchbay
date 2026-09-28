@@ -1,19 +1,27 @@
-// The colour theme travels in a cookie so the server renders it before the
-// first paint. The switch writes the cookie and restyles the page at once.
+// The colour theme. A theme the visitor chose travels in a cookie so the server
+// renders it before the first paint, and it always wins. Without one the page
+// follows the device: light when the device asks for light, dark otherwise.
+// Every page loads this in its head, before the body is drawn, so a device that
+// asks for light never sees the dark page first.
 const root = document.documentElement
 const themeCookie = "regent_theme"
 const themeMaxAge = 60 * 60 * 24 * 365
+const deviceLight = window.matchMedia("(prefers-color-scheme: light)")
 
 type Theme = "light" | "dark"
 
-function savedTheme(): Theme {
+function chosenTheme(): Theme | undefined {
   const prefix = `${themeCookie}=`
   const value = document.cookie
     .split("; ")
     .find(cookie => cookie.startsWith(prefix))
     ?.slice(prefix.length)
 
-  return value === "dark" ? "dark" : "light"
+  return value === "light" || value === "dark" ? value : undefined
+}
+
+function currentTheme(): Theme {
+  return chosenTheme() ?? (deviceLight.matches ? "light" : "dark")
 }
 
 function apply(theme: Theme) {
@@ -38,10 +46,14 @@ document.addEventListener("click", event => {
   apply(theme)
 })
 
-// A page restored from the back-forward cache keeps the theme it was left in.
-window.addEventListener("pageshow", () => apply(savedTheme()))
-window.addEventListener("phx:page-loading-stop", () => apply(savedTheme()))
-apply(savedTheme())
+// The switch is drawn after this runs, so it takes the theme once the page is
+// read. A page restored from the back-forward cache keeps the theme it was left
+// in, and a device that changes its setting restyles a page nobody chose for.
+document.addEventListener("DOMContentLoaded", () => apply(currentTheme()))
+window.addEventListener("pageshow", () => apply(currentTheme()))
+window.addEventListener("phx:page-loading-stop", () => apply(currentTheme()))
+deviceLight.addEventListener("change", () => apply(currentTheme()))
+apply(currentTheme())
 
 // A module, so its names stay its own.
 export {}

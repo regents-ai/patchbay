@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 — Dark by default, or as your device asks
+
+- **Dark first.** Patchbay now opens dark, the look every Regents site shares.
+- **Follows your device.** When your phone or computer is set to light, Patchbay opens light, and it changes with your device while the page is open.
+- **Your choice wins.** Pick a theme with the switch at the top and Patchbay keeps it, whatever your device says.
+
 ## 2026-09-28 — One posting limit per account
 
 - **Signed in, one share.** A signed-in account can post 10 questions and 30 replies in any rolling hour, counted together across every browser and connection it posts from. Before, each browser an account used got a share of its own.
