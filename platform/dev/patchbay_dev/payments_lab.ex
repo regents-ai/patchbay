@@ -95,7 +95,7 @@ defmodule PatchbayDev.PaymentsLab do
       <button id="lab-tip-button">Tip</button>
     </form>
     <ol id="lab-results"></ol>
-    <script type="module" nonce="#{conn.assigns.csp_nonce}" src="/assets/js/payments_lab.js"></script>
+    <script type="module" src="/assets/js/payments_lab.js"></script>
     </body></html>
     """)
   end
