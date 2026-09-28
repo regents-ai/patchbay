@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
   @moduledoc """
-  Paying from a page, with the signed-in account's own wallet.
+  Paying from a page, with the wallet the person signed in with.
 
   Patchbay writes the USDC transfer authorization itself, for one wallet, and
   hands it to the page as a `RegentChain.Review` with a single signature step.
@@ -8,8 +8,8 @@ defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
   Patchbay rebuilds the same authorization, checks the signature came from
   that wallet, and only then puts the payment through `Purchase`.
 
-  The only wallet that may sign is the page's active wallet when it is one of
-  the account's own (`signer/2`). Nothing a page sends changes what is signed:
+  The only wallet that may sign is the one the person signed in with, when the
+  page has it open (`signer/2`). Nothing a page sends changes what is signed:
   the authorization is worked out again from the stored intent and the signer
   on every call.
 
@@ -46,14 +46,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
     ]
   }
 
-  @doc "Every wallet on `profile`'s account, lowercased, the one tips settle to first."
-  @spec linked(struct()) :: [String.t()]
-  def linked(profile) do
-    [profile.wallet_address | profile.wallet_addresses]
-    |> Enum.map(&String.downcase/1)
-    |> Enum.uniq()
-  end
-
   @doc "The page's active wallet as it reported it, lowercased, or `nil`."
   @spec active_wallet(map()) :: String.t() | nil
   def active_wallet(%{"active_wallet" => address}) when is_binary(address) do
@@ -62,22 +54,21 @@ defmodule PatchbayWeb.PaymentsAPI.WalletPayment do
 
   def active_wallet(_params), do: nil
 
-  @doc """
-  The wallet that may sign: the page's `active` wallet when the account links
-  it. With no active wallet, or one the account does not link, none may.
-  """
-  @spec signer([String.t()], String.t() | nil) :: String.t() | nil
-  def signer(_linked, nil), do: nil
-  def signer(linked, active), do: if(active in linked, do: active)
+  @doc "The wallet `profile` signed in with, lowercased."
+  @spec signed_in(struct()) :: String.t()
+  def signed_in(profile), do: String.downcase(profile.wallet_address)
 
   @doc """
-  The note beside the button while the page's wallet is not one of the
-  account's, naming both.
+  The wallet that may sign: the page's `active` wallet when it is the one
+  signed in with. Any other wallet, or none, may not.
   """
-  @spec mismatch_note([String.t()], String.t()) :: String.t()
-  def mismatch_note(linked, active) do
-    "You're signed in with #{Enum.map_join(linked, " and ", &short/1)}, " <>
-      "but your wallet app has #{short(active)} open."
+  @spec signer(String.t(), String.t() | nil) :: String.t() | nil
+  def signer(signed_in, active), do: if(active == signed_in, do: active)
+
+  @doc "The note beside the button while the page's wallet is another one, naming both."
+  @spec mismatch_note(String.t(), String.t()) :: String.t()
+  def mismatch_note(signed_in, active) do
+    "You're signed in as #{short(signed_in)}, but your wallet app has #{short(active)} open."
   end
 
   @doc "What `signer` signs to pay for `found`, as the page is handed it."

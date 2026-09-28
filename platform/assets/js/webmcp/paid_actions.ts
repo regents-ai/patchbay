@@ -55,7 +55,7 @@ type HttpAnswer = {
 type WalletReview = {id: string; signer: string; chain: StepChain; steps?: SignatureStep[]};
 
 /**
- * Pays for one action end to end with the account's own wallet: creates the
+ * Pays for one action end to end with the signed-in wallet: creates the
  * payment intent, asks Patchbay to execute it from Privy's active wallet, and
  * when Patchbay answers with what that wallet is to sign, has the wallet sign
  * exactly that and sends back the signature alone.

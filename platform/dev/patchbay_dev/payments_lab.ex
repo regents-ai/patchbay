@@ -31,8 +31,8 @@ defmodule PatchbayDev.PaymentsLab do
         "$(cast index address 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 9)" \\
         0x00000000000000000000000000000000000000000000000000000000004c4b40
 
-  then open /dev/lab/payments. The lab account links wallets A and B, anvil's
-  first two accounts; C is not on it. Tips go to D. Stop anvil afterwards and
+  then open /dev/lab/payments. The lab account signs in with wallet A, anvil's
+  first account; B and C are other wallets. Tips go to D. Stop anvil afterwards and
   delete its folder under ~/.foundry/anvil/tmp; a copy of Base keeps growing.
   """
   use PatchbayWeb, :controller
@@ -47,10 +47,7 @@ defmodule PatchbayDev.PaymentsLab do
     {"B", "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"},
     {"C", "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"}
   ]
-  @linked [
-    "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-    "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
-  ]
+  @signed_in "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
   @recipient {"D", "0x90f79bf6eb2c4f870365e785982e1f101e93b906"}
 
   def show(conn, _params) do
@@ -105,13 +102,11 @@ defmodule PatchbayDev.PaymentsLab do
 
   def sign_in(conn, _params) do
     {_name, recipient} = @recipient
-    [settles_to | _others] = @linked
 
     payer =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:payments-lab",
-        wallet_address: settles_to,
-        wallet_addresses: @linked
+        wallet_address: @signed_in
       })
 
     tipped =
@@ -165,13 +160,11 @@ defmodule PatchbayDev.PaymentsLab do
 
   defp account(nil), do: "Signed out."
 
-  defp account(profile),
-    do:
-      "Signed in. The account links #{Enum.map_join(WalletPayment.linked(profile), " and ", &name/1)}."
+  defp account(profile), do: "Signed in with #{name(WalletPayment.signed_in(profile))}."
 
   defp wallet_choices do
     Enum.map_join(@wallets, "\n", fn {name, address} ->
-      on = if address in @linked, do: "on the account", else: "not on the account"
+      on = if address == @signed_in, do: "signed in", else: "another wallet"
 
       ~s(<label><input type="radio" name="lab-wallet" value="#{address}"> ) <>
         "#{name} <code>#{RegentFormat.short_address(address)}</code> (#{on})</label>"

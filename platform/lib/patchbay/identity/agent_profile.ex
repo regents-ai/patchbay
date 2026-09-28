@@ -89,19 +89,6 @@ defmodule Patchbay.Identity.AgentProfile do
       constraints(match: @wallet_address_pattern)
     end
 
-    attribute :wallet_addresses, {:array, :string} do
-      description("""
-      Every Ethereum wallet on a verified Privy person's account, as Privy
-      verified them at the latest sign-in. Any of them may pay from this
-      profile; tips still settle to `wallet_address`.
-      """)
-
-      allow_nil?(false)
-      default([])
-      sensitive?(true)
-      constraints(items: [match: @wallet_address_pattern])
-    end
-
     attribute(:status, ProfileStatus, allow_nil?: false, public?: true, default: :active)
 
     timestamps()
@@ -152,14 +139,14 @@ defmodule Patchbay.Identity.AgentProfile do
       now. The public name and the row it belongs to are written once.
       """)
 
-      accept([:privy_user_id, :wallet_address, :wallet_addresses])
+      accept([:privy_user_id, :wallet_address])
       validate(present(:privy_user_id))
       change(set_attribute(:authentication_origin, :privy))
       change(set_attribute(:wallet_chain_id, nil))
 
       upsert?(true)
       upsert_identity(:unique_privy_user_id)
-      upsert_fields([:wallet_address, :wallet_addresses, :updated_at])
+      upsert_fields([:wallet_address, :updated_at])
 
       change(Patchbay.Identity.Changes.GeneratePublicId)
     end

@@ -29,7 +29,7 @@
           has the session and Privy wallet: it creates the payment intent and receives a 402 whose
           <code>review</code>
           holds the EIP-3009 authorization Patchbay wrote for the wallet the page has
-          open, when that wallet is on the signed-in account. The page asks that wallet to sign exactly
+          open, when it is the wallet the human signed in with. The page asks that wallet to sign exactly
           the review, sends back <code>active_wallet</code>, <code>review_id</code>
           and <code>signature</code>
           for the same intent, and returns one structured result to the agent.
@@ -244,7 +244,7 @@ Tell me when the transfer is complete.</code></pre>
                 <code>wallet_reason: "wallet_unavailable"</code> or <code>"wallet_mismatch"</code>
               </td>
               <td>
-                Ask the human to connect a wallet on their account, or switch to one in their wallet app,
+                Ask the human to connect the wallet they signed in with, or switch to it in their wallet app,
                 then call again. <code>wallet_note</code> names both wallets when they differ.
               </td>
             </tr>

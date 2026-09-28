@@ -9,7 +9,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   SIWA-verified wallet, and never a value the request carries.
 
   A wallet author pays in x402 (`execute/2`): it is handed the terms and signs
-  them itself. A page pays with its account's own wallet (`pay/2`): Patchbay
+  them itself. A page pays with the wallet its person signed in with (`pay/2`): Patchbay
   writes the authorization that wallet signs, and only the signature comes
   back (`PatchbayWeb.PaymentsAPI.WalletPayment`).
   """
@@ -116,19 +116,19 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   end
 
   defp signer(actor, params) do
-    linked = WalletPayment.linked(actor)
+    signed_in = WalletPayment.signed_in(actor)
 
     case WalletPayment.active_wallet(params) do
       nil ->
         {:wallet, %{problem_code: "wallet_unavailable"}}
 
       active ->
-        case WalletPayment.signer(linked, active) do
+        case WalletPayment.signer(signed_in, active) do
           nil ->
             {:wallet,
              %{
                problem_code: "wallet_mismatch",
-               wallet_note: WalletPayment.mismatch_note(linked, active)
+               wallet_note: WalletPayment.mismatch_note(signed_in, active)
              }}
 
           signer ->

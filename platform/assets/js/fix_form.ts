@@ -17,7 +17,7 @@ const WORDS: Record<string, string> = {
   unready: "The wallet did not answer in time. Try again.",
   signed_out: "Sign in with a wallet first, at the top of the page.",
   wallet_unavailable: "Connect your wallet, then press again. Nothing was sent.",
-  wallet_mismatch: "Switch to a wallet on your account in your wallet app, then press again. Nothing was sent.",
+  wallet_mismatch: "Switch your wallet app to the wallet you signed in with, then press again. Nothing was sent.",
   network_mismatch: "Your wallet is on a different network. Switch it to Base, then press again. Nothing was sent.",
   wallet_declined: "Your wallet declined this. Nothing was sent.",
   sign_unconfirmed: "Your wallet didn't finish approving the fee. Nothing was paid.",

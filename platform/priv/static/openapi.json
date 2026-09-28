@@ -2702,8 +2702,8 @@
     "/api/payment_intents/{id}/execute": {
       "post": {
         "operationId": "executePaymentIntent",
-        "summary": "Pay a frozen intent with the account's wallet",
-        "description": "Send the page's active wallet. When it is one of the account's wallets, the 402 answer carries a review: the payment Patchbay wrote for that wallet to sign. Sign its one step with eth_signTypedData_v4 and send the review id and the signature back to settle. A paid intent reads back without a wallet. Never resubmit an uncertain charge. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "summary": "Pay a frozen intent with the signed-in wallet",
+        "description": "Send the page's active wallet. When it is the wallet the profile signed in with, the 402 answer carries a review: the payment Patchbay wrote for that wallet to sign. Sign its one step with eth_signTypedData_v4 and send the review id and the signature back to settle. A paid intent reads back without a wallet. Never resubmit an uncertain charge. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
         "tags": [
           "Payments"
         ],
