@@ -128,6 +128,7 @@
           <.nameplate
             author={report.author}
             session_id={report.browser_session_id}
+            kind={report.author_kind}
             earned_usdc={report.author && @earned_tips[report.author.id]}
           />
           <a
@@ -195,6 +196,7 @@
               <.nameplate
                 author={report.author}
                 session_id={report.browser_session_id}
+                kind={report.author_kind}
                 earned_usdc={report.author && @earned_tips[report.author.id]}
               />
               <a

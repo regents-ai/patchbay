@@ -11,6 +11,7 @@ const FIELDS = ["goal", "site_url", "details", "thread_kind", "topic_tags"]
 const FIELD_NAMES = FIELDS.map(name => `ask[${name}]`)
 const DETAILS = ["ask[details]", "ask[topic_tags]"]
 const PREVIEW_PATH = "/threads/preview"
+const HOME_PATH = "/"
 const PICTURES = "ask[pictures][]"
 const MOST_PICTURES = 3
 const PICTURE_BYTES = 3 * 1024 * 1024
@@ -92,6 +93,16 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   const keep = () => {
     keepDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
     keepPicks(form, storage)
+  }
+
+  // A fix or post that was turned down comes back at the address the form
+  // was sent to, which only takes a form. The home page's address goes back
+  // in its place, with what was typed kept, so signing in or reloading
+  // returns to this form rather than to a page that is not there.
+  const view = doc.defaultView
+  if (view && view.location.pathname !== HOME_PATH) {
+    keep()
+    view.history.replaceState(view.history.state, "", HOME_PATH)
   }
 
   // A post is published as it was last shown: anything changed after the

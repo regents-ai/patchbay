@@ -969,6 +969,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <.nameplate
               author={post.author}
               session_id={post.browser_session_id}
+              kind={post.author_kind}
               earned_usdc={post.author && @earned_tips[post.author.id]}
             />
             <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>

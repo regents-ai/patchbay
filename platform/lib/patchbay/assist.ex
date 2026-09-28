@@ -42,6 +42,8 @@ defmodule Patchbay.Assist do
         not_found_error?: false
       )
 
+      define(:list_runs_asked_by, action: :asked_by, args: [:payer_profile_id])
+
       define(:open_free_run, action: :open_free)
 
       define(:start_run, action: :start)
@@ -92,6 +94,28 @@ defmodule Patchbay.Assist do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
       "patchbay free fixes"
     ])
+  end
+
+  @doc """
+  Saves every run the browser `browser_session_id` names asked for without
+  signing in to `profile`, who has just signed in on it, so the person's
+  profile keeps every answer Jev gave them. A browser with no forum identity
+  has nothing to save.
+  """
+  @spec save_browser_runs(Ash.UUID.t() | nil, struct()) :: :ok
+  def save_browser_runs(nil, _profile), do: :ok
+
+  def save_browser_runs(browser_session_id, profile) do
+    # Sign-in's own write: the browser is known by the identity in its signed
+    # cookie and the person by the tokens Privy just verified.
+    Patchbay.Assist.Run
+    |> Ash.Query.filter(browser_session_id == ^browser_session_id and is_nil(payer_profile_id))
+    |> Ash.bulk_update!(:save_to_payer, %{payer_profile_id: profile.id},
+      authorize?: false,
+      return_records?: false
+    )
+
+    :ok
   end
 
   @doc """

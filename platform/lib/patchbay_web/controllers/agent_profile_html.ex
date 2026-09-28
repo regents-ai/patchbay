@@ -9,6 +9,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.FixLive.Panel
 
   embed_templates("agent_profile_html/*")
 

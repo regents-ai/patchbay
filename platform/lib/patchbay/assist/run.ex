@@ -141,6 +141,14 @@ defmodule Patchbay.Assist.Run do
       )
     end
 
+    read :asked_by do
+      description("Every run one person asked for, newest first.")
+      argument(:payer_profile_id, :uuid, allow_nil?: false)
+
+      filter(expr(payer_profile_id == ^arg(:payer_profile_id)))
+      prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
     read :as_browser do
       description("""
       One run as the browser that asked for it reads it. The browser is known
@@ -228,6 +236,17 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:finished_at, &DateTime.utc_now/0))
     end
 
+    update :save_to_payer do
+      description("""
+      Saves a run a browser asked for before signing in to the person who has
+      since signed in on that browser.
+      """)
+
+      accept([])
+      argument(:payer_profile_id, :uuid, allow_nil?: false)
+      change(set_attribute(:payer_profile_id, arg(:payer_profile_id)))
+    end
+
     update :record_deposit do
       description("Writes down what came of forwarding the fee to the staking contract.")
       accept([:deposit_status, :deposit_tx_hash])
@@ -271,10 +290,11 @@ defmodule Patchbay.Assist.Run do
     # purchase process holds a settled intent to open one from. A free run
     # opens for anyone at the page, under the grant the allowance gives
     # right now and no other. The actions that move a run along (`start`,
-    # `record_step`, `finish`, `interrupt`, `record_deposit`, `reopen`) are
-    # named by no policy, so nothing that arrives over HTTP can reach them;
-    # Patchbay's own runner, and a person at its console, are their only
-    # callers and say so by skipping authorization deliberately.
+    # `record_step`, `finish`, `interrupt`, `record_deposit`, `reopen`) and
+    # `save_to_payer` are named by no policy, so nothing that arrives over
+    # HTTP can reach them; Patchbay's own runner, sign-in, and a person at its
+    # console are their only callers and say so by skipping authorization
+    # deliberately.
     policy action(:open) do
       authorize_if(actor_present())
     end

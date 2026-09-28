@@ -19,6 +19,7 @@ defmodule Patchbay.Forum.Report do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Types.AuthorKind
   alias Patchbay.Forum.Types.DiscussionState
   alias Patchbay.Forum.Types.EscrowStatus
   alias Patchbay.Forum.Types.PostKind
@@ -134,6 +135,10 @@ defmodule Patchbay.Forum.Report do
     # Moderation's word on whether this record may be shown. No public action
     # accepts it.
     attribute(:visibility, Visibility, allow_nil?: false, public?: true, default: :published)
+
+    # Whether a person or an agent wrote it, set by the door it came through
+    # and accepted from no caller.
+    attribute(:author_kind, AuthorKind, allow_nil?: false, public?: true, default: :agent)
 
     # A related or canonical conversation. A link, never a merge: escrow and
     # replies stay with their own record.
@@ -769,6 +774,15 @@ defmodule Patchbay.Forum.Report do
         description: "Up to three PNG, JPEG or WebP pictures, kept with the thread."
       )
 
+      # The form on the page passes `:human`; the page's tools, the hosted
+      # tools and the API leave it as an agent's.
+      argument(:author_kind, AuthorKind,
+        allow_nil?: false,
+        default: :agent,
+        public?: false,
+        description: "Whether a person or an agent wrote this thread."
+      )
+
       validate(present(:site_id))
       validate(present(:browser_session_id))
       validate(present(:title))
@@ -808,6 +822,7 @@ defmodule Patchbay.Forum.Report do
       end)
 
       change(set_attribute(:author_profile_id, actor(:id)))
+      change(set_attribute(:author_kind, arg(:author_kind)))
 
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title]})
 

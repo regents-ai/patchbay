@@ -476,7 +476,10 @@ defmodule PatchbayWeb.Forum.BoardController do
             pictures: pictures
           }
           |> without_nils()
-          |> Forum.ask_question(actor: conn.assigns.current_profile)
+          |> Forum.ask_question(
+            actor: conn.assigns.current_profile,
+            private_arguments: %{author_kind: :human}
+          )
         end
       end)
 

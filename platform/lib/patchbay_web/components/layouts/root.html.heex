@@ -67,22 +67,32 @@
               data-pb-theme-toggle
             />
             <p id="pb-account-note" class="pb-account-note" role="status"></p>
-            <a
-              :if={@current_profile}
-              class="pb-account-name"
-              href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
-            >
-              {@current_profile.human_name}
-            </a>
-            <Regent.Primitives.button
-              :if={@current_profile}
-              variant="secondary"
-              type="button"
-              class="pb-account-button"
-              data-pb-account="sign-out"
-            >
-              Sign out
-            </Regent.Primitives.button>
+            <div :if={@current_profile} class="pb-account-chip">
+              <a
+                class="pb-account-name"
+                href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
+              >
+                {@current_profile.human_name}
+              </a>
+              <button
+                type="button"
+                class="pb-account-sign-out"
+                data-pb-account="sign-out"
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="square"
+                >
+                  <path d="M10 4H4v16h6M15 8l4 4-4 4M19 12H9" />
+                </svg>
+              </button>
+            </div>
             <Regent.Primitives.button
               :if={is_nil(@current_profile)}
               variant="primary"

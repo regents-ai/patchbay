@@ -117,6 +117,7 @@ defmodule PatchbayWeb.Router do
     plug :fetch_session
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug PatchbayWeb.Plugs.ForumSession
   end
 
   # Paid actions act on behalf of one signed-in profile and have no anonymous

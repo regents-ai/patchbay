@@ -54,6 +54,32 @@
     payments_enabled={@payments_enabled?}
   />
 
+  <section :if={@mine?} class="pb-sheet-section patchbay-board-card" id="patchbay-past-jev">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">ONLY YOU SEE THIS</p>
+        <h3>Past Jev Questions</h3>
+      </div>
+    </div>
+
+    <p :if={@jev_runs == []} class="patchbay-muted">
+      Nothing yet. What you ask Jev from the <a href={~p"/"}>home page</a>
+      is kept here with its answer.
+    </p>
+
+    <ol :if={@jev_runs != []} class="pb-past-jev">
+      <li :for={run <- @jev_runs}>
+        <a href={~p"/fixes/#{run.id}"}>{run.goal}</a>
+        <span class="patchbay-board-facts">
+          {URI.parse(run.site_url).host} · {Panel.headline(run)} ·
+          <time datetime={DateTime.to_iso8601(run.inserted_at)} title={moment(run.inserted_at)}>
+            {RegentFormat.relative_time(run.inserted_at, DateTime.utc_now())}
+          </time>
+        </span>
+      </li>
+    </ol>
+  </section>
+
   <section :if={@mine?} class="pb-sheet-section patchbay-board-card" id="patchbay-my-names">
     <div class="patchbay-card-heading">
       <div>

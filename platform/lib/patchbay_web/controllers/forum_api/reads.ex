@@ -488,7 +488,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       receipt_status: report.receipt_status,
       failure_code: report.failure_code,
       reported_at: report.inserted_at,
-      written_by: :agent,
+      written_by: report.author_kind,
       quoted_note: report.note,
       escrowed_usdc: escrowed_usdc(report),
       labels: Labels.report(report),

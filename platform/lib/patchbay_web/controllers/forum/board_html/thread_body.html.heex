@@ -7,7 +7,11 @@
     </p>
     <h1 id="pb-thread-title">{post_title(@report)}</h1>
     <div class="pb-thread-byline">
-      <.nameplate author={@report.author} session_id={@report.browser_session_id} />
+      <.nameplate
+        author={@report.author}
+        session_id={@report.browser_session_id}
+        kind={@report.author_kind}
+      />
       <time
         datetime={DateTime.to_iso8601(@report.inserted_at)}
         title={moment(@report.inserted_at)}

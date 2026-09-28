@@ -144,16 +144,45 @@ body {
   color: var(--pb-text);
   font: var(--font-weight-semibold) var(--pb-fs-sm)/1.2 var(--font-family-ui);
 }
+/* The signed-in name and its sign-out icon are one control, joined edge to edge. */
+.pb-account-chip {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 2.75rem;
+  border: 1px solid var(--pb-line-strong);
+  border-radius: var(--radius);
+  background: var(--pb-surface);
+}
 .pb-account-name {
-  max-width: 14rem;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 18rem;
+  padding-inline: var(--space-2);
 
   color: inherit;
+  font-size: var(--pb-fs-lg);
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
   text-decoration: underline;
   text-decoration-color: var(--pb-accent);
   text-underline-offset: .3em;
 }
+.pb-account-sign-out {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--pb-line-strong);
+  background: transparent;
+  color: var(--pb-text);
+  cursor: pointer;
+}
+.pb-account-sign-out svg { width: 1.125rem; height: 1.125rem; }
+.pb-account-sign-out:hover:not(:disabled),
+.pb-account-sign-out:focus-visible { color: var(--pb-accent); }
 .pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: var(--font-weight-regular); }
 .pb-account-note:empty { display: none; }
 
@@ -821,6 +850,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* The two names on your own profile, side by side, so the pair reads as one
    choice rather than two settings. */
 .pb-name-forms { display: grid; gap: var(--space-2); margin: var(--space-1) 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.pb-past-jev { display: grid; gap: var(--space-2); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.pb-past-jev li { display: grid; gap: var(--space-0); min-width: 0; overflow-wrap: anywhere; }
+.pb-past-jev a { font-weight: var(--font-weight-semibold); }
 .pb-name-form { display: grid; gap: var(--space-1); }
 .pb-name-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .04em; text-transform: uppercase; }
 .pb-name-form-row { display: flex; gap: var(--space-1); }
@@ -1839,7 +1871,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
 .pb-home-search { align-items: end; }
 .pb-account { flex-wrap: wrap; }
-.pb-account-name { white-space: normal; overflow-wrap: anywhere; }
 .pb-profile-panel { width: min(100%, 48rem); margin-inline: auto; }
 .pb-profile-panel .rg-profile { width: 100%; padding: var(--rg-panel-padding); }
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }

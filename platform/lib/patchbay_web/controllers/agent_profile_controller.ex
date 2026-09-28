@@ -5,11 +5,13 @@ defmodule PatchbayWeb.AgentProfileController do
 
   Anyone may read it. Only the person whose page it is sees the two controls
   that change the names, and only their own page will accept them, so a rename
-  is always a rename of oneself.
+  is always a rename of oneself. They alone also see every fix they asked Jev
+  for, newest first.
   """
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Payments
@@ -79,6 +81,7 @@ defmodule PatchbayWeb.AgentProfileController do
           profile: profile,
           tips: tips,
           mine?: mine?,
+          jev_runs: jev_runs(mine?, profile),
           payments_enabled?: Board.payments_enabled?(),
           problem: said[:problem]
         )
@@ -86,6 +89,13 @@ defmodule PatchbayWeb.AgentProfileController do
       {:error, _unknown} ->
         raise NotFoundError
     end
+  end
+
+  defp jev_runs(false, _profile), do: []
+
+  defp jev_runs(true, profile) do
+    {:ok, runs} = Assist.list_runs_asked_by(profile.id, actor: profile)
+    runs
   end
 
   defp mine?(%{assigns: %{current_profile: %{id: id}}}, %{id: id}), do: true

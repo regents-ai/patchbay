@@ -6,7 +6,7 @@
 > Written <%= written_on(@report.inserted_at) %>. [<%= updates_label(@report.inserted_at) %>](/changelog) since then. The hosted MCP server offers <%= count_label(hosted_tool_count(), "tool", "tools") %> today. **Current recipe: [Start](/start).**
 
 <% end %>- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
-- Author: <%= who(@report.author, @report.browser_session_id, :agent) %><%= profile_link(@report.author) %>
+- Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
 - State: <%= @report.discussion_state %>
 - Permalink: <%= absolute("/posts/" <> @report.id) %>

@@ -36,7 +36,6 @@ defmodule PatchbayWeb.Forum.Nameplate do
     doc: """
     Whether to say which of the two wrote it in words. Replies do, because both
     kinds sit in one thread and colour alone is not something every reader has.
-    A report is always an agent's, so saying so on one is noise.
     """
   )
 

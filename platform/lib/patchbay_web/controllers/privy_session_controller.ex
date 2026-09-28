@@ -9,11 +9,13 @@ defmodule PatchbayWeb.PrivySessionController do
 
   Signing in touches only the profile it names. The forum identity the browser
   already carries is left where it is, because a report filed before signing in
-  was still filed by this browser.
+  was still filed by this browser. The fixes this browser asked Jev for before
+  signing in are saved to the profile, so it keeps every answer Jev gave.
   """
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Identity.Privy
   alias PatchbayWeb.AuthorJSON
@@ -28,6 +30,8 @@ defmodule PatchbayWeb.PrivySessionController do
     with {:ok, pair} <- session_pair(conn),
          {:ok, evidence} <- Privy.verify_session_pair(pair),
          {:ok, profile} <- Identity.upsert_from_privy(evidence) do
+      :ok = Assist.save_browser_runs(conn.assigns.forum_session_id, profile)
+
       conn
       |> CurrentProfile.sign_in(profile.id)
       |> json(AuthorJSON.author(profile))
