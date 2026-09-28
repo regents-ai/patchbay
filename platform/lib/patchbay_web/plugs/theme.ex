@@ -1,9 +1,8 @@
 defmodule PatchbayWeb.Plugs.Theme do
   @moduledoc """
   Reads the colour theme the visitor last chose so the first server render
-  already carries it. Without a choice the page is dark; the theme script in
-  the page head turns it light before the first paint when the device asks for
-  light.
+  already carries it. Until they choose, the theme is nil and the page carries
+  none: the shared colours then follow the device, dark unless it asks for light.
 
   The value reaches an HTML attribute, and a cookie is the visitor's to write,
   so only the two themes the interface offers are ever accepted.
@@ -25,5 +24,5 @@ defmodule PatchbayWeb.Plugs.Theme do
   end
 
   defp theme(value) when value in ["light", "dark"], do: value
-  defp theme(_value), do: "dark"
+  defp theme(_value), do: nil
 end

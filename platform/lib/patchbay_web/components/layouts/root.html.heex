@@ -4,7 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content={if @theme == "dark", do: "#0F0F10", else: "#F6F4EA"} />
+    <meta
+      :if={@theme}
+      name="theme-color"
+      content={if @theme == "dark", do: "#0F0F10", else: "#F6F4EA"}
+    />
+    <meta
+      :if={!@theme}
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#F6F4EA"
+    />
+    <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#0F0F10" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <%!-- Who the page is being read by, and which Privy application it signs
     in against. The bridge that does the signing in is fetched only when
@@ -34,8 +45,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link phx-track-static rel="stylesheet" href={~p"/assets/js/app.css"} />
-    <script phx-track-static type="text/javascript" src={~p"/assets/js/theme.js"}>
-    </script>
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
   </head>

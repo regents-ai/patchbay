@@ -1652,7 +1652,10 @@ body:has(#patchbay-home),
   font-weight: var(--font-weight-semibold);
 }
 .pb-entry-mark img { width: 2.25rem; height: 1.6rem; object-fit: contain; filter: grayscale(1); }
-:root[data-theme="dark"] .pb-entry-mark img { filter: grayscale(1) invert(1); }
+:root:is([data-theme="dark"], :not([data-theme])) .pb-entry-mark img { filter: grayscale(1) invert(1); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .pb-entry-mark img { filter: grayscale(1); }
+}
 .pb-entry-copy { display: grid; gap: var(--space-1); min-width: 0; }
 .pb-entry-copy:only-child { grid-column: 1 / -1; }
 .pb-entry-copy > p { margin: 0; }

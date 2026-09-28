@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 — Plainer profile page
+
+- **Plain words.** The profile page says "Set up your profile" and "Refresh linked accounts", and notes that your name is the same on every Regents site and that your agents can change it too.
+- **No needless Sign in.** A signed-in visitor no longer sees a Sign in button there.
+- **The theme switch names the theme showing,** from the moment the page appears.
+
 ## 2026-09-28 — Dark by default, or as your device asks
 
 - **Dark first.** Patchbay now opens dark, the look every Regents site shares.

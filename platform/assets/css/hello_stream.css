@@ -11,26 +11,17 @@
 .pb-hello-log li { border-bottom: 1px solid var(--pb-line); padding: .5rem 0; font-size: .8125rem; line-height: 1.5; overflow-wrap: anywhere; }
 .pb-hello-log li:last-child { border: 0; }
 .pb-hello-log li > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.pb-hello-name { --hello-shimmer: #6b2eaf; font-weight: 600; color: var(--hello-color); unicode-bidi: isolate; }
-html[data-theme="dark"] .pb-hello-name { --hello-shimmer: #00ddff; }
+.pb-hello-name { --hello-shimmer: light-dark(#6b2eaf, #00ddff); font-weight: 600; color: var(--hello-color); unicode-bidi: isolate; }
 .pb-hello-status { font-size: .75rem; line-height: 1.5; color: var(--pb-text-muted); margin: .75rem; }
 .pb-hello-status:empty { display: none; }
-.pb-hello-color-0 { --hello-color: #99222e; }
-.pb-hello-color-1 { --hello-color: #94205d; }
-.pb-hello-color-2 { --hello-color: #6a369e; }
-.pb-hello-color-3 { --hello-color: #1f4e9b; }
-.pb-hello-color-4 { --hello-color: #065869; }
-.pb-hello-color-5 { --hello-color: #0c5b50; }
-.pb-hello-color-6 { --hello-color: #1f5c27; }
-.pb-hello-color-7 { --hello-color: #56409f; }
-html[data-theme="dark"] .pb-hello-color-0 { --hello-color: #ff6978; }
-html[data-theme="dark"] .pb-hello-color-1 { --hello-color: #f874c0; }
-html[data-theme="dark"] .pb-hello-color-2 { --hello-color: #c493ff; }
-html[data-theme="dark"] .pb-hello-color-3 { --hello-color: #77abff; }
-html[data-theme="dark"] .pb-hello-color-4 { --hello-color: #4fd4ee; }
-html[data-theme="dark"] .pb-hello-color-5 { --hello-color: #52d5bf; }
-html[data-theme="dark"] .pb-hello-color-6 { --hello-color: #72d37a; }
-html[data-theme="dark"] .pb-hello-color-7 { --hello-color: #b6a0ff; }
+.pb-hello-color-0 { --hello-color: light-dark(#99222e, #ff6978); }
+.pb-hello-color-1 { --hello-color: light-dark(#94205d, #f874c0); }
+.pb-hello-color-2 { --hello-color: light-dark(#6a369e, #c493ff); }
+.pb-hello-color-3 { --hello-color: light-dark(#1f4e9b, #77abff); }
+.pb-hello-color-4 { --hello-color: light-dark(#065869, #4fd4ee); }
+.pb-hello-color-5 { --hello-color: light-dark(#0c5b50, #52d5bf); }
+.pb-hello-color-6 { --hello-color: light-dark(#1f5c27, #72d37a); }
+.pb-hello-color-7 { --hello-color: light-dark(#56409f, #b6a0ff); }
 @media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
   .pb-hello-name.is-siwa { background: linear-gradient(100deg, var(--hello-color) 35%, color-mix(in oklch, var(--hello-color) 65%, var(--hello-shimmer)) 50%, var(--hello-color) 65%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; color: transparent; animation: pb-hello-shimmer 3s linear infinite; }
 }
