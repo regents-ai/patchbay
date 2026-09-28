@@ -6,7 +6,7 @@
     <:meta>
       <a
         class="patchbay-board-facts"
-        href={~p"/ask?site=#{@site.origin}&tool=#{@current_tool.name}"}
+        href={ask_path(site: @site.origin, tool: @current_tool.name)}
       >
         Ask about this tool →
       </a>
@@ -28,7 +28,7 @@
       posts={@posts}
       earned_tips={@earned_tips}
       empty="No one has posted about this tool yet."
-      ask={~p"/ask?site=#{@site.origin}&tool=#{@current_tool.name}"}
+      ask={ask_path(site: @site.origin, tool: @current_tool.name)}
     />
     <.page_nav
       base={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}

@@ -27,7 +27,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   # An ordinary question needs words and a site, and nothing else is borrowed
   # from a call: no digest, no verdict, no outcome. The site is named by its
   # origin, the same way a report names one; an unknown origin opens its board.
-  @thread_fields ~w(site title body_markdown thread_kind subject_tool_name tool_id topic_tags)
+  # The tools are up to five names the site published, and the page is the
+  # exact address on the site where they were used.
+  @thread_fields ~w(site title body_markdown thread_kind tools page_url topic_tags)
 
   # A caller may name its own write with a key of its choosing, so a write it
   # never heard back from can be sent again or looked up instead of posted
@@ -73,8 +75,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     with {:ok, site} <- thread_site(draft["site"]) do
       %{
         site_id: site.id,
-        tool_id: draft["tool_id"],
-        subject_tool_name: draft["subject_tool_name"],
+        tool_names: draft["tools"],
+        page_url: draft["page_url"],
         title: draft["title"],
         body_markdown: draft["body_markdown"],
         topic_tags: draft["topic_tags"],
@@ -132,20 +134,23 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   # names a report gives the same stored fields. The write's own failure is
   # worded only once the admitted transaction has rolled it back, board and all.
   defp thread_refusal({:error, error}) when is_exception(error),
-    do: {:error, {:invalid, Refusal.messages(error, %{})}}
+    do: {:error, {:invalid, Refusal.messages(error, %{tool_names: "tools"})}}
 
   defp thread_refusal(answer), do: answer
 
-  # Every field the form of a question carries is text — or, for tags, a list
-  # of text. Anything else did not come from an honest caller and is refused
+  # Every field the form of a question carries is text — or, for tools and
+  # tags, a list of text. Anything else did not come from an honest caller and is refused
   # before it reaches the write.
   defp thread_draft(params) do
     {typed, malformed} =
       params
       |> Map.take(@thread_fields)
       |> Map.split_with(fn
-        {"topic_tags", tags} -> is_list(tags) and Enum.all?(tags, &is_binary/1)
-        {_field, value} -> is_binary(value) or is_nil(value)
+        {field, names} when field in ["tools", "topic_tags"] ->
+          is_list(names) and Enum.all?(names, &is_binary/1)
+
+        {_field, value} ->
+          is_binary(value) or is_nil(value)
       end)
 
     if map_size(malformed) == 0,

@@ -16,7 +16,7 @@
     {
       "id": 3,
       "prompt": "Draft (do not send) the Patchbay question I should post: I called checkout_start on store.acme.example with {\"cart_id\":\"c_91\",\"email\":\"jane.doe@example.com\"} from Chrome 151, got {\"status\":\"pending\"} and then nothing for 5 minutes, and the order page never appeared. Show me the exact HTTP request I'd send from curl.",
-      "expected_output": "A well-formed question with site, 160-char-max title, body with tool, arguments (email redacted), result, expectation, browser, and what was tried; thread_kind question; subject_tool_name; plus the two-step curl recipe (cookie + csrf token, then POST /forum/threads), and a note not to include the email address.",
+      "expected_output": "A well-formed question with site, 160-char-max title, body with tool, arguments (email redacted), result, expectation, browser, and what was tried; thread_kind question; tools naming the tool; page_url with the exact address; plus the two-step curl recipe (cookie + csrf token, then POST /forum/threads), and a note not to include the email address.",
       "files": []
     }
   ]

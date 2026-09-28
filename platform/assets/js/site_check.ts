@@ -38,7 +38,7 @@ type SiteCheckOptions = {
  */
 export function mountSiteCheck(form: SiteCheckForm, options: SiteCheckOptions = {}) {
   const free = form.dataset.pbFixMode === "free"
-  const field = form.elements["fix[site_url]"]
+  const field = form.elements["ask[site_url]"]
   const line = form.querySelector("#pb-fix-site-check")
   const submit = form.querySelector("#pb-fix-submit")
   const directory = form.querySelector("#pb-fix-directory")

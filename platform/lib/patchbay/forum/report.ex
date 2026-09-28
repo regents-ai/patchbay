@@ -32,7 +32,7 @@ defmodule Patchbay.Forum.Report do
   @max_failure_code_bytes 64
   @max_title_bytes 640
   @max_body_bytes 16 * 1024
-  @max_subject_tool_name_bytes 64
+  @max_page_url_bytes 2048
   @max_client_request_id_bytes 128
 
   postgres do
@@ -115,13 +115,14 @@ defmodule Patchbay.Forum.Report do
     # `note` instead, which is kept verbatim.
     attribute(:body_markdown, :string, allow_nil?: true, public?: true)
 
-    # The name of the tool the thread is about when no observed version is
-    # named. Context only: it is not proof a tool was observed.
-    attribute :subject_tool_name, :string do
-      allow_nil?(true)
-      public?(true)
-      constraints(max_length: 64, match: Patchbay.Forum.ToolName.shape())
-    end
+    # The tools the thread is about, up to five, by the names the site
+    # published. A report against an observed tool carries that tool's name;
+    # a question's names are context only, not proof a tool was observed.
+    attribute(:tool_names, {:array, :string}, allow_nil?: false, public?: true, default: [])
+
+    # The exact https address the poster was on when they used the site's
+    # tools. The site itself is the domain; this is the page.
+    attribute(:page_url, :string, allow_nil?: true, public?: true)
 
     attribute(:topic_tags, {:array, :string}, allow_nil?: false, public?: true, default: [])
 
@@ -237,6 +238,11 @@ defmodule Patchbay.Forum.Report do
     )
 
     has_many(:replies, Patchbay.Forum.Reply)
+
+    # Pictures the author added to an ordinary thread, in the order sent.
+    has_many :pictures, Patchbay.Forum.PostPicture do
+      sort(position: :asc)
+    end
 
     # The reply the asker of a paid priority report chose as its answer. Only
     # `accept_reply` sets it, and only once.
@@ -403,7 +409,7 @@ defmodule Patchbay.Forum.Report do
       filter(
         expr(
           site_id == ^arg(:site_id) and visibility == :published and
-            (tool.name == ^arg(:tool_name) or subject_tool_name == ^arg(:tool_name))
+            ^arg(:tool_name) in tool_names
         )
       )
 
@@ -504,12 +510,12 @@ defmodule Patchbay.Forum.Report do
             ^arg(:term)
           ) or
             fragment(
-              "to_tsvector('english', coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-              subject_tool_name,
+              "to_tsvector('english', array_to_string(?, ' ')) @@ plainto_tsquery('english', ?)",
+              tool_names,
               ^arg(:term)
             ) or
             site.origin == ^arg(:term) or
-            tool.name == ^arg(:term) or
+            ^arg(:term) in tool_names or
             exists(
               replies,
               visibility == :published and
@@ -536,12 +542,7 @@ defmodule Patchbay.Forum.Report do
 
       filter(expr(is_nil(^arg(:site_id)) or site_id == ^arg(:site_id)))
 
-      filter(
-        expr(
-          is_nil(^arg(:tool_name)) or tool.name == ^arg(:tool_name) or
-            subject_tool_name == ^arg(:tool_name)
-        )
-      )
+      filter(expr(is_nil(^arg(:tool_name)) or ^arg(:tool_name) in tool_names))
 
       pagination(offset?: true, default_limit: 10, max_page_size: 50)
 
@@ -669,7 +670,7 @@ defmodule Patchbay.Forum.Report do
           "The receipt Patchbay returned for the call being reported, if there was one."
       )
 
-      change(Patchbay.Forum.Changes.AssignSiteFromTool)
+      change(Patchbay.Forum.Changes.FillFromTool)
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.VerifyReceipt)
@@ -711,7 +712,7 @@ defmodule Patchbay.Forum.Report do
         :payment_intent_id
       ])
 
-      change(Patchbay.Forum.Changes.AssignSiteFromTool)
+      change(Patchbay.Forum.Changes.FillFromTool)
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.RecordThreadEvent)
@@ -747,8 +748,8 @@ defmodule Patchbay.Forum.Report do
 
       accept([
         :site_id,
-        :tool_id,
-        :subject_tool_name,
+        :tool_names,
+        :page_url,
         :title,
         :body_markdown,
         :topic_tags,
@@ -763,14 +764,19 @@ defmodule Patchbay.Forum.Report do
         description: "What kind of conversation this is; a failure report is not one."
       )
 
+      argument(:pictures, {:array, :binary},
+        allow_nil?: false,
+        default: [],
+        description: "Up to three PNG, JPEG or WebP pictures, kept with the thread."
+      )
+
       validate(present(:site_id))
       validate(present(:browser_session_id))
       validate(present(:title))
-      validate(present(:body_markdown))
       # A request key and its digest travel together or not at all.
       validate(present(:request_digest), where: [present(:client_request_id)])
       validate(absent(:request_digest), where: [absent(:client_request_id)])
-      validate(Patchbay.Forum.Validations.ToolBelongsToSite)
+      validate(Patchbay.Forum.Validations.PageUrl)
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :title, max_bytes: @max_title_bytes}
@@ -783,10 +789,11 @@ defmodule Patchbay.Forum.Report do
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength,
-         attribute: :subject_tool_name, max_bytes: @max_subject_tool_name_bytes}
+         attribute: :page_url, max_bytes: @max_page_url_bytes}
       )
 
       change(Patchbay.Forum.Changes.NormalizeTopicTags)
+      change(Patchbay.Forum.Changes.NormalizeToolNames)
 
       # A question is the default kind; naming a failure report here is
       # refused because evidence-backed reports go through file_report.
@@ -808,11 +815,10 @@ defmodule Patchbay.Forum.Report do
 
       change(set_attribute(:author_profile_id, actor(:id)))
 
-      change(
-        {Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :subject_tool_name]}
-      )
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title]})
 
       change(Patchbay.Forum.Changes.RecordThreadEvent)
+      change(Patchbay.Forum.Changes.AttachPictures)
     end
 
     update :touch do

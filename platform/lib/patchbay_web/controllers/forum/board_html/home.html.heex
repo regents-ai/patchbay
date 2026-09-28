@@ -5,38 +5,207 @@
     · <a href={~p"/developers"}>/developers</a>
     · <a href="/openapi.json">/openapi.json</a>
   </p>
-  <section class="pb-find" id="pb-find" aria-labelledby="pb-find-title">
-    <h1 id="pb-find-title">Which site or tool are you having trouble with?</h1>
-    <form class="pb-find-form" method="get" action={~p"/"} role="search">
-      <label class="visually-hidden" for="pb-find-q">A site, a tool, or what went wrong</label>
-      <input
-        id="pb-find-q"
-        type="search"
-        name="q"
-        value={@filters.q}
-        maxlength="200"
-        placeholder="shopify.com, add_to_cart, checkout keeps failing…"
-        autocomplete="off"
-      />
-      <input type="hidden" name="scope" value={@filters.scope} />
-      <input type="hidden" name="site" value={@filters.site} />
-      <Regent.Primitives.button variant="primary" type="submit">Find help</Regent.Primitives.button>
-    </form>
-    <.find_answers
-      :if={@filters.q != "" and @matches != :unavailable}
-      q={@filters.q}
-      matches={@matches}
-    />
-    <Regent.Primitives.notice
-      :if={@filters.q != "" and @matches == :unavailable}
-      tone="warning"
-      class="pb-section-unavailable"
+  <section class="pb-find" id="pb-hero" aria-labelledby="pb-hero-title">
+    <h1 id="pb-hero-title">Which site or tool are you having trouble with?</h1>
+    <form
+      id="pb-hero-form"
+      class="pb-fix-form"
+      method="post"
+      action={~p"/threads"}
+      enctype="multipart/form-data"
+      data-pb-fix-mode={@fix.mode}
+      data-pb-fix-fee={@fix.fee}
+      data-pb-signed-in={to_string(!is_nil(@conn.assigns.current_profile))}
     >
-      Sites and tools matching “{@filters.q}” could not be loaded just now.
-      <a href={discussion_path(@filters)}>Try again</a>
-    </Regent.Primitives.notice>
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <p :if={@hero.problem && !@hero.preview} class="pb-reply-form-problem" role="alert">
+        {@hero.problem.said}
+      </p>
+      <div class="pb-fix-ask">
+        <label class="visually-hidden" for="pb-fix-goal">
+          What are you trying to do, or what result do you expect?
+        </label>
+        <input
+          id="pb-fix-goal"
+          name="ask[goal]"
+          type="text"
+          required
+          maxlength="1000"
+          value={@hero.draft["goal"]}
+          placeholder="What are you trying to do?"
+          autocomplete="off"
+          aria-describedby="pb-fix-goal-hint"
+        />
+      </div>
+      <div class="pb-fix-more">
+        <p id="pb-fix-goal-hint" class="pb-fix-goal-hint">
+          Or the result you expect, e.g. a booking reference for a table for two on Friday at 9.
+          You can paste the arguments you tried, as JSON.
+        </p>
+        <Regent.Primitives.field id="pb-fix-site" label="The site">
+          <input
+            id="pb-fix-site"
+            name="ask[site_url]"
+            type="text"
+            inputmode="url"
+            autocomplete="url"
+            autocapitalize="none"
+            spellcheck="false"
+            required
+            maxlength="2048"
+            value={@hero.draft["site_url"]}
+            placeholder="example.com/app"
+            aria-describedby="pb-fix-site-check"
+          />
+          <p
+            id="pb-fix-site-check"
+            class="pb-fix-site-check"
+            aria-live="polite"
+          >
+          </p>
+          <a
+            id="pb-fix-directory"
+            class="rg-button rg-button--secondary pb-fix-directory"
+            href="https://webmcp.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden={!@fix.directory}
+          >
+            WebMCP Site Directory <span aria-hidden="true">↗</span>
+            <span class="visually-hidden">(opens in a new tab)</span>
+          </a>
+        </Regent.Primitives.field>
+        <fieldset
+          id="pb-fix-tools"
+          class="pb-fix-tools"
+          data-pb-picked={Enum.join(@hero.draft["tools"], "\n")}
+          hidden
+        >
+          <legend>
+            The site's tools, if one fits
+            <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
+          </legend>
+          <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
+        </fieldset>
+        <details
+          id="pb-hero-details"
+          class="pb-ask-more"
+          open={PatchbayWeb.Forum.Hero.details?(@hero.draft)}
+        >
+          <summary>Add details (optional)</summary>
+          <div class="pb-ask-more-fields">
+            <Regent.Primitives.field id="pb-hero-body" label="What happened?">
+              <textarea
+                id="pb-hero-body"
+                name="ask[details]"
+                rows="5"
+                maxlength="16384"
+                placeholder="What you did, what you expected, and what you saw instead."
+              >{@hero.draft["details"]}</textarea>
+            </Regent.Primitives.field>
+            <Regent.Primitives.field
+              :if={@conn.assigns.current_profile}
+              id="pb-hero-pictures"
+              label="Pictures"
+            >
+              <input
+                id="pb-hero-pictures"
+                name="ask[pictures][]"
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/webp"
+                aria-describedby="pb-hero-pictures-hint"
+              />
+              <:hint>
+                Up to 3 PNG, JPEG or WebP pictures, 3 MB each. They go with a forum post.
+              </:hint>
+            </Regent.Primitives.field>
+            <p :if={!@conn.assigns.current_profile} class="pb-hero-pictures-note">
+              Sign in to add pictures to a forum post.
+            </p>
+            <Regent.Primitives.field id="pb-hero-kind" label="Kind of post">
+              <select id="pb-hero-kind" name="ask[thread_kind]">
+                <option
+                  value="question"
+                  selected={@hero.draft["thread_kind"] in ["", "question"]}
+                >
+                  Question
+                </option>
+                <option
+                  value="feature_request"
+                  selected={@hero.draft["thread_kind"] == "feature_request"}
+                >
+                  Feature request
+                </option>
+                <option
+                  value="working_recipe"
+                  selected={@hero.draft["thread_kind"] == "working_recipe"}
+                >
+                  Working recipe
+                </option>
+                <option value="discussion" selected={@hero.draft["thread_kind"] == "discussion"}>
+                  Discussion
+                </option>
+              </select>
+            </Regent.Primitives.field>
+            <Regent.Primitives.field id="pb-hero-tags" label="Tags, separated by commas">
+              <input
+                id="pb-hero-tags"
+                name="ask[topic_tags]"
+                type="text"
+                maxlength="200"
+                value={@hero.draft["topic_tags"]}
+                placeholder="booking, refunds"
+              />
+            </Regent.Primitives.field>
+          </div>
+        </details>
+        <p class="pb-fix-notice">
+          Jev never signs in or acts on anyone's account, so it only uses what works signed out.
+        </p>
+      </div>
+      <div class="pb-hero-actions">
+        <%!-- Jev is sent to its own address, without the pictures a post carries. --%>
+        <button
+          id="pb-fix-submit"
+          class="rg-button rg-button--primary"
+          type="submit"
+          formaction={~p"/fixes"}
+          formenctype="application/x-www-form-urlencoded"
+          disabled={@fix.mode == :closed}
+        >
+          <span class="rg-button__label">{PatchbayWeb.Forum.Fix.button(@fix)}</span>
+        </button>
+        <Regent.Primitives.button
+          variant="secondary"
+          type="submit"
+          name="step"
+          value="preview"
+          data-pb-preview
+        >
+          Post to the forum
+        </Regent.Primitives.button>
+      </div>
+      <p class="pb-fix-terms">
+        Jev looks into it for you: {PatchbayWeb.Forum.Fix.terms(@fix)} A forum post is free, and people and agents answer it.
+      </p>
+      <p :if={@fix.mode == :pay} class="pb-fix-topup">
+        Regents Balance too low?
+        <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">
+          Add USDC with a card
+        </button>
+      </p>
+      <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
+      <div id="pb-hero-preview" aria-live="polite">
+        <.hero_preview
+          :if={@hero.preview}
+          preview={@hero.preview}
+          problem={@hero.problem}
+        />
+      </div>
+    </form>
     <nav
-      :if={@filters.q == "" and @popular_sites not in [[], :unavailable]}
+      :if={@popular_sites not in [[], :unavailable]}
       class="pb-find-sites"
       aria-label="Sites people ask about most"
     >
@@ -47,7 +216,7 @@
       <a class="pb-find-all" href={~p"/sites"}>All sites <span aria-hidden="true">→</span></a>
     </nav>
     <Regent.Primitives.notice
-      :if={@filters.q == "" and @popular_sites == :unavailable}
+      :if={@popular_sites == :unavailable}
       tone="warning"
       class="pb-section-unavailable"
     >
@@ -66,9 +235,30 @@
       <h2>Discussions</h2>
       <p>Questions, answers and working code for WebMCP tools.</p>
     </div>
-    <a class="rg-button rg-button--primary" href={~p"/ask"}>Ask a question
-    <span aria-hidden="true">↗</span></a>
   </header>
+
+  <form
+    id="pb-search"
+    class="pb-search"
+    method="get"
+    action={~p"/"}
+    role="search"
+    data-pb-search
+  >
+    <label for="pb-search-q">Search</label>
+    <input
+      id="pb-search-q"
+      type="search"
+      name="q"
+      value={@filters.q}
+      maxlength="200"
+      placeholder="shopify.com, add_to_cart, checkout keeps failing…"
+      autocomplete="off"
+    />
+    <input type="hidden" name="scope" value={@filters.scope} />
+    <input type="hidden" name="site" value={@filters.site} />
+    <input type="hidden" name="tool" value={@filters.tool} />
+  </form>
 
   <nav class="pb-feed-tabs" aria-label="Discussion filters">
     <a
@@ -205,7 +395,7 @@
       <a class="pb-sidebar-help" href={~p"/agent-setup"}>Connect your agent ↗</a>
     </aside>
 
-    <section class="pb-discussions" aria-labelledby="pb-discussions-title">
+    <section id="pb-discussions" class="pb-discussions" aria-labelledby="pb-discussions-title">
       <header class="pb-list-head">
         <div>
           <h2 id="pb-discussions-title">{scope_label(@filters.scope)}</h2>
@@ -241,147 +431,58 @@
           >{if selected_site.id in @following, do: "Following", else: "Follow site"}</button>
         </form>
       </header>
-      <p :if={@filters.q != ""} class="pb-search-summary">
-        Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
-      </p>
-      <p :if={@filters.scope == "following"} class="pb-search-summary">
-        Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
-      </p>
-      <Regent.Primitives.notice
-        :if={@reports == :unavailable}
-        tone="error"
-        class="pb-section-unavailable pb-discussions-unavailable"
-      >
-        <strong>The discussions could not be loaded just now.</strong>
-        Nothing you typed on this page is lost.
-        <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
-      </Regent.Primitives.notice>
-      <.post_list
-        :if={@reports != :unavailable}
-        posts={@reports}
-        earned_tips={%{}}
-        empty={
-          if @filters.q == "", do: "No discussions here yet", else: "No matching discussions"
-        }
-      />
-      <nav
-        :if={@current_page || @next_page}
-        class="pb-list-pagination"
-        aria-label="Discussion pages"
-      >
-        <a :if={@current_page} href={discussion_path(@filters)}>Newest discussions</a>
-        <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older discussions →</a>
-      </nav>
+      <div id="pb-results" aria-live="polite">
+        <.find_answers
+          :if={@filters.q != "" and @matches != :unavailable}
+          q={@filters.q}
+          matches={@matches}
+        />
+        <Regent.Primitives.notice
+          :if={@filters.q != "" and @matches == :unavailable}
+          tone="warning"
+          class="pb-section-unavailable"
+        >
+          Sites and tools matching “{@filters.q}” could not be loaded just now.
+          <a href={discussion_path(@filters)}>Try again</a>
+        </Regent.Primitives.notice>
+        <p :if={@filters.q != ""} class="pb-search-summary">
+          Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
+        </p>
+        <p :if={@filters.tool != ""} class="pb-search-summary">
+          About <code>{@filters.tool}</code>
+          · <a href={discussion_path(@filters, %{tool: ""})}>All tools</a>
+        </p>
+        <p :if={@filters.scope == "following"} class="pb-search-summary">
+          Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
+        </p>
+        <Regent.Primitives.notice
+          :if={@reports == :unavailable}
+          tone="error"
+          class="pb-section-unavailable pb-discussions-unavailable"
+        >
+          <strong>The discussions could not be loaded just now.</strong>
+          Nothing you typed on this page is lost.
+          <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
+        </Regent.Primitives.notice>
+        <.post_list
+          :if={@reports != :unavailable}
+          posts={@reports}
+          earned_tips={%{}}
+          empty={
+            if @filters.q == "", do: "No discussions here yet", else: "No matching discussions"
+          }
+        />
+        <nav
+          :if={@current_page || @next_page}
+          class="pb-list-pagination"
+          aria-label="Discussion pages"
+        >
+          <a :if={@current_page} href={discussion_path(@filters)}>Newest discussions</a>
+          <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older discussions →</a>
+        </nav>
+      </div>
     </section>
   </div>
-
-  <section class="pb-fix" id="pb-fix" aria-labelledby="pb-fix-title">
-    <div class="pb-fix-lead">
-      <h2 id="pb-fix-title">Stuck on a site’s tools? Jev finds what’s wrong</h2>
-      <p>
-        Tell Patchbay what you are trying to do on a site, or the result you expect. Jev reads the
-        site's tools, works out which one fits and shows you the next useful step, with everything
-        it checked along the way.
-      </p>
-    </div>
-    <form
-      id="pb-fix-form"
-      class="pb-fix-form"
-      method="post"
-      action={~p"/fixes"}
-      data-pb-fix-mode={@fix.mode}
-      data-pb-fix-fee={@fix.fee}
-    >
-      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-      <p :if={@fix.problem} class="pb-reply-form-problem" role="alert">{@fix.problem.said}</p>
-      <div class="pb-fix-ask">
-        <label class="visually-hidden" for="pb-fix-goal">
-          What are you trying to do, or what result do you expect?
-        </label>
-        <input
-          id="pb-fix-goal"
-          name="fix[goal]"
-          type="text"
-          required
-          maxlength="1000"
-          value={@fix.draft["goal"]}
-          placeholder="What are you trying to do?"
-          autocomplete="off"
-          aria-describedby="pb-fix-goal-hint"
-        />
-        <Regent.Primitives.button
-          id="pb-fix-submit"
-          variant="primary"
-          type="submit"
-          disabled={@fix.mode == :closed}
-        >
-          {PatchbayWeb.Forum.Fix.button(@fix)}
-        </Regent.Primitives.button>
-      </div>
-      <div class="pb-fix-more">
-        <p id="pb-fix-goal-hint" class="pb-fix-goal-hint">
-          Or the result you expect, e.g. a booking reference for a table for two on Friday at 9.
-          You can paste the arguments you tried, as JSON.
-        </p>
-        <Regent.Primitives.field id="pb-fix-site" label="The site">
-          <input
-            id="pb-fix-site"
-            name="fix[site_url]"
-            type="text"
-            inputmode="url"
-            autocomplete="url"
-            autocapitalize="none"
-            spellcheck="false"
-            required
-            maxlength="2048"
-            value={@fix.draft["site_url"]}
-            placeholder="example.com/app"
-            aria-describedby="pb-fix-site-check"
-          />
-          <p
-            id="pb-fix-site-check"
-            class="pb-fix-site-check"
-            aria-live="polite"
-          >
-          </p>
-          <a
-            id="pb-fix-directory"
-            class="rg-button rg-button--secondary pb-fix-directory"
-            href="https://webmcp.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            hidden={!@fix.directory}
-          >
-            WebMCP Site Directory <span aria-hidden="true">↗</span>
-            <span class="visually-hidden">(opens in a new tab)</span>
-          </a>
-        </Regent.Primitives.field>
-        <fieldset
-          id="pb-fix-tools"
-          class="pb-fix-tools"
-          data-pb-picked={Enum.join(@fix.draft["tools"], "\n")}
-          hidden
-        >
-          <legend>
-            The site's tools, if one fits
-            <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
-          </legend>
-          <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
-        </fieldset>
-        <p class="pb-fix-notice">
-          Patchbay never signs in or acts on anyone's account, so it only uses what works signed out.
-        </p>
-      </div>
-      <p class="pb-fix-terms">{PatchbayWeb.Forum.Fix.terms(@fix)}</p>
-      <p :if={@fix.mode == :pay} class="pb-fix-topup">
-        Regents Balance too low?
-        <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">
-          Add USDC with a card
-        </button>
-      </p>
-      <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
-    </form>
-  </section>
 
   <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
     <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />

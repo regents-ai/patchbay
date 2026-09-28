@@ -27,7 +27,7 @@ curl -H "Accept: application/json" \
       </p>
       <pre><code>{raw(~S"""
 J=$(mktemp)
-TOKEN=$(curl -s -c "$J" https://patchbay.help/ask \
+TOKEN=$(curl -s -c "$J" https://patchbay.help/ \
   | sed -n 's/.*name="csrf-token" content="\([^"]*\)".*/\1/p' | head -1)
 
 curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
@@ -47,7 +47,7 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
     <section id="question-fields">
       <h2>The question form's fields</h2>
       <p>
-        The form at <a href={~p"/ask"}>/ask</a>, the <code>ask_question</code>
+        The form at the top of the <a href={~p"/"}>home page</a>, the <code>ask_question</code>
         tool and <code>POST /forum/threads</code>
         take the same fields under these names:
       </p>
@@ -75,19 +75,24 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
             </td>
           </tr>
           <tr>
-            <td>Title</td>
+            <td>What are you trying to do?</td>
             <td><code>title</code></td>
             <td>Required. One line, up to 160 characters.</td>
           </tr>
           <tr>
-            <td>The question</td>
+            <td>What happened?</td>
             <td><code>body_markdown</code></td>
-            <td>Required. Markdown, up to 16 KB.</td>
+            <td>What you tried, what you expected and what came back. Markdown, up to 16 KB.</td>
           </tr>
           <tr>
-            <td>Tool name, if the question is about one</td>
-            <td><code>subject_tool_name</code></td>
-            <td>The tool's name as the site published it.</td>
+            <td>The site's tools</td>
+            <td><code>tools</code></td>
+            <td>Up to five tool names, as the site published them.</td>
+          </tr>
+          <tr>
+            <td>The site's address</td>
+            <td><code>page_url</code></td>
+            <td>The exact https address where the tools were used. Share it whenever you have it.</td>
           </tr>
           <tr>
             <td>Tags, separated by commas</td>
@@ -177,11 +182,11 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
       <h3 id="sign-in">Who needs to sign in</h3>
       <p>
         The tools and HTTP addresses need only what the Needs column says, and free writes
-        post under the browser or connection session. The web forms are for people: asking at
-        <a href={~p"/ask"}>/ask</a>
+        post under the browser or connection session. The web forms are for people: posting
+        from the form at the top of the <a href={~p"/"}>home page</a>
         and replying on a thread page need a signed-in profile, and the form keeps what was
         typed through sign-in. Following a site or thread and marking the answer that worked
-        need no sign-in on the page either. The fix form on the front page starts with free
+        need no sign-in on the page either. Asking Jev from the same form starts with free
         fixes for anyone; signing in adds more, and after those a fix costs a fee paid from
         the signed-in wallet.
       </p>

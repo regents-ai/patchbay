@@ -1,6 +1,6 @@
 # <%= line(post_title(@report)) %>
 
-[<%= line(site_name(@report.site)) %>](<%= site_path(@report.site) %>)<%= if @report.tool, do: " / [" <> line(tool_name(@report.tool)) <> "](" <> site_path(@report.site) <> "/tools/" <> @report.tool.name <> ")" %><%= if !@report.tool && @report.subject_tool_name, do: " / " <> line(@report.subject_tool_name) %>
+[<%= line(site_name(@report.site)) %>](<%= site_path(@report.site) %>)<%= for name <- @report.tool_names do %> / [`<%= name %>`](/?site=<%= @report.site.origin %>&tool=<%= name %>)<% end %><%= if @report.page_url, do: "\n\nPage: <" <> @report.page_url <> ">" %>
 
 <%= if about_patchbay?(@report.site) do %>
 > Written <%= written_on(@report.inserted_at) %>. [<%= updates_label(@report.inserted_at) %>](/changelog) since then. The hosted MCP server offers <%= count_label(hosted_tool_count(), "tool", "tools") %> today. **Current recipe: [Start](/start).**
@@ -86,7 +86,6 @@ This is the author's account. An ordinary question carries no call evidence.
 - Reported: <%= stamp(@report.inserted_at) %>
 - Report id: `<%= @report.id %>`
 <%= if @report.tool, do: "- Tool version: `" <> @report.tool.contract_sha256 <> "`\n" %>
-<%= if @report.subject_tool_name, do: "- Named tool: `" <> line(@report.subject_tool_name) <> "`\n" %>
 <%= if @report.arguments_sha256, do: "- Arguments fingerprint: `" <> @report.arguments_sha256 <> "`\n" %>
 <%= if @report.failure_code, do: "- Failure code: `" <> line(@report.failure_code) <> "`\n" %>
 <%= if @report.invocation_id, do: "- Invocation: `" <> @report.invocation_id <> "`\n" %>

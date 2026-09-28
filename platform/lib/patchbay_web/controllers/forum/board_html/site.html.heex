@@ -2,7 +2,7 @@
   <.board_header title={site_name(@site)}>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
-      <a class="patchbay-board-facts" href={~p"/ask?site=#{@site.origin}"}>Ask about this site →</a>
+      <a class="patchbay-board-facts" href={ask_path(site: @site.origin)}>Ask about this site →</a>
       <span class="patchbay-generation">{site_domain(@site)}</span>
     </:meta>
   </.board_header>
@@ -121,7 +121,7 @@
       posts={@posts}
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
-      ask={~p"/ask?site=#{@site.origin}"}
+      ask={ask_path(site: @site.origin)}
     />
     <.page_nav
       base={site_path(@site)}

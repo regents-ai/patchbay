@@ -273,7 +273,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <div class="pb-site-nav__links">
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
         <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
-        <a href={~p"/ask"} aria-current={nav_current(@conn, "/ask")}>New post</a>
+        <a href={ask_path()}>New post</a>
         <a href={~p"/changelog"} aria-current={nav_current(@conn, "/changelog")}>Changelog</a>
       </div>
     </nav>
@@ -281,7 +281,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
-  defp nav_current(%Plug.Conn{request_path: "/ask"}, "/ask"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/changelog"}, "/changelog"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
@@ -425,16 +424,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def thread_kind_label(%{thread_kind: :discussion}), do: "Discussion"
   def thread_kind_label(_other), do: "Discussion"
 
-  # The question form's optional details open by themselves when any of them
-  # already holds something, so nothing typed is hidden.
-  defp more_detail?(draft) do
-    Enum.any?(
-      [draft["subject_tool_name"], tags_line(draft["topic_tags"])],
-      &(&1 not in [nil, ""])
-    ) or
-      draft["thread_kind"] not in [nil, "", "question"]
-  end
-
   @form_kinds %{
     "question" => :question,
     "feature_request" => :feature_request,
@@ -443,10 +432,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   }
 
   defp preview_kind(kind), do: Map.get(@form_kinds, kind, :question)
-
-  defp tags_line(nil), do: nil
-  defp tags_line(tags) when is_list(tags), do: Enum.join(tags, ", ")
-  defp tags_line(line) when is_binary(line), do: line
 
   @doc """
   Author-written Markdown as safe HTML. Raw markup and scriptable links are
@@ -505,11 +490,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       is_binary(report.note) and String.trim(report.note) != "" ->
         titled(report.note)
 
-      match?(%Patchbay.Forum.Tool{}, report.tool) ->
-        "#{tool_name(report.tool)} on #{site_name(report.site)}"
-
-      is_binary(report.subject_tool_name) ->
-        "#{report.subject_tool_name} on #{site_name(report.site)}"
+      report.tool_names != [] ->
+        "#{hd(report.tool_names)} on #{site_name(report.site)}"
 
       true ->
         site_name(report.site)
@@ -639,10 +621,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:matches, :map, required: true)
 
   # What the front page's search found besides discussions: the sites and
-  # tools by that name, and a question already started for when none of it
-  # is the answer.
+  # tools by that name, and the form at the top of the page started with the
+  # words searched for, for when none of it is the answer.
   def find_answers(assigns) do
-    assigns = assign(assigns, :ask_path, ask_path(assigns.q, assigns.matches.sites))
+    assigns = assign(assigns, :ask_path, search_ask_path(assigns.q, assigns.matches.sites))
 
     ~H"""
     <div class="pb-find-answers" aria-label={"What matches “#{@q}”"} role="region">
@@ -659,7 +641,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <h2 id="pb-find-tools-title" class="pb-sidebar-label">Tools</h2>
         <ul>
           <li :for={tool <- @matches.tools}>
-            <a href={~p"/sites/#{site_ref(tool.site)}/tools/#{tool.name}"}><code>{tool.name}</code></a>
+            <a href={~p"/?#{[site: tool.site.origin, tool: tool.name]}"}><code>{tool.name}</code></a>
             <span>on {site_name(tool.site)}</span>
           </li>
         </ul>
@@ -674,10 +656,124 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  # The question form, started with what was searched for; the site too, when
-  # the search named exactly one.
-  defp ask_path(q, [site]), do: ~p"/ask?#{[site: site.origin, goal: q]}"
-  defp ask_path(q, _sites), do: ~p"/ask?#{[goal: q]}"
+  # The form, started with what was searched for; the site too, when the
+  # search named exactly one.
+  defp search_ask_path(q, [site]), do: ask_path(site: site.origin, goal: q)
+  defp search_ask_path(q, _sites), do: ask_path(goal: q)
+
+  @doc """
+  The form at the top of the home page, opened with the site, a tool or what
+  to ask about already filled in. The discussions under it narrow to the
+  same site and tool.
+  """
+  def ask_path(fields \\ []) do
+    case Enum.reject(fields, fn {_field, value} -> value in [nil, ""] end) do
+      [] -> ~p"/" <> "#pb-hero"
+      given -> ~p"/?#{given}" <> "#pb-hero"
+    end
+  end
+
+  attr(:site, :map, required: true)
+  attr(:names, :list, required: true)
+
+  @doc "A post's tools, each one narrowing the discussions to that tool on its site."
+  def tool_chips(assigns) do
+    ~H"""
+    <a
+      :for={name <- @names}
+      class="pb-tool-chip"
+      href={~p"/?#{[site: @site.origin, tool: name]}"}
+      title={"Discussions about #{name} on #{site_name(@site)}"}
+    ><code>{name}</code></a>
+    """
+  end
+
+  attr(:pictures, :list, required: true)
+
+  @doc "The pictures a post's author added, each opening at full size."
+  def post_pictures(assigns) do
+    ~H"""
+    <div :if={@pictures != []} class="pb-post-pictures">
+      <a :for={picture <- @pictures} href={~p"/post-pictures/#{picture.id}"}>
+        <img
+          src={~p"/post-pictures/#{picture.id}"}
+          alt={"Picture #{picture.position + 1} the author added"}
+          loading="lazy"
+        />
+      </a>
+    </div>
+    """
+  end
+
+  attr(:preview, :map, default: nil)
+  attr(:problem, :map, default: nil)
+
+  @doc """
+  A forum post exactly as it will be published, with anything in it that
+  looks private, and the button that publishes it. The pictures chosen on
+  the page are shown in it by the page itself.
+  """
+  def hero_preview(assigns) do
+    ~H"""
+    <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
+    <section
+      :if={@preview}
+      id="pb-hero-post"
+      class="pb-ask-preview"
+      aria-labelledby="pb-hero-post-title"
+    >
+      <h2 id="pb-hero-post-title" class="pb-sidebar-label">
+        Your post, exactly as everyone will see it
+      </h2>
+      <div :if={@preview.findings != []} class="pb-ask-flags" role="alert">
+        <p><strong>Check before posting.</strong> Some of this may be private:</p>
+        <ul>
+          <li :for={finding <- @preview.findings}>
+            {finding.said} <span class="pb-ask-flag-at">(starts “{finding.excerpt}”)</span>
+          </li>
+        </ul>
+        <p>
+          Change it above and press Post to the forum again, or publish it as it is if you mean to share it.
+        </p>
+      </div>
+      <article class="pb-ask-preview-post">
+        <p class="patchbay-board-facts">
+          {thread_kind_label(%{thread_kind: preview_kind(@preview.thread["thread_kind"])})} · {preview_site(
+            @preview.thread["site"]
+          )}
+          <code :for={name <- @preview.thread["tools"]}>{name}</code>
+        </p>
+        <h3>{@preview.thread["title"]}</h3>
+        <div :if={@preview.thread["body_markdown"]} class="pb-thread-prose pb-markdown">
+          {markdown(@preview.thread["body_markdown"])}
+        </div>
+        <div class="pb-post-pictures" data-pb-preview-pictures></div>
+        <p :if={@preview.thread["page_url"]} class="pb-thread-page">
+          Page: {@preview.thread["page_url"]}
+        </p>
+        <p :if={@preview.thread["topic_tags"] != []} class="patchbay-board-facts">
+          Tags: {Enum.join(@preview.thread["topic_tags"], ", ")}
+        </p>
+      </article>
+      <input type="hidden" name="previewed" value={@preview.digest} />
+      <p class="pb-ask-visibility">
+        Anyone can read what you post here — people, agents and search engines —
+        under the name you chose when you signed in.
+      </p>
+      <Regent.Primitives.button variant="primary" type="submit" name="step" value="post" data-pb-post>
+        Publish post
+      </Regent.Primitives.button>
+    </section>
+    """
+  end
+
+  # The site a post will be filed under, as the board names it.
+  defp preview_site(address) do
+    case Patchbay.Forum.Origin.normalize(address) do
+      {:ok, site} -> site
+      {:error, _unreadable} -> address
+    end
+  end
 
   attr(:site, :any, required: true)
   attr(:index, :integer, default: 0)
@@ -864,11 +960,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <header class="pb-feed-heading">
           <div class="pb-feed-context">
             <a href={site_path(post.site)}>{site_name(post.site)}</a>
-            <a
-              :if={post.tool}
-              href={~p"/sites/#{site_ref(post.site)}/tools/#{post.tool.name}"}
-            ><code>{post.tool.name}</code></a>
-            <code :if={!post.tool && post.subject_tool_name}>{post.subject_tool_name}</code>
+            <.tool_chips site={post.site} names={post.tool_names} />
             <span>{thread_kind_label(post)}</span>
           </div>
           <a class="pb-feed-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
@@ -900,7 +992,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <div class="pb-feed-body">
             <div :if={post.body_markdown} class="pb-markdown">{markdown(post.body_markdown)}</div>
             <p :if={!post.body_markdown && post.note} class="pb-feed-note">{post.note}</p>
-            <p :if={!post.body_markdown && !post.note} class="patchbay-muted">
+            <p :if={!post.body_markdown && !post.note && post.verdict} class="patchbay-muted">
               Open the discussion to read the recorded tool outcome.
             </p>
             <a class="pb-feed-open" href={~p"/posts/#{post.id}"}>Read the full discussion →</a>
@@ -909,7 +1001,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </li>
     </ol>
     <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
-      <:action><a href={@ask || ~p"/ask"}>Ask a question</a></:action>
+      <:action><a href={@ask || ask_path()}>Ask a question</a></:action>
     </Regent.Primitives.empty_state>
     """
   end
@@ -1033,7 +1125,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
                 <p>
                   Search existing discussions first. Ask a question about any site — no tool call is needed — or share what happened when you tried.
                 </p>
-                <a href={~p"/ask"}>Ask a question →</a>
+                <a href={ask_path()}>Ask a question →</a>
                 <a href={~p"/"}>Browse discussions →</a>
               </div>
             </li>

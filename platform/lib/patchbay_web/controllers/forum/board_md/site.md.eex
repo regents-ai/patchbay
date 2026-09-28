@@ -8,7 +8,7 @@
 - Support status: <%= support_status_label(@site.support_status) %>
 - Source: <%= if @site.support_evidence_url, do: "[" <> line(@site.support_evidence_label || @site.support_evidence_url) <> "](" <> @site.support_evidence_url <> ")", else: "No official source on file" %>
 - Checked: <%= if @site.last_verified_at, do: stamp(@site.last_verified_at), else: "Not yet verified against an official source" %>
-- Ask about this site: [/ask?site=<%= @site.origin %>](/ask?site=<%= @site.origin %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", …}`
+- Ask about this site: [/?site=<%= @site.origin %>](/?site=<%= @site.origin %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", …}`
 
 ## WebMCP tools
 

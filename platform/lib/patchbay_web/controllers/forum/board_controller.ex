@@ -7,8 +7,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   screen, so there is nothing for a live connection to do.
 
   Opening a page here writes nothing. The things a visitor can write from
-  here are a reply, only while signed in, and a fix request from the top of
-  the home page: Patchbay's own entry is recorded when a studio starts
+  here are a reply, only while signed in, and, from the form at the top of
+  the home page, a fix request or a forum post: Patchbay's own entry is recorded when a studio starts
   offering a contract, so a visit only reads what is already on the board.
   A reply written here draws on the same hourly share as the replies the
   page's tools post: the signed-in account's.
@@ -29,6 +29,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.Fix
   alias PatchbayWeb.Forum.FixCheck
+  alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
@@ -37,8 +38,16 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.ForumAPI.Participation
 
   @not_posted "That reply could not be posted."
+  @thread_not_posted "That post could not be published. Try again in a moment."
 
-  def home(conn, params), do: render_home(conn, params, %{problem: nil, draft: Fix.draft(nil)})
+  @doc """
+  The home page. A link can open its form with the site, a tool and what
+  to ask about filled in.
+  """
+  def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
+
+  defp hero(draft, found \\ %{}),
+    do: Map.merge(%{draft: draft, problem: nil, preview: nil}, found)
 
   @doc """
   A fix asked for from the top of the home page. A free one opens under the
@@ -49,7 +58,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   for it and what was typed.
   """
   def fix(conn, params) do
-    draft = Fix.draft(params["fix"])
+    draft = Hero.draft(params["ask"])
 
     with :none <- running_for(conn),
          {:ok, request} <- Fix.request(draft),
@@ -62,10 +71,10 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: ~p"/fixes/#{run.id}")
 
       {:error, %{said: _said} = problem} ->
-        render_home(conn, %{}, %{problem: problem, draft: draft})
+        render_home(conn, %{}, hero(draft, %{problem: problem}))
 
       {:error, failure} ->
-        render_home(conn, %{}, %{problem: Fix.refused(failure, conn), draft: draft})
+        render_home(conn, %{}, hero(draft, %{problem: Fix.refused(failure, conn)}))
     end
   end
 
@@ -119,9 +128,9 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # Each part of the home page is read on its own. A part that could not be
   # read is `:unavailable` and says so where it would have been; the rest of
-  # the page, the navigation and the fix form with what was typed still show.
+  # the page, the navigation and the form with what was typed still show.
   # Only the discussions are the page itself, so only their failure is a 503.
-  defp render_home(conn, params, fix) do
+  defp render_home(conn, params, hero) do
     hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
     filters = Discussions.filters(params)
 
@@ -156,7 +165,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           matches: section(Board.matches(filters.q), "Search matches"),
           following: followed_site_ids(following),
           payments_enabled?: Board.payments_enabled?(),
-          fix: Map.merge(Fix.offer(conn), fix)
+          fix: Fix.offer(conn),
+          hero: hero
         )
     end
   end
@@ -367,82 +377,55 @@ defmodule PatchbayWeb.Forum.BoardController do
     do: "That answer could not be marked. Reload the page and try again."
 
   @doc """
-  The form a person asks a question with: the site, what they were trying to
-  do, and what happened. A search that found no answer can start it with the
-  words searched for. Agents ask through the page's tools; this is the same
-  write for whoever is reading.
+  A forum post from the form at the top of the home page, posted only after
+  its author has seen it as it will appear. Pressing Post to the forum, or
+  publishing something changed since the last preview, shows the page again
+  with the post as the public will read it and anything in it that looks
+  private; publishing what was previewed posts it with its pictures.
   """
-  def ask(conn, params) do
-    draft =
-      %{
-        "site" => params["site"],
-        "title" => params["goal"],
-        "subject_tool_name" => params["tool"]
-      }
-      |> Map.filter(fn {_field, value} -> is_binary(value) and value != "" end)
+  def create_thread(conn, params) do
+    draft = Hero.draft(params["ask"])
 
-    render_ask(conn, draft, nil, nil)
+    with {:ok, thread} <- Hero.thread(draft) do
+      if params["step"] == "post" and params["previewed"] == PostPreview.digest(thread),
+        do: publish_thread(conn, draft, thread, params["ask"]),
+        else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}))
+    else
+      {:error, problem} -> render_home(conn, %{}, hero(draft, %{problem: problem}))
+    end
+  end
+
+  defp publish_thread(conn, draft, thread, sent) do
+    with {:ok, _profile} <- require_signed_in(conn),
+         {:ok, pictures} <- Hero.pictures(sent["pictures"]),
+         {:ok, posted} <- ask_question(conn, thread, pictures) do
+      redirect(conn, to: ~p"/posts/#{posted.id}")
+    else
+      {:error, problem} ->
+        render_home(conn, %{}, hero(draft, %{problem: problem, preview: preview(thread)}))
+    end
   end
 
   @doc """
-  A question is posted only after its author has seen it as it will appear.
-  Pressing Preview, or posting something changed since the last preview, shows
-  the page again with the post as the public will read it and anything in it
-  that looks private; posting what was previewed publishes it.
+  The same preview on its own, for the home page to show in place: the
+  pictures the author chose stay chosen, since the form is not sent again.
   """
-  def create_thread(conn, params) do
-    case thread_draft(params["thread"]) do
-      {:ok, typed} ->
-        if params["step"] == "post" and params["previewed"] == PostPreview.digest(typed),
-          do: publish_thread(conn, typed),
-          else: render_ask(conn, typed, nil, PostPreview.build(typed))
+  def preview_thread(conn, params) do
+    draft = Hero.draft(params["ask"])
 
-      {:error, %{said: said, draft: typed}} ->
-        render_ask(conn, typed, %{said: said}, nil)
-    end
+    assigns =
+      case Hero.thread(draft) do
+        {:ok, thread} -> [preview: preview(thread), problem: nil]
+        {:error, problem} -> [preview: nil, problem: problem]
+      end
+
+    conn
+    |> put_root_layout(false)
+    |> put_layout(false)
+    |> render(:hero_preview, assigns)
   end
 
-  defp publish_thread(conn, typed) do
-    with {:ok, _profile} <- require_signed_in(conn),
-         {:ok, thread} <- ask_question(conn, typed) do
-      redirect(conn, to: ~p"/posts/#{thread.id}")
-    else
-      {:error, %{said: said}} -> render_ask(conn, typed, %{said: said}, PostPreview.build(typed))
-    end
-  end
-
-  defp render_ask(conn, draft, problem, preview) do
-    render(conn, :ask,
-      page_title: "Ask a question",
-      draft: draft,
-      problem: problem,
-      preview: preview
-    )
-  end
-
-  @thread_form_fields ~w(site title body_markdown subject_tool_name topic_tags thread_kind)
-
-  # What the form sends and nothing else. Tags arrive as one comma-separated
-  # line and are split here, where the transport ends.
-  defp thread_draft(nil), do: {:ok, %{}}
-
-  defp thread_draft(thread) when is_map(thread) do
-    {typed, malformed} =
-      thread
-      |> Map.take(@thread_form_fields)
-      |> Map.split_with(fn {_field, value} -> is_binary(value) or is_nil(value) end)
-
-    if map_size(malformed) == 0,
-      do: {:ok, Map.update(typed, "topic_tags", [], &split_tags/1)},
-      else: {:error, %{said: @not_posted, draft: typed}}
-  end
-
-  defp thread_draft(_thread), do: {:error, %{said: @not_posted, draft: %{}}}
-
-  defp split_tags(line) when is_binary(line),
-    do: line |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
-
-  defp split_tags(_other), do: []
+  defp preview(thread), do: Map.put(PostPreview.build(thread), :thread, thread)
 
   defp ask_site(site) when is_binary(site) and site != "" do
     case Patchbay.Forum.Origin.normalize(site) do
@@ -458,14 +441,14 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp ask_site(_site) do
-    {:error, %{said: "Name the site the question is about."}}
+    {:error, %{said: "Name the site the post is about."}}
   end
 
   defp require_signed_in(%{assigns: %{current_profile: nil}}) do
     {:error,
      %{
        said:
-         "Sign in at the top of the page to ask. Your question is posted under the name you chose for yourself."
+         "Sign in at the top of the page to post. Your post is published under the name you chose for yourself."
      }}
   end
 
@@ -473,7 +456,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # The site is opened inside the admitted write, so a question refused for
   # its share or its words is rolled back together with the board it named.
-  defp ask_question(conn, draft) do
+  defp ask_question(conn, draft, pictures) do
     session_id = conn.assigns.forum_session_id
 
     admitted =
@@ -484,9 +467,11 @@ defmodule PatchbayWeb.Forum.BoardController do
             browser_session_id: session_id,
             title: draft["title"],
             body_markdown: draft["body_markdown"],
-            subject_tool_name: draft["subject_tool_name"],
+            tool_names: draft["tools"],
+            page_url: draft["page_url"],
             topic_tags: draft["topic_tags"],
-            thread_kind: draft["thread_kind"]
+            thread_kind: draft["thread_kind"],
+            pictures: pictures
           }
           |> without_nils()
           |> Forum.ask_question(actor: conn.assigns.current_profile)
@@ -513,23 +498,29 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp thread_refusal(%Ash.Error.Invalid{errors: errors}) do
     cond do
       Enum.any?(errors, &(Map.get(&1, :field) == :title)) ->
-        "Say what you were trying to do in one short line."
+        "Say what you are trying to do in one short line."
 
       Enum.any?(errors, &(Map.get(&1, :field) == :body_markdown)) ->
-        "Say what happened, in up to about 16,000 characters."
+        "Say what happened in up to about 16,000 characters."
 
-      Enum.any?(errors, &(Map.get(&1, :field) == :subject_tool_name)) ->
-        "A tool name is lowercase letters, digits and underscores."
+      Enum.any?(errors, &(Map.get(&1, :field) == :tool_names)) ->
+        "Pick up to 5 of the site's tools."
+
+      Enum.any?(errors, &(Map.get(&1, :field) in [:pictures, :image])) ->
+        "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to 3 of them."
+
+      Enum.any?(errors, &(Map.get(&1, :field) == :page_url)) ->
+        "The site's address needs to be a public https address."
 
       Enum.any?(errors, &(Map.get(&1, :field) == :topic_tags)) ->
         "Tags are short words or hyphenated phrases, at most five."
 
       true ->
-        @not_posted
+        @thread_not_posted
     end
   end
 
-  defp thread_refusal(_refused), do: @not_posted
+  defp thread_refusal(_refused), do: @thread_not_posted
 
   @doc """
   A person's conversational reply on a thread — an answer, not a verdict on a

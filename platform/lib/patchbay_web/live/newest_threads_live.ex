@@ -99,7 +99,7 @@ defmodule PatchbayWeb.NewestThreadsLive do
         </li>
       </ol>
       <p :if={@threads.state == :empty} class="pb-newest-empty">
-        No posts yet. <a href={~p"/ask"}>Ask the first question</a>.
+        No posts yet. <a href={~p"/" <> "#pb-hero"}>Ask the first question</a>.
       </p>
       <p :if={@threads.state == :loading and is_nil(@threads.read_at)} class="pb-newest-empty">
         Loading the newest posts…

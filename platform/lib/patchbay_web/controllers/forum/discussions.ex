@@ -15,14 +15,14 @@ defmodule PatchbayWeb.Forum.Discussions do
     :bounty_open,
     :verified_paid_usdc_atomic,
     :post_kind,
-    :site,
-    :tool
+    :site
   ]
 
   def filters(params) do
     %{
       q: text(params["q"], 200),
       site: text(params["site"], 255),
+      tool: text(params["tool"], 64),
       scope: if(params["scope"] in @scopes, do: params["scope"], else: "all")
     }
   end
@@ -85,6 +85,7 @@ defmodule PatchbayWeb.Forum.Discussions do
     |> Ash.Query.filter(visibility == :published)
     |> search(filters.q)
     |> site(filters.site)
+    |> tool(filters.tool)
     |> scope(filters.scope, following)
   end
 
@@ -94,12 +95,11 @@ defmodule PatchbayWeb.Forum.Discussions do
     Ash.Query.filter(
       query,
       fragment(
-        "(coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) ILIKE ('%' || lower(?) || '%')",
+        "(coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) ILIKE ('%' || lower(?) || '%')",
         title,
         body_markdown,
         note,
-        subject_tool_name,
-        tool.name,
+        tool_names,
         site.origin,
         site.display_name,
         ^term
@@ -129,6 +129,9 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   defp site(query, ""), do: query
   defp site(query, ref), do: Ash.Query.filter(query, site.origin == ^ref)
+
+  defp tool(query, ""), do: query
+  defp tool(query, name), do: Ash.Query.filter(query, ^name in tool_names)
 
   defp scope(query, "unanswered", _following), do: Ash.Query.filter(query, reply_count == 0)
 

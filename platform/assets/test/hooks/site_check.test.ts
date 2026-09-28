@@ -14,7 +14,7 @@ function fixture({mode = "free", value = "", answers = {}}: Fixture = {}) {
   const byId = {"#pb-fix-site-check": line, "#pb-fix-submit": submit, "#pb-fix-directory": directory}
   const form = {
     dataset: {pbFixMode: mode},
-    elements: {"fix[site_url]": field},
+    elements: {"ask[site_url]": field},
     querySelector: <S extends keyof typeof byId>(selector: S) => byId[selector],
   }
   const asked: string[] = []

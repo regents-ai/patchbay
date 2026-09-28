@@ -43,6 +43,7 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     get "/sitemap.xml", SitemapController, :index
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
+    get "/post-pictures/:id", PostPictureController, :show
     get "/skill.md", AgentSkillsController, :guide
     get "/.well-known/skills/index.json", AgentSkillsController, :index
     get "/.well-known/skills/:name/SKILL.md", AgentSkillsController, :show
@@ -301,8 +302,8 @@ defmodule PatchbayWeb.Router do
 
     get "/", BoardController, :home
     post "/fixes", BoardController, :fix
-    get "/ask", BoardController, :ask
     post "/threads", BoardController, :create_thread
+    post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
     get "/questions", BoardController, :questions
     get "/priority", BoardController, :priority

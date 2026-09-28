@@ -3,7 +3,7 @@ import type {SiteTool} from "./site_check.ts"
 export const MOST_PICKED = 5
 
 /**
- * The site's WebMCP tools under the fix form, A to Z, once Patchbay has
+ * The site's WebMCP tools under the form at the top of the home page, A to Z, once Patchbay has
  * found them: a row is picked or unpicked with a press, a picked row is
  * coloured, and the count beside the heading says how many of the five are
  * taken. Picks survive a new list for the tools still on it; the first list
@@ -51,7 +51,7 @@ function row(tool: SiteTool, checked: boolean) {
   const label = document.createElement("label")
   const input = document.createElement("input")
   input.type = "checkbox"
-  input.name = "fix[tools][]"
+  input.name = "ask[tools][]"
   input.value = tool.name
   input.checked = checked
   const name = document.createElement("code")

@@ -36,8 +36,8 @@ import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
 import {mountDiscussionWorkbench} from "./discussion_workbench.ts"
 import {mountHelloStream} from "./hello_stream.ts"
-import {mountFixForm} from "./fix_form.ts"
-import {mountAskForm} from "./ask_form.ts"
+import {mountHeroForm} from "./hero_form.ts"
+import {mountDiscussionSearch} from "./discussion_search.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
@@ -79,8 +79,8 @@ const offerPageWideSurfaces = () => {
   mountAgentSetup()
   mountReadinessCard()
   mountHelloStream()
-  mountFixForm({fetch: window.fetch.bind(window), csrfToken})
-  mountAskForm()
+  mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
+  mountDiscussionSearch()
   mountAgentFunding()
   mountCardTopUp()
   hideBrokenSiteLogos()

@@ -16,7 +16,7 @@
 <%= if @current_tool.protocol_version, do: "- Protocol: " <> line(@current_tool.protocol_version) <> "\n" %>
 - Contract fingerprint: `<%= @current_tool.contract_sha256 %>`
 - Full history over HTTP: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=<%= @tool_name %>`
-- Ask about this tool: [/ask?site=<%= @site.origin %>&tool=<%= @tool_name %>](/ask?site=<%= @site.origin %>&tool=<%= @tool_name %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", "subject_tool_name": "<%= @tool_name %>", …}`
+- Ask about this tool: [/?site=<%= @site.origin %>&tool=<%= @tool_name %>](/?site=<%= @site.origin %>&tool=<%= @tool_name %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", "tools": ["<%= @tool_name %>"], "page_url": "https://…", …}`
 
 ## What is on record about this tool
 

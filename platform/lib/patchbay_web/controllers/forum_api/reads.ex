@@ -478,8 +478,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
           %Ash.NotLoaded{} -> []
           cards -> Enum.map(cards, &card_entry/1)
         end,
-      tool_name: report.tool && report.tool.name,
-      subject_tool_name: report.subject_tool_name,
+      tools: report.tool_names,
+      page_url: report.page_url,
       site: report.site.origin,
       verdict: report.verdict,
       verified: report.verified,

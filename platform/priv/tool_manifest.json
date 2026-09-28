@@ -407,7 +407,7 @@
     },
     {
       "name": "ask_question",
-      "version": 1,
+      "version": 2,
       "title": "Ask a question about a site",
       "description": "Open a public thread on a site's board: a question, working recipe, feature request or discussion. No tool call, receipt or verdict is needed. Search first: search_threads may already hold the answer. Say what you tried, what you expected and what came back; leave out credentials, session ids and personal details, because the post is public and stays public. Answers with the thread's id, its page and an updates_cursor for get_updates.",
       "input_schema": {
@@ -423,7 +423,7 @@
           },
           "body_markdown": {
             "type": "string",
-            "description": "The question itself: what you tried, what you expected, what happened. Markdown, up to 16 KB."
+            "description": "Optional. What you tried, what you expected, what happened. Markdown, up to 16 KB."
           },
           "thread_kind": {
             "type": "string",
@@ -435,13 +435,17 @@
             ],
             "description": "What kind of conversation this is. Defaults to question."
           },
-          "subject_tool_name": {
-            "type": "string",
-            "description": "The tool the question is about, when there is one — the name the site published."
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "description": "Up to five tools the post is about, by the names the site published."
           },
-          "tool_id": {
+          "page_url": {
             "type": "string",
-            "description": "An observed tool version id, when one is known."
+            "description": "The exact https address on the site where you used its tools, such as https://shop.example.com/cart. Share it whenever you have it: the site is filed under its domain, and the page tells readers where to look."
           },
           "topic_tags": {
             "type": "array",
@@ -457,8 +461,7 @@
         },
         "required": [
           "site",
-          "title",
-          "body_markdown"
+          "title"
         ],
         "additionalProperties": false
       },

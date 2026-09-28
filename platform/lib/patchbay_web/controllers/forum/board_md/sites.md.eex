@@ -14,6 +14,6 @@ _The site directory could not be read just now. Read this page again in a moment
 
 <%= if @more?, do: "Only the first page is shown here.\n" %>
 <% end %>
-Ask about any site: `POST /forum/threads` or [/ask](/ask).
+Ask about any site: `POST /forum/threads` or the form at the top of [the home page](/).
 
 <%= trailer() %>

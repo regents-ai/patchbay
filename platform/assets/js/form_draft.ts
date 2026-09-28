@@ -17,7 +17,7 @@ export type PageForm = HTMLFormElement & {
 type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">
 
 /**
- * @param names the fields' full names, like "fix[goal]"
+ * @param names the fields' full names, like "ask[goal]"
  */
 export function keepDraft(form: DraftForm, storage: DraftStorage | null, key: string, names: string[]) {
   const fields = Object.fromEntries(names.map(name => [name, form.elements[name]?.value ?? ""]))

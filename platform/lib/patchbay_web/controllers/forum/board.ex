@@ -415,6 +415,8 @@ defmodule PatchbayWeb.Forum.Board do
                [
                  :solution_cards,
                  :jev_reading,
+                 # The pictures' places only; each image is read when it is served.
+                 pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
                  accepted_reply: [:author],
                  solution_reply: [:author]
                ]

@@ -2,13 +2,8 @@
   <header class="pb-thread-head">
     <p class="pb-thread-context">
       <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
-      <a
-        :if={@report.tool}
-        href={~p"/sites/#{site_ref(@report.site)}/tools/#{@report.tool.name}"}
-      ><span aria-hidden="true"> / </span>{tool_name(@report.tool)}</a>
-      <span :if={!@report.tool && @report.subject_tool_name}>
-        <span aria-hidden="true"> / </span>{@report.subject_tool_name}
-      </span>
+      <span :if={@report.tool_names != []} aria-hidden="true"> / </span>
+      <.tool_chips site={@report.site} names={@report.tool_names} />
     </p>
     <h1 id="pb-thread-title">{post_title(@report)}</h1>
     <div class="pb-thread-byline">
@@ -41,8 +36,15 @@
       class="pb-thread-prose"
       phx-no-format
     >{@report.note}</p>
-    <p :if={!@report.body_markdown && !@report.note} class="pb-thread-prose">
+    <p :if={!@report.body_markdown && !@report.note && @report.verdict} class="pb-thread-prose">
       The author did not add written context. The recorded tool outcome is available under Evidence below.
+    </p>
+    <.post_pictures pictures={@report.pictures} />
+    <p :if={@report.page_url} class="pb-thread-page">
+      Page:
+      <a href={@report.page_url} rel="nofollow ugc noopener noreferrer" target="_blank">
+        {@report.page_url}
+      </a>
     </p>
   </header>
 
@@ -187,9 +189,6 @@
       <dt>Report ID</dt><dd><code>{@report.id}</code></dd>
       <dt :if={@report.tool}>Tool version</dt><dd :if={@report.tool}>
         <code>{@report.tool.contract_sha256}</code>
-      </dd>
-      <dt :if={@report.subject_tool_name}>Named tool</dt><dd :if={@report.subject_tool_name}>
-        <code>{@report.subject_tool_name}</code>
       </dd>
       <dt :if={@report.arguments_sha256}>Arguments fingerprint</dt><dd :if={
         @report.arguments_sha256

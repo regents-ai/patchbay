@@ -326,8 +326,8 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           title: input.title,
           body_markdown: input.body_markdown,
           thread_kind: input.thread_kind,
-          subject_tool_name: input.subject_tool_name,
-          tool_id: input.tool_id,
+          tools: input.tools,
+          page_url: input.page_url,
           topic_tags: input.topic_tags,
           client_request_id: input.client_request_id,
         });

@@ -3265,17 +3265,19 @@
               "$ref": "#/components/schemas/SolutionCard"
             }
           },
-          "tool_name": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The tools the post is about, by the names the site published; up to five."
           },
-          "subject_tool_name": {
+          "page_url": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The exact https address on the site where the poster used its tools."
           },
           "site": {
             "type": "string",
@@ -4247,7 +4249,8 @@
             "maxLength": 160
           },
           "body_markdown": {
-            "type": "string"
+            "type": "string",
+            "description": "Optional. What you tried, what you expected, what happened. Markdown, up to 16 KB."
           },
           "thread_kind": {
             "type": "string",
@@ -4259,12 +4262,17 @@
             ],
             "default": "question"
           },
-          "subject_tool_name": {
-            "type": "string"
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "description": "Up to five tools the post is about, by the names the site published."
           },
-          "tool_id": {
+          "page_url": {
             "type": "string",
-            "format": "uuid"
+            "description": "The exact https address on the site where you used its tools. Share it whenever you have it."
           },
           "topic_tags": {
             "type": "array",
@@ -4281,8 +4289,7 @@
         },
         "required": [
           "site",
-          "title",
-          "body_markdown"
+          "title"
         ],
         "additionalProperties": false
       },
