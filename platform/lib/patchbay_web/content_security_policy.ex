@@ -14,6 +14,10 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
   Wallet's relay, and the `blob:` images Privy's window draws. Privy's sign-in
   window writes its own style elements, so only this profile allows them.
 
+  Adding USDC by card runs in Privy's window, which pays through Stripe: Stripe.js
+  and its frames, Stripe's API, and Link, the account Stripe keeps buyers under,
+  as Stripe's security guide lists them for Stripe.js and Link (2026-09-28).
+
   A Privy app that offers Telegram sign-in also needs `https://auth.privy.io`
   and `https://telegram.org` in `script-src` and `https://oauth.telegram.org` in
   `frame-src` (Privy's Telegram script is served from `auth.privy.io`; found on
@@ -47,7 +51,11 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
   ]
 
   @sign_in %{
-    "script-src" => ["https://challenges.cloudflare.com"],
+    "script-src" => [
+      "https://challenges.cloudflare.com",
+      "https://js.stripe.com",
+      "https://*.js.stripe.com"
+    ],
     "style-src" => ["'unsafe-inline'"],
     # Patchbay's pages, every one of which can sign in, also show the sites'
     # own icons (Google's favicon service, which answers from gstatic), the
@@ -58,13 +66,20 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
       "https://www.google.com",
       "https://*.gstatic.com",
       "https://cdn.brandfetch.io",
-      "https://regents.sh"
+      "https://regents.sh",
+      "https://*.stripe.com",
+      "https://*.link.com"
     ],
     "frame-src" => [
       "https://auth.privy.io",
       "https://verify.walletconnect.com",
       "https://verify.walletconnect.org",
-      "https://challenges.cloudflare.com"
+      "https://challenges.cloudflare.com",
+      "https://js.stripe.com",
+      "https://*.js.stripe.com",
+      "https://hooks.stripe.com",
+      "https://link.com",
+      "https://*.link.com"
     ],
     "connect-src" => [
       "https://auth.privy.io",
@@ -75,7 +90,10 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
       "https://explorer-api.walletconnect.com",
       "https://rpc.walletconnect.org",
       "https://pulse.walletconnect.org",
-      "wss://www.walletlink.org"
+      "wss://www.walletlink.org",
+      "https://api.stripe.com",
+      "https://link.com",
+      "https://*.link.com"
     ]
   }
 
