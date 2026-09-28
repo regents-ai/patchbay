@@ -204,7 +204,7 @@ defmodule PatchbayWeb.Forum.FixTest do
   defp signed_in(conn, person) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> put_session(CurrentProfile.session_key(), person.id)
+    |> CurrentProfile.sign_in(person.id)
   end
 
   defp key(address), do: PatchbayWeb.ClientAddress.visitor_key(from(build_conn(), address))

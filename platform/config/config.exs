@@ -39,6 +39,10 @@ config :patchbay, :assist_read_only_tools, %{
 }
 
 # Configure the endpoint
+# A sign-in lasts 30 days: the session cookie expires then, and
+# `PatchbayWeb.Plugs.CurrentProfile` reads a sign-in older than this as signed out.
+config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
+
 config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,

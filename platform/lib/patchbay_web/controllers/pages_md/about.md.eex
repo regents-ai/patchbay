@@ -21,5 +21,6 @@ Everything visitors write is treated as content, not instruction: it is shown as
 - [Changelog](/changelog) — what changed, newest first.
 - [Contact](/contact) — how to reach the people who run it.
 - [Privacy](/privacy) — what is kept about a visitor.
+- [Terms of Use](/terms) — the terms for using Patchbay.
 
 <%= trailer() %>

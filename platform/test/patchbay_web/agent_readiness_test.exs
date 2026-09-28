@@ -46,7 +46,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       html = html_response(conn, 404)
       assert html =~ "There is nothing at this address."
-      assert html =~ ~s(href="/developers")
+      assert html =~ ~s(href="/docs")
       assert html =~ ~s(href="/sitemap.xml")
     end
 
@@ -108,7 +108,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
     test "the fixed pages answer as markdown and a browser still gets HTML", %{conn: conn} do
       for path <-
-            ~w(/start /agent-setup /questions /priority /inbox /blog /developers /about /contact /privacy) do
+            ~w(/start /agent-setup /questions /priority /inbox /blog /docs /about /contact /privacy) do
         assert {200, body} = markdown(conn, path)
         assert String.starts_with?(body, "# "), "#{path} did not start with a heading"
       end
@@ -170,7 +170,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       xml = response(conn, 200)
 
       assert xml =~ ~s(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">)
-      assert xml =~ "<loc>#{url}/developers</loc>"
+      assert xml =~ "<loc>#{url}/docs</loc><lastmod>"
       assert xml =~ "<loc>#{url}/sites/shop-example</loc><lastmod>"
 
       assert xml =~
@@ -186,7 +186,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       guide = response(get(conn, "/llms.txt"), 200)
       assert guide =~ "## When to use Patchbay"
       assert guide =~ "/openapi.json"
-      assert guide =~ "/developers"
+      assert guide =~ "/docs"
     end
   end
 
@@ -211,7 +211,10 @@ defmodule PatchbayWeb.AgentReadinessTest do
           capture: :all_but_first
         )
 
-      %{"@graph" => [application, organization]} = Jason.decode!(json)
+      %{"@graph" => [website, application, organization]} = Jason.decode!(json)
+
+      assert website["@type"] == "WebSite"
+      assert website["publisher"] == %{"@id" => organization["@id"]}
 
       assert application["@type"] == "SoftwareApplication"
       assert application["name"] == "Patchbay"
@@ -226,21 +229,21 @@ defmodule PatchbayWeb.AgentReadinessTest do
       footer = conn |> get("/") |> html_response(200)
       for path <- ~w(/help /about /privacy), do: assert(footer =~ ~s(href="#{path}"))
 
-      assert conn |> get("/help") |> html_response(200) =~ ~s(href="/developers")
+      assert conn |> get("/help") |> html_response(200) =~ ~s(href="/docs")
       assert conn |> get("/about") |> html_response(200) =~ ~s(href="/contact")
 
-      for path <- ~w(/about /contact /privacy /developers) do
+      for path <- ~w(/about /contact /privacy /docs) do
         html = conn |> get(path) |> html_response(200)
         text = html |> Floki.parse_document!() |> Floki.find("main") |> Floki.text()
         assert String.length(text) >= 500, "#{path} has fewer than 500 characters of copy"
       end
 
       assert conn |> get("/contact") |> html_response(200) =~ "build@regents.sh"
-      developers = conn |> get("/developers") |> html_response(200)
-      assert developers =~ ~s(href="/openapi.json")
+      docs = conn |> get("/docs") |> html_response(200)
+      assert docs =~ ~s(href="/openapi.json")
 
       money =
-        developers
+        docs
         |> Floki.parse_document!()
         |> Floki.find("#webmcp table tbody tr")
         |> Enum.map(fn row -> row |> Floki.find("td") |> Enum.map(&Floki.text/1) end)
@@ -248,7 +251,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert money["search_threads"] == "None"
       assert money["tip_agent"] == "Moves USDC"
-      assert redirected_to(get(conn, "/docs")) == "/developers"
+      assert redirected_to(get(conn, "/developers"), 301) == "/docs"
     end
   end
 end

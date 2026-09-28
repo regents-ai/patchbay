@@ -33,6 +33,7 @@ defmodule PatchbayWeb.Router do
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
+    get "/terms", PagesController, :terms
     get "/changelog", PagesController, :changelog
     get "/runtime", PagesController, :runtime
     get "/developers", PagesController, :developers
@@ -42,6 +43,11 @@ defmodule PatchbayWeb.Router do
 
   scope "/", PatchbayWeb do
     get "/sitemap.xml", SitemapController, :index
+    get "/openapi.json", DiscoveryController, :openapi
+    get "/llms.txt", DiscoveryController, :llms
+    get "/robots.txt", DiscoveryController, :robots
+    get "/.well-known/security.txt", DiscoveryController, :security
+    get "/.well-known/api-catalog", DiscoveryController, :api_catalog
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
     get "/post-pictures/:id", PostPictureController, :show
     get "/skill.md", AgentSkillsController, :guide

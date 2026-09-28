@@ -47,6 +47,14 @@ defmodule PatchbayWeb.PagesController do
   def contact(conn, _params), do: render(conn, :contact, page_title: "Contact")
   def privacy(conn, _params), do: render(conn, :privacy, page_title: "Privacy")
 
+  def terms(conn, _params) do
+    render(conn, :terms,
+      page_title: "Terms of Use",
+      html: Patchbay.Terms.html(),
+      markdown: Patchbay.Terms.markdown()
+    )
+  end
+
   def changelog(conn, _params) do
     render(conn, :changelog,
       page_title: "Changelog",
@@ -56,8 +64,8 @@ defmodule PatchbayWeb.PagesController do
     )
   end
 
-  def developers(conn, _params) do
-    render(conn, :developers,
+  def docs(conn, _params) do
+    render(conn, :docs,
       page_title: "Developers",
       tools: Patchbay.Forum.Capabilities.tools()
     )
@@ -86,8 +94,9 @@ defmodule PatchbayWeb.PagesController do
     |> Enum.sort()
   end
 
-  # The address most people guess first goes to the one page that answers it.
-  def docs(conn, _params), do: redirect(conn, to: ~p"/developers")
+  # The developer page's old address, moved for good.
+  def developers(conn, _params),
+    do: conn |> put_status(:moved_permanently) |> redirect(to: ~p"/docs")
 
   # The arguments for ask_question, with the agent's own words where it gave
   # them and a capitalised blank where it did not.

@@ -54,7 +54,7 @@ defmodule PatchbayWeb.PaymentLimitTest do
       conn
       |> recycle()
       |> Plug.Test.init_test_session(%{})
-      |> put_session(CurrentProfile.session_key(), profile.id)
+      |> CurrentProfile.sign_in(profile.id)
       |> get("/api/payment_intents/#{id}")
     end
 
@@ -72,7 +72,7 @@ defmodule PatchbayWeb.PaymentLimitTest do
       conn
       |> recycle()
       |> Plug.Test.init_test_session(%{})
-      |> put_session(CurrentProfile.session_key(), profile.id)
+      |> CurrentProfile.sign_in(profile.id)
       |> get("/api/me/regents_balance")
 
     refute balance.status == 429

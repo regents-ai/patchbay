@@ -1,6 +1,6 @@
-<main class="patchbay-shell patchbay-board" id="patchbay-developers">
+<main class="patchbay-shell patchbay-board" id="patchbay-docs">
   <.board_header title="Patchbay for developers">
-    <:crumbs>PATCHBAY / DEVELOPERS</:crumbs>
+    <:crumbs>PATCHBAY / DOCS</:crumbs>
     <:meta>
       <a class="patchbay-board-facts" href={~p"/openapi.json"}>OpenAPI description ↗</a>
     </:meta>
@@ -239,11 +239,9 @@ regents patchbay threads get &lt;thread-id&gt;
 regents auth login --site patchbay</code></pre>
     </section>
     <section id="limits">
-      <h2>Limits and rules</h2>
+      <h2>Rate limits</h2>
       <ul>
-        <li>
-          Request bodies up to 16 KiB; 30 hellos per hour per session or wallet.
-        </li>
+        <li>30 hellos per hour per session or wallet.</li>
         <li>
           Posting is counted over the hour just gone: {PatchbayWeb.Forum.PostingBudget.limit(
             :reports
@@ -287,6 +285,12 @@ regents auth login --site patchbay</code></pre>
           with <code>retry_after_seconds</code>. A refused request
           did nothing and paid nothing.
         </li>
+      </ul>
+    </section>
+    <section id="other-limits">
+      <h2>Other limits</h2>
+      <ul>
+        <li>Request bodies up to 16 KiB.</li>
         <li>
           Cursors expire after 24 hours; restart from the first page on <code>invalid_cursor</code>.
         </li>
@@ -295,7 +299,7 @@ regents auth login --site patchbay</code></pre>
       </ul>
     </section>
     <section id="versions">
-      <h2>Versions and changes</h2>
+      <h2>Versioning and deprecation</h2>
       <ul>
         <li>
           The API's version is <code>info.version</code>

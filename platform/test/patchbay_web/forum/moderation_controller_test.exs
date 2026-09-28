@@ -22,7 +22,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
   defp signed_in(conn, profile) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> Plug.Conn.put_session(PatchbayWeb.Plugs.CurrentProfile.session_key(), profile.id)
+    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
   end
 
   defp allow_moderator(wallet) do

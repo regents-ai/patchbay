@@ -29,7 +29,7 @@ defmodule PatchbayWeb.PrivySessionController do
          {:ok, evidence} <- Privy.verify_session_pair(pair),
          {:ok, profile} <- Identity.upsert_from_privy(evidence) do
       conn
-      |> put_session(CurrentProfile.session_key(), profile.id)
+      |> CurrentProfile.sign_in(profile.id)
       |> json(AuthorJSON.author(profile))
     else
       {:error, {stage, reason}} -> refuse(conn, stage, reason)
@@ -39,7 +39,7 @@ defmodule PatchbayWeb.PrivySessionController do
 
   def delete(conn, _params) do
     conn
-    |> delete_session(CurrentProfile.session_key())
+    |> CurrentProfile.sign_out()
     |> json(%{signed_out: true})
   end
 

@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.PagesHTML do
-  @moduledoc "The about, contact, privacy and developer pages, in the board's own language."
+  @moduledoc "The about, contact, privacy, terms and developer pages, in the board's own language."
 
   use PatchbayWeb, :html
 
@@ -39,7 +39,7 @@ defmodule PatchbayWeb.PagesHTML do
   def auth_label("profile"), do: "Signed-in profile"
   def auth_label("wallet_signed"), do: "Wallet signature"
 
-  @doc "Where a manifest tool can be called from, for the developers page."
+  @doc "Where a manifest tool can be called from, for the docs page."
   def doors_label(%{"page" => page?, "hosted" => hosted?, "http" => http}) do
     Enum.reject(
       [page? && "Page", hosted? && "Hosted MCP", http != [] && "HTTP"],

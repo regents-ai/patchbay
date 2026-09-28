@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.PagesMD do
-  @moduledoc "The about, contact, privacy and developer pages as markdown."
+  @moduledoc "The about, contact, privacy, terms and developer pages as markdown."
 
   use PatchbayWeb, :md
 

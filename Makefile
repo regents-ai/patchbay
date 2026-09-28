@@ -1,8 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help check check-platform check-required-fixes check-cli check-contracts release
+.PHONY: help check check-platform check-required-fixes check-cli check-contracts release readiness
 help:
 	@echo "Run make check for every gate, or check-platform, check-required-fixes, check-cli or check-contracts for one component."
 	@echo "Run make release to run every gate, then build the committed tree into an image and start it against a throwaway database."
+	@echo "Run make readiness to start the local server and check what the agent-readiness scorer looks for."
 check: check-platform check-required-fixes check-cli check-contracts
 check-platform:
 	cd platform && mix precommit
@@ -19,7 +20,7 @@ check-required-fixes:
 REGENTS_CLI_REV := baed994
 check-cli:
 	uv run --no-project --with "regents-cli[check] @ git+https://github.com/regents-ai/regents-cli@$(REGENTS_CLI_REV)" \
-	  python -m regents_cli.check_commands cli/commands.json platform/priv/static/openapi.json platform/priv/static/agent-payments.openapi.json
+	  python -m regents_cli.check_commands cli/commands.json platform/priv/public/openapi.json platform/priv/static/agent-payments.openapi.json
 check-contracts:
 	cd contracts && forge fmt --check && forge build --offline && forge test --offline
 # The release checks and builds exactly the committed tree, so every change must
@@ -28,3 +29,7 @@ release:
 	@test -z "$$(git status --porcelain)" || { echo "Commit every change first: the release checks and builds the committed tree." >&2; exit 1; }
 	$(MAKE) check
 	scripts/release.sh
+# Starts the local server on a free port, checks what the agent-readiness scorer
+# looks for, then stops the server.
+readiness:
+	scripts/readiness.sh

@@ -26,7 +26,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
     conn =
       conn
       |> Plug.Test.init_test_session(%{})
-      |> Plug.Conn.put_session(CurrentProfile.session_key(), profile.id)
+      |> CurrentProfile.sign_in(profile.id)
       |> get(~p"/api/me/regents_balance")
 
     body = json_response(conn, conn.status)
