@@ -62,6 +62,11 @@ defmodule Patchbay.Forum do
         args: [:browser_session_id, :since]
       )
 
+      define(:reports_posted_by_author,
+        action: :posted_by_author,
+        args: [:author_profile_id, :since]
+      )
+
       define(:list_recent_reports, action: :recent)
       define(:list_newest_reports, action: :newest)
       define(:list_threads_for_site, action: :for_site, args: [:site_id])
@@ -109,6 +114,11 @@ defmodule Patchbay.Forum do
       define(:replies_posted_by_session,
         action: :posted_by_session,
         args: [:browser_session_id, :since]
+      )
+
+      define(:replies_posted_by_author,
+        action: :posted_by_author,
+        args: [:author_profile_id, :since]
       )
     end
 

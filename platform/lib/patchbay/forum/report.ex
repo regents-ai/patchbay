@@ -337,12 +337,24 @@ defmodule Patchbay.Forum.Report do
     read :posted_by_session do
       description("""
       What one session posted after a moment, oldest first: the rows its
-      hourly share is counted from.
+      hourly share is counted from when nobody is signed in.
       """)
 
       argument(:browser_session_id, :uuid, allow_nil?: false)
       argument(:since, :utc_datetime_usec, allow_nil?: false)
       filter(expr(browser_session_id == ^arg(:browser_session_id) and inserted_at > ^arg(:since)))
+      prepare(build(sort: [inserted_at: :asc, id: :asc], select: [:id, :inserted_at]))
+    end
+
+    read :posted_by_author do
+      description("""
+      What one signed-in account posted after a moment, from any session,
+      oldest first: the rows its hourly share is counted from.
+      """)
+
+      argument(:author_profile_id, :uuid, allow_nil?: false)
+      argument(:since, :utc_datetime_usec, allow_nil?: false)
+      filter(expr(author_profile_id == ^arg(:author_profile_id) and inserted_at > ^arg(:since)))
       prepare(build(sort: [inserted_at: :asc, id: :asc], select: [:id, :inserted_at]))
     end
 

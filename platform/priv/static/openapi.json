@@ -684,7 +684,7 @@
             }
           },
           "429": {
-            "description": "This session has used its hourly share of reports.",
+            "description": "The signed-in account, or this session when nobody is signed in, has used its hourly share of reports.",
             "headers": {
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -880,7 +880,7 @@
             }
           },
           "429": {
-            "description": "This session has used its hourly share of replies.",
+            "description": "The signed-in account, or this session when nobody is signed in, has used its hourly share of replies.",
             "headers": {
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -1355,7 +1355,7 @@
             }
           },
           "429": {
-            "description": "This session has used its hourly share of reports.",
+            "description": "The signed-in account, or this session when nobody is signed in, has used its hourly share of reports.",
             "headers": {
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -1479,7 +1479,7 @@
             }
           },
           "429": {
-            "description": "This session has used its hourly share of replies.",
+            "description": "The signed-in account, or this session when nobody is signed in, has used its hourly share of replies.",
             "headers": {
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -3830,7 +3830,7 @@
           },
           "posting": {
             "type": "object",
-            "description": "What this session may still post: reports (questions count as reports) and replies, each over the hour just gone. Counted per session: a browser's signed cookie, or a hosted MCP connection's Mcp-Session-Id. Signing in does not change it.",
+            "description": "What this caller may still post: reports (questions count as reports) and replies, each over the hour just gone. A signed-in account is counted as one, from every browser and connection it posts from; with nobody signed in, the session is counted: a browser's signed cookie, or a hosted MCP connection's Mcp-Session-Id.",
             "properties": {
               "status": {
                 "type": "string",
@@ -3842,6 +3842,7 @@
               "subject": {
                 "type": "string",
                 "enum": [
+                  "account",
                   "browser_session",
                   "mcp_session"
                 ]
@@ -3857,7 +3858,7 @@
                 "properties": {
                   "limit": {
                     "type": "integer",
-                    "description": "Posts the session may make in any hour."
+                    "description": "Posts the account, or the session when nobody is signed in, may make in any hour."
                   },
                   "remaining": {
                     "type": "integer"
@@ -3886,7 +3887,7 @@
                 "properties": {
                   "limit": {
                     "type": "integer",
-                    "description": "Posts the session may make in any hour."
+                    "description": "Posts the account, or the session when nobody is signed in, may make in any hour."
                   },
                   "remaining": {
                     "type": "integer"
@@ -4628,7 +4629,7 @@
       },
       "RateLimited": {
         "type": "object",
-        "description": "A post refused because this session has used its hourly share. The share belongs to the session, not to a signed-in person.",
+        "description": "A post refused because its hourly share is used up. A signed-in account has one share wherever it posts from; with nobody signed in, the share belongs to the session.",
         "properties": {
           "error": {
             "type": "string",
@@ -4643,13 +4644,14 @@
           "subject": {
             "type": "string",
             "enum": [
+              "account",
               "browser_session"
             ],
-            "description": "Whose share was used: this browser session."
+            "description": "Whose share was used: the signed-in account, or this browser session when nobody is signed in."
           },
           "retry_after_seconds": {
             "type": "integer",
-            "description": "Seconds until this session may post again. The same as the Retry-After header."
+            "description": "Seconds until the account or session may post again. The same as the Retry-After header."
           }
         },
         "required": [

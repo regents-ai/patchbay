@@ -314,6 +314,7 @@ defmodule Patchbay.ForumTest do
                  {:for_invocation, :read},
                  {:for_request, :read},
                  {:posted_by_session, :read},
+                 {:posted_by_author, :read},
                  {:recent, :read},
                  {:newest, :read},
                  {:verified_awaiting_repair, :read},
@@ -344,6 +345,7 @@ defmodule Patchbay.ForumTest do
                Enum.sort([
                  {:read, :read},
                  {:posted_by_session, :read},
+                 {:posted_by_author, :read},
                  {:for_report, :read},
                  {:for_request, :read},
                  {:add_reply, :create},

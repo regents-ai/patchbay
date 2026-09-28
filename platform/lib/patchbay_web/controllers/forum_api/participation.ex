@@ -18,7 +18,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
-  alias PatchbayWeb.Forum.SessionBudget
+  alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
 
@@ -35,7 +35,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @max_request_key_bytes 128
 
   @doc """
-  Opens a thread under the session's hourly share of reports. The site's board
+  Opens a thread under the poster's hourly share of reports. The site's board
   is opened inside the same admitted transaction as the thread, so a question
   refused for its share or its words leaves no board behind. A new thread then has its
   site's page read for a gallery card; see `Patchbay.Forum.SiteCheck`.
@@ -47,8 +47,12 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   def ask_question(session_id, actor, params) do
     with {:ok, draft} <- thread_draft(params),
          {:ok, key} <- request_key(params) do
-      session_id
-      |> SessionBudget.admit_report(fn -> open_or_repeat(session_id, actor, draft, key) end)
+      admitted =
+        PostingBudget.admit_report(actor, session_id, fn ->
+          open_or_repeat(session_id, actor, draft, key)
+        end)
+
+      admitted
       |> thread_refusal()
       |> tap(&check_site/1)
     end
@@ -85,7 +89,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   # The write a key already stands for, if any: the same words again is the
   # original answer, different words under the same key is a refusal. The
-  # lookup runs inside the admitted transaction, under the session's lock,
+  # lookup runs inside the admitted transaction, under the share's lock,
   # so two copies of one request sent at once cannot both write.
   defp repeated(nil, _draft, _lookup), do: :new
 
@@ -160,12 +164,12 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   @doc """
   A conversational reply, through the same door a browser reply uses: the
-  session's hourly share, the writer's own name, and no verdict invented for it.
+  poster's hourly share, the writer's own name, and no verdict invented for it.
   """
   def post_reply(session_id, actor, thread_id, params) do
     with {:ok, draft} <- reply_draft(thread_id, params),
          {:ok, key} <- request_key(params) do
-      SessionBudget.admit_reply(session_id, fn ->
+      PostingBudget.admit_reply(actor, session_id, fn ->
         reply_or_repeat(session_id, actor, thread_id, draft, key)
       end)
     end

@@ -10,7 +10,7 @@ defmodule Patchbay.Forum.Changes.OrderAtCommit do
   number until this one is visible: numbering and committing happen in the
   same order.
 
-  Posts already serialise per session under their hourly share; this lock
+  Posts already serialise per poster under their hourly share; this lock
   serialises the moment of numbering across sessions, which is short.
   """
 

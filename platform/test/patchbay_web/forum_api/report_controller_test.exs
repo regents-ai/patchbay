@@ -199,7 +199,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
              ] == []
     end
 
-    test "stops a session that has filed its hourly share", %{conn: conn} do
+    test "stops a signed-out session that has filed its hourly share", %{conn: conn} do
       Application.put_env(:patchbay, :forum_reports_per_hour, 2)
       on_exit(fn -> Application.delete_env(:patchbay, :forum_reports_per_hour) end)
 
@@ -210,8 +210,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert json_response(conn, 201)
 
       conn = post_json(conn, "/forum/reports", report_params())
-      assert %{"error" => error, "problem_code" => "rate_limited"} = json_response(conn, 429)
-      assert error =~ "past hour"
+
+      assert %{"error" => error, "problem_code" => "rate_limited", "subject" => "browser_session"} =
+               json_response(conn, 429)
+
+      assert error =~ "This session has already posted 2 reports in the past hour."
     end
   end
 

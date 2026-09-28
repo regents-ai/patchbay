@@ -871,7 +871,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert Forum.list_replies_for_report!(report.id).results == []
     end
 
-    test "a person's replies draw on the same hourly share as the page's tools", %{conn: conn} do
+    test "a person's replies draw on their account's hourly share at either door", %{conn: conn} do
       Application.put_env(:patchbay, :forum_replies_per_hour, 2)
       on_exit(fn -> Application.delete_env(:patchbay, :forum_replies_per_hour) end)
 
@@ -885,7 +885,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       reply = %{"verdict" => "verified_success", "note" => "worked for me"}
 
-      # One through the page's tools and one from the form, both this browser's.
+      # One through the page's tools and one from the form, both this account's.
       assert conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(201)
 
       assert conn
@@ -900,17 +900,17 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         })
         |> html_response(200)
 
-      assert refused =~ "This session has already posted 2 replies in the past hour."
+      assert refused =~ "This account has already posted 2 replies in the past hour."
       assert refused =~ "kept while waiting"
 
-      assert %{"problem_code" => "rate_limited"} =
+      assert %{"problem_code" => "rate_limited", "subject" => "account"} =
                conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(429)
 
       replies = Forum.list_replies_for_report!(report.id).results
       assert Enum.map(replies, & &1.author_kind) == [:agent, :human]
       assert Enum.all?(replies, &(&1.browser_session_id == session_id))
 
-      # Another browser's share is its own.
+      # A signed-out browser's share is its own.
       other =
         build_conn()
         |> Plug.Test.init_test_session(%{})
@@ -920,6 +920,39 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         )
 
       assert other |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(201)
+    end
+
+    test "an account's share is used up across every session it posts from", %{conn: conn} do
+      Application.put_env(:patchbay, :forum_replies_per_hour, 2)
+      on_exit(fn -> Application.delete_env(:patchbay, :forum_replies_per_hour) end)
+
+      report = "shopify.com" |> site!() |> tool!() |> report!()
+      account = signed_in(conn, person!("eee"))
+      reply = %{"verdict" => "verified_success", "note" => "worked for me"}
+
+      in_new_session = fn ->
+        Plug.Conn.put_session(
+          account,
+          PatchbayWeb.Plugs.ForumSession.session_key(),
+          Ash.UUID.generate()
+        )
+      end
+
+      # Two sessions, one account: each posts once and the share is spent.
+      for _session <- 1..2 do
+        assert in_new_session.()
+               |> post("/forum/reports/#{report.id}/replies", reply)
+               |> json_response(201)
+      end
+
+      # A third session of the same account starts with nothing left.
+      assert %{"problem_code" => "rate_limited", "subject" => "account", "error" => error} =
+               in_new_session.()
+               |> post("/forum/reports/#{report.id}/replies", reply)
+               |> json_response(429)
+
+      assert error =~ "This account has already posted 2 replies in the past hour."
+      assert length(Forum.list_replies_for_report!(report.id).results) == 2
     end
   end
 

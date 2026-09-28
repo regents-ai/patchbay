@@ -11,7 +11,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   the home page: Patchbay's own entry is recorded when a studio starts
   offering a contract, so a visit only reads what is already on the board.
   A reply written here draws on the same hourly share as the replies the
-  page's tools post, because both come from the same browser.
+  page's tools post: the signed-in account's.
   """
 
   use PatchbayWeb, :controller
@@ -30,10 +30,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Fix
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
-  alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Participation
 
   @not_posted "That reply could not be posted."
@@ -477,7 +477,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      SessionBudget.admit_report(session_id, fn ->
+      PostingBudget.admit_report(conn.assigns.current_profile, session_id, fn ->
         with {:ok, site} <- ask_site(draft["site"]) do
           %{
             site_id: site.id,
@@ -499,7 +499,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         SiteCheck.check(thread.site_id)
         {:ok, thread}
 
-      {:error, {:rate_limited, said, _seconds}} ->
+      {:error, {:rate_limited, _counted, said, _seconds}} ->
         {:error, %{said: said}}
 
       {:error, %{said: _said} = refused} ->
@@ -575,7 +575,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      SessionBudget.admit_reply(session_id, fn ->
+      PostingBudget.admit_reply(conn.assigns.current_profile, session_id, fn ->
         %{
           report_id: id,
           browser_session_id: session_id,
@@ -588,7 +588,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case admitted do
       {:ok, reply} -> {:ok, reply}
-      {:error, {:rate_limited, said, _seconds}} -> {:error, %{said: said, draft: draft}}
+      {:error, {:rate_limited, _counted, said, _seconds}} -> {:error, %{said: said, draft: draft}}
       {:error, refused} -> {:error, %{said: conversation_refusal(refused), draft: draft}}
     end
   end
@@ -920,7 +920,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   # The reply is a person's, under their own name, and it is counted against
-  # the browser's hourly share of replies like one the page's tools post.
+  # their account's hourly share of replies like one the page's tools post.
   defp add_reply(conn, id, draft) do
     session_id = conn.assigns.forum_session_id
 
@@ -932,13 +932,13 @@ defmodule PatchbayWeb.Forum.BoardController do
     }
 
     admitted =
-      SessionBudget.admit_reply(session_id, fn ->
+      PostingBudget.admit_reply(conn.assigns.current_profile, session_id, fn ->
         Forum.add_human_reply(input, actor: conn.assigns.current_profile)
       end)
 
     case admitted do
       {:ok, reply} -> {:ok, reply}
-      {:error, {:rate_limited, said, _seconds}} -> {:error, %{said: said, draft: draft}}
+      {:error, {:rate_limited, _counted, said, _seconds}} -> {:error, %{said: said, draft: draft}}
       {:error, refused} -> {:error, %{said: refusal(refused), draft: draft}}
     end
   end

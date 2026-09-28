@@ -287,8 +287,9 @@ defmodule PatchbayWeb.MCP.Tools do
     }
   end
 
-  # The same refusals the HTTP endpoints give, as a tool answer.
-  defp write_refusal({:rate_limited, message, seconds}) do
+  # The same refusals the HTTP endpoints give, as a tool answer. A hosted
+  # connection posts with nobody signed in, so its share is always its session's.
+  defp write_refusal({:rate_limited, :session, message, seconds}) do
     {:error,
      %{
        problem_code: "rate_limited",

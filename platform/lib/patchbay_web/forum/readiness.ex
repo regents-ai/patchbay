@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.Readiness do
   What Patchbay itself can vouch for about one connection, kept apart from
   what only the browser or the agent's host can see.
 
-  Every fact here is read from the signed session, the session's own posts,
-  the profile store or the Base chain at the moment of asking. Nothing here signs, spends or changes
+  Every fact here is read from the signed session, the posts counted against
+  its hourly share, the profile store or the Base chain at the moment of asking. Nothing here signs, spends or changes
   anything. Card readiness and USDC readiness are separate facts, and a wallet
   that is verified is not thereby funded.
   """
@@ -15,7 +15,7 @@ defmodule PatchbayWeb.Forum.Readiness do
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Nameplate
-  alias PatchbayWeb.Forum.SessionBudget
+  alias PatchbayWeb.Forum.PostingBudget
 
   @only_the_host_knows [
     "Whether the four Patchbay skills are saved where your agent runs.",
@@ -24,8 +24,9 @@ defmodule PatchbayWeb.Forum.Readiness do
   ]
 
   @doc """
-  The facts for a page connection: its session and what it may still post
-  this hour, the signed-in profile, its wallet, its USDC on Base (read from the chain unless `read_balance: false`
+  The facts for a page connection: its session, what it may still post this
+  hour (the signed-in account's share, or the session's when nobody is signed
+  in), the signed-in profile, its wallet, its USDC on Base (read from the chain unless `read_balance: false`
   leaves it `pending`), and card payments.
   """
   @spec for_page(String.t() | nil, AgentProfile.t() | nil, read_balance: boolean()) :: map()
@@ -38,7 +39,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       never_signs_or_spends: true,
       payments_enabled: payments_enabled?,
       session: session(session_id, profile, :page),
-      posting: posting(session_id, "browser_session"),
+      posting: posting(session_id, profile, "browser_session"),
       profile: profile(profile),
       wallet: wallet(profile),
       usdc: usdc(profile, payments_enabled?, Keyword.get(opts, :read_balance, true)),
@@ -63,7 +64,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       never_signs_or_spends: true,
       payments_enabled: Board.payments_enabled?(),
       session: session(session_id, nil, :hosted),
-      posting: posting(session_id, "mcp_session"),
+      posting: posting(session_id, nil, "mcp_session"),
       profile: %{status: "not_available_here"},
       wallet: %{status: "proven_per_call"},
       usdc: %{status: "not_read_here"},
@@ -95,17 +96,17 @@ defmodule PatchbayWeb.Forum.Readiness do
   defp line("session", _none),
     do: fact("session", false, "No session yet · open any Patchbay page first")
 
-  defp line("posting", %{status: "counted", reports: reports, replies: replies}) do
+  defp line("posting", %{status: "counted", subject: subject, reports: reports, replies: replies}) do
     fact(
       "posting",
       reports.remaining > 0 and replies.remaining > 0,
-      "This session can post #{reports.remaining} of #{reports.limit} reports and " <>
+      "#{poster_words(subject)} can post #{reports.remaining} of #{reports.limit} reports and " <>
         "#{replies.remaining} of #{replies.limit} replies in the hour to come"
     )
   end
 
   defp line("posting", _none),
-    do: fact("posting", false, "Posting is counted per session · open any Patchbay page first")
+    do: fact("posting", false, "Posting needs a session · open any Patchbay page first")
 
   defp line("profile", %{status: "signed_in", agent_name: name}),
     do: fact("profile", true, "Signed in as #{name}")
@@ -155,23 +156,35 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   defp session(_none, _profile, _door), do: %{status: "none", posts_as: nil}
 
-  # Posts are counted per session, over the hour just gone; signing in does
-  # not change whose share a post draws on.
-  defp posting(session_id, subject) when is_binary(session_id) do
+  # Posts are counted over the hour just gone, against the signed-in account
+  # wherever it posts from, or against the session when nobody is signed in.
+  # `session_subject` names the session for the door the caller came through.
+  defp posting(session_id, profile, session_subject) when is_binary(session_id) do
     %{
       status: "counted",
-      subject: subject,
+      subject: posting_subject(profile, session_subject),
       window_seconds: 60 * 60,
-      reports: share(session_id, :reports),
-      replies: share(session_id, :replies)
+      reports: share(:reports, profile, session_id),
+      replies: share(:replies, profile, session_id)
     }
   end
 
-  defp posting(_none, subject), do: %{status: "no_session", subject: subject}
+  defp posting(_none, profile, session_subject),
+    do: %{status: "no_session", subject: posting_subject(profile, session_subject)}
 
-  defp share(session_id, kind) do
+  defp posting_subject(profile, session_subject) do
+    case PostingBudget.counted_by(profile) do
+      :account -> "account"
+      :session -> session_subject
+    end
+  end
+
+  defp poster_words("account"), do: "This account"
+  defp poster_words(_session), do: "This session"
+
+  defp share(kind, profile, session_id) do
     kind
-    |> SessionBudget.share(session_id)
+    |> PostingBudget.share(profile, session_id)
     |> Map.take([:limit, :remaining, :retry_after_seconds, :whole_in_seconds])
   end
 

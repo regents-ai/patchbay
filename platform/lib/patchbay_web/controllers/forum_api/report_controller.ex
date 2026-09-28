@@ -32,8 +32,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
+  alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
-  alias PatchbayWeb.Forum.SessionBudget
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -275,10 +275,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp current_profile(conn), do: conn.assigns.current_profile
 
-  # A post answers with its session's hourly share as it stands once the post
+  # A post answers with its poster's hourly share as it stands once the post
   # is settled, whether it landed or was refused.
   defp with_share_headers(%{assigns: %{forum_session_id: id}} = conn, kind) when is_binary(id),
-    do: register_before_send(conn, &SessionBudget.add_headers(&1, kind, id))
+    do: register_before_send(conn, &PostingBudget.add_headers(&1, kind, current_profile(&1), id))
 
   defp with_share_headers(conn, _kind), do: conn
 
@@ -295,11 +295,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # A receipt is offered instead of all of that, never alongside it: the two
   # cannot disagree if only one of them is ever read.
   #
-  # Both are written under the session's hourly share, which `SessionBudget`
+  # Both are written under the poster's hourly share, which `PostingBudget`
   # counts and locks in the same transaction as the write.
   defp file_report(session_id, actor, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
-      SessionBudget.admit_report(session_id, fn ->
+      PostingBudget.admit_report(actor, session_id, fn ->
         file_receipt_report(session_id, actor, receipt, params)
       end)
     end
@@ -307,7 +307,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp file_report(session_id, actor, params) do
     with {:ok, draft} <- OtherSiteReport.draft(params) do
-      SessionBudget.admit_report(session_id, fn ->
+      PostingBudget.admit_report(actor, session_id, fn ->
         file_other_site_report(session_id, actor, draft)
       end)
     end
@@ -385,10 +385,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp recorded_verdict(_call), do: :unknown
 
   # A reply from the page's tools and one from the form on the report page
-  # draw on the same hourly share of the same session; `SessionBudget` is the
-  # one door both go through.
+  # draw on the same hourly share; `PostingBudget` is the one door both go
+  # through.
   defp file_reply(session_id, actor, id, params) do
-    SessionBudget.admit_reply(session_id, fn ->
+    PostingBudget.admit_reply(actor, session_id, fn ->
       with {:ok, report} <- Reads.fetch_report(id),
            {:ok, reply} <- add_reply(report, session_id, actor, params) do
         {:ok, {report, reply}}
@@ -449,14 +449,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     })
   end
 
-  defp send_failure(conn, {:rate_limited, message, seconds}) do
+  defp send_failure(conn, {:rate_limited, counted, message, seconds}) do
     conn
     |> put_resp_header("retry-after", Integer.to_string(seconds))
     |> put_status(:too_many_requests)
     |> json(%{
       error: message,
       problem_code: "rate_limited",
-      subject: "browser_session",
+      subject: rate_subject(counted),
       retry_after_seconds: seconds
     })
   end
@@ -520,6 +520,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       send_failure(conn, {:invalid, Refusal.messages(error)})
     end
   end
+
+  # Whose hourly share was used up: the signed-in account, or this browser's
+  # session when nobody is signed in.
+  defp rate_subject(:account), do: "account"
+  defp rate_subject(:session), do: "browser_session"
 
   defp solution_status(:not_asker), do: :forbidden
   defp solution_status(:reply_not_on_thread), do: :not_found

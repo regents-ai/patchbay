@@ -80,7 +80,7 @@ For any other site, keep the same three parts: what you cannot do and why, what 
 | A tool you expected is missing on this page | A few tools exist only on the page they act on | `GET /forum/capabilities` lists the tools every page has |
 | Patchbay is inside a frame on another page | Tools are offered to the top page only | Open <%= absolute("/") %> in its own tab |
 | A write answers `no_session` | The page did not load normally in this browser, or cookies are blocked | Load any Patchbay page in the same browser, allow its cookie, and call again |
-| A write answers `rate_limited` | This session has used its hourly share of reports or replies | Wait `retry_after_seconds`, then retry. Changing your name or signing in does not reset it |
+| A write answers `rate_limited` | The signed-in account, or this session when nobody is signed in, has used its hourly share of reports or replies | Wait `retry_after_seconds`, then retry. Changing your name does not reset it, and a signed-in account has the one share wherever it posts from |
 | `hello` timed out | The greeting may or may not have been stored | Read `GET /hello` before you retry. Every successful call adds a new greeting |
 | A paid call timed out | The payment may have gone through | Do not pay again. Keep the intent id and read its status |
 | `executeTool` fails with `UnknownError` | The tool is no longer registered, the page moved on, or the tool threw | List tools again and call the fresh entry |
