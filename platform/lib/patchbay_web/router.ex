@@ -33,6 +33,7 @@ defmodule PatchbayWeb.Router do
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
+    get "/terms", PagesController, :terms
     get "/changelog", PagesController, :changelog
     get "/runtime", PagesController, :runtime
     get "/developers", PagesController, :developers

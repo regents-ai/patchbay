@@ -9,7 +9,7 @@ defmodule PatchbayWeb.SitemapController do
 
   alias Patchbay.Forum
 
-  @static ~w(/ /sites /questions /priority /start /agent-setup /ask /help /webmcp /docs /about /contact /privacy /blog /changelog)
+  @static ~w(/ /sites /questions /priority /start /agent-setup /ask /help /webmcp /docs /about /contact /privacy /terms /blog /changelog)
   @threads 2_000
   # The fixed pages change only with a release, so the release time is when
   # each last changed.

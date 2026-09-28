@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.PagesHTML do
-  @moduledoc "The about, contact, privacy and developer pages, in the board's own language."
+  @moduledoc "The about, contact, privacy, terms and developer pages, in the board's own language."
 
   use PatchbayWeb, :html
 

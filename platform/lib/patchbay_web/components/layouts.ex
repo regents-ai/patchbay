@@ -12,6 +12,7 @@ defmodule PatchbayWeb.Layouts do
         <a href="/help">Help &amp; docs</a>
         <a href="/about">About</a>
         <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
         <a href="https://github.com/regents-ai/patchbay" rel="noopener noreferrer">GitHub</a>
         <a
           class="product-links__credit"

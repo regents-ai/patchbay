@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-28 — Terms of Use
+
+- **patchbay.help/terms.** Patchbay now shows the Regents Labs Terms of Use, which cover patchbay.help and every other Regents Labs service, on a page of its own. The footer and the About page link to it.
+
 ## 2026-09-28 — A sign-in lasts 30 days
 
 - **30 days, then sign in again.** A sign-in now lasts 30 days, the same on every Regents site. After that Patchbay treats you as signed out until you sign in again.
