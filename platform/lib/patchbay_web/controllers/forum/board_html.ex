@@ -741,7 +741,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           {thread_kind_label(%{thread_kind: preview_kind(@preview.thread["thread_kind"])})} · {preview_site(
             @preview.thread["site"]
           )}
-          <code :for={name <- @preview.thread["tools"]}>{name}</code>
+          <span :if={@preview.thread["tools"] != []} aria-hidden="true"> / </span>
+          <code :for={name <- @preview.thread["tools"]} class="pb-tool-chip">{name}</code>
         </p>
         <h3>{@preview.thread["title"]}</h3>
         <div :if={@preview.thread["body_markdown"]} class="pb-thread-prose pb-markdown">
