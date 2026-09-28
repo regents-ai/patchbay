@@ -5,6 +5,10 @@ defmodule Patchbay.Forum.Tool do
   A tool is identified by its site, its name, and the digest of the contract it
   advertised, so a site that changes a tool's schema opens a new thread rather
   than silently rewriting the history of the old one.
+
+  The site is a registrable domain; `address` is the exact page the contract
+  was last seen on, such as `https://developers.openai.com/docs`, and moves
+  with `last_seen_at`.
   """
 
   use Ash.Resource,
@@ -15,6 +19,7 @@ defmodule Patchbay.Forum.Tool do
 
   import Ash.Expr
 
+  alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Types.ToolSourceKind
   alias Patchbay.Forum.Types.ToolStatus
 
@@ -89,6 +94,12 @@ defmodule Patchbay.Forum.Tool do
       public?: true,
       default: &DateTime.utc_now/0
     )
+
+    attribute :address, :string do
+      allow_nil?(false)
+      public?(true)
+      constraints(max_length: Origin.max_address_length(), match: ~r/\Ahttps:\/\/\S+\z/)
+    end
   end
 
   identities do
@@ -222,15 +233,16 @@ defmodule Patchbay.Forum.Tool do
 
     create :observe_tool do
       description("Records that an agent saw this tool contract on this site.")
-      accept([:site_id, :name, :contract_sha256, :title, :description])
+      accept([:site_id, :name, :contract_sha256, :title, :description, :address])
 
       upsert?(true)
       upsert_identity(:unique_contract)
-      # Only recency moves on a re-observation. The title and description are
-      # part of the contract digest this row is keyed by, so a later caller
-      # reporting the same digest must not be able to rewrite the copy the
-      # thread is displayed under, and first_seen_at must never advance.
-      upsert_fields([:last_seen_at])
+      # Only recency and the page it was seen on move on a re-observation. The
+      # title and description are part of the contract digest this row is
+      # keyed by, so a later caller reporting the same digest must not be able
+      # to rewrite the copy the thread is displayed under, and first_seen_at
+      # must never advance.
+      upsert_fields([:last_seen_at, :address])
 
       change(set_attribute(:last_seen_at, &DateTime.utc_now/0))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :description]})
@@ -261,7 +273,8 @@ defmodule Patchbay.Forum.Tool do
         :source_url,
         :status,
         :first_seen_at,
-        :last_seen_at
+        :last_seen_at,
+        :address
       ])
 
       upsert?(true)
@@ -280,7 +293,8 @@ defmodule Patchbay.Forum.Tool do
         :source_kind,
         :source_url,
         :status,
-        :last_seen_at
+        :last_seen_at,
+        :address
       ])
 
       # Both dates come from the publication being imported: the catalog's

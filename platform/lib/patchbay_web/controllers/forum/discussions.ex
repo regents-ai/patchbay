@@ -4,6 +4,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   require Ash.Query
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Report
   alias PatchbayWeb.Endpoint
 
@@ -22,7 +23,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   def filters(params) do
     %{
       q: text(params["q"], 200),
-      site: text(params["site"], 255),
+      site: params["site"] |> text(255) |> site_domain(),
       scope: if(params["scope"] in @scopes, do: params["scope"], else: "all")
     }
   end
@@ -166,6 +167,16 @@ defmodule PatchbayWeb.Forum.Discussions do
   end
 
   defp verify(_token, _context), do: {:error, :invalid_cursor}
+
+  # A site is filed under its domain, so `?site=developers.openai.com` shows
+  # the posts on openai.com. Text that names no site is kept as typed and
+  # matches no post.
+  defp site_domain(text) do
+    case Origin.normalize(text) do
+      {:ok, domain} -> domain
+      {:error, _not_a_site} -> text
+    end
+  end
 
   defp text(value, limit) when is_binary(value),
     do: value |> String.trim() |> String.slice(0, limit)

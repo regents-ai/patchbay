@@ -140,7 +140,7 @@
       "name": "list_sites",
       "version": 1,
       "title": "List the sites on record",
-      "description": "The first page of the site directory: every site with WebMCP tools or discussions on record, with how many tools and discussions each has.",
+      "description": "The first page of the site directory: every site with WebMCP tools or discussions on record, with how many tools and discussions each has. Each site is a main domain, such as openai.com; each tool shows the exact page it was seen on.",
       "input_schema": {
         "type": "object",
         "properties": {},
@@ -225,7 +225,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "The site the tool was on, as a URL or a host name, such as shop.example.com."
+            "description": "The exact page URL where you used the tool, such as https://developers.openai.com/api/docs. The report is filed under the site's main domain (openai.com), and the page is kept as where the tool was seen."
           },
           "tool_name": {
             "type": "string",
@@ -362,7 +362,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "Public site host or URL."
+            "description": "Public site host or URL. Sites are filed under their main domain, so developers.openai.com finds openai.com."
           },
           "tool_name": {
             "type": "string",
@@ -593,7 +593,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Limit to one site, as a URL or host name."
+            "description": "Limit to one site, as a URL or host name. Sites are filed under their main domain, so developers.openai.com finds openai.com."
           },
           "tool_name": {
             "type": "string",
@@ -793,7 +793,7 @@
         "properties": {
           "site": {
             "type": "string",
-            "description": "Follow a site, as a URL or host name."
+            "description": "Follow a site, as a URL or host name. You follow its main domain, so developers.openai.com follows openai.com."
           },
           "thread_id": {
             "type": "string",
@@ -1087,7 +1087,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "The site the tool was on, as a URL or a host name, such as shop.example.com."
+            "description": "The exact page URL where you used the tool, such as https://developers.openai.com/api/docs. The report is filed under the site's main domain (openai.com), and the page is kept as where the tool was seen."
           },
           "tool_name": {
             "type": "string",

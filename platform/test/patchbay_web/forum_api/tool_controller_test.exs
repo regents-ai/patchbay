@@ -9,6 +9,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
       for n <- 1..29 do
         Forum.observe_tool!(%{
           site_id: site.id,
+          address: "https://#{site.origin}/",
           name: "checkout",
           contract_sha256: Base.encode16(:crypto.hash(:sha256, "version-#{n}"), case: :lower),
           description: "Version #{n}"
@@ -20,7 +21,10 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
     assert length(first["versions"]) == 25
     assert first["pagination"]["has_more"]
     oldest = hd(versions)
-    Forum.observe_tool!(Map.take(oldest, [:site_id, :name, :contract_sha256, :description]))
+
+    Forum.observe_tool!(
+      Map.take(oldest, [:site_id, :name, :contract_sha256, :description, :address])
+    )
 
     second =
       conn
@@ -53,6 +57,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
     tool =
       Forum.publish_catalog_tool!(%{
         site_id: site.id,
+        address: "https://#{site.origin}/",
         name: "checkout",
         contract_sha256: String.duplicate("a", 64),
         input_schema: schema,
@@ -107,6 +112,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
       for n <- 1..27 do
         Forum.observe_tool!(%{
           site_id: site.id,
+          address: "https://#{site.origin}/",
           name: "checkout",
           contract_sha256: Base.encode16(:crypto.hash(:sha256, "html-#{n}"), case: :lower),
           title: "Revision #{n}"
@@ -121,6 +127,9 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
       |> LazyHTML.from_document()
       |> LazyHTML.query("#version-#{boundary.id}")
       |> LazyHTML.to_html()
+
+    assert boundary_html =~ "Seen at"
+    assert boundary_html =~ ~s(href="https://page-history.example/")
 
     assert boundary_html =~ "Revision 2</s>"
     assert boundary_html =~ "Revision 3</ins>"
@@ -151,6 +160,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
       for n <- 1..4 do
         Forum.observe_tool!(%{
           site_id: site.id,
+          address: "https://#{site.origin}/",
           name: "checkout",
           contract_sha256: Base.encode16(:crypto.hash(:sha256, "tie-#{n}"), case: :lower)
         })
@@ -172,6 +182,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
 
     Forum.observe_tool!(%{
       site_id: site.id,
+      address: "https://#{site.origin}/",
       name: "checkout",
       contract_sha256: String.duplicate("f", 64)
     })

@@ -57,8 +57,11 @@ defmodule Patchbay.Forum.SiteCheckTest do
 
     SiteCheck.run(site.id)
 
-    assert_received {:shot, "https://docs.example.com/"}
-    assert [%{name: "search_docs"}] = Forum.list_tools_for_site!(site.id).results
+    assert_received {:shot, "https://example.com/"}
+
+    assert [%{name: "search_docs", address: "https://example.com/"}] =
+             Forum.list_tools_for_site!(site.id).results
+
     assert {:ok, %{image: @picture}} = Forum.get_site_screenshot(site.id)
     assert "/site-screenshots/" <> _ = Ash.get!(Forum.Site, site.id).screenshot_path
     assert site.id in gallery_ids()
@@ -86,7 +89,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
 
     SiteCheck.run(site.id)
 
-    assert_received {:shot, "https://docs.example.com/"}
+    assert_received {:shot, "https://example.com/"}
     assert [%{name: "search_docs"}] = Forum.list_tools_for_site!(site.id).results
     refute site.id in gallery_ids()
 
@@ -98,7 +101,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
     an_hour_passes(site.id)
     SiteCheck.run(site.id)
 
-    assert_received {:shot, "https://docs.example.com/"}
+    assert_received {:shot, "https://example.com/"}
     assert site.id in gallery_ids()
   end
 

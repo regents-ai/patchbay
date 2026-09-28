@@ -14,7 +14,15 @@ defmodule Patchbay.ForumTest do
 
   defp tool!(site, attrs \\ %{}) do
     Forum.observe_tool!(
-      Map.merge(%{site_id: site.id, name: "checkout", contract_sha256: @contract}, attrs)
+      Map.merge(
+        %{
+          site_id: site.id,
+          address: "https://#{site.origin}/",
+          name: "checkout",
+          contract_sha256: @contract
+        },
+        attrs
+      )
     )
   end
 
@@ -73,7 +81,10 @@ defmodule Patchbay.ForumTest do
       {"//Shopify.com", "shopify.com"},
       {"http://user:pass@evil.com", "evil.com"},
       {"  HTTPS://Shopify.com.:443/a?b=c  ", "shopify.com"},
-      {"Shop.Example.CO.UK", "shop.example.co.uk"}
+      {"https://developers.openai.com/api/docs", "openai.com"},
+      {"Shop.Example.CO.UK", "example.co.uk"},
+      {"someone.vercel.app", "someone.vercel.app"},
+      {"docs.someone.github.io", "someone.github.io"}
     ]
 
     for {input, expected} <- accepted do
@@ -92,7 +103,9 @@ defmodule Patchbay.ForumTest do
       {"localhost", "localhost"},
       {"shopify", "a single-label host"},
       {"not a host!", "free text"},
-      {"", "an empty string"}
+      {"", "an empty string"},
+      {"vercel.app", "a shared hosting address on its own"},
+      {"https://co.uk/", "a shared domain ending on its own"}
     ]
 
     for {input, description} <- rejected do
@@ -104,11 +117,19 @@ defmodule Patchbay.ForumTest do
     test "rejects a non-string" do
       assert {:error, _message} = Origin.normalize(nil)
     end
+
+    test "address/1 keeps the exact page, without query, fragment or port" do
+      assert Origin.address("HTTP://Developers.OpenAI.com:443/API/Docs?key=1#top") ==
+               {:ok, "https://developers.openai.com/API/Docs"}
+
+      assert Origin.address("shopify.com") == {:ok, "https://shopify.com/"}
+      assert {:error, _message} = Origin.address("vercel.app")
+    end
   end
 
   describe "register_site/1" do
-    test "normalizes a full URL down to its bare lowercase host" do
-      assert %{origin: "shopify.com"} = Forum.register_site!("https://Shopify.com/path")
+    test "files a full URL under its lowercase registrable domain" do
+      assert %{origin: "shopify.com"} = Forum.register_site!("https://Shop.Shopify.com/path")
     end
 
     test "surfaces a rejected origin as an error on the argument" do
@@ -277,6 +298,7 @@ defmodule Patchbay.ForumTest do
       assert {:error, error} =
                Forum.observe_tool(%{
                  site_id: site.id,
+                 address: "https://#{site.origin}/",
                  name: "check out",
                  contract_sha256: @contract
                })
@@ -288,7 +310,12 @@ defmodule Patchbay.ForumTest do
       site = site!()
 
       assert {:error, error} =
-               Forum.observe_tool(%{site_id: site.id, name: "checkout", contract_sha256: "abc"})
+               Forum.observe_tool(%{
+                 site_id: site.id,
+                 address: "https://#{site.origin}/",
+                 name: "checkout",
+                 contract_sha256: "abc"
+               })
 
       assert Exception.message(error) =~ "contract_sha256"
     end

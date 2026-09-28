@@ -109,6 +109,7 @@ defmodule Patchbay.Assist.PageToolsTest do
 
     Forum.observe_tool!(%{
       site_id: site.id,
+      address: "https://#{site.origin}/",
       name: "reserve_table",
       contract_sha256: String.duplicate("a", 64),
       description: "From an agent's report."
@@ -128,7 +129,7 @@ defmodule Patchbay.Assist.PageToolsTest do
     PageSite.serve(%{"/" => PageSite.without_tools()})
 
     assert {:unlisted, :no_tools_found} =
-             Discovery.find("https://nothing.example.com/", target_options())
+             Discovery.find("https://nothing.example.net/", target_options())
   end
 
   defp target_options, do: Application.get_env(:patchbay, :assist_target)

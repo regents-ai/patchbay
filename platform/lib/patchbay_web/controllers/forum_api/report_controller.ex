@@ -354,7 +354,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp observe_called_tool(site, call) do
     call.tool_revision
     |> RoomMirror.board_contract()
-    |> Map.merge(%{site_id: site.id, contract_sha256: call.tool_contract_sha256})
+    |> Map.merge(%{
+      site_id: site.id,
+      contract_sha256: call.tool_contract_sha256,
+      address: RoomMirror.address()
+    })
     |> Forum.observe_tool()
   end
 

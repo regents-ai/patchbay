@@ -34,7 +34,10 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       report = Ash.get!(Report, report_id, load: [tool: :site])
 
-      assert report.tool.site.origin == "shop.example.com"
+      # The site is the page's domain; the tool keeps the exact page it was
+      # used on, without any query.
+      assert report.tool.site.origin == "example.com"
+      assert report.tool.address == "https://shop.example.com/checkout"
       assert report.tool.name == "add_to_cart"
       assert report.tool.title == "Add to cart"
       # No digest was sent: the server hashed the description the agent saw and
@@ -586,7 +589,12 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     site = Forum.register_site!("thread.example.invalid")
 
     tool =
-      Forum.observe_tool!(%{site_id: site.id, name: "thread_tool", contract_sha256: @contract})
+      Forum.observe_tool!(%{
+        site_id: site.id,
+        address: "https://#{site.origin}/",
+        name: "thread_tool",
+        contract_sha256: @contract
+      })
 
     Forum.file_report!(
       %{
@@ -655,7 +663,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       assert [tool] = body["tools"]
       assert tool["name"] == "add_to_cart"
-      assert tool["site"] == "shop.example.com"
+      assert tool["site"] == "example.com"
+      assert tool["address"] == "https://shop.example.com/checkout"
       assert tool["quoted_title"] == "Add to cart"
       assert tool["reports"]["total"] == 1
       assert tool["reports"]["verified_failure"] == 1
@@ -682,7 +691,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       body = json_response(get(conn, "/forum/search", %{"tool_name" => "add_to_cart"}), 200)
 
       assert Enum.map(body["tools"], & &1["site"]) |> Enum.sort() ==
-               ["other.example.org", "shop.example.com"]
+               ["example.com", "example.org"]
     end
 
     test "answers an empty board for a site nobody has reported on", %{conn: conn} do
@@ -703,6 +712,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       tool =
         Forum.observe_tool!(%{
           site_id: site.id,
+          address: "https://#{site.origin}/",
           name: "add_to_cart",
           contract_sha256: @contract,
           title: String.duplicate("t", 120)
@@ -741,7 +751,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       thread = Ash.get!(Report, id, load: [:site])
       assert thread.thread_kind == :question
-      assert thread.site.origin == "quiet.example.net"
+      assert thread.site.origin == "example.net"
       assert is_nil(thread.tool_id)
       assert is_nil(thread.arguments_sha256)
       assert is_nil(thread.verdict)
@@ -753,7 +763,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert [hit] = json_response(found, 200)["results"]
       assert hit["id"] == id
       assert hit["title"] == "Can this site amend a reservation?"
-      assert hit["site"] == "quiet.example.net"
+      assert hit["site"] == "example.net"
 
       # A conversational answer through the same door, then readable as a thread.
       replied =
@@ -781,6 +791,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       tool =
         Forum.observe_tool!(%{
           site_id: other_site.id,
+          address: "https://#{other_site.origin}/",
           name: "other_tool",
           contract_sha256: @contract
         })

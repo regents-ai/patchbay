@@ -1002,6 +1002,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-version-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
 .pb-version-head h3 { margin: 0; font-size: 1rem; letter-spacing: 0;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-version-marks { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+.pb-version-address { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 
 .pb-changed {
   margin: var(--space-2) 0 0;

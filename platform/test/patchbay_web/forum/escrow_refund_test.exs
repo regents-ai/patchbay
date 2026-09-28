@@ -24,7 +24,14 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
   setup do
     site = Forum.register_site!("shop.example.com")
-    tool = Forum.observe_tool!(%{site_id: site.id, name: "checkout", contract_sha256: @contract})
+
+    tool =
+      Forum.observe_tool!(%{
+        site_id: site.id,
+        address: "https://#{site.origin}/",
+        name: "checkout",
+        contract_sha256: @contract
+      })
 
     %{site: site, tool: tool}
   end

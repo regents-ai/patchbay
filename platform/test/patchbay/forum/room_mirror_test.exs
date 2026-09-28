@@ -98,16 +98,17 @@ defmodule Patchbay.Forum.RoomMirrorTest do
     assert entry.contract_sha256 == seeded_contract().contract_sha256
   end
 
-  test "reads the host from the deployment's configured address" do
+  test "files under the domain of the deployment's configured address" do
     System.put_env("PHX_HOST", "Board.Example.COM")
     on_exit(fn -> System.delete_env("PHX_HOST") end)
 
-    assert RoomMirror.origin() == "board.example.com"
+    assert RoomMirror.origin() == "example.com"
 
     seeded_room!("room-one")
 
     assert [only_site] = Forum.list_directory!().results
-    assert only_site.origin == "board.example.com"
+    assert only_site.origin == "example.com"
+    assert [%{address: "https://example.com/"}] = entries()
   end
 
   test "recording the same contract twice leaves one site and one entry" do

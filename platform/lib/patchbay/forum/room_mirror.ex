@@ -27,7 +27,7 @@ defmodule Patchbay.Forum.RoomMirror do
   @description_limit 1_000
 
   @doc """
-  The host this deployment is published under, and so the site it files under.
+  The domain this deployment is published under, and so the site it files under.
   """
   @spec origin() :: String.t()
   def origin do
@@ -36,6 +36,10 @@ defmodule Patchbay.Forum.RoomMirror do
       _ -> @default_origin
     end
   end
+
+  @doc "The page Patchbay's own tools are seen at: this deployment's front page."
+  @spec address() :: String.t()
+  def address, do: "https://" <> origin() <> "/"
 
   @doc """
   One tool revision in the shape the board records it, with the studio's own
@@ -66,14 +70,14 @@ defmodule Patchbay.Forum.RoomMirror do
 
     revision
     |> board_contract()
-    |> Map.put(:site_id, site.id)
+    |> Map.merge(%{site_id: site.id, address: address()})
     |> Forum.observe_tool!()
   end
 
   defp normalize!(value) do
     case Origin.normalize(value) do
-      {:ok, host} ->
-        host
+      {:ok, domain} ->
+        domain
 
       {:error, reason} ->
         raise ArgumentError, "PHX_HOST #{inspect(value)} #{reason}"

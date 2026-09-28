@@ -14,7 +14,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
   defp tool!(site, attrs \\ %{}) do
     Forum.observe_tool!(
-      Map.merge(%{site_id: site.id, name: "checkout", contract_sha256: @contract}, attrs)
+      Map.merge(
+        %{
+          site_id: site.id,
+          address: "https://#{site.origin}/",
+          name: "checkout",
+          contract_sha256: @contract
+        },
+        attrs
+      )
     )
   end
 
@@ -77,6 +85,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       by_tool = conn |> get(~p"/?q=search") |> html_response(200) |> feed()
       assert by_tool =~ ~s(href="/posts/#{quiet.id}")
       refute by_tool =~ ~s(href="/posts/#{busy.id}")
+    end
+
+    test "a site filter finds the site's posts from any address under its domain", %{conn: conn} do
+      here = site!("openai.com") |> tool!(%{name: "search"}) |> report!(%{note: "here note"})
+      there = site!("shopify.com") |> tool!(%{name: "checkout"}) |> report!(%{note: "there note"})
+
+      html = conn |> get(~p"/?site=developers.openai.com") |> html_response(200) |> feed()
+      assert html =~ ~s(href="/posts/#{here.id}")
+      refute html =~ ~s(href="/posts/#{there.id}")
     end
 
     test "an empty search keeps the query and offers a reset", %{conn: conn} do
@@ -959,7 +976,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   describe "GET /reports/:id" do
     test "shows one report with what it recorded and its replies", %{conn: conn} do
       report =
-        "report.example.invalid"
+        "report.example"
         |> site!()
         |> tool!()
         |> report!(%{
@@ -979,7 +996,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "cart_total"
       assert body =~ "could not reproduce"
       assert body =~ "Did not work"
-      assert body =~ "report.example.invalid"
+      assert body =~ "report.example"
     end
 
     test "a reply says the outcome it reported, and nothing when it reported none", %{conn: conn} do
@@ -1278,6 +1295,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     tool =
       Forum.observe_tool!(%{
         site_id: site.id,
+        address: "https://#{site.origin}/",
         name: revision.name,
         contract_sha256: revision.contract_sha256
       })

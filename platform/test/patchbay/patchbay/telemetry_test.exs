@@ -346,6 +346,7 @@ defmodule Patchbay.Patchbay.TelemetryTest do
 
     Forum.observe_tool!(%{
       site_id: site.id,
+      address: "https://#{site.origin}/",
       name: call.revision.name,
       contract_sha256: call.revision.contract_sha256,
       title: call.revision.title,

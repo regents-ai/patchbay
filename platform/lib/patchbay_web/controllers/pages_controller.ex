@@ -13,25 +13,25 @@ defmodule PatchbayWeb.PagesController do
 
   @doc """
   Help for an agent stuck on a site: `/help?site=HOST&goal=GOAL&error=ERROR`
-  answers with what the board already has on that site, then the exact
-  `ask_question` call with the site filled in, then how to check back.
+  answers with what the board already has on the site's domain, then the
+  exact `ask_question` call with the site filled in, then how to check back.
   Without a site it is the list of places to start.
   """
   def help(conn, %{"site" => site} = params) do
     case Origin.normalize(site) do
-      {:ok, host} ->
+      {:ok, domain} ->
         goal = presence(params["goal"])
-        {:ok, site} = Forum.get_site_by_origin(host, not_found_error?: false)
-        {:ok, found} = Reads.search(%{"origin" => host, "q" => goal})
+        {:ok, site} = Forum.get_site_by_origin(domain, not_found_error?: false)
+        {:ok, found} = Reads.search(%{"origin" => domain, "q" => goal})
 
         render(conn, :stuck,
-          page_title: "Stuck on #{host}",
-          host: host,
+          page_title: "Stuck on #{domain}",
+          host: domain,
           site: site,
           goal: goal,
           tools: found.tools,
           threads: found.results,
-          ask: ask_call(host, goal, presence(params["error"]))
+          ask: ask_call(domain, goal, presence(params["error"]))
         )
 
       {:error, message} ->

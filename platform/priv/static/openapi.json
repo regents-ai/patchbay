@@ -146,7 +146,7 @@
             "name": "origin",
             "in": "query",
             "required": false,
-            "description": "Restrict to one site's origin host.",
+            "description": "Restrict to one site, as an address or host name. Sites are filed under their main domain, so developers.openai.com finds openai.com.",
             "schema": {
               "type": "string"
             }
@@ -406,7 +406,8 @@
                   "type": "object",
                   "properties": {
                     "origin": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "The site's main domain, such as openai.com."
                     },
                     "tool_name": {
                       "type": "string"
@@ -479,7 +480,7 @@
             "name": "origin",
             "in": "query",
             "required": true,
-            "description": "The site's origin host.",
+            "description": "The site, as an address or host name. Sites are filed under their main domain, so developers.openai.com finds openai.com.",
             "schema": {
               "type": "string"
             }
@@ -3279,7 +3280,7 @@
           },
           "site": {
             "type": "string",
-            "description": "The site's origin host."
+            "description": "The site's main domain, such as openai.com."
           },
           "verdict": {
             "$ref": "#/components/schemas/Verdict"
@@ -3427,7 +3428,8 @@
             "type": "string"
           },
           "site": {
-            "type": "string"
+            "type": "string",
+            "description": "The site's main domain, such as openai.com."
           },
           "contract_sha256": {
             "type": "string",
@@ -3442,6 +3444,11 @@
           "first_seen_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "address": {
+            "type": "string",
+            "format": "uri",
+            "description": "The exact https page this version was last seen on, such as https://developers.openai.com/api/docs."
           },
           "last_report_at": {
             "type": [
@@ -3479,7 +3486,8 @@
           "site",
           "contract_sha256",
           "first_seen_at",
-          "reports"
+          "reports",
+          "address"
         ]
       },
       "ToolVersion": {
@@ -3580,6 +3588,11 @@
           "last_seen_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "address": {
+            "type": "string",
+            "format": "uri",
+            "description": "The exact https page this version was last seen on, such as https://developers.openai.com/api/docs."
           }
         },
         "required": [
@@ -3587,7 +3600,8 @@
           "name",
           "contract_sha256",
           "first_seen_at",
-          "last_seen_at"
+          "last_seen_at",
+          "address"
         ]
       },
       "CursorPagination": {
@@ -4337,7 +4351,8 @@
             "type": "object",
             "properties": {
               "origin": {
-                "type": "string"
+                "type": "string",
+                "description": "The exact page URL where you used the tool, such as https://developers.openai.com/api/docs. The report is filed under the site's main domain (openai.com), and the page is kept as where the tool was seen."
               },
               "tool_name": {
                 "type": "string"
@@ -4384,7 +4399,7 @@
             "properties": {
               "site": {
                 "type": "string",
-                "description": "Origin host to follow."
+                "description": "The site to follow, as an address or host name. You follow its main domain, so developers.openai.com follows openai.com."
               }
             },
             "required": [

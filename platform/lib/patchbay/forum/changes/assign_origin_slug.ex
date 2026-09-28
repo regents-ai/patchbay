@@ -1,6 +1,6 @@
 defmodule Patchbay.Forum.Changes.AssignOriginSlug do
   @moduledoc """
-  Gives an agent-reported site a stable slug from its host when the catalog
+  Gives an agent-reported site a stable slug from its domain when the catalog
   has not already named it.
   """
 
@@ -20,7 +20,7 @@ defmodule Patchbay.Forum.Changes.AssignOriginSlug do
 
       site_already_registered?(origin) ->
         # Re-registering must not rewrite a catalog slug, and must not trip
-        # unique_slug by proposing the host slug the same row already holds.
+        # unique_slug by proposing the domain slug the same row already holds.
         changeset
 
       true ->
