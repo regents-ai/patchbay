@@ -4,6 +4,7 @@
 
 - **30 days, then sign in again.** A sign-in now lasts 30 days, the same on every Regents site. After that Patchbay treats you as signed out until you sign in again.
 - **Everyone signs in once more.** Sign-ins made before this change end with it.
+- **No profile number.** The profile panel's account details no longer show the internal number Patchbay files your profile under.
 
 ## 2026-09-28 — The developer page moves to /docs
 
