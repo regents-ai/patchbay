@@ -1,29 +1,21 @@
-/* The fix hero at the top of the home page, and the live fix page. */
-.pb-fix {
-  display: grid;
-  grid-template-columns: minmax(16rem, 2fr) minmax(20rem, 3fr);
-  gap: 2rem;
-  align-items: start;
-  margin: 1.25rem 0 1.5rem;
-  padding: 1.5rem 1.75rem;
-  border: 1px solid var(--pb-line);
-  background: var(--pb-surface);
-}
-.pb-fix-lead h2 {
-  margin: 0 0 .6rem;
-  font-family: var(--font-family-title);
-  font-size: clamp(1.5rem, 3vw, 2.15rem);
-  font-weight: 400;
-  line-height: 1.12;
-  letter-spacing: -.02em;
-}
-.pb-fix-lead p { margin: 0; color: var(--pb-text-muted); font-size: .9rem; line-height: 1.5; max-width: 34rem; }
+/* The form at the top of the home page, and the live fix page. */
 .pb-fix-form { display: grid; gap: .75rem; min-width: 0; }
 .pb-fix-ask { display: flex; gap: .5rem; min-width: 0; }
-.pb-fix-ask input { min-width: 0; flex: 1; min-height: 3rem; padding: .7rem .9rem; border: 1px solid var(--pb-line-strong); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: 1rem; }
-.pb-fix-ask .rg-button { flex: 0 0 auto; white-space: nowrap; }
+.pb-fix-ask input {
+  flex: 1;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--pb-text);
+  background: var(--pb-surface);
+  color: var(--pb-text);
+  font: inherit;
+  font-size: 1.0625rem;
+  box-shadow: 3px 3px 0 var(--pb-hard-shadow);
+}
+.pb-fix-ask input:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
 .pb-fix-more { display: grid; gap: .6rem; }
-.pb-fix-more input:not([type=checkbox]) { width: 100%; min-height: 2.5rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
+.pb-fix-more :is(input:not([type=checkbox]), textarea, select) { width: 100%; min-height: 2.5rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
 .pb-fix-more label { display: block; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-more .rg-muted { margin-top: .3rem; font-size: .6875rem; color: var(--pb-text-muted); }
 .pb-fix-goal-hint, .pb-fix-notice { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
@@ -48,6 +40,12 @@
 /* Until the person starts typing, the form is one line; the script folds
    the rest away and unfolds it on focus. Without the script every field shows. */
 .pb-fix-form[data-pb-collapsed] .pb-fix-more { display: none; }
+.pb-fix-more textarea { min-height: 7rem; resize: vertical; }
+.pb-fix-more input[type=file] { min-height: 0; padding: .4rem .5rem; }
+.pb-hero-pictures-note { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-hero-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pb-hero-actions .rg-button { white-space: nowrap; }
+#pb-hero-preview:empty { display: none; }
 .pb-fix-terms { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-status { margin: 0; min-height: 1.2em; font-size: .8125rem; }
 .pb-fix-topup { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
@@ -67,9 +65,8 @@
 }
 @keyframes pb-fix-directory-in { from { opacity: 0; transform: translateY(.4rem) scale(.96); } to { opacity: 1; transform: none; } }
 .pb-workbench-head--discussions { padding-top: .25rem; }
-@media (max-width: 60rem) {
-  .pb-fix { grid-template-columns: 1fr; gap: 1.25rem; padding: 1.25rem; }
-  .pb-fix-ask { flex-direction: column; }
+@media (max-width: 30rem) {
+  .pb-hero-actions .rg-button { flex: 1 1 100%; }
 }
 
 /* The live fix page. */

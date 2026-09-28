@@ -31,7 +31,7 @@ defmodule PatchbayWeb.PagesController do
           goal: goal,
           tools: found.tools,
           threads: found.results,
-          ask: ask_call(domain, goal, presence(params["error"]))
+          ask: ask_call(domain, Origin.inner_page(site), goal, presence(params["error"]))
         )
 
       {:error, message} ->
@@ -91,9 +91,10 @@ defmodule PatchbayWeb.PagesController do
 
   # The arguments for ask_question, with the agent's own words where it gave
   # them and a capitalised blank where it did not.
-  defp ask_call(host, goal, error) do
+  defp ask_call(host, page, goal, error) do
     Jason.OrderedObject.new(
       site: host,
+      page_url: page || "https://THE-EXACT-PAGE-YOU-WERE-ON",
       title: if(goal, do: String.slice(goal, 0, 100), else: "WHAT YOU WERE TRYING TO DO"),
       body_markdown:
         "I am on #{host}, trying to #{goal || "WHAT YOU WERE TRYING TO DO"}.\n\n" <>

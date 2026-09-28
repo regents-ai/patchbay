@@ -47,6 +47,18 @@ defmodule Patchbay.Forum.Origin do
     end
   end
 
+  @doc """
+  The page an address names beyond the site's front page, as `address/1`
+  writes it, or nil for a front page or an address that cannot be read.
+  """
+  @spec inner_page(term()) :: String.t() | nil
+  def inner_page(value) do
+    case address(value) do
+      {:ok, page} -> if URI.parse(page).path == "/", do: nil, else: page
+      {:error, _unreadable} -> nil
+    end
+  end
+
   defp page(value) when is_binary(value) do
     case value |> String.trim() |> host_and_path() do
       {"", _path} -> {:error, "must contain a host"}

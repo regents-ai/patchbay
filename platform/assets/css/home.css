@@ -81,8 +81,8 @@
   overflow-wrap: anywhere;
 }
 .pb-agent-start a { color: var(--pb-text); }
-/* The search comes first: a large question, one box, and either the sites
-   people ask about most or what the search found. */
+/* The form comes first: a large question, one box, then the sites people
+   ask about most. */
 .pb-find { margin: var(--space-4) 0 var(--space-5); }
 .pb-find h1 {
   max-width: 22ch;
@@ -94,21 +94,7 @@
   letter-spacing: -.03em;
   text-wrap: balance;
 }
-.pb-find-form { display: flex; gap: var(--space-2); max-width: 48rem; }
-.pb-find-form input {
-  flex: 1;
-  min-width: 0;
-  min-height: 3.25rem;
-  padding: .75rem 1rem;
-  border: 1px solid var(--pb-text);
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  font: inherit;
-  font-size: 1.0625rem;
-  box-shadow: 3px 3px 0 var(--pb-hard-shadow);
-}
-.pb-find-form input:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
-.pb-find-form .rg-button { flex: 0 0 auto; }
+.pb-find .pb-fix-form { max-width: 48rem; }
 .pb-find-sites { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .pb-find-sites a {
   display: grid;

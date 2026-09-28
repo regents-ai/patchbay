@@ -62,7 +62,7 @@ defmodule PatchbayWeb.Forum.Hero do
          "title" => draft["goal"],
          "body_markdown" => presence(draft["details"]),
          "tools" => draft["tools"],
-         "page_url" => page_url(draft["site_url"]),
+         "page_url" => Origin.inner_page(draft["site_url"]),
          "topic_tags" => tags(draft["topic_tags"]),
          "thread_kind" => presence(draft["thread_kind"])
        }}
@@ -97,13 +97,6 @@ defmodule PatchbayWeb.Forum.Hero do
     do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] not in ["", "question"]))
 
   # The exact page, when the address names more of the site than its home.
-  defp page_url(address) do
-    case Origin.address(address) do
-      {:ok, page} -> if URI.parse(page).path == "/", do: nil, else: page
-      {:error, _unreadable} -> nil
-    end
-  end
-
   # Tags arrive as one comma-separated line and are split here, where the
   # form ends.
   defp tags(line),

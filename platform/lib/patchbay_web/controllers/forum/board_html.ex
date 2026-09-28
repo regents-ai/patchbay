@@ -748,7 +748,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           {markdown(@preview.thread["body_markdown"])}
         </div>
         <div class="pb-post-pictures" data-pb-preview-pictures></div>
-        <p :if={@preview.thread["page_url"]} class="pb-thread-page">
+        <p :if={@preview.thread["page_url"]} class="pb-post-page">
           Page: {@preview.thread["page_url"]}
         </p>
         <p :if={@preview.thread["topic_tags"] != []} class="patchbay-board-facts">
