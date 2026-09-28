@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {payForIntent, shouldReplaySigned} from "../../js/webmcp/paid_actions.ts";
+import {payForIntent} from "../../js/webmcp/paid_actions.ts";
 import type {PaymentRequestInit, PaymentWallet, PayOptions} from "../../js/webmcp/paid_actions.ts";
 
 const SIGNER = `0x${"c".repeat(40)}`;
@@ -90,14 +90,6 @@ function patchbay({signedAnswer = () => jsonResponse(200, {status: "applied"}), 
   };
   return {fetch, requests};
 }
-
-test("shouldReplaySigned is only a 5xx without PAYMENT-RESPONSE", () => {
-  assert.equal(shouldReplaySigned({status: 502, paymentResponse: null}), true);
-  assert.equal(shouldReplaySigned({status: 500, paymentResponse: null}), true);
-  assert.equal(shouldReplaySigned({status: 502, paymentResponse: "abc"}), false);
-  assert.equal(shouldReplaySigned({status: 402, paymentResponse: null}), false);
-  assert.equal(shouldReplaySigned({status: 409, paymentResponse: null}), false);
-});
 
 test("the wallet signs Patchbay's typed data and only the signature goes back", async () => {
   const {fetch, requests} = patchbay();
@@ -203,29 +195,13 @@ test("a preparation refusal comes back untouched", async () => {
   assert.deepEqual(outcome, {status: 422, body});
 });
 
-test("a 5xx after signing replays the same signature and never creates a second intent", async () => {
-  const {fetch, requests} = patchbay({
-    signedAnswer: (_body, all) => all.filter(one => one.body?.signature).length < 3
-      ? jsonResponse(502, {error: "facilitator down"})
-      : jsonResponse(200, {status: "applied"}, {"payment-response": "settled"}),
-  });
+test("a 5xx after signing is sent once and tells the agent not to pay again", async () => {
+  const {fetch, requests} = patchbay({signedAnswer: () => jsonResponse(502, {error: "still down"})});
   const {wallet} = standInWallet();
 
   const outcome = await payForIntent({fetch, wallet}, ACTION);
 
-  const signed = requests.filter(one => one.body?.signature);
-  assert.equal(requests.filter(one => one.url === "/api/payment_intents").length, 1);
-  assert.equal(signed.length, 3);
-  assert.equal(new Set(signed.map(one => JSON.stringify(one.body))).size, 1);
-  assert.equal(outcome.body!.status, "applied");
-});
-
-test("an exhausted 5xx replay tells the agent not to pay again", async () => {
-  const {fetch} = patchbay({signedAnswer: () => jsonResponse(502, {error: "still down"})});
-  const {wallet} = standInWallet();
-
-  const outcome = await payForIntent({fetch, wallet}, ACTION);
-
+  assert.equal(requests.filter(one => one.body?.signature).length, 1);
   assert.equal(outcome.status, 502);
   assert.equal(outcome.body!.payment_intent_id, INTENT);
   assert.match(outcome.body!.next_action as string, /Do not pay again/);
@@ -260,7 +236,7 @@ test("a pre-aborted payment invocation does not prepare an intent or reach a wal
   assert.equal(outcome.body!.outcome, "canceled");
 });
 
-for (const phase of ["preparation", "wallet", "review", "signature", "submission", "replay"] as const) {
+for (const phase of ["preparation", "wallet", "review", "signature", "submission"] as const) {
   test(`aborting during ${phase} prevents the next payment phase and discards its late response`, async () => {
     const controller = new AbortController();
     const entered = deferred();
@@ -278,7 +254,7 @@ for (const phase of ["preparation", "wallet", "review", "signature", "submission
         return pause("review", jsonResponse(402, {status: "payment_required", review: review()}));
       }
       submissions++;
-      return pause(submissions === 1 ? "submission" : "replay", jsonResponse(502, {error: "uncertain settlement"}));
+      return pause("submission", jsonResponse(502, {error: "uncertain settlement"}));
     };
     const {asked, wallet} = standInWallet({sign: () => pause("signature", SIGNATURE)});
     const options: PayOptions = {signal: controller.signal, fetch,
@@ -292,9 +268,9 @@ for (const phase of ["preparation", "wallet", "review", "signature", "submission
     assert.equal(outcome.body!.problem_code, "canceled");
     assert.equal(outcome.body!.outcome, "unknown");
     assert.equal(outcome.body!.payment_intent_id, INTENT);
-    assert.equal(requests.length, {preparation: 1, wallet: 1, review: 2, signature: 2, submission: 3, replay: 4}[phase]);
-    assert.equal(signatures, ["signature", "submission", "replay"].includes(phase) ? 1 : 0);
-    assert.equal(submissions, phase === "submission" ? 1 : phase === "replay" ? 2 : 0);
+    assert.equal(requests.length, {preparation: 1, wallet: 1, review: 2, signature: 2, submission: 3}[phase]);
+    assert.equal(signatures, ["signature", "submission"].includes(phase) ? 1 : 0);
+    assert.equal(submissions, phase === "submission" ? 1 : 0);
     for (const request of requests) assert.equal(request.signal, controller.signal);
     if (submissions) assert.match(outcome.body!.error as string, /may have settled/);
   });

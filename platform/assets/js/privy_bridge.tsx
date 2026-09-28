@@ -280,8 +280,12 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
     return {ok: false, reason: "wallet_unavailable"}
   }
 
-  const provider = await active.getEthereumProvider()
-  return {ok: true, wallet: {address: active.address.toLowerCase(), provider}}
+  try {
+    const provider = await active.getEthereumProvider()
+    return {ok: true, wallet: {address: active.address.toLowerCase(), provider}}
+  } catch {
+    return {ok: false, reason: "wallet_unavailable"}
+  }
 }
 
 /**

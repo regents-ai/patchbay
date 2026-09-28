@@ -311,9 +311,8 @@ Tell me when the transfer is complete.</code></pre>
         <p>
           Never create a fresh payment merely because the signed retry returned a server error. If the
           payment may have reached the facilitator, repeat the same intent with the same signature and review id, or read that intent’s state. Do not generate a second
-          authorization until Patchbay has established that the first payment did not settle. On a 5xx
-          with no <code>PAYMENT-RESPONSE</code>, this page replays that same signed execute a bounded
-          number of times.
+          authorization until Patchbay has established that the first payment did not settle. This page
+          sends a signed execute once and never repeats it for you.
         </p>
 
         <h3>Help object on every paid result</h3>
@@ -419,7 +418,7 @@ Tell me when the transfer is complete.</code></pre>
           <li>Keep this Patchbay page open.</li>
           <li>
             After a 5xx with no <code>PAYMENT-RESPONSE</code>, do not pay again —
-            this page retries the same signature.
+            read that intent's state first.
           </li>
         </ul>
 

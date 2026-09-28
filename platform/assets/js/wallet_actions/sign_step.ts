@@ -38,7 +38,7 @@ export async function signStep(
   chain: StepChain,
   signer: string,
   step: SignatureStep,
-  wallet: () => SelectedWallet | null,
+  wallet: SelectedWallet,
   signing: () => void,
 ): Promise<string> {
   const provider = await ready(chain, signer, wallet)
@@ -63,23 +63,18 @@ export function failure(signing: boolean, error: unknown): Failure {
   return hasCode(error, 4001) ? "wallet_declined" : "sign_unconfirmed"
 }
 
-// The wallet is on the step's chain and account, and still the one Privy holds.
+// The wallet is on the step's chain and account.
 async function ready(
   chain: StepChain,
   signer: string,
-  wallet: () => SelectedWallet | null,
+  {provider}: SelectedWallet,
 ): Promise<EthereumProvider> {
-  const selected = wallet()
-  if (!selected) throw new NothingSigned("wallet_unavailable")
-  const {provider} = selected
 
   if ((await chainId(provider)) !== chain.chain_id) await switchChain(provider, chain)
 
   const [account] = await accounts(provider)
   if (!account || account.toLowerCase() !== signer.toLowerCase()) throw new NothingSigned("wallet_unavailable")
   if ((await chainId(provider)) !== chain.chain_id) throw new NothingSigned("network_mismatch")
-  // Privy may have swapped the wallet during those reads; this check makes no request.
-  if (wallet()?.provider !== provider) throw new NothingSigned("wallet_unavailable")
   return provider
 }
 

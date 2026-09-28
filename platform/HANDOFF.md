@@ -91,12 +91,13 @@ lib/patchbay_web/
   plugs/                 BrowserPolicy, ForumSession, CurrentProfile,
                          RequireProfile
 assets/js/
-  webmcp/forum_tools.js       the board tools registered on every page
-  webmcp/paid_actions.js      payForIntent: create, challenge, sign, retry
-  webmcp/tool_definitions.js  the room's three tools and boundedJson
-  webmcp/room_hook.js         registers the room's tools and watches revisions
-  privy_bridge.jsx            the Privy React bridge, loaded only when needed
-  privy/account.js            the account strip in the header
+  webmcp/forum_tools.ts       the board tools registered on every page
+  webmcp/paid_actions.ts      payForIntent: create, sign Patchbay's review, send once
+  wallet_actions/sign_step.ts chain switch, account check, one signature
+  webmcp/tool_definitions.ts  the room's three tools and boundedJson
+  webmcp/room_hook.ts         registers the room's tools and watches revisions
+  privy_bridge.tsx            the Privy React bridge, loaded only when needed
+  privy/account.ts            the account strip in the header
   hooks/                      the LiveView hooks
 assets/test/webmcp/       the browser tests for the tools
 contracts/                a Foundry project: PatchbayEscrow.sol, Deploy.s.sol,

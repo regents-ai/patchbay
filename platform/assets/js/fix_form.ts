@@ -22,6 +22,7 @@ const WORDS: Record<string, string> = {
   wallet_declined: "Your wallet declined this. Nothing was sent.",
   sign_unconfirmed: "Your wallet didn't finish approving the fee. Nothing was paid.",
   canceled: "That was canceled before it finished.",
+  payment_refused: "The payment was not accepted, so nothing was charged. Check that your wallet holds enough USDC on Base, then press again.",
   unopened: "Paid, and you will not be charged again. The fix could not be opened just now; " +
     "a person at Patchbay will open it for you.",
 }
@@ -142,7 +143,8 @@ export function fixOutcome(outcome: PaidFix): NextStep {
   if (outcome.status === 202 && outcome.intent?.run_id) {
     return {problem: WORDS.unopened}
   }
-  const said = outcome.body?.reason ?? outcome.body?.error
+  if (outcome.body?.problem_code === "payment_refused") return {problem: WORDS.payment_refused}
+  const said = outcome.body?.error
   return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
 }
 

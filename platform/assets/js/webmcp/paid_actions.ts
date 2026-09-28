@@ -4,8 +4,6 @@ import {failure, signStep} from "../wallet_actions/sign_step.ts";
 import type {SelectedWallet, SignatureStep, StepChain} from "../wallet_actions/sign_step.ts";
 
 const INTENTS_PATH = "/api/payment_intents";
-const RESPONSE_HEADER = "payment-response";
-const SIGNED_REPLAY_LIMIT = 3;
 
 export type PaymentRequestInit = {
   signal?: AbortSignal;
@@ -18,7 +16,6 @@ export type PaymentRequestInit = {
 export type PaymentResponse = {
   status?: number;
   json(): Promise<unknown>;
-  headers?: {get?(name: string): string | null};
 };
 
 export type PaymentFetch = (url: string, init: PaymentRequestInit) => Promise<PaymentResponse>;
@@ -51,7 +48,6 @@ export type PayOutcome = {
 type HttpAnswer = {
   status: number;
   body: PaymentBody | null;
-  paymentResponse: string | null;
 };
 
 // What Patchbay wrote for the page's wallet to sign, as its 402 answer
@@ -102,12 +98,12 @@ export async function payForIntent(options: PayOptions, {kind, args}: {kind: str
 
     const review = offered.body?.review as WalletReview | undefined;
     const step = review?.steps?.find(one => one.kind === "signature");
-    if (!review || !step) return answer(offered, intent, offered.body!.problem_code as string | undefined);
+    if (!review || !step) return answer(offered, intent, offered.body?.problem_code as string | undefined);
 
     let signing = false;
     let signature: string;
     try {
-      signature = await signStep(review.chain, review.signer, step, () => wallet, () => { signing = true; });
+      signature = await signStep(review.chain, review.signer, step, wallet, () => { signing = true; });
     } catch (error) {
       if (signal?.aborted) return canceled();
       return answer(offered, intent, failure(signing, error));
@@ -116,15 +112,8 @@ export async function payForIntent(options: PayOptions, {kind, args}: {kind: str
 
     const signed = {active_wallet: wallet.address, review_id: review.id, signature};
     submitted = true;
-    let settled = await request(options, executePath, {method: "POST", json: signed});
+    const settled = await request(options, executePath, {method: "POST", json: signed});
     if (signal?.aborted) return canceled();
-
-    // An unclear 5xx after signing may mean the facilitator already saw the
-    // payment. Replay the same intent and the same signature only.
-    for (let attempt = 1; shouldReplaySigned(settled) && attempt < SIGNED_REPLAY_LIMIT; attempt += 1) {
-      settled = await request(options, executePath, {method: "POST", json: signed});
-      if (signal?.aborted) return canceled();
-    }
 
     const knownOutcome = {
       200: "applied", 202: "settled", 409: "settlement_pending",
@@ -174,12 +163,6 @@ export function paymentCancellation(
   };
 }
 
-export function shouldReplaySigned(
-  {status, paymentResponse}: {status?: number; paymentResponse?: string | null} = {},
-): boolean {
-  return Number.isInteger(status) && status! >= 500 && status! <= 599 && !paymentResponse;
-}
-
 function answer({status, body}: HttpAnswer, intent?: PaymentIntent, unsigned?: string): PayOutcome {
   return {status, body, ...(intent && {intent}), ...(unsigned && {unsigned})};
 }
@@ -221,7 +204,6 @@ async function request(
     return {
       status: response.status ?? 0,
       body: await readBody(response),
-      paymentResponse: response.headers?.get?.(RESPONSE_HEADER) ?? null,
     };
   } catch (error) {
     return unreachable(
@@ -234,7 +216,6 @@ function unreachable(problem: string): HttpAnswer {
   return {
     status: 0,
     body: {error: problem, problem_code: "unreachable"},
-    paymentResponse: null,
   };
 }
 
