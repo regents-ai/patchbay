@@ -1400,11 +1400,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           </p>
           <p :if={@payments_enabled and !@signed_in} class="pb-setup-line" data-pb-payments>
             <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
-            Wallet not connected — Ask your human to sign in · Regents Balance unavailable
+            Wallet not connected — Ask your human to sign in · USDC Balance unavailable
           </p>
           <p :if={@payments_enabled and @signed_in} class="pb-setup-line" data-pb-payments>
             <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
-            Signed in · Checking your Regents Balance
+            Signed in · Checking your USDC Balance
           </p>
         </div>
         <Regent.Primitives.field :if={@starter} id="pb-starter-prompt" label="Starter prompt">
@@ -1504,7 +1504,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "The Regents Balance card. Lives on the owner's profile; JavaScript fills the live balance."
+  @doc "The USDC Balance card. Lives on the owner's profile; JavaScript fills the live balance."
   attr(:wallet, :string, default: "")
   attr(:payments_enabled, :boolean, required: true)
 
@@ -1518,7 +1518,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <div class="patchbay-card-heading">
         <div>
           <p class="patchbay-kicker">FUNDING</p>
-          <h3>Your Regents Balance</h3>
+          <h3>Your USDC Balance</h3>
         </div>
       </div>
       <dl class="pb-fund-facts">
@@ -1545,7 +1545,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dd>USDC</dd>
         </div>
         <div>
-          <dt>Regents Balance</dt>
+          <dt>USDC Balance</dt>
           <dd id="pb-fund-balance"></dd>
         </div>
         <div id="pb-fund-needed-row" hidden>

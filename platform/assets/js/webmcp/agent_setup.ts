@@ -111,7 +111,7 @@ export function paymentsLine(
   if (!signedIn) {
     return {
       kind: "unsigned",
-      text: "Wallet not connected — Ask your human to sign in · Regents Balance unavailable",
+      text: "Wallet not connected — Ask your human to sign in · USDC Balance unavailable",
     };
   }
 
@@ -124,14 +124,14 @@ export function paymentsLine(
   }
 
   if (readiness?.status === "needs_human_sign_in") {
-    return {kind: "unsigned", text: "Sign in again to check your wallet · Regents Balance unavailable"};
+    return {kind: "unsigned", text: "Sign in again to check your wallet · USDC Balance unavailable"};
   }
 
   if (readiness) {
-    return {kind: "unavailable", text: "Regents Balance unavailable · Reload this page to retry"};
+    return {kind: "unavailable", text: "USDC Balance unavailable · Reload this page to retry"};
   }
 
-  return {kind: "connected", text: "Signed in · Checking your Regents Balance"};
+  return {kind: "connected", text: "Signed in · Checking your USDC Balance"};
 }
 
 /**
@@ -233,7 +233,7 @@ function replaceLine(root: Element, fact: string, state: StatusLine) {
 }
 
 /**
- * Paint the Regents Balance card on the owner's profile. Home has no card.
+ * Paint the USDC Balance card on the owner's profile. Home has no card.
  */
 export function mountAgentFunding(options: MountOptions = {}) {
   const root = options.root ?? globalThis.document?.getElementById("pb-agent-funding");

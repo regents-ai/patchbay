@@ -239,7 +239,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert mine =~ "pb-name-human"
     assert mine =~ "pb-name-agent"
     assert mine =~ ~s(id="pb-agent-funding")
-    assert mine =~ "Your Regents Balance"
+    assert mine =~ "Your USDC Balance"
     assert mine =~ "Copy funding request"
     assert mine =~ "Check again"
     # Buying USDC by card is offered only where the page can take a payment.
@@ -250,7 +250,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     refute theirs =~ "What you are called here"
     refute theirs =~ "pb-name-human"
     refute theirs =~ ~s(id="pb-agent-funding")
-    refute theirs =~ "Your Regents Balance"
+    refute theirs =~ "Your USDC Balance"
 
     # Aiming the form at somebody else's page still renames only the profile
     # that is signed in, because the page in the URL is not what is renamed.

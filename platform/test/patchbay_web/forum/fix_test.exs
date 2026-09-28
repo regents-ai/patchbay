@@ -37,7 +37,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     assert html =~ "Which site or tool are you having trouble with?"
     assert html =~ ~s(data-pb-fix-mode="free")
     assert html =~ "1 free fix left today from this connection, and 2 more when you sign in"
-    assert html =~ "After that, a fix is 0.10 USDC from your Regents Balance."
+    assert html =~ "After that, a fix is 0.10 USDC from your USDC Balance."
     refute html =~ "Rewards"
   end
 
@@ -107,7 +107,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     html = build_conn() |> from(address) |> signed_in(person) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="pay")
     assert html =~ "Fix it for 0.10 USDC"
-    assert html =~ "This one is 0.10 USDC from your Regents Balance."
+    assert html =~ "This one is 0.10 USDC from your USDC Balance."
     # A wallet with no USDC can be topped up by card from the form.
     assert html =~ "Add USDC with a card"
 
@@ -115,7 +115,7 @@ defmodule PatchbayWeb.Forum.FixTest do
       build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"ask" => @form})
 
     assert html_response(refused, 200) =~
-             "The next one is 0.10 USDC from your Regents Balance."
+             "The next one is 0.10 USDC from your USDC Balance."
   end
 
   test "once the site's free fixes are given out, the page says so and offers the fee",
@@ -141,7 +141,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     assert html =~ "Sign in to fix it"
 
     assert html =~
-             "all given out. Sign in to fix it for 0.10 USDC from your Regents Balance."
+             "all given out. Sign in to fix it for 0.10 USDC from your USDC Balance."
 
     refute html =~ "Add USDC with a card"
     refute html =~ "more free fixes"
@@ -156,7 +156,7 @@ defmodule PatchbayWeb.Forum.FixTest do
       build_conn() |> from(address) |> signed_in(person()) |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(data-pb-fix-mode="pay")
-    assert html =~ "all given out. This one is 0.10 USDC from your Regents Balance."
+    assert html =~ "all given out. This one is 0.10 USDC from your USDC Balance."
 
     # With no way to pay set up, the page says to come back tomorrow.
     Application.put_env(:patchbay, :assist, pay_to_address: nil)

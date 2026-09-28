@@ -2,7 +2,7 @@ import {errorIn, isErrorBody, refusal} from "../api_error.ts";
 import type {ErrorBody, Refusal} from "../api_error.ts";
 import {signedInProfileId} from "./profile.ts";
 
-export const BALANCE_PATH = "/api/me/regents_balance";
+export const BALANCE_PATH = "/api/me/usdc_balance";
 export const USDC_CONTRACT = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 export const NETWORK_CAIP2 = "eip155:8453";
 export const NETWORK_NAME = "Base mainnet";
@@ -25,7 +25,7 @@ export type ReadinessOptions = {
   document?: Document;
 };
 
-// What `GET /api/me/regents_balance` answers with. The fields this file checks
+// What `GET /api/me/usdc_balance` answers with. The fields this file checks
 // before use are left unknown; the rest are passed on as the server wrote them.
 type BalanceBody = {
   error?: ErrorBody;
@@ -286,7 +286,7 @@ export function paidToolShortfall(
     balance_usdc: balance,
     required_usdc: required,
     human_handoff: fundingHandoffText({walletAddress: address, amountUsdc: required}),
-    next_action: "After funding, call get_my_regents_balance and retry this action.",
+    next_action: "After funding, call get_my_usdc_balance and retry this action.",
     paid: false,
     summary: "This wallet does not have enough USDC on Base.",
   };
@@ -309,7 +309,7 @@ export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
       error: refused ?? {
         code: "refused",
         message: `Your balance could not be read: Patchbay gave status ${answer?.status ?? 0}.`,
-        hint: "Call get_my_regents_balance again in a moment.",
+        hint: "Call get_my_usdc_balance again in a moment.",
       },
     };
   }
@@ -321,7 +321,7 @@ export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
     return refusal(
       "unreadable",
       "Your balance could not be read: the page got an unreadable amount.",
-      "Call get_my_regents_balance again in a moment.",
+      "Call get_my_usdc_balance again in a moment.",
     );
   }
 
@@ -372,7 +372,7 @@ export function mapUnsignedReason(unsigned: string | undefined): NotConfigured |
 }
 
 /**
- * The one balance path the rail, get_my_regents_balance, get_patchbay_help, and
+ * The one balance path the rail, get_my_usdc_balance, get_patchbay_help, and
  * paid-tool pre-checks share. Unsigned and unconfigured pages never hit HTTP.
  */
 export async function readPaymentReadiness(

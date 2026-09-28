@@ -21,7 +21,7 @@ test("railState is unsigned and unsupported when WebMCP and a wallet are missing
   assert.equal(state.webmcp.ok, false);
   assert.equal(state.payments.kind, "unsigned");
   assert.match(state.payments.text, /Wallet not connected/);
-  assert.match(state.payments.text, /Regents Balance unavailable/);
+  assert.match(state.payments.text, /USDC Balance unavailable/);
 });
 
 test("railState reads payments from the page, not a hardcoded off switch", () => {
@@ -31,7 +31,7 @@ test("railState reads payments from the page, not a hardcoded off switch", () =>
     "Payments are not enabled on this deployment",
   );
   assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).kind, "connected");
-  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Signed in · Checking your Regents Balance");
+  assert.equal(paymentsLine({paymentsEnabled: true, signedIn: true}).text, "Signed in · Checking your USDC Balance");
 });
 
 test("railState stays open until a positive USDC balance is known", () => {

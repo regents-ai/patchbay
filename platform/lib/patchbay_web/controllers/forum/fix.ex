@@ -94,7 +94,7 @@ defmodule PatchbayWeb.Forum.Fix do
       "#{free} free #{if free == 1, do: "fix", else: "fixes"} left today from this connection"
 
     more = if adds > 0, do: ", and #{adds} more when you sign in", else: ""
-    "#{left}#{more}. After that, a fix is #{@fee} USDC from your Regents Balance."
+    "#{left}#{more}. After that, a fix is #{@fee} USDC from your USDC Balance."
   end
 
   def terms(%{mode: mode, allowance: %{given_out: true}}), do: given_out(mode)
@@ -175,18 +175,18 @@ defmodule PatchbayWeb.Forum.Fix do
   defp used_up(_profile) do
     if Assist.pay_to_address(),
       do:
-        "Your free fixes for today are used. The next one is #{@fee} USDC from your Regents Balance.",
+        "Your free fixes for today are used. The next one is #{@fee} USDC from your USDC Balance.",
       else: "Your free fixes for today are used. Come back tomorrow."
   end
 
   defp given_out(:sign_in),
     do:
-      "Today's free fixes are all given out. Sign in to fix it for #{@fee} USDC from your Regents Balance."
+      "Today's free fixes are all given out. Sign in to fix it for #{@fee} USDC from your USDC Balance."
 
   defp given_out(:pay), do: "Today's free fixes are all given out. " <> paid_from_wallet()
   defp given_out(:closed), do: "Today's free fixes are all given out. Come back tomorrow."
 
-  defp paid_from_wallet, do: "This one is #{@fee} USDC from your Regents Balance."
+  defp paid_from_wallet, do: "This one is #{@fee} USDC from your USDC Balance."
 
   defp refusal({:ok, request}), do: {:ok, request}
 
