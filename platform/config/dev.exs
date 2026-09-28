@@ -22,7 +22,8 @@ config :patchbay, PatchbayWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
   code_reloader: true,
-  debug_errors: true,
+  # scripts/readiness.sh sets this to off, so error pages answer as they do in a release.
+  debug_errors: System.get_env("PATCHBAY_DEBUG_ERRORS", "on") == "on",
   secret_key_base: "AEzU7cDlq6ghPh8aabbqv24S3vr7M3tdTmNYtKMF16hvq7mgI6XQrhr6dxM0uNC/",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},

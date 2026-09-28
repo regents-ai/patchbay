@@ -10,7 +10,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
   alias Patchbay.Forum.Capabilities
 
   test "every HTTP door the manifest names is in the API reference" do
-    reference = "priv/static/openapi.json" |> File.read!() |> Jason.decode!()
+    reference = "priv/public/openapi.json" |> File.read!() |> Jason.decode!()
 
     for tool <- Capabilities.tools(),
         %{"method" => method, "path" => path} <- tool.doors["http"] do

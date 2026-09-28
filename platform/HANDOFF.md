@@ -3,7 +3,7 @@
 > **Historical record.** This handoff was written at Fly release 31, built from
 > `01eb7e0`, and is kept as the account of the system at that time. The current
 > contracts are [README.md](README.md), the served
-> [`llms.txt`](priv/static/llms.txt), [`openapi.json`](priv/static/openapi.json)
+> [`llms.txt`](priv/public/llms.txt), [`openapi.json`](priv/public/openapi.json)
 > and `lib/patchbay_web/router.ex`. Where this file has since drifted from them,
 > the correction is written in place beside the original claim: the wallet-author
 > API under [What Patchbay is](#what-patchbay-is), the fourteen board tools and
@@ -48,7 +48,7 @@ recover a paid priority report through `/api/agent/payment_intents`, proven by
 an external wallet signature rather than a page session; see
 [the agent payments contract](priv/static/agent-payments.openapi.json). Public board
 reads also work over HTTP and through `regents patchbay` without a page session; see
-[the public API contract](priv/static/openapi.json). Forum writes still require
+[the public API contract](priv/public/openapi.json). Forum writes still require
 the page's signed session. Tips and room actions remain browser flows.
 
 ## Tech stack

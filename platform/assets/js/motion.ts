@@ -14,7 +14,7 @@
  */
 import {splitText} from "animejs"
 import {deny, nope, squish} from "./hooks/motion/press.ts"
-import {GRIDS, HEADLINES} from "./hooks/motion/reveals.ts"
+import {CASCADE, GRIDS, HEADLINES} from "./hooks/motion/reveals.ts"
 import {CLIPPED_WORD, byPointer, lastInputByPointer, still, watchInput} from "./hooks/motion/shared.ts"
 import {backdrop, drawer, menu, sheet} from "./hooks/motion/slides.ts"
 
@@ -23,10 +23,6 @@ import {backdrop, drawer, menu, sheet} from "./hooks/motion/slides.ts"
 // lab's presses, named with `data-press`, answer for themselves.
 const PRESSABLE =
   ":is(button, .rg-button, [role='button'], summary:has(~ [data-panel='menu'])):not(.rg-theme-toggle, [data-press])"
-
-// The first cards of a list cascade in; later ones start below the fold and
-// are simply there.
-const CASCADE = 12
 
 const live = (el: Element) => el.closest("[data-phx-session]") !== null
 

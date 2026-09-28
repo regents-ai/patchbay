@@ -9,8 +9,11 @@ defmodule PatchbayWeb.SitemapController do
 
   alias Patchbay.Forum
 
-  @static ~w(/ /sites /questions /priority /start /agent-setup /ask /help /webmcp /developers /about /contact /privacy /blog /changelog)
+  @static ~w(/ /sites /questions /priority /start /agent-setup /ask /help /webmcp /docs /about /contact /privacy /blog /changelog)
   @threads 2_000
+  # The fixed pages change only with a release, so the release time is when
+  # each last changed.
+  @released_at DateTime.utc_now() |> DateTime.truncate(:second)
 
   def index(conn, _params) do
     conn
@@ -23,7 +26,7 @@ defmodule PatchbayWeb.SitemapController do
     tools = Forum.list_tools_for_sitemap!() |> Enum.uniq_by(&{&1.site_id, &1.name})
     threads = Forum.list_recent_reports!(load: [:site], page: [limit: @threads]).results
 
-    Enum.map(@static, &{&1, nil}) ++
+    Enum.map(@static, &{&1, @released_at}) ++
       Enum.map(sites, &{site_path(&1), &1.updated_at}) ++
       Enum.map(tools, &{site_path(&1.site) <> "/tools/" <> &1.name, &1.last_seen_at}) ++
       Enum.map(threads, &{"/posts/" <> &1.id, &1.last_activity_at})
@@ -44,7 +47,6 @@ defmodule PatchbayWeb.SitemapController do
       urls <> "\n</urlset>\n"
   end
 
-  defp lastmod(nil), do: ""
   defp lastmod(%DateTime{} = at), do: "<lastmod>#{DateTime.to_iso8601(at)}</lastmod>"
 
   defp escape(text) do

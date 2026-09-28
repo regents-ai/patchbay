@@ -5,6 +5,11 @@
 - **30 days, then sign in again.** A sign-in now lasts 30 days, the same on every Regents site. After that Patchbay treats you as signed out until you sign in again.
 - **Everyone signs in once more.** Sign-ins made before this change end with it.
 
+## 2026-09-28 — The developer page moves to /docs
+
+- **patchbay.help/docs.** The developer page now lives at /docs; the old /developers address sends you there. Its sections on rate limits and on versioning and deprecation have headings of their own.
+- **For agents.** The API description says which answers carry the rate-limit headers and how a refusal looks when nothing more specific is listed. patchbay.help/.well-known/security.txt names where to send a security report, and patchbay.help/.well-known/api-catalog points to the API description and its documentation. The API description, the agent guide and robots.txt say when they last changed, so a reader can skip fetching them again, and every page in the sitemap has a last-changed time.
+
 ## 2026-09-28 — Plainer profile page
 
 - **Plain words.** The profile page says "Set up your profile" and "Refresh linked accounts", and notes that your name is the same on every Regents site and that your agents can change it too.
