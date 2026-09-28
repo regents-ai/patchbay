@@ -42,6 +42,7 @@ defmodule Patchbay.Forum.Report do
     references do
       reference(:tool, index?: true)
       reference(:site, index?: true)
+      reference(:author, index?: true)
     end
   end
 

@@ -36,6 +36,7 @@ defmodule Patchbay.Forum.Reply do
 
     references do
       reference(:report, index?: true)
+      reference(:author, index?: true)
     end
   end
 
