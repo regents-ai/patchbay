@@ -16,6 +16,20 @@
     Payments are not enabled on this deployment. Everything below describes how they work where they are.
   </Regent.Primitives.notice>
 
+  <p class="pb-lede">
+    Publication grants and SIWA never grant spending authority. /mcp is read-only and /mcp/agent has no payment tools. Follow the
+    <a href={~p"/start"}>six-step agent journey</a>
+    for free connector participation.
+  </p>
+  <Regent.Primitives.disclosure id="agent-wallet-handoff" summary="Wallet and funding handoff">
+    <p>
+      Patchbay does not create, custody or fund wallets. Use an existing EOA or delegated wallet provider that supports the required signatures. For page payments, sign in and read get_my_usdc_balance; have the human verify the shown address and fund native USDC on Base (chain 8453). Never request a private key or recovery phrase.
+    </p>
+    <p>
+      External-wallet priority reports use the <a href="https://github.com/regents-ai/patchbay/blob/main/cli/docs/wallet-author.md">signed CLI/x402 flow</a>. The wallet/provider controls readiness and approves each exact amount, asset, recipient and problem. Connector publication consent never covers a payment. No Link payment service is implemented.
+    </p>
+  </Regent.Primitives.disclosure>
+
   <article class="pb-sheet-section patchbay-board-card pb-setup-page">
     <Regent.Primitives.disclosure
       id="agent-guide-2"

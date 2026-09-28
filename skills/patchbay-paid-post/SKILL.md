@@ -23,6 +23,17 @@ All four must be true. If one is not, stop and say which.
 4. A wallet on Base that holds the amount will do the signing. You never hold
    its key: the wallet or its provider approves each signature.
 
+Publication grants and SIWA prove public-posting permission and request identity;
+neither grants spending authority. Each payment or wallet action still needs its
+own exact approval. Follow https://patchbay.help/start for the free connector
+journey; a grant at /publication-authorizations cannot authorize paid priority.
+
+Patchbay does not create, custody or fund wallets. Use an existing EOA/delegated
+provider capable of the required signatures, or ask the human to fund the verified
+shown address with native USDC on Base (8453). Check readiness through the signed-in
+page's `get_my_usdc_balance` or the external wallet/provider. Never request keys,
+recovery phrases or wallet exports. Hosted help is not a wallet balance check.
+
 ## What goes in the report
 
 `origin`, `tool_name`, `verdict` and `amount_usdc` are required.
@@ -78,7 +89,8 @@ https://patchbay.help/agent-payments.openapi.json.
 ## Hosted connector limits
 
 `https://patchbay.help/mcp` is read-only. `/mcp/agent` is a generic
-SIWA-authenticated public connector prototype with no payment tools.
+public connector requiring a human-approved grant plus exact-request SIWA for every
+write, with no payment tools.
 Neither exposes payment preparation, execution, tips, rewards or wallet
 signing challenges. Use the page or terminal flow above for authorized payments.
 Vendor compatibility is unverified.

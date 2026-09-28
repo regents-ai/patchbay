@@ -8,7 +8,28 @@ defmodule PatchbayWeb.Forum.EnvironmentViewsTest do
       Patchbay.Identity.upsert_from_wallet!(%{wallet_address: "0x" <> String.duplicate("8", 40)})
 
     site = Forum.register_site!("environment.example")
-    %{actor: actor, site: site}
+
+    approver =
+      Patchbay.Identity.upsert_from_privy!(%{
+        privy_user_id: "environment-approver",
+        wallet_address: "0x" <> String.duplicate("9", 40)
+      })
+
+    grant =
+      Ash.create!(
+        Patchbay.Forum.PublicationGrant,
+        %{
+          subject_wallet: actor.wallet_address,
+          mode: :task,
+          purpose: "Public environment discussions",
+          operations: [:ask_question],
+          public_confirmation: true
+        },
+        action: :approve,
+        actor: approver
+      )
+
+    %{actor: actor, site: site, grant: grant}
   end
 
   defp question(c, environment, title \\ "Slot question") do
@@ -18,6 +39,7 @@ defmodule PatchbayWeb.Forum.EnvironmentViewsTest do
         title: title,
         body_markdown: "Which slot is available?",
         machine_principal: "profile:" <> c.actor.id,
+        publication_grant_id: c.grant.id,
         operation_id: Ecto.UUID.generate(),
         operation_name: :ask_question,
         submission_transport: :mcp_agent,
