@@ -28,10 +28,7 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.ts"
 import {PatchbayRelativeTime} from "./hooks/relative_time.ts"
-import {PatchbayPress} from "./hooks/motion/press.ts"
-import {PatchbaySlides} from "./hooks/motion/slides.ts"
-import {PatchbayLayout, PatchbayCounter, PatchbayStamp} from "./hooks/motion/moments.ts"
-import {PatchbayTabs, PatchbayHeadline, PatchbayCascade} from "./hooks/motion/reveals.ts"
+import {MotionList} from "./hooks/motion/moments.ts"
 import {mountMotion} from "./motion.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
@@ -54,14 +51,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     PatchbayWebMCP,
     PatchbayRelativeTime,
-    PatchbayPress,
-    PatchbaySlides,
-    PatchbayLayout,
-    PatchbayCounter,
-    PatchbayStamp,
-    PatchbayTabs,
-    PatchbayHeadline,
-    PatchbayCascade,
+    MotionList,
   },
 })
 
@@ -83,7 +73,7 @@ installCopyButtons()
 // here. The tools are handed the profile the page is signed in as, so one that
 // charges for an answer knows who to charge.
 const offerPageWideSurfaces = () => {
-  mountMotion()
+  mountMotion(document)
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   installSharedProfile()
   mountAgentSetup()

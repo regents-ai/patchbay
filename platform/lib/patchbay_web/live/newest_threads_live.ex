@@ -72,7 +72,7 @@ defmodule PatchbayWeb.NewestThreadsLive do
         :if={@threads.value not in [nil, []]}
         id="pb-newest-list"
         class="pb-newest-list"
-        phx-hook="PatchbayLayout"
+        phx-hook="MotionList"
         data-layout-id="pb-newest-list"
         data-children="[data-thread]"
         data-variant={Motion.standard("list")}

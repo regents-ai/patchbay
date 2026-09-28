@@ -1,6 +1,7 @@
 @import "./base.css";
 @import "../vendor/regent_ui/design_system_tokens.css";
 @import "../vendor/regent_ui/primitives.css";
+@import "./components/motion.css";
 @import "./workbench.css";
 @import "./feed.css";
 @import "./fix.css";
@@ -10,7 +11,6 @@
 @import "./changelog.css";
 @import "./buttons.css";
 @import "./runtime.css";
-@import "./motion_lab.css";
 
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }

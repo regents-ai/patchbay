@@ -1,11 +1,10 @@
 /**
- * Motion for things the server decides: a list that changes, a number that
- * moves and a thread that is marked solved. The page renders every result
- * first; these islands only animate from the old picture to the new one.
+ * Motion for things the server decides: a list that changes, such as a stack
+ * of notes, and a figure that moves. The page renders every result first;
+ * these islands only animate from the old picture to the new one.
  */
 import {
   animate,
-  createDrawable,
   createLayout,
   createScope,
   spring,
@@ -16,209 +15,131 @@ import {
   type Scope,
   type TextSplitter,
 } from "animejs"
-import type {Hook} from "phoenix_live_view"
-import {BASE, EASE_IN_OUT, EASE_OUT, SLOW, still} from "./shared.ts"
-import {centre, spawn, sweep, sweepAll} from "./fx.ts"
+import {BASE, CLIPPED_CHAR, SLOW, still} from "./shared.ts"
+import type {Hook} from "../../hook_composition.ts"
 
-// How a list moves when the server adds, reorders or hides its items. Each
-// is built fresh per change because a stagger remembers the items it measured.
-const LAYOUTS: Record<string, () => LayoutAnimationParams> = {
-  rise: () => ({
-    duration: SLOW,
-    ease: EASE_OUT,
-    enterFrom: {opacity: 0, transform: "translateY(18px) scale(.96)"},
-    leaveTo: {opacity: 0, transform: "translateY(-10px) scale(.96)"},
+// How a list moves when the server adds, reorders or drops its items: `bounce`
+// for lists and `pop` for notes that come and go. Each is built fresh per
+// change because a stagger remembers the items it measured.
+export const LAYOUTS: Record<string, () => LayoutAnimationParams> = {
+  bounce: () => ({
+    ease: spring({bounce: 0.35, duration: 420}),
+    enterFrom: {opacity: 0, transform: "translateY(-12px)"},
+    leaveTo: {opacity: 0, transform: "scale(.9)", ease: "in(3)", duration: BASE},
   }),
   pop: () => ({
     ease: spring({bounce: 0.45, duration: 360}),
     enterFrom: {opacity: 0, transform: "scale(.6)"},
     leaveTo: {opacity: 0, transform: "scale(.8)", ease: "in(3)", duration: BASE},
   }),
-  side: () => ({
-    duration: SLOW,
-    ease: EASE_IN_OUT,
-    enterFrom: {opacity: 0, transform: "translateX(64px)"},
-    leaveTo: {opacity: 0, transform: "translateX(64px)"},
-  }),
-  glide: () => ({
-    duration: 360,
-    ease: EASE_IN_OUT,
-    enterFrom: {opacity: 0, transform: "scale(.9)"},
-    leaveTo: {opacity: 0, transform: "scale(.9)"},
-  }),
-  bounce: () => ({
-    ease: spring({bounce: 0.35, duration: 420}),
-    enterFrom: {opacity: 0, transform: "translateY(-12px)"},
-    leaveTo: {opacity: 0, transform: "scale(.9)", ease: "in(3)", duration: BASE},
-  }),
-  ripple: () => ({
-    duration: SLOW,
-    ease: EASE_IN_OUT,
-    delay: stagger(35),
-    enterFrom: {opacity: 0, transform: "translateX(-16px)"},
-    leaveTo: {opacity: 0, transform: "translateX(16px)"},
-  }),
 }
 
+type ListHook = {el: HTMLElement; scope?: Scope}
+
 /**
- * A list the server owns. It renders `data-layout-id` on the list and on
- * every item, and hides an item for a moment before dropping it, so the item
- * can fade out while its neighbours close the gap.
+ * A list the server owns, built from a table of versions. It renders
+ * `data-layout-id` on the list and on every item, names the items in
+ * `data-children` and the version in `data-variant`. An item that is leaving
+ * is hidden for a moment before the server drops it, so it can fade out while
+ * its neighbours close the gap.
  */
-export const PatchbayLayout: Hook<{scope: Scope}> = {
-  mounted() {
+export const listHook = (layouts: Record<string, () => LayoutAnimationParams>): Hook => ({
+  mounted(this: ListHook) {
     const scope = createScope({root: this.el})
 
     this.scope = scope.add(() => {
       const layout = createLayout(this.el, {children: this.el.dataset.children})
       scope.add("record", () => layout.record())
-      scope.add("glide", () => layout.animate(LAYOUTS[this.el.dataset.variant!]()))
+      scope.add("move", () => layout.animate(layouts[this.el.dataset.variant ?? ""]()))
     })
   },
 
-  beforeUpdate() {
-    this.scope.methods.record()
+  beforeUpdate(this: ListHook) {
+    this.scope?.methods.record()
   },
 
-  updated() {
-    if (!still(this.el)) this.scope.methods.glide()
+  updated(this: ListHook) {
+    if (!still(this.el)) this.scope?.methods.move()
   },
 
-  destroyed() {
+  destroyed(this: ListHook) {
     this.scope?.revert()
   },
-}
+})
 
-// How the digits that changed arrive. `wrap` masks each digit in its own
-// slot, so a digit rolling in is hidden until it reaches the slot. Moves in
-// percent name both ends: given only a start, Anime.js would convert it to
-// pixels from the digit's width rather than its height.
-type Roll = {wrap: boolean; move: (up: boolean) => AnimationParams}
+export const MotionList = listHook(LAYOUTS)
 
-const ROLLS: Record<string, Roll> = {
-  roll: {wrap: true, move: up => ({y: [up ? "100%" : "-100%", "0%"], duration: SLOW, ease: "outBack(1.4)"})},
-  tick: {wrap: true, move: up => ({y: [up ? "60%" : "-60%", "0%"], opacity: {from: 0}, ease: spring({bounce: 0.55, duration: 300})})},
-  pop: {wrap: false, move: () => ({scale: {from: 1.9}, opacity: {from: 0}, duration: SLOW, ease: EASE_OUT})},
+// How the digits that changed arrive. `clip` masks each digit in its own
+// slot, so a digit rolling in is hidden until it reaches the slot.
+export type Roll = {clip: boolean; move: (up: boolean) => AnimationParams}
+
+export const ROLLS: Record<string, Roll> = {
+  roll: {clip: true, move: up => ({y: [up ? "100%" : "-100%", "0%"], duration: SLOW, ease: "outBack(1.4)"})},
 }
 
 const worth = (text: string) => Number(text.replace(/\D/g, ""))
 
-/**
- * A number the server changes. Only the digits that changed move, the ones
- * nearest the end first, like a counter turning over. The digits are split
- * into pieces for the move and joined back as soon as it ends, so the page
- * always patches the plain number it rendered.
- */
-type Counter = {
-  scope: Scope
-  split?: TextSplitter
-  before: string
-  join(this: Counter, split: TextSplitter | undefined): void
+// The figures inside a part of the page, each marked `data-count`.
+const figures = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>("[data-count]")]
+
+type CountHook = {el: HTMLElement; scope?: Scope; before?: string[]; splits: Set<TextSplitter>}
+
+// Put the plain figure back, but only for a split that is still on the page:
+// an older one would write its stale figure over the new one.
+function join(hook: CountHook, split: TextSplitter) {
+  if (!hook.splits.delete(split)) return
+  split.revert()
 }
 
-export const PatchbayCounter: Hook<Counter> = {
-  mounted() {
+/**
+ * Figures the server changes, built from a table of versions. Only the digits
+ * that changed move, the ones nearest the end first, like a counter turning
+ * over. The digits are split into pieces for the move and joined back as soon
+ * as it ends, so the page always patches the plain figure it rendered.
+ */
+export const countHook = (rolls: Record<string, Roll>): Hook => ({
+  mounted(this: CountHook) {
     const scope = createScope({root: this.el})
+    this.splits = new Set()
 
     this.scope = scope.add(() => {
-      scope.add("roll", (split: TextSplitter, digits: Element[], up: boolean) => {
+      scope.add("roll", (split: TextSplitter, digits: HTMLElement[], up: boolean) => {
         animate(digits, {
-          ...ROLLS[this.el.dataset.variant!].move(up),
+          ...rolls[this.el.dataset.variant ?? ""].move(up),
           delay: stagger(45, {from: "last"}),
-          onComplete: () => this.join(split),
+          onComplete: () => join(this, split),
         })
       })
     })
   },
 
-  beforeUpdate() {
-    this.join(this.split)
-    this.before = this.el.textContent
+  beforeUpdate(this: CountHook) {
+    for (const split of this.splits) join(this, split)
+    this.before = figures(this.el).map(figure => figure.textContent ?? "")
   },
 
-  updated() {
-    const before = this.before
-    const after = this.el.textContent
-    if (before === after || still(this.el)) return
+  updated(this: CountHook) {
+    const before = this.before ?? []
+    const after = figures(this.el)
+    if (still(this.el) || after.length !== before.length) return
 
-    const {wrap} = ROLLS[this.el.dataset.variant!]
-    const split = splitText(this.el, {words: false, chars: wrap ? {wrap: "clip"} : true})
-    const digits = split.chars.filter((_char: Element, i: number) => before.at(i - after.length) !== after[i])
-    this.split = split
-    this.scope.methods.roll(split, digits, worth(after) > worth(before))
+    const {clip} = rolls[this.el.dataset.variant ?? ""]
+    after.forEach((figure, index) => {
+      const was = before[index]
+      const now = figure.textContent ?? ""
+      if (was === now) return
+
+      const split = splitText(figure, {words: false, chars: clip ? CLIPPED_CHAR : true})
+      const digits = split.chars.filter((_char, i) => was.at(i - now.length) !== now[i])
+      this.splits.add(split)
+      this.scope?.methods.roll(split, digits, worth(now) > worth(was))
+    })
   },
 
-  destroyed() {
-    this.join(this.split)
+  destroyed(this: CountHook) {
+    for (const split of this.splits) join(this, split)
     this.scope?.revert()
   },
+})
 
-  // Put the plain number back, but only for the split that is still on the
-  // page: an older one would write its stale number over the new one.
-  join(this: Counter, split: TextSplitter | undefined) {
-    if (split === undefined || split !== this.split) return
-    split.revert()
-    this.split = undefined
-  },
-}
-
-// How the stamp lands once the server has marked the thread solved.
-const STAMPS: Record<string, (card: HTMLElement, stamp: Element) => number> = {
-  thunk: (card, stamp) => {
-    animate(stamp, {scale: {from: 2.4}, rotate: {from: -24}, opacity: {from: 0}, duration: 240, ease: "in(3)"})
-    animate(card, {y: [0, 5, -1, 0], delay: 220, duration: 260, ease: "out(2)"})
-    return 260
-  },
-  ink: (_card, stamp) => {
-    animate(stamp, {scale: {from: 1.15}, opacity: {from: 0}, duration: BASE, ease: EASE_OUT})
-    return 120
-  },
-  party: (card, stamp) => {
-    animate(stamp, {scale: {from: 0}, rotate: {from: 40}, ease: spring({bounce: 0.5, duration: 420})})
-    const [x, y] = centre(stamp)
-    const stitches = spawn(card, 8, "pb-fx-stitch", x, y)
-    for (const stitch of stitches) stitch.textContent = "+"
-    animate(stitches, {
-      x: (_el, i) => Math.cos((i! / stitches.length) * Math.PI * 2) * 70,
-      y: (_el, i) => Math.sin((i! / stitches.length) * Math.PI * 2) * 48,
-      rotate: (_el, i) => (i! % 2 ? 1 : -1) * 90,
-      scale: [0.2, 1.1, 0.6],
-      opacity: [1, 1, 0],
-      delay: 80,
-      duration: 640,
-      ease: "out(3)",
-      onComplete: sweep(stitches),
-    })
-    return 180
-  },
-}
-
-/**
- * A thread card that is stamped solved. The page renders the stamp, then
- * tells the island the thread was just solved, so a page opened on a thread
- * that was already solved shows the stamp without any fuss.
- */
-export const PatchbayStamp: Hook<{scope: Scope}> = {
-  mounted() {
-    const scope = createScope({root: this.el})
-
-    this.scope = scope.add(() => {
-      scope.add("stamp", () => {
-        const stamp = this.el.querySelector("[data-stamp]")!
-        const inkAt = STAMPS[this.el.dataset.variant!](this.el, stamp)
-        const [tick] = createDrawable(stamp.querySelector("[data-tick]")!)
-        animate(tick, {draw: ["0 0", "0 1"], delay: inkAt, duration: SLOW, ease: EASE_OUT})
-      })
-
-      return () => sweepAll(this.el)
-    })
-
-    this.handleEvent("motion:solved", () => {
-      if (!still(this.el)) this.scope.methods.stamp()
-    })
-  },
-
-  destroyed() {
-    this.scope?.revert()
-  },
-}
+export const MotionCount = countHook(ROLLS)

@@ -1,6 +1,6 @@
 /**
- * What all of Patchbay's motion shares: the design system's timings and
- * curves, and the two questions asked before anything moves.
+ * What all of the product's motion shares: the design system's timings and
+ * curves, and the questions asked before anything moves.
  */
 import {animate, cubicBezier, utils, type AnimationParams, type JSAnimation} from "animejs"
 
@@ -11,28 +11,34 @@ export const SLOW = 280
 export const EASE_OUT = cubicBezier(0.23, 1, 0.32, 1)
 export const EASE_IN_OUT = cubicBezier(0.77, 0, 0.175, 1)
 
-// The two Patchbay colours that sparks, stitches and rings are drawn in.
-export const SPARK_COLORS = ["var(--palette-tangerine-tango)", "var(--palette-powder-blue)"]
+// Words and digits that rise into view each sit inside a box that clips them,
+// `.split-clip` in components/motion.css. The box is named by a class because a
+// page's security policy may refuse styles written into markup, which is what
+// splitText's own `wrap` writes.
+export const CLIPPED_WORD = "<span class='split-clip'><span data-word='{i}'>{value}</span></span>"
+export const CLIPPED_CHAR = "<span class='split-clip'><span data-char='{i}'>{value}</span></span>"
 
-// The reader asked for less motion, either in their system settings or with a
+// The reader asked for less motion, in their system settings or with a
 // switch on the page around the element.
-export function still(el: Element) {
-  return matchMedia("(prefers-reduced-motion: reduce)").matches || el.closest("[data-motion='reduced']") !== null
-}
+export const still = (el: Element) =>
+  matchMedia("(prefers-reduced-motion: reduce)").matches || el.closest("[data-motion='reduced']") !== null
 
 // A click from Enter or Space reports no pointer presses. Keyboard-driven UI
 // answers at once rather than animating.
-export function byPointer(event: MouseEvent) {
-  return event.detail > 0
-}
+export const byPointer = (event: MouseEvent) => event.detail > 0
 
-// Replay buttons dispatch this on the window, so one press can restart every
-// island on the page.
-export const REPLAY = "pb-motion:replay"
+// Menus and dialogs can open without a click of their own, from a hover or
+// from the server. They move only when the reader was last using a mouse or a
+// finger.
+let pointer = false
 
-export function onReplay(callback: () => void) {
-  window.addEventListener(REPLAY, callback)
-  return () => window.removeEventListener(REPLAY, callback)
+export const lastInputByPointer = () => pointer
+
+export function watchInput(doc: Document) {
+  const byHand = () => { pointer = true }
+  doc.addEventListener("pointerdown", byHand, true)
+  doc.addEventListener("pointermove", byHand, true)
+  doc.addEventListener("keydown", () => { pointer = false }, true)
 }
 
 // Anime.js hands an element back to its stylesheet by restoring the inline
