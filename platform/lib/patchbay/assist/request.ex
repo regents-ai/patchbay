@@ -94,12 +94,13 @@ defmodule Patchbay.Assist.Request do
   @site_rule "site_url: must be a public https address, such as \"https://example.com/app\""
 
   @doc """
-  The site a request names, trimmed, if it is a public `https` address on
-  the standard port; otherwise the rule it broke.
+  The site a request names, trimmed and with `https://` in front when it
+  names no scheme, if it is a public `https` address on the standard port;
+  otherwise the rule it broke.
   """
   @spec site_url(term()) :: {:ok, String.t()} | {:error, {:invalid, [String.t()]}}
   def site_url(value) when is_binary(value) do
-    trimmed = String.trim(value)
+    trimmed = value |> String.trim() |> with_scheme()
 
     with true <- byte_size(trimmed) <= @max_site_url_bytes,
          {:ok, %URI{scheme: "https", host: host, userinfo: nil, port: 443}} <- URI.new(trimmed),
@@ -111,6 +112,10 @@ defmodule Patchbay.Assist.Request do
   end
 
   def site_url(_value), do: {:error, {:invalid, [@site_rule]}}
+
+  defp with_scheme(address) do
+    if String.contains?(address, "://"), do: address, else: "https://" <> address
+  end
 
   # A public site is named, not addressed: no IP literal, nothing encoded,
   # and, once the trailing dot a resolver ignores is dropped, a name with a

@@ -319,11 +319,15 @@
           <input
             id="pb-fix-site"
             name="fix[site_url]"
-            type="url"
+            type="text"
+            inputmode="url"
+            autocomplete="url"
+            autocapitalize="none"
+            spellcheck="false"
             required
             maxlength="2048"
             value={@fix.draft["site_url"]}
-            placeholder="https://example.com/app"
+            placeholder="example.com/app"
             aria-describedby={@fix.mode == :free && "pb-fix-site-check"}
           />
           <p

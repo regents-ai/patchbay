@@ -137,6 +137,7 @@ test("only a whole named address is worth asking about", () => {
   assert.equal(addressLike("http://example.com"), true)
   assert.equal(addressLike("https://developers"), false)
   assert.equal(addressLike("https://developers.o"), false)
-  assert.equal(addressLike("developers.openai.com"), false)
+  assert.equal(addressLike("developers.openai.com"), true)
+  assert.equal(addressLike("developers"), false)
   assert.equal(addressLike("ftp://example.com"), false)
 })

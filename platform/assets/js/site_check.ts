@@ -89,11 +89,12 @@ export function mountSiteCheck(form: SiteCheckForm, options: SiteCheckOptions = 
 
 /**
  * Whether what is in the field is a whole web address yet, worth asking
- * about: a named site, not the first letters of one.
+ * about: a named site, not the first letters of one. An address with no
+ * scheme is read as https, as Patchbay reads it.
  */
 export function addressLike(address: string) {
   try {
-    const url = new URL(address)
+    const url = new URL(address.includes("://") ? address : `https://${address}`)
     return (url.protocol === "https:" || url.protocol === "http:") && /\.[a-z0-9-]{2,}$/i.test(url.hostname)
   } catch {
     return false
