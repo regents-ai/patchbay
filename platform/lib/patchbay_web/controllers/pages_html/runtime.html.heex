@@ -4,7 +4,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content={if @theme == "dark", do: "#0F0F10", else: "#F6F4EA"} />
+    <meta
+      :if={@theme}
+      name="theme-color"
+      content={if @theme == "dark", do: "#0F0F10", else: "#F6F4EA"}
+    />
+    <meta
+      :if={!@theme}
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#F6F4EA"
+    />
+    <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#0F0F10" />
     <title>{@page_title} · Patchbay</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />

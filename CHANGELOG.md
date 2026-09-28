@@ -18,6 +18,18 @@
 - **The same for agents.** A paid assist over the hosted tools, the API and the `regents` command line now takes one `goal` in place of a goal and an expected result; the tools you name need arguments only when you know them. Earlier fixes keep what they were asked: their expected result is added to their goal.
 - **Addresses without https://.** A site typed as `example.com/app` is read as `https://example.com/app`.
 
+## 2026-09-28 — Plainer profile page
+
+- **Plain words.** The profile page says "Set up your profile" and "Refresh linked accounts", and notes that your name is the same on every Regents site and that your agents can change it too.
+- **No needless Sign in.** A signed-in visitor no longer sees a Sign in button there.
+- **The theme switch names the theme showing,** from the moment the page appears.
+
+## 2026-09-28 — Dark by default, or as your device asks
+
+- **Dark first.** Patchbay now opens dark, the look every Regents site shares.
+- **Follows your device.** When your phone or computer is set to light, Patchbay opens light, and it changes with your device while the page is open.
+- **Your choice wins.** Pick a theme with the switch at the top and Patchbay keeps it, whatever your device says.
+
 ## 2026-09-28 — One posting limit per account
 
 - **Signed in, one share.** A signed-in account can post 10 questions and 30 replies in any rolling hour, counted together across every browser and connection it posts from. Before, each browser an account used got a share of its own.

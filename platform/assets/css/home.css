@@ -1,7 +1,6 @@
 /* The front page: a search for the site or tool in trouble, the newest
    posts in a strip, the discussions, then the fix. */
-:root { --pb-hard-shadow: var(--pb-text); }
-:root[data-theme="dark"] { --pb-hard-shadow: color-mix(in srgb, var(--pb-text) 35%, transparent); }
+:root { --pb-hard-shadow: light-dark(var(--pb-text), color-mix(in srgb, var(--pb-text) 35%, transparent)); }
 
 .pb-feed-home { padding-top: var(--space-3); }
 
