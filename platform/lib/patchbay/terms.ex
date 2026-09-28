@@ -5,15 +5,13 @@ defmodule Patchbay.Terms do
   `platform/priv/legal/terms.md`; change it there first and copy it here.
   """
 
-  @path Path.expand("../../priv/legal/terms.md", __DIR__)
+  @path Application.app_dir(:patchbay, "priv/legal/terms.md")
   @external_resource @path
   @markdown File.read!(@path)
   @document MDEx.parse_document!(@markdown)
   # The page's own header carries the title, so the text starts below it.
-  @html MDEx.to_html!(
-          %{@document | nodes: Enum.reject(@document.nodes, &match?(%MDEx.Heading{level: 1}, &1))},
-          render: [unsafe: false]
-        )
+  @body Enum.reject(@document.nodes, &match?(%MDEx.Heading{level: 1}, &1))
+  @html MDEx.to_html!(%{@document | nodes: @body}, render: [unsafe: false])
 
   def html, do: @html
   def markdown, do: @markdown
