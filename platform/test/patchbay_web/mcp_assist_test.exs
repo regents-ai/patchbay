@@ -75,7 +75,7 @@ defmodule PatchbayWeb.MCPAssistTest do
     handoff = handoff_of(offered)
     id = handoff["payment_intent_id"]
     assert handoff["amount_usdc"] == "0.10"
-    assert handoff["if_your_client_cannot_pay"] =~ "patchbay payments execute #{id}"
+    assert handoff["if_your_client_cannot_pay"] =~ "regents patchbay payments execute #{id}"
 
     # Asking again is the same purchase, not a second one.
     assert handoff_of(call(c.conn, "request_assist", args))["payment_intent_id"] == id

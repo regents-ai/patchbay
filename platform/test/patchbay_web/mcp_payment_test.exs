@@ -131,7 +131,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
     id = handoff["payment_intent_id"]
     assert handoff["status"] == "payment_required"
     assert handoff["status_tool"] == "get_payment_status"
-    assert handoff["if_your_client_cannot_pay"] =~ "patchbay payments execute #{id}"
+    assert handoff["if_your_client_cannot_pay"] =~ "regents patchbay payments execute #{id}"
     assert handoff["status_url"] =~ "/api/agent/payment_intents/#{id}"
 
     # Asking again is the same purchase, not a second one.

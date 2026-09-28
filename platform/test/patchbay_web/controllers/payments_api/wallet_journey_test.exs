@@ -5,6 +5,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   alias Patchbay.{Identity, Repo}
 
   @funded_at 1_790_000_000
+  @intents "/api/agent/payment_intents"
 
   # What the synthetic Base node answers: every payment has landed, and every
   # transaction is taken.
@@ -98,9 +99,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
         end
       end)
 
-    configured_broker = System.get_env("PATCHBAY_TEST_SIWA_URL") || broker
-    if URI.parse(configured_broker).host != "127.0.0.1", do: raise("Test broker must be loopback")
-    Application.put_env(:patchbay, :wallet_author, broker_url: configured_broker)
+    Application.put_env(:patchbay, :wallet_author, broker_url: broker)
 
     Application.put_env(:patchbay, :escrow,
       contract_address: "0x" <> String.duplicate("c", 40),
@@ -115,11 +114,11 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
         unboxed(fn -> PatchbayWeb.Endpoint.call(conn, PatchbayWeb.Endpoint.init([])) end)
       end)
 
-    receipt = issue_receipt(configured_broker, secret, key, address)
+    receipt = issue_receipt(secret, address)
     other_key = :crypto.strong_rand_bytes(32)
     {:ok, other_public} = ExSecp256k1.create_public_key(other_key)
     other_address = Siwa.EvmPersonalSign.public_key_to_address(other_public)
-    other_receipt = issue_receipt(configured_broker, secret, other_key, other_address)
+    other_receipt = issue_receipt(secret, other_address)
 
     on_exit(fn ->
       Application.put_env(:patchbay, :wallet_author, old_wallet)
@@ -158,34 +157,39 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     %{
       app: app,
+      secret: secret,
       receipt: receipt,
       key: key,
       address: address,
       origin: origin,
       chain: chain,
-      other: %{app: app, receipt: other_receipt, key: other_key, address: other_address}
+      other: %{
+        app: app,
+        secret: secret,
+        receipt: other_receipt,
+        key: other_key,
+        address: other_address
+      }
     }
   end
 
-  test "CLI external signatures reach Ash, settle once, publish and recover an autonomous report",
+  test "external signatures reach Ash, settle once, publish and recover an autonomous report",
        c do
     assert is_binary(c.receipt)
 
     prepared =
-      dispatch(c, ["payments", "prepare"], %{
-        args: %{
-          amount_usdc: "1.00",
-          origin: c.origin,
-          tool_name: "fixture",
-          verdict: "unknown",
-          note: "Untrusted fixture evidence"
-        }
+      prepare(c, %{
+        amount_usdc: "1.00",
+        origin: c.origin,
+        tool_name: "fixture",
+        verdict: "unknown",
+        note: "Untrusted fixture evidence"
       })
 
     assert prepared["status"] == 201, inspect(prepared)
     id = prepared["body"]["id"]
     assert prepared["body"]["execute_url"] =~ "/api/agent/payment_intents/#{id}/execute"
-    challenge = dispatch(c, ["payments", "execute", id], %{})
+    challenge = execute(c, id)
     assert challenge["status"] == 402
     assert is_binary(challenge["payment_required"])
     terms = challenge["body"]["payment_terms"]
@@ -208,18 +212,15 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       }
     }
 
-    paid =
-      dispatch(c, ["payments", "execute", id], %{
-        payment_signature: payment |> Jason.encode!() |> Base.encode64()
-      })
+    paid = execute(c, id, %{payment_signature: payment |> Jason.encode!() |> Base.encode64()})
 
     assert paid["status"] == 200
     assert paid["body"]["status"] == "applied"
     assert_receive :settled
-    recovered = dispatch(c, ["payments", "get", id], %{})
+    recovered = get(c, id)
     assert recovered["status"] == 200
     assert recovered["body"]["receipt"] == paid["body"]["receipt"]
-    again = dispatch(c, ["payments", "execute", id], %{})
+    again = execute(c, id)
     assert again["body"]["receipt"] == paid["body"]["receipt"]
     refute_receive :settled, 100
     report = unboxed(fn -> Patchbay.Forum.get_report!(prepared["body"]["report_id"]) end)
@@ -256,190 +257,132 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert confirmed.escrow_status == :credited
     assert DateTime.to_unix(confirmed.escrow_funded_at) == @funded_at
 
-    assert dispatch(c, ["payments", "get", id], %{})["body"]["result"]["credit_confirmation"] ==
-             "confirmed"
+    assert get(c, id)["body"]["result"]["credit_confirmation"] == "confirmed"
 
     refute_receive :settled, 100
 
-    assert dispatch(c.other, ["payments", "get", id], %{})["status"] == 404
-    assert dispatch(c.other, ["payments", "execute", id], %{})["status"] == 404
-    assert dispatch(c, ["payments", "get", id], %{})["body"]["receipt"] == paid["body"]["receipt"]
+    assert get(c.other, id)["status"] == 404
+    assert execute(c.other, id)["status"] == 404
+    assert get(c, id)["body"]["receipt"] == paid["body"]["receipt"]
     refute_receive :settled, 100
 
     # A different actual signing key cannot use this receipt to read the intent.
     other = %{c | key: :crypto.strong_rand_bytes(32)}
-    assert dispatch(other, ["payments", "get", id], %{})["status"] == 401
+    assert get(other, id)["status"] == 401
   end
 
   test "changed body and replay are refused by cryptographic verification", c do
-    command = ["payments", "prepare"]
-
-    input =
-      Map.merge(%{receipt: c.receipt, wallet_address: c.address}, %{
-        args: %{amount_usdc: "1.00", origin: c.origin, tool_name: "fixture", verdict: "unknown"}
+    body =
+      prepare_body(%{
+        amount_usdc: "1.00",
+        origin: c.origin,
+        tool_name: "fixture",
+        verdict: "unknown"
       })
 
-    request = cli(command ++ ["--base-url", c.app, "--phase", "prepare"], input)["request"]
-    signature = sign(c.key, request["message"])
-    signed = %{request: request, signature: signature}
-    first = cli(command ++ ["--base-url", c.app], signed)
-    assert first["status"] == 201, inspect(first)
-    assert cli(command ++ ["--base-url", c.app], signed)["status"] == 401
-    # A direct client bypassing CLI validation still cannot alter covered JSON.
-    bytes =
-      signature |> String.trim_leading("0x") |> Base.decode16!(case: :mixed) |> Base.encode64()
+    request = signed(c, "POST", @intents, body)
+    assert send_signed(c, request)["status"] == 201
+    assert send_signed(c, request)["status"] == 401
 
-    headers =
-      Map.put(request["headers"], "signature", "sig1=:#{bytes}:")
-      |> Map.put("content-type", "application/json")
-
-    assert {:ok, %{status: 401}} =
-             Req.post(c.app <> request["path"], headers: headers, body: "{}", retry: false)
+    # The same signature cannot cover different JSON.
+    assert send_signed(c, %{request | body: "{}"})["status"] == 401
 
     # Even a valid signature over a bodyless envelope cannot authorize parsed JSON.
-    input = String.replace(request["headers"]["signature-input"], ~s( "content-digest"), "")
-
-    message =
-      request["message"]
-      |> String.split("\n")
-      |> Enum.reject(&String.starts_with?(&1, ~s("content-digest")))
-      |> Enum.join("\n")
-      |> String.replace(~s( "content-digest"), "")
-
-    no_digest_sig =
-      sign(c.key, message)
-      |> String.trim_leading("0x")
-      |> Base.decode16!(case: :mixed)
-      |> Base.encode64()
-
-    no_digest =
-      headers
-      |> Map.delete("content-digest")
-      |> Map.put("signature-input", input)
-      |> Map.put("signature", "sig1=:#{no_digest_sig}:")
-
-    assert {:ok, %{status: 401}} =
-             Req.post(c.app <> request["path"],
-               headers: no_digest,
-               body: request["body"],
-               retry: false
-             )
+    bodyless = signed(c, "POST", @intents, nil)
+    assert send_signed(c, %{bodyless | body: body})["status"] == 401
   end
 
   test "chunked JSON captures exact bytes and cookies confer no authority", c do
-    request =
-      cli(["payments", "prepare", "--base-url", c.app, "--phase", "prepare"], %{
-        receipt: c.receipt,
-        wallet_address: c.address,
-        args: %{amount_usdc: "1.00", origin: c.origin, tool_name: "fixture", verdict: "unknown"}
-      })["request"]
+    body =
+      prepare_body(%{
+        amount_usdc: "1.00",
+        origin: c.origin,
+        tool_name: "fixture",
+        verdict: "unknown"
+      })
 
-    signature =
-      sign(c.key, request["message"])
-      |> String.trim_leading("0x")
-      |> Base.decode16!(case: :mixed)
-      |> Base.encode64()
+    request = signed(c, "POST", @intents, body)
+    headers = Map.put(request.headers, "cookie", "unrelated_browser_cookie=ignored")
+    <<first::binary-size(10), rest::binary>> = body
 
-    headers =
-      request["headers"]
-      |> Map.put("signature", "sig1=:#{signature}:")
-      |> Map.put("content-type", "application/json")
-      |> Map.put("cookie", "unrelated_browser_cookie=ignored")
+    assert send_signed(c, %{request | headers: headers, body: Stream.map([first, rest], & &1)})[
+             "status"
+           ] == 201
 
-    <<first::binary-size(10), rest::binary>> = request["body"]
-
-    assert {:ok, %{status: 201}} =
-             Req.post(c.app <> request["path"],
-               headers: headers,
-               body: Stream.map([first, rest], & &1),
-               retry: false
-             )
-
-    assert {:ok, %{status: 413}} =
-             Req.post(c.app <> request["path"],
-               headers: headers,
-               body: Jason.encode!(%{note: String.duplicate("a", 100_001)}),
-               retry: false
-             )
+    too_large = Jason.encode!(%{note: String.duplicate("a", 100_001)})
+    assert send_signed(c, %{request | headers: headers, body: too_large})["status"] == 413
   end
 
-  defp issue_receipt(configured_broker, secret, key, address) do
-    if System.get_env("PATCHBAY_TEST_SIWA_URL") do
-      nonce =
-        cli(
-          ["wallet", "nonce", "--siwa-url", configured_broker, "--wallet-address", address],
-          nil
-        )["body"]["data"]
+  defp issue_receipt(secret, address) do
+    {:ok, %{token: token}} =
+      Siwa.Receipt.create(
+        %{
+          "typ" => "siwa_wallet_receipt",
+          "sub" => address,
+          "chain_id" => 8453,
+          "aud" => "patchbay",
+          "key_id" => address,
+          "verified" => "wallet_signature",
+          "nonce" => Ecto.UUID.generate(),
+          "jti" => Ecto.UUID.generate()
+        },
+        secret: secret
+      )
 
-      assert is_map(nonce)
+    token
+  end
 
-      proof = %{
-        wallet_address: address,
-        chain_id: 8453,
+  defp prepare(c, args), do: send_signed(c, signed(c, "POST", @intents, prepare_body(args)))
+
+  defp execute(c, id, fields \\ %{}),
+    do: send_signed(c, signed(c, "POST", "#{@intents}/#{id}/execute", Jason.encode!(fields)))
+
+  defp get(c, id), do: send_signed(c, signed(c, "GET", "#{@intents}/#{id}", nil))
+
+  defp prepare_body(args), do: Jason.encode!(%{kind: "special_post", args: args})
+
+  # A request signed the way an agent's own client signs it: the shared SIWA
+  # library covers the method, path, receipt, wallet and body digest with the
+  # wallet's personal_sign signature.
+  defp signed(c, method, path, body) do
+    signer =
+      Siwa.LocalSigner.from_private_key(Base.encode16(c.key, case: :lower), nil,
+        address: c.address
+      )
+
+    {:ok, request} =
+      Siwa.RequestAuth.sign_authenticated_request(
+        %{method: method, path: path, headers: %{}, body: body},
+        c.receipt,
+        signer,
+        secret: c.secret,
         audience: "patchbay",
-        nonce: nonce["nonce"],
-        message: nonce["message"],
-        signature: sign(key, nonce["message"])
-      }
+        wallet_audiences: ["patchbay"]
+      )
 
-      verified = cli(["wallet", "verify", "--siwa-url", configured_broker], proof)
-      assert verified["ok"]
-      verified["body"]["data"]["receipt"]
-    else
-      {:ok, %{token: token}} =
-        Siwa.Receipt.create(
-          %{
-            "typ" => "siwa_wallet_receipt",
-            "sub" => address,
-            "chain_id" => 8453,
-            "aud" => "patchbay",
-            "key_id" => address,
-            "verified" => "wallet_signature",
-            "nonce" => Ecto.UUID.generate(),
-            "jti" => Ecto.UUID.generate()
-          },
-          secret: secret
-        )
-
-      token
-    end
+    request
   end
 
-  defp dispatch(c, command, args) do
-    input = Map.merge(%{receipt: c.receipt, wallet_address: c.address}, args)
-    request = cli(command ++ ["--base-url", c.app, "--phase", "prepare"], input)["request"]
-    assert is_map(request)
+  defp send_signed(c, request) do
+    content_type = if request.body, do: %{"content-type" => "application/json"}, else: %{}
 
-    cli(command ++ ["--base-url", c.app], %{
-      request: request,
-      signature: sign(c.key, request["message"])
-    })
-  end
+    {:ok, response} =
+      Req.request(
+        method: request.method |> String.downcase() |> String.to_existing_atom(),
+        url: c.app <> request.path,
+        headers:
+          request.headers |> Map.merge(content_type) |> Map.put("accept", "application/json"),
+        body: request.body,
+        retry: false
+      )
 
-  defp cli(args, input) do
-    script = Path.expand("../../../../../cli/test/pipe-invoke.js", __DIR__)
-
-    port =
-      Port.open({:spawn_executable, System.find_executable("node")}, [
-        :binary,
-        :exit_status,
-        args: [script]
-      ])
-
-    Port.command(port, Jason.encode!(%{args: args, input: input}) <> "\n")
-    receive_output(port, "") |> Jason.decode!()
-  end
-
-  defp receive_output(port, output) do
-    receive do
-      {^port, {:data, data}} -> receive_output(port, output <> data)
-      {^port, {:exit_status, 0}} -> output
-      {^port, {:exit_status, _}} -> flunk("CLI harness failed")
-    after
-      20_000 ->
-        Port.close(port)
-        flunk("CLI harness timed out")
-    end
+    %{"status" => response.status, "body" => response.body}
+    |> Map.merge(
+      case Req.Response.get_header(response, "payment-required") do
+        [terms] -> %{"payment_required" => terms}
+        [] -> %{}
+      end
+    )
   end
 
   defp sign(key, message) do

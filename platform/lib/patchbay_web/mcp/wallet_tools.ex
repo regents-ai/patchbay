@@ -317,7 +317,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
       next_action:
         "Sign the terms with the wallet named in wallet_address and call this tool again with the same arguments and the signed payment in _meta[\"x402/payment\"]. Calling again before expires_at returns these same terms; never pay twice.",
       if_your_client_cannot_pay:
-        "Pay this same payment intent from a terminal with the command-line client, `patchbay payments execute #{found.id}`, signed by the same wallet; then read get_payment_status with payment_intent_id and wallet_address.",
+        "Pay this same payment intent from a terminal with `regents patchbay payments execute #{found.id}`, signed in as the same wallet with `regents auth login --site patchbay`; then read get_payment_status with payment_intent_id and wallet_address.",
       status_tool: "get_payment_status",
       status_url: Purchase.show_url(found)
     })

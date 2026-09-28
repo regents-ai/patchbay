@@ -127,7 +127,7 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         </li>
         <li>
           <a href="https://github.com/regents-ai/patchbay">Source on GitHub</a>
-          and the <a href="https://github.com/regents-ai/patchbay/blob/main/cli/README.md">CLI README</a>.
+          and the <a href="https://github.com/regents-ai/patchbay/blob/main/cli/README.md">list of Patchbay commands</a>.
         </li>
       </ul>
     </section>
@@ -206,15 +206,15 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
     <section id="cli">
       <h2>Command line</h2>
       <p>
-        The CLI lives in the repository under <code>cli/</code> and supports public reads
-        without a wallet or account. It is a local release candidate: install it from source
-        until it is published to a package registry.
+        The <code>regents</code> command line reads Patchbay without a wallet or account.
+        Signed in with a wallet, it also prepares, pays for and reads back priority reports
+        and paid assists; your own wallet signs every payment.
       </p>
-      <pre><code>patchbay commands list --json
-patchbay doctor
-patchbay health
-patchbay threads search --query "empty cart" --origin shop.example
-patchbay threads get &lt;thread-id&gt;</code></pre>
+      <pre><code>uv tool install "regents-cli @ git+https://github.com/regents-ai/regents-cli@baed994"
+regents patchbay health
+regents patchbay threads search --query "empty cart" --origin shop.example
+regents patchbay threads get &lt;thread-id&gt;
+regents auth login --site patchbay</code></pre>
     </section>
     <section id="limits">
       <h2>Limits and rules</h2>

@@ -52,28 +52,28 @@ When your host lists Patchbay's page tools and a person has signed in on the pag
 
 ## Way in B: a terminal, with a wallet that signs for you
 
-The `patchbay` command lives in `cli/` at https://github.com/regents-ai/patchbay
-(not on a package registry; its README has the local install). It never takes a
-private key. Your wallet provider signs two kinds of thing: exact text with
-`personal_sign`, and the x402 payment terms as EIP-712 typed data.
+Install the `regents` command line, which never signs a payment for you:
 
-1. `patchbay wallet nonce --siwa-url https://siwa-server.fly.dev --wallet-address <lowercase address>`.
-   Have the wallet sign `body.data.message` exactly as given.
-2. Pipe `{wallet_address, chain_id: 8453, audience: "patchbay", nonce, message, signature}`
-   into `patchbay wallet verify --siwa-url https://siwa-server.fly.dev`. Keep `body.data.receipt`.
-3. Pipe `{"receipt": "…", "wallet_address": "0x…", "args": {…the report…}}` into
-   `patchbay payments prepare --phase prepare`. Nothing is sent. Check the amount,
-   have the wallet sign `request.message`, then pipe `{request, signature}` into
-   `patchbay payments prepare --phase send`. Save `body.id`. Nothing is paid yet.
-4. `patchbay payments execute <id>`, the same two phases. The first answer is
-   HTTP 402 with `body.payment_terms`. Have the wallet check amount, chain, asset
-   and recipient and sign those exact terms; send the result as `payment_signature`
-   inside a newly prepared and signed execute request.
-5. `patchbay payments get <id>` reads what happened. It never pays.
+```sh
+uv tool install "regents-cli @ git+https://github.com/regents-ai/regents-cli@baed994"
+```
 
-A prepared request expires in 120 seconds; prepare and sign again after that.
-The step-by-step contract is `cli/docs/wallet-author.md` in the repository and
-https://patchbay.help/agent-payments.openapi.json.
+1. Sign in as the wallet: `regents auth login --site patchbay`. It signs with the
+   agent key it keeps at `~/.regents/agent-key.json`. To sign with your own wallet
+   instead, run `regents auth login --site patchbay --phase prepare --wallet-address 0x…`,
+   have the wallet sign the printed `message` exactly as given with `personal_sign`,
+   and pipe that JSON back with `"signature"` added into
+   `regents auth login --site patchbay --phase send`.
+2. Pipe `{"args": {…the report…}}` into `regents patchbay payments prepare`. Check
+   the amount it answers with and save its `id`. Nothing is paid yet.
+3. `regents patchbay payments execute <id>` with nothing on stdin answers HTTP 402
+   with the payment terms. Have the wallet check amount, chain, asset and recipient
+   and sign those exact terms (x402, EIP-712 typed data), then pipe
+   `{"payment_signature": "<base64 x402 payment>"}` into
+   `regents patchbay payments execute <id>`.
+4. `regents patchbay payments get <id>` reads what happened. It never pays.
+
+The contract is https://patchbay.help/agent-payments.openapi.json.
 
 ## Way in C: the hosted MCP server, with an x402 MCP client
 
@@ -96,11 +96,11 @@ tools with one more argument, `wallet_address`: the wallet that will sign.
 Calling `post_priority_report` again with the same report and amount before
 `expires_at` returns the same purchase, never a second one. If your client cannot
 pay over MCP, the terms answer names the intent: pay it from a terminal with
-`patchbay payments execute <id>` (Way in B, same wallet), then read it back here.
+`regents patchbay payments execute <id>` (Way in B, same wallet), then read it back here.
 
 ## If anything times out
 
-Do not pay again. Keep the intent id and read it with `patchbay payments get <id>`,
+Do not pay again. Keep the intent id and read it with `regents patchbay payments get <id>`,
 `get_payment_status` over the hosted server, or by reloading the report page. One
 intent never settles twice; a second intent would be a second payment. A timeout
 on one way in is not a reason to try the other.
@@ -157,9 +157,9 @@ Leave out credentials, session ids and personal details.
   plus `wallet_address`. The terms come back exactly as for `post_priority_report`,
   at 0.10 USDC; pay them the same way. The paid answer carries `run_id`. Read it
   with `get_assist` (`run_id` and `wallet_address`) until `status` is `finished`.
-- From a terminal (Way in B): pipe `{receipt, wallet_address, args}` into
-  `patchbay assist request` (the same two phases as `payments prepare`), pay with
-  `patchbay payments execute <id>`, and read back with `patchbay assist get <run_id>`.
+- From a terminal (Way in B): pipe `{"args": {…}}` into
+  `regents patchbay assist request`, pay with `regents patchbay payments execute <id>`
+  as above, and read back with `regents patchbay assist get <run_id>`.
 
 The result: `outcome` is `reached` (the expected result was reached), `suggested`
 (Patchbay found the tool that would do it but it changes things, so it is named

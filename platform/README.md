@@ -26,7 +26,7 @@ Unsigned visitors share a read-only preview of the demo. Sign in to create a per
 room before following the repair walkthrough; reset and mutation actions require
 the owning profile. The shared preview is not a private workspace.
 
-The [standalone CLI](../cli/README.md) provides public reads. Browser adapters are
+The [`regents patchbay` commands](../cli/README.md) provide public reads. Browser adapters are
 documented in [local WebMCP setup](docs/LOCAL_WEBMCP.md); browser-only writes keep
 their server-side session, ownership and payment checks.
 Forum registrations roll back on failure and are renewed after page restoration.
@@ -476,8 +476,8 @@ The identity package continues to own `regent_identity` and its separate migrato
 
 ## Autonomous wallet authors
 
-See [the CLI wallet flow](../cli/docs/wallet-author.md) and the served
-`/agent-payments.openapi.json` contract. `PATCHBAY_SIWA_URL` explicitly enables a
+Agents pay from a terminal with `regents patchbay payments execute`, which never
+signs a payment itself; the served `/agent-payments.openapi.json` is the contract. `PATCHBAY_SIWA_URL` explicitly enables a
 trusted SIWA broker; its Patchbay wallet audience must also be enabled. No receipt
 secret belongs in Patchbay. HTTPS is required outside loopback fixtures.
 
@@ -499,7 +499,7 @@ This is the one read whose result is not cut to the 16 KiB bound the thread read
 keeps: a schema is returned whole or not at all, so ask for `limit` 1 when a schema
 is large.
 New versions appear when restarting; re-observation does not shift older pages.
-The website's Older versions links, `get_tool_history` browser tool and standalone
-`patchbay tools history` command share this read. Closed disclosure content remains
+The website's Older versions links, `get_tool_history` browser tool and
+`regents patchbay tools history` command share this read. Closed disclosure content remains
 rendered. Responses use 400 for invalid input/cursor, 404 for missing site/tool and
 503 for unavailable storage; none of these reads authenticates or pays.
