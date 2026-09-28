@@ -141,7 +141,7 @@ defmodule Patchbay.MixProject do
         "xref graph --label compile-connected --fail-above 32",
         "ash.codegen --check",
         "cmd npm run typecheck --prefix assets",
-        "test"
+        "test --warnings-as-errors"
       ]
     ]
   end
