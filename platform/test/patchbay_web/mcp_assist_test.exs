@@ -106,13 +106,13 @@ defmodule PatchbayWeb.MCPAssistTest do
 
     other = call(c.conn, "get_assist", %{"run_id" => run_id, "wallet_address" => c.other.address})
     assert other["isError"] == true
-    assert other["structuredContent"]["problem_code"] == "not_found"
+    assert other["structuredContent"]["error"]["code"] == "not_found"
 
     # A second assist waits for the first; nothing is prepared and nothing paid.
     second = call(c.conn, "request_assist", Map.put(args, "goal", "Cancel the same table"))
     assert second["isError"] == true
-    assert second["structuredContent"]["problem_code"] == "assist_running"
-    assert second["structuredContent"]["run_id"] == run_id
+    assert second["structuredContent"]["error"]["code"] == "assist_running"
+    assert second["structuredContent"]["error"]["run_id"] == run_id
     assert intents_of(profile) == 1
 
     # Once the first is answered, the same wallet may ask again.
@@ -136,15 +136,15 @@ defmodule PatchbayWeb.MCPAssistTest do
 
     refused = call(c.conn, "request_assist", signed_in)
     assert refused["isError"] == true
-    assert refused["structuredContent"]["problem_code"] == "needs_sign_in"
-    assert refused["structuredContent"]["error"] =~ "Nothing was charged"
+    assert refused["structuredContent"]["error"]["code"] == "needs_sign_in"
+    assert refused["structuredContent"]["error"]["message"] =~ "Nothing was charged"
 
     private =
       @request
       |> Map.put("wallet_address", c.address)
       |> Map.put("site_url", "http://bookings.example.com/app")
 
-    assert call(c.conn, "request_assist", private)["structuredContent"]["problem_code"] ==
+    assert call(c.conn, "request_assist", private)["structuredContent"]["error"]["code"] ==
              "invalid"
 
     # The door checks the shape before the request is read: calls are objects.
@@ -176,8 +176,8 @@ defmodule PatchbayWeb.MCPAssistTest do
     # With no wallet set for the fee, assists are not on offer here.
     Application.put_env(:patchbay, :assist, pay_to_address: nil)
     off = call(c.conn, "request_assist", Map.put(@request, "wallet_address", c.address))
-    assert off["structuredContent"]["problem_code"] == "not_configured"
-    assert off["structuredContent"]["error"] =~ "assists"
+    assert off["structuredContent"]["error"]["code"] == "not_configured"
+    assert off["structuredContent"]["error"]["message"] =~ "assists"
   end
 
   # Driving the hosted door

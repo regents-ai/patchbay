@@ -108,12 +108,12 @@ defmodule PatchbayWeb.MCPSessionTest do
         })
 
       assert refused["isError"]
-      assert refused["structuredContent"]["problem_code"] == "no_session"
+      assert refused["structuredContent"]["error"]["code"] == "no_session"
       assert Ash.count!(Report) == before
 
       # The feed is a read, but of the session's own follows: no session, no feed.
       no_feed = call(conn, nil, "get_updates", %{})
-      assert no_feed["structuredContent"]["problem_code"] == "no_session"
+      assert no_feed["structuredContent"]["error"]["code"] == "no_session"
 
       searched = call(conn, nil, "search_threads", %{"q" => "anything"})
       refute searched["isError"]

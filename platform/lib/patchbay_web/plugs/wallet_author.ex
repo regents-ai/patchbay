@@ -10,6 +10,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   import Plug.Conn
   alias Patchbay.Identity
+  alias PatchbayWeb.ApiError
 
   @headers ~w(x-siwa-receipt signature signature-input x-key-id x-timestamp x-agent-wallet-address x-agent-chain-id content-digest)
   @forbidden ~w(x-agent-registry-address x-agent-token-id payment-signature)
@@ -179,15 +180,34 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   def accept(_conn, _data, _context), do: refused(:unsupported_principal)
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def deny(conn, %{reason: reason}) do
-    status = if reason == :not_configured, do: 503, else: 401
+  def deny(conn, %{reason: :not_configured}) do
+    conn
+    |> refuse(
+      503,
+      ApiError.body(
+        "not_configured",
+        "Wallet author request refused.",
+        "Wallet authors are not set up on this Patchbay; sign in on a page instead."
+      )
+    )
+  end
 
+  def deny(conn, %{reason: reason}) do
+    conn
+    |> refuse(
+      401,
+      ApiError.body(
+        to_string(reason),
+        "Wallet author request refused.",
+        "Sign the exact request with the wallet's SIWA receipt, as /agent-payments.openapi.json describes."
+      )
+    )
+  end
+
+  defp refuse(conn, status, body) do
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(
-      status,
-      Jason.encode!(%{error: "Wallet author request refused.", problem_code: reason})
-    )
+    |> send_resp(status, Jason.encode!(body))
     |> halt()
   end
 

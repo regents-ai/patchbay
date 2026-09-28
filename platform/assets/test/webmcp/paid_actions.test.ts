@@ -21,6 +21,23 @@ function jsonResponse(status: number, body: unknown, headerMap: Record<string, s
   };
 }
 
+/** A payment service that could not be reached, as Patchbay says it. */
+function unavailable(message: string) {
+  return {
+    error: {
+      code: "facilitator_unavailable",
+      message: "The payment service could not be reached.",
+      hint: "Do not pay again. Retry the same signed intent or check its status.",
+      reason: message,
+    },
+  };
+}
+
+/** The refusal inside an outcome's body, as these tests read it. */
+function refusalOf(body: Record<string, unknown> | null) {
+  return body!.error as Record<string, unknown>;
+}
+
 test("shouldReplaySigned is only a 5xx without PAYMENT-RESPONSE", () => {
   assert.equal(shouldReplaySigned({status: 502, paymentResponse: null}), true);
   assert.equal(shouldReplaySigned({status: 500, paymentResponse: null}), true);
@@ -56,7 +73,7 @@ test("a 5xx after signing replays the same PAYMENT-SIGNATURE and never creates a
       });
     }
     if (requests.filter(item => item.headers["payment-signature"]).length < 3) {
-      return jsonResponse(502, {error: "facilitator down"});
+      return jsonResponse(502, unavailable("facilitator down"));
     }
     return jsonResponse(200, {status: "applied", receipt: {transaction_hash: "0xabc"}}, {
       "payment-response": "settled",
@@ -109,7 +126,7 @@ test("an exhausted 5xx replay tells the agent not to pay again", async () => {
         "payment-required": encodeChallenge(challenge),
       });
     }
-    return jsonResponse(502, {error: "still down"});
+    return jsonResponse(502, unavailable("still down"));
   };
 
   const outcome = await payForIntent(
@@ -152,8 +169,8 @@ test("a pre-aborted payment invocation does not prepare an intent or reach a sig
   controller.abort();
   const outcome = await payForIntent({signal: controller.signal,
     fetch: () => assert.fail("unexpected request"), signer: () => assert.fail("unexpected signer")}, cancellationAction);
-  assert.equal(outcome.body!.problem_code, "canceled");
-  assert.equal(outcome.body!.outcome, "canceled");
+  assert.equal(refusalOf(outcome.body).code, "canceled");
+  assert.equal(refusalOf(outcome.body).outcome, "canceled");
   assert.equal(outcome.body!.paid, undefined);
 });
 
@@ -179,7 +196,7 @@ for (const phase of ["preparation", "challenge", "signer", "signature", "submiss
         }));
       }
       submissions++;
-      return pause(submissions === 1 ? "submission" : "replay", jsonResponse(502, {error: "uncertain settlement"}));
+      return pause(submissions === 1 ? "submission" : "replay", jsonResponse(502, unavailable("uncertain settlement")));
     };
     const pending = payForIntent({signal: controller.signal, fetch,
       signer: async () => {
@@ -191,17 +208,17 @@ for (const phase of ["preparation", "challenge", "signer", "signature", "submiss
     controller.abort();
     release.resolve();
     const outcome = await pending;
-    assert.equal(outcome.body!.problem_code, "canceled");
-    assert.equal(outcome.body!.outcome, "unknown");
-    assert.equal(outcome.body!.payment_intent_id, cancellationIntent);
-    assert.equal(outcome.body!.status_url, `/api/payment_intents/${cancellationIntent}`);
+    assert.equal(refusalOf(outcome.body).code, "canceled");
+    assert.equal(refusalOf(outcome.body).outcome, "unknown");
+    assert.equal(refusalOf(outcome.body).payment_intent_id, cancellationIntent);
+    assert.equal(refusalOf(outcome.body).status_url, `/api/payment_intents/${cancellationIntent}`);
     assert.equal(outcome.body!.paid, undefined);
     assert.equal(requests.length, {preparation: 1, challenge: 2, signer: 2, signature: 2, submission: 3, replay: 4}[phase]);
     assert.equal(signerCalls, ["preparation", "challenge"].includes(phase) ? 0 : 1);
     assert.equal(signatureCalls, ["preparation", "challenge", "signer"].includes(phase) ? 0 : 1);
     assert.equal(submissions, phase === "submission" ? 1 : phase === "replay" ? 2 : 0);
     for (const {request} of requests) assert.equal(request.signal, controller.signal);
-    if (submissions) assert.match(outcome.body!.error as string, /may have settled/);
+    if (submissions) assert.match(refusalOf(outcome.body).message as string, /may have settled/);
   });
 }
 
@@ -214,8 +231,8 @@ test("an aborted signer rejection remains a cancellation instead of an unrelated
     controller.abort();
     throw new Error("late provider failure");
   }}, cancellationAction);
-  assert.equal(outcome.body!.problem_code, "canceled");
-  assert.equal(outcome.body!.payment_intent_id, cancellationIntent);
+  assert.equal(refusalOf(outcome.body).code, "canceled");
+  assert.equal(refusalOf(outcome.body).payment_intent_id, cancellationIntent);
 });
 
 for (const cancelFirst of [false, true]) {
@@ -250,7 +267,7 @@ for (const cancelFirst of [false, true]) {
     assert.equal(signingCount, 2);
     assert.equal(sent.length, cancelFirst ? 1 : 2);
     assert.equal(b.body!.status, "applied");
-    assert.equal(a.body![cancelFirst ? "problem_code" : "status"], cancelFirst ? "canceled" : "applied");
+    assert.equal(cancelFirst ? refusalOf(a.body).code : a.body!.status, cancelFirst ? "canceled" : "applied");
     if (!cancelFirst) assert.equal(new Set(sent.map(value => value.signature)).size, 2);
   });
 }
@@ -272,10 +289,10 @@ for (const lateResponse of ["applied", "abort_error"]) {
     const outcome = await payForIntent({signal: controller.signal, fetch,
       signer: async () => ({ok: true, address: `0x${"c".repeat(40)}`,
         signTypedData: async () => ({ok: true, signature: "synthetic"})})}, cancellationAction);
-    assert.equal(outcome.body!.problem_code, "canceled");
-    assert.equal(outcome.body!.outcome, "unknown");
-    assert.equal(outcome.body!.payment_intent_id, cancellationIntent);
-    assert.equal(outcome.body!.status_url, `/api/payment_intents/${cancellationIntent}`);
+    assert.equal(refusalOf(outcome.body).code, "canceled");
+    assert.equal(refusalOf(outcome.body).outcome, "unknown");
+    assert.equal(refusalOf(outcome.body).payment_intent_id, cancellationIntent);
+    assert.equal(refusalOf(outcome.body).status_url, `/api/payment_intents/${cancellationIntent}`);
     assert.equal(outcome.body!.paid, undefined);
     assert.equal(outcome.body!.status, undefined);
     assert.equal(submissions, 1);
@@ -285,7 +302,7 @@ for (const lateResponse of ["applied", "abort_error"]) {
 for (const refusal of ["preparation", "unsupported_challenge", "signed_out", "refused"]) {
   test(`uncanceled ${refusal} refusal retains its existing result`, async () => {
     const intent = {id: cancellationIntent, amount_usdc: "1.000001"};
-    const body = {status: "payment_required", error: "synthetic refusal"};
+    const body = {status: "payment_required", reason: "synthetic refusal"};
     const challenge = refusal === "unsupported_challenge" ? {accepts: []} : cancellationChallenge;
     const result = await payForIntent({
       fetch: async url => url === "/api/payment_intents"

@@ -7,6 +7,7 @@ defmodule PatchbayWeb.AssistAPI.RunController do
 
   use PatchbayWeb, :controller
 
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.AssistAPI.Runs
 
   def show(conn, %{"id" => id}) do
@@ -17,15 +18,24 @@ defmodule PatchbayWeb.AssistAPI.RunController do
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
-        |> json(%{error: "There is no assist with that id.", problem_code: "not_found"})
+        |> json(
+          ApiError.body(
+            "not_found",
+            "There is no assist with that id.",
+            "Check the run_id from the answer that opened the assist."
+          )
+        )
 
       {:error, _failure} ->
         conn
         |> put_status(:internal_server_error)
-        |> json(%{
-          error: "That assist could not be read just now. Try again.",
-          problem_code: "unavailable"
-        })
+        |> json(
+          ApiError.body(
+            "unavailable",
+            "That assist could not be read just now. Try again.",
+            "Try the same call again in a moment."
+          )
+        )
     end
   end
 end

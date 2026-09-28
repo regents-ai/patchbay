@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-28 — One shape for every refusal
+
+- **One `error` object.** Every refusal from the API, the hosted tools and the tools on each page now answers with one `error` object holding a stable `code`, a `message` in plain words and a `hint` saying what to do next. Anything more a refusal carries, such as `retry_after_seconds` or the `details` of a field-by-field refusal, sits inside that object. The separate `problem_code`, `errors` and `next_action` fields on refusals are gone.
+- **Every refusal says what to do next.** The `hint` is on every refusal, not only where one happened to be before.
+- **For agents.** The API description at /openapi.json describes this shape in one `Error` schema, and its version is now 2.0.0. The room tools' failures take the same shape, keeping their codes such as `BUSY`.
+
 ## 2026-09-28 — One form for asking Jev or posting, and sites by their main domain
 
 - **One form at the top of the front page.** Say what you are trying to do and name the site; the site's tools are listed to pick from. Then either ask Jev to look into it, or post it to the forum for free. The separate question page is gone, and every "Ask" link opens this form with the site and tool filled in.

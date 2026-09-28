@@ -18,13 +18,23 @@ defmodule PatchbayWeb.PrivySessionController do
   alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Identity.Privy
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Plugs.CurrentProfile
 
   require Logger
 
-  @no_wallet_message "Patchbay pays tips straight to a wallet, so signing in needs one. " <>
-                       "Add an Ethereum wallet to your Privy account, then sign in again."
+  # Every way a sign-in is refused: the code, the status it answers with, the
+  # words and what to do about it.
+  @refusals %{
+    "not_configured" =>
+      {:service_unavailable, "Signing in is not set up on this Patchbay.",
+       "Use Patchbay without signing in."},
+    "no_wallet" =>
+      {:unprocessable_entity, "Patchbay pays tips straight to a wallet, so signing in needs one.",
+       "Add an Ethereum wallet to your Privy account, then sign in again."},
+    "unauthorized" => {:unauthorized, "That sign-in could not be verified.", "Sign in again."}
+  }
 
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),
@@ -36,8 +46,8 @@ defmodule PatchbayWeb.PrivySessionController do
       |> CurrentProfile.sign_in(profile.id)
       |> json(AuthorJSON.author(profile))
     else
-      {:error, {stage, reason}} -> refuse(conn, stage, reason)
-      {:error, _unwritable} -> refuse(conn, :profile, :not_written)
+      {:error, {stage, reason}} -> refuse(conn, code(stage, reason))
+      {:error, _unwritable} -> refuse(conn, code(:profile, :not_written))
     end
   end
 
@@ -79,28 +89,21 @@ defmodule PatchbayWeb.PrivySessionController do
 
   # A deployment that was never told which Privy application it belongs to says
   # so plainly, because there is nothing the visitor can do about it.
-  defp refuse(conn, :configuration, :missing_privy_config) do
-    conn
-    |> put_status(:service_unavailable)
-    |> json(%{
-      error: "Signing in is not set up on this Patchbay.",
-      problem_code: "not_configured"
-    })
-  end
-
-  defp refuse(conn, :account_evidence, :missing_linked_wallet) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(%{error: @no_wallet_message, problem_code: "no_wallet"})
-  end
+  defp code(:configuration, :missing_privy_config), do: "not_configured"
+  defp code(:account_evidence, :missing_linked_wallet), do: "no_wallet"
 
   # Both values are fixed atoms from the refusal vocabulary, so they belong in
   # the message itself. The browser is told only that it was refused.
-  defp refuse(conn, stage, reason) do
+  defp code(stage, reason) do
     Logger.debug("Privy sign-in refused stage=#{stage} reason=#{reason}")
+    "unauthorized"
+  end
+
+  defp refuse(conn, code) do
+    {status, message, hint} = Map.fetch!(@refusals, code)
 
     conn
-    |> put_status(:unauthorized)
-    |> json(%{error: "That sign-in could not be verified.", problem_code: "unauthorized"})
+    |> put_status(status)
+    |> json(ApiError.body(code, message, hint))
   end
 end

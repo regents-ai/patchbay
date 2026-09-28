@@ -105,7 +105,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentOwnershipTest do
     body =
       context.conn |> get(~p"/api/payment_intents/#{context.intent.id}") |> json_response(401)
 
-    assert body["problem_code"] == "sign_in_required"
+    assert body["error"]["code"] == "sign_in_required"
   end
 
   defp signed_in(conn, profile) do

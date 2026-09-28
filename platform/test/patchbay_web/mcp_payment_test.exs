@@ -189,7 +189,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
         "wallet_address" => c.other.address
       })
 
-    assert other_reads["structuredContent"]["problem_code"] == "not_found"
+    assert other_reads["structuredContent"]["error"]["code"] == "not_found"
     refute_receive :settled, 100
 
     # Somebody signed in on a page answers; accepting that answer takes the
@@ -226,9 +226,11 @@ defmodule PatchbayWeb.MCPPaymentTest do
     assert unsigned["isError"] == true
 
     %{
-      "problem_code" => "signature_required",
-      "challenge" => challenge,
-      "typed_data" => typed_data
+      "error" => %{
+        "code" => "signature_required",
+        "challenge" => challenge,
+        "typed_data" => typed_data
+      }
     } =
       unsigned["structuredContent"]
 
@@ -248,7 +250,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
         })
       )
 
-    assert forged["structuredContent"]["problem_code"] == "other_wallet"
+    assert forged["structuredContent"]["error"]["code"] == "other_wallet"
     assert Forum.get_report!(report.id).accepted_reply_id == nil
 
     accepted =
@@ -282,9 +284,9 @@ defmodule PatchbayWeb.MCPPaymentTest do
         })
       )
 
-    assert mismatched["structuredContent"]["problem_code"] == "challenge_mismatch"
+    assert mismatched["structuredContent"]["error"]["code"] == "challenge_mismatch"
 
-    %{"challenge" => refund_challenge, "typed_data" => refund_typed_data} =
+    %{"error" => %{"challenge" => refund_challenge, "typed_data" => refund_typed_data}} =
       call(c.conn, "withdraw_priority_report", withdraw_args)["structuredContent"]
 
     assert refund_typed_data["message"]["action"] == "withdraw_priority_report"
@@ -335,8 +337,8 @@ defmodule PatchbayWeb.MCPPaymentTest do
       call(c.conn, "post_priority_report", report_args, payment(c, fresh["structuredContent"]))
 
     assert held["isError"] == true
-    assert held["structuredContent"]["problem_code"] == "settlement_pending"
-    assert held["structuredContent"]["payment_intent_id"] == id
+    assert held["structuredContent"]["error"]["code"] == "settlement_pending"
+    assert held["structuredContent"]["error"]["payment_intent_id"] == id
     refute_receive :settled, 100
 
     status =
@@ -353,7 +355,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
     again =
       call(c.conn, "post_priority_report", report_args, payment(c, fresh["structuredContent"]))
 
-    assert again["structuredContent"]["problem_code"] == "settlement_pending"
+    assert again["structuredContent"]["error"]["code"] == "settlement_pending"
     refute_receive :settled, 100
   end
 
@@ -367,8 +369,8 @@ defmodule PatchbayWeb.MCPPaymentTest do
         "amount_usdc" => "1.00"
       })
 
-    assert refused["structuredContent"]["problem_code"] == "invalid"
-    assert hd(refused["structuredContent"]["errors"]) =~ "wallet_address"
+    assert refused["structuredContent"]["error"]["code"] == "invalid"
+    assert hd(refused["structuredContent"]["error"]["details"]) =~ "wallet_address"
 
     unseen =
       call(c.conn, "get_payment_status", %{
@@ -376,7 +378,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
         "wallet_address" => c.other.address
       })
 
-    assert unseen["structuredContent"]["problem_code"] == "not_found"
+    assert unseen["structuredContent"]["error"]["code"] == "not_found"
 
     # A report id that cannot name a report gets no challenge to sign.
     unnamed =
@@ -386,8 +388,8 @@ defmodule PatchbayWeb.MCPPaymentTest do
         "wallet_address" => c.address
       })
 
-    assert unnamed["structuredContent"]["problem_code"] == "not_found"
-    refute Map.has_key?(unnamed["structuredContent"], "challenge")
+    assert unnamed["structuredContent"]["error"]["code"] == "not_found"
+    refute Map.has_key?(unnamed["structuredContent"]["error"], "challenge")
 
     # A suspended wallet keeps its profile and loses this door.
     {:ok, suspended} = Identity.upsert_from_wallet(%{wallet_address: c.other.address})
@@ -404,7 +406,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
       "amount_usdc" => "1.00"
     }
 
-    assert call(c.conn, "post_priority_report", report_args)["structuredContent"]["problem_code"] ==
+    assert call(c.conn, "post_priority_report", report_args)["structuredContent"]["error"]["code"] ==
              "suspended"
 
     unread =
@@ -413,7 +415,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
         "wallet_address" => c.other.address
       })
 
-    assert unread["structuredContent"]["problem_code"] == "suspended"
+    assert unread["structuredContent"]["error"]["code"] == "suspended"
   end
 
   # Driving the hosted door

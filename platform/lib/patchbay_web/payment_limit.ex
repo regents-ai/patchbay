@@ -14,12 +14,14 @@ defmodule PatchbayWeb.PaymentLimit do
 
   use Hammer, backend: :ets
 
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.RateLimitHeaders
 
   @default_payments_per_minute 10
   @window :timer.minutes(1)
 
   @error "Too many payment requests for this wallet. Wait a minute, then try again."
+  @hint "Wait retry_after_seconds, then send it again."
 
   @doc """
   Draws one request on the wallet's share: `{:ok, left}` with the requests
@@ -41,9 +43,9 @@ defmodule PatchbayWeb.PaymentLimit do
     do: RateLimitHeaders.add(conn, "payments", payments_per_minute(), @window, left)
 
   @doc "The refusal every door answers with, naming the seconds until the share is whole again."
-  @spec refusal(pos_integer()) :: map()
+  @spec refusal(pos_integer()) :: %{error: map()}
   def refusal(seconds),
-    do: %{error: @error, problem_code: "rate_limited", retry_after_seconds: seconds}
+    do: ApiError.body("rate_limited", @error, @hint, %{retry_after_seconds: seconds})
 
   defp payments_per_minute do
     Application.get_env(:patchbay, :payments_per_minute, @default_payments_per_minute)

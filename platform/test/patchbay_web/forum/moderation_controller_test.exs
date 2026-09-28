@@ -122,7 +122,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
       assert json_response(
                conn |> recycle() |> get("/forum/threads/#{thread.id}"),
                404
-             )["problem_code"] == "not_found"
+             )["error"]["code"] == "not_found"
 
       assert [%{action: :quarantine, subject_id: id, actor_profile_id: actor, reason: reason}] =
                Ash.read!(ModerationAction, authorize?: false)

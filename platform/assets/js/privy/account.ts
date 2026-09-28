@@ -1,3 +1,5 @@
+import {refusal} from "../api_error.ts"
+import type {ErrorBody} from "../api_error.ts"
 import type * as PrivyBridge from "../privy_bridge.tsx"
 
 const SESSION_PATH = "/auth/privy/session"
@@ -13,7 +15,7 @@ const MESSAGES = {
   refused: "Privy could not finish that sign-in. Try again.",
   no_access_token: "Privy did not hand back the proof Patchbay needs. Try again.",
   no_identity_token: "Privy did not hand back the proof Patchbay needs. Try again.",
-  unreachable: "Patchbay could not be reached. Check your connection and try again.",
+  unreachable: "Patchbay could not be reached.",
   refused_locally: "That sign-in could not be verified.",
   sign_out_failed: "Signing out did not go through. Try again.",
 }
@@ -37,10 +39,15 @@ type AccountOptions = {
 
 type Say = (message: string) => void
 
-// What the session endpoint answers with; only its error sentence is read.
-type SessionBody = {error?: string}
+// What the session endpoint answers with; only its refusal's words are read.
+type SessionBody = {error?: ErrorBody}
 
 type SessionAnswer = {ok: boolean, body?: SessionBody | null}
+
+// A refusal is read to the visitor whole: what went wrong, then what to do.
+function spoken(error: ErrorBody | undefined): string | undefined {
+  return error && `${error.message} ${error.hint}`
+}
 
 /**
  * Wires the account strip in the root layout to Privy.
@@ -115,7 +122,7 @@ async function signIn(bridge: PrivyBridgeModule, appId: string, options: Account
   // The page is drawn from the session, so the session is what a reload reads.
   if (answer.ok) return reload(options)
 
-  say(answer.body?.error ?? MESSAGES.refused_locally)
+  say(spoken(answer.body?.error) ?? MESSAGES.refused_locally)
 }
 
 // The Patchbay session goes first, because that is the one this page is drawn
@@ -125,7 +132,7 @@ async function signOut(bridge: PrivyBridgeModule, appId: string, options: Accoun
   say(MESSAGES.signing_out)
 
   const answer = await call(options, "DELETE", {})
-  if (!answer.ok) return say(answer.body?.error ?? MESSAGES.sign_out_failed)
+  if (!answer.ok) return say(spoken(answer.body?.error) ?? MESSAGES.sign_out_failed)
 
   try {
     await bridge.signOut(appId)
@@ -173,7 +180,7 @@ async function call(options: AccountOptions, method: string, headers: Record<str
 
     return {ok: response.ok === true, body: await readBody(response)}
   } catch {
-    return {ok: false, body: {error: MESSAGES.unreachable}}
+    return {ok: false, body: refusal("unreachable", MESSAGES.unreachable, "Check your connection and try again.")}
   }
 }
 

@@ -62,7 +62,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       refused =
         post_json(conn, "/forum/reports", report_params(%{"browser_session_id" => claimed}))
 
-      assert %{"errors" => [error], "problem_code" => "invalid"} = json_response(refused, 422)
+      assert %{"error" => %{"code" => "invalid", "details" => [error]}} =
+               json_response(refused, 422)
+
       assert error =~ "browser_session_id: a report about a tool on another site does not take"
 
       first = post_json(refused, "/forum/reports", report_params())
@@ -89,7 +91,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           report_params(%{"contract_sha256" => @contract, "arguments_sha256" => @arguments})
         )
 
-      assert %{"errors" => errors, "problem_code" => "invalid"} = json_response(conn, 422)
+      assert %{"error" => %{"code" => "invalid", "details" => errors}} = json_response(conn, 422)
 
       assert Enum.map(errors, &(String.split(&1, ":") |> hd())) ==
                ["arguments_sha256", "contract_sha256"]
@@ -107,7 +109,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       conn =
         post_json(conn, "/forum/reports", report_params(%{"origin" => "http://localhost:4000"}))
 
-      assert %{"errors" => errors} = json_response(conn, 422)
+      assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
       assert Enum.any?(errors, &String.contains?(&1, "public site"))
     end
 
@@ -115,7 +117,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       conn =
         post_json(conn, "/forum/reports", report_params(%{"note" => String.duplicate("x", 501)}))
 
-      assert %{"errors" => errors} = json_response(conn, 422)
+      assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
       assert Enum.any?(errors, &String.starts_with?(&1, "note:"))
     end
 
@@ -139,7 +141,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     test "names the verdicts an agent may send", %{conn: conn} do
       conn = post_json(conn, "/forum/reports", report_params(%{"verdict" => "worked_fine"}))
 
-      assert %{"errors" => errors} = json_response(conn, 422)
+      assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
 
       assert "verdict: must be one of verified_success, verified_failure, errored, unknown" in errors
     end
@@ -172,7 +174,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     test "refuses arguments that are not named values, and oversized ones", %{conn: conn} do
       conn = post_json(conn, "/forum/reports", report_params(%{"arguments" => "sku=A-1"}))
 
-      assert %{"errors" => [message], "problem_code" => "invalid"} = json_response(conn, 422)
+      assert %{"error" => %{"code" => "invalid", "details" => [message]}} =
+               json_response(conn, 422)
+
       assert message =~ "arguments: must be an object"
 
       oversized =
@@ -182,7 +186,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           report_params(%{"arguments" => %{"blob" => String.duplicate("x", 9_000)}})
         )
 
-      assert %{"errors" => [oversize_message]} = json_response(oversized, 422)
+      assert %{"error" => %{"details" => [oversize_message]}} = json_response(oversized, 422)
       assert oversize_message =~ "8 KB"
     end
 
@@ -194,7 +198,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           report_params(%{"handler_result" => %{"blob" => String.duplicate("x", 9_000)}})
         )
 
-      assert %{"errors" => [message], "problem_code" => "invalid"} = json_response(refused, 422)
+      assert %{"error" => %{"code" => "invalid", "details" => [message]}} =
+               json_response(refused, 422)
+
       assert message =~ "handler_result"
 
       assert json_response(get(conn, "/forum/search", %{"origin" => "shop.example.com"}), 200)[
@@ -214,8 +220,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       conn = post_json(conn, "/forum/reports", report_params())
 
-      assert %{"error" => error, "problem_code" => "rate_limited", "subject" => "browser_session"} =
-               json_response(conn, 429)
+      assert %{
+               "error" => %{
+                 "message" => error,
+                 "code" => "rate_limited",
+                 "subject" => "browser_session"
+               }
+             } = json_response(conn, 429)
 
       assert error =~ "This session has already posted 2 reports in the past hour."
     end
@@ -292,7 +303,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           "arguments_sha256" => @arguments
         })
 
-      assert %{"errors" => errors} = json_response(conn, 422)
+      assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
 
       assert Enum.map(errors, &(String.split(&1, ":") |> hd())) ==
                ["arguments_sha256", "contract_sha256", "origin", "tool_name"]
@@ -309,23 +320,23 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     test "says what to do about a receipt it was not sent", context do
       conn = post_json(context.conn, "/forum/reports", %{"receipt" => "   "})
 
-      assert %{"receipt_status" => "missing", "next_action" => next_action, "error" => error} =
+      assert %{"error" => %{"receipt_status" => "missing", "hint" => hint, "message" => error}} =
                json_response(conn, 422)
 
       assert error =~ "did not carry a receipt"
 
-      assert next_action ==
+      assert hint ==
                "Send the patchbay_receipt value exactly as it appeared in the tool result."
     end
 
     test "says what to do about a receipt that names no call", context do
       conn = post_json(context.conn, "/forum/reports", %{"receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"})
 
-      assert %{"receipt_status" => "unknown", "next_action" => next_action, "error" => error} =
+      assert %{"error" => %{"receipt_status" => "unknown", "hint" => hint, "message" => error}} =
                json_response(conn, 422)
 
       assert error =~ "does not name a call Patchbay ran"
-      assert next_action =~ "exactly as it appeared in the tool result"
+      assert hint =~ "exactly as it appeared in the tool result"
     end
 
     test "says what to do about a receipt handed to another browser", context do
@@ -335,13 +346,15 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         post_json(context.conn, "/forum/reports", %{"receipt" => call.invocation.receipt})
 
       assert %{
-               "receipt_status" => "wrong_identity",
-               "next_action" => next_action,
-               "error" => error
+               "error" => %{
+                 "receipt_status" => "wrong_identity",
+                 "hint" => hint,
+                 "message" => error
+               }
              } = json_response(conn, 422)
 
       assert error =~ "different browser"
-      assert next_action =~ "same page and browser that made it"
+      assert hint =~ "same page and browser that made it"
     end
 
     test "says what to do about a call more than a day old", context do
@@ -350,11 +363,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       conn = post_json(context.conn, "/forum/reports", %{"receipt" => call.invocation.receipt})
 
-      assert %{"receipt_status" => "stale", "next_action" => next_action, "error" => error} =
+      assert %{"error" => %{"receipt_status" => "stale", "hint" => hint, "message" => error}} =
                json_response(conn, 422)
 
       assert error =~ "more than a day old"
-      assert next_action =~ "Call the tool again"
+      assert hint =~ "Call the tool again"
     end
 
     test "stands behind the first report only, and says so", context do
@@ -367,14 +380,16 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       conn = post_json(context.conn, "/forum/reports", params)
 
       assert %{
-               "receipt_status" => "spent",
-               "problem_code" => "receipt_spent",
-               "next_action" => next_action,
-               "error" => error
+               "error" => %{
+                 "receipt_status" => "spent",
+                 "code" => "receipt_spent",
+                 "hint" => hint,
+                 "message" => error
+               }
              } = json_response(conn, 422)
 
       assert error == "This receipt already backs a report."
-      assert next_action =~ "reply to it"
+      assert hint =~ "reply to it"
 
       # Only the first report exists.
       assert [_one] =
@@ -389,7 +404,12 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         |> put_req_header("content-type", "application/json")
         |> post("/forum/reports", Jason.encode!(report_params()))
 
-      assert %{"error" => "Open a Patchbay page first" <> _, "problem_code" => "no_session"} =
+      assert %{
+               "error" => %{
+                 "message" => "Open a Patchbay page first" <> _,
+                 "code" => "no_session"
+               }
+             } =
                json_response(conn, 403)
     end
 
@@ -431,7 +451,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       unknown = Ash.UUID.generate()
       conn = post_json(conn, "/forum/reports/#{unknown}/replies", %{"verdict" => "unknown"})
 
-      assert %{"error" => error, "problem_code" => "not_found"} = json_response(conn, 404)
+      assert %{"error" => %{"message" => error, "code" => "not_found"}} = json_response(conn, 404)
       assert error =~ "no report"
     end
 
@@ -495,7 +515,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
             {other.id, cursor}
           ] do
         response = conn |> recycle() |> get("/forum/reports/#{id}", %{"after" => value})
-        assert %{"problem_code" => "invalid_cursor"} = json_response(response, 400)
+        assert %{"error" => %{"code" => "invalid_cursor"}} = json_response(response, 400)
       end
 
       assert [last] = thread_pages(conn, report.id, cursor)
@@ -579,7 +599,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       ])
 
       response = conn |> get("/forum/reports/#{report.id}") |> json_response(500)
-      assert response["problem_code"] == "response_too_large"
+      assert response["error"]["code"] == "response_too_large"
       refute Map.has_key?(response, "pagination")
       refute Map.has_key?(response, "replies")
     end
@@ -643,7 +663,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     test "a tool name that could never be stored is refused, not crashed", %{conn: conn} do
       for name <- ["a\u0000b", "check out", "-checkout", String.duplicate("a", 65)] do
         conn = get(conn, "/forum/search", %{"tool_name" => name})
-        assert %{"errors" => ["tool_name: " <> _]} = json_response(conn, 422)
+        assert %{"error" => %{"details" => ["tool_name: " <> _]}} = json_response(conn, 422)
       end
     end
 
@@ -702,7 +722,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     end
 
     test "refuses a search with nothing to look for", %{conn: conn} do
-      assert %{"errors" => [message]} = json_response(get(conn, "/forum/search"), 422)
+      assert %{"error" => %{"details" => [message]}} =
+               json_response(get(conn, "/forum/search"), 422)
+
       assert message =~ "Name a site"
     end
 
@@ -793,7 +815,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           "body_markdown" => "body"
         })
 
-      assert %{"errors" => [message | _]} = json_response(refused, 422)
+      assert %{"error" => %{"details" => [message | _]}} = json_response(refused, 422)
       assert message =~ "page on the post's site"
     end
   end

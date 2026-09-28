@@ -23,6 +23,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Identity
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
@@ -40,11 +41,14 @@ defmodule PatchbayWeb.MCP.WalletTools do
   @not_set_up "Paid priority posts are not set up on this Patchbay."
   @assists_not_set_up "Paid assists are not set up on this Patchbay."
 
-  @suspended %{
-    problem_code: "suspended",
-    error:
-      "That wallet's profile is suspended on Patchbay. It cannot pay, read payments or act on reports here."
-  }
+  @suspended ApiError.body(
+               "suspended",
+               "That wallet's profile is suspended on Patchbay. It cannot pay, read payments or act on reports here.",
+               "Use a wallet whose profile is not suspended."
+             )
+
+  @name_the_payer "Name the wallet that paid for it in wallet_address."
+  @fresh_challenge "Call again without challenge and signature for a fresh one."
 
   @wallet_address %{
     "type" => "string",
@@ -135,10 +139,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
     else
       {:error, :not_found} ->
         {:error,
-         %{
-           problem_code: "not_found",
-           error: "There is no assist with that id for the wallet named."
-         }}
+         ApiError.body(
+           "not_found",
+           "There is no assist with that id for the wallet named.",
+           "Check run_id and wallet_address against the answer that opened the assist."
+         )}
 
       {:error, failure} ->
         purchase_refusal(failure)
@@ -265,38 +270,40 @@ defmodule PatchbayWeb.MCP.WalletTools do
   defp purchase_answer({:settled, found, receipt}, _challenge),
     do: {:paid, status_answer(%{found | receipt: receipt}), receipt.payment_response}
 
+  # A payment that could not be applied is refused like anything else, with
+  # the intent's id and the payment help inside the refusal.
   defp purchase_answer({:settlement_pending, found}, _challenge) do
     {:error,
-     Purchase.payment_help(%{
-       problem_code: "settlement_pending",
-       status: "settlement_pending",
-       payment_intent_id: found.id,
-       next_action:
-         "Do not pay again. This payment is being confirmed with the payment service by hand; read get_payment_status."
-     })}
+     ApiError.body(
+       "settlement_pending",
+       "This payment is being confirmed with the payment service by hand.",
+       "Do not pay again. Read get_payment_status until it settles.",
+       Purchase.payment_help(%{status: "settlement_pending", payment_intent_id: found.id})
+     )}
   end
 
   defp purchase_answer({:expired, found}, _challenge) do
     {:error,
-     Purchase.payment_help(%{
-       problem_code: "expired",
-       status: "expired",
-       payment_intent_id: found.id,
-       next_action:
-         "These terms are no longer on offer. Call this tool again to be given fresh ones."
-     })}
+     ApiError.body(
+       "expired",
+       "These terms are no longer on offer.",
+       "Call this tool again to be given fresh ones.",
+       Purchase.payment_help(%{status: "expired", payment_intent_id: found.id})
+     )}
   end
 
   defp purchase_answer({:facilitator_unavailable, found, reason}, _challenge) do
     {:error,
-     Purchase.payment_help(%{
-       problem_code: "facilitator_unavailable",
-       status: "facilitator_unavailable",
-       payment_intent_id: found.id,
-       reason: reason,
-       next_action:
-         "Do not pay again. Send the same signed payment again, or read get_payment_status."
-     })}
+     ApiError.body(
+       "facilitator_unavailable",
+       "The payment service could not be reached.",
+       "Do not pay again. Send the same signed payment again, or read get_payment_status.",
+       Purchase.payment_help(%{
+         status: "facilitator_unavailable",
+         payment_intent_id: found.id,
+         reason: reason
+       })
+     )}
   end
 
   defp purchase_answer({:error, failure}, _challenge), do: purchase_refusal(failure)
@@ -331,63 +338,66 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
   defp purchase_refusal(:not_found) do
     {:error,
-     %{
-       problem_code: "not_found",
-       error: "There is no payment intent with that id for the wallet named."
-     }}
+     ApiError.body(
+       "not_found",
+       "There is no payment intent with that id for the wallet named.",
+       "Check payment_intent_id and wallet_address against the answer that offered the terms."
+     )}
   end
 
   defp purchase_refusal(:suspended), do: {:error, @suspended}
 
   defp purchase_refusal(:not_configured) do
     {:error,
-     Purchase.payment_help(%{
-       problem_code: "not_configured",
-       error: @not_set_up,
-       next_action: "Use the free Patchbay tools. Payments are not enabled on this deployment."
-     })}
+     ApiError.body(
+       "not_configured",
+       @not_set_up,
+       "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+       Purchase.payment_help(%{})
+     )}
   end
 
   defp purchase_refusal(:assist_not_configured) do
     {:error,
-     Purchase.payment_help(%{
-       problem_code: "not_configured",
-       error: @assists_not_set_up,
-       next_action:
-         "Use the free Patchbay tools. Paid assists are not enabled on this deployment."
-     })}
+     ApiError.body(
+       "not_configured",
+       @assists_not_set_up,
+       "Use the free Patchbay tools. Paid assists are not enabled on this deployment.",
+       Purchase.payment_help(%{})
+     )}
   end
 
   defp purchase_refusal(:needs_sign_in) do
     {:error,
-     %{
-       problem_code: "needs_sign_in",
-       error:
-         "That site needs a signed-in user, and Patchbay never acts on anyone's account. " <>
-           "Nothing was charged."
-     }}
+     ApiError.body(
+       "needs_sign_in",
+       "That site needs a signed-in user, and Patchbay never acts on anyone's account. " <>
+         "Nothing was charged.",
+       "Ask about the site on the board with ask_question instead."
+     )}
   end
 
   defp purchase_refusal({:assist_running, run, _assist_url}) do
     {:error,
-     %{
-       problem_code: "assist_running",
-       error:
-         "Patchbay is already working on an assist for this wallet. Read it with get_assist; " <>
-           "a new one can be asked for once it has finished.",
-       run_id: run.id,
-       run_status: run.status,
-       assist_tool: "get_assist"
-     }}
+     ApiError.body(
+       "assist_running",
+       "Patchbay is already working on an assist for this wallet. Read it with get_assist; " <>
+         "a new one can be asked for once it has finished.",
+       "Read it with get_assist, then ask for another once it has finished.",
+       %{run_id: run.id, run_status: run.status, assist_tool: "get_assist"}
+     )}
   end
 
-  defp purchase_refusal({:invalid, messages}),
-    do: {:error, %{problem_code: "invalid", errors: messages}}
+  defp purchase_refusal({:invalid, messages}), do: {:error, ApiError.invalid(messages)}
 
-  defp purchase_refusal(%Ash.Error.Forbidden{}),
-    do:
-      {:error,
-       %{problem_code: "forbidden", error: "That payment intent belongs to someone else."}}
+  defp purchase_refusal(%Ash.Error.Forbidden{}) do
+    {:error,
+     ApiError.body(
+       "forbidden",
+       "That payment intent belongs to someone else.",
+       @name_the_payer
+     )}
+  end
 
   defp purchase_refusal(error),
     do: purchase_refusal({:invalid, Purchase.refusal_messages(error)})
@@ -444,65 +454,66 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
   defp report_refusal({:sign, %{challenge: challenge, typed_data: typed_data}}, _process, _act) do
     {:error,
-     %{
-       problem_code: "signature_required",
-       status: "sign_to_continue",
-       challenge: challenge,
-       typed_data: typed_data,
-       challenge_expires_in_seconds: WalletProof.max_age_seconds(),
-       next_action:
-         "Have the wallet named in wallet_address sign typed_data (eth_signTypedData_v4), then call this tool again with the same arguments plus challenge and signature. Nothing has happened yet."
-     }}
+     ApiError.body(
+       "signature_required",
+       "This action needs the named wallet's signature first.",
+       "Have the wallet named in wallet_address sign typed_data (eth_signTypedData_v4), then call this tool again with the same arguments plus challenge and signature. Nothing has happened yet.",
+       %{
+         status: "sign_to_continue",
+         challenge: challenge,
+         typed_data: typed_data,
+         challenge_expires_in_seconds: WalletProof.max_age_seconds()
+       }
+     )}
   end
 
   defp report_refusal({:invalid, messages}, _process, _act),
-    do: {:error, %{problem_code: "invalid", errors: messages}}
+    do: {:error, ApiError.invalid(messages)}
 
-  defp report_refusal(:challenge_expired, _process, _act) do
-    {:error,
-     %{
-       problem_code: "challenge_expired",
-       error:
-         "That challenge has expired. Call again without challenge and signature for a fresh one."
-     }}
-  end
+  defp report_refusal(:challenge_expired, _process, _act),
+    do:
+      {:error,
+       ApiError.body("challenge_expired", "That challenge has expired.", @fresh_challenge)}
 
   defp report_refusal(:challenge_mismatch, _process, _act) do
     {:error,
-     %{
-       problem_code: "challenge_mismatch",
-       error:
-         "That challenge was not issued for this action, report, reply and wallet. Call again without challenge and signature for one that is."
-     }}
+     ApiError.body(
+       "challenge_mismatch",
+       "That challenge was not issued for this action, report, reply and wallet.",
+       @fresh_challenge
+     )}
   end
 
   defp report_refusal(:signature_unreadable, _process, _act),
-    do:
-      {:error,
-       %{
-         problem_code: "invalid",
-         errors: ["signature: could not be read as an EIP-712 signature"]
-       }}
+    do: {:error, ApiError.invalid(["signature: could not be read as an EIP-712 signature"])}
 
   defp report_refusal(:other_wallet, _process, _act) do
     {:error,
-     %{
-       problem_code: "other_wallet",
-       error: "That signature was made by a different wallet than wallet_address names."
-     }}
+     ApiError.body(
+       "other_wallet",
+       "That signature was made by a different wallet than wallet_address names.",
+       "Sign with the wallet named in wallet_address."
+     )}
   end
 
-  defp report_refusal(:not_found, _process, _act),
-    do: {:error, %{problem_code: "not_found", error: "There is no report with that id."}}
+  defp report_refusal(:not_found, _process, _act) do
+    {:error,
+     ApiError.body(
+       "not_found",
+       "There is no report with that id.",
+       "Check the report_id, or search the board with search_threads."
+     )}
+  end
 
   defp report_refusal(:suspended, _process, _act), do: {:error, @suspended}
 
   defp report_refusal(%Ash.Error.Forbidden{}, _process, act) do
     {:error,
-     %{
-       problem_code: "forbidden",
-       error: "Only the wallet that paid for this report can #{act}."
-     }}
+     ApiError.body(
+       "forbidden",
+       "Only the wallet that paid for this report can #{act}.",
+       @name_the_payer
+     )}
   end
 
   defp report_refusal(error, process, act) do

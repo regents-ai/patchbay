@@ -12,6 +12,7 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
 
   alias Patchbay.Payments.Balance
   alias Patchbay.Payments.USDC
+  alias PatchbayWeb.ApiError
 
   def show(conn, _params) do
     profile = conn.assigns.current_profile
@@ -38,18 +39,25 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
       {:error, :not_configured} ->
         conn
         |> put_status(:service_unavailable)
-        |> json(%{
-          error: "Reading balances is not set up on this Patchbay.",
-          problem_code: "not_configured",
-          next_action:
+        |> json(
+          ApiError.body(
+            "not_configured",
+            "Reading balances is not set up on this Patchbay.",
             "Use the free Patchbay tools. Payments are not enabled on this deployment.",
-          payment_help_url: url(~p"/agent-setup") <> "#x402"
-        })
+            %{payment_help_url: url(~p"/agent-setup") <> "#x402"}
+          )
+        )
 
       {:error, :rpc_failed} ->
         conn
         |> put_status(:bad_gateway)
-        |> json(%{error: "The Base network could not be read just now. Try again."})
+        |> json(
+          ApiError.body(
+            "unavailable",
+            "The Base network could not be read just now. Try again.",
+            "Try the same call again in a moment."
+          )
+        )
     end
   end
 end

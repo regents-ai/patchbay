@@ -12,6 +12,7 @@ defmodule PatchbayWeb.IdentityAPI.NameController do
 
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.AuthorJSON
 
   def agent(conn, params) do
@@ -24,11 +25,7 @@ defmodule PatchbayWeb.IdentityAPI.NameController do
       {:error, refused} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> json(%{
-          renamed: false,
-          error: refusal(refused),
-          next_action: AgentProfile.name_rules()
-        })
+        |> json(ApiError.body("invalid", refusal(refused), AgentProfile.name_rules()))
     end
   end
 

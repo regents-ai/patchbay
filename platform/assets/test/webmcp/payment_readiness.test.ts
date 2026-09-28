@@ -81,7 +81,14 @@ test("BalanceController not_configured and a disabled rail map to not_configured
   const fromHttp = mapBalanceHttp({
     ok: false,
     status: 503,
-    body: {error: "Reading balances is not set up on this Patchbay.", problem_code: "not_configured"},
+    body: {
+      error: {
+        code: "not_configured",
+        message: "Reading balances is not set up on this Patchbay.",
+        hint: "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+        payment_help_url: "/agent-setup#x402",
+      },
+    },
   });
   assert.equal(fromHttp.status, "not_configured");
   assert.match(fromHttp.message, /not set up/);

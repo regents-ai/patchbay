@@ -1,3 +1,4 @@
+import {refusal} from "../api_error.ts";
 import {BUSY_RESULT, errorResult, executeRevision, pushWithAck, sentence} from "./invocation_bridge.ts";
 import {verifyUpliftGoal} from "./goal_verifier.ts";
 import {captureRoomState, readRoomMetadata, sha256Hex} from "./state_snapshot.ts";
@@ -315,19 +316,20 @@ export function isPatchbayToolName(name: string) {
 }
 
 export function boundedJson(value: unknown, limit = 1100): string {
-  let problemCode = "response_too_large";
+  let code = "response_too_large";
   try {
     const exact = JSON.stringify(value);
-    if (typeof exact !== "string") problemCode = "invalid_result";
+    if (typeof exact !== "string") code = "invalid_result";
     else if (new TextEncoder().encode(exact).byteLength <= limit) return exact;
   } catch {
-    problemCode = "invalid_result";
+    code = "invalid_result";
   }
-  const error = JSON.stringify({
-    problem_code: problemCode,
-    outcome: "unknown",
-    error: "The result could not be returned intact. Check a write's status before retrying.",
-  });
+  const error = JSON.stringify(refusal(
+    code,
+    "The result could not be returned intact.",
+    "Check a write's status before retrying.",
+    {outcome: "unknown"},
+  ));
   if (new TextEncoder().encode(error).byteLength > limit) {
     throw new RangeError("The result limit must accommodate an error response.");
   }

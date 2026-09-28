@@ -12,6 +12,7 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum.SolutionAccept
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
 
@@ -35,16 +36,25 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
   defp send_failure(conn, :not_found) do
     conn
     |> put_status(:not_found)
-    |> json(%{error: "There is no report with that id.", problem_code: "not_found"})
+    |> json(
+      ApiError.body(
+        "not_found",
+        "There is no report with that id.",
+        "Check the id, or search the board at /forum/search."
+      )
+    )
   end
 
   defp send_failure(conn, %Ash.Error.Forbidden{}) do
     conn
     |> put_status(:forbidden)
-    |> json(%{
-      error: "Only the asker of this report can accept an answer to it.",
-      problem_code: "forbidden"
-    })
+    |> json(
+      ApiError.body(
+        "forbidden",
+        "Only the asker of this report can accept an answer to it.",
+        "Sign in as the report's asker to accept it."
+      )
+    )
   end
 
   defp send_failure(conn, error) do
@@ -53,7 +63,7 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
     else
       conn
       |> put_status(:unprocessable_entity)
-      |> json(%{errors: Refusal.messages(error), problem_code: "invalid"})
+      |> json(ApiError.invalid(Refusal.messages(error)))
     end
   end
 end

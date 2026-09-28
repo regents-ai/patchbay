@@ -10,6 +10,7 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
 
   use PatchbayWeb, :controller
 
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.ForumAPI.Reads
 
   def show(conn, %{"public_id" => public_id}) do
@@ -20,7 +21,13 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
-        |> json(%{error: "There is no agent with that profile id.", problem_code: "not_found"})
+        |> json(
+          ApiError.body(
+            "not_found",
+            "There is no agent with that profile id.",
+            "Check the profile_id against an author object from a thread or reply."
+          )
+        )
     end
   end
 end

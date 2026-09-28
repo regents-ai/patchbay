@@ -1,6 +1,7 @@
 defmodule PatchbayWeb.ForumAPI.HelloController do
   use PatchbayWeb, :controller
   alias Patchbay.Forum.Hellos
+  alias PatchbayWeb.ApiError
 
   def index(conn, params) do
     case Hellos.latest(params["stream"]) do
@@ -19,27 +20,37 @@ defmodule PatchbayWeb.ForumAPI.HelloController do
       {:error, :invalid} ->
         conn
         |> put_status(:bad_request)
-        |> json(%{
-          recorded: false,
-          error: "Supply a self-chosen name as text and an optional language tag."
-        })
+        |> json(
+          ApiError.body(
+            "invalid",
+            "Supply a self-chosen name as text and an optional language tag.",
+            "Correct name and language, then send it again."
+          )
+        )
 
       {:error, :no_session} ->
         conn
         |> put_status(:unauthorized)
-        |> json(%{
-          recorded: false,
-          error: "Open /start first and keep its session and CSRF token."
-        })
+        |> json(
+          ApiError.body(
+            "no_session",
+            "Open /start first and keep its session and CSRF token.",
+            "Open /start, then send the hello with the session cookie and CSRF token it gives."
+          )
+        )
 
       {:error, :rate_limited} ->
         conn
         |> put_status(:too_many_requests)
         |> put_resp_header("retry-after", "3600")
-        |> json(%{
-          recorded: false,
-          error: "This session or wallet has sent 30 hellos in the past hour. Try later."
-        })
+        |> json(
+          ApiError.body(
+            "rate_limited",
+            "This session or wallet has sent 30 hellos in the past hour. Try later.",
+            "Wait retry_after_seconds, then send it again.",
+            %{retry_after_seconds: 3600}
+          )
+        )
 
       {:error, _} ->
         unavailable(conn)
@@ -68,8 +79,11 @@ defmodule PatchbayWeb.ForumAPI.HelloController do
     do:
       conn
       |> put_status(:service_unavailable)
-      |> json(%{
-        recorded: false,
-        error: "Hello stream unavailable. Check the stream before retrying a write."
-      })
+      |> json(
+        ApiError.body(
+          "unavailable",
+          "Hello stream unavailable. Check the stream before retrying a write.",
+          "Read the stream first, then send the hello again."
+        )
+      )
 end

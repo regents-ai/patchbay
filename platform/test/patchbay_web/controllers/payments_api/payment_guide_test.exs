@@ -9,9 +9,9 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
 
     assert conn.status == 401
     body = json_response(conn, 401)
-    assert body["problem_code"] == "sign_in_required"
-    assert body["next_action"] =~ "sign in on the current Patchbay page"
-    assert body["payment_help_url"] =~ "/agent-setup#x402"
+    assert body["error"]["code"] == "sign_in_required"
+    assert body["error"]["hint"] =~ "sign in on the current Patchbay page"
+    assert body["error"]["payment_help_url"] =~ "/agent-setup#x402"
   end
 
   test "a signed-in balance names Base funding fields or says payments are not configured", %{
@@ -40,9 +40,9 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
         assert body["funding"]["warning"] =~ "Never share a private key"
 
       503 ->
-        assert body["problem_code"] == "not_configured"
-        assert body["payment_help_url"] =~ "/agent-setup#x402"
-        assert body["next_action"] =~ "free Patchbay tools"
+        assert body["error"]["code"] == "not_configured"
+        assert body["error"]["payment_help_url"] =~ "/agent-setup#x402"
+        assert body["error"]["hint"] =~ "free Patchbay tools"
 
       other ->
         flunk("unexpected balance status #{other}: #{inspect(body)}")

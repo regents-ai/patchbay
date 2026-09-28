@@ -873,7 +873,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       for field <- ["verdict", "note"], value <- [%{}, ["text"], true, 42] do
         payload = Map.put(%{"verdict" => "unknown", "note" => "safe"}, field, value)
 
-        assert %{"problem_code" => "invalid"} =
+        assert %{"error" => %{"code" => "invalid"}} =
                  api_conn
                  |> put_req_header("content-type", "application/json")
                  |> post("/forum/reports/#{report.id}/replies", Jason.encode!(payload))
@@ -915,7 +915,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert refused =~ "This account has already posted 2 replies in the past hour."
       assert refused =~ "kept while waiting"
 
-      assert %{"problem_code" => "rate_limited", "subject" => "account"} =
+      assert %{"error" => %{"code" => "rate_limited", "subject" => "account"}} =
                conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(429)
 
       replies = Forum.list_replies_for_report!(report.id).results
@@ -958,7 +958,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       end
 
       # A third session of the same account starts with nothing left.
-      assert %{"problem_code" => "rate_limited", "subject" => "account", "error" => error} =
+      assert %{"error" => %{"code" => "rate_limited", "subject" => "account", "message" => error}} =
                in_new_session.()
                |> post("/forum/reports/#{report.id}/replies", reply)
                |> json_response(429)
