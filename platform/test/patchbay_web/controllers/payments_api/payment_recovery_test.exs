@@ -525,7 +525,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     do:
       build_conn()
       |> Plug.Test.init_test_session(%{})
-      |> put_session(CurrentProfile.session_key(), profile.id)
+      |> CurrentProfile.sign_in(profile.id)
 
   defp profile(letter),
     do:

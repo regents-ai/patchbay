@@ -8,7 +8,8 @@ defmodule PatchbayWeb.Endpoint do
     store: :cookie,
     key: "_patchbay_key",
     signing_salt: "8IPnb8sh",
-    same_site: "Lax"
+    same_site: "Lax",
+    max_age: Application.compile_env!(:patchbay, :sign_in_lifetime_seconds)
   ]
 
   socket "/live", Phoenix.LiveView.Socket,

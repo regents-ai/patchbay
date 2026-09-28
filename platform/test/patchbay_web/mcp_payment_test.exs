@@ -205,7 +205,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
       |> get("/")
       |> recycle()
       |> Plug.Test.init_test_session(%{})
-      |> put_session(CurrentProfile.session_key(), answerer.id)
+      |> CurrentProfile.sign_in(answerer.id)
       |> put_req_header("content-type", "application/json")
       |> post(
         "/forum/threads/#{report.id}/replies",

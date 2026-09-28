@@ -94,7 +94,7 @@ defmodule PatchbayWeb.FixLiveTest do
   defp signed_in(conn, person) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> put_session(CurrentProfile.session_key(), person.id)
+    |> CurrentProfile.sign_in(person.id)
   end
 
   defp key, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)

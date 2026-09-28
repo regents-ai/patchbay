@@ -72,6 +72,6 @@ defmodule PatchbayWeb.RoomControllerTest do
   defp signed_in(conn, profile) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> Plug.Conn.put_session(CurrentProfile.session_key(), profile.id)
+    |> CurrentProfile.sign_in(profile.id)
   end
 end

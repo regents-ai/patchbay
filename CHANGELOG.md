@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-28 — A sign-in lasts 30 days
+
+- **30 days, then sign in again.** A sign-in now lasts 30 days, the same on every Regents site. After that Patchbay treats you as signed out until you sign in again.
+- **Everyone signs in once more.** Sign-ins made before this change end with it.
+
 ## 2026-09-28 — Plainer profile page
 
 - **Plain words.** The profile page says "Set up your profile" and "Refresh linked accounts", and notes that your name is the same on every Regents site and that your agents can change it too.

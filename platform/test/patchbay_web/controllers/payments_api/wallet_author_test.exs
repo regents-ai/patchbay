@@ -21,7 +21,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert wallet.privy_user_id == nil
     assert wallet.human_name == nil
     assert wallet.wallet_chain_id == 8453
-    assert CurrentProfile.signed_in_profile(%{"agent_profile_id" => wallet.id}) == nil
+
+    assert CurrentProfile.signed_in_profile(%{
+             "agent_profile_id" => wallet.id,
+             "signed_in_at" => System.os_time(:second)
+           }) == nil
+
     assert {:error, _} = Identity.rename_agent(wallet, %{agent_name: "pretending"}, actor: wallet)
 
     assert {:error, _} =
@@ -67,7 +72,10 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
         wallet_address: @address
       })
 
-    cookie_conn = build_conn() |> Plug.Test.init_test_session(%{"agent_profile_id" => human.id})
+    cookie_conn =
+      build_conn()
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(human.id)
 
     assert post(cookie_conn, "/api/agent/payment_intents", %{kind: "special_post", args: %{}}).status in [
              401,
