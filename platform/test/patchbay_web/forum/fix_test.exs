@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.Forum.FixTest do
   @moduledoc """
-  The fix form at the top of the home page: a free fix opens for the
+  Asking Jev from the form at the top of the home page: a free fix opens for the
   connection and the page goes to it; a second one waits for the first; a
   used-up connection is told to sign in, and a signed-in person gets two
   more, then the fee; once the site's free fixes for the day are given out,
@@ -34,7 +34,7 @@ defmodule PatchbayWeb.Forum.FixTest do
   test "the home page offers the fix form, free for a new connection", %{conn: conn} do
     html = conn |> from(address()) |> get(~p"/") |> html_response(200)
 
-    assert html =~ "Stuck on a site’s tools? Jev finds what’s wrong"
+    assert html =~ "Which site or tool are you having trouble with?"
     assert html =~ ~s(data-pb-fix-mode="free")
     assert html =~ "1 free fix left today from this connection, and 2 more when you sign in"
     assert html =~ "After that, a fix is 0.10 USDC from your Regents Balance."
@@ -43,7 +43,7 @@ defmodule PatchbayWeb.Forum.FixTest do
 
   test "a free fix opens for the connection and the page goes to it", %{conn: conn} do
     address = address()
-    conn = conn |> from(address) |> post(~p"/fixes", %{"fix" => @form})
+    conn = conn |> from(address) |> post(~p"/fixes", %{"ask" => @form})
     assert "/fixes/" <> id = redirected_to(conn)
 
     # The test reads the run as Patchbay itself would, to check what was written.
@@ -64,7 +64,7 @@ defmodule PatchbayWeb.Forum.FixTest do
       conn
       |> recycle()
       |> from(address)
-      |> post(~p"/fixes", %{"fix" => @form})
+      |> post(~p"/fixes", %{"ask" => @form})
 
     assert redirected_to(again) == "/fixes/#{id}"
     close(run)
@@ -73,7 +73,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     html = build_conn() |> from(address) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="sign_in")
 
-    refused = build_conn() |> from(address) |> post(~p"/fixes", %{"fix" => @form})
+    refused = build_conn() |> from(address) |> post(~p"/fixes", %{"ask" => @form})
     html = html_response(refused, 200)
     assert html =~ "free fix for today is used. Sign in for two more"
     assert html =~ ~s(value="#{@form["goal"]}")
@@ -94,7 +94,7 @@ defmodule PatchbayWeb.Forum.FixTest do
 
     for _turn <- 1..2 do
       posted =
-        build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"fix" => @form})
+        build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"ask" => @form})
 
       assert "/fixes/" <> id = redirected_to(posted)
       # Read as Patchbay itself, to check what was written.
@@ -112,7 +112,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     assert html =~ "Add USDC with a card"
 
     refused =
-      build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"fix" => @form})
+      build_conn() |> from(address) |> signed_in(person) |> post(~p"/fixes", %{"ask" => @form})
 
     assert html_response(refused, 200) =~
              "The next one is 0.10 USDC from your Regents Balance."
@@ -146,7 +146,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     refute html =~ "Add USDC with a card"
     refute html =~ "more free fixes"
 
-    refused = build_conn() |> from(address) |> post(~p"/fixes", %{"fix" => @form})
+    refused = build_conn() |> from(address) |> post(~p"/fixes", %{"ask" => @form})
     html = html_response(refused, 200)
     assert html =~ "all given out. Sign in to fix it for 0.10 USDC"
     assert html =~ ~s(value="#{@form["goal"]}")
@@ -176,7 +176,7 @@ defmodule PatchbayWeb.Forum.FixTest do
       html =
         build_conn()
         |> from(address)
-        |> post(~p"/fixes", %{"fix" => Map.merge(@form, change)})
+        |> post(~p"/fixes", %{"ask" => Map.merge(@form, change)})
         |> html_response(200)
 
       assert html =~ words, "#{inspect(change)} should say #{words}"

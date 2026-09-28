@@ -42,7 +42,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the search and the busiest sites, then the newest posts, the discussions and the fix",
+  test "GET / opens with the form and the busiest sites, then the newest posts and the discussions",
        %{conn: conn} do
     visitor = get(conn, ~p"/")
     ask(visitor, "quietshop.com", "Does the quiet site have a search tool?")
@@ -56,13 +56,13 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert html =~ "Featured sites"
 
-    [find_at, strip_at, discussions_at, fix_at] =
-      for id <- ~w(pb-find-title pb-newest-title pb-discussions-title pb-fix-title) do
+    [find_at, strip_at, discussions_at] =
+      for id <- ~w(pb-hero-title pb-newest-title pb-discussions-title) do
         {at, _length} = :binary.match(html, ~s(id="#{id}"))
         at
       end
 
-    assert find_at < strip_at and strip_at < discussions_at and discussions_at < fix_at
+    assert find_at < strip_at and strip_at < discussions_at
 
     find = binary_part(html, find_at, strip_at - find_at)
     assert find =~ "Which site or tool are you having trouble with?"
@@ -84,14 +84,14 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     html = build_conn() |> get(~p"/?q=Busy") |> html_response(200)
     assert html =~ ~s(href="/sites/busyshop-com")
-    assert html =~ ~s(href="/ask?goal=Busy&amp;site=busyshop.com")
+    assert html =~ ~s(href="/?goal=Busy&amp;site=busyshop.com#pb-hero")
 
     tools = build_conn() |> get(~p"/?q=search") |> html_response(200)
-    assert tools =~ ~s(href="/sites/busyshop-com/tools/search")
+    assert tools =~ ~s(href="/?site=busyshop.com&amp;tool=search")
 
     none = build_conn() |> get(~p"/?q=nowhere-at-all") |> html_response(200)
     assert none =~ "No site or tool by that name yet."
-    assert none =~ ~s(href="/ask?goal=nowhere-at-all")
+    assert none =~ ~s(href="/?goal=nowhere-at-all#pb-hero")
   end
 
   defp ask(conn, site, title) do

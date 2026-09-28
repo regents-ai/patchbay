@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import {test} from "node:test"
 
-import {fixArguments, fixOutcome} from "../../js/fix_form.ts"
+import {fixArguments, fixOutcome} from "../../js/hero_form.ts"
 
 test("the form's two texts and the picked tools become one assist request", () => {
   assert.deepEqual(

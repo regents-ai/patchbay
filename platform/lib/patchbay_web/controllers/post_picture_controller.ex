@@ -8,6 +8,9 @@ defmodule PatchbayWeb.PostPictureController do
 
   def show(conn, %{"id" => id}), do: send_picture(conn, Forum.get_post_picture(id))
 
+  # The type is one of PNG, JPEG or WebP, read from the picture's own bytes
+  # when it was added, and the browser is told not to guess another.
+  # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   defp send_picture(conn, {:ok, picture}) do
     conn
     |> put_resp_content_type(PostPicture.content_type(picture), nil)

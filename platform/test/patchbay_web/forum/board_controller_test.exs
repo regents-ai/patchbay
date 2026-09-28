@@ -247,18 +247,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert tools_at < posts_at
     end
 
-    test "the ask page and the open-questions and priority feeds render", %{conn: conn} do
+    test "the home form and the open-questions and priority feeds render", %{conn: conn} do
       site = site!("shop.example")
       tool = tool!(site, %{name: "checkout"})
       report!(tool, %{note: "the cart stayed empty"})
 
-      ask = conn |> get(~p"/ask") |> html_response(200)
-      assert ask =~ "Ask a question"
-      # Signed out, the page's script keeps the draft and opens sign-in on Post.
-      assert ask =~ ~s(data-pb-signed-in="false")
-
-      assert ask =~
-               "People sign in to post from this form, and what you type is kept through sign-in."
+      # Signed out, the page's script keeps the draft and opens sign-in on Publish.
+      assert conn |> get(~p"/") |> html_response(200) =~ ~s(data-pb-signed-in="false")
 
       assert conn |> get(~p"/questions") |> html_response(200) =~ "Open questions"
       assert conn |> get(~p"/priority") |> html_response(200) =~ "Paid priority"
@@ -1095,19 +1090,20 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "asking and answering as a person" do
-    test "a signed-in person previews a question, then posts exactly that and lands on it",
+    test "a signed-in person previews a post, then publishes exactly that and lands on it",
          %{conn: conn} do
       conn = signed_in(conn, person!("aaa"))
 
       typed = %{
-        "site" => "checkout.example",
-        "title" => "Where does a declined card go?",
-        "body_markdown" =>
+        "goal" => "Where does a declined card go?",
+        "site_url" => "checkout.example/cart",
+        "tools" => ["add_to_cart"],
+        "details" =>
           "I tried twice and the cart stayed empty. My key was sk-abcdefghijklmnopqrstuvwxyz.",
         "topic_tags" => "Checkout, Cards"
       }
 
-      preview = post(conn, ~p"/threads", %{"thread" => typed, "step" => "preview"})
+      preview = post(conn, ~p"/threads", %{"ask" => typed, "step" => "preview"})
       html = html_response(preview, 200)
       assert html =~ "Your post, exactly as everyone will see it"
       assert html =~ "This looks like a key or sign-in token for an account."
@@ -1116,38 +1112,57 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, html)
 
       # Changed after the preview: shown again rather than posted.
-      changed = Map.put(typed, "title", "Where does a refused card go?")
+      changed = Map.put(typed, "goal", "Where does a refused card go?")
 
       assert conn
-             |> post(~p"/threads", %{"thread" => changed, "step" => "post", "previewed" => digest})
+             |> post(~p"/threads", %{"ask" => changed, "step" => "post", "previewed" => digest})
              |> html_response(200) =~ "Where does a refused card go?"
 
       assert Forum.list_recent_reports!().results == []
 
+      picture =
+        Path.join(System.tmp_dir!(), "pb-picture-#{System.unique_integer([:positive])}.png")
+
+      File.write!(picture, <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, "a small picture">>)
+      on_exit(fn -> File.rm(picture) end)
+      upload = %Plug.Upload{path: picture, filename: "cart.png", content_type: "image/png"}
+
       posted =
-        post(conn, ~p"/threads", %{"thread" => typed, "step" => "post", "previewed" => digest})
+        post(conn, ~p"/threads", %{
+          "ask" => Map.put(typed, "pictures", [upload]),
+          "step" => "post",
+          "previewed" => digest
+        })
 
       [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(posted))
 
-      thread = Ash.get!(Report, id)
+      thread = Ash.load!(Ash.get!(Report, id), :pictures)
       assert thread.thread_kind == :question
       assert thread.author_profile_id == person!("aaa").id
       assert thread.topic_tags == ["checkout", "cards"]
+      assert thread.tool_names == ["add_to_cart"]
+      assert thread.page_url == "https://checkout.example/cart"
+      assert [%{id: picture_id, format: :png}] = thread.pictures
 
-      assert posted |> recycle() |> get(~p"/posts/#{id}") |> html_response(200) =~
-               "Where does a declined card go?"
+      page = posted |> recycle() |> get(~p"/posts/#{id}") |> html_response(200)
+      assert page =~ "Where does a declined card go?"
+      assert page =~ ~s(src="/post-pictures/#{picture_id}")
+
+      shown = build_conn() |> get(~p"/post-pictures/#{picture_id}")
+      assert response(shown, 200) =~ "a small picture"
+      assert get_resp_header(shown, "content-type") == ["image/png"]
     end
 
     test "a visitor is told to sign in, keeping what they typed", %{conn: conn} do
       typed = %{
-        "site" => "checkout.example",
-        "title" => "a kept title",
-        "body_markdown" => "the question that stays typed"
+        "goal" => "a kept title",
+        "site_url" => "checkout.example",
+        "details" => "the question that stays typed"
       }
 
       preview =
         conn
-        |> post(~p"/threads", %{"thread" => typed, "step" => "preview"})
+        |> post(~p"/threads", %{"ask" => typed, "step" => "preview"})
         |> html_response(200)
 
       [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, preview)
@@ -1155,15 +1170,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body =
         conn
         |> recycle()
-        |> post(~p"/threads", %{"thread" => typed, "step" => "post", "previewed" => digest})
+        |> post(~p"/threads", %{"ask" => typed, "step" => "post", "previewed" => digest})
         |> html_response(200)
 
-      assert body =~ "Sign in at the top of the page to ask"
+      assert body =~ "Sign in at the top of the page to post"
       assert body =~ "a kept title"
       assert body =~ "the question that stays typed"
       assert Forum.list_recent_reports!().results == []
 
-      # A refused question opens no board: the site it named is not on the
+      # A refused post opens no board: the site it named is not on the
       # directory until someone actually posts on it.
       assert PatchbayWeb.Forum.Board.fetch_site_ref("checkout.example") == :error
     end

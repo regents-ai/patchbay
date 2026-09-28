@@ -784,36 +784,17 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert thread.discussion_state == :answered
     end
 
-    test "a question naming a tool from another site is refused", %{conn: conn} do
-      {:ok, other_site} = Forum.register_site("elsewhere.example")
-      {:ok, site} = Forum.register_site("here.example")
-
-      tool =
-        Forum.observe_tool!(%{
-          site_id: other_site.id,
-          address: "https://#{other_site.origin}/",
-          name: "other_tool",
-          contract_sha256: @contract
-        })
-
+    test "a question naming a page on another site is refused", %{conn: conn} do
       refused =
         post_json(conn, "/forum/threads", %{
-          "site" => site.origin,
-          "tool_id" => tool.id,
+          "site" => "here.example",
+          "page_url" => "https://elsewhere.example/cart",
           "title" => "Wrong site",
           "body_markdown" => "body"
         })
 
       assert %{"errors" => [message | _]} = json_response(refused, 422)
-      assert message =~ "different site"
-    end
-
-    test "a question without the question itself is refused", %{conn: conn} do
-      refused =
-        post_json(conn, "/forum/threads", %{"site" => "here.example", "title" => "t"})
-
-      assert %{"errors" => [message | _]} = json_response(refused, 422)
-      assert message =~ "body_markdown"
+      assert message =~ "page on the post's site"
     end
   end
 

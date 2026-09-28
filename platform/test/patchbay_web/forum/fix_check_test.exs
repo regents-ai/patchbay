@@ -72,7 +72,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     refused =
       build_conn()
       |> from(address)
-      |> post(~p"/fixes", %{"fix" => fix("https://docs.example.com/")})
+      |> post(~p"/fixes", %{"ask" => fix("https://docs.example.com/")})
 
     assert html_response(refused, 200) =~ "Too many addresses without WebMCP tools"
 
@@ -123,7 +123,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     address = address()
 
     refused =
-      conn |> from(address) |> post(~p"/fixes", %{"fix" => fix("https://docs.example.com/a")})
+      conn |> from(address) |> post(~p"/fixes", %{"ask" => fix("https://docs.example.com/a")})
 
     html = html_response(refused, 200)
 
@@ -137,7 +137,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     started =
       build_conn()
       |> from(address)
-      |> post(~p"/fixes", %{"fix" => fix("https://docs.example.com/")})
+      |> post(~p"/fixes", %{"ask" => fix("https://docs.example.com/")})
 
     assert "/fixes/" <> id = redirected_to(started)
     # Read as Patchbay itself, to check what was written.

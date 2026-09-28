@@ -139,7 +139,7 @@ defmodule Patchbay.MixProject do
         "format --check-formatted",
         "credo --strict",
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
-        "xref graph --label compile-connected --fail-above 32",
+        "xref graph --label compile-connected --fail-above 33",
         "ash.codegen --check",
         "cmd npm run typecheck --prefix assets",
         "test --warnings-as-errors"

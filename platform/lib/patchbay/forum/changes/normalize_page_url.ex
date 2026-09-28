@@ -31,7 +31,10 @@ defmodule Patchbay.Forum.Changes.NormalizePageUrl do
       _elsewhere ->
         Ash.Changeset.add_error(
           changeset,
-          InvalidAttribute.exception(field: :page_url, message: "must be a page on the post's site")
+          InvalidAttribute.exception(
+            field: :page_url,
+            message: "must be a page on the post's site"
+          )
         )
     end
   end

@@ -386,12 +386,14 @@ defmodule PatchbayWeb.Forum.BoardController do
   def create_thread(conn, params) do
     draft = Hero.draft(params["ask"])
 
-    with {:ok, thread} <- Hero.thread(draft) do
-      if params["step"] == "post" and params["previewed"] == PostPreview.digest(thread),
-        do: publish_thread(conn, draft, thread, params["ask"]),
-        else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}))
-    else
-      {:error, problem} -> render_home(conn, %{}, hero(draft, %{problem: problem}))
+    case Hero.thread(draft) do
+      {:ok, thread} ->
+        if params["step"] == "post" and params["previewed"] == PostPreview.digest(thread),
+          do: publish_thread(conn, draft, thread, params["ask"]),
+          else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}))
+
+      {:error, problem} ->
+        render_home(conn, %{}, hero(draft, %{problem: problem}))
     end
   end
 

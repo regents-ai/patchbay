@@ -74,6 +74,9 @@ defmodule PatchbayWeb.Forum.Hero do
   up to 3 MB. An empty picture field sends nothing.
   """
   @spec pictures(term()) :: {:ok, [binary()]} | {:error, %{said: String.t()}}
+  # The paths are the upload files Plug wrote for this request, never a name
+  # the sender chose.
+  # sobelow_skip ["Traversal.FileModule"]
   def pictures(uploads) when is_list(uploads) do
     chosen = Enum.filter(uploads, &match?(%Plug.Upload{filename: name} when name != "", &1))
 

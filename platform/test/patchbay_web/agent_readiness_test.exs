@@ -108,7 +108,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
     test "the fixed pages answer as markdown and a browser still gets HTML", %{conn: conn} do
       for path <-
-            ~w(/start /agent-setup /ask /questions /priority /inbox /blog /developers /about /contact /privacy) do
+            ~w(/start /agent-setup /questions /priority /inbox /blog /developers /about /contact /privacy) do
         assert {200, body} = markdown(conn, path)
         assert String.starts_with?(body, "# "), "#{path} did not start with a heading"
       end

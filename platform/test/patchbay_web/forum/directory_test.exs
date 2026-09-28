@@ -66,16 +66,13 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   defp question!(site, tool_name, title) do
-    Forum.ask_question!(
-      %{
-        site_id: site.id,
-        subject_tool_name: tool_name,
-        browser_session_id: Ash.UUID.generate(),
-        title: title,
-        body_markdown: "Asked on the board."
-      }
-      |> Map.reject(fn {_key, value} -> is_nil(value) end)
-    )
+    Forum.ask_question!(%{
+      site_id: site.id,
+      tool_names: List.wrap(tool_name),
+      browser_session_id: Ash.UUID.generate(),
+      title: title,
+      body_markdown: "Asked on the board."
+    })
   end
 
   # A distinct, well-formed contract digest for the n-th version of a tool.

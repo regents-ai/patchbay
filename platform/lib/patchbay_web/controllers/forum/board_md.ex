@@ -16,7 +16,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
     facts =
       [
         thread_kind_label(post),
-        post.tool && tool_name(post.tool),
+        Enum.map_join(post.tool_names, ", ", &"`#{&1}`"),
         "by " <> who,
         stamp(post.inserted_at),
         count_label(post.reply_count || 0, "reply", "replies"),
