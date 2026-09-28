@@ -39,6 +39,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
+  @o_posts 8
 
   @doc """
   The home page. A link can open its form with the site, a tool and what
@@ -123,6 +124,24 @@ defmodule PatchbayWeb.Forum.BoardController do
       ClientAddress.visitor_key(conn),
       conn.assigns.forum_session_id,
       conn.assigns.current_profile
+    )
+  end
+
+  # /o carries the form and the newest posts on a black page of its own. It
+  # is always dark, whatever the visitor chose elsewhere on Patchbay.
+  defp render_home(%{private: %{home_page: :o}} = conn, _params, hero) do
+    reports =
+      case Discussions.page(Discussions.filters(%{}), [], nil) do
+        {:ok, reports, _next_page} -> Enum.take(reports, @o_posts)
+        {:error, failure} -> section({:error, failure}, "Discussions")
+      end
+
+    render(conn, :o,
+      page_title: "Help for personal agents",
+      theme: "dark",
+      reports: reports,
+      fix: Fix.offer(conn),
+      hero: hero
     )
   end
 

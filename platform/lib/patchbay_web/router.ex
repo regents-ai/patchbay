@@ -310,6 +310,11 @@ defmodule PatchbayWeb.Router do
     get "/", BoardController, :home
     post "/fixes", BoardController, :fix
     post "/threads", BoardController, :create_thread
+    # The same form on a page of its own look, for personal agents and the
+    # people who use them; a turned-down fix or post comes back to that page.
+    get "/o", BoardController, :home, private: %{home_page: :o}
+    post "/o/fixes", BoardController, :fix, private: %{home_page: :o}
+    post "/o/threads", BoardController, :create_thread, private: %{home_page: :o}
     post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
     get "/questions", BoardController, :questions

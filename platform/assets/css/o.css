@@ -1,0 +1,236 @@
+/* /o: a black page of big flat round faces for personal agents and the people
+   who use them. The shared colours are set here, so the header, the form and
+   the posts all take the page's look. */
+body:has(.pb-o) {
+  --color-bg: #000;
+  --color-surface: #0d0d0d;
+  --color-surface-elevated: #161616;
+  --color-fg: #fff;
+  --color-fg-muted: #a3a3a3;
+  --color-muted: #a3a3a3;
+  --color-border: #262626;
+  --color-link: #fff;
+  --color-accent: #ff8424;
+  --color-fg-on-accent: #000;
+  --color-focus: #9b5cf6;
+  --pb-line-strong: #3a3a3a;
+  --pb-hard-shadow: transparent;
+  --pb-accent-wash: #1c1c1c;
+  --o-purple: #9b5cf6;
+  --o-orange: #ff8424;
+  --o-green: #00c15a;
+  --o-blue: #0071ff;
+  --o-graphite: #2d2d2d;
+  --o-silver: #e3e3e3;
+  --o-radius: 1.5rem;
+  background: #000;
+  color: #fff;
+  overflow-x: clip;
+}
+/* The faces run off the edge of the window without widening the page: the
+   page clips them itself, since the window would only hide them. */
+html:has(.pb-o) { overflow-x: clip; background: #000; }
+body:has(.pb-o) .rg-sheet { --rg-page-rule: #141414; }
+body:has(.pb-o) .pb-theme-toggle { display: none; }
+body:has(.pb-o) .pb-site-nav__links { border-color: #262626; border-radius: 999px; background: #0d0d0d; }
+body:has(.pb-o) .pb-site-nav__links a { border-radius: 999px; }
+body:has(.pb-o) .pb-account-chip { border-radius: 999px; }
+/* Buttons are round here rather than cut at the corners. */
+body:has(.pb-o) .rg-button, body:has(.pb-o) .rg-button::before, body:has(.pb-o) .rg-button::after {
+  border-radius: 999px;
+  clip-path: none;
+  box-shadow: none;
+}
+body:has(.pb-o) .rg-panel, body:has(.pb-o) .rg-panel::before, body:has(.pb-o) .rg-panel::after {
+  border-radius: var(--o-radius);
+  clip-path: none;
+}
+
+/* A face: a flat disc with two thick marks for eyes. */
+.pb-o-face { display: block; overflow: visible; }
+.pb-o-face-disc { fill: var(--face); }
+.pb-o-face-eyes {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pb-o-face--purple { --face: var(--o-purple); --ink: #000; }
+.pb-o-face--orange { --face: var(--o-orange); --ink: #000; }
+.pb-o-face--green { --face: var(--o-green); --ink: #000; }
+.pb-o-face--blue { --face: var(--o-blue); --ink: #fff; }
+.pb-o-face--graphite { --face: var(--o-graphite); --ink: #fff; }
+.pb-o-face--silver { --face: var(--o-silver); --ink: #000; }
+
+.pb-o { padding: var(--space-4) 0 var(--space-6); font-family: var(--font-family-sans); }
+
+/* The hero: words and the form on the left, a crowd of faces on the right
+   that runs off the edge of the page. */
+.pb-o-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: center;
+  min-height: min(44rem, 88vh);
+}
+.pb-o-copy { grid-column: 1; grid-row: 1; min-width: 0; }
+.pb-o-crowd {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  aspect-ratio: 1;
+  margin-right: -12%;
+}
+.pb-o-crowd-face {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: auto;
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1);
+}
+.pb-o-crowd-face:hover { transform: rotate(-10deg) scale(1.03); }
+.pb-o-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 var(--space-3);
+  color: var(--color-fg-muted);
+  font-size: .875rem;
+  font-weight: 500;
+}
+.pb-o-kicker::before {
+  content: "";
+  width: .75rem;
+  height: .75rem;
+  border-radius: 50%;
+  background: var(--o-orange);
+}
+.pb-o-hero h1 {
+  max-width: 14ch;
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-family-sans);
+  font-size: clamp(2.5rem, 5.6vw, 4.75rem);
+  font-weight: 600;
+  line-height: .98;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+.pb-o-lede {
+  max-width: 34rem;
+  margin: 0 0 var(--space-4);
+  color: var(--color-fg-muted);
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+.pb-o-agent-start { margin: var(--space-3) 0 0; color: var(--color-fg-muted); font-size: .8125rem; }
+.pb-o-agent-start a { color: #fff; }
+
+/* The form: soft black fields and round buttons. */
+.pb-o .pb-fix-form { max-width: 40rem; }
+.pb-o .pb-fix-ask input {
+  min-height: 3.75rem;
+  padding: 1rem 1.4rem;
+  border: 1px solid #333;
+  border-radius: 999px;
+  background: #121212;
+  box-shadow: none;
+  font-size: 1.125rem;
+}
+.pb-o .pb-fix-ask input::placeholder { color: #8a8a8a; }
+.pb-o .pb-fix-ask input:focus-visible { outline: 2px solid var(--o-purple); outline-offset: 3px; }
+.pb-o .pb-fix-more :is(input:not([type=checkbox]), textarea, select) {
+  border-color: #2a2a2a;
+  border-radius: .875rem;
+  background: #121212;
+}
+.pb-o .pb-fix-tools-list { border-color: #2a2a2a; border-radius: .875rem; background: #121212; }
+.pb-o .pb-fix-tools-list li[data-pb-picked] { background: var(--o-orange); }
+.pb-o .pb-fix-tools-list li[data-pb-picked] :is(label, span) { color: #000; }
+.pb-o .pb-ask-more > summary { border-radius: 999px; }
+.pb-o #pb-fix-submit { border-color: #fff; background: #fff; color: #000; }
+.pb-o #pb-fix-submit:hover { background: var(--o-silver); }
+.pb-o #pb-fix-submit:disabled { border-color: #333; background: #1a1a1a; color: #777; }
+.pb-o .rg-button--secondary { border-color: #3a3a3a; background: transparent; color: #fff; }
+.pb-o .rg-button--secondary:hover { border-color: #fff; }
+.pb-o :is(.pb-fix-terms, .pb-fix-topup, .pb-fix-status) { color: var(--color-fg-muted); }
+.pb-o .pb-ask-preview { border-radius: var(--o-radius); }
+
+/* The newest posts, each with its own face. */
+.pb-o-posts { margin-top: var(--space-6); }
+.pb-o-posts-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.pb-o-posts-head h2 {
+  margin: 0;
+  font-family: var(--font-family-sans);
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+.pb-o-posts-head a { color: #fff; font-size: .9375rem; white-space: nowrap; }
+.pb-o .pb-feed-list { display: grid; gap: .75rem; }
+.pb-o .pb-post-preview-row {
+  border: 0;
+  border-radius: var(--o-radius);
+  background: #111;
+  transition: background .2s ease;
+}
+.pb-o .pb-post-preview-row:hover { background: #171717; }
+.pb-o-post-face {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.pb-o .pb-feed-heading { padding: 1.1rem 4.25rem 1.1rem 4.75rem; }
+.pb-o .pb-feed-title { font-size: 1.125rem; font-weight: 600; letter-spacing: -.01em; }
+.pb-o .pb-feed-preview > summary {
+  left: auto;
+  right: 1rem;
+  top: 1.1rem;
+  border: 1px solid #333;
+  border-radius: 50%;
+  background: transparent;
+}
+.pb-o .pb-feed-preview[open] > summary { border-color: #fff; background: #fff; color: #000; }
+.pb-o .pb-feed-body {
+  margin: 0 1.1rem 1.1rem 4.75rem;
+  border-left: 0;
+  border-radius: 1rem;
+  background: #000;
+}
+.pb-o .rg-empty-state { border-radius: var(--o-radius); background: #111; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-o-crowd-face, .pb-o .pb-post-preview-row { transition: none; }
+  .pb-o-crowd-face:hover { transform: none; }
+}
+
+/* On a phone the faces make a band above the words, cut off at both edges. */
+@media (max-width: 899px) {
+  .pb-o { padding-top: var(--space-2); }
+  .pb-o-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); min-height: 0; }
+  .pb-o-crowd {
+    grid-column: 1;
+    grid-row: 1;
+    width: calc(100% + 2rem);
+    aspect-ratio: 1.7;
+    margin: 0 -1rem;
+  }
+  .pb-o-copy { grid-row: 2; }
+  .pb-o-crowd-face { left: var(--px); top: var(--py); width: var(--ps); }
+}
+@media (max-width: 599px) {
+  .pb-o .pb-feed-heading { padding: .9rem 3.75rem .9rem 4rem; }
+  .pb-o-post-face { top: .9rem; left: .85rem; width: 2.4rem; height: 2.4rem; }
+  .pb-o .pb-feed-preview > summary { right: .6rem; top: .8rem; }
+  .pb-o .pb-feed-body { margin: 0 .75rem .75rem; }
+}
