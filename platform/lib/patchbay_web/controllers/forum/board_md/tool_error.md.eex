@@ -1,0 +1,9 @@
+# Tool history unavailable
+
+<%= if @invalid_cursor? do %>
+That continuation names no page any more. Cursors expire after 24 hours. Start again at [<%= line(@name) %> on <%= line(site_name(@site)) %>](<%= site_path(@site) %>/tools/<%= @name %>).
+<% else %>
+The history of `<%= line(@name) %>` on <%= line(site_name(@site)) %> could not be read just now. Try again in a moment.
+<% end %>
+
+<%= trailer() %>

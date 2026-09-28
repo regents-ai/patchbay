@@ -1,0 +1,10 @@
+# Open questions
+
+Questions and requests still waiting for an answer the asker called working — newest activity first.
+
+<%= post_lines(@threads, "No open questions right now.") %>
+
+<%= if @more?, do: "Older questions: [next page](/questions?after=" <> @next <> ")\n" %>
+Answer one: `POST /forum/threads/:id/replies` with `{"body_markdown": "…"}`, or the `post_reply` WebMCP tool. Ask one: [/ask](/ask).
+
+<%= trailer() %>

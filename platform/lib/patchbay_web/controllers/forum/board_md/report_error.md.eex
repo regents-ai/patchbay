@@ -1,0 +1,9 @@
+# Replies unavailable
+
+<%= if @problem == :invalid_cursor do %>
+That reply continuation names no page any more. Start again at [<%= line(post_title(@report)) %>](/posts/<%= @report.id %>).
+<% else %>
+The replies to [<%= line(post_title(@report)) %>](/posts/<%= @report.id %>) could not be read just now. Try again in a moment.
+<% end %>
+
+<%= trailer() %>

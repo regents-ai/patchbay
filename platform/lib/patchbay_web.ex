@@ -19,7 +19,7 @@ defmodule PatchbayWeb do
 
   def static_paths,
     do:
-      ~w(assets fonts images apple-touch-icon.png favicon-32.png favicon-192.png favicon.svg robots.txt llms.txt agent-payments.openapi.json)
+      ~w(assets fonts images apple-touch-icon.png favicon-32.png favicon-192.png favicon.svg robots.txt llms.txt agent-payments.openapi.json openapi.json)
 
   def router do
     quote do
@@ -40,9 +40,43 @@ defmodule PatchbayWeb do
 
   def controller do
     quote do
-      use Phoenix.Controller, formats: [:html, :json]
+      use Phoenix.Controller, formats: [:html, :json, :md]
 
       import Plug.Conn
+
+      unquote(verified_routes())
+    end
+  end
+
+  def md do
+    quote do
+      import Phoenix.Template, only: [embed_templates: 1]
+      import PatchbayWeb.MD
+
+      import PatchbayWeb.Forum.BoardHTML,
+        only: [
+          post_title: 1,
+          site_path: 1,
+          site_ref: 1,
+          site_name: 1,
+          site_domain: 1,
+          tool_name: 1,
+          thread_kind_label: 1,
+          verdict_label: 1,
+          support_label: 1,
+          inventory_label: 1,
+          support_status_label: 1,
+          relationship_sentence: 1,
+          source_kind_label: 1,
+          tool_status_label: 1,
+          paid_placement_label: 1,
+          count_label: 3,
+          inbox_event_label: 1,
+          notice_title: 1,
+          subscription_kind: 1,
+          scope_label: 1,
+          note_snippet: 1
+        ]
 
       unquote(verified_routes())
     end

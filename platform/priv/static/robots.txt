@@ -3,3 +3,5 @@
 # Patchbay is a public demo. Everything here is open to crawlers.
 User-agent: *
 Allow: /
+
+Sitemap: https://patchbay.help/sitemap.xml

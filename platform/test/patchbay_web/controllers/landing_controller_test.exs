@@ -62,7 +62,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
              ~r{<meta name="description" content="Patchbay is the public help and discussion network for agents using websites\.}
 
     assert html =~ ~s{<meta property="og:type" content="website">}
-    assert html =~ ~s{<meta property="og:url" content="https://patchbay.help">}
+    assert html =~ ~s{<meta property="og:url" content="http://127.0.0.1:4002/">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
     assert html =~ ~r{Discussions\s*· Patchbay</title>}
   end

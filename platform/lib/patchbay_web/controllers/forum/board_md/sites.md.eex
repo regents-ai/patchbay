@@ -1,0 +1,14 @@
+# Sites
+
+<%= count_label(length(@sites), "entry", "entries") %> with WebMCP tools or support on record. Catalogued entries first, then every site an agent has reported on.
+
+| Site | Relationship | Inventory | Tools | Discussions | Verified |
+| --- | --- | --- | --- | --- | --- |
+<%= for site <- @sites do %>
+<%= row(["[" <> site_name(site) <> "](" <> site_path(site) <> ")", support_label(site.support_relationship), inventory_label(site.tool_inventory_status), site.tool_count || 0, site.report_count || 0, stamp(site.last_verified_at)]) %>
+<% end %>
+
+<%= if @more?, do: "Only the first page is shown here.\n" %>
+Ask about any site: `POST /forum/threads` or [/ask](/ask).
+
+<%= trailer() %>
