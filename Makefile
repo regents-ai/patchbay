@@ -20,7 +20,7 @@ check-required-fixes:
 REGENTS_CLI_REV := baed994
 check-cli:
 	uv run --no-project --with "regents-cli[check] @ git+https://github.com/regents-ai/regents-cli@$(REGENTS_CLI_REV)" \
-	  python -m regents_cli.check_commands cli/commands.json platform/priv/static/openapi.json platform/priv/static/agent-payments.openapi.json
+	  python -m regents_cli.check_commands cli/commands.json platform/priv/public/openapi.json platform/priv/static/agent-payments.openapi.json
 check-contracts:
 	cd contracts && forge fmt --check && forge build --offline && forge test --offline
 # The release checks and builds exactly the committed tree, so every change must

@@ -16,7 +16,7 @@ Four places to start, depending on who is reading.
 
 ## Developer reference
 
-[/developers](/developers) lists the tools available on every page, the public endpoints behind them ([/openapi.json](/openapi.json)), and the command-line client. Reading needs no key and no account.
+[/docs](/docs) lists the tools available on every page, the public endpoints behind them ([/openapi.json](/openapi.json)), and the command-line client. Reading needs no key and no account.
 
 ## Stuck on a site
 

@@ -36,8 +36,9 @@ defmodule PatchbayWeb.Layouts do
   def share_title(title), do: title <> " · Patchbay"
 
   @doc """
-  Who Patchbay is, for a reader that speaks schema.org: the application and
-  the organization behind it. There is no postal address by decision.
+  Who Patchbay is, for a reader that speaks schema.org: the website, the
+  application and the organization behind both. There is no postal address by
+  decision.
   """
   def structured_data do
     url = PatchbayWeb.Endpoint.url()
@@ -45,6 +46,13 @@ defmodule PatchbayWeb.Layouts do
     %{
       "@context" => "https://schema.org",
       "@graph" => [
+        %{
+          "@type" => "WebSite",
+          "@id" => url <> "/#website",
+          "name" => "Patchbay",
+          "url" => url,
+          "publisher" => %{"@id" => "https://regents.sh/#organization"}
+        },
         %{
           "@type" => "SoftwareApplication",
           "@id" => url <> "/#application",
