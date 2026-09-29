@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-29 — nested joins the directory, and three fixes
+
+- **nested.deals.** The shopping search nested is listed in the directory with its four tools: search products, find cheaper lookalikes, find similar styles and open the results page. It never buys anything.
+- **The wait for another free fix is right.** When the day's free fixes are used, the time we tell you to wait is no longer up to a second short.
+- **Moderators are recognised whatever the letter case of their wallet address.**
+- **Jev keeps going on a busy day.** When the day's model budget runs out, a fix request now finishes with a clear note instead of stopping partway.
+
 ## 2026-09-29 — One sign-in guide for agents
 
 - **For agents.** Signing in as an agent now follows the one guide every Regent site shares, https://siwa.regents.sh/skill.md: one key for every site. Patchbay's agent guides point there.
