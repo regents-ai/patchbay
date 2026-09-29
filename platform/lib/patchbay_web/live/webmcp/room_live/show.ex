@@ -45,7 +45,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   @readonly_message "Sign in to get a room of your own."
   @mutating_ui_events ~w(
     update_source upload_skill request_repair approve_repair reject_repair
-    retry_original_goal verify_goal ask_reset_demo reset_demo
+    retry_original_goal ask_reset_demo reset_demo
   )
   @mutating_webmcp_events ~w(
     webmcp_request_repair webmcp_invocation_begin webmcp_execute
@@ -379,31 +379,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       _ ->
         {:noreply,
          assign(socket, error_message: "Connect a WebMCP browser session before retrying")}
-    end
-  end
-
-  def handle_event("verify_goal", params, socket) do
-    case room_invocation(Map.get(params, "invocation_id"), socket.assigns.room) do
-      {:ok, invocation} ->
-        try do
-          verified = verify_once(invocation, post_state_from_assigns(socket.assigns))
-
-          {:noreply,
-           socket
-           |> refresh(socket.assigns.browser_session)
-           |> assign(
-             error_message:
-               if(verified.effective_status == :verified_success,
-                 do: nil,
-                 else: "Goal is not verified yet"
-               )
-           )}
-        rescue
-          error -> {:noreply, assign(socket, error_message: readable_error(error))}
-        end
-
-      {:error, message} ->
-        {:noreply, assign(socket, error_message: message)}
     end
   end
 
@@ -1145,13 +1120,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   end
 
   defp invalidate_repair(socket) do
-    case socket.assigns[:repair_token] do
-      token when is_binary(token) ->
-        {assign(socket, pending_operation: nil, repair_token: nil), {:repair, token}}
+    token = socket.assigns[:repair_token]
+    repair_key = if is_binary(token), do: {:repair, token}
 
-      _ ->
-        {assign(socket, pending_operation: nil, repair_token: nil), nil}
-    end
+    {assign(socket, pending_operation: nil, repair_token: nil), repair_key}
   end
 
   defp invalidate_repair_for_reset(socket) do
@@ -1207,9 +1179,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   defp reply_error(socket, message),
     do: {:reply, %{"error" => message}, assign(socket, error_message: message)}
 
-  # A call is verified once. The browser's post-state report and the owner's
-  # button both land here, so asking again reads the answer already recorded,
-  # and a call that ended before visible proof answers with the ending it has.
+  # A call is verified once, so a repeated post-state report reads the answer
+  # already recorded, and a call that ended before visible proof answers with
+  # the ending it has.
   defp verify_once(%Invocation{effective_status: status} = invocation, _post_state)
        when status in [:verified_failure, :verified_success, :errored, :cancelled],
        do: invocation

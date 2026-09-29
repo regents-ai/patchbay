@@ -21,9 +21,6 @@ defmodule PatchbayWeb.Motion do
     "grid" => "cascade"
   }
 
-  @doc "Every part's standard version."
-  def standard, do: @standard
-
   @doc "The standard version of one part, such as `\"list\"`."
   def standard(part), do: Map.fetch!(@standard, part)
 end
