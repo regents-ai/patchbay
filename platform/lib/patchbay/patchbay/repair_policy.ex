@@ -108,8 +108,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   defp proposed_input_schema(%{input_schema: schema}, opts),
     do: Keyword.get(opts, :input_schema, schema)
 
-  defp proposed_input_schema(_revision, opts), do: Keyword.get(opts, :input_schema)
-
   defp validate_generation(revision, opts) do
     expected = Keyword.get(opts, :generation, revision.generation + 1)
 

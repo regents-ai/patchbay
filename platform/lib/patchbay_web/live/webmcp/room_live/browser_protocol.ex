@@ -180,22 +180,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.BrowserProtocol do
     if is_map(state), do: {:ok, state}, else: {:error, "post_state must be an object"}
   end
 
-  @doc """
-  The visible state as the page itself sees it, for the owner's Verify button:
-  the same shape a browser would have reported.
-  """
-  @spec post_state_from_assigns(map()) :: map()
-  def post_state_from_assigns(assigns) do
-    %{
-      "ui_revision" => assigns.room.ui_revision,
-      "source" => %{"present" => true, "sha256" => assigns.room.source_sha256},
-      "candidate" => %{
-        "present" => is_binary(assigns.room.candidate_markdown),
-        "sha256" => assigns.room.candidate_sha256
-      }
-    }
-  end
-
   @doc "Everything Patchbay says back about one tool call."
   @spec invocation_reply(
           Invocation.t(),

@@ -4,7 +4,7 @@ defmodule PatchbayWeb.Read do
   wallet or a route. `skills/ash-frontend/references/async-state.md` explains
   the pattern.
 
-  Each start or clear moves the read to a new generation, and the task is
+  Each start moves the read to a new generation, and the task is
   named with it, so only the current generation's answer lands. A running read
   is never cancelled: stopping a task mid-query drops its database connection,
   so an older read finishes and its answer is dropped. A read that
@@ -35,13 +35,6 @@ defmodule PatchbayWeb.Read do
     socket
     |> assign(name, %{kept | state: :loading, owner: owner, error: nil, generation: generation})
     |> start_async({__MODULE__, name, generation}, fun)
-  end
-
-  @doc "Empties `name` when its owner leaves: navigation, sign-out or a wallet switch."
-  def clear(socket, name) do
-    read = Map.fetch!(socket.assigns, name)
-
-    assign(socket, name, %__MODULE__{generation: read.generation + 1})
   end
 
   @doc "Lands a `handle_async/3` result for the current generation; drops any other."

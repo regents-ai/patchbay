@@ -340,8 +340,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       {:ok, uuid} ->
         case Forum.get_reply(uuid) do
           {:ok, %{visibility: :published} = reply} -> {:ok, reply}
-          {:ok, _held} -> {:error, :not_found}
-          _ -> {:error, :not_found}
+          _held_or_missing -> {:error, :not_found}
         end
 
       :error ->
@@ -530,6 +529,6 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   # A field left out of a request stays out of the write: nil is not a value
   # here, and would otherwise override an action's own defaults.
   defp without_nils(attrs) do
-    Map.new(Enum.reject(attrs, fn {_key, value} -> is_nil(value) end))
+    Map.reject(attrs, fn {_key, value} -> is_nil(value) end)
   end
 end

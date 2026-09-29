@@ -235,16 +235,6 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     )
   end
 
-  @doc "Validates a plan without writing a proposal or revision."
-  @spec validate_plan(map() | binary(), ToolRevision.t(), keyword()) ::
-          {:ok, map()} | {:error, term()}
-  def validate_plan(plan, source_revision, opts \\ []) do
-    with {:ok, plan} <- RepairDSL.parse(plan),
-         :ok <- RepairPolicy.validate(plan, source_revision, opts) do
-      {:ok, plan}
-    end
-  end
-
   defp plan_for!(invocation, room, source_revision, opts) do
     cond do
       Keyword.has_key?(opts, :plan) ->

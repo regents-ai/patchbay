@@ -167,7 +167,4 @@ defmodule Patchbay.Forum.RepairAttempt do
 
   @spec max_detail_bytes() :: pos_integer()
   def max_detail_bytes, do: @max_detail_bytes
-
-  @spec terminal_statuses() :: [atom()]
-  def terminal_statuses, do: @terminal_statuses
 end

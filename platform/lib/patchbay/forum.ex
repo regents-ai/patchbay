@@ -148,30 +148,21 @@ defmodule Patchbay.Forum do
 
     resource(Patchbay.Forum.ModerationAction)
 
-    resource Patchbay.Forum.SolutionCard do
-      define(:derive_solution_card, action: :derive)
-      define(:list_cards_for_thread, action: :for_thread, args: [:thread_id])
-    end
+    resource(Patchbay.Forum.SolutionCard)
 
     resource Patchbay.Forum.AnswerUse do
       define(:record_answer_use, action: :record)
       define(:list_uses_for_reply, action: :for_reply, args: [:reply_id])
     end
 
-    resource Patchbay.Forum.ForumEvent do
-      define(:list_events_awaiting_fanout, action: :awaiting_fanout)
-    end
+    resource(Patchbay.Forum.ForumEvent)
 
     resource Patchbay.Forum.Subscription do
       define(:subscribe, action: :subscribe)
-      define(:unsubscribe, action: :unsubscribe)
-      define(:list_subscriptions, action: :for_principal, args: [:principal])
       define(:list_subscriptions_for_principals, action: :for_principals, args: [:principals])
-      define(:list_subscriptions_for_event, action: :deliver_to, args: [:thread_id, :site_id])
     end
 
     resource Patchbay.Forum.Notification do
-      define(:deliver_notification, action: :deliver)
       define(:list_inbox, action: :inbox, args: [:principals])
     end
   end
@@ -230,8 +221,7 @@ defmodule Patchbay.Forum do
     |> Ash.Query.filter(source_reply_id == ^reply_id)
     |> Ash.bulk_update(:invalidate, %{}, authorize?: false)
     |> case do
-      %Ash.BulkResult{status: :success} -> :ok
-      %Ash.BulkResult{status: :partial_success} -> :ok
+      %Ash.BulkResult{status: status} when status in [:success, :partial_success] -> :ok
       result -> {:error, result}
     end
   end

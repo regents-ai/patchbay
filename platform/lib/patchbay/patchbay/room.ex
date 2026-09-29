@@ -308,9 +308,10 @@ defmodule Patchbay.Patchbay.Room do
   policies do
     # The hackathon room is intentionally public: reads are open, and so are the
     # writes the room page and the repair services make by name. Destroying a
-    # room and the three status moves the publisher and the planner own are
-    # named by no policy, so only a caller that skips authorization deliberately
-    # can reach them.
+    # room and the three writes the publisher and the planner own
+    # (`await_approval`, `set_desired_tool_generation` and
+    # `set_active_repair_proposal`) are named by no policy, so only a caller
+    # that skips authorization deliberately can reach them.
     policy action_type(:read) do
       authorize_if(always())
     end

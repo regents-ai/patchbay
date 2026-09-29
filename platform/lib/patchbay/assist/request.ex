@@ -34,10 +34,6 @@ defmodule Patchbay.Assist.Request do
   @reserved_suffixes ~w(.local .localhost .internal .home.arpa .arpa .lan .intranet .corp
                         .test .invalid .example .onion)
 
-  @doc "The fields an assist request takes, and no others."
-  @spec fields() :: [String.t()]
-  def fields, do: @fields
-
   @doc """
   The request as the caller wrote it, trimmed and with its believed calls in
   one shape, if it holds only the fields a request takes and each one keeps to

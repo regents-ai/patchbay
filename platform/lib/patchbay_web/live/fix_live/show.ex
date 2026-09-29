@@ -48,10 +48,12 @@ defmodule PatchbayWeb.FixLive.Show do
   end
 
   defp show(socket, run) do
+    headline = Panel.headline(run)
+
     assign(socket,
       run: run,
-      page_title: Panel.headline(run),
-      headline: Panel.headline(run),
+      page_title: headline,
+      headline: headline,
       working?: Panel.working?(run),
       lines: Panel.lines(run),
       answer: Panel.answer(run, url(~p"/fixes/#{run.id}")),

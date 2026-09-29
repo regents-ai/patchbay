@@ -33,10 +33,6 @@ defmodule Patchbay.Forum.OtherSiteReport do
   # hashed so an enormous object cannot be turned into work.
   @max_arguments_bytes 8 * 1024
 
-  @doc "The fields a report about a tool on another site takes, and no others."
-  @spec fields() :: [String.t()]
-  def fields, do: @fields
-
   @doc """
   The draft as the caller wrote it, if it holds only the fields this kind of
   report takes and arguments Patchbay can digest.

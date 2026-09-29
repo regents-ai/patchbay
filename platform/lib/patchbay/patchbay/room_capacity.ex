@@ -67,9 +67,5 @@ defmodule Patchbay.Patchbay.RoomCapacity do
     :ok
   end
 
-  defp room_count do
-    Room
-    |> Ash.Query.for_read(:read)
-    |> Ash.count!()
-  end
+  defp room_count, do: Ash.count!(Room)
 end

@@ -49,12 +49,6 @@ defmodule Patchbay.Forum.ForumEvent do
       description("The notification worker's receipt that it delivered this event.")
       change(set_attribute(:fanned_out_at, &DateTime.utc_now/0))
     end
-
-    read :awaiting_fanout do
-      description("Events the notification worker has not delivered yet, oldest first.")
-      filter(expr(is_nil(fanned_out_at)))
-      prepare(build(sort: [seq: :asc]))
-    end
   end
 
   policies do

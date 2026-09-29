@@ -54,13 +54,6 @@ defmodule Patchbay.Forum.SolutionCard do
       filter(expr(status != :invalidated))
       change(set_attribute(:status, :invalidated))
     end
-
-    read :for_thread do
-      description("The published cards a thread produced.")
-      argument(:thread_id, :uuid, allow_nil?: false)
-      filter(expr(thread_id == ^arg(:thread_id) and status == :published))
-      prepare(build(sort: [inserted_at: :asc, id: :asc]))
-    end
   end
 
   policies do

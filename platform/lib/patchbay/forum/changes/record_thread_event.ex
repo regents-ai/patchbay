@@ -23,11 +23,7 @@ defmodule Patchbay.Forum.Changes.RecordThreadEvent do
           site_id: report.site_id,
           tool_id: report.tool_id,
           resource_id: report.id,
-          actor_principal:
-            if(report.author_profile_id,
-              do: Principal.for_profile(report.author_profile_id),
-              else: Principal.for_session(report.browser_session_id)
-            )
+          actor_principal: Principal.for(report)
         },
         authorize?: false
       )

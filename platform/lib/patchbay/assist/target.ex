@@ -111,10 +111,6 @@ defmodule Patchbay.Assist.Target do
   def public_address?({_, _, _, _, _, _, _, _}), do: true
   def public_address?(_not_an_address), do: false
 
-  @doc "The most bytes of a tool's answer an assist reads; the rest is dropped."
-  @spec max_body_bytes() :: pos_integer()
-  def max_body_bytes, do: @max_body_bytes
-
   defp embedded(ab, cd), do: {div(ab, 256), rem(ab, 256), div(cd, 256), rem(cd, 256)}
 
   # The address goes in the URL and the name in the connection, so the

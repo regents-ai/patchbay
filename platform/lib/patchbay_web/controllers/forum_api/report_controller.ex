@@ -229,7 +229,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       {:ok, session_id} ->
         case Participation.unfollow(session_id, current_profile(conn), id) do
           :ok -> json(conn, %{unsubscribed: true})
-          {:error, :not_found} -> send_failure(conn, :not_found)
           {:error, failure} -> send_failure(conn, failure)
         end
 

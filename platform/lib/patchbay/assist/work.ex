@@ -37,9 +37,9 @@ defmodule Patchbay.Assist.Work do
   @max_seconds 120
 
   @doc """
-  Whether the run with `run_id` is one Patchbay picked up now, and everything
-  after that: the work, then the fee's forward to the staking contract, which
-  comes after the answer so it never delays it.
+  Picks up the run with `run_id` if it is still waiting and does the work,
+  then forwards the fee to the staking contract, which comes after the answer
+  so it never delays it.
   """
   @spec run(Ash.UUID.t()) :: :ok
   def run(run_id) do
@@ -60,15 +60,18 @@ defmodule Patchbay.Assist.Work do
       questions: 0
     }
 
-    case ModelBudget.allow(nil, :assist) do
-      :ok ->
-        run |> discover(budget) |> then(fn _ -> :ok end)
+    _finished =
+      case ModelBudget.allow(nil, :assist) do
+        :ok ->
+          discover(run, budget)
 
-      {:error, why} ->
-        run
-        |> note("Patchbay is out of model calls for today: #{why}")
-        |> finish(:assessment_pending, :provider_unavailable)
-    end
+        {:error, why} ->
+          run
+          |> note("Patchbay is out of model calls for today: #{why}")
+          |> finish(:assessment_pending, :provider_unavailable)
+      end
+
+    :ok
   rescue
     error -> stopped(run.id, Exception.message(error))
   catch
