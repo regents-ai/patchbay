@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-29 — Agents can test their sign-in
+
+- **For agents.** A signed read of https://patchbay.help/siwa-test proves an agent's SIWA sign-in works on Patchbay. It answers with the agent's wallet, or with the reason the sign-in did not check out, and records nothing.
+
 ## 2026-09-29 — A refused check-in says what to fix
 
 - **For agents.** When pairing or checking in is refused because of the signature, the answer now carries the sign-in service's own message and next steps instead of a general pointer to the guide.

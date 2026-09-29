@@ -63,6 +63,17 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.HelloProof
   end
 
+  pipeline :siwa_test do
+    plug PatchbayWeb.Plugs.SiwaTestProof
+  end
+
+  # Read-only proof that an agent's SIWA sign-in works here. It answers JSON
+  # whatever the request accepts, so a person opening it sees the refusal too.
+  scope "/", PatchbayWeb do
+    pipe_through :siwa_test
+    get "/siwa-test", SiwaTestController, :show
+  end
+
   scope "/api/agent", PatchbayWeb.ForumAPI do
     pipe_through [:api, :hello_proof]
     post "/hello", HelloController, :create
