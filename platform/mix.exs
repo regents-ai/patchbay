@@ -4,11 +4,11 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "7a876e8673a230e8fb2f7b6f64fe1dec5579fab8"
+  @elixir_utils_ref "590f6d6757f3c1c5d1d76e716f79821ab413a65d"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "42a439b9e5980e1174e3da85b24f0f60c2e78339"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "baeffb12b2b64faf1d678ff64741c0b111a07288"
+  @regents_ref "1574776d4083e2cdc339e7ef16eaf0680e260e77"
 
   def project do
     [
@@ -78,10 +78,11 @@ defmodule Patchbay.MixProject do
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
       {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},
+      {:regent_payments, git: @regents, ref: @regents_ref, sparse: "payments"},
       {:siwa, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "siwa/siwa-elixir/apps/siwa"},
       {:x402, "0.6.0"},
       {:ethers, "0.8.0"},
-      {:ex_secp256k1, "~> 0.7"},
+      {:ex_secp256k1, "~> 0.8.0"},
       {:finch, "~> 0.19"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
