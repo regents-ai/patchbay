@@ -2,6 +2,7 @@
 @import "../vendor/regent_ui/design_system_tokens.css";
 @import "../vendor/regent_ui/primitives.css";
 @import "./components/motion.css";
+@import "./faces.css";
 @import "./workbench.css";
 @import "./feed.css";
 @import "./fix.css";
@@ -50,9 +51,19 @@
   --pb-agent-gradient: linear-gradient(100deg, var(--palette-platinum), var(--palette-tangerine-tango), var(--palette-powder-blue));
 
   --pb-agent-edge: var(--palette-tangerine-tango);
-  --pb-agent-edge-wash: color-mix(in srgb, var(--palette-tangerine-tango) 12%, var(--color-surface));
   --pb-human-edge: var(--palette-powder-blue);
-  --pb-human-edge-wash: color-mix(in srgb, var(--palette-powder-blue) 12%, var(--color-surface));
+
+  /* The paper that someone's own writing sits on, a step lighter than the
+     page, and the darker paper Patchbay's own replies sit on. */
+  --pb-card: light-dark(#F6F4EA, #1B1C1E);
+  --pb-card-line: light-dark(#C9C7B6, #2E2F33);
+  --pb-card-sunk: light-dark(#D9D7C5, #131416);
+  /* The powder the board's forms sit on, and the paper their fields are. */
+  --pb-form: light-dark(var(--palette-powder-blue), #1B1C1E);
+  --pb-form-edge: light-dark(var(--palette-charcoal), var(--palette-powder-blue));
+  --pb-field: light-dark(#F6F4EA, #0F0F10);
+  /* The clipped corners the board's forms and main buttons wear. */
+  --pb-cut: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
 
   --pb-text: var(--color-fg);
   --pb-text-muted: var(--color-fg-muted);
@@ -735,12 +746,6 @@ body:has(#patchbay-room) {
 .patchbay-timeline-sequence { color: var(--pb-text-muted); font: .6rem var(--font-family-mono); }
 
 #patchbay-room .patchbay-room-reports { margin-top: var(--space-4); }
-#patchbay-room .patchbay-nameplate-agent {
-  background: color-mix(in srgb, var(--pb-accent) 16%, var(--pb-surface-sunk));
-  color: var(--pb-text);
-  border-color: color-mix(in srgb, var(--pb-accent) 40%, var(--pb-line));
-
-}
 
 /* A laptop is the first place the room runs out of room. The workbench holds
    grids inside grids — the scoreboard, the evidence pair, the state pair — so
@@ -823,24 +828,37 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-markdown img { max-width: 100%; height: auto; }
 .pb-markdown table { display: block; max-width: 100%; overflow-x: auto; }
 
-/* A reply says who wrote it before it is read: an agent's carries the board's
-   orange edge, a person's a powder blue one. The wash behind them is faint
-   enough that the reply still reads as part of the same thread. */
-.pb-reply { border-left: 3px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); }
-.pb-reply-agent { border-left-color: var(--pb-agent-edge); background: var(--pb-agent-edge-wash); }
-.pb-reply-human { border-left-color: var(--pb-human-edge); background: var(--pb-human-edge-wash); }
+/* Someone's own words sit on a paper card with their picture beside them;
+   the site's labels around it sit on the page. The chosen answer carries a
+   heavier ink edge all round, and Patchbay's own replies sit on darker paper. */
+.pb-card { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 1rem; padding: 1.25rem 1.375rem; border: 1px solid var(--pb-card-line); background: var(--pb-card); }
+/* Outweighs the reply list's own row layout, which the room page keeps. */
+.patchbay-reply-list > li.pb-card { display: grid; }
+.pb-card-av { width: 3rem; height: 3rem; }
+.pb-card-main { display: flex; flex-direction: column; min-width: 0; }
+.pb-reply--solution { border: 2px solid var(--pb-text); }
+@media (max-width: 36rem) {
+  .pb-card, .pb-reply-form { grid-template-columns: 2.25rem minmax(0, 1fr); gap: .75rem; padding: 1rem; }
+  .pb-card-av { width: 2.25rem; height: 2.25rem; }
+}
+.pb-reply--patchbay { background: var(--pb-card-sunk); }
 
-/* Where a person writes their own reply. It sits at the foot of the thread it
-   joins and is drawn in the same powder blue their reply will carry, so the
-   form looks like what it is about to make. */
-.pb-reply-form { margin: var(--space-2) 0 0; padding: var(--rg-panel-padding); border: 1px solid var(--pb-line); border-left: 3px solid var(--pb-human-edge); border-radius: var(--radius); background: var(--pb-human-edge-wash); }
-.pb-reply-form form { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; }
-.pb-reply-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .04em; text-transform: uppercase; }
+/* Where a person writes their own reply: a powder card with their picture.
+   In the dark it is a dark card with a powder edge, so its words stay light. */
+.pb-reply-form { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 1rem; margin: 1rem 0 0; padding: 1.25rem 1.375rem; border: 1px solid var(--pb-form-edge); background: var(--pb-form); }
+.pb-reply-form > :not(.pb-card-av) { grid-column: 2; }
+.pb-reply-form > .pb-card-av { grid-row: 1 / span 3; }
+.pb-reply-form--signed-out { display: block; }
+.pb-reply-form form { display: grid; gap: .625rem; }
+.pb-reply-form label { font-size: var(--pb-fs-xs); }
 .pb-reply-form select,
-.pb-reply-form textarea { width: 100%; min-height: 2.75rem;       }
-.pb-reply-form textarea { resize: vertical; }
-.pb-reply-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1); margin: var(--space-1) 0 0; }
-.pb-reply-form-problem { margin: var(--space-1) 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
+.pb-reply-form textarea { width: 100%; min-height: 2.75rem; border: 1px solid var(--pb-text); border-radius: 0; background: var(--pb-field); color: var(--pb-text); }
+.pb-reply-form textarea { resize: vertical; padding: .75rem .875rem; }
+.pb-reply-form-foot { display: flex; justify-content: flex-end; }
+.pb-reply-form .rg-button--primary { clip-path: var(--pb-cut); }
+.pb-reply-as { margin: 0; font-size: .875rem; }
+.pb-reply-signin { margin: 0; font-size: .875rem; }
+.pb-reply-form-problem { margin: 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
 
 /* Taking your own escrowed money back: one button, always live, with the plain
    consequence of pressing it beside rather than under it. */
@@ -863,28 +881,16 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-board .patchbay-result-box .patchbay-board-text,
 .patchbay-board .patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
 
-/* Authorship stays explicit in text. Patchbay's own nameplate uses a flat
-   Charcoal/Platinum pair, never a gradient behind the author name. */
-.patchbay-nameplate {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--pb-line);
-  border-radius: var(--radius);
-  padding: var(--space-0) var(--space-1);
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  font-size: var(--pb-fs-micro);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: .02em;
-  line-height: 1.5;
-  white-space: nowrap;
-}
-.patchbay-nameplate-agent {
-  border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line));
-  background: var(--support-panel-surface); color: var(--support-panel-ink);
-  color: var(--support-panel-ink);
-
-}
+/* Who wrote something: a picture, a name and a small word for a person, an
+   agent or this site, the same everywhere a post or reply is shown. */
+.pb-icon { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.pb-badge { display: inline-flex; align-items: center; gap: .6rem; min-width: 0; max-width: 100%; vertical-align: middle; font-size: .9375rem; line-height: 1.3; }
+.pb-badge-name { display: inline-flex; align-items: center; gap: .45rem; min-width: 0; color: var(--pb-text); font-weight: var(--font-weight-semibold); text-decoration: none; }
+.pb-badge-name bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2px; }
+.pb-badge-av { width: 1.5rem; height: 1.5rem; }
+.pb-badge-kind { color: var(--pb-text-muted); font: 600 .6875rem/1 var(--font-family-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.pb-badge-tips { padding: .1rem .45rem; border: 1px solid var(--pb-good); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); white-space: nowrap; }
 
 /* The board thread the room page carries at the bottom, so the whole exchange
    about one tool is readable without leaving the room. */
@@ -1064,7 +1070,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 
 /* One report, wherever it is read. */
 .patchbay-board .patchbay-report-row .patchbay-card-heading { flex-wrap: wrap; align-items: center; }
-.patchbay-board .patchbay-nameplate-agent { background: var(--support-panel-surface); color: var(--support-panel-ink); }
 .pb-aside { margin: var(--space-2) auto 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .patchbay-board .patchbay-empty-state { color: var(--pb-text-muted); }
 
@@ -1886,7 +1891,7 @@ h1, h2, h3, h4, h5, h6 {
 .patchbay-card { min-width: 0; }
 .patchbay-prompt-body .rg-field, .patchbay-editor-card .rg-field { font-size: var(--pb-fs-xs); }
 .patchbay-editor-footer, .patchbay-facts > div { flex-wrap: wrap; }
-.patchbay-pill, .patchbay-state-label, .patchbay-nameplate, .pb-chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.patchbay-pill, .patchbay-state-label, .pb-chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
 .patchbay-alert { flex-wrap: wrap; }
 .patchbay-button-danger.rg-button { color: var(--pb-bad); border-color: var(--pb-bad); }
 .pb-post-row { border-bottom: 1px solid var(--pb-line); padding-block: var(--space-2); }

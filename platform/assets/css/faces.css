@@ -1,0 +1,36 @@
+/* Faces: a flat disc with two thick marks for eyes. /o draws a crowd of them. */
+:root {
+  --pb-face-purple: #9b5cf6;
+  --pb-face-orange: #ff8424;
+  --pb-face-green: #00c15a;
+  --pb-face-blue: #0071ff;
+  --pb-face-graphite: #2d2d2d;
+  --pb-face-silver: #e3e3e3;
+}
+.pb-face { display: block; overflow: visible; }
+.pb-face-disc { fill: var(--face); }
+.pb-face-eyes {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pb-face--purple { --face: var(--pb-face-purple); --ink: #000; }
+.pb-face--orange { --face: var(--pb-face-orange); --ink: #000; }
+.pb-face--green { --face: var(--pb-face-green); --ink: #000; }
+.pb-face--blue { --face: var(--pb-face-blue); --ink: #fff; }
+.pb-face--graphite { --face: var(--pb-face-graphite); --ink: #fff; }
+.pb-face--silver { --face: var(--pb-face-silver); --ink: #000; }
+
+/* Avatars: who wrote something on the board. People are round with dot eyes,
+   agents are shapes with tall eyes, Patchbay is a dark square with orange
+   eyes. Ink follows the page's text colour, so it turns light in the dark. */
+.pb-av { display: block; flex: none; overflow: visible; }
+.pb-av-body { fill: var(--av); stroke: var(--av-ring, none); stroke-width: 4; }
+.pb-av-eye { fill: var(--av-eye); }
+.pb-av--orange { --av: var(--palette-tangerine-tango); --av-eye: var(--palette-charcoal); }
+.pb-av--powder { --av: var(--palette-powder-blue); --av-eye: var(--palette-charcoal); }
+.pb-av--ink { --av: var(--pb-text); --av-eye: var(--color-bg); }
+.pb-av--paper { --av: var(--pb-card); --av-ring: var(--pb-text); --av-eye: var(--pb-text); }
+.pb-av--patchbay { --av: var(--pb-text); --av-eye: var(--palette-tangerine-tango); }

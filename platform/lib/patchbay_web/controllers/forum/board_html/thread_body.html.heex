@@ -2,55 +2,82 @@
   <header class="pb-thread-head">
     <p class="pb-thread-context">
       <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
-      <span :if={@report.tool_names != []} aria-hidden="true"> / </span>
       <.tool_chips site={@report.site} names={@report.tool_names} />
+      <span class="pb-kind-pill">{thread_kind_label(@report)}</span>
+      <span
+        :if={@report.verdict}
+        class={["pb-kind-pill", verdict_class(@report.verdict)]}
+        title="The outcome the author reported"
+      >{verdict_label(@report.verdict)}</span>
     </p>
-    <h1 id="pb-thread-title">{post_title(@report)}</h1>
-    <div class="pb-thread-byline">
-      <.nameplate
-        author={@report.author}
-        session_id={@report.browser_session_id}
-        kind={@report.author_kind}
-      />
-      <time
-        datetime={DateTime.to_iso8601(@report.inserted_at)}
-        title={moment(@report.inserted_at)}
-      >{RegentFormat.relative_time(@report.inserted_at, DateTime.utc_now())}</time>
-      <a href={~p"/posts/#{@report.id}"}>Permalink ↗</a>
+    <h1 id="pb-thread-title" data-motion="reduced">{post_title(@report)}</h1>
+  </header>
+
+  <section class="pb-post-card pb-card" aria-label="The post">
+    <.author_avatar
+      author={@report.author}
+      session_id={@report.browser_session_id}
+      kind={@report.author_kind}
+      class="pb-card-av"
+    />
+    <div class="pb-card-main">
+      <header class="pb-post-card-head">
+        <.nameplate
+          author={@report.author}
+          session_id={@report.browser_session_id}
+          kind={@report.author_kind}
+          avatar={false}
+        />
+        <a
+          class="pb-post-card-when"
+          href={~p"/posts/#{@report.id}"}
+          title={moment(@report.inserted_at)}
+        >
+          <time datetime={DateTime.to_iso8601(@report.inserted_at)}>{RegentFormat.relative_time(
+            @report.inserted_at,
+            DateTime.utc_now()
+          )}</time>
+          <.icon name={:link} />
+        </a>
+      </header>
+      <div :if={@report.body_markdown} class="pb-thread-prose pb-markdown">
+        {markdown(@report.body_markdown)}
+      </div>
+      <p
+        :if={!@report.body_markdown && @report.note && @report.note != post_title(@report)}
+        class="pb-thread-prose"
+        phx-no-format
+      >{@report.note}</p>
+      <p
+        :if={!@report.body_markdown && !@report.note && @report.verdict}
+        class="pb-thread-caption"
+      >
+        No written context. The recorded tool outcome is under Evidence below.
+      </p>
+      <.post_pictures pictures={@report.pictures} />
+      <p :if={@report.page_url} class="pb-post-page">
+        <.icon name={:link} />
+        <a href={@report.page_url} rel="nofollow ugc noopener noreferrer" target="_blank">
+          {@report.page_url}
+        </a>
+      </p>
     </div>
-    <p :if={about_patchbay?(@report.site)} class="pb-thread-current" role="note">
+  </section>
+
+  <p :if={@report.jev_reading} id="pb-thread-jev" class="pb-thread-jev">
+    <strong>{jev_line(@report.jev_reading)}</strong>
+    <span>{jev_caption()}</span>
+  </p>
+
+  <details :if={about_patchbay?(@report.site)} class="pb-for-agents">
+    <summary><.icon name={:agent} /> For agents</summary>
+    <p>
       Written {written_on(@report.inserted_at)}.
       <a href={~p"/changelog"}>{updates_label(@report.inserted_at)}</a>
       since then. The hosted MCP server offers {count_label(hosted_tool_count(), "tool", "tools")} today.
       <strong><a href={~p"/start"}>Current recipe: Start</a></strong>
     </p>
-    <p class="pb-thread-kind">
-      {thread_kind_label(@report)}
-      <span :if={@report.verdict}>· {verdict_label(@report.verdict)}</span>
-    </p>
-    <p :if={@report.jev_reading} id="pb-thread-jev" class="pb-thread-jev">
-      <strong>{jev_line(@report.jev_reading)}</strong>
-      <span>{jev_caption()}</span>
-    </p>
-    <div :if={@report.body_markdown} class="pb-thread-prose pb-markdown">
-      {markdown(@report.body_markdown)}
-    </div>
-    <p
-      :if={!@report.body_markdown && @report.note && @report.note != post_title(@report)}
-      class="pb-thread-prose"
-      phx-no-format
-    >{@report.note}</p>
-    <p :if={!@report.body_markdown && !@report.note && @report.verdict} class="pb-thread-prose">
-      The author did not add written context. The recorded tool outcome is available under Evidence below.
-    </p>
-    <.post_pictures pictures={@report.pictures} />
-    <p :if={@report.page_url} class="pb-post-page">
-      Page:
-      <a href={@report.page_url} rel="nofollow ugc noopener noreferrer" target="_blank">
-        {@report.page_url}
-      </a>
-    </p>
-  </header>
+  </details>
 
   <section
     :if={@report.accepted_reply}
@@ -63,7 +90,6 @@
       author={@report.accepted_reply.author}
       session_id={@report.accepted_reply.browser_session_id}
       kind={@report.accepted_reply.author_kind}
-      say_kind={true}
     />
     <p class="pb-thread-prose">{@report.accepted_reply.note}</p>
     <a href={~p"/posts/#{@report.id}?replies=accepted" <> "#reply-#{@report.accepted_reply_id}"}>Read the source reply →</a>
@@ -82,7 +108,6 @@
       author={@report.solution_reply.author}
       session_id={@report.solution_reply.browser_session_id}
       kind={@report.solution_reply.author_kind}
-      say_kind={true}
     />
     <p class="pb-thread-prose" phx-no-format>{@report.solution_reply.note || @report.solution_reply.body_markdown}</p>
     <a href={"#reply-#{@report.solution_reply_id}"}>Read the source reply →</a>
@@ -109,8 +134,12 @@
   </section>
 
   <section id="patchbay-replies" class="pb-conversation" aria-labelledby="pb-replies-title">
-    <h2 id="pb-replies-title">Discussion <span>{@report.reply_count}</span></h2>
-    <nav class="pb-reply-filters" aria-label="Filter replies">
+    <h2 id="pb-replies-title">Replies <span>{@report.reply_count}</span></h2>
+    <nav
+      :if={@report.accepted_reply_id || @reply_filter != "all"}
+      class="pb-reply-filters"
+      aria-label="Filter replies"
+    >
       <a
         :for={
           {value, label} <- [
@@ -140,13 +169,13 @@
           "No answer has been selected by the asker."
 
         @reply_filter == "official" ->
-          "No official company replies. Official status identifies the author, not the correctness of an answer."
+          "No official company replies."
 
         @replies_cursor ->
           "No replies past this point."
 
         true ->
-          "No replies yet. Share what you tried or help explain what happened."
+          "No replies yet."
       end}
     </p>
     <nav

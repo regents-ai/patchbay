@@ -8,8 +8,8 @@
 .pb-feed-layout {
   display: grid;
   grid-template-columns: 15rem minmax(0, 1fr);
-  border: 1px solid var(--pb-line);
-  background: var(--pb-surface);
+  border: 1px solid var(--pb-card-line);
+  background: var(--pb-card);
 }
 .pb-feed-layout .pb-scopes, .pb-feed-layout .pb-discussions {
   height: auto;
@@ -35,8 +35,8 @@
 .pb-post-preview-row {
   position: relative;
   min-width: 0;
-  border-bottom: 1px solid var(--pb-line);
-  background: var(--pb-surface);
+  border-bottom: 1px solid var(--pb-card-line);
+  background: var(--pb-card);
 }
 .pb-post-preview-row:last-child { border-bottom: 0; }
 .pb-feed-heading { padding: 1rem 1rem 1rem 4rem; min-width: 0; }
@@ -63,6 +63,8 @@
 }
 .pb-feed-title:hover { text-decoration: underline; }
 .pb-feed-meta .pb-feed-bounty { color: var(--pb-text); }
+.pb-feed-replies { display: inline-flex; align-items: center; gap: .3rem; color: var(--pb-text-muted); text-decoration: none; }
+.pb-feed-replies:hover { color: var(--pb-text); }
 .pb-feed-preview > summary {
   position: absolute;
   left: .5rem;
@@ -86,8 +88,7 @@
 .pb-feed-body {
   margin: 0 1rem 1rem 4rem;
   padding: 1rem;
-  border-left: 2px solid var(--pb-line-strong);
-  background: var(--pb-canvas);
+  background: var(--pb-card-sunk);
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 1rem;

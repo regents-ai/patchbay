@@ -1005,7 +1005,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "Generation 2"
     assert html =~ "Patchbay Agent"
     assert html =~ "Please retry with #{v2.name}."
-    assert has_element?(view, "#patchbay-room-reports .patchbay-nameplate-agent")
+    assert has_element?(view, "#patchbay-room-reports .pb-badge--patchbay")
   end
 
   test "the card follows a repair the worker is still running", %{conn: conn, room: room} do

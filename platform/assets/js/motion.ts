@@ -34,8 +34,9 @@ export function mountMotion(doc: Document) {
   const main = doc.querySelector("main")
   if (main === null || live(main) || still(main)) return
 
+  // A headline marked still, such as a thread's title, is read straight away.
   const headline = main.querySelector<HTMLElement>("h1")
-  if (headline !== null) rise(headline)
+  if (headline !== null && !still(headline)) rise(headline)
 
   for (const list of main.querySelectorAll("[data-cascade]")) GRIDS.cascade([...list.children].slice(0, CASCADE))
 

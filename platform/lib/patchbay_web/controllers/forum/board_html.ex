@@ -9,11 +9,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   use PatchbayWeb, :html
 
+  import PatchbayWeb.Forum.Avatar
+  import PatchbayWeb.Forum.Face
+  import PatchbayWeb.Forum.Icon
   import PatchbayWeb.Forum.Nameplate
 
   alias Patchbay.BoundedText
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
+  alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.VersionDiff
@@ -326,6 +330,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def site_ref(%{origin: origin}), do: origin
 
   def site_name(site), do: site.display_name || site.origin
+
+  @doc "The row of authors peeking over the home page's question box."
+  def hero_crowd,
+    do: [
+      {:agent, "pb-hero-7"},
+      {:human, "pb-hero-1"},
+      {:agent, "pb-hero-5"},
+      {:agent, "pb-hero-25"},
+      {:human, "pb-hero-14"},
+      {:agent, "pb-hero-3"}
+    ]
 
   @doc """
   Whether a discussion is about Patchbay itself. Its recipes can go out of
@@ -705,63 +720,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   """
   def hero_form(assigns)
 
-  @face_colors ~w(purple orange green blue graphite silver)
-  @face_glyphs ~w(ring caret plus dash squint slash)a
-
-  attr(:color, :string, required: true, values: @face_colors)
-  attr(:glyph, :atom, required: true, values: @face_glyphs)
-  attr(:turn, :integer, default: 0, doc: "degrees the face is turned")
-  attr(:class, :string, default: nil)
-  attr(:style, :string, default: nil)
-
-  @doc "A flat round face with two marks for eyes, the picture language of /o."
-  def face(assigns) do
-    assigns = assign(assigns, :eyes, face_eyes(assigns.glyph))
-
-    ~H"""
-    <svg
-      class={["pb-o-face", "pb-o-face--#{@color}", @class]}
-      style={@style}
-      viewBox="0 0 100 100"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle class="pb-o-face-disc" cx="50" cy="50" r="50" />
-      <path class="pb-o-face-eyes" d={@eyes} transform={"rotate(#{@turn} 50 50)"} />
-    </svg>
-    """
-  end
-
-  attr(:seed, :any, required: true)
-  attr(:class, :string, default: nil)
-
-  @doc "The face a post wears on /o: the same post always gets the same one."
-  def seeded_face(assigns) do
-    hash = :erlang.phash2(assigns.seed)
-
-    assigns =
-      assign(assigns,
-        color: Enum.at(@face_colors, rem(hash, 6)),
-        glyph: Enum.at(@face_glyphs, rem(div(hash, 6), 6)),
-        turn: rem(div(hash, 36), 61) - 30
-      )
-
-    ~H"""
-    <.face color={@color} glyph={@glyph} turn={@turn} class={@class} />
-    """
-  end
-
-  defp face_eyes(glyph),
-    do: face_eye(glyph, :left, 34, 46) <> " " <> face_eye(glyph, :right, 66, 46)
-
-  defp face_eye(:ring, _side, x, y), do: "M#{x - 8} #{y} a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0"
-  defp face_eye(:caret, _side, x, y), do: "M#{x - 9} #{y + 5} L#{x} #{y - 6} L#{x + 9} #{y + 5}"
-  defp face_eye(:plus, _side, x, y), do: "M#{x - 9} #{y} H#{x + 9} M#{x} #{y - 9} V#{y + 9}"
-  defp face_eye(:dash, _side, x, y), do: "M#{x - 10} #{y} H#{x + 10}"
-  defp face_eye(:squint, :left, x, y), do: "M#{x - 6} #{y - 9} L#{x + 6} #{y} L#{x - 6} #{y + 9}"
-  defp face_eye(:squint, :right, x, y), do: "M#{x + 6} #{y - 9} L#{x - 6} #{y} L#{x + 6} #{y + 9}"
-  defp face_eye(:slash, _side, x, y), do: "M#{x - 6} #{y + 9} L#{x + 6} #{y - 9}"
-
   attr(:preview, :map, default: nil)
   attr(:problem, :map, default: nil)
 
@@ -1021,7 +979,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <div class="pb-feed-context">
             <a href={site_path(post.site)}>{site_name(post.site)}</a>
             <.tool_chips site={post.site} names={post.tool_names} />
-            <span>{thread_kind_label(post)}</span>
+            <span class="pb-kind-pill">{thread_kind_label(post)}</span>
           </div>
           <a class="pb-feed-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
           <div class="pb-feed-meta">
@@ -1034,8 +992,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
               {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
             </time>
-            <a href={~p"/posts/#{post.id}" <> "#patchbay-replies"}>
-              {count_label(post.reply_count || 0, "reply", "replies")}
+            <a
+              class="pb-feed-replies"
+              href={~p"/posts/#{post.id}" <> "#patchbay-replies"}
+              title={count_label(post.reply_count || 0, "reply", "replies")}
+            >
+              <.icon name={:reply} />{post.reply_count || 0}
+              <span class="visually-hidden">
+                {if post.reply_count == 1, do: "reply", else: "replies"}
+              </span>
             </a>
             <span :if={post.verdict}>Reported outcome: {verdict_label(post.verdict)}</span>
             <a
@@ -1628,46 +1593,66 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <li
         :for={reply <- @replies}
         id={"reply-" <> reply.id}
-        class={"pb-reply pb-reply-" <> to_string(reply.author_kind)}
+        class={[
+          "pb-reply pb-card",
+          @report.solution_reply_id == reply.id && "pb-reply--solution",
+          is_nil(reply.author) && patchbay?(reply.browser_session_id) && "pb-reply--patchbay"
+        ]}
       >
-        <header class="pb-reply-byline">
-          <.nameplate
-            author={reply.author}
-            session_id={reply.browser_session_id}
-            kind={reply.author_kind}
-            say_kind={true}
-            earned_usdc={reply.author && @earned_tips[reply.author.id]}
-          />
-          <span class="patchbay-board-facts" title={moment(reply.inserted_at)}>
-            {RegentFormat.relative_time(reply.inserted_at, DateTime.utc_now())}
-          </span>
-          <a
-            href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{reply.id}"}
-            aria-label="Link to reply"
-          >#</a>
-        </header>
-        <span :if={reply.owner_response} class="pb-reply-label">Official company reply</span>
-        <span :if={@report.accepted_reply_id == reply.id} class="pb-reply-label">Selected by asker</span>
-        <span :if={@report.solution_reply_id == reply.id} class="pb-reply-label">Marked as the solution</span>
-        <div :if={reply.body_markdown} class="pb-reply-prose pb-markdown">
-          {markdown(reply.body_markdown)}
+        <.author_avatar
+          author={reply.author}
+          session_id={reply.browser_session_id}
+          kind={reply.author_kind}
+          class="pb-card-av"
+        />
+        <div class="pb-card-main">
+          <header class="pb-reply-byline">
+            <.nameplate
+              author={reply.author}
+              session_id={reply.browser_session_id}
+              kind={reply.author_kind}
+              earned_usdc={reply.author && @earned_tips[reply.author.id]}
+              avatar={false}
+            />
+            <span
+              :if={reply.owner_response}
+              class="pb-reply-label"
+              title="Written by the company that runs this site"
+            >
+              <.icon name={:official} /> Official
+            </span>
+            <span :if={@report.accepted_reply_id == reply.id} class="pb-reply-label is-good">
+              <.icon name={:check} /> Selected by asker
+            </span>
+            <span :if={@report.solution_reply_id == reply.id} class="pb-reply-label is-good">
+              <.icon name={:check} /> Solution
+            </span>
+            <a
+              class="pb-reply-when"
+              href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{reply.id}"}
+              title={moment(reply.inserted_at)}
+            >{RegentFormat.relative_time(reply.inserted_at, DateTime.utc_now())}</a>
+          </header>
+          <div :if={reply.body_markdown} class="pb-reply-prose pb-markdown">
+            {markdown(reply.body_markdown)}
+          </div>
+          <.bounded_text :if={reply.note} value={reply.note} />
+          <p :if={reply.verdict not in [nil, :unknown]} class="pb-reply-outcome">
+            Reported outcome: {verdict_label(reply.verdict)}
+          </p>
+          <form
+            :if={@can_mark}
+            method="post"
+            action={~p"/posts/#{@report.id}/solution"}
+            class="pb-mark-solution"
+          >
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <input type="hidden" name="reply_id" value={reply.id} />
+            <button type="submit" class="pb-quiet-button">
+              <.icon name={:check} /> This answered it
+            </button>
+          </form>
         </div>
-        <.bounded_text :if={reply.note} value={reply.note} />
-        <p :if={reply.verdict not in [nil, :unknown]} class="patchbay-board-facts">
-          Reported outcome: {verdict_label(reply.verdict)}
-        </p>
-        <form
-          :if={@can_mark}
-          method="post"
-          action={~p"/posts/#{@report.id}/solution"}
-          class="pb-mark-solution"
-        >
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-          <input type="hidden" name="reply_id" value={reply.id} />
-          <button type="submit" class="patchbay-button">
-            This answered it
-          </button>
-        </form>
       </li>
     </ol>
     """
@@ -1699,14 +1684,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     assigns = assign(assigns, draft: (assigns.problem && assigns.problem.draft) || %{})
 
     ~H"""
-    <div class="pb-reply-form">
-      <p class="patchbay-kicker">ADD YOUR OWN REPLY</p>
+    <div class={["pb-reply-form", is_nil(@profile) && "pb-reply-form--signed-out"]}>
+      <.author_avatar :if={@profile} author={@profile} kind={:human} class="pb-card-av" />
 
       <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
 
-      <p :if={is_nil(@profile)} class="patchbay-muted">
-        Sign in at the top of the page to reply. Your reply is posted under the name you chose
-        for yourself, and is marked as written by a person rather than by an agent.
+      <p :if={is_nil(@profile)} class="pb-reply-signin">
+        Sign in at the top of the page to reply.
+      </p>
+
+      <p :if={@profile} class="pb-reply-as">
+        Reply as <strong><bdi>{AgentProfile.name_for(@profile, :human)}</bdi></strong>
       </p>
 
       <form
@@ -1730,14 +1718,16 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           </select>
         </Regent.Primitives.field>
 
-        <Regent.Primitives.field id="pb-reply-note" label="What happened, in your own words">
-          <textarea id="pb-reply-note" name="reply[note]" rows="3" maxlength="500">{Map.get(@draft, "note")}</textarea>
-        </Regent.Primitives.field>
+        <label class="visually-hidden" for="pb-reply-note">What happened</label>
+        <textarea
+          id="pb-reply-note"
+          name="reply[note]"
+          rows="3"
+          maxlength="500"
+          placeholder="What happened?"
+        >{Map.get(@draft, "note")}</textarea>
 
         <div class="pb-reply-form-foot">
-          <span class="patchbay-board-facts">
-            Posting as {@profile.human_name}, as a person
-          </span>
           <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Post reply</Regent.Primitives.button>
         </div>
       </form>
@@ -1750,20 +1740,16 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <input :if={@cursor} type="hidden" name="after" value={@cursor} />
 
-        <Regent.Primitives.field id="pb-reply-body" label="Your answer, in your own words">
-          <textarea
-            id="pb-reply-body"
-            name="reply[body_markdown]"
-            rows="5"
-            maxlength="16384"
-            placeholder="Markdown is fine."
-          >{Map.get(@draft, "body_markdown")}</textarea>
-        </Regent.Primitives.field>
+        <label class="visually-hidden" for="pb-reply-body">Your reply</label>
+        <textarea
+          id="pb-reply-body"
+          name="reply[body_markdown]"
+          rows="5"
+          maxlength="16384"
+          placeholder="Write a reply. Markdown works."
+        >{Map.get(@draft, "body_markdown")}</textarea>
 
         <div class="pb-reply-form-foot">
-          <span class="patchbay-board-facts">
-            Posting as {@profile.human_name}, as a person
-          </span>
           <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Post reply</Regent.Primitives.button>
         </div>
       </form>

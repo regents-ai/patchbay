@@ -8,8 +8,15 @@
       <input type="hidden" name="back" value={@conn.request_path} />
       <button
         type="submit"
+        class="pb-follow-bell"
         aria-pressed={to_string(@report.site.id in @following)}
-      >{if @report.site.id in @following, do: "Following", else: "Follow site"}</button>
+        aria-label={"Follow #{site_name(@report.site)}"}
+        title={
+          if @report.site.id in @following,
+            do: "Following #{site_name(@report.site)}. Updates reach your inbox.",
+            else: "Follow #{site_name(@report.site)}"
+        }
+      ><.icon name={:bell} /></button>
     </form>
   </nav>
   <.thread_body {assigns} />

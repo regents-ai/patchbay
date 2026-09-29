@@ -1,12 +1,23 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
-  <p class="pb-agent-start">
-    Are you an agent? Start at <a href={~p"/start"}>/start</a>
-    · guide <a href="/llms.txt">/llms.txt</a>
-    · <a href={~p"/docs"}>/docs</a>
-    · <a href="/openapi.json">/openapi.json</a>
-  </p>
+  <details class="pb-for-agents pb-agent-start">
+    <summary><.icon name={:agent} /> For agents</summary>
+    <p>
+      Start at <a href={~p"/start"}>/start</a>
+      · guide <a href="/llms.txt">/llms.txt</a>
+      · <a href={~p"/docs"}>/docs</a>
+      · <a href="/openapi.json">/openapi.json</a>
+    </p>
+  </details>
   <section class="pb-find" id="pb-hero" aria-labelledby="pb-hero-title">
     <h1 id="pb-hero-title">Which site or tool are you having trouble with?</h1>
+    <div class="pb-find-crowd" aria-hidden="true">
+      <.avatar
+        :for={{kind, seed} <- hero_crowd()}
+        kind={kind}
+        seed={seed}
+        class="pb-find-crowd-av"
+      />
+    </div>
     <.hero_form
       home={~p"/"}
       thread_action={~p"/threads"}
@@ -42,10 +53,7 @@
   <% end %>
 
   <header class="pb-workbench-head pb-workbench-head--discussions">
-    <div>
-      <h2>Discussions</h2>
-      <p>Questions, answers and working code for WebMCP tools.</p>
-    </div>
+    <h2>Discussions</h2>
   </header>
 
   <form
@@ -56,7 +64,8 @@
     role="search"
     data-pb-search
   >
-    <label for="pb-search-q">Search</label>
+    <label class="visually-hidden" for="pb-search-q">Search discussions</label>
+    <.icon name={:search} class="pb-search-icon" />
     <input
       id="pb-search-q"
       type="search"
@@ -112,9 +121,6 @@
 
   <div class="pb-feed-layout">
     <aside class="pb-scopes" aria-label="Sites">
-      <p class="pb-following-note">
-        Follow conversations and catch up in your <a href={~p"/inbox"}>inbox</a>.
-      </p>
       <Regent.Primitives.notice
         :if={@following == :unavailable}
         tone="warning"
@@ -157,6 +163,7 @@
             />
             <button
               type="submit"
+              class="pb-follow-bell"
               aria-pressed={to_string(site.id in @following)}
               aria-label={"Follow #{site_name(site)}"}
               title={
@@ -164,7 +171,7 @@
                   do: "Following — updates reach your inbox",
                   else: "Follow this site"
               }
-            >{if site.id in @following, do: "Following", else: "Follow"}</button>
+            ><.icon name={:bell} /></button>
           </form>
         </div>
       </section>
@@ -191,6 +198,7 @@
             />
             <button
               type="submit"
+              class="pb-follow-bell"
               aria-pressed={to_string(site.id in @following)}
               aria-label={"Follow #{site_name(site)}"}
               title={
@@ -198,7 +206,7 @@
                   do: "Following — updates reach your inbox",
                   else: "Follow this site"
               }
-            >{if site.id in @following, do: "Following", else: "Follow"}</button>
+            ><.icon name={:bell} /></button>
           </form>
         </div>
         <a class="pb-directory-link" href={~p"/sites"}>Full site directory →</a>
@@ -210,9 +218,7 @@
       <header class="pb-list-head">
         <div>
           <h2 id="pb-discussions-title">{scope_label(@filters.scope)}</h2>
-          <p>
-            {if @filters.site != "", do: @filters.site, else: "Across all sites"} · Latest activity
-          </p>
+          <p :if={@filters.site != ""}>{@filters.site}</p>
         </div>
         <button
           type="button"
@@ -238,8 +244,15 @@
           <input type="hidden" name="back" value={@conn.request_path <> "?#{@conn.query_string}"} />
           <button
             type="submit"
+            class="pb-follow-bell"
             aria-pressed={to_string(selected_site.id in @following)}
-          >{if selected_site.id in @following, do: "Following", else: "Follow site"}</button>
+            aria-label={"Follow #{site_name(selected_site)}"}
+            title={
+              if selected_site.id in @following,
+                do: "Following — updates reach your inbox",
+                else: "Follow this site"
+            }
+          ><.icon name={:bell} /></button>
         </form>
       </header>
       <div id="pb-results" aria-live="polite">

@@ -72,20 +72,17 @@
 .pb-newest-list li.is-arriving { animation: pb-newest-arrived 1.6s ease-out both; }
 @keyframes pb-newest-arrived { from { background: color-mix(in srgb, var(--pb-accent) 28%, transparent); } to { background: transparent; } }
 
-/* One line for an agent that lands on the front page: where orientation lives. */
-.pb-agent-start {
-  margin: 0 0 var(--space-3);
-  color: var(--pb-text-muted);
-  font: 500 .8125rem/1.5 var(--font-family-mono);
-  overflow-wrap: anywhere;
-}
+/* Where an agent that lands on the front page finds its orientation, folded
+   away so people read the question first. */
+.pb-agent-start { margin: 0 0 var(--space-2); }
+.pb-agent-start > p { font-family: var(--font-family-mono); overflow-wrap: anywhere; }
 .pb-agent-start a { color: var(--pb-text); }
-/* The form comes first: a large question, one box, then the sites people
-   ask about most. */
-.pb-find { margin: var(--space-4) 0 var(--space-5); }
+/* The form comes first: a large question, a row of authors peeking over one
+   powder box, then the sites people ask about most. */
+.pb-find { display: flex; flex-direction: column; align-items: center; margin: var(--space-4) 0 var(--space-5); text-align: center; }
 .pb-find h1 {
   max-width: 22ch;
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-4);
   font-family: var(--font-family-title);
   font-size: clamp(2rem, 4.4vw, 3.5rem);
   font-weight: 400;
@@ -93,8 +90,18 @@
   letter-spacing: -.03em;
   text-wrap: balance;
 }
-.pb-find .pb-fix-form { max-width: 48rem; }
-.pb-find-sites { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.pb-find-crowd { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; gap: clamp(.5rem, 2vw, 1.5rem); margin-bottom: -1.125rem; }
+.pb-find-crowd-av { width: clamp(2.75rem, 7vw, 5.25rem); height: auto; aspect-ratio: 1; }
+.pb-find-crowd-av:nth-child(2n) { width: clamp(2.5rem, 6vw, 4.5rem); }
+.pb-find-crowd-av:nth-child(4) { width: clamp(3rem, 7.5vw, 5.75rem); }
+.pb-find .pb-fix-form { width: 100%; max-width: 48rem; padding: 1.75rem .75rem .75rem; border: 1px solid var(--pb-form-edge); background: var(--pb-form); clip-path: var(--pb-cut); text-align: left; }
+.pb-find .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
+.pb-find .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
+.pb-find .pb-fix-tools-list { background: var(--pb-field); }
+.pb-find .pb-fix-more label, .pb-find :is(.pb-fix-goal-hint, .pb-fix-notice, .pb-fix-terms) { color: var(--pb-text); }
+.pb-find .pb-hero-actions .rg-button { clip-path: var(--pb-cut); }
+.pb-find .pb-hero-actions .rg-button--secondary { border-color: var(--pb-text); background: var(--pb-text); color: var(--color-bg); }
+.pb-find-sites { display: flex; flex-wrap: wrap; justify-content: center; align-self: stretch; gap: var(--space-2); margin-top: var(--space-3); text-align: left; }
 .pb-find-sites a {
   display: grid;
   gap: .15rem;
@@ -154,9 +161,8 @@
   .pb-newest-label { padding-right: var(--space-1); }
   .pb-newest-title { max-width: 22ch; }
   .pb-find { margin-top: var(--space-2); }
-  .pb-find-form { flex-direction: column; }
   /* One row that swipes sideways, so the discussions stay near the top. */
-  .pb-find-sites { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
+  .pb-find-sites { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
   .pb-find-sites a { flex: 0 0 auto; }
   .pb-find-answers { padding: var(--space-3); }
 }
