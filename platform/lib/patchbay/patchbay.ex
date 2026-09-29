@@ -9,8 +9,6 @@ defmodule Patchbay.Patchbay do
       define(:get_room_by_slug, action: :read, get_by: [:slug])
       define(:get_room_by_id, action: :read, get_by: [:id])
       define(:get_room_for_update, action: :for_update, get_by: [:id])
-      define(:list_rooms, action: :read)
-      define(:list_idle_unused_rooms, action: :idle_and_unused, args: [:untouched_since])
       define(:discard_room, action: :destroy)
       define(:update_source, action: :update_source, args: [:source_markdown])
       define(:apply_candidate, action: :apply_candidate, args: [:candidate_markdown])
@@ -84,8 +82,6 @@ defmodule Patchbay.Patchbay do
     end
 
     resource Patchbay.Patchbay.Verification do
-      define(:get_verification, action: :read, get_by: [:id])
-
       # A call is verified once, and the identity says so, so the verification
       # for a call is a get rather than a one-row list.
       define(:get_invocation_verification, action: :read, get_by: [:invocation_id])
