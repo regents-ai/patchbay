@@ -2,7 +2,7 @@ defmodule Patchbay.Patchbay.Telemetry do
   @max_metadata_bytes 128
 
   @moduledoc """
-  Named emitters for the ten Patchbay observability events in SPEC section 23.
+  Named emitters for the Patchbay observability events.
 
   Every emitter funnels through one sanitizer, so a handler can only ever see
   numbers, identifiers, digests, booleans, and atoms. Skill markdown, model

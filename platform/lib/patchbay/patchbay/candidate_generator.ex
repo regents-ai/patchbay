@@ -275,10 +275,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       is_function(opts[:generator], 3) ->
         normalize_generator_result(opts[:generator].(source, arguments, opts))
 
-      is_function(opts[:request], 3) ->
-        Client.generate_candidate(source, arguments, Keyword.put(opts, :request, opts[:request]))
-
-      api_key_available?(opts) ->
+      is_function(opts[:request], 3) or api_key_available?(opts) ->
         Client.generate_candidate(source, arguments, opts)
 
       true ->

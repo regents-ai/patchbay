@@ -43,14 +43,6 @@ defmodule Patchbay.Patchbay.CandidateCache do
   def put(_key, _value, _opts), do: {:error, :generation_key_required}
 
   @doc "Atomically gets or generates one provenance-qualified cache entry."
-  @spec fetch_or_generate(String.t(), variant(), (-> {:ok, map()} | {:error, term()})) ::
-          {:ok, map()} | {:error, term()}
-  def fetch_or_generate(key, variant, generator)
-      when is_binary(key) and key != "" and is_binary(variant) and variant != "" and
-             is_function(generator, 0) do
-    fetch_or_generate(key, variant, generator, fn _value -> true end)
-  end
-
   @spec fetch_or_generate(
           String.t(),
           variant(),

@@ -395,9 +395,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       browser_session,
       room.desired_tool_revision,
       invocation.arguments,
-      opts
-      |> Keyword.put(:durable_candidate, generated)
-      |> Keyword.put(:request_uuid, Keyword.get(opts, :request_uuid, Ash.UUID.generate()))
+      Keyword.put(opts, :durable_candidate, generated)
     )
   end
 
@@ -441,7 +439,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp verify_locked!(invocation_id, room_id, browser_session_id, opts) do
     room = Domain.get_room_for_update!(room_id)
     invocation = Domain.get_invocation_for_update!(invocation_id)
-    post_state = Keyword.get(opts, :post_state, visible_state(room))
+    post_state = Keyword.fetch!(opts, :post_state)
 
     verified = VerificationService.verify_invocation!(invocation, %{post_state: post_state}, opts)
 
@@ -577,20 +575,6 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       "fallback_used" => generated.fallback_used,
       "fallback_reason" => generated.fallback_reason,
       "usage" => Client.normalize_usage(Map.get(generated, :usage))
-    }
-  end
-
-  defp visible_state(room) do
-    candidate_present =
-      is_binary(room.candidate_markdown) and String.trim(room.candidate_markdown) != ""
-
-    %{
-      ui_revision: room.ui_revision,
-      source: %{present: true, sha256: room.source_sha256},
-      candidate: %{
-        present: candidate_present,
-        sha256: if(candidate_present, do: room.candidate_sha256, else: nil)
-      }
     }
   end
 
