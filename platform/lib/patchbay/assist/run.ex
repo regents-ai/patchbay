@@ -62,6 +62,10 @@ defmodule Patchbay.Assist.Run do
     # from, which its one free fix a day is counted by. Never the address.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 
+    # The payment that bought a paid run, in the shared payment records; a
+    # free run has none.
+    attribute(:payment_intent_id, :uuid, allow_nil?: true, public?: true)
+
     attribute(:goal, :string, allow_nil?: false, public?: true)
     attribute(:site_url, :string, allow_nil?: false, public?: true)
     attribute(:sign_in, SignIn, allow_nil?: false, public?: true)
@@ -106,14 +110,6 @@ defmodule Patchbay.Assist.Run do
     identity(:one_open_run_per_browser, [:browser_session_id],
       where: expr(status in [:paid, :running]),
       eager_check?: false
-    )
-  end
-
-  relationships do
-    # The payment that bought a paid run; a free run has none.
-    belongs_to(:payment_intent, Patchbay.Payments.PaymentIntent,
-      allow_nil?: true,
-      public?: true
     )
   end
 
@@ -172,7 +168,7 @@ defmodule Patchbay.Assist.Run do
 
       argument(:intent, :struct,
         allow_nil?: false,
-        constraints: [instance_of: Patchbay.Payments.PaymentIntent],
+        constraints: [instance_of: RegentPayments.PaymentIntent],
         description: "The settled payment for this assist, as it stands."
       )
 

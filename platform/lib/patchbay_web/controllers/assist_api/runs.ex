@@ -6,7 +6,6 @@ defmodule PatchbayWeb.AssistAPI.Runs do
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
-  alias PatchbayWeb.PaymentsAPI.Purchase
 
   @doc "The run `id` as it stands, if it is `actor`'s."
   @spec read(struct(), String.t()) :: {:ok, Run.t()} | {:error, :not_found | term()}
@@ -62,6 +61,6 @@ defmodule PatchbayWeb.AssistAPI.Runs do
   defp found_or_missing({:ok, nil}), do: {:error, :not_found}
 
   defp found_or_missing({:error, error}) do
-    if Purchase.missing?(error), do: {:error, :not_found}, else: {:error, error}
+    if RegentPayments.Purchase.missing?(error), do: {:error, :not_found}, else: {:error, error}
   end
 end

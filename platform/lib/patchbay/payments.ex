@@ -1,139 +1,58 @@
 defmodule Patchbay.Payments do
   @moduledoc """
-  One way to pay for an action, reused by every paid action.
+  Patchbay's paid actions, on the Regents payments library shared by every
+  Regent site.
 
   Patchbay never holds anyone's money. A payment intent freezes what an action
   will cost and who receives it; the payer's wallet then pays that wallet
-  directly, and Patchbay keeps the receipt. Three actions use it, all in USDC
-  on Base: a tip to an agent profile, paid to that profile's own wallet; a
-  paid priority report, paid into the escrow contract that holds the money for
-  the answer its asker accepts; and a paid assist, paid to the wallet this
-  Patchbay takes its fee at.
+  directly, and the library keeps the receipt. Three actions use it, all in
+  USDC on Base, each an offer of its own: a tip to an agent profile, paid to
+  that profile's own wallet (`Patchbay.Payments.AgentTip`); a paid priority
+  report, paid into the escrow contract that holds the money for the answer
+  its asker accepts (`Patchbay.Payments.SpecialPost`); and a paid assist,
+  paid to the wallet this Patchbay takes its fee at
+  (`Patchbay.Payments.JevAssist`).
   """
 
-  use Ash.Domain, otp_app: :patchbay
-
-  import Ash.Expr, only: [expr: 1]
-
-  alias Patchbay.Payments.PaymentReceipt
-
-  resources do
-    resource Patchbay.Payments.PaymentIntent do
-      define(:prepare_agent_tip, action: :prepare_agent_tip)
-      define(:prepare_special_post, action: :prepare_special_post)
-      define(:prepare_jev_assist, action: :prepare_jev_assist)
-      define(:get_payment_intent, action: :read, get_by: [:id])
-      define(:lock_payment_intent, action: :for_update, get_by: [:id])
-      define(:mark_payment_required, action: :mark_payment_required)
-      define(:mark_settlement_pending, action: :mark_settlement_pending)
-      define(:mark_settled, action: :mark_settled)
-      define(:mark_applied, action: :mark_applied)
-      define(:mark_payment_failed, action: :mark_failed)
-      define(:expire_payment_intent, action: :expire)
-    end
-
-    resource Patchbay.Payments.PaymentReceipt do
-      define(:record_payment_receipt, action: :record)
-    end
-  end
+  alias Patchbay.Payments.JevAssist
+  alias Patchbay.Payments.SpecialPost
 
   @doc """
-  A profile's whole history of tipping, both ways: how many settled tips it has
-  sent and what they came to, and how many it has received and what those came
-  to, all in USDC's atomic units.
-
-  A tip is one wallet paying another directly, so nothing on the chain says
-  which Patchbay profile sent it. The intent behind each settled receipt does:
-  it names the paying profile and the profile paid at the moment the terms were
-  frozen. Counting the receipts is therefore counting the tips.
-
-  Four filtered aggregates, all carried by one statement.
+  A profile's whole history of tipping, both ways: how many settled tips it
+  has sent and what they came to, and how many it has received and what those
+  came to, all in USDC's atomic units.
   """
   @spec tip_record(String.t()) :: {:ok, map()} | {:error, Ash.Error.t()}
-  def tip_record(profile_id) do
-    aggregates = [
-      {:given_count, :count,
-       query: [filter: expr(payment_intent.actor_profile_id == ^profile_id)]},
-      {:given_atomic, :sum,
-       field: :amount_atomic,
-       query: [filter: expr(payment_intent.actor_profile_id == ^profile_id)]},
-      {:received_count, :count, query: [filter: expr(payment_intent.target_id == ^profile_id)]},
-      {:received_atomic, :sum,
-       field: :amount_atomic, query: [filter: expr(payment_intent.target_id == ^profile_id)]}
-    ]
-
-    with {:ok, counted} <- Ash.aggregate(tips_for_profile(profile_id), aggregates) do
-      {:ok,
-       %{
-         given_count: counted.given_count || 0,
-         given_atomic: counted.given_atomic || 0,
-         received_count: counted.received_count || 0,
-         received_atomic: counted.received_atomic || 0
-       }}
-    end
-  end
-
-  # The four numbers a public page shows are public numbers. The receipts they
-  # are counted from stay behind a signed-in actor, which is the one reason
-  # authorization is set aside here: nothing but the totals leaves this query.
-  defp tips_for_profile(profile_id) do
-    Ash.Query.for_read(PaymentReceipt, :tips_for_profile, %{profile_id: profile_id},
-      authorize?: false
-    )
-  end
-
-  @doc """
-  What one profile has earned in tips, in USDC's atomic units: one sum over
-  its settled receipts, added up by the database.
-  """
-  @spec earned_usdc_atomic(String.t()) :: {:ok, non_neg_integer()} | {:error, Ash.Error.t()}
-  def earned_usdc_atomic(profile_id) do
-    with {:ok, sum} <- Ash.sum(earned_by_profile([profile_id]), :amount_atomic) do
-      {:ok, sum || 0}
-    end
-  end
+  def tip_record(profile_id), do: RegentPayments.settled_record(:agent_tip, profile_id)
 
   @doc """
   What each of the given profiles has earned in tips, keyed by profile id and
   leaving out those who have earned nothing, so a page can show the line
-  beside every author it lists from one query: one filtered sum per profile,
-  all carried by the same statement.
+  beside every author it lists from one query.
   """
   @spec earned_usdc_atomic_by_profile([String.t()]) ::
           {:ok, %{String.t() => pos_integer()}} | {:error, Ash.Error.t()}
-  def earned_usdc_atomic_by_profile([]), do: {:ok, %{}}
+  def earned_usdc_atomic_by_profile(profile_ids),
+    do: RegentPayments.settled_by_target(:agent_tip, profile_ids)
 
-  # The atoms are earned_0, earned_1, … by position, so every call reuses the same
-  # few names; nothing a caller sends becomes an atom.
-  # sobelow_skip ["DOS.BinToAtom"]
-  def earned_usdc_atomic_by_profile(profile_ids) do
-    named =
-      Enum.with_index(profile_ids, fn profile_id, index -> {:"earned_#{index}", profile_id} end)
-
-    sums =
-      Enum.map(named, fn {name, profile_id} ->
-        {name, :sum,
-         field: :amount_atomic, query: [filter: expr(payment_intent.target_id == ^profile_id)]}
-      end)
-
-    with {:ok, earned} <- Ash.aggregate(earned_by_profile(profile_ids), sums) do
-      positive =
-        for {name, profile_id} <- named,
-            is_integer(earned[name]) and earned[name] > 0,
-            into: %{} do
-          {profile_id, earned[name]}
-        end
-
-      {:ok, positive}
-    end
+  @doc """
+  What follows a purchase once its payment and effect have committed, taken
+  from the purchase's answer, which it hands back unchanged: a paid priority
+  report's escrow credit is handed to Base, and a paid assist's run is
+  started. Each is decided by what is written down, so it happens once
+  however many calls read the same applied intent, and a call after one that
+  was cut short finishes it.
+  """
+  @spec follow_up(answer) :: answer when answer: RegentPayments.Purchase.answer()
+  def follow_up({:applied, %{kind: :special_post} = intent, receipt} = answer) do
+    :ok = SpecialPost.credit(intent, receipt)
+    answer
   end
 
-  # The sum a public page shows is a public number. The receipts it is summed
-  # from stay behind a signed-in actor, which is the one reason authorization
-  # is set aside here: nothing but the total leaves this query.
-  defp earned_by_profile(profile_ids) do
-    Ash.Query.for_read(PaymentReceipt, :earned_by_profile, %{profile_ids: profile_ids},
-      authorize?: false
-    )
+  def follow_up({:applied, %{kind: :jev_assist} = intent, _receipt} = answer) do
+    :ok = JevAssist.start(intent)
+    answer
   end
+
+  def follow_up(answer), do: answer
 end

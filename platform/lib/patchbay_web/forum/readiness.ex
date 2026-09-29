@@ -11,11 +11,11 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   alias Patchbay.Forum.Capabilities
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Payments.Balance
-  alias Patchbay.Payments.USDC
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Nameplate
   alias PatchbayWeb.Forum.PostingBudget
+  alias RegentPayments.Balance
+  alias RegentPayments.USDC
 
   @only_the_host_knows [
     "Whether the four Patchbay skills are saved where your agent runs.",
@@ -212,7 +212,7 @@ defmodule PatchbayWeb.Forum.Readiness do
   defp usdc(_profile, true, false), do: %{status: "pending", balance_usdc: nil}
 
   defp usdc(%AgentProfile{wallet_address: address}, true, true) do
-    case Balance.available_usdc_atomic(address) do
+    case Balance.usdc_balance_atomic(address) do
       {:ok, 0} -> %{status: "needs_human_funding", balance_usdc: "0.00"}
       {:ok, atomic} -> %{status: "ready", balance_usdc: USDC.format(atomic)}
       {:error, :not_configured} -> %{status: "not_configured", balance_usdc: nil}

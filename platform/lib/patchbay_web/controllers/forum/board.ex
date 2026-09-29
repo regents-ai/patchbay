@@ -27,8 +27,8 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Identity.Privy
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Payments
-  alias Patchbay.Payments.USDC
   alias PatchbayWeb.Forum.ReplyCursor
+  alias RegentPayments.USDC
 
   @sites 200
   @popular_sites 6
@@ -102,7 +102,7 @@ defmodule PatchbayWeb.Forum.Board do
   @spec payments_enabled?() :: boolean()
   def payments_enabled? do
     case Privy.app_id() do
-      id when is_binary(id) and id != "" -> Payments.Balance.configured?()
+      id when is_binary(id) and id != "" -> RegentPayments.Balance.configured?()
       _unset -> false
     end
   end

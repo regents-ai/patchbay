@@ -11,13 +11,14 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
 
   alias Patchbay.Assist
   alias Patchbay.Identity
-  alias Patchbay.Payments
+  alias Patchbay.Payments.AgentTip
+  alias Patchbay.Payments.JevAssist
+  alias Patchbay.SettledPayment
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.Plugs.WalletAuthor
   alias PatchbayWeb.WalletSigner
 
-  @facilitator Patchbay.Payments.Facilitator
   @wallet "0x" <> String.duplicate("d", 40)
 
   @args %{
@@ -46,14 +47,9 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       end)
 
     old_assist = Application.get_env(:patchbay, :assist)
-    old_facilitator = Application.fetch_env!(:patchbay, @facilitator)
     Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
-    replace_facilitator(Keyword.merge(old_facilitator, url: payment, auth: nil))
-
-    on_exit(fn ->
-      Application.put_env(:patchbay, :assist, old_assist)
-      replace_facilitator(old_facilitator)
-    end)
+    Patchbay.PaymentService.stand_in(payment)
+    on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
 
     wallet = WalletSigner.new()
 
@@ -217,18 +213,15 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     end
 
     # The terms hold the request to the same rules whoever prepares them.
-    assert {:error, _} =
-             Payments.prepare_jev_assist(%{request: Map.put(@args, "sign_in", "required")},
-               actor: c.payer
-             )
+    for request <- [
+          Map.put(@args, "sign_in", "required"),
+          Map.put(@args, "site_url", "http://x.example")
+        ] do
+      assert {:error, _} =
+               RegentPayments.Purchase.prepare(JevAssist, %{request: request}, c.payer)
+    end
 
-    assert {:error, _} =
-             Payments.prepare_jev_assist(
-               %{request: Map.put(@args, "site_url", "http://x.example")},
-               actor: c.payer
-             )
-
-    assert {:error, _} = Payments.prepare_jev_assist(%{request: @args}, actor: nil)
+    assert {:error, _} = RegentPayments.Purchase.prepare(JevAssist, %{request: @args}, nil)
 
     Application.put_env(:patchbay, :assist, pay_to_address: " ")
 
@@ -270,9 +263,9 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert {:ok, _} = WalletAuthor.before_verify(conn, %{})
 
     # A wallet may read its own assist payment back; nobody else can.
-    assert {:ok, found} = Purchase.read(wallet, intent.id)
+    assert {:ok, found} = RegentPayments.Purchase.read(wallet, intent.id)
     assert found.kind == :jev_assist
-    assert {:error, :not_found} = Purchase.read(c.payer, intent.id)
+    assert {:error, :not_found} = RegentPayments.Purchase.read(c.payer, intent.id)
 
     # The agent door's read is behind the wallet proof, not a page's cookie.
     cookie_read = c.payer |> signed_in() |> get(~p"/api/agent/assists/#{intent.target_id}")
@@ -282,24 +275,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
   test "a settled assist whose run was not opened is opened on the next call", c do
     assert {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args, nil)
 
-    {:ok, _receipt} =
-      Payments.record_payment_receipt(
-        %{
-          payment_intent_id: intent.id,
-          payment_identifier: intent.payment_identifier,
-          payer_address: c.payer.wallet_address,
-          network: intent.network,
-          asset: intent.asset,
-          amount_atomic: intent.amount_atomic,
-          facilitator: "http://127.0.0.1/fixture",
-          transaction_hash: "0x" <> String.duplicate("7", 64),
-          payment_response: %{"success" => true},
-          settled_at: DateTime.utc_now()
-        },
-        actor: c.payer
-      )
-
-    {:ok, _settled} = Ash.update(intent, %{}, action: :mark_settled, actor: c.payer)
+    SettledPayment.settle!(intent, c.payer)
     assert {:error, _} = Assist.get_run(intent.target_id, actor: c.payer)
 
     applied =
@@ -312,7 +288,9 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert applied["run_id"] == intent.target_id
     assert applied["run_status"] == "paid"
     assert {:ok, %{status: :paid}} = Assist.get_run(intent.target_id, actor: c.payer)
-    assert {:ok, %{status: :applied}} = Payments.get_payment_intent(intent.id, actor: c.payer)
+
+    assert {:ok, %{status: :applied}} =
+             RegentPayments.get_payment_intent(intent.id, actor: c.payer)
   end
 
   test "a run opens only from the payer's own settled assist payment", c do
@@ -322,8 +300,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert {:error, _} =
              Assist.open_run(%{intent: intent, browser_session_id: nil}, actor: c.payer)
 
-    {:ok, settled} =
-      Ash.update(intent, %{}, action: :mark_settled, actor: c.payer)
+    {settled, _receipt} = SettledPayment.settle!(intent, c.payer)
 
     # Somebody else's settled payment opens nothing.
     assert {:error, _} =
@@ -350,16 +327,20 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
 
     # A settled payment of another kind opens nothing either.
     {:ok, tip} =
-      Payments.prepare_agent_tip(%{amount_atomic: 1_000_000, recipient: c.other}, actor: c.payer)
+      RegentPayments.Purchase.prepare(
+        AgentTip,
+        %{amount_atomic: 1_000_000, recipient: c.other},
+        c.payer
+      )
 
-    {:ok, tip} = Ash.update(tip, %{}, action: :mark_settled, actor: c.payer)
+    {tip, _receipt} = SettledPayment.settle!(tip, c.payer)
     assert {:error, _} = Assist.open_run(%{intent: tip, browser_session_id: nil}, actor: c.payer)
   end
 
   test "one assist at a time: a second request while one is open is refused, unpaid, with the first",
        c do
     {:ok, intent} = Purchase.prepare_jev_assist(c.payer, @args, nil)
-    {:ok, settled} = Ash.update(intent, %{}, action: :mark_settled, actor: c.payer)
+    {settled, _receipt} = SettledPayment.settle!(intent, c.payer)
     {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: c.payer)
 
     # Paid and not yet picked up counts as open, as does under way.
@@ -440,16 +421,4 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
   defp answer(conn, status, body),
     do:
       conn |> put_resp_content_type("application/json") |> send_resp(status, Jason.encode!(body))
-
-  defp replace_facilitator(options) do
-    Supervisor.terminate_child(Patchbay.Supervisor, @facilitator)
-    Supervisor.delete_child(Patchbay.Supervisor, @facilitator)
-    Application.put_env(:patchbay, @facilitator, options)
-
-    {:ok, _} =
-      Supervisor.start_child(
-        Patchbay.Supervisor,
-        {X402.Facilitator, Keyword.put(options, :name, @facilitator)}
-      )
-  end
 end

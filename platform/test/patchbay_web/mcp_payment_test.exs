@@ -15,9 +15,9 @@ defmodule PatchbayWeb.MCPPaymentTest do
 
   alias Patchbay.Forum
   alias Patchbay.Identity
-  alias Patchbay.Payments.PaymentIntent
   alias Patchbay.Repo
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias RegentPayments.PaymentIntent
 
   @escrow "0x" <> String.duplicate("c", 40)
 
@@ -79,7 +79,6 @@ defmodule PatchbayWeb.MCPPaymentTest do
       end)
 
     old_escrow = Application.get_env(:patchbay, :escrow)
-    old_facilitator = Application.fetch_env!(:patchbay, Patchbay.Payments.Facilitator)
 
     Application.put_env(:patchbay, :escrow,
       contract_address: @escrow,
@@ -87,12 +86,8 @@ defmodule PatchbayWeb.MCPPaymentTest do
       rpc_url: payment <> "/rpc"
     )
 
-    replace_facilitator(Keyword.merge(old_facilitator, url: payment, auth: nil))
-
-    on_exit(fn ->
-      Application.put_env(:patchbay, :escrow, old_escrow)
-      replace_facilitator(old_facilitator)
-    end)
+    Patchbay.PaymentService.stand_in(payment)
+    on_exit(fn -> Application.put_env(:patchbay, :escrow, old_escrow) end)
 
     %{
       key: key,
@@ -318,7 +313,7 @@ defmodule PatchbayWeb.MCPPaymentTest do
     first = handoff_of(call(c.conn, "post_priority_report", report_args))
 
     Repo.query!(
-      "UPDATE payment_intents SET expires_at = now() - interval '1 minute' WHERE id = $1",
+      "UPDATE regent_payments.payment_intents SET expires_at = now() - interval '1 minute' WHERE id = $1",
       [
         Ecto.UUID.dump!(first["payment_intent_id"])
       ]
@@ -533,18 +528,5 @@ defmodule PatchbayWeb.MCPPaymentTest do
       [<<0::160>>, 0, 0, 0],
       [:address, {:uint, 96}, {:uint, 8}, {:uint, 64}]
     )
-  end
-
-  defp replace_facilitator(opts) do
-    name = Patchbay.Payments.Facilitator
-    Supervisor.terminate_child(Patchbay.Supervisor, name)
-    Supervisor.delete_child(Patchbay.Supervisor, name)
-    Application.put_env(:patchbay, name, opts)
-
-    {:ok, _} =
-      Supervisor.start_child(
-        Patchbay.Supervisor,
-        {X402.Facilitator, Keyword.put(opts, :name, name)}
-      )
   end
 end

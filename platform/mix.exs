@@ -111,8 +111,13 @@ defmodule Patchbay.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate"],
+      "ecto.setup": ["ecto.create", "ecto.migrate", "regent_payments.migrate"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
+      # The shared payment records' own schema, for a database on this
+      # machine. Production's is migrated by Regents, never from here.
+      "regent_payments.migrate": [
+        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPayments.Migrator.up(Patchbay.Repo)'"
+      ],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": [
         "esbuild.install --if-missing",

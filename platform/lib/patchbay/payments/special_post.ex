@@ -1,57 +1,138 @@
 defmodule Patchbay.Payments.SpecialPost do
   @moduledoc """
-  What a settled payment for a paid priority report does: publishes the report
-  exactly as the payment's terms froze it, then hands Base the request to
-  record the settled money in escrow against it.
+  A paid priority report: the asker's money is paid into the escrow contract,
+  which holds it for the answer the asker accepts.
 
-  The report comes from the frozen terms and nothing else: the id, the tool
-  version, the draft and the amount are all read off the intent, and the payer
-  is the actor who paid. Human reports also retain the browser session from the settling request;
-  autonomous reports have no browser session and belong to their wallet author.
+  The terms freeze the report exactly as the asker drafted it, the tool
+  version it is about, the escrow the money goes to, how much, and the id the
+  report will be published under. Once the money settles, the report is
+  published from those terms and nothing else, in the same transaction that
+  marks the payment applied, so a draft changed after the fact cannot be what
+  gets filed.
 
-  The escrow credit is sent after the report is on the board, once the
-  payment has landed in a Base block: the contract refuses to record money it
-  does not hold yet. A credit that Base would not take is written on the
-  report as `credit_failed`, with the reason in the log, for a person to send
-  again with `credit_again/1`, rather than undoing a report somebody has
-  paid for. A credit Base took is written
-  as `credit_submitted`: the payment is received, and the bounty is
-  confirmed only once the chain says the post is funded, which
-  `Patchbay.Escrow.Watch` reads and records.
+  The escrow credit, Base's record of the money against the report, is sent
+  after that transaction has committed (`credit/2`), once the payment has
+  landed in a Base block: the contract refuses to record money it does not
+  hold yet. Each report's credit is handed over once: the hand-over is claimed
+  on the report before anything is sent. A credit Base would not take is
+  written on the report as `credit_failed`, with the reason in the log, for a
+  person to send again with `credit_again/1`, rather than undoing a report
+  somebody has paid for. A credit Base took is written as `credit_submitted`:
+  the payment is received, and the bounty is confirmed only once the chain
+  says the post is funded, which `Patchbay.Escrow.Watch` reads and records.
   """
+
+  @behaviour RegentPayments.Offer
 
   require Logger
 
+  alias Ash.Error.Changes.InvalidChanges
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.Report
-  alias Patchbay.Payments
-  alias Patchbay.Payments.PaymentIntent
-  alias Patchbay.Payments.PaymentReceipt
+  alias RegentPayments.Offer
+  alias RegentPayments.USDC
+
+  # A paid priority report holds enough to be worth answering, and no more
+  # than one call may put into escrow without a person deciding.
+  @min_atomic 1_000_000
+  @max_atomic 100_000_000
 
   # How long a handed-over credit may go unconfirmed before it is a matter
   # for a person, not a failure: Base is still asked, and a late confirmation
   # still counts.
   @attention_after_minutes 30
 
-  @doc """
-  Publishes the report a settled intent paid for and hands over its escrow
-  credit. The actor is the payer; the session is the one the settling request
-  carries.
-  """
-  @spec publish(PaymentIntent.t(), PaymentReceipt.t(),
-          actor: struct(),
-          browser_session_id: String.t() | nil
-        ) ::
-          {:ok, Report.t()} | {:error, term()}
-  def publish(%PaymentIntent{kind: :special_post} = intent, %PaymentReceipt{} = receipt, opts) do
-    actor = Keyword.fetch!(opts, :actor)
-    browser_session_id = Keyword.fetch!(opts, :browser_session_id)
+  @not_set_up "Paid priority posts are not set up on this Patchbay."
 
-    with {:ok, report} <- file(intent, actor, browser_session_id) do
-      credit(report, intent, receipt)
+  @impl true
+  def kind, do: :special_post
+
+  @impl true
+  def target_type, do: :report
+
+  @impl true
+  def payer?(_actor), do: true
+
+  @doc """
+  Freezes a paid priority report of `draft` about `tool` (with its site
+  loaded), holding `amount_atomic` in escrow.
+  """
+  @impl true
+  def freeze(%{tool: tool, draft: draft, amount_atomic: amount_atomic}, actor) do
+    with :ok <- Offer.amount_between(amount_atomic, @min_atomic, @max_atomic),
+         {:ok, escrow_address} <- escrow_address(),
+         :ok <- files?(draft, tool, amount_atomic, actor) do
+      # The report does not exist yet, so its id is minted here and frozen
+      # with the rest.
+      report_id = Ash.UUID.generate()
+
+      {:ok,
+       %{
+         amount_atomic: amount_atomic,
+         pay_to_address: escrow_address,
+         target_id: report_id,
+         payload:
+           author_origin(
+             %{"report_id" => report_id, "tool_id" => tool.id, "draft" => draft},
+             actor
+           ),
+         recipient_snapshot: [
+           %{"wallet_address" => escrow_address, "amount_atomic" => amount_atomic}
+         ],
+         effect_summary:
+           "Hold #{USDC.format(amount_atomic)} USDC in escrow for a paid priority report on " <>
+             "#{tool.name} at #{tool.site.origin}; the accepted answer's author receives 90% " <>
+             "and Patchbay 10%"
+       }}
     end
+  end
+
+  @doc """
+  Publishes the report a settled intent paid for, exactly as its terms froze
+  it. The payer is the actor; a report paid for on a page is filed under the
+  browser `context` names, and a wallet author's has none.
+  """
+  @impl true
+  def carry_out(intent, _receipt, actor, context) do
+    %{"report_id" => report_id, "tool_id" => tool_id, "draft" => draft} = intent.payload
+
+    filed =
+      draft
+      |> OtherSiteReport.report_attributes(tool_id)
+      |> Map.merge(%{
+        id: report_id,
+        browser_session_id: context.browser_session_id,
+        priority_amount_atomic: intent.amount_atomic,
+        payment_intent_id: intent.id
+      })
+      |> Forum.file_priority_report(actor: actor)
+
+    with {:ok, _report} <- filed, do: {:ok, :complete}
+  end
+
+  # A report whose filing failed stays settled with its receipt, for a person
+  # to publish by hand; it is never filed on a guess from a later call.
+  @impl true
+  def resumes?, do: false
+
+  @doc """
+  Hands Base the escrow credit for the report an applied intent published,
+  when nobody has handed it over yet. Safe to call on every read of the
+  intent: the hand-over is claimed on the report first, and only the call
+  that claims it sends anything.
+  """
+  @spec credit(RegentPayments.PaymentIntent.t(), RegentPayments.PaymentReceipt.t()) :: :ok
+  def credit(intent, receipt) do
+    # Patchbay's own step on the report its payment published.
+    with {:ok, %Report{escrow_status: nil} = report} <-
+           Forum.get_report(intent.target_id, authorize?: false),
+         {:ok, claimed} <- Forum.claim_escrow_credit(report, authorize?: false) do
+      _ = send_credit(claimed, intent, receipt)
+    end
+
+    :ok
   end
 
   @doc """
@@ -65,11 +146,12 @@ defmodule Patchbay.Payments.SpecialPost do
     # so the reads are Patchbay's own.
     with {:ok, report} <- Forum.get_report(report_id, authorize?: false),
          :credit_failed <- report.escrow_status,
-         {:ok, intent} <- Payments.get_payment_intent(report.payment_intent_id, authorize?: false),
-         # Same as above: Patchbay's own read of the receipt that paid.
-         {:ok, receipt} <-
-           Ash.get(PaymentReceipt, %{payment_identifier: intent.id}, authorize?: false) do
-      credit(report, intent, receipt)
+         {:ok, intent} <-
+           RegentPayments.get_payment_intent(report.payment_intent_id,
+             authorize?: false,
+             load: [:receipt]
+           ) do
+      send_credit(report, intent, intent.receipt)
     else
       status when is_atom(status) -> {:error, {:not_credit_failed, status}}
       {:error, error} -> {:error, error}
@@ -106,21 +188,47 @@ defmodule Patchbay.Payments.SpecialPost do
   @spec attention_after_minutes() :: pos_integer()
   def attention_after_minutes, do: @attention_after_minutes
 
-  defp file(intent, actor, browser_session_id) do
-    %{"report_id" => report_id, "tool_id" => tool_id, "draft" => draft} = intent.payload
-
-    draft
-    |> OtherSiteReport.report_attributes(tool_id)
-    |> Map.merge(%{
-      id: report_id,
-      browser_session_id: browser_session_id,
-      priority_amount_atomic: intent.amount_atomic,
-      payment_intent_id: intent.id
-    })
-    |> Forum.file_priority_report(actor: actor)
+  defp escrow_address do
+    case Escrow.contract_address() do
+      nil -> {:error, InvalidChanges.exception(message: @not_set_up)}
+      address -> {:ok, address}
+    end
   end
 
-  defp credit(report, intent, receipt) do
+  # A wallet author pays and reads its intent back through the wallet-signed
+  # endpoints, and the terms say so.
+  defp author_origin(payload, %{authentication_origin: :wallet}),
+    do: Map.put(payload, "author_origin", "wallet")
+
+  defp author_origin(payload, _actor), do: payload
+
+  # The draft is run through the forum's own filing action, without being
+  # written, and every reason the forum gives is handed back as a reason of
+  # these terms, so the report published after settlement is one the forum
+  # would have accepted. The ids and the session it is built with stand in
+  # for the ones the settlement will carry; none of them is what the forum's
+  # rules are about.
+  defp files?(draft, tool, amount_atomic, actor) do
+    filing =
+      Ash.Changeset.for_create(
+        Report,
+        :file_priority_report,
+        draft
+        |> OtherSiteReport.report_attributes(tool.id)
+        |> Map.merge(%{
+          id: Ash.UUID.generate(),
+          browser_session_id:
+            if(actor.authentication_origin == :wallet, do: nil, else: Ash.UUID.generate()),
+          priority_amount_atomic: amount_atomic,
+          payment_intent_id: Ash.UUID.generate()
+        }),
+        actor: actor
+      )
+
+    if filing.valid?, do: :ok, else: {:error, filing.errors}
+  end
+
+  defp send_credit(report, intent, receipt) do
     {status, tx_hash} =
       with :ok <- Escrow.await_landed(receipt.transaction_hash),
            {:ok, tx_hash} <-

@@ -32,7 +32,6 @@ defmodule Patchbay.Escrow.Watch do
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.PriorityRefund
-  alias Patchbay.Payments
   alias Patchbay.Payments.SpecialPost
 
   @default_confirm_interval :timer.seconds(30)
@@ -145,7 +144,7 @@ defmodule Patchbay.Escrow.Watch do
   # The wallet the receipt names, downcased as the contract names it, or nil
   # when the payment cannot be found, which no funded post can match.
   defp paying_wallet(report) do
-    case Payments.get_payment_intent(report.payment_intent_id,
+    case RegentPayments.get_payment_intent(report.payment_intent_id,
            load: [:receipt],
            authorize?: false
          ) do

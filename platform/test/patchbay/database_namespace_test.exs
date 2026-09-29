@@ -28,9 +28,7 @@ defmodule Patchbay.DatabaseNamespaceTest do
     Repo.query!("CREATE SCHEMA patchbay")
     Repo.query!("CREATE TABLE patchbay.forum_sites (LIKE public.forum_sites INCLUDING ALL)")
 
-    for table <- ~w(agent_profiles payment_intents payment_receipts) do
-      Repo.query!("CREATE TABLE patchbay.#{table} (LIKE public.#{table} INCLUDING ALL)")
-    end
+    Repo.query!("CREATE TABLE patchbay.agent_profiles (LIKE public.agent_profiles INCLUDING ALL)")
 
     Repo.query!(
       "CREATE TABLE patchbay.schema_migrations (LIKE public.schema_migrations INCLUDING ALL)"
@@ -41,7 +39,7 @@ defmodule Patchbay.DatabaseNamespaceTest do
     :ok
   end
 
-  test "payment ownership stays enforced inside the selected product namespace" do
+  test "the shared payment schema overrides the product default" do
     payer =
       Patchbay.Identity.upsert_from_privy!(%{
         privy_user_id: "namespace-payer",
@@ -55,17 +53,17 @@ defmodule Patchbay.DatabaseNamespaceTest do
       })
 
     assert {:ok, intent} =
-             Patchbay.Payments.prepare_agent_tip(%{amount_atomic: 1_000_000, recipient: other},
-               actor: payer
+             RegentPayments.Purchase.prepare(
+               Patchbay.Payments.AgentTip,
+               %{amount_atomic: 1_000_000, recipient: other},
+               payer
              )
 
-    assert {:ok, %{id: id}} = Patchbay.Payments.get_payment_intent(intent.id, actor: payer)
+    assert {:ok, %{id: id}} = RegentPayments.get_payment_intent(intent.id, actor: payer)
     assert id == intent.id
-    assert {:error, _} = Patchbay.Payments.get_payment_intent(intent.id, actor: other)
-    assert {:error, _} = Patchbay.Payments.get_payment_intent(intent.id, actor: nil)
 
-    assert [[0]] ==
-             Repo.query!("SELECT count(*) FROM public.payment_intents WHERE id=$1", [
+    assert [[intent.id]] ==
+             Repo.query!("SELECT id::text FROM regent_payments.payment_intents WHERE id=$1", [
                Ecto.UUID.dump!(intent.id)
              ]).rows
   end

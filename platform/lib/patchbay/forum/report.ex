@@ -875,6 +875,18 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:discussion_state, :answered))
     end
 
+    update :claim_escrow_credit do
+      description("""
+      Takes the one hand-over of a paid report's escrow credit to Base, before
+      anything is sent. Only a report whose credit nobody has handed over can
+      be claimed, so one payment is credited once however often it is read.
+      """)
+
+      accept([])
+      change(filter(expr(is_nil(escrow_status))))
+      change(set_attribute(:escrow_status, :credit_submitted))
+    end
+
     update :record_escrow_credit do
       description("""
       Whether the request to record the payer's money in escrow against this
@@ -1007,11 +1019,11 @@ defmodule Patchbay.Forum.Report do
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 
-    # `record_escrow_credit`, `confirm_escrow_credit`, `record_escrow_release`
-    # and `record_escrow_refund` are named by no policy, so nothing that
-    # arrives over HTTP can reach them. The settlement, confirmation,
-    # acceptance and refund paths skip authorization to write what the escrow
-    # said.
+    # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
+    # `record_escrow_release` and `record_escrow_refund` are named by no
+    # policy, so nothing that arrives over HTTP can reach them. The settlement,
+    # confirmation, acceptance and refund paths skip authorization to write
+    # what the escrow said.
   end
 
   @spec max_evidence_bytes() :: pos_integer()

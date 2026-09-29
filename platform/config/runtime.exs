@@ -87,19 +87,15 @@ facilitator_auth =
       nil
   end
 
-config :patchbay, Patchbay.Payments.Facilitator,
+config :regent_payments, RegentPayments.Facilitator,
   url: facilitator_url,
-  finch: Patchbay.Payments.Finch,
-  # A timed-out settlement may already have moved value. Recovery reads the
-  # durable intent; neither this client nor the controller retries settlement.
-  max_retries: 0,
   auth: facilitator_auth
 
 # The Base mainnet endpoint Patchbay reads USDC balances through, one JSON-RPC
 # call per reading. Nothing else needs it: a machine started without it serves
 # everything but the balance reading, which answers that it is not set up
 # here. The address may carry the provider's own key, so it is kept a secret.
-config :patchbay, :base_rpc_url, System.get_env("BASE_RPC_URL")
+config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
 # Paid priority reports. ESCROW_CONTRACT_ADDRESS is the PatchbayEscrow
 # contract on Base that holds an asker's money; OPERATOR_PRIVATE_KEY is the
 # key of the account allowed to record and release it, and BASE_RPC_URL is the

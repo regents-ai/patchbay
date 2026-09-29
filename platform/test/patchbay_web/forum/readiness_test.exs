@@ -17,11 +17,11 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
 
   setup do
     previous_privy = Application.get_env(:patchbay, :privy, [])
-    previous_rpc = Application.get_env(:patchbay, :base_rpc_url)
+    previous_rpc = Application.get_env(:regent_payments, :base_rpc_url)
 
     on_exit(fn ->
       Application.put_env(:patchbay, :privy, previous_privy)
-      Application.put_env(:patchbay, :base_rpc_url, previous_rpc)
+      Application.put_env(:regent_payments, :base_rpc_url, previous_rpc)
     end)
 
     %{previous_privy: previous_privy}
@@ -34,12 +34,12 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
       Keyword.put(List.wrap(previous_privy), :app_id, "did:privy:test")
     )
 
-    Application.put_env(:patchbay, :base_rpc_url, rpc_url)
+    Application.put_env(:regent_payments, :base_rpc_url, rpc_url)
   end
 
   defp payments_off(%{previous_privy: previous_privy}) do
     Application.put_env(:patchbay, :privy, Keyword.delete(List.wrap(previous_privy), :app_id))
-    Application.put_env(:patchbay, :base_rpc_url, nil)
+    Application.put_env(:regent_payments, :base_rpc_url, nil)
   end
 
   # A Base read endpoint that answers every balanceOf with one word.

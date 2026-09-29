@@ -2,40 +2,24 @@ defmodule Patchbay.Assist.Forward do
   @moduledoc """
   Hands an assist's fee on from the operator wallet to the REGENT revenue
   staking contract on Base, as revenue tagged `patchbay.assist` and
-  referenced to the wallet that paid it.
+  referenced to the wallet that paid it, through the payments library's fee
+  route (`RegentPayments.FeeForward`).
 
-  The fee arrives in the operator wallet as a plain USDC transfer, which is
-  all an x402 payment can be. From there it takes two transactions signed
-  with the operator key: an approval of exactly the fee to the staking
-  contract, and the deposit itself once the approval is on the chain. What
-  came of it is written on the run, with the deposit's transaction hash.
-  A fee that could not be forwarded is left for a person to re-run with
-  `run/1`; it never withholds the assist.
+  What came of it is written on the run, with the deposit's transaction hash
+  when there is one. A fee that could not be forwarded is left for a person
+  to re-run with `run/1`; it never withholds the assist. A deposit that was
+  handed to Base without an answer may still land, so the log says to look
+  on the chain before running it again.
   """
 
   require Logger
 
-  alias Ethers.Contracts.ERC20
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
-  alias Patchbay.Assist.Staking
   alias Patchbay.Escrow
-  alias Patchbay.Payments
-  alias Patchbay.Payments.USDC
+  alias RegentPayments.FeeForward
 
   @source_tag "patchbay.assist"
-  @receipt_every_ms 2_000
-  @receipt_tries 30
-
-  @doc "The tag the deposit carries on the chain, as the contract's 32 bytes."
-  @spec source_tag() :: <<_::256>>
-  def source_tag, do: String.pad_trailing(@source_tag, 32, <<0>>)
-
-  @doc "The reference the deposit carries: the paying wallet, left-padded to 32 bytes."
-  @spec source_ref(String.t()) :: <<_::256>>
-  def source_ref("0x" <> hex) when byte_size(hex) == 40 do
-    <<0::size(96), Base.decode16!(hex, case: :mixed)::binary-size(20)>>
-  end
 
   @doc """
   Forwards the run's fee if it is still waiting to be forwarded, and writes
@@ -53,8 +37,8 @@ defmodule Patchbay.Assist.Forward do
 
   defp forward(run) do
     case submit(run) do
-      {:ok, tx_hash} ->
-        record(run, :deposited, tx_hash)
+      {:ok, %{deposit: deposit}} ->
+        record(run, :deposited, deposit)
 
       {:error, :not_configured} ->
         Logger.warning(
@@ -63,76 +47,33 @@ defmodule Patchbay.Assist.Forward do
 
         :ok
 
+      {:error, {:deposit_unknown, %{deposit: deposit}}} ->
+        Logger.error(
+          "Assist #{run.id}: fee deposit #{inspect(deposit)} was handed to Base with no answer; " <>
+            "look on the chain before forwarding it again"
+        )
+
+        record(run, :failed, deposit)
+
+      {:error, {:deposit_reverted, %{deposit: deposit}}} ->
+        Logger.error("Assist #{run.id}: fee deposit #{deposit} reverted")
+        record(run, :failed, deposit)
+
       {:error, reason} ->
         Logger.error("Assist #{run.id}: fee forward failed: #{inspect(reason)}")
         record(run, :failed, nil)
     end
   end
 
-  @doc """
-  Sends the approval and the deposit for the run's fee, and returns the
-  deposit's transaction hash once the chain has it.
-  """
-  @spec submit(Run.t()) :: {:ok, String.t()} | {:error, term()}
-  def submit(%Run{} = run) do
+  defp submit(run) do
     with {:ok, staking} <- staking_address(),
-         {:ok, signer} <- Escrow.signer(),
-         {:ok, %{amount: amount, payer: payer}} <- payment(run),
-         {:ok, approval} <- send(ERC20.approve(staking, amount), USDC.asset(), signer),
-         :ok <- mined(approval, signer),
-         {:ok, deposit} <-
-           send(Staking.deposit_usdc(amount, source_tag(), source_ref(payer)), staking, signer),
-         :ok <- mined(deposit, signer) do
-      {:ok, deposit}
-    end
-  rescue
-    # Whatever went wrong, the exception is raised from a call that was handed
-    # the operator key, so it is named and not carried.
-    _exception -> {:error, :submit_failed}
-  end
-
-  # The fee and the wallet it came from, as the settled payment recorded them.
-  defp payment(run) do
-    # The worker reads the payment its own run was bought with.
-    case Payments.get_payment_intent(run.payment_intent_id, authorize?: false, load: [:receipt]) do
-      {:ok, %{amount_atomic: amount, receipt: %{payer_address: payer}}} when is_binary(payer) ->
-        {:ok, %{amount: amount, payer: payer}}
-
-      {:ok, _no_receipt} ->
-        {:error, :no_receipt}
-
-      {:error, error} ->
-        {:error, error}
-    end
-  end
-
-  defp send(tx_data, to, signer) do
-    Ethers.send_transaction(tx_data,
-      from: signer.address,
-      to: to,
-      signer: Ethers.Signer.Local,
-      signer_opts: [private_key: signer.private_key],
-      rpc_opts: [url: signer.rpc_url]
-    )
-  end
-
-  # Waits for the chain to take the transaction: Base seals a block every two
-  # seconds, so the receipt is read on that beat, for a minute at most.
-  defp mined(tx_hash, signer), do: mined(tx_hash, signer, @receipt_tries)
-
-  defp mined(_tx_hash, _signer, 0), do: {:error, :not_mined}
-
-  defp mined(tx_hash, signer, tries_left) do
-    case Ethers.get_transaction_receipt(tx_hash, rpc_opts: [url: signer.rpc_url]) do
-      {:ok, %{"status" => "0x1"}} ->
-        :ok
-
-      {:ok, %{"status" => _reverted}} ->
-        {:error, {:reverted, tx_hash}}
-
-      _not_yet ->
-        Process.sleep(@receipt_every_ms)
-        mined(tx_hash, signer, tries_left - 1)
+         {:ok, signer} <- Escrow.signer() do
+      FeeForward.submit(run.payment_intent_id,
+        kind: :jev_assist,
+        staking: staking,
+        signer: signer,
+        source_tag: @source_tag
+      )
     end
   end
 

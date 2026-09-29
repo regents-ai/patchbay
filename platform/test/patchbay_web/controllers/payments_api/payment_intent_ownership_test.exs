@@ -1,8 +1,11 @@
 defmodule PatchbayWeb.PaymentsAPI.PaymentIntentOwnershipTest do
+  # Patchbay's doors to a payment intent answer only its payer. Who may read
+  # or change the record itself is the payments library's, and its own tests
+  # cover it.
   use PatchbayWeb.ConnCase, async: true
 
   alias Patchbay.Identity
-  alias Patchbay.Payments
+  alias Patchbay.Payments.AgentTip
   alias PatchbayWeb.Plugs.CurrentProfile
 
   setup do
@@ -10,24 +13,13 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentOwnershipTest do
     other = profile("b")
 
     {:ok, intent} =
-      Payments.prepare_agent_tip(%{amount_atomic: 1_000_000, recipient: other}, actor: payer)
+      RegentPayments.Purchase.prepare(
+        AgentTip,
+        %{amount_atomic: 1_000_000, recipient: other},
+        payer
+      )
 
     %{payer: payer, other: other, intent: intent}
-  end
-
-  test "named reads and row locks reveal an intent only to its payer", context do
-    for read <- [&Payments.get_payment_intent/2, &Payments.lock_payment_intent/2] do
-      assert {:ok, found} = read.(context.intent.id, actor: context.payer)
-      assert found.payload == context.intent.payload
-      assert found.id == context.intent.id
-
-      assert {:error, _} = read.(context.intent.id, actor: context.other)
-      assert {:error, _} = read.(context.intent.id, actor: nil)
-    end
-
-    assert {:ok, unchanged} = Payments.get_payment_intent(context.intent.id, actor: context.payer)
-    assert unchanged.status == :prepared
-    assert unchanged.payload_digest == context.intent.payload_digest
   end
 
   test "HTTP owner read succeeds and another payer cannot distinguish an absent intent",
@@ -56,49 +48,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentOwnershipTest do
       |> json_response(404)
 
     refute Map.has_key?(body, "id")
-    assert {:ok, unchanged} = Payments.get_payment_intent(context.intent.id, actor: context.payer)
+
+    assert {:ok, unchanged} =
+             RegentPayments.get_payment_intent(context.intent.id, actor: context.payer)
+
     assert unchanged.status == :prepared
     assert unchanged.payload == context.intent.payload
-  end
-
-  test "payer can recover an already settled receipt without submitting another payment",
-       context do
-    hash = "0x" <> String.duplicate("1", 64)
-
-    {:ok, receipt} =
-      Payments.record_payment_receipt(
-        %{
-          payment_intent_id: context.intent.id,
-          payment_identifier: context.intent.payment_identifier,
-          payer_address: context.payer.wallet_address,
-          network: context.intent.network,
-          asset: context.intent.asset,
-          amount_atomic: context.intent.amount_atomic,
-          facilitator: "https://example.invalid/facilitator",
-          transaction_hash: hash,
-          payment_response: %{
-            "success" => true,
-            "transaction" => hash,
-            "network" => context.intent.network
-          },
-          settled_at: DateTime.utc_now()
-        },
-        actor: context.payer
-      )
-
-    assert {:ok, _} = Payments.mark_settled(context.intent, actor: context.payer)
-    assert {:ok, locked} = Payments.lock_payment_intent(context.intent.id, actor: context.payer)
-    assert locked.receipt.id == receipt.id
-
-    body =
-      context.conn
-      |> signed_in(context.payer)
-      |> post(~p"/api/payment_intents/#{context.intent.id}/execute", %{})
-      |> json_response(200)
-
-    assert body["payment_intent_id"] == context.intent.id
-    assert body["receipt"]["transaction_hash"] == hash
-    assert body["amount_usdc"] == "1.00"
   end
 
   test "anonymous HTTP reads require sign-in", context do

@@ -38,9 +38,9 @@ defmodule PatchbayDev.PaymentsLab do
   use PatchbayWeb, :controller
 
   alias Patchbay.Identity
-  alias Patchbay.Payments.USDC
-  alias PatchbayWeb.PaymentsAPI.WalletPayment
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias RegentPayments.USDC
+  alias RegentPayments.WalletPayment
 
   @wallets [
     {"A", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"},
@@ -116,7 +116,7 @@ defmodule PatchbayDev.PaymentsLab do
       })
 
     conn
-    |> put_session(CurrentProfile.session_key(), payer.id)
+    |> CurrentProfile.sign_in(payer.id)
     |> put_session("payments_lab_recipient", tipped.public_id)
     |> redirect(to: "/dev/lab/payments")
   end

@@ -15,7 +15,6 @@ defmodule PatchbayWeb.MCPAssistTest do
 
   alias Patchbay.Assist
   alias Patchbay.Identity
-  alias Patchbay.Payments.PaymentIntent
 
   @wallet "0x" <> String.duplicate("d", 40)
 
@@ -48,14 +47,9 @@ defmodule PatchbayWeb.MCPAssistTest do
       end)
 
     old_assist = Application.get_env(:patchbay, :assist)
-    old_facilitator = Application.fetch_env!(:patchbay, Patchbay.Payments.Facilitator)
     Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
-    replace_facilitator(Keyword.merge(old_facilitator, url: payment, auth: nil))
-
-    on_exit(fn ->
-      Application.put_env(:patchbay, :assist, old_assist)
-      replace_facilitator(old_facilitator)
-    end)
+    Patchbay.PaymentService.stand_in(payment)
+    on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
 
     %{key: key, address: address, other: %{key: other_key, address: other_address}}
   end
@@ -204,7 +198,7 @@ defmodule PatchbayWeb.MCPAssistTest do
   # The intents standing for a wallet's profile, counted as the test, not as
   # any caller: the count is what the door must not have grown.
   defp intents_of(profile) do
-    PaymentIntent
+    RegentPayments.PaymentIntent
     |> Ash.Query.filter(actor_profile_id == ^profile.id)
     |> Ash.count!(authorize?: false)
   end
@@ -257,17 +251,4 @@ defmodule PatchbayWeb.MCPAssistTest do
   defp answer(conn, status, body),
     do:
       conn |> put_resp_content_type("application/json") |> send_resp(status, Jason.encode!(body))
-
-  defp replace_facilitator(opts) do
-    name = Patchbay.Payments.Facilitator
-    Supervisor.terminate_child(Patchbay.Supervisor, name)
-    Supervisor.delete_child(Patchbay.Supervisor, name)
-    Application.put_env(:patchbay, name, opts)
-
-    {:ok, _} =
-      Supervisor.start_child(
-        Patchbay.Supervisor,
-        {X402.Facilitator, Keyword.put(opts, :name, name)}
-      )
-  end
 end

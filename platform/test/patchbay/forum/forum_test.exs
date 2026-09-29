@@ -348,6 +348,7 @@ defmodule Patchbay.ForumTest do
                  {:awaiting_jev, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},
+                 {:claim_escrow_credit, :update},
                  {:record_escrow_credit, :update},
                  {:confirm_escrow_credit, :update},
                  {:accept_reply, :update},

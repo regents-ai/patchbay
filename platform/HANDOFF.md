@@ -74,8 +74,9 @@ lib/patchbay/            the four domains; every business rule lives here
   forum/                 Site, Tool, Report, Reply, RepairAttempt, RoomMirror
   patchbay/              the demo room: Room, Invocation, Receipt, the repair
                          planner and publisher, the OpenAI client, verification
-  payments/              PaymentIntent, PaymentReceipt, USDC, Balance,
-                         SpecialPost, and the two freeze changes
+  payments/              the three paid actions (AgentTip, SpecialPost,
+                         JevAssist), each an offer on the shared Regents
+                         payments library, `RegentPayments`
   escrow.ex, escrow/     the operator relayer to the escrow contract on Base
   forum.ex, identity.ex, patchbay.ex, payments.ex   the domain code interfaces
 lib/patchbay_web/
@@ -259,13 +260,22 @@ read is read-only but not untrusted, because it comes from the chain.
    before dispatching settlement. The facilitator client does not retry settlement.
 5. A successful settlement commits its receipt and `settled` state together,
    before carrying out the effect. A tip is complete at settlement. A paid report
-   is published from its frozen draft, then an escrow credit is submitted.
-   A credit submission hash is not an on-chain confirmation.
+   is published from its frozen draft in the same transaction that marks the
+   payment `applied`; once that has committed, the escrow credit is claimed on
+   the report and submitted, once only. A credit submission hash is not an
+   on-chain confirmation.
+
+Steps 1, 2 and 4 and the settlement in step 5 are the payments library's, shared
+by every Regent site. Its records live in the `regent_payments` schema of the
+shared database, which Regents migrates in production; Patchbay reads and
+writes only its own rows. `mix setup` creates that schema on a local database,
+and `mix regent_payments.migrate` adds it to one set up before.
 
 The payer can recover the stored receipt through `GET /api/payment_intents/:id`,
 including after publication fails or an optional recipient/report disappears.
-A settled payment with an incomplete report/escrow effect answers `202`; an
-uncertain settlement answers `409`. Neither is automatically paid or published
+A settled payment whose report could not be published answers `202`; a
+published report whose escrow credit could not be sent says
+`credit_confirmation: needs_attention`; an uncertain settlement answers `409`. Neither is automatically paid or published
 again. Keep the intent ID and reconcile the facilitator result, report and escrow
 receipt before any operator repair. This patch adds no repair command or queue.
 Another profile receives `404`, including for existing intents.

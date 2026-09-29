@@ -11,7 +11,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   `_meta["x402/payment"]` as the x402 MCP transport says, after a first call
   answered with the terms. Accepting an answer and asking the bounty back
   move money without a payment, so the wallet signs for the exact action
-  instead (`PatchbayWeb.MCP.WalletProof`).
+  instead (`RegentPayments.WalletProof`).
 
   The purchase itself is `PatchbayWeb.PaymentsAPI.Purchase`, the one process
   every door runs, so asking for the same report at the same price again
@@ -22,14 +22,15 @@ defmodule PatchbayWeb.MCP.WalletTools do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Identity
-  alias Patchbay.Payments.USDC
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.ForumAPI.Refusal
-  alias PatchbayWeb.MCP.WalletProof
   alias PatchbayWeb.MD
   alias PatchbayWeb.PaymentsAPI.Purchase
+  alias RegentPayments.MCP
+  alias RegentPayments.USDC
+  alias RegentPayments.WalletProof
 
   @names ~w(post_priority_report get_payment_status accept_solution withdraw_priority_report request_assist get_assist)
 
@@ -112,7 +113,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
          {:ok, actor} <- active(named),
          {:ok, found} <-
            Purchase.special_post_on_offer(actor, Map.delete(arguments, "wallet_address")) do
-      request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
+      request = %{payment: MCP.payment(meta), payer: wallet, context: %{browser_session_id: nil}}
       purchase_answer(Purchase.execute(actor, found.id, request), @report_challenge)
     else
       {:error, failure} -> purchase_refusal(failure)
@@ -124,7 +125,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
          {:ok, named} <- Identity.upsert_from_wallet(%{wallet_address: wallet}),
          {:ok, actor} <- active(named),
          {:ok, found} <- Purchase.assist_on_offer(actor, Map.delete(arguments, "wallet_address")) do
-      request = %{payment: payment(meta), payer: wallet, browser_session_id: nil}
+      request = %{payment: MCP.payment(meta), payer: wallet, context: %{browser_session_id: nil}}
       purchase_answer(Purchase.execute(actor, found.id, request), @assist_challenge)
     else
       {:error, failure} -> purchase_refusal(failure)
@@ -153,7 +154,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
   def run("get_payment_status", %{"payment_intent_id" => id, "wallet_address" => wallet}, _meta) do
     with {:ok, wallet} <- wallet_address(wallet),
          {:ok, actor} <- wallet_profile(wallet),
-         {:ok, found} <- Purchase.read(actor, id) do
+         {:ok, found} <- RegentPayments.Purchase.read(actor, id) do
       {:ok, status_answer(found)}
     else
       {:error, failure} -> purchase_refusal(failure)
@@ -213,10 +214,11 @@ defmodule PatchbayWeb.MCP.WalletTools do
 
   # Naming the wallet
 
-  defp wallet_address(wallet) when is_binary(wallet) do
-    if Regex.match?(~r/\A0x[0-9a-fA-F]{40}\z/, wallet),
-      do: {:ok, String.downcase(wallet)},
-      else: {:error, {:invalid, [@wallet_shape]}}
+  defp wallet_address(wallet) do
+    case MCP.wallet(wallet) do
+      {:ok, wallet} -> {:ok, wallet}
+      :error -> {:error, {:invalid, [@wallet_shape]}}
+    end
   end
 
   # A read names a wallet that already acted; it makes no profile for one that
@@ -227,7 +229,9 @@ defmodule PatchbayWeb.MCP.WalletTools do
         active(profile)
 
       {:error, failure} ->
-        if Purchase.missing?(failure), do: {:error, :not_found}, else: {:error, failure}
+        if RegentPayments.Purchase.missing?(failure),
+          do: {:error, :not_found},
+          else: {:error, failure}
     end
   end
 
@@ -235,13 +239,6 @@ defmodule PatchbayWeb.MCP.WalletTools do
   # command-line one.
   defp active(%{status: :active} = profile), do: {:ok, profile}
   defp active(_suspended), do: {:error, :suspended}
-
-  defp payment(meta) do
-    case X402.MCP.fetch_payment(%{"_meta" => meta}) do
-      {:ok, payment} -> payment
-      :error -> nil
-    end
-  end
 
   # Paying for a report
 
@@ -258,7 +255,7 @@ defmodule PatchbayWeb.MCP.WalletTools do
       Purchase.payment_help(%{
         status: "applied",
         payment_intent_id: found.id,
-        receipt: Purchase.receipt_payload(receipt),
+        receipt: RegentPayments.Purchase.receipt_payload(receipt),
         amount_usdc: USDC.format(found.amount_atomic),
         effect_summary: found.effect_summary
       })
@@ -411,8 +408,13 @@ defmodule PatchbayWeb.MCP.WalletTools do
   defp proven(arguments, name, report_id, reply_id, act) do
     with {:ok, wallet} <- wallet_address(arguments["wallet_address"]),
          :ok <- ids(report_id, reply_id) do
-      action = %{action: name, report_id: report_id, reply_id: reply_id, wallet: wallet}
-      proof(action, Map.take(arguments, ["challenge", "signature"]), act)
+      action = %{
+        action: name,
+        subjects: [{"reportId", report_id}, {"replyId", reply_id}],
+        wallet: wallet
+      }
+
+      proof(action, arguments, act)
     end
   end
 
@@ -427,20 +429,22 @@ defmodule PatchbayWeb.MCP.WalletTools do
       else: {:error, :not_found}
   end
 
-  defp proof(action, %{"challenge" => challenge, "signature" => signature}, act) do
-    with :ok <- WalletProof.verify(action, challenge, signature),
-         {:ok, actor} <- payer_profile(action.wallet) do
-      act.(actor)
+  defp proof(action, arguments, act) do
+    case WalletProof.prove(action, arguments) do
+      :ok ->
+        with {:ok, actor} <- payer_profile(action.wallet), do: act.(actor)
+
+      {:sign, challenge} ->
+        {:error, {:sign, challenge}}
+
+      {:error, :incomplete_proof} ->
+        {:error,
+         {:invalid, ["challenge and signature: send both, or neither to be given a challenge"]}}
+
+      {:error, refusal} ->
+        {:error, refusal}
     end
   end
-
-  defp proof(action, unsigned, _act) when map_size(unsigned) == 0,
-    do: {:error, {:sign, WalletProof.challenge(action)}}
-
-  defp proof(_action, _one_without_the_other, _act),
-    do:
-      {:error,
-       {:invalid, ["challenge and signature: send both, or neither to be given a challenge"]}}
 
   # A wallet with no profile never paid for anything, so it is not this
   # report's payer, whichever report it names.

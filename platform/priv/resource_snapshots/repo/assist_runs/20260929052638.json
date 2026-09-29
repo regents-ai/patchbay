@@ -13,7 +13,7 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -21,23 +21,35 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "payment_identifier",
-      "type": "text"
+      "source": "payer_profile_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "browser_session_id",
+      "type": "uuid"
     },
     {
       "allow_nil?": false,
-      "default": "nil",
+      "default": "\"paid\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "kind",
+      "source": "grant",
       "type": "text"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -45,7 +57,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "actor_profile_id",
+      "source": "visitor_key",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "payment_intent_id",
       "type": "uuid"
     },
     {
@@ -57,7 +81,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "target_type",
+      "source": "goal",
       "type": "text"
     },
     {
@@ -69,31 +93,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "target_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "amount_atomic",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "asset",
+      "source": "site_url",
       "type": "text"
     },
     {
@@ -105,43 +105,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "network",
+      "source": "sign_in",
       "type": "text"
     },
     {
       "allow_nil?": false,
-      "default": "nil",
+      "default": "[]",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "payload",
-      "type": "map"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "payload_digest",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "recipient_snapshot",
+      "source": "believed_calls",
       "type": [
         "array",
         "map"
@@ -149,19 +125,7 @@
     },
     {
       "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "effect_summary",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"prepared\"",
+      "default": "\"paid\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
@@ -172,7 +136,7 @@
       "type": "text"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -180,8 +144,71 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "expires_at",
+      "source": "outcome",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "[]",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "steps",
+      "type": [
+        "array",
+        "map"
+      ]
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "started_at",
       "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "finished_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"pending\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "deposit_status",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "deposit_tx_hash",
+      "type": "text"
     },
     {
       "allow_nil?": false,
@@ -214,19 +241,47 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "163FE1FF776BCFC5294AF3CAD621F506FAA7F942E6D0ABC0DEA352F61B071095",
+  "hash": "B5C274FB103AB8FEEA9591B5DBC08F32779C4B45A4780D0034ABC70AA0F8913E",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "payment_intents_unique_payment_identifier_index",
+      "index_name": "assist_runs_one_open_run_per_browser_index",
       "keys": [
         {
           "type": "atom",
-          "value": "payment_identifier"
+          "value": "browser_session_id"
         }
       ],
-      "name": "unique_payment_identifier",
+      "name": "one_open_run_per_browser",
+      "nils_distinct?": true,
+      "where": "status IN ('paid', 'running')"
+    },
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "assist_runs_one_open_run_per_payer_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "payer_profile_id"
+        }
+      ],
+      "name": "one_open_run_per_payer",
+      "nils_distinct?": true,
+      "where": "status IN ('paid', 'running')"
+    },
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "assist_runs_one_run_per_payment_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "payment_intent_id"
+        }
+      ],
+      "name": "one_run_per_payment",
       "nils_distinct?": true,
       "where": null
     }
@@ -238,5 +293,5 @@
   },
   "repo": "Elixir.Patchbay.Repo",
   "schema": null,
-  "table": "payment_intents"
+  "table": "assist_runs"
 }

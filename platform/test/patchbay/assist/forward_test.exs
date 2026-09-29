@@ -15,10 +15,10 @@ defmodule Patchbay.Assist.ForwardTest do
   alias Ethers.Transaction
   alias Patchbay.Assist
   alias Patchbay.Assist.Forward
-  alias Patchbay.Assist.Staking
   alias Patchbay.Identity
-  alias Patchbay.Payments
-  alias Patchbay.Payments.USDC
+  alias Patchbay.Payments.JevAssist
+  alias RegentPayments.FeeForward.Staking
+  alias RegentPayments.USDC
 
   @staking "0x" <> String.duplicate("b", 40)
   @payer "0x" <> String.duplicate("a", 40)
@@ -118,14 +118,18 @@ defmodule Patchbay.Assist.ForwardTest do
 
     {:ok, {_address, port}} = ThousandIsland.listener_info(server)
 
+    # The fee is paid into the operator wallet, the one that forwards it.
+    key = :crypto.strong_rand_bytes(32)
+    {:ok, operator} = X402.EIP3009.derive_address(key)
+
     Application.put_env(:patchbay, :escrow,
       contract_address: nil,
-      operator_private_key: Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
+      operator_private_key: Base.encode16(key, case: :lower),
       rpc_url: "http://127.0.0.1:#{port}"
     )
 
     Application.put_env(:patchbay, :assist,
-      pay_to_address: @payer,
+      pay_to_address: String.downcase(operator),
       staking_contract_address: @staking
     )
 
@@ -201,27 +205,8 @@ defmodule Patchbay.Assist.ForwardTest do
       "believed_calls" => []
     }
 
-    {:ok, intent} = Payments.prepare_jev_assist(%{request: request}, actor: payer)
-    {:ok, settled} = Ash.update(intent, %{}, action: :mark_settled, actor: payer)
-    tx = "0x" <> String.duplicate("e", 64)
-
-    {:ok, _receipt} =
-      Payments.record_payment_receipt(
-        %{
-          payment_intent_id: settled.id,
-          payment_identifier: settled.payment_identifier,
-          payer_address: @payer,
-          network: settled.network,
-          asset: settled.asset,
-          amount_atomic: settled.amount_atomic,
-          facilitator: "https://example.invalid/facilitator",
-          transaction_hash: tx,
-          payment_response: %{"success" => true, "transaction" => tx},
-          settled_at: DateTime.utc_now()
-        },
-        actor: payer
-      )
-
+    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
+    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
     {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
     run
   end

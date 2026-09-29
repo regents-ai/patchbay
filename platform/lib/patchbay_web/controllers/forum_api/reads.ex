@@ -19,12 +19,12 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
   alias Patchbay.Payments
-  alias Patchbay.Payments.USDC
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Labels
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.ToolHistory
+  alias RegentPayments.USDC
 
   @search_tool_limit 20
   @search_report_limit 20

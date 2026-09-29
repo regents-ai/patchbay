@@ -10,14 +10,14 @@ defmodule PatchbayWeb.PaymentsAPI.BalanceController do
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Payments.Balance
-  alias Patchbay.Payments.USDC
   alias PatchbayWeb.ApiError
+  alias RegentPayments.Balance
+  alias RegentPayments.USDC
 
   def show(conn, _params) do
     profile = conn.assigns.current_profile
 
-    case Balance.available_usdc_atomic(profile.wallet_address) do
+    case Balance.usdc_balance_atomic(profile.wallet_address) do
       {:ok, atomic} ->
         json(conn, %{
           profile_id: profile.public_id,

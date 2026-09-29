@@ -276,7 +276,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
   defp card_topup_offered?(conn, profile) do
     previous_privy = Application.get_env(:patchbay, :privy, [])
-    previous_rpc = Application.get_env(:patchbay, :base_rpc_url)
+    previous_rpc = Application.get_env(:regent_payments, :base_rpc_url)
 
     Application.put_env(
       :patchbay,
@@ -284,7 +284,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
       Keyword.put(List.wrap(previous_privy), :app_id, "did:privy:test")
     )
 
-    Application.put_env(:patchbay, :base_rpc_url, "https://example.com/rpc")
+    Application.put_env(:regent_payments, :base_rpc_url, "https://example.com/rpc")
 
     try do
       conn
@@ -293,7 +293,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
       |> html_response(200) =~ "Add USDC with a card"
     after
       Application.put_env(:patchbay, :privy, previous_privy)
-      Application.put_env(:patchbay, :base_rpc_url, previous_rpc)
+      Application.put_env(:regent_payments, :base_rpc_url, previous_rpc)
     end
   end
 end

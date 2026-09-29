@@ -1,8 +1,11 @@
 defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
-  use ExUnit.Case, async: false
+  # Everything runs in this test's own database transaction: the product
+  # server below answers each request through it, and it is rolled back at
+  # the end.
+  use Patchbay.DataCase, async: false
   import Plug.Conn
   alias Patchbay.Escrow.Watch
-  alias Patchbay.{Identity, Repo}
+  alias Patchbay.Identity
 
   @funded_at 1_790_000_000
   @intents "/api/agent/payment_intents"
@@ -27,9 +30,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
   # Synthetic fixture key, generated for this run. It never reaches a real chain.
   setup do
-    unless Repo.config()[:database] == "patchbay_test" <> System.fetch_env!("MIX_TEST_PARTITION"),
-      do: raise("Wallet journey requires its prepared disposable database")
-
     key = :crypto.strong_rand_bytes(32)
     {:ok, public} = ExSecp256k1.create_public_key(key)
     address = Siwa.EvmPersonalSign.public_key_to_address(public)
@@ -38,7 +38,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     origin = "https://wallet-#{Ecto.UUID.generate()}.invalid"
     old_wallet = Application.get_env(:patchbay, :wallet_author)
     old_escrow = Application.get_env(:patchbay, :escrow)
-    old_facilitator = Application.fetch_env!(:patchbay, Patchbay.Payments.Facilitator)
     # What the fake escrow contract answers about the report's post; the test
     # moves it from nothing, through a wrong amount, to the funded record.
     {:ok, chain} = Agent.start_link(fn -> :none end)
@@ -107,11 +106,11 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       rpc_url: payment <> "/rpc"
     )
 
-    replace_facilitator(Keyword.merge(old_facilitator, url: payment, auth: nil))
+    Patchbay.PaymentService.stand_in(payment)
 
     app =
       server(:wallet_product, fn conn, _ ->
-        unboxed(fn -> PatchbayWeb.Endpoint.call(conn, PatchbayWeb.Endpoint.init([])) end)
+        PatchbayWeb.Endpoint.call(conn, PatchbayWeb.Endpoint.init([]))
       end)
 
     receipt = issue_receipt(secret, address)
@@ -123,36 +122,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     on_exit(fn ->
       Application.put_env(:patchbay, :wallet_author, old_wallet)
       Application.put_env(:patchbay, :escrow, old_escrow)
-      replace_facilitator(old_facilitator)
-
-      unboxed(fn ->
-        # Only records from this unique fixture origin and wallet are removed.
-        Repo.query!(
-          "DELETE FROM payment_receipts WHERE payment_intent_id IN (SELECT id FROM payment_intents WHERE actor_profile_id IN (SELECT id FROM agent_profiles WHERE wallet_address=ANY($1)))",
-          [[address, other_address]]
-        )
-
-        Repo.query!(
-          "DELETE FROM forum_reports WHERE author_profile_id IN (SELECT id FROM agent_profiles WHERE wallet_address=ANY($1))",
-          [[address, other_address]]
-        )
-
-        Repo.query!(
-          "DELETE FROM payment_intents WHERE actor_profile_id IN (SELECT id FROM agent_profiles WHERE wallet_address=ANY($1))",
-          [[address, other_address]]
-        )
-
-        Repo.query!("DELETE FROM agent_profiles WHERE wallet_address=ANY($1)", [
-          [address, other_address]
-        ])
-
-        Repo.query!(
-          "DELETE FROM forum_tools WHERE site_id IN (SELECT id FROM forum_sites WHERE origin=$1)",
-          [URI.parse(origin).host]
-        )
-
-        Repo.query!("DELETE FROM forum_sites WHERE origin=$1", [URI.parse(origin).host])
-      end)
     end)
 
     %{
@@ -223,9 +192,9 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     again = execute(c, id)
     assert again["body"]["receipt"] == paid["body"]["receipt"]
     refute_receive :settled, 100
-    report = unboxed(fn -> Patchbay.Forum.get_report!(prepared["body"]["report_id"]) end)
+    report = Patchbay.Forum.get_report!(prepared["body"]["report_id"])
     assert report.browser_session_id == nil
-    profile = unboxed(fn -> Identity.get_profile!(report.author_profile_id) end)
+    profile = Identity.get_profile!(report.author_profile_id)
     assert profile.authentication_origin == :wallet
     assert profile.human_name == nil
     assert profile.privy_user_id == nil
@@ -238,22 +207,22 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert paid["body"]["next_action"] =~ "Do not pay again"
 
     # The contract has no post yet: still waiting, nothing sent again.
-    assert unboxed(fn -> Watch.confirm() end) == {:ok, 0}
+    assert Watch.confirm() == {:ok, 0}
 
-    assert unboxed(fn -> Patchbay.Forum.get_report!(report.id) end).escrow_status ==
+    assert Patchbay.Forum.get_report!(report.id).escrow_status ==
              :credit_submitted
 
     # A post funded for another amount is not this bounty's confirmation.
     Agent.update(c.chain, fn _ -> {c.address, 2_000_000, 1, @funded_at} end)
-    assert unboxed(fn -> Watch.confirm() end) == {:ok, 0}
+    assert Watch.confirm() == {:ok, 0}
 
-    assert unboxed(fn -> Patchbay.Forum.get_report!(report.id) end).escrow_status ==
+    assert Patchbay.Forum.get_report!(report.id).escrow_status ==
              :credit_submitted
 
     # The contract's record for this post, from this payer, for this amount.
     Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
-    assert unboxed(fn -> Watch.confirm() end) == {:ok, 1}
-    confirmed = unboxed(fn -> Patchbay.Forum.get_report!(report.id) end)
+    assert Watch.confirm() == {:ok, 1}
+    confirmed = Patchbay.Forum.get_report!(report.id)
     assert confirmed.escrow_status == :credited
     assert DateTime.to_unix(confirmed.escrow_funded_at) == @funded_at
 
@@ -406,7 +375,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     do:
       conn |> put_resp_content_type("application/json") |> send_resp(status, Jason.encode!(body))
 
-  defp unboxed(fun), do: Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fun)
   defp rpc(requests, post) when is_list(requests), do: Enum.map(requests, &rpc(&1, post))
 
   defp rpc(%{"id" => id, "method" => method}, post),
@@ -423,18 +391,5 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       [Base.decode16!(String.slice(payer, 2..-1//1), case: :mixed), amount, status, funded_at],
       [:address, {:uint, 96}, {:uint, 8}, {:uint, 64}]
     )
-  end
-
-  defp replace_facilitator(opts) do
-    name = Patchbay.Payments.Facilitator
-    Supervisor.terminate_child(Patchbay.Supervisor, name)
-    Supervisor.delete_child(Patchbay.Supervisor, name)
-    Application.put_env(:patchbay, name, opts)
-
-    {:ok, _} =
-      Supervisor.start_child(
-        Patchbay.Supervisor,
-        {X402.Facilitator, Keyword.put(opts, :name, name)}
-      )
   end
 end

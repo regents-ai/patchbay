@@ -10,7 +10,7 @@ defmodule Patchbay.Assist.Changes.OpenFromIntent do
   use Ash.Resource.Change
 
   alias Ash.Error.Changes.InvalidArgument
-  alias Patchbay.Payments.PaymentIntent
+  alias RegentPayments.PaymentIntent
 
   @impl true
   def change(changeset, _opts, context) do

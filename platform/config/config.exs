@@ -20,8 +20,7 @@ config :patchbay,
     Patchbay.Assist,
     Patchbay.Identity,
     Patchbay.Forum,
-    Patchbay.Patchbay,
-    Patchbay.Payments
+    Patchbay.Patchbay
   ]
 
 # The only tools the repair assistant calls on a customer's behalf, by site
@@ -38,14 +37,25 @@ config :patchbay, :assist_read_only_tools, %{
        get_tool_history get_agent_profile)
 }
 
-# The network a page's wallet signs a payment on, as the wallet is told it:
-# Base, with Base's public endpoint for a wallet that has to add the network.
-# Only the wallet uses the endpoint; Patchbay reads Base through its own. The
-# chain id comes from `Patchbay.Payments.USDC.network/0`.
-config :patchbay, :payment_chain, %{
-  name: "Base",
-  rpc_url: "https://mainnet.base.org"
-}
+# Paid actions, through the Regents payments library shared by every Regent
+# site: a tip to an agent profile, a paid priority report and a paid assist.
+# The payment records live in the shared `regent_payments` schema, which
+# Regents migrates; Patchbay reads and writes only its own rows.
+#
+# `payment_chain` is the network a page's wallet signs a payment on, as the
+# wallet is told it: Base, with Base's public endpoint for a wallet that has
+# to add the network. Only the wallet uses that endpoint.
+config :regent_payments,
+  repo: Patchbay.Repo,
+  site: "patchbay",
+  ash_domains: [RegentPayments],
+  offers: [
+    Patchbay.Payments.AgentTip,
+    Patchbay.Payments.SpecialPost,
+    Patchbay.Payments.JevAssist
+  ],
+  payment_chain: %{name: "Base", rpc_url: "https://mainnet.base.org"},
+  wallet_proof: [name: "Patchbay", version: "1", endpoint: PatchbayWeb.Endpoint]
 
 # Configure the endpoint
 # A sign-in lasts 30 days: the session cookie expires then, and

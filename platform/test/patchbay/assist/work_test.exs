@@ -15,7 +15,7 @@ defmodule Patchbay.Assist.WorkTest do
   alias Patchbay.Assist
   alias Patchbay.Assist.Work
   alias Patchbay.Identity
-  alias Patchbay.Payments
+  alias Patchbay.Payments.JevAssist
 
   @wallet "0x" <> String.duplicate("d", 40)
 
@@ -322,8 +322,8 @@ defmodule Patchbay.Assist.WorkTest do
     payer = payer()
     first = paid_run(site, payer: payer, believed_calls: [])
 
-    {:ok, intent} = Payments.prepare_jev_assist(%{request: request([])}, actor: payer)
-    {:ok, settled} = Ash.update(intent, %{}, action: :mark_settled, actor: payer)
+    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request([])}, payer)
+    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
 
     assert {:error, %Ash.Error.Invalid{}} =
              Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
@@ -343,8 +343,8 @@ defmodule Patchbay.Assist.WorkTest do
     payer = Keyword.get_lazy(opts, :payer, &payer/0)
     request = request(Keyword.fetch!(opts, :believed_calls))
 
-    {:ok, intent} = Payments.prepare_jev_assist(%{request: request}, actor: payer)
-    {:ok, settled} = Ash.update(intent, %{}, action: :mark_settled, actor: payer)
+    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
+    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
     {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
 
     # The site's name resolves to a public address, and the calls to it are

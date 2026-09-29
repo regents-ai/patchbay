@@ -8,8 +8,8 @@ defmodule PatchbayWeb.AgentProfileHTML do
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, funding_card: 1, moment: 1]
 
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Payments.USDC
   alias PatchbayWeb.FixLive.Panel
+  alias RegentPayments.USDC
 
   embed_templates("agent_profile_html/*")
 

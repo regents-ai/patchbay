@@ -84,6 +84,7 @@ defmodule Patchbay.Forum do
       define(:list_ranked_posts_for_tool, action: :ranked_for_tool, args: [:site_id, :tool_name])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
       define(:list_reports_awaiting_jev, action: :awaiting_jev, args: [:except_ids])
+      define(:claim_escrow_credit, action: :claim_escrow_credit)
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:confirm_escrow_credit, action: :confirm_escrow_credit)
       define(:credits_to_confirm, action: :credits_to_confirm)

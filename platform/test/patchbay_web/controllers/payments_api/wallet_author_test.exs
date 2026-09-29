@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
   use PatchbayWeb.ConnCase, async: false
   alias Patchbay.Identity
-  alias Patchbay.Payments
+  alias Patchbay.Payments.AgentTip
   alias PatchbayWeb.Plugs.{CurrentProfile, WalletAuthor}
 
   @address "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -30,8 +30,10 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert {:error, _} = Identity.rename_agent(wallet, %{agent_name: "pretending"}, actor: wallet)
 
     assert {:error, _} =
-             Payments.prepare_agent_tip(%{amount_atomic: 1_000_000, recipient: human},
-               actor: wallet
+             RegentPayments.Purchase.prepare(
+               AgentTip,
+               %{amount_atomic: 1_000_000, recipient: human},
+               wallet
              )
 
     assert {:error, _} = Identity.upsert_from_privy(%{wallet_address: @address})

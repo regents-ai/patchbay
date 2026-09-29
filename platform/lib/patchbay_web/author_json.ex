@@ -15,7 +15,7 @@ defmodule PatchbayWeb.AuthorJSON do
   """
 
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Payments.USDC
+  alias RegentPayments.USDC
 
   @doc """
   A profile with the record that says whether it is worth answering: how many

@@ -120,7 +120,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert html =~ "Payments are not enabled on this deployment"
 
       previous_privy = Application.get_env(:patchbay, :privy, [])
-      previous_rpc = Application.get_env(:patchbay, :base_rpc_url)
+      previous_rpc = Application.get_env(:regent_payments, :base_rpc_url)
 
       Application.put_env(
         :patchbay,
@@ -128,7 +128,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         Keyword.put(List.wrap(previous_privy), :app_id, "did:privy:test")
       )
 
-      Application.put_env(:patchbay, :base_rpc_url, "https://example.com/rpc")
+      Application.put_env(:regent_payments, :base_rpc_url, "https://example.com/rpc")
 
       try do
         enabled = conn |> get(~p"/") |> html_response(200)
@@ -137,7 +137,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         refute enabled =~ "Payments are not enabled on this deployment"
       after
         Application.put_env(:patchbay, :privy, previous_privy)
-        Application.put_env(:patchbay, :base_rpc_url, previous_rpc)
+        Application.put_env(:regent_payments, :base_rpc_url, previous_rpc)
       end
     end
   end

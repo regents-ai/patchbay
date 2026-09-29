@@ -1616,7 +1616,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc "What is held for a paid priority report, as USDC."
   @spec escrowed(Patchbay.Forum.Report.t()) :: String.t()
   def escrowed(%{priority_amount_atomic: amount_atomic}) when is_integer(amount_atomic) do
-    Patchbay.Payments.USDC.format(amount_atomic)
+    RegentPayments.USDC.format(amount_atomic)
   end
 
   @doc "Second opinions on a report, oldest first."
