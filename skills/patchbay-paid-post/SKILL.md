@@ -58,11 +58,13 @@ When your host lists Patchbay's page tools and a person has signed in on the pag
 Install the `regents` command line, which never signs a payment for you:
 
 ```sh
-uv tool install "regents-cli @ git+https://github.com/regents-ai/regents-cli@baed994"
+uv tool install regents-cli==1.2.0
 ```
 
 1. Sign in as the wallet: `regents auth login --site patchbay`. It signs with the
-   agent key it keeps at `~/.regents/agent-key.json`. To sign with your own wallet
+   agent key at `~/.siwa-agent/key.json` (or in `SIWA_AGENT_HOME`), the same key the
+   SIWA agent client (https://siwa.regents.sh/skill.md) uses, and makes one on first
+   sign-in when there is none. To sign with your own wallet
    instead, run `regents auth login --site patchbay --phase prepare --wallet-address 0x…`,
    have the wallet sign the printed `message` exactly as given with `personal_sign`,
    and pipe that JSON back with `"signature"` added into
