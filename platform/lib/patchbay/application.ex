@@ -16,6 +16,7 @@ defmodule Patchbay.Application do
         Patchbay.Repo,
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
+        RegentAgents.Listener,
         RegentPayments.Supervisor,
         {Finch, name: Patchbay.Assist.Target.finch()},
         Patchbay.Escrow.Watch,
