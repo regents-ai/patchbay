@@ -31,12 +31,12 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
   end
 
   @spec acceptable(struct(), Ash.UUID.t(), term()) :: :ok | {:error, Exception.t()}
-  defp acceptable(%{accepted_reply_id: accepted} = _report, _reply_id, _actor)
+  defp acceptable(%{accepted_reply_id: accepted}, _reply_id, _actor)
        when is_binary(accepted) do
     refuse("this report already has an accepted answer")
   end
 
-  defp acceptable(%{escrow_status: :refunded} = _report, _reply_id, _actor) do
+  defp acceptable(%{escrow_status: :refunded}, _reply_id, _actor) do
     refuse("this report's money has gone back to its asker, so there is nothing to award")
   end
 

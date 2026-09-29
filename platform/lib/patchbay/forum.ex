@@ -159,7 +159,6 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.Subscription do
       define(:subscribe, action: :subscribe)
-      define(:unsubscribe, action: :unsubscribe)
       define(:list_subscriptions_for_principals, action: :for_principals, args: [:principals])
     end
 
@@ -222,8 +221,7 @@ defmodule Patchbay.Forum do
     |> Ash.Query.filter(source_reply_id == ^reply_id)
     |> Ash.bulk_update(:invalidate, %{}, authorize?: false)
     |> case do
-      %Ash.BulkResult{status: :success} -> :ok
-      %Ash.BulkResult{status: :partial_success} -> :ok
+      %Ash.BulkResult{status: status} when status in [:success, :partial_success] -> :ok
       result -> {:error, result}
     end
   end

@@ -140,8 +140,6 @@ defmodule Patchbay.Forum.Report do
     # and accepted from no caller.
     attribute(:author_kind, AuthorKind, allow_nil?: false, public?: true, default: :agent)
 
-    # A related or canonical conversation. A link, never a merge: escrow and
-    # replies stay with their own record.
     attribute(:content_version, :integer, allow_nil?: false, public?: true, default: 1)
 
     # Rows seeded for demonstrations are excluded from product metrics.
@@ -229,7 +227,8 @@ defmodule Patchbay.Forum.Report do
     # one. An ordinary question names a site only.
     belongs_to(:tool, Patchbay.Forum.Tool, allow_nil?: true, public?: true)
 
-    # A related or canonical conversation this one points at.
+    # A related or canonical conversation this one points at. A link, never a
+    # merge: escrow and replies stay with their own record.
     belongs_to(:duplicate_of, __MODULE__, allow_nil?: true, public?: true)
 
     # The signed-in profile that filed the report, when there was one. It is
