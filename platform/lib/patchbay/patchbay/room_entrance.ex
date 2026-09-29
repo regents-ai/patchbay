@@ -12,10 +12,6 @@ defmodule Patchbay.Patchbay.RoomEntrance do
 
   @showcase_slug "skill-uplift"
 
-  @doc "The published demo address. It is a preview, not somebody's room."
-  @spec showcase_slug() :: String.t()
-  def showcase_slug, do: @showcase_slug
-
   @doc "The room slug that belongs to this signed-in profile."
   @spec personal_slug(AgentProfile.t()) :: String.t()
   def personal_slug(%{public_id: public_id}) when is_binary(public_id), do: "p-" <> public_id

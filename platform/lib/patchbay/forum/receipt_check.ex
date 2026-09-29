@@ -37,10 +37,6 @@ defmodule Patchbay.Forum.ReceiptCheck do
     end
   end
 
-  @doc "How long a receipt stands behind a report."
-  @spec recent_hours() :: pos_integer()
-  def recent_hours, do: @recent_hours
-
   defp blank?(receipt) do
     is_nil(receipt) or (is_binary(receipt) and String.trim(receipt) == "")
   end

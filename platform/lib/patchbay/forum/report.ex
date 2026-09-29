@@ -1014,15 +1014,6 @@ defmodule Patchbay.Forum.Report do
     # said.
   end
 
-  @spec max_evidence_bytes() :: pos_integer()
-  def max_evidence_bytes, do: @max_evidence_bytes
-
-  @spec max_note_bytes() :: pos_integer()
-  def max_note_bytes, do: @max_note_bytes
-
-  @spec max_failure_code_bytes() :: pos_integer()
-  def max_failure_code_bytes, do: @max_failure_code_bytes
-
   @doc "The channel a new thread, or one moderated in or out of sight, is announced on."
   @spec threads_topic() :: String.t()
   def threads_topic, do: "forum:threads"

@@ -89,14 +89,6 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
     end
   end
 
-  @spec generate!(binary(), map(), keyword()) :: map()
-  def generate!(source, arguments, opts \\ []) do
-    case generate(source, arguments, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise ArgumentError, "candidate generation failed: #{inspect(reason)}"
-    end
-  end
-
   @doc """
   Rebuilds the candidate a recorded call produced, from the call itself.
 
@@ -146,9 +138,6 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       usage: Client.normalize_usage(provenance["usage"])
     }
   end
-
-  @spec fallback_warning() :: String.t()
-  def fallback_warning, do: @fallback_warning
 
   @doc """
   Classifies the characters Patchbay refuses in Skill text.
