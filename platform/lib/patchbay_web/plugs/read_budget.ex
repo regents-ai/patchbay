@@ -6,10 +6,10 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   A read is a `GET` or `HEAD` that reaches the router, or any message to the
   hosted MCP tools (a hosted write also draws on its session's hourly share),
   or a fix asked for from the home page, which counts free fixes and draws
-  the page again when it is refused. Files served ahead of the router and
-  the health check are not counted. Other posts are left alone: each has
-  its own hourly share, and nothing here stands between a person and a
-  payment.
+  the page again when it is refused, or an agent pairing with a person's
+  Regent account. Files served ahead of the router and the health check are
+  not counted. Other posts are left alone: each has its own hourly share, and
+  nothing here stands between a person and a payment.
 
   Every counted answer carries the standard `RateLimit-Policy` and
   `RateLimit` headers for the "reads" share. The refusal is a 429 in the
@@ -52,6 +52,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["fixes"]}), do: true
+  defp counted?(%Plug.Conn{method: "POST", path_info: ["api", "agents", "v1", "pair"]}), do: true
   defp counted?(_conn), do: false
 
   # The type and body are the fixed refusals in `body/1`; nothing from the request.

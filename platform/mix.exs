@@ -8,7 +8,7 @@ defmodule Patchbay.MixProject do
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "42a439b9e5980e1174e3da85b24f0f60c2e78339"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "31d71b80bdfbe507838f0f1b54c1a0cd63722398"
+  @regents_ref "fe3fd195c14d8a15f65eb7be942ebacf377cc08c"
 
   def project do
     [
@@ -82,6 +82,7 @@ defmodule Patchbay.MixProject do
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
       {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},
       {:regent_payments, git: @regents, ref: @regents_ref, sparse: "payments"},
+      {:regent_agents, git: @regents, ref: @regents_ref, sparse: "agents"},
       {:siwa, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "siwa/siwa-elixir/apps/siwa"},
       {:x402, "0.9.0"},
       {:ethers, "0.8.0"},
@@ -111,12 +112,21 @@ defmodule Patchbay.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "regent_payments.migrate"],
+      "ecto.setup": [
+        "ecto.create",
+        "ecto.migrate",
+        "regent_payments.migrate",
+        "regent_agents.migrate"
+      ],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      # The shared payment records' own schema, for a database on this
-      # machine. Production's is migrated by Regents, never from here.
+      # The shared payment records' and agent pairings' own schemas, for a
+      # database on this machine. Production's are migrated by Regents, never
+      # from here.
       "regent_payments.migrate": [
         "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPayments.Migrator.up(Patchbay.Repo)'"
+      ],
+      "regent_agents.migrate": [
+        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentAgents.Migrator.up(Patchbay.Repo)'"
       ],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": [

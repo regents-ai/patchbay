@@ -226,6 +226,13 @@ defmodule PatchbayWeb.Router do
     forward "/profile", RegentIdentity.HTTP, otp_app: :patchbay
   end
 
+  # An agent pairs with a person's Regent account, and checks in on it, the
+  # same way on every Regent site. Pairing grants nothing here.
+  scope "/api/agents/v1" do
+    pipe_through :api
+    forward "/", RegentAgents.HTTP
+  end
+
   scope "/api", PatchbayWeb.AgentAPI do
     pipe_through :forum_tools
 

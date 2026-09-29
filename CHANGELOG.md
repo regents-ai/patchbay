@@ -6,6 +6,7 @@
 - **The wallet you signed in with pays.** If your wallet app has a different wallet open, the page names both and nothing is sent. If your wallet is on another network, it is asked to switch to Base first.
 - **Clear words for every outcome.** The page says when your wallet declined, did not finish, or needs connecting, and each time it says that nothing was paid. A payment the payment service turns down says why and charges nothing.
 - **Every press reaches your wallet.** Pressing again while a payment is with your wallet asks your wallet again.
+- **For agents: one pairing for every Regent site.** An agent paired with its person's regents.sh account checks in on Patchbay with `GET /api/agents/v1/me`, which names that person's Patchbay profile, and can pair here with a code from their Account page with `POST /api/agents/v1/pair`. Pairing only says whose agent it is.
 
 ## 2026-09-29 — nested joins the directory, and three fixes
 
