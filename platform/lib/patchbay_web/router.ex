@@ -244,12 +244,12 @@ defmodule PatchbayWeb.Router do
     get "/health", HealthController, :show
   end
 
+  # Only a new payment draws on the share. Paying it and reading it back do
+  # not, so a signature the wallet has given is never turned away for count.
   scope "/api", PatchbayWeb.PaymentsAPI do
     pipe_through [:forum_tools, :payments, :require_profile, :payment_budget]
 
     post "/payment_intents", PaymentIntentController, :create
-    post "/payment_intents/:id/execute", PaymentIntentController, :execute
-    get "/payment_intents/:id", PaymentIntentController, :show
   end
 
   # Reading a paid assist back is not a payment request either.
@@ -258,10 +258,12 @@ defmodule PatchbayWeb.Router do
     get "/assists/:id", RunController, :show
   end
 
-  # Reading the wallet's balance is not a payment request; it is asked before
-  # every paid action and draws on no share.
+  # Paying a frozen intent, reading it back and reading the wallet's balance
+  # draw on no share.
   scope "/api", PatchbayWeb.PaymentsAPI do
     pipe_through [:forum_tools, :payments, :require_profile]
+    post "/payment_intents/:id/execute", PaymentIntentController, :pay
+    get "/payment_intents/:id", PaymentIntentController, :show
     get "/me/usdc_balance", BalanceController, :show
   end
 
@@ -293,6 +295,25 @@ defmodule PatchbayWeb.Router do
       live_dashboard "/dashboard", metrics: PatchbayWeb.Telemetry
 
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
+
+  # The payments lab, on a machine of ours only; its code is not in a release.
+  if Application.compile_env(:patchbay, :payments_lab) do
+    scope "/dev/lab/payments", PatchbayDev do
+      pipe_through :browser
+      get "/", PaymentsLab, :show
+      post "/sign-in", PaymentsLab, :sign_in
+    end
+
+    scope "/dev/lab/payments", PatchbayDev do
+      pipe_through :forum_tools
+      post "/wallet", PaymentsLab, :wallet
+    end
+
+    scope "/dev/lab/payments", PatchbayDev do
+      post "/facilitator/verify", LabFacilitator, :verify
+      post "/facilitator/settle", LabFacilitator, :settle
     end
   end
 

@@ -7,6 +7,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   The payer is whoever the pipeline signed in, a page's profile or a
   SIWA-verified wallet, and never a value the request carries.
+
+  A wallet author pays in x402 (`execute/2`): it is handed the terms and signs
+  them itself. A page pays with the wallet its person signed in with (`pay/2`): Patchbay
+  writes the authorization that wallet signs, and only the signature comes
+  back (`PatchbayWeb.PaymentsAPI.WalletPayment`).
   """
 
   use PatchbayWeb, :controller
@@ -14,6 +19,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   alias Patchbay.Payments.USDC
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.PaymentsAPI.Purchase
+  alias PatchbayWeb.PaymentsAPI.WalletPayment
   alias X402.PaymentRequired
   alias X402.PaymentResponse
 
@@ -70,6 +76,87 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
       {:error, failure} -> send_failure(conn, failure)
       answer -> send_answer(conn, answer)
     end
+  end
+
+  @doc """
+  A page's payment. Unsigned, it answers with what the account's wallet is to
+  sign, when the page's active wallet is one of the account's; a payment that
+  already went through is read back without any wallet. Signed, the signature
+  must be that wallet's over what Patchbay wrote, and only then is the payment
+  verified and settled.
+  """
+  def pay(conn, %{"id" => id} = params) do
+    actor = conn.assigns.current_profile
+    wallet = signer(actor, params)
+
+    with {:ok, found} <- Purchase.read(actor, id),
+         {:ok, payment, payer} <- signed_payment(found, wallet, params) do
+      request = %{
+        payment: payment,
+        payer: payer,
+        browser_session_id: conn.assigns.forum_session_id
+      }
+
+      case Purchase.execute(actor, found.id, request) do
+        {:payment_required, waiting} ->
+          send_wallet_answer(conn, waiting.id, review(waiting, wallet))
+
+        {:payment_rejected, refused, reason} ->
+          send_wallet_answer(conn, refused.id, %{problem_code: "payment_refused", reason: reason})
+
+        {:error, failure} ->
+          send_failure(conn, failure)
+
+        answer ->
+          send_answer(conn, answer)
+      end
+    else
+      {:wallet, fields} -> send_wallet_answer(conn, id, fields)
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  defp signer(actor, params) do
+    signed_in = WalletPayment.signed_in(actor)
+
+    case WalletPayment.active_wallet(params) do
+      nil ->
+        {:wallet, %{problem_code: "wallet_unavailable"}}
+
+      active ->
+        case WalletPayment.signer(signed_in, active) do
+          nil ->
+            {:wallet,
+             %{
+               problem_code: "wallet_mismatch",
+               wallet_note: WalletPayment.mismatch_note(signed_in, active)
+             }}
+
+          signer ->
+            {:ok, signer}
+        end
+    end
+  end
+
+  defp signed_payment(found, {:ok, signer}, %{"signature" => _signed} = params) do
+    case WalletPayment.payment(found, signer, params) do
+      {:ok, payment} -> {:ok, payment, signer}
+      {:refused, reason} -> {:wallet, %{problem_code: "payment_refused", reason: reason}}
+    end
+  end
+
+  defp signed_payment(_found, {:wallet, _fields} = wallet, %{"signature" => _signed}), do: wallet
+  defp signed_payment(_found, _wallet, _unsigned), do: {:ok, nil, nil}
+
+  defp review(waiting, {:ok, signer}), do: %{review: WalletPayment.review(waiting, signer)}
+  defp review(_waiting, {:wallet, fields}), do: fields
+
+  # Not paid yet, with what the page needs to go on: the review its wallet
+  # signs, or why its wallet cannot. No x402 terms go to a page.
+  defp send_wallet_answer(conn, id, fields) do
+    conn
+    |> put_status(:payment_required)
+    |> json(Map.merge(%{status: "payment_required", payment_intent_id: id}, fields))
   end
 
   def show(conn, %{"id" => id}) do

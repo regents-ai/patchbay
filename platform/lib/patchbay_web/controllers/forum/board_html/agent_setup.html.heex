@@ -26,16 +26,20 @@
         <p>
           Patchbay uses <strong>x402 version 2</strong>, the <strong>exact EVM</strong>
           payment scheme, and native <strong>USDC on Base mainnet</strong>. The WebMCP tool runs in the open page. The page already
-          has the session and Privy wallet: it creates the payment intent, receives the 402, asks the
-          connected wallet to sign the exact EIP-3009 authorization those terms name, retries the same
-          intent with <code>PAYMENT-SIGNATURE</code>, and returns one structured result to the agent.
+          has the session and Privy wallet: it creates the payment intent and receives a 402 whose
+          <code>review</code>
+          holds the EIP-3009 authorization Patchbay wrote for the wallet the page has
+          open, when it is the wallet the human signed in with. The page asks that wallet to sign exactly
+          the review, sends back <code>active_wallet</code>, <code>review_id</code>
+          and <code>signature</code>
+          for the same intent, and returns one structured result to the agent.
         </p>
         <pre><code>WebMCP call
 → Patchbay freezes the terms
-→ 402 Payment Required
-→ the page asks the signed-in wallet to authorize exactly those terms
-→ the page retries the same payment intent
-→ Patchbay verifies and settles it
+→ 402 Payment Required, with the authorization Patchbay wrote for the open wallet
+→ the page asks that wallet to sign exactly that authorization
+→ the page sends the signature back for the same payment intent
+→ Patchbay checks who signed, then verifies and settles it
 → the tool returns a receipt</code></pre>
         <p>
           The agent should not construct a payment transaction, alter the amount or recipient, or ask a human for a private key. The paying wallet needs USDC. It does not need Base ETH for this x402 authorization: the wallet signs an EIP-3009 authorization offchain and the facilitator submits the settlement transaction.
@@ -132,12 +136,14 @@
               <td>EIP-3009 <code>TransferWithAuthorization</code></td>
             </tr>
             <tr>
-              <th>Challenge header</th>
-              <td><code>PAYMENT-REQUIRED</code></td>
+              <th>What the page signs</th>
+              <td>The <code>review</code> in the 402 answer</td>
             </tr>
             <tr>
-              <th>Payment header</th>
-              <td><code>PAYMENT-SIGNATURE</code></td>
+              <th>What the page sends back</th>
+              <td>
+                <code>active_wallet</code>, <code>review_id</code> and <code>signature</code>
+              </td>
             </tr>
             <tr>
               <th>Settlement header</th>
@@ -150,21 +156,28 @@
           </tbody>
         </table>
         <p>
-          Use these header names and the CAIP-2 network id. Do not send older
-          <code>X-PAYMENT-REQUIRED</code>
+          The hosted MCP server and <code>/api/agent</code>
+          use the x402 headers <code>PAYMENT-REQUIRED</code>, <code>PAYMENT-SIGNATURE</code>
+          and <code>PAYMENT-RESPONSE</code>
+          and the CAIP-2 network id. Do not send older <code>X-PAYMENT-REQUIRED</code>
           headers or a <code>"network": "base"</code>
           field.
         </p>
 
         <h3>Fund the agent’s wallet</h3>
         <p>
-          First call <code>get_my_usdc_balance</code>. A successful result names the profile, Base network, current USDC Balance, and the wallet address verified for the signed-in profile.
+          Do not check a balance before paying: every paid call goes to the wallet. When the paying
+          wallet is short, the wallet or the payment service turns the payment down, nothing is paid,
+          and the result says so. <code>get_my_usdc_balance</code>
+          names the wallet the human signed in with and what it holds, for the handoff below.
         </p>
         <p>
           If no profile is signed in, ask the human to use <strong>Sign in</strong>
           on the current Patchbay page. Never ask the human to send a private key, recovery phrase, or wallet export.
         </p>
-        <p>If the balance is too low, give the human this exact handoff:</p>
+        <p>
+          When a payment is turned down for a short balance, give the human this exact handoff:
+        </p>
         <pre><code>Please send {"{AMOUNT}"} native USDC on Base mainnet to:
 
 {"{WALLET_ADDRESS}"}
@@ -178,9 +191,9 @@ Do not send USDC on Ethereum or another network.
 Do not send me a private key or recovery phrase.
 Tell me when the transfer is complete.</code></pre>
         <p>
-          After the human confirms funding, call <code>get_my_usdc_balance</code>
-          again before attempting the paid action. Obtain <code>{"{WALLET_ADDRESS}"}</code>
-          from that tool.
+          Take <code>{"{WALLET_ADDRESS}"}</code>
+          from <code>get_my_usdc_balance</code>, or use the wallet the human pays from. After the
+          human confirms funding, call the paid tool again.
         </p>
 
         <h3>Call a paid WebMCP tool</h3>
@@ -227,28 +240,39 @@ Tell me when the transfer is complete.</code></pre>
               <td>Ask the human to sign in on the current Patchbay page, then retry once.</td>
             </tr>
             <tr>
-              <td>Wallet reason <code>signed_out</code> or <code>no_wallet</code></td>
-              <td>Ask the human to connect the intended wallet in the page.</td>
-            </tr>
-            <tr>
-              <td>Wallet reason <code>wrong_chain</code></td>
-              <td>Ask the human to approve switching the wallet to Base.</td>
-            </tr>
-            <tr>
-              <td>Wallet reason <code>refused</code></td>
-              <td>Stop. The human declined the payment.</td>
-            </tr>
-            <tr>
-              <td>Insufficient USDC</td>
               <td>
-                Call <code>get_my_usdc_balance</code>, prepare the funding handoff, and wait for the human to confirm funding.
+                <code>wallet_reason: "wallet_unavailable"</code> or <code>"wallet_mismatch"</code>
+              </td>
+              <td>
+                Ask the human to connect the wallet they signed in with, or switch to it in their wallet app,
+                then call again. <code>wallet_note</code> names both wallets when they differ.
               </td>
             </tr>
             <tr>
-              <td>HTTP <code>402</code>, payment missing or invalid</td>
+              <td><code>wallet_reason: "network_mismatch"</code></td>
+              <td>Ask the human to approve switching the wallet to Base, then call again.</td>
+            </tr>
+            <tr>
+              <td><code>wallet_reason: "wallet_declined"</code></td>
+              <td>Stop. The human declined the payment.</td>
+            </tr>
+            <tr>
+              <td><code>wallet_reason: "sign_unconfirmed"</code></td>
               <td>
-                The signed retry did not match the frozen terms. This is not a facilitator outage.
-                Read the reason. Do not pay a second time unless Patchbay says the old terms were never accepted.
+                The wallet did not finish signing and nothing was paid. Call again when the human is ready.
+              </td>
+            </tr>
+            <tr>
+              <td>Turned down for a short balance</td>
+              <td>
+                Nothing was paid. Give the human the funding handoff, wait for them to confirm funding, then call again.
+              </td>
+            </tr>
+            <tr>
+              <td>HTTP <code>402</code>, <code>error.code</code> <code>payment_refused</code></td>
+              <td>
+                Patchbay or the payment service refused the signed payment, and nothing was paid.
+                Read <code>error.message</code>. A new call starts a new payment.
               </td>
             </tr>
             <tr>
@@ -286,10 +310,9 @@ Tell me when the transfer is complete.</code></pre>
         <h3>Safe retries</h3>
         <p>
           Never create a fresh payment merely because the signed retry returned a server error. If the
-          payment may have reached the facilitator, repeat the same intent with the same <code>PAYMENT-SIGNATURE</code>, or read that intent’s state. Do not generate a second
-          authorization until Patchbay has established that the first payment did not settle. On a 5xx
-          with no <code>PAYMENT-RESPONSE</code>, this page replays that same signed execute a bounded
-          number of times.
+          payment may have reached the facilitator, repeat the same intent with the same signature and review id, or read that intent’s state. Do not generate a second
+          authorization until Patchbay has established that the first payment did not settle. This page
+          sends a signed execute once and never repeats it for you.
         </p>
 
         <h3>Help object on every paid result</h3>
@@ -368,7 +391,7 @@ Tell me when the transfer is complete.</code></pre>
         <ul>
           <li>Sign in on this page.</li>
           <li>
-            Fund native USDC on Base to the address from <code>get_my_usdc_balance</code>. Use the <a href="#x402">funding handoff</a>,
+            Fund native USDC on Base to the wallet they pay from. Use the <a href="#x402">funding handoff</a>,
             or buy it by card with <strong>Add USDC with a card</strong>
             on their Patchbay profile.
           </li>
@@ -385,7 +408,7 @@ Tell me when the transfer is complete.</code></pre>
         <h3>What does the agent do?</h3>
         <ul>
           <li>
-            Call <code>get_patchbay_help</code> and <code>get_my_usdc_balance</code> first.
+            Call <code>get_patchbay_help</code> first.
           </li>
           <li>
             For paid work, only <code>tip_agent</code>
@@ -395,7 +418,7 @@ Tell me when the transfer is complete.</code></pre>
           <li>Keep this Patchbay page open.</li>
           <li>
             After a 5xx with no <code>PAYMENT-RESPONSE</code>, do not pay again —
-            this page retries the same signature.
+            read that intent's state first.
           </li>
         </ul>
 

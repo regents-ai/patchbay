@@ -9,6 +9,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
   alias Patchbay.Payments.SpecialPost
   alias Patchbay.Repo
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias PatchbayWeb.WalletSigner
 
   @endpoint PatchbayWeb.Endpoint
   @facilitator Patchbay.Payments.Facilitator
@@ -48,6 +49,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
                  {200, rpc_answer(Jason.decode!(body), owner)}
 
                conn.request_path == "/verify" ->
+                 send(owner, {:verify, Jason.decode!(body)})
                  {200, %{"isValid" => true}}
 
                true ->
@@ -82,10 +84,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     replace_facilitator(configured)
     on_exit(fn -> replace_facilitator(original) end)
 
+    wallet = WalletSigner.new()
+
     {payer, recipient, intent} =
       unboxed(fn ->
-        payer = profile("a")
-        recipient = profile("b")
+        payer = profile(wallet.address)
+        recipient = profile("0x" <> String.duplicate("b", 40))
 
         {:ok, intent} =
           Payments.prepare_agent_tip(%{amount_atomic: 1_000_000, recipient: recipient},
@@ -115,7 +119,13 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
       end)
     end)
 
-    %{payer: payer, recipient: recipient, intent: intent, rpc_url: "http://127.0.0.1:#{port}/rpc"}
+    %{
+      payer: payer,
+      wallet: wallet,
+      recipient: recipient,
+      intent: intent,
+      rpc_url: "http://127.0.0.1:#{port}/rpc"
+    }
   end
 
   test "pending commits before dispatch and a 503 never repeats settlement", c do
@@ -407,6 +417,94 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     refute_receive {:landed?, _}, 200
   end
 
+  # Only the wallet a review was written for can pay it, with a signature
+  # Patchbay can check; anything else is refused before the payment service
+  # is asked.
+  describe "a signed payment Patchbay refuses never reaches the payment service" do
+    test "a signature from another key", c do
+      review = review(c)
+      forged = WalletSigner.sign(WalletSigner.new(), review)
+
+      refused =
+        pay(c, %{active_wallet: c.wallet.address, review_id: review["id"], signature: forged})
+
+      assert %{"problem_code" => "payment_refused", "reason" => reason} =
+               json_response(refused, 402)
+
+      assert reason =~ "not from the wallet"
+      nothing_sent(c)
+    end
+
+    test "an active wallet not on the account, unsigned and signed", c do
+      stranger = WalletSigner.new()
+
+      unsigned = json_response(pay(c, %{active_wallet: stranger.address}), 402)
+      assert unsigned["problem_code"] == "wallet_mismatch"
+      assert unsigned["wallet_note"] =~ RegentFormat.short_address(stranger.address)
+      refute Map.has_key?(unsigned, "review")
+
+      review = review(c)
+
+      signed =
+        pay(c, %{
+          active_wallet: stranger.address,
+          review_id: review["id"],
+          signature: WalletSigner.sign(stranger, review)
+        })
+
+      assert json_response(signed, 402)["problem_code"] == "wallet_mismatch"
+      nothing_sent(c)
+    end
+
+    test "a stale review id", c do
+      review = review(c)
+
+      stale =
+        pay(c, %{
+          active_wallet: c.wallet.address,
+          review_id: Ecto.UUID.generate(),
+          signature: WalletSigner.sign(c.wallet, review)
+        })
+
+      assert %{"problem_code" => "payment_refused", "reason" => reason} =
+               json_response(stale, 402)
+
+      assert reason =~ "changed since your wallet saw them"
+      nothing_sent(c)
+    end
+
+    test "a malformed signature", c do
+      review = review(c)
+
+      for signature <- [
+            "0x1234",
+            "0x" <> String.duplicate("z", 130),
+            "0x" <> String.duplicate("0", 130),
+            7
+          ] do
+        refused =
+          pay(c, %{active_wallet: c.wallet.address, review_id: review["id"], signature: signature})
+
+        assert json_response(refused, 402)["problem_code"] == "payment_refused"
+      end
+
+      nothing_sent(c)
+    end
+  end
+
+  defp review(c) do
+    %{"review" => review} = c |> pay(%{active_wallet: c.wallet.address}) |> json_response(402)
+    review
+  end
+
+  defp pay(c, body), do: unboxed(fn -> signed_in(c.payer) |> post(path(c.intent), body) end)
+
+  defp nothing_sent(c) do
+    refute_receive {:verify, _}, 200
+    refute_receive {:settle, _, _}, 200
+    assert recovery(c)["status"] == "payment_required"
+  end
+
   defp rpc_answer(requests, owner) when is_list(requests),
     do: Enum.map(requests, &rpc_answer(&1, owner))
 
@@ -482,30 +580,17 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     spawn_monitor(fn ->
       response =
         unboxed(fn ->
-          challenge = signed_in(c.payer) |> post(path(c.intent), %{}) |> json_response(402)
-          terms = challenge["payment_terms"]
-          requirement = hd(terms["accepts"])
-
-          payment = %{
-            "x402Version" => 2,
-            "accepted" => requirement,
-            "extensions" => terms["extensions"],
-            "payload" => %{
-              "signature" => "0x" <> String.duplicate("1", 130),
-              "authorization" => %{
-                "from" => c.payer.wallet_address,
-                "to" => requirement["payTo"],
-                "value" => requirement["amount"],
-                "validAfter" => "0",
-                "validBefore" => Integer.to_string(System.system_time(:second) + 60),
-                "nonce" => "0x" <> Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)
-              }
-            }
-          }
+          %{"review" => review} =
+            signed_in(c.payer)
+            |> post(path(c.intent), %{active_wallet: c.wallet.address})
+            |> json_response(402)
 
           signed_in(c.payer)
-          |> put_req_header("payment-signature", payment |> Jason.encode!() |> Base.encode64())
-          |> post(path(c.intent), %{})
+          |> post(path(c.intent), %{
+            active_wallet: c.wallet.address,
+            review_id: review["id"],
+            signature: WalletSigner.sign(c.wallet, review)
+          })
         end)
 
       send(parent, {:done, self(), response})
@@ -527,11 +612,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
       |> Plug.Test.init_test_session(%{})
       |> CurrentProfile.sign_in(profile.id)
 
-  defp profile(letter),
+  defp profile(address),
     do:
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:recovery-#{Ecto.UUID.generate()}",
-        wallet_address: "0x" <> String.duplicate(letter, 40)
+        wallet_address: address
       })
 
   defp landed(letter),

@@ -183,7 +183,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Do not send me a private key or recovery phrase."
     assert html =~ ~s("profile_id": "agt_2f9c1d")
     assert html =~ ~s("tool_name": "checkout")
-    assert html =~ "payment missing or invalid"
+    assert html =~ "Patchbay or the payment service refused the signed payment"
     assert html =~ "Facilitator unavailable before a settlement result"
     assert html =~ "Settlement may already be underway"
     assert html =~ "Terms expired"

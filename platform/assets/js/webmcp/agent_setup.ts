@@ -10,7 +10,6 @@ type RailReadiness = {
   balance_usdc?: string | null;
   wallet_address?: string | null;
   funding_request?: string;
-  required_usdc?: string;
 };
 
 type StatusLine = {ok: boolean; text: string};
@@ -291,13 +290,6 @@ function paintFunding(root: Element, readiness: RailReadiness | null) {
     request.value =
       readiness?.funding_request ??
       (readiness?.wallet_address ? fundingRequestText({walletAddress: readiness.wallet_address}) : "");
-  }
-
-  const neededRow = root.querySelector<HTMLElement>("#pb-fund-needed-row");
-  const needed = root.querySelector("#pb-fund-needed");
-  if (neededRow) {
-    neededRow.hidden = !readiness?.required_usdc;
-    if (needed && readiness?.required_usdc) needed.textContent = `${readiness.required_usdc} USDC`;
   }
 }
 

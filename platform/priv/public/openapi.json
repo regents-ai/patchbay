@@ -3440,11 +3440,41 @@
     "/api/payment_intents/{id}/execute": {
       "post": {
         "operationId": "executePaymentIntent",
-        "summary": "Pay a frozen intent with x402",
-        "description": "First call answers 402 with the exact EIP-3009 terms; the retry carries PAYMENT-SIGNATURE and settles. Never resubmit an uncertain charge. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "summary": "Pay a frozen intent with the signed-in wallet",
+        "description": "Send the page's active wallet. When it is the wallet the profile signed in with, the 402 answer carries a review: the payment Patchbay wrote for that wallet to sign. Sign its one step with eth_signTypedData_v4 and send the review id and the signature back to settle. A paid intent reads back without a wallet. Never resubmit an uncertain charge. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
         "tags": [
           "Payments"
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "active_wallet": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$",
+                    "description": "The wallet open in the page's wallet app."
+                  },
+                  "review_id": {
+                    "type": "string",
+                    "description": "The id of the review the wallet signed."
+                  },
+                  "signature": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{130}$",
+                    "description": "The wallet's signature over the review's one step."
+                  }
+                },
+                "required": [
+                  "active_wallet"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Settled.",
@@ -3483,7 +3513,7 @@
             }
           },
           "402": {
-            "description": "Payment required: the x402 terms to sign are in the body and headers."
+            "description": "Not paid yet. `review` is what the wallet is to sign; otherwise an `error` whose `code` says why it cannot: `wallet_unavailable`, `wallet_mismatch` (with `wallet_note` inside `error`), or `payment_refused` (nothing was paid; `message` says why)."
           },
           "409": {
             "description": "The intent is not in a state that can be executed.",

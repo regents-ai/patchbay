@@ -23,6 +23,7 @@
   "include": [
     "js/**/*.ts",
     "js/**/*.tsx",
+    "../dev/assets/**/*.ts",
     "vendor/**/*.d.ts",
     "vendor/**/*.d.mts"
   ]

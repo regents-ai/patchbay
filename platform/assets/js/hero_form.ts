@@ -18,16 +18,19 @@ const PICTURE_BYTES = 3 * 1024 * 1024
 const PICTURE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
 
 const WORDS: Record<string, string> = {
-  paying: "Asking the wallet you signed in with to approve the fee.",
+  paying: "Asking your wallet to approve the fee.",
   paid: "Paid. Opening your fix.",
   unconfigured: "Paying is not set up on this Patchbay.",
   unloadable: "The wallet window could not be loaded. Check your connection and try again.",
   unready: "The wallet did not answer in time. Try again.",
-  closed: "That approval was closed before it finished.",
-  refused: "The wallet did not approve the fee.",
-  no_wallet: "Sign in with a wallet first, at the top of the page.",
-  unsupported_challenge: "This Patchbay asked for a payment this page cannot make.",
+  signed_out: "Sign in with a wallet first, at the top of the page.",
+  wallet_unavailable: "Connect your wallet, then press again. Nothing was sent.",
+  wallet_mismatch: "Switch your wallet app to the wallet you signed in with, then press again. Nothing was sent.",
+  network_mismatch: "Your wallet is on a different network. Switch it to Base, then press again. Nothing was sent.",
+  wallet_declined: "Your wallet declined this. Nothing was sent.",
+  sign_unconfirmed: "Your wallet didn't finish approving the fee. Nothing was paid.",
   canceled: "That was canceled before it finished.",
+  payment_refused: "The payment was not accepted, so nothing was charged. Check that your wallet holds enough USDC on Base, then press again.",
   unopened: "Paid, and you will not be charged again. The fix could not be opened just now; " +
     "a person at Patchbay will open it for you.",
   unpreviewed: "Your post could not be shown just now. Try again in a moment.",
@@ -59,7 +62,9 @@ type PaidFix = {
   unsigned?: string
 }
 
-type NextStep = {navigate: string; problem?: undefined} | {problem: string; navigate?: undefined}
+type NextStep =
+  | {navigate: string; problem?: undefined; note?: undefined}
+  | {problem: string; note?: string; navigate?: undefined}
 
 // A chosen picture, as far as the page can check it before sending.
 type Picture = {size: number; type: string}
@@ -157,17 +162,21 @@ export function fixArguments(fields: Record<string, string>, tools: string[]): F
  * was charged for; otherwise say what stood in the way.
  */
 export function fixOutcome(outcome: PaidFix): NextStep {
-  if (outcome.unsigned) return {problem: WORDS[outcome.unsigned] ?? WORDS.refused}
+  const refused = errorIn(outcome.body)
+  if (outcome.unsigned) {
+    const note = refused?.wallet_note
+    return {problem: WORDS[outcome.unsigned], note: typeof note === "string" ? note : undefined}
+  }
   if (outcome.status === 200 && outcome.body?.status === "applied" && outcome.intent?.run_id) {
     return {navigate: fixPath(outcome.intent.run_id as string)}
   }
-  const refused = errorIn(outcome.body)
   if (outcome.status === 409 && refused?.code === "assist_running" && typeof refused.run_id === "string") {
     return {navigate: fixPath(refused.run_id)}
   }
   if (outcome.status === 202 && outcome.intent?.run_id) {
     return {problem: WORDS.unopened}
   }
+  if (refused?.code === "payment_refused") return {problem: WORDS.payment_refused}
   const said = refused?.message
   return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
 }
@@ -182,6 +191,7 @@ export function picturesProblem(pictures: Picture[]): string | null {
 
 async function pay(form: PageForm, doc: Document, options: HeroFormOptions) {
   say(form, WORDS.paying)
+  note(form, null)
   const outcome = await payForIntent(
     {fetch: options.fetch, csrfToken: options.csrfToken, document: doc},
     {kind: "jev_assist", args: fixArguments(fieldsOf(form), picksOf(form))},
@@ -191,6 +201,7 @@ async function pay(form: PageForm, doc: Document, options: HeroFormOptions) {
     say(form, WORDS.paid)
     ;(options.navigate ?? ((url: string) => globalThis.location.assign(url)))(next.navigate)
   } else {
+    note(form, next.note)
     refuse(form, "#pb-fix-submit", next.problem!)
   }
 }
@@ -303,6 +314,15 @@ function restorePicks(form: PageForm, storage: Storage | null) {
 function say(form: PageForm, words: string) {
   const status = form.querySelector("#pb-fix-status")
   if (status) status.textContent = words
+}
+
+// The wallet the account does not know, named beside the button. The line is
+// always in the page and only shown or hidden, so nothing moves the button.
+function note(form: PageForm, words: string | null | undefined) {
+  const line = form.querySelector<HTMLElement>("#pb-fix-wallet-note")
+  if (!line) return
+  line.textContent = words ?? ""
+  line.hidden = !words
 }
 
 // The reason is said under the buttons, and the button pressed shakes its head.

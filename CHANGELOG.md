@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-29 — Paying from a page uses your own wallet, and says why when it cannot
+
+- **Patchbay writes what your wallet signs.** When you pay for a fix, a tip or a priority question on a page, Patchbay now writes the payment itself for the wallet you have open, and your wallet signs exactly that. The amount, who is paid and the network come from what you asked for, never from the page.
+- **The wallet you signed in with pays.** If your wallet app has a different wallet open, the page names both and nothing is sent. If your wallet is on another network, it is asked to switch to Base first.
+- **Clear words for every outcome.** The page says when your wallet declined, did not finish, or needs connecting, and each time it says that nothing was paid. A payment the payment service turns down says why and charges nothing.
+- **Every press reaches your wallet.** Pressing again while a payment is with your wallet asks your wallet again.
 ## 2026-09-28 — USDC Balance
 
 - **One name for what your wallet holds.** The USDC in the wallet you sign in with is now called your USDC Balance everywhere on Patchbay, as on every Regents site.

@@ -23,6 +23,12 @@ test("an applied payment or a fix already under way goes to the fix; anything el
   assert.match(fixOutcome({status: 202, body: {status: "settled"}, intent: {run_id: "abc"}}).problem!, /not be charged again/)
   const short = {code: "invalid", message: "Not enough USDC.", hint: "Correct the fields in details, then send it again.", details: ["Not enough USDC."]}
   assert.match(fixOutcome({status: 422, body: {error: short}, intent: {run_id: "abc"}}).problem!, /Not enough USDC/)
-  assert.match(fixOutcome({status: 402, body: {}, intent: {}, unsigned: "closed"}).problem!, /closed/)
+  const turnedDown = {code: "payment_refused", message: "The wallet does not hold enough USDC on Base for this payment.", hint: "Nothing was charged."}
+  assert.match(fixOutcome({status: 402, body: {error: turnedDown}, intent: {run_id: "abc"}}).problem!, /^The payment was not accepted/)
+  assert.deepEqual(fixOutcome({status: 402, body: {}, intent: {}, unsigned: "wallet_declined"}),
+    {problem: "Your wallet declined this. Nothing was sent.", note: undefined})
+  const note = "You're signed in as 0xcc…cc, but your wallet app has 0xee…ee open."
+  const mismatch = {code: "wallet_mismatch", message: "Your wallet app has another wallet open.", hint: "Switch wallets.", wallet_note: note}
+  assert.equal(fixOutcome({status: 402, body: {error: mismatch}, intent: {}, unsigned: "wallet_mismatch"}).note, note)
   assert.match(fixOutcome({status: 0, body: null}).problem!, /could not be paid/)
 })
