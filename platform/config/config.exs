@@ -13,6 +13,15 @@ config :ash, default_string_length_count: :codepoints
 
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
+# Agents paired with a person's Regent account, shared by every Regent site. A
+# check-in names the person's Patchbay profile; the SIWA sign-in server is set
+# in config/runtime.exs.
+config :regent_agents,
+  repo: Patchbay.Repo,
+  pubsub: Patchbay.PubSub,
+  account: {Patchbay.Identity, :paired_account},
+  ash_domains: [RegentAgents]
+
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],

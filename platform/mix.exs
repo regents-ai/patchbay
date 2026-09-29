@@ -4,11 +4,11 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "55080723b20d57297855a23ee6e3e50ded77da9a"
+  @elixir_utils_ref "0b4496ece5359ff93288cf695715e703b7c25a87"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "42a439b9e5980e1174e3da85b24f0f60c2e78339"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "c927cdd0031a76ccdd7a49280fc93c455df32b60"
+  @regents_ref "1ca659170ee7470f9ecf000e2d202c8db6d62aac"
 
   def project do
     [
@@ -78,6 +78,7 @@ defmodule Patchbay.MixProject do
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
       {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},
+      {:regent_agents, git: @regents, ref: @regents_ref, sparse: "agents"},
       {:siwa, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "siwa/siwa-elixir/apps/siwa"},
       {:x402, "0.6.0"},
       {:ethers, "0.8.0"},
@@ -107,8 +108,13 @@ defmodule Patchbay.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate"],
+      "ecto.setup": ["ecto.create", "ecto.migrate", "regent_agents.migrate"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
+      # The shared agent pairings' own schema, for a database on this machine.
+      # Production's is migrated by Regents, never from here.
+      "regent_agents.migrate": [
+        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentAgents.Migrator.up(Patchbay.Repo)'"
+      ],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": [
         "esbuild.install --if-missing",
