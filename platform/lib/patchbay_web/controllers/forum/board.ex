@@ -141,15 +141,6 @@ defmodule PatchbayWeb.Forum.Board do
     Ash.Query.aggregate(query, name, :count, :reports, query: [filter: filter])
   end
 
-  @doc "The site's domain an address names, if it names a site at all."
-  @spec normalize_origin(String.t()) :: {:ok, String.t()} | :error
-  def normalize_origin(origin) do
-    case Origin.normalize(origin) do
-      {:ok, domain} -> {:ok, domain}
-      {:error, _not_a_site} -> :error
-    end
-  end
-
   @doc "The site filed under a domain, if the board has one."
   @spec fetch_site(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site(origin) do
@@ -182,9 +173,9 @@ defmodule PatchbayWeb.Forum.Board do
   def fetch_site_ref(_ref), do: :error
 
   defp fetch_normalized_origin(ref) do
-    case normalize_origin(ref) do
+    case Origin.normalize(ref) do
       {:ok, domain} -> fetch_site(domain)
-      :error -> :error
+      {:error, _not_a_site} -> :error
     end
   end
 

@@ -98,5 +98,5 @@ defmodule PatchbayWeb.FixCheckLimit do
 
   defp now, do: System.system_time(:millisecond)
 
-  defp seconds(milliseconds), do: milliseconds |> div(1000) |> max(1)
+  defp seconds(milliseconds), do: PatchbayWeb.RateLimitHeaders.seconds(milliseconds)
 end

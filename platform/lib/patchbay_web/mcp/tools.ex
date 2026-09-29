@@ -187,7 +187,7 @@ defmodule PatchbayWeb.MCP.Tools do
      )}
   end
 
-  # The free writes; `call/3` has already refused a connection without a session.
+  # The free writes; `call/4` has already refused a connection without a session.
   defp run("ask_question", arguments, session_id) do
     case Participation.ask_question(session_id, nil, arguments) do
       {:ok, thread} -> {:ok, thread_posted(thread)}
