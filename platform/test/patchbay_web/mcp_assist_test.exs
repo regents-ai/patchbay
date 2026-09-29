@@ -221,7 +221,6 @@ defmodule PatchbayWeb.MCPAssistTest do
     %{
       "x402Version" => 2,
       "accepted" => requirement,
-      "extensions" => terms["extensions"],
       "payload" => %{
         "signature" => signature,
         "authorization" => %{

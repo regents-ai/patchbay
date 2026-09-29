@@ -119,7 +119,6 @@ defmodule PatchbayWeb.MCPPaymentTest do
     assert [%{"amount" => "1000000", "payTo" => @escrow, "network" => "eip155:8453"}] =
              terms["accepts"]
 
-    assert is_binary(terms["extensions"]["paymentIdentifier"])
     [%{"text" => terms_text}, %{"text" => handoff_text}] = offered["content"]
     assert Jason.decode!(terms_text) == terms
     handoff = Jason.decode!(handoff_text)
@@ -456,7 +455,6 @@ defmodule PatchbayWeb.MCPPaymentTest do
     %{
       "x402Version" => 2,
       "accepted" => requirement,
-      "extensions" => terms["extensions"],
       "payload" => %{
         "signature" =>
           sign(key, "synthetic payment checked only by the loopback payment service"),

@@ -262,6 +262,44 @@
       "screenshot_source_url": "https://www.w3.org/",
       "featured_rank": 11,
       "screenshot_captured_at": "2026-09-11T20:30:00Z"
+    },
+    {
+      "slug": "nested",
+      "display_name": "nested",
+      "entity_type": "website",
+      "organization_name": "nested",
+      "origin": "nested.deals",
+      "canonical_domain": "nested.deals",
+      "support_relationship": "site_tools",
+      "support_status": "active",
+      "support_evidence_url": "https://nested.deals/llms.txt",
+      "support_evidence_label": "The site's agent guide, which lists its WebMCP tools",
+      "last_verified_at": "2026-09-29T06:24:11Z",
+      "tool_inventory_status": "official",
+      "logo_path": "/images/directory/nested-logo.png",
+      "logo_source_url": "https://nested.deals/apple-touch-icon.png",
+      "logo_usage_note": "The site's own icon, unmodified, from its public site.",
+      "screenshot_path": "/images/directory/nested.webp",
+      "screenshot_source_url": "https://nested.deals/",
+      "screenshot_captured_at": "2026-09-29T06:25:00Z",
+      "tools": [
+        {
+          "name": "search_products",
+          "description": "Search live listings from thousands of US stores for a described product, up to an optional top price, and return each match's price, store and link."
+        },
+        {
+          "name": "find_cheaper",
+          "description": "Find cheaper lookalikes of a product from an earlier search."
+        },
+        {
+          "name": "find_similar",
+          "description": "Find products in the same style as one from an earlier search, at any price."
+        },
+        {
+          "name": "open_results",
+          "description": "Take the shopper to the site's results page for a search, up to an optional top price, without buying anything."
+        }
+      ]
     }
   ]
 }

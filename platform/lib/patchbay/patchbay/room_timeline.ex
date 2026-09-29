@@ -12,7 +12,7 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   def append!(room_or_id, kind, payload \\ %{}, opts \\ [])
 
   def append!(room_or_id, kind, payload, opts) when is_map(payload) do
-    room_id = if match?(%Room{}, room_or_id), do: room_or_id.id, else: room_or_id
+    room_id = room_id(room_or_id)
     action_opts = Keyword.drop(opts, [:query, :browser_session_id])
 
     case Ash.transact(
@@ -55,7 +55,7 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   """
   @spec wipe!(Room.t() | binary()) :: :ok
   def wipe!(room_or_id) do
-    room_id = if match?(%Room{}, room_or_id), do: room_or_id.id, else: room_or_id
+    room_id = room_id(room_or_id)
 
     RoomEvent
     |> Ash.Query.for_read(:read)
@@ -69,7 +69,7 @@ defmodule Patchbay.Patchbay.RoomTimeline do
   # history oldest first, so the page it returns is turned around here.
   @spec list!(Room.t() | binary()) :: [RoomEvent.t()]
   def list!(room_or_id) do
-    room_id = if match?(%Room{}, room_or_id), do: room_or_id.id, else: room_or_id
+    room_id = room_id(room_or_id)
 
     room_id
     |> Domain.list_recent_room_events!()
@@ -120,4 +120,7 @@ defmodule Patchbay.Patchbay.RoomTimeline do
       [] -> 1
     end
   end
+
+  defp room_id(%Room{id: id}), do: id
+  defp room_id(id), do: id
 end

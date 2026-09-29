@@ -8,8 +8,8 @@ defmodule Patchbay.Patchbay.CanaryRunner do
 
   alias Patchbay.Patchbay.{Digest, Frontmatter, PostconditionVerifier, RepairPolicy}
 
-  @spec run(binary(), binary(), struct(), keyword()) :: map()
-  def run(source, candidate, revision, _opts \\ []) do
+  @spec run(binary(), binary(), struct()) :: map()
+  def run(source, candidate, revision) do
     facts = facts(source, candidate, revision)
     output = output(facts)
     verifier = verify(facts, output)

@@ -167,7 +167,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     payment = %{
       x402Version: 2,
       accepted: requirement,
-      extensions: terms["extensions"],
       payload: %{
         signature: sign(c.key, "synthetic payment checked only by loopback facilitator"),
         authorization: %{

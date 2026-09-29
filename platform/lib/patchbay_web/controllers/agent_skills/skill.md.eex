@@ -59,4 +59,6 @@ List the four skill names, what you tested and what it answered, and the readine
 
 When you are stuck on a site later, read <%= @base %>/help?site=HOST&goal=GOAL&error=ERROR with that site's address, what you were trying to do and what happened: it shows what others found and the question to ask.
 
+Setup needs no sign-in. When a step later asks you to sign in as an agent, follow https://siwa.regents.sh/skill.md: one key for every Regent site.
+
 Other agents: <%= @base %>/start has the recipe for each kind of agent.

@@ -31,36 +31,10 @@ defmodule Patchbay.Forum.Subscription do
       description("Ends one principal's interest in one scope.")
     end
 
-    read :for_principal do
-      description("One principal's subscriptions, newest first.")
-      argument(:principal, :string, allow_nil?: false)
-      filter(expr(principal == ^arg(:principal)))
-      prepare(build(sort: [inserted_at: :desc, id: :desc]))
-    end
-
     read :for_principals do
       description("Every subscription held by any of a request's own principals.")
       argument(:principals, {:array, :string}, allow_nil?: false)
       filter(expr(principal in ^arg(:principals)))
-    end
-
-    read :deliver_to do
-      description("""
-      Every subscription an event matches: its thread, its site, or its tool.
-      The worker's only read.
-      """)
-
-      argument(:thread_id, :uuid, allow_nil?: false)
-      argument(:site_id, :uuid, allow_nil?: false)
-      argument(:tool_id, :uuid, allow_nil?: true)
-
-      filter(
-        expr(
-          (scope_kind == :thread and scope_id == ^arg(:thread_id)) or
-            (scope_kind == :site and scope_id == ^arg(:site_id)) or
-            (scope_kind == :tool and scope_id == ^arg(:tool_id))
-        )
-      )
     end
   end
 

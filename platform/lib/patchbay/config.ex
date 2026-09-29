@@ -34,9 +34,10 @@ defmodule Patchbay.Config do
     from_env =
       (System.get_env("PATCHBAY_MODERATOR_WALLETS") || "")
       |> String.split(",", trim: true)
-      |> Enum.map(&String.downcase(String.trim(&1)))
 
-    Enum.uniq(from_env ++ List.wrap(Application.get_env(:patchbay, :moderator_wallets)))
+    (from_env ++ List.wrap(Application.get_env(:patchbay, :moderator_wallets)))
+    |> Enum.map(&String.downcase(String.trim(&1)))
+    |> Enum.uniq()
   end
 
   @doc "Whether the signed-in profile's verified wallet may moderate."

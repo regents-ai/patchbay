@@ -41,8 +41,6 @@ defmodule PatchbayWeb.Forum.Board do
   @replies_per_page 100
   @reports_per_room 10
   @room_invocations 50
-  @recent 40
-  @search_tool_limit 20
 
   @site_loads [:tool_count, :report_count]
   @post_loads [
@@ -66,34 +64,6 @@ defmodule PatchbayWeb.Forum.Board do
     :current?
   ]
 
-  @recent_loads [:author, :site, tool: [:site]]
-
-  @doc """
-  The newest reports on the board, every site, and whether more remain.
-
-  A `q` is the same look-up the JSON search uses: a site, a tool name, or
-  both, written as one box. An empty `q` is the unfiltered recent list.
-  """
-  @spec recent_reports(String.t() | nil) :: {[Report.t()], boolean()}
-  def recent_reports(q \\ nil) do
-    case search_terms(q) do
-      :all ->
-        page =
-          Forum.list_recent_reports!(
-            load: @recent_loads,
-            page: [limit: @recent]
-          )
-
-        {page.results, page.more?}
-
-      {:ok, origin, tool_name} ->
-        reports_for_search(origin, tool_name)
-
-      :none ->
-        {[], false}
-    end
-  end
-
   @doc """
   Whether this deployment can take a wallet payment: Privy is named and Base
   can be read, the same two gates the balance tool uses. The rail reads this
@@ -104,86 +74,6 @@ defmodule PatchbayWeb.Forum.Board do
     case Privy.app_id() do
       id when is_binary(id) and id != "" -> RegentPayments.Balance.configured?()
       _unset -> false
-    end
-  end
-
-  # One box on the home page. A host (or a URL that names one) is a site; a
-  # token that could be a tool name is a tool; two tokens are a site and a
-  # tool. Anything else is not a search the board knows how to run.
-  defp search_terms(q) do
-    case q |> to_string() |> String.trim() |> String.split(~r/\s+/, trim: true) do
-      [] -> :all
-      [one] -> one_term(one)
-      [site, name | _rest] -> two_terms(site, name)
-    end
-  end
-
-  defp one_term(term) do
-    case host_of(term) do
-      nil -> if tool_name?(term), do: {:ok, nil, term}, else: :none
-      host -> {:ok, host, nil}
-    end
-  end
-
-  defp two_terms(site, name) do
-    origin = host_of(site)
-    tool = if tool_name?(name), do: name
-    if origin || tool, do: {:ok, origin, tool}, else: :none
-  end
-
-  defp host_of(term) do
-    case normalize_origin(term) do
-      {:ok, host} -> host
-      :error -> nil
-    end
-  end
-
-  # Same pairing the JSON search uses: paid reports first, then the rest,
-  # both newest first, both already loaded with author and site.
-  defp reports_for_search(origin, tool_name) do
-    case matching_tools(origin, tool_name) do
-      [] ->
-        {[], false}
-
-      tools ->
-        ids = tools |> Enum.map(& &1.id) |> Enum.take(5)
-
-        priority =
-          Forum.list_priority_reports_for_tools!(ids,
-            load: @recent_loads,
-            page: [limit: @recent]
-          )
-
-        ordinary =
-          Forum.list_reports_for_tools!(ids,
-            load: @recent_loads,
-            page: [limit: @recent]
-          )
-
-        reports = Enum.uniq_by(priority.results ++ ordinary.results, & &1.id)
-        {Enum.take(reports, @recent), priority.more? or ordinary.more?}
-    end
-  end
-
-  defp matching_tools(nil, tool_name) when is_binary(tool_name) do
-    Tool
-    |> Ash.Query.filter(name == ^tool_name)
-    |> Ash.Query.sort(last_seen_at: :desc, id: :asc)
-    |> Ash.Query.limit(@search_tool_limit)
-    |> Ash.read!()
-  end
-
-  defp matching_tools(origin, tool_name) when is_binary(origin) do
-    case Forum.get_site_by_origin(origin) do
-      {:ok, site} ->
-        query = if tool_name, do: [filter: [name: tool_name]], else: []
-
-        site.id
-        |> Forum.list_tools_for_site!(query: query, page: [limit: @search_tool_limit])
-        |> Map.fetch!(:results)
-
-      {:error, _no_such_site} ->
-        []
     end
   end
 
@@ -234,17 +124,12 @@ defmodule PatchbayWeb.Forum.Board do
          do: {:ok, page.results, page.more?}
   end
 
-  @doc "How many posts a site or tool list shows before it says there are more."
-  @spec posts_per_page() :: pos_integer()
-  def posts_per_page, do: @ranked_posts
-
   # A site card carries the same summary wherever it is read: how much has been
   # reported, how it broke down, and when the last word came in. All of it is
   # counted alongside the site itself, so a page of cards is still one read.
   defp site_summary do
     Site
     |> Ash.Query.load(@site_loads)
-    |> reports_counted(:verified_report_count, expr(verified == true))
     |> reports_counted(:verified_success_count, expr(verdict == :verified_success))
     |> reports_counted(:verified_failure_count, expr(verdict == :verified_failure))
     |> reports_counted(:errored_count, expr(verdict == :errored))
@@ -254,15 +139,6 @@ defmodule PatchbayWeb.Forum.Board do
 
   defp reports_counted(query, name, filter) do
     Ash.Query.aggregate(query, name, :count, :reports, query: [filter: filter])
-  end
-
-  @doc "The site's domain an address names, if it names a site at all."
-  @spec normalize_origin(String.t()) :: {:ok, String.t()} | :error
-  def normalize_origin(origin) do
-    case Origin.normalize(origin) do
-      {:ok, domain} -> {:ok, domain}
-      {:error, _not_a_site} -> :error
-    end
   end
 
   @doc "The site filed under a domain, if the board has one."
@@ -297,9 +173,9 @@ defmodule PatchbayWeb.Forum.Board do
   def fetch_site_ref(_ref), do: :error
 
   defp fetch_normalized_origin(ref) do
-    case normalize_origin(ref) do
+    case Origin.normalize(ref) do
       {:ok, domain} -> fetch_site(domain)
-      :error -> :error
+      {:error, _not_a_site} -> :error
     end
   end
 
@@ -331,16 +207,6 @@ defmodule PatchbayWeb.Forum.Board do
   @doc "Whether an address segment could name a tool at all; anything else is not on the board."
   @spec tool_name?(term()) :: boolean()
   def tool_name?(name), do: Patchbay.Forum.ToolName.valid?(name)
-
-  @doc """
-  The most recently seen versions of one named tool on a site, newest first,
-  and whether the tool has more versions than that.
-  """
-  @spec tool_versions(Site.t(), String.t()) :: {[Tool.t()], boolean()}
-  def tool_versions(%Site{} = site, name) do
-    {:ok, history} = tool_history(site, name)
-    {history.versions, history.pagination.has_more}
-  end
 
   def tool_history(%Site{} = site, name, cursor \\ nil) do
     PatchbayWeb.Forum.ToolHistory.page(site, name, cursor, 25, @tool_loads)

@@ -99,7 +99,6 @@ defmodule PatchbayWeb.Forum.Hero do
   def details?(draft),
     do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] not in ["", "question"]))
 
-  # The exact page, when the address names more of the site than its home.
   # Tags arrive as one comma-separated line and are split here, where the
   # form ends.
   defp tags(line),

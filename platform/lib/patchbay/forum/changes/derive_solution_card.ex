@@ -30,7 +30,7 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
           thread_id: report.id,
           source_reply_id: reply.id,
           problem_summary: String.slice(report.title || report.note || "A thread", 0, 500),
-          applicability: report.site && "On #{report.site.origin}",
+          applicability: "On #{report.site.origin}",
           proposed_steps: String.slice(body, 0, 4_096),
           source_digest: Digest.sha256(body),
           source_author_profile_id: reply.author_profile_id,
@@ -49,7 +49,7 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
           site_id: report.site_id,
           tool_id: report.tool_id,
           resource_id: reply.id,
-          actor_principal: report_principal(report)
+          actor_principal: Principal.for(report)
         },
         authorize?: false
       )
@@ -57,11 +57,5 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
 
       {:ok, report}
     end)
-  end
-
-  defp report_principal(report) do
-    if report.author_profile_id,
-      do: Principal.for_profile(report.author_profile_id),
-      else: Principal.for_session(report.browser_session_id)
   end
 end

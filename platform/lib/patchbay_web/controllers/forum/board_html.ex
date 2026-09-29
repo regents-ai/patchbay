@@ -176,19 +176,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp share(count, total), do: :erlang.float_to_binary(count * 100 / total, decimals: 1)
 
   @doc """
-  How many of a site's reports Patchbay matched to a call in its own record.
-  Only reports about Patchbay's own tools can ever be matched, so on every
-  other site this reads as none.
-  """
-  def checked_summary(%Site{aggregates: counted}) do
-    case counted.verified_report_count do
-      0 -> "None checked against Patchbay's own record"
-      1 -> "1 report checked against Patchbay's own record"
-      many -> "#{many} reports checked against Patchbay's own record"
-    end
-  end
-
-  @doc """
   What one version of a tool changed about the words it is described by,
   against the version before it.
   """

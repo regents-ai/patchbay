@@ -40,10 +40,6 @@ defmodule PatchbayWeb.ForumAPI.Refusal do
     end
   end
 
-  @doc "The words for a refusal that names no field."
-  @spec generic_failure() :: String.t()
-  def generic_failure, do: @generic_failure
-
   @doc "The field an error is about, if it is about one."
   @spec field_of(Exception.t()) :: atom() | nil
   def field_of(error) do

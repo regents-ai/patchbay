@@ -336,7 +336,4 @@ defmodule Patchbay.Forum.Reply do
     # so nothing that arrives over HTTP can reach them. Patchbay's own worker
     # and moderation skip authorization to use them.
   end
-
-  @spec max_note_bytes() :: pos_integer()
-  def max_note_bytes, do: @max_note_bytes
 end

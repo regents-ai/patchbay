@@ -29,10 +29,6 @@ defmodule Patchbay.Assist.Allowance do
   """
   @type t :: %{free: non_neg_integer(), sign_in_adds: non_neg_integer(), given_out: boolean()}
 
-  @doc "How many free fixes a day a connection gets, and how many more a signed-in person gets."
-  @spec per_day() :: %{visitor: pos_integer(), member: pos_integer()}
-  def per_day, do: %{visitor: @visitor_per_day, member: @member_per_day}
-
   @doc """
   What `visitor_key`'s connection, signed in as `profile` or not, has left
   today, or why the runs could not be counted.

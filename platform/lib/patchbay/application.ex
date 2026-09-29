@@ -41,9 +41,7 @@ defmodule Patchbay.Application do
     Supervisor.start_link(children, opts)
   end
 
-  # The worker that repairs a reported tool runs beside the room it repairs.
-  # Tests start their own when they want one, so the suite is never racing a
-  # loop it did not ask for.
+  # The WebMCP catalog is synced once, at boot.
   defp catalog_loader do
     if Application.get_env(:patchbay, :sync_webmcp_catalog, true) do
       [{Task, fn -> Patchbay.Forum.Catalog.sync!() end}]
@@ -52,6 +50,9 @@ defmodule Patchbay.Application do
     end
   end
 
+  # The worker that repairs a reported tool runs beside the room it repairs.
+  # Tests start their own when they want one, so the suite is never racing a
+  # loop it did not ask for.
   defp patchbay_agent do
     if Application.get_env(:patchbay, :start_patchbay_agent, true) do
       [{Patchbay.Forum.PatchbayAgent, name: Patchbay.Forum.PatchbayAgent}]
