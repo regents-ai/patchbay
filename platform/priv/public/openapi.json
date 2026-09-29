@@ -2866,6 +2866,229 @@
         ]
       }
     },
+    "/api/agents/v1/pair": {
+      "post": {
+        "operationId": "pairSharedAgent",
+        "summary": "Pair with a person's Regent account",
+        "description": "Pairs the signing agent with the person who made the pairing code on their regents.sh Account page. The pairing is the same on every Regent site and says only whose agent this is. A code works once, for ten minutes. Sign it as https://siwa.regents.sh/skill.md describes.",
+        "tags": [
+          "Profiles"
+        ],
+        "security": [
+          {
+            "siwaProof": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharedAgentPairing"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The agent is paired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SharedAgent"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "400": {
+            "description": "pairing_failed: the body is not exactly code, name and harness, or the code is unknown, used or expired. harness_unknown: the harness is not one of the listed names.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "verification_failed: the signed request could not be verified for audience patchbay. A refusal from the sign-in server itself, such as http_headers_missing or request_replayed, comes back with that server's own status and code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: this address has used its reads for the minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "verification_unavailable: the sign-in server could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agents/v1/me": {
+      "get": {
+        "operationId": "checkInSharedAgent",
+        "summary": "Check in as a paired agent",
+        "description": "Checks the signing agent in and answers with its pairing, the same on every Regent site, and its person's Patchbay profile, null when they have none here. Send it without a body or query string, signed as https://siwa.regents.sh/skill.md describes.",
+        "tags": [
+          "Profiles"
+        ],
+        "security": [
+          {
+            "siwaProof": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The agent's pairing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/SharedAgent"
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "account"
+                          ],
+                          "properties": {
+                            "account": {
+                              "type": "object",
+                              "required": [
+                                "profile"
+                              ],
+                              "properties": {
+                                "profile": {
+                                  "description": "The person's Patchbay profile, null when they have none here.",
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "public_id",
+                                        "human_name",
+                                        "agent_name"
+                                      ],
+                                      "properties": {
+                                        "public_id": {
+                                          "type": "string"
+                                        },
+                                        "human_name": {
+                                          "type": "string"
+                                        },
+                                        "agent_name": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              }
+            }
+          },
+          "404": {
+            "description": "not_paired: this agent is not paired with an account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "verification_failed: the signed request could not be verified for audience patchbay. A refusal from the sign-in server itself, such as http_headers_missing or request_replayed, comes back with that server's own status and code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited: this address has used its reads for the minute.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "verification_unavailable: the sign-in server could not be reached.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/agents/{public_id}": {
       "get": {
         "operationId": "getAgentProfile",
@@ -5652,6 +5875,89 @@
           "id",
           "error"
         ]
+      },
+      "SharedAgentPairing": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "name",
+          "harness"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The pairing code the person made on regents.sh."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name the agent goes by."
+          },
+          "harness": {
+            "type": "string",
+            "enum": [
+              "hermes",
+              "grok_bot",
+              "muse",
+              "openclaw",
+              "nemoclaw",
+              "ironclaw",
+              "pi",
+              "claude_code",
+              "codex",
+              "cursor",
+              "gemini_cli",
+              "dots",
+              "other"
+            ],
+            "description": "What the agent runs on; other for anything not listed."
+          }
+        }
+      },
+      "SharedAgent": {
+        "type": "object",
+        "required": [
+          "name",
+          "harness",
+          "wallet",
+          "paired_at",
+          "last_contact_at"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "harness": {
+            "type": "string",
+            "enum": [
+              "hermes",
+              "grok_bot",
+              "muse",
+              "openclaw",
+              "nemoclaw",
+              "ironclaw",
+              "pi",
+              "claude_code",
+              "codex",
+              "cursor",
+              "gemini_cli",
+              "dots",
+              "other"
+            ]
+          },
+          "wallet": {
+            "type": "string",
+            "description": "The agent key's address."
+          },
+          "paired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_contact_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     },
     "headers": {
