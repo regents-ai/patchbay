@@ -93,8 +93,8 @@ defmodule Patchbay.Assist.McpClient do
   end
 
   @doc """
-  Calls one tool. The answer is the text the server put in the result,
-  whether it marked it an error, and its structured content if any.
+  Calls one tool. The answer is the text the server put in the result, with
+  any structured content written into it, and whether it marked it an error.
   """
   @spec call_tool(client(), String.t(), map()) ::
           {:ok, %{text: String.t(), error?: boolean()}} | {:error, term()}
