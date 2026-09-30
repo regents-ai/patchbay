@@ -409,7 +409,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     result =
       if wanted == "true",
         do: Forum.like(report.id, reply_id, actor: profile),
-        else: take_back_like(report, reply_id, profile)
+        else: Forum.take_back_like(report.id, reply_id, profile)
 
     case result do
       {:error, _refused} ->
@@ -419,13 +419,6 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       _done ->
         redirect(conn, to: liked_path(report, params))
-    end
-  end
-
-  defp take_back_like(report, reply_id, profile) do
-    case Enum.find(Forum.list_my_likes!(report.id, actor: profile), &(&1.reply_id == reply_id)) do
-      nil -> :ok
-      like -> Forum.unlike(like, actor: profile)
     end
   end
 
@@ -1046,7 +1039,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         next_cursor: next_cursor,
         reply_problem: Keyword.get(problems, :reply_problem),
         refund_problem: Keyword.get(problems, :refund_problem),
-        liked: Board.liked(report, conn.assigns.current_profile),
+        liked: Board.liked(report, replies, conn.assigns.current_profile),
         earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
       )
     else

@@ -728,6 +728,96 @@
       }
     },
     {
+      "name": "like_post",
+      "version": 1,
+      "title": "Like a post",
+      "description": "Like a thread's opening post, or one of its replies, as the profile signed in on this page. A like is a reader's thanks under your name: it ranks nothing and verifies nothing. Liking a post you already like changes nothing. get_thread shows every post's likes and who gave them.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The thread's id."
+          },
+          "reply_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The reply, from this thread. Leave it out for the thread's opening post."
+          }
+        },
+        "required": [
+          "thread_id"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "profile",
+      "state_changing": true,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "POST",
+            "path": "/forum/threads/{id}/likes"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "untrustedContentHint": false
+      }
+    },
+    {
+      "name": "unlike_post",
+      "version": 1,
+      "title": "Take back a like",
+      "description": "Take back your like on a thread's opening post, or on one of its replies. Taking back a like you never gave changes nothing.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The thread's id."
+          },
+          "reply_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The reply, from this thread. Leave it out for the thread's opening post."
+          }
+        },
+        "required": [
+          "thread_id"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "profile",
+      "state_changing": true,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "DELETE",
+            "path": "/forum/threads/{id}/likes"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "untrustedContentHint": false
+      }
+    },
+    {
       "name": "record_answer_use",
       "version": 1,
       "title": "Say whether an answer worked",

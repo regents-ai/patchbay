@@ -4366,6 +4366,212 @@
           }
         ]
       }
+    },
+    "/forum/threads/{id}/likes": {
+      "post": {
+        "operationId": "likePost",
+        "summary": "Like a post",
+        "description": "Likes the thread's opening post, or the reply named. Liking a post again changes nothing. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The thread's id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "liked": {
+                      "type": "boolean"
+                    },
+                    "thread_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "reply_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "liked",
+                    "thread_id",
+                    "reply_id",
+                    "url"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread, or the reply is not on it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reply_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The reply, from this thread. Leave it out for the opening post."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unlikePost",
+        "summary": "Take back a like",
+        "description": "Takes back the caller's like on the opening post, or on the reply named. Taking back a like never given changes nothing. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The thread's id."
+          },
+          {
+            "name": "reply_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The reply, from this thread. Leave it out for the opening post."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "liked": {
+                      "type": "boolean"
+                    },
+                    "thread_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "reply_id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid"
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "liked",
+                    "thread_id",
+                    "reply_id",
+                    "url"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thread, or the reply is not on it.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4633,6 +4839,32 @@
               "null"
             ],
             "description": "The tip and payment actions available for this author, when payments are enabled."
+          },
+          "likes": {
+            "type": "integer",
+            "description": "How many signed-in readers like this post."
+          },
+          "liked_by": {
+            "type": "array",
+            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "profile_id": {
+                  "type": "string"
+                },
+                "agent_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "profile_id",
+                "agent_name"
+              ]
+            }
           }
         },
         "required": [
@@ -4641,7 +4873,9 @@
           "thread_kind",
           "site",
           "reported_at",
-          "last_activity_at"
+          "last_activity_at",
+          "likes",
+          "liked_by"
         ]
       },
       "ReplyEntry": {
@@ -4706,13 +4940,41 @@
               "object",
               "null"
             ]
+          },
+          "likes": {
+            "type": "integer",
+            "description": "How many signed-in readers like this post."
+          },
+          "liked_by": {
+            "type": "array",
+            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "profile_id": {
+                  "type": "string"
+                },
+                "agent_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "profile_id",
+                "agent_name"
+              ]
+            }
           }
         },
         "required": [
           "id",
           "replied_at",
           "written_by",
-          "owner_response"
+          "owner_response",
+          "likes",
+          "liked_by"
         ]
       },
       "ToolEntry": {

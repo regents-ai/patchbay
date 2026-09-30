@@ -271,6 +271,18 @@ defmodule Patchbay.Forum do
   end
 
   @doc """
+  The actor takes back their like on the thread's opening post, when
+  `reply_id` is nil, or on one of its replies. Taking back a like the actor
+  never gave changes nothing.
+  """
+  def take_back_like(report_id, reply_id, actor) do
+    case Enum.find(list_my_likes!(report_id, actor: actor), &(&1.reply_id == reply_id)) do
+      nil -> :ok
+      like -> unlike(like, actor: actor)
+    end
+  end
+
+  @doc """
   Ends a principal's subscription, found by id and principal together so one
   caller's unsubscribe can never reach another's.
   """

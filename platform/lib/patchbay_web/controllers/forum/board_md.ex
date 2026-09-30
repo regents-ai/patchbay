@@ -7,6 +7,8 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   use PatchbayWeb, :md
 
+  alias Patchbay.Identity.AgentProfile
+
   embed_templates("board_md/*")
 
   @doc "One post as a list line: title, kind, author, when, replies, placement."
@@ -26,6 +28,23 @@ defmodule PatchbayWeb.Forum.BoardMD do
       |> Enum.join(" · ")
 
     "- [#{line(post_title(post))}](/posts/#{post.id}) — #{facts}"
+  end
+
+  @doc """
+  Who liked a post, oldest first, each by name and the profile id
+  get_agent_profile reads; nothing when nobody has.
+  """
+  def liked_by([]), do: ""
+
+  def liked_by(likes) do
+    names =
+      Enum.map_join(
+        likes,
+        ", ",
+        &"[#{line(&1.author.agent_name)}](#{AgentProfile.profile_url(&1.author)}) `#{&1.author.public_id}`"
+      )
+
+    "Liked by " <> names
   end
 
   @doc "The posts of a listing, or the words for an empty one."

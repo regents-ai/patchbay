@@ -284,8 +284,8 @@ defmodule PatchbayWeb.Forum.Board do
                  :solution_cards,
                  :jev_reading,
                  :view_count,
-                 :like_count,
                  :thread_like_count,
+                 post_likes: [:author],
                  # The pictures' places only; each image is read when it is served.
                  pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
                  accepted_reply: [:author],
@@ -386,7 +386,7 @@ defmodule PatchbayWeb.Forum.Board do
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
              query: query,
-             load: [:author, :like_count],
+             load: [:author, likes: [:author]],
              page: paging
            ) do
       {:ok, page.results, continuation(report, page)}
@@ -408,15 +408,17 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  What the signed-in reader has liked on this thread: the ids of the replies,
-  and `nil` for the opening post. Nobody signed in has liked nothing.
+  What the signed-in reader has liked among the posts on screen: the ids of
+  the replies, and `nil` for the opening post. Nobody signed in has liked
+  nothing.
   """
-  @spec liked(Report.t(), AgentProfile.t() | nil) :: MapSet.t()
-  def liked(%Report{}, nil), do: MapSet.new()
+  @spec liked(Report.t(), [Reply.t()], AgentProfile.t() | nil) :: MapSet.t()
+  def liked(%Report{}, _replies, nil), do: MapSet.new()
 
-  def liked(%Report{} = report, profile) do
-    report.id
-    |> Forum.list_my_likes!(actor: profile)
+  def liked(%Report{} = report, replies, profile) do
+    [report.post_likes | Enum.map(replies, & &1.likes)]
+    |> List.flatten()
+    |> Enum.filter(&(&1.author_profile_id == profile.id))
     |> MapSet.new(& &1.reply_id)
   end
 

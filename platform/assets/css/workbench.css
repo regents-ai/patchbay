@@ -139,7 +139,9 @@
 .pb-thread .pb-markdown blockquote > :last-child { margin-bottom: 0; }
 
 /* A heart and its count. A like the reader gave is filled in. */
-.pb-like-form { margin: 0; }
+.pb-like-form { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .15rem; margin: 0; }
+.pb-liked-by { color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-liked-by a { color: inherit; font-weight: var(--font-weight-semibold); }
 .pb-like { display: inline-flex; align-items: center; gap: .35rem; min-width: 2.75rem; min-height: 2.25rem; justify-content: center; padding: .25rem .6rem; border: 0; background: transparent; color: var(--pb-text-muted); font: var(--font-weight-semibold) .8125rem var(--font-family-ui); cursor: pointer; }
 .pb-like .pb-icon { font-size: 1.05rem; }
 /* A given like is the palette's tangerine in both themes, so it reads as given

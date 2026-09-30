@@ -119,11 +119,10 @@ defmodule Patchbay.Forum.Reply do
       public?: true
     )
 
-    has_many(:likes, Patchbay.Forum.Like)
-  end
-
-  aggregates do
-    count(:like_count, :likes)
+    # Oldest first, so readers see who liked it in the order they did.
+    has_many :likes, Patchbay.Forum.Like do
+      sort(inserted_at: :asc)
+    end
   end
 
   actions do

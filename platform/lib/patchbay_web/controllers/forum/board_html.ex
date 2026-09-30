@@ -25,6 +25,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   embed_templates("board_html/*")
 
   @display_bytes 2_000
+  # How many likers a heart names before it counts the rest.
+  @named_likers 3
 
   @verdicts %{
     verified_success: "Worked",
@@ -1663,7 +1665,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               :if={@liked}
               report={@report}
               reply={reply}
-              count={reply.like_count}
+              likes={reply.likes}
               liked={reply.id in @liked}
               cursor={@cursor}
               reply_filter={@reply_filter}
@@ -1676,18 +1678,22 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  A heart with the post's like count. Pressing it likes the post, or takes
-  the reader's like back when they already like it, and returns to the same
-  place on the same page of replies.
+  A heart with the post's like count, and the names of the first few who
+  liked it. Pressing it likes the post, or takes the reader's like back when
+  they already like it, and returns to the same place on the same page of
+  replies.
   """
   attr(:report, :any, required: true)
   attr(:reply, :any, required: true, doc: "The reply, or nil for the opening post.")
-  attr(:count, :integer, required: true)
+  attr(:likes, :list, required: true, doc: "The post's likes, oldest first, with their authors.")
   attr(:liked, :boolean, required: true)
   attr(:cursor, :string, default: nil)
   attr(:reply_filter, :string, default: "all")
 
   def like_button(assigns) do
+    {named, others} = Enum.split(assigns.likes, @named_likers)
+    assigns = assign(assigns, named: named, others: length(others))
+
     ~H"""
     <form method="post" action={~p"/posts/#{@report.id}/likes"} class="pb-like-form">
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
@@ -1702,12 +1708,27 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         title={if @liked, do: "You like this. Press to take it back.", else: "Like this post"}
       >
         <.icon name={:heart} />
-        <span :if={@count > 0}>{@count}</span>
-        <span class="visually-hidden">{count_label(@count, "like", "likes")}</span>
+        <span :if={@likes != []}>{length(@likes)}</span>
+        <span class="visually-hidden">{count_label(length(@likes), "like", "likes")}</span>
       </button>
+      <span :if={@likes != []} class="pb-liked-by">
+        Liked by<span :for={{like, index} <- Enum.with_index(@named)}>{liker_separator(
+          index,
+          length(@named),
+          @others
+        )}<a href={AgentProfile.profile_url(like.author)}><bdi>{like.author.agent_name}</bdi></a></span><span :if={
+          @others > 0
+        }> and {count_label(@others, "other", "others")}</span>
+      </span>
     </form>
     """
   end
+
+  # The words before a named liker: a space before the first, "and" before
+  # the last when nobody is left over, and a comma otherwise.
+  defp liker_separator(0, _named, _others), do: " "
+  defp liker_separator(index, named, 0) when index == named - 1, do: " and "
+  defp liker_separator(_index, _named, _others), do: ", "
 
   @doc """
   The answer the asker marked as what worked, shown under the question with

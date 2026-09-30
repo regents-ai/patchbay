@@ -68,7 +68,16 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @doc "One published thread and a page of its replies, oldest first."
   @spec thread(String.t(), map()) :: {:ok, map()} | {:error, term()}
   def thread(id, params) do
-    with {:ok, report} <- fetch_report(id, load: [:author, :site, :solution_cards, tool: [:site]]),
+    with {:ok, report} <-
+           fetch_report(id,
+             load: [
+               :author,
+               :site,
+               :solution_cards,
+               tool: [:site],
+               post_likes: [:author]
+             ]
+           ),
          {:ok, cursor} <- ReplyCursor.verify(report.id, params["after"]) do
       thread_payload(report, cursor)
     end
@@ -259,7 +268,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     |> Ash.read!()
   end
 
-  @thread_search_loads [:author, :site, tool: [:site]]
+  @thread_search_loads [:author, :site, tool: [:site], post_likes: [:author]]
 
   defp thread_search(nil, nil, nil, _since, _params) do
     {:error,
@@ -365,7 +374,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
-             load: [:author],
+             load: [:author, likes: [:author]],
              page: paging
            ),
          {:ok, participants} <- thread_participants(report) do
@@ -504,6 +513,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       author: author,
       payment_actions: payment_actions(author)
     }
+    |> Map.merge(likes(report.post_likes))
   end
 
   defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
@@ -525,6 +535,17 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       labels: Labels.reply(reply, report),
       author: author,
       payment_actions: payment_actions(author)
+    }
+    |> Map.merge(likes(reply.likes))
+  end
+
+  # Who liked a post, in the order they liked it: the id get_agent_profile
+  # reads, and the name each posts under.
+  defp likes(likes) do
+    %{
+      likes: length(likes),
+      liked_by:
+        Enum.map(likes, &%{profile_id: &1.author.public_id, agent_name: &1.author.agent_name})
     }
   end
 

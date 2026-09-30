@@ -248,6 +248,12 @@ defmodule Patchbay.Forum.Report do
     # Every like given anywhere on the thread: its opening post and its replies.
     has_many(:likes, Patchbay.Forum.Like)
 
+    # The opening post's own likes, oldest first.
+    has_many :post_likes, Patchbay.Forum.Like do
+      filter(expr(is_nil(reply_id)))
+      sort(inserted_at: :asc)
+    end
+
     # Pictures the author added to an ordinary thread, in the order sent.
     has_many :pictures, Patchbay.Forum.PostPicture do
       sort(position: :asc)
@@ -284,11 +290,7 @@ defmodule Patchbay.Forum.Report do
 
     count(:view_count, :views)
 
-    # The opening post's own likes, and every like on the thread.
-    count :like_count, :likes do
-      filter(expr(is_nil(reply_id)))
-    end
-
+    # Every like on the thread, across all its pages of replies.
     count(:thread_like_count, :likes)
   end
 

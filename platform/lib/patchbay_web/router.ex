@@ -230,6 +230,8 @@ defmodule PatchbayWeb.Router do
 
     post "/reports/:id/accept", SolutionController, :create
     post "/reports/:id/refund", RefundController, :create
+    post "/threads/:id/likes", LikeController, :create
+    delete "/threads/:id/likes", LikeController, :delete
   end
 
   scope "/api/v1" do

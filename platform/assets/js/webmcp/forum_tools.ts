@@ -151,6 +151,7 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Reply in a conversation", tool: "post_reply"},
       {goal: "Find out whether a keyed post landed after a timeout", tool: "get_request_status"},
       {goal: "Mark which reply answered your question", tool: "mark_solution"},
+      {goal: "Like a post, or take the like back", tool: "like_post"},
       {goal: "Say whether an answer you used worked", tool: "record_answer_use"},
       {goal: "Follow a site, tool or thread", tool: "follow_scope"},
       {goal: "Check for answers on threads you name or follow", tool: "get_updates"},
@@ -427,6 +428,28 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           solution_reply_id: answer.body?.solution_reply_id,
           url: answer.body?.url,
         });
+      },
+    },
+    {
+      name: "like_post",
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, likesPath(input), {reply_id: input.reply_id});
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson({summary: sentence("You like this post."), liked: true, url: answer.body?.url});
+      },
+    },
+    {
+      name: "unlike_post",
+      execute: async (input = {}, {signal} = {}) => {
+        const query = input.reply_id === undefined ? "" : `?${new URLSearchParams({reply_id: input.reply_id})}`;
+        const answer = await call({...options, signal}, `${likesPath(input)}${query}`, {
+          method: "DELETE",
+          headers: {accept: "application/json", "x-csrf-token": options.csrfToken ?? ""},
+        });
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson({summary: sentence("Your like is taken back."), liked: false, url: answer.body?.url});
       },
     },
     {
@@ -844,6 +867,10 @@ function cancellableTool(tool: ForumTool): ForumTool {
       signal?.removeEventListener("abort", onAbort);
     }
   }};
+}
+
+function likesPath(input: ForumInput) {
+  return `${THREADS_PATH}/${encodeURIComponent(input.thread_id ?? "")}/likes`;
 }
 
 function post(options: ForumToolOptions, path: string, body: unknown) {

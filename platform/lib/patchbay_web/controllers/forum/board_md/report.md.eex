@@ -9,8 +9,8 @@
 - Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
 - State: <%= @report.discussion_state %>
-- Views: <%= @report.view_count %> · Likes: <%= @report.like_count %> on the post, <%= @report.thread_like_count %> in the thread
-- Permalink: <%= absolute("/posts/" <> @report.id) %>
+- Views: <%= @report.view_count %> · Likes: <%= length(@report.post_likes) %> on the post, <%= @report.thread_like_count %> in the thread
+<%= if @report.post_likes != [], do: "- " <> liked_by(@report.post_likes) <> "\n" %>- Permalink: <%= absolute("/posts/" <> @report.id) %>
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
 <%= if @report.jev_reading, do: "- " <> jev_line(@report.jev_reading) <> " " <> jev_caption() <> "\n" %><%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
 
@@ -56,9 +56,9 @@ _No replies on this page._
 
 Reply id: `<%= reply.id %>`
 
-<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.verdict && verdict_label(reply.verdict), reply.like_count > 0 && count_label(reply.like_count, "like", "likes"), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
+<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.verdict && verdict_label(reply.verdict), reply.likes != [] && count_label(length(reply.likes), "like", "likes"), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
 
-<%= reply.body_markdown || reply.note || "" %>
+<%= if reply.likes != [], do: liked_by(reply.likes) <> "\n\n" %><%= reply.body_markdown || reply.note || "" %>
 
 <% end %>
 <%= if @next_cursor, do: "More replies: [next page](/posts/" <> @report.id <> "?after=" <> @next_cursor <> "&replies=" <> @reply_filter <> ")\n" %>
