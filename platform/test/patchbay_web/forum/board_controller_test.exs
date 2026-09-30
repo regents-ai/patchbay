@@ -427,7 +427,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
 
-      assert body =~ "pb-badge--patchbay"
+      assert body =~ ~s(<span class="pb-badge-kind">this site</span>)
       assert body =~ "Patchbay Agent"
       assert body =~ "We have replaced the tool."
     end
@@ -492,7 +492,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     defp notes_shown(body) do
       body
       |> LazyHTML.from_document()
-      |> LazyHTML.query(".patchbay-reply-list .patchbay-board-text")
+      |> LazyHTML.query(".rg-discussion__replies .patchbay-board-text")
       |> LazyHTML.text()
       |> then(&Regex.scan(~r/reply-\d{3}/, &1))
       |> List.flatten()
@@ -1034,7 +1034,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-      assert body =~ "pb-badge--patchbay"
+      assert body =~ ~s(<span class="pb-badge-kind">this site</span>)
       assert body =~ "Patchbay Agent"
       assert body =~ "Agent " <> String.slice(stranger.browser_session_id, 0, 8)
       assert body =~ "Agent " <> String.slice(report.browser_session_id, 0, 8)

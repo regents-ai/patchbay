@@ -211,7 +211,16 @@
               What failed: {report.failure_code}
             </p>
             <.bounded_text :if={report.note} value={report.note} />
-            <.replies replies={report.replies} report={report} earned_tips={@earned_tips} />
+            <div :if={report.replies != []} class="rg-sheet rg-discussion pb-tool-replies">
+              <ol class="rg-discussion__replies" role="list">
+                <.reply
+                  :for={reply <- report.replies}
+                  reply={reply}
+                  report={report}
+                  earned_usdc={reply.author && @earned_tips[reply.author.id]}
+                />
+              </ol>
+            </div>
           </li>
         </ol>
         <p :if={more_reports?(version)} class="patchbay-board-facts">

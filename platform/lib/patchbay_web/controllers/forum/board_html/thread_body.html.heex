@@ -1,108 +1,81 @@
-<article class="pb-thread" aria-labelledby="pb-thread-title">
-  <header class="pb-thread-head">
-    <h1 id="pb-thread-title" data-motion="reduced">
-      <span :if={@report.solution_reply} class="pb-thread-solved" title="Solved">
-        <.icon name={:check} /><span class="visually-hidden">Solved: </span>
-      </span>{post_title(
-        @report
-      )}
-    </h1>
-    <p class="pb-thread-context">
-      <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
-      <.tool_chips site={@report.site} names={@report.tool_names} />
-      <span class="pb-kind-pill">{thread_kind_label(@report)}</span>
-      <span
-        :if={@report.verdict}
-        class={["pb-kind-pill", verdict_class(@report.verdict)]}
-        title="The outcome the author reported"
-      >{verdict_label(@report.verdict)}</span>
-    </p>
-  </header>
+<Regent.Discussion.thread
+  id="pb-thread"
+  class="pb-thread"
+  title={post_title(@report)}
+  solved={not is_nil(@report.solution_reply)}
+  replies={@report.reply_count}
+  views={@report.view_count}
+  likes={@report.thread_like_count}
+  last_activity_at={@report.last_activity_at}
+  last_activity={RegentFormat.relative_time(@report.last_activity_at, DateTime.utc_now())}
+>
+  <:context>
+    <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
+    <.tool_chips site={@report.site} names={@report.tool_names} />
+    <span class="pb-kind-pill">{thread_kind_label(@report)}</span>
+    <span
+      :if={@report.verdict}
+      class={["pb-kind-pill", verdict_class(@report.verdict)]}
+      title="The outcome the author reported"
+    >{verdict_label(@report.verdict)}</span>
+  </:context>
 
-  <div class="pb-thread-bar">
-    <p class="pb-thread-stats">
-      <span><.icon name={:reply} /> {count_label(@report.reply_count, "reply", "replies")}</span>
-      <span><.icon name={:eye} /> {count_label(@report.view_count, "view", "views")}</span>
-      <span>
-        <.icon name={:heart} /> {count_label(@report.thread_like_count, "like", "likes")}
-      </span>
-      <span title={moment(@report.last_activity_at)}>
-        Last activity
-        <time datetime={DateTime.to_iso8601(@report.last_activity_at)}>{RegentFormat.relative_time(
-          @report.last_activity_at,
-          DateTime.utc_now()
-        )}</time>
-      </span>
-    </p>
-    <label :if={@replies != []} class="pb-compact-toggle">
-      <input type="checkbox" id="pb-compact-replies" data-pb-density="pb-reply-density" />
-      Compact replies
-    </label>
-  </div>
-
-  <section id="pb-post" class="pb-post pb-post--op" aria-label="The post">
-    <.author_avatar
-      author={@report.author}
-      session_id={@report.browser_session_id}
-      kind={@report.author_kind}
-      class="pb-post-av"
-    />
-    <div class="pb-post-main">
-      <header class="pb-post-head">
-        <.nameplate
-          author={@report.author}
-          session_id={@report.browser_session_id}
-          kind={@report.author_kind}
-          avatar={false}
-        />
-        <a
-          class="pb-post-when"
-          href={~p"/posts/#{@report.id}"}
-          title={moment(@report.inserted_at)}
-        >
-          <time datetime={DateTime.to_iso8601(@report.inserted_at)}>{RegentFormat.relative_time(
-            @report.inserted_at,
-            DateTime.utc_now()
-          )}</time>
-          <.icon name={:link} />
-        </a>
-      </header>
-      <div :if={@report.body_markdown} class="pb-thread-prose pb-markdown">
-        {markdown(@report.body_markdown)}
-      </div>
-      <p
-        :if={!@report.body_markdown && @report.note && @report.note != post_title(@report)}
-        class="pb-thread-prose"
-        phx-no-format
-      >{@report.note}</p>
-      <p
-        :if={!@report.body_markdown && !@report.note && @report.verdict}
-        class="pb-thread-caption"
-      >
-        No written context. The recorded tool outcome is under Evidence below.
-      </p>
-      <.post_pictures pictures={@report.pictures} />
-      <p :if={@report.page_url} class="pb-post-page">
-        <.icon name={:link} />
-        <a href={@report.page_url} rel="nofollow ugc noopener noreferrer" target="_blank">
-          {@report.page_url}
-        </a>
-      </p>
-
-      <.solved report={@report} replies={@replies} />
-
-      <footer class="pb-post-actions">
-        <.like_button
-          report={@report}
-          reply={nil}
-          likes={@report.post_likes}
-          liked={nil in @liked}
-          cursor={@replies_cursor}
-          reply_filter={@reply_filter}
-        />
-      </footer>
+  <Regent.Discussion.post
+    id="pb-post"
+    opening
+    author={author_name(@report.author, @report.browser_session_id, @report.author_kind)}
+    author_href={author_href(@report.author)}
+    at={@report.inserted_at}
+    ago={RegentFormat.relative_time(@report.inserted_at, DateTime.utc_now())}
+    href={~p"/posts/#{@report.id}"}
+  >
+    <:avatar>
+      <.author_avatar
+        author={@report.author}
+        session_id={@report.browser_session_id}
+        kind={@report.author_kind}
+      />
+    </:avatar>
+    <:label>
+      <.author_marks
+        author={@report.author}
+        session_id={@report.browser_session_id}
+        kind={@report.author_kind}
+      />
+    </:label>
+    <div :if={@report.body_markdown} class="pb-markdown">
+      {markdown(@report.body_markdown)}
     </div>
-  </section>
+    <p
+      :if={!@report.body_markdown && @report.note && @report.note != post_title(@report)}
+      class="pb-thread-prose"
+      phx-no-format
+    >{@report.note}</p>
+    <p
+      :if={!@report.body_markdown && !@report.note && @report.verdict}
+      class="pb-thread-caption"
+    >
+      No written context. The recorded tool outcome is under Evidence below.
+    </p>
+    <.post_pictures pictures={@report.pictures} />
+    <p :if={@report.page_url} class="pb-post-page">
+      <.icon name={:link} />
+      <a href={@report.page_url} rel="nofollow ugc noopener noreferrer" target="_blank">
+        {@report.page_url}
+      </a>
+    </p>
+    <:solved><.solved report={@report} replies={@replies} /></:solved>
+    <:actions>
+      <.like_button
+        report={@report}
+        reply={nil}
+        likes={@report.post_likes}
+        liked={nil in @liked}
+        cursor={@replies_cursor}
+        reply_filter={@reply_filter}
+      />
+    </:actions>
+  </Regent.Discussion.post>
 
   <p :if={@report.jev_reading} id="pb-thread-jev" class="pb-thread-jev">
     <strong>{jev_line(@report.jev_reading)}</strong>
@@ -139,73 +112,49 @@
     <a href={"#reply-#{card.source_reply_id}"}>The reply it came from →</a>
   </section>
 
-  <section id="patchbay-replies" class="pb-conversation" aria-labelledby="pb-replies-title">
-    <h2 id="pb-replies-title">Replies <span>{@report.reply_count}</span></h2>
-    <nav
-      :if={@report.solution_reply_id || @reply_filter != "all"}
-      class="pb-reply-filters"
-      aria-label="Filter replies"
-    >
-      <a
-        :for={
-          {value, label} <- [
-            {"all", "All replies"},
-            {"solution", "Solution"},
-            {"official", "Official replies"}
-          ]
-        }
-        href={~p"/posts/#{@report.id}?replies=#{value}" <> "#patchbay-replies"}
-        aria-current={if @reply_filter == value, do: "page"}
-      >{label}</a>
-    </nav>
-    <.replies
-      replies={@replies}
+  <Regent.Discussion.replies
+    id="patchbay-replies"
+    count={@report.reply_count}
+    shown={length(@replies)}
+    filters={reply_filters(@report, @reply_filter)}
+    empty={replies_empty(@reply_filter, @replies_cursor)}
+  >
+    <.reply
+      :for={reply <- @replies}
+      reply={reply}
       report={@report}
-      earned_tips={@earned_tips}
+      earned_usdc={reply.author && @earned_tips[reply.author.id]}
       cursor={@replies_cursor}
       reply_filter={@reply_filter}
-      liked={@liked}
+      liked={reply.id in @liked}
       can_mark={
         reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply_id) &&
           @report.discussion_state in [:open, :answered] && is_nil(@report.priority_amount_atomic)
       }
     />
-    <p :if={@replies == []} class="pb-thread-caption">
-      {cond do
-        @reply_filter == "solution" ->
-          "The asker has not marked an answer yet."
-
-        @reply_filter == "official" ->
-          "No official company replies."
-
-        @replies_cursor ->
-          "No replies past this point."
-
-        true ->
-          "No replies yet."
-      end}
-    </p>
-    <nav
-      :if={@replies_cursor || @next_cursor}
-      aria-label="Reply pages"
-      class="pb-thread-pagination"
-    >
-      <a
-        :if={@replies_cursor}
-        href={~p"/reports/#{@report.id}?replies=#{@reply_filter}" <> "#patchbay-replies"}
-      >Back to first replies</a>
-      <a
-        :if={@next_cursor}
-        href={~p"/reports/#{@report.id}?after=#{@next_cursor}&replies=#{@reply_filter}" <> "#patchbay-replies"}
-      >More replies →</a>
-    </nav>
-    <.human_reply_form
-      report={@report}
-      profile={@conn.assigns.current_profile}
-      problem={@reply_problem}
-      cursor={@replies_cursor}
-    />
-  </section>
+    <:footer>
+      <nav
+        :if={@replies_cursor || @next_cursor}
+        aria-label="Reply pages"
+        class="pb-thread-pagination"
+      >
+        <a
+          :if={@replies_cursor}
+          href={~p"/reports/#{@report.id}?replies=#{@reply_filter}" <> "#patchbay-replies"}
+        >Back to first replies</a>
+        <a
+          :if={@next_cursor}
+          href={~p"/reports/#{@report.id}?after=#{@next_cursor}&replies=#{@reply_filter}" <> "#patchbay-replies"}
+        >More replies →</a>
+      </nav>
+      <.human_reply_form
+        report={@report}
+        profile={@conn.assigns.current_profile}
+        problem={@reply_problem}
+        cursor={@replies_cursor}
+      />
+    </:footer>
+  </Regent.Discussion.replies>
 
   <Regent.Primitives.disclosure
     id="report-evidence"
@@ -265,4 +214,4 @@
       problem={@refund_problem}
     />
   </Regent.Primitives.disclosure>
-</article>
+</Regent.Discussion.thread>

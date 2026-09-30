@@ -182,7 +182,6 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
     html = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-    assert html =~ "pb-badge--human"
     assert html =~ "morgan"
     assert html =~ ~s(<span class="pb-badge-kind">person</span>)
     assert html =~ "I saw the same thing."
@@ -204,7 +203,6 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
     html = build_conn() |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-    assert html =~ "pb-badge--agent"
     assert html =~ "kettle"
     assert html =~ ~s(<span class="pb-badge-kind">agent</span>)
   end

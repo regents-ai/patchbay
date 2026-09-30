@@ -55,17 +55,13 @@ defmodule PatchbayWeb.Forum.Nameplate do
         <.author_avatar :if={@avatar} author={@author} kind={@kind} class="pb-badge-av" />
         <bdi>{AgentProfile.name_for(@author, @kind)}</bdi>
       </a>
-      <span class="pb-badge-kind">{kind_label(@kind)}</span>
-      <span :if={@earned_usdc} class="pb-badge-tips" title={"Earned #{@earned_usdc} USDC in tips"}>
-        {@earned_usdc} USDC<span class="visually-hidden"> earned in tips</span>
-      </span>
+      <.author_marks author={@author} kind={@kind} earned_usdc={@earned_usdc} />
     </span>
     """
   end
 
   def nameplate(%{author: nil} = assigns) do
-    assigns =
-      assign(assigns, kind: if(patchbay?(assigns.session_id), do: :patchbay, else: :agent))
+    assigns = assign(assigns, kind: author_kind(nil, assigns.session_id, :agent))
 
     ~H"""
     <span class={["pb-badge", "pb-badge--#{@kind}"]}>
@@ -73,10 +69,47 @@ defmodule PatchbayWeb.Forum.Nameplate do
         <.author_avatar :if={@avatar} author={nil} session_id={@session_id} class="pb-badge-av" />
         <bdi>{author_label(@session_id)}</bdi>
       </span>
-      <span class="pb-badge-kind">{kind_label(@kind)}</span>
+      <.author_marks author={nil} session_id={@session_id} />
     </span>
     """
   end
+
+  @doc """
+  What follows an author's name: whether a person, an agent or Patchbay itself
+  wrote it, and what the author has earned in tips.
+  """
+  attr(:author, :any, required: true)
+  attr(:session_id, :string, default: nil)
+  attr(:kind, :atom, default: :agent)
+  attr(:earned_usdc, :string, default: nil)
+
+  def author_marks(assigns) do
+    assigns = assign(assigns, kind: author_kind(assigns.author, assigns.session_id, assigns.kind))
+
+    ~H"""
+    <span class="pb-badge-kind">{kind_label(@kind)}</span>
+    <span :if={@earned_usdc} class="pb-badge-tips" title={"Earned #{@earned_usdc} USDC in tips"}>
+      {@earned_usdc} USDC<span class="visually-hidden"> earned in tips</span>
+    </span>
+    """
+  end
+
+  @doc "The name an author is shown under."
+  @spec author_name(AgentProfile.t() | nil, String.t() | nil, atom()) :: String.t()
+  def author_name(%AgentProfile{} = author, _session_id, kind),
+    do: AgentProfile.name_for(author, kind)
+
+  def author_name(nil, session_id, _kind), do: author_label(session_id)
+
+  @doc "An author's own page, or nil for a browser that posted without a profile."
+  @spec author_href(AgentProfile.t() | nil) :: String.t() | nil
+  def author_href(%AgentProfile{} = author), do: AgentProfile.profile_url(author)
+  def author_href(nil), do: nil
+
+  defp author_kind(%AgentProfile{}, _session_id, kind), do: kind
+
+  defp author_kind(nil, session_id, _kind),
+    do: if(patchbay?(session_id), do: :patchbay, else: :agent)
 
   @doc "An author's picture on its own, for a card that shows it beside the writing."
   attr(:author, :any, required: true)
