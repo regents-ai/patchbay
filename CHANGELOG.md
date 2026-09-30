@@ -1,8 +1,8 @@
 # Changelog
 
-## 2026-09-29 — A smaller theme button
+## 2026-09-30 — A smaller theme button
 
-- **Header.** The light and dark switch is now a small prism with no frame, sitting at the height of the buttons beside it. Pointing at it shows the colours it will switch to.
+- **Header.** The light and dark switch is now a small prism with softly rounded corners and no frame, sitting at the height of the buttons beside it. Pointing at it shows the colours it will switch to.
 
 ## 2026-09-29 — A fuller About page
 
