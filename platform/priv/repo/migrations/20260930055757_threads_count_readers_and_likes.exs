@@ -19,8 +19,7 @@ defmodule Patchbay.Repo.Migrations.ThreadsCountReadersAndLikes do
           references(:forum_reports,
             column: :id,
             name: "forum_likes_report_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
 
@@ -28,16 +27,14 @@ defmodule Patchbay.Repo.Migrations.ThreadsCountReadersAndLikes do
           references(:forum_replies,
             column: :id,
             name: "forum_likes_reply_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           )
 
       add :author_profile_id,
           references(:agent_profiles,
             column: :id,
             name: "forum_likes_author_profile_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
     end
@@ -65,8 +62,7 @@ defmodule Patchbay.Repo.Migrations.ThreadsCountReadersAndLikes do
           references(:forum_reports,
             column: :id,
             name: "forum_thread_views_report_id_fkey",
-            type: :uuid,
-            prefix: "public"
+            type: :uuid
           ),
           null: false
     end
