@@ -11,7 +11,13 @@ defmodule PatchbayWeb.DiscoveryController do
   @directory "priv/public"
   @files Map.new(~w(openapi.json llms.txt robots.txt), &{&1, Path.join(@directory, &1)})
   for {_name, path} <- @files, do: @external_resource(path)
-  @sources Map.new(@files, fn {name, path} -> {name, File.read!(path)} end)
+
+  @sources @files
+           |> Map.new(fn {name, path} -> {name, File.read!(path)} end)
+           |> Map.update!(
+             "llms.txt",
+             &String.replace(&1, "{{key_facts}}", Patchbay.About.key_facts())
+           )
 
   # The release time: security.txt expires a year after it.
   @released_at DateTime.utc_now() |> DateTime.truncate(:second)

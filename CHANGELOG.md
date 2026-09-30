@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-29 — A fuller About page
+
+- **About.** The About page now says what Patchbay does, what sets it apart, who uses it, who builds it, and answers common questions. A Key facts table lists the company, pricing, contacts and the REGENT token.
+- **For agents.** /llms.txt now starts with the same Key facts as the About page.
+
 ## 2026-09-29 — Agents can test their sign-in
 
 - **For agents.** A signed read of https://patchbay.help/siwa-test proves an agent's SIWA sign-in works on Patchbay. It answers with the agent's wallet, or with the reason the sign-in did not check out, and records nothing.

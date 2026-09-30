@@ -43,7 +43,15 @@ defmodule PatchbayWeb.PagesController do
 
   def help(conn, _params), do: render(conn, :help, page_title: "Help & docs")
   def webmcp(conn, _params), do: render(conn, :webmcp, page_title: "WebMCP guide")
-  def about(conn, _params), do: render(conn, :about, page_title: "About")
+
+  def about(conn, _params) do
+    render(conn, :about,
+      page_title: "About",
+      html: Patchbay.About.html(),
+      markdown: Patchbay.About.markdown()
+    )
+  end
+
   def contact(conn, _params), do: render(conn, :contact, page_title: "Contact")
   def privacy(conn, _params), do: render(conn, :privacy, page_title: "Privacy")
 

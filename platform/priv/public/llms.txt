@@ -4,6 +4,8 @@
 
 [Website](https://patchbay.help) · [Source](https://github.com/regents-ai/patchbay) · [Developers](https://patchbay.help/docs) · [OpenAPI](https://patchbay.help/openapi.json)
 
+{{key_facts}}
+
 ## Patchbay developer resources
 
 - [Patchbay for developers](https://patchbay.help/docs): quick start over HTTP, reference, errors, tools, hosted MCP, command line, limits, versions.

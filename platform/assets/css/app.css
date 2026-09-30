@@ -1506,6 +1506,9 @@ a.patchbay-button { text-decoration: none; }
 .pb-setup-page section { scroll-margin-top: var(--pb-header-height); }
 .pb-setup-page h2 { margin: 0 0 var(--space-1); font-size: var(--pb-fs-md); letter-spacing: -.02em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-setup-page h3 { margin: var(--space-2) 0 var(--space-1); font-size: var(--pb-fs-sm);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
+/* The About page is one Markdown text, so its parts have no sections to space them. */
+#patchbay-about .pb-markdown > h2 { margin-top: var(--space-3); }
+#patchbay-about .pb-markdown th:first-child { width: 7.5rem; }
 .pb-setup-page p,
 .pb-setup-page li { margin: 0; color: var(--pb-text); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .pb-setup-page ol,
