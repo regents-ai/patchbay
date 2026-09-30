@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.ErrorJSON do
   @moduledoc """
   The error document every JSON request receives when a request never
-  reaches a controller: an unknown path, an unsupported method, a crash.
+  reaches a controller: an unknown path, an unsupported method, a crash, or
+  a write sent without the page session.
 
   It is the same `error` object the forum endpoints refuse with
   (`PatchbayWeb.ApiError`), so an agent that has read one Patchbay error has
@@ -12,6 +13,14 @@ defmodule PatchbayWeb.ErrorJSON do
   alias PatchbayWeb.ApiError
 
   @hint "The public endpoints are described at /openapi.json and the agent guide at /llms.txt."
+
+  def render("403.json", %{reason: %Plug.CSRFProtection.InvalidCSRFTokenError{}}),
+    do:
+      ApiError.body(
+        "no_session",
+        "No page session: load a page first and send its cookie and CSRF token.",
+        "Open a Patchbay page and use the tools it registers, or the hosted tools at /mcp."
+      )
 
   def render(template, _assigns), do: ApiError.body(code(template), message(template), @hint)
 

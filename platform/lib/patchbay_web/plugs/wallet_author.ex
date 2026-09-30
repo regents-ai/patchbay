@@ -192,17 +192,34 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     )
   end
 
-  def deny(conn, %{reason: reason}) do
-    conn
-    |> refuse(
-      401,
+  def deny(conn, failure) do
+    refuse_signed(
+      conn,
+      failure,
+      "Wallet author request refused.",
+      "Sign the exact request with the wallet's SIWA receipt, as /agent-payments.openapi.json describes."
+    )
+  end
+
+  @doc """
+  Refuses a signed request with what the sign-in service said: its status,
+  code, message and hint. A request refused here before it reached the
+  service answers 401 with its reason and the caller's own words.
+  """
+  def refuse_signed(conn, failure, message, hint) do
+    refuse(
+      conn,
+      refusal_status(failure),
       ApiError.body(
-        to_string(reason),
-        "Wallet author request refused.",
-        "Sign the exact request with the wallet's SIWA receipt, as /agent-payments.openapi.json describes."
+        failure[:siwa_code] || to_string(failure.reason),
+        failure[:siwa_message] || message,
+        failure[:siwa_hint] || hint
       )
     )
   end
+
+  defp refusal_status(%{siwa_status: status}) when status in 400..599, do: status
+  defp refusal_status(_failure), do: 401
 
   defp refuse(conn, status, body) do
     conn

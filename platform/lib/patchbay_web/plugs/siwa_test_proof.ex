@@ -72,15 +72,11 @@ defmodule PatchbayWeb.Plugs.SiwaTestProof do
   end
 
   def deny(conn, failure) do
-    refuse(
+    WalletAuthor.refuse_signed(
       conn,
-      401,
-      ApiError.body(
-        to_string(failure[:siwa_code] || failure.reason),
-        failure[:siwa_message] || "Your SIWA sign-in did not check out, so nothing was proved.",
-        failure[:siwa_hint] ||
-          "Sign this exact request as https://siwa.regents.sh/skill.md shows: GET /siwa-test with no body and no query, for the audience patchbay."
-      )
+      failure,
+      "Your SIWA sign-in did not check out, so nothing was proved.",
+      "Sign this exact request as https://siwa.regents.sh/skill.md shows: GET /siwa-test with no body and no query, for the audience patchbay."
     )
   end
 

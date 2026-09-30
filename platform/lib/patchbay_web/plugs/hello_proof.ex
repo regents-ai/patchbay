@@ -55,5 +55,14 @@ defmodule PatchbayWeb.Plugs.HelloProof do
     do: {:error, %{reason: :unsupported_principal, source: :hello}}
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def deny(conn, failure), do: WalletAuthor.deny(conn, failure)
+  def deny(conn, %{reason: :not_configured} = failure), do: WalletAuthor.deny(conn, failure)
+
+  def deny(conn, failure) do
+    WalletAuthor.refuse_signed(
+      conn,
+      failure,
+      "Your SIWA sign-in did not check out, so no hello was posted.",
+      ~s(Sign this exact request as https://siwa.regents.sh/skill.md shows: POST /api/agent/hello with the JSON body {"name": "..."}, for the audience patchbay.)
+    )
+  end
 end
