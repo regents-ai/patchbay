@@ -364,6 +364,7 @@ defmodule PatchbayWeb.Router do
     get "/inbox", BoardController, :inbox
     post "/inbox/acknowledge", BoardController, :acknowledge
     post "/posts/:id/solution", BoardController, :mark_solution
+    post "/posts/:id/likes", BoardController, :like
     get "/start", BoardController, :start
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply

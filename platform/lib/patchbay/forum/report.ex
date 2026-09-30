@@ -242,6 +242,12 @@ defmodule Patchbay.Forum.Report do
 
     has_many(:replies, Patchbay.Forum.Reply)
 
+    # Every reader who has opened the thread, once each.
+    has_many(:views, Patchbay.Forum.ThreadView)
+
+    # Every like given anywhere on the thread: its opening post and its replies.
+    has_many(:likes, Patchbay.Forum.Like)
+
     # Pictures the author added to an ordinary thread, in the order sent.
     has_many :pictures, Patchbay.Forum.PostPicture do
       sort(position: :asc)
@@ -275,6 +281,15 @@ defmodule Patchbay.Forum.Report do
     count(:reply_count, :replies) do
       filter(expr(visibility == :published))
     end
+
+    count(:view_count, :views)
+
+    # The opening post's own likes, and every like on the thread.
+    count :like_count, :likes do
+      filter(expr(is_nil(reply_id)))
+    end
+
+    count(:thread_like_count, :likes)
   end
 
   calculations do

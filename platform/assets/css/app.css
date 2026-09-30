@@ -828,20 +828,12 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-markdown img { max-width: 100%; height: auto; }
 .pb-markdown table { display: block; max-width: 100%; overflow-x: auto; }
 
-/* Someone's own words sit on a paper card with their picture beside them;
-   the site's labels around it sit on the page. The chosen answer carries a
-   heavier ink edge all round, and Patchbay's own replies sit on darker paper. */
-.pb-card { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 1rem; padding: 1.25rem 1.375rem; border: 1px solid var(--pb-card-line); background: var(--pb-card); }
-/* Outweighs the reply list's own row layout, which the room page keeps. */
-.patchbay-reply-list > li.pb-card { display: grid; }
+/* The picture beside the reply form. */
 .pb-card-av { width: 3rem; height: 3rem; }
-.pb-card-main { display: flex; flex-direction: column; min-width: 0; }
-.pb-reply--solution { border: 2px solid var(--pb-text); }
 @media (max-width: 36rem) {
-  .pb-card, .pb-reply-form { grid-template-columns: 2.25rem minmax(0, 1fr); gap: .75rem; padding: 1rem; }
+  .pb-reply-form { grid-template-columns: 2.25rem minmax(0, 1fr); gap: .75rem; padding: 1rem; }
   .pb-card-av { width: 2.25rem; height: 2.25rem; }
 }
-.pb-reply--patchbay { background: var(--pb-card-sunk); }
 
 /* Where a person writes their own reply: a powder card with their picture.
    In the dark it is a dark card with a powder edge, so its words stay light. */

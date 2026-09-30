@@ -118,6 +118,12 @@ defmodule Patchbay.Forum.Reply do
       allow_nil?: true,
       public?: true
     )
+
+    has_many(:likes, Patchbay.Forum.Like)
+  end
+
+  aggregates do
+    count(:like_count, :likes)
   end
 
   actions do

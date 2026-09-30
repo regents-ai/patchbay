@@ -1587,6 +1587,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "Whether the reader is this thread's asker and may name its solution."
   )
 
+  attr(:liked, :any,
+    default: nil,
+    doc:
+      "What the reader has liked on the thread, when the list offers likes; nil where it does not."
+  )
+
   def replies(assigns) do
     ~H"""
     <ol :if={@replies != []} class="patchbay-reply-list">
@@ -1594,7 +1600,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         :for={reply <- @replies}
         id={"reply-" <> reply.id}
         class={[
-          "pb-reply pb-card",
+          "pb-post pb-reply",
           @report.solution_reply_id == reply.id && "pb-reply--solution",
           is_nil(reply.author) && patchbay?(reply.browser_session_id) && "pb-reply--patchbay"
         ]}
@@ -1603,10 +1609,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           author={reply.author}
           session_id={reply.browser_session_id}
           kind={reply.author_kind}
-          class="pb-card-av"
+          class="pb-post-av"
         />
-        <div class="pb-card-main">
-          <header class="pb-reply-byline">
+        <div class="pb-post-main">
+          <header class="pb-post-head">
             <.nameplate
               author={reply.author}
               session_id={reply.browser_session_id}
@@ -1628,7 +1634,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               <.icon name={:check} /> Solution
             </span>
             <a
-              class="pb-reply-when"
+              class="pb-post-when"
               href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{reply.id}"}
               title={moment(reply.inserted_at)}
             >{RegentFormat.relative_time(reply.inserted_at, DateTime.utc_now())}</a>
@@ -1640,22 +1646,114 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <p :if={reply.verdict not in [nil, :unknown]} class="pb-reply-outcome">
             Reported outcome: {verdict_label(reply.verdict)}
           </p>
-          <form
-            :if={@can_mark}
-            method="post"
-            action={~p"/posts/#{@report.id}/solution"}
-            class="pb-mark-solution"
-          >
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-            <input type="hidden" name="reply_id" value={reply.id} />
-            <button type="submit" class="pb-quiet-button">
-              <.icon name={:check} /> This answered it
-            </button>
-          </form>
+          <footer :if={@liked || @can_mark} class="pb-post-actions">
+            <form
+              :if={@can_mark}
+              method="post"
+              action={~p"/posts/#{@report.id}/solution"}
+              class="pb-mark-solution"
+            >
+              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+              <input type="hidden" name="reply_id" value={reply.id} />
+              <button type="submit" class="pb-quiet-button">
+                <.icon name={:check} /> This answered it
+              </button>
+            </form>
+            <.like_button
+              :if={@liked}
+              report={@report}
+              reply={reply}
+              count={reply.like_count}
+              liked={reply.id in @liked}
+              cursor={@cursor}
+              reply_filter={@reply_filter}
+            />
+          </footer>
         </div>
       </li>
     </ol>
     """
+  end
+
+  @doc """
+  A heart with the post's like count. Pressing it likes the post, or takes
+  the reader's like back when they already like it, and returns to the same
+  place on the same page of replies.
+  """
+  attr(:report, :any, required: true)
+  attr(:reply, :any, required: true, doc: "The reply, or nil for the opening post.")
+  attr(:count, :integer, required: true)
+  attr(:liked, :boolean, required: true)
+  attr(:cursor, :string, default: nil)
+  attr(:reply_filter, :string, default: "all")
+
+  def like_button(assigns) do
+    ~H"""
+    <form method="post" action={~p"/posts/#{@report.id}/likes"} class="pb-like-form">
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+      <input :if={@reply} type="hidden" name="reply_id" value={@reply.id} />
+      <input type="hidden" name="like" value={to_string(!@liked)} />
+      <input :if={@cursor} type="hidden" name="after" value={@cursor} />
+      <input type="hidden" name="replies" value={@reply_filter} />
+      <button
+        type="submit"
+        class="pb-like"
+        aria-pressed={to_string(@liked)}
+        title={if @liked, do: "You like this. Press to take it back.", else: "Like this post"}
+      >
+        <.icon name={:heart} />
+        <span :if={@count > 0}>{@count}</span>
+        <span class="visually-hidden">{count_label(@count, "like", "likes")}</span>
+      </button>
+    </form>
+    """
+  end
+
+  @doc """
+  The answer the asker marked as what worked, shown under the question with
+  who wrote it, when, its opening lines and the way to the whole reply.
+  """
+  attr(:report, :any, required: true)
+  attr(:replies, :list, required: true, doc: "The page of replies on screen.")
+
+  def solved(assigns) do
+    ~H"""
+    <section :if={answer = @report.solution_reply} class="pb-solved" aria-labelledby="pb-solved-title">
+      <h2 id="pb-solved-title"><.icon name={:check} /> Solved</h2>
+      <p class="pb-solved-by">
+        Answer by
+        <.nameplate
+          author={answer.author}
+          session_id={answer.browser_session_id}
+          kind={answer.author_kind}
+          avatar={false}
+        />
+        <time datetime={DateTime.to_iso8601(answer.inserted_at)} title={moment(answer.inserted_at)}>
+          {written_on(answer.inserted_at)}
+        </time>
+      </p>
+      <div :if={answer.body_markdown} class="pb-solved-excerpt pb-markdown">
+        {markdown(answer.body_markdown)}
+      </div>
+      <p :if={!answer.body_markdown} class="pb-solved-excerpt" phx-no-format>{answer.note}</p>
+      <p class="pb-thread-caption">
+        {if @report.accepted_reply_id == answer.id,
+          do: "The asker chose this answer for the bounty.",
+          else: "The asker says this answer worked."} That is their word, not a check.
+      </p>
+      <a href={solution_path(@report, @replies)}>Read the whole answer →</a>
+    </section>
+    """
+  end
+
+  # The answer itself when it is on this page of replies, otherwise the page
+  # that shows only it.
+  defp solution_path(report, replies) do
+    anchor = "#reply-#{report.solution_reply_id}"
+
+    if Enum.any?(replies, &(&1.id == report.solution_reply_id)),
+      do: anchor,
+      else: ~p"/posts/#{report.id}?replies=solution" <> anchor
   end
 
   @doc """

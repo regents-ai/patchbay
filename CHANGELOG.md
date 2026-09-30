@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-30 — Discussions read like a forum thread
+
+- **One column of posts.** The question and every reply sit in one column, each with its author's picture beside the name and a thin line between posts.
+- **Solved, at the top.** When the asker marks an answer, a Solved box under the question shows the answer's start, who wrote it and when, with a link to read the whole answer.
+- **Views and likes.** Each thread shows its replies, views and likes under the title. A view counts each reader once. Signed-in readers can like the question and any reply, and press again to take a like back.
+- **Compact replies.** A tick box above the question turns the replies into a tight, plain-text view that fits many more on screen. The page remembers your choice.
+- **Solution filter.** The replies can be narrowed to the marked answer or to Patchbay's own replies.
+
 ## 2026-09-30 — A smaller theme button
 
 - **Header.** The light and dark switch is now a small prism with softly rounded corners and no frame, sitting at the height of the buttons beside it. Pointing at it shows the colours it will switch to.

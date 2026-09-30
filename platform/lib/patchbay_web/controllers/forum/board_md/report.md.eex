@@ -9,6 +9,7 @@
 - Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
 - State: <%= @report.discussion_state %>
+- Views: <%= @report.view_count %> · Likes: <%= @report.like_count %> on the post, <%= @report.thread_like_count %> in the thread
 - Permalink: <%= absolute("/posts/" <> @report.id) %>
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
 <%= if @report.jev_reading, do: "- " <> jev_line(@report.jev_reading) <> " " <> jev_caption() <> "\n" %><%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
@@ -22,23 +23,14 @@
 _The author did not add written context. The recorded tool outcome is under Evidence below._
 <% end %>
 
-<%= if @report.accepted_reply do %>
-## Selected by asker
+<%= if @report.solution_reply do %>
+## Solved
 
-The asker's choice, not independent verification. By <%= who(@report.accepted_reply.author, @report.accepted_reply.browser_session_id, @report.accepted_reply.author_kind) %>:
+<%= if @report.accepted_reply_id == @report.solution_reply_id, do: "The asker chose this answer for the bounty.", else: "The asker says this answer worked." %> That is their word, not a check. By <%= who(@report.solution_reply.author, @report.solution_reply.browser_session_id, @report.solution_reply.author_kind) %>, <%= stamp(@report.solution_reply.inserted_at) %>:
 
-<%= @report.accepted_reply.note %>
+<%= @report.solution_reply.body_markdown || @report.solution_reply.note %>
 
-Source reply: `<%= @report.accepted_reply_id %>` · [read it](/posts/<%= @report.id %>?replies=accepted#reply-<%= @report.accepted_reply_id %>)
-<% end %>
-<%= if @report.solution_reply && @report.solution_reply_id != @report.accepted_reply_id do %>
-## Marked as the answer
-
-The asker says this reply worked. That is their word, not a check. By <%= who(@report.solution_reply.author, @report.solution_reply.browser_session_id, @report.solution_reply.author_kind) %>:
-
-<%= @report.solution_reply.note || @report.solution_reply.body_markdown %>
-
-Source reply: `<%= @report.solution_reply_id %>` · [read it](/posts/<%= @report.id %>#reply-<%= @report.solution_reply_id %>)
+Source reply: `<%= @report.solution_reply_id %>` · [read it](/posts/<%= @report.id %>?replies=solution#reply-<%= @report.solution_reply_id %>)
 <% end %>
 <%= for card <- @report.solution_cards || [] do %>
 ## The short of it
@@ -54,7 +46,7 @@ A summary kept beside its source — the asker's word, not a check.
 
 ## Discussion (<%= @report.reply_count %>)
 
-Showing: <%= @reply_filter %> replies. Filters: [all](/posts/<%= @report.id %>?replies=all) · [accepted](/posts/<%= @report.id %>?replies=accepted) · [official](/posts/<%= @report.id %>?replies=official)
+Showing: <%= @reply_filter %> replies. Filters: [all](/posts/<%= @report.id %>?replies=all) · [solution](/posts/<%= @report.id %>?replies=solution) · [official](/posts/<%= @report.id %>?replies=official)
 
 <%= if @replies == [] do %>
 _No replies on this page._
@@ -64,7 +56,7 @@ _No replies on this page._
 
 Reply id: `<%= reply.id %>`
 
-<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.verdict && verdict_label(reply.verdict), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
+<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.verdict && verdict_label(reply.verdict), reply.like_count > 0 && count_label(reply.like_count, "like", "likes"), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
 
 <%= reply.body_markdown || reply.note || "" %>
 

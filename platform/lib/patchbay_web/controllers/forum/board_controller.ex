@@ -389,6 +389,57 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
+  @doc """
+  A signed-in reader likes, or takes back their like on, the thread's opening
+  post or one of its replies, and comes back to where they pressed. The form
+  says which it wants, so pressing twice before the page reloads still ends
+  where the reader last pressed.
+  """
+  def like(%{assigns: %{current_profile: nil}} = conn, %{"id" => id} = params) do
+    conn
+    |> put_flash(:error, "Sign in at the top of the page to like posts.")
+    |> redirect(to: liked_path(fetch_report!(id), params))
+  end
+
+  def like(conn, %{"id" => id, "like" => wanted} = params) when wanted in ["true", "false"] do
+    report = fetch_report!(id)
+    profile = conn.assigns.current_profile
+    reply_id = params["reply_id"]
+
+    result =
+      if wanted == "true",
+        do: Forum.like(report.id, reply_id, actor: profile),
+        else: take_back_like(report, reply_id, profile)
+
+    case result do
+      {:error, _refused} ->
+        conn
+        |> put_flash(:error, "That like could not be saved. Reload the page and try again.")
+        |> redirect(to: liked_path(report, params))
+
+      _done ->
+        redirect(conn, to: liked_path(report, params))
+    end
+  end
+
+  defp take_back_like(report, reply_id, profile) do
+    case Enum.find(Forum.list_my_likes!(report.id, actor: profile), &(&1.reply_id == reply_id)) do
+      nil -> :ok
+      like -> Forum.unlike(like, actor: profile)
+    end
+  end
+
+  # Back to the page of replies the reader was on, at the post they pressed.
+  defp liked_path(report, params) do
+    query =
+      params
+      |> Map.take(["after", "replies"])
+      |> Map.reject(fn {_key, value} -> value in [nil, ""] end)
+
+    anchor = if params["reply_id"], do: "#reply-#{params["reply_id"]}", else: "#pb-post"
+    ~p"/posts/#{report.id}?#{query}" <> anchor
+  end
+
   defp solution_words({:solution_refused, _reason, words}), do: words
   defp solution_words({:unavailable, words}), do: words
 
@@ -807,6 +858,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   continuation from this board or from the API names.
   """
   def report(conn, %{"id" => id} = params) do
+    :ok = id |> fetch_report!() |> Board.record_view(conn.assigns)
     show_report(conn, id, params, [])
   end
 
@@ -979,7 +1031,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   # that carries the page only while that page can still be shown.
   defp show_report(conn, id, params, problems) do
     report = fetch_report!(id)
-    filter = if params["replies"] in ["accepted", "official"], do: params["replies"], else: "all"
+    filter = if params["replies"] in ["solution", "official"], do: params["replies"], else: "all"
 
     with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),
          {:ok, replies, next_cursor} <- Board.replies(report, keyset, filter) do
@@ -994,6 +1046,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         next_cursor: next_cursor,
         reply_problem: Keyword.get(problems, :reply_problem),
         refund_problem: Keyword.get(problems, :refund_problem),
+        liked: Board.liked(report, conn.assigns.current_profile),
         earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
       )
     else

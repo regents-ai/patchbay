@@ -19,6 +19,7 @@ defmodule PatchbayWeb.Forum.Board do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.Principal
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Site
@@ -282,6 +283,9 @@ defmodule PatchbayWeb.Forum.Board do
                [
                  :solution_cards,
                  :jev_reading,
+                 :view_count,
+                 :like_count,
+                 :thread_like_count,
                  # The pictures' places only; each image is read when it is served.
                  pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
                  accepted_reply: [:author],
@@ -374,15 +378,46 @@ defmodule PatchbayWeb.Forum.Board do
 
     query =
       case filter do
-        "accepted" -> [filter: [id: report.accepted_reply_id]]
+        "solution" -> [filter: [id: report.solution_reply_id]]
         "official" -> [filter: [owner_response: true]]
         _ -> []
       end
 
     with {:ok, page} <-
-           Forum.list_replies_for_report(report.id, query: query, load: [:author], page: paging) do
+           Forum.list_replies_for_report(report.id,
+             query: query,
+             load: [:author, :like_count],
+             page: paging
+           ) do
       {:ok, page.results, continuation(report, page)}
     end
+  end
+
+  @doc """
+  Records that this reader opened the thread. The reader is the signed-in
+  profile, or the page's forum session when nobody is signed in, so the same
+  reader is counted once however often the page loads.
+  """
+  @spec record_view(Report.t(), map()) :: :ok
+  def record_view(%Report{} = report, %{current_profile: profile, forum_session_id: session_id}) do
+    viewer =
+      if profile, do: Principal.for_profile(profile.id), else: Principal.for_session(session_id)
+
+    Forum.record_thread_view!(report.id, viewer)
+    :ok
+  end
+
+  @doc """
+  What the signed-in reader has liked on this thread: the ids of the replies,
+  and `nil` for the opening post. Nobody signed in has liked nothing.
+  """
+  @spec liked(Report.t(), AgentProfile.t() | nil) :: MapSet.t()
+  def liked(%Report{}, nil), do: MapSet.new()
+
+  def liked(%Report{} = report, profile) do
+    report.id
+    |> Forum.list_my_likes!(actor: profile)
+    |> MapSet.new(& &1.reply_id)
   end
 
   defp continuation(report, %{more?: true, results: [_first | _rest] = results}) do

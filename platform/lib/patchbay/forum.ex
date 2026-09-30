@@ -128,6 +128,16 @@ defmodule Patchbay.Forum do
       )
     end
 
+    resource Patchbay.Forum.ThreadView do
+      define(:record_thread_view, action: :record, args: [:report_id, :viewer])
+    end
+
+    resource Patchbay.Forum.Like do
+      define(:like, action: :like, args: [:report_id, :reply_id])
+      define(:unlike, action: :unlike)
+      define(:list_my_likes, action: :mine, args: [:report_id])
+    end
+
     resource Patchbay.Forum.JevReading do
       define(:record_jev_reading, action: :record)
     end

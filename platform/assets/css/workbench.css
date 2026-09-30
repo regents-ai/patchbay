@@ -65,22 +65,13 @@
 .pb-kind-pill { display: inline-flex; align-items: center; padding: .15rem .55rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); }
 .pb-kind-pill.is-good { background: var(--pb-text); color: var(--color-bg); }
 .pb-kind-pill.is-bad { border-color: var(--pb-bad); color: var(--pb-bad); }
-.pb-post-card { margin: 1rem 0 0; }
-.pb-post-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; min-height: 1.5rem; }
-.pb-post-card .pb-thread-prose { margin: .5rem 0 0; }
-.pb-post-card .pb-post-page { display: flex; align-items: center; gap: .35rem; margin: .75rem 0 0; color: var(--pb-text-muted); }
-.pb-post-card-when, .pb-reply-when { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; color: var(--pb-text-muted); font-size: .75rem; text-decoration: none; }
-.pb-post-card-when:hover, .pb-reply-when:hover { color: var(--pb-text); text-decoration: underline; text-underline-offset: 2px; }
 .pb-for-agents { margin: .75rem 0 0; font-size: .8125rem; line-height: 1.6; color: var(--pb-text-muted); }
 .pb-for-agents > summary { display: inline-flex; align-items: center; gap: .35rem; min-height: 2rem; cursor: pointer; list-style: none; }
 .pb-for-agents > summary::-webkit-details-marker { display: none; }
 .pb-for-agents > summary:hover { color: var(--pb-text); }
 .pb-for-agents > p { margin: .25rem 0 0; padding: .625rem .875rem; background: var(--pb-card-sunk); }
 .pb-for-agents a { text-decoration: underline; text-underline-offset: 2px; }
-.pb-reply-byline { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .6rem; min-height: 1.5rem; }
 .pb-thread-prose { white-space: pre-wrap; margin: 1.25rem 0; font: inherit; }
-.pb-selected-answer { border: 2px solid var(--pb-text); background: var(--pb-card); padding: 1.15rem 1.25rem; margin: 1.75rem 0; }
-.pb-selected-answer h2 { margin: 0 0 .25rem; }
 .pb-solution-card { margin: 1.75rem 0; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-card-line); background: var(--pb-card); }
 .pb-solution-card h2 { margin: 0 0 .25rem; }
 .pb-solution-card .pb-thread-caption { margin: 0; }
@@ -97,19 +88,15 @@
 .pb-ask-flags p, .pb-ask-flags ul { margin: .25rem 0; }
 .pb-ask-flag-at { color: var(--pb-text-muted); font-family: var(--font-family-mono); font-size: .75rem; }
 .pb-ask-visibility { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.45; }
-.pb-selected-answer > a { font-size: .8125rem; }
 .pb-conversation { margin-top: 2rem; border-top: 1px solid var(--pb-line); padding-top: 1.25rem; }
 .pb-conversation h2 { margin: 0; }
 .pb-conversation h2 > span { color: var(--pb-text-muted); font-family: var(--font-family-body); margin-left: .4rem; font-size: .8125rem; }
 .pb-reply-filters { display: flex; flex-wrap: wrap; gap: 1.25rem; border-bottom: 1px solid var(--pb-line); margin: .75rem 0 0; }
 .pb-reply-filters a { padding: .4rem 0 .65rem; font-size: .75rem; color: var(--pb-text-muted); text-decoration: none; }
 .pb-reply-filters a[aria-current="page"] { color: var(--pb-text); box-shadow: inset 0 -2px var(--pb-accent); }
-.pb-thread .patchbay-reply-list { display: grid; gap: .75rem; margin: 1rem 0 0; }
 .pb-reply-label { display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .5rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); }
 .pb-reply-label.is-good { background: var(--pb-text); color: var(--color-bg); }
-.pb-reply-prose { margin: .5rem 0 0; }
 .pb-reply-outcome { margin: .6rem 0 0; color: var(--pb-text-muted); font-size: .75rem; }
-.pb-mark-solution { margin: .75rem 0 0; }
 .pb-quiet-button { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .25rem .8rem; border: 1px solid var(--pb-line-strong); background: transparent; color: var(--pb-text); font: var(--font-weight-semibold) .75rem var(--font-family-ui); cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .pb-quiet-button:hover { background: var(--pb-surface); } }
 .pb-thread .pb-reply .patchbay-board-text { font-family: inherit; font-size: 16px; line-height: 1.65; white-space: pre-wrap; margin-block: .75rem; padding: 0; border: 0; background: transparent; }
@@ -117,6 +104,93 @@
 .pb-thread .pb-reply .rg-disclosure > summary { font-size: .6875rem; padding-block: .25rem; }
 .pb-thread .pb-reply-form textarea { min-height: 7rem; font-size: 16px; line-height: 1.65; }
 .pb-thread .patchbay-muted { line-height: 1.65; }
+/* A thread reads as one column of posts, the opening post first: a picture
+   beside each, the name and time along the top, what they wrote, and the
+   post's own buttons at its foot. A hairline above each post's words keeps
+   them apart without boxing them in. */
+.pb-thread-head h1 { display: flex; align-items: baseline; gap: .5rem; margin: 0 0 .5rem; }
+.pb-thread-solved { display: inline-flex; flex: none; color: var(--pb-good); font-size: .85em; }
+.pb-thread-solved .pb-icon { stroke-width: 2.25; }
+.pb-thread-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1rem; margin: 1rem 0 0; padding: .25rem 0; border-block: 1px solid var(--pb-line); color: var(--pb-text-muted); font-size: .75rem; }
+.pb-thread-stats { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin: 0; }
+.pb-thread-stats > span { display: inline-flex; align-items: center; gap: .3rem; }
+.pb-compact-toggle { display: inline-flex; align-items: center; gap: .45rem; min-height: 2.75rem; color: var(--pb-text); cursor: pointer; }
+.pb-compact-toggle input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--pb-accent); }
+.pb-post { display: grid; grid-template-columns: 3rem minmax(0, 1fr); align-items: start; gap: 1rem; padding: 1.25rem 0 .5rem; }
+.pb-post-av { width: 3rem; height: 3rem; }
+.pb-post-main { display: flex; flex-direction: column; min-width: 0; padding-top: .5rem; border-top: 1px solid var(--pb-line); }
+.pb-post--op .pb-post-main { border-top: 0; padding-top: 0; }
+.pb-post-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; min-height: 1.5rem; }
+.pb-post-when { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; color: var(--pb-text-muted); font-size: .75rem; text-decoration: none; }
+.pb-post-when:hover { color: var(--pb-text); text-decoration: underline; text-underline-offset: 2px; }
+.pb-post .pb-thread-prose, .pb-post .pb-reply-prose { margin: .5rem 0 0; }
+.pb-post .pb-post-page { display: flex; align-items: center; gap: .35rem; margin: .75rem 0 0; color: var(--pb-text-muted); }
+.pb-post-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; margin: .5rem 0 0; }
+.pb-thread .patchbay-reply-list { display: grid; gap: 0; margin: .5rem 0 0; }
+.patchbay-reply-list > li.pb-post { display: grid; align-items: start; }
+.patchbay-reply-list .pb-post-av { margin-top: .5rem; }
+/* The marked answer carries a green rule down its left, and Patchbay's own
+   replies sit on the darker paper, each with room inside the colour. */
+.pb-reply--solution, .pb-reply--patchbay { padding-inline: .75rem; }
+.pb-reply--solution { box-shadow: inset 3px 0 var(--pb-good); }
+.pb-reply--patchbay { background: var(--pb-card-sunk); }
+.pb-thread .pb-markdown blockquote { margin: .75rem 0; padding: .5rem .875rem; border-left: 3px solid var(--pb-line-strong); background: var(--pb-card-sunk); color: var(--pb-text); }
+.pb-thread .pb-markdown blockquote > :first-child { margin-top: 0; }
+.pb-thread .pb-markdown blockquote > :last-child { margin-bottom: 0; }
+
+/* A heart and its count. A like the reader gave is filled in. */
+.pb-like-form { margin: 0; }
+.pb-like { display: inline-flex; align-items: center; gap: .35rem; min-width: 2.75rem; min-height: 2.25rem; justify-content: center; padding: .25rem .6rem; border: 0; background: transparent; color: var(--pb-text-muted); font: var(--font-weight-semibold) .8125rem var(--font-family-ui); cursor: pointer; }
+.pb-like .pb-icon { font-size: 1.05rem; }
+/* A given like is the palette's tangerine in both themes, so it reads as given
+   on the dark page too, where the accent is pale. */
+.pb-like[aria-pressed="true"] { color: var(--palette-tangerine-tango); }
+.pb-like[aria-pressed="true"] .pb-icon { fill: currentColor; }
+@media (hover: hover) and (pointer: fine) { .pb-like:hover { background: var(--pb-surface); color: var(--pb-text); } .pb-like[aria-pressed="true"]:hover { color: var(--palette-tangerine-tango); } }
+@media (prefers-reduced-motion: no-preference) {
+  .pb-like, .pb-quiet-button { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .pb-like:active, .pb-quiet-button:active { transform: scale(0.97); }
+}
+
+/* The answer the asker marked, under their question: who wrote it and when,
+   its opening lines fading out, and the way to the whole reply. */
+.pb-solved { margin: 1rem 0 0; padding: .875rem 1rem; border: 1px solid var(--pb-card-line); border-left: 3px solid var(--pb-good); background: var(--pb-card); }
+.pb-solved h2 { display: flex; align-items: center; gap: .4rem; margin: 0; color: var(--pb-good); }
+.pb-solved h2 .pb-icon { stroke-width: 2.25; }
+.pb-solved-by { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .5rem; margin: .35rem 0 0; font-size: .8125rem; color: var(--pb-text-muted); }
+.pb-solved-excerpt { max-height: 7.5em; overflow: hidden; margin: .5rem 0 0; font-size: .9375rem; white-space: pre-wrap; -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+.pb-solved-excerpt.pb-markdown { white-space: normal; }
+.pb-solved-excerpt > :first-child { margin-top: 0; }
+.pb-solved-excerpt :is(h1, h2, h3, h4, h5, h6) { margin: 0 0 .25rem; font: 600 1em/1.5 var(--font-family-body); }
+.pb-solved .pb-thread-caption { margin: .25rem 0 0; }
+.pb-solved > a { display: inline-block; margin-top: .25rem; font-size: .8125rem; font-weight: 600; }
+
+/* Compact replies: no pictures, small close-set type in the plain-text face,
+   headings and code marked the way the Markdown wrote them, so a long
+   conversation fits on a screen or two. */
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-post { grid-template-columns: minmax(0, 1fr); padding-block: .5rem 0; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-post-av,
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown img,
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-post-pictures { display: none; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-post-main { padding-top: .35rem; font: .75rem/1.55 var(--font-family-mono); }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-post-head { min-height: 0; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-reply-prose { margin-top: .2rem; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown :is(p, ul, ol, pre, blockquote, table) { margin-block: .2rem; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown :is(h1, h2, h3, h4, h5, h6) { margin: .35rem 0 .1rem; font: 600 .75rem/1.55 var(--font-family-mono); }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown h1::before { content: "# "; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown h2::before { content: "## "; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown :is(h3, h4, h5, h6)::before { content: "### "; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown :not(pre) > code::before,
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown :not(pre) > code::after { content: "`"; color: var(--pb-text-muted); }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown pre { max-height: 10rem; font-size: .6875rem; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-markdown blockquote { padding: .15rem .6rem; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .patchbay-board-text { margin-block: .2rem; font-size: .75rem; line-height: 1.55; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-post-actions { margin-top: 0; }
+.pb-thread:has(#pb-compact-replies:checked) .patchbay-reply-list .pb-like { min-height: 1.75rem; }
+@media (max-width: 36rem) {
+  .pb-post { grid-template-columns: 2.25rem minmax(0, 1fr); gap: .75rem; }
+  .pb-post-av { width: 2.25rem; height: 2.25rem; }
+}
 .pb-thread-evidence { margin-top: 1.5rem; }
 .pb-evidence-facts { display: grid; grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr); gap: .5rem 1rem; font-size: .75rem; }
 .pb-evidence-facts dt { color: var(--pb-text-muted); }
@@ -248,7 +322,6 @@
   .pb-thread { padding: 1.25rem 0; }
   .pb-thread h1 { font-size: 1.5rem; }
   .pb-thread-back { padding: 1rem 1.25rem; }
-  .pb-selected-answer { padding: 1rem; }
 }
 @media (max-width: 599px) {
   .pb-agent-intro { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
