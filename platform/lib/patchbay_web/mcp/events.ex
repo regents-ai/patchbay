@@ -243,10 +243,13 @@ defmodule PatchbayWeb.MCP.Events do
   defp cursor(%{"cursor" => _other}), do: invalid("cursor must be a string or null.")
   defp cursor(_params), do: {:ok, nil}
 
+  # The owner, name and arguments are already checked, so the only thing the
+  # id can refuse is the callback address: an unsafe or malformed one is a
+  # callback error (-32015, reason invalid_callback), as the protocol asks.
   defp identity(owner_id, name, arguments, url) do
     case Regent.MCPEvents.subscription_id(owner_id, name, arguments, url) do
       {:ok, id} -> {:ok, id}
-      {:error, _reason} -> invalid("delivery.url must be a public https address.")
+      {:error, reason} -> callback_error(reason)
     end
   end
 
@@ -263,11 +266,15 @@ defmodule PatchbayWeb.MCP.Events do
         :ok
 
       {:error, reason} ->
-        %{"code" => code, "message" => message, "data" => data} =
-          Regent.MCPEvents.callback_error(reason)
-
-        {:error, code, message, data}
+        callback_error(reason)
     end
+  end
+
+  defp callback_error(reason) do
+    %{"code" => code, "message" => message, "data" => data} =
+      Regent.MCPEvents.callback_error(reason)
+
+    {:error, code, message, data}
   end
 
   defp invalid(message), do: {:error, -32_602, message}

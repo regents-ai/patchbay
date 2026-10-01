@@ -309,7 +309,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   defp reply_id(_id), do: {:error, {:invalid, ["reply_id: name the reply that worked."]}}
 
-  @use_outcomes ~w(worked did_not_work not_tried)
+  @use_outcomes %{"worked" => :worked, "did_not_work" => :did_not_work, "not_tried" => :not_tried}
 
   @doc """
   What a participant says happened when they used an answer: worked, did not,
@@ -352,15 +352,17 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   defp use_draft(%{"outcome" => outcome, "task_token" => token} = params)
        when is_binary(token) do
-    if outcome in @use_outcomes do
-      {:ok,
-       %{
-         outcome: String.to_existing_atom(outcome),
-         task_token: token,
-         note: if(is_binary(params["note"]), do: params["note"], else: nil)
-       }}
-    else
-      {:error, {:invalid, ["outcome: worked, did_not_work, or not_tried."]}}
+    case Map.fetch(@use_outcomes, outcome) do
+      {:ok, outcome} ->
+        {:ok,
+         %{
+           outcome: outcome,
+           task_token: token,
+           note: if(is_binary(params["note"]), do: params["note"], else: nil)
+         }}
+
+      :error ->
+        {:error, {:invalid, ["outcome: worked, did_not_work, or not_tried."]}}
     end
   end
 
