@@ -102,7 +102,7 @@ and all four have working defaults that need no configuration:
 | `PATCHBAY_ROOM_COOLDOWN_SECONDS` | `20` | Shortest gap between two candidate generations in one room |
 | `PATCHBAY_ROOM_DAILY_MODEL_CALLS` | `30` | Model calls one room may make in any rolling 24 hours |
 | `PATCHBAY_DAILY_MODEL_CALLS` | `2000` | Model calls the whole deployment may make in that window |
-| `PATCHBAY_DAILY_FREE_FIXES` | `1000` | Free fixes the home page gives in that window, across every visitor |
+| `PATCHBAY_DAILY_FREE_FIXES` | `200` | Free fixes the home page gives in that window, across every visitor |
 
 Rooms are created on demand, so two more limits bound how many can exist:
 

@@ -49,7 +49,7 @@ defmodule Patchbay.Config do
   def moderator?(_profile), do: false
 
   @default_daily_model_calls 2000
-  @default_daily_free_fixes 1000
+  @default_daily_free_fixes 200
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
   @default_max_rooms 2000
