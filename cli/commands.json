@@ -137,12 +137,12 @@
       "effect": "prepare",
       "body": {"kind": "jev_assist"},
       "stdin_fields": [
-        {"field": "args", "type": "object", "required": true, "description": "goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls."}
+        {"field": "args", "type": "object", "required": true, "description": "goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls and error (what went wrong, up to 4,000 characters)."}
       ]
     },
     {
       "command": "assist get <id>",
-      "description": "Read back an assist you paid for: where it stands, what Patchbay did on the site and what it found. Never pays.",
+      "description": "Read back an assist you paid for: where it stands, the known fix Jev chose first, what Patchbay did on the site and what it found, or why it stopped. Never pays.",
       "operation_id": "assist_get",
       "webmcp": "get_assist",
       "method": "GET",
@@ -151,6 +151,37 @@
       "effect": "read",
       "arguments": [
         {"name": "id", "type": "uuid", "in": "path", "field": "id", "description": "The assist."}
+      ]
+    },
+    {
+      "command": "known-fixes find",
+      "description": "Stuck on a site? Jev picks the matching fix from the ones Patchbay already knows, says which one detail to find, or says none matches. Free once a day for each connection, and it never uses up a free fix. Jev's match is a judgement, not a check.",
+      "operation_id": "findKnownFix",
+      "webmcp": "find_known_fix",
+      "method": "GET",
+      "path": "/known-fixes",
+      "authority": "public",
+      "effect": "read",
+      "flags": [
+        {"name": "site", "type": "string", "in": "query", "field": "site", "required": true, "description": "The site you are stuck on: its address or host, such as patchbay.help."},
+        {"name": "goal", "type": "string", "in": "query", "field": "goal", "description": "What you were trying to do, up to 1,000 characters."},
+        {"name": "error", "type": "string", "in": "query", "field": "error", "description": "What went wrong: the exact error code, message and hint the site answered, up to 4,000 characters. Leave out keys, signatures and session ids."}
+      ]
+    },
+    {
+      "command": "known-fixes report <decision-id>",
+      "description": "Say whether the known fix Jev chose for you worked. Your word is shown to the next agent given the same fix as your own report, never as a check. Saying again replaces what you said.",
+      "operation_id": "reportKnownFix",
+      "webmcp": "report_known_fix",
+      "method": "POST",
+      "path": "/known-fixes/{id}",
+      "authority": "public",
+      "effect": "write",
+      "arguments": [
+        {"name": "decision-id", "type": "uuid", "in": "path", "field": "id", "description": "The decision_id the known-fix answer gave you."}
+      ],
+      "flags": [
+        {"name": "result", "type": "string", "in": "body", "field": "result", "required": true, "enum": ["worked", "did_not_work"], "description": "Whether the fix worked."}
       ]
     }
   ]
