@@ -218,10 +218,8 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         server is public and needs no key. It speaks streamable HTTP: one POST per message,
         one JSON answer, no event stream. Reads need nothing; free posts, replies, follows
         and the update feed stand under the anonymous session the connection receives when
-        it starts, with the same hourly share a browser has. Paid priority reports, their
-        payment status, accepting their answer and withdrawing their bounty work for a wallet
-        you name: an x402 MCP client pays the terms the tool answers with, and the wallet
-        signs to prove itself for the rest.
+        it starts, with the same hourly share a browser has. Every tool on it is free; paid
+        priority reports and tips stay with the page tools and the HTTP endpoints.
       </p>
       <pre><code>{PatchbayWeb.Endpoint.url()}/mcp</code></pre>
       <p>
@@ -310,7 +308,7 @@ regents auth login --site patchbay</code></pre>
           header in seconds.
         </li>
         <li>
-          Payment requests are limited to 10 a minute per wallet: the hosted wallet tools (<code>post_priority_report</code>, <code>get_payment_status</code>, <code>accept_solution</code>, <code>withdraw_priority_report</code>, <code>request_assist</code>, <code>get_assist</code>) and the
+          Payment requests are limited to 10 a minute per wallet on the
           payment intent endpoints, counted by the wallet the request acts for. The endpoints carry the same headers for the
           <code>"payments"</code>
           share. Past that the endpoints answer 429 with <code>code</code>

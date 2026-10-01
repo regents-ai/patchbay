@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.PaymentsAPI.Purchase do
   @moduledoc """
   One way to buy a paid action, whichever door the buyer came through: the
-  HTTP payment endpoints, the wallet-signed agent endpoints behind the
-  command-line client, and the hosted MCP tools all run this and nothing else.
+  HTTP payment endpoints and the wallet-signed agent endpoints behind the
+  command-line client both run this and nothing else.
 
   The payment itself is the Regents payments library's
   (`RegentPayments.Purchase`): it freezes the terms, checks a signed payment
@@ -101,24 +101,6 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
-  @doc """
-  The terms on offer to `actor` for this paid priority report: the intent it
-  already prepared for the same report and amount, while those terms still
-  stand, or fresh ones. A caller that asks again after a timeout, from any
-  door, is answered with the purchase it started and never a second one.
-  """
-  @spec special_post_on_offer(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
-  def special_post_on_offer(actor, args) do
-    with {:ok, draft, amount_atomic} <- special_post_terms(args) do
-      same? = &(&1.amount_atomic == amount_atomic and &1.payload["draft"] == draft)
-
-      case RegentPayments.Purchase.on_offer(SpecialPost, actor, same?) do
-        nil -> prepare(actor, draft, amount_atomic)
-        found -> {:ok, found}
-      end
-    end
-  end
-
   defp special_post_terms(args) do
     with :ok <- escrow_set_up(),
          {:ok, amount_atomic} <- amount(args),
@@ -164,29 +146,6 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
          :ok <- no_assist_running(actor),
          :ok <- no_fix_running(actor, browser_session_id),
          {:ok, request} <- AssistRequest.draft(args) do
-      RegentPayments.Purchase.prepare(JevAssist, %{request: request}, actor)
-    end
-  end
-
-  @doc """
-  The terms on offer to `actor` for this assist: the intent it already
-  prepared for the same request, while those terms still stand, or fresh
-  ones. A caller that asks again after a timeout is answered with the
-  purchase it started and never a second one.
-  """
-  @spec assist_on_offer(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
-  def assist_on_offer(actor, args) do
-    with :ok <- assist_set_up(),
-         {:ok, request} <- AssistRequest.draft(args) do
-      case RegentPayments.Purchase.on_offer(JevAssist, actor, &(&1.payload["request"] == request)) do
-        nil -> prepare_assist(actor, request)
-        found -> {:ok, found}
-      end
-    end
-  end
-
-  defp prepare_assist(actor, request) do
-    with :ok <- no_assist_running(actor) do
       RegentPayments.Purchase.prepare(JevAssist, %{request: request}, actor)
     end
   end

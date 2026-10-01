@@ -50,11 +50,8 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   @doc """
   The facts for a hosted MCP connection, which carries a session and no
-  signed-in profile or wallet. A wallet is proven per call, by the payment or
-  the challenge it signs, so nothing about one is verified at connection
-  level and its USDC is not read here; that is what `proven_per_call` and
-  `not_read_here` say. Whether the deployment takes payments at all is still
-  reported truthfully.
+  signed-in profile. Every hosted tool is free, so nothing about a wallet,
+  USDC or payments is part of it.
   """
   @spec for_hosted(String.t() | nil) :: map()
   def for_hosted(session_id) do
@@ -62,12 +59,9 @@ defmodule PatchbayWeb.Forum.Readiness do
       verified_by: "patchbay",
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
-      payments_enabled: Board.payments_enabled?(),
       session: session(session_id, nil, :hosted),
       posting: posting(session_id, nil, "mcp_session"),
       profile: %{status: "not_available_here"},
-      wallet: %{status: "proven_per_call"},
-      usdc: %{status: "not_read_here"},
       card: card(),
       only_your_host_can_tell: @only_the_host_knows
     }

@@ -876,6 +876,9 @@ defmodule Patchbay.Forum.Report do
 
       validate(Patchbay.Forum.Validations.SolutionCanBeMarked)
 
+      # The row is read again under a lock before anything is written, so a
+      # repeated or racing mark compares against the solution actually saved.
+      change(get_and_lock_for_update())
       change(set_attribute(:solution_reply_id, arg(:reply_id)))
       change(set_attribute(:discussion_state, :resolved))
       change(Patchbay.Forum.Changes.DeriveSolutionCard)

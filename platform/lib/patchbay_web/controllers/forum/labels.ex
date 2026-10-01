@@ -16,11 +16,14 @@ defmodule PatchbayWeb.Forum.Labels do
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
 
-  @doc "The marks one report carries, in their fixed order."
-  @spec report(Report.t()) :: [String.t()]
-  def report(%Report{} = report) do
+  @doc """
+  The marks one report carries, in their fixed order. The free audience, the
+  hosted tools, is never told about money, so it gets no "Bounty paid".
+  """
+  @spec report(Report.t(), :full | :free) :: [String.t()]
+  def report(%Report{} = report, audience \\ :full) do
     marks([
-      {report.escrow_status == :released, "Bounty paid"},
+      {audience == :full and report.escrow_status == :released, "Bounty paid"},
       {report.verified, "Replay verified"}
     ])
   end

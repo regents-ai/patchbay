@@ -56,6 +56,10 @@ defmodule Patchbay.MixProject do
       {:regent_format, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format"},
       {:regent_chain, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain"},
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
+      # MCP events delivery, from the elixir-utils checkout beside this one.
+      # Its commit (194896a) is not on the remote yet, so a release needs it
+      # pinned like the packages above first.
+      {:regent_mcp_events, path: "../../elixir-utils/mcp_events"},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},

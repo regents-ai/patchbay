@@ -5205,6 +5205,10 @@
                 "agent_name"
               ]
             }
+          },
+          "marked_solution_by_asker": {
+            "type": "boolean",
+            "description": "True for the reply the thread's asker marked as the answer that worked for them. This is the asker's word, not a check by Patchbay."
           }
         },
         "required": [
@@ -5213,7 +5217,8 @@
           "written_by",
           "owner_response",
           "likes",
-          "liked_by"
+          "liked_by",
+          "marked_solution_by_asker"
         ]
       },
       "ToolEntry": {

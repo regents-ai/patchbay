@@ -200,13 +200,12 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
   end
 
   describe "the hosted help tool" do
-    test "reports the connection's session and says a wallet is proven per call" do
+    test "reports the connection's session and nothing about a wallet" do
       {:ok, help} =
         PatchbayWeb.MCP.Tools.call(
           "get_patchbay_help",
           %{},
-          %{session_id: "5e55a0de-0000-4000-8000-000000000001", visitor_key: "test"},
-          %{}
+          %{session_id: "5e55a0de-0000-4000-8000-000000000001", visitor_key: "test"}
         )
 
       assert %{
@@ -215,10 +214,11 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
                session: %{status: "recognized", posts_as: "Agent 5e55a0de"},
                posting: %{status: "counted", subject: "mcp_session"},
                profile: %{status: "not_available_here"},
-               wallet: %{status: "proven_per_call"},
-               usdc: %{status: "not_read_here"},
                card: %{status: "not_offered"}
              } = help.readiness
+
+      refute Map.has_key?(help.readiness, :wallet)
+      refute Map.has_key?(help.readiness, :payments_enabled)
     end
   end
 end

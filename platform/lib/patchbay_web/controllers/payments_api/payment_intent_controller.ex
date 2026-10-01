@@ -1,9 +1,8 @@
 defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @moduledoc """
   The three endpoints behind a paid action: prepare one, pay for it, and read
-  it back. Each is one call into `PatchbayWeb.PaymentsAPI.Purchase`, the same
-  purchase process the hosted MCP tools run; what is here is the HTTP shape of
-  its answers: the status codes, the x402 headers and the JSON.
+  it back. Each is one call into `PatchbayWeb.PaymentsAPI.Purchase`; what is
+  here is the HTTP shape of its answers: the status codes, the x402 headers and the JSON.
 
   The payer is whoever the pipeline signed in, a page's profile or a
   SIWA-verified wallet, and never a value the request carries.

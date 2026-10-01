@@ -36,6 +36,7 @@ config :patchbay, check_new_sites: false
 config :patchbay, :sync_webmcp_catalog, false
 config :patchbay, :notification_fanout, false
 config :patchbay, :jev_reader, false
+config :patchbay, :deliver_mcp_events, false
 
 # /webmcp/health reports this where a production release reports its commit.
 config :patchbay, :release_commit, "test"

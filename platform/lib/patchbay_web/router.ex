@@ -90,7 +90,9 @@ defmodule PatchbayWeb.Router do
   # is recorded in .sobelow-skips: that action only refuses and changes nothing.
   scope "/", PatchbayWeb do
     pipe_through :api
-    post "/mcp", MCPController, :message
+    # Never logged: an events subscription carries its webhook signing secret
+    # and callback address in the params, and tool calls carry what people wrote.
+    post "/mcp", MCPController, :message, log: false
     get "/mcp", MCPController, :not_allowed
     delete "/mcp", MCPController, :not_allowed
   end

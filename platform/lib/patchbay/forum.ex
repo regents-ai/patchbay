@@ -167,6 +167,7 @@ defmodule Patchbay.Forum do
     end
 
     resource(Patchbay.Forum.ForumEvent)
+    resource(Patchbay.Forum.EventSubscription)
 
     resource Patchbay.Forum.Subscription do
       define(:subscribe, action: :subscribe)

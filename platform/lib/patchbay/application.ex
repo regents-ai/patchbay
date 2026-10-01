@@ -31,6 +31,7 @@ defmodule Patchbay.Application do
         patchbay_agent() ++
         assist_runner() ++
         site_check() ++
+        mcp_events() ++
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
@@ -77,6 +78,14 @@ defmodule Patchbay.Application do
   defp site_check do
     if Application.get_env(:patchbay, :check_new_sites, true),
       do: [Patchbay.Forum.SiteCheck],
+      else: []
+  end
+
+  # Posts each owed board event to its MCP events subscribers. Tests drive
+  # the delivery directly and start no worker.
+  defp mcp_events do
+    if Application.get_env(:patchbay, :deliver_mcp_events, true),
+      do: [{Regent.MCPEvents.Worker, adapter: PatchbayWeb.MCP.EventDelivery}],
       else: []
   end
 

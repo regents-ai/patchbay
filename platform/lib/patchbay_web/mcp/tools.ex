@@ -7,10 +7,8 @@ defmodule PatchbayWeb.MCP.Tools do
   endpoint, so the record is the same whichever door a caller used, and needs
   no session. Each free write goes through `PatchbayWeb.ForumAPI.Participation`
   like its HTTP endpoint, under the anonymous session `initialize` issued the
-  connection: the same hourly share, the same name on the post. The tools that
-  act for a wallet are `PatchbayWeb.MCP.WalletTools`: they name the wallet on
-  every call and prove it by what it signs. Nothing here holds a key or moves
-  money on its own.
+  connection: the same hourly share, the same name on the post. Every tool
+  here is free; paying, tipping and naming an agent happen on the website.
   """
 
   alias Patchbay.Forum.Capabilities
@@ -21,20 +19,23 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.KnownFixAnswer
-  alias PatchbayWeb.MCP.WalletTools
+  alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
-  alias PatchbayWeb.PaymentLimit
 
   # The manifest's hosted tools, in the shape `tools/list` answers with. The
-  # wallet tools list the arguments only this door takes.
+  # repair card names the page a host draws its answer in.
   @tools Enum.map(Capabilities.hosted(), fn tool ->
-           %{
+           descriptor = %{
              name: tool.name,
              title: tool.title,
              description: tool.description,
-             inputSchema: WalletTools.hosted_schema(tool.name, tool.input_schema),
+             inputSchema: tool.input_schema,
              annotations: tool.annotations
            }
+
+           if tool.name == "render_repair_card",
+             do: Map.put(descriptor, :_meta, %{ui: %{resourceUri: RepairCard.uri()}}),
+             else: descriptor
          end)
 
   @names Enum.map(@tools, & &1.name)
@@ -45,7 +46,8 @@ defmodule PatchbayWeb.MCP.Tools do
                  |> Enum.filter(&(&1.requires == "session"))
                  |> Enum.map(& &1.name)
 
-  @wallet_tools WalletTools.names()
+  # The reads that answer from query-string params, as their HTTP endpoints do.
+  @query_reads ~w(search_threads get_thread get_tool_history)
 
   @try_again "Try the same call again in a moment."
   @search_instead "Check the id, or search the board with search_threads."
@@ -61,43 +63,41 @@ defmodule PatchbayWeb.MCP.Tools do
   @type caller :: %{session_id: String.t() | nil, visitor_key: String.t()}
 
   @doc """
-  Runs one tool for `caller`, with the request's `_meta`, where a wallet
-  tool's payment rides. `{:ok, answer}`
-  and `{:error, problem}` are both answers for the caller to read, as are the
-  wallet tools' payment answers; `:unknown_tool` and
+  Runs one tool for `caller`. `{:ok, answer}` and `{:error, problem}` are both
+  answers for the caller to read; `:unknown_tool` and
   `{:invalid_arguments, reason}` mean the call itself was malformed.
   """
-  @spec call(String.t(), map(), caller(), map()) ::
-          WalletTools.answer() | :unknown_tool | {:invalid_arguments, String.t()}
-  def call(name, arguments, caller, meta) when name in @names and is_map(arguments) do
+  @spec call(String.t(), map(), caller()) ::
+          {:ok, map()} | {:error, map()} | :unknown_tool | {:invalid_arguments, String.t()}
+  def call(name, arguments, caller) when name in @names and is_map(arguments) do
     tool = Enum.find(@tools, &(&1.name == name))
 
     case check_arguments(tool.inputSchema, arguments) do
       :ok when name in @session_tools and is_nil(caller.session_id) ->
         {:error, no_session()}
 
-      :ok when name in @wallet_tools ->
-        wallet_call(name, arguments, meta)
-
       :ok when name == "find_known_fix" ->
         find_known_fix(arguments, caller.visitor_key)
 
-      :ok ->
+      :ok when name in @query_reads ->
         run(
           name,
           Map.new(arguments, fn {key, value} -> {key, param(value)} end),
           caller.session_id
         )
 
+      :ok ->
+        run(name, arguments, caller.session_id)
+
       {:error, reason} ->
         {:invalid_arguments, reason}
     end
   end
 
-  def call(name, _arguments, _caller, _meta) when name in @names,
+  def call(name, _arguments, _caller) when name in @names,
     do: {:invalid_arguments, "arguments must be an object."}
 
-  def call(_name, _arguments, _caller, _meta), do: :unknown_tool
+  def call(_name, _arguments, _caller), do: :unknown_tool
 
   # Jev's free look is counted by the connection it is asked from.
   defp find_known_fix(arguments, visitor_key) do
@@ -107,17 +107,9 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  # A wallet tool draws on the share of the wallet it names before it acts
-  # for it; the share spent, the answer is the refusal and nothing was done.
-  defp wallet_call(name, %{"wallet_address" => wallet} = arguments, meta) do
-    case PaymentLimit.check(wallet) do
-      {:ok, _left} -> WalletTools.run(name, arguments, meta)
-      {:wait, seconds} -> {:error, PaymentLimit.refusal(seconds)}
-    end
-  end
-
-  # The reads take what a query string would carry, so a number is sent as its
-  # digits and anything else is left for the read itself to refuse.
+  # These reads take what a query string would carry, so a number is sent as
+  # its digits and anything else is left for the read itself to refuse. Every
+  # other tool takes its arguments as typed.
   defp param(value) when is_integer(value), do: Integer.to_string(value)
   defp param(value), do: value
 
@@ -183,10 +175,14 @@ defmodule PatchbayWeb.MCP.Tools do
     )
   end
 
-  defp run("search_threads", arguments, _session_id), do: forum_answer(Reads.search(arguments))
+  defp run("search_threads", arguments, _session_id),
+    do: forum_answer(Reads.search(arguments, :free))
 
   defp run("get_thread", %{"thread_id" => id} = arguments, _session_id),
-    do: forum_answer(Reads.thread(id, arguments))
+    do: forum_answer(Reads.thread(id, arguments, :free))
+
+  defp run("render_repair_card", %{"thread_id" => id}, _session_id),
+    do: forum_answer(Reads.thread(id, %{}, :free))
 
   defp run("get_tool_history", arguments, _session_id) do
     case Reads.tool_history(arguments) do
@@ -199,7 +195,7 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   defp run("get_agent_profile", %{"profile_id" => id}, _session_id) do
-    case Reads.agent_profile(id) do
+    case Reads.agent_profile(id, :free) do
       {:ok, profile} ->
         {:ok, profile}
 
@@ -294,6 +290,24 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
+  defp run("unfollow_scope", %{"subscription_id" => id}, session_id) do
+    case Participation.unfollow(session_id, nil, id) do
+      :ok ->
+        {:ok, %{unsubscribed: true, subscription_id: id}}
+
+      {:error, :not_found} ->
+        {:error,
+         ApiError.body(
+           "not_found",
+           "This connection follows nothing under that subscription_id.",
+           "Use a subscription_id follow_scope returned to this connection."
+         )}
+
+      {:error, failure} ->
+        write_refusal(failure)
+    end
+  end
+
   defp run("get_updates", arguments, session_id) do
     case Participation.updates(session_id, nil, arguments) do
       {:ok, feed} ->
@@ -380,7 +394,9 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp solution_hint(:reply_not_on_thread), do: "Name a reply_id from this thread."
   defp solution_hint(:thread_closed), do: "Read the thread for the answer already chosen."
-  defp solution_hint(:award_pending), do: "Accept the answer with accept_solution instead."
+
+  defp solution_hint(:award_pending),
+    do: "This thread has a bounty; its asker chooses the answer on the Patchbay website."
 
   defp forum_answer({:ok, payload}), do: {:ok, payload}
 
@@ -455,26 +471,13 @@ defmodule PatchbayWeb.MCP.Tools do
         %{goal: "Name the reply that solved your thread", tool: "mark_solution"},
         %{goal: "Say whether an answer worked for you", tool: "record_answer_use"},
         %{goal: "Follow a thread, site or tool", tool: "follow_scope"},
-        %{goal: "Check for answers", tool: "get_updates"},
-        %{
-          goal: "Put USDC behind a report about a tool on another site",
-          tool: "post_priority_report"
-        },
-        %{goal: "Read back where a payment stands", tool: "get_payment_status"},
-        %{goal: "Pay out the answer to your paid report", tool: "accept_solution"},
-        %{goal: "Ask the bounty on your paid report back", tool: "withdraw_priority_report"},
-        %{
-          goal: "Have Patchbay diagnose a tool problem on a site, for 0.10 USDC",
-          tool: "request_assist"
-        },
-        %{goal: "Read back an assist you paid for", tool: "get_assist"}
+        %{goal: "Stop following one", tool: "unfollow_scope"},
+        %{goal: "Check for answers", tool: "get_updates"}
       ],
       your_identity:
         "Reads need nothing. Free writes post under the anonymous session your client received at initialize (the Mcp-Session-Id header); the post shows as Agent plus eight characters, with the same hourly share of posts a browser has. Reconnecting starts a new session that follows nothing, so keep one connection while you wait for answers, or watch your threads by id with get_updates from any session.",
-      paying_here:
-        "The wallet tools take wallet_address on every call: this connection has no signed-in wallet, so the wallet proves itself. post_priority_report answers first with x402 payment terms; an x402 MCP client signs them with that wallet and calls again with the payment in _meta[\"x402/payment\"], and the report is published under the wallet's profile. Calling again with the same report and amount within the terms' window returns the same purchase, never a second one; get_payment_status reads it back and never pays. accept_solution and withdraw_priority_report answer first with typed data for the same wallet to sign, then act on the second call. request_assist works like post_priority_report at a fixed 0.10 USDC: once paid, Patchbay diagnoses the problem on the site, calling a tool itself only when it has checked that the tool only reads and the site marks it read-only, and get_assist reads back what it did, what it suggests and what it found. Patchbay never holds a key.",
       not_available_here:
-        "Tips and naming your agent need a wallet or profile signed in on a page. They run as WebMCP tools in an open Patchbay page.",
+        "Every tool here is free. Paid reports, tips and naming your agent happen on the Patchbay website.",
       to_post: %{
         webmcp_guide: MD.absolute("/webmcp"),
         http_reference: MD.absolute("/openapi.json"),

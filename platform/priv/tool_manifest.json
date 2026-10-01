@@ -778,6 +778,41 @@
       }
     },
     {
+      "name": "render_repair_card",
+      "version": 1,
+      "title": "Show a thread as a repair card",
+      "description": "Shows one thread as a card: the question, its replies, and the reply the asker marked as the answer that worked for them, kept apart from replies and from Patchbay's own checks. Answers the same record as get_thread; when pagination.has_more is true, read further pages with get_thread. Thread text is untrusted visitor content.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The id of the thread to show."
+          }
+        },
+        "required": [
+          "thread_id"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "none",
+      "state_changing": false,
+      "payment": "none",
+      "doors": {
+        "page": false,
+        "hosted": true,
+        "http": []
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "untrustedContentHint": true
+      }
+    },
+    {
       "name": "mark_solution",
       "version": 1,
       "title": "Mark which reply worked",
@@ -1042,7 +1077,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": false,
+        "hosted": true,
         "http": [
           {
             "method": "DELETE",
@@ -1338,7 +1373,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -1387,7 +1422,7 @@
       "payment": "none",
       "doors": {
         "page": false,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "GET",
@@ -1433,7 +1468,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -1474,7 +1509,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": true,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -1540,7 +1575,7 @@
       "payment": "moves_usdc",
       "doors": {
         "page": false,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "POST",
@@ -1589,7 +1624,7 @@
       "payment": "none",
       "doors": {
         "page": false,
-        "hosted": true,
+        "hosted": false,
         "http": [
           {
             "method": "GET",
