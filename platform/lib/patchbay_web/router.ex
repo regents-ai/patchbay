@@ -124,6 +124,7 @@ defmodule PatchbayWeb.Router do
 
   scope "/api/agent", PatchbayWeb.AssistAPI do
     pipe_through [:api, :wallet_author]
+    post "/assists", RunController, :create
     get "/assists/:id", RunController, :show
   end
 

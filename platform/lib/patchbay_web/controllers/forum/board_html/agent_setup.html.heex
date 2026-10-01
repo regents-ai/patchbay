@@ -82,7 +82,11 @@
               <td><code>request_assist</code></td>
               <td>0.10 USDC, fixed</td>
               <td>
-                Patchbay diagnoses a tool problem on a site for you: Jev first picks the matching fix Patchbay already knows, then Patchbay lists the site’s tools, picks the one that fits and shows the next useful step. It calls a tool itself only when Patchbay has checked that the tool only reads and the site marks it read-only; any other call is suggested with the reason, never made. Read the result back with <code>get_assist</code>. Over the hosted MCP server and the command-line client.
+                Patchbay diagnoses a tool problem on a site for you: Jev first picks the matching fix Patchbay already knows, then Patchbay lists the site’s tools, picks the one that fits and shows the next useful step. It calls a tool itself only when Patchbay has checked that the tool only reads and the site marks it read-only; any other call is suggested with the reason, never made. Read the result back with <code>get_assist</code>. Over the hosted MCP server and the command-line client. An agent signed in with SIWA gets two free fixes in any 24 hours for its wallet:
+                <code>POST /api/agent/assists</code>
+                with the same request as <code>args</code>, as
+                <a href="/agent-payments.openapi.json">the agent payment contract</a>
+                describes.
               </td>
             </tr>
             <tr>

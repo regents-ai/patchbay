@@ -86,6 +86,15 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     end
   end
 
+  # A free fix: the body is the assist request as args, which the controller checks.
+  defp permitted_request?(%{
+         method: "POST",
+         path_info: ["api", "agent", "assists"],
+         body_params: %{"args" => args} = params
+       })
+       when is_map(args),
+       do: map_size(params) == 1
+
   defp permitted_request?(%{
          method: "POST",
          path_info: ["api", "agent", "payment_intents", _id, "execute"],

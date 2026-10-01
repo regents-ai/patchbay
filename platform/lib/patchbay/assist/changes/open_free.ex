@@ -1,8 +1,8 @@
 defmodule Patchbay.Assist.Changes.OpenFree do
   @moduledoc """
-  Fills a free run in from the request the page door already checked, under
-  the grant the allowance gave, for the person signed in on the page if any.
-  A free run has no fee to forward.
+  Fills a free run in from the request the door already checked, under the
+  grant the allowance gave, for the person signed in on the page or the
+  SIWA-signed agent, if any. A free run has no fee to forward.
   """
 
   use Ash.Resource.Change

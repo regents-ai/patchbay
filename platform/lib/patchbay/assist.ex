@@ -45,6 +45,7 @@ defmodule Patchbay.Assist do
       define(:list_runs_asked_by, action: :asked_by, args: [:payer_profile_id])
 
       define(:open_free_run, action: :open_free)
+      define(:open_agent_free_run, action: :open_agent_free)
 
       define(:start_run, action: :start)
       define(:record_step, action: :record_step, args: [:step])
@@ -69,21 +70,37 @@ defmodule Patchbay.Assist do
   @spec request_free_run(map(), :visitor | :member, String.t(), Ash.UUID.t(), struct() | nil) ::
           {:ok, Run.t()} | {:error, term()}
   def request_free_run(request, grant, visitor_key, browser_session_id, actor) do
+    open_and_start(fn ->
+      open_free_run(
+        %{
+          request: request,
+          grant: grant,
+          visitor_key: visitor_key,
+          browser_session_id: browser_session_id
+        },
+        actor: actor
+      )
+    end)
+  end
+
+  @doc """
+  Opens a free run for the SIWA-signed `agent` and hands it to the runner:
+  `request` as `Patchbay.Assist.Request.draft/1` returned it, under one of
+  the free fixes its wallet has left today.
+  """
+  @spec request_agent_free_run(map(), struct()) :: {:ok, Run.t()} | {:error, term()}
+  def request_agent_free_run(request, agent) do
+    open_and_start(fn ->
+      open_agent_free_run(%{request: request, grant: :agent}, actor: agent)
+    end)
+  end
+
+  defp open_and_start(open) do
     opened =
       Ash.transact(Run, fn ->
         hold_free_fixes()
 
-        with {:ok, run} <-
-               open_free_run(
-                 %{
-                   request: request,
-                   grant: grant,
-                   visitor_key: visitor_key,
-                   browser_session_id: browser_session_id
-                 },
-                 actor: actor
-               ),
-             do: run
+        with {:ok, run} <- open.(), do: run
       end)
 
     with {:ok, run} <- opened do

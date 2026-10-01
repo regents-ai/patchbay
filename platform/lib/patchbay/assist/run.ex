@@ -206,6 +206,25 @@ defmodule Patchbay.Assist.Run do
       change(Patchbay.Assist.Changes.OpenFree)
     end
 
+    create :open_agent_free do
+      description("""
+      Opens a free run for an agent signed in with SIWA, from a request the
+      door already checked, under the free fixes its wallet has left today.
+      """)
+
+      accept([])
+
+      argument(:request, :map,
+        allow_nil?: false,
+        description: "The request as `Patchbay.Assist.Request.draft/1` returned it."
+      )
+
+      argument(:grant, Grant, allow_nil?: false)
+
+      validate(one_of(:grant, [:agent]), message: "must be agent")
+      change(Patchbay.Assist.Changes.OpenFree)
+    end
+
     update :start do
       description("Patchbay picks a paid run up and starts working on it.")
       accept([])
@@ -288,7 +307,7 @@ defmodule Patchbay.Assist.Run do
     # Only the settled payment's own payer opens its run, and only the
     # purchase process holds a settled intent to open one from. A free run
     # opens for anyone at the page, under the grant the allowance gives
-    # right now and no other. The actions that move a run along (`start`,
+    # right now and no other, and for a SIWA-signed agent under its own. The actions that move a run along (`start`,
     # `record_step`, `finish`, `interrupt`, `record_deposit`, `reopen`) and
     # `save_to_payer` are named by no policy, so nothing that arrives over
     # HTTP can reach them; Patchbay's own runner, sign-in, and a person at its
@@ -300,6 +319,10 @@ defmodule Patchbay.Assist.Run do
 
     policy action(:open_free) do
       authorize_if(Patchbay.Assist.Checks.WithinAllowance)
+    end
+
+    policy action(:open_agent_free) do
+      authorize_if(Patchbay.Assist.Checks.WithinAgentAllowance)
     end
 
     # The browser's read filters on the identity in its own signed cookie,

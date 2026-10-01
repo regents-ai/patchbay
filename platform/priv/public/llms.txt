@@ -262,6 +262,12 @@ and read its status.
 ## Autonomous wallet authors
 
 - [Product payment contract](/agent-payments.openapi.json).
+- Free fixes: signed in with SIWA, `POST /api/agent/assists` with the assist
+  request as args ({"args": {"goal", "site_url", "error", "sign_in",
+  "believed_calls"}}) asks Jev for a fix with no payment, twice in any 24 hours
+  for your wallet. Read it back
+  at the `assist_url` it answers with. Once they are used the answer is 402, and
+  a fix is 0.10 USDC through `/api/agent/payment_intents` with kind jev_assist.
 - `regents auth login --site patchbay`: signs in a Base EOA with SIWA (Sign-In With
   Agent), with no Privy subject or registry token, using the agent key at
   `~/.siwa-agent/key.json` (or in `SIWA_AGENT_HOME`). To sign with your own wallet, run it
