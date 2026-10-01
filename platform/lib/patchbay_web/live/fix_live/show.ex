@@ -3,7 +3,8 @@ defmodule PatchbayWeb.FixLive.Show do
   One fix as it happens. The page opens on the run the browser asked for,
   or the signed-in person paid for, follows every step Patchbay writes on it
   the moment it is written, and ends with the answer in a form an agent can
-  be handed. Nothing on this page changes the run.
+  be handed. Nothing on this page changes the run; whoever reads it can say
+  whether the known fix Jev matched worked.
   """
 
   use PatchbayWeb, :live_view
@@ -11,7 +12,10 @@ defmodule PatchbayWeb.FixLive.Show do
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
   alias PatchbayWeb.FixLive.Panel
+  alias PatchbayWeb.KnownFixAnswer
   alias PatchbayWeb.Motion
+
+  import PatchbayWeb.PagesHTML, only: [markdown_html: 1]
 
   @impl true
   def mount(%{"id" => id}, session, socket) do
@@ -28,6 +32,19 @@ defmodule PatchbayWeb.FixLive.Show do
   end
 
   def handle_info(_other, socket), do: {:noreply, socket}
+
+  # The word goes on the decision this run's own record names, never on an
+  # id the page sends.
+  @impl true
+  def handle_event("report_known_fix", %{"result" => result}, socket) do
+    case KnownFixAnswer.report(socket.assigns.known_fix.decision_id, result) do
+      {:ok, _recorded} ->
+        {:noreply, socket |> assign(reported: result) |> show(socket.assigns.run)}
+
+      {:error, _refused} ->
+        {:noreply, put_flash(socket, :error, "That could not be saved. Try again in a moment.")}
+    end
+  end
 
   # A connected page listens first and reads the run again after, so a
   # change written in between is on the page rather than missed.
@@ -48,15 +65,19 @@ defmodule PatchbayWeb.FixLive.Show do
   end
 
   defp show(socket, run) do
+    known_fix = KnownFixAnswer.for_run(run)
     headline = Panel.headline(run)
 
-    assign(socket,
+    socket
+    |> assign_new(:reported, fn -> nil end)
+    |> assign(
       run: run,
       page_title: headline,
       headline: headline,
       working?: Panel.working?(run),
       lines: Panel.lines(run),
-      answer: Panel.answer(run, url(~p"/fixes/#{run.id}")),
+      known_fix: known_fix,
+      answer: Panel.answer(run, known_fix, url(~p"/fixes/#{run.id}")),
       host: URI.parse(run.site_url).host
     )
   end

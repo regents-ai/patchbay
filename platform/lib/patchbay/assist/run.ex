@@ -67,6 +67,9 @@ defmodule Patchbay.Assist.Run do
     attribute(:payment_intent_id, :uuid, allow_nil?: true, public?: true)
 
     attribute(:goal, :string, allow_nil?: false, public?: true)
+
+    # What went wrong, in the asker's words, when they said.
+    attribute(:error, :string, allow_nil?: true, public?: true)
     attribute(:site_url, :string, allow_nil?: false, public?: true)
     attribute(:sign_in, SignIn, allow_nil?: false, public?: true)
 

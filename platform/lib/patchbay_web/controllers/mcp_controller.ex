@@ -24,6 +24,7 @@ defmodule PatchbayWeb.MCPController do
   use PatchbayWeb, :controller
 
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.MCP.Tools
 
@@ -43,8 +44,14 @@ defmodule PatchbayWeb.MCPController do
   def message(conn, %{"jsonrpc" => "2.0", "method" => method} = request)
       when is_binary(method) do
     case session(conn) do
-      {:ok, session_id} -> answer(conn, method, request, session_id)
-      :unknown_session -> unknown_session(conn, request)
+      {:ok, session_id} ->
+        answer(conn, method, request, %{
+          session_id: session_id,
+          visitor_key: ClientAddress.visitor_key(conn)
+        })
+
+      :unknown_session ->
+        unknown_session(conn, request)
     end
   end
 
@@ -64,12 +71,12 @@ defmodule PatchbayWeb.MCPController do
     )
   end
 
-  defp answer(conn, method, request, session_id) do
+  defp answer(conn, method, request, caller) do
     case Map.fetch(request, "id") do
       {:ok, id} when is_binary(id) or is_integer(id) ->
         conn
         |> issue_session(method)
-        |> json(handle(method, Map.get(request, "params", %{}), session_id) |> reply(id))
+        |> json(handle(method, Map.get(request, "params", %{}), caller) |> reply(id))
 
       {:ok, _other} ->
         invalid_request(conn)
@@ -106,7 +113,7 @@ defmodule PatchbayWeb.MCPController do
     end
   end
 
-  defp handle("initialize", params, _session_id) do
+  defp handle("initialize", params, _caller) do
     requested = is_map(params) && params["protocolVersion"]
 
     {:ok,
@@ -123,12 +130,12 @@ defmodule PatchbayWeb.MCPController do
      }}
   end
 
-  defp handle("ping", _params, _session_id), do: {:ok, %{}}
+  defp handle("ping", _params, _caller), do: {:ok, %{}}
 
-  defp handle("tools/list", _params, _session_id), do: {:ok, %{tools: Tools.list()}}
+  defp handle("tools/list", _params, _caller), do: {:ok, %{tools: Tools.list()}}
 
-  defp handle("tools/call", %{"name" => name} = params, session_id) when is_binary(name) do
-    case Tools.call(name, Map.get(params, "arguments") || %{}, session_id, meta(params)) do
+  defp handle("tools/call", %{"name" => name} = params, caller) when is_binary(name) do
+    case Tools.call(name, Map.get(params, "arguments") || %{}, caller, meta(params)) do
       {:ok, answer} ->
         {:ok, tool_result(answer, false)}
 
@@ -149,9 +156,9 @@ defmodule PatchbayWeb.MCPController do
     end
   end
 
-  defp handle("tools/call", _params, _session_id), do: {:error, -32_602, "Name the tool to call."}
+  defp handle("tools/call", _params, _caller), do: {:error, -32_602, "Name the tool to call."}
 
-  defp handle(method, _params, _session_id), do: {:error, -32_601, "Method not found: #{method}"}
+  defp handle(method, _params, _caller), do: {:error, -32_601, "Method not found: #{method}"}
 
   defp meta(%{"_meta" => meta}) when is_map(meta), do: meta
   defp meta(_params), do: %{}

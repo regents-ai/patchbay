@@ -6,7 +6,8 @@ defmodule Patchbay.Assist.Request do
   A request names the goal (what the agent is trying to do and what result
   it expects, in one text), the site, whether the site needs a signed-in
   user, and the tools the agent believes will work, with their arguments
-  when known.
+  when known. It may say what went wrong, in the agent's words: the error
+  the site answered, for one.
   Everything is text the agent wrote, so every field is bounded before it is
   frozen into payment terms, and a site is only ever a public `https` name:
   Patchbay will not be pointed at an address inside anybody's network. A site
@@ -19,9 +20,10 @@ defmodule Patchbay.Assist.Request do
   @type request :: %{String.t() => term()}
   @type refusal :: {:invalid, [String.t()]} | :needs_sign_in
 
-  @fields ~w(goal site_url believed_calls sign_in)
+  @fields ~w(goal error site_url believed_calls sign_in)
 
   @max_text_chars 1_000
+  @max_error_chars 4_000
   @max_site_url_bytes 2_048
   @max_host_bytes 253
   @max_believed_calls 5
@@ -43,12 +45,14 @@ defmodule Patchbay.Assist.Request do
   def draft(params) when is_map(params) do
     with :ok <- fields_only(params),
          {:ok, goal} <- text("goal", params["goal"]),
+         {:ok, error} <- error(params["error"]),
          {:ok, site_url} <- site_url(params["site_url"]),
          {:ok, sign_in} <- sign_in(params["sign_in"]),
          {:ok, believed_calls} <- believed_calls(params["believed_calls"]) do
       {:ok,
        %{
          "goal" => goal,
+         "error" => error,
          "site_url" => site_url,
          "believed_calls" => believed_calls,
          "sign_in" => sign_in
@@ -69,7 +73,7 @@ defmodule Patchbay.Assist.Request do
 
   defp unknown_field(field) do
     "#{field}: an assist request does not take #{field}. " <>
-      "It takes goal, site_url, believed_calls and sign_in."
+      "It takes goal, error, site_url, believed_calls and sign_in."
   end
 
   defp text(field, value) when is_binary(value) do
@@ -86,6 +90,23 @@ defmodule Patchbay.Assist.Request do
   defp text(field, _value), do: {:error, {:invalid, [text_rule(field)]}}
 
   defp text_rule(field), do: "#{field}: must be text of at most #{@max_text_chars} characters"
+
+  @error_rule "error: must be text of at most #{@max_error_chars} characters, or left out"
+
+  defp error(nil), do: {:ok, nil}
+
+  defp error(value) when is_binary(value) do
+    trimmed = String.trim(value)
+
+    cond do
+      trimmed == "" -> {:ok, nil}
+      not String.valid?(trimmed) -> {:error, {:invalid, [@error_rule]}}
+      String.length(trimmed) > @max_error_chars -> {:error, {:invalid, [@error_rule]}}
+      true -> {:ok, trimmed}
+    end
+  end
+
+  defp error(_value), do: {:error, {:invalid, [@error_rule]}}
 
   @site_rule "site_url: must be a public https address, such as \"https://example.com/app\""
 

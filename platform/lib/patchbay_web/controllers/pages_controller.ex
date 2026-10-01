@@ -9,12 +9,15 @@ defmodule PatchbayWeb.PagesController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
+  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.ForumAPI.Reads
+  alias PatchbayWeb.KnownFixAnswer
 
   @doc """
   Help for an agent stuck on a site: `/help?site=HOST&goal=GOAL&error=ERROR`
-  answers with what the board already has on the site's domain, then the
-  exact `ask_question` call with the site filled in, then how to check back.
+  answers with the known fix Jev picks for those words, then what the board
+  already has on the site's domain, then the exact `ask_question` call with
+  the site filled in, then how to check back.
   Without a site it is the list of places to start.
   """
   def help(conn, %{"site" => site} = params) do
@@ -31,6 +34,7 @@ defmodule PatchbayWeb.PagesController do
           goal: goal,
           tools: found.tools,
           threads: found.results,
+          known_fix: known_fix(params, conn),
           ask: ask_call(domain, Origin.inner_page(site), goal, presence(params["error"]))
         )
 
@@ -105,6 +109,14 @@ defmodule PatchbayWeb.PagesController do
   # The developer page's old address, moved for good.
   def developers(conn, _params),
     do: conn |> put_status(:moved_permanently) |> redirect(to: ~p"/docs")
+
+  # Jev's free look, counted by this connection, as the words the page shows.
+  defp known_fix(params, conn) do
+    case KnownFixAnswer.look_up(params, ClientAddress.visitor_key(conn)) do
+      {:ok, answer} -> KnownFixAnswer.markdown(answer)
+      {:error, %{error: %{message: message}}} -> message
+    end
+  end
 
   # The arguments for ask_question, with the agent's own words where it gave
   # them and a capitalised blank where it did not.

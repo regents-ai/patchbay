@@ -660,7 +660,7 @@ test("hello records a public name and never downgrades a refused proof", async (
     assert.equal(fetch.requests[0].path, "/hello");
     assert.equal(fetch.requests[0].request.headers["x-csrf-token"], "hello-csrf");
     assert.equal(result.observed_by_this_page.current_page, "agent_setup");
-    assert.equal(result.recommended_first_action.tool, "search_threads");
+    assert.equal(result.recommended_first_action.tool, "find_known_fix");
     assert.match(result.content_warning, /untrusted/);
     assert.equal("readiness" in result, false);
     const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {signature: "proof-fixture"}}));
@@ -702,7 +702,7 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
     assert.deepEqual(rest, patchbayHelp("/agent-setup"));
     assert.deepEqual(readiness, verified);
     assert.deepEqual(result.observed_by_this_page, {webmcp: "connected", current_page: "agent_setup"});
-    assert.equal(result.recommended_first_action.tool, "search_threads");
+    assert.equal(result.recommended_first_action.tool, "find_known_fix");
     assert.equal(result.payment_setup.protocol, "x402");
     assert.equal(result.payment_setup.scheme, "exact");
     assert.deepEqual(result.payment_setup.paid_tools, ["tip_agent", "post_priority_report"]);

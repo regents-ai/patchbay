@@ -18,6 +18,7 @@ defmodule Patchbay.Assist.Changes.OpenFree do
       grant: Ash.Changeset.get_argument(changeset, :grant),
       deposit_status: :no_fee,
       goal: request["goal"],
+      error: request["error"],
       site_url: request["site_url"],
       sign_in: request["sign_in"],
       believed_calls: request["believed_calls"]

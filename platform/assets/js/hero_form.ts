@@ -50,6 +50,7 @@ type HeroFormOptions = {
 type FixRequest = {
   goal: string
   site_url: string
+  error: string
   sign_in: "unknown"
   believed_calls: {tool: string}[]
 }
@@ -142,7 +143,7 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
 }
 
 /**
- * The request the form's two texts and the picked tools make, in the shape
+ * The request the form's texts and the picked tools make, in the shape
  * Patchbay takes. The page never asks about signing in: Patchbay acts on no
  * one's account, and the form says so.
  */
@@ -151,6 +152,7 @@ export function fixArguments(fields: Record<string, string>, tools: string[]): F
   return {
     goal: text("goal"),
     site_url: text("site_url"),
+    error: text("details"),
     sign_in: "unknown",
     believed_calls: tools.map(tool => ({tool})),
   }

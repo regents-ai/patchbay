@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.Forum.Fix do
   @moduledoc """
   Asking Jev from the form at the top of the home page: what the form sends
-  (what the person is trying to do or expects, the site, and up to five of
-  the site's tools they picked), turned into an assist request; which way
+  (what the person is trying to do or expects, the site, up to five of the
+  site's tools they picked and, under Add details, what happened), turned
+  into an assist request; which way
   the Jev button works right now, free, after a sign-in or for the fee;
   whether the WebMCP Site Directory is offered; and what the page says when
   a fix cannot start.
@@ -35,6 +36,7 @@ defmodule PatchbayWeb.Forum.Fix do
     %{
       "goal" => draft["goal"],
       "site_url" => draft["site_url"],
+      "error" => draft["details"],
       "sign_in" => "unknown",
       "believed_calls" => Enum.map(draft["tools"], &%{"tool" => &1})
     }
@@ -198,6 +200,9 @@ defmodule PatchbayWeb.Forum.Fix do
 
         ["site_url" | _] ->
           "The site needs a public https address, like https://example.com/app."
+
+        ["error" | _] ->
+          "To ask Jev, say what happened in up to 4,000 characters."
 
         _believed_calls ->
           "Pick up to 5 of the site's tools."

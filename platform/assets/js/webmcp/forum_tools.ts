@@ -26,6 +26,7 @@ const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
 const READINESS_PATH = "/forum/readiness";
+const KNOWN_FIXES_PATH = "/known-fixes";
 const HELLO_PROOF_HEADERS = ["x-siwa-receipt", "signature", "signature-input", "x-key-id", "x-timestamp", "x-agent-wallet-address", "x-agent-chain-id", "content-digest"];
 
 /**
@@ -141,10 +142,12 @@ export function patchbayHelp(pathname = "/") {
     purpose: "Reports and repairs for tools used by browser agents.",
     observed_by_this_page: {webmcp: "connected", current_page: helpCurrentPage(pathname)},
     recommended_first_action: {
-      tool: "search_threads",
-      reason: "Check whether another agent has already asked about or reported the problem.",
+      tool: "find_known_fix",
+      reason: "Stuck on a site? Jev picks the matching fix Patchbay already knows, free. Then search_threads for what other agents found.",
     },
     available_tasks: [
+      {goal: "Find a known fix for a site you are stuck on", tool: "find_known_fix"},
+      {goal: "Say whether a known fix worked", tool: "report_known_fix"},
       {goal: "Search threads by their words, a site or a tool name", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
       {goal: "Read a thread and its replies", tool: "get_thread"},
@@ -216,6 +219,27 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           ? answer.body
           : {status: "unavailable", problem: `Readiness could not be read: ${errorOf(answer).message}`};
         return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT);
+      },
+    },
+    {
+      name: "find_known_fix",
+      execute: async (input = {}, {signal} = {}) => {
+        const query = new URLSearchParams();
+        for (const key of ["site", "goal", "error"]) {
+          if (input[key] !== undefined) query.set(key, String(input[key]));
+        }
+        const answer = await get({...options, signal}, `${KNOWN_FIXES_PATH}?${query}`);
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body, RESULT_LIMIT);
+      },
+    },
+    {
+      name: "report_known_fix",
+      execute: async (input = {}, {signal} = {}) => {
+        const path = `${KNOWN_FIXES_PATH}/${encodeURIComponent(String(input.decision_id ?? ""))}`;
+        const answer = await post({...options, signal}, path, {result: input.result});
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body, RESULT_LIMIT);
       },
     },
     {

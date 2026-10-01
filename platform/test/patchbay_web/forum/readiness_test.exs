@@ -205,7 +205,7 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
         PatchbayWeb.MCP.Tools.call(
           "get_patchbay_help",
           %{},
-          "5e55a0de-0000-4000-8000-000000000001",
+          %{session_id: "5e55a0de-0000-4000-8000-000000000001", visitor_key: "test"},
           %{}
         )
 

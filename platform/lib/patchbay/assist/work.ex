@@ -1,6 +1,11 @@
 defmodule Patchbay.Assist.Work do
   @moduledoc """
-  One paid assist, from the payment landing to the answer.
+  One assist, free or paid, from the moment it opens to the answer.
+
+  First Jev looks through the fixes Patchbay already knows for the site
+  (`Patchbay.Assist.KnownFixPick`) and the one it matches, or that none
+  does, is written down. The site's tools are tried after that whatever Jev
+  chose, since a known fix can match the words and still be wrong.
 
   Patchbay finds out what tools the site offers, asks Jev which one fits,
   writes arguments that fit its schema, and calls it only when
@@ -27,6 +32,7 @@ defmodule Patchbay.Assist.Work do
   alias Patchbay.Assist.Discovery
   alias Patchbay.Assist.Forward
   alias Patchbay.Assist.Judge
+  alias Patchbay.Assist.KnownFixPick
   alias Patchbay.Assist.McpClient
   alias Patchbay.Assist.ReadOnlyTools
   alias Patchbay.Assist.Run
@@ -63,6 +69,7 @@ defmodule Patchbay.Assist.Work do
     _finished =
       case ModelBudget.allow(nil, :assist) do
         :ok ->
+          {run, budget} = known_fix(run, budget)
           discover(run, budget)
 
         {:error, why} ->
@@ -92,6 +99,51 @@ defmodule Patchbay.Assist.Work do
 
     :ok
   end
+
+  defp known_fix(run, budget) do
+    case KnownFixPick.for_run(run) do
+      {:picked, decision, fix} ->
+        {record(run, known_fix_step(decision, fix)), asked(budget)}
+
+      {:not_picked, :no_known_fixes} ->
+        {note(run, "Patchbay knows no fixes for this site yet, so Jev goes to its tools."),
+         budget}
+
+      {:not_picked, :unavailable} ->
+        {note(
+           run,
+           "Jev could not look through the known fixes just now; on to the site's tools."
+         ), asked(budget)}
+    end
+  end
+
+  defp asked(budget), do: %{budget | questions: budget.questions + 1}
+
+  defp known_fix_step(decision, fix) do
+    %{
+      "known_fix" => %{
+        "decision_id" => decision.id,
+        "fix" => decision.choice,
+        "confidence" => decision.confidence
+      },
+      "note" => known_fix_note(fix, decision.confidence)
+    }
+  end
+
+  defp known_fix_note(nil, confidence),
+    do:
+      "Jev found no known fix that matches (#{round(confidence * 100)}% sure). " <>
+        "On to the site's tools."
+
+  defp known_fix_note(%{kind: :fix, title: title}, confidence),
+    do:
+      "Jev matched a known fix: #{title} (#{round(confidence * 100)}% sure). " <>
+        "It is in the answer. The site's tools are tried next, since a match can still be wrong."
+
+  defp known_fix_note(%{kind: :question, title: title}, confidence),
+    do:
+      "Jev needs one more detail: #{title} (#{round(confidence * 100)}% sure). " <>
+        "It is in the answer. The site's tools are tried next."
 
   # What a run carries between steps: how the site's tools are reached, the
   # tools, the ones tried so far, and how much of the run's limits is left.

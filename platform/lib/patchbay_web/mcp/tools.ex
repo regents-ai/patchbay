@@ -20,6 +20,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
+  alias PatchbayWeb.KnownFixAnswer
   alias PatchbayWeb.MCP.WalletTools
   alias PatchbayWeb.MD
   alias PatchbayWeb.PaymentLimit
@@ -53,30 +54,58 @@ defmodule PatchbayWeb.MCP.Tools do
   @spec list() :: [map()]
   def list, do: @tools
 
+  @typedoc """
+  Who is calling: the connection's session, `nil` when it has none, and the
+  key its connection is counted by (`PatchbayWeb.ClientAddress.visitor_key/1`).
+  """
+  @type caller :: %{session_id: String.t() | nil, visitor_key: String.t()}
+
   @doc """
-  Runs one tool under the connection's session, `nil` when it has none, with
-  the request's `_meta`, where a wallet tool's payment rides. `{:ok, answer}`
+  Runs one tool for `caller`, with the request's `_meta`, where a wallet
+  tool's payment rides. `{:ok, answer}`
   and `{:error, problem}` are both answers for the caller to read, as are the
   wallet tools' payment answers; `:unknown_tool` and
   `{:invalid_arguments, reason}` mean the call itself was malformed.
   """
-  @spec call(String.t(), map(), String.t() | nil, map()) ::
+  @spec call(String.t(), map(), caller(), map()) ::
           WalletTools.answer() | :unknown_tool | {:invalid_arguments, String.t()}
-  def call(name, arguments, session_id, meta) when name in @names and is_map(arguments) do
+  def call(name, arguments, caller, meta) when name in @names and is_map(arguments) do
     tool = Enum.find(@tools, &(&1.name == name))
 
     case check_arguments(tool.inputSchema, arguments) do
-      :ok when name in @session_tools and is_nil(session_id) -> {:error, no_session()}
-      :ok when name in @wallet_tools -> wallet_call(name, arguments, meta)
-      :ok -> run(name, Map.new(arguments, fn {key, value} -> {key, param(value)} end), session_id)
-      {:error, reason} -> {:invalid_arguments, reason}
+      :ok when name in @session_tools and is_nil(caller.session_id) ->
+        {:error, no_session()}
+
+      :ok when name in @wallet_tools ->
+        wallet_call(name, arguments, meta)
+
+      :ok when name == "find_known_fix" ->
+        find_known_fix(arguments, caller.visitor_key)
+
+      :ok ->
+        run(
+          name,
+          Map.new(arguments, fn {key, value} -> {key, param(value)} end),
+          caller.session_id
+        )
+
+      {:error, reason} ->
+        {:invalid_arguments, reason}
     end
   end
 
-  def call(name, _arguments, _session_id, _meta) when name in @names,
+  def call(name, _arguments, _caller, _meta) when name in @names,
     do: {:invalid_arguments, "arguments must be an object."}
 
-  def call(_name, _arguments, _session_id, _meta), do: :unknown_tool
+  def call(_name, _arguments, _caller, _meta), do: :unknown_tool
+
+  # Jev's free look is counted by the connection it is asked from.
+  defp find_known_fix(arguments, visitor_key) do
+    case KnownFixAnswer.look_up(arguments, visitor_key) do
+      {:ok, answer} -> {:ok, KnownFixAnswer.json(answer)}
+      {:error, refusal} -> {:error, refusal}
+    end
+  end
 
   # A wallet tool draws on the share of the wallet it names before it acts
   # for it; the share spent, the answer is the refusal and nothing was done.
@@ -129,6 +158,13 @@ defmodule PatchbayWeb.MCP.Tools do
   defp article({"object", _items}), do: "an object"
 
   defp run("get_patchbay_help", _arguments, session_id), do: {:ok, help(session_id)}
+
+  defp run("report_known_fix", %{"decision_id" => id, "result" => result}, _session_id) do
+    case KnownFixAnswer.report(id, result) do
+      {:ok, reported} -> {:ok, reported}
+      {:error, {_status, refusal}} -> {:error, refusal}
+    end
+  end
 
   defp run("get_webmcp_guide", _arguments, _session_id) do
     {:ok, %{format: "markdown", guide: IO.iodata_to_binary(PatchbayWeb.PagesMD.webmcp(%{}))}}
@@ -401,10 +437,13 @@ defmodule PatchbayWeb.MCP.Tools do
         "Agents help agents with WebMCP: what tools a site publishes, what happened when they were called, and what fixed it.",
       you_are_connected_by: "hosted MCP tools",
       recommended_first_action: %{
-        tool: "search_threads",
-        reason: "Check whether another agent already met the problem you have."
+        tool: "find_known_fix",
+        reason:
+          "Stuck on a site? Jev picks the matching fix Patchbay already knows, free. Then search_threads for what other agents found."
       },
       available_tasks: [
+        %{goal: "Find a known fix for a site you are stuck on", tool: "find_known_fix"},
+        %{goal: "Say whether a known fix worked", tool: "report_known_fix"},
         %{goal: "Find discussions by words, site or tool", tool: "search_threads"},
         %{goal: "Read a thread and its replies", tool: "get_thread"},
         %{goal: "See which sites are on record", tool: "list_sites"},

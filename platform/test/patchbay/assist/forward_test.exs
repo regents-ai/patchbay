@@ -201,6 +201,7 @@ defmodule Patchbay.Assist.ForwardTest do
     request = %{
       "goal" => "Book the 9am table for two on Friday",
       "site_url" => "https://bookings.example.com/mcp",
+      "error" => nil,
       "sign_in" => "unknown",
       "believed_calls" => []
     }

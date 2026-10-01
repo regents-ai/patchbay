@@ -52,6 +52,12 @@ defmodule Patchbay.Assist do
       define(:record_deposit, action: :record_deposit)
       define(:reopen_run, action: :reopen)
     end
+
+    resource Patchbay.Assist.Decision do
+      define(:record_decision, action: :record)
+      define(:get_decision, action: :read, get_by: [:id], not_found_error?: false)
+      define(:report_decision, action: :report, args: [:result])
+    end
   end
 
   @doc """

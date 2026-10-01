@@ -15,11 +15,13 @@ defmodule Patchbay.Patchbay.ModelBudget do
   repeats the generation key of the call that produced it, so candidate calls
   are counted as distinct generation keys rather than as rows. An assist counts once
   against the deployment's ceiling when it starts; its own limits bound the
-  calls it makes after that.
+  calls it makes after that. A known fix Jev chose for the free help counts
+  once too; one chosen inside a fix is that fix's own.
   """
 
   require Ash.Query
 
+  alias Patchbay.Assist.Decision
   alias Patchbay.Assist.Run
   alias Patchbay.Config
   alias Patchbay.Patchbay.{Invocation, RepairProposal}
@@ -31,7 +33,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   @window_seconds 24 * 60 * 60
 
-  @type call_kind :: :candidate | :repair | :assist
+  @type call_kind :: :candidate | :repair | :assist | :known_fix
 
   @doc """
   Decides whether a live model call may start for a room right now.
@@ -41,7 +43,8 @@ defmodule Patchbay.Patchbay.ModelBudget do
   """
   @spec allow(binary() | nil, call_kind()) :: :ok | {:error, String.t()}
   def allow(room_id, kind)
-      when (is_binary(room_id) or is_nil(room_id)) and kind in [:candidate, :repair, :assist] do
+      when (is_binary(room_id) or is_nil(room_id)) and
+             kind in [:candidate, :repair, :assist, :known_fix] do
     now = DateTime.utc_now()
     since = DateTime.add(now, -@window_seconds, :second)
 
@@ -99,8 +102,17 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   defp live_calls(room_id, since) do
     live_candidate_calls(room_id, since) + live_repair_calls(room_id, since) +
-      started_assists(room_id, since)
+      started_assists(room_id, since) + help_decisions(room_id, since)
   end
+
+  # Same: the known fixes Jev chose for the free help, which belong to no room.
+  defp help_decisions(nil, since) do
+    Decision
+    |> Ash.Query.filter(asked_from == :help and inserted_at >= ^since)
+    |> Ash.count!(authorize?: false)
+  end
+
+  defp help_decisions(_room_id, _since), do: 0
 
   # A count of the deployment's own work, read for a limit and shown to no one.
   defp started_assists(nil, since) do

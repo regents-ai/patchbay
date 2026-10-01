@@ -215,6 +215,7 @@ defmodule PatchbayWeb.Forum.FixTest do
     %{
       "goal" => @form["goal"],
       "site_url" => @form["site_url"],
+      "error" => nil,
       "believed_calls" => [],
       "sign_in" => "unknown"
     }

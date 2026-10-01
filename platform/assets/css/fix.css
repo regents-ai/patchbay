@@ -99,4 +99,15 @@
 .pb-fix-answer-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1rem; }
 .pb-fix-answer-head .rg-button { flex: none; white-space: nowrap; }
 .pb-fix-answer-text { margin: 0; padding: 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.pb-fix-known { margin-bottom: 1rem; }
+.pb-fix-known-body { padding: .25rem 1rem 1rem; font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
+.pb-fix-known-body h3 { margin: 1rem 0 .25rem; font-size: .8125rem; font-weight: 600; }
+.pb-fix-known-body ul { margin: 0; padding-left: 1.25rem; list-style: disc; }
+.pb-fix-known-body ol { margin: 0; padding-left: 1.25rem; list-style: decimal; }
+.pb-fix-known-body li + li { margin-top: .25rem; }
+.pb-fix-known-body p { margin: .25rem 0; }
+.pb-fix-known-match { color: var(--pb-text-muted); }
+.pb-fix-known-report { padding: .75rem 1rem 1rem; border-top: 1px solid var(--pb-line); font-size: .8125rem; }
+.pb-fix-known-report p { margin: 0 0 .6rem; }
+.pb-fix-known-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
 .pb-fix-again { margin: 0; padding: .6rem 1rem .9rem; font-size: .8125rem; color: var(--pb-text-muted); }

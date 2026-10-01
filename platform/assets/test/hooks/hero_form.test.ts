@@ -3,11 +3,11 @@ import {test} from "node:test"
 
 import {fixArguments, fixOutcome} from "../../js/hero_form.ts"
 
-test("the form's two texts and the picked tools become one assist request", () => {
+test("the form's texts and the picked tools become one assist request", () => {
   assert.deepEqual(
-    fixArguments({goal: " Book the 9am table ", site_url: " bookings.example.com/app "}, ["reserve_table", "list_tables"]),
+    fixArguments({goal: " Book the 9am table ", site_url: " bookings.example.com/app ", details: " 403 on reserve "}, ["reserve_table", "list_tables"]),
     {
-      goal: "Book the 9am table", site_url: "bookings.example.com/app", sign_in: "unknown",
+      goal: "Book the 9am table", site_url: "bookings.example.com/app", error: "403 on reserve", sign_in: "unknown",
       believed_calls: [{tool: "reserve_table"}, {tool: "list_tables"}],
     },
   )

@@ -6,6 +6,7 @@ defmodule PatchbayWeb.AssistAPI.Runs do
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
+  alias PatchbayWeb.KnownFixAnswer
 
   @doc "The run `id` as it stands, if it is `actor`'s."
   @spec read(struct(), String.t()) :: {:ok, Run.t()} | {:error, :not_found | term()}
@@ -24,9 +25,11 @@ defmodule PatchbayWeb.AssistAPI.Runs do
       status: run.status,
       outcome: run.outcome,
       goal: run.goal,
+      error: run.error,
       site_url: run.site_url,
       sign_in: run.sign_in,
       believed_calls: run.believed_calls,
+      known_fix: known_fix(run),
       steps: run.steps,
       payment_intent_id: run.payment_intent_id,
       requested_at: run.inserted_at,
@@ -35,6 +38,13 @@ defmodule PatchbayWeb.AssistAPI.Runs do
       updated_at: run.updated_at,
       fee_deposit: %{status: run.deposit_status, tx_hash: run.deposit_tx_hash}
     }
+  end
+
+  defp known_fix(run) do
+    case KnownFixAnswer.for_run(run) do
+      nil -> nil
+      answer -> KnownFixAnswer.json(answer)
+    end
   end
 
   @doc "What the payer should do next, given where the run stands."

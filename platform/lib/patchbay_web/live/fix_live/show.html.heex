@@ -44,6 +44,58 @@
     </div>
   </section>
 
+  <section
+    :if={@known_fix && @known_fix.answer in [:known_fix, :needs_detail]}
+    id="pb-fix-known"
+    class="pb-fix-answer pb-fix-known"
+    aria-labelledby="pb-fix-known-title"
+  >
+    <div class="pb-fix-answer-head">
+      <h2 id="pb-fix-known-title">
+        {KnownFixAnswer.heading(@known_fix)}: {@known_fix.fix.title}
+      </h2>
+    </div>
+    <div class="pb-fix-known-body">
+      <p class="pb-fix-known-match">
+        Jev's match: {KnownFixAnswer.match(@known_fix)}. {KnownFixAnswer.evidence(@known_fix)}
+      </p>
+      <h3>When it applies</h3>
+      {raw(markdown_html(@known_fix.fix.applies_when))}
+      <h3>Not when</h3>
+      {raw(markdown_html(@known_fix.fix.does_not_apply_when))}
+      <h3>Steps</h3>
+      {raw(markdown_html(@known_fix.fix.steps))}
+      <h3>Caveats</h3>
+      {raw(markdown_html(@known_fix.fix.caveats))}
+    </div>
+    <div :if={@known_fix.answer == :known_fix} class="pb-fix-known-report">
+      <p :if={is_nil(@reported)}>
+        Tried it? Say whether it worked, for the next agent stuck the same way.
+      </p>
+      <p :if={@reported} role="status">
+        {if @reported == "worked", do: "You said it worked.", else: "You said it did not work."} Thank you. Press the other button to change it.
+      </p>
+      <div class="pb-fix-known-buttons">
+        <Regent.Primitives.button
+          id="pb-fix-known-worked"
+          variant="secondary"
+          phx-click="report_known_fix"
+          phx-value-result="worked"
+        >
+          It worked
+        </Regent.Primitives.button>
+        <Regent.Primitives.button
+          id="pb-fix-known-did-not-work"
+          variant="secondary"
+          phx-click="report_known_fix"
+          phx-value-result="did_not_work"
+        >
+          It didn't work
+        </Regent.Primitives.button>
+      </div>
+    </div>
+  </section>
+
   <section :if={@answer} class="pb-fix-answer" aria-labelledby="pb-fix-answer-title">
     <div class="pb-fix-answer-head">
       <h2 id="pb-fix-answer-title">The answer, ready for your agent</h2>

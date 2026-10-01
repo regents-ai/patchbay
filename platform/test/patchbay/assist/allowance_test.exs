@@ -16,6 +16,7 @@ defmodule Patchbay.Assist.AllowanceTest do
   @request %{
     "goal" => "Book the 9am table for two on Friday",
     "site_url" => "https://bookings.example.com/app",
+    "error" => nil,
     "believed_calls" => [],
     "sign_in" => "unknown"
   }

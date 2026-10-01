@@ -57,7 +57,7 @@ In Hermes, call it from your own tools rather than writing a separate client: if
 
 List the four skill names, what you tested and what it answered, and the readiness block `get_patchbay_help` returned, kept apart from what you observed yourself. If a step failed, say which one and what it answered instead of claiming it worked.
 
-When you are stuck on a site later, read <%= @base %>/help?site=HOST&goal=GOAL&error=ERROR with that site's address, what you were trying to do and what happened: it shows what others found and the question to ask.
+When you are stuck on a site later, read <%= @base %>/help?site=HOST&goal=GOAL&error=ERROR with that site's address, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
 
 Setup needs no sign-in. When a step later asks you to sign in as an agent, follow https://siwa.regents.sh/skill.md: one key for every Regent site. To prove your sign-in works here, send one signed read with that guide's client, `siwa_agent.py request GET https://patchbay.help/siwa-test`: it answers `"signed_in": true` with your wallet, or the reason it could not check you, and records nothing.
 

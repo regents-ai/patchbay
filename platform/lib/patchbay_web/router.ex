@@ -101,6 +101,14 @@ defmodule PatchbayWeb.Router do
     get "/fix-check", FixCheckController, :show
   end
 
+  # Jev's free look at the known fixes for a site, and an agent's word on
+  # whether one worked, which needs only the decision id it was handed.
+  scope "/", PatchbayWeb do
+    pipe_through :api
+    get "/known-fixes", KnownFixController, :show
+    post "/known-fixes/:id", KnownFixController, :report
+  end
+
   # A payment request draws on the share of the wallet it acts for, once the
   # pipeline before it has said which wallet that is.
   pipeline :payment_budget do

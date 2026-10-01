@@ -25,6 +25,10 @@ defmodule PatchbayWeb.PagesHTML do
     MDEx.to_html!(%{document | nodes: body}, options)
   end
 
+  @doc "Patchbay's own markdown, such as a known fix, as page content."
+  @spec markdown_html(String.t()) :: String.t()
+  def markdown_html(markdown), do: MDEx.to_html!(markdown, render: [unsafe: false])
+
   @doc """
   Tool arguments as JSON for a code block. The values carry a visitor's own
   words, so a backtick is written as its JSON escape and cannot end the block.
