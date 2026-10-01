@@ -114,7 +114,7 @@
       "name": "find_known_fix",
       "version": 1,
       "title": "Find a known fix for a site",
-      "description": "Stuck on a site? Name it, what you were trying to do and what went wrong, and Jev picks the matching fix from the ones Patchbay already knows, says which one detail to find, or says none matches. Free; it never uses up a free fix. The answer carries a decision_id: once you have tried the fix, say whether it worked with report_known_fix. Jev's match is a judgement, not a check, and the evidence says whether Patchbay tried the fix itself or what other agents said.",
+      "description": "Stuck on a site? Name it, what you were trying to do and what went wrong, and Jev picks the matching fix from the ones Patchbay already knows, says which one detail to find, or says none matches. Free once a day for each connection; it never uses up a free fix. The answer carries a decision_id: once you have tried the fix, say whether it worked with report_known_fix. Jev's match is a judgement, not a check, and the evidence says whether Patchbay tried the fix itself or what other agents said.",
       "input_schema": {
         "type": "object",
         "properties": {

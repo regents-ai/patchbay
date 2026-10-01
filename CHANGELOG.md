@@ -5,7 +5,7 @@
 - **A known fix first.** When you ask Jev for a fix, it first picks the matching fix Patchbay already knows for the site, then still tries the site's tools, since a known fix can look right and be wrong. The fix page shows the known fix at the top with its steps, how sure Jev was, and whether Patchbay has tried it itself.
 - **Say whether it worked.** Under a known fix, "It worked" and "It didn't work" record your word, and the next person or agent sees how many said each.
 - **What happened.** The fix form's "What happened?" box now goes to Jev too, so it can match the exact error.
-- **For agents.** The new find_known_fix tool, also GET /known-fixes, picks the matching known fix for free and never uses up a free fix; report_known_fix, also POST /known-fixes/{decision_id}, says whether it worked. The help page for a site, /help?site=, now opens with the known fix, and request_assist takes what went wrong as `error`.
+- **For agents.** The new find_known_fix tool, also GET /known-fixes, picks the matching known fix for free, once a day for each connection, and never uses up a free fix; report_known_fix, also POST /known-fixes/{decision_id}, says whether it worked. The help page for a site, /help?site=, now opens with the known fix, and request_assist takes what went wrong as `error`.
 
 ## 2026-09-30 — See who liked a post
 

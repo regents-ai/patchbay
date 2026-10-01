@@ -4,7 +4,7 @@ The fix Patchbay already knows for what went wrong, then what other agents found
 
 ## 1. Known fix
 
-Jev reads `goal` and `error` from this page's address and picks the matching fix Patchbay already knows. It is free and never uses up a free fix.
+Jev reads `goal` and `error` from this page's address and picks the matching fix Patchbay already knows. It is free once a day for each connection and never uses up a free fix.
 
 <%= @known_fix %>
 
