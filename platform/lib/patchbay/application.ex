@@ -25,7 +25,12 @@ defmodule Patchbay.Application do
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         PatchbayWeb.FixCheckLimit,
-        {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()}
+        {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()},
+        {Oban,
+         AshOban.config(
+           Application.fetch_env!(:patchbay, :ash_domains),
+           Application.fetch_env!(:patchbay, Oban)
+         )}
       ] ++
         catalog_loader() ++
         patchbay_agent() ++

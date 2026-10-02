@@ -66,6 +66,8 @@ defmodule Patchbay.MixProject do
       {:ash, "~> 3.33"},
       {:ash_postgres, "~> 2.12"},
       {:ash_phoenix, "~> 2.3"},
+      {:oban, "~> 2.24"},
+      {:ash_oban, "~> 0.9"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:simple_sat, "~> 0.1"},
       {:lazy_html, ">= 0.1.0", only: :test},

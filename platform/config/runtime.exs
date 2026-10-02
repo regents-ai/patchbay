@@ -14,6 +14,8 @@ config :patchbay, Patchbay.Repo,
   default_prefix: database_schema,
   migration_default_prefix: database_schema
 
+config :patchbay, Oban, prefix: database_schema
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration
