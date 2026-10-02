@@ -31,10 +31,14 @@ config :regent_agents,
   ash_domains: [RegentAgents]
 
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Each
-# queue is added here with the jobs it runs.
+# queue is added here with the jobs it runs: a run of an assist, four at once
+# (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
+# forwarded to the staking contract, one at a time so the operator wallet
+# sends in order (`:forward_fee`); and Jev's reading of a priority report
+# (`Patchbay.Forum.Report`'s `:read_by_jev`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
-  queues: [],
+  queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],
   pruner: [max_age: {7, :days}],

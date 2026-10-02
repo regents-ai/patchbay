@@ -1,20 +1,22 @@
 defmodule Patchbay.Assist.ForwardTest do
   @moduledoc """
   A paid assist's fee goes from the operator wallet to the REGENT staking
-  contract: an approval of exactly the fee, then the deposit, each signed
-  with the operator key and sent to a fake Base. What the chain says is
-  written on the run, and a fee that cannot be forwarded never touches the
-  answer.
+  contract, as the run's `:forward_fee` job: an approval of exactly the fee,
+  then the deposit, each signed with the operator key and sent to a fake
+  Base. What the chain says is written on the run, a fee is forwarded once
+  however often its job runs, and a fee that cannot be forwarded never
+  touches the answer.
   """
 
   use Patchbay.DataCase, async: false
+  use AshOban.Test, repo: Patchbay.Repo
 
   import Plug.Conn
 
   alias Ethers.Contracts.ERC20
   alias Ethers.Transaction
   alias Patchbay.Assist
-  alias Patchbay.Assist.Forward
+  alias Patchbay.Assist.Run
   alias Patchbay.Identity
   alias Patchbay.Payments.JevAssist
   alias RegentPayments.FeeForward.Staking
@@ -38,9 +40,9 @@ defmodule Patchbay.Assist.ForwardTest do
 
   test "the fee is approved to the staking contract and deposited, tagged and referenced" do
     chain = chain(receipts: fn _hash -> "0x1" end)
-    run = paid_run()
+    run = answered_run()
 
-    assert :ok = Forward.run(run.id)
+    assert %{success: 1} = forward(run)
 
     # The test reads the run the way the worker does, as nobody in particular.
     {:ok, forwarded} = Assist.get_run(run.id, authorize?: false)
@@ -60,30 +62,54 @@ defmodule Patchbay.Assist.ForwardTest do
     assert deposit.input ==
              Staking.deposit_usdc(100_000, @source_tag, <<0::size(96), payer_bytes::binary>>).data
 
-    # Forwarded once; a second pass sends nothing more.
-    assert :ok = Forward.run(run.id)
+    # Forwarded once; a second job for the same fee sends nothing more.
+    assert {:cancel, _} =
+             perform_job(Run.Workers.ForwardFee, %{"primary_key" => %{"id" => run.id}})
+
     assert length(sent(chain)) == 2
   end
 
-  test "an approval the chain refuses ends the forward as failed with nothing deposited" do
-    chain = chain(receipts: fn _hash -> "0x0" end)
-    run = paid_run()
+  test "a fee already being forwarded is not forwarded again by another job" do
+    chain = chain(receipts: fn _hash -> "0x1" end)
+    run = answered_run()
+    {:ok, _taken} = Assist.take_fee(run, authorize?: false)
 
-    assert :ok = Forward.run(run.id)
+    # The other job read the fee while it still waited, and took it too late.
+    assert {:error, _} = Ash.update(run, %{}, action: :forward_fee, authorize?: false)
+    assert sent(chain) == []
+  end
+
+  test "an approval the chain refuses is tried again, then left failed with nothing deposited" do
+    chain = chain(receipts: fn _hash -> "0x0" end)
+    run = answered_run()
+
+    assert %{failure: 2, success: 1} = forward(run)
 
     # Read as the worker reads it, as nobody in particular.
     {:ok, failed} = Assist.get_run(run.id, authorize?: false)
     assert failed.deposit_status == :failed
     assert failed.deposit_tx_hash == nil
-    assert [_approve] = sent(chain)
+    assert [_approve, _again, _last] = sent(chain)
+  end
+
+  test "a deposit the chain reverts is left failed with its hash and never sent blind again" do
+    chain = chain(receipts: fn hash -> if hash == hash(1), do: "0x1", else: "0x0" end)
+    run = answered_run()
+
+    assert %{success: 1} = forward(run)
+
+    # Read as the worker reads it, as nobody in particular.
+    {:ok, failed} = Assist.get_run(run.id, authorize?: false)
+    assert {failed.deposit_status, failed.deposit_tx_hash} == {:failed, hash(2)}
+    assert [_approve, _deposit] = sent(chain)
   end
 
   test "with no staking contract set the fee stays where it was paid, and nothing is sent" do
     chain = chain(receipts: fn _hash -> "0x1" end)
     Application.put_env(:patchbay, :assist, pay_to_address: @payer)
-    run = paid_run()
+    run = answered_run()
 
-    assert :ok = Forward.run(run.id)
+    assert %{success: 1} = forward(run)
 
     # Read as the worker reads it, as nobody in particular.
     {:ok, waiting} = Assist.get_run(run.id, authorize?: false)
@@ -190,8 +216,15 @@ defmodule Patchbay.Assist.ForwardTest do
     end)
   end
 
-  # A paid, opened run whose payment receipt names the payer wallet.
-  defp paid_run do
+  # The run's fee job, queued when it was answered, run as Oban runs it,
+  # retries included.
+  defp forward(run) do
+    assert_triggered(run, :forward_fee)
+    Oban.drain_queue(queue: :fees, with_scheduled: true, with_recursion: true)
+  end
+
+  # A paid run Patchbay answered, whose payment receipt names the payer wallet.
+  defp answered_run do
     payer =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:forward-#{Ecto.UUID.generate()}",
@@ -209,6 +242,9 @@ defmodule Patchbay.Assist.ForwardTest do
     {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
     {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
     {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
-    run
+
+    # Patchbay's own job answering it.
+    {:ok, running} = Assist.start_run(run, authorize?: false)
+    Assist.finish_run!(running, %{status: :finished, outcome: :reached}, authorize?: false)
   end
 end

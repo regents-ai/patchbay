@@ -1,51 +1,68 @@
 defmodule Patchbay.Assist.Forward do
   @moduledoc """
-  Hands an assist's fee on from the operator wallet to the REGENT revenue
-  staking contract on Base, as revenue tagged `patchbay.assist` and
-  referenced to the wallet that paid it, through the payments library's fee
-  route (`RegentPayments.FeeForward`).
+  The `:forward_fee` action of `Patchbay.Assist.Run`: hands an assist's fee
+  on from the operator wallet to the REGENT revenue staking contract on Base,
+  as revenue tagged `patchbay.assist` and referenced to the wallet that paid
+  it, through the payments library's fee route (`RegentPayments.FeeForward`).
+  Its job (the `:forward_fee` trigger) forwards one fee at a time.
 
-  What came of it is written on the run, with the deposit's transaction hash
-  when there is one. A fee that could not be forwarded is left for a person
-  to re-run with `run/1`; it never withholds the assist. A deposit that was
-  handed to Base without an answer may still land, so the log says to look
-  on the chain before running it again.
+  The fee's forward is taken (`:take_fee`) in a write of its own before
+  anything is sent, and only a fee still waiting can be taken, so a job that
+  runs twice, after a retry or rescued from a node that died, forwards one
+  fee once. The guard is that write: the payments library leaves stopping a
+  second forward to the site, and a deposit carries the paying wallet, not
+  the fee, so the chain has nothing to check one fee against.
+
+  A forward that sent nothing is put back and tried again, and after its
+  last try is marked failed for a person. A deposit the chain reverted, or
+  one handed to Base with no answer, is marked failed with its hash and
+  never re-run blind: the second may still land, so a person looks on the
+  chain first. A Patchbay with no staking contract or operator key set
+  leaves the fee waiting and says so in the log. What came of it never
+  withholds the assist.
   """
+
+  use Ash.Resource.ManualUpdate
 
   require Logger
 
   alias Patchbay.Assist
-  alias Patchbay.Assist.Run
   alias Patchbay.Escrow
   alias RegentPayments.FeeForward
 
   @source_tag "patchbay.assist"
 
-  @doc """
-  Forwards the run's fee if it is still waiting to be forwarded, and writes
-  the outcome on the run. A Patchbay with no staking contract set leaves the
-  fee waiting and says so in the log.
-  """
-  @spec run(Ash.UUID.t()) :: :ok
-  def run(run_id) do
-    # Patchbay's own worker, on a run that is bought and answers to no request.
-    case Assist.get_run(run_id, authorize?: false) do
-      {:ok, %Run{deposit_status: :pending} = run} -> forward(run)
-      _already_forwarded_or_gone -> :ok
-    end
-  end
+  # The fee's actions are reachable from nowhere else, so each call below
+  # skips authorization deliberately.
+  @impl true
+  def update(changeset, _opts, _context) do
+    run = changeset.data
 
-  defp forward(run) do
-    case submit(run) do
-      {:ok, %{deposit: deposit}} ->
-        record(run, :deposited, deposit)
+    case configured() do
+      {:ok, staking, signer} ->
+        # Patchbay's own job on a run that is bought and answers to no request.
+        with {:ok, taken} <- Assist.take_fee(run, authorize?: false),
+             do: forward(taken, staking, signer)
 
       {:error, :not_configured} ->
         Logger.warning(
-          "Assist #{run.id}: fee left in the operator wallet, no staking contract set"
+          "Assist #{run.id}: fee left in the operator wallet, no staking contract or operator key set"
         )
 
-        :ok
+        {:ok, run}
+    end
+  end
+
+  defp forward(run, staking, signer) do
+    case FeeForward.submit(run.payment_intent_id,
+           kind: :jev_assist,
+           staking: staking,
+           signer: signer,
+           source_tag: @source_tag
+         ) do
+      {:ok, %{deposit: deposit}} ->
+        # Patchbay's own job writing what the chain said.
+        Assist.record_deposited(run, %{deposit_tx_hash: deposit}, authorize?: false)
 
       {:error, {:deposit_unknown, %{deposit: deposit}}} ->
         Logger.error(
@@ -53,46 +70,30 @@ defmodule Patchbay.Assist.Forward do
             "look on the chain before forwarding it again"
         )
 
-        record(run, :failed, deposit)
+        failed(run, deposit)
 
       {:error, {:deposit_reverted, %{deposit: deposit}}} ->
         Logger.error("Assist #{run.id}: fee deposit #{deposit} reverted")
-        record(run, :failed, deposit)
+        failed(run, deposit)
 
       {:error, reason} ->
-        Logger.error("Assist #{run.id}: fee forward failed: #{inspect(reason)}")
-        record(run, :failed, nil)
+        # Nothing left the operator wallet, so the fee waits for the next try;
+        # Patchbay's own job puts it back.
+        with {:ok, _released} <- Assist.release_fee(run, authorize?: false),
+             do: {:error, {:fee_not_forwarded, reason}}
     end
   end
 
-  defp submit(run) do
-    with {:ok, staking} <- staking_address(),
+  defp configured do
+    with staking when is_binary(staking) <- Assist.staking_contract_address(),
          {:ok, signer} <- Escrow.signer() do
-      FeeForward.submit(run.payment_intent_id,
-        kind: :jev_assist,
-        staking: staking,
-        signer: signer,
-        source_tag: @source_tag
-      )
+      {:ok, staking, signer}
+    else
+      _missing -> {:error, :not_configured}
     end
   end
 
-  defp staking_address do
-    case Assist.staking_contract_address() do
-      address when is_binary(address) -> {:ok, address}
-      nil -> {:error, :not_configured}
-    end
-  end
-
-  # The one place that hears what the chain said about the fee; the run's
-  # deposit action is reachable from nowhere else, so authorization is
-  # skipped deliberately.
-  defp record(run, status, tx_hash) do
-    _ =
-      Assist.record_deposit!(run, %{deposit_status: status, deposit_tx_hash: tx_hash},
-        authorize?: false
-      )
-
-    :ok
-  end
+  # Patchbay's own job writing what the chain said.
+  defp failed(run, tx_hash),
+    do: Assist.record_fee_failed(run, %{deposit_tx_hash: tx_hash}, authorize?: false)
 end

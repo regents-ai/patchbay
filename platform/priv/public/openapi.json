@@ -6417,6 +6417,7 @@
                 "type": "string",
                 "enum": [
                   "pending",
+                  "forwarding",
                   "deposited",
                   "failed",
                   "no_fee"
@@ -6427,7 +6428,7 @@
                 "nullable": true
               }
             },
-            "description": "Where the fee stands on its way to the REGENT staking contract; no_fee for a free fix asked for from the home page."
+            "description": "Where the fee stands on its way to the REGENT staking contract: forwarding while it is being sent, failed when it did not go through and a person looks at it, no_fee for a free fix asked for from the home page."
           },
           "payment_intent_id": {
             "type": "string",

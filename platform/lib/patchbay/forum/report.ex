@@ -7,7 +7,8 @@ defmodule Patchbay.Forum.Report do
   A paid priority report is the one kind that moves afterwards. Its asker paid
   USDC into escrow for an answer, so it also carries how much is held, where
   that money stands, and, once the asker has chosen one, the reply that
-  settled it.
+  settled it, and what Jev made of it: Jev reads each published one once, as
+  a job (`:read_by_jev`) queued when the report is filed.
   """
 
   use Ash.Resource,
@@ -15,7 +16,8 @@ defmodule Patchbay.Forum.Report do
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    notifiers: [Ash.Notifier.PubSub]
+    notifiers: [Ash.Notifier.PubSub],
+    extensions: [AshOban]
 
   import Ash.Expr
 
@@ -43,6 +45,31 @@ defmodule Patchbay.Forum.Report do
       reference(:tool, index?: true)
       reference(:site, index?: true)
       reference(:author, index?: true)
+    end
+  end
+
+  oban do
+    triggers do
+      # A call to Jev that fails is tried again with Oban's backoff; after
+      # the last try the report is given up on, so Jev is not asked about it
+      # forever. The reading is unique per report, so it is written once.
+      trigger :read_by_jev do
+        action(:read_by_jev)
+        queue(:jev)
+
+        where(
+          expr(
+            not is_nil(priority_amount_atomic) and visibility == :published and
+              not exists(jev_reading, true) and is_nil(jev_gave_up_at)
+          )
+        )
+
+        max_attempts(5)
+        on_error(:give_up_on_jev)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.ReadByJev)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadByJev)
+      end
     end
   end
 
@@ -200,6 +227,9 @@ defmodule Patchbay.Forum.Report do
       public?(true)
       constraints(min_length: 64, max_length: 64, match: ~r/\A[0-9a-f]{64}\z/)
     end
+
+    # When Jev's last try at reading a paid priority report failed.
+    attribute(:jev_gave_up_at, :utc_datetime_usec, allow_nil?: true)
 
     create_timestamp(:inserted_at, public?: true)
   end
@@ -629,24 +659,6 @@ defmodule Patchbay.Forum.Report do
       prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 200))
     end
 
-    read :awaiting_jev do
-      description("""
-      Published paid priority reports Jev has not read yet, oldest first,
-      leaving out the ones the reader has given up on for now.
-      """)
-
-      argument(:except_ids, {:array, :uuid}, allow_nil?: false)
-
-      filter(
-        expr(
-          not is_nil(priority_amount_atomic) and visibility == :published and
-            not exists(jev_reading, true) and id not in ^arg(:except_ids)
-        )
-      )
-
-      prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 20))
-    end
-
     read :verified_awaiting_repair do
       description("""
       Reports about one site's tools that Patchbay matched to a call it ran and
@@ -743,6 +755,7 @@ defmodule Patchbay.Forum.Report do
       validate(present(:arguments_sha256))
       validate(present(:verdict))
       validate(compare(:priority_amount_atomic, greater_than: 0))
+      change(run_oban_trigger(:read_by_jev))
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -992,6 +1005,25 @@ defmodule Patchbay.Forum.Report do
       accept([:escrow_status, :escrow_refund_tx_hash])
       validate(one_of(:escrow_status, [:refunded, :refund_failed]))
     end
+
+    update :read_by_jev do
+      description("""
+      Has Jev read a paid priority report and writes down what it made of it.
+      The question goes out to OpenRouter, so nothing here holds a
+      transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.ReadByJev)
+    end
+
+    update :give_up_on_jev do
+      description("Jev's last try at reading the report failed; it is not asked again.")
+      accept([])
+      change(set_attribute(:jev_gave_up_at, &DateTime.utc_now/0))
+    end
   end
 
   policies do
@@ -1036,10 +1068,11 @@ defmodule Patchbay.Forum.Report do
     end
 
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
-    # `record_escrow_release` and `record_escrow_refund` are named by no
-    # policy, so nothing that arrives over HTTP can reach them. The settlement,
-    # confirmation, acceptance and refund paths skip authorization to write
-    # what the escrow said.
+    # `record_escrow_release`, `record_escrow_refund`, `read_by_jev` and
+    # `give_up_on_jev` are named by no policy, so nothing that arrives over
+    # HTTP can reach them. The settlement, confirmation, acceptance and refund
+    # paths skip authorization to write what the escrow said, and Jev's job to
+    # write what Jev said.
   end
 
   @doc "The channel a new thread, or one moderated in or out of sight, is announced on."

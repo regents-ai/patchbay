@@ -21,11 +21,9 @@ defmodule Patchbay.Application do
         {Finch, name: Patchbay.Assist.Target.finch()},
         Patchbay.Escrow.Watch,
         Patchbay.Forum.NotificationFanout,
-        Patchbay.Forum.JevReader,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         PatchbayWeb.FixCheckLimit,
-        {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()},
         {Oban,
          AshOban.config(
            Application.fetch_env!(:patchbay, :ash_domains),
@@ -34,7 +32,6 @@ defmodule Patchbay.Application do
       ] ++
         catalog_loader() ++
         patchbay_agent() ++
-        assist_runner() ++
         site_check() ++
         [
           # Start to serve requests, typically the last entry
@@ -62,16 +59,6 @@ defmodule Patchbay.Application do
   defp patchbay_agent do
     if Application.get_env(:patchbay, :start_patchbay_agent, true) do
       [{Patchbay.Forum.PatchbayAgent, name: Patchbay.Forum.PatchbayAgent}]
-    else
-      []
-    end
-  end
-
-  # The boot-time sweep of runs left open, then each paid assist's worker.
-  # Tests drive the work directly and start neither.
-  defp assist_runner do
-    if Application.get_env(:patchbay, :start_assist_runner, true) do
-      [Patchbay.Assist.Sweep, Patchbay.Assist.Runner]
     else
       []
     end
