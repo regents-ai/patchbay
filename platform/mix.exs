@@ -5,6 +5,9 @@ defmodule Patchbay.MixProject do
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
   @elixir_utils_ref "9ca24b0485cd734644a1f790cee1d6b62938eb57"
+  # MCP events has its own pin: no Regents package uses it, so it can move
+  # ahead of the commit those packages share with this site.
+  @mcp_events_ref "c1544e53d0910141e8e26e5b055afcbee4bbe706"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "970b5bcf0d283ca7063a43c35e649ee04a5e8022"
   @regents "https://github.com/regents-ai/regents.git"
@@ -56,11 +59,7 @@ defmodule Patchbay.MixProject do
       {:regent_format, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format"},
       {:regent_chain, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain"},
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
-      # MCP events identity, signed callbacks and one safe delivery attempt,
-      # from the elixir-utils checkout beside this one.
-      # Its commits (194896a, c1544e5) are not on the remote yet, so a release needs it
-      # pinned like the packages above first.
-      {:regent_mcp_events, path: "../../elixir-utils/mcp_events"},
+      {:regent_mcp_events, git: @elixir_utils, ref: @mcp_events_ref, sparse: "mcp_events"},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
