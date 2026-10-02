@@ -69,6 +69,7 @@
   "regent_blog": {:git, "https://github.com/regents-ai/elixir-utils.git", "9ca24b0485cd734644a1f790cee1d6b62938eb57", [ref: "9ca24b0485cd734644a1f790cee1d6b62938eb57", sparse: "blog"]},
   "regent_chain": {:git, "https://github.com/regents-ai/elixir-utils.git", "9ca24b0485cd734644a1f790cee1d6b62938eb57", [ref: "9ca24b0485cd734644a1f790cee1d6b62938eb57", sparse: "chain"]},
   "regent_format": {:git, "https://github.com/regents-ai/elixir-utils.git", "9ca24b0485cd734644a1f790cee1d6b62938eb57", [ref: "9ca24b0485cd734644a1f790cee1d6b62938eb57", sparse: "format"]},
+  "regent_http": {:git, "https://github.com/regents-ai/elixir-utils.git", "9ca24b0485cd734644a1f790cee1d6b62938eb57", [ref: "9ca24b0485cd734644a1f790cee1d6b62938eb57", sparse: "http"]},
   "regent_identity": {:git, "https://github.com/regents-ai/regents.git", "3eff63fa8b5a337b1bda11f9599d7b7919ae0b85", [ref: "3eff63fa8b5a337b1bda11f9599d7b7919ae0b85", sparse: "identity"]},
   "regent_payments": {:git, "https://github.com/regents-ai/regents.git", "3eff63fa8b5a337b1bda11f9599d7b7919ae0b85", [ref: "3eff63fa8b5a337b1bda11f9599d7b7919ae0b85", sparse: "payments"]},
   "regent_privy": {:git, "https://github.com/regents-ai/elixir-utils.git", "9ca24b0485cd734644a1f790cee1d6b62938eb57", [ref: "9ca24b0485cd734644a1f790cee1d6b62938eb57", sparse: "privy"]},

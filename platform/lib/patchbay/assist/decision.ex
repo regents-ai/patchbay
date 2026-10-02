@@ -26,6 +26,13 @@ defmodule Patchbay.Assist.Decision do
     references do
       reference(:assist_run, on_delete: :nilify)
     end
+
+    custom_indexes do
+      # What agents said of each known fix is counted by its choice and result.
+      index([:choice, :result])
+      # A run's removal clears its decisions' link to it.
+      index([:assist_run_id])
+    end
   end
 
   attributes do
@@ -37,7 +44,7 @@ defmodule Patchbay.Assist.Decision do
 
     attribute(:asked_from, AskedFrom, allow_nil?: false, public?: true)
 
-    # The key a help page's connection is counted by, never the address. A
+    # The key of the help page's connection that asked, never the address. A
     # decision made inside a fix has the fix's run instead.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 

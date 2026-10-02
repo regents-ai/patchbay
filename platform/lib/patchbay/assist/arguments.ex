@@ -43,7 +43,7 @@ defmodule Patchbay.Assist.Arguments do
       what_went_wrong: run.error
     }
 
-    case Drafter.draft(input, opts) do
+    case Drafter.draft(input, run.id, opts) do
       {:ok, arguments} ->
         case Schema.check(arguments, tool.input_schema) do
           :ok -> {:ok, arguments, :drafted}

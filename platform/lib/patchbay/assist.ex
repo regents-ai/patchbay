@@ -59,6 +59,13 @@ defmodule Patchbay.Assist do
       define(:get_decision, action: :read, get_by: [:id], not_found_error?: false)
       define(:report_decision, action: :report, args: [:result])
     end
+
+    resource Patchbay.Assist.ModelCall do
+      define(:ask_model, action: :ask)
+      define(:ask_model_for_help, action: :ask_for_help)
+      define(:close_model_call, action: :answered)
+      define(:fail_model_call, action: :failed)
+    end
   end
 
   @doc """

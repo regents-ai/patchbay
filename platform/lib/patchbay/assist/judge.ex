@@ -13,6 +13,7 @@ defmodule Patchbay.Assist.Judge do
   evidence and not as instruction.
   """
 
+  alias Patchbay.Assist.ModelCalls
   alias Patchbay.Assist.Request
   alias Patchbay.Assist.Run
   alias Patchbay.Forum.Jev
@@ -71,7 +72,10 @@ defmodule Patchbay.Assist.Judge do
       }
     }
 
-    with {:ok, body} <- Jev.decide(state, questions, receive_timeout: @receive_timeout_ms) do
+    call = ModelCalls.ask(:choose_tool, Jev.model(), run.id)
+
+    with {:ok, body} <-
+           Jev.decide(state, questions, call, receive_timeout: @receive_timeout_ms) do
       case body do
         %{"answers" => %{"tool" => %{"choice" => name, "confidence" => confidence}}}
         when is_map_key(criteria, name) and is_number(confidence) ->
@@ -104,7 +108,10 @@ defmodule Patchbay.Assist.Judge do
       }
     }
 
-    with {:ok, body} <- Jev.decide(state, questions, receive_timeout: @receive_timeout_ms) do
+    call = ModelCalls.ask(:judge_answer, Jev.model(), run.id)
+
+    with {:ok, body} <-
+           Jev.decide(state, questions, call, receive_timeout: @receive_timeout_ms) do
       case body do
         %{"answers" => %{"verdict" => %{"choice" => verdict, "confidence" => confidence}}}
         when is_map_key(@verdicts, verdict) and is_number(confidence) ->

@@ -5,13 +5,14 @@ defmodule Patchbay.Assist.Drafter do
   model on OpenRouter, the same provider Jev answers from,
   held to a schema of its own. Whether the draft fits the tool's schema is
   checked by the caller. Nothing here logs what the model was shown or what
-  it wrote. Tests may inject a `:request` function.
+  it wrote. Where the model is, which one and the key are set in
+  `config :patchbay, :openrouter`; each draft is written down as a
+  `Patchbay.Assist.ModelCall` for its run. Tests may inject a `:request` function.
   """
 
   alias Patchbay.Assist.ArgumentsSchema
+  alias Patchbay.Assist.ModelCalls
 
-  @endpoint "https://openrouter.ai/api/v1/chat/completions"
-  @model "openai/gpt-5.6-terra"
   @receive_timeout_ms 15_000
 
   @system "Write the arguments for one call of the named tool, as one JSON object " <>
@@ -26,14 +27,19 @@ defmodule Patchbay.Assist.Drafter do
 
   @doc """
   The drafted arguments for `input` (the tool's name, description and input
-  schema, the goal, and what went wrong when the agent said), or why none could be had.
+  schema, the goal, and what went wrong when the agent said) for the run
+  `run_id`, or why none could be had.
   """
-  @spec draft(map(), keyword()) :: {:ok, map()} | {:error, term()}
-  def draft(input, opts \\ []) when is_map(input) do
+  @spec draft(map(), Ash.UUID.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def draft(input, run_id, opts \\ []) when is_map(input) do
+    settings = Application.fetch_env!(:patchbay, :openrouter)
     request = Keyword.get(opts, :request, &request/3)
+    model = Keyword.fetch!(settings, :drafter_model)
+    call = ModelCalls.ask(:draft_arguments, model, run_id)
 
-    with {:ok, body} <-
-           request.(payload(input, Keyword.get(opts, :model, @model)), opts, @endpoint) do
+    answered = request.(payload(input, model), opts, Keyword.fetch!(settings, :drafter_url))
+
+    with {:ok, body} <- ModelCalls.close(call, answered) do
       arguments(body)
     end
   end
@@ -72,7 +78,7 @@ defmodule Patchbay.Assist.Drafter do
   defp arguments(_body), do: {:error, :response_shape_invalid}
 
   defp request(payload, opts, endpoint) do
-    case System.get_env("OPENROUTER_API_KEY") do
+    case Keyword.get(Application.fetch_env!(:patchbay, :openrouter), :api_key) do
       key when key in [nil, ""] -> {:error, :api_key_missing}
       key -> post(payload, key, opts, endpoint)
     end
@@ -83,7 +89,7 @@ defmodule Patchbay.Assist.Drafter do
   defp post(payload, key, opts, endpoint) do
     receive_timeout = Keyword.get(opts, :receive_timeout, @receive_timeout_ms)
 
-    case Req.post(endpoint,
+    case RegentHttp.post(endpoint,
            json: payload,
            headers: [
              {"authorization", "Bearer " <> key},

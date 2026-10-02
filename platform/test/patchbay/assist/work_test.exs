@@ -24,7 +24,7 @@ defmodule Patchbay.Assist.WorkTest do
     old_jev = Application.get_env(:patchbay, :jev_req_options)
     old_target = Application.get_env(:patchbay, :assist_target)
     old_listed = Application.fetch_env!(:patchbay, :assist_read_only_tools)
-    old_key = System.get_env("OPENROUTER_API_KEY")
+    old_openrouter = Application.fetch_env!(:patchbay, :openrouter)
     Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
 
     # The fixture site's tools Patchbay treats as checked read-only ones.
@@ -32,17 +32,18 @@ defmodule Patchbay.Assist.WorkTest do
       "bookings.example.com" => ~w(find_table lookup book)
     })
 
-    System.put_env("OPENROUTER_API_KEY", "test-key-never-sent")
+    Application.put_env(
+      :patchbay,
+      :openrouter,
+      Keyword.put(old_openrouter, :api_key, "test-key-never-sent")
+    )
 
     on_exit(fn ->
       Application.put_env(:patchbay, :assist, old_assist)
       Application.put_env(:patchbay, :jev_req_options, old_jev)
       Application.put_env(:patchbay, :assist_target, old_target)
       Application.put_env(:patchbay, :assist_read_only_tools, old_listed)
-
-      if old_key,
-        do: System.put_env("OPENROUTER_API_KEY", old_key),
-        else: System.delete_env("OPENROUTER_API_KEY")
+      Application.put_env(:patchbay, :openrouter, old_openrouter)
     end)
 
     :ok
