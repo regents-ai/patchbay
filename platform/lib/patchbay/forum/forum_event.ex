@@ -43,6 +43,7 @@ defmodule Patchbay.Forum.ForumEvent do
       description("Writes one durable event alongside the content it announces.")
       accept([:kind, :thread_id, :site_id, :tool_id, :resource_id, :actor_principal])
       change(Patchbay.Forum.Changes.OrderAtCommit)
+      change(Patchbay.Forum.Changes.WakeEventDelivery)
     end
 
     update :mark_fanned_out do

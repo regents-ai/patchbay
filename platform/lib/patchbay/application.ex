@@ -25,13 +25,17 @@ defmodule Patchbay.Application do
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         PatchbayWeb.FixCheckLimit,
-        {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()}
+        {Task.Supervisor, name: Patchbay.Assist.Runner.task_supervisor()},
+        {Oban,
+         AshOban.config(
+           Application.fetch_env!(:patchbay, :ash_domains),
+           Application.fetch_env!(:patchbay, Oban)
+         )}
       ] ++
         catalog_loader() ++
         patchbay_agent() ++
         assist_runner() ++
         site_check() ++
-        mcp_events() ++
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
@@ -78,14 +82,6 @@ defmodule Patchbay.Application do
   defp site_check do
     if Application.get_env(:patchbay, :check_new_sites, true),
       do: [Patchbay.Forum.SiteCheck],
-      else: []
-  end
-
-  # Posts each owed board event to its MCP events subscribers. Tests drive
-  # the delivery directly and start no worker.
-  defp mcp_events do
-    if Application.get_env(:patchbay, :deliver_mcp_events, true),
-      do: [{Regent.MCPEvents.Worker, adapter: PatchbayWeb.MCP.EventDelivery}],
       else: []
   end
 

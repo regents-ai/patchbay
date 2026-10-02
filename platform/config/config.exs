@@ -22,6 +22,20 @@ config :regent_agents,
   account: {Patchbay.Identity, :paired_account},
   ash_domains: [RegentAgents]
 
+# Background jobs, in Patchbay's own schema (set in config/runtime.exs). The
+# webhooks queue posts board events to MCP events subscribers.
+config :patchbay, Oban,
+  repo: Patchbay.Repo,
+  queues: [webhooks: 10],
+  # AshOban adds each trigger's minute sweep here.
+  cron: [crontab: []],
+  pruner: [max_age: {7, :days}],
+  lifeline: [rescue_after: {10, :minutes}]
+
+# Jobs are internal bookkeeping on resources closed to public reads, and skip
+# authorization as Patchbay's other internal reads and writes do.
+config :ash_oban, pro?: false, authorize?: false
+
 config :patchbay,
   ecto_repos: [Patchbay.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],
