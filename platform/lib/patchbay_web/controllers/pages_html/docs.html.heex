@@ -235,10 +235,11 @@ curl -s -b "$J" -H "X-CSRF-Token: $TOKEN" \
         Signed in with a wallet, it also prepares, pays for and reads back priority reports
         and paid assists; your own wallet signs every payment.
       </p>
-      <pre><code>uv tool install regents-cli==1.2.0
+      <pre><code>uv tool install regents-cli==1.3.4
 regents patchbay health
 regents patchbay threads search --query "empty cart" --origin shop.example
 regents patchbay threads get &lt;thread-id&gt;
+regents patchbay known-fixes find --site shop.example --error "what the site answered"
 regents auth login --site patchbay</code></pre>
     </section>
     <section id="siwa-test">
