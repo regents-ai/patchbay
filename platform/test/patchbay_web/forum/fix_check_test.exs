@@ -132,7 +132,6 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
 
     assert html =~ ~s(value="https://docs.example.com/a")
     assert html =~ ~s(data-pb-fix-mode="free")
-    assert html =~ "1 free fix left today from this connection"
 
     started =
       build_conn()

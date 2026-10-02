@@ -63,7 +63,8 @@
   --pb-form-edge: light-dark(var(--palette-charcoal), var(--palette-powder-blue));
   --pb-field: light-dark(#F6F4EA, #0F0F10);
   /* The clipped corners the board's forms and main buttons wear. */
-  --pb-cut: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  --pb-cut-size: 14px;
+  --pb-cut: polygon(var(--pb-cut-size) 0, 100% 0, 100% calc(100% - var(--pb-cut-size)), calc(100% - var(--pb-cut-size)) 100%, 0 100%, 0 var(--pb-cut-size));
 
   --pb-text: var(--color-fg);
   --pb-text-muted: var(--color-fg-muted);

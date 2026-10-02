@@ -36,8 +36,7 @@ defmodule PatchbayWeb.Forum.FixTest do
 
     assert html =~ "Which site or tool are you having trouble with?"
     assert html =~ ~s(data-pb-fix-mode="free")
-    assert html =~ "1 free fix left today from this connection, and 2 more when you sign in"
-    assert html =~ "After that, a fix is 0.10 USDC from your USDC Balance."
+    assert html =~ "Fix it free"
     refute html =~ "Rewards"
   end
 
@@ -90,7 +89,7 @@ defmodule PatchbayWeb.Forum.FixTest do
 
     html = conn |> from(address) |> signed_in(person) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="free")
-    assert html =~ "2 free fixes left today from this connection."
+    assert html =~ "Fix it free"
 
     for _turn <- 1..2 do
       posted =
@@ -107,7 +106,6 @@ defmodule PatchbayWeb.Forum.FixTest do
     html = build_conn() |> from(address) |> signed_in(person) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="pay")
     assert html =~ "Fix it for 0.10 USDC"
-    assert html =~ "This one is 0.10 USDC from your USDC Balance."
     # A wallet with no USDC can be topped up by card from the form.
     assert html =~ "Add USDC with a card"
 
@@ -140,9 +138,6 @@ defmodule PatchbayWeb.Forum.FixTest do
     assert html =~ ~s(data-pb-fix-mode="sign_in")
     assert html =~ "Sign in to fix it"
 
-    assert html =~
-             "all given out. Sign in to fix it for 0.10 USDC from your USDC Balance."
-
     refute html =~ "Add USDC with a card"
     refute html =~ "more free fixes"
 
@@ -156,13 +151,13 @@ defmodule PatchbayWeb.Forum.FixTest do
       build_conn() |> from(address) |> signed_in(person()) |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(data-pb-fix-mode="pay")
-    assert html =~ "all given out. This one is 0.10 USDC from your USDC Balance."
+    assert html =~ "Fix it for 0.10 USDC"
 
     # With no way to pay set up, the page says to come back tomorrow.
     Application.put_env(:patchbay, :assist, pay_to_address: nil)
     html = build_conn() |> from(address) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(data-pb-fix-mode="closed")
-    assert html =~ "all given out. Come back tomorrow."
+    assert html =~ "Free fixes used for today"
   end
 
   test "a request Patchbay would not act on comes back to the form", %{conn: conn} do

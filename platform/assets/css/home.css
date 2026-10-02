@@ -94,11 +94,19 @@
 .pb-find-crowd-av { width: clamp(2.75rem, 7vw, 5.25rem); height: auto; aspect-ratio: 1; }
 .pb-find-crowd-av:nth-child(2n) { width: clamp(2.5rem, 6vw, 4.5rem); }
 .pb-find-crowd-av:nth-child(4) { width: clamp(3rem, 7.5vw, 5.75rem); }
-.pb-find .pb-fix-form { width: 100%; max-width: 48rem; padding: 1.75rem .75rem .75rem; border: 1px solid var(--pb-form-edge); background: var(--pb-form); clip-path: var(--pb-cut); text-align: left; }
+/* The cut takes the border off the two corners, so each diagonal draws its own line. */
+.pb-find .pb-fix-form {
+  width: 100%; max-width: 48rem; padding: 1.75rem .75rem .75rem; border: 1px solid var(--pb-form-edge);
+  background:
+    linear-gradient(135deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) left top / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
+    linear-gradient(315deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) right bottom / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
+    var(--pb-form);
+  clip-path: var(--pb-cut); text-align: left;
+}
 .pb-find .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
 .pb-find .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
 .pb-find .pb-fix-tools-list { background: var(--pb-field); }
-.pb-find .pb-fix-more label, .pb-find :is(.pb-fix-goal-hint, .pb-fix-notice, .pb-fix-terms) { color: var(--pb-text); }
+.pb-find .pb-fix-more label, .pb-find :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
 .pb-find .pb-hero-actions .rg-button { clip-path: var(--pb-cut); }
 .pb-find .pb-hero-actions .rg-button--secondary { border-color: var(--pb-text); background: var(--pb-text); color: var(--color-bg); }
 .pb-find-sites { display: flex; flex-wrap: wrap; justify-content: center; align-self: stretch; gap: var(--space-2); margin-top: var(--space-3); text-align: left; }
