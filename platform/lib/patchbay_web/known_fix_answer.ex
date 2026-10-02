@@ -51,17 +51,29 @@ defmodule PatchbayWeb.KnownFixAnswer do
   end
 
   @doc """
-  An agent's word on the decision `id`: `worked` or `did_not_work`. A later
-  word replaces it. The refusal carries the HTTP status it answers with.
+  An agent's word on the decision `id`: `worked` or `did_not_work`, taken
+  once. The refusal carries the HTTP status it answers with.
   """
   @spec report(term(), term()) :: {:ok, map()} | {:error, {atom(), map()}}
   def report(id, result) when result in ["worked", "did_not_work"] do
     # Finding the decision by the id the agent holds is Patchbay's own read;
     # the report itself is authorized by holding that id.
     with {:ok, uuid} <- Ecto.UUID.cast(id),
-         {:ok, %{} = decision} <- Assist.get_decision(uuid, authorize?: false),
-         {:ok, decision} <- Assist.report_decision(decision, String.to_existing_atom(result)) do
-      {:ok, %{recorded: true, decision_id: decision.id, result: Atom.to_string(decision.result)}}
+         {:ok, %{} = decision} <- Assist.get_decision(uuid, authorize?: false) do
+      case Assist.report_decision(decision, String.to_existing_atom(result)) do
+        {:ok, decision} ->
+          {:ok,
+           %{recorded: true, decision_id: decision.id, result: Atom.to_string(decision.result)}}
+
+        {:error, %Ash.Error.Invalid{errors: [%{field: :reported_at}]}} ->
+          {:error,
+           {:conflict,
+            ApiError.body(
+              "already_reported",
+              "This known-fix answer already has a report; each answer takes one.",
+              "Nothing more to do. A new answer from find_known_fix takes a new report."
+            )}}
+      end
     else
       _missing ->
         {:error,
@@ -78,6 +90,16 @@ defmodule PatchbayWeb.KnownFixAnswer do
     do:
       {:error,
        {:unprocessable_entity, ApiError.invalid(["result: must be worked or did_not_work"])}}
+
+  @doc "What was said of the decision `id`, `worked` or `did_not_work`, or nil before a report."
+  @spec reported(String.t()) :: String.t() | nil
+  def reported(id) do
+    # Patchbay's own read of the decision its own record names.
+    case Assist.get_decision(id, authorize?: false) do
+      {:ok, %{result: result}} when not is_nil(result) -> Atom.to_string(result)
+      {:ok, _unreported} -> nil
+    end
+  end
 
   @doc "The answer for one pick for the site `site`."
   @spec from_pick(KnownFixPick.pick(), String.t()) :: t()

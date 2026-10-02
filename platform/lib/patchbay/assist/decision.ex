@@ -6,8 +6,8 @@ defmodule Patchbay.Assist.Decision do
 
   A decision is written by Patchbay alone. Its id is handed to the agent with
   the answer and is the only thing a report needs: whoever holds it may say
-  once more, and the latest word stands. Reports are the agent's own word,
-  counted as such and never as a check.
+  once whether the fix worked, and that word stands. Reports are the agent's
+  own word, counted as such and never as a check.
   """
 
   use Ash.Resource,
@@ -76,9 +76,10 @@ defmodule Patchbay.Assist.Decision do
     end
 
     update :report do
-      description("The agent's word on whether the fix worked. A later word replaces it.")
+      description("The agent's word on whether the fix worked, taken once.")
       accept([:result])
       validate(present(:result))
+      validate(Patchbay.Assist.Validations.NotReported)
       change(set_attribute(:reported_at, &DateTime.utc_now/0))
     end
   end

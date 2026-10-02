@@ -41,8 +41,10 @@ defmodule PatchbayWeb.FixLive.Show do
       {:ok, _recorded} ->
         {:noreply, socket |> assign(reported: result) |> show(socket.assigns.run)}
 
-      {:error, _refused} ->
-        {:noreply, put_flash(socket, :error, "That could not be saved. Try again in a moment.")}
+      # Said already, from another tab: the word that stands is shown.
+      {:error, {:conflict, _refusal}} ->
+        {:noreply,
+         assign(socket, reported: KnownFixAnswer.reported(socket.assigns.known_fix.decision_id))}
     end
   end
 
@@ -69,7 +71,7 @@ defmodule PatchbayWeb.FixLive.Show do
     headline = Panel.headline(run)
 
     socket
-    |> assign_new(:reported, fn -> nil end)
+    |> assign_new(:reported, fn -> known_fix && KnownFixAnswer.reported(known_fix.decision_id) end)
     |> assign(
       run: run,
       page_title: headline,

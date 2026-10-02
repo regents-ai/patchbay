@@ -73,9 +73,9 @@
         Tried it? Say whether it worked, for the next agent stuck the same way.
       </p>
       <p :if={@reported} role="status">
-        {if @reported == "worked", do: "You said it worked.", else: "You said it did not work."} Thank you. Press the other button to change it.
+        {if @reported == "worked", do: "You said it worked.", else: "You said it did not work."} Thank you.
       </p>
-      <div class="pb-fix-known-buttons">
+      <div :if={is_nil(@reported)} class="pb-fix-known-buttons">
         <Regent.Primitives.button
           id="pb-fix-known-worked"
           variant="secondary"
