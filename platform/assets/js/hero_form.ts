@@ -270,11 +270,11 @@ function fixPath(runId: string) {
   return `/fixes/${encodeURIComponent(runId)}`
 }
 
+// The page arrives folded to one line. A draft put back from this tab
+// opens it at once; otherwise it opens for good on the first focus.
 function foldUntilFocus(form: PageForm) {
-  const typed = (form.elements["ask[site_url]"]?.value ?? "") !== ""
-  if (typed || form.querySelector("[role=alert]")) return
-  form.dataset.pbCollapsed = "true"
   const unfold = () => delete form.dataset.pbCollapsed
+  if ((form.elements["ask[site_url]"]?.value ?? "") !== "") return unfold()
   form.addEventListener("focusin", unfold, {once: true})
 }
 

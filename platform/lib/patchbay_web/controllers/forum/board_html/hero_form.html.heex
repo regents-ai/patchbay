@@ -8,6 +8,7 @@
   data-pb-fix-mode={@fix.mode}
   data-pb-fix-fee={@fix.fee}
   data-pb-signed-in={to_string(!is_nil(@profile))}
+  data-pb-collapsed={@hero.draft["site_url"] in [nil, ""] and !(@hero.problem && !@hero.preview)}
 >
   <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
   <p :if={@hero.problem && !@hero.preview} class="pb-reply-form-problem" role="alert">

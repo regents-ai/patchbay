@@ -37,9 +37,10 @@
 .pb-fix-tools-list input:disabled + code, .pb-fix-tools-list input:disabled ~ span { opacity: .55; }
 .pb-fix-tools-list input:disabled { cursor: not-allowed; }
 .pb-fix-tools-list label:has(input:disabled) { cursor: not-allowed; }
-/* Until the person starts typing, the form is one line; the script folds
-   the rest away and unfolds it on focus. Without the script every field shows. */
-.pb-fix-form[data-pb-collapsed] .pb-fix-more { display: none; }
+/* Until the person starts, the form is one line. The page arrives folded so
+   nothing jumps; the script unfolds it for good on focus, and without the
+   script it opens while the form has focus. */
+.pb-fix-form[data-pb-collapsed]:not(:focus-within) .pb-fix-more { display: none; }
 .pb-fix-more textarea { min-height: 7rem; resize: vertical; }
 .pb-fix-more input[type=file] { min-height: 0; padding: .4rem .5rem; }
 .pb-hero-pictures-note { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
