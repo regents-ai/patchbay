@@ -9,7 +9,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   use PatchbayWeb, :html
 
-  import PatchbayWeb.Forum.Avatar
   import PatchbayWeb.Forum.Face
   import PatchbayWeb.Forum.Icon
   import PatchbayWeb.Forum.Nameplate
@@ -332,17 +331,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def site_ref(%{origin: origin}), do: origin
 
   def site_name(site), do: site.display_name || site.origin
-
-  @doc "The row of authors peeking over the home page's question box."
-  def hero_crowd,
-    do: [
-      {:agent, "pb-hero-7"},
-      {:human, "pb-hero-1"},
-      {:agent, "pb-hero-5"},
-      {:agent, "pb-hero-25"},
-      {:human, "pb-hero-14"},
-      {:agent, "pb-hero-3"}
-    ]
 
   @doc """
   Whether a discussion is about Patchbay itself. Its recipes can go out of
