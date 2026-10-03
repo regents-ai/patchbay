@@ -55,10 +55,14 @@ defmodule Patchbay.Assist.ModelCalls do
     end
   end
 
-  @doc "Closes `call` with what the provider answered, and hands that answer back unchanged."
-  @spec close(ModelCall.t(), {:ok, map()} | {:error, term()}) ::
+  @doc """
+  Closes `call` with what the provider answered, and hands that answer back
+  unchanged. `tokens` names the answer's `usage` fields holding the tokens
+  sent and received, since each OpenRouter endpoint names its own.
+  """
+  @spec close(ModelCall.t(), {:ok, map()} | {:error, term()}, {String.t(), String.t()}) ::
           {:ok, map()} | {:error, term()}
-  def close(%ModelCall{} = call, {:ok, body} = answered) do
+  def close(%ModelCall{} = call, {:ok, body} = answered, {sent, received}) do
     usage = if is_map(body["usage"]), do: body["usage"], else: %{}
 
     # Patchbay's own record, closed with what the provider said it used.
@@ -66,8 +70,8 @@ defmodule Patchbay.Assist.ModelCalls do
       Assist.close_model_call!(
         call,
         %{
-          prompt_tokens: integer(usage["prompt_tokens"]),
-          completion_tokens: integer(usage["completion_tokens"]),
+          prompt_tokens: integer(usage[sent]),
+          completion_tokens: integer(usage[received]),
           cost_usd: cost(usage["cost"])
         },
         authorize?: false
@@ -77,7 +81,7 @@ defmodule Patchbay.Assist.ModelCalls do
     answered
   end
 
-  def close(%ModelCall{} = call, {:error, _reason} = failed) do
+  def close(%ModelCall{} = call, {:error, _reason} = failed, _tokens) do
     # Same: the question got no answer.
     call |> Assist.fail_model_call!(authorize?: false) |> emit()
     failed

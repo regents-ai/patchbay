@@ -39,7 +39,7 @@ defmodule Patchbay.Assist.Drafter do
 
     answered = request.(payload(input, model), opts, Keyword.fetch!(settings, :drafter_url))
 
-    with {:ok, body} <- ModelCalls.close(call, answered) do
+    with {:ok, body} <- ModelCalls.close(call, answered, {"prompt_tokens", "completion_tokens"}) do
       arguments(body)
     end
   end

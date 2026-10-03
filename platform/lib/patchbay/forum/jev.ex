@@ -69,7 +69,7 @@ defmodule Patchbay.Forum.Jev do
         key -> ask(state, questions, key, opts)
       end
 
-    ModelCalls.close(call, answered)
+    ModelCalls.close(call, answered, {"input_tokens", "output_tokens"})
   end
 
   defp ask(state, questions, key, opts) do
