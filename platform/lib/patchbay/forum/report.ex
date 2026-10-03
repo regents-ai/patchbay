@@ -912,7 +912,11 @@ defmodule Patchbay.Forum.Report do
       """)
 
       accept([])
-      change(filter(expr(is_nil(escrow_status))))
+
+      # A validation, not a filter: this atomic update checks it inside the
+      # UPDATE statement against the stored value, while Ash 3.33 leaves an
+      # action's `filter` change out of the statement.
+      validate(absent(:escrow_status), message: "has already been handed to Base")
       change(set_attribute(:escrow_status, :credit_submitted))
     end
 
