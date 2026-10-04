@@ -132,6 +132,9 @@ contract PatchbayEscrow is Ownable2Step {
     /// @notice Thrown when a release names the payer as the winner.
     error WinnerIsPayer();
 
+    /// @notice Thrown when the escrow's own address is named as a payer or a winner.
+    error EscrowIsParty();
+
     /// @notice Thrown when a refund is attempted before the refund delay has passed.
     error RefundTooEarly();
 
@@ -178,6 +181,7 @@ contract PatchbayEscrow is Ownable2Step {
     function credit(bytes32 postId, address payer, uint96 amount) external onlyOperator {
         if (posts[postId].status != Status.None) revert PostAlreadyCredited();
         if (payer == address(0)) revert ZeroAddress();
+        if (payer == address(this)) revert EscrowIsParty();
         if (amount == 0) revert ZeroAmount();
 
         uint256 credited = totalCredited + amount;
@@ -199,6 +203,7 @@ contract PatchbayEscrow is Ownable2Step {
         Post storage post = posts[postId];
         if (post.status != Status.Funded) revert PostNotFunded();
         if (winner == address(0)) revert ZeroAddress();
+        if (winner == address(this)) revert EscrowIsParty();
         if (winner == post.payer) revert WinnerIsPayer();
 
         uint256 amount = post.amount;

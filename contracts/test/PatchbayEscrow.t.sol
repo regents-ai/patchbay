@@ -130,6 +130,19 @@ contract PatchbayEscrowTest is Test {
         vm.stopPrank();
     }
 
+    /// @dev A payout to itself would leave the money in the escrow, marked paid but owned by no post.
+    function test_theEscrowCannotBeThePayerOrTheWinner() public {
+        usdc.mint(address(escrow), DEPOSIT);
+        vm.startPrank(operator);
+        vm.expectRevert(PatchbayEscrow.EscrowIsParty.selector);
+        escrow.credit(POST, address(escrow), DEPOSIT);
+
+        escrow.credit(POST, payer, DEPOSIT);
+        vm.expectRevert(PatchbayEscrow.EscrowIsParty.selector);
+        escrow.release(POST, address(escrow));
+        vm.stopPrank();
+    }
+
     function test_credit_isOperatorOnly() public {
         usdc.mint(address(escrow), DEPOSIT);
         vm.expectRevert(PatchbayEscrow.NotOperator.selector);

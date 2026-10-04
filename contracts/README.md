@@ -98,7 +98,7 @@ it only after the x402 settlement is confirmed on-chain. It moves no money.
 
 `release` pays `winner` 90% of the post's amount and adds the remaining 10% to `revenueOwed`. The
 winner's share rounds down, so the two always add up to exactly the credited amount. The winner may
-not be the payer.
+not be the payer, and neither the payer nor the winner may be the escrow itself.
 
 `refund` sends 90% of the post's amount back to the payer and adds the remaining 10% to
 `revenueOwed`, the same split a release uses. It reverts with `RefundTooEarly()` until `REFUND_DELAY` (30 days)
@@ -146,6 +146,7 @@ Revert reasons the server should recognise:
 | `ZeroAddress()`          | A zero address was passed.                                          |
 | `ZeroAmount()`           | The amount was zero.                                                |
 | `WinnerIsPayer()`        | The winner address is the asker who paid.                           |
+| `EscrowIsParty()`        | The escrow's own address was named as the payer or the winner.      |
 | `RefundTooEarly()`       | Fewer than thirty days have passed since the deposit was recorded.  |
 | `NothingOwed()`          | A push found no revenue owed.                                       |
 

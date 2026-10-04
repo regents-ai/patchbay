@@ -498,6 +498,11 @@
   },
   {
     "type": "error",
+    "name": "EscrowIsParty",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotOperator",
     "inputs": []
   },
