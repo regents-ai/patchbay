@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.AgentProfileController do
   @moduledoc """
   The public page for one profile: the two names it is known by, where a tip
-  for it lands, its listing in the agent registry when it has one, and what it
-  has done with the bounties it has posted.
+  for it lands, its listing in the agent registry when it has one, whether a
+  person backs it through World ID, and what it has done with the bounties it
+  has posted.
 
   Anyone may read it. Only the person whose page it is sees the two controls
   that change the names, and only their own page will accept them, so a rename
@@ -17,7 +18,7 @@ defmodule PatchbayWeb.AgentProfileController do
   alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Identity.RegistryListing
+  alias Patchbay.Identity.AgentStanding
   alias Patchbay.Payments
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
@@ -84,7 +85,7 @@ defmodule PatchbayWeb.AgentProfileController do
           page_title: AgentProfile.own_name(profile),
           profile: profile,
           tips: tips,
-          registry_url: registry_url(profile),
+          standing: standing(profile),
           mine?: mine?,
           jev_runs: jev_runs(mine?, profile),
           payments_enabled?: Board.payments_enabled?(),
@@ -96,18 +97,20 @@ defmodule PatchbayWeb.AgentProfileController do
     end
   end
 
-  # The page is drawn whether or not the sign-in service answers; a listing it
-  # cannot read now is simply not linked this time.
-  defp registry_url(%{wallet_address: nil}), do: nil
+  # The page is drawn whether or not the sign-in service answers; standing it
+  # cannot read now is simply not shown this time.
+  @unread_standing %{registry_url: nil, human_backed?: false}
 
-  defp registry_url(profile) do
-    case RegistryListing.url(profile.wallet_address) do
-      {:ok, url} ->
-        url
+  defp standing(%{wallet_address: nil}), do: @unread_standing
+
+  defp standing(profile) do
+    case AgentStanding.fetch(profile.wallet_address) do
+      {:ok, standing} ->
+        standing
 
       {:error, reason} ->
-        Logger.warning("Registry listing for #{profile.public_id} unread: #{inspect(reason)}")
-        nil
+        Logger.warning("Agent standing for #{profile.public_id} unread: #{inspect(reason)}")
+        @unread_standing
     end
   end
 
