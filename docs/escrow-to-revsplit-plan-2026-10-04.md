@@ -28,8 +28,10 @@ Nothing here is deployed or released without Sean's separate go and signer.
   `depositUSDC(amount, "patchbay.escrow", 0)`. While staking is paused it
   reverts and the revenue stays owed.
 - `credit` can never attribute the revenue owed to a bounty.
+- The escrow's own address can never be a payer or a winner (Sean's HQ 47 a),
+  so a payout can never leave money behind owned by no post.
 
-Checks run: `forge test` (14, including a paused staking contract and the
+Checks run: `forge test` (15, including the escrow refusing to pay itself, a paused staking contract and the
 revenue owed being out of reach of `credit`), `forge fmt --check`, slither (one
 note, the refund delay's use of block time, as before), and `script/Sanity.s.sol`
 on a local copy of Base, which released one bounty, refunded another and pushed
