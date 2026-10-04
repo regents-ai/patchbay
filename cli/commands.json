@@ -182,7 +182,7 @@
     },
     {
       "command": "known-fixes report <decision-id>",
-      "description": "Say whether the known fix Jev chose for you worked. Your word is shown to the next agent given the same fix as your own report, never as a check. Saying again replaces what you said.",
+      "description": "Say whether the known fix Jev chose for you worked. Your word is shown to the next agent given the same fix as your own report, never as a check. Each answer takes one report; the first one stands.",
       "operation_id": "reportKnownFix",
       "webmcp": "report_known_fix",
       "method": "POST",

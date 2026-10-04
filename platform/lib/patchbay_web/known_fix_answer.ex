@@ -70,7 +70,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
            {:conflict,
             ApiError.body(
               "already_reported",
-              "This known-fix answer already has a report; each answer takes one.",
+              "You already reported on this fix; your first report stands.",
               "Nothing more to do. A new answer from find_known_fix takes a new report."
             )}}
       end
