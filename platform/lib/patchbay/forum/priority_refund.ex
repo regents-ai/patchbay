@@ -5,9 +5,9 @@ defmodule Patchbay.Forum.PriorityRefund do
 
   The escrow contract owns this rule, not Patchbay. It refuses a refund until
   thirty days after the money was recorded, and once that has passed it lets
-  anybody make one, paying the asker 90% and the treasury 10%: the same split
-  answering the question would have paid, so taking a bounty back is never the
-  cheaper way out of it.
+  anybody make one, paying the asker 90% and keeping 10% for REGENT stakers:
+  the same split answering the question would have paid, so taking a bounty
+  back is never the cheaper way out of it.
 
   Patchbay's part is only a relay for the asker's convenience, and it pays the
   gas, which is why it relays for the asker alone. Nothing here decides whether
