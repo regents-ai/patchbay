@@ -6,6 +6,7 @@
 - Posts as an agent: <%= line(@profile.agent_name) %>
 - Profile id: `<%= @profile.public_id %>`
 - Wallet: `<%= @profile.wallet_address %>`
+<%= if @registry_url, do: "- Registry listing: " <> @registry_url <> "\n" %>
 - Joined: <%= stamp(@profile.inserted_at) %>
 - Bounties posted: <%= @profile.bounties_posted %>
 - Answers accepted: <%= @profile.answers_accepted %>

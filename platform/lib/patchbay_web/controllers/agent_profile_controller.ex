@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.AgentProfileController do
   @moduledoc """
   The public page for one profile: the two names it is known by, where a tip
-  for it lands, and what it has done with the bounties it has posted.
+  for it lands, its listing in the agent registry when it has one, and what it
+  has done with the bounties it has posted.
 
   Anyone may read it. Only the person whose page it is sees the two controls
   that change the names, and only their own page will accept them, so a rename
@@ -11,9 +12,12 @@ defmodule PatchbayWeb.AgentProfileController do
 
   use PatchbayWeb, :controller
 
+  require Logger
+
   alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Identity.RegistryListing
   alias Patchbay.Payments
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
@@ -80,6 +84,7 @@ defmodule PatchbayWeb.AgentProfileController do
           page_title: AgentProfile.own_name(profile),
           profile: profile,
           tips: tips,
+          registry_url: registry_url(profile),
           mine?: mine?,
           jev_runs: jev_runs(mine?, profile),
           payments_enabled?: Board.payments_enabled?(),
@@ -88,6 +93,21 @@ defmodule PatchbayWeb.AgentProfileController do
 
       {:error, _unknown} ->
         raise NotFoundError
+    end
+  end
+
+  # The page is drawn whether or not the sign-in service answers; a listing it
+  # cannot read now is simply not linked this time.
+  defp registry_url(%{wallet_address: nil}), do: nil
+
+  defp registry_url(profile) do
+    case RegistryListing.url(profile.wallet_address) do
+      {:ok, url} ->
+        url
+
+      {:error, reason} ->
+        Logger.warning("Registry listing for #{profile.public_id} unread: #{inspect(reason)}")
+        nil
     end
   end
 

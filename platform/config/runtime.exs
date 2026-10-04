@@ -3,6 +3,11 @@ import Config
 # Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
 config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
 config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
+
+config :patchbay, :siwa_activity,
+  base_url: System.get_env("PATCHBAY_SIWA_URL"),
+  read_token: System.get_env("SIWA_ACTIVITY_READ_TOKEN")
+
 config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
 
 database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
