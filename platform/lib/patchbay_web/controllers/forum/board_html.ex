@@ -1904,7 +1904,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Take my money back</Regent.Primitives.button>
         <span class="patchbay-board-facts">
           This asks Base to send 90% of the {escrowed(@report)} USDC back to the wallet that put
-          it up, with 10% to Patchbay, which is the same split accepting an answer pays.
+          it up, with 10% to REGENT stakers, which is the same split accepting an answer pays.
         </span>
       </form>
     </section>

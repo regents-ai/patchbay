@@ -81,7 +81,7 @@ contract PatchbayEscrow is Ownable2Step {
     /// @notice The source tag every push carries, so stakers can see the revenue came from here.
     bytes32 public constant SOURCE_TAG = bytes32("patchbay.escrow");
 
-    /// @notice The Patchbay server address allowed to credit, release and refund.
+    /// @notice The Patchbay server address allowed to credit and release.
     address public operator;
 
     /// @notice Attributed deposits, keyed by the post id the server assigns.

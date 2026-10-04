@@ -29,18 +29,27 @@ What the contract guarantees, whatever the operator does:
   the staking contract, whose address is fixed at deployment and cannot be changed.
 - A refund is refused until thirty days have passed since the deposit was recorded, and after that
   anyone at all may call it. Getting an asker's money back never depends on the operator running.
+  The thirty days open the refund; they do not close the release. After them, whichever of a
+  release and a refund lands first decides the post, and the other reverts.
 - Besides payouts and the push to the staking contract, there is no other way for USDC to leave:
   no sweep, no pause, no upgrade, no owner withdrawal.
   The contract holds no ETH and has no way to receive any.
 
 What the contract cannot check, and therefore accepts on trust: that the operator attributed a
 deposit to the right post, and that it released to the address that actually answered. A stolen
-operator key can misdirect money that is already in escrow, up to the total credited. It cannot
-mint, cannot change the split, and cannot take the stakers' share.
+operator key can misdirect the 90% share of everything in escrow except the revenue owed: posts
+already credited, and unattributed balance it first credits to a post of its own. It cannot mint,
+cannot change the split, and cannot take the stakers' share. Replacing the operator stops the old
+key from then on; it does not undo payouts already made.
+
+`WinnerIsPayer()` compares addresses only. It stops a release to the exact wallet that paid, not to
+another wallet the asker controls.
 
 The owner is a separate address. It can only point the escrow at a new operator address
 (`setOperator`) — useful if the server key is rotated or compromised — and hand ownership on in two
-steps (`transferOwnership` then `acceptOwnership` by the new owner). The owner cannot move funds.
+steps (`transferOwnership` then `acceptOwnership` by the new owner). The owner has no way to
+withdraw, but because it chooses the operator it ultimately decides who attributes deposits and
+names winners.
 
 USDC that arrives without an x402 flow behind it, or an overpayment, simply sits in the contract as
 unattributed balance. It is recoverable the same way as anything else: the operator credits it to a
@@ -53,7 +62,7 @@ Set the environment first:
 | Variable            | Meaning                                                                           |
 | ------------------- | --------------------------------------------------------------------------------- |
 | `STAKING`           | The REGENT revenue staking contract the 10% is pushed into. Required.             |
-| `OPERATOR`          | The Patchbay server address allowed to credit, release and refund. Required.       |
+| `OPERATOR`          | The Patchbay server address allowed to credit and release. Required.               |
 | `OWNER`             | The address that owns the escrow from construction. Required.                      |
 | `USDC`              | Token address. Optional; defaults to Base mainnet USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. |
 | `BASE_RPC_URL`      | Base mainnet RPC endpoint.                                                        |
@@ -74,8 +83,8 @@ contract, operator and owner it was given. `OWNER` is the owner from constructio
 
 `credit` and `release` are operator-only and revert with `NotOperator()` for anyone else; `refund`
 is open to any caller once the delay has passed, and `pushRevenue` is open to any caller. Amounts are
-USDC base units (6 decimals), so 1 USDC is `1000000`. `postId` is any 32-byte id the server picks;
-it must be fresh, because a post id can only be credited once.
+USDC base units (6 decimals), so 1 USDC is `1000000`. `postId` is the 32-byte id the server derives
+from the report, so one report has one post id and can only be credited once.
 
 ```solidity
 function credit(bytes32 postId, address payer, uint96 amount) external;
@@ -131,7 +140,7 @@ Revert reasons the server should recognise:
 | Error                    | Meaning                                                             |
 | ------------------------ | ------------------------------------------------------------------- |
 | `NotOperator()`          | The caller is not the operator address.                             |
-| `PostAlreadyCredited()`  | That post id has been used before. Use a fresh one.                 |
+| `PostAlreadyCredited()`  | That post id is already credited. On a retry, read `posts(postId)`: the same payer and amount means the earlier credit landed; anything else needs a person. |
 | `PostNotFunded()`        | The post was never credited, or has already been released/refunded. |
 | `AmountExceedsBalance()` | The deposit has not landed yet, or the amount is too large.         |
 | `ZeroAddress()`          | A zero address was passed.                                          |
