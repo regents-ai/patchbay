@@ -93,6 +93,7 @@ defmodule Patchbay.Forum do
       define(:bounties_to_reconcile, action: :bounties_to_reconcile)
       define(:record_refund_relay, action: :record_refund_relay)
       define(:record_escrow_refund, action: :record_escrow_refund)
+      define(:record_escrow_revenue_pushed, action: :record_escrow_revenue_pushed)
     end
 
     resource Patchbay.Forum.Reply do

@@ -8,7 +8,9 @@ defmodule Patchbay.Forum.Report do
   USDC into escrow for an answer, so it also carries how much is held, where
   that money stands, and, once the asker has chosen one, the reply that
   settled it, and what Jev made of it: Jev reads each published one once, as
-  a job (`:read_by_jev`) queued when the report is filed.
+  a job (`:read_by_jev`) queued when the report is filed. Once its bounty has
+  paid out or gone back to the asker, a job (`:push_escrow_revenue`) sends the
+  10% the escrow kept to REGENT stakers.
   """
 
   use Ash.Resource,
@@ -69,6 +71,22 @@ defmodule Patchbay.Forum.Report do
         lock_for_update?(false)
         worker_module_name(Patchbay.Forum.Report.Workers.ReadByJev)
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadByJev)
+      end
+
+      # A push that fails is tried again with Oban's backoff, and after the
+      # last try the next sweep queues it afresh: the money waits safely in
+      # the escrow, and it is the stakers', so it is never given up on. It
+      # runs on the fee queue, one send at a time from the operator wallet.
+      trigger :push_escrow_revenue do
+        action(:push_escrow_revenue)
+        queue(:fees)
+
+        where(expr(escrow_status in [:released, :refunded] and is_nil(escrow_revenue_pushed_at)))
+
+        max_attempts(5)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.PushEscrowRevenue)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.PushEscrowRevenue)
       end
     end
   end
@@ -204,6 +222,10 @@ defmodule Patchbay.Forum.Report do
     attribute(:escrow_credit_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_refund_tx_hash, :string, allow_nil?: true, public?: true)
+
+    # When the 10% the escrow kept from this bounty was seen to have reached
+    # the REGENT revenue staking contract.
+    attribute(:escrow_revenue_pushed_at, :utc_datetime_usec, allow_nil?: true)
 
     # When the money was recorded in escrow, which is what the contract's
     # thirty-day refund delay is counted from, and when the asker last asked
@@ -1023,6 +1045,25 @@ defmodule Patchbay.Forum.Report do
       manual(Patchbay.Forum.ReadByJev)
     end
 
+    update :push_escrow_revenue do
+      description("""
+      Sends the 10% the escrow kept from this bounty, with whatever else it
+      keeps, to the REGENT revenue staking contract. It waits on Base, so
+      nothing here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.EscrowRevenuePush)
+    end
+
+    update :record_escrow_revenue_pushed do
+      description("The 10% the escrow kept from this bounty has reached the stakers.")
+      accept([])
+      change(set_attribute(:escrow_revenue_pushed_at, &DateTime.utc_now/0))
+    end
+
     update :give_up_on_jev do
       description("Jev's last try at reading the report failed; it is not asked again.")
       accept([])
@@ -1072,11 +1113,12 @@ defmodule Patchbay.Forum.Report do
     end
 
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
-    # `record_escrow_release`, `record_escrow_refund`, `read_by_jev` and
-    # `give_up_on_jev` are named by no policy, so nothing that arrives over
-    # HTTP can reach them. The settlement, confirmation, acceptance and refund
-    # paths skip authorization to write what the escrow said, and Jev's job to
-    # write what Jev said.
+    # `record_escrow_release`, `record_escrow_refund`, `push_escrow_revenue`,
+    # `record_escrow_revenue_pushed`, `read_by_jev` and `give_up_on_jev` are
+    # named by no policy, so nothing that arrives over HTTP can reach them.
+    # The settlement, confirmation, acceptance, refund and push paths skip
+    # authorization to write what the escrow said, and Jev's job to write what
+    # Jev said.
   end
 
   @doc "The channel a new thread, or one moderated in or out of sight, is announced on."

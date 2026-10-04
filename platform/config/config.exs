@@ -33,9 +33,10 @@ config :regent_agents,
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Each
 # queue is added here with the jobs it runs: a run of an assist, four at once
 # (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
-# forwarded to the staking contract, one at a time so the operator wallet
-# sends in order (`:forward_fee`); and Jev's reading of a priority report
-# (`Patchbay.Forum.Report`'s `:read_by_jev`).
+# forwarded to the staking contract, and the escrow's 10% pushed there, one at
+# a time so the operator wallet sends in order (`:forward_fee`, and
+# `Patchbay.Forum.Report`'s `:push_escrow_revenue`); and Jev's reading of a
+# priority report (`:read_by_jev`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2],

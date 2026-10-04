@@ -355,6 +355,8 @@ defmodule Patchbay.ForumTest do
                  {:request_refund, :update},
                  {:record_refund_relay, :update},
                  {:record_escrow_refund, :update},
+                 {:push_escrow_revenue, :update},
+                 {:record_escrow_revenue_pushed, :update},
                  {:bounties_to_reconcile, :read},
                  {:credits_to_confirm, :read},
                  {:ask_question, :create},

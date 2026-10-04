@@ -8,6 +8,10 @@ defmodule Patchbay.Escrow do
   recorded, and then anybody at all may make the call, so Patchbay finds out
   what happened by reading the chain rather than by having asked.
 
+  Each bounty that pays out or goes back to its asker leaves 10% in the
+  contract for REGENT stakers, and anybody may push what it keeps into the
+  REGENT revenue staking contract; Patchbay does so after each one.
+
   Every call here is one transaction, signed locally with the operator key
   and handed to the chain. It comes back with the transaction hash the moment
   the chain has taken it; nothing waits for the receipt, so a caller records
@@ -154,6 +158,56 @@ defmodule Patchbay.Escrow do
     |> post_id()
     |> Contract.refund()
     |> submit()
+  end
+
+  @doc """
+  The USDC the contract keeps for REGENT stakers and has not yet pushed to
+  the staking contract, in USDC's six-decimal units.
+  """
+  @spec revenue_owed() :: {:ok, non_neg_integer()} | {:error, term()}
+  def revenue_owed do
+    with {:ok, operator} <- operator() do
+      Contract.revenue_owed()
+      |> Ethers.call(to: operator.contract_address, rpc_opts: [url: operator.rpc_url])
+      |> read_amount()
+    end
+  rescue
+    _exception -> {:error, :call_failed}
+  end
+
+  defp read_amount({:ok, amount}) when is_integer(amount), do: {:ok, amount}
+  defp read_amount({:error, reason}), do: {:error, reason}
+  defp read_amount(_unreadable), do: {:error, :unreadable_amount}
+
+  @doc """
+  Pushes everything the contract keeps for REGENT stakers into the staking
+  contract, and returns the hash of the transaction that does it.
+
+  The push is tried against the chain before it is sent and only sent when
+  it would go through, so a paused staking contract costs no gas: the answer
+  is then `:push_refused`, and the money stays kept for a later push.
+  """
+  @spec push_revenue() :: {:ok, String.t()} | {:error, term()}
+  def push_revenue do
+    tx_data = Contract.push_revenue()
+
+    with {:ok, operator} <- operator(),
+         :ok <- would_go_through(tx_data, operator) do
+      submit(tx_data)
+    end
+  end
+
+  defp would_go_through(tx_data, operator) do
+    case Ethers.call(tx_data,
+           from: operator.address,
+           to: operator.contract_address,
+           rpc_opts: [url: operator.rpc_url]
+         ) do
+      {:ok, _pushed} -> :ok
+      {:error, _reason} -> {:error, :push_refused}
+    end
+  rescue
+    _exception -> {:error, :push_refused}
   end
 
   @doc """
