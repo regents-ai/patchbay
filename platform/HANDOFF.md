@@ -397,8 +397,7 @@ screen, and Patchbay's repair.
   the whole test suite.
   `npm test --prefix assets` runs the browser tests, and
   `bash script/deterministic_e2e.sh` runs the end-to-end proof ten times.
-- Deploy with `fly deploy --app patchbay-regents --remote-only --ha=false
-  --build-arg PATCHBAY_COMMIT=<full commit>`, then check that
+- Push the commit to `main`, deploy with `scripts/deploy.sh`, then check that
   `https://patchbay.help/webmcp/health` reports that `commit`.
 - Free fixes from the home page open `Patchbay.Assist.Run` rows with a
   `grant` of `visitor` (one a day per connection, counted by

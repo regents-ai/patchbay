@@ -139,13 +139,15 @@ unbounded bill.
 
 ## 4. Deploy
 
+Push the commit to `main` first, then from a clean checkout of it:
+
 ```sh
-fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false \
-  --build-arg PATCHBAY_COMMIT=$(git rev-parse HEAD)
+scripts/deploy.sh
 ```
 
-`PATCHBAY_COMMIT` must be the full commit the image is built from, from a clean
-checkout; `/webmcp/health` reports it as `commit`. A release built without it
+It refuses a checkout with any change and a commit that `origin/main` does not
+contain. It builds `git archive` of the commit, so `PATCHBAY_COMMIT` is always
+the full commit the image is built from; `/webmcp/health` reports it as `commit`. A release built without it
 does not start, so the migration step fails and the previous release keeps
 serving.
 

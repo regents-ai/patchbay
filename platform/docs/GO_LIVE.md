@@ -131,18 +131,16 @@ post, or the recording transaction will simply fail.
 Only the current tree may be deployed: the escrow contract changed when the
 thirty-day refund went in, and the site is compiled against its ABI.
 
-From `repos/patchbay`, confirm you are clean and level with the remote:
+From `repos/patchbay`:
+
+Push the commit to `main`, then:
 
 ```sh
-git status --short && git rev-parse HEAD origin/main
+scripts/deploy.sh
 ```
 
-Both hashes must match and there must be no output from `git status`. Then:
-
-```sh
-fly deploy --app patchbay-regents --remote-only --ha=false \
-  --build-arg PATCHBAY_COMMIT=$(git rev-parse HEAD)
-```
+It refuses to run while `git status` shows a change or while `origin/main` does
+not contain the commit.
 
 ## 6. Verify
 
