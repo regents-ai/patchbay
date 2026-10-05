@@ -19,7 +19,12 @@ defmodule Patchbay.Identity do
       )
 
       define(:get_profile, action: :read, get_by: [:id], not_found_error?: true)
-      define(:get_profile_by_privy_user_id, action: :read, get_by: [:privy_user_id])
+
+      define(:get_profile_by_privy_user_id,
+        action: :read,
+        get_by: [:privy_user_id],
+        not_found_error?: false
+      )
 
       define(:get_wallet_profile,
         action: :read,
