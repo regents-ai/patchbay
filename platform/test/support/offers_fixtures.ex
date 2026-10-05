@@ -114,11 +114,11 @@ defmodule Patchbay.OffersFixtures do
     Repo.query!(
       """
       INSERT INTO offer_bids
-        (id, owner_profile_id, version_id, slot_id, window_id, lane, account_id, hold_id,
+        (id, owner_profile_id, version_id, slot_id, window_id, lane, payer_address, funding, commit_tx_hash,
          amount_minor, minimum_minor, opening_minimum_minor, policy_revision, duration_us,
          target_generation, target_next_revision, idempotency_key, request_sha256, status,
          accepted_at, inserted_at)
-      VALUES ($1, $2, $3, $4, $5, 'immediate', gen_random_uuid(), gen_random_uuid(),
+      VALUES ($1, $2, $3, $4, $5, 'immediate', '0x' || repeat('c', 40), 'funded', '0x' || md5(random()::text) || md5(random()::text),
               $8, 100, 100, 1, $6, 0, 0, gen_random_uuid()::text, 'test', 'placed', $7, $7)
       """,
       [
@@ -136,9 +136,9 @@ defmodule Patchbay.OffersFixtures do
     Repo.query!(
       """
       INSERT INTO offer_placements
-        (id, owner_profile_id, version_id, slot_id, bid_id, account_id, hold_id, amount_minor,
+        (id, owner_profile_id, version_id, slot_id, bid_id, amount_minor,
          minimum_minor, policy_revision, duration_us, generation, starts_at, expires_at, status)
-      VALUES ($1, $2, $3, $4, $5, gen_random_uuid(), gen_random_uuid(), $8, 100, 1, $6, 1,
+      VALUES ($1, $2, $3, $4, $5, $8, 100, 1, $6, 1,
               $7, $7::timestamp + ($6::bigint * interval '1 microsecond'), 'active')
       """,
       [
@@ -187,11 +187,11 @@ defmodule Patchbay.OffersFixtures do
     Repo.query!(
       """
       INSERT INTO offer_bids
-        (id, owner_profile_id, version_id, slot_id, window_id, lane, account_id, hold_id,
+        (id, owner_profile_id, version_id, slot_id, window_id, lane, payer_address, funding, commit_tx_hash,
          amount_minor, minimum_minor, opening_minimum_minor, policy_revision, duration_us,
          target_generation, target_next_revision, idempotency_key, request_sha256, status,
          accepted_at, inserted_at)
-      VALUES ($1, $2, $3, $4, $5, 'next_period', gen_random_uuid(), gen_random_uuid(),
+      VALUES ($1, $2, $3, $4, $5, 'next_period', '0x' || repeat('c', 40), 'funded', '0x' || md5(random()::text) || md5(random()::text),
               $6, 100, 100, 1, $7, 1, 0, gen_random_uuid()::text, 'test', 'leading', now(), now())
       """,
       [
@@ -215,7 +215,7 @@ defmodule Patchbay.OffersFixtures do
   end
 
   @doc """
-  `placement` ended with `status` and where its Credits went, in the shape
+  `placement` ended with `status` and where its USDC went, in the shape
   settlement leaves behind; the slot no longer points at it.
   """
   def end_placement(placement, status, returned_minor, forfeited_minor) do

@@ -2,21 +2,31 @@ defmodule Patchbay.Offers.Bid do
   @moduledoc """
   An advertiser's bid for one slot, in one lane, with one exact version.
 
-  A bid holds its full amount in the shared Credits ledger from the moment it
-  is accepted. Its status says where that hold is:
+  A bid's USDC is held in `PatchbayOffersEscrow` on Base. The bidder's wallet
+  signs one USDC authorization for the amount with the bid's id as its nonce,
+  so the bid id is also its escrow commitment id, and Patchbay commits it.
+  `funding` says where that commit is:
+
+    * `:awaiting_funds` - signed, and the commit has not confirmed yet;
+    * `:funded` - the commit confirmed in `commit_tx_hash`; only a funded bid
+      can win;
+    * `:commit_failed` - the commit did not go through, so nothing moved.
+
+  Its status says where it stands in the market:
 
     * `:held` - in an open window, waiting for settlement;
-    * `:leading` - the slot's committed next-period leader, still held;
-    * `:placed` - won, and its hold became the placement's commitment;
-    * `:returned` - did not win or lost its lead; its hold went back in full
-      for the reason in `return_reason`.
+    * `:leading` - the slot's committed next-period leader;
+    * `:placed` - won; its commitment carries on as the placement's, which
+      records the settlement;
+    * `:returned` - did not win or lost its lead, for the reason in
+      `return_reason`; a funded one went back in full in `release_tx_hash`.
 
   The terms the bid was accepted under (the minimum it met, the market's
   rules revision and the placement length) are kept on it, so a later
   change of minimum never rewrites it.
 
-  The idempotency key is the advertiser's own, unique per Credits account,
-  and stored with a hash of the request. The same key with the same request
+  The idempotency key is the advertiser's own, unique per advertiser, and
+  stored with a hash of the request. The same key with the same request
   answers with this bid again; with a different request it is refused.
   """
 
@@ -34,6 +44,27 @@ defmodule Patchbay.Offers.Bid do
       check_constraint(:amount_minor, "offer_bids_amount_positive",
         check: "amount_minor > 0 AND amount_minor >= minimum_minor",
         message: "a bid is positive and meets the minimum it was accepted under"
+      )
+
+      check_constraint(:funding, "offer_bids_funding_shape",
+        check: """
+        (funding = 'funded') = (commit_tx_hash IS NOT NULL)
+          AND (status NOT IN ('leading', 'placed') OR funding = 'funded')
+          AND (release_tx_hash IS NULL OR (status = 'returned' AND funding = 'funded'))
+        """,
+        message:
+          "only a funded bid can lead or be placed, and only a funded returned bid has a release"
+      )
+
+      check_constraint(:payer_address, "offer_bids_payer_address_format",
+        check: "payer_address ~ '^0x[0-9a-f]{40}$'",
+        message: "the payer is a lowercase wallet address"
+      )
+
+      check_constraint(:commit_tx_hash, "offer_bids_tx_hash_format",
+        check:
+          "(commit_tx_hash IS NULL OR commit_tx_hash ~ '^0x[0-9a-f]{64}$') AND (release_tx_hash IS NULL OR release_tx_hash ~ '^0x[0-9a-f]{64}$')",
+        message: "a transaction hash is lowercase hex"
       )
 
       check_constraint(:return_reason, "offer_bids_return_shape",
@@ -81,10 +112,19 @@ defmodule Patchbay.Offers.Bid do
   attributes do
     uuid_primary_key(:id)
 
-    # The Credits account the hold is in. The ledger is in the shared
-    # payments schema, so this is its id rather than a key into it.
-    attribute(:account_id, :uuid, allow_nil?: false)
-    attribute(:hold_id, :uuid, allow_nil?: false)
+    # The wallet that signed the USDC authorization; everything returned
+    # goes back to it.
+    attribute(:payer_address, :string, allow_nil?: false)
+
+    attribute(:funding, :atom,
+      allow_nil?: false,
+      default: :awaiting_funds,
+      public?: true,
+      constraints: [one_of: [:awaiting_funds, :funded, :commit_failed]]
+    )
+
+    attribute(:commit_tx_hash, :string, allow_nil?: true, public?: true)
+    attribute(:release_tx_hash, :string, allow_nil?: true, public?: true)
 
     attribute(:lane, :atom,
       allow_nil?: false,
@@ -143,8 +183,7 @@ defmodule Patchbay.Offers.Bid do
   end
 
   identities do
-    identity(:unique_request, [:account_id, :idempotency_key])
-    identity(:unique_hold, [:hold_id])
+    identity(:unique_request, [:owner_profile_id, :idempotency_key])
     identity(:one_leader_per_slot, [:slot_id], where: expr(status == :leading))
   end
 

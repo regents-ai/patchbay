@@ -6,8 +6,9 @@ defmodule Patchbay.Offers.Placement do
   `:active`, and its version is approved and not blocked. Expiry is read from
   the clock, so a late job never keeps old copy showing.
 
-  When it ends, its commitment settles in the shared ledger and the split is
-  kept here, always adding up to what was bid:
+  Its USDC is its bid's commitment in `PatchbayOffersEscrow`. When it ends,
+  the split is kept here, always adding up to what was bid, and the escrow
+  settles it in `settle_tx_hash`:
 
     * `:expired` - all of it consumed for time;
     * `:bought_out` - the unused time returned, the rest consumed;
@@ -39,7 +40,7 @@ defmodule Patchbay.Offers.Placement do
       check_constraint(:status, "offer_placements_settlement_conserves",
         check: """
         CASE status
-          WHEN 'active' THEN ended_at IS NULL AND returned_minor IS NULL AND consumed_minor IS NULL AND forfeited_minor IS NULL
+          WHEN 'active' THEN ended_at IS NULL AND returned_minor IS NULL AND consumed_minor IS NULL AND forfeited_minor IS NULL AND settle_tx_hash IS NULL
           ELSE ended_at IS NOT NULL
             AND returned_minor >= 0 AND consumed_minor >= 0 AND forfeited_minor >= 0
             AND returned_minor + consumed_minor + forfeited_minor = amount_minor
@@ -49,6 +50,11 @@ defmodule Patchbay.Offers.Placement do
         END
         """,
         message: "an ended placement settles exactly what was bid"
+      )
+
+      check_constraint(:settle_tx_hash, "offer_placements_tx_hash_format",
+        check: "settle_tx_hash IS NULL OR settle_tx_hash ~ '^0x[0-9a-f]{64}$'",
+        message: "a transaction hash is lowercase hex"
       )
     end
 
@@ -74,9 +80,6 @@ defmodule Patchbay.Offers.Placement do
   attributes do
     uuid_primary_key(:id)
 
-    attribute(:account_id, :uuid, allow_nil?: false)
-    attribute(:hold_id, :uuid, allow_nil?: false)
-
     attribute(:amount_minor, :integer, allow_nil?: false, public?: true)
 
     # The terms it was won under, from its bid.
@@ -101,11 +104,13 @@ defmodule Patchbay.Offers.Placement do
     attribute(:returned_minor, :integer, allow_nil?: true, public?: true)
     attribute(:consumed_minor, :integer, allow_nil?: true, public?: true)
     attribute(:forfeited_minor, :integer, allow_nil?: true, public?: true)
+
+    # The escrow settlement of an ended placement's bid, once it confirms.
+    attribute(:settle_tx_hash, :string, allow_nil?: true, public?: true)
   end
 
   identities do
     identity(:unique_bid, [:bid_id])
-    identity(:unique_hold, [:hold_id])
     identity(:one_active_per_slot, [:slot_id], where: expr(status == :active))
   end
 

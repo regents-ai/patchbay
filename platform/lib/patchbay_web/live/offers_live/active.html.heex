@@ -28,7 +28,7 @@
         <li :for={placement <- @mine.showing} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong>{slot_label(placement.slot)}</strong>
-            <span>{credits(placement.amount_minor)}</span>
+            <span>{usdc(placement.amount_minor)}</span>
           </header>
           <.offer_copy version={placement.version} />
           <p class="patchbay-muted">
@@ -38,9 +38,7 @@
             )}
           </p>
           <p>
-            If a higher bid replaced it now, you would get back {credits(
-              unused(placement, @as_of)
-            )}.
+            If a higher bid replaced it now, you would get back {usdc(unused(placement, @as_of))}.
           </p>
         </li>
       </ol>
@@ -53,7 +51,7 @@
         <li :for={bid <- @mine.leading} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong>{slot_label(bid.slot)}</strong>
-            <span>{credits(bid.amount_minor)}</span>
+            <span>{usdc(bid.amount_minor)}</span>
           </header>
           <.offer_copy version={bid.version} />
           <p class="patchbay-muted">
@@ -62,7 +60,7 @@
             <% else %>
               Starts as soon as the slot is free.
             <% end %>
-            Someone must bid at least {credits(
+            Someone must bid at least {usdc(
               Terms.replacement_minimum(bid.amount_minor, opening(bid.slot.market))
             )} to take your place.
           </p>
@@ -87,7 +85,7 @@
         <li :for={bid <- @mine.waiting} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong>{slot_label(bid.slot)}</strong>
-            <span>{credits(bid.amount_minor)}</span>
+            <span>{usdc(bid.amount_minor)}</span>
           </header>
           <.offer_copy version={bid.version} />
           <p class="patchbay-muted">
@@ -104,7 +102,7 @@
       <li :for={market <- @ranked} class="pb-offmod-item pb-offers-market">
         <header class="pb-offmod-head">
           <.link navigate={site_path(market.site)}><strong>{site_name(market.site)}</strong></.link>
-          <span>Highest bid {credits(top_bid(market, @as_of))}</span>
+          <span>Highest bid {usdc(top_bid(market, @as_of))}</span>
         </header>
         <ol class="pb-offers-slots">
           <.offer_slot

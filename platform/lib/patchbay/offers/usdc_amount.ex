@@ -1,15 +1,16 @@
-defmodule Patchbay.Offers.CreditsAmount do
+defmodule Patchbay.Offers.UsdcAmount do
   @moduledoc """
-  Credit amounts as Agent Offers reads and writes them.
+  USDC amounts as Agent Offers reads and writes them.
 
-  One hundredth of a Credit is one integer minor unit. An amount arrives as a
+  One cent (0.01 USDC, 10,000 of USDC's base units on Base) is one integer
+  minor unit. An amount arrives as a
   decimal string with at most two fractional digits ("12", "12.5", "12.50")
   and is never parsed through a float. Signs, exponents, spaces and more than
   two fractional digits are refused, as is anything with more than fifteen
   whole digits, so every amount fits a `bigint` column.
   """
 
-  # 999,999,999,999,999.99 Credits, the most fifteen whole digits can say.
+  # 999,999,999,999,999.99 USDC, the most fifteen whole digits can say.
   @max_minor 99_999_999_999_999_999
 
   @doc "The largest amount, in minor units, an offer amount may be."
@@ -19,9 +20,9 @@ defmodule Patchbay.Offers.CreditsAmount do
   @doc """
   The minor units for a decimal string, or `:error`.
 
-      iex> Patchbay.Offers.CreditsAmount.parse("11.02")
+      iex> Patchbay.Offers.UsdcAmount.parse("11.02")
       {:ok, 1102}
-      iex> Patchbay.Offers.CreditsAmount.parse("1e3")
+      iex> Patchbay.Offers.UsdcAmount.parse("1e3")
       :error
   """
   @spec parse(term()) :: {:ok, non_neg_integer()} | :error
@@ -41,7 +42,7 @@ defmodule Patchbay.Offers.CreditsAmount do
   @doc """
   The decimal string for minor units, always with two fractional digits.
 
-      iex> Patchbay.Offers.CreditsAmount.format(12650)
+      iex> Patchbay.Offers.UsdcAmount.format(12650)
       "126.50"
   """
   @spec format(non_neg_integer()) :: String.t()

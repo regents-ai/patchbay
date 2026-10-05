@@ -19,11 +19,11 @@ defmodule PatchbayWeb.OffersLive.Markets do
   import Ash.Expr, only: [expr: 1]
 
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Offers.CreditsAmount
   alias Patchbay.Offers.Market
   alias Patchbay.Offers.Returns
   alias Patchbay.Offers.Slot
   alias Patchbay.Offers.Terms
+  alias Patchbay.Offers.UsdcAmount
 
   @ranked 50
 
@@ -86,8 +86,8 @@ defmodule PatchbayWeb.OffersLive.Markets do
     )
   end
 
-  @doc "An amount of Credits in words."
-  def credits(minor), do: "#{CreditsAmount.format(minor)} Credits"
+  @doc "An amount of USDC in words."
+  def usdc(minor), do: "#{UsdcAmount.format(minor)} USDC"
 
   @doc false
   def responses(1), do: "response"
@@ -156,16 +156,16 @@ defmodule PatchbayWeb.OffersLive.Markets do
       <%= if @showing do %>
         <.offer_copy version={@showing.version} />
         <p>
-          <strong>{credits(@showing.amount_minor)}</strong> by <.owner profile={@showing.owner} />
+          <strong>{usdc(@showing.amount_minor)}</strong> by <.owner profile={@showing.owner} />
         </p>
         <p class="patchbay-muted">
           Ends {moment(@showing.expires_at)} · {time_left(@showing.expires_at, @now)}
         </p>
         <p>
-          Replace it now with at least {credits(
+          Replace it now with at least {usdc(
             Terms.replacement_minimum(@showing.amount_minor, @opening)
           )};
-          its owner would get back {credits(
+          its owner would get back {usdc(
             Terms.unused(@showing.amount_minor, @showing.expires_at, @now)
           )}.
         </p>
@@ -173,23 +173,23 @@ defmodule PatchbayWeb.OffersLive.Markets do
         <div class="pb-offers-next">
           <%= if @next_bid do %>
             <p>
-              Next: <strong>{credits(@next_bid.amount_minor)}</strong>
+              Next: <strong>{usdc(@next_bid.amount_minor)}</strong>
               by <.owner profile={@next_bid.owner} />, starting when this one ends.
             </p>
             <.offer_copy version={@next_bid.version} />
             <p class="patchbay-muted">
-              Outbid it with at least {credits(
+              Outbid it with at least {usdc(
                 Terms.replacement_minimum(@next_bid.amount_minor, @opening)
               )}.
             </p>
           <% else %>
             <p class="patchbay-muted">
-              Next: no one yet. A bid for the next 72 hours starts at {credits(@opening)}.
+              Next: no one yet. A bid for the next 72 hours starts at {usdc(@opening)}.
             </p>
           <% end %>
         </div>
       <% else %>
-        <p><strong>Empty</strong> · opens at {credits(@opening)}</p>
+        <p><strong>Empty</strong> · opens at {usdc(@opening)}</p>
       <% end %>
 
       <p class="pb-offmod-figures">

@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.OffersLive.Expired do
   @moduledoc """
   A signed-in advertiser's past Offers: every placement that has ended,
-  with why it ended and where its Credits went (paid, returned, used,
+  with why it ended and where its USDC went (paid, returned, used,
   forfeited, and what it cost in the end), newest first; and every bid that
   did not win, which came back in full, with why.
 
@@ -14,7 +14,7 @@ defmodule PatchbayWeb.OffersLive.Expired do
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   import PatchbayWeb.OffersLive.Markets,
-    only: [credits: 1, duration: 1, offer_copy: 1, slot_label: 1]
+    only: [usdc: 1, duration: 1, offer_copy: 1, slot_label: 1]
 
   require Ash.Query
 

@@ -296,14 +296,14 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert html =~ "Time-based fallback placement. Zero responses are possible."
       assert html =~ "Site slot 2 was empty in 1 response"
       assert html =~ "1 response could carry Offers"
-      assert html =~ "<strong>Empty</strong> · opens at 1.00 Credits"
+      assert html =~ "<strong>Empty</strong> · opens at 1.00 USDC"
 
       site_one = slot_text(view, "#pb-offers-markets .pb-offers-slot", "Site one")
-      assert site_one =~ "10.01 Credits by #{owner.agent_name}"
-      assert site_one =~ "Replace it now with at least 11.02 Credits"
-      assert site_one =~ "Next: 20.00 Credits by #{owner.agent_name}"
+      assert site_one =~ "10.01 USDC by #{owner.agent_name}"
+      assert site_one =~ "Replace it now with at least 11.02 USDC"
+      assert site_one =~ "Next: 20.00 USDC by #{owner.agent_name}"
       assert site_one =~ "Next one"
-      assert site_one =~ "Outbid it with at least 22.00 Credits"
+      assert site_one =~ "Outbid it with at least 22.00 USDC"
       assert site_one =~ "Returned in 1 response"
 
       assert slot_text(view, "#pb-offers-general-slots .pb-offers-slot", "General two") =~
@@ -324,17 +324,17 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       showing = slot_text(view, "#pb-offers-mine-showing-list li", "Showing one")
       assert showing =~ "#{origin} · Slot 1"
-      assert showing =~ "10.01 Credits"
-      assert showing =~ ~r/you would get back 10\.0[01] Credits/
+      assert showing =~ "10.01 USDC"
+      assert showing =~ ~r/you would get back 10\.0[01] USDC/
 
       next = slot_text(view, "#pb-offers-mine-next-list li", "Next one")
       assert next =~ "#{origin} · Slot 1"
-      assert next =~ "20.00 Credits"
+      assert next =~ "20.00 USDC"
       assert next =~ "Starts when the current Offer ends"
-      assert next =~ "at least 22.00 Credits to take your place"
+      assert next =~ "at least 22.00 USDC to take your place"
 
       ranked = slot_text(view, "#pb-offers-ranked-list li", origin)
-      assert ranked =~ "Highest bid 10.01 Credits"
+      assert ranked =~ "Highest bid 10.01 USDC"
       assert ranked =~ "Showing one"
 
       refute html =~ "Sign in at the top of the page"
@@ -345,7 +345,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       refute signed_out =~ "Yours, showing now"
     end
 
-    test "past Offers show why each ended, where its Credits went, and bids that came back",
+    test "past Offers show why each ended, where its USDC went, and bids that came back",
          %{conn: conn, site: site, owner: owner} do
       site
       |> place(2, approved_version(owner, "Replaced two", site), amount_minor: 1000)
@@ -364,17 +364,17 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       replaced = slot_text(view, "#pb-offers-ended-list li", "Replaced two")
       assert replaced =~ "Replaced by a higher bid"
       assert replaced =~ "ran for 1 d 0 h"
-      assert replaced =~ "Paid 10.00 Credits · used 7.00 Credits · returned 3.00 Credits"
-      assert replaced =~ "forfeited 0.00 Credits"
-      assert replaced =~ "Cost in the end: 7.00 Credits"
+      assert replaced =~ "Paid 10.00 USDC · used 7.00 USDC · returned 3.00 USDC"
+      assert replaced =~ "forfeited 0.00 USDC"
+      assert replaced =~ "Cost in the end: 7.00 USDC"
 
       removed = slot_text(view, "#pb-offers-ended-list li", "Removed three")
       assert removed =~ "Removed by a moderator"
-      assert removed =~ "used 3.00 Credits · returned 0.00 Credits · forfeited 2.00 Credits"
-      assert removed =~ "Cost in the end: 5.00 Credits"
+      assert removed =~ "used 3.00 USDC · returned 0.00 USDC · forfeited 2.00 USDC"
+      assert removed =~ "Cost in the end: 5.00 USDC"
 
       beaten = slot_text(view, "#pb-offers-returned-list li", "Beaten next")
-      assert beaten =~ "7.00 Credits returned"
+      assert beaten =~ "7.00 USDC returned"
       assert beaten =~ "A higher bid took the next period."
 
       {:ok, _view, someone_else} = live(signed_in(conn, advertiser()), "/offers/expired")

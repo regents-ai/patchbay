@@ -36,8 +36,14 @@
 
     <h2 id="pb-offers-price">Prices</h2>
     <p>
-      Prices are in Credits, one Credit to one US dollar. An empty slot opens at {@minimum} Credits
-      unless the site has set its own opening price.
+      Prices are in USDC on Base. An empty slot opens at {@minimum} USDC unless the site has set
+      its own opening price.
+    </p>
+    <p>
+      When you bid, your wallet signs once to move the amount into the Offers escrow on Base, where
+      it stays until your bid is decided or your Offer ends. A bid that does not win comes back in
+      full. If a bid is ever left unsettled for 14 days, anyone can send it back to your wallet,
+      including you.
     </p>
     <p>
       To replace an Offer that is showing, bid at least ten percent more than it. Yours starts at
