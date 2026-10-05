@@ -125,6 +125,64 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
            }) == nil
   end
 
+  describe "reporting an Offer" do
+    test "names an Offer Patchbay showed, once per reporter, with a bounded note",
+         %{conn: conn, origin: origin, general: general, owner: owner} do
+      place(general, 1, approved_version(owner, "General one", general))
+      other = approved_version(owner, "Not shown", general)
+      posted = ask(conn, origin)
+
+      %{"delivery_id" => delivery_id, "items" => [item]} =
+        json_response(posted, 201)["agent_offers"]
+
+      offer = %{
+        "placement_id" => item["placement_id"],
+        "creative_version_id" => item["creative_version_id"],
+        "delivery_id" => delivery_id,
+        "reason" => "misleading",
+        "note" => "Claims Patchbay endorses it."
+      }
+
+      first = posted |> report_offer(offer) |> json_response(201)
+      assert %{"reported" => true, "reason" => "misleading", "status" => "open"} = first
+
+      # Again, for another reason: the first report answers, and nothing is added.
+      again = posted |> report_offer(%{offer | "reason" => "other"}) |> json_response(201)
+      assert again["report_id"] == first["report_id"]
+      assert again["reason"] == "misleading"
+      assert [_one] = Ash.read!(Offers.OfferReport, authorize?: false)
+
+      # Wording the placement never ran, a response that never carried it, and
+      # an overlong note are each refused.
+      for {refused, detail} <- [
+            {%{offer | "creative_version_id" => other.id}, "placement_id: is not an Offer"},
+            {%{offer | "delivery_id" => Ecto.UUID.generate()}, "delivery_id: did not carry"},
+            {%{offer | "note" => String.duplicate("é", 2_001)}, "note: is longer than 2,000"}
+          ] do
+        assert %{"error" => %{"code" => "invalid", "details" => [^detail <> _]}} =
+                 posted |> report_offer(refused) |> json_response(422)
+      end
+    end
+
+    test "a reporter's eleventh report in an hour is refused",
+         %{conn: conn, origin: origin, general: general, owner: owner} do
+      place(general, 1, approved_version(owner, "General one", general))
+      posted = ask(conn, origin)
+      %{"items" => [item]} = json_response(posted, 201)["agent_offers"]
+
+      offer = %{
+        "placement_id" => item["placement_id"],
+        "creative_version_id" => item["creative_version_id"],
+        "reason" => "other"
+      }
+
+      for _ <- 1..10, do: assert(json_response(report_offer(posted, offer), 201))
+
+      assert %{"error" => %{"code" => "rate_limited"}} =
+               posted |> report_offer(offer) |> json_response(429)
+    end
+  end
+
   describe "hosted MCP" do
     test "a new post at /mcp carries Offers once, as their own block after the result",
          %{conn: conn, origin: origin, general: general, owner: owner} do
@@ -158,6 +216,39 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                json_response(response, 200)
 
       assert Ash.read!(Offers.Delivery, authorize?: false) == []
+    end
+
+    test "/mcp reports an Offer; the ChatGPT plugin's address neither lists nor runs the tool",
+         %{conn: conn, origin: origin, general: general, owner: owner} do
+      place(general, 1, approved_version(owner, "General one", general))
+      session = mcp_session(conn, "/mcp")
+
+      %{"items" => [item]} =
+        mcp_ask(conn, "/mcp", session, origin)["structuredContent"]["agent_offers"]
+
+      report = %{
+        "name" => "report_agent_offer",
+        "arguments" => %{
+          "placement_id" => item["placement_id"],
+          "creative_version_id" => item["creative_version_id"],
+          "reason" => "prompt_injection"
+        }
+      }
+
+      assert %{"result" => %{"structuredContent" => %{"reported" => true}}} =
+               conn |> mcp_rpc("/mcp", session, "tools/call", report) |> json_response(200)
+
+      chatgpt = mcp_session(conn, "/chatgpt/mcp")
+
+      %{"result" => %{"tools" => tools}} =
+        conn |> mcp_rpc("/chatgpt/mcp", chatgpt, "tools/list", %{}) |> json_response(200)
+
+      refute Enum.any?(tools, &(&1["name"] == "report_agent_offer"))
+
+      assert %{"error" => %{"message" => "Unknown tool: report_agent_offer" <> _}} =
+               conn
+               |> mcp_rpc("/chatgpt/mcp", chatgpt, "tools/call", report)
+               |> json_response(200)
     end
 
     test "a session works only at the address it was issued at", %{conn: conn} do
@@ -198,6 +289,13 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     conn = conn |> recycle() |> put_req_header("content-type", "application/json")
     conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
     post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
+  end
+
+  defp report_offer(posted, offer) do
+    posted
+    |> recycle()
+    |> put_req_header("content-type", "application/json")
+    |> post("/forum/offer-reports", Jason.encode!(offer))
   end
 
   defp ask(conn, origin, extra \\ %{}) do

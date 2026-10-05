@@ -160,7 +160,7 @@ defmodule PatchbayWeb.MCPController do
   defp handle("resources/read", _params, _caller),
     do: {:error, -32_602, "Name the resource to read by its uri."}
 
-  defp handle("tools/list", _params, _caller), do: {:ok, %{tools: Tools.list()}}
+  defp handle("tools/list", _params, caller), do: {:ok, %{tools: Tools.list(caller.surface)}}
 
   defp handle("tools/call", %{"name" => name} = params, caller) when is_binary(name) do
     case Tools.call(name, Map.get(params, "arguments") || %{}, caller) do

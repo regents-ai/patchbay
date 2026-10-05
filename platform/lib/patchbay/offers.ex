@@ -58,5 +58,9 @@ defmodule Patchbay.Offers do
     resource(Patchbay.Offers.ModerationAction)
     resource(Patchbay.Offers.Delivery)
     resource(Patchbay.Offers.DeliveryItem)
+
+    resource Patchbay.Offers.OfferReport do
+      define(:file_offer_report, action: :file, args: [:reporter, :surface])
+    end
   end
 end

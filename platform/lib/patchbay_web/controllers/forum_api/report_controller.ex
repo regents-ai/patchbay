@@ -236,6 +236,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
+  def report_offer(conn, params) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, report} <-
+           Participation.report_offer(session_id, current_profile(conn), :http_api, params) do
+      conn
+      |> put_status(:created)
+      |> json(Participation.offer_report_answer(report))
+    else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
   def subscribe(conn, params) do
     with {:ok, session_id} <- established_session(conn),
          {:ok, subscription} <- Participation.follow(session_id, current_profile(conn), params) do

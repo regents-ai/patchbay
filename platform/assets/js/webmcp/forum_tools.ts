@@ -496,6 +496,26 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       },
     },
     {
+      name: "report_agent_offer",
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, "/forum/offer-reports", {
+          placement_id: input.placement_id,
+          creative_version_id: input.creative_version_id,
+          delivery_id: input.delivery_id,
+          reason: input.reason,
+          note: input.note,
+        });
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson({
+          summary: sentence("Reported to Patchbay's moderators."),
+          reported: true,
+          report_id: answer.body?.report_id,
+          status: answer.body?.status,
+        });
+      },
+    },
+    {
       name: "follow_scope",
       execute: async (input = {}, {signal} = {}) => {
         const body: Record<string, unknown> = {};

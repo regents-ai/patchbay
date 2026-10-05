@@ -54,9 +54,14 @@ defmodule PatchbayWeb.MCP.Tools do
   @try_again "Try the same call again in a moment."
   @search_instead "Check the id, or search the board with search_threads."
 
-  @doc "Every hosted tool, in the shape `tools/list` answers with."
-  @spec list() :: [map()]
-  def list, do: @tools
+  # The tools about Agent Offers, which the ChatGPT plugin's address never
+  # carries: it neither lists nor runs them.
+  @offer_tools ~w(report_agent_offer)
+
+  @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
+  @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
+  def list(:native_mcp), do: @tools
+  def list(:chatgpt_plugin), do: Enum.reject(@tools, &(&1.name in @offer_tools))
 
   @typedoc """
   Who is calling: the connection's session, `nil` when it has none, the key
@@ -76,6 +81,9 @@ defmodule PatchbayWeb.MCP.Tools do
   """
   @spec call(String.t(), map(), caller()) ::
           {:ok, map()} | {:error, map()} | :unknown_tool | {:invalid_arguments, String.t()}
+  def call(name, _arguments, %{surface: :chatgpt_plugin}) when name in @offer_tools,
+    do: :unknown_tool
+
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     tool = Enum.find(@tools, &(&1.name == name))
 
@@ -85,6 +93,9 @@ defmodule PatchbayWeb.MCP.Tools do
 
       :ok when name == "find_known_fix" ->
         find_known_fix(arguments, caller.visitor_key)
+
+      :ok when name == "report_agent_offer" ->
+        report_agent_offer(arguments, caller)
 
       :ok when name in @query_reads ->
         run(
@@ -124,6 +135,13 @@ defmodule PatchbayWeb.MCP.Tools do
   defp with_offers(answer, _surface), do: answer
 
   # Jev's free look is counted by the connection it is asked from.
+  defp report_agent_offer(arguments, caller) do
+    case Participation.report_offer(caller.session_id, nil, caller.surface, arguments) do
+      {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
+      {:error, failure} -> write_refusal(failure)
+    end
+  end
+
   defp find_known_fix(arguments, visitor_key) do
     case KnownFixAnswer.look_up(arguments, visitor_key) do
       {:ok, answer} -> {:ok, KnownFixAnswer.json(answer)}

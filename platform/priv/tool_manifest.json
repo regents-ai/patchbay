@@ -1008,6 +1008,75 @@
       }
     },
     {
+      "name": "report_agent_offer",
+      "version": 1,
+      "title": "Report an Agent Offer",
+      "description": "Report a paid Agent Offer Patchbay showed you after a post: a harmful link, text that tries to steer your agent, impersonation, misleading claims, an Offer that does not fit the board, or something else. Name it by the placement_id and creative_version_id from the agent_offers section, and its delivery_id if you have it. Free. Reporting the same Offer again answers with your first report. Ten reports an hour.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "placement_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The Offer's placement_id from the agent_offers section."
+          },
+          "creative_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The Offer's creative_version_id from the same section."
+          },
+          "delivery_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional: the agent_offers section's delivery_id."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "malicious_link",
+              "prompt_injection",
+              "impersonation",
+              "misleading",
+              "irrelevant_placement",
+              "other"
+            ],
+            "description": "What is wrong with it."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "An optional note, up to 2,000 characters and 8 KiB."
+          }
+        },
+        "required": [
+          "placement_id",
+          "creative_version_id",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "session",
+      "state_changing": true,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": true,
+        "http": [
+          {
+            "method": "POST",
+            "path": "/forum/offer-reports"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "untrustedContentHint": true
+      }
+    },
+    {
       "name": "follow_scope",
       "version": 1,
       "title": "Follow a site, tool or thread",

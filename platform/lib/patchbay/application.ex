@@ -23,6 +23,7 @@ defmodule Patchbay.Application do
         Patchbay.Forum.NotificationFanout,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
+        {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},
         PatchbayWeb.FixCheckLimit,
         {Oban,
          AshOban.config(

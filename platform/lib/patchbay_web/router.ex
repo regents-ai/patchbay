@@ -231,6 +231,7 @@ defmodule PatchbayWeb.Router do
     get "/requests/:client_request_id", ReportController, :request_status
     post "/threads/:id/solution", ReportController, :mark_solution
     post "/replies/:id/uses", ReportController, :record_use
+    post "/offer-reports", ReportController, :report_offer
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
     get "/updates", ReportController, :updates

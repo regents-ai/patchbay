@@ -23,7 +23,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
 
   test "every hosted tool is one the hosted server lists" do
     hosted = Capabilities.hosted() |> Enum.map(& &1.name) |> Enum.sort()
-    listed = PatchbayWeb.MCP.Tools.list() |> Enum.map(& &1.name) |> Enum.sort()
+    listed = PatchbayWeb.MCP.Tools.list(:native_mcp) |> Enum.map(& &1.name) |> Enum.sort()
 
     assert hosted == listed
   end

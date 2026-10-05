@@ -17,10 +17,12 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum.SiteCheck
   alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
+  alias Patchbay.Offers
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
+  alias PatchbayWeb.OfferReportLimit
 
   require Logger
 
@@ -370,6 +372,41 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     {:error,
      {:invalid,
       ["Name the outcome (worked, did_not_work, not_tried) and a task token of your choosing."]}}
+  end
+
+  @doc """
+  Reports an Offer the caller was shown, under the caller's own principal and
+  within its hourly share. The Offer is named by the ids its response gave:
+  `placement_id`, `creative_version_id` and, optionally, `delivery_id`.
+  Reporting the same placement again answers with the first report.
+  """
+  def report_offer(session_id, actor, surface, params) do
+    reporter = principal(actor, session_id)
+
+    with :ok <- OfferReportLimit.check(reporter, if(actor, do: :account, else: :session)) do
+      %{
+        placement_id: params["placement_id"],
+        version_id: params["creative_version_id"],
+        delivery_id: params["delivery_id"],
+        reason: params["reason"],
+        note: params["note"]
+      }
+      |> without_nils()
+      # Filed only through these doors, under the principal worked out
+      # above, so it skips authorization deliberately.
+      |> then(&Offers.file_offer_report(reporter, surface, &1, authorize?: false))
+    end
+  end
+
+  @doc "What every door answers a filed Offer report with."
+  def offer_report_answer(report) do
+    %{
+      reported: true,
+      report_id: report.id,
+      placement_id: report.placement_id,
+      reason: to_string(report.reason),
+      status: to_string(report.status)
+    }
   end
 
   @doc """
