@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 892 662" width="892" height="662" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<rect width="892" height="662" fill="#ffffff"/>
+<text x="10" y="24" font-size="16" font-weight="600" fill="#1a202c">Install from the official page, first try (rows: agents, columns: wallets)</text>
+<text transform="translate(231.0,142) rotate(-60)" font-size="11" fill="#2d3748">Bankr</text>
+<text transform="translate(265.0,142) rotate(-60)" font-size="11" fill="#2d3748">MetaMask</text>
+<text transform="translate(299.0,142) rotate(-60)" font-size="11" fill="#2d3748">MoonPay</text>
+<text transform="translate(333.0,142) rotate(-60)" font-size="11" fill="#2d3748">Coinbase CDP</text>
+<text transform="translate(367.0,142) rotate(-60)" font-size="11" fill="#2d3748">Coinbase Agentic</text>
+<text transform="translate(401.0,142) rotate(-60)" font-size="11" fill="#2d3748">Phantom</text>
+<text transform="translate(435.0,142) rotate(-60)" font-size="11" fill="#2d3748">Foundry Cast</text>
+<text transform="translate(469.0,142) rotate(-60)" font-size="11" fill="#2d3748">Ape</text>
+<text transform="translate(503.0,142) rotate(-60)" font-size="11" fill="#2d3748">Circle</text>
+<text transform="translate(537.0,142) rotate(-60)" font-size="11" fill="#2d3748">Safe</text>
+<text transform="translate(571.0,142) rotate(-60)" font-size="11" fill="#2d3748">Web3Signer</text>
+<text transform="translate(605.0,142) rotate(-60)" font-size="11" fill="#2d3748">Zerion</text>
+<text transform="translate(639.0,142) rotate(-60)" font-size="11" fill="#2d3748">Splits</text>
+<text transform="translate(673.0,142) rotate(-60)" font-size="11" fill="#2d3748">Privy Agent</text>
+<text transform="translate(707.0,142) rotate(-60)" font-size="11" fill="#2d3748">Tether WDK</text>
+<text transform="translate(741.0,142) rotate(-60)" font-size="11" fill="#2d3748">Turnkey tkcli</text>
+<text transform="translate(775.0,142) rotate(-60)" font-size="11" fill="#2d3748">Ethkit</text>
+<text transform="translate(809.0,142) rotate(-60)" font-size="11" fill="#2d3748">Fireblocks</text>
+<text x="202" y="171.0" font-size="11" text-anchor="end" fill="#2d3748">Muse Code</text>
+<rect x="211" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="151" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="151" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="171.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="205.0" font-size="11" text-anchor="end" fill="#2d3748">Grok Build</text>
+<rect x="211" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="185" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="185" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="205.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="239.0" font-size="11" text-anchor="end" fill="#2d3748">Hermes Agent</text>
+<rect x="211" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="219" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="219" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="239.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="273.0" font-size="11" text-anchor="end" fill="#2d3748">Claude Code</text>
+<rect x="211" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="253" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="253" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="273.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="307.0" font-size="11" text-anchor="end" fill="#2d3748">Cline</text>
+<rect x="211" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="287" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="287" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="307.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="341.0" font-size="11" text-anchor="end" fill="#2d3748">Kilo Code</text>
+<rect x="211" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="321" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="321" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="341.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="375.0" font-size="11" text-anchor="end" fill="#2d3748">Pi Agent</text>
+<rect x="211" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="355" width="32" height="32" rx="3" fill="#e53e3e"/><text x="329.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="347" y="355" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="355" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="375.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="409.0" font-size="11" text-anchor="end" fill="#2d3748">oh-my-pi</text>
+<rect x="211" y="389" width="32" height="32" rx="3" fill="#e53e3e"/><text x="227.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="245" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="389" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="389" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="409.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="443.0" font-size="11" text-anchor="end" fill="#2d3748">OpenAI Codex CLI</text>
+<rect x="211" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="423" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="423" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="443.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="477.0" font-size="11" text-anchor="end" fill="#2d3748">DeepSeek Harness</text>
+<rect x="211" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="457" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="457" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="477.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="511.0" font-size="11" text-anchor="end" fill="#2d3748">OpenCode</text>
+<rect x="211" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="491" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="491" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="511.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<text x="202" y="545.0" font-size="11" text-anchor="end" fill="#2d3748">IronClaw</text>
+<rect x="211" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="525" width="32" height="32" rx="3" fill="#553c9a"/><text x="295.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">BP</text>
+<rect x="313" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="499.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="517" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="533.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="551" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="567.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="585" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="601.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="619" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="525" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="771.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="789" y="525" width="32" height="32" rx="3" fill="#e53e3e"/><text x="805.0" y="545.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<text x="202" y="579.0" font-size="11" text-anchor="end" fill="#2d3748">Prime Agent</text>
+<rect x="211" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="227.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="245" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="261.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="279" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="295.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="313" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="329.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="347" y="559" width="32" height="32" rx="3" fill="#e53e3e"/><text x="363.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">FT</text>
+<rect x="381" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="397.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="415" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="431.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="449" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="465.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="483" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="499.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="517" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="533.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="551" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="567.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="585" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="601.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="619" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="635.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="653" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="669.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="687" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="703.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="721" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="737.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="755" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="771.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="789" y="559" width="32" height="32" rx="3" fill="#2f855a"/><text x="805.0" y="579.0" font-size="10" text-anchor="middle" fill="#ffffff">P</text>
+<rect x="10" y="606" width="12" height="12" rx="2" fill="#2f855a"/><text x="26" y="616" font-size="11" fill="#2d3748">P Pass</text>
+<rect x="77.2" y="606" width="12" height="12" rx="2" fill="#e53e3e"/><text x="93.2" y="616" font-size="11" fill="#2d3748">FT Failed</text>
+<rect x="163.0" y="606" width="12" height="12" rx="2" fill="#553c9a"/><text x="179.0" y="616" font-size="11" fill="#2d3748">BP Blocked by the agent&#x27;s policy</text>
+</svg>
