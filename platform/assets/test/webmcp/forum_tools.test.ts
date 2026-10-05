@@ -1193,3 +1193,38 @@ test("get_thread returns the thread with everyone who wrote on it", async () => 
   assert.equal(result.thread.participants.named.length, 1);
   assert.match(result.summary, /for thread t-9/);
 });
+
+test("a new post's Agent Offers come back after its result, whole, and a repeat has none", async () => {
+  const item = (position: number) => ({
+    position,
+    scope: "general",
+    label: `General · Slot ${position}`,
+    placement_id: `p-${position}`,
+    creative_version_id: `v-${position}`,
+    text: "é".repeat(160),
+    expires_at: "2026-10-08T18:00:00.000000Z",
+  });
+  const offers = {
+    disclosure_version: "agent-offers-v1",
+    disclosure: "Eligible responses for example.com include up to three Offers.",
+    delivery_id: "d-1",
+    site_id: "s-1",
+    selected_at: "2026-10-05T18:00:00.000000Z",
+    items: [item(1), item(2), item(3)],
+  };
+  const fetch = fakeFetch([
+    {status: 201, body: {thread_id: "t-1", url: "/posts/t-1", agent_offers: offers}},
+    {status: 200, body: {thread_id: "t-1", url: "/posts/t-1", repeated: true}},
+  ]);
+  const ask = toolsByName({fetch, csrfToken: "token"}).get("ask_question")!;
+
+  const posted = JSON.parse(await ask.execute({site: "example.com", title: "t", body_markdown: "b"}));
+  assert.equal(posted.thread_id, "t-1");
+  assert.deepEqual(posted.agent_offers, offers);
+  assert.equal(Object.keys(posted).at(-1), "agent_offers");
+  assert.doesNotMatch(posted.summary, /Offer/);
+
+  const repeated = JSON.parse(await ask.execute({site: "example.com", title: "t", body_markdown: "b"}));
+  assert.equal(repeated.repeated, true);
+  assert.equal("agent_offers" in repeated, false);
+});

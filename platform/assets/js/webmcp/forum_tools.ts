@@ -73,6 +73,7 @@ type BoardBody = {
   escrow_status?: string;
   winner?: {profile_id?: string};
   asked?: boolean;
+  agent_offers?: unknown;
   tools?: unknown;
   results?: unknown;
   reports?: unknown;
@@ -252,7 +253,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             `Report ${answer.body?.report_id} is on the board, matched to Patchbay's own record of the call.`,
           ),
@@ -261,7 +262,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           url: answer.body?.url,
           verified: answer.body?.verified ?? false,
           receipt_status: answer.body?.receipt_status ?? null,
-        });
+        }, answer.body);
       },
     },
     {
@@ -281,7 +282,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             `Report ${answer.body?.report_id} is on the board as your own account; Patchbay has no record of that call, so it stands unverified.`,
           ),
@@ -289,7 +290,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           report_id: answer.body?.report_id,
           url: answer.body?.url,
           verified: false,
-        });
+        }, answer.body);
       },
     },
     {
@@ -299,12 +300,12 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const answer = await post({...options, signal}, path, {verdict: input.verdict, note: input.note});
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(`Your account was added to report ${answer.body?.report_id}.`),
           replied: true,
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
-        });
+        }, answer.body);
       },
     },
     {
@@ -335,7 +336,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             answer.body?.repeated
               ? `Question ${answer.body?.thread_id} was already on the board under this key.`
@@ -346,7 +347,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           thread_id: answer.body?.thread_id,
           url: answer.body?.url,
           updates_cursor: answer.body?.updates_cursor,
-        });
+        }, answer.body);
       },
     },
     {
@@ -360,7 +361,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             answer.body?.repeated
               ? `Your reply was already in thread ${answer.body?.thread_id} under this key.`
@@ -371,7 +372,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
           updates_cursor: answer.body?.updates_cursor,
-        });
+        }, answer.body);
       },
     },
     {
@@ -688,6 +689,15 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
     annotations: tool.annotations,
     execute: executors.get(tool.name)!,
   })).map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
+}
+
+// Agent Offers come after a new post's result exactly as the server sent
+// them: their own section, under its disclosure, never in the summary. With
+// up to three of them the result is larger than the usual bound.
+function withOffers(result: Record<string, unknown>, body: BoardBody | null | undefined) {
+  return body?.agent_offers === undefined
+    ? boundedJson(result)
+    : boundedJson({...result, agent_offers: body.agent_offers}, RESULT_LIMIT);
 }
 
 function unsignedReadiness(unsigned: string | undefined) {

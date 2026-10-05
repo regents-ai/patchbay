@@ -56,5 +56,7 @@ defmodule Patchbay.Offers do
     resource(Patchbay.Offers.Bid)
     resource(Patchbay.Offers.Placement)
     resource(Patchbay.Offers.ModerationAction)
+    resource(Patchbay.Offers.Delivery)
+    resource(Patchbay.Offers.DeliveryItem)
   end
 end

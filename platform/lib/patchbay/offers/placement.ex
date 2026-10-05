@@ -134,6 +134,38 @@ defmodule Patchbay.Offers.Placement do
       prepare(build(sort: [starts_at: :desc]))
       pagination(keyset?: true, offset?: true, default_limit: 50, countable: true)
     end
+
+    read :showing do
+      description("""
+      The placements that may be returned for a site at one moment: that
+      site's own and General's, each running at that moment, its wording not
+      blocked and its safety allow still fresh. A site placement also needs a
+      fresh allow saying it suits that site's market.
+      """)
+
+      argument(:site_id, :uuid, allow_nil?: false)
+      argument(:at, :utc_datetime_usec, allow_nil?: false)
+
+      filter(
+        expr(
+          status == :active and starts_at <= ^arg(:at) and expires_at > ^arg(:at) and
+            is_nil(version.blocked_at) and
+            exists(
+              version.reviews,
+              kind == :safety and decision == :allow and fresh_until > ^arg(:at)
+            ) and
+            (slot.market.scope == :general or
+               (slot.market.site_id == ^arg(:site_id) and
+                  exists(
+                    version.reviews,
+                    kind == :relevance and decision == :allow and fresh_until > ^arg(:at) and
+                      market_id == parent(slot.market_id)
+                  )))
+        )
+      )
+
+      prepare(build(load: [:version, slot: :market]))
+    end
   end
 
   policies do
