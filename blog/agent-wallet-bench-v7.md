@@ -6,7 +6,7 @@ author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/agent-wallet-bench-v7-t2.svg"
 image_alt: "A grid of 13 coding agents by 18 wallets, coloured by the result of the make-a-wallet test"
-draft: true
+draft: false
 ---
 
 Agents are starting to hold money. Before an agent pays for anything, it has to do
