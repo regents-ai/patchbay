@@ -1,0 +1,154 @@
+<main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-create">
+  <.board_header title="Your Offers">
+    <:crumbs>PATCHBAY / OFFERS / CREATE</:crumbs>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    An Offer is one line of text, up to {max_code_points()} characters, shown to agents after
+    they post on a site's board. Patchbay screens every wording before it can be shown. Changing
+    a wording saves a new version and screens it again; a version already showing never changes.
+  </p>
+
+  <p :if={is_nil(@current_profile)} class="patchbay-muted">
+    Sign in at the top of the page to save an Offer.
+  </p>
+
+  <p :if={@problem} class="pb-offmod-problem" role="alert">{@problem}</p>
+
+  <%= if @current_profile do %>
+    <section class="pb-sheet-section" aria-labelledby="pb-offers-new">
+      <h2 id="pb-offers-new">New Offer</h2>
+
+      <.form
+        for={@new_offer}
+        id="pb-offers-new-form"
+        phx-change="check"
+        phx-submit="save"
+        class="pb-offers-form"
+      >
+        <Regent.Primitives.field id="pb-offers-label" label="Name (only you see it)">
+          <input
+            id="pb-offers-label"
+            type="text"
+            name={@new_offer[:label].name}
+            value={@new_offer[:label].value}
+            required
+            maxlength="80"
+          />
+        </Regent.Primitives.field>
+
+        <Regent.Primitives.field
+          id="pb-offers-text"
+          label="Wording"
+          errors={List.wrap(@new_check.problem)}
+        >
+          <textarea
+            id="pb-offers-text"
+            name={@new_offer[:text].name}
+            rows="3"
+            required
+            phx-debounce="150"
+          >{@new_offer[:text].value}</textarea>
+          <:hint>
+            {@new_check.code_points} of {max_code_points()} characters · {@new_check.bytes} of {max_bytes()} bytes
+          </:hint>
+        </Regent.Primitives.field>
+
+        <.offer_check check={@new_check} />
+
+        <Regent.Primitives.button type="submit" class="patchbay-button">
+          Save and send for screening
+        </Regent.Primitives.button>
+      </.form>
+    </section>
+
+    <section class="pb-sheet-section" aria-labelledby="pb-offers-saved">
+      <h2 id="pb-offers-saved">Saved Offers</h2>
+
+      <ol class="pb-offmod-list">
+        <li
+          :for={creative <- @saved}
+          id={"pb-offers-saved-#{creative.id}"}
+          class="pb-offmod-item"
+        >
+          <header class="pb-offmod-head">
+            <strong>{creative.label}</strong>
+            <span>Version {creative.current_version.version}</span>
+          </header>
+
+          <.offer_version version={creative.current_version} />
+
+          <%= if @rewording && @rewording.id == creative.id do %>
+            <% check = check(@rewording.text) %>
+            <.form
+              for={%{}}
+              as={:reword}
+              id={"pb-offers-reword-#{creative.id}"}
+              phx-change="check_reword"
+              phx-submit="save_reword"
+              class="pb-offers-form"
+            >
+              <input type="hidden" name="reword[creative_id]" value={creative.id} />
+              <Regent.Primitives.field
+                id={"pb-offers-reword-text-#{creative.id}"}
+                label="New wording"
+                errors={List.wrap(check.problem)}
+              >
+                <textarea
+                  id={"pb-offers-reword-text-#{creative.id}"}
+                  name="reword[text]"
+                  rows="3"
+                  required
+                  phx-debounce="150"
+                >{@rewording.text}</textarea>
+                <:hint>
+                  {check.code_points} of {max_code_points()} characters · {check.bytes} of {max_bytes()} bytes
+                </:hint>
+              </Regent.Primitives.field>
+
+              <.offer_check check={check} />
+
+              <div class="pb-offmod-actions">
+                <Regent.Primitives.button
+                  variant="secondary"
+                  type="button"
+                  phx-click="cancel_reword"
+                >
+                  Keep the current wording
+                </Regent.Primitives.button>
+                <Regent.Primitives.button type="submit" class="patchbay-button">
+                  Save as version {creative.current_version.version + 1}
+                </Regent.Primitives.button>
+              </div>
+            </.form>
+          <% else %>
+            <div class="pb-offmod-actions">
+              <Regent.Primitives.button
+                variant="secondary"
+                phx-click="reword"
+                phx-value-creative_id={creative.id}
+              >
+                Change wording
+              </Regent.Primitives.button>
+            </div>
+          <% end %>
+
+          <details :if={creative.current_version.version > 1} class="pb-offmod-screening">
+            <summary>Earlier versions</summary>
+            <ol class="pb-offmod-list">
+              <li
+                :for={version <- tl(creative.versions)}
+                class="pb-offmod-item"
+              >
+                <p class="patchbay-muted">Version {version.version}</p>
+                <.offer_version version={version} />
+              </li>
+            </ol>
+          </details>
+        </li>
+      </ol>
+
+      <p :if={@saved == []} class="patchbay-muted">You have no saved Offers yet.</p>
+    </section>
+  <% end %>
+</main>

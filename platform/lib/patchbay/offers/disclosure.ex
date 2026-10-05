@@ -33,14 +33,18 @@ defmodule Patchbay.Offers.Disclosure do
   """
   @spec text(map()) :: String.t()
   def text(%{disclosure: disclosure, items: items}) do
-    lines =
-      Enum.map(items, fn item ->
-        "#{item.label} (until #{DateTime.to_iso8601(item.expires_at)}): " <>
-          Jason.encode!(item.text)
-      end)
-
-    Enum.join(["Third-party Agent Offers — paid advertisements", disclosure | lines], "\n")
+    lines = Enum.map(items, &line(&1.label, &1.expires_at, &1.text))
+    Enum.join([heading(), disclosure | lines], "\n")
   end
+
+  @doc "The heading above every set of Offers a reader is shown."
+  @spec heading() :: String.t()
+  def heading, do: "Third-party Agent Offers — paid advertisements"
+
+  @doc "One Offer as a text-only reader sees it: its label, its end and its quoted words."
+  @spec line(String.t(), DateTime.t(), String.t()) :: String.t()
+  def line(label, expires_at, text),
+    do: "#{label} (until #{DateTime.to_iso8601(expires_at)}): " <> Jason.encode!(text)
 
   @doc "Appends the section after a forum result, keeping the result's fields first."
   @spec append(map(), map() | nil) :: map() | Jason.OrderedObject.t()

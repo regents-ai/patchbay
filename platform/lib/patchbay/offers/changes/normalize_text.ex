@@ -12,16 +12,6 @@ defmodule Patchbay.Offers.Changes.NormalizeText do
   alias Ash.Error.Changes.InvalidArgument
   alias Patchbay.Offers.CreativeText
 
-  @messages %{
-    invalid_utf8: "is not readable text",
-    blank: "is empty",
-    not_one_line: "must be a single line",
-    invisible_or_control: "contains an invisible or control character",
-    unusual_space: "contains a space that is not an ordinary space",
-    too_long: "is longer than #{CreativeText.max_code_points()} characters",
-    too_many_bytes: "is longer than #{CreativeText.max_bytes()} bytes"
-  }
-
   @impl true
   def change(changeset, _opts, _context) do
     case CreativeText.normalize(Ash.Changeset.get_argument(changeset, :text)) do
@@ -38,7 +28,7 @@ defmodule Patchbay.Offers.Changes.NormalizeText do
       {:error, reason} ->
         Ash.Changeset.add_error(
           changeset,
-          InvalidArgument.exception(field: :text, message: Map.fetch!(@messages, reason))
+          InvalidArgument.exception(field: :text, message: CreativeText.problem(reason))
         )
     end
   end

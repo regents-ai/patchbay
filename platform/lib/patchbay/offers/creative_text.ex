@@ -57,6 +57,20 @@ defmodule Patchbay.Offers.CreativeText do
 
   def normalize(_other), do: {:error, :invalid_utf8}
 
+  @problems %{
+    invalid_utf8: "is not readable text",
+    blank: "is empty",
+    not_one_line: "must be a single line",
+    invisible_or_control: "contains an invisible or control character",
+    unusual_space: "contains a space that is not an ordinary space",
+    too_long: "is longer than #{@max_code_points} characters",
+    too_many_bytes: "is longer than #{@max_bytes} bytes"
+  }
+
+  @doc "What is wrong with a text `normalize/1` refused, to follow the field's name."
+  @spec problem(atom()) :: String.t()
+  def problem(reason), do: Map.fetch!(@problems, reason)
+
   @doc "The number of Unicode code points in already-normalized `text`."
   @spec code_points(String.t()) :: non_neg_integer()
   def code_points(text), do: text |> String.codepoints() |> length()

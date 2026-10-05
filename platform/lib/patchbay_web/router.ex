@@ -204,6 +204,16 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # An advertiser's Offers pages are live, so a screening shows the moment it
+  # is decided.
+  scope "/offers", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/create", OffersLive.Create, :index
+    end
+  end
+
   # Agent Offers moderation is live, so a report shows the moment it is
   # filed. The page answers as though it does not exist to anyone but a
   # moderator.

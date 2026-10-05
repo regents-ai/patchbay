@@ -37,8 +37,10 @@ defmodule PatchbayWeb.OfferModerationLive do
   def mount(_params, _session, socket) do
     if !Patchbay.Config.moderator?(socket.assigns.current_profile), do: raise(NotFoundError)
 
-    if connected?(socket),
-      do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, OfferReport.topic())
+    if connected?(socket) do
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, OfferReport.topic())
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Review.topic())
+    end
 
     {:ok,
      socket
@@ -48,7 +50,9 @@ defmodule PatchbayWeb.OfferModerationLive do
   end
 
   @impl true
-  def handle_info(:offer_reports_changed, socket), do: {:noreply, reread(socket)}
+  def handle_info(changed, socket)
+      when changed in [:offer_reports_changed, :offer_reviews_changed],
+      do: {:noreply, reread(socket)}
 
   @impl true
   def handle_event("retry", _params, socket), do: {:noreply, reread(socket)}

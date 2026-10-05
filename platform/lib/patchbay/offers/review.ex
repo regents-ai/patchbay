@@ -23,7 +23,8 @@ defmodule Patchbay.Offers.Review do
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshOban]
+    extensions: [AshOban],
+    notifiers: [Ash.Notifier.PubSub]
 
   oban do
     triggers do
@@ -63,6 +64,24 @@ defmodule Patchbay.Offers.Review do
       end
     end
   end
+
+  # A decision tells every open Offers page to read again; each reads only
+  # what it may see. Advisory: a page that misses one reads on reconnect.
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    publish(:record, ["offers:reviews"], transform: &__MODULE__.changed_message/1)
+    publish(:screening_failed, ["offers:reviews"], transform: &__MODULE__.changed_message/1)
+    publish(:decide, ["offers:reviews"], transform: &__MODULE__.changed_message/1)
+  end
+
+  @doc "The PubSub topic a screening decision is announced on."
+  @spec topic() :: String.t()
+  def topic, do: "offers:reviews"
+
+  @doc false
+  def changed_message(_notification), do: :offer_reviews_changed
 
   postgres do
     table("offer_reviews")
