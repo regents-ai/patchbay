@@ -75,7 +75,7 @@ are reported separately and never change the headline numbers.
 
 ## Installing: mostly solved
 
-![A grid of 13 agents by 18 wallets for the install test. Almost every square is a pass; one wallet column is all failures, and one agent row has several failures.](/images/blog/agent-wallet-bench-v7-t1a.svg)
+[![A grid of 13 agents by 18 wallets for the install test. Almost every square is a pass; one wallet column is all failures, and one agent row has several failures.](/images/blog/agent-wallet-bench-v7-t1a.svg)](/images/blog/agent-wallet-bench-v7-t1a.svg)
 
 - 212 of 234 installs worked on the first try.
 - The one wall was Coinbase Agentic Wallet. Its wallet server is a desktop app, and
@@ -93,7 +93,7 @@ one of its own dependencies.
 
 ## Making a wallet: the hard part
 
-![A grid of 13 agents by 18 wallets for the make-a-wallet test. Most squares are grey for waiting on a person or blue-grey for inconclusive; amber squares mark passes with a plain key file; a few red squares mark failures.](/images/blog/agent-wallet-bench-v7-t2.svg)
+[![A grid of 13 agents by 18 wallets for the make-a-wallet test. Most squares are grey for waiting on a person or blue-grey for inconclusive; amber squares mark passes with a plain key file; a few red squares mark failures.](/images/blog/agent-wallet-bench-v7-t2.svg)](/images/blog/agent-wallet-bench-v7-t2.svg)
 
 | Result | Pairs |
 | --- | --- |
