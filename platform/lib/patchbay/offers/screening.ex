@@ -76,6 +76,39 @@ defmodule Patchbay.Offers.Screening do
     }
   end
 
+  @link_outcomes %{
+    "unreadable" => "A link could not be opened, so a person checks where it goes.",
+    "too_many_redirects" => "A link redirects too many times, so a person checks where it goes.",
+    "not_https" => "A link is not a secure https link, so a person checks it.",
+    "not_a_page" => "A link does not lead to a web page, so a person checks it."
+  }
+
+  @doc """
+  What one of a review's reason codes means, in words the advertiser and
+  the moderators can read.
+  """
+  @spec reason_words(String.t()) :: String.t()
+  def reason_words("screening_unavailable"),
+    do: "Screening could not run, so a person decides."
+
+  def reason_words("unsure"),
+    do: "Screening was not sure it is an ordinary advertisement, so a person decides."
+
+  def reason_words("unsure_relevance"),
+    do: "Screening was not sure it suits this board, so a person decides."
+
+  def reason_words("address_not_a_link"),
+    do: "It names a web address without a full link, so a person checks it."
+
+  def reason_words("link_" <> outcome) when is_map_key(@link_outcomes, outcome),
+    do: Map.fetch!(@link_outcomes, outcome)
+
+  def reason_words("possible_" <> choice) when is_map_key(@safety, choice),
+    do: "Possibly not allowed, so a person decides: " <> Map.fetch!(@safety, choice)
+
+  def reason_words(choice) when is_map_key(@safety, choice), do: Map.fetch!(@safety, choice)
+  def reason_words(choice) when is_map_key(@relevance, choice), do: Map.fetch!(@relevance, choice)
+
   @doc "The policy screenings follow, recorded with each decision."
   @spec policy_version() :: String.t()
   def policy_version, do: @policy_version

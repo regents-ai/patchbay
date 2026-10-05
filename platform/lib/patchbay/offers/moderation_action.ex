@@ -5,7 +5,9 @@ defmodule Patchbay.Offers.ModerationAction do
     * `:remove_placement` - ended one exact placement for improper use, with
       no refund, and promoted the committed next leader if it could start;
     * `:block_version` - stopped one wording showing anywhere, at once;
-    * `:dismiss_report` and `:confirm_report` - closed an agent's report.
+    * `:dismiss_report` and `:confirm_report` - closed an agent's report;
+    * `:allow_version` and `:refuse_version` - decided a screening that
+      needed a person.
 
   Each carries the moderator's idempotency key, so repeating a request
   answers with the first decision and never acts on whatever came next.
@@ -26,6 +28,7 @@ defmodule Patchbay.Offers.ModerationAction do
       index([:placement_id])
       index([:version_id])
       index([:report_id])
+      index([:review_id])
     end
 
     references do
@@ -34,6 +37,7 @@ defmodule Patchbay.Offers.ModerationAction do
       reference(:version, on_delete: :restrict)
       reference(:promoted_placement, on_delete: :restrict)
       reference(:report, on_delete: :restrict)
+      reference(:review, on_delete: :restrict)
     end
   end
 
@@ -43,7 +47,16 @@ defmodule Patchbay.Offers.ModerationAction do
     attribute(:kind, :atom,
       allow_nil?: false,
       public?: true,
-      constraints: [one_of: [:remove_placement, :block_version, :dismiss_report, :confirm_report]]
+      constraints: [
+        one_of: [
+          :remove_placement,
+          :block_version,
+          :dismiss_report,
+          :confirm_report,
+          :allow_version,
+          :refuse_version
+        ]
+      ]
     )
 
     attribute(:reason, :string,
@@ -95,6 +108,9 @@ defmodule Patchbay.Offers.ModerationAction do
 
     # For a dismissed or confirmed report: the report decided.
     belongs_to(:report, Patchbay.Offers.OfferReport, allow_nil?: true, public?: true)
+
+    # For an allowed or refused wording: the screening decided.
+    belongs_to(:review, Patchbay.Offers.Review, allow_nil?: true, public?: true)
   end
 
   actions do
@@ -102,7 +118,17 @@ defmodule Patchbay.Offers.ModerationAction do
 
     create :record do
       description("Records a moderator's decision, written with the change it decided.")
-      accept([:kind, :reason, :idempotency_key, :placement_id, :version_id, :report_id])
+
+      accept([
+        :kind,
+        :reason,
+        :idempotency_key,
+        :placement_id,
+        :version_id,
+        :report_id,
+        :review_id
+      ])
+
       change(relate_actor(:moderator))
     end
   end

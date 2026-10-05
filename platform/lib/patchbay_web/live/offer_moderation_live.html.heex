@@ -23,11 +23,73 @@
   </p>
 
   <%= if board = @board.value do %>
+    <section class="pb-sheet-section" aria-labelledby="pb-offmod-waiting">
+      <h2 id="pb-offmod-waiting">Waiting for a person</h2>
+      <p class="patchbay-muted">
+        Screening: {board.screening.waiting} in the queue, {board.screening.needs_person} need a person.
+        An allow counts for a day, then the wording is screened again.
+      </p>
+
+      <ol class="pb-offmod-list">
+        <li
+          :for={review <- board.waiting}
+          id={"pb-offmod-review-#{review.id}"}
+          class="pb-offmod-item"
+        >
+          <header class="pb-offmod-head">
+            <strong>{review_label(review)}</strong>
+            <span :if={review.decided_at}>{moment(review.decided_at)}</span>
+          </header>
+          <blockquote class="pb-offmod-offer">{review.version.text}</blockquote>
+          <ul class="pb-offmod-reasons">
+            <li :for={code <- review.reason_codes}>{reason_words(code)}</li>
+          </ul>
+          <p :if={review.private_reason} class="pb-offmod-figures">{review.private_reason}</p>
+          <ul :if={review.destinations != []} class="pb-offmod-screening">
+            <li :for={visit <- review.destinations}>
+              {visit["url"]} → {visit["final_url"]} ({visit["outcome"]})
+            </li>
+          </ul>
+
+          <form id={"pb-offmod-settle-#{review.id}"} phx-submit="settle" class="pb-offmod-actions">
+            <input type="hidden" name="review_id" value={review.id} />
+            <Regent.Primitives.field
+              id={"pb-offmod-settle-why-#{review.id}"}
+              label="Why (kept with the decision)"
+            >
+              <input
+                id={"pb-offmod-settle-why-#{review.id}"}
+                type="text"
+                name="reason"
+                required
+                maxlength="500"
+              />
+            </Regent.Primitives.field>
+            <Regent.Primitives.button
+              variant="secondary"
+              type="submit"
+              name="decision"
+              value="deny"
+            >
+              Refuse
+            </Regent.Primitives.button>
+            <Regent.Primitives.button
+              type="submit"
+              name="decision"
+              value="allow"
+              class="patchbay-button"
+            >
+              Allow
+            </Regent.Primitives.button>
+          </form>
+        </li>
+      </ol>
+
+      <p :if={board.waiting == []} class="patchbay-muted">Nothing is waiting for a person.</p>
+    </section>
+
     <section class="pb-sheet-section" aria-labelledby="pb-offmod-reports">
       <h2 id="pb-offmod-reports">Reports</h2>
-      <p class="patchbay-muted">
-        Screening: {board.screening.waiting} waiting, {board.screening.needs_person} need a person.
-      </p>
 
       <ol class="pb-offmod-list">
         <li
@@ -64,10 +126,10 @@
             <summary>What screening found</summary>
             <ul>
               <li :for={review <- report.version.reviews}>
-                {review_label(review.kind)} · {review_decision_label(review.decision)}{if review.decided_at,
+                {review_label(review)} · {review_decision_label(review.decision)}{if review.decided_at,
                   do: " · " <> moment(review.decided_at)}
                 <span :if={review.reason_codes != []}>
-                  · {Enum.join(review.reason_codes, ", ")}
+                  · {Enum.map_join(review.reason_codes, " ", &reason_words/1)}
                 </span>
                 <p :if={review.private_reason}>{review.private_reason}</p>
                 <ul :if={review.destinations != []}>

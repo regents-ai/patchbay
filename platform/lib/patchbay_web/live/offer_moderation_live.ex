@@ -1,12 +1,13 @@
 defmodule PatchbayWeb.OfferModerationLive do
   @moduledoc """
-  The private page where moderators look after Agent Offers: the reports
-  agents file, newest first, as they arrive; the Offers reported most, with
-  the figures that put a count in proportion; what screening found; and the
-  decisions already on record.
+  The private page where moderators look after Agent Offers: the wordings
+  screening left for a person; the reports agents file, newest first, as
+  they arrive; the Offers reported most, with the figures that put a count
+  in proportion; what screening found; and the decisions already on record.
 
-  A moderator dismisses or confirms a report, or blocks a wording so it is
-  shown nowhere from that moment. Each decision is written with its reason
+  A moderator allows or refuses a wording screening could not decide,
+  dismisses or confirms a report, or blocks a wording so it is shown nowhere
+  from that moment. Each decision is written with its reason
   and the moderator's name in the same transaction as the change. A report's
   note is the reporter's own words and is shown only as text.
 
@@ -73,6 +74,28 @@ defmodule PatchbayWeb.OfferModerationLive do
     end
   end
 
+  def handle_event("settle", %{"review_id" => id, "decision" => decision} = params, socket) do
+    with {:ok, decision} <- screening_decision(decision),
+         {:ok, review} <- fetch(Review, id),
+         {:ok, _decided} <-
+           review
+           |> Ash.Changeset.for_update(
+             :decide,
+             %{
+               decision: decision,
+               reason: params["reason"],
+               idempotency_key: Ecto.UUID.generate(),
+               fresh_for_us: Patchbay.Offers.approval_fresh_for_us()
+             },
+             actor: socket.assigns.current_profile
+           )
+           |> Ash.update() do
+      {:noreply, socket |> assign(problem: nil) |> reread()}
+    else
+      {:error, problem} -> {:noreply, assign(socket, problem: words(problem))}
+    end
+  end
+
   def handle_event("block", %{"version_id" => id} = params, socket) do
     with {:ok, version} <- fetch(CreativeVersion, id),
          {:ok, _blocked} <-
@@ -98,6 +121,10 @@ defmodule PatchbayWeb.OfferModerationLive do
   defp decision("dismissed"), do: {:ok, :dismissed}
   defp decision("confirmed"), do: {:ok, :confirmed}
   defp decision(_other), do: {:error, "That is not a decision this page makes."}
+
+  defp screening_decision("allow"), do: {:ok, :allow}
+  defp screening_decision("deny"), do: {:ok, :deny}
+  defp screening_decision(_other), do: {:error, "That is not a decision this page makes."}
 
   # The page is the moderator's own door: it reads every report and wording
   # whoever owns them, so these reads skip policy deliberately after the
@@ -126,6 +153,7 @@ defmodule PatchbayWeb.OfferModerationLive do
   defp read_board do
     {:ok,
      %{
+       waiting: waiting(),
        reports: reports(),
        ranking: ranking(),
        decisions: decisions(),
@@ -135,7 +163,7 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   # Moderator reads, as above.
   defp reports do
-    reviews = Ash.Query.sort(Review, inserted_at: :desc)
+    reviews = Review |> Ash.Query.sort(inserted_at: :desc) |> Ash.Query.load(market: :site)
 
     OfferReport
     |> Ash.Query.sort(inserted_at: :desc)
@@ -144,6 +172,16 @@ defmodule PatchbayWeb.OfferModerationLive do
       version: [{:reviews, reviews} | @figures],
       placement: [slot: [market: :site]]
     )
+    |> Ash.read!(authorize?: false)
+  end
+
+  # As above. Oldest first: the advertiser has waited longest.
+  defp waiting do
+    Review
+    |> Ash.Query.filter(decision == :needs_review)
+    |> Ash.Query.sort(decided_at: :asc)
+    |> Ash.Query.limit(@limit)
+    |> Ash.Query.load([:version, market: :site])
     |> Ash.read!(authorize?: false)
   end
 
@@ -198,8 +236,11 @@ defmodule PatchbayWeb.OfferModerationLive do
   def status_label(:confirmed), do: "Confirmed"
 
   @doc false
-  def review_label(:safety), do: "Safety check"
-  def review_label(:relevance), do: "Fit for the board"
+  def review_label(%{kind: :safety}), do: "Safety check"
+  def review_label(%{kind: :relevance, market: %{site: site}}), do: "Fit for #{site_name(site)}"
+
+  @doc false
+  def reason_words(code), do: Patchbay.Offers.Screening.reason_words(code)
 
   @doc false
   def review_decision_label(:pending), do: "waiting"
@@ -232,4 +273,6 @@ defmodule PatchbayWeb.OfferModerationLive do
   def decision_label(:confirm_report), do: "Confirmed a report"
   def decision_label(:block_version), do: "Blocked a wording"
   def decision_label(:remove_placement), do: "Removed a placement"
+  def decision_label(:allow_version), do: "Allowed a wording"
+  def decision_label(:refuse_version), do: "Refused a wording"
 end

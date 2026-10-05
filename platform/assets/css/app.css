@@ -1929,5 +1929,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offmod-offer { margin: 0; padding-left: var(--space-2); border-left: 2px solid var(--pb-line); overflow-wrap: anywhere; }
 .pb-offmod-reason { margin: 0; font-size: .875rem; overflow-wrap: anywhere; white-space: pre-wrap; }
 .pb-offmod-screening { font-size: .8125rem; overflow-wrap: anywhere; }
+.pb-offmod-reasons { margin: 0; padding-left: var(--space-2); font-size: .875rem; }
 .pb-offmod-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-1); }
 .pb-offmod-actions .rg-field { flex: 1 1 16rem; min-width: 0; }

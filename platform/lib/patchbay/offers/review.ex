@@ -249,15 +249,21 @@ defmodule Patchbay.Offers.Review do
     end
 
     update :decide do
-      description("A moderator's own decision on a review.")
-      accept([:decision, :private_reason])
+      description("A moderator allows or refuses a wording, with the reason kept privately.")
+      accept([])
       require_atomic?(false)
+      argument(:decision, :atom, allow_nil?: false, constraints: [one_of: [:allow, :deny]])
+      argument(:reason, :string, allow_nil?: false, constraints: [min_length: 1, max_length: 500])
+      argument(:idempotency_key, :string, allow_nil?: false, constraints: [max_length: 200])
       argument(:fresh_for_us, :integer, allow_nil?: false, constraints: [min: 0])
+      change(set_attribute(:decision, arg(:decision)))
+      change(set_attribute(:private_reason, arg(:reason)))
       change(set_attribute(:decided_by_profile_id, actor(:id)))
       change(set_attribute(:model, nil))
       # A moderator's decision stands over any screening still waiting.
       change(set_attribute(:screen_requested_at, nil))
       change(Patchbay.Offers.Changes.RecordDecision)
+      change({Patchbay.Offers.Changes.RecordModeration, kind: :from_argument})
     end
   end
 
@@ -276,6 +282,10 @@ defmodule Patchbay.Offers.Review do
 
     policy action(:request_relevance) do
       authorize_if(actor_present())
+    end
+
+    policy action(:decide) do
+      authorize_if(Patchbay.Offers.Checks.Moderator)
     end
   end
 end

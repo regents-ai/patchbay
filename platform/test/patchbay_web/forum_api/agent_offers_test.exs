@@ -243,6 +243,44 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       # The blocked wording is shown nowhere from then on.
       assert json_response(ask(conn, origin), 201)["agent_offers"] == nil
     end
+
+    test "a wording screening left for a person is allowed there, for a day, on record",
+         %{conn: conn, owner: owner} do
+      {:ok, creative} = Offers.create_creative("Mine", "Try https://broken.example", actor: owner)
+      %{current_version: version} = Ash.load!(creative, :current_version, actor: owner)
+
+      Patchbay.Repo.query!(
+        """
+        UPDATE offer_reviews
+           SET decision = 'needs_review', reason_codes = '{link_unreadable}',
+               decided_at = now(), screen_requested_at = NULL
+         WHERE version_id = $1
+        """,
+        [Ecto.UUID.dump!(version.id)]
+      )
+
+      moderator = moderator()
+      {:ok, view, html} = conn |> signed_in(moderator) |> live("/admin/offers")
+      assert html =~ "A link could not be opened"
+
+      [review] = Ash.read!(Offers.Review, authorize?: false)
+
+      view
+      |> form("#pb-offmod-settle-#{review.id}", %{"reason" => "The page opens for me."})
+      |> render_submit(%{"decision" => "allow"})
+
+      render(view)
+      assert render_async(view) =~ "Nothing is waiting for a person."
+
+      review = Ash.get!(Offers.Review, review.id, authorize?: false)
+      assert review.decision == :allow
+      assert DateTime.diff(review.fresh_until, DateTime.utc_now(), :hour) in 23..24
+
+      assert [%{kind: :allow_version, review_id: review_id, version_id: version_id}] =
+               Ash.read!(Offers.ModerationAction, authorize?: false)
+
+      assert {review_id, version_id} == {review.id, version.id}
+    end
   end
 
   describe "hosted MCP" do

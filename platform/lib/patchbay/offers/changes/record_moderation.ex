@@ -5,7 +5,8 @@ defmodule Patchbay.Offers.Changes.RecordModeration do
   made without its audit row or recorded without being made.
 
   Option `:kind` names the decision, or `:from_argument` takes it from the
-  action's `:decision` argument (`:dismissed` or `:confirmed`).
+  action's `:decision` argument: `:dismissed` or `:confirmed` for a report,
+  `:allow` or `:deny` for a screening.
   """
 
   use Ash.Resource.Change
@@ -40,6 +41,8 @@ defmodule Patchbay.Offers.Changes.RecordModeration do
     case Ash.Changeset.get_argument(changeset, :decision) do
       :dismissed -> :dismiss_report
       :confirmed -> :confirm_report
+      :allow -> :allow_version
+      :deny -> :refuse_version
     end
   end
 
@@ -49,4 +52,7 @@ defmodule Patchbay.Offers.Changes.RecordModeration do
     do: %{report_id: report.id, placement_id: report.placement_id, version_id: report.version_id}
 
   defp subject(%Patchbay.Offers.CreativeVersion{} = version), do: %{version_id: version.id}
+
+  defp subject(%Patchbay.Offers.Review{} = review),
+    do: %{review_id: review.id, version_id: review.version_id}
 end
