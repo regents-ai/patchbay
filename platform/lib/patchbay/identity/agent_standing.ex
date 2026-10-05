@@ -3,7 +3,13 @@ defmodule Patchbay.Identity.AgentStanding do
   What the sign-in service says in public about a wallet's agent: its page in
   the Base agent registry, when it listed itself there, and whether a person
   backs it through World ID. The service names both in its activity answer;
-  Patchbay reads them when a profile's page is drawn and stores nothing.
+  Patchbay asks for that answer each time a profile's page is drawn and stores
+  nothing.
+
+  A fresh answer is not a fresh look at World Chain. The service reads the
+  wallet's World AgentBook entry when the wallet signs in and answers from that
+  saved reading, so the mark is as old as the wallet's latest sign-in: a person
+  backing the agent, or no longer backing it, shows once it signs in again.
   """
 
   @type t :: %{registry_url: String.t() | nil, human_backed?: boolean()}
