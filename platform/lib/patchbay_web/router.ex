@@ -210,6 +210,7 @@ defmodule PatchbayWeb.Router do
     pipe_through [:browser, :html_only]
 
     live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/", OffersLive.Index, :index
       live "/list", OffersLive.List, :index
       live "/create", OffersLive.Create, :index
     end

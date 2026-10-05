@@ -1934,7 +1934,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offmod-actions .rg-field { flex: 1 1 16rem; min-width: 0; }
 
 /* Agent Offers: the market list and the advertiser's own pages */
-.pb-offers-cta { margin: 0 0 var(--space-3); }
+.pb-offers-cta { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-3); }
 .pb-offers-disclosure { margin: 0; font-weight: 600; }
 .pb-offers-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .pb-offers-slot { display: grid; align-content: start; gap: var(--space-1); padding: var(--space-2); border: 1px solid var(--pb-line); }
