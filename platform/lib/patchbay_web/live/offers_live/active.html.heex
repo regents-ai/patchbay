@@ -1,0 +1,122 @@
+<main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-active">
+  <.board_header title="Active Offers">
+    <:crumbs>PATCHBAY / OFFERS / ACTIVE</:crumbs>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    Your Offers that are showing or waiting for the next period, as of {moment(@as_of)}, then
+    every site with an Offer showing, highest bid first.
+  </p>
+
+  <p class="pb-offers-cta">
+    <.link navigate={~p"/offers/list"} class="rg-button rg-button--secondary">
+      See every market
+    </.link>
+    <.link navigate={~p"/offers/expired"} class="rg-button rg-button--secondary">
+      Your past Offers
+    </.link>
+  </p>
+
+  <p :if={is_nil(@mine)} class="patchbay-muted">
+    Sign in at the top of the page to see your own Offers.
+  </p>
+
+  <%= if @mine do %>
+    <section class="pb-sheet-section" aria-labelledby="pb-offers-mine-showing">
+      <h2 id="pb-offers-mine-showing">Yours, showing now</h2>
+      <ol class="pb-offmod-list" id="pb-offers-mine-showing-list">
+        <li :for={placement <- @mine.showing} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong>{slot_label(placement.slot)}</strong>
+            <span>{credits(placement.amount_minor)}</span>
+          </header>
+          <.offer_copy version={placement.version} />
+          <p class="patchbay-muted">
+            Started {moment(placement.starts_at)} · ends {moment(placement.expires_at)} · {time_left(
+              placement.expires_at,
+              @as_of
+            )}
+          </p>
+          <p>
+            If a higher bid replaced it now, you would get back {credits(
+              unused(placement, @as_of)
+            )}.
+          </p>
+        </li>
+      </ol>
+      <p :if={@mine.showing == []} class="patchbay-muted">None of your Offers is showing.</p>
+    </section>
+
+    <section class="pb-sheet-section" aria-labelledby="pb-offers-mine-next">
+      <h2 id="pb-offers-mine-next">Yours, leading the next period</h2>
+      <ol class="pb-offmod-list" id="pb-offers-mine-next-list">
+        <li :for={bid <- @mine.leading} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong>{slot_label(bid.slot)}</strong>
+            <span>{credits(bid.amount_minor)}</span>
+          </header>
+          <.offer_copy version={bid.version} />
+          <p class="patchbay-muted">
+            <%= if placement = bid.slot.active_placement do %>
+              Starts when the current Offer ends, {moment(placement.expires_at)}, or at once if a moderator removes it.
+            <% else %>
+              Starts as soon as the slot is free.
+            <% end %>
+            Someone must bid at least {credits(
+              Terms.replacement_minimum(bid.amount_minor, opening(bid.slot.market))
+            )} to take your place.
+          </p>
+        </li>
+      </ol>
+      <p :if={@mine.leading == []} class="patchbay-muted">
+        None of your bids is leading a next period.
+      </p>
+    </section>
+
+    <section
+      :if={@mine.waiting != []}
+      class="pb-sheet-section"
+      aria-labelledby="pb-offers-mine-waiting"
+    >
+      <h2 id="pb-offers-mine-waiting">Yours, being compared</h2>
+      <p class="patchbay-muted">
+        Bids that arrive within two seconds of each other are compared together. These are not
+        decided yet.
+      </p>
+      <ol class="pb-offmod-list">
+        <li :for={bid <- @mine.waiting} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong>{slot_label(bid.slot)}</strong>
+            <span>{credits(bid.amount_minor)}</span>
+          </header>
+          <.offer_copy version={bid.version} />
+          <p class="patchbay-muted">
+            {if bid.lane == :next_period, do: "For the next period.", else: "To start now."}
+          </p>
+        </li>
+      </ol>
+    </section>
+  <% end %>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-offers-ranked">
+    <h2 id="pb-offers-ranked">Sites with an Offer showing</h2>
+    <ol class="pb-offmod-list" id="pb-offers-ranked-list">
+      <li :for={market <- @ranked} class="pb-offmod-item pb-offers-market">
+        <header class="pb-offmod-head">
+          <.link navigate={site_path(market.site)}><strong>{site_name(market.site)}</strong></.link>
+          <span>Highest bid {credits(top_bid(market, @as_of))}</span>
+        </header>
+        <ol class="pb-offers-slots">
+          <.offer_slot
+            :for={slot <- market.slots}
+            slot={slot}
+            number={slot.number}
+            opening={opening(market)}
+            now={@as_of}
+          />
+        </ol>
+      </li>
+    </ol>
+    <p :if={@ranked == []} class="patchbay-muted">No site has an Offer showing right now.</p>
+  </section>
+</main>

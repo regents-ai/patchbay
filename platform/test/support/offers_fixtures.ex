@@ -213,4 +213,41 @@ defmodule Patchbay.OffersFixtures do
     # As above.
     Ash.get!(Offers.Bid, bid_id, authorize?: false)
   end
+
+  @doc """
+  `placement` ended with `status` and where its Credits went, in the shape
+  settlement leaves behind; the slot no longer points at it.
+  """
+  def end_placement(placement, status, returned_minor, forfeited_minor) do
+    uuid = &Ecto.UUID.dump!/1
+
+    Repo.query!(
+      """
+      UPDATE offer_placements
+         SET status = $2, ended_at = starts_at + interval '1 day', returned_minor = $3,
+             forfeited_minor = $4, consumed_minor = amount_minor - $3 - $4
+       WHERE id = $1
+      """,
+      [uuid.(placement.id), Atom.to_string(status), returned_minor, forfeited_minor]
+    )
+
+    Repo.query!("UPDATE offer_slots SET active_placement_id = NULL WHERE id = $1", [
+      uuid.(placement.slot_id)
+    ])
+  end
+
+  @doc """
+  The next-period leader `bid` returned in full for `reason`; the slot no
+  longer points at it.
+  """
+  def return_bid(bid, reason) do
+    uuid = &Ecto.UUID.dump!/1
+
+    Repo.query!(
+      "UPDATE offer_bids SET status = 'returned', return_reason = $2, resolved_at = now() WHERE id = $1",
+      [uuid.(bid.id), Atom.to_string(reason)]
+    )
+
+    Repo.query!("UPDATE offer_slots SET next_bid_id = NULL WHERE id = $1", [uuid.(bid.slot_id)])
+  end
 end

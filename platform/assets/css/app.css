@@ -1943,6 +1943,8 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-slot .patchbay-muted, .pb-offers-slot .pb-offmod-figures { font-size: .8125rem; }
 .pb-offers-next { display: grid; gap: var(--space-1); padding-top: var(--space-1); border-top: 1px dashed var(--pb-line); }
 .pb-offers-market .pb-offmod-head a { overflow-wrap: anywhere; }
+.pb-offers-empty { display: none; }
+.pb-offers-empty:only-child { display: block; }
 .pb-offers-form { display: grid; gap: var(--space-2); }
 .pb-offers-form textarea { width: 100%; }
 .pb-offers-form > .rg-button { justify-self: start; }

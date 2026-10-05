@@ -314,6 +314,75 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
   end
 
+  describe "the advertiser's own pages" do
+    test "active shows what is yours now and then every site showing an Offer",
+         %{conn: conn, origin: origin, site: site, owner: owner} do
+      place(site, 1, approved_version(owner, "Showing one", site), amount_minor: 1001)
+      lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
+
+      {:ok, view, html} = live(signed_in(conn, owner), "/offers/active")
+
+      showing = slot_text(view, "#pb-offers-mine-showing-list li", "Showing one")
+      assert showing =~ "#{origin} · Slot 1"
+      assert showing =~ "10.01 Credits"
+      assert showing =~ ~r/you would get back 10\.0[01] Credits/
+
+      next = slot_text(view, "#pb-offers-mine-next-list li", "Next one")
+      assert next =~ "#{origin} · Slot 1"
+      assert next =~ "20.00 Credits"
+      assert next =~ "Starts when the current Offer ends"
+      assert next =~ "at least 22.00 Credits to take your place"
+
+      ranked = slot_text(view, "#pb-offers-ranked-list li", origin)
+      assert ranked =~ "Highest bid 10.01 Credits"
+      assert ranked =~ "Showing one"
+
+      refute html =~ "Sign in at the top of the page"
+
+      {:ok, _view, signed_out} = live(conn, "/offers/active")
+      assert signed_out =~ "Sign in at the top of the page to see your own Offers."
+      assert signed_out =~ "Showing one"
+      refute signed_out =~ "Yours, showing now"
+    end
+
+    test "past Offers show why each ended, where its Credits went, and bids that came back",
+         %{conn: conn, site: site, owner: owner} do
+      site
+      |> place(2, approved_version(owner, "Replaced two", site), amount_minor: 1000)
+      |> end_placement(:bought_out, 300, 0)
+
+      site
+      |> place(3, approved_version(owner, "Removed three", site), amount_minor: 500)
+      |> end_placement(:removed_for_policy, 0, 200)
+
+      site
+      |> lead_next(1, approved_version(owner, "Beaten next", site), 700)
+      |> return_bid(:next_leader_replaced)
+
+      {:ok, view, _html} = live(signed_in(conn, owner), "/offers/expired")
+
+      replaced = slot_text(view, "#pb-offers-ended-list li", "Replaced two")
+      assert replaced =~ "Replaced by a higher bid"
+      assert replaced =~ "ran for 1 d 0 h"
+      assert replaced =~ "Paid 10.00 Credits · used 7.00 Credits · returned 3.00 Credits"
+      assert replaced =~ "forfeited 0.00 Credits"
+      assert replaced =~ "Cost in the end: 7.00 Credits"
+
+      removed = slot_text(view, "#pb-offers-ended-list li", "Removed three")
+      assert removed =~ "Removed by a moderator"
+      assert removed =~ "used 3.00 Credits · returned 0.00 Credits · forfeited 2.00 Credits"
+      assert removed =~ "Cost in the end: 5.00 Credits"
+
+      beaten = slot_text(view, "#pb-offers-returned-list li", "Beaten next")
+      assert beaten =~ "7.00 Credits returned"
+      assert beaten =~ "A higher bid took the next period."
+
+      {:ok, _view, someone_else} = live(signed_in(conn, advertiser()), "/offers/expired")
+      refute someone_else =~ "Replaced two"
+      refute someone_else =~ "Beaten next"
+    end
+  end
+
   describe "hosted MCP" do
     test "a new post at /mcp carries Offers once, as their own block after the result",
          %{conn: conn, origin: origin, general: general, owner: owner} do

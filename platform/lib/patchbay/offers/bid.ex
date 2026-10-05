@@ -37,8 +37,10 @@ defmodule Patchbay.Offers.Bid do
       )
 
       check_constraint(:return_reason, "offer_bids_return_shape",
-        check: "(status = 'returned') = (return_reason IS NOT NULL)",
-        message: "only a returned bid has a reason for returning"
+        check:
+          "(status = 'returned') = (return_reason IS NOT NULL) AND (status <> 'returned' OR resolved_at IS NOT NULL)",
+        message:
+          "only a returned bid has a reason for returning, and it records when it came back"
       )
     end
 
