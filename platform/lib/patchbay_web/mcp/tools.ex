@@ -14,6 +14,8 @@ defmodule PatchbayWeb.MCP.Tools do
   """
 
   alias Patchbay.Forum.Capabilities
+  alias Patchbay.Offers.Disclosure
+  alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
@@ -55,10 +57,15 @@ defmodule PatchbayWeb.MCP.Tools do
   def list, do: @tools
 
   @typedoc """
-  Who is calling: the connection's session, `nil` when it has none, and the
-  key its connection is counted by (`PatchbayWeb.ClientAddress.visitor_key/1`).
+  Who is calling: the connection's session, `nil` when it has none, the key
+  its connection is counted by (`PatchbayWeb.ClientAddress.visitor_key/1`),
+  and the address it came in at (`PatchbayWeb.MCP.Session.surface/0`).
   """
-  @type caller :: %{session_id: String.t() | nil, visitor_key: String.t()}
+  @type caller :: %{
+          session_id: String.t() | nil,
+          visitor_key: String.t(),
+          surface: PatchbayWeb.MCP.Session.surface()
+        }
 
   @doc """
   Runs one tool for `caller`, with the request's `_meta`, where a wallet
@@ -83,11 +90,12 @@ defmodule PatchbayWeb.MCP.Tools do
         find_known_fix(arguments, caller.visitor_key)
 
       :ok ->
-        run(
-          name,
+        name
+        |> run(
           Map.new(arguments, fn {key, value} -> {key, param(value)} end),
           caller.session_id
         )
+        |> with_offers(caller.surface)
 
       {:error, reason} ->
         {:invalid_arguments, reason}
@@ -98,6 +106,21 @@ defmodule PatchbayWeb.MCP.Tools do
     do: {:invalid_arguments, "arguments must be an object."}
 
   def call(_name, _arguments, _caller, _meta), do: :unknown_tool
+
+  # A new post's answer, with Agent Offers after it at the hosted address
+  # every agent uses. The ChatGPT plugin's address never carries them.
+  defp with_offers({:posted, answer, post}, :native_mcp) do
+    offers =
+      post
+      |> Map.put(:surface, :native_mcp)
+      |> Serving.after_post()
+      |> Disclosure.section()
+
+    {:ok, if(offers, do: Map.put(answer, :agent_offers, offers), else: answer)}
+  end
+
+  defp with_offers({:posted, answer, _post}, :chatgpt_plugin), do: {:ok, answer}
+  defp with_offers(answer, _surface), do: answer
 
   # Jev's free look is counted by the connection it is asked from.
   defp find_known_fix(arguments, visitor_key) do
@@ -224,18 +247,27 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # The free writes; `call/4` has already refused a connection without a session.
+  # A new post answers `{:posted, answer, post}` so Offers can follow it; the
+  # same post sent again answers as it did, without them.
   defp run("ask_question", arguments, session_id) do
     case Participation.ask_question(session_id, nil, arguments) do
-      {:ok, thread} -> {:ok, thread_posted(thread)}
-      {:repeated, thread} -> {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
-      {:error, failure} -> write_refusal(failure)
+      {:ok, thread} ->
+        {:posted, thread_posted(thread),
+         %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
+
+      {:repeated, thread} ->
+        {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
+
+      {:error, failure} ->
+        write_refusal(failure)
     end
   end
 
   defp run("post_reply", %{"thread_id" => id} = arguments, session_id) do
     case Participation.post_reply(session_id, nil, id, arguments) do
       {:ok, {thread, reply}} ->
-        {:ok, reply_posted(thread, reply)}
+        {:posted, reply_posted(thread, reply),
+         %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
 
       {:repeated, {thread, reply}} ->
         {:ok, thread |> reply_posted(reply) |> Map.put(:repeated, true)}

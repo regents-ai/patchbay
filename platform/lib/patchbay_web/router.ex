@@ -84,15 +84,21 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
-  # The hosted MCP tools. One address takes every message; it keeps no stream
-  # open, so anything but a POST is told so.
+  # The hosted MCP tools. Each address takes every message for its door; it
+  # keeps no stream open, so anything but a POST is told so. `/mcp` is every
+  # agent's; `/chatgpt/mcp` is the ChatGPT plugin's, which never carries
+  # Agent Offers. The route, not the caller, says which door it is.
   # Sobelow's "CSRF via action reuse" for GET and DELETE sharing :not_allowed
   # is recorded in .sobelow-skips: that action only refuses and changes nothing.
   scope "/", PatchbayWeb do
     pipe_through :api
-    post "/mcp", MCPController, :message
+    post "/mcp", MCPController, :message, assigns: %{mcp_surface: :native_mcp}
     get "/mcp", MCPController, :not_allowed
     delete "/mcp", MCPController, :not_allowed
+
+    post "/chatgpt/mcp", MCPController, :message, assigns: %{mcp_surface: :chatgpt_plugin}
+    get "/chatgpt/mcp", MCPController, :not_allowed
+    delete "/chatgpt/mcp", MCPController, :not_allowed
   end
 
   # The free fix's look for a site's WebMCP tools, asked as an address is typed.

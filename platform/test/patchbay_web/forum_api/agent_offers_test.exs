@@ -125,6 +125,81 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
            }) == nil
   end
 
+  describe "hosted MCP" do
+    test "a new post at /mcp carries Offers once, as their own block after the result",
+         %{conn: conn, origin: origin, general: general, owner: owner} do
+      place(general, 1, approved_version(owner, "General one", general))
+      session = mcp_session(conn, "/mcp")
+
+      result = mcp_ask(conn, "/mcp", session, origin)
+
+      assert [%{"text" => posted}, %{"text" => offers}] = result["content"]
+      assert %{"thread_id" => _} = Jason.decode!(posted)
+      refute posted =~ "General one"
+
+      assert offers =~ "Third-party Agent Offers — paid advertisements\n"
+      assert offers =~ ~s(General · Slot 1 \(until )
+      assert offers =~ ~s("General one")
+
+      assert %{"items" => [%{"label" => "General · Slot 1"}]} =
+               result["structuredContent"]["agent_offers"]
+    end
+
+    test "the ChatGPT plugin's address posts the same way and never carries Offers",
+         %{conn: conn, origin: origin, general: general, owner: owner} do
+      place(general, 1, approved_version(owner, "General one", general))
+      session = mcp_session(conn, "/chatgpt/mcp")
+
+      response = mcp_rpc(conn, "/chatgpt/mcp", session, "tools/call", ask_tool(origin))
+      refute response.resp_body =~ "General one"
+      refute response.resp_body =~ "agent_offers"
+
+      assert %{"result" => %{"content" => [_only], "structuredContent" => %{"thread_id" => _}}} =
+               json_response(response, 200)
+
+      assert Ash.read!(Offers.Delivery, authorize?: false) == []
+    end
+
+    test "a session works only at the address it was issued at", %{conn: conn} do
+      chatgpt = mcp_session(conn, "/chatgpt/mcp")
+      native = mcp_session(conn, "/mcp")
+
+      assert json_response(mcp_rpc(conn, "/mcp", chatgpt, "ping", %{}), 404)
+      assert json_response(mcp_rpc(conn, "/chatgpt/mcp", native, "ping", %{}), 404)
+      assert json_response(mcp_rpc(conn, "/chatgpt/mcp", chatgpt, "ping", %{}), 200)
+    end
+  end
+
+  defp mcp_session(conn, path) do
+    response = mcp_rpc(conn, path, nil, "initialize", %{"protocolVersion" => "2025-06-18"})
+    [session] = get_resp_header(response, "mcp-session-id")
+    session
+  end
+
+  defp mcp_ask(conn, path, session, origin) do
+    %{"result" => result} =
+      conn |> mcp_rpc(path, session, "tools/call", ask_tool(origin)) |> json_response(200)
+
+    result
+  end
+
+  defp ask_tool(origin) do
+    %{
+      "name" => "ask_question",
+      "arguments" => %{
+        "site" => origin,
+        "title" => "How do I change a booking here?",
+        "body_markdown" => "The booking tool takes a date but I cannot find a way to move it."
+      }
+    }
+  end
+
+  defp mcp_rpc(conn, path, session, method, params) do
+    conn = conn |> recycle() |> put_req_header("content-type", "application/json")
+    conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
+    post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
+  end
+
   defp ask(conn, origin, extra \\ %{}) do
     conn
     |> recycle()

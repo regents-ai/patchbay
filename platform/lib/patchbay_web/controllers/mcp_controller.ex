@@ -1,7 +1,11 @@
 defmodule PatchbayWeb.MCPController do
   @moduledoc """
-  Patchbay's hosted MCP server: one address, `POST /mcp`, speaking the
-  streamable HTTP form of the Model Context Protocol.
+  Patchbay's hosted MCP server, speaking the streamable HTTP form of the
+  Model Context Protocol at two addresses: `POST /mcp`, for every agent, and
+  `POST /chatgpt/mcp`, for the ChatGPT plugin alone. The route names the
+  address (`mcp_surface`), never the caller, and a session works only at the
+  address it was issued at. Agent Offers follow a new post only at `/mcp`;
+  the ChatGPT plugin's address never carries them.
 
   It opens no stream. Every request is one JSON-RPC message answered with one
   JSON body, which the protocol allows and which is all these tools need.
@@ -23,6 +27,7 @@ defmodule PatchbayWeb.MCPController do
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Offers.Disclosure
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.MCP.Session
@@ -47,7 +52,8 @@ defmodule PatchbayWeb.MCPController do
       {:ok, session_id} ->
         answer(conn, method, request, %{
           session_id: session_id,
-          visitor_key: ClientAddress.visitor_key(conn)
+          visitor_key: ClientAddress.visitor_key(conn),
+          surface: conn.assigns.mcp_surface
         })
 
       :unknown_session ->
@@ -90,7 +96,7 @@ defmodule PatchbayWeb.MCPController do
   # Every initialize starts a new session, as the protocol says; a client that
   # had one and initializes again posts under the new one from then on.
   defp issue_session(conn, "initialize"),
-    do: put_resp_header(conn, "mcp-session-id", Session.issue())
+    do: put_resp_header(conn, "mcp-session-id", Session.issue(conn.assigns.mcp_surface))
 
   defp issue_session(conn, _method), do: conn
 
@@ -103,7 +109,7 @@ defmodule PatchbayWeb.MCPController do
         {:ok, nil}
 
       [header] ->
-        case Session.verify(header) do
+        case Session.verify(header, conn.assigns.mcp_surface) do
           {:ok, session_id} -> {:ok, session_id}
           :error -> :unknown_session
         end
@@ -172,6 +178,22 @@ defmodule PatchbayWeb.MCPController do
       "content" => [%{"type" => "text", "text" => message <> " " <> hint}],
       "structuredContent" => refusal,
       "isError" => true
+    }
+  end
+
+  # Agent Offers after a new post travel once as their own text block, under
+  # the disclosure, and after the forum result in the structured answer;
+  # they never appear inside the result's own text.
+  defp tool_result(%{agent_offers: offers} = answer, false) do
+    result = Map.delete(answer, :agent_offers)
+
+    %{
+      "content" => [
+        %{"type" => "text", "text" => Jason.encode!(result)},
+        %{"type" => "text", "text" => Disclosure.text(offers)}
+      ],
+      "structuredContent" => Disclosure.append(result, offers),
+      "isError" => false
     }
   end
 

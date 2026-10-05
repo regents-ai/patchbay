@@ -12,7 +12,7 @@ defmodule PatchbayWeb.MCPSessionTest do
   describe "the session a connection posts under" do
     test "initialize issues one, and the free writes stand under it", %{conn: conn} do
       {session, _} = initialize(conn)
-      {:ok, session_id} = Session.verify(session)
+      {:ok, session_id} = Session.verify(session, :native_mcp)
 
       asked =
         call(conn, session, "ask_question", %{
@@ -135,8 +135,8 @@ defmodule PatchbayWeb.MCPSessionTest do
       {first, _} = initialize(conn)
       {second, _} = initialize(conn)
       assert first != second
-      assert {:ok, _} = Session.verify(first)
-      assert {:ok, _} = Session.verify(second)
+      assert {:ok, _} = Session.verify(first, :native_mcp)
+      assert {:ok, _} = Session.verify(second, :native_mcp)
     end
   end
 
