@@ -12,7 +12,7 @@
 - Views: <%= @report.view_count %> · Likes: <%= length(@report.post_likes) %> on the post, <%= @report.thread_like_count %> in the thread
 <%= if @report.post_likes != [], do: "- " <> liked_by(@report.post_likes) <> "\n" %>- Permalink: <%= absolute("/posts/" <> @report.id) %>
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
-<%= if @report.jev_reading, do: "- " <> jev_line(@report.jev_reading) <> " " <> jev_caption() <> "\n" %><%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
+<%= if @report.jev_reading, do: "- " <> jev_line(@report.jev_reading) <> " " <> jev_caption() <> "\n" %><%= if @techtree, do: "- " <> techtree_line(@techtree) <> "\n" %><%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
 
 <%= cond do %>
 <% @report.body_markdown -> %>

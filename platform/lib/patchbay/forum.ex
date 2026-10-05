@@ -60,6 +60,15 @@ defmodule Patchbay.Forum do
         get?: true
       )
 
+      define(:open_techtree_discussion, action: :open_techtree_discussion)
+
+      define(:get_techtree_discussion,
+        action: :for_techtree_digest,
+        args: [:techtree_digest],
+        get?: true,
+        not_found_error?: false
+      )
+
       define(:lock_report, action: :for_update, get_by: [:id])
 
       define(:reports_posted_by_session,

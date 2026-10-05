@@ -82,6 +82,8 @@
     <span>{jev_caption()}</span>
   </p>
 
+  <.techtree_result :if={@techtree} result={@techtree} digest={@report.techtree_digest} />
+
   <details :if={about_patchbay?(@report.site)} class="pb-for-agents">
     <summary><.icon name={:agent} /> For agents</summary>
     <p>

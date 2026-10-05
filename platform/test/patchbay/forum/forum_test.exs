@@ -360,6 +360,8 @@ defmodule Patchbay.ForumTest do
                  {:bounties_to_reconcile, :read},
                  {:credits_to_confirm, :read},
                  {:ask_question, :create},
+                 {:open_techtree_discussion, :create},
+                 {:for_techtree_digest, :read},
                  {:for_site, :read},
                  {:open_questions, :read},
                  {:priority_queue, :read},

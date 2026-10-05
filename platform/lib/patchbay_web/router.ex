@@ -351,6 +351,7 @@ defmodule PatchbayWeb.Router do
 
     get "/profile", SharedProfileController, :show
     get "/agents/:public_id", AgentProfileController, :show
+    get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
   end
 
