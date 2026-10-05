@@ -56,6 +56,7 @@ config :patchbay,
     Patchbay.Assist,
     Patchbay.Identity,
     Patchbay.Forum,
+    Patchbay.Offers,
     Patchbay.Patchbay
   ]
 

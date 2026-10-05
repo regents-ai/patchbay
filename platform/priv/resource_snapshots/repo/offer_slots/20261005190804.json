@@ -1,0 +1,170 @@
+{
+  "attributes": [
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"gen_random_uuid()\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": true,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "number",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "active_generation",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "next_revision",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_slots_market_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "offer_markets"
+      },
+      "scale": null,
+      "size": null,
+      "source": "market_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "active_placement_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "next_bid_id",
+      "type": "uuid"
+    }
+  ],
+  "base_filter": null,
+  "check_constraints": [
+    {
+      "attribute": [
+        "number"
+      ],
+      "base_filter": null,
+      "check": "number BETWEEN 1 AND 3",
+      "name": "offer_slots_number_range"
+    }
+  ],
+  "create_table_options": null,
+  "custom_indexes": [],
+  "custom_statements": [
+    {
+      "after_tables": [],
+      "code?": false,
+      "down": "ALTER TABLE offer_slots DROP CONSTRAINT offer_slots_active_placement_same_slot",
+      "global?": false,
+      "name": "active_placement_in_this_slot",
+      "up": "ALTER TABLE offer_slots\n  ADD CONSTRAINT offer_slots_active_placement_same_slot\n  FOREIGN KEY (active_placement_id, id)\n  REFERENCES offer_placements (id, slot_id)\n  ON DELETE RESTRICT\n"
+    },
+    {
+      "after_tables": [],
+      "code?": false,
+      "down": "ALTER TABLE offer_slots DROP CONSTRAINT offer_slots_next_bid_same_slot",
+      "global?": false,
+      "name": "next_bid_in_this_slot",
+      "up": "ALTER TABLE offer_slots\n  ADD CONSTRAINT offer_slots_next_bid_same_slot\n  FOREIGN KEY (next_bid_id, id)\n  REFERENCES offer_bids (id, slot_id)\n  ON DELETE RESTRICT\n"
+    }
+  ],
+  "has_create_action": true,
+  "hash": "E3B7BACF9DF8021E0CA5491417301EF8E283BE953D872ADB48265D4553FEE878",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "offer_slots_unique_number_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "market_id"
+        },
+        {
+          "type": "atom",
+          "value": "number"
+        }
+      ],
+      "name": "unique_number",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
+  "multitenancy": {
+    "attribute": null,
+    "global": null,
+    "strategy": null
+  },
+  "repo": "Elixir.Patchbay.Repo",
+  "schema": null,
+  "table": "offer_slots"
+}
