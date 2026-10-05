@@ -46,7 +46,7 @@ defmodule Patchbay.Forum.EventSubscription do
           expr(
             active and expires_at > now() and
               exists(
-                Patchbay.Forum.ForumEvent,
+                events,
                 seq > parent(delivered_seq) and
                   ((parent(name) == "reply_created" and kind == :reply_posted) or
                      (parent(name) == "solution_marked" and kind == :solution_marked))
@@ -57,6 +57,13 @@ defmodule Patchbay.Forum.EventSubscription do
         worker_module_name(Patchbay.Forum.EventSubscription.Workers.Deliver)
         scheduler_module_name(Patchbay.Forum.EventSubscription.Schedulers.Deliver)
       end
+    end
+  end
+
+  relationships do
+    # The whole board event stream; the trigger's filter picks what is owed.
+    has_many :events, Patchbay.Forum.ForumEvent do
+      no_attributes?(true)
     end
   end
 
