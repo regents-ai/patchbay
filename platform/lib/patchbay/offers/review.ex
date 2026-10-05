@@ -22,7 +22,47 @@ defmodule Patchbay.Offers.Review do
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshOban]
+
+  oban do
+    triggers do
+      # A screening that fails is tried again with Oban's backoff; after the
+      # last try a moderator decides. It runs on its own queue so slow pages
+      # never hold up bidding or report reading.
+      trigger :screen do
+        action(:screen)
+        queue(:offers_review)
+        where(expr(not is_nil(screen_requested_at)))
+        max_attempts(3)
+        on_error(:screening_failed)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Offers.Review.Workers.Screen)
+        scheduler_module_name(Patchbay.Offers.Review.Schedulers.Screen)
+      end
+
+      # Copy that is showing, waiting in a window or leading the next period
+      # is screened again every six hours, well inside the day an allow
+      # counts for, so a promotion never waits on a page being visited.
+      trigger :refresh do
+        action(:rescreen)
+        queue(:offers_review)
+        scheduler_cron("*/10 * * * *")
+
+        where(
+          expr(
+            is_nil(screen_requested_at) and decided_at < ago(6, :hour) and
+              (exists(version.placements, status == :active) or
+                 exists(version.bids, status in [:held, :leading]))
+          )
+        )
+
+        max_attempts(3)
+        worker_module_name(Patchbay.Offers.Review.Workers.Refresh)
+        scheduler_module_name(Patchbay.Offers.Review.Schedulers.Refresh)
+      end
+    end
+  end
 
   postgres do
     table("offer_reviews")
@@ -124,6 +164,7 @@ defmodule Patchbay.Offers.Review do
       accept([:version_id])
       change(set_attribute(:kind, :safety))
       change(set_attribute(:screen_requested_at, &DateTime.utc_now/0))
+      change(run_oban_trigger(:screen))
     end
 
     create :request_relevance do
@@ -136,6 +177,7 @@ defmodule Patchbay.Offers.Review do
       upsert_fields([:version_id])
       change(set_attribute(:kind, :relevance))
       change(set_attribute(:screen_requested_at, &DateTime.utc_now/0))
+      change(run_oban_trigger(:screen))
       validate(Patchbay.Offers.Validations.SiteMarket)
       validate(Patchbay.Offers.Validations.OwnsVersion)
     end
@@ -144,6 +186,29 @@ defmodule Patchbay.Offers.Review do
       description("Asks for this review to be screened again.")
       accept([])
       change(set_attribute(:screen_requested_at, &DateTime.utc_now/0))
+      change(run_oban_trigger(:screen))
+    end
+
+    update :screen do
+      description("""
+      Screens this review's version and keeps the decision. Pages are
+      visited and Jev is asked, so nothing here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Offers.Screen)
+    end
+
+    update :screening_failed do
+      description("Screening's last try failed; a moderator decides.")
+      accept([])
+      change(set_attribute(:decision, :needs_review))
+      change(set_attribute(:reason_codes, ["screening_unavailable"]))
+      change(set_attribute(:fresh_until, nil))
+      change(set_attribute(:decided_at, &DateTime.utc_now/0))
+      change(set_attribute(:screen_requested_at, nil))
     end
 
     update :record do
@@ -158,6 +223,10 @@ defmodule Patchbay.Offers.Review do
         :input_sha256,
         :destinations
       ])
+
+      # The freshness depends on the decision written, so it is worked out
+      # from the changeset rather than in the database.
+      require_atomic?(false)
 
       argument(:fresh_for_us, :integer, allow_nil?: false, constraints: [min: 0])
 
@@ -182,6 +251,7 @@ defmodule Patchbay.Offers.Review do
     update :decide do
       description("A moderator's own decision on a review.")
       accept([:decision, :private_reason])
+      require_atomic?(false)
       argument(:fresh_for_us, :integer, allow_nil?: false, constraints: [min: 0])
       change(set_attribute(:decided_by_profile_id, actor(:id)))
       change(set_attribute(:model, nil))

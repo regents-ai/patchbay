@@ -22,7 +22,4 @@ defmodule Patchbay.Offers.Changes.RecordDecision do
 
     Ash.Changeset.force_change_attributes(changeset, decided_at: now, fresh_until: fresh_until)
   end
-
-  @impl true
-  def atomic(changeset, opts, context), do: {:ok, change(changeset, opts, context)}
 end

@@ -16,6 +16,18 @@ defmodule Patchbay.Offers do
 
   use Ash.Domain, otp_app: :patchbay
 
+  @doc """
+  How long a screening's allow counts, in microseconds, before the version
+  must be screened again to be shown or promoted. 24 hours unless set in
+  `config :patchbay, :offers, approval_fresh_for_us:`.
+  """
+  @spec approval_fresh_for_us() :: pos_integer()
+  def approval_fresh_for_us do
+    :patchbay
+    |> Application.get_env(:offers, [])
+    |> Keyword.get(:approval_fresh_for_us, 86_400_000_000)
+  end
+
   resources do
     resource Patchbay.Offers.Market do
       define(:get_market, action: :read, get_by: [:id])

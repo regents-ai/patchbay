@@ -77,7 +77,14 @@ defmodule Patchbay.Offers.CreativeVersion do
     belongs_to(:creative, Patchbay.Offers.Creative, allow_nil?: false, public?: true)
 
     has_many :reviews, Patchbay.Offers.Review do
-      source_attribute(:id)
+      destination_attribute(:version_id)
+    end
+
+    has_many :bids, Patchbay.Offers.Bid do
+      destination_attribute(:version_id)
+    end
+
+    has_many :placements, Patchbay.Offers.Placement do
       destination_attribute(:version_id)
     end
   end

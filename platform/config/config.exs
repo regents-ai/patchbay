@@ -35,11 +35,12 @@ config :regent_agents,
 # (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
 # forwarded to the staking contract, and the escrow's 10% pushed there, one at
 # a time so the operator wallet sends in order (`:forward_fee`, and
-# `Patchbay.Forum.Report`'s `:push_escrow_revenue`); and Jev's reading of a
-# priority report (`:read_by_jev`).
+# `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
+# priority report (`:read_by_jev`); and the screening of an Offer's wording
+# (`Patchbay.Offers.Review`'s `:screen`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
-  queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2],
+  queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2, offers_review: 2],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],
   pruner: [max_age: {7, :days}],
