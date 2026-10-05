@@ -283,6 +283,37 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
   end
 
+  describe "the market list" do
+    test "shows each slot's Offer, the least that replaces it, the next leader and the counts",
+         %{conn: conn, origin: origin, site: site, general: general, owner: owner} do
+      place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
+      lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
+      place(general, 2, approved_version(owner, "General two", general))
+      ask(conn, origin)
+
+      {:ok, view, html} = live(conn, "/offers/list?q=#{origin}")
+
+      assert html =~ "Time-based fallback placement. Zero responses are possible."
+      assert html =~ "Site slot 2 was empty in 1 response"
+      assert html =~ "1 response could carry Offers"
+      assert html =~ "<strong>Empty</strong> · opens at 1.00 Credits"
+
+      site_one = slot_text(view, "#pb-offers-markets .pb-offers-slot", "Site one")
+      assert site_one =~ "10.01 Credits by #{owner.agent_name}"
+      assert site_one =~ "Replace it now with at least 11.02 Credits"
+      assert site_one =~ "Next: 20.00 Credits by #{owner.agent_name}"
+      assert site_one =~ "Next one"
+      assert site_one =~ "Outbid it with at least 22.00 Credits"
+      assert site_one =~ "Returned in 1 response"
+
+      assert slot_text(view, "#pb-offers-general-slots .pb-offers-slot", "General two") =~
+               "Returned in 1 response"
+
+      assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
+      assert render(view) =~ "No site matches “no-such-site”."
+    end
+  end
+
   describe "hosted MCP" do
     test "a new post at /mcp carries Offers once, as their own block after the result",
          %{conn: conn, origin: origin, general: general, owner: owner} do
@@ -389,6 +420,16 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     conn = conn |> recycle() |> put_req_header("content-type", "application/json")
     conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
     post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
+  end
+
+  # A slot's words as a reader sees them, markup and line breaks aside.
+  defp slot_text(view, selector, text) do
+    view
+    |> element(selector, text)
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.text()
+    |> String.replace(~r/\s+/, " ")
   end
 
   defp signed_in(conn, profile) do

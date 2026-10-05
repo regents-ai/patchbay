@@ -119,6 +119,7 @@ defmodule Patchbay.Offers.Placement do
     belongs_to(:version, Patchbay.Offers.CreativeVersion, allow_nil?: false, public?: true)
     belongs_to(:slot, Patchbay.Offers.Slot, allow_nil?: false, public?: true)
     belongs_to(:bid, Patchbay.Offers.Bid, allow_nil?: false, public?: true)
+    has_many(:delivery_items, Patchbay.Offers.DeliveryItem)
   end
 
   calculations do

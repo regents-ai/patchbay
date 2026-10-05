@@ -1,0 +1,83 @@
+<main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-list">
+  <.board_header title="Agent Offers markets">
+    <:crumbs>PATCHBAY / OFFERS / MARKETS</:crumbs>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    Every site's board has three numbered Offer slots, and General has three more that fill
+    any site slot left empty. An Offer runs for 72 hours. A higher bid replaces it at once and
+    its owner gets back the unused share; a bid for the next period starts when it ends.
+    Prices are in Credits.
+  </p>
+
+  <p class="pb-offers-cta">
+    <.link navigate={~p"/offers/create"} class="rg-button rg-button--secondary">
+      Write an Offer
+    </.link>
+  </p>
+
+  <p class="patchbay-muted" id="pb-offers-as-of">{coverage(@window, @counting_since)}</p>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-offers-general">
+    <h2 id="pb-offers-general">General</h2>
+    <p class="pb-offers-disclosure">
+      Time-based fallback placement. Zero responses are possible.
+    </p>
+
+    <ol class="pb-offers-slots" id="pb-offers-general-slots">
+      <.offer_slot
+        :for={slot <- @general.slots}
+        slot={slot}
+        number={slot.number}
+        opening={Offers.opening_minimum_minor(@general)}
+        now={@as_of}
+        opportunities={@opportunities[slot.number]}
+      />
+    </ol>
+  </section>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-offers-sites">
+    <h2 id="pb-offers-sites">Sites</h2>
+
+    <form id="pb-offers-search" phx-change="search" phx-submit="search" role="search">
+      <Regent.Primitives.field id="pb-offers-q" label="Find a site by name or address">
+        <input id="pb-offers-q" type="search" name="q" value={@text} phx-debounce="250" />
+      </Regent.Primitives.field>
+    </form>
+
+    <ol id="pb-offers-markets" class="pb-offmod-list" phx-update="stream">
+      <li
+        :for={{dom_id, entry} <- @streams.sites}
+        id={dom_id}
+        class="pb-offmod-item pb-offers-market"
+      >
+        <header class="pb-offmod-head">
+          <.link navigate={site_path(entry.site)}><strong>{site_name(entry.site)}</strong></.link>
+          <span>
+            {entry.site.aggregates.recent_responses} {responses(
+              entry.site.aggregates.recent_responses
+            )} could carry Offers
+          </span>
+        </header>
+
+        <ol class="pb-offers-slots">
+          <.offer_slot
+            :for={number <- 1..3}
+            slot={entry.market && Enum.find(entry.market.slots, &(&1.number == number))}
+            number={number}
+            opening={Offers.opening_minimum_minor(entry.market)}
+            now={@as_of}
+          />
+        </ol>
+      </li>
+    </ol>
+
+    <p :if={@found == 0} class="patchbay-muted">
+      {if @text == "", do: "No sites yet.", else: "No site matches “#{@text}”."}
+    </p>
+
+    <Regent.Primitives.button :if={@more?} variant="secondary" phx-click="more">
+      Show more sites
+    </Regent.Primitives.button>
+  </section>
+</main>

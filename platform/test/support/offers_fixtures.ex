@@ -87,8 +87,9 @@ defmodule Patchbay.OffersFixtures do
   end
 
   @doc """
-  An active placement of `version` in `market`'s slot `number`. Options:
-  `:starts_at` (default now), so a test can place one that has run out.
+  An active placement of `version` in `market`'s slot `number`, which the
+  slot points at. Options: `:starts_at` (default now), so a test can place
+  one that has run out, and `:amount_minor` (default 100).
   """
   def place(market, number, version, opts \\ []) do
     # A fixture reads back what it set up, so it skips policies deliberately.
@@ -97,6 +98,7 @@ defmodule Patchbay.OffersFixtures do
     %{slots: slots} = Ash.load!(market, :slots, authorize?: false)
     slot = Enum.find(slots, &(&1.number == number))
     starts_at = Keyword.get(opts, :starts_at, DateTime.utc_now())
+    amount = Keyword.get(opts, :amount_minor, 100)
     [window_id, bid_id, placement_id] = for _ <- 1..3, do: Ecto.UUID.generate()
     uuid = &Ecto.UUID.dump!/1
 
@@ -117,7 +119,7 @@ defmodule Patchbay.OffersFixtures do
          target_generation, target_next_revision, idempotency_key, request_sha256, status,
          accepted_at, inserted_at)
       VALUES ($1, $2, $3, $4, $5, 'immediate', gen_random_uuid(), gen_random_uuid(),
-              100, 100, 100, 1, $6, 0, 0, gen_random_uuid()::text, 'test', 'placed', $7, $7)
+              $8, 100, 100, 1, $6, 0, 0, gen_random_uuid()::text, 'test', 'placed', $7, $7)
       """,
       [
         uuid.(bid_id),
@@ -126,7 +128,8 @@ defmodule Patchbay.OffersFixtures do
         uuid.(slot.id),
         uuid.(window_id),
         @duration_us,
-        starts_at
+        starts_at,
+        amount
       ]
     )
 
@@ -135,7 +138,7 @@ defmodule Patchbay.OffersFixtures do
       INSERT INTO offer_placements
         (id, owner_profile_id, version_id, slot_id, bid_id, account_id, hold_id, amount_minor,
          minimum_minor, policy_revision, duration_us, generation, starts_at, expires_at, status)
-      VALUES ($1, $2, $3, $4, $5, gen_random_uuid(), gen_random_uuid(), 100, 100, 1, $6, 1,
+      VALUES ($1, $2, $3, $4, $5, gen_random_uuid(), gen_random_uuid(), $8, 100, 1, $6, 1,
               $7, $7::timestamp + ($6::bigint * interval '1 microsecond'), 'active')
       """,
       [
@@ -145,11 +148,69 @@ defmodule Patchbay.OffersFixtures do
         uuid.(slot.id),
         uuid.(bid_id),
         @duration_us,
-        starts_at
+        starts_at,
+        amount
       ]
+    )
+
+    Repo.query!(
+      "UPDATE offer_slots SET active_placement_id = $1, active_generation = 1 WHERE id = $2",
+      [uuid.(placement_id), uuid.(slot.id)]
     )
 
     # As above.
     Ash.get!(Offers.Placement, placement_id, authorize?: false)
+  end
+
+  @doc """
+  `version` committed as the next-period leader of `market`'s slot `number`
+  at `amount_minor`, in the shape a won next-period window leaves behind.
+  """
+  def lead_next(market, number, version, amount_minor) do
+    # A fixture reads back what it set up, so it skips policies deliberately.
+    %{creative: %{owner_profile_id: owner_id}} = Ash.load!(version, :creative, authorize?: false)
+    # As above.
+    %{slots: slots} = Ash.load!(market, :slots, authorize?: false)
+    slot = Enum.find(slots, &(&1.number == number))
+    [window_id, bid_id] = for _ <- 1..2, do: Ecto.UUID.generate()
+    uuid = &Ecto.UUID.dump!/1
+
+    Repo.query!(
+      """
+      INSERT INTO offer_bid_windows
+        (id, slot_id, lane, target_generation, target_next_revision, opened_at, closes_at, state, settled_at)
+      VALUES ($1, $2, 'next_period', 1, 0, now(), now() + interval '2 seconds', 'won', now() + interval '2 seconds')
+      """,
+      [uuid.(window_id), uuid.(slot.id)]
+    )
+
+    Repo.query!(
+      """
+      INSERT INTO offer_bids
+        (id, owner_profile_id, version_id, slot_id, window_id, lane, account_id, hold_id,
+         amount_minor, minimum_minor, opening_minimum_minor, policy_revision, duration_us,
+         target_generation, target_next_revision, idempotency_key, request_sha256, status,
+         accepted_at, inserted_at)
+      VALUES ($1, $2, $3, $4, $5, 'next_period', gen_random_uuid(), gen_random_uuid(),
+              $6, 100, 100, 1, $7, 1, 0, gen_random_uuid()::text, 'test', 'leading', now(), now())
+      """,
+      [
+        uuid.(bid_id),
+        uuid.(owner_id),
+        uuid.(version.id),
+        uuid.(slot.id),
+        uuid.(window_id),
+        amount_minor,
+        @duration_us
+      ]
+    )
+
+    Repo.query!(
+      "UPDATE offer_slots SET next_bid_id = $1, next_revision = 1 WHERE id = $2",
+      [uuid.(bid_id), uuid.(slot.id)]
+    )
+
+    # As above.
+    Ash.get!(Offers.Bid, bid_id, authorize?: false)
   end
 end

@@ -28,6 +28,26 @@ defmodule Patchbay.Offers do
     |> Keyword.get(:approval_fresh_for_us, 86_400_000_000)
   end
 
+  @doc """
+  The global opening minimum in minor units: 1.00 Credit unless set in
+  `config :patchbay, :offers, default_minimum_minor:`.
+  """
+  @spec default_minimum_minor() :: pos_integer()
+  def default_minimum_minor do
+    :patchbay
+    |> Application.get_env(:offers, [])
+    |> Keyword.get(:default_minimum_minor, 100)
+  end
+
+  @doc """
+  The opening minimum of a market in minor units: the site's own when it
+  sets one, otherwise the global one. General, and a site whose market has
+  not been opened yet, use the global one.
+  """
+  @spec opening_minimum_minor(Patchbay.Offers.Market.t() | nil) :: pos_integer()
+  def opening_minimum_minor(%{minimum_override_minor: minor}) when is_integer(minor), do: minor
+  def opening_minimum_minor(_market), do: default_minimum_minor()
+
   resources do
     resource Patchbay.Offers.Market do
       define(:get_market, action: :read, get_by: [:id])

@@ -82,6 +82,7 @@ defmodule Patchbay.Offers.Slot do
     belongs_to(:market, Patchbay.Offers.Market, allow_nil?: false, public?: true)
     belongs_to(:active_placement, Patchbay.Offers.Placement, allow_nil?: true, public?: true)
     belongs_to(:next_bid, Patchbay.Offers.Bid, allow_nil?: true, public?: true)
+    has_many(:placements, Patchbay.Offers.Placement)
   end
 
   actions do

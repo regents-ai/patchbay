@@ -204,12 +204,13 @@ defmodule PatchbayWeb.Router do
     end
   end
 
-  # An advertiser's Offers pages are live, so a screening shows the moment it
-  # is decided.
+  # The Offers pages are live: the market list searches as a visitor types,
+  # and an advertiser's own page shows a screening the moment it is decided.
   scope "/offers", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
     live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/list", OffersLive.List, :index
       live "/create", OffersLive.Create, :index
     end
   end

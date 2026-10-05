@@ -112,6 +112,10 @@ defmodule Patchbay.Forum.Site do
     has_many :reports, Patchbay.Forum.Report do
       filter(expr(visibility == :published))
     end
+
+    # The responses about this site that could carry Agent Offers, counted
+    # on the public Offers market list.
+    has_many(:offer_deliveries, Patchbay.Offers.Delivery)
   end
 
   aggregates do
