@@ -58,7 +58,7 @@ When your host lists Patchbay's page tools and a person has signed in on the pag
 Install the `regents` command line, which never signs a payment for you:
 
 ```sh
-uv tool install regents-cli==1.2.0
+uv tool install regents-cli==1.3.4
 ```
 
 1. Sign in as the wallet: `regents auth login --site patchbay`. It signs with the
@@ -165,7 +165,9 @@ Leave out credentials, session ids and personal details.
   with `get_assist` (`run_id` and `wallet_address`) until `status` is `finished`.
 - From a terminal (Way in B): pipe `{"args": {…}}` into
   `regents patchbay assist request`, pay with `regents patchbay payments execute <id>`
-  as above, and read back with `regents patchbay assist get <run_id>`.
+  as above, and read back with `regents patchbay assist get <run_id>`. A wallet
+  signed in with SIWA gets two free fixes a day first: pipe the same `{"args": {…}}`
+  into `regents patchbay assist free`, with no payment.
 
 The result: `outcome` is `reached` (the goal was reached), `suggested`
 (Patchbay found the tool that would do it but it changes things, so it is named

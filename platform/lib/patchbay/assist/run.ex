@@ -10,6 +10,13 @@ defmodule Patchbay.Assist.Run do
   by its payer, or by the browser it was asked from. The status and the
   outcome are the only things that move after it is opened, and every move
   is announced on the run's own channel, so a page watching it follows along.
+
+  The work is a job (`:work`), queued in the same transaction that opens or
+  reopens the run, so a run that was paid for is always worked on, after a
+  restart too, and on one node only. A run whose work was lost, with its
+  node or past its time, is closed as failed by `:close_lost` and never
+  worked twice. The fee goes on to the staking contract as a job of its own
+  (`:forward_fee`) once the run is answered.
   """
 
   use Ash.Resource,
@@ -17,7 +24,8 @@ defmodule Patchbay.Assist.Run do
     domain: Patchbay.Assist,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    notifiers: [Ash.Notifier.PubSub]
+    notifiers: [Ash.Notifier.PubSub],
+    extensions: [AshOban]
 
   alias Patchbay.Assist.Types.DepositStatus
   alias Patchbay.Assist.Types.Grant
@@ -33,6 +41,55 @@ defmodule Patchbay.Assist.Run do
       one_open_run_per_payer: "status IN ('paid', 'running')",
       one_open_run_per_browser: "status IN ('paid', 'running')"
     )
+  end
+
+  oban do
+    triggers do
+      # A paid run is worked on once. A run its job lost stays running and
+      # is closed by `:close_lost`, never started again.
+      trigger :work do
+        action(:work)
+        queue(:assist)
+        where(expr(status == :paid))
+        max_attempts(1)
+        timeout(:timer.minutes(5))
+        on_error(:interrupt)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Assist.Run.Workers.Work)
+        scheduler_module_name(Patchbay.Assist.Run.Schedulers.Work)
+      end
+
+      # Past the work's own time and Oban's rescue of a dead node's jobs, a
+      # run still running has no work behind it.
+      trigger :close_lost do
+        action(:interrupt)
+        queue(:lost_runs)
+        where(expr(status == :running and started_at < ago(15, :minute)))
+        stream_with(:full_read)
+        scheduler_cron("*/5 * * * *")
+        worker_module_name(Patchbay.Assist.Run.Workers.CloseLost)
+        scheduler_module_name(Patchbay.Assist.Run.Schedulers.CloseLost)
+      end
+
+      # A forward that sent nothing is tried again; one that may have sent
+      # a deposit is never re-run blind (`Patchbay.Assist.Forward`). The
+      # hourly sweep picks up fees left waiting for a staking contract.
+      trigger :forward_fee do
+        action(:forward_fee)
+        queue(:fees)
+
+        where(
+          expr(deposit_status == :pending and status in [:finished, :assessment_pending, :failed])
+        )
+
+        max_attempts(3)
+        on_error(:fee_not_forwarded)
+        lock_for_update?(false)
+        scheduler_cron("0 * * * *")
+        worker_module_name(Patchbay.Assist.Run.Workers.ForwardFee)
+        scheduler_module_name(Patchbay.Assist.Run.Schedulers.ForwardFee)
+      end
+    end
   end
 
   pub_sub do
@@ -183,6 +240,7 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:payer_profile_id, actor(:id)))
       change(set_attribute(:browser_session_id, arg(:browser_session_id)))
       change(Patchbay.Assist.Changes.OpenFromIntent)
+      change(run_oban_trigger(:work))
     end
 
     create :open_free do
@@ -204,6 +262,40 @@ defmodule Patchbay.Assist.Run do
 
       validate(one_of(:grant, [:visitor, :member]), message: "must be visitor or member")
       change(Patchbay.Assist.Changes.OpenFree)
+      change(run_oban_trigger(:work))
+    end
+
+    create :open_agent_free do
+      description("""
+      Opens a free run for an agent signed in with SIWA, from a request the
+      door already checked, under the free fixes its wallet has left today.
+      """)
+
+      accept([])
+
+      argument(:request, :map,
+        allow_nil?: false,
+        description: "The request as `Patchbay.Assist.Request.draft/1` returned it."
+      )
+
+      argument(:grant, Grant, allow_nil?: false)
+
+      validate(one_of(:grant, [:agent]), message: "must be agent")
+      change(Patchbay.Assist.Changes.OpenFree)
+      change(run_oban_trigger(:work))
+    end
+
+    update :work do
+      description("""
+      Works a paid run through to its answer: starts it, tries what fits, and
+      closes it. The calls go out to other sites and to models, so nothing
+      here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Assist.Work)
     end
 
     update :start do
@@ -233,6 +325,7 @@ defmodule Patchbay.Assist.Run do
       )
 
       change(set_attribute(:finished_at, &DateTime.utc_now/0))
+      change(run_oban_trigger(:forward_fee), where: [attribute_equals(:deposit_status, :pending)])
     end
 
     update :save_to_payer do
@@ -246,13 +339,66 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:payer_profile_id, arg(:payer_profile_id)))
     end
 
-    update :record_deposit do
-      description("Writes down what came of forwarding the fee to the staking contract.")
-      accept([:deposit_status, :deposit_tx_hash])
+    update :forward_fee do
+      description("""
+      Hands the run's fee on to the REGENT staking contract and writes down
+      what came of it. The deposit goes out to Base, so nothing here holds a
+      transaction open.
+      """)
 
-      validate(one_of(:deposit_status, [:deposited, :failed]),
-        message: "must be deposited or failed"
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Assist.Forward)
+    end
+
+    update :take_fee do
+      description("""
+      Takes the one forward of a fee still waiting, before anything is sent,
+      so however often its job runs, one fee is forwarded once.
+      """)
+
+      accept([])
+
+      # A validation, not a filter: this atomic update checks it inside the
+      # UPDATE statement against the stored value, while Ash 3.33 leaves an
+      # action's `filter` change out of the statement.
+      validate(attribute_equals(:deposit_status, :pending),
+        message: "is not waiting to be forwarded"
       )
+
+      change(set_attribute(:deposit_status, :forwarding))
+    end
+
+    update :release_fee do
+      description("Puts back a fee whose forward sent nothing, to be forwarded again.")
+      accept([])
+      validate(attribute_equals(:deposit_status, :forwarding), message: "is not being forwarded")
+      change(set_attribute(:deposit_status, :pending))
+    end
+
+    update :record_deposited do
+      description("The fee's deposit is on Base, in the transaction named.")
+      accept([:deposit_tx_hash])
+      validate(attribute_equals(:deposit_status, :forwarding), message: "is not being forwarded")
+      change(set_attribute(:deposit_status, :deposited))
+    end
+
+    update :record_fee_failed do
+      description("""
+      The fee's forward did not go through; the deposit's transaction, when
+      one was sent, is named for a person to look up on the chain.
+      """)
+
+      accept([:deposit_tx_hash])
+      validate(attribute_equals(:deposit_status, :forwarding), message: "is not being forwarded")
+      change(set_attribute(:deposit_status, :failed))
+    end
+
+    update :fee_not_forwarded do
+      description("A fee whose forward sent nothing on every try, left for a person.")
+      accept([])
+      change(set_attribute(:deposit_status, :failed))
     end
 
     update :reopen do
@@ -270,15 +416,18 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:status, :paid))
       change(set_attribute(:outcome, nil))
       change(set_attribute(:finished_at, nil))
+      change(run_oban_trigger(:work))
     end
 
     update :interrupt do
       description("""
-      Marks a run whose work died, with a restart or with its worker, as
-      failed: its calls are not made twice, and a person looks at it.
+      Marks an open run whose work was lost, with its node, past its time or
+      on an error, as failed: its calls are not made twice, and a person
+      looks at it.
       """)
 
       accept([])
+      validate(attribute_in(:status, [:paid, :running]), message: "is not open")
       change(set_attribute(:status, :failed))
       change(set_attribute(:finished_at, &DateTime.utc_now/0))
     end
@@ -288,10 +437,13 @@ defmodule Patchbay.Assist.Run do
     # Only the settled payment's own payer opens its run, and only the
     # purchase process holds a settled intent to open one from. A free run
     # opens for anyone at the page, under the grant the allowance gives
-    # right now and no other. The actions that move a run along (`start`,
-    # `record_step`, `finish`, `interrupt`, `record_deposit`, `reopen`) and
+    # right now and no other, and for a SIWA-signed agent under its own. The
+    # actions that move a run along (`work`, `start`, `record_step`, `finish`,
+    # `interrupt`, the fee's `forward_fee`, `take_fee`, `release_fee`,
+    # `record_deposited`, `record_fee_failed` and `fee_not_forwarded`, and
+    # `reopen`) and
     # `save_to_payer` are named by no policy, so nothing that arrives over
-    # HTTP can reach them; Patchbay's own runner, sign-in, and a person at its
+    # HTTP can reach them; Patchbay's own jobs, sign-in, and a person at its
     # console are their only callers and say so by skipping authorization
     # deliberately.
     policy action(:open) do
@@ -300,6 +452,10 @@ defmodule Patchbay.Assist.Run do
 
     policy action(:open_free) do
       authorize_if(Patchbay.Assist.Checks.WithinAllowance)
+    end
+
+    policy action(:open_agent_free) do
+      authorize_if(Patchbay.Assist.Checks.WithinAgentAllowance)
     end
 
     # The browser's read filters on the identity in its own signed cookie,

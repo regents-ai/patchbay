@@ -1,6 +1,8 @@
 defmodule Patchbay.Assist.Work do
   @moduledoc """
-  One assist, free or paid, from the moment it opens to the answer.
+  The `:work` action of `Patchbay.Assist.Run`: one assist, free or paid, from
+  the moment its job picks it up to the answer. The job is the `:work`
+  trigger, four runs at a time.
 
   First Jev looks through the fixes Patchbay already knows for the site
   (`Patchbay.Assist.KnownFixPick`) and the one it matches, or that none
@@ -25,37 +27,31 @@ defmodule Patchbay.Assist.Work do
   run's own request: no cookies, no credentials, no agent identity.
   """
 
+  use Ash.Resource.ManualUpdate
+
   require Logger
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Arguments
   alias Patchbay.Assist.Discovery
-  alias Patchbay.Assist.Forward
   alias Patchbay.Assist.Judge
   alias Patchbay.Assist.KnownFixPick
   alias Patchbay.Assist.McpClient
   alias Patchbay.Assist.ReadOnlyTools
-  alias Patchbay.Assist.Run
   alias Patchbay.Patchbay.ModelBudget
 
   @max_calls 12
   @max_questions 14
   @max_seconds 120
 
-  @doc """
-  Picks up the run with `run_id` if it is still waiting and does the work,
-  then forwards the fee to the staking contract, which comes after the answer
-  so it never delays it.
-  """
-  @spec run(Ash.UUID.t()) :: :ok
-  def run(run_id) do
-    # Patchbay's own worker: the run was bought and answers to no request now.
-    with {:ok, %Run{} = run} <- Assist.get_run(run_id, authorize?: false),
-         {:ok, run} <- Assist.start_run(run, authorize?: false) do
+  # A run already started is refused by `:start`, so it is never worked twice.
+  @impl true
+  def update(changeset, _opts, _context) do
+    # Patchbay's own job: the run was bought and answers to no request now.
+    with {:ok, run} <- Assist.start_run(changeset.data, authorize?: false) do
       :ok = work(run)
-      Forward.run(run_id)
-    else
-      _not_waiting -> :ok
+      # The same job reading back the run it just worked on.
+      Assist.get_run(run.id, authorize?: false)
     end
   end
 

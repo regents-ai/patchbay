@@ -9,9 +9,8 @@ defmodule Patchbay.Payments.JevAssist do
   same transaction that marks the payment applied, so a request changed after
   the fact cannot be what Patchbay works on. A run that could not open (the
   payer already has one under way, say) is opened on the payer's next call,
-  and one payment can never open two.
-
-  Work on the run starts once that transaction has committed (`start/1`).
+  and one payment can never open two. The run's work is queued in that same
+  transaction, so it starts once the payment is applied and never before.
   """
 
   @behaviour RegentPayments.Offer
@@ -83,21 +82,6 @@ defmodule Patchbay.Payments.JevAssist do
 
   @impl true
   def resumes?, do: true
-
-  @doc """
-  Starts work on the run an applied intent opened, while it is still waiting
-  for it. Safe to call on every read of the intent: a run already under way,
-  or answered, is left alone, and a second start of a waiting run is refused
-  by the run itself.
-  """
-  @spec start(RegentPayments.PaymentIntent.t()) :: :ok
-  def start(intent) do
-    # Patchbay's own look-up of the run the payer's intent names.
-    case Assist.get_run(intent.target_id, authorize?: false) do
-      {:ok, %{status: :paid} = run} -> Assist.Runner.start(run)
-      _started_or_gone -> :ok
-    end
-  end
 
   # The request is held to its own rules here as well as at the door, so
   # nothing reaches frozen terms that the door would have refused.

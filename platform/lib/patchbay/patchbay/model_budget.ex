@@ -10,19 +10,19 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   Counting reads durable evidence, never a counter held in memory: invocations
   that recorded live candidate provenance, repair proposals that recorded a
-  live plan model, and assists, free or paid, Patchbay started working on.
+  live plan model, and every question Patchbay asked a model on OpenRouter
+  (`Patchbay.Assist.ModelCall`), whether it was answered or not.
   Two rows can share one paid call, because a candidate served from the cache
   repeats the generation key of the call that produced it, so candidate calls
-  are counted as distinct generation keys rather than as rows. An assist counts once
-  against the deployment's ceiling when it starts; its own limits bound the
-  calls it makes after that. A known fix Jev chose for the free help counts
-  once too; one chosen inside a fix is that fix's own.
+  are counted as distinct generation keys rather than as rows. The
+  OpenRouter questions belong to no room, so they count against the
+  deployment's ceiling alone; a fix already under way finishes its own
+  questions once it has started.
   """
 
   require Ash.Query
 
-  alias Patchbay.Assist.Decision
-  alias Patchbay.Assist.Run
+  alias Patchbay.Assist.ModelCall
   alias Patchbay.Config
   alias Patchbay.Patchbay.{Invocation, RepairProposal}
 
@@ -102,28 +102,18 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   defp live_calls(room_id, since) do
     live_candidate_calls(room_id, since) + live_repair_calls(room_id, since) +
-      started_assists(room_id, since) + help_decisions(room_id, since)
+      openrouter_calls(room_id, since)
   end
 
-  # Same: the known fixes Jev chose for the free help, which belong to no room.
-  defp help_decisions(nil, since) do
-    Decision
-    |> Ash.Query.filter(asked_from == :help and inserted_at >= ^since)
+  # A count of the deployment's own questions, read for a limit and shown to no one.
+  defp openrouter_calls(nil, since) do
+    ModelCall
+    |> Ash.Query.filter(inserted_at >= ^since)
     |> Ash.count!(authorize?: false)
   end
 
-  defp help_decisions(_room_id, _since), do: 0
-
-  # A count of the deployment's own work, read for a limit and shown to no one.
-  defp started_assists(nil, since) do
-    Run
-    |> Ash.Query.for_read(:read)
-    |> Ash.Query.filter(started_at >= ^since)
-    |> Ash.count!(authorize?: false)
-  end
-
-  # An assist belongs to no room.
-  defp started_assists(_room_id, _since), do: 0
+  # An OpenRouter question belongs to no room.
+  defp openrouter_calls(_room_id, _since), do: 0
 
   defp live_candidate_calls(room_id, since) do
     live_candidates(room_id)

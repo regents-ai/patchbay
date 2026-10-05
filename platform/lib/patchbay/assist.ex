@@ -14,7 +14,6 @@ defmodule Patchbay.Assist do
   require Ash.Query
 
   alias Patchbay.Assist.Run
-  alias Patchbay.Assist.Runner
 
   resources do
     resource Patchbay.Assist.Run do
@@ -45,11 +44,15 @@ defmodule Patchbay.Assist do
       define(:list_runs_asked_by, action: :asked_by, args: [:payer_profile_id])
 
       define(:open_free_run, action: :open_free)
+      define(:open_agent_free_run, action: :open_agent_free)
 
       define(:start_run, action: :start)
       define(:record_step, action: :record_step, args: [:step])
       define(:finish_run, action: :finish)
-      define(:record_deposit, action: :record_deposit)
+      define(:take_fee, action: :take_fee)
+      define(:release_fee, action: :release_fee)
+      define(:record_deposited, action: :record_deposited)
+      define(:record_fee_failed, action: :record_fee_failed)
       define(:reopen_run, action: :reopen)
     end
 
@@ -58,10 +61,17 @@ defmodule Patchbay.Assist do
       define(:get_decision, action: :read, get_by: [:id], not_found_error?: false)
       define(:report_decision, action: :report, args: [:result])
     end
+
+    resource Patchbay.Assist.ModelCall do
+      define(:ask_model, action: :ask)
+      define(:ask_model_for_help, action: :ask_for_help)
+      define(:close_model_call, action: :answered)
+      define(:fail_model_call, action: :failed)
+    end
   end
 
   @doc """
-  Opens a free run from the page and hands it to the runner: `request` as
+  Opens a free run from the page, its work queued with it: `request` as
   `Patchbay.Assist.Request.draft/1` returned it, under `grant`, for the
   connection `visitor_key` names and the browser `browser_session_id`
   names, asked by the signed-in `actor` if any.
@@ -69,27 +79,37 @@ defmodule Patchbay.Assist do
   @spec request_free_run(map(), :visitor | :member, String.t(), Ash.UUID.t(), struct() | nil) ::
           {:ok, Run.t()} | {:error, term()}
   def request_free_run(request, grant, visitor_key, browser_session_id, actor) do
-    opened =
-      Ash.transact(Run, fn ->
-        hold_free_fixes()
+    open_held(fn ->
+      open_free_run(
+        %{
+          request: request,
+          grant: grant,
+          visitor_key: visitor_key,
+          browser_session_id: browser_session_id
+        },
+        actor: actor
+      )
+    end)
+  end
 
-        with {:ok, run} <-
-               open_free_run(
-                 %{
-                   request: request,
-                   grant: grant,
-                   visitor_key: visitor_key,
-                   browser_session_id: browser_session_id
-                 },
-                 actor: actor
-               ),
-             do: run
-      end)
+  @doc """
+  Opens a free run for the SIWA-signed `agent`, its work queued with it:
+  `request` as `Patchbay.Assist.Request.draft/1` returned it, under one of
+  the free fixes its wallet has left today.
+  """
+  @spec request_agent_free_run(map(), struct()) :: {:ok, Run.t()} | {:error, term()}
+  def request_agent_free_run(request, agent) do
+    open_held(fn ->
+      open_agent_free_run(%{request: request, grant: :agent}, actor: agent)
+    end)
+  end
 
-    with {:ok, run} <- opened do
-      :ok = Runner.start(run)
-      {:ok, run}
-    end
+  defp open_held(open) do
+    Ash.transact(Run, fn ->
+      hold_free_fixes()
+
+      with {:ok, run} <- open.(), do: run
+    end)
   end
 
   # Free fixes are counted and the run opened under one lock every free fix
@@ -125,40 +145,10 @@ defmodule Patchbay.Assist do
   end
 
   @doc """
-  Marks every open run as failed. Called once at boot: the work those runs
-  were doing, or waiting for, died with the last process, and a call to a
-  site is never made twice on a guess.
-  """
-  @spec interrupt_open_runs() :: :ok
-  def interrupt_open_runs do
-    # Patchbay's own boot-time sweep: it answers to nobody's request.
-    Patchbay.Assist.Run
-    |> Ash.Query.for_read(:open_runs)
-    |> Ash.bulk_update!(:interrupt, %{}, authorize?: false, return_records?: false)
-
-    :ok
-  end
-
-  @doc """
-  Marks one run as failed if it is still open: its worker died or ran past
-  its time, and a person looks at it. A run already answered is left as it is.
-  """
-  @spec interrupt_run(Ash.UUID.t()) :: :ok
-  def interrupt_run(run_id) do
-    # Patchbay's own runner closing a run whose worker it lost.
-    Patchbay.Assist.Run
-    |> Ash.Query.for_read(:open_runs)
-    |> Ash.Query.filter(id == ^run_id)
-    |> Ash.bulk_update!(:interrupt, %{}, authorize?: false, return_records?: false)
-
-    :ok
-  end
-
-  @doc """
   Hands a run that waited on a person back to Patchbay: the run is reopened
-  as paid, the fact is written on it, and the runner picks it up like any
-  other. Nothing is paid twice, and a fee already forwarded is not forwarded
-  again. A run that is not waiting on a person is left as it is. Run by a
+  as paid and the fact is written on it, in one transaction, and its work is
+  queued like any other's once both are written. Nothing is paid twice, and
+  a fee already forwarded is not forwarded again. A run that is not waiting on a person is left as it is. Run by a
   person at Patchbay from the release's console:
 
       bin/patchbay rpc 'Patchbay.Assist.rerun("<run id>")'
@@ -166,15 +156,15 @@ defmodule Patchbay.Assist do
   @spec rerun(Ash.UUID.t()) :: {:ok, Run.t()} | {:error, term()}
   def rerun(run_id) do
     # A person at Patchbay's console: the run answers to no request.
-    with {:ok, run} <- get_run(run_id, authorize?: false),
-         {:ok, reopened} <- reopen_run(run, authorize?: false),
-         {:ok, noted} <-
-           record_step(reopened, %{"note" => "A person at Patchbay picked this up again."},
-             authorize?: false
-           ) do
-      Runner.start(noted)
-      {:ok, noted}
-    end
+    Ash.transact(Run, fn ->
+      with {:ok, run} <- get_run(run_id, authorize?: false),
+           {:ok, reopened} <- reopen_run(run, authorize?: false),
+           {:ok, noted} <-
+             record_step(reopened, %{"note" => "A person at Patchbay picked this up again."},
+               authorize?: false
+             ),
+           do: noted
+    end)
   end
 
   @doc """

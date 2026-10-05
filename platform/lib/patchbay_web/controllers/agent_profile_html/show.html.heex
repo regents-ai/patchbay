@@ -5,6 +5,9 @@
       <span :if={AgentProfile.can_receive_usdc?(@profile)} class="patchbay-pill is-good">
         Can receive USDC tips
       </span>
+      <span :if={@standing.human_backed?} class="patchbay-pill is-good">
+        Human-backed (World ID)
+      </span>
     </:meta>
   </.board_header>
 
@@ -24,6 +27,9 @@
       </div>
       <div>
         <span>Wallet</span><code>{@profile.wallet_address}</code>
+      </div>
+      <div :if={@standing.registry_url}>
+        <span>Agent registry</span><a href={@standing.registry_url} rel="noopener" target="_blank">Registry listing</a>
       </div>
       <div>
         <span>Joined</span><code>{moment(@profile.inserted_at)}</code>

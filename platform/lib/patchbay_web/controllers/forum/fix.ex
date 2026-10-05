@@ -89,29 +89,6 @@ defmodule PatchbayWeb.Forum.Fix do
     end
   end
 
-  @doc "The words for the free fixes left, or for what the next fix costs."
-  @spec terms(%{allowance: Allowance.t() | nil, mode: mode()}) :: String.t()
-  def terms(%{mode: :free, allowance: %{free: free, sign_in_adds: adds}}) do
-    left =
-      "#{free} free #{if free == 1, do: "fix", else: "fixes"} left today from this connection"
-
-    more = if adds > 0, do: ", and #{adds} more when you sign in", else: ""
-    "#{left}#{more}. After that, a fix is #{@fee} USDC from your USDC Balance."
-  end
-
-  def terms(%{mode: mode, allowance: %{given_out: true}}), do: given_out(mode)
-
-  def terms(%{mode: :sign_in, allowance: %{sign_in_adds: adds}}),
-    do: "This connection's free fix for today is used. Sign in for #{adds} more free fixes today."
-
-  def terms(%{mode: :pay}), do: "Your free fixes for today are used. " <> paid_from_wallet()
-
-  def terms(%{mode: :closed}), do: "Your free fixes for today are used. Come back tomorrow."
-
-  def terms(%{mode: :unknown}),
-    do:
-      "Patchbay could not check your free fixes just now. Send the request and Patchbay checks again before starting anything."
-
   @doc "What the form's button says."
   @spec button(%{allowance: Allowance.t() | nil, mode: mode()}) :: String.t()
   def button(%{mode: :free}), do: "Fix it free"

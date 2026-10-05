@@ -47,23 +47,38 @@ defmodule PatchbayWeb.AssistAPI.Runs do
     end
   end
 
-  @doc "What the payer should do next, given where the run stands."
+  @doc """
+  What the asker should do next, given where the run stands and whether it
+  was paid for or free.
+  """
   @spec next_action(Run.t()) :: String.t()
-  def next_action(%{status: :finished}),
-    do: "Patchbay has answered; the outcome and the steps say what it found. Do not pay again."
+  def next_action(%{status: :finished} = run),
+    do: "Patchbay has answered; the outcome and the steps say what it found." <> paid_once(run)
 
-  def next_action(%{status: :failed}),
+  def next_action(%{status: :failed} = run),
     do:
-      "Patchbay could not finish this assist. A person at Patchbay will look at it. Do not pay again."
+      "Patchbay could not finish this assist. A person at Patchbay will look at it." <>
+        paid_once(run)
 
-  def next_action(%{status: :assessment_pending}),
+  def next_action(%{status: :assessment_pending, grant: :paid}),
     do:
       "Patchbay's helper was unavailable; a person at Patchbay will finish this assist. " <>
         "The payment stands; read this again later. Do not pay again."
 
-  def next_action(_open),
+  def next_action(%{status: :assessment_pending}),
+    do:
+      "Patchbay's helper was unavailable; a person at Patchbay will finish this assist. " <>
+        "Read this again later."
+
+  def next_action(%{grant: :paid}),
     do:
       "Payment received. Patchbay is working on it; read this again after a short wait. Do not pay again."
+
+  def next_action(_free),
+    do: "Patchbay is working on this free fix; read this again after a short wait."
+
+  defp paid_once(%{grant: :paid}), do: " Do not pay again."
+  defp paid_once(_free), do: ""
 
   # Ash filters out other payers' runs; a denied read reveals neither the
   # record nor its existence. Any other failure is reported as itself.

@@ -14,7 +14,6 @@ defmodule Patchbay.Payments do
   (`Patchbay.Payments.JevAssist`).
   """
 
-  alias Patchbay.Payments.JevAssist
   alias Patchbay.Payments.SpecialPost
 
   @doc """
@@ -38,19 +37,14 @@ defmodule Patchbay.Payments do
   @doc """
   What follows a purchase once its payment and effect have committed, taken
   from the purchase's answer, which it hands back unchanged: a paid priority
-  report's escrow credit is handed to Base, and a paid assist's run is
-  started. Each is decided by what is written down, so it happens once
-  however many calls read the same applied intent, and a call after one that
-  was cut short finishes it.
+  report's escrow credit is handed to Base. It is decided by what is written
+  down, so it happens once however many calls read the same applied intent,
+  and a call after one that was cut short finishes it. A paid assist needs
+  nothing more: its run's work was queued when the payment was applied.
   """
   @spec follow_up(answer) :: answer when answer: RegentPayments.Purchase.answer()
   def follow_up({:applied, %{kind: :special_post} = intent, receipt} = answer) do
     :ok = SpecialPost.credit(intent, receipt)
-    answer
-  end
-
-  def follow_up({:applied, %{kind: :jev_assist} = intent, _receipt} = answer) do
-    :ok = JevAssist.start(intent)
     answer
   end
 

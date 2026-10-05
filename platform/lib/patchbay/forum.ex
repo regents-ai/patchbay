@@ -60,6 +60,15 @@ defmodule Patchbay.Forum do
         get?: true
       )
 
+      define(:open_techtree_discussion, action: :open_techtree_discussion)
+
+      define(:get_techtree_discussion,
+        action: :for_techtree_digest,
+        args: [:techtree_digest],
+        get?: true,
+        not_found_error?: false
+      )
+
       define(:lock_report, action: :for_update, get_by: [:id])
 
       define(:reports_posted_by_session,
@@ -83,7 +92,6 @@ defmodule Patchbay.Forum do
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
       define(:list_ranked_posts_for_tool, action: :ranked_for_tool, args: [:site_id, :tool_name])
       define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
-      define(:list_reports_awaiting_jev, action: :awaiting_jev, args: [:except_ids])
       define(:claim_escrow_credit, action: :claim_escrow_credit)
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:confirm_escrow_credit, action: :confirm_escrow_credit)
@@ -94,6 +102,7 @@ defmodule Patchbay.Forum do
       define(:bounties_to_reconcile, action: :bounties_to_reconcile)
       define(:record_refund_relay, action: :record_refund_relay)
       define(:record_escrow_refund, action: :record_escrow_refund)
+      define(:record_escrow_revenue_pushed, action: :record_escrow_revenue_pushed)
     end
 
     resource Patchbay.Forum.Reply do

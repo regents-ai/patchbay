@@ -7,7 +7,10 @@ defmodule Patchbay.Forum.Report do
   A paid priority report is the one kind that moves afterwards. Its asker paid
   USDC into escrow for an answer, so it also carries how much is held, where
   that money stands, and, once the asker has chosen one, the reply that
-  settled it.
+  settled it, and what Jev made of it: Jev reads each published one once, as
+  a job (`:read_by_jev`) queued when the report is filed. Once its bounty has
+  paid out or gone back to the asker, a job (`:push_escrow_revenue`) sends the
+  10% the escrow kept to REGENT stakers.
   """
 
   use Ash.Resource,
@@ -15,7 +18,8 @@ defmodule Patchbay.Forum.Report do
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    notifiers: [Ash.Notifier.PubSub]
+    notifiers: [Ash.Notifier.PubSub],
+    extensions: [AshOban]
 
   import Ash.Expr
 
@@ -43,6 +47,47 @@ defmodule Patchbay.Forum.Report do
       reference(:tool, index?: true)
       reference(:site, index?: true)
       reference(:author, index?: true)
+    end
+  end
+
+  oban do
+    triggers do
+      # A call to Jev that fails is tried again with Oban's backoff; after
+      # the last try the report is given up on, so Jev is not asked about it
+      # forever. The reading is unique per report, so it is written once.
+      trigger :read_by_jev do
+        action(:read_by_jev)
+        queue(:jev)
+
+        where(
+          expr(
+            not is_nil(priority_amount_atomic) and visibility == :published and
+              not exists(jev_reading, true) and is_nil(jev_gave_up_at)
+          )
+        )
+
+        max_attempts(5)
+        on_error(:give_up_on_jev)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.ReadByJev)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadByJev)
+      end
+
+      # A push that fails is tried again with Oban's backoff, and after the
+      # last try the next sweep queues it afresh: the money waits safely in
+      # the escrow, and it is the stakers', so it is never given up on. It
+      # runs on the fee queue, one send at a time from the operator wallet.
+      trigger :push_escrow_revenue do
+        action(:push_escrow_revenue)
+        queue(:fees)
+
+        where(expr(escrow_status in [:released, :refunded] and is_nil(escrow_revenue_pushed_at)))
+
+        max_attempts(5)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.PushEscrowRevenue)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.PushEscrowRevenue)
+      end
     end
   end
 
@@ -178,6 +223,10 @@ defmodule Patchbay.Forum.Report do
     attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_refund_tx_hash, :string, allow_nil?: true, public?: true)
 
+    # When the 10% the escrow kept from this bounty was seen to have reached
+    # the REGENT revenue staking contract.
+    attribute(:escrow_revenue_pushed_at, :utc_datetime_usec, allow_nil?: true)
+
     # When the money was recorded in escrow, which is what the contract's
     # thirty-day refund delay is counted from, and when the asker last asked
     # for it back. Neither decides anything: the chain does.
@@ -201,6 +250,17 @@ defmodule Patchbay.Forum.Report do
       constraints(min_length: 64, max_length: 64, match: ~r/\A[0-9a-f]{64}\z/)
     end
 
+    # The Techtree Result this thread is the discussion of, by its bundle
+    # digest. A Result has at most one discussion, opened by Patchbay.
+    attribute :techtree_digest, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(match: ~r/\Asha256:[0-9a-f]{64}\z/)
+    end
+
+    # When Jev's last try at reading a paid priority report failed.
+    attribute(:jev_gave_up_at, :utc_datetime_usec, allow_nil?: true)
+
     create_timestamp(:inserted_at, public?: true)
   end
 
@@ -216,6 +276,9 @@ defmodule Patchbay.Forum.Report do
     identity(:unique_session_request, [:browser_session_id, :client_request_id],
       eager_check?: false
     )
+
+    # One discussion per Techtree Result.
+    identity(:unique_techtree_digest, [:techtree_digest], eager_check?: false)
   end
 
   relationships do
@@ -607,6 +670,12 @@ defmodule Patchbay.Forum.Report do
       )
     end
 
+    read :for_techtree_digest do
+      description("The discussion of a Techtree Result, if it has been opened.")
+      argument(:techtree_digest, :string, allow_nil?: false)
+      filter(expr(techtree_digest == ^arg(:techtree_digest)))
+    end
+
     read :bounties_to_reconcile do
       description("""
       Bounties the board still believes are held, oldest first. Anybody can
@@ -627,24 +696,6 @@ defmodule Patchbay.Forum.Report do
 
       filter(expr(escrow_status == :credit_submitted))
       prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 200))
-    end
-
-    read :awaiting_jev do
-      description("""
-      Published paid priority reports Jev has not read yet, oldest first,
-      leaving out the ones the reader has given up on for now.
-      """)
-
-      argument(:except_ids, {:array, :uuid}, allow_nil?: false)
-
-      filter(
-        expr(
-          not is_nil(priority_amount_atomic) and visibility == :published and
-            not exists(jev_reading, true) and id not in ^arg(:except_ids)
-        )
-      )
-
-      prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 20))
     end
 
     read :verified_awaiting_repair do
@@ -743,6 +794,7 @@ defmodule Patchbay.Forum.Report do
       validate(present(:arguments_sha256))
       validate(present(:verdict))
       validate(compare(:priority_amount_atomic, greater_than: 0))
+      change(run_oban_trigger(:read_by_jev))
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -846,6 +898,22 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.AttachPictures)
     end
 
+    create :open_techtree_discussion do
+      description("""
+      Opens the discussion of one Techtree Result on techtree.sh's board, in
+      Patchbay's own name. The caller has already read the Result from
+      Techtree; this only records the thread.
+      """)
+
+      accept([:site_id, :title, :body_markdown, :page_url, :techtree_digest, :browser_session_id])
+
+      validate(present([:site_id, :title, :techtree_digest, :browser_session_id]))
+
+      change(set_attribute(:thread_kind, :discussion))
+      change(Patchbay.Forum.Changes.NormalizePageUrl)
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
+    end
+
     update :touch do
       description("Records that a reply moved this thread: activity time becomes now.")
       accept([])
@@ -902,7 +970,11 @@ defmodule Patchbay.Forum.Report do
       """)
 
       accept([])
-      change(filter(expr(is_nil(escrow_status))))
+
+      # A validation, not a filter: this atomic update checks it inside the
+      # UPDATE statement against the stored value, while Ash 3.33 leaves an
+      # action's `filter` change out of the statement.
+      validate(absent(:escrow_status), message: "has already been handed to Base")
       change(set_attribute(:escrow_status, :credit_submitted))
     end
 
@@ -995,6 +1067,44 @@ defmodule Patchbay.Forum.Report do
       accept([:escrow_status, :escrow_refund_tx_hash])
       validate(one_of(:escrow_status, [:refunded, :refund_failed]))
     end
+
+    update :read_by_jev do
+      description("""
+      Has Jev read a paid priority report and writes down what it made of it.
+      The question goes out to OpenRouter, so nothing here holds a
+      transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.ReadByJev)
+    end
+
+    update :push_escrow_revenue do
+      description("""
+      Sends the 10% the escrow kept from this bounty, with whatever else it
+      keeps, to the REGENT revenue staking contract. It waits on Base, so
+      nothing here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.EscrowRevenuePush)
+    end
+
+    update :record_escrow_revenue_pushed do
+      description("The 10% the escrow kept from this bounty has reached the stakers.")
+      accept([])
+      change(set_attribute(:escrow_revenue_pushed_at, &DateTime.utc_now/0))
+    end
+
+    update :give_up_on_jev do
+      description("Jev's last try at reading the report failed; it is not asked again.")
+      accept([])
+      change(set_attribute(:jev_gave_up_at, &DateTime.utc_now/0))
+    end
   end
 
   policies do
@@ -1013,6 +1123,12 @@ defmodule Patchbay.Forum.Report do
     # browser agents through the page's tools, signed-in people through the
     # form. What each caller may write is the action's to decide.
     policy action(:ask_question) do
+      authorize_if(always())
+    end
+
+    # Patchbay opens a Result's discussion only after reading the Result
+    # from Techtree, whoever's visit led there.
+    policy action(:open_techtree_discussion) do
       authorize_if(always())
     end
 
@@ -1039,10 +1155,12 @@ defmodule Patchbay.Forum.Report do
     end
 
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
-    # `record_escrow_release` and `record_escrow_refund` are named by no
-    # policy, so nothing that arrives over HTTP can reach them. The settlement,
-    # confirmation, acceptance and refund paths skip authorization to write
-    # what the escrow said.
+    # `record_escrow_release`, `record_escrow_refund`, `push_escrow_revenue`,
+    # `record_escrow_revenue_pushed`, `read_by_jev` and `give_up_on_jev` are
+    # named by no policy, so nothing that arrives over HTTP can reach them.
+    # The settlement, confirmation, acceptance, refund and push paths skip
+    # authorization to write what the escrow said, and Jev's job to write what
+    # Jev said.
   end
 
   @doc "The channel a new thread, or one moderated in or out of sight, is announced on."

@@ -131,7 +131,7 @@ body:has(.pb-o) .rg-panel, body:has(.pb-o) .rg-panel::before, body:has(.pb-o) .r
 .pb-o #pb-fix-submit:disabled { border-color: #333; background: #1a1a1a; color: #777; }
 .pb-o .rg-button--secondary { border-color: #3a3a3a; background: transparent; color: #fff; }
 .pb-o .rg-button--secondary:hover { border-color: #fff; }
-.pb-o :is(.pb-fix-terms, .pb-fix-topup, .pb-fix-status) { color: var(--color-fg-muted); }
+.pb-o :is(.pb-fix-topup, .pb-fix-status) { color: var(--color-fg-muted); }
 .pb-o .pb-ask-preview { border-radius: var(--o-radius); }
 
 /* The newest posts, each with its own face. */

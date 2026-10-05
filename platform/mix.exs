@@ -4,14 +4,11 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "9ca24b0485cd734644a1f790cee1d6b62938eb57"
-  # MCP events has its own pin: no Regents package uses it, so it can move
-  # ahead of the commit those packages share with this site.
-  @mcp_events_ref "c1544e53d0910141e8e26e5b055afcbee4bbe706"
+  @elixir_utils_ref "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "970b5bcf0d283ca7063a43c35e649ee04a5e8022"
+  @design_system_ref "6bc26409835f76f99f91cf6e48bdebd18f1fe8eb"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "3eff63fa8b5a337b1bda11f9599d7b7919ae0b85"
+  @regents_ref "d12166405169e09bb558333fc3478799c293c446"
 
   def project do
     [
@@ -58,8 +55,9 @@ defmodule Patchbay.MixProject do
       {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
       {:regent_format, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format"},
       {:regent_chain, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain"},
+      {:regent_http, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "http"},
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
-      {:regent_mcp_events, git: @elixir_utils, ref: @mcp_events_ref, sparse: "mcp_events"},
+      {:regent_mcp_events, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "mcp_events"},
       {:phoenix, "~> 1.8"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},

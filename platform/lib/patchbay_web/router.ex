@@ -126,6 +126,7 @@ defmodule PatchbayWeb.Router do
 
   scope "/api/agent", PatchbayWeb.AssistAPI do
     pipe_through [:api, :wallet_author]
+    post "/assists", RunController, :create
     get "/assists/:id", RunController, :show
   end
 
@@ -352,6 +353,7 @@ defmodule PatchbayWeb.Router do
 
     get "/profile", SharedProfileController, :show
     get "/agents/:public_id", AgentProfileController, :show
+    get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
   end
 

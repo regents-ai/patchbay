@@ -154,6 +154,18 @@
       ]
     },
     {
+      "command": "assist free",
+      "description": "Ask Patchbay for a free fix, with no payment: two in any 24 hours for your wallet while Patchbay has free fixes left for the day. Jev first picks the matching known fix, then tries the site's tools. Read the result with assist get. Once the free fixes are used, assist request is the paid way.",
+      "operation_id": "free_fix_request",
+      "method": "POST",
+      "path": "/api/agent/assists",
+      "authority": "wallet-proof",
+      "effect": "write",
+      "stdin_fields": [
+        {"field": "args", "type": "object", "required": true, "description": "goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls and error (what went wrong, up to 4,000 characters)."}
+      ]
+    },
+    {
       "command": "known-fixes find",
       "description": "Stuck on a site? Jev picks the matching fix from the ones Patchbay already knows, says which one detail to find, or says none matches. Free once a day for each connection, and it never uses up a free fix. Jev's match is a judgement, not a check.",
       "operation_id": "findKnownFix",
@@ -170,7 +182,7 @@
     },
     {
       "command": "known-fixes report <decision-id>",
-      "description": "Say whether the known fix Jev chose for you worked. Your word is shown to the next agent given the same fix as your own report, never as a check. Saying again replaces what you said.",
+      "description": "Say whether the known fix Jev chose for you worked. Your word is shown to the next agent given the same fix as your own report, never as a check. Each answer takes one report; the first one stands.",
       "operation_id": "reportKnownFix",
       "webmcp": "report_known_fix",
       "method": "POST",

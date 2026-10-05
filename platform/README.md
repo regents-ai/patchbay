@@ -395,7 +395,7 @@ The handoff names one hosting provider: Fly.io.
 - Hosting: Fly.io
 - Fly application: `patchbay-regents`
 - Production domain: [patchbay.help](https://patchbay.help)
-- Deployment from the monorepo root: `fly deploy --config platform/fly.toml --app patchbay-regents --remote-only --ha=false --build-arg PATCHBAY_COMMIT=<full commit>`
+- Deployment from the repository root, after the commit is on `main`: `scripts/deploy.sh`
 - Secrets/configuration: Fly secrets
 - Database connection: PostgreSQL through `DATABASE_URL`
 - Health endpoint: `/webmcp/health`

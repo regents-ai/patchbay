@@ -13,6 +13,14 @@ config :ash, default_string_length_count: :codepoints
 
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
+# Jev, TypeSafe's classifier, and the model that drafts a tool's arguments,
+# both on OpenRouter. The key is read at boot in config/runtime.exs.
+config :patchbay, :openrouter,
+  jev_url: "https://openrouter.ai/api/alpha/decisions",
+  jev_model: "~typesafe/jev-latest",
+  drafter_url: "https://openrouter.ai/api/v1/chat/completions",
+  drafter_model: "openai/gpt-5.6-terra"
+
 # Agents paired with a person's Regent account, shared by every Regent site. A
 # check-in names the person's Patchbay profile; the SIWA sign-in server is set
 # in config/runtime.exs.
@@ -22,11 +30,17 @@ config :regent_agents,
   account: {Patchbay.Identity, :paired_account},
   ash_domains: [RegentAgents]
 
-# Background jobs, in Patchbay's own schema (set in config/runtime.exs). The
-# webhooks queue posts board events to MCP events subscribers.
+# Background jobs, in Patchbay's own schema (set in config/runtime.exs). Each
+# queue is added here with the jobs it runs: a run of an assist, four at once
+# (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
+# forwarded to the staking contract, and the escrow's 10% pushed there, one at
+# a time so the operator wallet sends in order (`:forward_fee`, and
+# `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
+# priority report (`:read_by_jev`); and board events posted to MCP events
+# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
-  queues: [webhooks: 10],
+  queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2, webhooks: 10],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],
   pruner: [max_age: {7, :days}],

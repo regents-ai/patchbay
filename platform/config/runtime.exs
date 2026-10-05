@@ -4,6 +4,12 @@ import Config
 config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
 config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
 
+config :patchbay, :siwa_activity,
+  base_url: System.get_env("PATCHBAY_SIWA_URL"),
+  read_token: System.get_env("SIWA_ACTIVITY_READ_TOKEN")
+
+config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
+
 database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
 
 unless database_schema in ["public", "patchbay_app"] do
@@ -184,7 +190,7 @@ if config_env() == :prod do
   #
   # The spend limits are read the same way, on demand, so a machine picks up
   # whatever it was started with: PATCHBAY_DAILY_MODEL_CALLS (default 2000),
-  # PATCHBAY_DAILY_FREE_FIXES (default 1000), PATCHBAY_ROOM_DAILY_MODEL_CALLS
+  # PATCHBAY_DAILY_FREE_FIXES (default 200), PATCHBAY_ROOM_DAILY_MODEL_CALLS
   # (default 30) and PATCHBAY_ROOM_COOLDOWN_SECONDS (default 20). Setting any of them to
   # something that is not a whole number leaves its default standing, so read
   # the value back with `fly secrets list` after changing one.

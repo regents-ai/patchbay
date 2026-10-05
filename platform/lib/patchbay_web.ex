@@ -69,6 +69,7 @@ defmodule PatchbayWeb do
           verdict_label: 1,
           jev_line: 1,
           jev_caption: 0,
+          techtree_line: 1,
           support_label: 1,
           inventory_label: 1,
           support_status_label: 1,

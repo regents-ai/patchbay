@@ -7,14 +7,18 @@ defmodule Patchbay.Forum.Jev do
   it never writes prose. The questions here are fixed, the state is only what
   the thread already shows the public, and the sentence on the thread is
   written by `PatchbayWeb.Forum.BoardHTML` from the answers.
+
+  Where Jev is, which Jev and the key it is asked with are set in
+  `config :patchbay, :openrouter`. Every question is written down as a
+  `Patchbay.Assist.ModelCall` before it is sent and closed with what it cost.
   """
 
+  alias Patchbay.Assist.ModelCall
+  alias Patchbay.Assist.ModelCalls
   alias Patchbay.Forum.JevReading
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Types.JevKind
 
-  @endpoint "https://openrouter.ai/api/alpha/decisions"
-  @model "~typesafe/jev-latest"
   @receive_timeout_ms 60_000
 
   @kinds %{
@@ -37,31 +41,41 @@ defmodule Patchbay.Forum.Jev do
   @spec configured?() :: boolean()
   def configured?, do: api_key() not in [nil, ""]
 
+  @doc "The Jev questions are asked of."
+  @spec model() :: String.t()
+  def model, do: Keyword.fetch!(settings(), :jev_model)
+
   @doc "One Decisions call about `report`. `report` needs `:site` and `:tool` loaded."
   @spec read(Report.t()) :: {:ok, answers()} | {:error, term()}
   def read(%Report{} = report) do
-    with {:ok, body} <- decide(state(report), questions()) do
+    call = ModelCalls.ask(:read_report, model())
+
+    with {:ok, body} <- decide(state(report), questions(), call) do
       answers(body)
     end
   end
 
   @doc """
   One Decisions call: Jev's answers to `questions` about `state`, as the
-  provider returned them. The caller reads the answers it asked for; `state`
-  must already be only what may leave Patchbay.
+  provider returned them, closing `call`, the record opened for it. The
+  caller reads the answers it asked for; `state` must already be only what
+  may leave Patchbay.
   """
-  @spec decide(map(), map(), keyword()) :: {:ok, map()} | {:error, term()}
-  def decide(state, questions, opts \\ []) do
-    case api_key() do
-      key when key in [nil, ""] -> {:error, :api_key_missing}
-      key -> ask(state, questions, key, opts)
-    end
+  @spec decide(map(), map(), ModelCall.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def decide(state, questions, %ModelCall{} = call, opts \\ []) do
+    answered =
+      case api_key() do
+        key when key in [nil, ""] -> {:error, :api_key_missing}
+        key -> ask(state, questions, key, opts)
+      end
+
+    ModelCalls.close(call, answered)
   end
 
   defp ask(state, questions, key, opts) do
     options =
       [
-        json: %{model: @model, state: state, questions: questions},
+        json: %{model: model(), state: state, questions: questions},
         headers: [
           {"authorization", "Bearer " <> key},
           {"http-referer", PatchbayWeb.Endpoint.url()},
@@ -73,7 +87,7 @@ defmodule Patchbay.Forum.Jev do
 
     # The request carries the key, so what went wrong is reduced to a status
     # or a reason before anything is returned or logged.
-    case Req.post(@endpoint, options) do
+    case RegentHttp.post(Keyword.fetch!(settings(), :jev_url), options) do
       {:ok, %Req.Response{status: 200, body: body}} when is_map(body) -> {:ok, body}
       {:ok, %Req.Response{status: 200}} -> {:error, :unexpected_answers}
       {:ok, %Req.Response{status: status}} -> {:error, {:http_status, status}}
@@ -125,5 +139,7 @@ defmodule Patchbay.Forum.Jev do
 
   defp answers(_body), do: {:error, :unexpected_answers}
 
-  defp api_key, do: System.get_env("OPENROUTER_API_KEY")
+  defp api_key, do: Keyword.get(settings(), :api_key)
+
+  defp settings, do: Application.fetch_env!(:patchbay, :openrouter)
 end

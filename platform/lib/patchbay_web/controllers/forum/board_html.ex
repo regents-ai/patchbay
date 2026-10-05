@@ -9,7 +9,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   use PatchbayWeb, :html
 
-  import PatchbayWeb.Forum.Avatar
   import PatchbayWeb.Forum.Face
   import PatchbayWeb.Forum.Icon
   import PatchbayWeb.Forum.Nameplate
@@ -66,6 +65,74 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   def jev_caption, do: @jev_caption
+
+  @doc """
+  What Techtree says of the Result a discussion is about, as read when the page
+  opened: the Result, or why it could not be shown.
+  """
+  attr(:result, :any, required: true)
+  attr(:digest, :string, required: true)
+
+  def techtree_result(%{result: {:ok, result}} = assigns) do
+    assigns = assign(assigns, :result, result)
+
+    ~H"""
+    <section id="pb-techtree-result" class="pb-solution-card" aria-labelledby="pb-techtree-title">
+      <h2 id="pb-techtree-title">The Result on Techtree</h2>
+      <p class="pb-thread-caption">As Techtree records it now.</p>
+      <dl class="pb-card-facts">
+        <dt>Climb</dt><dd>{@result.climb}</dd>
+        <dt>Verdict</dt><dd>{techtree_verdict(@result)}</dd>
+        <dt>Skill</dt><dd>{@result.skill_name}</dd>
+        <dt>Run by</dt><dd>{@result.harness} with {@result.model}</dd>
+        <dt>Score</dt><dd>{techtree_score(@result)}</dd>
+      </dl>
+      <a href={@result.entry_url}>See it on Techtree →</a>
+    </section>
+    """
+  end
+
+  def techtree_result(%{result: {:error, reason}} = assigns) do
+    assigns = assign(assigns, :problem, techtree_problem(reason))
+
+    ~H"""
+    <section id="pb-techtree-result" class="pb-solution-card" aria-labelledby="pb-techtree-title">
+      <h2 id="pb-techtree-title">The Result on Techtree</h2>
+      <p class="pb-thread-caption">{@problem}</p>
+      <a href={"https://techtree.sh/results/" <> @digest}>See it on Techtree →</a>
+    </section>
+    """
+  end
+
+  @doc "A Techtree Result's standing, in one word."
+  def techtree_verdict(%{withdrawn?: true}), do: "Withdrawn"
+  def techtree_verdict(%{decision: :accepted}), do: "Accepted"
+  def techtree_verdict(%{decision: :rejected}), do: "Rejected"
+
+  @doc "A Techtree Result's score against its Climb's tasks."
+  def techtree_score(result) do
+    Enum.join(
+      [
+        count_label(result.wins, "win", "wins"),
+        count_label(result.ties, "tie", "ties"),
+        count_label(result.losses, "loss", "losses")
+      ],
+      ", "
+    ) <> " over " <> count_label(result.task_count, "task", "tasks")
+  end
+
+  @doc "Why a Techtree Result's details are missing from its discussion."
+  def techtree_problem(:not_found), do: "Techtree no longer lists this Result."
+  def techtree_problem(_reason), do: "Techtree couldn't be read just now. Reload to try again."
+
+  @doc "A Techtree Result as one line, for the text view of its discussion."
+  def techtree_line({:ok, result}) do
+    "Techtree Result: #{techtree_verdict(result)} on #{result.climb} · #{result.skill_name}, " <>
+      "run by #{result.harness} with #{result.model} · #{techtree_score(result)} · " <>
+      result.entry_url
+  end
+
+  def techtree_line({:error, reason}), do: "Techtree Result: " <> techtree_problem(reason)
 
   def verdict_class(:verified_success), do: "is-good"
   def verdict_class(verdict) when verdict in [:verified_failure, :errored], do: "is-bad"
@@ -332,17 +399,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def site_ref(%{origin: origin}), do: origin
 
   def site_name(site), do: site.display_name || site.origin
-
-  @doc "The row of authors peeking over the home page's question box."
-  def hero_crowd,
-    do: [
-      {:agent, "pb-hero-7"},
-      {:human, "pb-hero-1"},
-      {:agent, "pb-hero-5"},
-      {:agent, "pb-hero-25"},
-      {:human, "pb-hero-14"},
-      {:agent, "pb-hero-3"}
-    ]
 
   @doc """
   Whether a discussion is about Patchbay itself. Its recipes can go out of
@@ -1573,15 +1629,19 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     RegentPayments.USDC.format(amount_atomic)
   end
 
-  @doc "Second opinions on a report, oldest first."
-  attr(:replies, :list, required: true)
+  @doc """
+  One reply in the thread: who wrote it, its labels, its words, the outcome it
+  reported, the heart and, for the asker, the way to mark it as the answer.
+  """
+  attr(:reply, :any, required: true)
   attr(:report, :any, required: true)
   attr(:cursor, :string, default: nil)
   attr(:reply_filter, :string, default: "all")
+  attr(:earned_usdc, :string, default: nil, doc: "What the author has earned in tips.")
 
-  attr(:earned_tips, :map,
-    required: true,
-    doc: "Formatted tips earned, keyed by author profile id."
+  attr(:liked, :boolean,
+    default: nil,
+    doc: "Whether the reader likes this reply; nil where the page offers no likes."
   )
 
   attr(:can_mark, :boolean,
@@ -1589,93 +1649,100 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "Whether the reader is this thread's asker and may name its solution."
   )
 
-  attr(:liked, :any,
-    default: nil,
-    doc:
-      "What the reader has liked on the thread, when the list offers likes; nil where it does not."
-  )
-
-  def replies(assigns) do
+  def reply(assigns) do
     ~H"""
-    <ol :if={@replies != []} class="patchbay-reply-list">
-      <li
-        :for={reply <- @replies}
-        id={"reply-" <> reply.id}
-        class={[
-          "pb-post pb-reply",
-          @report.solution_reply_id == reply.id && "pb-reply--solution",
-          is_nil(reply.author) && patchbay?(reply.browser_session_id) && "pb-reply--patchbay"
-        ]}
-      >
+    <Regent.Discussion.post
+      id={"reply-" <> @reply.id}
+      author={author_name(@reply.author, @reply.browser_session_id, @reply.author_kind)}
+      author_href={author_href(@reply.author)}
+      at={@reply.inserted_at}
+      ago={RegentFormat.relative_time(@reply.inserted_at, DateTime.utc_now())}
+      href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{@reply.id}"}
+      solution={@report.solution_reply_id == @reply.id}
+      house={is_nil(@reply.author) && patchbay?(@reply.browser_session_id)}
+    >
+      <:avatar>
         <.author_avatar
-          author={reply.author}
-          session_id={reply.browser_session_id}
-          kind={reply.author_kind}
-          class="pb-post-av"
+          author={@reply.author}
+          session_id={@reply.browser_session_id}
+          kind={@reply.author_kind}
         />
-        <div class="pb-post-main">
-          <header class="pb-post-head">
-            <.nameplate
-              author={reply.author}
-              session_id={reply.browser_session_id}
-              kind={reply.author_kind}
-              earned_usdc={reply.author && @earned_tips[reply.author.id]}
-              avatar={false}
-            />
-            <span
-              :if={reply.owner_response}
-              class="pb-reply-label"
-              title="Written by the company that runs this site"
-            >
-              <.icon name={:official} /> Official
-            </span>
-            <span :if={@report.accepted_reply_id == reply.id} class="pb-reply-label is-good">
-              <.icon name={:check} /> Selected by asker
-            </span>
-            <span :if={@report.solution_reply_id == reply.id} class="pb-reply-label is-good">
-              <.icon name={:check} /> Solution
-            </span>
-            <a
-              class="pb-post-when"
-              href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{reply.id}"}
-              title={moment(reply.inserted_at)}
-            >{RegentFormat.relative_time(reply.inserted_at, DateTime.utc_now())}</a>
-          </header>
-          <div :if={reply.body_markdown} class="pb-reply-prose pb-markdown">
-            {markdown(reply.body_markdown)}
-          </div>
-          <.bounded_text :if={reply.note} value={reply.note} />
-          <p :if={reply.verdict not in [nil, :unknown]} class="pb-reply-outcome">
-            Reported outcome: {verdict_label(reply.verdict)}
-          </p>
-          <footer :if={@liked || @can_mark} class="pb-post-actions">
-            <form
-              :if={@can_mark}
-              method="post"
-              action={~p"/posts/#{@report.id}/solution"}
-              class="pb-mark-solution"
-            >
-              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-              <input type="hidden" name="reply_id" value={reply.id} />
-              <button type="submit" class="pb-quiet-button">
-                <.icon name={:check} /> This answered it
-              </button>
-            </form>
-            <.like_button
-              :if={@liked}
-              report={@report}
-              reply={reply}
-              likes={reply.likes}
-              liked={reply.id in @liked}
-              cursor={@cursor}
-              reply_filter={@reply_filter}
-            />
-          </footer>
-        </div>
-      </li>
-    </ol>
+      </:avatar>
+      <:label>
+        <.author_marks
+          author={@reply.author}
+          session_id={@reply.browser_session_id}
+          kind={@reply.author_kind}
+          earned_usdc={@earned_usdc}
+        />
+      </:label>
+      <:label :if={@reply.owner_response}>
+        <Regent.Discussion.label>Official</Regent.Discussion.label>
+      </:label>
+      <:label :if={@report.accepted_reply_id == @reply.id}>
+        <Regent.Discussion.label good>Selected by asker</Regent.Discussion.label>
+      </:label>
+      <:label :if={@report.solution_reply_id == @reply.id}>
+        <Regent.Discussion.label good>Solution</Regent.Discussion.label>
+      </:label>
+      <div :if={@reply.body_markdown} class="pb-markdown">
+        {markdown(@reply.body_markdown)}
+      </div>
+      <.bounded_text :if={@reply.note} value={@reply.note} />
+      <p :if={@reply.verdict not in [nil, :unknown]} class="pb-reply-outcome">
+        Reported outcome: {verdict_label(@reply.verdict)}
+      </p>
+      <:actions>
+        <form
+          :if={@can_mark}
+          method="post"
+          action={~p"/posts/#{@report.id}/solution"}
+          class="pb-mark-solution"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="reply_id" value={@reply.id} />
+          <button type="submit" class="pb-quiet-button">
+            <.icon name={:check} /> This answered it
+          </button>
+        </form>
+        <.like_button
+          :if={!is_nil(@liked)}
+          report={@report}
+          reply={@reply}
+          likes={@reply.likes}
+          liked={@liked}
+          cursor={@cursor}
+          reply_filter={@reply_filter}
+        />
+      </:actions>
+    </Regent.Discussion.post>
     """
   end
+
+  @doc "The reply filters, shown once the thread has a marked answer or a filter is on."
+  @spec reply_filters(Patchbay.Forum.Report.t(), String.t()) :: [map()]
+  def reply_filters(%{solution_reply_id: nil}, "all"), do: []
+
+  def reply_filters(report, current) do
+    for {value, label} <- [
+          {"all", "All replies"},
+          {"solution", "Solution"},
+          {"official", "Official replies"}
+        ] do
+      %{
+        label: label,
+        href: ~p"/posts/#{report.id}?replies=#{value}" <> "#patchbay-replies",
+        current: current == value
+      }
+    end
+  end
+
+  @doc "What the replies list says when nothing on this page matches."
+  @spec replies_empty(String.t(), String.t() | nil) :: String.t()
+  def replies_empty("solution", _cursor), do: "The asker has not marked an answer yet."
+  def replies_empty("official", _cursor), do: "No official company replies."
+  def replies_empty(_filter, cursor) when is_binary(cursor), do: "No replies past this point."
+  def replies_empty(_filter, _cursor), do: "No replies yet."
 
   @doc """
   A heart with the post's like count, and the names of the first few who
@@ -1692,43 +1759,34 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def like_button(assigns) do
     {named, others} = Enum.split(assigns.likes, @named_likers)
-    assigns = assign(assigns, named: named, others: length(others))
+
+    assigns =
+      assign(assigns,
+        likers:
+          Enum.map(
+            named,
+            &%{name: &1.author.agent_name, href: AgentProfile.profile_url(&1.author)}
+          ),
+        others: length(others)
+      )
 
     ~H"""
-    <form method="post" action={~p"/posts/#{@report.id}/likes"} class="pb-like-form">
+    <form method="post" action={~p"/posts/#{@report.id}/likes"}>
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <input :if={@reply} type="hidden" name="reply_id" value={@reply.id} />
       <input type="hidden" name="like" value={to_string(!@liked)} />
       <input :if={@cursor} type="hidden" name="after" value={@cursor} />
       <input type="hidden" name="replies" value={@reply_filter} />
-      <button
+      <Regent.Discussion.like
         type="submit"
-        class="pb-like"
-        aria-pressed={to_string(@liked)}
-        title={if @liked, do: "You like this. Press to take it back.", else: "Like this post"}
-      >
-        <.icon name={:heart} />
-        <span :if={@likes != []}>{length(@likes)}</span>
-        <span class="visually-hidden">{count_label(length(@likes), "like", "likes")}</span>
-      </button>
-      <span :if={@likes != []} class="pb-liked-by">
-        Liked by<span :for={{like, index} <- Enum.with_index(@named)}>{liker_separator(
-          index,
-          length(@named),
-          @others
-        )}<a href={AgentProfile.profile_url(like.author)}><bdi>{like.author.agent_name}</bdi></a></span><span :if={
-          @others > 0
-        }> and {count_label(@others, "other", "others")}</span>
-      </span>
+        count={length(@likes)}
+        liked={@liked}
+        likers={@likers}
+        others={@others}
+      />
     </form>
     """
   end
-
-  # The words before a named liker: a space before the first, "and" before
-  # the last when nobody is left over, and a comma otherwise.
-  defp liker_separator(0, _named, _others), do: " "
-  defp liker_separator(index, named, 0) when index == named - 1, do: " and "
-  defp liker_separator(_index, _named, _others), do: ", "
 
   @doc """
   The answer the asker marked as what worked, shown under the question with
@@ -1737,35 +1795,32 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:report, :any, required: true)
   attr(:replies, :list, required: true, doc: "The page of replies on screen.")
 
-  def solved(assigns) do
+  def solved(%{report: %{solution_reply: nil}} = assigns), do: ~H""
+
+  def solved(%{report: %{solution_reply: answer}} = assigns) do
+    assigns = assign(assigns, answer: answer)
+
     ~H"""
-    <section :if={answer = @report.solution_reply} class="pb-solved" aria-labelledby="pb-solved-title">
-      <h2 id="pb-solved-title"><.icon name={:check} /> Solved</h2>
-      <p class="pb-solved-by">
-        Answer by
-        <.nameplate
-          author={answer.author}
-          session_id={answer.browser_session_id}
-          kind={answer.author_kind}
-          avatar={false}
-        />
-        <time datetime={DateTime.to_iso8601(answer.inserted_at)} title={moment(answer.inserted_at)}>
-          {written_on(answer.inserted_at)}
-        </time>
-      </p>
-      <div :if={answer.body_markdown} class="pb-solved-excerpt pb-markdown">
-        {markdown(answer.body_markdown)}
-      </div>
-      <p :if={!answer.body_markdown} class="pb-solved-excerpt" phx-no-format>{answer.note}</p>
-      <p class="pb-thread-caption">
-        {if @report.accepted_reply_id == answer.id,
-          do: "The asker chose this answer for the bounty.",
-          else: "The asker says this answer worked."} That is their word, not a check.
-      </p>
-      <a href={solution_path(@report, @replies)}>Read the whole answer →</a>
-    </section>
+    <Regent.Discussion.solved
+      id="pb-solved"
+      author={author_name(@answer.author, @answer.browser_session_id, @answer.author_kind)}
+      author_href={author_href(@answer.author)}
+      at={@answer.inserted_at}
+      date={written_on(@answer.inserted_at)}
+      href={solution_path(@report, @replies)}
+      caption={solved_caption(@report)}
+    >
+      <div :if={@answer.body_markdown} class="pb-markdown">{markdown(@answer.body_markdown)}</div>
+      <p :if={!@answer.body_markdown} class="pb-thread-prose" phx-no-format>{@answer.note}</p>
+    </Regent.Discussion.solved>
     """
   end
+
+  defp solved_caption(%{accepted_reply_id: id, solution_reply_id: id}),
+    do: "The asker chose this answer for the bounty. That is their word, not a check."
+
+  defp solved_caption(_report),
+    do: "The asker says this answer worked. That is their word, not a check."
 
   # The answer itself when it is on this page of replies, otherwise the page
   # that shows only it.
@@ -1917,7 +1972,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Take my money back</Regent.Primitives.button>
         <span class="patchbay-board-facts">
           This asks Base to send 90% of the {escrowed(@report)} USDC back to the wallet that put
-          it up, with 10% to Patchbay, which is the same split accepting an answer pays.
+          it up, with 10% to REGENT stakers, which is the same split accepting an answer pays.
         </span>
       </form>
     </section>

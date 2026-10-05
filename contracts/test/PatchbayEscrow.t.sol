@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {PatchbayEscrow} from "../src/PatchbayEscrow.sol";
+import {PatchbayEscrow, IRegentRevenueStaking} from "../src/PatchbayEscrow.sol";
 
 /// @notice A six-decimal token standing in for USDC.
 contract TestUSDC is ERC20 {
@@ -20,15 +20,38 @@ contract TestUSDC is ERC20 {
     }
 }
 
+/// @notice Stands in for the REGENT revenue staking contract: pulls the deposit, and can be paused.
+contract TestStaking is IRegentRevenueStaking {
+    IERC20 internal immutable usdc;
+    bool public paused;
+    bytes32 public lastSourceTag;
+
+    constructor(IERC20 usdc_) {
+        usdc = usdc_;
+    }
+
+    function setPaused(bool paused_) external {
+        paused = paused_;
+    }
+
+    function depositUSDC(uint256 amount, bytes32 sourceTag, bytes32) external returns (uint256) {
+        require(!paused, "PAUSED");
+        lastSourceTag = sourceTag;
+        require(usdc.transferFrom(msg.sender, address(this), amount), "PULL_FAILED");
+        return amount;
+    }
+}
+
 /// @title PatchbayEscrowTest
 /// @notice What the escrow promises about money: an attribution can never exceed what is held, a
-///         post pays out once, both payouts follow the same 90/10 split, and a bounty cannot be
-///         taken back before the refund delay has passed.
+///         post pays out once, both payouts follow the same 90/10 split, a bounty cannot be
+///         taken back before the refund delay has passed, and the 10% reaches the stakers without
+///         a paused staking contract ever holding up a payout.
 contract PatchbayEscrowTest is Test {
     TestUSDC internal usdc;
+    TestStaking internal staking;
     PatchbayEscrow internal escrow;
 
-    address internal treasury = makeAddr("treasury");
     address internal operator = makeAddr("operator");
     address internal owner = makeAddr("owner");
     address internal payer = makeAddr("payer");
@@ -39,11 +62,13 @@ contract PatchbayEscrowTest is Test {
     uint96 internal constant DEPOSIT = 100_000_000;
 
     event Credited(bytes32 indexed postId, address indexed payer, uint96 amount, uint64 fundedAt);
-    event Refunded(bytes32 indexed postId, address indexed payer, uint256 payerAmount, uint256 treasuryAmount);
+    event Refunded(bytes32 indexed postId, address indexed payer, uint256 payerAmount, uint256 revenueAmount);
+    event RevenuePushed(address indexed caller, uint256 amount);
 
     function setUp() public {
         usdc = new TestUSDC();
-        escrow = new PatchbayEscrow(IERC20(address(usdc)), treasury, operator, owner);
+        staking = new TestStaking(IERC20(address(usdc)));
+        escrow = new PatchbayEscrow(IERC20(address(usdc)), staking, operator, owner);
     }
 
     function test_owner_isTheConstructedAddressAndAloneCanSetOperator() public {
@@ -94,6 +119,30 @@ contract PatchbayEscrowTest is Test {
         vm.stopPrank();
     }
 
+    function test_credit_cannotAttributeTheRevenueOwed() public {
+        _fund(POST);
+        vm.startPrank(operator);
+        escrow.release(POST, winner);
+
+        // The escrow still holds the 10% it owes the stakers; none of it can become a bounty.
+        vm.expectRevert(PatchbayEscrow.AmountExceedsBalance.selector);
+        escrow.credit(keccak256("post-2"), payer, 1);
+        vm.stopPrank();
+    }
+
+    /// @dev A payout to itself would leave the money in the escrow, marked paid but owned by no post.
+    function test_theEscrowCannotBeThePayerOrTheWinner() public {
+        usdc.mint(address(escrow), DEPOSIT);
+        vm.startPrank(operator);
+        vm.expectRevert(PatchbayEscrow.EscrowIsParty.selector);
+        escrow.credit(POST, address(escrow), DEPOSIT);
+
+        escrow.credit(POST, payer, DEPOSIT);
+        vm.expectRevert(PatchbayEscrow.EscrowIsParty.selector);
+        escrow.release(POST, address(escrow));
+        vm.stopPrank();
+    }
+
     function test_credit_isOperatorOnly() public {
         usdc.mint(address(escrow), DEPOSIT);
         vm.expectRevert(PatchbayEscrow.NotOperator.selector);
@@ -108,8 +157,8 @@ contract PatchbayEscrowTest is Test {
         escrow.release(POST, winner);
 
         assertEq(usdc.balanceOf(winner), 90_000_000);
-        assertEq(usdc.balanceOf(treasury), 10_000_000);
-        assertEq(usdc.balanceOf(address(escrow)), 0);
+        assertEq(escrow.revenueOwed(), 10_000_000);
+        assertEq(usdc.balanceOf(address(escrow)), 10_000_000);
         assertEq(escrow.totalCredited(), 0);
     }
 
@@ -151,8 +200,8 @@ contract PatchbayEscrowTest is Test {
         escrow.refund(POST);
 
         assertEq(usdc.balanceOf(payer), 90_000_000);
-        assertEq(usdc.balanceOf(treasury), 10_000_000);
-        assertEq(usdc.balanceOf(address(escrow)), 0);
+        assertEq(escrow.revenueOwed(), 10_000_000);
+        assertEq(usdc.balanceOf(address(escrow)), 10_000_000);
         assertEq(escrow.totalCredited(), 0);
     }
 
@@ -184,8 +233,51 @@ contract PatchbayEscrowTest is Test {
         escrow.release(POST, winner);
     }
 
-    /// @dev Whatever the amount, the two transfers sum to it exactly and the treasury is never
-    ///      short-changed by rounding.
+    function test_pushRevenue_depositsAllThatIsOwedTaggedForAnyCaller() public {
+        _fund(POST);
+        vm.prank(operator);
+        escrow.release(POST, winner);
+
+        vm.expectEmit(true, false, false, true);
+        emit RevenuePushed(stranger, 10_000_000);
+        vm.prank(stranger);
+        assertEq(escrow.pushRevenue(), 10_000_000);
+
+        assertEq(usdc.balanceOf(address(staking)), 10_000_000);
+        assertEq(staking.lastSourceTag(), bytes32("patchbay.escrow"));
+        assertEq(escrow.revenueOwed(), 0);
+        assertEq(usdc.balanceOf(address(escrow)), 0);
+
+        vm.expectRevert(PatchbayEscrow.NothingOwed.selector);
+        escrow.pushRevenue();
+    }
+
+    /// @dev Sean's 43 a: payouts and refunds never depend on the staking contract being unpaused.
+    function test_aPausedStakingContractHoldsUpOnlyThePush() public {
+        staking.setPaused(true);
+        bytes32 refunded = keccak256("post-2");
+        _fund(POST);
+        _fund(refunded);
+
+        vm.prank(operator);
+        escrow.release(POST, winner);
+        vm.warp(block.timestamp + escrow.REFUND_DELAY());
+        escrow.refund(refunded);
+        assertEq(usdc.balanceOf(winner), 90_000_000);
+        assertEq(usdc.balanceOf(payer), 90_000_000);
+
+        vm.expectRevert(bytes("PAUSED"));
+        escrow.pushRevenue();
+        assertEq(escrow.revenueOwed(), 20_000_000);
+
+        staking.setPaused(false);
+        escrow.pushRevenue();
+        assertEq(usdc.balanceOf(address(staking)), 20_000_000);
+        assertEq(usdc.balanceOf(address(escrow)), 0);
+    }
+
+    /// @dev Whatever the amount, the payer share and the revenue sum to it exactly and the
+    ///      stakers are never short-changed by rounding.
     function testFuzz_refund_splitsWithoutLosingADrop(uint96 amount) public {
         amount = uint96(bound(amount, 1, type(uint96).max));
         usdc.mint(address(escrow), amount);
@@ -195,8 +287,8 @@ contract PatchbayEscrowTest is Test {
         vm.warp(block.timestamp + escrow.REFUND_DELAY());
         escrow.refund(POST);
 
-        assertEq(usdc.balanceOf(payer) + usdc.balanceOf(treasury), amount);
+        assertEq(usdc.balanceOf(payer) + escrow.revenueOwed(), amount);
         assertEq(usdc.balanceOf(payer), (uint256(amount) * escrow.RECIPIENT_BPS()) / escrow.BPS());
-        assertEq(usdc.balanceOf(address(escrow)), 0);
+        assertEq(usdc.balanceOf(address(escrow)), escrow.revenueOwed());
     }
 }

@@ -8,6 +8,7 @@
   data-pb-fix-mode={@fix.mode}
   data-pb-fix-fee={@fix.fee}
   data-pb-signed-in={to_string(!is_nil(@profile))}
+  data-pb-collapsed={@hero.draft["site_url"] in [nil, ""] and !(@hero.problem && !@hero.preview)}
 >
   <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
   <p :if={@hero.problem && !@hero.preview} class="pb-reply-form-problem" role="alert">
@@ -178,9 +179,6 @@
       Post to the forum
     </Regent.Primitives.button>
   </div>
-  <p class="pb-fix-terms">
-    Jev looks into it for you: {PatchbayWeb.Forum.Fix.terms(@fix)} Posting is free. People and agents answer.
-  </p>
   <p :if={@fix.mode == :pay} class="pb-fix-topup">
     USDC Balance too low?
     <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">

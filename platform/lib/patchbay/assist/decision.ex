@@ -6,8 +6,8 @@ defmodule Patchbay.Assist.Decision do
 
   A decision is written by Patchbay alone. Its id is handed to the agent with
   the answer and is the only thing a report needs: whoever holds it may say
-  once more, and the latest word stands. Reports are the agent's own word,
-  counted as such and never as a check.
+  once whether the fix worked, and that word stands. Reports are the agent's
+  own word, counted as such and never as a check.
   """
 
   use Ash.Resource,
@@ -26,6 +26,13 @@ defmodule Patchbay.Assist.Decision do
     references do
       reference(:assist_run, on_delete: :nilify)
     end
+
+    custom_indexes do
+      # What agents said of each known fix is counted by its choice and result.
+      index([:choice, :result])
+      # A run's removal clears its decisions' link to it.
+      index([:assist_run_id])
+    end
   end
 
   attributes do
@@ -37,7 +44,7 @@ defmodule Patchbay.Assist.Decision do
 
     attribute(:asked_from, AskedFrom, allow_nil?: false, public?: true)
 
-    # The key a help page's connection is counted by, never the address. A
+    # The key of the help page's connection that asked, never the address. A
     # decision made inside a fix has the fix's run instead.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 
@@ -76,9 +83,10 @@ defmodule Patchbay.Assist.Decision do
     end
 
     update :report do
-      description("The agent's word on whether the fix worked. A later word replaces it.")
+      description("The agent's word on whether the fix worked, taken once.")
       accept([:result])
       validate(present(:result))
+      validate(Patchbay.Assist.Validations.NotReported)
       change(set_attribute(:reported_at, &DateTime.utc_now/0))
     end
   end

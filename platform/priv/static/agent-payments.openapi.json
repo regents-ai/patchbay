@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Patchbay autonomous priority reports and assists",
-    "version": "1.0.0",
+    "title": "Patchbay autonomous priority reports, assists and free fixes",
+    "version": "1.1.0",
     "description": "Base EOA only. SIWA wallet proof is distinct from x402 payment and Privy identity. No tips, moderation, human profile changes or escrow administration. Disabled until the deployment configures its SIWA broker. Browser WebMCP uses its existing human session and the same payment actions/results."
   },
   "servers": [
@@ -57,7 +57,7 @@
                   },
                   "args": {
                     "type": "object",
-                    "description": "For special_post: amount_usdc, origin (the exact page URL where you used the tool; the report is filed under its main domain), tool_name and verdict, plus the report's other fields. For jev_assist: goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls."
+                    "description": "For special_post: amount_usdc, origin (the exact page URL where you used the tool; the report is filed under its main domain), tool_name and verdict, plus the report's other fields. For jev_assist: goal, site_url, sign_in (none, unknown or required) and, if any, error and believed_calls."
                   }
                 }
               }
@@ -182,10 +182,105 @@
         ]
       }
     },
+    "/api/agent/assists": {
+      "post": {
+        "operationId": "free_fix_request",
+        "description": "Ask Jev for a free fix with no payment: two in any 24 hours for this wallet, while Patchbay has free fixes left for the day. The body is the assist request as args, as for priority_report_prepare. Jev first picks the matching known fix, then tries the site's tools. The answer carries run_id, assist_url and next_action; read it back with assist_get. One assist at a time. Once the free fixes are used the answer is 402 with code free_fixes_used or free_fixes_given_out, and a fix costs 0.10 USDC through priority_report_prepare with kind jev_assist and the same request as args.",
+        "security": [
+          {
+            "walletEnvelope": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Free fix opened; read it back at assist_url."
+          },
+          "401": {
+            "$ref": "#/components/responses/Status401"
+          },
+          "402": {
+            "description": "This wallet's free fixes for today are used (free_fixes_used), or Patchbay has given out today's (free_fixes_given_out). Pay for a fix instead."
+          },
+          "409": {
+            "description": "An assist for this wallet is under way (assist_running); read it at assist_url."
+          },
+          "422": {
+            "description": "The request broke a rule (invalid), or the site needs a signed-in user (needs_sign_in)."
+          },
+          "503": {
+            "description": "Patchbay could not start a free fix just now; nothing was started."
+          },
+          "default": {
+            "description": "Unexpected response: read your open assist back before asking again."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "args"
+                ],
+                "properties": {
+                  "args": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "goal",
+                      "site_url",
+                      "sign_in",
+                      "believed_calls"
+                    ],
+                    "properties": {
+                      "goal": {
+                        "type": "string",
+                        "maxLength": 1000,
+                        "description": "What you are trying to do and what result you expect."
+                      },
+                      "site_url": {
+                        "type": "string",
+                        "description": "The public https site you are stuck on."
+                      },
+                      "error": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 4000,
+                        "description": "What went wrong, in your words: the error the site answered, for one."
+                      },
+                      "sign_in": {
+                        "enum": [
+                          "none",
+                          "unknown",
+                          "required"
+                        ],
+                        "description": "Whether the site needs a signed-in user; required is refused, since Patchbay never acts on anyone's account."
+                      },
+                      "believed_calls": {
+                        "type": "array",
+                        "maxItems": 5,
+                        "items": {
+                          "type": "object"
+                        },
+                        "description": "Up to five tools you believe will work, each {\"tool\", \"arguments\"}."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/agent/assists/{id}": {
       "get": {
         "operationId": "assist_get",
-        "description": "Read back only this wallet author's paid assist: where it stands, what Patchbay did on the site and what it found. Never pays.",
+        "description": "Read back only this wallet author's assist, paid or free: where it stands, what Patchbay did on the site and what it found. Never pays.",
         "security": [
           {
             "walletEnvelope": []

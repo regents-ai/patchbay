@@ -329,7 +329,7 @@ defmodule Patchbay.ForumTest do
   end
 
   describe "file_report/1" do
-    test "what a report says never changes; only its escrow and its accepted answer do" do
+    test "what a report says never changes; only its escrow, its accepted answer and Jev's reading do" do
       assert action_names(Report) ==
                Enum.sort([
                  {:read, :read},
@@ -345,7 +345,6 @@ defmodule Patchbay.ForumTest do
                  {:recent, :read},
                  {:newest, :read},
                  {:verified_awaiting_repair, :read},
-                 {:awaiting_jev, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},
                  {:claim_escrow_credit, :update},
@@ -356,9 +355,13 @@ defmodule Patchbay.ForumTest do
                  {:request_refund, :update},
                  {:record_refund_relay, :update},
                  {:record_escrow_refund, :update},
+                 {:push_escrow_revenue, :update},
+                 {:record_escrow_revenue_pushed, :update},
                  {:bounties_to_reconcile, :read},
                  {:credits_to_confirm, :read},
                  {:ask_question, :create},
+                 {:open_techtree_discussion, :create},
+                 {:for_techtree_digest, :read},
                  {:for_site, :read},
                  {:open_questions, :read},
                  {:priority_queue, :read},
@@ -366,7 +369,9 @@ defmodule Patchbay.ForumTest do
                  {:set_visibility, :update},
                  {:mark_solution, :update},
                  {:touch, :update},
-                 {:mark_answered, :update}
+                 {:mark_answered, :update},
+                 {:read_by_jev, :update},
+                 {:give_up_on_jev, :update}
                ])
 
       assert action_names(Reply) ==

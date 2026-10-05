@@ -9,11 +9,12 @@ defmodule Patchbay.Assist.WorkTest do
   """
 
   use Patchbay.DataCase, async: false
+  use AshOban.Test, repo: Patchbay.Repo
 
   import Plug.Conn
 
   alias Patchbay.Assist
-  alias Patchbay.Assist.Work
+  alias Patchbay.Assist.Run
   alias Patchbay.Identity
   alias Patchbay.Payments.JevAssist
 
@@ -24,7 +25,7 @@ defmodule Patchbay.Assist.WorkTest do
     old_jev = Application.get_env(:patchbay, :jev_req_options)
     old_target = Application.get_env(:patchbay, :assist_target)
     old_listed = Application.fetch_env!(:patchbay, :assist_read_only_tools)
-    old_key = System.get_env("OPENROUTER_API_KEY")
+    old_openrouter = Application.fetch_env!(:patchbay, :openrouter)
     Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
 
     # The fixture site's tools Patchbay treats as checked read-only ones.
@@ -32,17 +33,18 @@ defmodule Patchbay.Assist.WorkTest do
       "bookings.example.com" => ~w(find_table lookup book)
     })
 
-    System.put_env("OPENROUTER_API_KEY", "test-key-never-sent")
+    Application.put_env(
+      :patchbay,
+      :openrouter,
+      Keyword.put(old_openrouter, :api_key, "test-key-never-sent")
+    )
 
     on_exit(fn ->
       Application.put_env(:patchbay, :assist, old_assist)
       Application.put_env(:patchbay, :jev_req_options, old_jev)
       Application.put_env(:patchbay, :assist_target, old_target)
       Application.put_env(:patchbay, :assist_read_only_tools, old_listed)
-
-      if old_key,
-        do: System.put_env("OPENROUTER_API_KEY", old_key),
-        else: System.delete_env("OPENROUTER_API_KEY")
+      Application.put_env(:patchbay, :openrouter, old_openrouter)
     end)
 
     :ok
@@ -71,7 +73,7 @@ defmodule Patchbay.Assist.WorkTest do
       end
     end)
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
 
     # The worker's own reads of the run it worked on.
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
@@ -94,8 +96,8 @@ defmodule Patchbay.Assist.WorkTest do
     assert call["params"]["arguments"] == %{"party" => 2}
     refute Map.has_key?(seen_headers(site), "cookie")
 
-    # A run picked up once is not picked up again.
-    assert :ok = Work.run(run.id)
+    # A run picked up once is not picked up again, even by a second job.
+    assert {:cancel, _} = perform_job(Run.Workers.Work, %{"primary_key" => %{"id" => run.id}})
     {:ok, again} = Assist.get_run(run.id, authorize?: false)
     assert again.steps == done.steps
   end
@@ -123,7 +125,7 @@ defmodule Patchbay.Assist.WorkTest do
       end
     end)
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
     assert done.status == :finished
     assert done.outcome == :suggested
@@ -151,7 +153,7 @@ defmodule Patchbay.Assist.WorkTest do
         %{"tool" => %{"choice" => name, "confidence" => 0.9}}
       end)
 
-      assert :ok = Work.run(run.id)
+      assert :ok = work(run)
       {:ok, done} = Assist.get_run(run.id, authorize?: false)
       assert {done.status, done.outcome} == {:finished, :suggested}
       assert calls(site, "tools/call") == []
@@ -171,7 +173,7 @@ defmodule Patchbay.Assist.WorkTest do
         else: %{"verdict" => %{"choice" => "needs_sign_in", "confidence" => 0.9}}
     end)
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
     assert {done.status, done.outcome} == {:finished, :needs_sign_in}
 
@@ -182,7 +184,7 @@ defmodule Patchbay.Assist.WorkTest do
       plug: fn conn -> send_resp(conn, 402, "no credit") end
     )
 
-    assert :ok = Work.run(away.id)
+    assert :ok = work(away)
     {:ok, waiting} = Assist.get_run(away.id, authorize?: false)
     assert {waiting.status, waiting.outcome} == {:assessment_pending, :provider_unavailable}
     assert Enum.any?(waiting.steps, &(&1["note"] =~ "person at Patchbay"))
@@ -190,7 +192,7 @@ defmodule Patchbay.Assist.WorkTest do
     # A site that resolves nowhere public is never connected to.
     private = paid_run(site, believed_calls: [])
     Application.put_env(:patchbay, :assist_target, resolve: fn _ -> [{10, 0, 0, 1}] end)
-    assert :ok = Work.run(private.id)
+    assert :ok = work(private)
     {:ok, unlisted} = Assist.get_run(private.id, authorize?: false)
     assert {unlisted.status, unlisted.outcome} == {:finished, :tools_unlisted}
     assert Enum.any?(unlisted.steps, &(&1["note"] =~ "public internet"))
@@ -206,7 +208,7 @@ defmodule Patchbay.Assist.WorkTest do
       %{"tool" => %{"choice" => "reserve_table", "confidence" => 0.8}}
     end)
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
     assert {done.status, done.outcome} == {:finished, :suggested}
     assert Enum.any?(done.steps, &(&1["note"] =~ "Patchbay found 1 of them"))
@@ -218,7 +220,7 @@ defmodule Patchbay.Assist.WorkTest do
     # A site with nothing in its pages ends the run without a suggestion.
     empty = paid_run(mcp_site(%{}), believed_calls: [])
     Patchbay.PageSite.serve(%{"/mcp" => Patchbay.PageSite.without_tools()})
-    assert :ok = Work.run(empty.id)
+    assert :ok = work(empty)
     {:ok, unlisted} = Assist.get_run(empty.id, authorize?: false)
     assert {unlisted.status, unlisted.outcome} == {:finished, :tools_unlisted}
     assert Enum.any?(unlisted.steps, &(&1["note"] =~ "no tools are written into its page"))
@@ -236,7 +238,7 @@ defmodule Patchbay.Assist.WorkTest do
 
     # The drafting model is away: the run waits on a person, and nothing was called.
     drafter(fn -> {:error, {:http_status, 429}} end)
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, waiting} = Assist.get_run(run.id, authorize?: false)
     assert {waiting.status, waiting.outcome} == {:assessment_pending, :provider_unavailable}
     assert calls(site, "tools/call") == []
@@ -247,7 +249,7 @@ defmodule Patchbay.Assist.WorkTest do
     assert {again.status, again.outcome, again.finished_at} == {:paid, nil, nil}
     assert List.last(again.steps)["note"] =~ "picked this up again"
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
     assert {done.status, done.outcome} == {:finished, :reached}
     assert Enum.take(done.steps, length(waiting.steps)) == waiting.steps
@@ -271,7 +273,7 @@ defmodule Patchbay.Assist.WorkTest do
         else: %{"verdict" => %{"choice" => "reached", "confidence" => 0.9}}
     end)
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
     assert {done.status, done.outcome} == {:finished, :reached}
     assert Enum.find(done.steps, &(&1["tool"] == "lookup"))["answer"] =~ "found"
@@ -287,34 +289,31 @@ defmodule Patchbay.Assist.WorkTest do
         else: raise("jev fixture fell over")
     end)
 
-    assert :ok = Work.run(run.id)
+    assert :ok = work(run)
     {:ok, failed} = Assist.get_run(run.id, authorize?: false)
     assert {failed.status, failed.outcome} == {:failed, nil}
     assert Enum.any?(failed.steps, &(&1["note"] =~ "lists 1 tools"))
     assert Enum.any?(failed.steps, &(&1["note"] =~ "hit an error"))
   end
 
-  test "a restart marks the runs that were open as failed; a lost worker closes its own" do
+  test "a run whose work was lost is closed as failed; one still being worked on is left" do
     site = mcp_site(%{})
-    run = paid_run(site, believed_calls: [])
-    {:ok, running} = Assist.start_run(run, authorize?: false)
-    assert running.status == :running
+    lost = paid_run(site, believed_calls: [])
+    {:ok, _running} = Assist.start_run(lost, authorize?: false)
+    lost_at(lost, ~U[2026-10-02 08:00:00Z])
 
-    assert :ok = Assist.interrupt_open_runs()
-    {:ok, failed} = Assist.get_run(run.id, authorize?: false)
+    fresh = paid_run(site, believed_calls: [])
+    {:ok, _running} = Assist.start_run(fresh, authorize?: false)
+
+    assert %{failure: 0} = schedule_and_run_triggers({Run, :close_lost})
+    {:ok, failed} = Assist.get_run(lost.id, authorize?: false)
     assert failed.status == :failed
     assert failed.finished_at
+    {:ok, still} = Assist.get_run(fresh.id, authorize?: false)
+    assert still.status == :running
 
-    # A run already answered is left as it is.
-    assert :ok = Assist.interrupt_run(run.id)
-    {:ok, still} = Assist.get_run(run.id, authorize?: false)
-    assert still.finished_at == failed.finished_at
-
-    # A run that was never picked up is closed too, by the runner that lost it.
-    waiting = paid_run(site, believed_calls: [])
-    assert :ok = Assist.interrupt_run(waiting.id)
-    {:ok, closed} = Assist.get_run(waiting.id, authorize?: false)
-    assert closed.status == :failed
+    # A run already answered is never closed again.
+    assert {:error, _not_open} = Ash.update(failed, %{}, action: :interrupt, authorize?: false)
   end
 
   test "one open run per payer is the database's rule, not only the door's" do
@@ -355,6 +354,21 @@ defmodule Patchbay.Assist.WorkTest do
     )
 
     run
+  end
+
+  # The run's job, queued when the run was opened, run as Oban runs it.
+  defp work(run) do
+    assert_triggered(run, :work)
+    assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :assist)
+    :ok
+  end
+
+  # Moves a running run's start back, as if its work began at `at`.
+  defp lost_at(run, at) do
+    Patchbay.Repo.query!("UPDATE assist_runs SET started_at = $1 WHERE id = $2", [
+      at,
+      Ecto.UUID.dump!(run.id)
+    ])
   end
 
   defp payer do

@@ -161,7 +161,7 @@
       "name": "report_known_fix",
       "version": 1,
       "title": "Say whether a known fix worked",
-      "description": "Say whether the known fix Jev chose for you worked: worked or did_not_work, with the decision_id the answer gave you. Your word is counted as your own report, never as a check, and shown to the next agent Jev chooses the same fix for. Saying again replaces what you said.",
+      "description": "Say whether the known fix Jev chose for you worked: worked or did_not_work, with the decision_id the answer gave you. Your word is counted as your own report, never as a check, and shown to the next agent Jev chooses the same fix for. Each answer takes one report.",
       "input_schema": {
         "type": "object",
         "properties": {

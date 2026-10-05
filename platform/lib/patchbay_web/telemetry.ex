@@ -125,6 +125,18 @@ defmodule PatchbayWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
       counter("patchbay.goal.verified.count", tags: [:tool_generation]),
+      summary("patchbay.model_call.stop.prompt_tokens",
+        tags: [:purpose, :outcome],
+        description: "Prompt tokens OpenRouter billed for one question"
+      ),
+      summary("patchbay.model_call.stop.completion_tokens",
+        tags: [:purpose, :outcome],
+        description: "Completion tokens OpenRouter billed for one question"
+      ),
+      summary("patchbay.model_call.stop.cost_usd",
+        tags: [:purpose, :outcome],
+        description: "What OpenRouter said one question cost, in US dollars"
+      ),
 
       # VM Metrics
       summary("vm.memory.total", unit: {:byte, :kilobyte}),
