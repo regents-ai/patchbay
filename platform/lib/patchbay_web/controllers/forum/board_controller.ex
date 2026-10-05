@@ -1022,6 +1022,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   # that fails are each said for what they are, never shown as an empty thread.
   # A reply refused on the way to either page stays on screen there, on a form
   # that carries the page only while that page can still be shown.
+  # A Techtree Result's discussion shows what Techtree says of it now.
+  defp techtree_result(%{techtree_digest: nil}), do: nil
+  defp techtree_result(%{techtree_digest: digest}), do: Patchbay.Techtree.fetch_result(digest)
+
   defp show_report(conn, id, params, problems) do
     report = fetch_report!(id)
     filter = if params["replies"] in ["solution", "official"], do: params["replies"], else: "all"
@@ -1040,7 +1044,8 @@ defmodule PatchbayWeb.Forum.BoardController do
         reply_problem: Keyword.get(problems, :reply_problem),
         refund_problem: Keyword.get(problems, :refund_problem),
         liked: Board.liked(report, replies, conn.assigns.current_profile),
-        earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)])
+        earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)]),
+        techtree: techtree_result(report)
       )
     else
       {:error, :invalid_cursor} ->

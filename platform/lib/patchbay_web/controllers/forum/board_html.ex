@@ -66,6 +66,74 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def jev_caption, do: @jev_caption
 
+  @doc """
+  What Techtree says of the Result a discussion is about, as read when the page
+  opened: the Result, or why it could not be shown.
+  """
+  attr(:result, :any, required: true)
+  attr(:digest, :string, required: true)
+
+  def techtree_result(%{result: {:ok, result}} = assigns) do
+    assigns = assign(assigns, :result, result)
+
+    ~H"""
+    <section id="pb-techtree-result" class="pb-solution-card" aria-labelledby="pb-techtree-title">
+      <h2 id="pb-techtree-title">The Result on Techtree</h2>
+      <p class="pb-thread-caption">As Techtree records it now.</p>
+      <dl class="pb-card-facts">
+        <dt>Climb</dt><dd>{@result.climb}</dd>
+        <dt>Verdict</dt><dd>{techtree_verdict(@result)}</dd>
+        <dt>Skill</dt><dd>{@result.skill_name}</dd>
+        <dt>Run by</dt><dd>{@result.harness} with {@result.model}</dd>
+        <dt>Score</dt><dd>{techtree_score(@result)}</dd>
+      </dl>
+      <a href={@result.entry_url}>See it on Techtree →</a>
+    </section>
+    """
+  end
+
+  def techtree_result(%{result: {:error, reason}} = assigns) do
+    assigns = assign(assigns, :problem, techtree_problem(reason))
+
+    ~H"""
+    <section id="pb-techtree-result" class="pb-solution-card" aria-labelledby="pb-techtree-title">
+      <h2 id="pb-techtree-title">The Result on Techtree</h2>
+      <p class="pb-thread-caption">{@problem}</p>
+      <a href={"https://techtree.sh/results/" <> @digest}>See it on Techtree →</a>
+    </section>
+    """
+  end
+
+  @doc "A Techtree Result's standing, in one word."
+  def techtree_verdict(%{withdrawn?: true}), do: "Withdrawn"
+  def techtree_verdict(%{decision: :accepted}), do: "Accepted"
+  def techtree_verdict(%{decision: :rejected}), do: "Rejected"
+
+  @doc "A Techtree Result's score against its Climb's tasks."
+  def techtree_score(result) do
+    Enum.join(
+      [
+        count_label(result.wins, "win", "wins"),
+        count_label(result.ties, "tie", "ties"),
+        count_label(result.losses, "loss", "losses")
+      ],
+      ", "
+    ) <> " over " <> count_label(result.task_count, "task", "tasks")
+  end
+
+  @doc "Why a Techtree Result's details are missing from its discussion."
+  def techtree_problem(:not_found), do: "Techtree no longer lists this Result."
+  def techtree_problem(_reason), do: "Techtree couldn't be read just now. Reload to try again."
+
+  @doc "A Techtree Result as one line, for the text view of its discussion."
+  def techtree_line({:ok, result}) do
+    "Techtree Result: #{techtree_verdict(result)} on #{result.climb} · #{result.skill_name}, " <>
+      "run by #{result.harness} with #{result.model} · #{techtree_score(result)} · " <>
+      result.entry_url
+  end
+
+  def techtree_line({:error, reason}), do: "Techtree Result: " <> techtree_problem(reason)
+
   def verdict_class(:verified_success), do: "is-good"
   def verdict_class(verdict) when verdict in [:verified_failure, :errored], do: "is-bad"
   def verdict_class(_verdict), do: "is-neutral"

@@ -14,7 +14,7 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
   alias PatchbayWeb.ForumAPI.Reads
 
   def show(conn, %{"public_id" => public_id}) do
-    case Reads.agent_profile(public_id) do
+    case Reads.agent_profile(public_id, :full) do
       {:ok, profile} ->
         json(conn, profile)
 

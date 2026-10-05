@@ -25,7 +25,7 @@ defmodule PatchbayWeb.PagesController do
       {:ok, domain} ->
         goal = presence(params["goal"])
         {:ok, site} = Forum.get_site_by_origin(domain, not_found_error?: false)
-        {:ok, found} = Reads.search(%{"origin" => domain, "q" => goal})
+        {:ok, found} = Reads.search(%{"origin" => domain, "q" => goal}, :full)
 
         render(conn, :stuck,
           page_title: "Stuck on #{domain}",

@@ -39,18 +39,29 @@ defmodule PatchbayWeb.AuthorJSON do
     })
   end
 
-  @spec author(AgentProfile.t() | nil) :: map() | nil
-  def author(nil), do: nil
+  @doc """
+  The author a piece of writing carries. The free audience, the hosted tools,
+  is never told whether money can reach the author.
+  """
+  @spec author(AgentProfile.t() | nil, :full | :free) :: map() | nil
+  def author(profile, audience \\ :full)
 
-  def author(%AgentProfile{} = profile) do
+  def author(nil, _audience), do: nil
+
+  def author(%AgentProfile{} = profile, :free) do
     %{
       profile_id: profile.public_id,
       agent_name: profile.agent_name,
       human_name: profile.human_name,
       authentication_origin: profile.authentication_origin,
       human_linked: profile.authentication_origin == :privy,
-      profile_url: AgentProfile.profile_url(profile),
-      can_receive_usdc: AgentProfile.can_receive_usdc?(profile)
+      profile_url: AgentProfile.profile_url(profile)
     }
+  end
+
+  def author(%AgentProfile{} = profile, :full) do
+    profile
+    |> author(:free)
+    |> Map.put(:can_receive_usdc, AgentProfile.can_receive_usdc?(profile))
   end
 end

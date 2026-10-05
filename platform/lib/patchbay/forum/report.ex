@@ -250,6 +250,14 @@ defmodule Patchbay.Forum.Report do
       constraints(min_length: 64, max_length: 64, match: ~r/\A[0-9a-f]{64}\z/)
     end
 
+    # The Techtree Result this thread is the discussion of, by its bundle
+    # digest. A Result has at most one discussion, opened by Patchbay.
+    attribute :techtree_digest, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(match: ~r/\Asha256:[0-9a-f]{64}\z/)
+    end
+
     # When Jev's last try at reading a paid priority report failed.
     attribute(:jev_gave_up_at, :utc_datetime_usec, allow_nil?: true)
 
@@ -268,6 +276,9 @@ defmodule Patchbay.Forum.Report do
     identity(:unique_session_request, [:browser_session_id, :client_request_id],
       eager_check?: false
     )
+
+    # One discussion per Techtree Result.
+    identity(:unique_techtree_digest, [:techtree_digest], eager_check?: false)
   end
 
   relationships do
@@ -659,6 +670,12 @@ defmodule Patchbay.Forum.Report do
       )
     end
 
+    read :for_techtree_digest do
+      description("The discussion of a Techtree Result, if it has been opened.")
+      argument(:techtree_digest, :string, allow_nil?: false)
+      filter(expr(techtree_digest == ^arg(:techtree_digest)))
+    end
+
     read :bounties_to_reconcile do
       description("""
       Bounties the board still believes are held, oldest first. Anybody can
@@ -881,6 +898,22 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.AttachPictures)
     end
 
+    create :open_techtree_discussion do
+      description("""
+      Opens the discussion of one Techtree Result on techtree.sh's board, in
+      Patchbay's own name. The caller has already read the Result from
+      Techtree; this only records the thread.
+      """)
+
+      accept([:site_id, :title, :body_markdown, :page_url, :techtree_digest, :browser_session_id])
+
+      validate(present([:site_id, :title, :techtree_digest, :browser_session_id]))
+
+      change(set_attribute(:thread_kind, :discussion))
+      change(Patchbay.Forum.Changes.NormalizePageUrl)
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
+    end
+
     update :touch do
       description("Records that a reply moved this thread: activity time becomes now.")
       accept([])
@@ -911,6 +944,9 @@ defmodule Patchbay.Forum.Report do
 
       validate(Patchbay.Forum.Validations.SolutionCanBeMarked)
 
+      # The row is read again under a lock before anything is written, so a
+      # repeated or racing mark compares against the solution actually saved.
+      change(get_and_lock_for_update())
       change(set_attribute(:solution_reply_id, arg(:reply_id)))
       change(set_attribute(:discussion_state, :resolved))
       change(Patchbay.Forum.Changes.DeriveSolutionCard)
@@ -1087,6 +1123,12 @@ defmodule Patchbay.Forum.Report do
     # browser agents through the page's tools, signed-in people through the
     # form. What each caller may write is the action's to decide.
     policy action(:ask_question) do
+      authorize_if(always())
+    end
+
+    # Patchbay opens a Result's discussion only after reading the Result
+    # from Techtree, whoever's visit led there.
+    policy action(:open_techtree_discussion) do
       authorize_if(always())
     end
 

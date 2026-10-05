@@ -176,14 +176,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def search(conn, params) do
-    case Reads.search(params) do
+    case Reads.search(params, :full) do
       {:ok, payload} -> json(conn, payload)
       {:error, failure} -> send_failure(conn, failure)
     end
   end
 
   def show(conn, %{"id" => id} = params) do
-    case Reads.thread(id, params) do
+    case Reads.thread(id, params, :full) do
       {:ok, payload} -> json(conn, payload)
       {:error, failure} -> send_thread_failure(conn, failure)
     end

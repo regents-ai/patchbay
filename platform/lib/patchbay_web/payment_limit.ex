@@ -1,8 +1,7 @@
 defmodule PatchbayWeb.PaymentLimit do
   @moduledoc """
-  Gives each wallet a share of payment requests a minute: the hosted tools
-  that act for a wallet, the agent's HTTP payment intent endpoints, and a
-  page's new payment intents (a page pays and reads back its intents without
+  Gives each wallet a share of payment requests a minute: the agent's HTTP
+  payment intent endpoints and a page's new payment intents (a page pays and reads back its intents without
   drawing on the share, so a signature is never turned away). It lives in
   this node's memory, which is the whole of Patchbay: the site runs on one
   machine.

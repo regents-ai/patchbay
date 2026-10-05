@@ -62,7 +62,7 @@ defmodule Patchbay.Forum.Updates do
           {:ok, page()} | {:resync, atom(), restart()}
   def read(principals, thread_ids, cursor, limit) do
     scope = if thread_ids, do: {:threads, thread_ids}, else: {:following, principals}
-    head = head_seq()
+    head = head()
 
     case position(cursor, scope) do
       {:ok, after_seq} when after_seq <= head ->
@@ -95,6 +95,49 @@ defmodule Patchbay.Forum.Updates do
       |> Ash.read_one!(authorize?: false)
 
     UpdatesCursor.encode(seq, {:threads, [thread_id]})
+  end
+
+  @doc """
+  What a webhook subscriber is owed next: the earliest event of `kind` after
+  `after_seq`, up to `head`, in `scope` and published, with whether
+  `principals` did it. When the events scanned hold none it may receive,
+  `{:skip_to, seq}` is the place it can move to without missing anything:
+  `head` once the whole range is scanned, otherwise the last event scanned.
+  """
+  @spec next(atom(), [String.t()], scope(), non_neg_integer(), non_neg_integer()) ::
+          {:event, ForumEvent.t(), boolean()} | {:skip_to, non_neg_integer()}
+  def next(kind, principals, scope, after_seq, head) do
+    # Confined to the kind, the scope and published threads, as the feed is.
+    events =
+      ForumEvent
+      |> Ash.Query.filter(
+        seq > ^after_seq and seq <= ^head and kind == ^kind and
+          thread.visibility == :published
+      )
+      |> in_scope(scope)
+      |> Ash.Query.sort(seq: :asc)
+      |> Ash.Query.limit(@max_limit)
+      |> Ash.read!(authorize?: false)
+
+    case {published_only(events), length(events)} do
+      {[event | _], _scanned} -> {:event, event, by?(event, principals)}
+      {[], scanned} when scanned < @max_limit -> {:skip_to, head}
+      {[], _scanned} -> {:skip_to, List.last(events).seq}
+    end
+  end
+
+  @doc "The place of the newest committed event; every event at or below it is visible."
+  @spec head() :: non_neg_integer()
+  def head do
+    # The stream's end; events are closed to public reads.
+    case ForumEvent
+         |> Ash.Query.sort(seq: :desc)
+         |> Ash.Query.limit(1)
+         |> Ash.Query.select([:seq])
+         |> Ash.read!(authorize?: false) do
+      [%ForumEvent{seq: seq}] -> seq
+      [] -> 0
+    end
   end
 
   defp position(nil, _scope), do: {:ok, 0}
@@ -176,18 +219,6 @@ defmodule Patchbay.Forum.Updates do
     |> Ash.Query.select([:id])
     |> Ash.read!()
     |> MapSet.new(& &1.id)
-  end
-
-  defp head_seq do
-    # The stream's end; events are closed to public reads.
-    case ForumEvent
-         |> Ash.Query.sort(seq: :desc)
-         |> Ash.Query.limit(1)
-         |> Ash.Query.select([:seq])
-         |> Ash.read!(authorize?: false) do
-      [%ForumEvent{seq: seq}] -> seq
-      [] -> 0
-    end
   end
 
   # The start of the scope, for a consumer that has to start over: the same

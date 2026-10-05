@@ -71,6 +71,7 @@
   "regent_format": {:git, "https://github.com/regents-ai/elixir-utils.git", "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", [ref: "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", sparse: "format"]},
   "regent_http": {:git, "https://github.com/regents-ai/elixir-utils.git", "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", [ref: "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", sparse: "http"]},
   "regent_identity": {:git, "https://github.com/regents-ai/regents.git", "d12166405169e09bb558333fc3478799c293c446", [ref: "d12166405169e09bb558333fc3478799c293c446", sparse: "identity"]},
+  "regent_mcp_events": {:git, "https://github.com/regents-ai/elixir-utils.git", "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", [ref: "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", sparse: "mcp_events"]},
   "regent_payments": {:git, "https://github.com/regents-ai/regents.git", "d12166405169e09bb558333fc3478799c293c446", [ref: "d12166405169e09bb558333fc3478799c293c446", sparse: "payments"]},
   "regent_privy": {:git, "https://github.com/regents-ai/elixir-utils.git", "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", [ref: "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc", sparse: "privy"]},
   "regent_ui": {:git, "https://github.com/regents-ai/design-system.git", "6bc26409835f76f99f91cf6e48bdebd18f1fe8eb", [ref: "6bc26409835f76f99f91cf6e48bdebd18f1fe8eb", sparse: "regent_ui"]},
