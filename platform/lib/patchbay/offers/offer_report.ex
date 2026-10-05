@@ -17,7 +17,8 @@ defmodule Patchbay.Offers.OfferReport do
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   @reasons [
     :malicious_link,
@@ -50,6 +51,16 @@ defmodule Patchbay.Offers.OfferReport do
       reference(:version, on_delete: :restrict)
       reference(:delivery, on_delete: :restrict)
     end
+  end
+
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    # A report filed or decided changes the moderator page; `topic/0` is
+    # this same channel.
+    publish(:file, ["offers:reports"], transform: &__MODULE__.changed_message/1)
+    publish(:decide, ["offers:reports"], transform: &__MODULE__.changed_message/1)
   end
 
   attributes do
@@ -116,14 +127,47 @@ defmodule Patchbay.Offers.OfferReport do
       # A second report of the same placement writes nothing new.
       upsert_fields([:reporter])
     end
+
+    update :decide do
+      description("A moderator dismisses or confirms an open report, with a reason on record.")
+      accept([])
+      require_atomic?(false)
+
+      argument(:decision, :atom,
+        allow_nil?: false,
+        constraints: [one_of: [:dismissed, :confirmed]]
+      )
+
+      argument(:reason, :string, allow_nil?: false, constraints: [min_length: 1, max_length: 500])
+      argument(:idempotency_key, :string, allow_nil?: false, constraints: [max_length: 200])
+
+      validate(attribute_equals(:status, :open), message: "has already been decided")
+      # Two moderators deciding at once: only the update that still finds it
+      # open lands, and the other is told it is stale.
+      change(fn changeset, _context -> Ash.Changeset.filter(changeset, expr(status == :open)) end)
+      change(set_attribute(:status, arg(:decision)))
+      change({Patchbay.Offers.Changes.RecordModeration, kind: :from_argument})
+    end
   end
 
   policies do
+    policy action(:decide) do
+      authorize_if(Patchbay.Offers.Checks.Moderator)
+    end
+
     # Filed only by Patchbay's forum doors, which name the reporter from the
     # request's own session and skip authorization deliberately; read only on
-    # the moderator page.
-    policy always() do
+    # the moderator page, which checks the moderator itself.
+    policy action([:file, :read]) do
       forbid_if(always())
     end
   end
+
+  @doc "The channel a report filed or decided is announced on."
+  @spec topic() :: String.t()
+  def topic, do: "offers:reports"
+
+  @doc false
+  @spec changed_message(Ash.Notifier.Notification.t()) :: :offer_reports_changed
+  def changed_message(%Ash.Notifier.Notification{}), do: :offer_reports_changed
 end

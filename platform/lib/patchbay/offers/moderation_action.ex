@@ -25,6 +25,7 @@ defmodule Patchbay.Offers.ModerationAction do
       index([:inserted_at])
       index([:placement_id])
       index([:version_id])
+      index([:report_id])
     end
 
     references do
@@ -32,6 +33,7 @@ defmodule Patchbay.Offers.ModerationAction do
       reference(:placement, on_delete: :restrict)
       reference(:version, on_delete: :restrict)
       reference(:promoted_placement, on_delete: :restrict)
+      reference(:report, on_delete: :restrict)
     end
   end
 
@@ -90,15 +92,25 @@ defmodule Patchbay.Offers.ModerationAction do
 
     # The next leader that started at once when a removal freed the slot.
     belongs_to(:promoted_placement, Patchbay.Offers.Placement, allow_nil?: true, public?: true)
+
+    # For a dismissed or confirmed report: the report decided.
+    belongs_to(:report, Patchbay.Offers.OfferReport, allow_nil?: true, public?: true)
   end
 
   actions do
     defaults([:read])
+
+    create :record do
+      description("Records a moderator's decision, written with the change it decided.")
+      accept([:kind, :reason, :idempotency_key, :placement_id, :version_id, :report_id])
+      change(relate_actor(:moderator))
+    end
   end
 
   policies do
-    # Read on the moderator page only, which checks the moderator itself and
-    # skips authorization deliberately.
+    # Recorded only with the decision it records, whose own policy says who
+    # may make it; read on the moderator page only, which checks the
+    # moderator itself. Both skip authorization deliberately.
     policy always() do
       forbid_if(always())
     end

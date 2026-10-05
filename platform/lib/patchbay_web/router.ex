@@ -204,6 +204,17 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # Agent Offers moderation is live, so a report shows the moment it is
+  # filed. The page answers as though it does not exist to anyone but a
+  # moderator.
+  scope "/admin", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    live_session :offer_moderation, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/offers", OfferModerationLive, :index
+    end
+  end
+
   # A fix is watched as it happens, so its page is live like a room's.
   scope "/", PatchbayWeb do
     pipe_through [:browser, :html_only]

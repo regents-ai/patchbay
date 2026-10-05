@@ -87,6 +87,27 @@ defmodule Patchbay.Offers.CreativeVersion do
     has_many :placements, Patchbay.Offers.Placement do
       destination_attribute(:version_id)
     end
+
+    has_many :reports, Patchbay.Offers.OfferReport do
+      destination_attribute(:version_id)
+    end
+
+    has_many :delivery_items, Patchbay.Offers.DeliveryItem do
+      destination_attribute(:version_id)
+    end
+  end
+
+  # What the moderator page ranks a wording by. Neither the reporters nor the
+  # count prove that reports are independent of one another.
+  aggregates do
+    count(:report_count, :reports)
+    count(:reporter_count, :reports, field: :reporter, uniq?: true)
+
+    count :confirmed_count, :reports do
+      filter(expr(status == :confirmed))
+    end
+
+    count(:delivery_count, :delivery_items)
   end
 
   actions do
@@ -108,11 +129,16 @@ defmodule Patchbay.Offers.CreativeVersion do
     end
 
     update :block do
-      description("Blocks this wording everywhere, at once.")
+      description("Blocks this wording everywhere, at once, and records who did and why.")
       accept([])
+      require_atomic?(false)
       argument(:reason, :string, allow_nil?: false, constraints: [min_length: 1, max_length: 500])
+      argument(:idempotency_key, :string, allow_nil?: false, constraints: [max_length: 200])
+
+      validate(attribute_equals(:blocked_at, nil), message: "is already blocked")
       change(set_attribute(:blocked_at, &DateTime.utc_now/0))
       change(set_attribute(:block_reason, arg(:reason)))
+      change({Patchbay.Offers.Changes.RecordModeration, kind: :block_version})
     end
   end
 
@@ -127,6 +153,10 @@ defmodule Patchbay.Offers.CreativeVersion do
     # Saving checks the owner itself, under the saved Offer's lock.
     policy action(:save) do
       authorize_if(actor_present())
+    end
+
+    policy action(:block) do
+      authorize_if(Patchbay.Offers.Checks.Moderator)
     end
   end
 end

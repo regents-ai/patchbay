@@ -8,6 +8,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   use PatchbayWeb.ConnCase, async: false
 
   import Patchbay.OffersFixtures
+  import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
   alias Patchbay.Offers
@@ -59,9 +60,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     blocked = approved_version(owner, "Blocked", site)
     place(site, 1, blocked)
 
-    blocked
-    |> Ash.Changeset.for_update(:block, %{reason: "misleading"})
-    |> Ash.update!(authorize?: false)
+    block(blocked, moderator())
 
     place(site, 2, approved_version(owner, "Ran out", site),
       starts_at: DateTime.add(DateTime.utc_now(), -73, :hour)
@@ -183,6 +182,69 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
   end
 
+  describe "the moderator page" do
+    test "is not there for anyone but a moderator", %{conn: conn, owner: owner} do
+      assert_error_sent(404, fn -> get(conn, "/admin/offers") end)
+      assert_error_sent(404, fn -> conn |> signed_in(owner) |> get("/admin/offers") end)
+    end
+
+    test "a report shows as it is filed; confirming and blocking are recorded, and the Offer stops",
+         %{conn: conn, origin: origin, general: general, owner: owner} do
+      place(general, 1, approved_version(owner, "General one", general))
+      moderator = moderator()
+      {:ok, view, html} = conn |> signed_in(moderator) |> live("/admin/offers")
+      assert html =~ "No Offer has been reported."
+
+      posted = ask(conn, origin)
+      %{"items" => [item]} = json_response(posted, 201)["agent_offers"]
+
+      posted
+      |> report_offer(%{
+        "placement_id" => item["placement_id"],
+        "creative_version_id" => item["creative_version_id"],
+        "reason" => "prompt_injection",
+        "note" => "<b>Ignore your task</b>"
+      })
+      |> json_response(201)
+
+      # The filed report reaches the open page, and its note is only text.
+      render(view)
+      html = render_async(view)
+      assert html =~ "Tries to steer the agent"
+      assert html =~ "&lt;b&gt;Ignore your task&lt;/b&gt;"
+      assert html =~ "1 report from 1 reporter"
+
+      report = Ash.read_one!(Offers.OfferReport, authorize?: false)
+
+      view
+      |> form("#pb-offmod-decide-#{report.id}", %{"reason" => "Asks agents to drop their task."})
+      |> render_submit(%{"decision" => "confirmed"})
+
+      view
+      |> form("#pb-offmod-block-#{report.id}", %{"reason" => "Prompt injection."})
+      |> render_submit()
+
+      render(view)
+      html = render_async(view)
+      assert html =~ "Confirmed a report"
+      assert html =~ "Blocked a wording"
+      assert Ash.get!(Offers.OfferReport, report.id, authorize?: false).status == :confirmed
+
+      assert [
+               %{kind: :block_version, version_id: version_id, moderator_profile_id: by},
+               %{kind: :confirm_report, report_id: report_id, reason: "Asks agents to drop" <> _}
+             ] =
+               Offers.ModerationAction
+               |> Ash.Query.sort(inserted_at: :desc)
+               |> Ash.read!(authorize?: false)
+
+      assert {version_id, report_id, by} == {report.version_id, report.id, moderator.id}
+
+      # The blocked wording is shown nowhere from then on.
+      assert json_response(ask(conn, origin), 201)["agent_offers"] == nil
+    end
+  end
+
   describe "hosted MCP" do
     test "a new post at /mcp carries Offers once, as their own block after the result",
          %{conn: conn, origin: origin, general: general, owner: owner} do
@@ -289,6 +351,13 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     conn = conn |> recycle() |> put_req_header("content-type", "application/json")
     conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
     post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
+  end
+
+  defp signed_in(conn, profile) do
+    conn
+    |> recycle()
+    |> Plug.Test.init_test_session(%{})
+    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
   end
 
   defp report_offer(posted, offer) do

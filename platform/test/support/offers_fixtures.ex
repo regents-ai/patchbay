@@ -21,6 +21,41 @@ defmodule Patchbay.OffersFixtures do
   end
 
   @doc """
+  A signed-in profile on the moderator list for the rest of the test. Call it
+  from inside a test or setup, which puts the list back when the test ends.
+  The list is shared by every test, so only a test that runs alone may call it.
+  """
+  def moderator do
+    wallet =
+      "0x" <> (Ecto.UUID.generate() |> String.replace("-", "") |> String.pad_trailing(40, "0"))
+
+    previous = Application.get_env(:patchbay, :moderator_wallets)
+    Application.put_env(:patchbay, :moderator_wallets, [wallet | List.wrap(previous)])
+
+    ExUnit.Callbacks.on_exit(fn ->
+      if previous,
+        do: Application.put_env(:patchbay, :moderator_wallets, previous),
+        else: Application.delete_env(:patchbay, :moderator_wallets)
+    end)
+
+    Identity.upsert_from_privy!(%{
+      privy_user_id: "did:privy:moderator-#{Ecto.UUID.generate()}",
+      wallet_address: wallet
+    })
+  end
+
+  @doc """
+  Blocks `version` as `moderator`, through the moderator's own action.
+  """
+  def block(version, moderator, reason \\ "misleading") do
+    version
+    |> Ash.Changeset.for_update(:block, %{reason: reason, idempotency_key: Ecto.UUID.generate()},
+      actor: moderator
+    )
+    |> Ash.update!()
+  end
+
+  @doc """
   A saved Offer with `text`, allowed by safety screening, and also allowed for
   `market` when that is a site market. Options: `:fresh_until`, when the
   allows stop counting (default a day from now).

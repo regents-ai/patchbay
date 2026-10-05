@@ -56,8 +56,14 @@ defmodule Patchbay.Offers.CreativeTest do
 
     [version] = Ash.read!(Offers.CreativeVersion, actor: owner)
 
+    # Who may block is the moderator page's concern; this is about saving the
+    # blocked text again, so it skips the moderator check deliberately.
     version
-    |> Ash.Changeset.for_update(:block, %{reason: "malicious link"})
+    |> Ash.Changeset.for_update(
+      :block,
+      %{reason: "malicious link", idempotency_key: Ecto.UUID.generate()},
+      actor: owner
+    )
     |> Ash.update!(authorize?: false)
 
     assert {:error, error} =

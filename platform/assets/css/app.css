@@ -1914,3 +1914,20 @@ h1, h2, h3, h4, h5, h6 {
   .patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: CanvasText; }
   .patchbay-agent-dot, .patchbay-timeline-entry { animation: none; }
 }
+
+/* Agent Offers moderation */
+.pb-offmod-problem { margin: var(--space-2) 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--pb-line); }
+.pb-offmod-list { display: grid; gap: var(--space-2); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.pb-offmod-item { display: grid; gap: var(--space-1); padding-bottom: var(--space-2); border-bottom: 1px solid var(--pb-line); }
+.pb-offmod-item[data-status="dismissed"],
+.pb-offmod-item[data-status="confirmed"] { color: var(--pb-text-muted); }
+.pb-offmod-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-1); font-size: .875rem; }
+.pb-offmod-status { margin-left: auto; color: var(--pb-text-muted); font-size: .75rem; }
+.pb-offmod-slot,
+.pb-offmod-figures,
+.pb-offmod-blocked { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-offmod-offer { margin: 0; padding-left: var(--space-2); border-left: 2px solid var(--pb-line); overflow-wrap: anywhere; }
+.pb-offmod-reason { margin: 0; font-size: .875rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pb-offmod-screening { font-size: .8125rem; overflow-wrap: anywhere; }
+.pb-offmod-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-1); }
+.pb-offmod-actions .rg-field { flex: 1 1 16rem; min-width: 0; }
