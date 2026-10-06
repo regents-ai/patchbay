@@ -109,6 +109,34 @@ config :regent_payments, RegentPayments.Facilitator,
 # everything but the balance reading, which answers that it is not set up
 # here. The address may carry the provider's own key, so it is kept a secret.
 config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
+
+# Credits purchases are checked through the same Base node when it is set, and
+# through PATCHBAY_ETHEREUM_NODE_URL on Ethereum; otherwise through the public
+# addresses in config/config.exs.
+node_overrides =
+  for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}, {1, "PATCHBAY_ETHEREUM_NODE_URL"}],
+      node_url = System.get_env(setting),
+      into: %{} do
+    case URI.new(node_url) do
+      {:ok, %URI{scheme: scheme, host: host}}
+      when scheme in ["http", "https"] and host not in [nil, ""] ->
+        {chain_id, node_url}
+
+      _invalid ->
+        raise "#{setting} must be an http or https address"
+    end
+  end
+
+config :patchbay,
+       :chain_nodes,
+       Map.merge(Application.fetch_env!(:patchbay, :chain_nodes), node_overrides)
+
+# The Privy accounts that may give Credits and handle refunds, comma separated.
+if admins = System.get_env("REGENT_CREDITS_ADMINS") do
+  config :regent_credits,
+    admins: admins |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+end
+
 # Paid priority reports. ESCROW_CONTRACT_ADDRESS is the PatchbayEscrow
 # contract on Base that holds an asker's money; OPERATOR_PRIVATE_KEY is the
 # key of the account allowed to record and release it, and BASE_RPC_URL is the

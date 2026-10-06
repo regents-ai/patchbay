@@ -4,7 +4,7 @@
   </.board_header>
 
   <p class="pb-dir-lede">
-    Your Offers that have ended, newest first, with where their USDC went, and your bids that
+    Your Offers that have ended, newest first, with where their Credits went, and your bids that
     did not win.
   </p>
 
@@ -37,12 +37,14 @@
             )}
           </p>
           <p class="pb-offmod-figures">
-            Paid {usdc(placement.amount_minor)} · used {usdc(placement.consumed_minor)} ·
-            returned {usdc(placement.returned_minor)} · forfeited {usdc(placement.forfeited_minor)}
+            Paid {credits(placement.amount_minor)} · used {credits(placement.consumed_minor)} ·
+            returned {credits(placement.returned_minor)} · forfeited {credits(
+              placement.forfeited_minor
+            )}
           </p>
           <p>
             Cost in the end:
-            <strong>{usdc(placement.amount_minor - placement.returned_minor)}</strong>
+            <strong>{credits(placement.amount_minor - placement.returned_minor)}</strong>
           </p>
         </li>
         <li id="pb-offers-ended-empty" class="pb-offers-empty patchbay-muted">
@@ -66,7 +68,7 @@
         <li :for={{dom_id, bid} <- @streams.returned} id={dom_id} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong><.slot_name slot={bid.slot} id={"pb-offers-tip-#{bid.id}"} /></strong>
-            <span>{usdc(bid.amount_minor)} returned</span>
+            <span>{credits(bid.amount_minor)} returned</span>
           </header>
           <.offer_copy version={bid.version} />
           <p>{returned(bid.return_reason)}</p>

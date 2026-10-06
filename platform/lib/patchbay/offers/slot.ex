@@ -19,7 +19,25 @@ defmodule Patchbay.Offers.Slot do
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
+
+  # Every change to what a slot shows or who leads its next period tells
+  # open Offers pages to read again, after the change commits. Advisory: a
+  # page that misses one reads on reconnect.
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    publish(:point, ["offers:markets"], transform: &__MODULE__.changed_message/1)
+  end
+
+  @doc "The PubSub topic a slot's change is announced on."
+  @spec topic() :: String.t()
+  def topic, do: "offers:markets"
+
+  @doc false
+  def changed_message(_notification), do: :offer_markets_changed
 
   postgres do
     table("offer_slots")
@@ -95,11 +113,16 @@ defmodule Patchbay.Offers.Slot do
       upsert_identity(:unique_number)
       upsert_fields([:number])
     end
+
+    update :point do
+      description("Moves the slot's pointers and counters, under the slot's lock.")
+      accept([:active_placement_id, :next_bid_id, :active_generation, :next_revision])
+    end
   end
 
   policies do
     # Slots are public. They are written only inside Patchbay's own market
-    # actions, which skip authorization deliberately.
+    # and bidding actions, which skip authorization deliberately.
     policy action_type(:read) do
       authorize_if(always())
     end

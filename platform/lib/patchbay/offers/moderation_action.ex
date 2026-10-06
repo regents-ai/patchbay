@@ -126,18 +126,62 @@ defmodule Patchbay.Offers.ModerationAction do
         :placement_id,
         :version_id,
         :report_id,
-        :review_id
+        :review_id,
+        :expected_generation,
+        :outcome,
+        :consumed_minor,
+        :forfeited_minor,
+        :promoted_placement_id,
+        :policy_revision
       ])
 
       change(relate_actor(:moderator))
     end
+
+    action :remove_placement, :struct do
+      description("""
+      Removes one exact placement for improper use. Nothing goes back to its
+      owner: the time already shown counts as used and the rest is
+      forfeited. The slot's waiting next-period leader starts at once if it
+      can. Repeating the request answers with the first decision, and a
+      placement that had already ended is never removed in its successor's
+      place.
+      """)
+
+      constraints(instance_of: __MODULE__)
+      transaction?(true)
+
+      argument(:placement_id, :uuid, allow_nil?: false)
+      argument(:expected_generation, :integer, allow_nil?: false)
+
+      argument(:reason, :string,
+        allow_nil?: false,
+        constraints: [min_length: 1, max_length: 2000]
+      )
+
+      # The moderator's explicit agreement that the owner gets nothing back.
+      argument(:no_refund, :boolean, allow_nil?: false)
+
+      argument(:idempotency_key, :string,
+        allow_nil?: false,
+        constraints: [min_length: 1, max_length: 200]
+      )
+
+      run(fn input, context ->
+        Patchbay.Offers.Removal.remove(input.arguments, context.actor)
+      end)
+    end
   end
 
   policies do
+    policy action(:remove_placement) do
+      authorize_if(Patchbay.Offers.Checks.Moderator)
+    end
+
     # Recorded only with the decision it records, whose own policy says who
     # may make it; read on the moderator page only, which checks the
     # moderator itself. Both skip authorization deliberately.
-    policy always() do
+    policy action([:record, :read]) do
       forbid_if(always())
     end
   end

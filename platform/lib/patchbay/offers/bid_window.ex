@@ -19,7 +19,35 @@ defmodule Patchbay.Offers.BidWindow do
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshOban],
+    notifiers: [Ash.Notifier.PubSub]
+
+  # A window's outcome tells open Offers pages to read again, on the slots'
+  # own topic, after it commits.
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    publish(:close, ["offers:markets"], transform: &Patchbay.Offers.Slot.changed_message/1)
+  end
+
+  # A window is settled by the job queued for its closing time, in the same
+  # transaction that opened it. The minute sweep settles any whose job ran
+  # early or was lost. Settling a window settles everything due in its slot.
+  oban do
+    triggers do
+      trigger :settle do
+        action(:settle)
+        queue(:offers_settlement)
+        where(expr(state == :open and closes_at <= now()))
+        max_attempts(5)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Offers.BidWindow.Workers.Settle)
+        scheduler_module_name(Patchbay.Offers.BidWindow.Schedulers.Settle)
+      end
+    end
+  end
 
   postgres do
     table("offer_bid_windows")
@@ -100,11 +128,37 @@ defmodule Patchbay.Offers.BidWindow do
 
   actions do
     defaults([:read])
+
+    create :open do
+      description("Opens a window for the first bid in its slot and lane.")
+
+      accept([
+        :slot_id,
+        :lane,
+        :target_generation,
+        :target_next_revision,
+        :target_placement_id,
+        :baseline_minor,
+        :opened_at,
+        :closes_at
+      ])
+    end
+
+    update :close do
+      description("Records how a window ended.")
+      accept([:state, :winner_bid_id, :settled_at])
+    end
+
+    update :settle do
+      description("Settles everything due in this window's slot, this window included.")
+      require_atomic?(false)
+      manual(Patchbay.Offers.Changes.AdvanceSlot)
+    end
   end
 
   policies do
     # Windows are public: anyone may see that a slot is awaiting settlement.
-    # They are written only inside the bidding actions.
+    # They are written only inside the bidding actions and their jobs.
     policy action_type(:read) do
       authorize_if(always())
     end

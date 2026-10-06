@@ -11,11 +11,13 @@ defmodule PatchbayWeb.PrivySessionController do
   already carries is left where it is, because a report filed before signing in
   was still filed by this browser. The fixes this browser asked Jev for before
   signing in are saved to the profile, so it keeps every answer Jev gave.
+  Credits given to the signed-in wallet before it had an account move to it.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.Assist
+  alias Patchbay.Credits
   alias Patchbay.Identity
   alias Patchbay.Identity.Privy
   alias PatchbayWeb.ApiError
@@ -39,7 +41,11 @@ defmodule PatchbayWeb.PrivySessionController do
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),
          {:ok, evidence} <- Privy.verify_session_pair(pair),
-         {:ok, profile} <- Identity.upsert_from_privy(evidence) do
+         {:ok, profile} <- Identity.upsert_from_privy(evidence),
+         {:ok, _moved} <-
+           RegentCredits.attach_wallets(profile.privy_user_id, [profile.wallet_address],
+             actor: Credits.site_actor()
+           ) do
       :ok = Assist.save_browser_runs(conn.assigns.forum_session_id, profile)
 
       conn

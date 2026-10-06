@@ -1,9 +1,9 @@
 defmodule Patchbay.Offers.Terms do
   @moduledoc """
   The arithmetic of a placement: its 72 hours, the price that replaces it,
-  and how its USDC divides when it ends.
+  and how its Credits divide when it ends.
 
-  Every amount is in minor units (one cent of USDC) and every time
+  Every amount is in minor units (one hundredth of a Credit) and every time
   is a UTC `DateTime` to the microsecond. A placement runs on the half-open
   interval `starts_at <= time < expires_at`, exactly 259,200 seconds long.
 

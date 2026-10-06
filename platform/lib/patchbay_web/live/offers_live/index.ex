@@ -15,8 +15,8 @@ defmodule PatchbayWeb.OffersLive.Index do
 
   alias Patchbay.Offers
   alias Patchbay.Offers.CreativeText
+  alias Patchbay.Offers.CreditAmount
   alias Patchbay.Offers.Terms
-  alias Patchbay.Offers.UsdcAmount
 
   @impl true
   def mount(_params, _session, socket) do
@@ -25,7 +25,7 @@ defmodule PatchbayWeb.OffersLive.Index do
        page_title: "Agent Offers",
        max_code_points: CreativeText.max_code_points(),
        hours: div(Terms.duration_us(), 3_600_000_000),
-       minimum: UsdcAmount.format(Offers.default_minimum_minor())
+       minimum: CreditAmount.format(Offers.default_minimum_minor())
      )}
   end
 end

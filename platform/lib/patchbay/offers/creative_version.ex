@@ -128,6 +128,31 @@ defmodule Patchbay.Offers.CreativeVersion do
       change(Patchbay.Offers.Changes.RequestSafetyReview)
     end
 
+    read :eligible do
+      description("""
+      The wordings that may start or show in one market at one moment: not
+      blocked, with a fresh safety allow, and for a site market a fresh allow
+      saying it suits that market.
+      """)
+
+      argument(:market_id, :uuid, allow_nil?: false)
+      argument(:global, :boolean, allow_nil?: false)
+      argument(:at, :utc_datetime_usec, allow_nil?: false)
+
+      filter(
+        expr(
+          is_nil(blocked_at) and
+            exists(reviews, kind == :safety and decision == :allow and fresh_until > ^arg(:at)) and
+            (^arg(:global) or
+               exists(
+                 reviews,
+                 kind == :relevance and decision == :allow and fresh_until > ^arg(:at) and
+                   market_id == ^arg(:market_id)
+               ))
+        )
+      )
+    end
+
     update :block do
       description("Blocks this wording everywhere, at once, and records who did and why.")
       accept([])

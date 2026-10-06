@@ -2,28 +2,23 @@ defmodule Patchbay.Offers.Bid do
   @moduledoc """
   An advertiser's bid for one slot, in one lane, with one exact version.
 
-  A bid's USDC is held in `PatchbayOffersEscrow` on Base. The bidder's wallet
-  signs one USDC authorization for the amount with the bid's id as its nonce,
-  so the bid id is also its escrow commitment id, and Patchbay commits it.
-  `funding` says where that commit is:
-
-    * `:awaiting_funds` - signed, and the commit has not confirmed yet;
-    * `:funded` - the commit confirmed in `commit_tx_hash`; only a funded bid
-      can win;
-    * `:commit_failed` - the commit did not go through, so nothing moved.
+  A bid's Credits are held in the Regent Credits ledger under the bid's id
+  from the moment it is accepted (`Patchbay.Offers.Holds`), in the same
+  transaction as the bid, so a bid never exists without its hold.
 
   Its status says where it stands in the market:
 
     * `:held` - in an open window, waiting for settlement;
-    * `:leading` - the slot's committed next-period leader;
-    * `:placed` - won; its commitment carries on as the placement's, which
-      records the settlement;
+    * `:leading` - the slot's committed next-period leader; its hold stays
+      under the bid's id;
+    * `:placed` - won; its hold was carried over to the placement's id;
     * `:returned` - did not win or lost its lead, for the reason in
-      `return_reason`; a funded one went back in full in `release_tx_hash`.
+      `return_reason`; its hold came back in full.
 
   The terms the bid was accepted under (the minimum it met, the market's
   rules revision and the placement length) are kept on it, so a later
-  change of minimum never rewrites it.
+  change of minimum never rewrites it. Amounts are in hundredths of a
+  Credit.
 
   The idempotency key is the advertiser's own, unique per advertiser, and
   stored with a hash of the request. The same key with the same request
@@ -44,27 +39,6 @@ defmodule Patchbay.Offers.Bid do
       check_constraint(:amount_minor, "offer_bids_amount_positive",
         check: "amount_minor > 0 AND amount_minor >= minimum_minor",
         message: "a bid is positive and meets the minimum it was accepted under"
-      )
-
-      check_constraint(:funding, "offer_bids_funding_shape",
-        check: """
-        (funding = 'funded') = (commit_tx_hash IS NOT NULL)
-          AND (status NOT IN ('leading', 'placed') OR funding = 'funded')
-          AND (release_tx_hash IS NULL OR (status = 'returned' AND funding = 'funded'))
-        """,
-        message:
-          "only a funded bid can lead or be placed, and only a funded returned bid has a release"
-      )
-
-      check_constraint(:payer_address, "offer_bids_payer_address_format",
-        check: "payer_address ~ '^0x[0-9a-f]{40}$'",
-        message: "the payer is a lowercase wallet address"
-      )
-
-      check_constraint(:commit_tx_hash, "offer_bids_tx_hash_format",
-        check:
-          "(commit_tx_hash IS NULL OR commit_tx_hash ~ '^0x[0-9a-f]{64}$') AND (release_tx_hash IS NULL OR release_tx_hash ~ '^0x[0-9a-f]{64}$')",
-        message: "a transaction hash is lowercase hex"
       )
 
       check_constraint(:return_reason, "offer_bids_return_shape",
@@ -111,20 +85,6 @@ defmodule Patchbay.Offers.Bid do
 
   attributes do
     uuid_primary_key(:id)
-
-    # The wallet that signed the USDC authorization; everything returned
-    # goes back to it.
-    attribute(:payer_address, :string, allow_nil?: false)
-
-    attribute(:funding, :atom,
-      allow_nil?: false,
-      default: :awaiting_funds,
-      public?: true,
-      constraints: [one_of: [:awaiting_funds, :funded, :commit_failed]]
-    )
-
-    attribute(:commit_tx_hash, :string, allow_nil?: true, public?: true)
-    attribute(:release_tx_hash, :string, allow_nil?: true, public?: true)
 
     attribute(:lane, :atom,
       allow_nil?: false,
@@ -205,6 +165,60 @@ defmodule Patchbay.Offers.Bid do
   actions do
     defaults([:read])
 
+    action :submit, :struct do
+      description("""
+      Places a bid for one slot and lane with one of the advertiser's
+      wordings, holding its full amount from their Credits. The bid names
+      the slot's counters as the advertiser saw them, so a slot that has
+      moved on refuses it rather than taking a bid at a price never shown.
+      """)
+
+      constraints(instance_of: __MODULE__)
+      transaction?(true)
+
+      argument(:slot_id, :uuid, allow_nil?: false)
+      argument(:lane, :atom, allow_nil?: false, constraints: [one_of: [:immediate, :next_period]])
+      argument(:amount, :string, allow_nil?: false)
+      argument(:version_id, :uuid, allow_nil?: false)
+      argument(:target_generation, :integer, allow_nil?: false)
+      argument(:target_next_revision, :integer, allow_nil?: false)
+
+      argument(:idempotency_key, :string,
+        allow_nil?: false,
+        constraints: [min_length: 1, max_length: 200]
+      )
+
+      run(fn input, context -> Patchbay.Offers.Bidding.submit(input.arguments, context.actor) end)
+    end
+
+    create :accept do
+      description("Writes a bid that has met every rule, under its slot's lock.")
+
+      accept([
+        :owner_profile_id,
+        :version_id,
+        :slot_id,
+        :window_id,
+        :target_placement_id,
+        :lane,
+        :amount_minor,
+        :minimum_minor,
+        :opening_minimum_minor,
+        :policy_revision,
+        :duration_us,
+        :target_generation,
+        :target_next_revision,
+        :idempotency_key,
+        :request_sha256,
+        :accepted_at
+      ])
+    end
+
+    update :resolve do
+      description("Records where a bid ended up when its window or its slot moved on.")
+      accept([:status, :return_reason, :resolved_at])
+    end
+
     read :mine do
       description("The signed-in advertiser's bids, newest first.")
       filter(expr(owner_profile_id == ^actor(:id)))
@@ -214,6 +228,12 @@ defmodule Patchbay.Offers.Bid do
   end
 
   policies do
+    # Any signed-in profile may ask; whether it may spend is the Credits
+    # ledger's own decision, made when the bid is held.
+    policy action(:submit) do
+      authorize_if(actor_present())
+    end
+
     # A bid's amount is public once it leads or is placed; who holds what is
     # read through the market pages, which load only those. The owner reads
     # all of their own bids.

@@ -1,10 +1,13 @@
 defmodule Patchbay.OffersFixtures do
   @moduledoc """
-  Running Offers for tests that read what is showing. Bidding is not built
-  yet, so a placement is written straight into the tables, in the shape a
-  won window leaves behind: a settled window, its placed bid, and the
-  placement it started.
+  Offers for tests. Tests of bidding place real bids (`bid/4`) with Credits
+  given to the bidder (`give_credits/2`), and move the clock by moving the
+  records back (`age/2`). Tests that only read what is showing write a
+  placement straight into the tables (`place/4`, `lead_next/4`), in the shape
+  a won window leaves behind, with no Credits behind it.
   """
+
+  require Ash.Query
 
   alias Patchbay.Identity
   alias Patchbay.Offers
@@ -18,6 +21,89 @@ defmodule Patchbay.OffersFixtures do
       privy_user_id: "did:privy:offers-#{Ecto.UUID.generate()}",
       wallet_address: "0x" <> String.duplicate("c", 40)
     })
+  end
+
+  @doc "An autonomous agent signed in with its own wallet."
+  def wallet_agent do
+    Identity.upsert_from_wallet!(%{
+      wallet_address:
+        "0x" <> (Ecto.UUID.generate() |> String.replace("-", "") |> String.pad_trailing(40, "0"))
+    })
+  end
+
+  @doc "Gives `profile` `credits` (a decimal string) as a Regent gift."
+  def give_credits(profile, credits) do
+    # A test's own gift, so it skips the admin rule deliberately.
+    RegentCredits.give!(Ecto.UUID.generate(), [profile.privy_user_id], Decimal.new(credits),
+      actor: RegentCredits.Actor.admin("did:privy:offers-tests"),
+      authorize?: false
+    )
+  end
+
+  @doc "The available and held Credits of `profile`, as decimal strings."
+  def credits(profile) do
+    %{available: available, held: held} = RegentCredits.balance(profile.privy_user_id)
+    %{available: plain(available), held: plain(held)}
+  end
+
+  defp plain(amount), do: amount |> Decimal.normalize() |> Decimal.to_string(:normal)
+
+  @doc "`market`'s slot `number` as it is now."
+  def slot(market, number) do
+    # A fixture reads back what it set up, so it skips policies deliberately.
+    Offers.Slot
+    |> Ash.Query.filter(market_id == ^market.id and number == ^number)
+    |> Ash.read_one!(authorize?: false)
+  end
+
+  @doc """
+  Bids `amount` (a decimal string) for `market`'s slot `number` with
+  `version`, priced against the slot as it is now, through the bid action.
+  Options: `:lane` (default `:immediate`) and `:key` (default a new one).
+  """
+  def bid(profile, market, number, version, amount, opts \\ []) do
+    slot = slot(market, number)
+
+    Offers.submit_bid(
+      %{
+        slot_id: slot.id,
+        lane: Keyword.get(opts, :lane, :immediate),
+        amount: amount,
+        version_id: version.id,
+        target_generation: slot.active_generation,
+        target_next_revision: slot.next_revision,
+        idempotency_key: Keyword.get(opts, :key, Ecto.UUID.generate())
+      },
+      actor: profile
+    )
+  end
+
+  @doc """
+  Moves every window and placement in `market`'s slot `number` back by
+  `seconds`, as if that much time had passed.
+  """
+  def age(market, number, seconds) do
+    slot_id = Ecto.UUID.dump!(slot(market, number).id)
+
+    Repo.query!(
+      """
+      UPDATE offer_bid_windows
+         SET opened_at = opened_at - $2 * interval '1 second',
+             closes_at = closes_at - $2 * interval '1 second'
+       WHERE slot_id = $1
+      """,
+      [slot_id, seconds]
+    )
+
+    Repo.query!(
+      """
+      UPDATE offer_placements
+         SET starts_at = starts_at - $2 * interval '1 second',
+             expires_at = expires_at - $2 * interval '1 second'
+       WHERE slot_id = $1
+      """,
+      [slot_id, seconds]
+    )
   end
 
   @doc """
@@ -114,11 +200,11 @@ defmodule Patchbay.OffersFixtures do
     Repo.query!(
       """
       INSERT INTO offer_bids
-        (id, owner_profile_id, version_id, slot_id, window_id, lane, payer_address, funding, commit_tx_hash,
+        (id, owner_profile_id, version_id, slot_id, window_id, lane,
          amount_minor, minimum_minor, opening_minimum_minor, policy_revision, duration_us,
          target_generation, target_next_revision, idempotency_key, request_sha256, status,
          accepted_at, inserted_at)
-      VALUES ($1, $2, $3, $4, $5, 'immediate', '0x' || repeat('c', 40), 'funded', '0x' || md5(random()::text) || md5(random()::text),
+      VALUES ($1, $2, $3, $4, $5, 'immediate',
               $8, 100, 100, 1, $6, 0, 0, gen_random_uuid()::text, 'test', 'placed', $7, $7)
       """,
       [
@@ -187,11 +273,11 @@ defmodule Patchbay.OffersFixtures do
     Repo.query!(
       """
       INSERT INTO offer_bids
-        (id, owner_profile_id, version_id, slot_id, window_id, lane, payer_address, funding, commit_tx_hash,
+        (id, owner_profile_id, version_id, slot_id, window_id, lane,
          amount_minor, minimum_minor, opening_minimum_minor, policy_revision, duration_us,
          target_generation, target_next_revision, idempotency_key, request_sha256, status,
          accepted_at, inserted_at)
-      VALUES ($1, $2, $3, $4, $5, 'next_period', '0x' || repeat('c', 40), 'funded', '0x' || md5(random()::text) || md5(random()::text),
+      VALUES ($1, $2, $3, $4, $5, 'next_period',
               $6, 100, 100, 1, $7, 1, 0, gen_random_uuid()::text, 'test', 'leading', now(), now())
       """,
       [
@@ -215,7 +301,7 @@ defmodule Patchbay.OffersFixtures do
   end
 
   @doc """
-  `placement` ended with `status` and where its USDC went, in the shape
+  `placement` ended with `status` and where its Credits went, in the shape
   settlement leaves behind; the slot no longer points at it.
   """
   def end_placement(placement, status, returned_minor, forfeited_minor) do

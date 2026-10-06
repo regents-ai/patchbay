@@ -13,6 +13,34 @@ config :ash, default_string_length_count: :codepoints
 
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
+# Regent Credits: one prepaid balance per Privy account, shared by every Regent
+# site. Credits are the private currency XRC, kept to the millionth. The ledger
+# lives in the shared `regent_credits` schema, which Regents migrates; Patchbay
+# reads and writes it through its own Repo, so an Offer bid and its Credits
+# commit together. Admins come from REGENT_CREDITS_ADMINS at runtime.
+config :ex_money,
+  custom_currencies: [{:XRC, name: "Credits", digits: 6}],
+  auto_start_exchange_rate_service: false
+
+config :regent_credits,
+  repo: Patchbay.Repo,
+  ash_domains: [RegentCredits],
+  admins: [],
+  chain_client: Patchbay.ChainClient,
+  chains: %{
+    base: %{chain_id: 8453, name: "Base", rpc_url: "https://mainnet.base.org"},
+    ethereum: %{chain_id: 1, name: "Ethereum", rpc_url: "https://ethereum-rpc.publicnode.com"}
+  }
+
+# The node the server reads each chain through, by chain id, to check Credits
+# purchases. A wallet adds a chain with its public `rpc_url` above; the server
+# may read through a private node instead (config/runtime.exs), and that
+# address never reaches the browser.
+config :patchbay, :chain_nodes, %{
+  8453 => "https://mainnet.base.org",
+  1 => "https://ethereum-rpc.publicnode.com"
+}
+
 # Jev, TypeSafe's classifier, and the model that drafts a tool's arguments,
 # both on OpenRouter. The key is read at boot in config/runtime.exs.
 config :patchbay, :openrouter,
@@ -38,10 +66,22 @@ config :regent_agents,
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
 # priority report (`:read_by_jev`); the screening of an Offer's wording
 # (`Patchbay.Offers.Review`'s `:screen`); and board events posted to MCP events
-# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`).
+# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`); deciding an
+# Offer bid window and ending an Offer at its expiry (`Patchbay.Offers.BidWindow`'s
+# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); and checking Credits
+# purchases on chain (`regent_credits`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
-  queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2, offers_review: 2, webhooks: 10],
+  queues: [
+    assist: 4,
+    lost_runs: 1,
+    fees: 1,
+    jev: 2,
+    offers_review: 2,
+    offers_settlement: 4,
+    webhooks: 10,
+    regent_credits: 3
+  ],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],
   pruner: [max_age: {7, :days}],

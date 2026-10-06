@@ -6,9 +6,9 @@ defmodule Patchbay.Offers.Placement do
   `:active`, and its version is approved and not blocked. Expiry is read from
   the clock, so a late job never keeps old copy showing.
 
-  Its USDC is its bid's commitment in `PatchbayOffersEscrow`. When it ends,
-  the split is kept here, always adding up to what was bid, and the escrow
-  settles it in `settle_tx_hash`:
+  Its Credits are its bid's hold, carried over to the placement's id. When it
+  ends, the split is kept here, always adding up to what was bid, and the
+  hold is settled the same way in the same transaction:
 
     * `:expired` - all of it consumed for time;
     * `:bought_out` - the unused time returned, the rest consumed;
@@ -20,7 +20,26 @@ defmodule Patchbay.Offers.Placement do
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshOban]
+
+  # A placement is ended by the job queued for its expiry when it started.
+  # The minute sweep ends any whose job was lost, and every bid and removal
+  # in its slot ends it first anyway. Ending one starts its slot's waiting
+  # next-period leader.
+  oban do
+    triggers do
+      trigger :expire do
+        action(:expire)
+        queue(:offers_settlement)
+        where(expr(status == :active and expires_at <= now()))
+        max_attempts(5)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Offers.Placement.Workers.Expire)
+        scheduler_module_name(Patchbay.Offers.Placement.Schedulers.Expire)
+      end
+    end
+  end
 
   postgres do
     table("offer_placements")
@@ -40,7 +59,7 @@ defmodule Patchbay.Offers.Placement do
       check_constraint(:status, "offer_placements_settlement_conserves",
         check: """
         CASE status
-          WHEN 'active' THEN ended_at IS NULL AND returned_minor IS NULL AND consumed_minor IS NULL AND forfeited_minor IS NULL AND settle_tx_hash IS NULL
+          WHEN 'active' THEN ended_at IS NULL AND returned_minor IS NULL AND consumed_minor IS NULL AND forfeited_minor IS NULL
           ELSE ended_at IS NOT NULL
             AND returned_minor >= 0 AND consumed_minor >= 0 AND forfeited_minor >= 0
             AND returned_minor + consumed_minor + forfeited_minor = amount_minor
@@ -50,11 +69,6 @@ defmodule Patchbay.Offers.Placement do
         END
         """,
         message: "an ended placement settles exactly what was bid"
-      )
-
-      check_constraint(:settle_tx_hash, "offer_placements_tx_hash_format",
-        check: "settle_tx_hash IS NULL OR settle_tx_hash ~ '^0x[0-9a-f]{64}$'",
-        message: "a transaction hash is lowercase hex"
       )
     end
 
@@ -104,9 +118,6 @@ defmodule Patchbay.Offers.Placement do
     attribute(:returned_minor, :integer, allow_nil?: true, public?: true)
     attribute(:consumed_minor, :integer, allow_nil?: true, public?: true)
     attribute(:forfeited_minor, :integer, allow_nil?: true, public?: true)
-
-    # The escrow settlement of an ended placement's bid, once it confirms.
-    attribute(:settle_tx_hash, :string, allow_nil?: true, public?: true)
   end
 
   identities do
@@ -133,6 +144,35 @@ defmodule Patchbay.Offers.Placement do
 
   actions do
     defaults([:read])
+
+    create :start do
+      description("Starts a winning bid's fresh 72 hours, under its slot's lock.")
+
+      accept([
+        :owner_profile_id,
+        :version_id,
+        :slot_id,
+        :bid_id,
+        :amount_minor,
+        :minimum_minor,
+        :policy_revision,
+        :duration_us,
+        :generation,
+        :starts_at,
+        :expires_at
+      ])
+    end
+
+    update :finish do
+      description("Ends a placement with how its Credits divided.")
+      accept([:status, :ended_at, :returned_minor, :consumed_minor, :forfeited_minor])
+    end
+
+    update :expire do
+      description("Ends this placement at its expiry and starts its slot's next leader.")
+      require_atomic?(false)
+      manual(Patchbay.Offers.Changes.AdvanceSlot)
+    end
 
     read :mine do
       description("The signed-in advertiser's placements, newest first.")

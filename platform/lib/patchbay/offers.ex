@@ -6,9 +6,9 @@ defmodule Patchbay.Offers do
   Each site board has a market of three numbered slots, and one Global
   market of three more stands in for any site slot that is empty. An
   advertiser saves a short Offer, Patchbay screens it, and a placement in a
-  slot runs for up to 72 hours. Prices are in USDC on Base. Each bid's USDC
-  is held in `PatchbayOffersEscrow` until it settles; this domain keeps the
-  market and never a balance.
+  slot runs for up to 72 hours. Prices are in Credits. Each bid's Credits
+  are held in the shared Credits ledger (`Patchbay.Offers.Holds`) until it
+  settles; this domain keeps the market and never a balance.
 
   The organic board is never changed by an Offer: replies, solved answers
   and their order stay as they are, and Offers are only ever added after a
@@ -30,7 +30,7 @@ defmodule Patchbay.Offers do
   end
 
   @doc """
-  The global opening minimum in minor units: 1.00 USDC unless set in
+  The global opening minimum in minor units: 1.00 Credit unless set in
   `config :patchbay, :offers, default_minimum_minor:`.
   """
   @spec default_minimum_minor() :: pos_integer()
@@ -74,9 +74,17 @@ defmodule Patchbay.Offers do
     end
 
     resource(Patchbay.Offers.BidWindow)
-    resource(Patchbay.Offers.Bid)
+
+    resource Patchbay.Offers.Bid do
+      define(:submit_bid, action: :submit)
+    end
+
     resource(Patchbay.Offers.Placement)
-    resource(Patchbay.Offers.ModerationAction)
+
+    resource Patchbay.Offers.ModerationAction do
+      define(:remove_placement, action: :remove_placement)
+    end
+
     resource(Patchbay.Offers.Delivery)
     resource(Patchbay.Offers.DeliveryItem)
 

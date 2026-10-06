@@ -16,7 +16,7 @@ defmodule PatchbayWeb.OffersLive.Active do
     only: [board_header: 1, moment: 1, site_name: 1, site_path: 1]
 
   import PatchbayWeb.OffersLive.Markets,
-    only: [usdc: 1, offer_copy: 1, offer_slot: 1, slot_name: 1, time_left: 2, top_bid: 2]
+    only: [credits: 1, offer_copy: 1, offer_slot: 1, slot_name: 1, time_left: 2, top_bid: 2]
 
   require Ash.Query
 

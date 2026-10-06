@@ -2,39 +2,39 @@ defmodule Patchbay.Offers.TermsTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias Patchbay.Offers.{Terms, UsdcAmount}
+  alias Patchbay.Offers.{CreditAmount, Terms}
 
   doctest Terms
-  doctest UsdcAmount
+  doctest CreditAmount
 
   @start ~U[2026-10-05 18:00:00.000000Z]
 
   describe "amounts" do
     test "decimal strings with at most two fractional digits become minor units" do
-      assert UsdcAmount.parse("1") == {:ok, 100}
-      assert UsdcAmount.parse("1.5") == {:ok, 150}
-      assert UsdcAmount.parse("1.05") == {:ok, 105}
-      assert UsdcAmount.parse("0.99") == {:ok, 99}
+      assert CreditAmount.parse("1") == {:ok, 100}
+      assert CreditAmount.parse("1.5") == {:ok, 150}
+      assert CreditAmount.parse("1.05") == {:ok, 105}
+      assert CreditAmount.parse("0.99") == {:ok, 99}
     end
 
     test "signs, exponents, extra precision, spaces and floats are refused" do
       for text <- ["-1", "+1", "1e2", "1.001", " 1", "1 ", ".5", "1.", "NaN", "Infinity", ""] do
-        assert UsdcAmount.parse(text) == :error, text
+        assert CreditAmount.parse(text) == :error, text
       end
 
-      assert UsdcAmount.parse(1.0) == :error
-      assert UsdcAmount.parse(100) == :error
+      assert CreditAmount.parse(1.0) == :error
+      assert CreditAmount.parse(100) == :error
     end
 
     test "more than fifteen whole digits is refused" do
-      assert {:ok, max} = UsdcAmount.parse("999999999999999.99")
-      assert max == UsdcAmount.max_minor()
-      assert UsdcAmount.parse("1000000000000000") == :error
+      assert {:ok, max} = CreditAmount.parse("999999999999999.99")
+      assert max == CreditAmount.max_minor()
+      assert CreditAmount.parse("1000000000000000") == :error
     end
 
     property "formatting and parsing agree" do
-      check all(minor <- integer(0..UsdcAmount.max_minor())) do
-        assert UsdcAmount.parse(UsdcAmount.format(minor)) == {:ok, minor}
+      check all(minor <- integer(0..CreditAmount.max_minor())) do
+        assert CreditAmount.parse(CreditAmount.format(minor)) == {:ok, minor}
       end
     end
   end
@@ -63,8 +63,8 @@ defmodule Patchbay.Offers.TermsTest do
     end
   end
 
-  describe "how a placement's USDC divides" do
-    test "a 30-USDC placement bought out after 24 hours returns 20" do
+  describe "how a placement's Credits divide" do
+    test "a 30-Credit placement bought out after 24 hours returns 20" do
       expires = Terms.expires_at(@start)
       at = DateTime.add(@start, 24, :hour)
 
@@ -75,7 +75,7 @@ defmodule Patchbay.Offers.TermsTest do
              }
     end
 
-    test "a 1.01-USDC placement bought out after ten minutes returns 1.00" do
+    test "a 1.01-Credit placement bought out after ten minutes returns 1.00" do
       expires = Terms.expires_at(@start)
 
       assert Terms.bought_out(101, expires, DateTime.add(@start, 10, :minute)).returned == 100
@@ -103,7 +103,7 @@ defmodule Patchbay.Offers.TermsTest do
 
     property "every split conserves the original bid and never returns more than it" do
       check all(
-              bid <- integer(1..UsdcAmount.max_minor()),
+              bid <- integer(1..CreditAmount.max_minor()),
               elapsed <- integer(-1_000_000..(Terms.duration_us() + 1_000_000))
             ) do
         expires = Terms.expires_at(@start)
