@@ -1,0 +1,194 @@
+/* Regent Credits: the header's balance, the Buy Credits dialog it opens and
+   the panel inside it, as in the Regent template, in Patchbay's own tokens. */
+
+.pb-credits {
+  display: contents;
+}
+
+.pb-credits-balance {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--pb-line-strong);
+  border-radius: var(--radius);
+  background: var(--pb-surface);
+  color: var(--pb-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .pb-credits-balance:hover {
+    background: var(--pb-surface-sunk);
+  }
+}
+
+/* The page resets every margin; a modal dialog centres itself with auto. */
+.pb-credits-dialog {
+  box-sizing: border-box;
+  margin: auto;
+  width: min(34rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 4rem);
+  padding: var(--space-3);
+  border: 1px solid var(--pb-line-strong);
+  background: var(--pb-surface);
+  color: var(--pb-text);
+  overflow-y: auto;
+}
+
+.pb-credits-dialog::backdrop {
+  background: color-mix(in oklch, var(--pb-text) 30%, transparent);
+}
+
+/* Pinned to the corner rather than floated, so the panel keeps the full width. */
+.pb-credits-close {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+.pb-credits-close button {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--pb-line);
+  background: transparent;
+  color: var(--pb-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pb-credits-dialog .credits-panel__head {
+  padding-inline-end: 5rem;
+}
+
+.credits-panel {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.credits-panel h2,
+.credits-panel p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.credits-panel__head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.credits-panel__balance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.credits-panel__balance strong {
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.credits-panel__muted,
+.credits-panel__note,
+.credits-panel__rules {
+  color: var(--pb-text-muted);
+}
+
+.credits-panel__form {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.credits-panel h2 {
+  font-family: var(--font-family-title);
+  font-size: var(--pb-fs-lg);
+}
+
+/* Drawn like the shared form fields. */
+.credits-panel__form input[name="amount"] {
+  box-sizing: border-box;
+  max-width: 10rem;
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--pb-line-strong);
+  border-radius: var(--radius);
+  background: var(--pb-surface-sunk);
+  color: var(--pb-text);
+  font: inherit;
+}
+
+.credits-panel__form input[name="amount"]:focus-visible {
+  outline: 2px solid var(--pb-text);
+  outline-offset: 4px;
+}
+
+.credits-panel__chains {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.credits-panel__chains legend {
+  margin-block-end: var(--space-1);
+  padding: 0;
+}
+
+.credits-panel__chains label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.credits-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* A press the wallet still has: marked, never blocked. */
+.credits-panel [data-awaiting-wallet] {
+  opacity: 0.75;
+}
+
+.credits-panel__sent {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.credits-panel__sent li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--pb-line);
+  overflow-wrap: anywhere;
+}
+
+.credits-panel__sent li:is([data-state="reverted"], [data-state="not_this_step"], [data-state="unknown"], [data-state="failed"], [data-state="unrecorded"]) {
+  border-color: var(--pb-bad);
+}
+
+.credits-panel__rules {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--pb-line);
+  font-size: var(--pb-fs-sm);
+}
+
+@media (max-width: 47.99rem) {
+  .pb-credits-dialog {
+    width: calc(100% - 1rem);
+    max-height: calc(100dvh - 1rem);
+    padding: var(--space-2);
+  }
+}

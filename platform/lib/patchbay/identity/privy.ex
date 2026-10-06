@@ -1,13 +1,22 @@
 defmodule Patchbay.Identity.Privy do
   @moduledoc "Verified Privy evidence for Patchbay's existing payment-account boundary."
 
-  @doc "Verify both proof roles before requiring the wallet used by Patchbay accounts."
+  @doc """
+  Verify both proof roles before requiring the wallet used by Patchbay accounts.
+  `wallet_addresses` is every wallet the Privy account links, which Regent
+  Credits holds for the account.
+  """
   def verify_session_pair(pair) do
     with {:ok, evidence} <-
            RegentPrivy.Session.verify(pair, Application.get_env(:patchbay, :privy, [])) do
       case evidence.wallet_address do
         address when is_binary(address) ->
-          {:ok, %{privy_user_id: evidence.privy_user_id, wallet_address: address}}
+          {:ok,
+           %{
+             privy_user_id: evidence.privy_user_id,
+             wallet_address: address,
+             wallet_addresses: evidence.wallet_addresses
+           }}
 
         _ ->
           {:error, {:account_evidence, :missing_linked_wallet}}

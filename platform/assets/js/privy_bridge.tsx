@@ -8,7 +8,7 @@ import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
-import type {SelectedWallet} from "./wallet_actions/sign_step.ts"
+import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
 // page fetches only when somebody asks to sign in. Everything it does is driven

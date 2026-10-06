@@ -1,8 +1,8 @@
 import {errorIn, refusal} from "../api_error.ts";
 import {loadPrivyBridge, privyAppId} from "../privy/account.ts";
 import type {MetaDocument} from "../privy/account.ts";
-import {failure, signStep} from "../wallet_actions/sign_step.ts";
-import type {SelectedWallet, SignatureStep, StepChain} from "../wallet_actions/sign_step.ts";
+import {failure, signStep} from "../wallet_actions/send_step.ts";
+import type {SelectedWallet, SignatureStep, StepChain} from "../wallet_actions/send_step.ts";
 
 const INTENTS_PATH = "/api/payment_intents";
 

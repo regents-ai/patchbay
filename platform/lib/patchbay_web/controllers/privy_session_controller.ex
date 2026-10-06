@@ -40,10 +40,10 @@ defmodule PatchbayWeb.PrivySessionController do
 
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),
-         {:ok, evidence} <- Privy.verify_session_pair(pair),
-         {:ok, profile} <- Identity.upsert_from_privy(evidence),
+         {:ok, %{wallet_addresses: wallets} = evidence} <- Privy.verify_session_pair(pair),
+         {:ok, profile} <- Identity.upsert_from_privy(Map.delete(evidence, :wallet_addresses)),
          {:ok, _moved} <-
-           RegentCredits.attach_wallets(profile.privy_user_id, [profile.wallet_address],
+           RegentCredits.attach_wallets(profile.privy_user_id, wallets,
              actor: Credits.site_actor()
            ) do
       :ok = Assist.save_browser_runs(conn.assigns.forum_session_id, profile)

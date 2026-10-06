@@ -15,7 +15,8 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   A site's market is opened when it is first needed: a bid, or asking
   whether a wording fits the site. Open pages hear `Patchbay.Offers.Slot`'s
-  topic and read the slot, the bids and the balance again.
+  topic and read the slot, the bids and the balance again, and read the
+  balance again whenever the advertiser's Credits move.
   """
 
   use PatchbayWeb, :live_view
@@ -48,9 +49,10 @@ defmodule PatchbayWeb.OffersLive.Bid do
     if connected?(socket) do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Slot.topic())
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Review.topic())
+      follow_credits(socket.assigns.current_profile)
     end
 
-    {:ok, assign(socket, page_title: "Bid on an Offer slot", problem: nil)}
+    {:ok, assign(socket, page_title: "Bid on an Offer slot", problem: nil, short?: false)}
   end
 
   @impl true
@@ -70,10 +72,12 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   def handle_info(:offer_reviews_changed, socket), do: {:noreply, read(socket)}
 
+  def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
+
   @impl true
   def handle_event("change", %{"bid" => params}, socket) do
     lane = lane(params["lane"])
-    socket = assign(socket, version_id: params["version_id"], problem: nil)
+    socket = assign(socket, version_id: params["version_id"], problem: nil, short?: false)
 
     {:noreply,
      if(lane == socket.assigns.lane,
@@ -91,8 +95,11 @@ defmodule PatchbayWeb.OffersLive.Bid do
       )
 
     case place(socket) do
-      {:ok, _bid} -> {:noreply, socket |> assign(problem: nil) |> read()}
-      {:error, error} -> {:noreply, socket |> assign(problem: words(error)) |> read()}
+      {:ok, _bid} ->
+        {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
+
+      {:error, error} ->
+        {:noreply, socket |> assign(problem: words(error), short?: short?(error)) |> read()}
     end
   end
 
@@ -101,10 +108,22 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
     case Offers.request_market_review(id, market.id, actor: socket.assigns.current_profile) do
       {:ok, _review} ->
-        {:noreply, socket |> assign(problem: nil) |> read()}
+        {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
 
       {:error, _error} ->
-        {:noreply, assign(socket, problem: "That could not be asked. Try again.")}
+        {:noreply, assign(socket, problem: "That could not be asked. Try again.", short?: false)}
+    end
+  end
+
+  # The balance shown is current whichever Regent site moved the Credits.
+  defp follow_credits(profile) do
+    case profile && Credits.spender(profile) do
+      {:ok, _spender} ->
+        :ok =
+          Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
+
+      _not_linked ->
+        :ok
     end
   end
 
@@ -300,6 +319,23 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   defp words(_error),
     do: "That bid could not be placed, and nothing was held. Try again in a moment."
+
+  # A bid the balance could not cover, which more Credits would.
+  defp short?(%Ash.Error.Invalid{errors: [%NotEnoughCredits{} | _]}), do: true
+  defp short?(_error), do: false
+
+  # Opens the header's Buy Credits dialog.
+  defp buy_credits(assigns) do
+    ~H"""
+    <Regent.Primitives.button
+      variant="quiet"
+      type="button"
+      phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
+    >
+      Buy Credits
+    </Regent.Primitives.button>
+    """
+  end
 
   @doc "What pressing Bid holds, or what the amount needs."
   def held_words(amount) do

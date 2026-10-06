@@ -17,13 +17,15 @@ config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 # site. Credits are the private currency XRC, kept to the millionth. The ledger
 # lives in the shared `regent_credits` schema, which Regents migrates; Patchbay
 # reads and writes it through its own Repo, so an Offer bid and its Credits
-# commit together. Admins come from REGENT_CREDITS_ADMINS at runtime.
+# commit together. Admins come from REGENT_CREDITS_ADMINS at runtime. Balance
+# changes from every site reach Patchbay's PubSub.
 config :ex_money,
   custom_currencies: [{:XRC, name: "Credits", digits: 6}],
   auto_start_exchange_rate_service: false
 
 config :regent_credits,
   repo: Patchbay.Repo,
+  pubsub: Patchbay.PubSub,
   ash_domains: [RegentCredits],
   admins: [],
   chain_client: Patchbay.ChainClient,

@@ -17,6 +17,9 @@ defmodule Patchbay.Application do
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
         RegentAgents.Listener,
+        # After the repository and PubSub: a Credits balance changed on any
+        # Regent site reaches the pages showing it.
+        RegentCredits.Listener,
         RegentPayments.Supervisor,
         {Finch, name: Patchbay.Assist.Target.finch()},
         Patchbay.Escrow.Watch,

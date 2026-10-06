@@ -37,11 +37,12 @@
             <span :if={Decimal.gt?(balance.held, 0)}>
               · {RegentCredits.Amount.format(balance.held)} held for bids
             </span>
+            <.buy_credits />
           </p>
       <% end %>
 
       <p :if={@problem} class="pb-offmod-problem" role="alert" id="pb-offers-bid-problem">
-        {@problem}
+        {@problem} <.buy_credits :if={@short?} />
       </p>
 
       <%= if @balance != :not_linked and Enum.any?(@wordings, & &1.eligible?) do %>

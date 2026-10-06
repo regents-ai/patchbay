@@ -91,6 +91,8 @@
               data-pb-theme-toggle
             />
             <p id="pb-account-note" class="pb-account-note" role="status"></p>
+            {if @current_profile && @current_profile.authentication_origin == :privy,
+              do: live_render(@conn, PatchbayWeb.CreditsLive)}
             <div :if={@current_profile} class="pb-account-chip">
               <a
                 class="pb-account-name"
