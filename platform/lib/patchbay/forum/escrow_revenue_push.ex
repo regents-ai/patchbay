@@ -2,7 +2,7 @@ defmodule Patchbay.Forum.EscrowRevenuePush do
   @moduledoc """
   The `:push_escrow_revenue` action of `Patchbay.Forum.Report`: once a
   bounty has paid out or gone back to its asker, the escrow keeps 10% of it
-  for REGENT stakers, and this pushes what the escrow keeps into the REGENT
+  for REGENT staking, and this pushes what the escrow keeps into the REGENT
   revenue staking contract (`Patchbay.Escrow.push_revenue/0`). Its job (the
   `:push_escrow_revenue` trigger) runs on the fee queue.
 
@@ -53,7 +53,7 @@ defmodule Patchbay.Forum.EscrowRevenuePush do
   defp push(report) do
     with {:ok, tx_hash} <- Escrow.push_revenue(),
          :ok <- Escrow.await_landed(tx_hash) do
-      Logger.info("Report #{report.id}: escrow revenue pushed to the stakers in #{tx_hash}")
+      Logger.info("Report #{report.id}: escrow revenue pushed to REGENT staking in #{tx_hash}")
 
       case Escrow.revenue_owed() do
         {:ok, 0} -> :ok

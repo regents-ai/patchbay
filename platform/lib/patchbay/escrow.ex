@@ -9,7 +9,7 @@ defmodule Patchbay.Escrow do
   what happened by reading the chain rather than by having asked.
 
   Each bounty that pays out or goes back to its asker leaves 10% in the
-  contract for REGENT stakers, and anybody may push what it keeps into the
+  contract for REGENT staking, and anybody may push what it keeps into the
   REGENT revenue staking contract; Patchbay does so after each one.
 
   Every call here is one transaction, signed locally with the operator key
@@ -161,7 +161,7 @@ defmodule Patchbay.Escrow do
   end
 
   @doc """
-  The USDC the contract keeps for REGENT stakers and has not yet pushed to
+  The USDC the contract keeps for REGENT staking and has not yet pushed to
   the staking contract, in USDC's six-decimal units.
   """
   @spec revenue_owed() :: {:ok, non_neg_integer()} | {:error, term()}
@@ -180,7 +180,7 @@ defmodule Patchbay.Escrow do
   defp read_amount(_unreadable), do: {:error, :unreadable_amount}
 
   @doc """
-  Pushes everything the contract keeps for REGENT stakers into the staking
+  Pushes everything the contract keeps for REGENT staking into the staking
   contract, and returns the hash of the transaction that does it.
 
   The push is tried against the chain before it is sent and only sent when

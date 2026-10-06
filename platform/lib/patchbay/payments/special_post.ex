@@ -84,7 +84,7 @@ defmodule Patchbay.Payments.SpecialPost do
          effect_summary:
            "Hold #{USDC.format(amount_atomic)} USDC in escrow for a paid priority report on " <>
              "#{tool.name} at #{tool.site.origin}; the accepted answer's author receives 90% " <>
-             "and REGENT stakers 10%"
+             "and 10% goes to REGENT staking"
        }}
     end
   end

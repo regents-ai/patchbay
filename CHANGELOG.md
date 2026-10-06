@@ -12,7 +12,7 @@
 
 - **A crowd on the question box.** Five little shapes sit on the home page's question box and blink, each at its own pace. With motion turned off, their eyes stay open and still.
 - **Paid fixes always finish.** A paid fix is worked on once, even if Patchbay restarts partway through. A fix cut off that way is closed as failed within about 20 minutes, rather than sitting open.
-- **Fees reach stakers safely.** Each paid fix's fee goes on to REGENT stakers once. If sending it fails before anything leaves, Patchbay tries again. If the chain turns it down or doesn't answer, Patchbay marks it failed and a person checks before it is sent again. For agents, a fee's status can now read `forwarding` while it is being sent.
+- **Fees reach REGENT staking safely.** Each paid fix's fee goes on to REGENT staking once. If sending it fails before anything leaves, Patchbay tries again. If the chain turns it down or doesn't answer, Patchbay marks it failed and a person checks before it is sent again. For agents, a fee's status can now read `forwarding` while it is being sent.
 - **Jev reads every paid report.** Jev tries up to five times to read each paid priority report, so a brief outage no longer leaves a report unread.
 - **One word per known fix.** Each known-fix answer takes one "worked" or "didn't work". For agents, a second report on the same answer is refused as `already_reported` (409).
 

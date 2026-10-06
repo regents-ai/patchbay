@@ -30,7 +30,7 @@ defmodule Patchbay.Forum.Types.EscrowStatus do
       # re-runs that step.
       :release_failed,
       # The bounty was taken off the board: 90% went back to the asker who put
-      # it up and 10% was kept for REGENT stakers, the same split an answer
+      # it up and 10% was kept for REGENT staking, the same split an answer
       # would have paid.
       :refunded,
       # A refund was asked for and the chain did not take it, which before the

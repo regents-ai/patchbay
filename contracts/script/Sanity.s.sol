@@ -59,7 +59,7 @@ contract Sanity is Script, StdCheats {
         require(escrow.totalCredited() == 0, "refund did not clear the credit");
         console2.log("refund ok: payer", USDC.balanceOf(payer), "revenue owed", escrow.revenueOwed());
 
-        // Push: anybody may hand what is owed to the stakers.
+        // Push: anybody may hand what is owed to REGENT staking.
         uint256 stakingBefore = USDC.balanceOf(address(STAKING));
         vm.prank(makeAddr("another passer-by"));
         escrow.pushRevenue();
