@@ -213,6 +213,7 @@ defmodule PatchbayWeb.Router do
     live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
       live "/", OffersLive.Index, :index
       live "/list", OffersLive.List, :index
+      live "/bid", OffersLive.Bid, :index
       live "/active", OffersLive.Active, :index
       live "/expired", OffersLive.Expired, :index
       live "/create", OffersLive.Create, :index

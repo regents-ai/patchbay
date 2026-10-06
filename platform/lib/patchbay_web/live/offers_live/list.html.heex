@@ -35,6 +35,7 @@
         opening={Offers.opening_minimum_minor(@global)}
         now={@as_of}
         opportunities={@opportunities[slot.number]}
+        bid_path={~p"/offers/bid?#{[slot: slot.number]}"}
       />
     </ol>
   </section>
@@ -70,6 +71,7 @@
             number={number}
             opening={Offers.opening_minimum_minor(entry.market)}
             now={@as_of}
+            bid_path={~p"/offers/bid?#{[site: entry.site.id, slot: number]}"}
           />
         </ol>
       </li>

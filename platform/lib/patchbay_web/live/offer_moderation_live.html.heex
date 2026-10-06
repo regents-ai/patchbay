@@ -202,6 +202,40 @@
               Block this wording everywhere
             </Regent.Primitives.button>
           </form>
+
+          <form
+            :if={report.placement.status == :active}
+            id={"pb-offmod-remove-#{report.id}"}
+            phx-submit="remove"
+            class="pb-offmod-actions"
+          >
+            <input type="hidden" name="placement_id" value={report.placement.id} />
+            <input type="hidden" name="generation" value={report.placement.generation} />
+            <p class="patchbay-muted">
+              Removing this Offer ends it now. Its owner gets nothing back: the time already shown
+              counts as used and the rest is forfeited. Every bid waiting on this slot comes back
+              in full. {successor_words(report.placement.slot.next_bid)}
+            </p>
+            <Regent.Primitives.field
+              id={"pb-offmod-remove-why-#{report.id}"}
+              label="Why remove it (kept with the decision)"
+            >
+              <input
+                id={"pb-offmod-remove-why-#{report.id}"}
+                type="text"
+                name="reason"
+                required
+                maxlength="2000"
+              />
+            </Regent.Primitives.field>
+            <label class="pb-offmod-confirm">
+              <input type="checkbox" name="no_refund" value="true" required />
+              Its owner gets nothing back.
+            </label>
+            <Regent.Primitives.button variant="secondary" type="submit">
+              Remove this Offer
+            </Regent.Primitives.button>
+          </form>
         </li>
       </ol>
 

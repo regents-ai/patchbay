@@ -174,6 +174,11 @@ defmodule PatchbayWeb.OffersLive.Markets do
   attr(:now, DateTime, required: true, doc: "the moment the page was read")
   attr(:opportunities, :integer, default: nil, doc: "Global slots only")
 
+  attr(:bid_path, :string,
+    default: nil,
+    doc: "where to bid on this slot, when the page offers it"
+  )
+
   @doc "One numbered slot: what is showing, what replaces it, what comes next, and its figures."
   def offer_slot(assigns) do
     placement = assigns.slot && assigns.slot.active_placement
@@ -235,6 +240,10 @@ defmodule PatchbayWeb.OffersLive.Markets do
         </span>
         Returned in {@returns} {responses(@returns)}
       </p>
+
+      <.link :if={@bid_path} navigate={@bid_path} class="rg-button rg-button--secondary">
+        Bid on this slot
+      </.link>
     </li>
     """
   end

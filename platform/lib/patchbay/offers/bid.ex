@@ -160,6 +160,9 @@ defmodule Patchbay.Offers.Bid do
 
     # The active placement a bid was made against, if the slot had one.
     belongs_to(:target_placement, Patchbay.Offers.Placement, allow_nil?: true, public?: true)
+
+    # The placement this bid became, once it won.
+    has_one(:placement, Patchbay.Offers.Placement, destination_attribute: :bid_id, public?: true)
   end
 
   actions do

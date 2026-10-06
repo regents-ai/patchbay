@@ -40,6 +40,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     if connected?(socket) do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, OfferReport.topic())
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Review.topic())
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Patchbay.Offers.Slot.topic())
     end
 
     {:ok,
@@ -51,7 +52,7 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   @impl true
   def handle_info(changed, socket)
-      when changed in [:offer_reports_changed, :offer_reviews_changed],
+      when changed in [:offer_reports_changed, :offer_reviews_changed, :offer_markets_changed],
       do: {:noreply, reread(socket)}
 
   @impl true
@@ -116,6 +117,28 @@ defmodule PatchbayWeb.OfferModerationLive do
     end
   end
 
+  def handle_event(
+        "remove",
+        %{"placement_id" => id, "generation" => generation, "reason" => reason} = params,
+        socket
+      ) do
+    case Patchbay.Offers.remove_placement(
+           %{
+             placement_id: id,
+             expected_generation: generation,
+             reason: reason,
+             no_refund: params["no_refund"] == "true",
+             # One removal of one placement: pressing again answers with
+             # the decision already made.
+             idempotency_key: "remove:#{id}:#{generation}"
+           },
+           actor: socket.assigns.current_profile
+         ) do
+      {:ok, _decision} -> {:noreply, socket |> assign(problem: nil) |> reread()}
+      {:error, problem} -> {:noreply, assign(socket, problem: words(problem))}
+    end
+  end
+
   @impl true
   def handle_async({Read, :board, _generation} = name, result, socket),
     do: {:noreply, Read.settle(socket, name, result)}
@@ -174,7 +197,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.limit(@limit)
     |> Ash.Query.load(
       version: [{:reviews, reviews} | @figures],
-      placement: [slot: [market: :site]]
+      placement: [slot: [next_bid: [:version], market: :site]]
     )
     |> Ash.read!(authorize?: false)
   end
@@ -271,6 +294,17 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   defp per_thousand(%{report_count: reports, delivery_count: shown}),
     do: " (#{:erlang.float_to_binary(reports * 1000 / shown, decimals: 1)} per 1,000 shown)"
+
+  @doc "What happens to the slot's waiting next-period bid if the Offer is removed."
+  def successor_words(nil), do: "Nothing is waiting, so the slot will be empty."
+
+  def successor_words(%{version: %{blocked_at: blocked}}) when not is_nil(blocked),
+    do: "The waiting next-period bid's wording is blocked, so it will not start."
+
+  def successor_words(bid),
+    do:
+      "The waiting next-period bid of #{PatchbayWeb.OffersLive.Markets.credits(bid.amount_minor)} " <>
+        "starts at once if its wording may still be shown."
 
   @doc false
   def decision_label(:dismiss_report), do: "Dismissed a report"

@@ -1,0 +1,190 @@
+<main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-bid">
+  <.board_header title={"Bid on #{label(@site, @number)}"}>
+    <:crumbs>PATCHBAY / OFFERS / BID</:crumbs>
+  </.board_header>
+
+  <p class="pb-offers-cta">
+    <.link navigate={~p"/offers/list"} class="rg-button rg-button--secondary">
+      Back to the markets
+    </.link>
+    <.link :if={@site} navigate={site_path(@site)} class="rg-button rg-button--secondary">
+      {site_name(@site)}'s board
+    </.link>
+  </p>
+
+  <section class="pb-sheet-section" aria-labelledby="pb-offers-bid-slot">
+    <h2 id="pb-offers-bid-slot">This slot now</h2>
+    <ol class="pb-offers-slots">
+      <.offer_slot slot={@slot} number={@number} opening={@opening} now={@now} />
+    </ol>
+  </section>
+
+  <p :if={is_nil(@current_profile)} class="patchbay-muted">
+    Sign in at the top of the page to bid.
+  </p>
+
+  <%= if @current_profile do %>
+    <section class="pb-sheet-section" aria-labelledby="pb-offers-bid-form-title">
+      <h2 id="pb-offers-bid-form-title">Your bid</h2>
+
+      <%= case @balance do %>
+        <% :not_linked -> %>
+          <p class="pb-offmod-problem">{not_linked_words()}</p>
+        <% balance -> %>
+          <p class="pb-offers-balance" id="pb-offers-bid-balance">
+            Your Credits: <strong>{RegentCredits.Amount.format(balance.available)}</strong>
+            available
+            <span :if={Decimal.gt?(balance.held, 0)}>
+              · {RegentCredits.Amount.format(balance.held)} held for bids
+            </span>
+          </p>
+      <% end %>
+
+      <p :if={@problem} class="pb-offmod-problem" role="alert" id="pb-offers-bid-problem">
+        {@problem}
+      </p>
+
+      <%= if @balance != :not_linked and Enum.any?(@wordings, & &1.eligible?) do %>
+        <.form
+          for={%{}}
+          as={:bid}
+          id="pb-offers-bid-form"
+          phx-change="change"
+          phx-submit="bid"
+          class="pb-offers-form"
+        >
+          <fieldset class="pb-offers-choice">
+            <legend>When it starts</legend>
+            <label>
+              <input
+                type="radio"
+                name="bid[lane]"
+                value="immediate"
+                checked={@lane == :immediate}
+              />
+              {if @showing, do: "Buy out now", else: "Start now"}
+            </label>
+            <label :if={@showing}>
+              <input
+                type="radio"
+                name="bid[lane]"
+                value="next_period"
+                checked={@lane == :next_period}
+              /> Bid for next period
+            </label>
+          </fieldset>
+
+          <fieldset class="pb-offers-choice">
+            <legend>Wording</legend>
+            <label :for={wording <- Enum.filter(@wordings, & &1.eligible?)}>
+              <input
+                type="radio"
+                name="bid[version_id]"
+                value={wording.version.id}
+                checked={@version_id == wording.version.id}
+              />
+              <strong>{wording.creative.label}</strong>
+              <span class="pb-offers-choice-text">{wording.version.text}</span>
+            </label>
+          </fieldset>
+
+          <Regent.Primitives.field id="pb-offers-bid-amount" label="Amount in Credits">
+            <input
+              id="pb-offers-bid-amount"
+              type="text"
+              name="bid[amount]"
+              value={@amount}
+              inputmode="decimal"
+              autocomplete="off"
+              required
+            />
+            <:hint>At least {credits(@minimum)}.</:hint>
+          </Regent.Primitives.field>
+
+          <div class="pb-offers-terms" id="pb-offers-bid-terms">
+            <p>
+              <strong>{held_words(@amount)}</strong>
+            </p>
+            <p>
+              Bids placed within two seconds of each other are compared together. The highest
+              wins, and every other bid comes back to your Credits in full.
+            </p>
+            <%= if @lane == :next_period do %>
+              <p>
+                Your Credits are held now. Your Offer starts for a fresh 72 hours when the current
+                placement naturally expires, or immediately if a moderator removes it. If the
+                current placement is bought out normally, your held Credits return in full. A
+                higher next-period bid also returns your hold in full. You cannot voluntarily
+                cancel this commitment.
+              </p>
+            <% else %>
+              <p :if={@showing}>
+                If yours wins, it replaces the Offer showing now and runs for 72 hours, and that
+                Offer's owner gets back their unused share.
+              </p>
+              <p :if={!@showing}>If yours wins, it shows for up to 72 hours.</p>
+              <p>
+                A higher bid can replace yours at any time; you then get back your unused share.
+                If a moderator removes your Offer for breaking the rules, nothing comes back.
+              </p>
+            <% end %>
+          </div>
+
+          <Regent.Primitives.button type="submit" class="patchbay-button">
+            Hold the Credits and bid
+          </Regent.Primitives.button>
+        </.form>
+      <% end %>
+
+      <%= if @balance != :not_linked and !Enum.any?(@wordings, & &1.eligible?) do %>
+        <p class="patchbay-muted" id="pb-offers-bid-none">
+          You have no wording approved for this market yet.
+          <.link navigate={~p"/offers/create"}>Write an Offer</.link>
+          and it is screened before you can bid.
+        </p>
+      <% end %>
+
+      <div :if={Enum.any?(@wordings, &(!&1.eligible?))} class="pb-offers-waiting">
+        <h3>Not ready to bid here</h3>
+        <ul class="pb-offers-standing">
+          <li :for={wording <- Enum.reject(@wordings, & &1.eligible?)}>
+            <strong>{wording.creative.label}</strong>
+            <%= cond do %>
+              <% fit_words(wording) -> %>
+                · Fit for this site: {fit_words(wording)}
+              <% @site -> %>
+                ·
+                <Regent.Primitives.button
+                  variant="quiet"
+                  phx-click="ask_fit"
+                  phx-value-version_id={wording.version.id}
+                >
+                  Ask whether it fits {site_name(@site)}
+                </Regent.Primitives.button>
+              <% true -> %>
+                · Waiting for screening. See <.link navigate={~p"/offers/create"}>Your Offers</.link>.
+            <% end %>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section
+      :if={@bids != []}
+      class="pb-sheet-section"
+      aria-labelledby="pb-offers-bid-mine"
+    >
+      <h2 id="pb-offers-bid-mine">Your bids on this slot</h2>
+      <ol class="pb-offmod-list" id="pb-offers-bid-mine-list">
+        <li :for={bid <- @bids} id={"pb-offers-bid-#{bid.id}"} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong>{credits(bid.amount_minor)}</strong>
+            <span>{if bid.lane == :next_period, do: "Next period", else: "Now"}</span>
+          </header>
+          <p data-state={bid.status}>{standing(bid)}</p>
+          <p class="patchbay-muted">{bid.version.text}</p>
+        </li>
+      </ol>
+    </section>
+  <% end %>
+</main>
