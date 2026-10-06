@@ -10,7 +10,7 @@ defmodule Patchbay.Forum.Report do
   settled it, and what Jev made of it: Jev reads each published one once, as
   a job (`:read_by_jev`) queued when the report is filed. Once its bounty has
   paid out or gone back to the asker, a job (`:push_escrow_revenue`) sends the
-  10% the escrow kept to REGENT stakers.
+  10% the escrow kept to REGENT staking.
   """
 
   use Ash.Resource,
@@ -75,7 +75,7 @@ defmodule Patchbay.Forum.Report do
 
       # A push that fails is tried again with Oban's backoff, and after the
       # last try the next sweep queues it afresh: the money waits safely in
-      # the escrow, and it is the stakers', so it is never given up on. It
+      # the escrow, and it is owed to REGENT staking, so it is never given up on. It
       # runs on the fee queue, one send at a time from the operator wallet.
       trigger :push_escrow_revenue do
         action(:push_escrow_revenue)
@@ -1095,7 +1095,7 @@ defmodule Patchbay.Forum.Report do
     end
 
     update :record_escrow_revenue_pushed do
-      description("The 10% the escrow kept from this bounty has reached the stakers.")
+      description("The 10% the escrow kept from this bounty has reached REGENT staking.")
       accept([])
       change(set_attribute(:escrow_revenue_pushed_at, &DateTime.utc_now/0))
     end

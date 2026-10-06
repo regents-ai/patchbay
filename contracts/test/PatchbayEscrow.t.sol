@@ -45,7 +45,7 @@ contract TestStaking is IRegentRevenueStaking {
 /// @title PatchbayEscrowTest
 /// @notice What the escrow promises about money: an attribution can never exceed what is held, a
 ///         post pays out once, both payouts follow the same 90/10 split, a bounty cannot be
-///         taken back before the refund delay has passed, and the 10% reaches the stakers without
+///         taken back before the refund delay has passed, and the 10% reaches REGENT staking without
 ///         a paused staking contract ever holding up a payout.
 contract PatchbayEscrowTest is Test {
     TestUSDC internal usdc;
@@ -124,7 +124,7 @@ contract PatchbayEscrowTest is Test {
         vm.startPrank(operator);
         escrow.release(POST, winner);
 
-        // The escrow still holds the 10% it owes the stakers; none of it can become a bounty.
+        // The escrow still holds the 10% it owes REGENT staking; none of it can become a bounty.
         vm.expectRevert(PatchbayEscrow.AmountExceedsBalance.selector);
         escrow.credit(keccak256("post-2"), payer, 1);
         vm.stopPrank();
@@ -277,7 +277,7 @@ contract PatchbayEscrowTest is Test {
     }
 
     /// @dev Whatever the amount, the payer share and the revenue sum to it exactly and the
-    ///      stakers are never short-changed by rounding.
+    ///      REGENT staking is never short-changed by rounding.
     function testFuzz_refund_splitsWithoutLosingADrop(uint96 amount) public {
         amount = uint96(bound(amount, 1, type(uint96).max));
         usdc.mint(address(escrow), amount);
