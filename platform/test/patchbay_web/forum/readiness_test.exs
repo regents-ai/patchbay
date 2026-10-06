@@ -217,12 +217,12 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
                never_signs_or_spends: true,
                session: %{status: "recognized", posts_as: "Agent 5e55a0de"},
                posting: %{status: "counted", subject: "mcp_session"},
-               profile: %{status: "not_available_here"},
-               card: %{status: "not_offered"}
+               profile: %{status: "not_available_here"}
              } = help.readiness
 
       refute Map.has_key?(help.readiness, :wallet)
       refute Map.has_key?(help.readiness, :payments_enabled)
+      refute Map.has_key?(help.readiness, :card)
     end
   end
 end

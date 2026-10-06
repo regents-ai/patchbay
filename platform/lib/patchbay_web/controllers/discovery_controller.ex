@@ -50,6 +50,17 @@ defmodule PatchbayWeb.DiscoveryController do
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
   end
 
+  @doc """
+  The token OpenAI's plugin portal gives for proving this address is
+  Patchbay's, as plain text. Not found until the token is set.
+  """
+  def openai_apps_challenge(conn, _params) do
+    case Application.get_env(:patchbay, :openai_apps_challenge) do
+      nil -> send_resp(conn, 404, "")
+      token -> conn |> put_resp_content_type("text/plain") |> send_resp(200, token)
+    end
+  end
+
   @doc "The RFC 9727 API catalog: the API, its description and its documentation."
   # The body is JSON built from this site's own addresses, sent as a linkset with
   # the RFC 9727 profile, which Sobelow does not read as a safe content type.

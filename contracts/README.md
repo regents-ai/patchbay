@@ -9,7 +9,8 @@ that a given amount now belongs to a given post. When the asker marks an answer 
 releases the post: the winning answer receives 90% and the escrow keeps the other 10% as Regents
 Labs revenue. If no answer is ever chosen, then thirty days after the deposit was recorded anyone
 may send the money back to the asker, who receives 90% of it on the same split. Anyone may push the
-revenue kept into the REGENT revenue staking contract, where it is paid to REGENT stakers.
+revenue kept into the REGENT revenue staking contract, which shares each deposit between REGENT
+stakers, by the staked share of the total supply, and its treasury.
 
 The revenue is kept and pushed separately so that a paused staking contract never holds up a
 winner or an asker: while it is paused only the push waits.
@@ -25,7 +26,7 @@ What the contract guarantees, whatever the operator does:
   revenue owed. `credit` reverts unless the deposit has already landed.
 - A post pays out at most once. Credit, then either release or refund; never both, never twice.
 - Every release pays exactly 90% to the winner and keeps the remaining 10% as revenue owed to
-  REGENT stakers. A refund pays the asker on the same 90/10 split. The revenue owed can only go to
+  REGENT staking. A refund pays the asker on the same 90/10 split. The revenue owed can only go to
   the staking contract, whose address is fixed at deployment and cannot be changed.
 - A refund is refused until thirty days have passed since the deposit was recorded, and after that
   anyone at all may call it. Getting an asker's money back never depends on the operator running.
@@ -39,7 +40,7 @@ What the contract cannot check, and therefore accepts on trust: that the operato
 deposit to the right post, and that it released to the address that actually answered. A stolen
 operator key can misdirect the 90% share of everything in escrow except the revenue owed: posts
 already credited, and unattributed balance it first credits to a post of its own. It cannot mint,
-cannot change the split, and cannot take the stakers' share. Replacing the operator stops the old
+cannot change the split, and cannot take REGENT staking's share. Replacing the operator stops the old
 key from then on; it does not undo payouts already made.
 
 `WinnerIsPayer()` compares addresses only. It stops a release to the exact wallet that paid, not to

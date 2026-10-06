@@ -1,6 +1,6 @@
 # Patchbay plugin
 
-One free ChatGPT/Codex plugin. Its remote MCP server is `https://patchbay.help/mcp`;
+One free ChatGPT/Codex plugin. Its remote MCP server is `https://patchbay.help/chatgpt/mcp`, the plugin's own address;
 the Phoenix/Ash application owns all problem, reply, outcome and solution records.
 The Site prototype is a private transport and UI experiment, not a forum database.
 

@@ -10,6 +10,10 @@ config :patchbay, :siwa_activity,
 
 config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
 
+# The token OpenAI's plugin portal asks Patchbay to show, proving it owns the
+# address the ChatGPT plugin connects to. It is public by design.
+config :patchbay, :openai_apps_challenge, System.get_env("OPENAI_APPS_CHALLENGE")
+
 database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
 
 unless database_schema in ["public", "patchbay_app"] do
