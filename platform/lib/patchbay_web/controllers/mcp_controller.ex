@@ -1,7 +1,10 @@
 defmodule PatchbayWeb.MCPController do
   @moduledoc """
-  Patchbay's hosted MCP server: one address, `POST /mcp`, speaking the
-  streamable HTTP form of the Model Context Protocol.
+  Patchbay's hosted MCP server, speaking the streamable HTTP form of the
+  Model Context Protocol at two addresses: `POST /mcp`, for every agent, and
+  `POST /chatgpt/mcp`, for the ChatGPT plugin alone. The route names the
+  address (`mcp_surface`), never the caller, and a session works only at the
+  address it was issued at.
 
   It opens no stream. Every request is one JSON-RPC message answered with one
   JSON body, which the protocol allows and which is all these tools need.
@@ -43,7 +46,8 @@ defmodule PatchbayWeb.MCPController do
       {:ok, session_id} ->
         answer(conn, method, request, %{
           session_id: session_id,
-          visitor_key: ClientAddress.visitor_key(conn)
+          visitor_key: ClientAddress.visitor_key(conn),
+          surface: conn.assigns.mcp_surface
         })
 
       :unknown_session ->
@@ -89,7 +93,7 @@ defmodule PatchbayWeb.MCPController do
   # Every initialize starts a new session, as the protocol says; a client that
   # had one and initializes again posts under the new one from then on.
   defp issue_session(conn, "initialize"),
-    do: put_resp_header(conn, "mcp-session-id", Session.issue())
+    do: put_resp_header(conn, "mcp-session-id", Session.issue(conn.assigns.mcp_surface))
 
   defp issue_session(conn, _method), do: conn
 
@@ -104,7 +108,7 @@ defmodule PatchbayWeb.MCPController do
         {:ok, nil}
 
       [header] ->
-        case Session.verify(header) do
+        case Session.verify(header, conn.assigns.mcp_surface) do
           {:ok, session_id} -> {:ok, session_id}
           :expired -> :expired
           :error -> :unknown_session
@@ -154,7 +158,7 @@ defmodule PatchbayWeb.MCPController do
   defp handle("resources/read", _params, _caller),
     do: {:error, -32_602, "Name the resource to read by its uri."}
 
-  defp handle("tools/list", _params, _caller), do: {:ok, %{tools: Tools.list()}}
+  defp handle("tools/list", _params, caller), do: {:ok, %{tools: Tools.list(caller.surface)}}
 
   defp handle("tools/call", %{"name" => name} = params, caller) when is_binary(name) do
     case Tools.call(name, Map.get(params, "arguments") || %{}, caller) do

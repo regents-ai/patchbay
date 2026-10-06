@@ -48,6 +48,7 @@ defmodule PatchbayWeb.Router do
     get "/robots.txt", DiscoveryController, :robots
     get "/.well-known/security.txt", DiscoveryController, :security
     get "/.well-known/api-catalog", DiscoveryController, :api_catalog
+    get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
     get "/post-pictures/:id", PostPictureController, :show
     get "/skill.md", AgentSkillsController, :guide
@@ -84,17 +85,27 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
-  # The hosted MCP tools. One address takes every message; it keeps no stream
-  # open, so anything but a POST is told so.
+  # The hosted MCP tools. Each address takes every message for its door; it
+  # keeps no stream open, so anything but a POST is told so. `/mcp` is every
+  # agent's; `/chatgpt/mcp` is the ChatGPT plugin's own. The route, not the
+  # caller, says which door it is.
   # Sobelow's "CSRF via action reuse" for GET and DELETE sharing :not_allowed
   # is recorded in .sobelow-skips: that action only refuses and changes nothing.
   scope "/", PatchbayWeb do
     pipe_through :api
-    # Never logged: an events subscription carries its webhook signing secret
-    # and callback address in the params, and tool calls carry what people wrote.
-    post "/mcp", MCPController, :message, log: false
+    # Neither address is logged: an events subscription carries its webhook
+    # signing secret and callback address in the params, and tool calls carry
+    # what people wrote.
+    post "/mcp", MCPController, :message, log: false, assigns: %{mcp_surface: :native_mcp}
     get "/mcp", MCPController, :not_allowed
     delete "/mcp", MCPController, :not_allowed
+
+    post "/chatgpt/mcp", MCPController, :message,
+      log: false,
+      assigns: %{mcp_surface: :chatgpt_plugin}
+
+    get "/chatgpt/mcp", MCPController, :not_allowed
+    delete "/chatgpt/mcp", MCPController, :not_allowed
   end
 
   # The free fix's look for a site's WebMCP tools, asked as an address is typed.

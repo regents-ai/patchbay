@@ -18,7 +18,7 @@ defmodule PatchbayWeb.Forum.Readiness do
   alias RegentPayments.USDC
 
   @only_the_host_knows [
-    "Whether the four Patchbay skills are saved where your agent runs.",
+    "Whether the Patchbay skills are saved where your agent runs.",
     "Whether this page's tools reached your agent (WebMCP), or the hosted tools connected.",
     "Whether a routine, watcher or background process was created. Setup should create none."
   ]
@@ -62,7 +62,6 @@ defmodule PatchbayWeb.Forum.Readiness do
       session: session(session_id, nil, :hosted),
       posting: posting(session_id, nil, "mcp_session"),
       profile: %{status: "not_available_here"},
-      card: card(),
       only_your_host_can_tell: @only_the_host_knows
     }
   end
