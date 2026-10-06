@@ -4,11 +4,11 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "f30b2f283ba03f0d0aa0adbcba5cee6c5a7de1cc"
+  @elixir_utils_ref "467cba652f975f8ddbc169dac499d696bcb24248"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "6bc26409835f76f99f91cf6e48bdebd18f1fe8eb"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "233d74b18068d7b08410b61d7c96afd27ad5c8d3"
+  @regents_ref "004307e65ffcf9cc9b3034d7cc2b015dcd45011b"
 
   def project do
     [
@@ -64,8 +64,8 @@ defmodule Patchbay.MixProject do
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2"},
-      {:ash, "~> 3.33"},
-      {:ash_postgres, "~> 2.12"},
+      {:ash, "~> 3.34 and >= 3.34.3"},
+      {:ash_postgres, "== 2.13.0"},
       {:ash_phoenix, "~> 2.3"},
       {:oban, "~> 2.24"},
       {:ash_oban, "~> 0.9"},
