@@ -1,15 +1,15 @@
 defmodule Patchbay.Offers.Market do
   @moduledoc """
-  Where Offers are placed: the board about one site, or General.
+  Where Offers are placed: the board about one site, or Global.
 
   A site market belongs to one canonical `Patchbay.Forum.Site`, never to a
   URL, so a renamed or aliased site keeps its market. There is exactly one
-  General market, made by the migration that made this table, and at most
+  Global market, made by the migration that made this table, and at most
   one market per site, made the first time it is needed. Every market has
   exactly three slots, numbered 1 to 3, made with it.
 
   A site market may carry its own opening minimum, which replaces the
-  global one for that site. General always uses the global minimum.
+  default for that site. Global always uses the default minimum.
   """
 
   use Ash.Resource,
@@ -25,7 +25,7 @@ defmodule Patchbay.Offers.Market do
     check_constraints do
       check_constraint(:site_id, "offer_markets_scope_shape",
         check: "(scope = 'site') = (site_id IS NOT NULL)",
-        message: "a site market names its site and General names none"
+        message: "a site market names its site and Global names none"
       )
 
       check_constraint(:minimum_override_minor, "offer_markets_minimum_positive",
@@ -36,9 +36,9 @@ defmodule Patchbay.Offers.Market do
     end
 
     custom_indexes do
-      # One General market: every General row has the same scope, so a unique
-      # index on scope limited to General allows exactly one.
-      index([:scope], unique: true, where: "scope = 'general'", name: "offer_markets_one_general")
+      # One Global market: every Global row has the same scope, so a unique
+      # index on scope limited to Global allows exactly one.
+      index([:scope], unique: true, where: "scope = 'global'", name: "offer_markets_one_global")
     end
 
     references do
@@ -53,7 +53,7 @@ defmodule Patchbay.Offers.Market do
     attribute(:scope, :atom,
       allow_nil?: false,
       public?: true,
-      constraints: [one_of: [:site, :general]]
+      constraints: [one_of: [:site, :global]]
     )
 
     attribute(:minimum_override_minor, :integer, allow_nil?: true, public?: true)
@@ -79,10 +79,10 @@ defmodule Patchbay.Offers.Market do
   actions do
     defaults([:read])
 
-    read :general do
-      description("The General market.")
+    read :global do
+      description("The Global market.")
       get?(true)
-      filter(expr(scope == :general))
+      filter(expr(scope == :global))
     end
 
     create :open_for_site do

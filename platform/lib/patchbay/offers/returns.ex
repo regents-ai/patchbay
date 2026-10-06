@@ -6,7 +6,7 @@ defmodule Patchbay.Offers.Returns do
     * a site's eligible responses: new posts and replies about it that could
       carry Offers, whether or not any did;
     * a slot's returns: the responses that carried that slot's Offer;
-    * a General slot's opportunities: the eligible responses, on any site,
+    * a Global slot's opportunities: the eligible responses, on any site,
       where the site's slot of that number had nothing showing.
 
   The delivery records themselves stay private; only these counts are
@@ -51,15 +51,15 @@ defmodule Patchbay.Offers.Returns do
     )
   end
 
-  @doc "General's opportunities in the window, by slot number."
-  @spec general_opportunities({DateTime.t(), DateTime.t()}) :: %{(1..3) => non_neg_integer()}
-  def general_opportunities({since, as_of}) do
+  @doc "Global's opportunities in the window, by slot number."
+  @spec global_opportunities({DateTime.t(), DateTime.t()}) :: %{(1..3) => non_neg_integer()}
+  def global_opportunities({since, as_of}) do
     Map.new(1..3, fn number ->
       count =
         Delivery
         |> Ash.Query.filter(
           selected_at >= ^since and selected_at < ^as_of and
-            fragment("? = ANY(?)", ^number, general_opportunities)
+            fragment("? = ANY(?)", ^number, global_opportunities)
         )
         # As above.
         |> Ash.count!(authorize?: false)

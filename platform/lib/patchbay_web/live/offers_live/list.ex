@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.OffersLive.List do
   @moduledoc """
-  The public directory of Offer markets: General first, on its own, then
+  The public directory of Offer markets: Global first, on its own, then
   every site on the board, searchable by name or address.
 
   Each of a market's three slots shows what is showing there, for how much,
@@ -20,7 +20,7 @@ defmodule PatchbayWeb.OffersLive.List do
   import PatchbayWeb.Forum.BoardHTML,
     only: [board_header: 1, moment: 1, site_name: 1, site_path: 1]
 
-  import PatchbayWeb.OffersLive.Markets, only: [offer_slot: 1, responses: 1]
+  import PatchbayWeb.OffersLive.Markets, only: [global_tip: 1, offer_slot: 1, responses: 1]
 
   require Ash.Query
 
@@ -51,8 +51,8 @@ defmodule PatchbayWeb.OffersLive.List do
        as_of: as_of,
        window: window,
        counting_since: Returns.counting_since(),
-       general: Markets.general(window),
-       opportunities: Returns.general_opportunities(window),
+       global: Markets.global(window),
+       opportunities: Returns.global_opportunities(window),
        cursor: nil,
        more?: false,
        found: 0

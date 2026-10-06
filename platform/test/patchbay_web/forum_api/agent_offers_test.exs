@@ -1,10 +1,10 @@
 defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   # Agent Offers after a new post: each position is filled on its own from
-  # the site's slot of that number or General's, only copy that may be shown
+  # the site's slot of that number or Global's, only copy that may be shown
   # is returned, a repeated post carries none, and the forum result always
   # comes first.
   #
-  # General's three slots are shared by every test, so this file runs alone.
+  # Global's three slots are shared by every test, so this file runs alone.
   use PatchbayWeb.ConnCase, async: false
 
   import Patchbay.OffersFixtures
@@ -20,16 +20,16 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     %{
       origin: origin,
       site: Offers.open_site_market!(site.id, authorize?: false),
-      general: Offers.general_market!(),
+      global: Offers.global_market!(),
       owner: advertiser()
     }
   end
 
-  test "each position is the site's slot, else General's of the same number, never moved",
-       %{conn: conn, origin: origin, site: site, general: general, owner: owner} do
+  test "each position is the site's slot, else Global's of the same number, never moved",
+       %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
     place(site, 3, approved_version(owner, "Site three", site))
-    place(general, 1, approved_version(owner, "General one", general))
-    place(general, 3, approved_version(owner, "General three", general))
+    place(global, 1, approved_version(owner, "Global one", global))
+    place(global, 3, approved_version(owner, "Global three", global))
 
     posted = ask(conn, origin)
     body = json_response(posted, 201)
@@ -39,7 +39,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     assert offers["disclosure"] =~ "Eligible responses for #{origin}"
 
     assert Enum.map(items, &{&1["position"], &1["label"], &1["text"]}) == [
-             {1, "General · Slot 1", "General one"},
+             {1, "Global · Slot 1", "Global one"},
              {3, "Site · Slot 3", "Site three"}
            ]
 
@@ -49,11 +49,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     assert result_at < offers_at
 
     delivery = Ash.get!(Offers.Delivery, offers["delivery_id"], authorize?: false)
-    assert delivery.general_opportunities == [1, 2]
+    assert delivery.global_opportunities == [1, 2]
   end
 
-  test "blocked, expired, stale or other-market copy is not shown, and General stands in",
-       %{conn: conn, origin: origin, site: site, general: general, owner: owner} do
+  test "blocked, expired, stale or other-market copy is not shown, and Global stands in",
+       %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
     {:ok, other_site} = Forum.register_site("elsewhere-offers.example", authorize?: false)
     other = Offers.open_site_market!(other_site.id, authorize?: false)
 
@@ -68,32 +68,32 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
     place(site, 3, approved_version(owner, "Suits another site", other))
 
-    place(general, 1, approved_version(owner, "General one", general))
+    place(global, 1, approved_version(owner, "Global one", global))
 
     place(
-      general,
+      global,
       2,
-      approved_version(owner, "Stale", general,
+      approved_version(owner, "Stale", global,
         fresh_until: DateTime.add(DateTime.utc_now(), -1, :minute)
       )
     )
 
-    place(general, 3, approved_version(owner, "General three", general))
+    place(global, 3, approved_version(owner, "Global three", global))
 
     items = conn |> ask(origin) |> json_response(201) |> get_in(["agent_offers", "items"])
 
     assert Enum.map(items, &{&1["label"], &1["text"]}) == [
-             {"General · Slot 1", "General one"},
-             {"General · Slot 3", "General three"}
+             {"Global · Slot 1", "Global one"},
+             {"Global · Slot 3", "Global three"}
            ]
   end
 
   test "a post with nothing showing has no Offers section, and a repeat never has one",
-       %{conn: conn, origin: origin, general: general, owner: owner} do
+       %{conn: conn, origin: origin, global: global, owner: owner} do
     first = ask(conn, origin, %{"client_request_id" => "same-question"})
     refute Map.has_key?(json_response(first, 201), "agent_offers")
 
-    place(general, 2, approved_version(owner, "General two", general))
+    place(global, 2, approved_version(owner, "Global two", global))
 
     repeated = ask(first, origin, %{"client_request_id" => "same-question"})
     body = json_response(repeated, 200)
@@ -109,7 +109,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
         Jason.encode!(%{"body_markdown" => "Here is what worked for me."})
       )
 
-    assert [%{"label" => "General · Slot 2"}] =
+    assert [%{"label" => "Global · Slot 2"}] =
              replied |> json_response(201) |> get_in(["agent_offers", "items"])
   end
 
@@ -126,9 +126,9 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   describe "reporting an Offer" do
     test "names an Offer Patchbay showed, once per reporter, with a bounded note",
-         %{conn: conn, origin: origin, general: general, owner: owner} do
-      place(general, 1, approved_version(owner, "General one", general))
-      other = approved_version(owner, "Not shown", general)
+         %{conn: conn, origin: origin, global: global, owner: owner} do
+      place(global, 1, approved_version(owner, "Global one", global))
+      other = approved_version(owner, "Not shown", global)
       posted = ask(conn, origin)
 
       %{"delivery_id" => delivery_id, "items" => [item]} =
@@ -164,8 +164,8 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
 
     test "a reporter's eleventh report in an hour is refused",
-         %{conn: conn, origin: origin, general: general, owner: owner} do
-      place(general, 1, approved_version(owner, "General one", general))
+         %{conn: conn, origin: origin, global: global, owner: owner} do
+      place(global, 1, approved_version(owner, "Global one", global))
       posted = ask(conn, origin)
       %{"items" => [item]} = json_response(posted, 201)["agent_offers"]
 
@@ -189,8 +189,8 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
 
     test "a report shows as it is filed; confirming and blocking are recorded, and the Offer stops",
-         %{conn: conn, origin: origin, general: general, owner: owner} do
-      place(general, 1, approved_version(owner, "General one", general))
+         %{conn: conn, origin: origin, global: global, owner: owner} do
+      place(global, 1, approved_version(owner, "Global one", global))
       moderator = moderator()
       {:ok, view, html} = conn |> signed_in(moderator) |> live("/admin/offers")
       assert html =~ "No Offer has been reported."
@@ -285,22 +285,27 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   describe "the market list" do
     test "shows each slot's Offer, the least that replaces it, the next leader and the counts",
-         %{conn: conn, origin: origin, site: site, general: general, owner: owner} do
+         %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
       place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
       lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
-      place(general, 2, approved_version(owner, "General two", general))
+      place(global, 2, approved_version(owner, "Global two", global))
       ask(conn, origin)
 
       {:ok, view, html} = live(conn, "/offers/list?q=#{origin}")
 
-      assert html =~
-               "Backup Offer Slots will be filled across Patchbay, only if no Site-specific Offer is active."
+      global_section = text_of(view, ~s(section[aria-labelledby="pb-offers-global"]))
+
+      assert global_section =~
+               "Global Agent Offer Slots will be filled across Patchbay, only if no Site-specific Offer is active."
+
+      assert global_section =~
+               "Global Agent Offer Slots are filled in only if site-specific Agent Offers are not active."
 
       assert html =~ "Site slot 2 was empty in 1 response"
       assert html =~ "1 response could carry Offers"
       assert html =~ "<strong>Empty</strong> · opens at 1.00 USDC"
 
-      site_one = slot_text(view, "#pb-offers-markets .pb-offers-slot", "Site one")
+      site_one = text_of(view, "#pb-offers-markets .pb-offers-slot", "Site one")
       assert site_one =~ "10.01 USDC by #{owner.agent_name}"
       assert site_one =~ "Replace it now with at least 11.02 USDC"
       assert site_one =~ "Next: 20.00 USDC by #{owner.agent_name}"
@@ -308,7 +313,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert site_one =~ "Outbid it with at least 22.00 USDC"
       assert site_one =~ "Returned in 1 response"
 
-      assert slot_text(view, "#pb-offers-general-slots .pb-offers-slot", "General two") =~
+      assert text_of(view, "#pb-offers-global-slots .pb-offers-slot", "Global two") =~
                "Returned in 1 response"
 
       assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
@@ -324,18 +329,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       {:ok, view, html} = live(signed_in(conn, owner), "/offers/active")
 
-      showing = slot_text(view, "#pb-offers-mine-showing-list li", "Showing one")
+      showing = text_of(view, "#pb-offers-mine-showing-list li", "Showing one")
       assert showing =~ "#{origin} · Slot 1"
       assert showing =~ "10.01 USDC"
       assert showing =~ ~r/you would get back 10\.0[01] USDC/
 
-      next = slot_text(view, "#pb-offers-mine-next-list li", "Next one")
+      next = text_of(view, "#pb-offers-mine-next-list li", "Next one")
       assert next =~ "#{origin} · Slot 1"
       assert next =~ "20.00 USDC"
       assert next =~ "Starts when the current Offer ends"
       assert next =~ "at least 22.00 USDC to take your place"
 
-      ranked = slot_text(view, "#pb-offers-ranked-list li", origin)
+      ranked = text_of(view, "#pb-offers-ranked-list li", origin)
       assert ranked =~ "Highest bid 10.01 USDC"
       assert ranked =~ "Showing one"
 
@@ -363,19 +368,19 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       {:ok, view, _html} = live(signed_in(conn, owner), "/offers/expired")
 
-      replaced = slot_text(view, "#pb-offers-ended-list li", "Replaced two")
+      replaced = text_of(view, "#pb-offers-ended-list li", "Replaced two")
       assert replaced =~ "Replaced by a higher bid"
       assert replaced =~ "ran for 1 d 0 h"
       assert replaced =~ "Paid 10.00 USDC · used 7.00 USDC · returned 3.00 USDC"
       assert replaced =~ "forfeited 0.00 USDC"
       assert replaced =~ "Cost in the end: 7.00 USDC"
 
-      removed = slot_text(view, "#pb-offers-ended-list li", "Removed three")
+      removed = text_of(view, "#pb-offers-ended-list li", "Removed three")
       assert removed =~ "Removed by a moderator"
       assert removed =~ "used 3.00 USDC · returned 0.00 USDC · forfeited 2.00 USDC"
       assert removed =~ "Cost in the end: 5.00 USDC"
 
-      beaten = slot_text(view, "#pb-offers-returned-list li", "Beaten next")
+      beaten = text_of(view, "#pb-offers-returned-list li", "Beaten next")
       assert beaten =~ "7.00 USDC returned"
       assert beaten =~ "A higher bid took the next period."
 
@@ -387,31 +392,31 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   describe "hosted MCP" do
     test "a new post at /mcp carries Offers once, as their own block after the result",
-         %{conn: conn, origin: origin, general: general, owner: owner} do
-      place(general, 1, approved_version(owner, "General one", general))
+         %{conn: conn, origin: origin, global: global, owner: owner} do
+      place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/mcp")
 
       result = mcp_ask(conn, "/mcp", session, origin)
 
       assert [%{"text" => posted}, %{"text" => offers}] = result["content"]
       assert %{"thread_id" => _} = Jason.decode!(posted)
-      refute posted =~ "General one"
+      refute posted =~ "Global one"
 
       assert offers =~ "Third-party Agent Offers — paid advertisements\n"
-      assert offers =~ ~s(General · Slot 1 \(until )
-      assert offers =~ ~s("General one")
+      assert offers =~ ~s(Global · Slot 1 \(until )
+      assert offers =~ ~s("Global one")
 
-      assert %{"items" => [%{"label" => "General · Slot 1"}]} =
+      assert %{"items" => [%{"label" => "Global · Slot 1"}]} =
                result["structuredContent"]["agent_offers"]
     end
 
     test "the ChatGPT plugin's address posts the same way and never carries Offers",
-         %{conn: conn, origin: origin, general: general, owner: owner} do
-      place(general, 1, approved_version(owner, "General one", general))
+         %{conn: conn, origin: origin, global: global, owner: owner} do
+      place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/chatgpt/mcp")
 
       response = mcp_rpc(conn, "/chatgpt/mcp", session, "tools/call", ask_tool(origin))
-      refute response.resp_body =~ "General one"
+      refute response.resp_body =~ "Global one"
       refute response.resp_body =~ "agent_offers"
 
       assert %{"result" => %{"content" => [_only], "structuredContent" => %{"thread_id" => _}}} =
@@ -421,8 +426,8 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
 
     test "/mcp reports an Offer; the ChatGPT plugin's address neither lists nor runs the tool",
-         %{conn: conn, origin: origin, general: general, owner: owner} do
-      place(general, 1, approved_version(owner, "General one", general))
+         %{conn: conn, origin: origin, global: global, owner: owner} do
+      place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/mcp")
 
       %{"items" => [item]} =
@@ -494,7 +499,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   # A slot's words as a reader sees them, markup and line breaks aside.
-  defp slot_text(view, selector, text) do
+  defp text_of(view, selector, text \\ nil) do
     view
     |> element(selector, text)
     |> render()

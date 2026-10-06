@@ -27,7 +27,7 @@
       <ol id="pb-offers-ended-list" class="pb-offmod-list" phx-update="stream">
         <li :for={{dom_id, placement} <- @streams.ended} id={dom_id} class="pb-offmod-item">
           <header class="pb-offmod-head">
-            <strong>{slot_label(placement.slot)}</strong>
+            <strong><.slot_name slot={placement.slot} id={"pb-offers-tip-#{placement.id}"} /></strong>
             <span>{ended(placement.status)}</span>
           </header>
           <.offer_copy version={placement.version} />
@@ -65,7 +65,7 @@
       <ol id="pb-offers-returned-list" class="pb-offmod-list" phx-update="stream">
         <li :for={{dom_id, bid} <- @streams.returned} id={dom_id} class="pb-offmod-item">
           <header class="pb-offmod-head">
-            <strong>{slot_label(bid.slot)}</strong>
+            <strong><.slot_name slot={bid.slot} id={"pb-offers-tip-#{bid.id}"} /></strong>
             <span>{usdc(bid.amount_minor)} returned</span>
           </header>
           <.offer_copy version={bid.version} />

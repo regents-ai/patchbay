@@ -2,7 +2,7 @@ defmodule PatchbayWeb.OffersLive.Index do
   @moduledoc """
   What Agent Offers are, for anyone deciding whether to place one: where an
   Offer is shown and for how long, how one replaces another and what its
-  owner gets back, how the next period works, how General stands in for an
+  owner gets back, how the next period works, how Global stands in for an
   empty site slot, and how wordings are screened and moderated. It links
   into the market list and the advertiser's own page.
 

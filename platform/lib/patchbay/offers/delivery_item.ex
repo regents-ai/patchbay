@@ -1,7 +1,7 @@
 defmodule Patchbay.Offers.DeliveryItem do
   @moduledoc """
   One Offer returned in a response: the position it held, whether it was the
-  site's own slot or General's of the same number, and the exact placement
+  site's own slot or Global's of the same number, and the exact placement
   and wording returned.
   """
 
@@ -41,7 +41,7 @@ defmodule Patchbay.Offers.DeliveryItem do
     attribute(:scope, :atom,
       allow_nil?: false,
       public?: true,
-      constraints: [one_of: [:site, :general]]
+      constraints: [one_of: [:site, :global]]
     )
 
     create_timestamp(:inserted_at, public?: true)

@@ -144,7 +144,7 @@ defmodule Patchbay.Offers.Placement do
     read :showing do
       description("""
       The placements that may be returned for a site at one moment: that
-      site's own and General's, each running at that moment, its wording not
+      site's own and Global's, each running at that moment, its wording not
       blocked and its safety allow still fresh. A site placement also needs a
       fresh allow saying it suits that site's market.
       """)
@@ -160,7 +160,7 @@ defmodule Patchbay.Offers.Placement do
               version.reviews,
               kind == :safety and decision == :allow and fresh_until > ^arg(:at)
             ) and
-            (slot.market.scope == :general or
+            (slot.market.scope == :global or
                (slot.market.site_id == ^arg(:site_id) and
                   exists(
                     version.reviews,

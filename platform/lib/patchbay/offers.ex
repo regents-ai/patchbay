@@ -3,7 +3,7 @@ defmodule Patchbay.Offers do
   Agent Offers: clearly labelled third-party advertisements that follow a
   successful new thread or reply on Patchbay.
 
-  Each site board has a market of three numbered slots, and one General
+  Each site board has a market of three numbered slots, and one Global
   market of three more stands in for any site slot that is empty. An
   advertiser saves a short Offer, Patchbay screens it, and a placement in a
   slot runs for up to 72 hours. Prices are in USDC on Base. Each bid's USDC
@@ -42,8 +42,8 @@ defmodule Patchbay.Offers do
 
   @doc """
   The opening minimum of a market in minor units: the site's own when it
-  sets one, otherwise the global one. General, and a site whose market has
-  not been opened yet, use the global one.
+  sets one, otherwise the default. Global, and a site whose market has
+  not been opened yet, use the default.
   """
   @spec opening_minimum_minor(Patchbay.Offers.Market.t() | nil) :: pos_integer()
   def opening_minimum_minor(%{minimum_override_minor: minor}) when is_integer(minor), do: minor
@@ -52,7 +52,7 @@ defmodule Patchbay.Offers do
   resources do
     resource Patchbay.Offers.Market do
       define(:get_market, action: :read, get_by: [:id])
-      define(:general_market, action: :general)
+      define(:global_market, action: :global)
       define(:open_site_market, action: :open_for_site, args: [:site_id])
     end
 

@@ -5,10 +5,10 @@ defmodule Patchbay.Offers.Delivery do
   A response is eligible when it answers a new thread, report or reply about
   a site, through Patchbay's own HTTP or hosted MCP door. Each eligible
   response gets one delivery, whether or not any Offer was showing, so the
-  count of eligible responses and of General opportunities is honest:
+  count of eligible responses and of Global opportunities is honest:
 
-    * `general_opportunities` - the slot numbers where the site had nothing
-      showing, so General's slot of that number could stand in, whether or
+    * `global_opportunities` - the slot numbers where the site had nothing
+      showing, so Global's slot of that number could stand in, whether or
       not it did;
     * `items` - the Offers returned, at most one per position.
 
@@ -70,7 +70,7 @@ defmodule Patchbay.Offers.Delivery do
 
     attribute(:selected_at, :utc_datetime_usec, allow_nil?: false, public?: true)
 
-    attribute(:general_opportunities, {:array, :integer},
+    attribute(:global_opportunities, {:array, :integer},
       allow_nil?: false,
       default: [],
       public?: true

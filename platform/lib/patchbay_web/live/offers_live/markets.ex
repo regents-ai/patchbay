@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.OffersLive.Markets do
   @moduledoc """
-  Offer markets as the public pages read and show them: General, the
+  Offer markets as the public pages read and show them: Global, the
   markets of given sites, and the site markets with something showing,
   highest bid first; and one numbered slot as every page shows it.
 
@@ -27,10 +27,10 @@ defmodule PatchbayWeb.OffersLive.Markets do
 
   @ranked 50
 
-  @doc "General with its three slots."
-  def general(window) do
+  @doc "Global with its three slots."
+  def global(window) do
     Market
-    |> Ash.Query.for_read(:general)
+    |> Ash.Query.for_read(:global)
     |> Ash.Query.load(slots: slots(window))
     # A slot's next-period copy is shown before it runs, so this read passes
     # the wordings' owner-only policy deliberately: a slot only ever points
@@ -53,7 +53,7 @@ defmodule PatchbayWeb.OffersLive.Markets do
   @doc """
   The site markets with an Offer showing at `as_of`, ranked by their highest
   showing bid, ties by the site's address and then its id. At most the
-  first #{@ranked}. General is never ranked among them.
+  first #{@ranked}. Global is never ranked among them.
   """
   def ranked({_since, as_of} = window) do
     showing = expr(status == :active and expires_at > ^as_of)
@@ -101,11 +101,48 @@ defmodule PatchbayWeb.OffersLive.Markets do
     end
   end
 
-  @doc "Where a slot is, in words: its site or General, and its number."
-  def slot_label(%{number: number, market: %{scope: :general}}), do: "General · Slot #{number}"
+  @doc "Where a slot is, in words: its site or Global, and its number."
+  def slot_label(%{number: number, market: %{scope: :global}}), do: "Global · Slot #{number}"
 
   def slot_label(%{number: number, market: %{site: site}}),
     do: "#{site_name(site)} · Slot #{number}"
+
+  attr(:slot, :map, required: true, doc: "the slot, with its market")
+  attr(:id, :string, required: true, doc: "unique on the page; names the explanation")
+
+  @doc "A slot's name, with what a Global slot is when it is one."
+  def slot_name(assigns) do
+    ~H"""
+    <span class="pb-offers-tip-host">
+      {slot_label(@slot)} <.global_tip :if={@slot.market.scope == :global} id={@id} />
+    </span>
+    """
+  end
+
+  attr(:id, :string, required: true, doc: "unique on the page; names the explanation")
+
+  @doc """
+  A small question mark that explains Global Agent Offer Slots on hover or
+  focus. The explanation opens from the start of the nearest
+  `.pb-offers-tip-host`, so it stays on screen wherever the mark falls.
+  """
+  def global_tip(assigns) do
+    ~H"""
+    <span class="pb-offers-tip">
+      <button
+        type="button"
+        class="pb-offers-tip-button"
+        aria-label="About Global Agent Offer Slots"
+        aria-describedby={@id}
+      >
+        ?
+      </button>
+      <span role="tooltip" id={@id} class="pb-offers-tip-text">
+        Global Agent Offer Slots are filled in only if site-specific Agent Offers are not active.
+      </span>
+    </span>
+    """
+  end
 
   @doc "A length of time in days, hours and minutes."
   def duration(seconds) do
@@ -135,7 +172,7 @@ defmodule PatchbayWeb.OffersLive.Markets do
   attr(:number, :integer, required: true)
   attr(:opening, :integer, required: true, doc: "the market's opening minimum, minor units")
   attr(:now, DateTime, required: true, doc: "the moment the page was read")
-  attr(:opportunities, :integer, default: nil, doc: "General only")
+  attr(:opportunities, :integer, default: nil, doc: "Global slots only")
 
   @doc "One numbered slot: what is showing, what replaces it, what comes next, and its figures."
   def offer_slot(assigns) do

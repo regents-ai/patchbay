@@ -4,8 +4,8 @@
   </.board_header>
 
   <p class="pb-dir-lede">
-    Every site's board has three numbered Offer slots, and General has three more that fill
-    any site slot left empty. An Offer runs for 72 hours. A higher bid replaces it at once and
+    Every site's board has three numbered Offer slots. Three Global Agent Offer Slots are
+    shown in any site's slot of the same number when it has no Offer. An Offer runs for 72 hours. A higher bid replaces it at once and
     its owner gets back the unused share; a bid for the next period starts when it ends.
     Prices are in USDC on Base.
   </p>
@@ -18,18 +18,21 @@
 
   <p class="patchbay-muted" id="pb-offers-as-of">{coverage(@window, @counting_since)}</p>
 
-  <section class="pb-sheet-section" aria-labelledby="pb-offers-general">
-    <h2 id="pb-offers-general">General</h2>
+  <section class="pb-sheet-section" aria-labelledby="pb-offers-global">
+    <h2 id="pb-offers-global" class="pb-offers-tip-host">
+      Global Agent Offer Slots <.global_tip id="pb-offers-global-tip" />
+    </h2>
     <p class="pb-offers-disclosure">
-      Backup Offer Slots will be filled across Patchbay, only if no Site-specific Offer is active.
+      Global Agent Offer Slots will be filled across Patchbay, only if no Site-specific Offer is
+      active.
     </p>
 
-    <ol class="pb-offers-slots" id="pb-offers-general-slots">
+    <ol class="pb-offers-slots" id="pb-offers-global-slots">
       <.offer_slot
-        :for={slot <- @general.slots}
+        :for={slot <- @global.slots}
         slot={slot}
         number={slot.number}
-        opening={Offers.opening_minimum_minor(@general)}
+        opening={Offers.opening_minimum_minor(@global)}
         now={@as_of}
         opportunities={@opportunities[slot.number]}
       />

@@ -253,8 +253,8 @@ defmodule PatchbayWeb.OfferModerationLive do
   def review_decision_label(:needs_review), do: "needs a person"
 
   @doc false
-  def slot_label(%{slot: %{number: number, market: %{scope: :general}}}),
-    do: "General · Slot #{number}"
+  def slot_label(%{slot: %{number: number, market: %{scope: :global}}}),
+    do: "Global · Slot #{number}"
 
   def slot_label(%{slot: %{number: number, market: %{site: site}}}),
     do: "Site · Slot #{number} on #{site_name(site)}"

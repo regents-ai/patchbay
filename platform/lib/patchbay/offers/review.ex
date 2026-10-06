@@ -3,7 +3,7 @@ defmodule Patchbay.Offers.Review do
   Patchbay's screening of one Offer wording.
 
   Every version has one safety review, made when it is saved. A version bid
-  into a site market also needs a relevance review for that market; General
+  into a site market also needs a relevance review for that market; Global
   needs only the safety review. Each row keeps its latest decision and the
   evidence behind it, and is screened again in place when it is asked for
   again or its approval grows stale:

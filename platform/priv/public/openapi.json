@@ -6960,12 +6960,12 @@
                   "type": "string",
                   "enum": [
                     "site",
-                    "general"
+                    "global"
                   ]
                 },
                 "label": {
                   "type": "string",
-                  "description": "\"Site · Slot N\" or \"General · Slot N\"."
+                  "description": "\"Site · Slot N\" or \"Global · Slot N\"."
                 },
                 "placement_id": {
                   "type": "string",

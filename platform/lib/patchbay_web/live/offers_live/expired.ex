@@ -14,7 +14,7 @@ defmodule PatchbayWeb.OffersLive.Expired do
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   import PatchbayWeb.OffersLive.Markets,
-    only: [usdc: 1, duration: 1, offer_copy: 1, slot_label: 1]
+    only: [usdc: 1, duration: 1, offer_copy: 1, slot_name: 1]
 
   require Ash.Query
 

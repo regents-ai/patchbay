@@ -1,7 +1,7 @@
 defmodule Patchbay.Offers.Changes.SelectOffers do
   @moduledoc """
   Fills each of positions 1, 2 and 3 on its own: the site's slot of that
-  number if its placement is showing, otherwise General's slot of the same
+  number if its placement is showing, otherwise Global's slot of the same
   number if that one is showing, otherwise nothing. Positions are never
   reordered and an empty position is never filled from another number.
 
@@ -26,7 +26,7 @@ defmodule Patchbay.Offers.Changes.SelectOffers do
       changeset
       |> Ash.Changeset.force_change_attribute(:selected_at, at)
       |> Ash.Changeset.force_change_attribute(
-        :general_opportunities,
+        :global_opportunities,
         Enum.reject(@positions, &Map.has_key?(showing, {:site, &1}))
       )
       |> Ash.Changeset.put_context(:offers_chosen, choose(showing))
@@ -53,7 +53,7 @@ defmodule Patchbay.Offers.Changes.SelectOffers do
   defp pick(showing, position) do
     case Map.fetch(showing, {:site, position}) do
       {:ok, placement} -> {:site, placement}
-      :error -> {:general, Map.get(showing, {:general, position})}
+      :error -> {:global, Map.get(showing, {:global, position})}
     end
   end
 

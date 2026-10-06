@@ -1,5 +1,5 @@
 defmodule Patchbay.Offers.Validations.SiteMarket do
-  @moduledoc "Keeps relevance reviews to site markets; General needs only the safety review."
+  @moduledoc "Keeps relevance reviews to site markets; Global needs only the safety review."
 
   use Ash.Resource.Validation
 
@@ -10,7 +10,7 @@ defmodule Patchbay.Offers.Validations.SiteMarket do
            authorize?: false
          ) do
       {:ok, %{scope: :site}} -> :ok
-      _general_or_missing -> {:error, field: :market_id, message: "must be a site's market"}
+      _global_or_missing -> {:error, field: :market_id, message: "must be a site's market"}
     end
   end
 end

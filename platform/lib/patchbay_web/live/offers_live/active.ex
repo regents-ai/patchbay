@@ -6,7 +6,7 @@ defmodule PatchbayWeb.OffersLive.Active do
   their two-second comparison, marked as not yet decided.
 
   Below, for everyone, the site markets with an Offer showing, ranked by
-  their highest showing bid. General is not ranked among them; the market
+  their highest showing bid. Global is not ranked among them; the market
   list shows it on its own.
   """
 
@@ -16,7 +16,7 @@ defmodule PatchbayWeb.OffersLive.Active do
     only: [board_header: 1, moment: 1, site_name: 1, site_path: 1]
 
   import PatchbayWeb.OffersLive.Markets,
-    only: [usdc: 1, offer_copy: 1, offer_slot: 1, slot_label: 1, time_left: 2, top_bid: 2]
+    only: [usdc: 1, offer_copy: 1, offer_slot: 1, slot_name: 1, time_left: 2, top_bid: 2]
 
   require Ash.Query
 
