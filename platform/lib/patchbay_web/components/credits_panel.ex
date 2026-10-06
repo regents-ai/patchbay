@@ -76,7 +76,9 @@ defmodule PatchbayWeb.CreditsPanel do
     do: {:noreply, socket |> choose(amount, chain) |> sync()}
 
   # The chain the wallet is on, or nil when the page could not read one. Until
-  # the person picks a chain, the panel follows the wallet's.
+  # the person picks a chain, the panel follows the wallet's. The page says this
+  # when the panel opens and each time it comes back into view, so the funds
+  # behind a disabled Buy are read again then too.
   def handle_event("wallet_chain", %{"chain_id" => id}, socket)
       when is_integer(id) or is_nil(id) do
     socket = assign(socket, wallet_chain: id)
@@ -86,7 +88,7 @@ defmodule PatchbayWeb.CreditsPanel do
         {:noreply, socket |> assign(chain: chain) |> sync()}
 
       _keep ->
-        {:noreply, socket}
+        {:noreply, read_funds(socket)}
     end
   end
 
