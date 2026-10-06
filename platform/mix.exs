@@ -20,7 +20,8 @@ defmodule Patchbay.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      usage_rules: usage_rules()
     ]
   end
 
@@ -97,6 +98,7 @@ defmodule Patchbay.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.14", only: [:dev, :test], runtime: false},
+      {:usage_rules, "~> 1.2.8", only: [:dev, :test], runtime: false},
       {:credo_ash,
        git: @elixir_utils,
        ref: @elixir_utils_ref,
@@ -112,6 +114,21 @@ defmodule Patchbay.MixProject do
   #     $ mix setup
   #
   # See the documentation for `Mix` for more info on aliases.
+  # `mix usage_rules.sync` writes the marked block at the end of AGENTS.md: how to
+  # read the installed version's docs, and links to each package's own rules in deps/.
+  defp usage_rules do
+    [
+      file: "AGENTS.md",
+      usage_rules: [
+        {:usage_rules, sub_rules: []},
+        {:usage_rules, sub_rules: :all, main: false, link: :markdown},
+        {:ash, link: :markdown},
+        {~r/^ash_/, link: :markdown},
+        {:phoenix, sub_rules: ["phoenix", "liveview", "html"], link: :markdown}
+      ]
+    ]
+  end
+
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
@@ -163,6 +180,7 @@ defmodule Patchbay.MixProject do
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
         "xref graph --label compile-connected --fail-above 33",
         "ash.codegen --check",
+        "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
         "test --warnings-as-errors"
       ]
