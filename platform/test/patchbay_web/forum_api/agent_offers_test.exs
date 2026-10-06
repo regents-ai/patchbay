@@ -293,7 +293,9 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       {:ok, view, html} = live(conn, "/offers/list?q=#{origin}")
 
-      assert html =~ "Time-based fallback placement. Zero responses are possible."
+      assert html =~
+               "Backup Offer Slots will be filled across Patchbay, only if no Site-specific Offer is active."
+
       assert html =~ "Site slot 2 was empty in 1 response"
       assert html =~ "1 response could carry Offers"
       assert html =~ "<strong>Empty</strong> · opens at 1.00 USDC"
