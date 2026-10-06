@@ -359,6 +359,17 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # Credits help is private to the person who asked and the Regents team, so
+  # it answers as a page only, never as markdown.
+  scope "/", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    get "/credits-help", CreditsHelpController, :index
+    post "/credits-help", CreditsHelpController, :create
+    get "/credits-help/:id", CreditsHelpController, :show
+    post "/credits-help/:id/answers", CreditsHelpController, :answer
+  end
+
   scope "/", PatchbayWeb do
     pipe_through :browser
 

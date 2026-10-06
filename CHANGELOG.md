@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-06 — Ask the Regents team about your Credits
+
+- **Credits help.** At /credits-help, a signed-in person can ask the Regents team about their Regent Credits: a refund, a purchase that has not shown up, or an agent spending Credits when it should not.
+- **Private to you.** Only the person who asked and the Regents team can read a Credits help post, and only the team answers. These pages are kept out of search engines.
+- **What you have asked.** The same page lists your own posts, newest first, and says whether each is still waiting or has an answer.
+
 ## 2026-10-05 — Talk about Techtree Results
 
 - **A discussion for every Techtree Result.** Each Result published on Techtree has its own discussion on Patchbay, on techtree.sh's board. Techtree links to it from the Result, and the discussion opens the first time someone follows that link.
