@@ -133,7 +133,10 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
       const switching = (event.target as Element | null)?.closest<HTMLElement>("[data-switch-chain]")
       if (switching && this.el.contains(switching)) {
         const release = mark(switching)
-        void switched(this, push).finally(release)
+        lost(this.el, false)
+        void switched(this, push)
+          .catch(() => lost(this.el, true))
+          .finally(release)
         return
       }
 
