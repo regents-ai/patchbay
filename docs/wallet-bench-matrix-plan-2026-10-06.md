@@ -29,7 +29,7 @@ test (install, make a wallet).
   PASS and PASS* counted separately, never one pass or fail made from several runs. An empty square means
   "not tested yet", never zero.
 - Tapping a square opens that pair: each run's result and reason, the five checks, and a link to the run's page
-  on techtree.sh.
+  on techtree.sh (run_url).
 - The setup every run shares (model, stock agents, one machine per agent) above the grids, and a note on how many
   of the 108 squares have results so far.
 - On a phone the grid scrolls sideways inside its own box; the page itself never does. Works without JavaScript.
@@ -37,16 +37,25 @@ test (install, make a wallet).
 
 ## Data
 
-- Read straight from regents_prod. Agreed with the Techtree chief (6 Oct): three read-only views in techtree_app,
-  owned and changed only by Techtree:
-  - results: one row per agent × wallet × test × run in the agreed columns (harness_id, harness, wallet_id,
-    wallet, test, attempt, run, attempt_id, outcome, outcome_detail, criteria_true, criteria_false, criteria_open,
-    finished_at), fixed-outcome rows included so all 108 squares show; finished, judged attempts only;
-  - checks: one row per check;
-  - roster: agent and wallet names, what each outcome means, the shared setup and how runs combine.
+- Read straight from regents_prod. Draft agreed with the Techtree chief (6 Oct, final names after the pilot):
+  read-only views in techtree_app, owned and changed only by Techtree. Patchbay keeps no names, rules or wording.
+  - wallet_bench_results: one row per (harness, wallet, grid, run), grid = install | wallet, already folded by
+    Techtree: outcome (PASS, PASS*, WAITING_HUMAN, INCONCLUSIVE, FAILED_TECHNICAL, FAILED_SAFETY), outcome_detail
+    (judge's one-line summary or the stop reason), plain_file, second_try (install came from the second try),
+    signature_asked (wallet result needed the signature request), attempt_id, run_url
+    (https://techtree.sh/wallet-bench/{attempt_id}), versions, finished_at. Retries are new runs; rows are only
+    added and final once they appear.
+  - wallet_bench_checks: one row per check (C1–C5): harness_id, wallet_id, grid, run, attempt_id, criterion_id,
+    criterion, result (true | false | open).
+  - wallet_bench_fixed: cells that never run, keyed by harness_id | "*", wallet_id | "*", grid | "*" →
+    fixed_outcome, fixed_reason (e.g. Cline's wallet grid → NOT_RUN).
+  - wallet_bench_roster: kind (harness | wallet), id, name, version.
+  - wallet_bench_notes: key → plain text, for each outcome's meaning and the shared setup.
   Patchbay's database login gets SELECT on those views only, so Patchbay never depends on the bench's own tables.
   The grant is a production change the Techtree chief puts to Sean with the bench release; Patchbay does not
   grant it.
+- Two grids (install, make a wallet). An install square notes a second try; a wallet square notes when the
+  signature request was needed and names the plain file behind a PASS*.
 - The page queries the views when it is opened, so a finished run shows on the next visit; no copy in Patchbay's
   tables and nothing to schedule.
 - Waiting on: the view names and the grant (Techtree chief, after the pilot), then results from the run.
