@@ -271,15 +271,17 @@ defmodule PatchbayWeb.CreditsPanel do
     signer = socket.assigns.signer
 
     Enum.reduce(Map.values(@chains), socket, fn chain, socket ->
-      start_async(socket, {:usdc, chain}, fn ->
-        call = %{to: Chains.usdc(chain), data: Call.encode("balanceOf(address)", [signer])}
-
-        with {:ok, "0x" <> hex} <-
-               ChainClient.rpc(Chains.chain(chain), "eth_call", [call, "latest"]) do
-          {:ok, String.to_integer(hex, 16)}
-        end
-      end)
+      start_async(socket, {:usdc, chain}, fn -> usdc_of(chain, signer) end)
     end)
+  end
+
+  defp usdc_of(chain, signer) do
+    call = %{to: Chains.usdc(chain), data: Call.encode("balanceOf(address)", [signer])}
+
+    with {:ok, "0x" <> hex} <-
+           ChainClient.rpc(Chains.chain(chain), "eth_call", [call, "latest"]) do
+      {:ok, String.to_integer(hex, 16)}
+    end
   end
 
   defp dollars(amount) do
