@@ -76,6 +76,8 @@ export type Roll = {clip: boolean; move: (up: boolean) => AnimationParams}
 
 export const ROLLS: Record<string, Roll> = {
   roll: {clip: true, move: up => ({y: [up ? "100%" : "-100%", "0%"], duration: SLOW, ease: "outBack(1.4)"})},
+  // A balance that changed while the reader watches: the new digits flash in.
+  flash: {clip: false, move: () => ({opacity: [0, 1, 0.35, 1], scale: [1.35, 1], duration: SLOW * 3, ease: "outQuad"})},
 }
 
 // What a figure is worth, decimals included, so 1.75 to 2 rolls up.

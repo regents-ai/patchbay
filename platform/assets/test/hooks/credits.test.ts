@@ -84,7 +84,7 @@ test("a press with no Privy to reach, or no sign-in there, says which", async ()
     querySelector: selector =>
       selector === 'meta[name="privy-app-id"]' && appId !== null ? {getAttribute: () => appId} : null,
   })
-  const bridge = (answer: {ok: false; reason: string}) => async () => ({activeWallet: async () => answer})
+  const bridge = (answer: {ok: false; reason: string}) => async () => ({activeWallet: async () => answer, walletChain: async () => null})
 
   assert.deepEqual(await pressWallet(page(null), async () => assert.fail("loaded")), {ok: false, reason: "wallet_unreachable"})
   assert.deepEqual(await pressWallet(page("app-1"), async () => null), {ok: false, reason: "wallet_unreachable"})

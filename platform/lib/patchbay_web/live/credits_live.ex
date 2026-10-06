@@ -41,12 +41,15 @@ defmodule PatchbayWeb.CreditsLive do
     ~H"""
     <div class="pb-credits">
       <button
+        id="pb-credits-balance"
         type="button"
         class="pb-credits-balance"
         phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
+        phx-hook="MotionCount"
+        data-variant="flash"
         aria-haspopup="dialog"
       >
-        {Amount.format(@balance.available)}
+        <span data-count>{Amount.format(@balance.available)}</span>
       </button>
       <dialog
         id="pb-credits"
@@ -56,7 +59,9 @@ defmodule PatchbayWeb.CreditsLive do
         aria-label="Buy Credits"
       >
         <form method="dialog" class="pb-credits-close">
-          <button type="submit" aria-label="Close">Close</button>
+          <button type="submit" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
         </form>
         <.live_component
           :if={@opened}

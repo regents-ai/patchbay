@@ -9,7 +9,7 @@ import type {Hook, HookInterface} from "phoenix_live_view"
 
 import {loadPrivyBridge, privyAppId} from "../privy/account.ts"
 import type {MetaDocument, PrivyBridgeModule} from "../privy/account.ts"
-import {sendFailure, sendStep} from "../wallet_actions/send_step.ts"
+import {chainId, sendFailure, sendStep, switchChain} from "../wallet_actions/send_step.ts"
 import type {SelectedWallet, StepChain, TransactionStep} from "../wallet_actions/send_step.ts"
 
 /**
@@ -37,7 +37,7 @@ export type PressWallet =
   | {ok: true; wallet: SelectedWallet}
   | {ok: false; reason: "wallet_unreachable" | "privy_signed_out" | "wallet_unavailable"}
 
-type LoadBridge = (doc: MetaDocument) => Promise<Pick<PrivyBridgeModule, "activeWallet"> | null>
+type LoadBridge = (doc: MetaDocument) => Promise<Pick<PrivyBridgeModule, "activeWallet" | "walletChain"> | null>
 
 export async function pressWallet(doc: MetaDocument, loadBridge: LoadBridge = loadPrivyBridge): Promise<PressWallet> {
   const appId = privyAppId(doc)
@@ -49,6 +49,13 @@ export async function pressWallet(doc: MetaDocument, loadBridge: LoadBridge = lo
   if (found.reason === "signed_out") return {ok: false, reason: "privy_signed_out"}
   if (found.reason === "wallet_unavailable") return {ok: false, reason: "wallet_unavailable"}
   return {ok: false, reason: "wallet_unreachable"}
+}
+
+/** The chain Privy's active wallet is on, read without opening anything; null with none. */
+export async function walletChain(doc: MetaDocument, loadBridge: LoadBridge = loadPrivyBridge): Promise<number | null> {
+  const appId = privyAppId(doc)
+  const bridge = appId && (await loadBridge(doc))
+  return appId && bridge ? bridge.walletChain(appId) : null
 }
 
 /**
@@ -94,12 +101,16 @@ export function current(review: Review | undefined, wallet: SelectedWallet, form
 type CreditsPanel = {
   review?: Review
   clicked?: (event: Event) => void
+  looked?: () => void
 }
 
 /**
  * The panel's root carries the hook and a DOM id; each button names its step
  * with `data-onchain-step`, and each field the review depends on is marked
- * `data-onchain-input="name"`.
+ * `data-onchain-input="name"`. The server hears which chain the wallet is on
+ * when the panel opens, whenever the page comes back into view, and after a
+ * press of the `data-switch-chain` button, which asks the wallet onto the
+ * review's chain.
  */
 export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
   mounted() {
@@ -114,7 +125,18 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
     // Every press runs on its own. A press whose wallet or form the review on
     // the page does not match asks the server for the matching review, telling
     // it the wallet, and sends what comes back.
+    this.looked = () => void walletChain(document).then(chain_id => push("wallet_chain", {chain_id}))
+    this.looked()
+    window.addEventListener("focus", this.looked)
+
     this.clicked = event => {
+      const switching = (event.target as Element | null)?.closest<HTMLElement>("[data-switch-chain]")
+      if (switching && this.el.contains(switching)) {
+        const release = mark(switching)
+        void switched(this, push).finally(release)
+        return
+      }
+
       const button = (event.target as Element | null)?.closest<HTMLElement>("[data-onchain-step]")
       const name = button?.dataset.onchainStep
       if (!button || !name || !this.el.contains(button)) return
@@ -123,14 +145,34 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
 
       void pressed(this, name, push)
         .catch(() => lost(this.el, true))
-        .finally(release)
+        .finally(() => {
+          release()
+          // The wallet may have moved chain for the press.
+          this.looked?.()
+        })
     }
     this.el.addEventListener("click", this.clicked)
   },
 
   destroyed() {
     if (this.clicked) this.el.removeEventListener("click", this.clicked)
+    if (this.looked) window.removeEventListener("focus", this.looked)
   },
+}
+
+// Asks the wallet onto the review's chain, then tells the server where it is.
+async function switched(hook: CreditsPanel, push: Push): Promise<void> {
+  const found = await pressWallet(document)
+  if (!found.ok) {
+    const seen = found.reason === "wallet_unavailable" ? {active_wallet: null} : {}
+    return push("step_failed", {step: "switch", reason: found.reason, ...seen})
+  }
+  const chain = hook.review?.chain
+  if (!chain) return
+
+  const {provider} = found.wallet
+  await switchChain(provider, chain).catch(() => push("step_failed", {step: "switch", reason: "switch_declined"}))
+  push("wallet_chain", {chain_id: await chainId(provider).catch(() => null)})
 }
 
 async function pressed(hook: CreditsPanel & HookInterface, name: string, push: Push): Promise<void> {
