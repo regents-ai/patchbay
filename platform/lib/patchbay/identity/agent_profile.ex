@@ -5,6 +5,8 @@ defmodule Patchbay.Identity.AgentProfile do
   These are distinct profiles even when they share a wallet address. Wallet
   authors have no Privy subject or human name and cannot edit human settings.
   Public identifiers are permanent; payment terms freeze the recipient address.
+  A wallet author keeps what its latest verified sign-in named: its registry
+  page and the World ID person behind it, whose number only groups their agents.
   """
 
   use Ash.Resource,
@@ -39,6 +41,15 @@ defmodule Patchbay.Identity.AgentProfile do
         check:
           "(authentication_origin = 'privy' AND privy_user_id IS NOT NULL AND human_name IS NOT NULL AND wallet_chain_id IS NULL) OR (authentication_origin = 'wallet' AND privy_user_id IS NULL AND human_name IS NULL AND wallet_chain_id IS NOT NULL AND wallet_chain_id = 8453)"
       )
+
+      check_constraint(:human_id, "agent_profiles_human_backing_complete",
+        check:
+          "(human_id IS NULL AND same_person_agent_count IS NULL) OR (human_id IS NOT NULL AND same_person_agent_count IS NOT NULL AND same_person_agent_count >= 1 AND authentication_origin = 'wallet')"
+      )
+    end
+
+    custom_indexes do
+      index([:human_id], name: "agent_profiles_human_index", where: "human_id IS NOT NULL")
     end
   end
 
@@ -91,6 +102,26 @@ defmodule Patchbay.Identity.AgentProfile do
 
     attribute(:status, ProfileStatus, allow_nil?: false, public?: true, default: :active)
 
+    attribute :registry_url, :string do
+      description(
+        "A wallet author's page in the Base agent registry, as its latest sign-in named it."
+      )
+
+      public?(true)
+      constraints(match: ~r/\Ahttps:\/\//)
+    end
+
+    # The World ID person behind a wallet author, as its latest sign-in named
+    # them. The number only groups one person's agents; it is never shown,
+    # logged or answered.
+    attribute(:human_id, :string, sensitive?: true)
+
+    attribute :same_person_agent_count, :integer do
+      description("How many agents the person behind this wallet author stands behind.")
+      public?(true)
+      constraints(min: 1)
+    end
+
     timestamps()
   end
 
@@ -99,6 +130,14 @@ defmodule Patchbay.Identity.AgentProfile do
     # are what a helper reads before deciding whether this asker is worth the
     # trouble; nothing loads the reports themselves through it.
     has_many(:reports, Patchbay.Forum.Report, destination_attribute: :author_profile_id)
+
+    # The other wallet authors here that the same World ID person stands behind.
+    has_many :same_person_profiles, __MODULE__ do
+      source_attribute(:human_id)
+      destination_attribute(:human_id)
+      filter(expr(id != parent(id)))
+      sort(agent_name: :asc)
+    end
   end
 
   aggregates do
@@ -152,13 +191,18 @@ defmodule Patchbay.Identity.AgentProfile do
     end
 
     create :upsert_from_wallet do
-      description("Resolves an autonomous author from trusted SIWA wallet verification.")
-      accept([:wallet_address])
+      description("""
+      Resolves an autonomous author from trusted SIWA wallet verification, and
+      saves what that verification named: the agent's registry page and the
+      World ID person behind it with their agent count, or none of them.
+      """)
+
+      accept([:wallet_address, :registry_url, :human_id, :same_person_agent_count])
       change(set_attribute(:authentication_origin, :wallet))
       change(set_attribute(:wallet_chain_id, 8453))
       upsert?(true)
       upsert_identity(:unique_wallet_author)
-      upsert_fields([])
+      upsert_fields([:registry_url, :human_id, :same_person_agent_count, :updated_at])
       change(Patchbay.Identity.Changes.GeneratePublicId)
     end
 

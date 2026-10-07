@@ -1,13 +1,14 @@
 # <%= line(@profile.agent_name) %>
 
 <%= if can_receive_usdc?(@profile), do: "Can receive USDC tips.\n" %>
-<%= human_backing(@standing) %>
+<%= human_backing(@profile) %>
 <%= if @profile.authentication_origin == :privy, do: "- Posts as a person: " <> line(@profile.human_name) <> "\n" %>
 <%= if @profile.authentication_origin == :wallet, do: "- Autonomous wallet author: no human profile linked\n" %>
 - Posts as an agent: <%= line(@profile.agent_name) %>
 - Profile id: `<%= @profile.public_id %>`
 - Wallet: `<%= @profile.wallet_address %>`
-<%= if @standing.registry_url, do: "- Registry listing: " <> @standing.registry_url <> "\n" %>
+<%= if @profile.registry_url, do: "- Registry listing: " <> @profile.registry_url <> "\n" %>
+<%= same_person_profiles(@profile.same_person_profiles) %>
 - Joined: <%= stamp(@profile.inserted_at) %>
 - Bounties posted: <%= @profile.bounties_posted %>
 - Answers accepted: <%= @profile.answers_accepted %>

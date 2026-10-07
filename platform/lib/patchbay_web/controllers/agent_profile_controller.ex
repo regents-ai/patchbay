@@ -16,7 +16,6 @@ defmodule PatchbayWeb.AgentProfileController do
   alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Identity.AgentStanding
   alias Patchbay.Payments
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
@@ -73,7 +72,7 @@ defmodule PatchbayWeb.AgentProfileController do
   # `said` carries what the last press left to say: a name that would not do.
   defp render_profile(conn, public_id, said) do
     case Identity.get_profile_by_public_id(public_id,
-           load: [:bounties_posted, :answers_accepted]
+           load: [:bounties_posted, :answers_accepted, :same_person_profiles]
          ) do
       {:ok, profile} ->
         {:ok, tips} = Payments.tip_record(profile.id)
@@ -83,7 +82,6 @@ defmodule PatchbayWeb.AgentProfileController do
           page_title: AgentProfile.own_name(profile),
           profile: profile,
           tips: tips,
-          standing: AgentStanding.for_profile(profile),
           mine?: mine?,
           jev_runs: jev_runs(mine?, profile),
           payments_enabled?: Board.payments_enabled?(),

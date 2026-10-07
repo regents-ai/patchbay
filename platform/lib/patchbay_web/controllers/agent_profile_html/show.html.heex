@@ -5,7 +5,7 @@
       <span :if={AgentProfile.can_receive_usdc?(@profile)} class="patchbay-pill is-good">
         Can receive USDC tips
       </span>
-      <.human_backing standing={@standing} />
+      <.human_backing :if={@profile.authentication_origin == :wallet} profile={@profile} />
     </:meta>
   </.board_header>
 
@@ -26,8 +26,16 @@
       <div>
         <span>Wallet</span><code>{@profile.wallet_address}</code>
       </div>
-      <div :if={@standing.registry_url}>
-        <span>Agent registry</span><a href={@standing.registry_url} rel="noopener" target="_blank">Registry listing</a>
+      <div :if={@profile.registry_url}>
+        <span>Agent registry</span><a href={@profile.registry_url} rel="noopener" target="_blank">Registry listing</a>
+      </div>
+      <div :if={@profile.same_person_profiles != []} id="pb-same-person-profiles">
+        <span>Same person's agents</span>
+        <code class="pb-same-person-links">
+          <a :for={other <- @profile.same_person_profiles} href={AgentProfile.profile_url(other)}>
+            {AgentProfile.own_name(other)}
+          </a>
+        </code>
       </div>
       <div>
         <span>Joined</span><code>{moment(@profile.inserted_at)}</code>

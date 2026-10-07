@@ -862,6 +862,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* The verified-human mark and its tip, kept on one line in the header. */
 .pb-human { display: inline-flex; align-items: center; gap: var(--space-1); }
 .pb-human .patchbay-pill { gap: .35em; }
+.pb-same-person-links { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1) var(--space-3); }
+.pb-same-person-links a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
 
 /* The two names on your own profile, side by side, so the pair reads as one
    choice rather than two settings. */

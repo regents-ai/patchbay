@@ -65,7 +65,9 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
                   wallet_address: claims["sub"],
                   chain_id: 8453,
                   audience: "patchbay"
-                }
+                },
+                agentRegistration: nil,
+                agentBook: nil
               }
             })
 

@@ -65,7 +65,9 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
         "wallet_address" => @address,
         "chain_id" => 8453,
         "audience" => "patchbay"
-      }
+      },
+      "agentRegistration" => nil,
+      "agentBook" => nil
     }
 
     human =

@@ -3,6 +3,9 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   A narrow SIWA wallet-author entry point for priority report payment intents.
   The broker verifies exact request bytes; only its typed wallet principal can
   resolve an author. Cookies and unsigned payment headers grant no authority.
+  Each verified request saves onto the author's profile what the service named
+  with it: the agent's registry page and the World ID person behind it, or
+  clears them.
   """
   @behaviour Plug
   @behaviour Siwa.AgentAuthPlug.Client
@@ -11,6 +14,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   import Plug.Conn
   alias Patchbay.Identity
   alias PatchbayWeb.ApiError
+  alias RegentAgents.HumanBacking
 
   @headers ~w(x-siwa-receipt signature signature-input x-key-id x-timestamp x-agent-wallet-address x-agent-chain-id content-digest)
   @forbidden ~w(x-agent-registry-address x-agent-token-id payment-signature)
@@ -162,14 +166,20 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
             "wallet_address" => address,
             "chain_id" => 8453,
             "audience" => "patchbay"
-          }
+          },
+          "agentRegistration" => registration,
+          "agentBook" => book
         },
         _context
       )
       when is_binary(address) do
     with true <- Regex.match?(~r/\A0x[0-9a-f]{40}\z/, address),
+         {:ok, registry_url} <- registry_url(registration),
+         {:ok, backing} <- HumanBacking.read(book),
          {:ok, %{authentication_origin: :wallet, status: :active} = profile} <-
-           Identity.upsert_from_wallet(%{wallet_address: address}) do
+           backing
+           |> Map.merge(%{wallet_address: address, registry_url: registry_url})
+           |> Identity.upsert_from_wallet() do
       # Payment signature becomes a controller input only after its body is verified.
       conn =
         case conn.body_params do
@@ -187,6 +197,10 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   end
 
   def accept(_conn, _data, _context), do: refused(:unsupported_principal)
+
+  defp registry_url(nil), do: {:ok, nil}
+  defp registry_url(%{"registryUrl" => "https://" <> _rest = url}), do: {:ok, url}
+  defp registry_url(_registration), do: :error
 
   @impl Siwa.AgentAuthPlug.Hooks
   def deny(conn, %{reason: :not_configured}) do

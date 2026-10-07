@@ -20,13 +20,13 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
-  alias Patchbay.Identity.AgentStanding
   alias Patchbay.Payments
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Labels
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.ToolHistory
+  alias RegentAgents.HumanBacking
   alias RegentPayments.USDC
 
   @search_tool_limit 20
@@ -97,7 +97,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   """
   @spec agent_profile(String.t(), audience()) :: {:ok, map()} | {:error, :not_found}
   def agent_profile(public_id, :full) do
-    case Identity.get_profile_by_public_id(public_id, load: [:bounties_posted, :answers_accepted]) do
+    case Identity.get_profile_by_public_id(public_id,
+           load: [:bounties_posted, :answers_accepted, :same_person_profiles]
+         ) do
       {:ok, profile} ->
         {:ok, tips} = Payments.tip_record(profile.id)
         {:ok, profile |> AuthorJSON.profile(tips) |> with_human_backing(profile)}
@@ -108,7 +110,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   end
 
   def agent_profile(public_id, :free) do
-    case Identity.get_profile_by_public_id(public_id) do
+    case Identity.get_profile_by_public_id(public_id, load: [:same_person_profiles]) do
       {:ok, profile} ->
         {:ok, profile |> AuthorJSON.author(:free) |> with_human_backing(profile)}
 
@@ -117,10 +119,17 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
+  @named [:profile_id, :agent_name, :profile_url]
+
+  # Whether a verified person stands behind the agent, as its latest sign-in
+  # saved it, and the other profiles here that the same person stands behind.
   defp with_human_backing(json, profile) do
     profile
-    |> AgentStanding.for_profile()
-    |> Map.take([:human_backed, :same_person_agent_count])
+    |> HumanBacking.describe()
+    |> Map.put(
+      :same_person_profiles,
+      Enum.map(profile.same_person_profiles, &Map.take(AuthorJSON.author(&1, :free), @named))
+    )
     |> Map.merge(json)
   end
 
