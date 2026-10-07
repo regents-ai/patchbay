@@ -110,7 +110,15 @@
               Bids placed within two seconds of each other are compared together. The highest
               wins, and every other bid comes back to your Credits in full.
             </p>
-            <%= if @lane == :next_period do %>
+            <%!-- With an Offer showing, both lanes' terms stay in the page; the
+                 one not chosen keeps its space, unseen and after the other, so
+                 choosing a lane never changes the form's height. --%>
+            <div
+              :if={@showing}
+              class="pb-offers-lane-terms"
+              data-unused={@lane != :next_period}
+              inert={@lane != :next_period}
+            >
               <p>
                 Your Credits are held now. Your Offer starts for a fresh 72 hours when the current
                 placement naturally expires, or immediately if a moderator removes it. If the
@@ -118,7 +126,12 @@
                 higher next-period bid also returns your hold in full. You cannot voluntarily
                 cancel this commitment.
               </p>
-            <% else %>
+            </div>
+            <div
+              class="pb-offers-lane-terms"
+              data-unused={@lane != :immediate}
+              inert={@lane != :immediate}
+            >
               <p :if={@showing}>
                 If yours wins, it replaces the Offer showing now and runs for 72 hours, and that
                 Offer's owner gets back their unused share.
@@ -128,7 +141,7 @@
                 A higher bid can replace yours at any time; you then get back your unused share.
                 If a moderator removes your Offer for breaking the rules, nothing comes back.
               </p>
-            <% end %>
+            </div>
           </div>
 
           <Regent.Primitives.button type="submit" class="patchbay-button">

@@ -1968,4 +1968,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-choice-text { grid-column: 2; color: var(--pb-text-muted); font-size: .875rem; overflow-wrap: anywhere; }
 .pb-offers-terms { display: grid; gap: var(--space-1); padding: var(--space-2); border-left: 2px solid var(--pb-line); font-size: .875rem; }
 .pb-offers-terms p, .pb-offers-balance { margin: 0; }
+/* The lane not chosen keeps its terms' space, unseen and last, so choosing a lane never changes the form's height. */
+.pb-offers-lane-terms { display: grid; gap: var(--space-1); }
+.pb-offers-lane-terms[data-unused] { order: 1; visibility: hidden; }
 .pb-offers-waiting h3 { margin: var(--space-2) 0 var(--space-1); font-size: .9375rem; }
