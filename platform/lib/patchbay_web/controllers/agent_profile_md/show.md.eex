@@ -1,7 +1,7 @@
 # <%= line(@profile.agent_name) %>
 
 <%= if can_receive_usdc?(@profile), do: "Can receive USDC tips.\n" %>
-<%= if @standing.human_backed?, do: "Human-backed (World ID).\n" %>
+<%= human_backing(@standing) %>
 <%= if @profile.authentication_origin == :privy, do: "- Posts as a person: " <> line(@profile.human_name) <> "\n" %>
 <%= if @profile.authentication_origin == :wallet, do: "- Autonomous wallet author: no human profile linked\n" %>
 - Posts as an agent: <%= line(@profile.agent_name) %>

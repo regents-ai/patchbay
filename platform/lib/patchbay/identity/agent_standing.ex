@@ -1,9 +1,10 @@
 defmodule Patchbay.Identity.AgentStanding do
   @moduledoc """
-  What the sign-in service says in public about a wallet's agent: its page in
-  the Base agent registry, when it listed itself there, and whether a person
-  backs it through World ID. The service names both in its activity answer;
-  Patchbay asks for that answer each time a profile's page is drawn and stores
+  What the sign-in service says in public about a profile's agent: its page in
+  the Base agent registry, whether a person verified with World ID stands
+  behind it, and how many agents that same person stands behind
+  (`RegentAgents.HumanBacking`). The service names all of it in its activity
+  answer; Patchbay asks for that answer each time a profile is read and stores
   nothing.
 
   A fresh answer is not a fresh look at World Chain. The service reads the
@@ -12,11 +13,37 @@ defmodule Patchbay.Identity.AgentStanding do
   backing the agent, or no longer backing it, shows once it signs in again.
   """
 
-  @type t :: %{registry_url: String.t() | nil, human_backed?: boolean()}
+  require Logger
 
-  @doc "The wallet's registry page and whether a person backs its agent."
-  @spec fetch(String.t()) :: {:ok, t()} | {:error, term()}
-  def fetch(wallet_address) when is_binary(wallet_address) do
+  alias Patchbay.Identity.AgentProfile
+  alias RegentAgents.HumanBacking
+
+  @type t :: %{
+          registry_url: String.t() | nil,
+          human_backed: boolean(),
+          same_person_agent_count: pos_integer() | nil
+        }
+
+  # Two states only: a profile whose standing cannot be read now is shown as
+  # one no verified person stands behind, never as "checking".
+  @unread %{registry_url: nil, human_backed: false, same_person_agent_count: nil}
+
+  @doc "The profile's registry page and the verified person behind its agent, if any."
+  @spec for_profile(AgentProfile.t()) :: t()
+  def for_profile(%AgentProfile{wallet_address: nil}), do: @unread
+
+  def for_profile(%AgentProfile{} = profile) do
+    case fetch(profile.wallet_address) do
+      {:ok, standing} ->
+        standing
+
+      {:error, reason} ->
+        Logger.warning("Agent standing for #{profile.public_id} unread: #{inspect(reason)}")
+        @unread
+    end
+  end
+
+  defp fetch(wallet_address) do
     with {:ok, config} <- config(),
          {:ok,
           %Req.Response{
@@ -28,8 +55,8 @@ defmodule Patchbay.Identity.AgentStanding do
              options(config, wallet_address)
            ),
          {:ok, registry_url} <- registry_url(listing),
-         {:ok, human_backed?} <- human_backed?(book) do
-      {:ok, %{registry_url: registry_url, human_backed?: human_backed?}}
+         {:ok, backing} <- human_backing(book) do
+      {:ok, Map.put(backing, :registry_url, registry_url)}
     else
       {:ok, %Req.Response{status: 200}} -> {:error, :unexpected_answer}
       {:ok, %Req.Response{status: status}} -> {:error, {:unexpected_status, status}}
@@ -41,16 +68,13 @@ defmodule Patchbay.Identity.AgentStanding do
   defp registry_url(%{"registryUrl" => "https://" <> _rest = url}), do: {:ok, url}
   defp registry_url(_listing), do: {:error, :unexpected_listing}
 
-  # The person's World ID number is theirs; Patchbay only says one exists.
-  defp human_backed?(nil), do: {:ok, false}
-
-  defp human_backed?(%{"humanId" => human_id}) when is_binary(human_id) do
-    if Regex.match?(~r/\A0x[0-9a-fA-F]{64}\z/, human_id),
-      do: {:ok, true},
-      else: {:error, :unexpected_agent_book}
+  # The person's World ID number is theirs; the shared reader drops it.
+  defp human_backing(book) do
+    case HumanBacking.read(book) do
+      {:ok, backing} -> {:ok, backing}
+      :error -> {:error, :unexpected_agent_book}
+    end
   end
-
-  defp human_backed?(_book), do: {:error, :unexpected_agent_book}
 
   defp config do
     config = Application.get_env(:patchbay, :siwa_activity, [])

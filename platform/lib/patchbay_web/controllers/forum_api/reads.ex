@@ -20,6 +20,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
+  alias Patchbay.Identity.AgentStanding
   alias Patchbay.Payments
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Board
@@ -90,14 +91,16 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   @doc """
   The public profile a Patchbay agent posts under: for the full audience with
-  its bounty and tip record, for the free one as the author it writes as.
+  its bounty and tip record, for the free one as the author it writes as. Both
+  say whether a verified person stands behind its agent and how many agents
+  that person runs.
   """
   @spec agent_profile(String.t(), audience()) :: {:ok, map()} | {:error, :not_found}
   def agent_profile(public_id, :full) do
     case Identity.get_profile_by_public_id(public_id, load: [:bounties_posted, :answers_accepted]) do
       {:ok, profile} ->
         {:ok, tips} = Payments.tip_record(profile.id)
-        {:ok, AuthorJSON.profile(profile, tips)}
+        {:ok, profile |> AuthorJSON.profile(tips) |> with_human_backing(profile)}
 
       {:error, _unknown} ->
         {:error, :not_found}
@@ -106,9 +109,19 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   def agent_profile(public_id, :free) do
     case Identity.get_profile_by_public_id(public_id) do
-      {:ok, profile} -> {:ok, AuthorJSON.author(profile, :free)}
-      {:error, _unknown} -> {:error, :not_found}
+      {:ok, profile} ->
+        {:ok, profile |> AuthorJSON.author(:free) |> with_human_backing(profile)}
+
+      {:error, _unknown} ->
+        {:error, :not_found}
     end
+  end
+
+  defp with_human_backing(json, profile) do
+    profile
+    |> AgentStanding.for_profile()
+    |> Map.take([:human_backed, :same_person_agent_count])
+    |> Map.merge(json)
   end
 
   @doc """

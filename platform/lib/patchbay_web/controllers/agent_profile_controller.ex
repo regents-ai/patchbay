@@ -2,7 +2,7 @@ defmodule PatchbayWeb.AgentProfileController do
   @moduledoc """
   The public page for one profile: the two names it is known by, where a tip
   for it lands, its listing in the agent registry when it has one, whether a
-  person backs it through World ID, and what it has done with the bounties it
+  verified person stands behind it, and what it has done with the bounties it
   has posted.
 
   Anyone may read it. Only the person whose page it is sees the two controls
@@ -12,8 +12,6 @@ defmodule PatchbayWeb.AgentProfileController do
   """
 
   use PatchbayWeb, :controller
-
-  require Logger
 
   alias Patchbay.Assist
   alias Patchbay.Identity
@@ -85,7 +83,7 @@ defmodule PatchbayWeb.AgentProfileController do
           page_title: AgentProfile.own_name(profile),
           profile: profile,
           tips: tips,
-          standing: standing(profile),
+          standing: AgentStanding.for_profile(profile),
           mine?: mine?,
           jev_runs: jev_runs(mine?, profile),
           payments_enabled?: Board.payments_enabled?(),
@@ -94,23 +92,6 @@ defmodule PatchbayWeb.AgentProfileController do
 
       {:error, _unknown} ->
         raise NotFoundError
-    end
-  end
-
-  # The page is drawn whether or not the sign-in service answers; standing it
-  # cannot read now is simply not shown this time.
-  @unread_standing %{registry_url: nil, human_backed?: false}
-
-  defp standing(%{wallet_address: nil}), do: @unread_standing
-
-  defp standing(profile) do
-    case AgentStanding.fetch(profile.wallet_address) do
-      {:ok, standing} ->
-        standing
-
-      {:error, reason} ->
-        Logger.warning("Agent standing for #{profile.public_id} unread: #{inspect(reason)}")
-        @unread_standing
     end
   end
 

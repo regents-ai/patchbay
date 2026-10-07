@@ -5,9 +5,7 @@
       <span :if={AgentProfile.can_receive_usdc?(@profile)} class="patchbay-pill is-good">
         Can receive USDC tips
       </span>
-      <span :if={@standing.human_backed?} class="patchbay-pill is-good">
-        Human-backed (World ID)
-      </span>
+      <.human_backing standing={@standing} />
     </:meta>
   </.board_header>
 

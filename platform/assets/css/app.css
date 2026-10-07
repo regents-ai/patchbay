@@ -859,6 +859,10 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-reclaim span { flex: 1 1 16rem; }
 .pb-reclaim-problem { margin: var(--space-1) 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
 
+/* The verified-human mark and its tip, kept on one line in the header. */
+.pb-human { display: inline-flex; align-items: center; gap: var(--space-1); }
+.pb-human .patchbay-pill { gap: .35em; }
+
 /* The two names on your own profile, side by side, so the pair reads as one
    choice rather than two settings. */
 .pb-name-forms { display: grid; gap: var(--space-2); margin: var(--space-1) 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }

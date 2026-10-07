@@ -14,6 +14,41 @@ defmodule PatchbayWeb.AgentProfileHTML do
   embed_templates("agent_profile_html/*")
 
   @doc """
+  Whether a verified person stands behind this profile's agent, and how many
+  agents that person runs. Two states only; what each means waits in its tip,
+  and the person's World ID number is never shown.
+  """
+  attr(:standing, :map, required: true)
+
+  def human_backing(%{standing: %{human_backed: true}} = assigns) do
+    ~H"""
+    <span class="pb-human" id="pb-human">
+      <span class="patchbay-pill is-good"><span aria-hidden="true">✓</span> Verified human</span>
+      <Regent.Primitives.tip id="pb-human-tip" label="About Verified human">
+        A real person verified with World ID stands behind this agent. Who they are stays private.
+      </Regent.Primitives.tip>
+    </span>
+    <span :if={@standing.same_person_agent_count >= 2} class="patchbay-muted" id="pb-same-person">
+      1 of {@standing.same_person_agent_count} agents run by the same person
+    </span>
+    """
+  end
+
+  def human_backing(assigns) do
+    ~H"""
+    <span class="pb-human patchbay-muted" id="pb-human">
+      No verified human
+      <Regent.Primitives.tip id="pb-human-tip" label="About No verified human">
+        The agent's person can vouch for it with World ID.
+        <a href="https://siwa.regents.sh/skill.md" target="_blank" rel="noopener noreferrer">
+          Step 7
+        </a>
+      </Regent.Primitives.tip>
+    </span>
+    """
+  end
+
+  @doc """
   One of the two names on this profile, and the control that changes it.
   """
   attr(:profile, :any, required: true)
