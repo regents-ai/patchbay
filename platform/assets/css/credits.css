@@ -333,6 +333,16 @@
   row-gap: var(--space-1);
 }
 
+/* A button or step this chain does not use keeps its space, unseen, so changing
+   chain never changes the panel's height; an unused step sits after the rest. */
+.credits-panel [data-unused] {
+  visibility: hidden;
+}
+
+.credits-panel__step[data-unused] {
+  order: 1;
+}
+
 .credits-panel__step > .credits-panel__again {
   grid-column: 2;
 }

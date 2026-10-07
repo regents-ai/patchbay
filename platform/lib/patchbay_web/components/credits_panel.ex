@@ -425,11 +425,14 @@ defmodule PatchbayWeb.CreditsPanel do
               <span>{name}</span>
             </label>
           </fieldset>
+          <%!-- Kept in place while the wallet is already on the chain, unseen, so
+               it never moves the rows below. --%>
           <P.button
-            :if={switch?(@signer, @wallet_chain, @chain)}
             variant="secondary"
             class="credits-panel__switch"
             data-switch-chain
+            data-unused={!switch?(@signer, @wallet_chain, @chain)}
+            inert={!switch?(@signer, @wallet_chain, @chain)}
           >
             Switch Chain
           </P.button>
@@ -449,7 +452,14 @@ defmodule PatchbayWeb.CreditsPanel do
       <p class="credits-panel__note" hidden={!@mismatch}>{@mismatch}</p>
 
       <ol class="credits-panel__steps">
-        <li :if={@chain == "base"} class="credits-panel__step" data-state={@approve.state}>
+        <%!-- Ethereum has no Approve step. Its row keeps its space, unseen and after
+             Buy, so changing chain never changes the panel's height. --%>
+        <li
+          class="credits-panel__step"
+          data-state={@approve.state}
+          data-unused={@chain != "base"}
+          inert={@chain != "base"}
+        >
           <P.button variant="secondary" data-onchain-step="approve">Approve</P.button>
           <div class="credits-panel__step-words">
             <strong>
