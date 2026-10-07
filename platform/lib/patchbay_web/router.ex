@@ -39,6 +39,8 @@ defmodule PatchbayWeb.Router do
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
+    get "/wallet-bench", WalletBenchController, :index
+    get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
   end
 
   scope "/", PatchbayWeb do

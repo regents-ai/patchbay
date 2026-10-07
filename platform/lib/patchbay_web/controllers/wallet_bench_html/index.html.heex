@@ -1,0 +1,93 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-wallet-bench">
+  <.board_header title="Agent Wallet Bench">
+    <:crumbs>PATCHBAY / WALLET BENCH</:crumbs>
+  </.board_header>
+
+  <section class="pb-sheet-section pb-wb-intro">
+    <p>
+      Coding agents set up crypto wallets on their own. Each square is one agent with one wallet. Open it for every run.
+    </p>
+    <Regent.Primitives.disclosure id="pb-wb-setup" summary="How the bench runs">
+      <p>{@matrix.notes["setup"]}</p>
+      <p>{@matrix.notes["runs"]}</p>
+      <p>{@matrix.notes["grid_started"]}</p>
+    </Regent.Primitives.disclosure>
+    <Regent.Primitives.disclosure id="pb-wb-meanings" summary="What each result means">
+      <dl class="pb-wb-meanings">
+        <div :for={outcome <- outcomes()}>
+          <dt><.chip notes={@matrix.notes} outcome={outcome} /></dt>
+          <dd>{@matrix.notes[outcome]}</dd>
+        </div>
+      </dl>
+    </Regent.Primitives.disclosure>
+  </section>
+
+  <section class="pb-sheet-section pb-wb-key" aria-label="Key">
+    <ul class="pb-wb-legend">
+      <li :for={outcome <- outcomes()}><.chip notes={@matrix.notes} outcome={outcome} /></li>
+      <li><span class="pb-wb-untested">Not tested yet</span></li>
+    </ul>
+    <a
+      class="rg-button rg-button--secondary pb-wb-swap"
+      href={if @wallets_down?, do: ~p"/wallet-bench", else: ~p"/wallet-bench?by=wallet"}
+    >
+      <span class="rg-button__label">
+        {if @wallets_down?, do: "Agents down the side", else: "Wallets down the side"}
+      </span>
+    </a>
+  </section>
+
+  <section
+    :for={grid <- @matrix.grids}
+    class="pb-sheet-section pb-wb-section"
+    id={"grid-" <> grid.grid}
+    aria-labelledby={"grid-" <> grid.grid <> "-title"}
+  >
+    <div class="patchbay-card-heading">
+      <h2 id={"grid-" <> grid.grid <> "-title"}>{grid_title(grid.grid)}</h2>
+      <p class="patchbay-muted">
+        {grid.tested} of {grid.total} squares have results · {grid.never_run} never run
+      </p>
+    </div>
+    <div
+      class="pb-wb-scroll"
+      role="region"
+      tabindex="0"
+      aria-label={grid_title(grid.grid) <> " grid, scrolls sideways"}
+    >
+      <table class="pb-wb-grid">
+        <thead>
+          <tr>
+            <th scope="col" class="pb-wb-corner">
+              <span class="visually-hidden">
+                {if @wallets_down?, do: "Wallet, then each agent", else: "Agent, then each wallet"}
+              </span>
+            </th>
+            <th :for={column <- columns(@matrix, @wallets_down?)} scope="col">{column.name}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :for={{row, pairs} <- rows(@matrix, @wallets_down?)}>
+            <th scope="row">{row.name}</th>
+            <td :for={{harness, wallet} <- pairs}>
+              <.square
+                notes={@matrix.notes}
+                square={grid.squares[{harness.id, wallet.id}]}
+                harness={harness}
+                wallet={wallet}
+                grid={grid.grid}
+              />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="pb-sheet-section">
+    <p class="patchbay-muted">
+      Results come from <a href="https://techtree.sh">Techtree</a>
+      as each run finishes. The first survey is on <a href={~p"/blog/agent-wallet-bench-v7"}>the blog</a>.
+    </p>
+  </section>
+</main>

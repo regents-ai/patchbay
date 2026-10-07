@@ -1,0 +1,74 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-wallet-bench-pair">
+  <.board_header title={@harness.name <> " with " <> @wallet.name}>
+    <:crumbs>
+      <a href={~p"/wallet-bench"}>PATCHBAY / WALLET BENCH</a>
+    </:crumbs>
+  </.board_header>
+
+  <section class="pb-sheet-section">
+    <div class="patchbay-facts">
+      <div :if={@harness.version}>
+        <span>{@harness.name}</span><code>{@harness.version}</code>
+      </div>
+      <div :if={@wallet.version}>
+        <span>{@wallet.name}</span><code>{@wallet.version}</code>
+      </div>
+    </div>
+  </section>
+
+  <section
+    :for={grid <- @grids}
+    class="pb-sheet-section pb-wb-section"
+    id={grid.grid}
+    aria-labelledby={grid.grid <> "-title"}
+  >
+    <h2 id={grid.grid <> "-title"}>{grid_title(grid.grid)}</h2>
+
+    <p :for={fixed <- grid.fixed} class="pb-wb-fixed">
+      <.chip notes={@notes} outcome={fixed.fixed_outcome} /> {fixed.fixed_reason}
+    </p>
+    <p :if={grid.runs == [] and grid.fixed == []} class="patchbay-muted">Not tested yet.</p>
+
+    <ol :if={grid.runs != []} class="pb-wb-runs">
+      <li :for={%{result: run, checks: checks} <- grid.runs} class="pb-wb-run">
+        <div class="pb-wb-run-head">
+          <h3>Run {run.run}</h3>
+          <.chip notes={@notes} outcome={run.outcome} />
+          <span :if={run.second_try} class="pb-wb-mark">second try</span>
+          <span :if={run.signature_asked} class="pb-wb-mark">signature asked</span>
+          <span :if={run.plain_file not in [nil, ""]} class="pb-wb-mark">{run.plain_file}</span>
+          <span class="pb-wb-when">{moment(run.finished_at)}</span>
+        </div>
+        <p :if={run.outcome_detail}>{run.outcome_detail}</p>
+        <ul class="pb-wb-checks">
+          <li :for={check <- checks}>
+            <span class={["pb-wb-check", "is-" <> check.result]} aria-hidden="true">
+              {check_mark(check.result)}
+            </span>
+            <span class="visually-hidden">{check_said(check.result)}:</span>
+            <span>
+              <strong>{check.criterion}</strong>
+              <span :if={check.reason} class="pb-wb-reason">{check.reason}</span>
+            </span>
+          </li>
+        </ul>
+        <Regent.Primitives.disclosure
+          :if={versions(run.versions) != []}
+          id={"pb-wb-versions-" <> run.attempt_id <> "-" <> grid.grid}
+          summary="Versions"
+        >
+          <div class="patchbay-facts">
+            <div :for={{label, value} <- versions(run.versions)}>
+              <span>{label}</span><code>{value}</code>
+            </div>
+          </div>
+        </Regent.Primitives.disclosure>
+        <a href={run.run_url} rel="noopener" target="_blank">This run on techtree.sh</a>
+      </li>
+    </ol>
+  </section>
+
+  <section class="pb-sheet-section">
+    <a href={~p"/wallet-bench"}>Back to the bench</a>
+  </section>
+</main>

@@ -1,0 +1,19 @@
+# <%= line(@harness.name) %> with <%= line(@wallet.name) %>
+
+<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %>
+<%= for grid <- @grids do %>
+## <%= grid_title(grid.grid) %>
+<%= for fixed <- grid.fixed do %>
+<%= word(@notes, fixed.fixed_outcome) %> (`<%= fixed.fixed_outcome %>`): <%= line(fixed.fixed_reason) %>
+<% end %><%= if grid.runs == [] and grid.fixed == [], do: "\nNot tested yet.\n" %><%= for %{result: run, checks: checks} <- grid.runs do %>
+### Run <%= run.run %>: <%= word(@notes, run.outcome) %> (`<%= run.outcome %>`)
+
+<%= if run.second_try, do: "- Second try\n" %><%= if run.signature_asked, do: "- Signature asked\n" %><%= if run.plain_file not in [nil, ""], do: "- " <> line(run.plain_file) <> "\n" %>- Finished: <%= stamp(run.finished_at) %>
+- Run on techtree.sh: <%= run.run_url %>
+<%= for {label, value} <- versions(run.versions) do %>- <%= label %>: <%= line(value) %>
+<% end %>
+<%= line(run.outcome_detail) %>
+
+<%= for check <- checks do %>- <%= line(check.criterion) %>: <%= check_said(check.result) %>. <%= line(check.reason) %>
+<% end %><% end %><% end %>
+<%= trailer() %>

@@ -69,7 +69,8 @@ config :patchbay,
     Patchbay.Identity,
     Patchbay.Forum,
     Patchbay.CreditsHelp,
-    Patchbay.Patchbay
+    Patchbay.Patchbay,
+    Patchbay.WalletBench
   ]
 
 # The only tools the repair assistant calls on a customer's behalf, by site

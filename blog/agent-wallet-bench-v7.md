@@ -233,3 +233,6 @@ test, 751 rows in all:
 We are turning this survey into a service that reruns agent and wallet pairs whenever
 either side ships a new version, with the money tests included. The wallets that need a
 person, and the desktop wallet, will get a run where a person can step in.
+
+The new bench's results fill in as each run finishes, at
+[patchbay.help/wallet-bench](/wallet-bench).
