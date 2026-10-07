@@ -31,7 +31,7 @@
       ask={ask_path(site: @site.origin, tool: @current_tool.name)}
     />
     <.page_nav
-      base={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}
+      base={tool_path(@site, @tool_name)}
       anchor="pb-tool-posts"
       param="posts_after"
       cursor={@posts_cursor}
@@ -232,10 +232,10 @@
     </li>
   </ol>
   <nav aria-label="Version history pages" class="pb-tool-row-meta">
-    <a :if={@history_cursor} href={site_path(@site) <> "/tools/" <> URI.encode(@tool_name)}>Back to newest</a>
+    <a :if={@history_cursor} href={tool_path(@site, @tool_name)}>Back to newest</a>
     <a
       :if={@pagination.has_more}
-      href={site_path(@site) <> "/tools/" <> URI.encode(@tool_name) <> "?" <> URI.encode_query(%{"after" => @pagination.next_cursor})}
+      href={tool_path(@site, @tool_name) <> "?" <> URI.encode_query(%{"after" => @pagination.next_cursor})}
     >Older versions <span aria-hidden="true">→</span></a>
   </nav>
 </main>

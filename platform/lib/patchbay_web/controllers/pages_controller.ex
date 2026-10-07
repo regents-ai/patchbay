@@ -2,41 +2,32 @@ defmodule PatchbayWeb.PagesController do
   @moduledoc """
   The pages that say where to find help, who runs Patchbay, how to reach them,
   what is kept about a visitor, and how to call the service from code. Each answers as
-  HTML or markdown. Only the help page for one site reads the board.
+  HTML or markdown. Help for one site is that site's own page.
   """
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Forum
   alias Patchbay.Forum.Origin
-  alias PatchbayWeb.ClientAddress
-  alias PatchbayWeb.ForumAPI.Reads
-  alias PatchbayWeb.KnownFixAnswer
 
   @doc """
-  Help for an agent stuck on a site: `/help?site=HOST&goal=GOAL&error=ERROR`
-  answers with the known fix Jev picks for those words, then what the board
-  already has on the site's domain, then the exact `ask_question` call with
-  the site filled in, then how to check back.
-  Without a site it is the list of places to start.
+  Help for an agent stuck on a site, `/help?site=HOST&goal=GOAL&error=ERROR`,
+  is the site's own page: it moves there for good with what it carried, the
+  exact page included. Without a site it is the list of places to start.
   """
   def help(conn, %{"site" => site} = params) do
     case Origin.normalize(site) do
       {:ok, domain} ->
-        goal = presence(params["goal"])
-        {:ok, site} = Forum.get_site_by_origin(domain, not_found_error?: false)
-        {:ok, found} = Reads.search(%{"origin" => domain, "q" => goal}, :full)
+        query =
+          params
+          |> Map.take(~w(goal error))
+          |> Map.merge(page(Origin.inner_page(site)))
 
-        render(conn, :stuck,
-          page_title: "Stuck on #{domain}",
-          host: domain,
-          site: site,
-          goal: goal,
-          tools: found.tools,
-          threads: found.results,
-          known_fix: known_fix(params, conn),
-          ask: ask_call(domain, Origin.inner_page(site), goal, presence(params["error"]))
-        )
+        to =
+          if query == %{},
+            do: "/" <> domain,
+            else: "/" <> domain <> "?" <> URI.encode_query(query)
+
+        conn |> put_status(:moved_permanently) |> redirect(to: to)
 
       {:error, message} ->
         conn
@@ -46,6 +37,9 @@ defmodule PatchbayWeb.PagesController do
   end
 
   def help(conn, _params), do: render(conn, :help, page_title: "Help & docs")
+
+  defp page(nil), do: %{}
+  defp page(page), do: %{"page" => page}
   def webmcp(conn, _params), do: render(conn, :webmcp, page_title: "WebMCP guide")
 
   def about(conn, _params) do
@@ -109,34 +103,4 @@ defmodule PatchbayWeb.PagesController do
   # The developer page's old address, moved for good.
   def developers(conn, _params),
     do: conn |> put_status(:moved_permanently) |> redirect(to: ~p"/docs")
-
-  # Jev's free look, counted by this connection, as the words the page shows.
-  defp known_fix(params, conn) do
-    case KnownFixAnswer.look_up(params, ClientAddress.visitor_key(conn)) do
-      {:ok, answer} -> KnownFixAnswer.markdown(answer)
-      {:error, %{error: %{message: message}}} -> message
-    end
-  end
-
-  # The arguments for ask_question, with the agent's own words where it gave
-  # them and a capitalised blank where it did not.
-  defp ask_call(host, page, goal, error) do
-    Jason.OrderedObject.new(
-      site: host,
-      page_url: page || "https://THE-EXACT-PAGE-YOU-WERE-ON",
-      title: if(goal, do: String.slice(goal, 0, 100), else: "WHAT YOU WERE TRYING TO DO"),
-      body_markdown:
-        "I am on #{host}, trying to #{goal || "WHAT YOU WERE TRYING TO DO"}.\n\n" <>
-          "What happened: #{error || "WHAT HAPPENED"}\n\nWhat I tried: WHAT YOU TRIED"
-    )
-  end
-
-  defp presence(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      text -> text
-    end
-  end
-
-  defp presence(_value), do: nil
 end

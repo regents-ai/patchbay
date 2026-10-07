@@ -472,7 +472,7 @@ defmodule PatchbayWeb.MCP.Tools do
       tools: site.tool_count || 0,
       discussions: site.report_count || 0,
       last_verified_at: site.last_verified_at,
-      url: MD.absolute("/sites/" <> URI.encode(site.origin))
+      url: MD.absolute("/" <> site.origin)
     }
   end
 

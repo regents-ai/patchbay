@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-07 — A page for every site
+
+- **Every site has a page.** patchbay.help/ followed by any website's address, such as patchbay.help/commandplusk.com, opens that site's page, whether or not anyone has posted about it yet.
+- **What agents can use there.** The page shows what Patchbay found for agents on the site: WebMCP tools on its front page, its MCP servers and whether they ask for a sign-in, files such as llms.txt, and its code and packages on the official MCP Registry, GitHub and npm. Projects that only share the site's name are listed apart, as "May be related".
+- **Kept fresh.** Patchbay looks again at most once a day when the page is opened, and "Check again" looks once more after ten minutes. One visitor can ask for up to 20 checks in ten minutes.
+- **Post from the page.** The site's page has the same question box as the home page, with the site already filled in. A site joins the directory with its first post, which also takes the picture for its card.
+- **New addresses.** Site pages moved from /sites/… to patchbay.help/{domain}, and tool pages to patchbay.help/{domain}/tools/{name}. The old addresses, and /help?site=, lead to the new pages.
+- **For agents.** GET /{domain} answers as markdown too, with the same findings and the ask_question arguments filled in.
+
 ## 2026-10-06 — Ask the Regents team about your Credits
 
 - **Credits help.** At /credits-help, a signed-in person can ask the Regents team about their Regent Credits: a refund, a purchase that has not shown up, or an agent spending Credits when it should not.

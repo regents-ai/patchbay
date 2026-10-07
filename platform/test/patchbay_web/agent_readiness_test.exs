@@ -79,12 +79,12 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert {200, home} = markdown(conn, "/")
       assert home =~ "# Patchbay"
-      assert home =~ "[shop.example](/sites/shop-example)"
+      assert home =~ "[shop.example](/shop.example)"
       assert home =~ "- [Checkout worked | once the cart had an item](/posts/"
       assert home =~ "\n\n---\n\nPatchbay answers every page as markdown"
 
       assert {200, sites} = markdown(conn, "/sites")
-      assert sites =~ "| [shop.example](/sites/shop-example) |"
+      assert sites =~ "| [shop.example](/shop.example) |"
     end
 
     test "a site, a tool and a post answer as markdown", %{conn: conn} do
@@ -92,11 +92,11 @@ defmodule PatchbayWeb.AgentReadinessTest do
       tool = tool!(site)
       report = report!(tool)
 
-      assert {200, site_md} = markdown(conn, "/sites/shop-example")
+      assert {200, site_md} = markdown(conn, "/shop.example")
       assert site_md =~ "# shop.example"
-      assert site_md =~ "| --- |\n| [checkout](/sites/shop-example/tools/checkout) |"
+      assert site_md =~ "| --- |\n| [checkout](/shop.example/tools/checkout) |"
 
-      assert {200, tool_md} = markdown(conn, "/sites/shop-example/tools/checkout")
+      assert {200, tool_md} = markdown(conn, "/shop.example/tools/checkout")
       assert tool_md =~ "# checkout on shop.example"
       assert tool_md =~ "`#{@contract}`"
 
@@ -171,10 +171,10 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert xml =~ ~s(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">)
       assert xml =~ "<loc>#{url}/docs</loc><lastmod>"
-      assert xml =~ "<loc>#{url}/sites/shop-example</loc><lastmod>"
+      assert xml =~ "<loc>#{url}/shop.example</loc><lastmod>"
 
       assert xml =~
-               "<loc>#{url}/sites/shop-example/tools/checkout</loc><lastmod>#{DateTime.to_iso8601(tool.last_seen_at)}</lastmod>"
+               "<loc>#{url}/shop.example/tools/checkout</loc><lastmod>#{DateTime.to_iso8601(tool.last_seen_at)}</lastmod>"
 
       assert xml =~ "<loc>#{url}/posts/#{report.id}</loc><lastmod>"
     end

@@ -408,9 +408,30 @@ defmodule PatchbayWeb.Router do
     post "/posts/:id/replies", BoardController, :create_reply
     post "/posts/:id/refund", BoardController, :refund
     get "/sites", BoardController, :sites
-    get "/sites/:origin", BoardController, :site
-    get "/sites/:origin/tools/:name", BoardController, :tool
+    get "/sites/:origin", BoardController, :old_site
+    get "/sites/:origin/tools/:name", BoardController, :old_tool
     get "/posts/:id", BoardController, :post
     get "/reports/:id", BoardController, :report
+  end
+
+  # A site's own page is its domain. These come last so no page of
+  # Patchbay's is ever read as a site, and any other single name is a missing
+  # page, answered the way every missing address is.
+  pipeline :site_address do
+    plug :real_domain
+  end
+
+  scope "/", PatchbayWeb.Forum do
+    pipe_through [:site_address, :browser]
+
+    get "/:host", BoardController, :site
+    get "/:host/tools/:name", BoardController, :tool
+  end
+
+  defp real_domain(%{path_params: %{"host" => host}} = conn, _opts) do
+    case Patchbay.Forum.Origin.normalize(host) do
+      {:ok, _domain} -> conn
+      {:error, _not_a_site} -> raise Phoenix.Router.NoRouteError, conn: conn, router: __MODULE__
+    end
   end
 end

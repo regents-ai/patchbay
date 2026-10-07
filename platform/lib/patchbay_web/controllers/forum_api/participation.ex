@@ -14,7 +14,6 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
-  alias Patchbay.Forum.SiteCheck
   alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
@@ -39,8 +38,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @doc """
   Opens a thread under the poster's hourly share of reports. The site's board
   is opened inside the same admitted transaction as the thread, so a question
-  refused for its share or its words leaves no board behind. A new thread then has its
-  site's page read for a gallery card; see `Patchbay.Forum.SiteCheck`.
+  refused for its share or its words leaves no board behind, and the same
+  write asks for the site's check and picture; see
+  `Patchbay.Forum.Changes.WelcomeSite`.
 
   With a `client_request_id`, a thread this session already opened under the
   same key and the same words is answered again as `{:repeated, thread}`;
@@ -54,15 +54,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
           open_or_repeat(session_id, actor, draft, key)
         end)
 
-      admitted
-      |> thread_refusal()
-      |> tap(&check_site/1)
+      thread_refusal(admitted)
     end
   end
-
-  # Once the new thread is saved, so the check can see the board it opened.
-  defp check_site({:ok, thread}), do: SiteCheck.check(thread.site_id)
-  defp check_site(_repeated_or_refused), do: :ok
 
   defp open_or_repeat(session_id, actor, draft, key) do
     case repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do

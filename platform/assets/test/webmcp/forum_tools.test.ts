@@ -721,6 +721,8 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
   assert.equal(helpCurrentPage("/"), "report_index");
   assert.equal(helpCurrentPage("/sites"), "sites");
   assert.equal(helpCurrentPage("/reports/abc"), "report");
+  assert.equal(helpCurrentPage("/example.com"), "site");
+  assert.equal(helpCurrentPage("/example.com/tools/search_docs"), "tool");
 });
 
 test("get_my_usdc_balance maps the four readiness statuses and skips the 401 door when unsigned", async () => {

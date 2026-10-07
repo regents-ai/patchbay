@@ -31,10 +31,13 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
 # racing a loop it did not ask for. The notification worker the same: tests
 # run its pass directly.
 config :patchbay, start_patchbay_agent: false
-config :patchbay, check_new_sites: false
 config :patchbay, :sync_webmcp_catalog, false
 config :patchbay, :notification_fanout, false
 config :patchbay, Oban, testing: :manual
+
+# Tests name sites under the endings reserved for testing and examples, which
+# the Public Suffix List leaves out; here they count as real endings.
+config :domainatrex, custom_suffixes: ["example", "invalid", "test"]
 
 # /webmcp/health reports this where a production release reports its commit.
 config :patchbay, :release_commit, "test"
@@ -67,3 +70,7 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# A site check's outside lists (the MCP Registry, GitHub, npm) answer from
+# the tests, never the internet.
+config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists

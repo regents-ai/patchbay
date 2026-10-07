@@ -12,6 +12,6 @@
       :if={not @invalid_cursor?}
       href={@conn.request_path <> if(@conn.query_string == "", do: "", else: "?" <> @conn.query_string)}
     >Retry</a>
-    <a href={site_path(@site) <> "/tools/" <> URI.encode(@name)}>Back to newest</a>
+    <a href={tool_path(@site, @name)}>Back to newest</a>
   </Regent.Primitives.notice>
 </main>

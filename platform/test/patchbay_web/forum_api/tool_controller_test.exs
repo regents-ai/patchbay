@@ -80,7 +80,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
     assert version["raw_definition"] == %{"inputSchema" => schema}
     refute Map.has_key?(version, "__metadata__")
     refute Map.has_key?(version, "site_id")
-    html = conn |> get("/sites/schema.example/tools/checkout") |> html_response(200)
+    html = conn |> get("/schema.example/tools/checkout") |> html_response(200)
     assert html =~ String.duplicate("資料🌳", 5000)
     assert html =~ ~s(id="tool-schemas")
   end
@@ -119,7 +119,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
         })
       end
 
-    first = conn |> get("/sites/page-history.example/tools/checkout") |> html_response(200)
+    first = conn |> get("/page-history.example/tools/checkout") |> html_response(200)
     boundary = Enum.at(versions, 2)
 
     boundary_html =
@@ -149,7 +149,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
     assert second =~ "Back to newest"
 
     assert conn
-           |> get("/sites/page-history.example/tools/checkout?after=bad")
+           |> get("/page-history.example/tools/checkout?after=bad")
            |> html_response(400) =~ "expired or is invalid"
   end
 

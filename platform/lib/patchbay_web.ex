@@ -57,7 +57,7 @@ defmodule PatchbayWeb do
         only: [
           post_title: 1,
           site_path: 1,
-          site_ref: 1,
+          tool_path: 2,
           site_name: 1,
           about_patchbay?: 1,
           written_on: 1,

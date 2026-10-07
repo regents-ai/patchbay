@@ -896,6 +896,7 @@ defmodule Patchbay.Forum.Report do
 
       change(Patchbay.Forum.Changes.RecordThreadEvent)
       change(Patchbay.Forum.Changes.AttachPictures)
+      change(Patchbay.Forum.Changes.WelcomeSite)
     end
 
     create :open_techtree_discussion do

@@ -38,7 +38,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
         actor: asker
       )
 
-    html = conn |> get(~p"/sites/#{site.origin}/tools/checkout") |> html_response(200)
+    html = conn |> get(~p"/#{site.origin}/tools/checkout") |> html_response(200)
 
     assert html =~ "Paid priority"
     assert html =~ "Escrowed 5.00 USDC"

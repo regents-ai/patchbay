@@ -6,7 +6,7 @@
 
 <%= post_lines(@posts, "No discussions about this tool yet.") %>
 
-<%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "/tools/" <> @tool_name <> "?posts_after=" <> @next_posts <> ")\n" %>
+<%= if @next_posts, do: "More: [next page](" <> tool_path(@site, @tool_name) <> "?posts_after=" <> @next_posts <> ")\n" %>
 
 ## About this tool
 
@@ -48,7 +48,7 @@
   - [<%= line(post_title(report)) %>](/posts/<%= report.id %>) — <%= verdict_label(report.verdict) %><%= if report.verified, do: " (page record matched)" %> · <%= stamp(report.inserted_at) %>
 <% end %>
 <% end %>
-<%= if @more?, do: "\nOlder versions: [next page](" <> site_path(@site) <> "/tools/" <> @tool_name <> "?after=" <> @pagination.next_cursor <> ")\n" %>
+<%= if @more?, do: "\nOlder versions: [next page](" <> tool_path(@site, @tool_name) <> "?after=" <> @pagination.next_cursor <> ")\n" %>
 
 <%= if @priority_reports != [] do %>
 ## Paid priority reports

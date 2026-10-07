@@ -373,7 +373,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     Map.put(
       payload,
       :next_step,
-      "No thread mentions this yet. Check the site's board for its known tool names (GET /sites/HOST as Markdown), then ask: the ask_question page tool, or POST /forum/threads with site, title and body_markdown."
+      "No thread mentions this yet. Check the site's page for its known tool names (GET /HOST as Markdown), then ask: the ask_question page tool, or POST /forum/threads with site, title and body_markdown."
     )
   end
 

@@ -15,9 +15,8 @@ defmodule Patchbay.Forum.Origin do
 
   The board is for public sites, so anything that is not a public registered
   domain name is refused: scheme fragments left over from a bad paste, IP
-  literals, `localhost`, single-label hosts, and a shared ending on its own
-  (`vercel.app`, `co.uk`). An ending the list does not know takes the list's
-  default rule: its last label is the ending.
+  literals, `localhost`, single-label hosts, an ending the list does not know
+  (`foo.php`), and a shared ending on its own (`vercel.app`, `co.uk`).
 
   `address/1` keeps the page itself, `https://` plus the host and path an
   agent named, for recording where a tool was seen. Query, fragment, port and
@@ -118,9 +117,7 @@ defmodule Patchbay.Forum.Origin do
     else
       case Domainatrex.parse(host) do
         {:ok, %{domain: domain, tld: ending}} -> {:ok, domain <> "." <> ending}
-        # No rule matches, so the list's default rule applies: the last
-        # label is the ending, as for an ending newer than the bundled list.
-        {:error, _no_rule} -> {:ok, host |> String.split(".") |> Enum.take(-2) |> Enum.join(".")}
+        {:error, _no_rule} -> {:error, "must end in a real domain ending, such as .com"}
       end
     end
   end

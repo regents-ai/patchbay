@@ -37,10 +37,21 @@ config :regent_agents,
 # a time so the operator wallet sends in order (`:forward_fee`, and
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
 # priority report (`:read_by_jev`); and board events posted to MCP events
-# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`).
+# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`); a site's
+# check (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
+# (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
+# sites wait only on each other.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
-  queues: [assist: 4, lost_runs: 1, fees: 1, jev: 2, webhooks: 10],
+  queues: [
+    assist: 4,
+    lost_runs: 1,
+    fees: 1,
+    jev: 2,
+    webhooks: 10,
+    site_checks: 2,
+    site_pictures: 1
+  ],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],
   pruner: [max_age: {7, :days}],

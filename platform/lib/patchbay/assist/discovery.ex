@@ -31,7 +31,7 @@ defmodule Patchbay.Assist.Discovery do
          {:ok, [_ | _] = tools} <- McpClient.list_tools(client) do
       {:live, client, tools}
     else
-      {:error, :not_mcp} -> in_pages(site_url, opts)
+      {:error, reason} when reason in [:not_mcp, :needs_sign_in] -> in_pages(site_url, opts)
       {:ok, []} -> {:unlisted, :no_tools_offered}
       {:error, :unresolvable} -> {:unlisted, :unresolvable}
       {:error, :not_public} -> {:unlisted, :not_public}

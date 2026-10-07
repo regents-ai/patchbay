@@ -370,6 +370,7 @@ defmodule Patchbay.Assist.Work do
 
   defp why({:rpc_error, _code, message}) when message != "", do: message
   defp why({:status, status}), do: "it answered with status #{status}"
+  defp why(:needs_sign_in), do: "it asks for a sign-in first"
   defp why(:timeout), do: "it did not answer in time"
   defp why(:answer_too_long), do: "its answer was longer than Patchbay reads"
   defp why(_other), do: "it did not answer"

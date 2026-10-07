@@ -28,7 +28,7 @@ defmodule PatchbayWeb.SitemapController do
 
     Enum.map(@static, &{&1, @released_at}) ++
       Enum.map(sites, &{site_path(&1), &1.updated_at}) ++
-      Enum.map(tools, &{site_path(&1.site) <> "/tools/" <> &1.name, &1.last_seen_at}) ++
+      Enum.map(tools, &{PatchbayWeb.Forum.BoardHTML.tool_path(&1.site, &1.name), &1.last_seen_at}) ++
       Enum.map(threads, &{"/posts/" <> &1.id, &1.last_activity_at})
   end
 

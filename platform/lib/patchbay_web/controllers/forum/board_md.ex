@@ -8,6 +8,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
   use PatchbayWeb, :md
 
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.Forum.SiteChecks
 
   embed_templates("board_md/*")
 
@@ -50,4 +51,54 @@ defmodule PatchbayWeb.Forum.BoardMD do
   @doc "The posts of a listing, or the words for an empty one."
   def post_lines([], empty), do: "_#{empty}_"
   def post_lines(posts, _empty), do: Enum.map_join(posts, "\n", &post_line/1)
+
+  @doc "What a site's check found, as markdown, or where the check stands."
+  def check_lines(domain, check) do
+    case SiteChecks.state(check) do
+      :none -> "_Not checked yet._"
+      :checking -> "_Checking #{domain} now. Read this page again in a minute._"
+      :failed -> "_#{domain} could not be checked just now._"
+      :done -> found_lines(domain, check)
+    end
+  end
+
+  defp found_lines(domain, check) do
+    findings = check.findings
+    {from_site, related} = Enum.split_with(findings["code"], & &1["from_site"])
+
+    [
+      "Checked #{stamp(check.checked_at)}.",
+      SiteChecks.nothing?(findings) && "_Nothing for agents found on #{domain}._",
+      group("WebMCP tools on its page", findings["webmcp"], fn tool ->
+        "`#{line(tool["name"])}`" <> note(tool["description"])
+      end),
+      group("MCP servers", findings["servers"], fn server ->
+        names = Enum.map_join(server["tools"], ", ", &"`#{line(&1["name"])}`")
+        "<#{server["url"]}> — #{SiteChecks.server_label(server)}" <> note(names)
+      end),
+      group("Files for agents", findings["files"], fn file ->
+        "[#{SiteChecks.file_label(file["kind"])}](#{file["url"]})" <> note(file["title"])
+      end),
+      group("Code and packages from #{domain}", from_site, &code_line/1),
+      group("May be related (named like #{domain}, not linked to it)", related, &code_line/1),
+      Enum.map_join(findings["unsearched"], "\n", fn source ->
+        "_#{SiteChecks.source_label(source)} could not be searched just now._"
+      end)
+    ]
+    |> Enum.reject(&(&1 in [nil, false, ""]))
+    |> Enum.join("\n\n")
+  end
+
+  defp group(_title, [], _line), do: nil
+
+  defp group(title, entries, line),
+    do: "### #{title}\n\n" <> Enum.map_join(entries, "\n", &("- " <> line.(&1)))
+
+  defp code_line(entry) do
+    "[#{line(entry["name"])}](#{entry["url"]}) · #{SiteChecks.source_label(entry["source"])}" <>
+      note(entry["description"])
+  end
+
+  defp note(text) when text in [nil, ""], do: ""
+  defp note(text), do: " — " <> line(text)
 end

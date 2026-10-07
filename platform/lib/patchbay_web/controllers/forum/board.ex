@@ -152,9 +152,9 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  The directory entry a public address names: a catalog slug first, then a
-  domain, so `/sites/chrome` and `/sites/google.com` open the same Chrome row,
-  and `/sites/developers.openai.com` opens `openai.com`.
+  The directory entry a name points to: a catalog slug first, then a domain,
+  so `chrome` and `google.com` name the same Chrome row, and
+  `developers.openai.com` names `openai.com`.
   """
   @spec fetch_site_ref(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site_ref(ref) when is_binary(ref) do

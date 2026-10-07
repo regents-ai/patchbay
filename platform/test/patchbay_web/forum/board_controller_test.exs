@@ -152,10 +152,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(class="pb-dir-grid")
-      assert body =~ ~s(href="/sites/chrome")
-      assert body =~ ~s(href="/sites/patchbay")
+      assert body =~ ~s(href="/google.com")
+      assert body =~ ~s(href="/patchbay.help")
       refute body =~ "Nothing has been reported yet"
-      refute body =~ ~s(href="/sites/patchbay.help")
     end
 
     test "carries Patchbay's own tool as soon as a repair room offers it", %{conn: conn} do
@@ -163,7 +162,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/sites") |> html_response(200)
 
-      assert body =~ ~s(href="/sites/patchbay")
+      assert body =~ ~s(href="/patchbay.help")
       assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 1} tools"
       assert body =~ "0 agent posts"
     end
@@ -190,7 +189,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
       assert body =~ "0 agent posts"
 
-      first_page = conn |> get(~p"/sites/patchbay.help") |> html_response(200)
+      first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
       assert first_page =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
 
       [_, next] =
@@ -198,14 +197,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       second_page = conn |> get(next) |> html_response(200)
       refute second_page =~ ~s(?tools_after=)
-      assert second_page =~ ~s(href="/sites/patchbay#pb-site-tools")
+      assert second_page =~ ~s(href="/patchbay.help#pb-site-tools")
 
       site_page = first_page <> second_page
       assert site_page =~ "uplift_current_skill_v1"
       assert site_page =~ "uplift_current_skill_v2"
 
       tool_page =
-        conn |> get(~p"/sites/patchbay.help/tools/uplift_current_skill_v2") |> html_response(200)
+        conn |> get(~p"/patchbay.help/tools/uplift_current_skill_v2") |> html_response(200)
 
       assert tool_page =~ "1 version shown, newest first"
       assert tool_page =~ "Improve the Skill and say what changed."
@@ -222,7 +221,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
   end
 
-  describe "GET /sites/:origin" do
+  describe "GET /:host" do
     test "lists the site's tools before its posts", %{conn: conn} do
       Patchbay.Forum.Catalog.sync!()
       site = site!("shopify.com")
@@ -234,12 +233,12 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       report!(second, %{verdict: :verified_failure})
       report!(second, %{verdict: :errored})
 
-      body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
+      body = conn |> get(~p"/shopify.com") |> html_response(200)
 
       assert body =~ "checkout"
       assert body =~ "search"
-      assert body =~ ~s(href="/sites/shopify/tools/checkout")
-      assert body =~ ~s(href="/sites/shopify/tools/search")
+      assert body =~ ~s(href="/shopify.com/tools/checkout")
+      assert body =~ ~s(href="/shopify.com/tools/search")
       assert body =~ ~s(id="pb-site-tools")
       assert body =~ ~s(id="pb-site-posts")
       {tools_at, _} = :binary.match(body, ~s(id="pb-site-tools"))
@@ -269,7 +268,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         body_markdown: "Looking for an export flow."
       })
 
-      body = conn |> get(~p"/sites/helpme.example") |> html_response(200)
+      body = conn |> get(~p"/helpme.example") |> html_response(200)
       assert body =~ "How do I export my data from this site?"
       assert body =~ ~s(href="/posts/)
     end
@@ -277,7 +276,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "says so plainly when a site has nothing on it yet", %{conn: conn} do
       site!("quiet.example")
 
-      body = conn |> get(~p"/sites/quiet.example") |> html_response(200)
+      body = conn |> get(~p"/quiet.example") |> html_response(200)
 
       assert body =~
                "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below."
@@ -289,7 +288,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       site = site!("shopify.com")
       tool!(site, %{title: "Start checkout", description: "Puts the cart through."})
 
-      body = conn |> get(~p"/sites/shopify.com") |> html_response(200)
+      body = conn |> get(~p"/shopify.com") |> html_response(200)
 
       assert body =~ "checkout"
       assert body =~ "Puts the cart through."
@@ -298,25 +297,36 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "renders the address exactly as it is stored", %{conn: conn} do
       site!("xn--80ak6aa92e.com")
 
-      body = conn |> get(~p"/sites/xn--80ak6aa92e.com") |> html_response(200)
+      body = conn |> get(~p"/xn--80ak6aa92e.com") |> html_response(200)
 
       assert body =~ "xn--80ak6aa92e.com"
     end
 
-    test "normalizes the address it was asked for", %{conn: conn} do
+    test "sends every other form of the address to the site's own", %{conn: conn} do
       site!("shopify.com")
 
-      assert conn |> get(~p"/sites/Shopify.com") |> html_response(200) =~ "shopify.com"
-      assert conn |> get(~p"/sites/shopify.com.") |> html_response(200) =~ "shopify.com"
+      for path <- ["/Shopify.com", "/shopify.com.", "/sites/Shopify.com"] do
+        assert conn |> get(path) |> redirected_to(301) == "/shopify.com"
+      end
+
+      assert conn |> get("/Shopify.com/tools/checkout") |> redirected_to(301) ==
+               "/shopify.com/tools/checkout"
     end
 
-    test "a site that is not on the board is not found", %{conn: conn} do
-      assert_error_sent(404, fn -> get(conn, ~p"/sites/nope.example") end)
-      assert_error_sent(404, fn -> get(conn, ~p"/sites/not a host!") end)
+    test "a site not on the board has its page, kept out of search until its first post", %{
+      conn: conn
+    } do
+      page = get(conn, ~p"/nope.example")
+
+      assert html_response(page, 200) =~ "Be the first to post about nope.example"
+      assert get_resp_header(page, "x-robots-tag") == ["noindex"]
+
+      assert conn |> get("/not-a-host") |> html_response(404) =~
+               "There is nothing at this address."
     end
   end
 
-  describe "GET /sites/:origin/tools/:name" do
+  describe "GET /:host/tools/:name" do
     test "lists every version newest first with its reports and replies", %{conn: conn} do
       site = site!("shopify.com")
       older = tool!(site)
@@ -328,7 +338,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       reply!(first, %{verdict: :verified_failure, note: "I saw the same thing"})
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "2 versions shown, newest first"
 
@@ -351,7 +361,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       report!(second, %{verdict: :verified_failure})
       report!(second, %{verdict: :errored})
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "1 worked · 0 did not · 0 errored · 0 unclear"
       assert body =~ "0 worked · 1 did not · 1 errored · 0 unclear"
@@ -372,7 +382,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         description: "Puts the cart through. It needs a card on file."
       })
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "WHAT CHANGED"
       assert body =~ ~s(<s>Start checkout</s>)
@@ -399,7 +409,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         description: "Puts the cart through."
       })
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "The words did not change."
       refute body =~ "pb-sentence is-added"
@@ -408,7 +418,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "says plainly when a version has no reports on it", %{conn: conn} do
       "shopify.com" |> site!() |> tool!()
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "No agent has reported on this version yet."
     end
@@ -425,7 +435,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         authorize?: false
       )
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ ~s(<span class="pb-badge-kind">this site</span>)
       assert body =~ "Patchbay Agent"
@@ -437,7 +447,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       Enum.each(1..12, fn n -> report!(tool, %{note: "attempt #{n}"}) end)
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "attempt 12"
       assert body =~ "attempt 1"
@@ -449,7 +459,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       Enum.each(1..12, fn n -> reply!(report, %{note: "reply #{n}"}) end)
 
-      body = conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200)
+      body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
       assert body =~ "reply 1"
       refute body =~ "reply 11"
@@ -459,7 +469,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a tool that is not on the board is not found", %{conn: conn} do
       site!("shopify.com")
 
-      assert_error_sent(404, fn -> get(conn, ~p"/sites/shopify.com/tools/checkout") end)
+      assert_error_sent(404, fn -> get(conn, ~p"/shopify.com/tools/checkout") end)
     end
 
     test "an address that could never name a tool is not found", %{conn: conn} do
@@ -467,7 +477,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       for name <- ["\u0000", "a\u0000b", "check out", "-checkout", String.duplicate("a", 65)] do
         assert_error_sent(404, fn ->
-          get(conn, "/sites/shopify.com/tools/" <> URI.encode(name, &URI.char_unreserved?/1))
+          get(conn, "/shopify.com/tools/" <> URI.encode(name, &URI.char_unreserved?/1))
         end)
       end
     end
@@ -1267,7 +1277,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body =
         conn
-        |> get(~p"/sites/#{tool.site.origin}/tools/#{tool.name}")
+        |> get(~p"/#{tool.site.origin}/tools/#{tool.name}")
         |> html_response(200)
 
       assert body =~ "Verified against Patchbay"
@@ -1336,8 +1346,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       bodies = [
         conn |> get(~p"/sites") |> html_response(200),
-        conn |> get(~p"/sites/shopify.com") |> html_response(200),
-        conn |> get(~p"/sites/shopify.com/tools/checkout") |> html_response(200),
+        conn |> get(~p"/shopify.com") |> html_response(200),
+        conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200),
         conn |> get(~p"/reports/#{report.id}") |> html_response(200)
       ]
 
@@ -1354,9 +1364,10 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
     test "never leaks the vocabulary of the code behind it", %{bodies: bodies} do
       # The board is written for people, so the words the code uses for itself
-      # must never reach the page. Link and image addresses are not read.
+      # must never reach the page. Link and image addresses, and the live
+      # box's own markup, are not read.
       for body <- bodies,
-          copy = Regex.replace(~r/\s(?:src|href)="[^"]*"/, body, ""),
+          copy = Regex.replace(~r/\s(?:src|href|data-phx-[a-z]+)="[^"]*"/, body, ""),
           word <- ~w(LiveView fallback upsert keyset cookie slug session hook server) do
         refute String.contains?(String.downcase(copy), String.downcase(word)),
                "#{word} appears in board copy"

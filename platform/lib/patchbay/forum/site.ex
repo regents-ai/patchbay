@@ -23,7 +23,8 @@ defmodule Patchbay.Forum.Site do
     otp_app: :patchbay,
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshOban]
 
   import Ash.Expr
 
@@ -37,6 +38,24 @@ defmodule Patchbay.Forum.Site do
   postgres do
     table("forum_sites")
     repo(Patchbay.Repo)
+  end
+
+  oban do
+    triggers do
+      # A site's first post asks for its picture; a later post asks again
+      # while it has none. Never on a sweep, and three tries per ask, so a
+      # picture missed while the screenshot machine was away comes with the
+      # next post. Directory entries bring their own pictures.
+      trigger :take_picture do
+        action(:take_picture)
+        queue(:site_pictures)
+        where(expr(is_nil(screenshot_path) and is_nil(support_relationship)))
+        max_attempts(3)
+        lock_for_update?(false)
+        scheduler_cron(false)
+        worker_module_name(Patchbay.Forum.Site.Workers.TakePicture)
+      end
+    end
   end
 
   attributes do
@@ -80,16 +99,6 @@ defmodule Patchbay.Forum.Site do
     attribute(:screenshot_captured_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
     attribute(:featured_rank, :integer, allow_nil?: true, public?: true)
-
-    # When Patchbay first read the site's page for WebMCP tools, after the
-    # first question about it. Set once; the page is not read again.
-    attribute(:page_checked_at, :utc_datetime_usec, allow_nil?: true, public?: true)
-
-    # Tries at a picture of the site's page for its card, and when the last
-    # began. A failed try is tried again by a later question, a few times
-    # at most and never sooner than `claim_picture` allows.
-    attribute(:picture_attempts, :integer, allow_nil?: false, default: 0, public?: true)
-    attribute(:picture_tried_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
     attribute(:claimed_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:claim_kind, ClaimKind, allow_nil?: false, public?: true, default: :none)
@@ -193,40 +202,17 @@ defmodule Patchbay.Forum.Site do
       change(Patchbay.Forum.Changes.AssignCatalogDefaults)
     end
 
-    update :claim_page_check do
+    update :take_picture do
       description("""
-      Marks a site's page as being read for tools. Only a site outside the
-      directory, never read before, is claimed, so one question starts one read.
+      Has the screenshot machine take a picture of the site's front page for
+      its card. It waits on that machine, so nothing here holds a
+      transaction open.
       """)
 
       accept([])
-      change(filter(expr(is_nil(page_checked_at) and is_nil(support_relationship))))
-      change(set_attribute(:page_checked_at, &DateTime.utc_now/0))
-    end
-
-    update :claim_picture do
-      description("""
-      Marks a try at a picture of a site's page for its card. Only a site
-      outside the directory, with a tool on record and no picture yet, is
-      claimed, at most three times and an hour apart, so a picture that
-      failed while the screenshot machine was away is tried again by a later
-      question, and questions arriving together start one try.
-      """)
-
-      accept([])
-
-      change(
-        filter(
-          expr(
-            is_nil(support_relationship) and is_nil(screenshot_path) and tool_count > 0 and
-              picture_attempts < 3 and
-              (is_nil(picture_tried_at) or picture_tried_at < ago(1, :hour))
-          )
-        )
-      )
-
-      change(atomic_update(:picture_attempts, expr(picture_attempts + 1)))
-      change(set_attribute(:picture_tried_at, &DateTime.utc_now/0))
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.TakeSitePicture)
     end
 
     update :record_screenshot do

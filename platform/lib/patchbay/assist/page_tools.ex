@@ -49,47 +49,50 @@ defmodule Patchbay.Assist.PageTools do
   @spec read(String.t(), keyword()) ::
           {:ok, [tool()]} | {:error, :unresolvable | :not_public | :unreachable}
   def read(site_url, opts \\ []) do
-    with {:ok, page_url, html} <- page(site_url, opts, @max_redirects) do
-      host = URI.parse(page_url).host
-      loaded = html |> script_urls(page_url) |> own_site(host) |> Enum.take(@max_scripts)
-      first = fetch_all(loaded, opts)
+    with {:ok, page_url, html} <- page(site_url, opts), do: {:ok, tools(page_url, html, opts)}
+  end
 
-      imported =
-        first
-        |> Enum.flat_map(fn {url, code} -> imports(code, url) end)
-        |> own_site(host)
-        |> Kernel.--(loaded)
-        |> Enum.take(@max_scripts - length(loaded))
-
-      codes = [html | Enum.map(first ++ fetch_all(imported, opts), &elem(&1, 1))]
-
-      tools =
-        (form_tools(html) ++ Enum.flat_map(codes, &script_tools/1))
-        |> Enum.uniq_by(& &1.name)
-        |> Enum.take(@max_tools)
-
-      {:ok, tools}
+  @doc """
+  The page at `site_url` after at most a few redirects, each one checked
+  again as a new address: the address it was read at and its HTML.
+  """
+  @spec page(String.t(), keyword()) ::
+          {:ok, String.t(), binary()} | {:error, :unresolvable | :not_public | :unreachable}
+  def page(site_url, opts \\ []) do
+    case Target.get(site_url, page_options(opts, @max_page_bytes, @max_redirects)) do
+      {:ok, %{status: 200, url: page_url, body: html}} -> {:ok, page_url, html}
+      {:ok, _not_a_page} -> {:error, :unreachable}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  # The page itself, after at most a few redirects, each one checked again
-  # as a new address.
-  defp page(_url, _opts, -1), do: {:error, :unreachable}
+  @doc "The tools a page already read signs up in its code and in the scripts it loads."
+  @spec tools(String.t(), binary(), keyword()) :: [tool()]
+  def tools(page_url, html, opts \\ []) do
+    host = URI.parse(page_url).host
+    loaded = html |> script_urls(page_url) |> own_site(host) |> Enum.take(@max_scripts)
+    first = fetch_all(loaded, opts)
 
-  defp page(url, opts, redirects_left) do
-    case get(url, opts, @max_page_bytes) do
-      {:ok, 200, body, _location} ->
-        {:ok, url, body}
+    imported =
+      first
+      |> Enum.flat_map(fn {url, code} -> imports(code, url) end)
+      |> own_site(host)
+      |> Kernel.--(loaded)
+      |> Enum.take(@max_scripts - length(loaded))
 
-      {:ok, status, _body, location} when status in 301..308 and is_binary(location) ->
-        page(url |> URI.merge(location) |> URI.to_string(), opts, redirects_left - 1)
+    codes = [html | Enum.map(first ++ fetch_all(imported, opts), &elem(&1, 1))]
 
-      {:ok, _status, _body, _location} ->
-        {:error, :unreachable}
+    (form_tools(html) ++ Enum.flat_map(codes, &script_tools/1))
+    |> Enum.uniq_by(& &1.name)
+    |> Enum.take(@max_tools)
+  end
 
-      {:error, reason} ->
-        {:error, reason}
-    end
+  defp page_options(opts, bound, redirects) do
+    Keyword.merge(opts,
+      max_body_bytes: bound,
+      redirects: redirects,
+      receive_timeout: @fetch_timeout_ms
+    )
   end
 
   defp fetch_all(urls, opts) do
@@ -106,24 +109,9 @@ defmodule Patchbay.Assist.PageTools do
   end
 
   defp script(url, opts) do
-    case get(url, opts, @max_script_bytes) do
-      {:ok, 200, body, _location} -> {:ok, {url, body}}
+    case Target.get(url, page_options(opts, @max_script_bytes, 0)) do
+      {:ok, %{status: 200, body: body}} -> {:ok, {url, body}}
       _unread -> :unread
-    end
-  end
-
-  defp get(url, opts, bound) do
-    with {:ok, target} <- Target.connect(url, Keyword.put(opts, :max_body_bytes, bound)),
-         {:ok, %Req.Response{} = response} <-
-           Req.get(
-             target.url,
-             [compressed: false, receive_timeout: @fetch_timeout_ms] ++ target.options
-           ) do
-      body = response.body |> Kernel.||("") |> IO.iodata_to_binary()
-      {:ok, response.status, body, Req.Response.get_header(response, "location") |> List.first()}
-    else
-      {:error, reason} when reason in [:unresolvable, :not_public] -> {:error, reason}
-      _failed -> {:error, :unreachable}
     end
   end
 

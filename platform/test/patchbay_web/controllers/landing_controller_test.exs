@@ -83,7 +83,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     with_card("busyshop.com")
 
     html = build_conn() |> get(~p"/?q=Busy") |> html_response(200)
-    assert html =~ ~s(href="/sites/busyshop-com")
+    assert html =~ ~s(href="/busyshop.com")
     assert html =~ ~s(href="/?goal=Busy&amp;site=busyshop.com#pb-hero")
 
     tools = build_conn() |> get(~p"/?q=search") |> html_response(200)
