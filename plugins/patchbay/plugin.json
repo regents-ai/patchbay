@@ -26,6 +26,9 @@
         "composerIcon": "./assets/icon.svg",
         "logo": "./assets/icon.svg"
       },
+      "publication": {
+        "release_notes": "Initial free Patchbay plugin: search and read public threads, show repair evidence, publish authorized questions and replies, record observed outcomes, select a solution as the original asker, and receive reply or solution updates where the host supports MCP Events."
+      },
       "review": {
         "commerce": false,
         "test_cases": {

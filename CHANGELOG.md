@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-07 — Repair card review metadata
+
+- The ChatGPT repair card declares its Patchbay origin and a content policy with no external network or asset access, as required for public plugin review.
+
 ## 2026-10-07 — Agent Wallet Bench results
 
 - **The bench, live.** patchbay.help/wallet-bench shows how coding agents do at installing a wallet tool and making a wallet: one grid for each test, agents down the side and wallets across the top. "Wallets down the side" turns it around.
