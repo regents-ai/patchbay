@@ -52,8 +52,6 @@ defmodule Patchbay.Config do
   @default_daily_free_fixes 200
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
-  @default_max_rooms 2000
-  @default_room_idle_hours 6
   @default_agent_poll_seconds 15
   @default_agent_daily_repairs 50
 
@@ -97,20 +95,6 @@ defmodule Patchbay.Config do
   The identity Patchbay's own replies are posted under.
   """
   def agent_session_id, do: @agent_session_id
-
-  @doc """
-  How many demo rooms may exist at once.
-  """
-  def max_rooms do
-    whole_number(:max_rooms, "PATCHBAY_MAX_ROOMS", @default_max_rooms)
-  end
-
-  @doc """
-  How long an untouched room with no invocations is kept before it is reaped.
-  """
-  def room_idle_hours do
-    whole_number(:room_idle_hours, "PATCHBAY_ROOM_IDLE_HOURS", @default_room_idle_hours)
-  end
 
   @doc """
   How many live model calls the whole deployment may make in 24 hours.

@@ -187,7 +187,6 @@ defmodule PatchbayWeb.Router do
 
     # Retire the public demo entry without deleting existing rooms or evidence.
     get "/rooms/skill-uplift", Forum.BoardController, :retired_demo
-    get "/rooms/busy", RoomController, :busy
   end
 
   # A room is a live page and nothing else; it does not answer as markdown.

@@ -135,23 +135,6 @@ defmodule Patchbay.Patchbay.Room do
       prepare(build(lock: :for_update))
     end
 
-    # Rooms nobody used are reaped so a crawler or a retry loop cannot fill the
-    # database. A room that holds an invocation is somebody's evidence and is
-    # never swept up by this, and neither is a room whose visitor has been seen
-    # inside the window: reading a room does not touch the room row itself.
-    read :idle_and_unused do
-      argument(:untouched_since, :utc_datetime_usec, allow_nil?: false)
-
-      filter(
-        expr(
-          slug != "skill-uplift" and
-            updated_at < ^arg(:untouched_since) and
-            not exists(invocations, true) and
-            not exists(browser_sessions, last_seen_at >= ^arg(:untouched_since))
-        )
-      )
-    end
-
     create :create_seeded_room do
       accept([])
 
