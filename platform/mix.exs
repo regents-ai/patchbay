@@ -8,7 +8,7 @@ defmodule Patchbay.MixProject do
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "4da6db2bfe3559a8f8a761018dc099a28ab5f6a3"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "aa2e73c28947e7b6f16a9a69857eecb09e283c19"
+  @regents_ref "253319d139954d155092e39a26c98daca91c93d6"
 
   def project do
     [
