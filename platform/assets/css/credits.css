@@ -28,11 +28,13 @@
 
 /* The page resets every margin; a modal dialog centres itself with auto. */
 .pb-credits-dialog {
+  --pb-credits-pad-top: var(--space-4);
+  --pb-credits-pad-side: var(--space-4);
   box-sizing: border-box;
   margin: auto;
   width: min(30rem, calc(100% - 2rem));
   max-height: calc(100dvh - 4rem);
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  padding: var(--pb-credits-pad-top) var(--pb-credits-pad-side) var(--space-3);
   border: 1px solid var(--pb-line-strong);
   border-radius: 1.25rem;
   background: var(--pb-surface);
@@ -44,21 +46,28 @@
   background: color-mix(in oklch, var(--pb-text) 30%, transparent);
 }
 
-/* Pinned to the corner rather than floated, so the panel keeps the full width. */
+/* The close button sits in the dialog's top right corner and stays there while
+   the dialog scrolls. Its row takes no height, so the panel keeps its place. */
 .pb-credits-close {
-  position: absolute;
-  inset-block-start: var(--space-3);
-  inset-inline-end: var(--space-3);
+  position: sticky;
+  inset-block-start: calc(-1 * var(--pb-credits-pad-top));
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  height: 0;
+  margin-block: calc(-1 * var(--pb-credits-pad-top)) var(--pb-credits-pad-top);
+  margin-inline-end: calc(-1 * var(--pb-credits-pad-side));
 }
 
 .pb-credits-close button {
   display: grid;
+  flex: none;
   place-items: center;
   width: 2.75rem;
   height: 2.75rem;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0 calc(1.25rem - 1px) 0 0.75rem;
   background: transparent;
   color: var(--pb-text);
   cursor: pointer;
@@ -112,7 +121,8 @@
   color: var(--pb-text-muted);
 }
 
-/* Figures: the balance large, what bids hold small, and the history link. */
+/* Figures: the balance and what bids hold, as a two-by-two table, then the
+   history link. */
 
 .credits-panel__head {
   display: grid;
@@ -122,32 +132,19 @@
 
 .credits-panel__figures {
   display: grid;
-  gap: 0.25rem;
-}
-
-.credits-panel__figure {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
+  grid-template-columns: auto auto;
+  gap: 0.25rem var(--space-4);
+  font-size: 1.125rem;
   font-variant-numeric: tabular-nums;
 }
 
-.credits-panel__figure dt {
+.credits-panel__figures dt {
   color: var(--pb-text-muted);
 }
 
-.credits-panel__figure dt::after {
-  content: ":";
-}
-
-.credits-panel__figure dd {
-  font-size: 1.75rem;
+.credits-panel__figures dd {
   font-weight: 600;
-}
-
-.credits-panel__figure--small dd {
-  font-size: 1rem;
-  font-weight: 500;
+  text-align: end;
 }
 
 .credits-panel__history {
@@ -316,10 +313,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The two presses, each with a box that ticks when it is done. */
+/* The two presses: each button on the left, what it does beside it. The rows
+   share one set of columns, so both buttons are the same width. */
 
 .credits-panel__steps {
   display: grid;
+  grid-template-columns: auto 1fr;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -328,9 +327,14 @@
 
 .credits-panel__step {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: var(--space-1) var(--space-2);
+  row-gap: var(--space-1);
+}
+
+.credits-panel__step > .credits-panel__again {
+  grid-column: 2;
 }
 
 .credits-panel__step-words {
@@ -350,70 +354,16 @@
 }
 
 .credits-panel__again {
-  grid-column: 2 / -1;
   justify-self: start;
-}
-
-.credits-panel__check {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 2px solid var(--pb-line-strong);
-  border-radius: 0.5rem;
-  color: transparent;
-}
-
-.credits-panel__check svg {
-  width: 1.1rem;
-  height: 1.1rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 24;
-  stroke-dashoffset: 24;
-}
-
-.credits-panel__step[data-state="pending"] .credits-panel__check {
-  border-color: var(--pb-text-muted);
-  border-style: dashed;
-}
-
-.credits-panel__step[data-state="done"] .credits-panel__check {
-  border-color: var(--pb-good);
-  background: var(--pb-good);
-  color: var(--pb-surface);
-  animation: credits-check-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.credits-panel__step[data-state="done"] .credits-panel__check svg {
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 300ms 120ms ease-out;
-}
-
-.credits-panel__step[data-state="failed"] .credits-panel__check {
-  border-color: var(--pb-bad);
 }
 
 .credits-panel__step[data-state="done"] .credits-panel__step-words > span:first-of-type {
   color: var(--pb-good);
 }
 
-@keyframes credits-check-pop {
-  0% { transform: scale(0.6); }
-  100% { transform: scale(1); }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .credits-panel__chains::before,
-  .credits-panel__step[data-state="done"] .credits-panel__check svg {
+  .credits-panel__chains::before {
     transition: none;
-  }
-
-  .credits-panel__step[data-state="done"] .credits-panel__check {
-    animation: none;
   }
 }
 
@@ -439,8 +389,10 @@
 @media (max-width: 47.99rem) {
   .pb-credits-dialog {
     width: calc(100% - 1rem);
+    --pb-credits-pad-top: var(--space-3);
+    --pb-credits-pad-side: var(--space-2);
     max-height: calc(100dvh - 1rem);
-    padding: var(--space-3) var(--space-2) var(--space-2);
+    padding-block-end: var(--space-2);
   }
 
   .credits-panel__amount input,

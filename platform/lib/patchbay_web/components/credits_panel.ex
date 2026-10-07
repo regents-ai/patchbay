@@ -362,14 +362,10 @@ defmodule PatchbayWeb.CreditsPanel do
           phx-hook="MotionCount"
           data-variant="flash"
         >
-          <div class="credits-panel__figure">
-            <dt>Regents Credits</dt>
-            <dd data-count>{figure(@balance.available)}</dd>
-          </div>
-          <div class="credits-panel__figure credits-panel__figure--small">
-            <dt>In Bids</dt>
-            <dd data-count>{figure(@balance.held)}</dd>
-          </div>
+          <dt>Regents Credits</dt>
+          <dd data-count>{figure(@balance.available)}</dd>
+          <dt>Active Bids</dt>
+          <dd data-count>{figure(@balance.held)}</dd>
         </dl>
         <a
           class="credits-panel__history"
@@ -454,7 +450,7 @@ defmodule PatchbayWeb.CreditsPanel do
 
       <ol class="credits-panel__steps">
         <li :if={@chain == "base"} class="credits-panel__step" data-state={@approve.state}>
-          <.check />
+          <P.button variant="secondary" data-onchain-step="approve">Approve</P.button>
           <div class="credits-panel__step-words">
             <strong>
               Approve {@dollars && "#{@dollars} "}USDC
@@ -464,11 +460,16 @@ defmodule PatchbayWeb.CreditsPanel do
             </strong>
             <span :if={@approve.words}>{@approve.words}</span>
           </div>
-          <P.button variant="secondary" data-onchain-step="approve">Approve</P.button>
           <.check_again step={@approve} myself={@myself} />
         </li>
         <li class="credits-panel__step" data-state={@buy.state}>
-          <.check />
+          <P.button
+            data-onchain-step="buy"
+            disabled={@blocked != nil}
+            aria-describedby={@blocked && "#{@id}-buy-why"}
+          >
+            Buy
+          </P.button>
           <div class="credits-panel__step-words">
             <strong>
               Buy {@dollars && "#{@dollars} "}Credits
@@ -477,13 +478,6 @@ defmodule PatchbayWeb.CreditsPanel do
             <span :if={@buy.words}>{@buy.words}</span>
             <span :if={@blocked} id={"#{@id}-buy-why"}>{@blocked}</span>
           </div>
-          <P.button
-            data-onchain-step="buy"
-            disabled={@blocked != nil}
-            aria-describedby={@blocked && "#{@id}-buy-why"}
-          >
-            Buy
-          </P.button>
           <.check_again step={@buy} myself={@myself} />
         </li>
       </ol>
@@ -526,14 +520,6 @@ defmodule PatchbayWeb.CreditsPanel do
       <path fill="#141414" d="M127.961 287.958l127.96-75.637-127.96-58.162z" />
       <path fill="#393939" d="M0 212.32l127.96 75.638v-133.8z" />
     </svg>
-    """
-  end
-
-  defp check(assigns) do
-    ~H"""
-    <span class="credits-panel__check" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-    </span>
     """
   end
 
