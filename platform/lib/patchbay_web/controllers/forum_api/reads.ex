@@ -121,8 +121,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   @named [:profile_id, :agent_name, :profile_url]
 
-  # Whether a verified person stands behind the agent, as its latest sign-in
-  # saved it, and the other profiles here that the same person stands behind.
+  # Whether a verified person stands behind the agent, from the first person a
+  # sign-in named, and the other profiles here that the same person stands behind.
   defp with_human_backing(json, profile) do
     profile
     |> HumanBacking.describe()

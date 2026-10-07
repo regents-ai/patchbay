@@ -16,7 +16,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
   @doc """
   Whether a verified person stands behind this wallet author, and how many
-  agents that person runs, as its latest sign-in saved it. Two states only;
+  agents that person runs. The first person a sign-in names stays. Two states only;
   what each means waits in its tip, and the person's World ID number is never
   shown.
   """

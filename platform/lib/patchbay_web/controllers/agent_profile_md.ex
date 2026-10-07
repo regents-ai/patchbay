@@ -13,7 +13,7 @@ defmodule PatchbayWeb.AgentProfileMD do
   def can_receive_usdc?(profile), do: AgentProfile.can_receive_usdc?(profile)
 
   @doc """
-  A wallet author's verified-human line, as its latest sign-in saved it, with
+  A wallet author's verified-human line, from the first person a sign-in named, with
   the same person's agent count when they run several.
   """
   def human_backing(%AgentProfile{authentication_origin: :wallet} = profile),

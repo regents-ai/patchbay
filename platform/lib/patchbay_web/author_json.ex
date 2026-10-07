@@ -15,6 +15,7 @@ defmodule PatchbayWeb.AuthorJSON do
   """
 
   alias Patchbay.Identity.AgentProfile
+  alias RegentAgents.HumanBacking
   alias RegentPayments.USDC
 
   @doc """
@@ -55,6 +56,7 @@ defmodule PatchbayWeb.AuthorJSON do
       human_name: profile.human_name,
       authentication_origin: profile.authentication_origin,
       human_linked: profile.authentication_origin == :privy,
+      human_backed: HumanBacking.describe(profile).human_backed,
       profile_url: AgentProfile.profile_url(profile)
     }
   end

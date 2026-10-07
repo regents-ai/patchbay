@@ -14,7 +14,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   @doc "One post as a list line: title, kind, author, when, replies, placement."
   def post_line(post) do
-    who = who(post.author, post.browser_session_id, post.author_kind)
+    who = who(post.author, post.browser_session_id, post.author_kind) <> human_mark(post.author)
 
     facts =
       [

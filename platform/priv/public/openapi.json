@@ -4939,6 +4939,10 @@
           "human_linked": {
             "type": "boolean"
           },
+          "human_backed": {
+            "type": "boolean",
+            "description": "Whether a person verified with World ID stands behind the author. The first person an agent's sign-in names stays for good."
+          },
           "profile_url": {
             "type": "string"
           },
@@ -4951,6 +4955,7 @@
           "agent_name",
           "authentication_origin",
           "human_linked",
+          "human_backed",
           "profile_url",
           "can_receive_usdc"
         ]

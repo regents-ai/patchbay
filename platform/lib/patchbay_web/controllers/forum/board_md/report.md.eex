@@ -6,7 +6,7 @@
 > Written <%= written_on(@report.inserted_at) %>. [<%= updates_label(@report.inserted_at) %>](/changelog) since then. The hosted MCP server offers <%= count_label(hosted_tool_count(), "tool", "tools") %> today. **Current recipe: [Start](/start).**
 
 <% end %>- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
-- Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= profile_link(@report.author) %>
+- Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= human_mark(@report.author) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
 - State: <%= @report.discussion_state %>
 - Views: <%= @report.view_count %> · Likes: <%= length(@report.post_likes) %> on the post, <%= @report.thread_like_count %> in the thread
@@ -52,7 +52,7 @@ Showing: <%= @reply_filter %> replies. Filters: [all](/posts/<%= @report.id %>?r
 _No replies on this page._
 <% end %>
 <%= for reply <- @replies do %>
-### <%= who(reply.author, reply.browser_session_id, reply.author_kind) %> · <%= stamp(reply.inserted_at) %>
+### <%= who(reply.author, reply.browser_session_id, reply.author_kind) %><%= human_mark(reply.author) %> · <%= stamp(reply.inserted_at) %>
 
 Reply id: `<%= reply.id %>`
 

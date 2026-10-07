@@ -11,6 +11,7 @@ defmodule Patchbay.Identity do
     resource Patchbay.Identity.AgentProfile do
       define(:upsert_from_privy, action: :upsert_from_privy)
       define(:upsert_from_wallet, action: :upsert_from_wallet)
+      define(:record_backing, action: :record_backing, args: [:human_id, :agent_count])
 
       define(:get_profile_by_public_id,
         action: :read,

@@ -141,4 +141,42 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
 
     assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
   end
+
+  # Founder rule, 7 Oct 2026: the first World ID person an agent's sign-in names
+  # stays for good. An empty answer or a second person changes nothing.
+  test "the first verified person stays on the wallet author for good" do
+    first = "0x" <> String.duplicate("1f", 32)
+    second = "0x" <> String.duplicate("2e", 32)
+
+    sign_in = fn book ->
+      data = %{
+        "verified" => true,
+        "walletAddress" => @address,
+        "chainId" => 8453,
+        "principal" => %{
+          "kind" => "wallet",
+          "wallet_address" => @address,
+          "chain_id" => 8453,
+          "audience" => "patchbay"
+        },
+        "agentRegistration" => nil,
+        "agentBook" => book
+      }
+
+      conn = Plug.Test.conn(:post, "/api/agent/payment_intents", "{}")
+      {:ok, conn} = WalletAuthor.accept(conn, data, nil)
+      conn.assigns.current_profile
+    end
+
+    assert %{human_id: ^first, same_person_agent_count: 2} =
+             sign_in.(%{"humanId" => first, "agentCount" => 2})
+
+    assert %{human_id: ^first, same_person_agent_count: 2} = sign_in.(nil)
+
+    assert %{human_id: ^first, same_person_agent_count: 2} =
+             sign_in.(%{"humanId" => second, "agentCount" => 5})
+
+    assert %{human_id: ^first, same_person_agent_count: 3} =
+             sign_in.(%{"humanId" => first, "agentCount" => 3})
+  end
 end

@@ -10,7 +10,8 @@ defmodule PatchbayWeb.Forum.Nameplate do
   and never checked, so an author is shown as the first few characters of it
   and nothing more. Patchbay's own answers are the one exception, and they are
   marked plainly, because a reader has to be able to tell the site's own word
-  from a visitor's.
+  from a visitor's. A wallet author a person verified with World ID stands
+  behind says so on everything it wrote.
   """
 
   use Phoenix.Component
@@ -19,6 +20,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   alias Patchbay.Config
   alias Patchbay.Identity.AgentProfile
+  alias RegentAgents.HumanBacking
 
   @doc """
   The badge an author is shown under: their picture, their name and whether a
@@ -76,7 +78,8 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   @doc """
   What follows an author's name: whether a person, an agent or Patchbay itself
-  wrote it, and what the author has earned in tips.
+  wrote it, whether a verified person stands behind it, and what the author has
+  earned in tips.
   """
   attr(:author, :any, required: true)
   attr(:session_id, :string, default: nil)
@@ -88,11 +91,23 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
     ~H"""
     <span class="pb-badge-kind">{kind_label(@kind)}</span>
+    <span
+      :if={human_backed?(@author)}
+      class="pb-badge-human"
+      title="A real person verified with World ID stands behind this agent"
+    >
+      <span aria-hidden="true">✓</span> Verified human
+    </span>
     <span :if={@earned_usdc} class="pb-badge-tips" title={"Earned #{@earned_usdc} USDC in tips"}>
       {@earned_usdc} USDC<span class="visually-hidden"> earned in tips</span>
     </span>
     """
   end
+
+  @doc "Whether a person verified with World ID stands behind this author."
+  @spec human_backed?(AgentProfile.t() | nil) :: boolean()
+  def human_backed?(%AgentProfile{} = author), do: HumanBacking.describe(author).human_backed
+  def human_backed?(nil), do: false
 
   @doc "The name an author is shown under."
   @spec author_name(AgentProfile.t() | nil, String.t() | nil, atom()) :: String.t()

@@ -3,9 +3,9 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   A narrow SIWA wallet-author entry point for priority report payment intents.
   The broker verifies exact request bytes; only its typed wallet principal can
   resolve an author. Cookies and unsigned payment headers grant no authority.
-  Each verified request saves onto the author's profile what the service named
-  with it: the agent's registry page and the World ID person behind it, or
-  clears them.
+  Each verified request saves onto the author's profile the agent's registry
+  page the service named with it, or clears it. The first World ID person the
+  service names stays on the profile for good.
   """
   @behaviour Plug
   @behaviour Siwa.AgentAuthPlug.Client
@@ -177,9 +177,8 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
          {:ok, registry_url} <- registry_url(registration),
          {:ok, backing} <- HumanBacking.read(book),
          {:ok, %{authentication_origin: :wallet, status: :active} = profile} <-
-           backing
-           |> Map.merge(%{wallet_address: address, registry_url: registry_url})
-           |> Identity.upsert_from_wallet() do
+           Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}),
+         {:ok, profile} <- record_backing(profile, backing) do
       # Payment signature becomes a controller input only after its body is verified.
       conn =
         case conn.body_params do
@@ -197,6 +196,12 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   end
 
   def accept(_conn, _data, _context), do: refused(:unsupported_principal)
+
+  # Null names nobody and changes nothing: the first person, once saved, stays.
+  defp record_backing(profile, %{human_id: nil}), do: {:ok, profile}
+
+  defp record_backing(profile, %{human_id: human_id, same_person_agent_count: count}),
+    do: Identity.record_backing(profile, human_id, count)
 
   defp registry_url(nil), do: {:ok, nil}
   defp registry_url(%{"registryUrl" => "https://" <> _rest = url}), do: {:ok, url}

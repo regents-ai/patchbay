@@ -5,8 +5,9 @@ defmodule Patchbay.Identity.AgentProfile do
   These are distinct profiles even when they share a wallet address. Wallet
   authors have no Privy subject or human name and cannot edit human settings.
   Public identifiers are permanent; payment terms freeze the recipient address.
-  A wallet author keeps what its latest verified sign-in named: its registry
-  page and the World ID person behind it, whose number only groups their agents.
+  A wallet author keeps the registry page its latest verified sign-in named.
+  The first World ID person a verified sign-in names stays linked to it for
+  good; that number only groups the person's agents.
   """
 
   use Ash.Resource,
@@ -111,9 +112,10 @@ defmodule Patchbay.Identity.AgentProfile do
       constraints(match: ~r/\Ahttps:\/\//)
     end
 
-    # The World ID person behind a wallet author, as its latest sign-in named
-    # them. The number only groups one person's agents; it is never shown,
-    # logged or answered.
+    # The first World ID person a wallet author's verified sign-in named, kept
+    # for good. Only `record_backing` writes it, from its checked argument. The
+    # number only groups one person's agents; it is never shown, logged or
+    # answered.
     attribute(:human_id, :string, sensitive?: true)
 
     attribute :same_person_agent_count, :integer do
@@ -193,17 +195,55 @@ defmodule Patchbay.Identity.AgentProfile do
     create :upsert_from_wallet do
       description("""
       Resolves an autonomous author from trusted SIWA wallet verification, and
-      saves what that verification named: the agent's registry page and the
-      World ID person behind it with their agent count, or none of them.
+      saves the agent's registry page that verification named, or none.
       """)
 
-      accept([:wallet_address, :registry_url, :human_id, :same_person_agent_count])
+      accept([:wallet_address, :registry_url])
       change(set_attribute(:authentication_origin, :wallet))
       change(set_attribute(:wallet_chain_id, 8453))
       upsert?(true)
       upsert_identity(:unique_wallet_author)
-      upsert_fields([:registry_url, :human_id, :same_person_agent_count, :updated_at])
+      upsert_fields([:registry_url, :updated_at])
       change(Patchbay.Identity.Changes.GeneratePublicId)
+    end
+
+    update :record_backing do
+      description("""
+      Records the World ID person a wallet author's verified sign-in named. The
+      first person stays for good: naming someone else changes nothing, and
+      naming them again updates how many agents they stand behind. Both
+      expressions read the row as it was, in one statement, so two sign-ins at
+      once cannot replace the first person.
+      """)
+
+      argument :human_id, :string do
+        allow_nil?(false)
+        sensitive?(true)
+        constraints(match: ~r/\A0x[0-9a-f]{64}\z/)
+      end
+
+      argument :agent_count, :integer do
+        allow_nil?(false)
+        constraints(min: 1)
+      end
+
+      change(
+        atomic_update(
+          :same_person_agent_count,
+          expr(
+            if is_nil(human_id) or human_id == ^arg(:human_id),
+              do: ^arg(:agent_count),
+              else: same_person_agent_count
+          )
+        )
+      )
+
+      change(
+        atomic_update(
+          :human_id,
+          expr(if is_nil(human_id), do: ^arg(:human_id), else: human_id)
+        )
+      )
     end
 
     update :rename_human do
@@ -231,7 +271,7 @@ defmodule Patchbay.Identity.AgentProfile do
       authorize_if(always())
     end
 
-    policy action([:upsert_from_privy, :upsert_from_wallet]) do
+    policy action([:upsert_from_privy, :upsert_from_wallet, :record_backing]) do
       authorize_if(always())
     end
 
