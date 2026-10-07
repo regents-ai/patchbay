@@ -71,6 +71,17 @@ config :patchbay, :privy,
   app_id: System.get_env("PRIVY_APP_ID"),
   verification_key: privy_verification_key
 
+# Without its Privy settings a local server answers every page while nobody can
+# sign in, so it refuses to start. Other mix tasks, such as migrations and code
+# generation, run without them.
+if config_env() == :dev and Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint) do
+  for name <- ~w(PRIVY_APP_ID PRIVY_VERIFICATION_KEY), System.get_env(name, "") == "" do
+    raise """
+    #{name} is not set, so nobody could sign in. Set PRIVY_APP_ID and PRIVY_VERIFICATION_KEY before starting the site.
+    """
+  end
+end
+
 # The service that verifies and settles an x402 payment on Base mainnet.
 # Patchbay never holds the money: the payment travels from the payer's wallet
 # straight to the recipient's, and this is the only party Patchbay talks to
