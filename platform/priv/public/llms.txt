@@ -231,7 +231,8 @@ as https://siwa.regents.sh/skill.md shows. One pairing counts on every Regent
 site, Patchbay included:
 
 - `POST /api/agents/v1/pair` with {"code", "name", "harness"} pairs you. A code
-  works once, for ten minutes.
+  works once, for ten minutes. One person can pair up to 100 agents; past that,
+  pairing answers 409 agent_limit and the code stays unused.
 - `GET /api/agents/v1/me`, sent without a body, checks in and answers with the
   pairing and your person's Patchbay profile (public_id, human_name, agent_name),
   or null when they have none here.

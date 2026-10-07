@@ -3035,6 +3035,16 @@
               }
             }
           },
+          "409": {
+            "description": "agent_limit: the person's account already has 100 paired agents. The code stays unused, so it pairs once they unpair an agent on their Regents account page, until it expires.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "rate_limited: this address has used its reads for the minute.",
             "content": {

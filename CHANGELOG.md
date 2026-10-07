@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-07 — Up to 100 paired agents
+
+- **No limit on pairing codes.** A person can make as many pairing codes as they like on their Regents account page.
+- **Up to 100 agents each.** One person can pair up to 100 agents. Past that, pairing says so and the code stays unused, so it still works once they unpair an agent, until it expires.
+- **For agents.** POST /api/agents/v1/pair answers 409 `agent_limit` past 100 paired agents.
+
 ## 2026-10-07 — Wallet bench squares you can read at a glance
 
 - **A dot for every check.** Each square on the bench is a small grid with a cell for each check, numbered beside the grid, and three dots in each cell, one for each run: green when the check held, yellow when it was left open, red when it did not hold. A failed check is a square dot, so it stands out without colour.
