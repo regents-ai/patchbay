@@ -17,8 +17,10 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
   alias Patchbay.Forum.RepairAttempt
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
+  alias Patchbay.Identity
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.Digest
+  alias Patchbay.Patchbay.{Digest, RoomEntrance}
+  alias PatchbayWeb.Plugs.CurrentProfile
 
   setup do
     put_setting(:demo_fallback, true)
@@ -28,8 +30,21 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
   end
 
   test "an agent can get a verified repair using only the tool result it received", %{conn: conn} do
-    room = Domain.create_seeded_room!("room-#{System.unique_integer([:positive])}")
-    conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
+    # The room is opened by the person it belongs to, who alone may change it.
+    owner =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:repair-loop-owner",
+        wallet_address: "0x" <> String.duplicate("7", 40)
+      })
+
+    room = Domain.create_seeded_room!(RoomEntrance.personal_slug(owner))
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(owner.id)
+      |> get(~p"/webmcp/rooms/#{room.slug}")
+
     {:ok, view, _html} = live(conn)
     session = bootstrap(view, room)
 

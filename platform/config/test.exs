@@ -46,6 +46,10 @@ config :patchbay, :release_commit, "test"
 # visitor's share of reads many times over.
 config :patchbay, :reads_per_minute, 1_000_000
 
+# The same holds for posts with nobody signed in, which each address counts too.
+config :patchbay, :forum_address_reports_per_hour, 1_000_000
+config :patchbay, :forum_address_replies_per_hour, 1_000_000
+
 # The payment tests act for a few wallets many times over; the share itself
 # is proved with a small limit set by its own test.
 config :patchbay, :payments_per_minute, 1_000_000

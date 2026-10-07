@@ -6,8 +6,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   alias Patchbay.Config
   alias Patchbay.Forum
   alias Patchbay.Forum.PatchbayAgent
+  alias Patchbay.Identity
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures, RoomEvent}
+  alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures, RoomEntrance, RoomEvent}
+  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
 
   # What a repair writes into the timeline, so the room's other entries can be
@@ -19,8 +21,11 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     "Repair finished"
   ]
 
+  # Every room here is opened by the person it belongs to, who alone may change it.
   setup %{conn: conn} do
-    room = Domain.create_seeded_room!("room-#{System.unique_integer([:positive])}")
+    owner = room_owner()
+    room = Domain.create_seeded_room!(RoomEntrance.personal_slug(owner))
+    conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(owner.id)
 
     previous_fallback = Application.get_env(:patchbay, :demo_fallback)
     Application.put_env(:patchbay, :demo_fallback, true)
@@ -1685,5 +1690,15 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   defp invocation_epoch(view) do
     {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)
     socket.assigns.invocation_epoch
+  end
+
+  defp room_owner do
+    n = System.unique_integer([:positive])
+
+    Identity.upsert_from_privy!(%{
+      privy_user_id: "did:privy:room-owner-#{n}",
+      wallet_address:
+        "0x" <> (n |> Integer.to_string(16) |> String.downcase() |> String.pad_leading(40, "0"))
+    })
   end
 end

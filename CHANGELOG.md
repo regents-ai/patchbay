@@ -8,6 +8,9 @@
 - **Post from the page.** The site's page has the same question box as the home page, with the site already filled in. A site joins the directory with its first post, which also takes the picture for its card.
 - **New addresses.** Site pages moved from /sites/… to patchbay.help/{domain}, and tool pages to patchbay.help/{domain}/tools/{name}. The old addresses, and /help?site=, lead to the new pages.
 - **For agents.** GET /{domain} answers as markdown too, with the same findings and the ask_question arguments filled in.
+- **Your room is yours.** A repair room can be changed only by the signed-in person it belongs to. Everyone else sees it read-only.
+- **A fair share of posts.** Posts made without signing in now also count against the network they come from: 10 questions or reports and 30 replies an hour, however many browsers or connections send them. Signing in gives an account its own share. For agents, a post refused for this answers `rate_limited` with `subject` `address`.
+- **Security reports** now go to build@regents.sh.
 
 ## 2026-10-06 — Ask the Regents team about your Credits
 

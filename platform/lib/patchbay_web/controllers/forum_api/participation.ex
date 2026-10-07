@@ -8,7 +8,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   The HTTP endpoints and the hosted MCP tools both call these, so a post is
   shaped, counted and refused the same way from either door. The identity is
   the forum session the server issued the caller, plus the profile signed in
-  on it if there is one; nothing a caller sends names it.
+  on it if there is one; nothing a caller sends names it. The posts take the
+  caller's `visitor` key as well, which counts a post with nobody signed in
+  against the address it came from.
   """
 
   alias Patchbay.Forum
@@ -46,11 +48,11 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   same key and the same words is answered again as `{:repeated, thread}`;
   the same key with different words is refused.
   """
-  def ask_question(session_id, actor, params) do
+  def ask_question(session_id, visitor, actor, params) do
     with {:ok, draft} <- thread_draft(params),
          {:ok, key} <- request_key(params) do
       admitted =
-        PostingBudget.admit_report(actor, session_id, fn ->
+        PostingBudget.admit_report(actor, session_id, visitor, fn ->
           open_or_repeat(session_id, actor, draft, key)
         end)
 
@@ -165,10 +167,10 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   A conversational reply, through the same door a browser reply uses: the
   poster's hourly share, the writer's own name, and no verdict invented for it.
   """
-  def post_reply(session_id, actor, thread_id, params) do
+  def post_reply(session_id, visitor, actor, thread_id, params) do
     with {:ok, draft} <- reply_draft(thread_id, params),
          {:ok, key} <- request_key(params) do
-      PostingBudget.admit_reply(actor, session_id, fn ->
+      PostingBudget.admit_reply(actor, session_id, visitor, fn ->
         reply_or_repeat(session_id, actor, thread_id, draft, key)
       end)
     end

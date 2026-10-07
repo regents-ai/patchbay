@@ -7,8 +7,10 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   browser or hosted connection it came from: an account has one share, not
   one per place it posts from. A post with nobody signed in is counted
   against its forum session, a browser's signed cookie or a hosted MCP
-  connection's `Mcp-Session-Id`, because there is nothing else to count it
-  under.
+  connection's `Mcp-Session-Id`. A new session costs nothing, since every
+  page load or connection is handed one, so a post with nobody signed in is
+  also counted against the address it came from (`PatchbayWeb.ClientAddress`),
+  which has the same hourly share as a session.
 
   Every door goes through here. An agent posts through the page's tools and a
   person posts through the form on the report page; both draw on the same
@@ -21,7 +23,9 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   What each door writes, and under whose name, is the door's own business:
   this module admits a write, it does not shape it.
 
-  The window rolls: a post leaves the count an hour after it was made.
+  The window rolls: a post leaves the count an hour after it was made. The
+  address count is kept in this node's memory instead (`PatchbayWeb.ReadLimit`),
+  in fixed hours, and counts every post it let through to be written.
   """
 
   alias Patchbay.Forum
@@ -30,6 +34,7 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   alias Patchbay.Forum.Report
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.RateLimitHeaders
+  alias PatchbayWeb.ReadLimit
 
   @default_reports_per_hour 10
   @default_replies_per_hour 30
@@ -38,8 +43,11 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   @typedoc "Which hourly share: reports (questions count as reports) or replies."
   @type kind :: :reports | :replies
 
-  @typedoc "What a post is counted against: the signed-in account, or the session."
-  @type counted :: :account | :session
+  @typedoc """
+  What a post is counted against: the signed-in account, or the session and
+  the address it came from.
+  """
+  @type counted :: :account | :session | :address
 
   @typedoc """
   One share as every door reports it: its size, its window in seconds, what
@@ -60,19 +68,22 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   @doc """
   Runs `write` once the poster is within its hourly share of reports.
 
-  The poster is the signed-in `actor` when there is one, else `session_id`.
-  The answer is the write's own, or
+  The poster is the signed-in `actor` when there is one, else `session_id`
+  together with `visitor`, the key `PatchbayWeb.ClientAddress.visitor_key/1`
+  gives its address. The answer is the write's own, or
   `{:error, {:rate_limited, counted, words, seconds}}` when the share is used
   up, naming what was counted and the seconds until it may post again. A
   write that fails with an exception is rolled back whole, so a refused
   report leaves no board or thread behind it.
   """
-  @spec admit_report(AgentProfile.t() | nil, String.t(), (-> answer())) :: answer()
-  def admit_report(actor, session_id, write), do: admit(:reports, actor, session_id, write)
+  @spec admit_report(AgentProfile.t() | nil, String.t(), String.t(), (-> answer())) :: answer()
+  def admit_report(actor, session_id, visitor, write),
+    do: admit(:reports, actor, session_id, visitor, write)
 
   @doc "Runs `write` once the poster is within its hourly share of replies."
-  @spec admit_reply(AgentProfile.t() | nil, String.t(), (-> answer())) :: answer()
-  def admit_reply(actor, session_id, write), do: admit(:replies, actor, session_id, write)
+  @spec admit_reply(AgentProfile.t() | nil, String.t(), String.t(), (-> answer())) :: answer()
+  def admit_reply(actor, session_id, visitor, write),
+    do: admit(:replies, actor, session_id, visitor, write)
 
   @doc "What a post by `actor` is counted against."
   @spec counted_by(AgentProfile.t() | nil) :: counted()
@@ -119,10 +130,10 @@ defmodule PatchbayWeb.Forum.PostingBudget do
     }
   end
 
-  defp admit(kind, actor, session_id, write) do
+  defp admit(kind, actor, session_id, visitor, write) do
     poster = poster(actor, session_id)
 
-    case Ash.transact([Report, Reply], fn -> locked(kind, poster, write) end) do
+    case Ash.transact([Report, Reply], fn -> locked(kind, poster, visitor, write) end) do
       {:ok, {:settled, answer}} -> answer
       {:error, failed_write} -> {:error, failed_write}
     end
@@ -132,10 +143,13 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   # burst of parallel posts cannot all read the same count and all get through.
   # The lock is asked of Postgres directly because the forum has no action for
   # it; it lasts exactly as long as the transaction around this function.
-  defp locked(kind, poster, write) do
+  defp locked(kind, poster, visitor, write) do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [lock_key(poster)])
 
-    answer = with :ok <- within_limit(kind, poster), do: write.()
+    answer =
+      with :ok <- within_limit(kind, poster),
+           :ok <- within_address_limit(kind, poster, visitor),
+           do: write.()
 
     case answer do
       # A write that failed is handed back as an error, which is what undoes
@@ -165,6 +179,27 @@ defmodule PatchbayWeb.Forum.PostingBudget do
 
   defp poster_words(:account), do: "This account"
   defp poster_words(:session), do: "This session"
+
+  # A signed-in account is one share wherever it posts from, so only a post
+  # with nobody signed in is counted against its address.
+  defp within_address_limit(_kind, {:account, _profile_id}, _visitor), do: :ok
+
+  defp within_address_limit(kind, {:session, _session_id}, visitor) do
+    limit = address_limit(kind)
+
+    case ReadLimit.hit("posts:#{kind}:" <> visitor, :timer.seconds(@window_seconds), limit) do
+      {:allow, _count} ->
+        :ok
+
+      {:deny, wait_ms} ->
+        seconds = RateLimitHeaders.seconds(wait_ms)
+
+        {:error,
+         {:rate_limited, :address,
+          "This network has already posted #{limit} #{kind} without signing in this hour. " <>
+            "Sign in to keep posting, or try again in #{wait_words(seconds)}.", seconds}}
+    end
+  end
 
   defp posted_since(:reports, {:account, profile_id}, since),
     do: Forum.reports_posted_by_author!(profile_id, since)
@@ -209,4 +244,12 @@ defmodule PatchbayWeb.Forum.PostingBudget do
 
   def limit(:replies),
     do: Application.get_env(:patchbay, :forum_replies_per_hour, @default_replies_per_hour)
+
+  @doc "How many of `kind` one address may post in an hour with nobody signed in."
+  @spec address_limit(kind()) :: pos_integer()
+  def address_limit(:reports),
+    do: Application.get_env(:patchbay, :forum_address_reports_per_hour, @default_reports_per_hour)
+
+  def address_limit(:replies),
+    do: Application.get_env(:patchbay, :forum_address_replies_per_hour, @default_replies_per_hour)
 end

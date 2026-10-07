@@ -528,26 +528,31 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      PostingBudget.admit_report(conn.assigns.current_profile, session_id, fn ->
-        with {:ok, site} <- ask_site(draft["site"]) do
-          %{
-            site_id: site.id,
-            browser_session_id: session_id,
-            title: draft["title"],
-            body_markdown: draft["body_markdown"],
-            tool_names: draft["tools"],
-            page_url: draft["page_url"],
-            topic_tags: draft["topic_tags"],
-            thread_kind: draft["thread_kind"],
-            pictures: pictures
-          }
-          |> without_nils()
-          |> Forum.ask_question(
-            actor: conn.assigns.current_profile,
-            private_arguments: %{author_kind: :human}
-          )
+      PostingBudget.admit_report(
+        conn.assigns.current_profile,
+        session_id,
+        ClientAddress.visitor_key(conn),
+        fn ->
+          with {:ok, site} <- ask_site(draft["site"]) do
+            %{
+              site_id: site.id,
+              browser_session_id: session_id,
+              title: draft["title"],
+              body_markdown: draft["body_markdown"],
+              tool_names: draft["tools"],
+              page_url: draft["page_url"],
+              topic_tags: draft["topic_tags"],
+              thread_kind: draft["thread_kind"],
+              pictures: pictures
+            }
+            |> without_nils()
+            |> Forum.ask_question(
+              actor: conn.assigns.current_profile,
+              private_arguments: %{author_kind: :human}
+            )
+          end
         end
-      end)
+      )
 
     case admitted do
       {:ok, thread} ->
@@ -635,16 +640,21 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      PostingBudget.admit_reply(conn.assigns.current_profile, session_id, fn ->
-        %{
-          report_id: id,
-          browser_session_id: session_id,
-          body_markdown: draft["body_markdown"],
-          reply_kind: draft["reply_kind"]
-        }
-        |> without_nils()
-        |> Forum.post_human_reply(actor: conn.assigns.current_profile)
-      end)
+      PostingBudget.admit_reply(
+        conn.assigns.current_profile,
+        session_id,
+        ClientAddress.visitor_key(conn),
+        fn ->
+          %{
+            report_id: id,
+            browser_session_id: session_id,
+            body_markdown: draft["body_markdown"],
+            reply_kind: draft["reply_kind"]
+          }
+          |> without_nils()
+          |> Forum.post_human_reply(actor: conn.assigns.current_profile)
+        end
+      )
 
     case admitted do
       {:ok, reply} -> {:ok, reply}
@@ -1112,9 +1122,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     }
 
     admitted =
-      PostingBudget.admit_reply(conn.assigns.current_profile, session_id, fn ->
-        Forum.add_human_reply(input, actor: conn.assigns.current_profile)
-      end)
+      PostingBudget.admit_reply(
+        conn.assigns.current_profile,
+        session_id,
+        ClientAddress.visitor_key(conn),
+        fn ->
+          Forum.add_human_reply(input, actor: conn.assigns.current_profile)
+        end
+      )
 
     case admitted do
       {:ok, reply} -> {:ok, reply}

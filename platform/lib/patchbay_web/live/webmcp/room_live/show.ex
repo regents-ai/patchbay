@@ -42,7 +42,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   }
 
   @no_proposal "No repair proposal is waiting for a human decision"
-  @readonly_message "Sign in to get a room of your own."
+  @readonly_message "Only the person this room belongs to can change it."
   @mutating_ui_events ~w(
     update_source upload_skill request_repair approve_repair reject_repair
     retry_original_goal ask_reset_demo reset_demo
@@ -63,13 +63,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   @impl true
   def mount(%{"slug" => slug}, session, socket) do
-    case open_room(slug, socket.assigns.current_profile) do
-      {:redirect, path} ->
-        {:ok, redirect(socket, to: path)}
-
-      {:ok, room, readonly?} ->
-        mount_room(socket, session, room, readonly?)
-    end
+    profile = socket.assigns.current_profile
+    mount_room(socket, session, load_room!(slug), not owner?(slug, profile))
   end
 
   @impl true
@@ -885,31 +880,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
      )}
   end
 
-  # Unsigned visitors see the shared preview. A signed-in profile is sent to
-  # the room that belongs to them, created the first time they arrive.
-  defp open_room("skill-uplift", profile) do
-    case profile do
-      nil ->
-        open_showcase()
-
-      profile ->
-        case RoomEntrance.ensure_personal(profile) do
-          {:ok, room} -> {:redirect, ~p"/webmcp/rooms/#{room.slug}"}
-          {:error, :at_capacity} -> {:redirect, ~p"/webmcp/rooms/busy"}
-        end
-    end
-  end
-
-  defp open_room(slug, _profile) do
-    {:ok, load_room!(slug), false}
-  end
-
-  defp open_showcase do
-    case RoomEntrance.ensure_showcase() do
-      {:ok, room} -> {:ok, load_room!(room.slug), true}
-      {:error, :at_capacity} -> {:redirect, ~p"/webmcp/rooms/busy"}
-    end
-  end
+  # Anyone may watch a room; only the signed-in person it belongs to may
+  # change it.
+  defp owner?(_slug, nil), do: false
+  defp owner?(slug, profile), do: RoomEntrance.personal_slug(profile) == slug
 
   # A slug that resolves to nothing is simply not a room; any other failure is
   # a real error and stays visible.
