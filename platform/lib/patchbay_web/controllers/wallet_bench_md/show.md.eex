@@ -8,12 +8,18 @@
 <% end %><%= if grid.runs == [] and grid.fixed == [], do: "\nNot tested yet.\n" %><%= for %{result: run, checks: checks} <- grid.runs do %>
 ### Run <%= run.run %>: <%= word(@notes, run.outcome) %> (`<%= run.outcome %>`)
 
-<%= if run.second_try, do: "- Second try\n" %><%= if run.signature_asked, do: "- Signature asked\n" %><%= if run.plain_file not in [nil, ""], do: "- " <> line(run.plain_file) <> "\n" %>- Finished: <%= stamp(run.finished_at) %>
+<%= if !steps?(run) && plain_file(run.plain_file), do: "- " <> line(run.plain_file) <> "\n" %>- Finished: <%= stamp(run.finished_at) %>
 - Run on techtree.sh: <%= run.run_url %>
 <%= for {label, value} <- versions(run.versions) do %>- <%= label %>: <%= line(value) %>
-<% end %>
-<%= line(run.outcome_detail) %>
+<% end %><%= if steps?(run) do %>
+Steps, in order; the result is <%= line(deciding_step(run).name) %>'s:
+<%= for step <- run.turns do %>
+- <%= line(step.name) %>: <%= word(@notes, step.outcome) %> (`<%= step.outcome %>`)<%= if plain_file(step.plain_file), do: ", " <> line(step.plain_file) %>. <%= line(step.outcome_detail) %><% end %>
 
+Checks, <%= line(deciding_step(run).name) %>:
+<% else %>
+<%= line(run.outcome_detail) %>
+<% end %>
 <%= for check <- checks do %>- <%= line(check.criterion) %>: <%= check_said(check.result) %>. <%= line(check.reason) %>
 <% end %><% end %><% end %>
 <%= trailer() %>

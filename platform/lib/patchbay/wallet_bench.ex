@@ -17,6 +17,7 @@ defmodule Patchbay.WalletBench do
     end
 
     resource Patchbay.WalletBench.Check do
+      define(:list_checks, action: :read)
       define(:pair_checks, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 

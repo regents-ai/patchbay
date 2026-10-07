@@ -1,5 +1,8 @@
 defmodule Patchbay.WalletBench.Check do
-  @moduledoc "One of the judge's five checks behind a run's result."
+  @moduledoc """
+  One of the judge's checks behind a run's result, from the step that decided
+  it. Each grid has its own checks, ordered by `criterion_id`.
+  """
 
   use Ash.Resource,
     otp_app: :patchbay,
@@ -15,6 +18,8 @@ defmodule Patchbay.WalletBench.Check do
   end
 
   actions do
+    defaults([:read])
+
     read :for_pair do
       description("Every check behind one agent and wallet pair's runs, in order.")
       argument(:harness_id, :string, allow_nil?: false)

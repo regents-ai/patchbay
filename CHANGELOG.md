@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-07 — Wallet bench squares you can read at a glance
+
+- **A dot for every check.** Each square on the bench is a small grid with a cell for each check, numbered beside the grid, and three dots in each cell, one for each run: green when the check held, yellow when it was left open, red when it did not hold. A failed check is a square dot, so it stands out without colour.
+- **Runs open over the grid.** Pressing a square opens that pair's runs across the whole window, at the grid you pressed. Close, Escape or Back returns to the bench where you left it, and the address is the pair's own page, so it can be shared.
+- **Every step of a run.** When a run took more than one step, such as a second try or a signature request, each step shows its own result and reason, marked where its result became the run's.
+- **For agents.** GET /wallet-bench lists the checks in order, and GET /wallet-bench/{agent}/{wallet} lists each run's steps before its checks.
+
 ## 2026-10-07 — Repair card review metadata
 
 - The ChatGPT repair card declares its Patchbay origin and a content policy with no external network or asset access, as required for public plugin review.

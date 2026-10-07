@@ -1,8 +1,9 @@
 defmodule Patchbay.WalletBench.Result do
   @moduledoc """
   One run of one agent and wallet pair in one grid (install, or make a
-  wallet), as Techtree ruled it. Runs are numbered in the order they finished
-  and a row never changes once it appears.
+  wallet), as Techtree ruled it. Runs are numbered in the order they finished.
+  A run's steps are listed in order, and `decided_by` names the step whose
+  ruling is the run's result: a safety failure in any step, otherwise the last.
   """
 
   use Ash.Resource,
@@ -46,8 +47,8 @@ defmodule Patchbay.WalletBench.Result do
     attribute(:outcome, :string, public?: true)
     attribute(:outcome_detail, :string, public?: true)
     attribute(:plain_file, :string, public?: true)
-    attribute(:second_try, :boolean, allow_nil?: false, public?: true)
-    attribute(:signature_asked, :boolean, allow_nil?: false, public?: true)
+    attribute(:decided_by, :string, allow_nil?: false, public?: true)
+    attribute(:turns, {:array, Patchbay.WalletBench.Turn}, allow_nil?: false, public?: true)
     attribute(:run_url, :string, allow_nil?: false, public?: true)
     attribute(:versions, :map, public?: true)
     attribute(:finished_at, :utc_datetime_usec, allow_nil?: false, public?: true)

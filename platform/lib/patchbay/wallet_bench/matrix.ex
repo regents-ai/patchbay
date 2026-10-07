@@ -3,11 +3,11 @@ defmodule Patchbay.WalletBench.Matrix do
   The bench's two grids, agents by wallets, built from what Techtree publishes.
 
   Each square holds the outcomes of that pair's runs counted separately (two
-  passes and an inconclusive run stay two and one, never one verdict), how
-  many came from a second install try or a signature request, the plain files
-  behind a flagged pass, and the fixed outcome Techtree gives a square that
-  never runs. A square with no runs and no fixed outcome has not been tested
-  yet.
+  passes and an inconclusive run stay two and one, never one verdict), the
+  fixed outcome Techtree gives a square that never runs, and one cell for each
+  of the grid's checks. A cell holds one dot per run, in run order: what the
+  judge found for that check in that run, or nothing when the run has not
+  happened. A square with no runs and no fixed outcome has not been tested yet.
   """
 
   alias Patchbay.WalletBench
@@ -18,13 +18,17 @@ defmodule Patchbay.WalletBench.Matrix do
   @outcomes ~w(PASS PASS* FAILED_TECHNICAL FAILED_SAFETY BLOCKED_AUTH BLOCKED_POLICY
                BLOCKED_ENVIRONMENT BLOCKED_UPSTREAM WAITING_HUMAN INCONCLUSIVE NOT_RUN)
 
+  # Each pair runs three times (Techtree's "runs" note), so a cell has a dot for
+  # each of the three.
+  @runs_per_pair 3
+
+  @type criterion :: %{id: String.t(), criterion: String.t()}
+  @type cell :: %{criterion: criterion(), dots: [String.t() | nil]}
   @type square :: %{
           runs: non_neg_integer(),
           tally: [{String.t(), pos_integer()}],
           fixed: [struct()],
-          second_tries: non_neg_integer(),
-          signatures: non_neg_integer(),
-          plain_files: [String.t()]
+          cells: [cell()]
         }
 
   @doc "Every outcome Techtree rules, in the order the page lists them."
@@ -37,15 +41,17 @@ defmodule Patchbay.WalletBench.Matrix do
 
   @doc """
   Everything the page shows, read now: the agents and wallets, Techtree's
-  notes by key, and for each grid its squares by `{harness_id, wallet_id}`.
+  notes by key, and for each grid its checks and its squares by
+  `{harness_id, wallet_id}`.
   """
   @spec read() :: {:ok, map()} | {:error, term()}
   def read do
     with {:ok, roster} <- WalletBench.list_roster(),
          {:ok, notes} <- WalletBench.list_notes(),
          {:ok, fixed} <- WalletBench.list_fixed(),
-         {:ok, results} <- WalletBench.list_results() do
-      {:ok, build(roster, notes, fixed, results)}
+         {:ok, results} <- WalletBench.list_results(),
+         {:ok, checks} <- WalletBench.list_checks() do
+      {:ok, build(roster, notes, fixed, results, checks)}
     end
   end
 
@@ -54,12 +60,13 @@ defmodule Patchbay.WalletBench.Matrix do
   def notes(notes), do: Map.new(notes, &{&1.key, &1.text})
 
   @doc "The page's grids from the views' rows."
-  @spec build([struct()], [struct()], [struct()], [struct()]) :: map()
-  def build(roster, notes, fixed, results) do
+  @spec build([struct()], [struct()], [struct()], [struct()], [struct()]) :: map()
+  def build(roster, notes, fixed, results, checks) do
     roster = Enum.sort_by(roster, & &1.id)
     harnesses = Enum.filter(roster, &(&1.kind == "harness"))
     wallets = Enum.filter(roster, &(&1.kind == "wallet"))
     by_square = Enum.group_by(results, &{&1.grid, &1.harness_id, &1.wallet_id})
+    found = Map.new(checks, &{{&1.grid, &1.attempt_id, &1.criterion_id}, &1.result})
 
     %{
       harnesses: harnesses,
@@ -67,13 +74,16 @@ defmodule Patchbay.WalletBench.Matrix do
       notes: notes(notes),
       grids:
         Enum.map(@grids, fn grid ->
+          criteria = criteria(checks, grid)
+
           squares =
             for h <- harnesses, w <- wallets, into: %{} do
-              runs = Map.get(by_square, {grid, h.id, w.id}, [])
-              {{h.id, w.id}, square(runs, fixed_for(fixed, grid, h.id, w.id))}
+              runs = by_square |> Map.get({grid, h.id, w.id}, []) |> Enum.sort_by(& &1.run)
+              fixed = fixed_for(fixed, grid, h.id, w.id)
+              {{h.id, w.id}, square(runs, fixed, criteria, found)}
             end
 
-          %{grid: grid, squares: squares} |> Map.merge(progress(squares))
+          %{grid: grid, criteria: criteria, squares: squares} |> Map.merge(progress(squares))
         end)
     }
   end
@@ -96,21 +106,32 @@ defmodule Patchbay.WalletBench.Matrix do
     notes |> Map.fetch!(outcome) |> String.split([":", "."], parts: 2) |> hd()
   end
 
-  defp square(runs, fixed) do
+  # A grid's checks, in Techtree's order.
+  defp criteria(checks, grid) do
+    checks
+    |> Enum.filter(&(&1.grid == grid))
+    |> Enum.uniq_by(& &1.criterion_id)
+    |> Enum.sort_by(& &1.criterion_id)
+    |> Enum.map(&%{id: &1.criterion_id, criterion: &1.criterion})
+  end
+
+  defp square(runs, fixed, criteria, found) do
     tally =
       runs
       |> Enum.frequencies_by(& &1.outcome)
       |> Enum.sort_by(fn {outcome, _count} -> Enum.find_index(@outcomes, &(&1 == outcome)) end)
 
-    %{
-      runs: length(runs),
-      tally: tally,
-      fixed: fixed,
-      second_tries: Enum.count(runs, & &1.second_try),
-      signatures: Enum.count(runs, & &1.signature_asked),
-      plain_files:
-        runs |> Enum.map(& &1.plain_file) |> Enum.reject(&(&1 in [nil, ""])) |> Enum.uniq()
-    }
+    cells =
+      Enum.map(criteria, fn criterion ->
+        dots = Enum.map(runs, &found[{&1.grid, &1.attempt_id, criterion.id}])
+
+        %{
+          criterion: criterion,
+          dots: dots ++ List.duplicate(nil, max(@runs_per_pair - length(runs), 0))
+        }
+      end)
+
+    %{runs: length(runs), tally: tally, fixed: fixed, cells: cells}
   end
 
   defp progress(squares) do

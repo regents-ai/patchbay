@@ -5,7 +5,7 @@
 
   <section class="pb-sheet-section pb-wb-intro">
     <p>
-      Coding agents set up crypto wallets on their own. Each square is one agent with one wallet. Open it for every run.
+      Coding agents set up crypto wallets on their own. Each square is one agent with one wallet: a cell for each check, a dot for each run.
     </p>
     <Regent.Primitives.disclosure id="pb-wb-setup" summary="How the bench runs">
       <p>{@matrix.notes["setup"]}</p>
@@ -24,8 +24,10 @@
 
   <section class="pb-sheet-section pb-wb-key" aria-label="Key">
     <ul class="pb-wb-legend">
-      <li :for={outcome <- outcomes()}><.chip notes={@matrix.notes} outcome={outcome} /></li>
-      <li><span class="pb-wb-untested">Not tested yet</span></li>
+      <li><span class="pb-wb-dot is-held" aria-hidden="true"></span>Held</li>
+      <li><span class="pb-wb-dot is-open" aria-hidden="true"></span>Left open</li>
+      <li><span class="pb-wb-dot is-failed" aria-hidden="true"></span>Did not hold</li>
+      <li><span class="pb-wb-dot is-none" aria-hidden="true"></span>No run</li>
     </ul>
     <a
       class="rg-button rg-button--secondary pb-wb-swap"
@@ -49,6 +51,7 @@
         {grid.tested} of {grid.total} squares have results · {grid.never_run} never run
       </p>
     </div>
+    <.check_key id={"pb-wb-checks-" <> grid.grid} criteria={grid.criteria} />
     <div
       class="pb-wb-scroll"
       role="region"
@@ -90,4 +93,19 @@
       as each run finishes. The first survey is on <a href={~p"/blog/agent-wallet-bench-v7"}>the blog</a>.
     </p>
   </section>
+
+  <dialog id="pb-wb-dialog" class="pb-wb-dialog" aria-labelledby="pb-wb-dialog-title">
+    <div class="pb-wb-dialog-bar">
+      <h2 id="pb-wb-dialog-title"></h2>
+      <form method="dialog">
+        <button class="rg-button rg-button--secondary" type="submit">
+          <span class="rg-button__label">Close</span>
+        </button>
+      </form>
+    </div>
+    <div class="pb-wb-dialog-body" data-wb-body></div>
+    <p class="pb-wb-dialog-error" data-wb-error hidden>
+      These runs did not load. <a data-wb-page href="">Open them on their own page</a>
+    </p>
+  </dialog>
 </main>

@@ -4,7 +4,18 @@ defmodule PatchbayWeb.WalletBenchMD do
   use PatchbayWeb, :md
 
   import PatchbayWeb.WalletBenchHTML,
-    only: [grid_title: 1, word: 2, outcomes: 0, check_said: 1, versions: 1, rows: 2, columns: 2]
+    only: [
+      grid_title: 1,
+      word: 2,
+      outcomes: 0,
+      check_said: 1,
+      versions: 1,
+      rows: 2,
+      columns: 2,
+      steps?: 1,
+      deciding_step: 1,
+      plain_file: 1
+    ]
 
   embed_templates("wallet_bench_md/*")
 
