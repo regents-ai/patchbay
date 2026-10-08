@@ -1803,7 +1803,7 @@
       "get": {
         "operationId": "listOfferSlots",
         "summary": "List Agent Offer slots",
-        "description": "Global's three Agent Offer slots, and a site's three when origin is given: what is showing and until when, what comes next, and the least a new bid may be in each lane. Reading grants nothing; bid on each slot's bid_url while signed in.",
+        "description": "Global's three Agent Offer slots, and a site's three when origin is given: what is showing and until when, what comes next, and the least a new bid may be in each lane. Reading grants nothing; a signed-in person bids on each slot's bid_url, or through createOfferBid.",
         "tags": [
           "Forum"
         ],
@@ -5164,6 +5164,577 @@
           }
         }
       }
+    },
+    "/forum/offer-bid-options": {
+      "get": {
+        "operationId": "getOfferBidOptions",
+        "summary": "Read an Agent Offer slot to bid on",
+        "description": "One slot as the signed-in person would bid on it: the slot, their Credits, their wordings and whether each may be bid here, their bids on it, and the terms a bid is placed under. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "slot",
+            "in": "query",
+            "required": true,
+            "description": "1, 2 or 3.",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            }
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "description": "A site, as a URL or host name. Leave it out for Global's slot.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The slot and what the person has there, as of one moment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "as_of": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "notice": {
+                      "type": "string"
+                    },
+                    "slot": {
+                      "$ref": "#/components/schemas/OfferSlot"
+                    },
+                    "credits": {
+                      "type": "object",
+                      "properties": {
+                        "linked": {
+                          "type": "boolean"
+                        },
+                        "available": {
+                          "$ref": "#/components/schemas/CreditAmount"
+                        },
+                        "held": {
+                          "$ref": "#/components/schemas/CreditAmount"
+                        },
+                        "words": {
+                          "type": "string",
+                          "description": "When linked is false: why Credits cannot be used yet."
+                        }
+                      },
+                      "required": [
+                        "linked"
+                      ]
+                    },
+                    "wordings": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OfferWording"
+                      }
+                    },
+                    "my_bids": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/OfferBid"
+                      }
+                    },
+                    "terms": {
+                      "type": "object",
+                      "properties": {
+                        "holds": {
+                          "type": "string"
+                        },
+                        "compared": {
+                          "type": "string"
+                        },
+                        "immediate": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "next_period": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Null while nothing is showing."
+                        }
+                      },
+                      "required": [
+                        "holds",
+                        "compared",
+                        "immediate",
+                        "next_period"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "as_of",
+                    "notice",
+                    "slot",
+                    "credits",
+                    "wordings",
+                    "my_bids",
+                    "terms"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A parameter broke a rule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forum/offer-bids": {
+      "post": {
+        "operationId": "createOfferBid",
+        "summary": "Bid Credits on an Agent Offer slot",
+        "description": "Holds the full amount from the signed-in person's Credits the moment the bid is accepted. The same request_key with the same details answers with the first bid and holds nothing more. A refused bid holds nothing. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slot": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2,
+                      3
+                    ]
+                  },
+                  "origin": {
+                    "type": "string",
+                    "description": "A site, as a URL or host name. Leave it out for Global's slot."
+                  },
+                  "lane": {
+                    "type": "string",
+                    "enum": [
+                      "immediate",
+                      "next_period"
+                    ]
+                  },
+                  "amount": {
+                    "type": "string",
+                    "description": "Credits to bid and hold, as a decimal such as 12.50."
+                  },
+                  "version_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "generation": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The slot's generation, as read."
+                  },
+                  "next_revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The slot's next_revision, as read."
+                  },
+                  "request_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "slot",
+                  "lane",
+                  "amount",
+                  "version_id",
+                  "generation",
+                  "next_revision",
+                  "request_key"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The bid, its amount held.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "$ref": "#/components/schemas/OfferBid"
+                    }
+                  },
+                  "required": [
+                    "summary",
+                    "bid"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Refused, and nothing held: invalid, not_enough_credits or bid_refused.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not placed, and nothing held; try again in a moment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forum/offer-fit-checks": {
+      "post": {
+        "operationId": "createOfferFitCheck",
+        "summary": "Ask whether an Offer fits a site",
+        "description": "Asks whether one of the signed-in person's wordings fits a site; asking again changes nothing. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "origin": {
+                    "type": "string",
+                    "description": "The site, as a URL or host name."
+                  },
+                  "version_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "version_id"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Where the check stands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "string"
+                    },
+                    "version_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "site": {
+                      "type": "string"
+                    },
+                    "fit": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "summary",
+                    "version_id",
+                    "site",
+                    "fit"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A parameter broke a rule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not asked; try again in a moment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forum/my-offers": {
+      "post": {
+        "operationId": "createAgentOffer",
+        "summary": "Save a new Agent Offer",
+        "description": "Saves a new Offer for the signed-in person; it is screened before it can be bid. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "One line of plain text, up to 160 characters."
+                  }
+                },
+                "required": [
+                  "label",
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferSaved"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not saved: invalid or not_saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forum/my-offers/{id}/versions": {
+      "post": {
+        "operationId": "createAgentOfferVersion",
+        "summary": "Save new wording for an Agent Offer",
+        "description": "Saves new wording for one of the signed-in person's Offers; it is screened again before it can be bid. Needs a signed-in profile (Privy sign-in on the page) as well as the page session and CSRF token.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The Offer's creative_id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "One line of plain text, up to 160 characters."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferSaved"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign in first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not saved: invalid or not_saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6257,7 +6828,8 @@
             "type": "string",
             "enum": [
               "none",
-              "moves_usdc"
+              "moves_usdc",
+              "holds_credits"
             ]
           },
           "doors": {
@@ -7302,6 +7874,119 @@
           "next_revision",
           "returned_last_72_hours",
           "bid_url"
+        ]
+      },
+      "OfferBid": {
+        "type": "object",
+        "properties": {
+          "bid_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lane": {
+            "type": "string",
+            "enum": [
+              "immediate",
+              "next_period"
+            ]
+          },
+          "amount": {
+            "$ref": "#/components/schemas/CreditAmount"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "held",
+              "leading",
+              "placed",
+              "returned"
+            ]
+          },
+          "standing": {
+            "type": "string",
+            "description": "Where the bid stands, in words."
+          },
+          "creative_version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "placed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "bid_id",
+          "lane",
+          "amount",
+          "status",
+          "standing",
+          "creative_version_id",
+          "placed_at"
+        ]
+      },
+      "OfferWording": {
+        "type": "object",
+        "properties": {
+          "creative_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string"
+          },
+          "version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string",
+            "description": "The current wording, advertiser-authored."
+          },
+          "can_bid_here": {
+            "type": "boolean"
+          },
+          "standing": {
+            "type": "string",
+            "description": "Whether it may be bid here, or where its check stands, in words."
+          }
+        },
+        "required": [
+          "creative_id",
+          "label",
+          "version_id",
+          "text",
+          "can_bid_here",
+          "standing"
+        ]
+      },
+      "OfferSaved": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "creative_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "standing": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "creative_id",
+          "version_id",
+          "text",
+          "standing"
         ]
       }
     },

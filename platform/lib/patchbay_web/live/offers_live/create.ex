@@ -106,7 +106,8 @@ defmodule PatchbayWeb.OffersLive.Create do
     |> Enum.reject(& &1.archived_at)
   end
 
-  defp words(%Ash.Error.Invalid{errors: errors}) do
+  @doc "Why an Offer or a new wording was not saved, in words."
+  def words(%Ash.Error.Invalid{errors: errors}) do
     Enum.map_join(errors, " ", fn
       %{field: :text, message: message} -> "The wording #{message}."
       %{field: :label, message: message} -> "The name #{message}."
@@ -115,7 +116,7 @@ defmodule PatchbayWeb.OffersLive.Create do
     end)
   end
 
-  defp words(_problem), do: "That could not be saved. Try again in a moment."
+  def words(_problem), do: "That could not be saved. Try again in a moment."
 
   @doc """
   The text as it will be kept, its counts and its links, or what is wrong

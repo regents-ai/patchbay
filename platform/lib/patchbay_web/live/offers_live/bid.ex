@@ -26,23 +26,18 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   import PatchbayWeb.OffersLive.Markets, only: [credits: 1, offer_slot: 1]
 
-  require Ash.Query
-
   alias Patchbay.Credits
   alias Patchbay.Forum.Site
   alias Patchbay.Offers
   alias Patchbay.Offers.Bid
-  alias Patchbay.Offers.CreativeVersion
   alias Patchbay.Offers.CreditAmount
   alias Patchbay.Offers.Errors.BidRefused
   alias Patchbay.Offers.Returns
   alias Patchbay.Offers.Review
   alias Patchbay.Offers.Slot
-  alias Patchbay.Offers.Terms
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.OffersLive.BidDesk
   alias PatchbayWeb.OffersLive.Create
-  alias PatchbayWeb.OffersLive.Markets
-  alias RegentCredits.Errors.NotEnoughCredits
 
   @impl true
   def mount(_params, _session, socket) do
@@ -105,14 +100,15 @@ defmodule PatchbayWeb.OffersLive.Bid do
         {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
 
       {:error, error} ->
-        {:noreply, socket |> assign(problem: words(error), short?: short?(error)) |> read()}
+        {kind, words} = BidDesk.refusal(error)
+
+        {:noreply,
+         socket |> assign(problem: words, short?: kind == :not_enough_credits) |> read()}
     end
   end
 
   def handle_event("ask_fit", %{"version_id" => id}, socket) do
-    market = open_market(socket)
-
-    case Offers.request_market_review(id, market.id, actor: socket.assigns.current_profile) do
+    case BidDesk.ask_fit(socket.assigns.current_profile, socket.assigns.site, id) do
       {:ok, _review} ->
         {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
 
@@ -134,133 +130,34 @@ defmodule PatchbayWeb.OffersLive.Bid do
   end
 
   defp place(socket) do
-    %{slot: slot, lane: lane, version_id: version_id, amount: amount, key: key} = socket.assigns
-    slot_id = if slot, do: slot.id, else: open_slot(socket).id
+    %{site: site, number: number, slot: slot} = socket.assigns
 
-    Offers.submit_bid(
-      %{
-        slot_id: slot_id,
-        lane: lane,
-        amount: String.trim(amount || ""),
-        version_id: version_id,
-        # As the page read them; a slot not yet opened starts at nothing.
-        target_generation: if(slot, do: slot.active_generation, else: 0),
-        target_next_revision: if(slot, do: slot.next_revision, else: 0),
-        idempotency_key: key
-      },
-      actor: socket.assigns.current_profile
-    )
-  end
-
-  defp open_market(%{assigns: %{market: %{} = market}}), do: market
-
-  defp open_market(%{assigns: %{site: site}}) do
-    # Opening a site's market only makes its three empty slots, which every
-    # visitor already sees as empty, so it skips authorization deliberately.
-    Offers.open_site_market!(site.id, authorize?: false)
-  end
-
-  defp open_slot(socket) do
-    market = open_market(socket)
-    number = socket.assigns.number
-
-    # Slots are public.
-    Slot
-    |> Ash.Query.filter(market_id == ^market.id and number == ^number)
-    |> Ash.read_one!()
+    BidDesk.place(socket.assigns.current_profile, site, number, %{
+      lane: socket.assigns.lane,
+      amount: socket.assigns.amount,
+      version_id: socket.assigns.version_id,
+      # As the page read them; a slot not yet opened starts at nothing.
+      generation: if(slot, do: slot.active_generation, else: 0),
+      next_revision: if(slot, do: slot.next_revision, else: 0),
+      key: socket.assigns.key
+    })
   end
 
   defp read(socket) do
     %{site: site, number: number, current_profile: profile} = socket.assigns
     now = DateTime.utc_now()
-    window = Returns.window(now)
-
-    market =
-      if site,
-        do: Markets.site_markets([site.id], window)[site.id],
-        else: Markets.global(window)
-
-    slot = market && Enum.find(market.slots, &(&1.number == number))
+    market = BidDesk.market(site, Returns.window(now))
+    slot = BidDesk.slot(market, number)
+    showing = BidDesk.showing(slot, now)
 
     socket
     |> assign(now: now, market: market, slot: slot, opening: Offers.opening_minimum_minor(market))
-    |> assign(showing: showing(slot, now))
-    |> assign(mine(profile, market, slot, now))
+    |> assign(showing: showing, terms: BidDesk.terms(showing))
+    |> assign(BidDesk.mine(profile, market, slot, now))
     |> assign_minimum()
   end
 
   defp assign_minimum(socket), do: assign(socket, minimum: minimum(socket.assigns))
-
-  defp showing(nil, _now), do: nil
-
-  defp showing(slot, now) do
-    placement = slot.active_placement
-    if placement && Markets.showing?(placement, now), do: placement
-  end
-
-  defp mine(nil, _market, _slot, _now), do: %{balance: nil, wordings: [], bids: []}
-
-  defp mine(profile, market, slot, now) do
-    %{
-      balance: balance(profile),
-      wordings: wordings(profile, market, now),
-      bids: if(slot, do: bids(profile, slot), else: [])
-    }
-  end
-
-  defp balance(profile) do
-    case Credits.spender(profile) do
-      {:ok, _spender} -> RegentCredits.balance(profile.privy_user_id)
-      :not_linked -> :not_linked
-    end
-  end
-
-  # Each current wording with whether it may be bid here now, and if not,
-  # where its check for this market stands.
-  defp wordings(profile, market, now) do
-    reviews = Ash.Query.load(Review, [:approved?, market: :site])
-
-    versions =
-      [actor: profile, load: [current_version: [reviews: reviews]]]
-      |> Offers.my_creatives!()
-      |> Enum.reject(&(&1.archived_at || &1.current_version.blocked_at))
-      |> Enum.map(&{&1, &1.current_version})
-
-    eligible = eligible(profile, market, Enum.map(versions, fn {_c, v} -> v.id end), now)
-
-    Enum.map(versions, fn {creative, version} ->
-      %{
-        creative: creative,
-        version: version,
-        eligible?: version.id in eligible,
-        fit: market && Enum.find(version.reviews, &(&1.market_id == market.id))
-      }
-    end)
-  end
-
-  defp eligible(_profile, nil, _ids, _now), do: []
-  defp eligible(_profile, _market, [], _now), do: []
-
-  defp eligible(profile, market, ids, now) do
-    CreativeVersion
-    |> Ash.Query.for_read(
-      :eligible,
-      %{market_id: market.id, global: market.scope == :global, at: now},
-      actor: profile
-    )
-    |> Ash.Query.filter(id in ^ids)
-    |> Ash.read!()
-    |> Enum.map(& &1.id)
-  end
-
-  defp bids(profile, slot) do
-    Bid
-    |> Ash.Query.for_read(:mine, %{}, actor: profile)
-    |> Ash.Query.filter(slot_id == ^slot.id)
-    |> Ash.Query.load([:version, :placement])
-    |> Ash.read!(page: [limit: 10])
-    |> Map.fetch!(:results)
-  end
 
   # The amount starts at the lane's minimum, and a new amount is a new
   # request.
@@ -281,17 +178,8 @@ defmodule PatchbayWeb.OffersLive.Bid do
   end
 
   @doc "The least a bid in the chosen lane may be, as the page read the slot."
-  def minimum(%{lane: :immediate, showing: %{amount_minor: amount}, opening: opening}),
-    do: Terms.replacement_minimum(amount, opening)
-
-  def minimum(%{
-        lane: :next_period,
-        slot: %{next_bid: %{amount_minor: amount}},
-        opening: opening
-      }),
-      do: Terms.replacement_minimum(amount, opening)
-
-  def minimum(%{opening: opening}), do: opening
+  def minimum(%{lane: lane, showing: showing, slot: slot, opening: opening}),
+    do: BidDesk.minimum(lane, showing, slot, opening)
 
   defp number(text) do
     case Integer.parse(text || "") do
@@ -313,22 +201,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   defp lane("next_period"), do: :next_period
   defp lane(_immediate), do: :immediate
-
-  defp words(%Ash.Error.Invalid{errors: [%NotEnoughCredits{shortfall: shortfall} | _]}),
-    do: "You need #{CreditAmount.format(CreditAmount.from_credits(shortfall))} more Credits."
-
-  defp words(%Ash.Error.Invalid{errors: [%BidRefused{} = refused | _]}),
-    do: Exception.message(refused)
-
-  defp words(%Ash.Error.Invalid{errors: [%{field: :version_id} | _]}),
-    do: "Choose one of your approved wordings."
-
-  defp words(_error),
-    do: "That bid could not be placed, and nothing was held. Try again in a moment."
-
-  # A bid the balance could not cover, which more Credits would.
-  defp short?(%Ash.Error.Invalid{errors: [%NotEnoughCredits{} | _]}), do: true
-  defp short?(_error), do: false
 
   # Opens the header's Buy Credits dialog.
   defp buy_credits(assigns) do

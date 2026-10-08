@@ -54,6 +54,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   # The discussion list alone; the strip of newest posts above it lists every site.
+  defp tool_pages(conn, page) do
+    case Regex.run(~r{href="([^"]*\?tools_after=[^"#]*)#pb-site-tools"}, page) do
+      [_, next] -> [page | tool_pages(conn, conn |> get(next) |> html_response(200))]
+      nil -> [page]
+    end
+  end
+
   defp feed(html) do
     html |> LazyHTML.from_document() |> LazyHTML.query(".pb-feed-list") |> LazyHTML.to_html()
   end
@@ -192,14 +199,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
       assert first_page =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
 
-      [_, next] =
-        Regex.run(~r{href="([^"]*\?tools_after=[^"#]*)#pb-site-tools"}, first_page)
+      # Every later page leads on, and the last leads back to the first.
+      pages = tool_pages(conn, first_page)
+      assert List.last(pages) =~ ~s(href="/patchbay.help#pb-site-tools")
 
-      second_page = conn |> get(next) |> html_response(200)
-      refute second_page =~ ~s(?tools_after=)
-      assert second_page =~ ~s(href="/patchbay.help#pb-site-tools")
-
-      site_page = first_page <> second_page
+      site_page = Enum.join(pages)
       assert site_page =~ "uplift_current_skill_v1"
       assert site_page =~ "uplift_current_skill_v2"
 

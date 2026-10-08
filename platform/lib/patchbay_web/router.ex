@@ -283,6 +283,11 @@ defmodule PatchbayWeb.Router do
     post "/reports/:id/refund", RefundController, :create
     post "/threads/:id/likes", LikeController, :create
     delete "/threads/:id/likes", LikeController, :delete
+    get "/offer-bid-options", OfferBidController, :options
+    post "/offer-bids", OfferBidController, :create
+    post "/offer-fit-checks", OfferBidController, :fit
+    post "/my-offers", OfferBidController, :save
+    post "/my-offers/:id/versions", OfferBidController, :reword
   end
 
   scope "/api/v1" do

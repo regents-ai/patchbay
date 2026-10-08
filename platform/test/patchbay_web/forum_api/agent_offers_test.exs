@@ -395,6 +395,54 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
   end
 
+  describe "an agent bidding for the person signed in" do
+    # A bid holds its full amount from the person's Credits the moment it is
+    # accepted, the read beside it says so first, a retry with the same key
+    # holds nothing more, and a refused bid holds nothing.
+    test "the read says what a bid holds, the bid holds it once, a refusal holds nothing",
+         %{conn: conn, origin: origin, site: site, owner: owner} do
+      give_credits(owner, "5")
+      approved_version(owner, "Owner fixes flaky builds.", site)
+
+      options =
+        conn
+        |> signed_in(owner)
+        |> get("/forum/offer-bid-options?slot=2&origin=#{origin}")
+        |> json_response(200)
+
+      assert options["terms"]["holds"] =~ "holds its full amount from your Credits"
+      assert options["credits"]["available"]["credits"] == "5.00"
+      assert [%{"version_id" => version_id, "can_bid_here" => true}] = options["wordings"]
+
+      bid = %{
+        slot: 2,
+        origin: origin,
+        lane: "immediate",
+        amount: "2.00",
+        version_id: version_id,
+        generation: options["slot"]["generation"],
+        next_revision: options["slot"]["next_revision"],
+        request_key: Ecto.UUID.generate()
+      }
+
+      placed = conn |> bid_as(owner, bid) |> json_response(201)
+      assert placed["bid"]["amount"]["credits"] == "2.00"
+      assert credits(owner) == %{available: "3", held: "2"}
+
+      again = conn |> bid_as(owner, bid) |> json_response(201)
+      assert again["bid"]["bid_id"] == placed["bid"]["bid_id"]
+      assert credits(owner) == %{available: "3", held: "2"}
+
+      short = %{bid | amount: "10.00", request_key: Ecto.UUID.generate()}
+
+      assert %{"error" => %{"code" => "not_enough_credits", "message" => message}} =
+               conn |> bid_as(owner, short) |> json_response(422)
+
+      assert message == "You need 7.00 more Credits."
+      assert credits(owner) == %{available: "3", held: "2"}
+    end
+  end
+
   describe "the advertiser's own pages" do
     test "active shows what is yours now and then every site showing an Offer",
          %{conn: conn, origin: origin, site: site, owner: owner} do
@@ -591,6 +639,13 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     |> again()
     |> Plug.Test.init_test_session(%{})
     |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
+  end
+
+  defp bid_as(conn, profile, bid) do
+    conn
+    |> signed_in(profile)
+    |> put_req_header("content-type", "application/json")
+    |> post("/forum/offer-bids", Jason.encode!(bid))
   end
 
   defp report_offer(posted, offer) do
