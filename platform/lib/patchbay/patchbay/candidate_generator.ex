@@ -79,7 +79,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
         input_sha256,
         cache_variant(
           :fallback,
-          "patchbay-demo-fallback",
+          "patchbay-sample",
           Keyword.get(opts, :prompt_version, @prompt_version)
         ),
         fn -> {:ok, fallback_result(source, live_reason)} end
@@ -295,8 +295,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       candidate_markdown: candidate,
       change_summary: ["Applied the checked-in Patchbay demo improvement."],
       warnings: [@fallback_warning, @task_warning],
-      model: "patchbay-demo-fallback",
-      model_response_id: "demo-fallback-#{Digest.sha256(inspect(reason))}",
+      model: "patchbay-sample",
+      model_response_id: "sample-#{Digest.sha256(inspect(reason))}",
       prompt_version: @prompt_version,
       fallback_used: true,
       fallback_reason: reason

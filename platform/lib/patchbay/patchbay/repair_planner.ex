@@ -242,8 +242,8 @@ defmodule Patchbay.Patchbay.RepairPlanner do
 
       Keyword.get(opts, :fallback, false) ->
         parse_plan!(Fixtures.repair_plan(), %{
-          model: "patchbay-demo-fallback",
-          model_response_id: "demo-repair-fallback",
+          model: "patchbay-sample",
+          model_response_id: "sample-repair",
           prompt_version: "patchbay-repair-v1",
           fallback_used: true
         })

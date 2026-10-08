@@ -29,7 +29,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
   # A repair proposal records the model that produced its plan. These two names
   # mean no model was called: the checked-in demo fixture, and a plan handed to
   # the planner by its caller.
-  @offline_plan_models ["patchbay-demo-fallback", "provided-plan"]
+  @offline_plan_models ["patchbay-sample", "provided-plan"]
 
   @window_seconds 24 * 60 * 60
 

@@ -210,7 +210,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
              )
 
     assert generated.fallback_used
-    assert generated.model == "patchbay-demo-fallback"
+    assert generated.model == "patchbay-sample"
     assert Enum.any?(generated.warnings, &String.contains?(&1, "built-in example"))
 
     assert {:ok, ^generated} =

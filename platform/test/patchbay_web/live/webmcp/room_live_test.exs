@@ -312,7 +312,11 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
              "Our model was unavailable, so this is a built-in example."
            )
 
-    assert render(view) =~ "This candidate has not been evaluated on real tasks."
+    assert has_element?(
+             view,
+             "#patchbay-fallback-warning",
+             "This candidate has not been evaluated on real tasks."
+           )
   end
 
   test "shows both tool names and contract digests before human approval", %{
@@ -650,7 +654,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       html = render_async(view, 2_000)
 
       assert html =~ "No answer from our model"
-      assert html =~ "The candidate was not presented as a successful completion."
+      assert html =~ "No new version was made, so nothing changed."
       assert Domain.get_invocation!(invocation.id).effective_status == :errored
       assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
     end)

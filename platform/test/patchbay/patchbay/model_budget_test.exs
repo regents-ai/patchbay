@@ -130,7 +130,7 @@ defmodule Patchbay.Patchbay.ModelBudgetTest do
 
     assert invocation.effective_status == :awaiting_visible_state
     assert invocation.handler_result["candidate_provenance"]["fallback_used"] == true
-    assert invocation.handler_result["candidate_provenance"]["model"] == "patchbay-demo-fallback"
+    assert invocation.handler_result["candidate_provenance"]["model"] == "patchbay-sample"
   end
 
   test "a fallback run does not spend the room's daily calls", context do
