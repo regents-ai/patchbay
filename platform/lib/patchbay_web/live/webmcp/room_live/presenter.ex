@@ -5,7 +5,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   alias Patchbay.BoundedText
   alias Patchbay.Forum.RepairAttempt
-  alias Patchbay.Patchbay.{BrowserSession, Invocation, Room, RoomEvent}
+  alias Patchbay.Patchbay.{BrowserSession, CandidateGenerator, Invocation, Room, RoomEvent}
   alias PatchbayWeb.Forum.BoardHTML
 
   # Arguments, handler responses, and observed state all arrive from the browser,
@@ -313,16 +313,14 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
 
   def short_digest(_), do: "—"
 
-  def fallback_used?(%Invocation{
-        handler_result: %{"candidate_provenance" => %{"fallback_used" => true}}
+  def sample_used?(%Invocation{
+        handler_result: %{"candidate_provenance" => %{"sample_used" => true}}
       }),
       do: true
 
-  def fallback_used?(_invocation), do: false
+  def sample_used?(_invocation), do: false
 
-  def proposal_fallback?(proposal) do
-    is_binary(proposal.model) and String.contains?(String.downcase(proposal.model), "fallback")
-  end
+  def sample_plan?(proposal), do: proposal.model == CandidateGenerator.sample_model()
 
   def diff_entries(diff) when is_map(diff),
     do: Enum.sort_by(diff, fn {field, _value} -> to_string(field) end)

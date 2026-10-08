@@ -129,7 +129,7 @@ defmodule Patchbay.Patchbay.ModelBudgetTest do
       )
 
     assert invocation.effective_status == :awaiting_visible_state
-    assert invocation.handler_result["candidate_provenance"]["fallback_used"] == true
+    assert invocation.handler_result["candidate_provenance"]["sample_used"] == true
     assert invocation.handler_result["candidate_provenance"]["model"] == "patchbay-sample"
   end
 

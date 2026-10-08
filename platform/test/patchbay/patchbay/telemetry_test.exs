@@ -53,12 +53,12 @@ defmodule Patchbay.Patchbay.TelemetryTest do
       :tool_name,
       :contract_sha256,
       :arguments_sha256,
-      :fallback_used,
+      :sample_used,
       :failure_code,
       :receipt
     ],
     [:patchbay, :verification, :stop] => [:room_id, :invocation_id, :passed, :failure_code],
-    [:patchbay, :repair, :model_stop] => [:room_id, :invocation_id, :fallback_used],
+    [:patchbay, :repair, :model_stop] => [:room_id, :invocation_id, :sample_used],
     [:patchbay, :repair, :canary_stop] => [
       :room_id,
       :invocation_id,
@@ -271,7 +271,7 @@ defmodule Patchbay.Patchbay.TelemetryTest do
 
     assert measurements.input_tokens == 31
     assert measurements.output_tokens == 12
-    assert metadata.fallback_used == false
+    assert metadata.sample_used == false
     assert metadata.invocation_id == invocation.id
   end
 

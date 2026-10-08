@@ -373,6 +373,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).active_repair_proposal_id == proposal.id
     assert has_element?(view, "#patchbay-room-state[data-repair-status=\"ready_for_approval\"]")
     assert has_element?(view, "#patchbay-repair-provenance", proposal.model)
+    # The room runs on the built-in sample, so the plan must say it is one.
+    assert has_element?(view, ".patchbay-alert-warn", "Sample plan")
 
     # Clear the room's own record of the proposal: the page has no other way to
     # find one, so it must stop showing it even though the room still reads as
@@ -762,7 +764,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["demo_fallback_enabled"] ==
                true
 
-      assert {:ok, %{fallback_used: true}} =
+      assert {:ok, %{sample_used: true}} =
                CandidateGenerator.generate(room.source_markdown, %{
                  "instructions" => "uplift with the switch on"
                })

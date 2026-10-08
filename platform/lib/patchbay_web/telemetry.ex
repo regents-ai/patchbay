@@ -88,7 +88,7 @@ defmodule PatchbayWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
       summary("patchbay.invocation.handler_stop.duration",
-        tags: [:tool_generation, :fallback_used, :failure_code],
+        tags: [:tool_generation, :sample_used, :failure_code],
         unit: {:native, :millisecond}
       ),
       summary("patchbay.invocation.handler_stop.input_tokens",
@@ -106,7 +106,7 @@ defmodule PatchbayWeb.Telemetry do
         description: "Time between the handler returning and the visible state being verified"
       ),
       summary("patchbay.repair.model_stop.duration",
-        tags: [:fallback_used],
+        tags: [:sample_used],
         unit: {:native, :millisecond},
         description: "OpenAI latency for the repair plan"
       ),

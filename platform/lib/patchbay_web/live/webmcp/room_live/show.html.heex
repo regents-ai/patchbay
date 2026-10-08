@@ -403,7 +403,7 @@
       </p>
 
       <div
-        :if={@invocation && fallback_used?(@invocation)}
+        :if={@invocation && sample_used?(@invocation)}
         id="patchbay-fallback-warning"
         class="patchbay-alert patchbay-alert-warn"
       >
@@ -532,7 +532,7 @@
           </div>
         </div>
 
-        <div :if={proposal_fallback?(@proposal)} class="patchbay-alert patchbay-alert-warn">
+        <div :if={sample_plan?(@proposal)} class="patchbay-alert patchbay-alert-warn">
           <strong>Sample plan</strong>
           <span>
             Our model was unavailable, so the repair steps above are a built-in example.

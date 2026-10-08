@@ -259,7 +259,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
         tool_name: revision.name,
         contract_sha256: invocation.tool_contract_sha256,
         arguments_sha256: invocation.arguments_sha256,
-        fallback_used: (generated && Map.get(generated, :fallback_used)) || false,
+        sample_used: (generated && Map.get(generated, :sample_used)) || false,
         failure_code: failure_code,
         receipt: invocation.receipt
       }
@@ -312,7 +312,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
             "invocation_id" => current.id,
             "reported_success" => true,
             "applied" => locked_revision.handler_adapter == :apply_candidate_to_editor,
-            "fallback_used" => generated.fallback_used
+            "sample_used" => generated.sample_used
           },
           browser_session_id: browser_session.id
         )
@@ -572,8 +572,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       "model" => generated.model,
       "model_response_id" => generated.model_response_id,
       "prompt_version" => generated.prompt_version,
-      "fallback_used" => generated.fallback_used,
-      "fallback_reason" => generated.fallback_reason,
+      "sample_used" => generated.sample_used,
+      "sample_reason" => generated.sample_reason,
       "usage" => Client.normalize_usage(Map.get(generated, :usage))
     }
   end

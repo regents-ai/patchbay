@@ -29,7 +29,7 @@ The columns you will see:
 | `outcome` | `success` or `failure` |
 | `failure_code` | why it failed, `-` when it did not |
 | `duration_ms` | how long that step took |
-| `fallback_used` | `true` when the built-in demo answer was used instead of a live model |
+| `sample_used` | `true` when the built-in demo answer was used instead of a live model |
 | `receipt` | the stub handed back to the agent for that call, and the only thing that can tie a later report to it |
 
 ## A. Browser pass
@@ -49,14 +49,14 @@ Follow [JUDGES.md](JUDGES.md). Here is the same run with the log beside it.
    greeting warmer.*
    ```
    [webmcp] invocation.start room=<id> session=<id> invocation=<id> generation=1 tool=uplift_current_skill_v1 contract=<digest> args=<digest>
-   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=1 tool=uplift_current_skill_v1 contract=<digest> args=<digest> outcome=success failure_code=- duration_ms=<n> fallback_used=false receipt=<receipt>
+   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=1 tool=uplift_current_skill_v1 contract=<digest> args=<digest> outcome=success failure_code=- duration_ms=<n> sample_used=false receipt=<receipt>
    [webmcp] verification.stop room=<id> invocation=<id> outcome=failure failure_code=CANDIDATE_EMPTY duration_ms=<n>
    ```
    Those two lines together are the whole point of the demo: the tool reported
    success, the page could not see it, and the page wins.
 4. **Click Diagnose & propose repair.**
    ```
-   [webmcp] repair.model_stop room=<id> invocation=<id> duration_ms=<n> fallback_used=false
+   [webmcp] repair.model_stop room=<id> invocation=<id> duration_ms=<n> sample_used=false
    [webmcp] repair.canary_stop room=<id> invocation=<id> revision=<id> outcome=success failure_code=- duration_ms=<n>
    ```
 5. **Click Approve & hot-swap.** The publication comes first, then the browser
@@ -71,7 +71,7 @@ Follow [JUDGES.md](JUDGES.md). Here is the same run with the log beside it.
    retry the uplift.*
    ```
    [webmcp] invocation.start room=<id> session=<id> invocation=<id> generation=2 tool=uplift_current_skill_v2 contract=<new digest> args=<digest>
-   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=2 tool=uplift_current_skill_v2 contract=<new digest> args=<digest> outcome=success failure_code=- duration_ms=<n> fallback_used=false receipt=<receipt>
+   [webmcp] invocation.handler_stop room=<id> session=<id> invocation=<id> generation=2 tool=uplift_current_skill_v2 contract=<new digest> args=<digest> outcome=success failure_code=- duration_ms=<n> sample_used=false receipt=<receipt>
    [webmcp] verification.stop room=<id> invocation=<id> outcome=success failure_code=- duration_ms=<n>
    [webmcp] goal.verified room=<id> invocation=<id> generation=2
    ```
@@ -151,7 +151,7 @@ The whole loop in the log, in this order:
 
 ```
 [webmcp] agent.repair_start room=<id> report=<id> attempt=<id>
-[webmcp] repair.model_stop room=<id> invocation=<id> duration_ms=<n> fallback_used=false
+[webmcp] repair.model_stop room=<id> invocation=<id> duration_ms=<n> sample_used=false
 [webmcp] repair.canary_stop room=<id> invocation=<id> revision=<id> outcome=success failure_code=- duration_ms=<n>
 [webmcp] publication.stop room=<id> revision=<id> generation=2 duration_ms=<n>
 [webmcp] agent.repair_stop room=<id> report=<id> attempt=<id> outcome=published contract=<new digest> duration_ms=<n>
@@ -242,5 +242,5 @@ reason and with the one thing to do about it:
 | --- | --- |
 | No `webmcp.registered` line after the room is open | The browser is not offering the page's tools. Page tools are off, or this browser has none. |
 | `invocation.handler_stop ... outcome=success` then `verification.stop ... outcome=failure` | The demo working as intended: the tool claimed success, the page proved otherwise. |
-| `fallback_used=true` | The built-in demo answer was used, not a live model. The run is still valid; it just was not live. |
+| `sample_used=true` | The built-in demo answer was used, not a live model. The run is still valid; it just was not live. |
 | No lines at all while you work the page | You are reading the wrong app, or the site is not serving. Check `fly status --app patchbay-regents`. |

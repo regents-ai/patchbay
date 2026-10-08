@@ -217,7 +217,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
       %{
         room_id: room.id,
         invocation_id: invocation.id,
-        fallback_used: Map.get(plan_metadata, :fallback_used, false)
+        sample_used: Map.get(plan_metadata, :sample_used, false)
       }
     )
   end
@@ -238,14 +238,14 @@ defmodule Patchbay.Patchbay.RepairPlanner do
   defp plan_for!(invocation, room, source_revision, opts) do
     cond do
       Keyword.has_key?(opts, :plan) ->
-        parse_plan!(Keyword.fetch!(opts, :plan), %{model: "provided-plan", fallback_used: false})
+        parse_plan!(Keyword.fetch!(opts, :plan), %{model: "provided-plan", sample_used: false})
 
       Keyword.get(opts, :fallback, false) ->
         parse_plan!(Fixtures.repair_plan(), %{
-          model: "patchbay-sample",
+          model: CandidateGenerator.sample_model(),
           model_response_id: "sample-repair",
           prompt_version: "patchbay-repair-v1",
-          fallback_used: true
+          sample_used: true
         })
 
       true ->

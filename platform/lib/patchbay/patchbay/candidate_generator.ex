@@ -32,8 +32,13 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   alias Patchbay.Patchbay.OpenAI.Client
 
   @prompt_version "patchbay-candidate-v1"
+  @sample_model "patchbay-sample"
   @fallback_warning "Our model was unavailable, so this is a built-in example."
   @task_warning "This candidate has not been evaluated on real tasks."
+
+  @doc "The model name a built-in sample answer or repair plan records."
+  @spec sample_model() :: String.t()
+  def sample_model, do: @sample_model
 
   @spec generate(binary(), map(), keyword()) :: {:ok, map()} | {:error, term()}
   def generate(source, arguments, opts \\ [])
@@ -79,7 +84,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
         input_sha256,
         cache_variant(
           :fallback,
-          "patchbay-sample",
+          @sample_model,
           Keyword.get(opts, :prompt_version, @prompt_version)
         ),
         fn -> {:ok, fallback_result(source, live_reason)} end
@@ -133,8 +138,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       model: provenance["model"],
       model_response_id: provenance["model_response_id"],
       prompt_version: provenance["prompt_version"],
-      fallback_used: provenance["fallback_used"],
-      fallback_reason: provenance["fallback_reason"],
+      sample_used: provenance["sample_used"],
+      sample_reason: provenance["sample_reason"],
       usage: Client.normalize_usage(provenance["usage"])
     }
   end
@@ -295,11 +300,11 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
       candidate_markdown: candidate,
       change_summary: ["Applied the checked-in Patchbay demo improvement."],
       warnings: [@fallback_warning, @task_warning],
-      model: "patchbay-sample",
+      model: @sample_model,
       model_response_id: "sample-#{Digest.sha256(inspect(reason))}",
       prompt_version: @prompt_version,
-      fallback_used: true,
-      fallback_reason: reason
+      sample_used: true,
+      sample_reason: reason
     }
   end
 
@@ -375,8 +380,8 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
          model: result[:model] || "unknown-model",
          model_response_id: result[:model_response_id] || "unknown-response",
          prompt_version: result[:prompt_version] || @prompt_version,
-         fallback_used: result[:fallback_used] || false,
-         fallback_reason: result[:fallback_reason],
+         sample_used: result[:sample_used] || false,
+         sample_reason: result[:sample_reason],
          usage: Client.normalize_usage(result[:usage])
        }}
     end
