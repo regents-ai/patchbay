@@ -249,4 +249,15 @@ defmodule Patchbay.Offers.Bid do
       authorize_if(relates_to_actor_via(:owner))
     end
   end
+
+  field_policies do
+    # Who placed a bid is read only by its owner.
+    field_policy :owner_profile_id do
+      authorize_if(expr(owner_profile_id == ^actor(:id)))
+    end
+
+    field_policy :* do
+      authorize_if(always())
+    end
+  end
 end

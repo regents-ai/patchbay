@@ -216,9 +216,19 @@ defmodule Patchbay.Offers.Placement do
 
   policies do
     # Placements are public: what is showing, for how much and until when.
-    # The settlement split of an ended placement is shown only to its owner,
-    # on their own pages; the public pages never load it.
     policy action_type(:read) do
+      authorize_if(always())
+    end
+  end
+
+  field_policies do
+    # Who owns a placement and how its Credits were settled are read only by
+    # that owner. A removal records its own split for moderators.
+    field_policy [:owner_profile_id, :returned_minor, :consumed_minor, :forfeited_minor] do
+      authorize_if(expr(owner_profile_id == ^actor(:id)))
+    end
+
+    field_policy :* do
       authorize_if(always())
     end
   end
