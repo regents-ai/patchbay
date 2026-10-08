@@ -90,7 +90,7 @@ defmodule Patchbay.MixProject do
       {:regent_agents, git: @regents, ref: @regents_ref, sparse: "agents"},
       {:siwa,
        git: @elixir_utils,
-       ref: "44d3b35f986f59e499649f0f046fee8d977d3dcb",
+       ref: "fe3aa1d512a98c9de57b7a1be46fb1852b1a9224",
        sparse: "siwa/siwa-elixir/apps/siwa",
        override: true},
       {:x402, "0.9.0"},
