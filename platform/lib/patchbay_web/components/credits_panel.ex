@@ -4,10 +4,12 @@ defmodule PatchbayWeb.CreditsPanel do
   the chain, the wallet presses and what each press did, all in one place. The
   server builds the steps (`RegentCredits.Chains.steps/3`), every press goes
   straight to the wallet, and each sent Buy is reported as a purchase at once.
-  The panel checks the purchase when the chain confirms the Buy, again each
-  time the balance changes, and when the person presses Check again; the
-  Credits library's Oban checks it once a minute whether the page is open or
-  not.
+  The Credits library records it only once the chain holds the Buy; until then
+  the panel asks the person to keep the page open, and reports it again when
+  the chain confirms the Buy or the person presses Check again. A recorded
+  purchase is checked when the chain confirms the Buy, again each time the
+  balance changes, and when the person presses Check again; the Credits
+  library's Oban checks it once a minute whether the page is open or not.
 
   It pays from the wallet Patchbay knows the profile by, shown as soon as the
   panel opens with its USDC on both chains. The press reaches Privy's active
@@ -30,6 +32,7 @@ defmodule PatchbayWeb.CreditsPanel do
   alias Regent.Primitives, as: P
   alias RegentChain.{Call, Presses, Review}
   alias RegentCredits.{Amount, Chains}
+  alias RegentCredits.Errors.Refused
 
   @chains %{"base" => :base, "ethereum" => :ethereum}
 
@@ -118,8 +121,14 @@ defmodule PatchbayWeb.CreditsPanel do
     socket = OnchainSteps.sent(socket, params)
 
     case Enum.find(socket.assigns.presses.sent, &(&1.hash == String.downcase(hash))) do
-      %{name: "buy", review: %{} = review} = entry -> {:noreply, report(socket, entry, review)}
-      _other -> {:noreply, socket}
+      %{name: "buy", review: %{} = review} = entry ->
+        {:noreply,
+         socket
+         |> put_purchase(entry.hash, %{purchase: :unseen, checked?: false})
+         |> report(entry.hash, review)}
+
+      _other ->
+        {:noreply, socket}
     end
   end
 
@@ -139,8 +148,15 @@ defmodule PatchbayWeb.CreditsPanel do
 
   def handle_event("check_purchase_again", %{"hash" => hash}, socket) do
     case socket.assigns.purchases do
-      %{^hash => %{purchase: %{id: _id}}} -> {:noreply, check_purchase(socket, hash)}
-      _unknown -> {:noreply, socket}
+      %{^hash => %{purchase: %{id: _id}}} ->
+        {:noreply, check_purchase(socket, hash)}
+
+      %{^hash => %{purchase: :unseen}} ->
+        %{review: review} = Enum.find(socket.assigns.presses.sent, &(&1.hash == hash))
+        {:noreply, report(socket, hash, review)}
+
+      _unknown ->
+        {:noreply, socket}
     end
   end
 
@@ -153,6 +169,25 @@ defmodule PatchbayWeb.CreditsPanel do
      |> bought(hash)
      |> read_funds()}
   end
+
+  def handle_async({:report, hash}, {:ok, {:ok, purchase}}, socket),
+    do:
+      {:noreply,
+       socket |> put_purchase(hash, %{purchase: purchase, checked?: false}) |> bought(hash)}
+
+  def handle_async({:report, hash}, {:ok, {:error, error}}, socket) do
+    # Not seen yet is expected until the chain confirms the Buy; after that,
+    # Check again reports it once more.
+    if not_seen_yet?(error),
+      do:
+        {:noreply,
+         put_purchase(socket, hash, %{purchase: :unseen, checked?: confirmed?(socket, hash)})},
+      else: {:noreply, put_purchase(socket, hash, %{purchase: nil, checked?: false})}
+  end
+
+  # An unanswered report leaves the Buy waiting, with Check again beside it.
+  def handle_async({:report, hash}, _unanswered, socket),
+    do: {:noreply, put_purchase(socket, hash, %{purchase: :unseen, checked?: true})}
 
   def handle_async({:purchase, hash}, {:ok, {:ok, purchase}}, socket),
     do: {:noreply, put_purchase(socket, hash, %{purchase: purchase, checked?: true})}
@@ -257,28 +292,42 @@ defmodule PatchbayWeb.CreditsPanel do
   defp remember_number(socket, review),
     do: assign(socket, numbers: Map.put(socket.assigns.numbers, review.id, socket.assigns.number))
 
-  defp report(socket, entry, review) do
+  # The library reads the chain before it records the purchase, so the report
+  # runs off the page's process.
+  defp report(socket, hash, review) do
     %{profile: profile, numbers: numbers} = socket.assigns
     {:ok, actor} = Credits.spender(profile)
+    number = Map.fetch!(numbers, review.id)
 
-    case RegentCredits.report_purchase(
-           profile.privy_user_id,
-           review.signer,
-           @chains[review.inputs["chain"]],
-           dollars(review.inputs["amount"]),
-           Map.fetch!(numbers, review.id),
-           entry.hash,
-           actor: actor
-         ) do
-      {:ok, purchase} -> put_purchase(socket, entry.hash, %{purchase: purchase, checked?: false})
-      {:error, _error} -> put_purchase(socket, entry.hash, %{purchase: nil, checked?: false})
-    end
+    start_async(socket, {:report, hash}, fn ->
+      RegentCredits.report_purchase(
+        profile.privy_user_id,
+        review.signer,
+        @chains[review.inputs["chain"]],
+        dollars(review.inputs["amount"]),
+        number,
+        hash,
+        actor: actor
+      )
+    end)
   end
 
-  # The chain confirmed a Buy: its purchase is checked now rather than at the
-  # next once-a-minute check.
+  defp confirmed?(socket, hash),
+    do: Enum.any?(socket.assigns.presses.sent, &match?(%{hash: ^hash, outcome: :confirmed}, &1))
+
+  defp not_seen_yet?(%Ash.Error.Invalid{errors: errors}),
+    do: Enum.any?(errors, &match?(%Refused{reason: :not_seen_yet}, &1))
+
+  defp not_seen_yet?(_error), do: false
+
+  # The chain confirmed a Buy: one the library had not seen yet is reported
+  # again, and a recorded one is checked now rather than at the next
+  # once-a-minute check.
   defp bought(socket, hash) do
     case {Enum.find(socket.assigns.presses.sent, &(&1.hash == hash)), socket.assigns.purchases} do
+      {%{name: "buy", outcome: :confirmed, review: review}, %{^hash => %{purchase: :unseen}}} ->
+        report(socket, hash, review)
+
       {%{name: "buy", outcome: :confirmed}, %{^hash => %{purchase: %{status: :checking}}}} ->
         check_purchase(socket, hash)
 
@@ -661,6 +710,7 @@ defmodule PatchbayWeb.CreditsPanel do
     do: amount |> Amount.format() |> String.replace_suffix(" Credits", "")
 
   defp state(entry, nil), do: OnchainSteps.describe(entry, chain_name_of(entry)).state
+  defp state(_entry, %{purchase: :unseen}), do: :checking
   defp state(_entry, %{purchase: nil}), do: :unrecorded
   defp state(_entry, %{purchase: purchase}), do: purchase.status
 
@@ -672,6 +722,9 @@ defmodule PatchbayWeb.CreditsPanel do
       %{words: words} -> words
     end
   end
+
+  defp words(entry, %{purchase: :unseen}),
+    do: "Waiting for #{chain_name_of(entry)}. Keep this page open until it's recorded."
 
   defp words(_entry, %{purchase: nil}),
     do: "Your wallet sent this, but this page couldn't record it."
@@ -719,8 +772,10 @@ defmodule PatchbayWeb.CreditsPanel do
     end
   end
 
-  # Checked after the chain confirmed it, and still not counted.
+  # Checked after the chain confirmed it, and still not counted; or reported,
+  # and not recorded yet.
   defp purchase_stalled?(%{purchase: %{status: :checking}, checked?: checked?}), do: checked?
+  defp purchase_stalled?(%{purchase: :unseen, checked?: checked?}), do: checked?
 
   defp purchase_stalled?(_shown), do: false
 
