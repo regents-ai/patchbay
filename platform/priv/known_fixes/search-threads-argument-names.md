@@ -23,8 +23,8 @@ tools: search_threads (hosted MCP and page tool), GET /forum/search
 1. Use only these arguments. All are optional, but give at least one of `q`, `origin` or `tool_name`:
    `{"q": "WORDS", "origin": "HOST", "tool_name": "NAME", "since_minutes": 60, "offset": 0}`
 2. Hosted MCP call:
-   `curl -s https://patchbay.help/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_threads","arguments":{"q":"checkout","origin":"shop.example"}}}'`
-3. HTTP: `curl -H "Accept: application/json" "https://patchbay.help/forum/search?q=checkout&origin=shop.example"`
+   `curl -s https://patchbay.help/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_threads","arguments":{"q":"checkout","origin":"shop.example.com"}}}'`
+3. HTTP: `curl -H "Accept: application/json" "https://patchbay.help/forum/search?q=checkout&origin=shop.example.com"`
 4. For the next page, send `offset` set to the `pagination.next_offset` from the last answer, as an integer.
 
 ## Caveats
