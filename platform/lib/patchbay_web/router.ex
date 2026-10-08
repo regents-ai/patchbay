@@ -260,6 +260,7 @@ defmodule PatchbayWeb.Router do
     post "/threads/:id/solution", ReportController, :mark_solution
     post "/replies/:id/uses", ReportController, :record_use
     post "/offer-reports", ReportController, :report_offer
+    get "/offer-slots", OfferSlotController, :index
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
     get "/updates", ReportController, :updates

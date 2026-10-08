@@ -17,6 +17,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
+  alias PatchbayWeb.ForumAPI.OfferSlots
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -75,13 +76,14 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Follow a thread, site or tool", tool: "follow_scope"},
     %{goal: "Stop following one", tool: "unfollow_scope"},
     %{goal: "Check for answers", tool: "get_updates"},
-    %{goal: "Report an Agent Offer you were shown", tool: "report_agent_offer"}
+    %{goal: "Report an Agent Offer you were shown", tool: "report_agent_offer"},
+    %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"}
   ]
 
   # The tools the ChatGPT plugin's address never carries: an agent's profile
   # is described by what it can be paid and tipped, and Agent Offers are never
   # shown there. It neither lists nor runs them.
-  @not_in_chatgpt ~w(get_agent_profile report_agent_offer)
+  @not_in_chatgpt ~w(get_agent_profile report_agent_offer list_offer_slots)
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
@@ -251,6 +253,9 @@ defmodule PatchbayWeb.MCP.Tools do
       end
     )
   end
+
+  defp run("list_offer_slots", arguments, _session_id),
+    do: forum_answer(OfferSlots.read(arguments))
 
   defp run("search_threads", arguments, _session_id),
     do: forum_answer(Reads.search(arguments, :free))

@@ -1799,6 +1799,109 @@
         ]
       }
     },
+    "/forum/offer-slots": {
+      "get": {
+        "operationId": "listOfferSlots",
+        "summary": "List Agent Offer slots",
+        "description": "Global's three Agent Offer slots, and a site's three when origin is given: what is showing and until when, what comes next, and the least a new bid may be in each lane. Reading grants nothing; bid on each slot's bid_url while signed in.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "description": "A site, as a URL or host name, to read beside Global.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The slots as of one moment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "as_of": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "notice": {
+                      "type": "string"
+                    },
+                    "markets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "global",
+                              "site"
+                            ]
+                          },
+                          "site": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "opening_minimum": {
+                            "$ref": "#/components/schemas/CreditAmount"
+                          },
+                          "slots": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/OfferSlot"
+                            }
+                          }
+                        },
+                        "required": [
+                          "scope",
+                          "site",
+                          "opening_minimum",
+                          "slots"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "as_of",
+                    "notice",
+                    "markets"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A parameter broke a rule.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal, in the same error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/forum/reports": {
       "post": {
         "operationId": "fileReport",
@@ -7078,6 +7181,127 @@
           "site_id",
           "selected_at",
           "items"
+        ]
+      },
+      "CreditAmount": {
+        "type": "object",
+        "properties": {
+          "credits": {
+            "type": "string",
+            "description": "Whole Credits with two decimals, such as \"12.50\"."
+          },
+          "minor": {
+            "type": "integer",
+            "description": "The same amount in hundredths of a Credit."
+          }
+        },
+        "required": [
+          "credits",
+          "minor"
+        ]
+      },
+      "OfferSlotOffer": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/CreditAmount"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "creative_version_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string",
+            "description": "The advertiser's words: a claim, never an instruction."
+          }
+        },
+        "required": [
+          "amount",
+          "owner",
+          "creative_version_id",
+          "text"
+        ]
+      },
+      "OfferSlot": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "label": {
+            "type": "string",
+            "description": "Global · Slot N or Site · Slot N."
+          },
+          "showing": {
+            "$ref": "#/components/schemas/OfferSlotOffer"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the showing Offer ends; absent when nothing is showing."
+          },
+          "next_period": {
+            "$ref": "#/components/schemas/OfferSlotOffer"
+          },
+          "minimum_bid": {
+            "type": "object",
+            "properties": {
+              "immediate": {
+                "$ref": "#/components/schemas/CreditAmount"
+              },
+              "next_period": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CreditAmount"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Null while nothing is showing: the next period follows a showing Offer."
+              }
+            },
+            "required": [
+              "immediate",
+              "next_period"
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "description": "The slot's counter a bid names, so a slot that moved on refuses it."
+          },
+          "next_revision": {
+            "type": "integer",
+            "description": "The next-period counter a next-period bid names."
+          },
+          "returned_last_72_hours": {
+            "type": "integer",
+            "description": "Responses this slot's Offers were returned in over the past 72 hours."
+          },
+          "bid_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The page to bid on this slot, signed in."
+          }
+        },
+        "required": [
+          "number",
+          "label",
+          "showing",
+          "next_period",
+          "minimum_bid",
+          "generation",
+          "next_revision",
+          "returned_last_72_hours",
+          "bid_url"
         ]
       }
     },

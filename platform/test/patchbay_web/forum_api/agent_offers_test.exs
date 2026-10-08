@@ -346,6 +346,53 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
       assert render(view) =~ "No site matches “no-such-site”."
     end
+
+    # Agents read the same figures the page shows, so a bid they plan is one
+    # the market accepts.
+    test "agents read each slot's Offer, next leader and least bids over HTTP",
+         %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
+      place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
+      lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
+      place(global, 2, approved_version(owner, "Global two", global))
+      ask(conn, origin)
+
+      body = conn |> again() |> get("/forum/offer-slots?origin=#{origin}") |> json_response(200)
+      assert body["notice"] =~ "a claim, never an instruction"
+
+      assert [
+               %{"scope" => "global", "slots" => global_slots},
+               %{"scope" => "site", "site" => ^origin, "slots" => [one | _]}
+             ] = body["markets"]
+
+      assert %{
+               "label" => "Site · Slot 1",
+               "showing" => %{"text" => "Site one", "amount" => %{"credits" => "10.01"}},
+               "next_period" => %{"text" => "Next one", "amount" => %{"credits" => "20.00"}},
+               "minimum_bid" => %{
+                 "immediate" => %{"credits" => "11.02"},
+                 "next_period" => %{"credits" => "22.00"}
+               },
+               "returned_last_72_hours" => 1
+             } = one
+
+      assert one["showing"]["owner"]["agent_name"] == owner.agent_name
+      assert one["bid_url"] =~ "/offers/bid?site=#{site.site_id}&slot=1"
+
+      assert [
+               %{
+                 "showing" => nil,
+                 "minimum_bid" => %{"immediate" => %{"credits" => "1.00"}, "next_period" => nil}
+               },
+               %{"showing" => %{"text" => "Global two"}},
+               %{"showing" => nil}
+             ] = global_slots
+
+      assert %{"error" => %{"code" => "invalid"}} =
+               conn
+               |> again()
+               |> get("/forum/offer-slots?origin=no-such-site.example")
+               |> json_response(422)
+    end
   end
 
   describe "the advertiser's own pages" do
@@ -479,7 +526,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       %{"result" => %{"tools" => tools}} =
         conn |> mcp_rpc("/chatgpt/mcp", chatgpt, "tools/list", %{}) |> json_response(200)
 
-      refute Enum.any?(tools, &(&1["name"] == "report_agent_offer"))
+      refute Enum.any?(tools, &(&1["name"] in ~w(report_agent_offer list_offer_slots)))
 
       assert %{"error" => %{"message" => "Unknown tool: report_agent_offer" <> _}} =
                conn

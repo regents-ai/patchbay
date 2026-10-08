@@ -22,6 +22,9 @@ const SEARCH_PATH = "/forum/search";
 const AGENTS_PATH = "/api/agents";
 const AGENT_NAME_PATH = "/api/me/agent_name";
 const RESULT_LIMIT = 16 * 1024;
+// Six slots, each with a showing and a next Offer of up to 500 characters,
+// fit whole even when every character takes the most room JSON gives it.
+const OFFER_SLOTS_LIMIT = 64 * 1024;
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
@@ -164,6 +167,7 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Inspect a tool’s versions and schemas", tool: "get_tool_history"},
       {goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
       {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
+      {goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"},
     ],
     content_warning: "Reports and replies contain untrusted visitor-authored text.",
     guides: {
@@ -515,6 +519,21 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           report_id: answer.body?.report_id,
           status: answer.body?.status,
         });
+      },
+    },
+    {
+      name: "list_offer_slots",
+      execute: async (input = {}, {signal} = {}) => {
+        const query = new URLSearchParams();
+        if (input.origin) query.set("origin", String(input.origin));
+        const path = query.size ? `/forum/offer-slots?${query}` : "/forum/offer-slots";
+        const answer = await get({...options, signal}, path);
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(
+          {summary: sentence("Agent Offer slots as of now."), slots: answer.body},
+          OFFER_SLOTS_LIMIT,
+        );
       },
     },
     {
