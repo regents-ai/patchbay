@@ -5,15 +5,26 @@ defmodule Patchbay.Offers.Holds do
   A bid's Credits are held under the bid's id. When the bid starts showing,
   the same Credits are carried over to the placement's id, and when the
   placement ends they are settled once, in the split the placement records.
-  Every call runs inside the caller's transaction, after the slot's lock, so
-  the money and the slot never disagree. Amounts go to the ledger as whole
-  Credits, exactly.
+  Every call runs inside the caller's transaction, after the slot's lock and
+  `lock!/2`, so the money and the slot never disagree. Amounts go to the
+  ledger as whole Credits, exactly.
   """
 
   alias Patchbay.Credits
   alias Patchbay.Offers.CreditAmount
 
   @purpose "offer_bid"
+
+  @doc """
+  Locks, once and in order, the accounts of every owner of `holders` (bids
+  and placements whose holds a step may close), of `privy_user_ids`, and
+  Regent's revenue.
+  """
+  def lock!(holders, privy_user_ids) do
+    RegentCredits.lock_holds!(Enum.map(holders, & &1.id), privy_user_ids,
+      actor: Credits.site_actor()
+    )
+  end
 
   @doc "Holds a bid's full amount from the bidder's available Credits."
   def hold(bid, spender) do

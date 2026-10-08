@@ -35,7 +35,7 @@ defmodule Patchbay.Offers.Removal do
     # Part of the action that asked, whose policy already decided.
     with nil <- decided(moderator, args.idempotency_key),
          {:ok, placement} <- Ash.get(Placement, args.placement_id, authorize?: false) do
-      slot = Advance.lock(placement.slot_id)
+      slot = Advance.lock(placement.slot_id, [])
 
       case decided(moderator, args.idempotency_key) do
         nil ->

@@ -34,7 +34,8 @@ defmodule Patchbay.Offers.Bidding do
   def submit(args, profile) do
     with {:ok, spender} <- spender(profile),
          {:ok, amount_minor} <- amount(args.amount),
-         %Slot{} = slot <- Advance.lock(args.slot_id) || {:error, not_found()} do
+         %Slot{} = slot <-
+           Advance.lock(args.slot_id, [spender.privy_user_id]) || {:error, not_found()} do
       now = Advance.now()
       slot = Advance.advance(slot, now)
       request = request_sha256(args, amount_minor)

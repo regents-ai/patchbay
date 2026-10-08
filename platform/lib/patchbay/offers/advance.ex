@@ -3,8 +3,9 @@ defmodule Patchbay.Offers.Advance do
   Brings one slot up to date, under its lock, before anything else happens
   to it.
 
-  Every bid, every removal and every job starts here: lock the slot, take
-  the database's clock once, then
+  Every bid, every removal and every job starts here: lock the slot, then
+  every Credits account the step may move (`Patchbay.Offers.Holds.lock!/2`),
+  take the database's clock once, then
 
     1. if the showing placement has reached its expiry, end it (all of it
        used), give back every bid in the slot's open windows, and start the
@@ -29,14 +30,37 @@ defmodule Patchbay.Offers.Advance do
 
   @loads [:market, :active_placement, :next_bid]
 
-  @doc "Locks a slot's row for the rest of the transaction and reads it, or nil."
-  def lock(slot_id) do
+  @doc """
+  Locks a slot's row for the rest of the transaction and reads it, or nil.
+  Then locks, together, the Credits accounts of everyone whose hold the step
+  may close and of `privy_user_ids` (a bidder about to be held for), so two
+  slots settling at once never take the same people in opposite orders.
+  """
+  def lock(slot_id, privy_user_ids) do
     # Part of the action that asked, whose policy already decided.
-    Slot
-    |> Ash.Query.filter(id == ^slot_id)
-    |> Ash.Query.lock(:for_update)
-    |> Ash.Query.load(@loads)
-    |> Ash.read_one!(authorize?: false)
+    slot =
+      Slot
+      |> Ash.Query.filter(id == ^slot_id)
+      |> Ash.Query.lock(:for_update)
+      |> Ash.Query.load(@loads)
+      |> Ash.read_one!(authorize?: false)
+
+    if slot, do: Holds.lock!(holders(slot), privy_user_ids)
+    slot
+  end
+
+  # Every hold a step may close: the showing placement's, the waiting
+  # leader's, and each bid still held in one of the slot's windows. A
+  # placement a step starts carries over one of these bids' holds.
+  defp holders(slot) do
+    # Part of the action that asked, whose policy already decided.
+    held =
+      Bid
+      |> Ash.Query.filter(slot_id == ^slot.id and status == :held)
+      |> Ash.Query.select([:id])
+      |> Ash.read!(authorize?: false)
+
+    Enum.reject([slot.active_placement, slot.next_bid], &is_nil/1) ++ held
   end
 
   @doc "The database's clock now, read after the locks are held."

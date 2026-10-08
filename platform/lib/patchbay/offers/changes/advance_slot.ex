@@ -15,7 +15,7 @@ defmodule Patchbay.Offers.Changes.AdvanceSlot do
     %resource{id: id, slot_id: slot_id} = changeset.data
 
     slot_id
-    |> Advance.lock()
+    |> Advance.lock([])
     |> Advance.advance(Advance.now())
 
     # Read again inside the job's own action, which runs unauthorized.
