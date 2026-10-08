@@ -51,6 +51,10 @@ defmodule PatchbayWeb.MCP.Tools do
   # The reads that answer from query-string params, as their HTTP endpoints do.
   @query_reads ~w(search_threads get_thread get_tool_history)
 
+  # The writes that post, counted against the connection's address as well as
+  # its session.
+  @posts ~w(ask_question post_reply)
+
   @try_again "Try the same call again in a moment."
   @search_instead "Check the id, or search the board with search_threads."
 
@@ -109,14 +113,8 @@ defmodule PatchbayWeb.MCP.Tools do
     tool = Enum.find(@tools, &(&1.name == name))
 
     case check_arguments(tool.inputSchema, arguments) do
-      :ok when name in @session_tools and is_nil(caller.session_id) ->
-        {:error, no_session()}
-
-      :ok ->
-        dispatch(name, arguments, caller)
-
-      {:error, reason} ->
-        {:invalid_arguments, reason}
+      :ok -> dispatch(name, arguments, caller)
+      {:error, reason} -> {:invalid_arguments, reason}
     end
   end
 
@@ -124,6 +122,9 @@ defmodule PatchbayWeb.MCP.Tools do
     do: {:invalid_arguments, "arguments must be an object."}
 
   def call(_name, _arguments, _caller), do: :unknown_tool
+
+  defp dispatch(name, _arguments, %{session_id: nil}) when name in @session_tools,
+    do: {:error, no_session()}
 
   defp dispatch("find_known_fix", arguments, caller),
     do: find_known_fix(arguments, caller.visitor_key)
@@ -133,6 +134,12 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp dispatch("get_patchbay_help", _arguments, caller), do: {:ok, help(caller)}
 
+  defp dispatch(name, arguments, caller) when name in @posts do
+    name
+    |> post(arguments, caller.session_id, caller.visitor_key)
+    |> with_offers(caller.surface)
+  end
+
   defp dispatch(name, arguments, caller) when name in @query_reads do
     run(
       name,
@@ -141,11 +148,7 @@ defmodule PatchbayWeb.MCP.Tools do
     )
   end
 
-  defp dispatch(name, arguments, caller) do
-    name
-    |> run(arguments, caller.session_id)
-    |> with_offers(caller.surface)
-  end
+  defp dispatch(name, arguments, caller), do: run(name, arguments, caller.session_id)
 
   # A new post's answer, with Agent Offers after it at the hosted address
   # every agent uses. The ChatGPT plugin's address never carries them.
@@ -162,7 +165,6 @@ defmodule PatchbayWeb.MCP.Tools do
   defp with_offers({:posted, answer, _post}, :chatgpt_plugin), do: {:ok, answer}
   defp with_offers(answer, _surface), do: answer
 
-  # Jev's free look is counted by the connection it is asked from.
   defp report_agent_offer(arguments, caller) do
     case Participation.report_offer(caller.session_id, nil, caller.surface, arguments) do
       {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
@@ -170,6 +172,7 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
+  # Jev's free look is counted by the connection it is asked from.
   defp find_known_fix(arguments, visitor_key) do
     case KnownFixAnswer.look_up(arguments, visitor_key) do
       {:ok, answer} -> {:ok, KnownFixAnswer.json(answer)}
@@ -287,37 +290,6 @@ defmodule PatchbayWeb.MCP.Tools do
      )}
   end
 
-  # The free writes; `call/4` has already refused a connection without a session.
-  # A new post answers `{:posted, answer, post}` so Offers can follow it; the
-  # same post sent again answers as it did, without them.
-  defp run("ask_question", arguments, session_id) do
-    case Participation.ask_question(session_id, nil, arguments) do
-      {:ok, thread} ->
-        {:posted, thread_posted(thread),
-         %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
-
-      {:repeated, thread} ->
-        {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
-
-      {:error, failure} ->
-        write_refusal(failure)
-    end
-  end
-
-  defp run("post_reply", %{"thread_id" => id} = arguments, session_id) do
-    case Participation.post_reply(session_id, nil, id, arguments) do
-      {:ok, {thread, reply}} ->
-        {:posted, reply_posted(thread, reply),
-         %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
-
-      {:repeated, {thread, reply}} ->
-        {:ok, thread |> reply_posted(reply) |> Map.put(:repeated, true)}
-
-      {:error, failure} ->
-        write_refusal(failure)
-    end
-  end
-
   defp run("get_request_status", %{"client_request_id" => key}, session_id) do
     case Participation.request_status(session_id, key) do
       {:ok, written} ->
@@ -395,6 +367,37 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
+  # The free writes; `call/3` has already refused a connection without a session.
+  # A new post answers `{:posted, answer, post}` so Offers can follow it; the
+  # same post sent again answers as it did, without them.
+  defp post("ask_question", arguments, session_id, visitor) do
+    case Participation.ask_question(session_id, visitor, nil, arguments) do
+      {:ok, thread} ->
+        {:posted, thread_posted(thread),
+         %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
+
+      {:repeated, thread} ->
+        {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
+
+      {:error, failure} ->
+        write_refusal(failure)
+    end
+  end
+
+  defp post("post_reply", %{"thread_id" => id} = arguments, session_id, visitor) do
+    case Participation.post_reply(session_id, visitor, nil, id, arguments) do
+      {:ok, {thread, reply}} ->
+        {:posted, reply_posted(thread, reply),
+         %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
+
+      {:repeated, {thread, reply}} ->
+        {:ok, thread |> reply_posted(reply) |> Map.put(:repeated, true)}
+
+      {:error, failure} ->
+        write_refusal(failure)
+    end
+  end
+
   defp thread_page(id), do: MD.absolute(Participation.thread_url(id))
 
   defp thread_posted(thread) do
@@ -425,11 +428,12 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # The same refusals the HTTP endpoints give, as a tool answer. A hosted
-  # connection posts with nobody signed in, so its share is always its session's.
-  defp write_refusal({:rate_limited, :session, message, seconds}) do
+  # connection posts with nobody signed in, so its share is its session's or
+  # its address's.
+  defp write_refusal({:rate_limited, counted, message, seconds}) do
     {:error,
      ApiError.body("rate_limited", message, "Wait retry_after_seconds, then call again.", %{
-       subject: "mcp_session",
+       subject: rate_subject(counted),
        retry_after_seconds: seconds
      })}
   end
@@ -465,6 +469,9 @@ defmodule PatchbayWeb.MCP.Tools do
       do: write_refusal(:not_found),
       else: write_refusal({:invalid, Refusal.messages(error)})
   end
+
+  defp rate_subject(:session), do: "mcp_session"
+  defp rate_subject(:address), do: "address"
 
   defp solution_hint(:not_asker),
     do: "Reply on the thread instead; only its asker marks the answer."
@@ -516,7 +523,7 @@ defmodule PatchbayWeb.MCP.Tools do
       tools: site.tool_count || 0,
       discussions: site.report_count || 0,
       last_verified_at: site.last_verified_at,
-      url: MD.absolute("/sites/" <> URI.encode(site.origin))
+      url: MD.absolute("/" <> site.origin)
     }
   end
 

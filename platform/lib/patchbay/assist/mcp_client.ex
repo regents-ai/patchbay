@@ -28,7 +28,9 @@ defmodule Patchbay.Assist.McpClient do
 
   @doc """
   Opens a session with the server at the target, if there is one there:
-  `{:error, :not_mcp}` when what answers is not an MCP server.
+  `{:error, :not_mcp}` when what answers is not an MCP server, and
+  `{:error, :needs_sign_in}` when it is one that first asks the caller to
+  sign in, as MCP's authorization rules have it say.
   """
   @spec open(Target.target()) :: {:ok, client()} | {:error, :not_mcp | term()}
   def open(target) do
@@ -176,6 +178,9 @@ defmodule Patchbay.Assist.McpClient do
           {:ok, reply, session_of(response) || client.session}
         end
 
+      {:ok, %Req.Response{status: 401} = response} ->
+        if sign_in_asked?(response), do: {:error, :needs_sign_in}, else: {:error, {:status, 401}}
+
       {:ok, %Req.Response{status: status}} ->
         {:error, {:status, status}}
 
@@ -185,6 +190,14 @@ defmodule Patchbay.Assist.McpClient do
       {:error, _other} ->
         {:error, :request_failed}
     end
+  end
+
+  # An MCP server that wants a sign-in answers 401 and names where to read
+  # how, in the `resource_metadata` of its WWW-Authenticate header.
+  defp sign_in_asked?(response) do
+    response
+    |> Req.Response.get_header("www-authenticate")
+    |> Enum.any?(&String.contains?(&1, "resource_metadata="))
   end
 
   defp headers(client) do

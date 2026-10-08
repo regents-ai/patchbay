@@ -108,8 +108,6 @@ Rooms are created on demand, so two more limits bound how many can exist:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `PATCHBAY_MAX_ROOMS` | `2000` | Rooms that may exist at once |
-| `PATCHBAY_ROOM_IDLE_HOURS` | `6` | How long an untouched room with no tool calls is kept |
 
 Asking for a room first sweeps away rooms nobody used past that window, which
 is what keeps crawlers and uptime checks from filling the database. If the

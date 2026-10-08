@@ -38,7 +38,6 @@ defmodule Patchbay.Application do
       ] ++
         catalog_loader() ++
         patchbay_agent() ++
-        site_check() ++
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
@@ -68,14 +67,6 @@ defmodule Patchbay.Application do
     else
       []
     end
-  end
-
-  # Reads a newly asked-about site's page for tools. Tests run the check
-  # directly and start no queue.
-  defp site_check do
-    if Application.get_env(:patchbay, :check_new_sites, true),
-      do: [Patchbay.Forum.SiteCheck],
-      else: []
   end
 
   # Tell Phoenix to update the endpoint configuration

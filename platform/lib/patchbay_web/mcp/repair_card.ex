@@ -29,7 +29,23 @@ defmodule PatchbayWeb.MCP.RepairCard do
   # sobelow_skip ["Traversal.FileModule"]
   def read(@uri) do
     html = File.read!(Application.app_dir(:patchbay, "priv/mcp/repair-card.html"))
-    {:ok, %{contents: [%{uri: @uri, mimeType: @mime_type, text: html}]}}
+
+    {:ok,
+     %{
+       contents: [
+         %{
+           uri: @uri,
+           mimeType: @mime_type,
+           text: html,
+           _meta: %{
+             ui: %{
+               domain: "https://patchbay.help",
+               csp: %{connectDomains: [], resourceDomains: []}
+             }
+           }
+         }
+       ]
+     }}
   end
 
   def read(_uri), do: {:error, -32_002, "Resource not found. Call resources/list."}

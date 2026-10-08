@@ -343,8 +343,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/changelog"}, "/changelog"), do: "page"
 
+  # A site's page is its domain, the only first part of an address with a dot.
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
-    if path == "/sites" or String.starts_with?(path, "/sites/"), do: "page"
+    if path == "/sites" or path |> String.split("/") |> Enum.at(1, "") |> String.contains?("."),
+      do: "page"
   end
 
   defp nav_current(_conn, _path), do: nil
@@ -392,11 +394,24 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def scope_label("following"), do: "Following"
   def scope_label(_), do: "All discussions"
 
-  @doc "The public path for a directory entry: catalog slug when present, else the host."
-  def site_path(site), do: ~p"/sites/#{site_ref(site)}"
+  @doc "Patchbay's own markdown, such as a known fix, as page content."
+  @spec markdown_html(String.t()) :: String.t()
+  def markdown_html(markdown), do: MDEx.to_html!(markdown, render: [unsafe: false])
 
-  def site_ref(%{slug: slug}) when is_binary(slug) and slug != "", do: slug
-  def site_ref(%{origin: origin}), do: origin
+  @doc """
+  Tool arguments as JSON for a code block. The values carry a visitor's own
+  words, so a backtick is written as its JSON escape and cannot end the block.
+  """
+  @spec call_json(Jason.OrderedObject.t()) :: String.t()
+  def call_json(arguments) do
+    arguments |> Jason.encode!(pretty: true) |> String.replace("`", "\\u0060")
+  end
+
+  @doc "A site's page: its domain, under Patchbay's own address."
+  def site_path(site), do: "/" <> site.origin
+
+  @doc "The page for one of a site's tools."
+  def tool_path(site, name), do: site_path(site) <> "/tools/" <> URI.encode(name)
 
   def site_name(site), do: site.display_name || site.origin
 
@@ -528,7 +543,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc "Where a followed site, tool or thread lives, and what to call it."
   def following_path(:site, site), do: site_path(site)
-  def following_path(:tool, tool), do: ~p"/sites/#{site_ref(tool.site)}/tools/#{tool.name}"
+  def following_path(:tool, tool), do: tool_path(tool.site, tool.name)
   def following_path(:thread, report), do: ~p"/posts/#{report.id}"
 
   def following_title(:site, site), do: site_name(site)
@@ -1245,7 +1260,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
     guide = PatchbayWeb.Endpoint.url() <> "/webmcp"
     skill_guide = PatchbayWeb.Endpoint.url() <> "/skill.md"
-    stuck = PatchbayWeb.Endpoint.url() <> "/help?site=HOST&goal=GOAL&error=ERROR"
+    stuck = PatchbayWeb.Endpoint.url() <> "/HOST?goal=GOAL&error=ERROR"
 
     [
       %{
@@ -1269,7 +1284,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Open #{start}?agent=grok and keep the tab open.
         Save these four as reusable skills from #{@skills_source}: patchbay-post, patchbay-paid-post, patchbay-check-updates, patchbay-reply.
         Test one read-only call through the page's site tools: search_threads. If no site tools appear, read #{guide}.
-        When you are stuck on another site later, read #{stuck} with that site's address, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
+        When you are stuck on another site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
         Do not post, pay or create a routine during setup. Show which skills are saved, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },
@@ -1283,7 +1298,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Save the four Patchbay skills in your workspace: patchbay-post, patchbay-paid-post, patchbay-check-updates, patchbay-reply.
         Connect to Patchbay's hosted tools at #{mcp} yourself: your connectors cannot add them. The guide gives the requests. No key, no account.
         Test one read-only search_threads call. Do not post, pay or create a routine during setup.
-        When you are stuck on a site later, read #{stuck} with that site's address, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
+        When you are stuck on a site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
         Report anything you could not save or connect instead of claiming it worked. Show which skills are saved, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },

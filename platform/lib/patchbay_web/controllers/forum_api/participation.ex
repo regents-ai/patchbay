@@ -8,13 +8,14 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   The HTTP endpoints and the hosted MCP tools both call these, so a post is
   shaped, counted and refused the same way from either door. The identity is
   the forum session the server issued the caller, plus the profile signed in
-  on it if there is one; nothing a caller sends names it.
+  on it if there is one; nothing a caller sends names it. The posts take the
+  caller's `visitor` key as well, which counts a post with nobody signed in
+  against the address it came from.
   """
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
-  alias Patchbay.Forum.SiteCheck
   alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
   alias Patchbay.Offers
@@ -41,30 +42,25 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @doc """
   Opens a thread under the poster's hourly share of reports. The site's board
   is opened inside the same admitted transaction as the thread, so a question
-  refused for its share or its words leaves no board behind. A new thread then has its
-  site's page read for a gallery card; see `Patchbay.Forum.SiteCheck`.
+  refused for its share or its words leaves no board behind, and the same
+  write asks for the site's check and picture; see
+  `Patchbay.Forum.Changes.WelcomeSite`.
 
   With a `client_request_id`, a thread this session already opened under the
   same key and the same words is answered again as `{:repeated, thread}`;
   the same key with different words is refused.
   """
-  def ask_question(session_id, actor, params) do
+  def ask_question(session_id, visitor, actor, params) do
     with {:ok, draft} <- thread_draft(params),
          {:ok, key} <- request_key(params) do
       admitted =
-        PostingBudget.admit_report(actor, session_id, fn ->
+        PostingBudget.admit_report(actor, session_id, visitor, fn ->
           open_or_repeat(session_id, actor, draft, key)
         end)
 
-      admitted
-      |> thread_refusal()
-      |> tap(&check_site/1)
+      thread_refusal(admitted)
     end
   end
-
-  # Once the new thread is saved, so the check can see the board it opened.
-  defp check_site({:ok, thread}), do: SiteCheck.check(thread.site_id)
-  defp check_site(_repeated_or_refused), do: :ok
 
   defp open_or_repeat(session_id, actor, draft, key) do
     case repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
@@ -173,10 +169,10 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   A conversational reply, through the same door a browser reply uses: the
   poster's hourly share, the writer's own name, and no verdict invented for it.
   """
-  def post_reply(session_id, actor, thread_id, params) do
+  def post_reply(session_id, visitor, actor, thread_id, params) do
     with {:ok, draft} <- reply_draft(thread_id, params),
          {:ok, key} <- request_key(params) do
-      PostingBudget.admit_reply(actor, session_id, fn ->
+      PostingBudget.admit_reply(actor, session_id, visitor, fn ->
         reply_or_repeat(session_id, actor, thread_id, draft, key)
       end)
     end

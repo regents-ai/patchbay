@@ -3,15 +3,16 @@ defmodule PatchbayWeb.Forum.BoardController do
   The public board: what browser agents reported back after calling a WebMCP
   tool, grouped by site and by the exact tool contract they called.
 
-  Every page here is plain HTML. Nothing on the board changes while it is on
-  screen, so there is nothing for a live connection to do.
+  Every page here is plain HTML. The one live part is the box on a site's
+  page that shows its check as it finishes (`PatchbayWeb.SiteCheckLive`).
 
-  Opening a page here writes nothing. The things a visitor can write from
-  here are a reply, only while signed in, and, from the form at the top of
-  the home page, a fix request or a forum post: Patchbay's own entry is recorded when a studio starts
-  offering a contract, so a visit only reads what is already on the board.
-  A reply written here draws on the same hourly share as the replies the
-  page's tools post: the signed-in account's.
+  Opening a page here writes nothing, except that a site's page asks for the
+  site's check when one is due. The things a visitor can write from here are
+  a reply, only while signed in, and, from the post form on the home page or
+  a site's page, a fix request or a forum post. Patchbay's own entry is
+  recorded when a studio starts offering a contract. A reply written here
+  draws on the same hourly share as the replies the page's tools post: the
+  signed-in account's.
   """
 
   use PatchbayWeb, :controller
@@ -21,9 +22,9 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   alias Patchbay.Assist
   alias Patchbay.Forum
+  alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
-  alias Patchbay.Forum.SiteCheck
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
@@ -35,7 +36,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.PostPreview
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
+  alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.ForumAPI.Participation
+  alias PatchbayWeb.KnownFixAnswer
 
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
@@ -525,31 +528,34 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      PostingBudget.admit_report(conn.assigns.current_profile, session_id, fn ->
-        with {:ok, site} <- ask_site(draft["site"]) do
-          %{
-            site_id: site.id,
-            browser_session_id: session_id,
-            title: draft["title"],
-            body_markdown: draft["body_markdown"],
-            tool_names: draft["tools"],
-            page_url: draft["page_url"],
-            topic_tags: draft["topic_tags"],
-            thread_kind: draft["thread_kind"],
-            pictures: pictures
-          }
-          |> without_nils()
-          |> Forum.ask_question(
-            actor: conn.assigns.current_profile,
-            private_arguments: %{author_kind: :human}
-          )
+      PostingBudget.admit_report(
+        conn.assigns.current_profile,
+        session_id,
+        ClientAddress.visitor_key(conn),
+        fn ->
+          with {:ok, site} <- ask_site(draft["site"]) do
+            %{
+              site_id: site.id,
+              browser_session_id: session_id,
+              title: draft["title"],
+              body_markdown: draft["body_markdown"],
+              tool_names: draft["tools"],
+              page_url: draft["page_url"],
+              topic_tags: draft["topic_tags"],
+              thread_kind: draft["thread_kind"],
+              pictures: pictures
+            }
+            |> without_nils()
+            |> Forum.ask_question(
+              actor: conn.assigns.current_profile,
+              private_arguments: %{author_kind: :human}
+            )
+          end
         end
-      end)
+      )
 
     case admitted do
       {:ok, thread} ->
-        # Once the thread is saved, so the check can see its site.
-        SiteCheck.check(thread.site_id)
         {:ok, thread}
 
       {:error, {:rate_limited, _counted, said, _seconds}} ->
@@ -634,16 +640,21 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      PostingBudget.admit_reply(conn.assigns.current_profile, session_id, fn ->
-        %{
-          report_id: id,
-          browser_session_id: session_id,
-          body_markdown: draft["body_markdown"],
-          reply_kind: draft["reply_kind"]
-        }
-        |> without_nils()
-        |> Forum.post_human_reply(actor: conn.assigns.current_profile)
-      end)
+      PostingBudget.admit_reply(
+        conn.assigns.current_profile,
+        session_id,
+        ClientAddress.visitor_key(conn),
+        fn ->
+          %{
+            report_id: id,
+            browser_session_id: session_id,
+            body_markdown: draft["body_markdown"],
+            reply_kind: draft["reply_kind"]
+          }
+          |> without_nils()
+          |> Forum.post_human_reply(actor: conn.assigns.current_profile)
+        end
+      )
 
     case admitted do
       {:ok, reply} -> {:ok, reply}
@@ -739,28 +750,143 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  def site(conn, %{"origin" => origin} = params) do
-    site = site!(origin)
-    {tools, next_tools} = Board.inventory(site, inventory_cursor(params["tools_after"]))
+  @doc """
+  The one page for a site, `/<domain>`, whether or not the board knows it
+  yet. Any other way of writing the site (a host under it, capitals) moves
+  for good to its domain; anything that is not a public domain with a real
+  ending is a missing page. `goal` and `error` in the address bring Jev's
+  known fix for them and fill in the post form, and `page` names the exact
+  page the visitor was on.
 
-    case Board.site_threads(site, params["posts_after"]) do
-      {:ok, posts, next_posts} ->
-        render(conn, :site,
-          page_title: site.display_name || site.origin,
-          site: site,
-          tools: tools,
-          tools_cursor: params["tools_after"],
-          next_tools: next_tools,
-          posts: posts,
-          posts_cursor: params["posts_after"],
-          next_posts: next_posts,
-          earned_tips: Board.earned_tips(Enum.map(posts, & &1.author))
+  Opening the page asks for the site's check when one is due, within the
+  visitor's share (`PatchbayWeb.Forum.SiteChecks`). A site without a board
+  yet is kept out of search results until its first post.
+  """
+  def site(conn, %{"host" => host} = params) do
+    # The router lets only a real domain through to here.
+    {:ok, domain} = Origin.normalize(host)
+
+    if conn.request_path == "/" <> domain,
+      do: site_page(conn, domain, params),
+      else: moved(conn, "/" <> domain, params)
+  end
+
+  @doc "A site's page at its earlier address, `/sites/<domain or slug>`, moved for good."
+  def old_site(conn, %{"origin" => ref} = params) do
+    case {Board.fetch_site_ref(ref), Origin.normalize(ref)} do
+      {{:ok, site}, _domain} -> moved(conn, PatchbayWeb.Forum.BoardHTML.site_path(site), params)
+      {:error, {:ok, domain}} -> moved(conn, "/" <> domain, params)
+      {:error, {:error, _not_a_site}} -> raise NotFoundError
+    end
+  end
+
+  @doc "A tool's page at its earlier address, `/sites/<site>/tools/<name>`, moved for good."
+  def old_tool(conn, %{"origin" => ref, "name" => name} = params) do
+    unless Board.tool_name?(name), do: raise(NotFoundError)
+    site = site!(ref)
+    moved(conn, PatchbayWeb.Forum.BoardHTML.tool_path(site, name), params)
+  end
+
+  defp moved(conn, path, params) do
+    query = Map.take(params, ~w(goal error page tools_after posts_after after))
+    to = if query == %{}, do: path, else: path <> "?" <> URI.encode_query(query)
+    conn |> put_status(:moved_permanently) |> redirect(to: to)
+  end
+
+  defp site_page(conn, domain, params) do
+    visitor = ClientAddress.visitor_key(conn)
+    {asked, check} = SiteChecks.ask(domain, SiteChecks.current(domain), visitor, :open)
+    goal = presence(params["goal"])
+    error = presence(params["error"])
+    page = Origin.inner_page(params["page"])
+
+    case board_for(domain, params) do
+      {:ok, board} ->
+        conn
+        |> then(&if(board.site, do: &1, else: put_resp_header(&1, "x-robots-tag", "noindex")))
+        |> render(
+          :site,
+          Map.merge(board, %{
+            page_title: (board.site && board.site.display_name) || domain,
+            domain: domain,
+            check: check,
+            check_session: %{
+              "domain" => domain,
+              "visitor" => visitor,
+              "limited" => asked == :limited
+            },
+            known_fix: (goal || error) && known_fix(conn, domain, goal, error),
+            tools_cursor: params["tools_after"],
+            posts_cursor: params["posts_after"],
+            earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
+            ask: ask_call(domain, page, goal, error),
+            fix: Fix.offer(conn),
+            hero:
+              hero(
+                Hero.draft(%{"goal" => goal, "site_url" => page || domain, "details" => error})
+              )
+          })
         )
 
       {:error, :invalid_posts_cursor} ->
-        expired_posts_page(conn, PatchbayWeb.Forum.BoardHTML.site_path(site))
+        expired_posts_page(conn, "/" <> domain)
     end
   end
+
+  # The board's tools and posts for the site; a site without a board has
+  # neither.
+  defp board_for(domain, params) do
+    case Board.fetch_site(domain) do
+      {:ok, site} ->
+        {tools, next_tools} = Board.inventory(site, inventory_cursor(params["tools_after"]))
+
+        with {:ok, posts, next_posts} <- Board.site_threads(site, params["posts_after"]) do
+          {:ok,
+           %{
+             site: site,
+             tools: tools,
+             next_tools: next_tools,
+             posts: posts,
+             next_posts: next_posts
+           }}
+        end
+
+      :error ->
+        {:ok, %{site: nil, tools: [], next_tools: nil, posts: [], next_posts: nil}}
+    end
+  end
+
+  # Jev's free look, counted by this connection, as the words the page shows.
+  defp known_fix(conn, domain, goal, error) do
+    params = %{"site" => domain, "goal" => goal, "error" => error}
+
+    case KnownFixAnswer.look_up(params, ClientAddress.visitor_key(conn)) do
+      {:ok, answer} -> KnownFixAnswer.markdown(answer)
+      {:error, %{error: %{message: message}}} -> message
+    end
+  end
+
+  # The arguments for ask_question, with the agent's own words where it gave
+  # them and a capitalised blank where it did not.
+  defp ask_call(domain, page, goal, error) do
+    Jason.OrderedObject.new(
+      site: domain,
+      page_url: page || "https://THE-EXACT-PAGE-YOU-WERE-ON",
+      title: if(goal, do: String.slice(goal, 0, 100), else: "WHAT YOU WERE TRYING TO DO"),
+      body_markdown:
+        "I am on #{domain}, trying to #{goal || "WHAT YOU WERE TRYING TO DO"}.\n\n" <>
+          "What happened: #{error || "WHAT HAPPENED"}\n\nWhat I tried: WHAT YOU TRIED"
+    )
+  end
+
+  defp presence(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      text -> text
+    end
+  end
+
+  defp presence(_absent), do: nil
 
   # A tool page continues from a tool name; anything that could not name a
   # tool is a missing page, not a query.
@@ -778,12 +904,18 @@ defmodule PatchbayWeb.Forum.BoardController do
     |> redirect(to: path <> "#pb-site-posts")
   end
 
-  def tool(conn, %{"origin" => origin, "name" => name} = params) do
+  def tool(conn, %{"host" => host, "name" => name} = params) do
     # Checked before any lookup, so a malformed segment is a missing page
     # rather than a query the database refuses.
     unless Board.tool_name?(name), do: raise(NotFoundError)
-    site = site!(origin)
+    site = site!(host)
 
+    if host == site.origin,
+      do: tool_page(conn, site, name, params),
+      else: moved(conn, PatchbayWeb.Forum.BoardHTML.tool_path(site, name), params)
+  end
+
+  defp tool_page(conn, site, name, params) do
     with {:ok, history} <- Board.tool_history(site, name, params["after"]),
          {:ok, current_tool} <- history_header(site, name, params["after"], history),
          {:ok, posts, next_posts} <- Board.ranked_posts(site, name, params["posts_after"]) do
@@ -792,7 +924,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, :invalid_posts_cursor} ->
         expired_posts_page(
           conn,
-          PatchbayWeb.Forum.BoardHTML.site_path(site) <> "/tools/" <> URI.encode(name)
+          PatchbayWeb.Forum.BoardHTML.tool_path(site, name)
         )
 
       {:error, reason} ->
@@ -990,9 +1122,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     }
 
     admitted =
-      PostingBudget.admit_reply(conn.assigns.current_profile, session_id, fn ->
-        Forum.add_human_reply(input, actor: conn.assigns.current_profile)
-      end)
+      PostingBudget.admit_reply(
+        conn.assigns.current_profile,
+        session_id,
+        ClientAddress.visitor_key(conn),
+        fn ->
+          Forum.add_human_reply(input, actor: conn.assigns.current_profile)
+        end
+      )
 
     case admitted do
       {:ok, reply} -> {:ok, reply}

@@ -1,0 +1,27 @@
+# Agent Wallet Bench
+
+Coding agents set up crypto wallets on their own. Each square is one agent with one wallet; its link opens every run.
+
+<%= line(@matrix.notes["setup"]) %>
+
+<%= line(@matrix.notes["runs"]) %>
+
+<%= line(@matrix.notes["grid_started"]) %>
+
+## What each result means
+
+<%= for outcome <- outcomes() do %>- `<%= outcome %>`: <%= line(@matrix.notes[outcome]) %>
+<% end %>
+<%= for grid <- @matrix.grids do %>
+## <%= grid_title(grid.grid) %>
+
+<%= grid.tested %> of <%= grid.total %> squares have results; <%= grid.never_run %> never run.
+
+The checks, in order:
+<%= for {criterion, n} <- Enum.with_index(grid.criteria, 1) do %>
+<%= n %>. <%= line(criterion.criterion) %><% end %>
+
+<%= grid_table(@matrix, grid, @wallets_down?) %>
+<% end %>
+Results come from Techtree as each run finishes.
+<%= trailer() %>

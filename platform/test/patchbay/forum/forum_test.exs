@@ -173,8 +173,7 @@ defmodule Patchbay.ForumTest do
                  {:directory, :read},
                  {:register_site, :create},
                  {:upsert_catalog_entry, :create},
-                 {:claim_page_check, :update},
-                 {:claim_picture, :update},
+                 {:take_picture, :update},
                  {:record_screenshot, :update}
                ]
                |> Enum.sort()

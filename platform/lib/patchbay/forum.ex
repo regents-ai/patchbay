@@ -33,6 +33,12 @@ defmodule Patchbay.Forum do
       define(:get_site_screenshot, action: :read, get_by: [:site_id])
     end
 
+    resource Patchbay.Forum.SiteCheck do
+      define(:request_site_check, action: :request, args: [:domain])
+      define(:get_site_check, action: :read, get_by: [:domain])
+      define(:record_site_check, action: :record)
+    end
+
     resource Patchbay.Forum.PostPicture do
       define(:get_post_picture, action: :read, get_by: [:id])
     end

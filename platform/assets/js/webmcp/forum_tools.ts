@@ -130,8 +130,10 @@ export function helpCurrentPage(pathname = "/") {
   if (pathname === "/start" || pathname === "/agent-setup") return "agent_setup";
   if (pathname === "/sites") return "sites";
   if (pathname.startsWith("/reports/")) return "report";
-  if (pathname.startsWith("/sites/") && pathname.includes("/tools/")) return "tool";
-  if (pathname.startsWith("/sites/")) return "site";
+  // A site's page is its domain, the only first part of an address with a dot.
+  const onSite = (pathname.split("/")[1] ?? "").includes(".");
+  if (onSite && pathname.includes("/tools/")) return "tool";
+  if (onSite) return "site";
   if (pathname.startsWith("/webmcp/rooms/")) return "room";
   if (pathname.startsWith("/agents/")) return "agent";
   return "other";

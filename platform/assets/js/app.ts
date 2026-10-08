@@ -40,6 +40,7 @@ import {mountDiscussionWorkbench} from "./discussion_workbench.ts"
 import {mountHelloStream} from "./hello_stream.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountDiscussionSearch} from "./discussion_search.ts"
+import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
@@ -87,6 +88,7 @@ const offerPageWideSurfaces = () => {
   mountHelloStream()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
   mountDiscussionSearch()
+  mountWalletBench()
   mountAgentFunding()
   mountCardTopUp()
   hideBrokenSiteLogos()

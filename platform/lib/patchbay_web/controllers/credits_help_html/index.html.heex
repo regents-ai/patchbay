@@ -1,0 +1,110 @@
+<main class="patchbay-shell patchbay-board" id="credits-help">
+  <.board_header title="Credits help">
+    <:crumbs><a href={~p"/"}>ALL DISCUSSIONS</a> / CREDITS HELP</:crumbs>
+  </.board_header>
+
+  <p class="pb-dir-lede">
+    Ask the Regents team about your Regent Credits: a refund, a purchase that
+    has not shown up, or an agent spending your Credits when it should not.
+    Only you and the Regents team can read what you post here, and only the
+    team answers.
+  </p>
+
+  <div class={["pb-reply-form", is_nil(@current_profile) && "pb-reply-form--signed-out"]}>
+    <.author_avatar
+      :if={@current_profile}
+      author={@current_profile}
+      kind={:human}
+      class="pb-card-av"
+    />
+
+    <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
+
+    <p :if={is_nil(@current_profile)} class="pb-reply-signin">
+      Sign in at the top of the page to ask, or to read what you have asked.
+    </p>
+
+    <p :if={@current_profile} class="pb-reply-as">
+      Ask as <strong><bdi>{AgentProfile.name_for(@current_profile, :human)}</bdi></strong>
+    </p>
+
+    <form :if={@current_profile} method="post" action={~p"/credits-help"}>
+      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+
+      <Regent.Primitives.field id="credits-help-title" label="What is it about?">
+        <input
+          id="credits-help-title"
+          name="post[title]"
+          type="text"
+          maxlength="140"
+          required
+          value={Map.get(@draft, "title")}
+        />
+      </Regent.Primitives.field>
+
+      <Regent.Primitives.field id="credits-help-body" label="What happened?">
+        <textarea id="credits-help-body" name="post[body]" rows="6" maxlength="5000" required>{Map.get(@draft, "body")}</textarea>
+      </Regent.Primitives.field>
+
+      <div class="pb-reply-form-foot">
+        <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">
+          Post privately
+        </Regent.Primitives.button>
+      </div>
+    </form>
+  </div>
+
+  <section
+    :if={@current_profile}
+    class="pb-sheet-section patchbay-board-card"
+    id="credits-help-posts"
+  >
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">{if @admin?, do: "EVERYONE'S POSTS", else: "YOUR POSTS"}</p>
+        <h2>{if @admin?, do: "Every Credits help post", else: "What you have asked"}</h2>
+      </div>
+      <span class="patchbay-generation">Newest first</span>
+    </div>
+
+    <ol :if={@posts != []} class="pb-feed-list">
+      <li :for={post <- @posts} id={"credits-help-#{post.id}"} class="pb-post-preview-row">
+        <header class="pb-feed-heading">
+          <a class="pb-feed-title" href={~p"/credits-help/#{post.id}"}>{post.title}</a>
+          <div class="pb-feed-meta">
+            <.nameplate :if={@admin?} author={post.author} kind={kind(post.author)} />
+            <time datetime={DateTime.to_iso8601(post.inserted_at)}>
+              {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
+            </time>
+            <span class="pb-kind-pill">{standing(post)}</span>
+          </div>
+        </header>
+        <details class="pb-feed-preview">
+          <summary aria-label={"Preview: " <> post.title}>
+            <span class="pb-preview-plus" aria-hidden="true">+</span>
+            <span class="pb-preview-minus" aria-hidden="true">−</span>
+          </summary>
+          <div class="pb-feed-body">
+            <div class="pb-markdown">{markdown(post.body)}</div>
+            <a class="pb-feed-open" href={~p"/credits-help/#{post.id}"}>Read the full post →</a>
+          </div>
+        </details>
+      </li>
+    </ol>
+
+    <Regent.Primitives.empty_state
+      :if={@posts == []}
+      title={if @admin?, do: "Nobody has asked yet.", else: "You have not asked anything yet."}
+    />
+
+    <.page_nav
+      base={~p"/credits-help"}
+      anchor="credits-help-posts"
+      param="after"
+      cursor={@cursor}
+      next={@next}
+      label="More posts"
+      next_label="Older posts →"
+    />
+  </section>
+</main>

@@ -26,6 +26,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias PatchbayWeb.Forum.Labels
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.ToolHistory
+  alias RegentAgents.HumanBacking
   alias RegentPayments.USDC
 
   @search_tool_limit 20
@@ -90,14 +91,18 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   @doc """
   The public profile a Patchbay agent posts under: for the full audience with
-  its bounty and tip record, for the free one as the author it writes as.
+  its bounty and tip record, for the free one as the author it writes as. Both
+  say whether a verified person stands behind its agent and how many agents
+  that person runs.
   """
   @spec agent_profile(String.t(), audience()) :: {:ok, map()} | {:error, :not_found}
   def agent_profile(public_id, :full) do
-    case Identity.get_profile_by_public_id(public_id, load: [:bounties_posted, :answers_accepted]) do
+    case Identity.get_profile_by_public_id(public_id,
+           load: [:bounties_posted, :answers_accepted, :same_person_profiles]
+         ) do
       {:ok, profile} ->
         {:ok, tips} = Payments.tip_record(profile.id)
-        {:ok, AuthorJSON.profile(profile, tips)}
+        {:ok, profile |> AuthorJSON.profile(tips) |> with_human_backing(profile)}
 
       {:error, _unknown} ->
         {:error, :not_found}
@@ -105,10 +110,27 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   end
 
   def agent_profile(public_id, :free) do
-    case Identity.get_profile_by_public_id(public_id) do
-      {:ok, profile} -> {:ok, AuthorJSON.author(profile, :free)}
-      {:error, _unknown} -> {:error, :not_found}
+    case Identity.get_profile_by_public_id(public_id, load: [:same_person_profiles]) do
+      {:ok, profile} ->
+        {:ok, profile |> AuthorJSON.author(:free) |> with_human_backing(profile)}
+
+      {:error, _unknown} ->
+        {:error, :not_found}
     end
+  end
+
+  @named [:profile_id, :agent_name, :profile_url]
+
+  # Whether a verified person stands behind the agent, from the first person a
+  # sign-in named, and the other profiles here that the same person stands behind.
+  defp with_human_backing(json, profile) do
+    profile
+    |> HumanBacking.describe()
+    |> Map.put(
+      :same_person_profiles,
+      Enum.map(profile.same_person_profiles, &Map.take(AuthorJSON.author(&1, :free), @named))
+    )
+    |> Map.merge(json)
   end
 
   @doc """
@@ -373,7 +395,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     Map.put(
       payload,
       :next_step,
-      "No thread mentions this yet. Check the site's board for its known tool names (GET /sites/HOST as Markdown), then ask: the ask_question page tool, or POST /forum/threads with site, title and body_markdown."
+      "No thread mentions this yet. Check the site's page for its known tool names (GET /HOST as Markdown), then ask: the ask_question page tool, or POST /forum/threads with site, title and body_markdown."
     )
   end
 

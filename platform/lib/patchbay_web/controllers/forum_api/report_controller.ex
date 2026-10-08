@@ -35,6 +35,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation
@@ -48,7 +49,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     conn = with_share_headers(conn, :reports)
 
     with {:ok, session_id} <- established_session(conn),
-         {:ok, report} <- file_report(session_id, conn.assigns.current_profile, params) do
+         {:ok, report} <-
+           file_report(session_id, visitor(conn), conn.assigns.current_profile, params) do
       posted(
         conn,
         :ok,
@@ -72,7 +74,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     with {:ok, session_id} <- established_session(conn),
          {outcome, thread} when outcome != :error <-
-           Participation.ask_question(session_id, current_profile(conn), params) do
+           Participation.ask_question(session_id, visitor(conn), current_profile(conn), params) do
       posted(conn, outcome, thread_posted(thread), %{
         operation: :thread,
         site_id: thread.site_id,
@@ -98,7 +100,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     with {:ok, session_id} <- established_session(conn),
          {outcome, {thread, reply}} when outcome != :error <-
-           Participation.post_reply(session_id, current_profile(conn), id, params) do
+           Participation.post_reply(session_id, visitor(conn), current_profile(conn), id, params) do
       posted(conn, outcome, reply_posted(thread, reply), %{
         operation: :reply,
         site_id: thread.site_id,
@@ -163,7 +165,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     with {:ok, session_id} <- established_session(conn),
          {:ok, {report, reply}} <-
-           file_reply(session_id, conn.assigns.current_profile, id, params) do
+           file_reply(session_id, visitor(conn), conn.assigns.current_profile, id, params) do
       posted(
         conn,
         :ok,
@@ -323,6 +325,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp current_profile(conn), do: conn.assigns.current_profile
 
+  defp visitor(conn), do: ClientAddress.visitor_key(conn)
+
   # A post answers with its poster's hourly share as it stands once the post
   # is settled, whether it landed or was refused.
   defp with_share_headers(%{assigns: %{forum_session_id: id}} = conn, kind) when is_binary(id),
@@ -345,17 +349,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   #
   # Both are written under the poster's hourly share, which `PostingBudget`
   # counts and locks in the same transaction as the write.
-  defp file_report(session_id, actor, %{"receipt" => receipt} = params) do
+  defp file_report(session_id, visitor, actor, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
-      PostingBudget.admit_report(actor, session_id, fn ->
+      PostingBudget.admit_report(actor, session_id, visitor, fn ->
         file_receipt_report(session_id, actor, receipt, params)
       end)
     end
   end
 
-  defp file_report(session_id, actor, params) do
+  defp file_report(session_id, visitor, actor, params) do
     with {:ok, draft} <- OtherSiteReport.draft(params) do
-      PostingBudget.admit_report(actor, session_id, fn ->
+      PostingBudget.admit_report(actor, session_id, visitor, fn ->
         file_other_site_report(session_id, actor, draft)
       end)
     end
@@ -439,8 +443,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # A reply from the page's tools and one from the form on the report page
   # draw on the same hourly share; `PostingBudget` is the one door both go
   # through.
-  defp file_reply(session_id, actor, id, params) do
-    PostingBudget.admit_reply(actor, session_id, fn ->
+  defp file_reply(session_id, visitor, actor, id, params) do
+    PostingBudget.admit_reply(actor, session_id, visitor, fn ->
       with {:ok, report} <- Reads.fetch_report(id),
            {:ok, reply} <- add_reply(report, session_id, actor, params) do
         {:ok, {report, reply}}
@@ -597,6 +601,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # session when nobody is signed in.
   defp rate_subject(:account), do: "account"
   defp rate_subject(:session), do: "browser_session"
+  defp rate_subject(:address), do: "address"
 
   defp solution_status(:not_asker), do: :forbidden
   defp solution_status(:reply_not_on_thread), do: :not_found

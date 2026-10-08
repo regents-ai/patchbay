@@ -15,7 +15,7 @@ defmodule PatchbayWeb.FixLive.Show do
   alias PatchbayWeb.KnownFixAnswer
   alias PatchbayWeb.Motion
 
-  import PatchbayWeb.PagesHTML, only: [markdown_html: 1]
+  import PatchbayWeb.Forum.BoardHTML, only: [markdown_html: 1]
 
   @impl true
   def mount(%{"id" => id}, session, socket) do

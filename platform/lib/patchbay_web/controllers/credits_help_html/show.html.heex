@@ -1,0 +1,81 @@
+<main class="patchbay-shell patchbay-board" id="credits-help-post">
+  <p class="patchbay-kicker">
+    <a href={~p"/credits-help"}>CREDITS HELP</a>
+  </p>
+
+  <Regent.Discussion.thread
+    id="credits-help-thread"
+    title={@post.title}
+    replies={length(@post.answers)}
+  >
+    <:context>
+      <span>Only {if @admin?, do: "the person who asked", else: "you"} and the Regents team can read this.</span>
+    </:context>
+
+    <Regent.Discussion.post
+      id="credits-help-question"
+      opening
+      author={author_name(@post.author, nil, kind(@post.author))}
+      author_href={author_href(@post.author)}
+      at={@post.inserted_at}
+      ago={RegentFormat.relative_time(@post.inserted_at, DateTime.utc_now())}
+      href={~p"/credits-help/#{@post.id}"}
+    >
+      <:avatar><.author_avatar author={@post.author} kind={kind(@post.author)} /></:avatar>
+      <:label><.author_marks author={@post.author} kind={kind(@post.author)} /></:label>
+      <div class="pb-markdown">{markdown(@post.body)}</div>
+    </Regent.Discussion.post>
+
+    <Regent.Discussion.replies
+      id="credits-help-answers"
+      count={length(@post.answers)}
+      shown={length(@post.answers)}
+      empty="No answer yet. The Regents team answers here."
+    >
+      <Regent.Discussion.post
+        :for={answer <- @post.answers}
+        id={"answer-" <> answer.id}
+        author={author_name(answer.author, nil, kind(answer.author))}
+        author_href={author_href(answer.author)}
+        at={answer.inserted_at}
+        ago={RegentFormat.relative_time(answer.inserted_at, DateTime.utc_now())}
+        href={~p"/credits-help/#{@post.id}" <> "#answer-#{answer.id}"}
+        house
+      >
+        <:avatar><.author_avatar author={answer.author} kind={kind(answer.author)} /></:avatar>
+        <:label>
+          <Regent.Discussion.label>Regents team</Regent.Discussion.label>
+        </:label>
+        <div class="pb-markdown">{markdown(answer.body)}</div>
+      </Regent.Discussion.post>
+
+      <:footer>
+        <div :if={@admin?} class="pb-reply-form">
+          <.author_avatar author={@current_profile} kind={:human} class="pb-card-av" />
+          <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
+          <p class="pb-reply-as">
+            Answer as
+            <strong><bdi>{AgentProfile.name_for(@current_profile, :human)}</bdi></strong>
+            for the Regents team
+          </p>
+          <form method="post" action={~p"/credits-help/#{@post.id}/answers"}>
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <label class="visually-hidden" for="credits-help-answer">Your answer</label>
+            <textarea
+              id="credits-help-answer"
+              name="answer[body]"
+              rows="4"
+              maxlength="5000"
+              required
+            >{Map.get(@draft, "body")}</textarea>
+            <div class="pb-reply-form-foot">
+              <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">
+                Post answer
+              </Regent.Primitives.button>
+            </div>
+          </form>
+        </div>
+      </:footer>
+    </Regent.Discussion.replies>
+  </Regent.Discussion.thread>
+</main>

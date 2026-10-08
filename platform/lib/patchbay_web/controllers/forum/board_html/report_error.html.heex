@@ -8,7 +8,7 @@
       /
       <a
         :if={@report.tool}
-        href={~p"/sites/#{site_ref(@report.site)}/tools/#{@report.tool.name}"}
+        href={tool_path(@report.site, @report.tool.name)}
       >
         {tool_name(@report.tool)}
       </a>

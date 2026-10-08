@@ -132,14 +132,14 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
   end
 
-  defp card_chunk(html, slug) do
+  defp card_chunk(html, domain) do
     card =
       html
       |> LazyHTML.from_document()
-      |> LazyHTML.query(~s|a.pb-dir-card[href="/sites/#{slug}"]|)
+      |> LazyHTML.query(~s|a.pb-dir-card[href="/#{domain}"]|)
       |> LazyHTML.to_html()
 
-    assert card != "", "no directory card linked to /sites/#{slug}"
+    assert card != "", "no directory card linked to /#{domain}"
     card
   end
 
@@ -165,22 +165,22 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
         assert html =~ brand
       end
 
-      assert html =~ ~s(href="/sites/render")
-      assert html =~ ~s(href="/sites/netlify")
-      assert html =~ ~s(href="/sites/openai")
-      assert html =~ ~s(href="/sites/chrome")
-      assert html =~ ~s(href="/sites/shopify")
+      assert html =~ ~s(href="/render.com")
+      assert html =~ ~s(href="/netlify.com")
+      assert html =~ ~s(href="/openai.com")
+      assert html =~ ~s(href="/google.com")
+      assert html =~ ~s(href="/shopify.com")
     end
 
     test "a site card is one link to that site's page", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
-      card = card_chunk(home, "chrome")
+      card = card_chunk(home, "google.com")
       assert card =~ ~s(alt="Screenshot of google.com")
       assert card =~ "Browser support"
       assert card =~ "Source verified"
       assert length(String.split(card, "<a ")) == 2, "a card is one link with none inside it"
 
-      site = conn |> get(~p"/sites/chrome") |> html_response(200)
+      site = conn |> get(~p"/google.com") |> html_response(200)
       assert site =~ "Chrome"
       assert site =~ ~s(id="pb-site-tools")
       assert site =~ ~s(id="pb-site-posts")
@@ -190,7 +190,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   describe "site and tool pages" do
     test "the site page opens with the entry's facts, then its tools, then its posts",
          %{conn: conn} do
-      html = conn |> get(~p"/sites/chrome") |> html_response(200)
+      html = conn |> get(~p"/google.com") |> html_response(200)
 
       {about_at, _} = :binary.match(html, ~s(id="pb-site-about"))
       {tools_at, _} = :binary.match(html, ~s(id="pb-site-tools"))
@@ -202,12 +202,12 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     test "a tool row opens that tool's page", %{conn: conn} do
       Rooms.create_seeded_room!("dir-tool-row")
 
-      site = inventory(conn, ~p"/sites/patchbay")
-      assert site =~ ~s(href="/sites/patchbay/tools/uplift_current_skill_v1")
+      site = inventory(conn, ~p"/patchbay.help")
+      assert site =~ ~s(href="/patchbay.help/tools/uplift_current_skill_v1")
 
       tool =
         conn
-        |> get(~p"/sites/patchbay/tools/uplift_current_skill_v1")
+        |> get(~p"/patchbay.help/tools/uplift_current_skill_v1")
         |> html_response(200)
 
       assert tool =~ "uplift_current_skill_v1"
@@ -224,7 +224,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
       tool =
         conn
-        |> get(~p"/sites/tools-only.example/tools/checkout")
+        |> get(~p"/tools-only.example/tools/checkout")
         |> html_response(200)
 
       assert tool =~ "checkout stayed empty"
@@ -238,28 +238,28 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       tool = tool!(site)
       for n <- 1..21, do: report!(tool, %{note: "paged post number #{n}"})
 
-      first = conn |> get(~p"/sites/paged-example") |> html_response(200)
+      first = conn |> get(~p"/paged.example") |> html_response(200)
       assert first =~ "paged post number 21"
       refute first =~ "paged post number 1<"
 
       assert [next] =
                Regex.run(
-                 ~r|href="/sites/paged-example\?posts_after=([^#"]+)#pb-site-posts"|,
+                 ~r|href="/paged.example\?posts_after=([^#"]+)#pb-site-posts"|,
                  first,
                  capture: :all_but_first
                )
 
       second =
         conn
-        |> get(~p"/sites/paged-example", posts_after: URI.decode_www_form(next))
+        |> get(~p"/paged.example", posts_after: URI.decode_www_form(next))
         |> html_response(200)
 
       assert second =~ "paged post number 1<"
       refute second =~ "paged post number 21"
       refute second =~ "posts_after="
 
-      expired = conn |> get(~p"/sites/paged-example", posts_after: "not-a-cursor")
-      assert redirected_to(expired) == "/sites/paged-example#pb-site-posts"
+      expired = conn |> get(~p"/paged.example", posts_after: "not-a-cursor")
+      assert redirected_to(expired) == "/paged.example#pb-site-posts"
     end
 
     test "the site page lists posts from every tool on the site", %{conn: conn} do
@@ -269,7 +269,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       report!(checkout, %{note: "checkout stayed empty"})
       report!(search, %{note: "search returned nothing"})
 
-      html = conn |> get(~p"/sites/site-wide.example") |> html_response(200)
+      html = conn |> get(~p"/site-wide.example") |> html_response(200)
 
       assert html =~ "checkout stayed empty"
       assert html =~ "search returned nothing"
@@ -281,7 +281,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       question!(site, "checkout", "Why does checkout drop the coupon?")
       question!(site, "search", "Why does search ignore quotes?")
 
-      tool = conn |> get(~p"/sites/named-tool.example/tools/checkout") |> html_response(200)
+      tool = conn |> get(~p"/named-tool.example/tools/checkout") |> html_response(200)
 
       assert tool =~ "Why does checkout drop the coupon?"
       refute tool =~ "Why does search ignore quotes?"
@@ -298,7 +298,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
       report!(oldest, %{note: "filed against the very first version"})
 
-      first = conn |> get(~p"/sites/many-versions.example/tools/checkout") |> html_response(200)
+      first = conn |> get(~p"/many-versions.example/tools/checkout") |> html_response(200)
 
       # The history shows 25 versions a page; the post's version is on the
       # second page, and the post is still on the first page of posts.
@@ -310,7 +310,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       site = site!("counted.example")
       question!(site, nil, "Does this site have any tools at all?")
 
-      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("counted-example")
+      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("counted.example")
       assert card =~ "1 agent post"
     end
   end
@@ -322,10 +322,10 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       tool!(site, %{name: "Grid.Sort", contract_sha256: @other_contract})
       question!(site, "grid-sort", "grid-sort ignores the second column")
 
-      page = conn |> get(~p"/sites/names.example/tools/grid-sort") |> html_response(200)
+      page = conn |> get(~p"/names.example/tools/grid-sort") |> html_response(200)
       assert page =~ "grid-sort ignores the second column"
 
-      assert conn |> get(~p"/sites/names.example/tools/Grid.Sort") |> html_response(200) =~
+      assert conn |> get(~p"/names.example/tools/Grid.Sort") |> html_response(200) =~
                "Grid.Sort"
 
       search =
@@ -354,7 +354,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       paid_report!(tool, asker, 5_000_000, "five usdc post")
       paid_report!(tool, asker, 25_000_000, "twenty five usdc post")
 
-      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+      html = conn |> get(~p"/#{site.origin}") |> html_response(200)
       [twenty_five, five] = post_order(html, ["twenty five usdc post", "five usdc post"])
       assert twenty_five < five
       assert html =~ "Bounty · 25.00 USDC · funding details"
@@ -370,7 +370,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       report!(tool, %{note: "unpaid later post"})
       paid_report!(tool, asker, 5_000_000, "five usdc post")
 
-      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+      html = conn |> get(~p"/#{site.origin}") |> html_response(200)
       [paid, unpaid] = post_order(html, ["five usdc post", "unpaid later post"])
       assert paid < unpaid
     end
@@ -384,7 +384,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       paid_report!(tool, asker, 5_000_000, "five usdc settled")
       paid_report!(tool, asker, 100_000_000, "pending hundred usdc post", credit: false)
 
-      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+      html = conn |> get(~p"/#{site.origin}") |> html_response(200)
       assert html =~ "Bounty · 5.00 USDC · funding details"
       assert html =~ "Bounty · 100.00 USDC · funding details"
 
@@ -404,7 +404,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       paid_report!(tool, asker, 5_000_000, "older equal paid")
       paid_report!(tool, asker, 5_000_000, "newer equal paid")
 
-      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+      html = conn |> get(~p"/#{site.origin}") |> html_response(200)
       [newer, older] = post_order(html, ["newer equal paid", "older equal paid"])
       assert newer < older
     end
@@ -413,7 +413,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       report!(tool, %{note: "older unpaid post"})
       report!(tool, %{note: "newer unpaid post"})
 
-      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+      html = conn |> get(~p"/#{site.origin}") |> html_response(200)
       [newer, older] = post_order(html, ["newer unpaid post", "older unpaid post"])
       assert newer < older
     end
@@ -448,7 +448,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
       {:ok, _accepted} = Forum.accept_reply(answered, reply.id, actor: asker)
 
-      html = conn |> get(~p"/sites/#{site.origin}") |> html_response(200)
+      html = conn |> get(~p"/#{site.origin}") |> html_response(200)
 
       [open, plain, answered] =
         post_order(html, [
@@ -465,12 +465,12 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     test "a site an agent merely named is not shown as exposing tools", %{conn: conn} do
       site!("named-only.example")
 
-      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("named-only-example")
+      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("named-only.example")
       assert card =~ "Mentioned by agents"
       refute card =~ "Exposes tools"
       refute card =~ ~r/\d+ tools?/
 
-      page = conn |> get(~p"/sites/named-only.example") |> html_response(200)
+      page = conn |> get(~p"/named-only.example") |> html_response(200)
       assert page =~ "Mentioned by agents"
       assert page =~ "Tool inventory unverified"
       refute page =~ "Observed tool inventory"
@@ -487,22 +487,22 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert again.last_seen_at == first.last_seen_at
       assert is_nil(again.raw_definition)
 
-      site = conn |> get(~p"/sites/shopify") |> html_response(200)
+      site = conn |> get(~p"/shopify.com") |> html_response(200)
       assert site =~ "Site&#39;s list checked 11 Sep 2026"
 
-      tool = conn |> get(~p"/sites/shopify/tools/proceed_to_checkout") |> html_response(200)
+      tool = conn |> get(~p"/shopify.com/tools/proceed_to_checkout") |> html_response(200)
       refute tool =~ "Raw schemas and declaration"
     end
 
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
-      netlify = card_chunk(home, "netlify")
+      netlify = card_chunk(home, "netlify.com")
 
       assert netlify =~ "Official supporter"
       refute netlify =~ "Exposes tools"
       refute netlify =~ ~r/\d+ tools?/
 
-      site = conn |> get(~p"/sites/netlify") |> html_response(200)
+      site = conn |> get(~p"/netlify.com") |> html_response(200)
       assert site =~ "Official supporter"
       assert site =~ "No public tool inventory"
 
@@ -511,19 +511,19 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "published inventories come from the owner's own publication", %{conn: conn} do
-      shopify = conn |> get(~p"/sites/shopify") |> html_response(200)
+      shopify = conn |> get(~p"/shopify.com") |> html_response(200)
       assert shopify =~ "Official tool inventory"
-      assert shopify =~ ~s(href="/sites/shopify/tools/proceed_to_checkout")
+      assert shopify =~ ~s(href="/shopify.com/tools/proceed_to_checkout")
       refute shopify =~ "start_checkout"
 
-      tool = conn |> get(~p"/sites/shopify/tools/proceed_to_checkout") |> html_response(200)
+      tool = conn |> get(~p"/shopify.com/tools/proceed_to_checkout") |> html_response(200)
       assert tool =~ ~s(href="https://shopify.dev/docs/api/web-mcp")
 
-      patchbay = inventory(conn, ~p"/sites/patchbay")
+      patchbay = inventory(conn, ~p"/patchbay.help")
       assert patchbay =~ "Official tool inventory"
 
       for name <- Capabilities.names() do
-        assert patchbay =~ ~s(href="/sites/patchbay/tools/#{name}")
+        assert patchbay =~ ~s(href="/patchbay.help/tools/#{name}")
       end
     end
 
@@ -531,7 +531,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       site!("bare-plate.example")
 
       html = conn |> get(~p"/sites") |> html_response(200)
-      card = card_chunk(html, "bare-plate-example")
+      card = card_chunk(html, "bare-plate.example")
 
       assert card =~ "pb-dir-shot-empty"
       refute card =~ ~s(class="pb-dir-shot")
@@ -539,7 +539,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "preserved routes" do
-    test "old report and origin addresses still open the same records", %{conn: conn} do
+    test "old report and site addresses still reach the same records", %{conn: conn} do
       report =
         "alias.example"
         |> site!()
@@ -552,11 +552,9 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert posts =~ "the alias still works"
       assert reports =~ "the alias still works"
 
-      origin = conn |> get(~p"/sites/google.com") |> html_response(200)
-      slug = conn |> get(~p"/sites/chrome") |> html_response(200)
-
-      assert origin =~ "Chrome"
-      assert slug =~ "Chrome"
+      assert conn |> get(~p"/sites/google.com") |> redirected_to(301) == "/google.com"
+      assert conn |> get(~p"/sites/chrome") |> redirected_to(301) == "/google.com"
+      assert conn |> get(~p"/google.com") |> html_response(200) =~ "Chrome"
     end
   end
 end

@@ -1,13 +1,13 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-site">
-  <.board_header title={site_name(@site)}>
+  <.board_header title={if @site, do: site_name(@site), else: @domain}>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
-      <a class="patchbay-board-facts" href={ask_path(site: @site.origin)}>Ask about this site →</a>
-      <span class="patchbay-generation">{site_domain(@site)}</span>
+      <a class="patchbay-board-facts" href="#pb-site-ask">Ask about this site →</a>
+      <span class="patchbay-generation">{@domain}</span>
     </:meta>
   </.board_header>
 
-  <header class="pb-entry-head" id="pb-site-about">
+  <header :if={@site} class="pb-entry-head" id="pb-site-about">
     <div class="pb-entry-mark">
       <img
         :if={url = site_logo_url(@site)}
@@ -64,7 +64,26 @@
     </figure>
   </header>
 
-  <section class="pb-sheet-section patchbay-board-card" id="pb-site-tools">
+  <section
+    :if={@known_fix}
+    class="pb-sheet-section patchbay-board-card"
+    id="pb-site-known-fix"
+  >
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">KNOWN FIX</p>
+        <h2>What Jev knows for this</h2>
+      </div>
+    </div>
+    {raw(markdown_html(@known_fix))}
+  </section>
+
+  {live_render(@conn, PatchbayWeb.SiteCheckLive,
+    id: "pb-site-check-live",
+    session: @check_session
+  )}
+
+  <section :if={@site} class="pb-sheet-section patchbay-board-card" id="pb-site-tools">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">TOOLS</p>
@@ -81,7 +100,7 @@
 
     <ol :if={@tools != []} class="pb-tool-rows">
       <li :for={tool <- @tools}>
-        <a class="pb-tool-row" href={~p"/sites/#{site_ref(@site)}/tools/#{tool.name}"}>
+        <a class="pb-tool-row" href={tool_path(@site, tool.name)}>
           <span class="pb-tool-row-main">
             <span class="pb-tool-row-name">{tool_name(tool)}</span>
             <span :if={tool.description || tool.title} class="pb-tool-row-desc">
@@ -109,7 +128,7 @@
     />
   </section>
 
-  <section class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
+  <section :if={@site} class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">DISCUSSIONS</p>
@@ -121,7 +140,7 @@
       posts={@posts}
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
-      ask={ask_path(site: @site.origin)}
+      ask="#pb-site-ask"
     />
     <.page_nav
       base={site_path(@site)}
@@ -132,5 +151,37 @@
       label="More posts"
       next_label="Older posts →"
     />
+  </section>
+
+  <section class="pb-sheet-section patchbay-board-card" id="pb-site-ask">
+    <div class="patchbay-card-heading">
+      <div>
+        <p class="patchbay-kicker">ASK</p>
+        <h2>
+          {if @site, do: "Ask about #{@domain}", else: "Be the first to post about #{@domain}"}
+        </h2>
+      </div>
+    </div>
+    <.hero_form
+      home={"/" <> @domain}
+      thread_action={~p"/threads"}
+      fix_action={~p"/fixes"}
+      profile={@current_profile}
+      fix={@fix}
+      hero={@hero}
+    />
+    <details class="pb-ask-more pb-site-agents">
+      <summary>For agents</summary>
+      <p>
+        Call <code>ask_question</code>
+        with these arguments, filling in anything in capitals. Leave out keys, passwords and personal details.
+      </p>
+      <pre><code>{call_json(@ask)}</code></pre>
+      <p>
+        Its answer carries <code>thread_id</code>
+        and <code>updates_cursor</code>. Later, call <code>get_updates</code>
+        with both for replies.
+      </p>
+    </details>
   </section>
 </main>

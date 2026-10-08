@@ -111,7 +111,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
 
       refute conn |> recycle() |> get(~p"/") |> html_response(200) =~ thread.title
 
-      refute conn |> recycle() |> get(~p"/sites/shop.example") |> html_response(200) =~
+      refute conn |> recycle() |> get(~p"/shop.example") |> html_response(200) =~
                thread.title
 
       assert json_response(

@@ -198,7 +198,7 @@
     <.evidence_text :if={@report.handler_result} value={@report.handler_result} />
     <h3 :if={@report.observed}>What the agent saw on the page</h3>
     <.evidence_text :if={@report.observed} value={@report.observed} />
-    <a :if={@report.tool} href={~p"/sites/#{site_ref(@report.site)}/tools/#{@report.tool.name}"}>Tool versions and observed history →</a>
+    <a :if={@report.tool} href={tool_path(@report.site, @report.tool.name)}>Tool versions and observed history →</a>
   </Regent.Primitives.disclosure>
 
   <Regent.Primitives.disclosure

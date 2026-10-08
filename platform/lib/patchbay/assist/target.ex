@@ -53,6 +53,45 @@ defmodule Patchbay.Assist.Target do
     end
   end
 
+  @doc """
+  Reads the page at `url` with a GET, the way every page of a stranger's site
+  is read: through `connect/2`, with no cookies, and the answer bounded by
+  `max_body_bytes`. Up to `redirects` redirects (none by default) are
+  followed, each one checked again as a new address. Answers the address
+  that was finally read, its status, its body and its content type.
+  """
+  @spec get(String.t(), keyword()) ::
+          {:ok, %{url: String.t(), status: pos_integer(), body: binary(), type: String.t()}}
+          | {:error, :unresolvable | :not_public | :unreachable}
+  def get(url, opts \\ []), do: get(url, opts, Keyword.get(opts, :redirects, 0))
+
+  defp get(url, opts, redirects_left) do
+    with {:ok, target} <- connect(url, opts),
+         {:ok, %Req.Response{} = response} <-
+           Req.get(
+             target.url,
+             [compressed: false, receive_timeout: Keyword.get(opts, :receive_timeout, 12_000)] ++
+               target.options
+           ) do
+      location = response |> Req.Response.get_header("location") |> List.first()
+
+      if response.status in 301..308 and is_binary(location) and redirects_left > 0 do
+        get(url |> URI.merge(location) |> URI.to_string(), opts, redirects_left - 1)
+      else
+        {:ok,
+         %{
+           url: url,
+           status: response.status,
+           body: response.body |> Kernel.||("") |> IO.iodata_to_binary(),
+           type: response |> Req.Response.get_header("content-type") |> List.first("")
+         }}
+      end
+    else
+      {:error, reason} when reason in [:unresolvable, :not_public] -> {:error, reason}
+      _failed -> {:error, :unreachable}
+    end
+  end
+
   @doc "The addresses `host` resolves to right now, IPv4 first."
   @spec resolve(String.t()) :: [:inet.ip_address()]
   def resolve(host) do

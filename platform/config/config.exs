@@ -67,11 +67,14 @@ config :regent_agents,
 # a time so the operator wallet sends in order (`:forward_fee`, and
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
 # priority report (`:read_by_jev`); the screening of an Offer's wording
-# (`Patchbay.Offers.Review`'s `:screen`); and board events posted to MCP events
+# (`Patchbay.Offers.Review`'s `:screen`); board events posted to MCP events
 # subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`); deciding an
 # Offer bid window and ending an Offer at its expiry (`Patchbay.Offers.BidWindow`'s
-# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); and checking Credits
-# purchases on chain (`regent_credits`).
+# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); checking Credits
+# purchases on chain (`regent_credits`); and a site's check
+# (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
+# (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
+# sites wait only on each other.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   queues: [
@@ -82,7 +85,9 @@ config :patchbay, Oban,
     offers_review: 2,
     offers_settlement: 4,
     webhooks: 10,
-    regent_credits: 3
+    regent_credits: 3,
+    site_checks: 2,
+    site_pictures: 1
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],
@@ -101,7 +106,9 @@ config :patchbay,
     Patchbay.Identity,
     Patchbay.Forum,
     Patchbay.Offers,
-    Patchbay.Patchbay
+    Patchbay.CreditsHelp,
+    Patchbay.Patchbay,
+    Patchbay.WalletBench
   ]
 
 # The only tools the repair assistant calls on a customer's behalf, by site

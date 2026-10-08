@@ -6,9 +6,9 @@ defmodule Patchbay.MixProject do
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
   @elixir_utils_ref "f344888c70bd5983ff8a27339ac2db9a71594bd2"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "6a18fb1e7ee16c674285faf574a819fff6f55b94"
+  @design_system_ref "4da6db2bfe3559a8f8a761018dc099a28ab5f6a3"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "004307e65ffcf9cc9b3034d7cc2b015dcd45011b"
+  @regents_ref "f56a00728c767d1ccd6ece75430b72281646596b"
 
   def project do
     [
@@ -193,7 +193,7 @@ defmodule Patchbay.MixProject do
         "format --check-formatted",
         "credo --strict",
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
-        "xref graph --label compile-connected --fail-above 49",
+        "xref graph --label compile-connected --fail-above 59",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",

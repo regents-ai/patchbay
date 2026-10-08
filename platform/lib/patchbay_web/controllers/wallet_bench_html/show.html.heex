@@ -1,0 +1,13 @@
+<main class="patchbay-shell patchbay-board" id="patchbay-wallet-bench-pair">
+  <.board_header title={@harness.name <> " with " <> @wallet.name}>
+    <:crumbs>
+      <a href={~p"/wallet-bench"}>PATCHBAY / WALLET BENCH</a>
+    </:crumbs>
+  </.board_header>
+
+  <.pair_detail harness={@harness} wallet={@wallet} notes={@notes} grids={@grids} />
+
+  <section class="pb-sheet-section">
+    <a href={~p"/wallet-bench"}>Back to the bench</a>
+  </section>
+</main>
