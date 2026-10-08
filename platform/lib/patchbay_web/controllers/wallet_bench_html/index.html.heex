@@ -6,12 +6,8 @@
   <section class="pb-sheet-section pb-wb-intro">
     <p>
       Coding agents set up crypto wallets on their own. Each square is one agent with one wallet: a cell for each check, a dot for each run.
+      <a href="#how-it-works">How the bench works</a>
     </p>
-    <Regent.Primitives.disclosure id="pb-wb-setup" summary="How the bench runs">
-      <p>{@matrix.notes["setup"]}</p>
-      <p>{@matrix.notes["runs"]}</p>
-      <p>{@matrix.notes["grid_started"]}</p>
-    </Regent.Primitives.disclosure>
     <Regent.Primitives.disclosure id="pb-wb-meanings" summary="What each result means">
       <dl class="pb-wb-meanings">
         <div :for={outcome <- outcomes()}>
@@ -87,9 +83,12 @@
     </div>
   </section>
 
+  <.method />
+
   <section class="pb-sheet-section">
     <p class="patchbay-muted">
-      Results come from <a href="https://techtree.sh">Techtree</a>
+      Results come from
+      <.out href="https://techtree.sh">Techtree</.out>
       as each run finishes. The first survey is on <a href={~p"/blog/agent-wallet-bench-v7"}>the blog</a>.
     </p>
   </section>
