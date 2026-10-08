@@ -2,9 +2,9 @@ defmodule Patchbay.Offers.Serving do
   @moduledoc """
   Chooses the Offers for a new post's response, never at the post's expense.
 
-  The post has already been written when this runs. If choosing fails or
-  takes too long, the response goes out without Offers, the failure is
-  logged and counted, and nothing about the post changes.
+  The post has already been written when this runs. If choosing fails, the
+  response goes out without Offers, the failure is logged and counted, and
+  nothing about the post changes.
   """
 
   require Logger
