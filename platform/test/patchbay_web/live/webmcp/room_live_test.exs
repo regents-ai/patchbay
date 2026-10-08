@@ -298,7 +298,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert has_element?(view, "#patchbay-handler-response", "reported_success")
   end
 
-  test "states the demo fallback sentence required by the specification", %{
+  test "states the sample-answer sentence required by the specification", %{
     conn: conn,
     room: room
   } do
@@ -309,7 +309,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert has_element?(
              view,
              "#patchbay-fallback-warning",
-             "Demo fallback used because live inference was unavailable."
+             "Our model was unavailable, so this is a built-in example."
            )
 
     assert render(view) =~ "This candidate has not been evaluated on real tasks."
@@ -649,7 +649,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
       html = render_async(view, 2_000)
 
-      assert html =~ "Live inference failed"
+      assert html =~ "No answer from our model"
       assert html =~ "The candidate was not presented as a successful completion."
       assert Domain.get_invocation!(invocation.id).effective_status == :errored
       assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
@@ -709,7 +709,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       assert handler_error =~ "model_generation_failed"
       assert next_action =~ "call the tool again"
       assert Process.alive?(view.pid)
-      assert render(view) =~ "Live inference failed"
+      assert render(view) =~ "No answer from our model"
     end)
   end
 
@@ -749,7 +749,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
         "invocation_epoch" => invocation_epoch(view)
       })
 
-      assert render_async(view, 2_000) =~ "Live inference failed"
+      assert render_async(view, 2_000) =~ "No answer from our model"
 
       System.put_env("PATCHBAY_DEMO_FALLBACK", "true")
 
@@ -769,7 +769,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       assert has_element?(
                view,
                "#patchbay-fallback-warning",
-               "Demo fallback used because live inference was unavailable."
+               "Our model was unavailable, so this is a built-in example."
              )
     end)
   end
@@ -833,7 +833,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "success"
     assert html =~ "Visible postcondition failed"
     assert html =~ "CANDIDATE_EMPTY"
-    assert html =~ "Demo fallback used"
+    assert html =~ "Our model was unavailable"
     assert Domain.get_room_by_id!(room.id).status == :failed
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
   end

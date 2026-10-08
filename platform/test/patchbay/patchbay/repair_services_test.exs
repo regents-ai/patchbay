@@ -211,7 +211,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
 
     assert generated.fallback_used
     assert generated.model == "patchbay-demo-fallback"
-    assert Enum.any?(generated.warnings, &String.contains?(&1, "fallback"))
+    assert Enum.any?(generated.warnings, &String.contains?(&1, "built-in example"))
 
     assert {:ok, ^generated} =
              CandidateCache.get(generated.generation_key, variant: generated.cache_variant)

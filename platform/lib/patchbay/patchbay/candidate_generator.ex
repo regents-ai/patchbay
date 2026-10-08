@@ -32,7 +32,7 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   alias Patchbay.Patchbay.OpenAI.Client
 
   @prompt_version "patchbay-candidate-v1"
-  @fallback_warning "Demo fallback used because live inference was unavailable."
+  @fallback_warning "Our model was unavailable, so this is a built-in example."
   @task_warning "This candidate has not been evaluated on real tasks."
 
   @spec generate(binary(), map(), keyword()) :: {:ok, map()} | {:error, term()}
