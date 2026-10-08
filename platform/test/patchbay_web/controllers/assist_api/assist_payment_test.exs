@@ -257,7 +257,6 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
       |> Map.put(:body_params, %{"kind" => "jev_assist", "args" => @args})
       |> Map.put(:path_info, ["api", "agent", "payment_intents"])
       |> assign(:raw_body, "{}")
-      |> put_private(:wallet_body_complete, true)
       |> put_req_header("content-type", "application/json")
 
     assert {:ok, _} = WalletAuthor.before_verify(conn, %{})

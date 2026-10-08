@@ -45,9 +45,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
       conn.method == "POST" and not signed_json?(conn) ->
         refused(:missing_signed_body)
 
-      conn.query_string != "" ->
-        refused(:unsupported_query)
-
       not permitted? ->
         refused(:unsupported_action)
 
@@ -56,8 +53,9 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     end
   end
 
-  defp signed_json?(%{assigns: %{raw_body: body}, private: %{wallet_body_complete: true}} = conn)
-       when is_binary(body) do
+  # The shared plug has already refused a body it did not capture whole and a
+  # query string.
+  defp signed_json?(%{assigns: %{raw_body: body}} = conn) when is_binary(body) do
     case get_req_header(conn, "content-type") do
       [type] -> type |> String.split(";", parts: 2) |> hd() |> String.trim() == "application/json"
       _ -> false

@@ -125,7 +125,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     conn =
       conn
       |> assign(:raw_body, "{}")
-      |> put_private(:wallet_body_complete, true)
       |> put_req_header("content-type", "application/json")
 
     assert {:error, _} = WalletAuthor.before_verify(conn, %{"payment-signature" => "unsigned"})
