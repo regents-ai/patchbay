@@ -16,8 +16,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   alias PatchbayWeb.ApiError
   alias RegentAgents.HumanBacking
 
-  @forbidden ~w(x-agent-registry-address x-agent-token-id payment-signature)
-
   @impl Plug
   def init(opts), do: opts
 
@@ -32,17 +30,14 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   end
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def before_verify(conn, headers) do
-    validate_signed_request(conn, headers, permitted_request?(conn))
+  def before_verify(conn, _headers) do
+    validate_signed_request(conn, permitted_request?(conn))
   end
 
   @doc "Shared exact-request checks; each caller supplies its own narrow route allowlist."
-  def validate_signed_request(conn, headers, permitted?) do
+  def validate_signed_request(conn, permitted?) do
     cond do
-      Enum.any?(@forbidden, &Map.has_key?(headers, &1)) ->
-        refused(:unsupported_authority)
-
-      conn.method == "POST" and not signed_json?(conn) ->
+      is_map_key(conn.assigns, :raw_body) and not json?(conn) ->
         refused(:missing_signed_body)
 
       not permitted? ->
@@ -53,16 +48,14 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     end
   end
 
-  # The shared plug has already refused a body it did not capture whole and a
-  # query string.
-  defp signed_json?(%{assigns: %{raw_body: body}} = conn) when is_binary(body) do
+  # The shared plug has already refused a query string and a body it did not
+  # capture whole. A body sent here is JSON.
+  defp json?(conn) do
     case get_req_header(conn, "content-type") do
       [type] -> type |> String.split(";", parts: 2) |> hd() |> String.trim() == "application/json"
       _ -> false
     end
   end
-
-  defp signed_json?(_conn), do: false
 
   defp permitted_request?(%{method: "GET", body_params: params}),
     do: params in [%{}, %Plug.Conn.Unfetched{aspect: :body_params}]
@@ -169,14 +162,14 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
          {:ok, %{authentication_origin: :wallet, status: :active} = profile} <-
            Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}),
          {:ok, profile} <- record_backing(profile, backing) do
-      # Payment signature becomes a controller input only after its body is verified.
+      # Only the signed body carries a payment signature; an unsigned header is dropped.
       conn =
         case conn.body_params do
           %{"payment_signature" => signature} ->
             put_req_header(conn, "payment-signature", signature)
 
           _ ->
-            conn
+            delete_req_header(conn, "payment-signature")
         end
 
       {:ok, conn |> assign(:current_profile, profile) |> assign(:forum_session_id, nil)}

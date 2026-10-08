@@ -115,28 +115,44 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert Identity.get_profile!(profile.id).status == :suspended
   end
 
-  test "unsigned payment headers, tip authority and duplicate proof are refused before the broker" do
-    conn =
-      Plug.Test.conn(:post, "/api/agent/payment_intents/123/execute", "{}")
-      |> Map.put(:body_params, %{})
-
-    assert {:error, %{reason: :missing_signed_body}} = WalletAuthor.before_verify(conn, %{})
-
-    conn =
-      conn
+  test "a tip is refused before the broker" do
+    tip =
+      Plug.Test.conn(:post, "/api/agent/payment_intents", "{}")
+      |> Map.put(:body_params, %{"kind" => "agent_tip", "args" => %{}})
       |> assign(:raw_body, "{}")
       |> put_req_header("content-type", "application/json")
 
-    assert {:error, _} = WalletAuthor.before_verify(conn, %{"payment-signature" => "unsigned"})
-    assert {:error, _} = WalletAuthor.before_verify(conn, %{"x-agent-token-id" => "1"})
+    assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
+  end
 
-    tip = %{
-      conn
-      | path_info: ["api", "agent", "payment_intents"],
-        body_params: %{"kind" => "agent_tip", "args" => %{}}
+  # Founder rule, 8 Oct 2026: an extra unsigned header grants nothing. The pay
+  # step reads payment-signature, so only the signed body may set it.
+  test "an unsigned payment-signature header is dropped once the wallet is verified" do
+    conn =
+      Plug.Test.conn(:post, "/api/agent/payment_intents/123/execute", "{}")
+      |> Map.put(:body_params, %{})
+      |> put_req_header("payment-signature", "unsigned")
+
+    data = %{
+      "verified" => true,
+      "walletAddress" => @address,
+      "chainId" => 8453,
+      "principal" => %{
+        "kind" => "wallet",
+        "wallet_address" => @address,
+        "chain_id" => 8453,
+        "audience" => "patchbay"
+      },
+      "agentRegistration" => nil,
+      "agentBook" => nil
     }
 
-    assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
+    assert {:ok, accepted} = WalletAuthor.accept(conn, data, nil)
+    assert get_req_header(accepted, "payment-signature") == []
+
+    signed = %{conn | body_params: %{"payment_signature" => "signed"}}
+    assert {:ok, accepted} = WalletAuthor.accept(signed, data, nil)
+    assert get_req_header(accepted, "payment-signature") == ["signed"]
   end
 
   # Founder rule, 7 Oct 2026: the first World ID person an agent's sign-in names

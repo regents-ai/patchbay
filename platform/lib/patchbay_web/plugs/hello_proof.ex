@@ -19,12 +19,12 @@ defmodule PatchbayWeb.Plugs.HelloProof do
   end
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def before_verify(conn, headers) do
+  def before_verify(conn, _headers) do
     permitted? =
       conn.method == "POST" and conn.path_info == ["api", "agent", "hello"] and
         is_map(conn.body_params) and Map.keys(conn.body_params) -- ["name", "language"] == []
 
-    WalletAuthor.validate_signed_request(conn, headers, permitted?)
+    WalletAuthor.validate_signed_request(conn, permitted?)
   end
 
   @impl Siwa.AgentAuthPlug.Hooks
