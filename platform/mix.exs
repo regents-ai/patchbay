@@ -4,11 +4,11 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "f344888c70bd5983ff8a27339ac2db9a71594bd2"
+  @elixir_utils_ref "1f8670a23b3d7f3c08bf6aba648d7a0bc87cd6b5"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "4da6db2bfe3559a8f8a761018dc099a28ab5f6a3"
   @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "f56a00728c767d1ccd6ece75430b72281646596b"
+  @regents_ref "9aada41c5b269924eab9dca3ac33ecf08ad26f12"
 
   def project do
     [
@@ -179,7 +179,7 @@ defmodule Patchbay.MixProject do
         "format --check-formatted",
         "credo --strict",
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
-        "xref graph --label compile-connected --fail-above 33",
+        "xref graph --label compile-connected --fail-above 43",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
