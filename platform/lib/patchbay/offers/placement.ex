@@ -61,6 +61,7 @@ defmodule Patchbay.Offers.Placement do
         CASE status
           WHEN 'active' THEN ended_at IS NULL AND returned_minor IS NULL AND consumed_minor IS NULL AND forfeited_minor IS NULL
           ELSE ended_at IS NOT NULL
+            AND returned_minor IS NOT NULL AND consumed_minor IS NOT NULL AND forfeited_minor IS NOT NULL
             AND returned_minor >= 0 AND consumed_minor >= 0 AND forfeited_minor >= 0
             AND returned_minor + consumed_minor + forfeited_minor = amount_minor
             AND (status <> 'expired' OR (returned_minor = 0 AND forfeited_minor = 0))
