@@ -320,7 +320,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "x-siwa-receipt",
-        "description": "A Patchbay-audience wallet receipt plus signature, signature-input, x-key-id, x-timestamp, x-agent-wallet-address, x-agent-chain-id and content-digest on nonempty bodies. Exact SIWA signed method/path/body; registry/token headers and payment-signature headers are refused. Obtain nonce/verify from the configured shared SIWA service."
+        "description": "A Patchbay-audience wallet receipt plus x-siwa-signature, x-siwa-signature-input, x-key-id, x-timestamp, x-agent-wallet-address, x-agent-chain-id and content-digest on nonempty bodies. Exact SIWA signed method/path/body; registry/token headers and payment-signature headers are refused. Obtain nonce/verify from the configured shared SIWA service."
       }
     },
     "responses": {

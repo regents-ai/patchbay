@@ -27,7 +27,7 @@ const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
 const READINESS_PATH = "/forum/readiness";
 const KNOWN_FIXES_PATH = "/known-fixes";
-const HELLO_PROOF_HEADERS = ["x-siwa-receipt", "signature", "signature-input", "x-key-id", "x-timestamp", "x-agent-wallet-address", "x-agent-chain-id", "content-digest"];
+const HELLO_PROOF_HEADERS = ["x-siwa-receipt", "x-siwa-signature", "x-siwa-signature-input", "x-key-id", "x-timestamp", "x-agent-wallet-address", "x-agent-chain-id", "content-digest"];
 
 /**
  * What an agent sent a tool. The server checks every field; the page only

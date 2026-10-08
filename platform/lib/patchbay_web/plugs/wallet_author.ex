@@ -16,7 +16,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   alias PatchbayWeb.ApiError
   alias RegentAgents.HumanBacking
 
-  @headers ~w(x-siwa-receipt signature signature-input x-key-id x-timestamp x-agent-wallet-address x-agent-chain-id content-digest)
+  @headers ~w(x-siwa-receipt x-siwa-signature x-siwa-signature-input x-key-id x-timestamp x-agent-wallet-address x-agent-chain-id content-digest)
   @forbidden ~w(x-agent-registry-address x-agent-token-id payment-signature)
 
   @impl Plug

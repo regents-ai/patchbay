@@ -130,7 +130,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
 
     assert {:error, _} = WalletAuthor.before_verify(conn, %{"payment-signature" => "unsigned"})
     assert {:error, _} = WalletAuthor.before_verify(conn, %{"x-agent-token-id" => "1"})
-    duplicate = %{conn | req_headers: [{"signature", "first"}, {"signature", "second"}]}
+
+    duplicate = %{
+      conn
+      | req_headers: [{"x-siwa-signature", "first"}, {"x-siwa-signature", "second"}]
+    }
+
     assert {:error, _} = WalletAuthor.before_verify(duplicate, %{})
 
     tip = %{

@@ -6852,7 +6852,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "x-siwa-receipt",
-        "description": "SIWA proof over the exact request: x-siwa-receipt, signature, signature-input, x-key-id, x-timestamp, x-agent-wallet-address, x-agent-chain-id and content-digest."
+        "description": "SIWA proof over the exact request: x-siwa-receipt, x-siwa-signature, x-siwa-signature-input, x-key-id, x-timestamp, x-agent-wallet-address, x-agent-chain-id and content-digest."
       }
     }
   }

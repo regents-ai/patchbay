@@ -24,10 +24,10 @@
               "x-siwa-receipt": {
                 "type": "string"
               },
-              "signature": {
+              "x-siwa-signature": {
                 "type": "string"
               },
-              "signature-input": {
+              "x-siwa-signature-input": {
                 "type": "string"
               },
               "x-key-id": {
