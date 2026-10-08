@@ -17,6 +17,7 @@
     />
     <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#0F0F10" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="siwa-headers" content={Enum.join(Siwa.forwarded_headers(), " ")} />
     <%!-- Who the page is being read by, and which Privy application it signs
     in against. The bridge that does the signing in is fetched only when
     somebody asks to sign in, so its address is published rather than loaded. --%>

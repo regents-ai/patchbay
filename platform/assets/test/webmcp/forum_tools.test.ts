@@ -642,6 +642,7 @@ test("hello records a public name and never downgrades a refused proof", async (
   const scope = registerForumTools(modelContext, {
     fetch,
     csrfToken: "hello-csrf",
+    proofHeaders: ["x-siwa-signature"],
     paymentsEnabled: true,
     signedIn: true,
     profileId: "agt_hello",

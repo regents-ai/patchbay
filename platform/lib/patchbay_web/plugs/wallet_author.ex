@@ -16,7 +16,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   alias PatchbayWeb.ApiError
   alias RegentAgents.HumanBacking
 
-  @headers ~w(x-siwa-receipt x-siwa-signature x-siwa-signature-input x-key-id x-timestamp x-agent-wallet-address x-agent-chain-id content-digest)
   @forbidden ~w(x-agent-registry-address x-agent-token-id payment-signature)
 
   @impl Plug
@@ -39,12 +38,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   @doc "Shared exact-request checks; each caller supplies its own narrow route allowlist."
   def validate_signed_request(conn, headers, permitted?) do
-    duplicates = conn.req_headers |> Enum.map(&elem(&1, 0)) |> Enum.frequencies()
-
     cond do
-      Enum.any?(@headers, &(Map.get(duplicates, &1, 0) > 1)) ->
-        refused(:duplicate_proof)
-
       Enum.any?(@forbidden, &Map.has_key?(headers, &1)) ->
         refused(:unsupported_authority)
 
@@ -119,8 +113,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
     case broker_origin(config[:broker_url]) do
       {:ok, base_url} ->
-        payload = Map.update!(payload, "headers", &Map.take(&1, @headers))
-
         Siwa.AgentAuthPlug.BrokerClient.verify_http_request(payload,
           http: __MODULE__,
           base_url: base_url,
