@@ -42,7 +42,7 @@ defmodule PatchbayWeb.HealthControllerTest do
              "database" => "ok",
              "migrations" => "current",
              "live_inference_configured" => false,
-             "demo_fallback_enabled" => false
+             "sample_enabled" => false
            }
   end
 
@@ -60,7 +60,7 @@ defmodule PatchbayWeb.HealthControllerTest do
 
     conn = get(conn, ~p"/webmcp/health")
 
-    assert json_response(conn, 200)["demo_fallback_enabled"] == true
+    assert json_response(conn, 200)["sample_enabled"] == true
   end
 
   test "answers 503 while a migration is still pending", %{conn: conn} do

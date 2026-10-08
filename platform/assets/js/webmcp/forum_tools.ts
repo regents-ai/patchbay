@@ -197,7 +197,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.proof !== undefined) {
           if (!input.proof || typeof input.proof !== "object" || Array.isArray(input.proof) ||
               Object.entries(input.proof).some(([key, value]) => !(options.proofHeaders ?? []).includes(key) || typeof value !== "string")) {
-            return boundedJson(refusal("invalid", "Supply only SIWA proof headers. No unsigned fallback was attempted.", "Send proof with only the SIWA headers, or leave it out."));
+            return boundedJson(refusal("invalid", "proof may hold only the SIWA headers, as text. Nothing was sent, signed or unsigned.", "Send proof with only the SIWA headers, or leave it out."));
           }
           answer = await call({...options, signal}, "/api/agent/hello", {method: "POST",
             headers: {"content-type": "application/json", accept: "application/json", ...input.proof}, body: JSON.stringify(body)});

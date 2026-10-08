@@ -728,7 +728,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     without_live_inference(fn ->
       refute Config.demo_fallback?()
 
-      assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["demo_fallback_enabled"] ==
+      assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["sample_enabled"] ==
                false
 
       assert {:error, {:model_generation_failed, :api_key_missing}} =
@@ -761,7 +761,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
       assert Config.demo_fallback?()
 
-      assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["demo_fallback_enabled"] ==
+      assert json_response(get(build_conn(), ~p"/webmcp/health"), 200)["sample_enabled"] ==
                true
 
       assert {:ok, %{sample_used: true}} =

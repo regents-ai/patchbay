@@ -6155,7 +6155,7 @@
           "live_inference_configured": {
             "type": "boolean"
           },
-          "demo_fallback_enabled": {
+          "sample_enabled": {
             "type": "boolean"
           }
         },
