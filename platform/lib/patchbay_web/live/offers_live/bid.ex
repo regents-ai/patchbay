@@ -86,6 +86,12 @@ defmodule PatchbayWeb.OffersLive.Bid do
      )}
   end
 
+  # Bidding and asking act for a signed-in advertiser, so a press from
+  # nobody opens nothing.
+  def handle_event(event, _params, %{assigns: %{current_profile: nil}} = socket)
+      when event in ["bid", "ask_fit"],
+      do: {:noreply, assign(socket, problem: "Sign in at the top of the page to bid.")}
+
   def handle_event("bid", %{"bid" => params}, socket) do
     socket =
       assign(socket,

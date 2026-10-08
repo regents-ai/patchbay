@@ -3,9 +3,11 @@ defmodule PatchbayWeb.CreditsPanel do
   The Buy Credits panel, as in the Regent template: the balance, the amount,
   the chain, the wallet presses and what each press did, all in one place. The
   server builds the steps (`RegentCredits.Chains.steps/3`), every press goes
-  straight to the wallet, and each sent Buy is reported as a purchase, then
-  checked every two seconds until it counts. Patchbay's Oban keeps checking
-  once a minute after the page stops.
+  straight to the wallet, and each sent Buy is reported as a purchase at once.
+  The panel checks the purchase when the chain confirms the Buy, again each
+  time the balance changes, and when the person presses Check again; the
+  Credits library's Oban checks it once a minute whether the page is open or
+  not.
 
   It pays from the wallet Patchbay knows the profile by, shown as soon as the
   panel opens with its USDC on both chains. The press reaches Privy's active
@@ -29,8 +31,6 @@ defmodule PatchbayWeb.CreditsPanel do
   alias RegentChain.{Call, Presses, Review}
   alias RegentCredits.{Amount, Chains}
 
-  @recheck_ms 2_000
-  @purchase_reads 150
   @chains %{"base" => :base, "ethereum" => :ethereum}
 
   @impl true
@@ -59,16 +59,20 @@ defmodule PatchbayWeb.CreditsPanel do
     # Until a press says otherwise, the wallet to pay from is the profile's own.
     active = socket.assigns.active || hd(linked)
 
-    {:ok,
-     socket
-     |> assign(
-       id: assigns.id,
-       profile: profile,
-       balance: assigns.balance,
-       linked: linked,
-       active: active
-     )
-     |> sync()}
+    moved? = Map.has_key?(socket.assigns, :balance) and assigns.balance != socket.assigns.balance
+
+    socket =
+      socket
+      |> assign(
+        id: assigns.id,
+        profile: profile,
+        balance: assigns.balance,
+        linked: linked,
+        active: active
+      )
+      |> sync()
+
+    {:ok, if(moved?, do: check_waiting(socket), else: socket)}
   end
 
   @impl true
@@ -135,32 +139,27 @@ defmodule PatchbayWeb.CreditsPanel do
 
   def handle_event("check_purchase_again", %{"hash" => hash}, socket) do
     case socket.assigns.purchases do
-      %{^hash => shown} -> {:noreply, check_purchase(socket, hash, %{shown | reads: 0})}
+      %{^hash => %{purchase: %{id: _id}}} -> {:noreply, check_purchase(socket, hash)}
       _unknown -> {:noreply, socket}
     end
   end
 
   @impl true
-  def handle_async({:onchain_step, hash}, result, socket),
-    do: {:noreply, socket |> OnchainSteps.checked(hash, result) |> approved(hash) |> read_funds()}
-
-  def handle_async({:purchase, hash}, {:ok, {:ok, purchase}}, socket) do
-    shown = %{purchase: purchase, reads: socket.assigns.purchases[hash].reads + 1}
-
-    if purchase.status == :checking and shown.reads < @purchase_reads,
-      do: {:noreply, check_purchase(socket, hash, shown)},
-      else: {:noreply, put_purchase(socket, hash, shown)}
+  def handle_async({:onchain_step, hash}, result, socket) do
+    {:noreply,
+     socket
+     |> OnchainSteps.checked(hash, result)
+     |> approved(hash)
+     |> bought(hash)
+     |> read_funds()}
   end
 
-  # An unanswered read counts like any other; the next one tries again.
-  def handle_async({:purchase, hash}, _unanswered, socket) do
-    %{purchase: purchase, reads: reads} = socket.assigns.purchases[hash]
-    shown = %{purchase: purchase, reads: reads + 1}
+  def handle_async({:purchase, hash}, {:ok, {:ok, purchase}}, socket),
+    do: {:noreply, put_purchase(socket, hash, %{purchase: purchase, checked?: true})}
 
-    if shown.reads < @purchase_reads,
-      do: {:noreply, check_purchase(socket, hash, shown)},
-      else: {:noreply, put_purchase(socket, hash, shown)}
-  end
+  # An unanswered check leaves the purchase as it was, with Check again beside it.
+  def handle_async({:purchase, hash}, _unanswered, socket),
+    do: {:noreply, put_purchase(socket, hash, %{socket.assigns.purchases[hash] | checked?: true})}
 
   def handle_async({:usdc, chain}, {:ok, {:ok, micro}}, socket),
     do: {:noreply, assign(socket, usdc: Map.put(socket.assigns.usdc, chain, micro))}
@@ -271,19 +270,36 @@ defmodule PatchbayWeb.CreditsPanel do
            entry.hash,
            actor: actor
          ) do
-      {:ok, purchase} -> check_purchase(socket, entry.hash, %{purchase: purchase, reads: 0})
-      {:error, _error} -> put_purchase(socket, entry.hash, %{purchase: nil, reads: 0})
+      {:ok, purchase} -> put_purchase(socket, entry.hash, %{purchase: purchase, checked?: false})
+      {:error, _error} -> put_purchase(socket, entry.hash, %{purchase: nil, checked?: false})
     end
   end
 
-  defp check_purchase(socket, hash, shown) do
-    {:ok, actor} = Credits.spender(socket.assigns.profile)
-    id = shown.purchase.id
+  # The chain confirmed a Buy: its purchase is checked now rather than at the
+  # next once-a-minute check.
+  defp bought(socket, hash) do
+    case {Enum.find(socket.assigns.presses.sent, &(&1.hash == hash)), socket.assigns.purchases} do
+      {%{name: "buy", outcome: :confirmed}, %{^hash => %{purchase: %{status: :checking}}}} ->
+        check_purchase(socket, hash)
 
-    socket
-    |> put_purchase(hash, shown)
-    |> start_async({:purchase, hash}, fn ->
-      Process.sleep(@recheck_ms)
+      _other ->
+        socket
+    end
+  end
+
+  # The balance moved: any purchase still being checked may be what moved it.
+  defp check_waiting(socket) do
+    Enum.reduce(socket.assigns.purchases, socket, fn
+      {hash, %{purchase: %{status: :checking}}}, socket -> check_purchase(socket, hash)
+      _done, socket -> socket
+    end)
+  end
+
+  defp check_purchase(socket, hash) do
+    {:ok, actor} = Credits.spender(socket.assigns.profile)
+    id = socket.assigns.purchases[hash].purchase.id
+
+    start_async(socket, {:purchase, hash}, fn ->
       RegentCredits.check_purchase(id, actor: actor)
     end)
   end
@@ -692,19 +708,19 @@ defmodule PatchbayWeb.CreditsPanel do
 
   defp checking_words(%{purchase: purchase} = shown) do
     cond do
-      purchase_stalled?(shown) ->
-        "Still checking. It counts even if you close this page."
-
       purchase.chain == :ethereum and purchase.block_number ->
         "Waiting for 12 Ethereum blocks, about 2½ minutes"
+
+      purchase_stalled?(shown) ->
+        "Still checking. It counts even if you close this page."
 
       true ->
         "Waiting for #{chain_name(purchase.chain)}"
     end
   end
 
-  defp purchase_stalled?(%{purchase: %{status: :checking}, reads: reads}),
-    do: reads >= @purchase_reads
+  # Checked after the chain confirmed it, and still not counted.
+  defp purchase_stalled?(%{purchase: %{status: :checking}, checked?: checked?}), do: checked?
 
   defp purchase_stalled?(_shown), do: false
 

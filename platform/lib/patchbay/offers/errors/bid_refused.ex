@@ -37,8 +37,10 @@ defmodule Patchbay.Offers.Errors.BidRefused do
   def message(%{reason: :nothing_showing}),
     do: "Nothing is showing in this slot, so there is no next period to bid for yet."
 
-  def message(%{reason: :placement_ending}),
-    do: "The Offer showing here ends too soon to compare a new bid. Bid again once it has ended."
+  def message(%{reason: :placement_ending, expires_at: expires_at}),
+    do:
+      "The Offer showing here ends at #{Calendar.strftime(expires_at, "%-d %b %Y, %H:%M UTC")}, " <>
+        "too soon to compare a new bid. Bid again once it has ended."
 
   def message(%{reason: :below_minimum, minimum_minor: minimum}),
     do: "This bid needs to be at least #{CreditAmount.format(minimum)} Credits."

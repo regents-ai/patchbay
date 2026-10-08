@@ -13,11 +13,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   alias Patchbay.Forum
   alias Patchbay.Offers
 
-  setup do
-    origin = "offers-#{System.unique_integer([:positive])}.example"
+  # Each test comes from an address of its own, so the reports one test files
+  # never draw on another's share.
+  setup %{conn: conn} do
+    n = System.unique_integer([:positive])
+    origin = "offers-#{n}.example"
     {:ok, site} = Forum.register_site(origin, authorize?: false)
 
     %{
+      conn: %{
+        conn
+        | remote_ip: {10, rem(div(n, 65_536), 256), rem(div(n, 256), 256), rem(n, 256)}
+      },
       origin: origin,
       site: Offers.open_site_market!(site.id, authorize?: false),
       global: Offers.global_market!(),
@@ -102,7 +109,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
     replied =
       repeated
-      |> recycle()
+      |> again()
       |> put_req_header("content-type", "application/json")
       |> post(
         "/forum/threads/#{body["thread_id"]}/replies",
@@ -163,7 +170,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       end
     end
 
-    test "a reporter's eleventh report in an hour is refused",
+    test "a reporter's eleventh report in an hour is refused, from a new session too",
          %{conn: conn, origin: origin, global: global, owner: owner} do
       place(global, 1, approved_version(owner, "Global one", global))
       posted = ask(conn, origin)
@@ -179,6 +186,14 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       assert %{"error" => %{"code" => "rate_limited"}} =
                posted |> report_offer(offer) |> json_response(429)
+
+      # A new session costs nothing, so the address it comes from is counted too.
+      fresh = %{build_conn() | remote_ip: posted.remote_ip} |> get("/")
+
+      assert %{"error" => %{"code" => "rate_limited"} = refused} =
+               fresh |> report_offer(offer) |> json_response(429)
+
+      assert inspect(refused) =~ "address"
     end
   end
 
@@ -186,6 +201,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     test "is not there for anyone but a moderator", %{conn: conn, owner: owner} do
       assert_error_sent(404, fn -> get(conn, "/admin/offers") end)
       assert_error_sent(404, fn -> conn |> signed_in(owner) |> get("/admin/offers") end)
+    end
+
+    test "an open page is disconnected when its moderator signs out", %{conn: conn} do
+      conn = signed_in(conn, moderator())
+      live_pages = get_session(conn, "live_socket_id")
+      :ok = PatchbayWeb.Endpoint.subscribe(live_pages)
+      {:ok, _view, _html} = live(conn, "/admin/offers")
+
+      signed_out = PatchbayWeb.Plugs.CurrentProfile.sign_out(conn)
+
+      assert_receive %Phoenix.Socket.Broadcast{topic: ^live_pages, event: "disconnect"}
+      assert_error_sent(404, fn -> get(signed_out, "/admin/offers") end)
     end
 
     test "a report shows as it is filed; confirming and blocking are recorded, and the Offer stops",
@@ -406,8 +433,10 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert offers =~ ~s(Global · Slot 1 \(until )
       assert offers =~ ~s("Global one")
 
-      assert %{"items" => [%{"label" => "Global · Slot 1"}]} =
+      assert %{"items" => [%{"label" => "Global · Slot 1", "placement_id" => _} = item]} =
                result["structuredContent"]["agent_offers"]
+
+      refute Map.has_key?(item, "text")
     end
 
     test "the ChatGPT plugin's address posts the same way and never carries Offers",
@@ -493,7 +522,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   defp mcp_rpc(conn, path, session, method, params) do
-    conn = conn |> recycle() |> put_req_header("content-type", "application/json")
+    conn = conn |> again() |> put_req_header("content-type", "application/json")
     conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
     post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
   end
@@ -508,25 +537,27 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     |> String.replace(~r/\s+/, " ")
   end
 
+  defp again(conn), do: %{recycle(conn) | remote_ip: conn.remote_ip}
+
   defp signed_in(conn, profile) do
     conn
-    |> recycle()
+    |> again()
     |> Plug.Test.init_test_session(%{})
     |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
   end
 
   defp report_offer(posted, offer) do
     posted
-    |> recycle()
+    |> again()
     |> put_req_header("content-type", "application/json")
     |> post("/forum/offer-reports", Jason.encode!(offer))
   end
 
   defp ask(conn, origin, extra \\ %{}) do
     conn
-    |> recycle()
+    |> again()
     |> get("/")
-    |> recycle()
+    |> again()
     |> put_req_header("content-type", "application/json")
     |> post(
       "/forum/threads",

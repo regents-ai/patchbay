@@ -241,7 +241,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def report_offer(conn, params) do
     with {:ok, session_id} <- established_session(conn),
          {:ok, report} <-
-           Participation.report_offer(session_id, current_profile(conn), :http_api, params) do
+           Participation.report_offer(
+             session_id,
+             visitor(conn),
+             current_profile(conn),
+             :http_api,
+             params
+           ) do
       conn
       |> put_status(:created)
       |> json(Participation.offer_report_answer(report))

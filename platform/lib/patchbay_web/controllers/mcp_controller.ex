@@ -195,7 +195,8 @@ defmodule PatchbayWeb.MCPController do
   end
 
   # Agent Offers after a new post travel once as their own text block, under
-  # the disclosure, and after the forum result in the structured answer;
+  # the disclosure. The structured answer carries, after the forum result,
+  # only what reporting one needs, so no advertiser's words are sent twice;
   # they never appear inside the result's own text.
   defp tool_result(%{agent_offers: offers} = answer, false) do
     result = Map.delete(answer, :agent_offers)
@@ -205,7 +206,7 @@ defmodule PatchbayWeb.MCPController do
         %{"type" => "text", "text" => Jason.encode!(result)},
         %{"type" => "text", "text" => Disclosure.text(offers)}
       ],
-      "structuredContent" => Disclosure.append(result, offers),
+      "structuredContent" => Disclosure.append(result, Disclosure.references(offers)),
       "isError" => false
     }
   end

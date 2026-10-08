@@ -22,10 +22,14 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   require Ash.Query
 
+  import PatchbayWeb.OffersLive.Markets, only: [credits: 1]
+
+  alias Patchbay.Offers.Advance
   alias Patchbay.Offers.CreativeVersion
   alias Patchbay.Offers.ModerationAction
   alias Patchbay.Offers.OfferReport
   alias Patchbay.Offers.Review
+  alias Patchbay.Offers.Terms
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Read
 
@@ -178,10 +182,15 @@ defmodule PatchbayWeb.OfferModerationLive do
   defp words(_problem), do: "That could not be saved. Try again in a moment."
 
   defp read_board do
+    now = DateTime.utc_now()
+    reports = reports()
+
     {:ok,
      %{
+       now: now,
+       starts: starts(reports, now),
        waiting: waiting(),
-       reports: reports(),
+       reports: reports,
        ranking: ranking(),
        decisions: decisions(),
        screening: screening()
@@ -200,6 +209,19 @@ defmodule PatchbayWeb.OfferModerationLive do
       placement: [slot: [next_bid: [:version], market: :site]]
     )
     |> Ash.read!(authorize?: false)
+  end
+
+  # The waiting next-period bids that would start at once if the Offer
+  # showing in their slot were removed, by the same rule removal uses.
+  defp starts(reports, now) do
+    reports
+    |> Enum.map(& &1.placement)
+    |> Enum.filter(&(&1.status == :active and &1.slot.next_bid))
+    |> Enum.group_by(& &1.slot.market, & &1.slot.next_bid.version_id)
+    |> Enum.flat_map(fn {market, ids} ->
+      market |> Advance.eligible_versions(Enum.uniq(ids), now) |> Enum.map(&{market.id, &1})
+    end)
+    |> MapSet.new()
   end
 
   # As above. Oldest first: the advertiser has waited longest.
@@ -295,16 +317,27 @@ defmodule PatchbayWeb.OfferModerationLive do
   defp per_thousand(%{report_count: reports, delivery_count: shown}),
     do: " (#{:erlang.float_to_binary(reports * 1000 / shown, decimals: 1)} per 1,000 shown)"
 
-  @doc "What happens to the slot's waiting next-period bid if the Offer is removed."
-  def successor_words(nil), do: "Nothing is waiting, so the slot will be empty."
+  @doc "What removing the showing placement does, as the page last read it."
+  def removal_words(placement, %{now: now, starts: starts}) do
+    split = Terms.removed(placement.amount_minor, placement.expires_at, now)
 
-  def successor_words(%{version: %{blocked_at: blocked}}) when not is_nil(blocked),
-    do: "The waiting next-period bid's wording is blocked, so it will not start."
+    "Removing this Offer ends it now and its owner gets nothing back: " <>
+      "#{credits(split.consumed)} of time already shown counts as used and " <>
+      "#{credits(split.forfeited)} is forfeited. Bids still competing for this slot " <>
+      "come back in full. " <> successor_words(placement.slot, starts)
+  end
 
-  def successor_words(bid),
-    do:
-      "The waiting next-period bid of #{PatchbayWeb.OffersLive.Markets.credits(bid.amount_minor)} " <>
-        "starts at once if its wording may still be shown."
+  defp successor_words(%{next_bid: nil}, _starts),
+    do: "No next-period bid is waiting, so the slot will be empty."
+
+  defp successor_words(%{next_bid: bid} = slot, starts) do
+    if {slot.market_id, bid.version_id} in starts,
+      do:
+        "The waiting next-period bid of #{credits(bid.amount_minor)} starts at once, showing “#{bid.version.text}”.",
+      else:
+        "The waiting next-period bid of #{credits(bid.amount_minor)} comes back in full, " <>
+          "because its wording may not show here now, so the slot will be empty."
+  end
 
   @doc false
   def decision_label(:dismiss_report), do: "Dismissed a report"

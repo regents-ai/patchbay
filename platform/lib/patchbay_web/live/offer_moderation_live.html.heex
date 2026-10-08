@@ -211,11 +211,7 @@
           >
             <input type="hidden" name="placement_id" value={report.placement.id} />
             <input type="hidden" name="generation" value={report.placement.generation} />
-            <p class="patchbay-muted">
-              Removing this Offer ends it now. Its owner gets nothing back: the time already shown
-              counts as used and the rest is forfeited. Every bid waiting on this slot comes back
-              in full. {successor_words(report.placement.slot.next_bid)}
-            </p>
+            <p class="patchbay-muted">{removal_words(report.placement, board)}</p>
             <Regent.Primitives.field
               id={"pb-offmod-remove-why-#{report.id}"}
               label="Why remove it (kept with the decision)"

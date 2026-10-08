@@ -28,6 +28,15 @@ defmodule Patchbay.Offers.Disclosure do
   def section(_none), do: nil
 
   @doc """
+  The section without the advertisers' words, for an answer that shows them
+  once as text (`text/1`): what a reader needs to report one, and when each
+  ends.
+  """
+  @spec references(map()) :: map()
+  def references(%{items: items} = section),
+    do: %{section | items: Enum.map(items, &Map.delete(&1, :text))}
+
+  @doc """
   The same Offers as plain text, for a reader that only sees text: the
   disclosure, then one labelled line per Offer with its words in quotes.
   """

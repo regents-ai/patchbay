@@ -166,7 +166,13 @@ defmodule PatchbayWeb.MCP.Tools do
   defp with_offers(answer, _surface), do: answer
 
   defp report_agent_offer(arguments, caller) do
-    case Participation.report_offer(caller.session_id, nil, caller.surface, arguments) do
+    case Participation.report_offer(
+           caller.session_id,
+           caller.visitor_key,
+           nil,
+           caller.surface,
+           arguments
+         ) do
       {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
       {:error, failure} -> write_refusal(failure)
     end

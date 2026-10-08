@@ -372,14 +372,16 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   @doc """
   Reports an Offer the caller was shown, under the caller's own principal and
-  within its hourly share. The Offer is named by the ids its response gave:
-  `placement_id`, `creative_version_id` and, optionally, `delivery_id`.
-  Reporting the same placement again answers with the first report.
+  within its hourly share, and its address's when nobody is signed in. The
+  Offer is named by the ids its response gave: `placement_id`,
+  `creative_version_id` and, optionally, `delivery_id`. Reporting the same
+  placement again answers with the first report.
   """
-  def report_offer(session_id, actor, surface, params) do
+  def report_offer(session_id, visitor, actor, surface, params) do
     reporter = principal(actor, session_id)
 
-    with :ok <- OfferReportLimit.check(reporter, if(actor, do: :account, else: :session)) do
+    with :ok <-
+           OfferReportLimit.check(reporter, if(actor, do: :account, else: :session), visitor) do
       %{
         placement_id: params["placement_id"],
         version_id: params["creative_version_id"],
