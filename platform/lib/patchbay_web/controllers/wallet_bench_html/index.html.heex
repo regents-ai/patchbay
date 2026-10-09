@@ -81,7 +81,9 @@
       </article>
       <article class="pb-wb-card" aria-labelledby="pb-wb-key-title">
         <h2 id="pb-wb-key-title">Reading a dot</h2>
-        <p>Each pair runs three times. A dot shows in how many of them the check held.</p>
+        <p>
+          A dot shows how often the check held across the pair’s completed runs, including reruns.
+        </p>
         <ul class="pb-wb-legend">
           <li :for={{tone, label} <- dot_key()}>
             <span class={["pb-wb-dot", tone]} aria-hidden="true"></span>{label}
