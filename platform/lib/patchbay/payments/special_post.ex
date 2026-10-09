@@ -31,6 +31,7 @@ defmodule Patchbay.Payments.SpecialPost do
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.Report
+  alias Patchbay.Payments.Completion
   alias RegentPayments.Offer
   alias RegentPayments.USDC
 
@@ -96,20 +97,24 @@ defmodule Patchbay.Payments.SpecialPost do
   """
   @impl true
   def carry_out(intent, _receipt, actor, context) do
-    %{"report_id" => report_id, "tool_id" => tool_id, "draft" => draft} = intent.payload
+    with :ok <- Completion.authorize(actor, intent, kind(), target_type()) do
+      %{"report_id" => report_id, "tool_id" => tool_id, "draft" => draft} = intent.payload
 
-    filed =
-      draft
-      |> OtherSiteReport.report_attributes(tool_id)
-      |> Map.merge(%{
-        id: report_id,
-        browser_session_id: context.browser_session_id,
-        priority_amount_atomic: intent.amount_atomic,
-        payment_intent_id: intent.id
-      })
-      |> Forum.file_priority_report(actor: actor)
+      filed =
+        draft
+        |> OtherSiteReport.report_attributes(tool_id)
+        |> Map.merge(%{
+          id: report_id,
+          browser_session_id:
+            if(actor.authentication_origin == :wallet, do: nil, else: context.browser_session_id),
+          priority_amount_atomic: intent.amount_atomic,
+          payment_intent_id: intent.id,
+          intent: intent
+        })
+        |> Forum.file_priority_report(actor: actor)
 
-    with {:ok, _report} <- filed, do: {:ok, :complete}
+      with {:ok, _report} <- filed, do: {:ok, :complete}
+    end
   end
 
   # A report whose filing failed stays settled with its receipt, for a person

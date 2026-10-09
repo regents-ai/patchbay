@@ -14,14 +14,11 @@ defmodule Patchbay.Agents.AttributeAction do
            ),
          else: changeset
 
-    Enum.reduce(
-      [:acting_agent_id, :beneficiary_profile_id, :human_account_id, :pairing_id],
-      changeset,
-      fn field, changeset ->
-        Ash.Changeset.force_change_attribute(changeset, field, Map.fetch!(actor, field))
-      end
-    )
+    attribute(changeset, actor)
   end
+
+  def change(changeset, _opts, %{actor: %RegentPayments.CompletionActor{} = actor}),
+    do: attribute(changeset, actor)
 
   # A human correction to an upserted follow or use is attributed to that
   # human, rather than retaining the previous agent's episode.
@@ -35,4 +32,12 @@ defmodule Patchbay.Agents.AttributeAction do
   end
 
   def change(changeset, _opts, _context), do: changeset
+
+  defp attribute(changeset, actor) do
+    Enum.reduce(
+      [:acting_agent_id, :beneficiary_profile_id, :human_account_id, :pairing_id],
+      changeset,
+      &Ash.Changeset.force_change_attribute(&2, &1, Map.fetch!(actor, &1))
+    )
+  end
 end

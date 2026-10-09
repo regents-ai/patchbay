@@ -15,6 +15,7 @@ defmodule Patchbay.Payments.AgentTip do
   @behaviour RegentPayments.Offer
 
   alias Ash.Error.Changes.InvalidArgument
+  alias Patchbay.Payments.Completion
   alias RegentPayments.Offer
   alias RegentPayments.USDC
 
@@ -66,7 +67,10 @@ defmodule Patchbay.Payments.AgentTip do
   end
 
   @impl true
-  def carry_out(_intent, _receipt, _actor, _context), do: {:ok, :complete}
+  def carry_out(intent, _receipt, actor, _context) do
+    with :ok <- Completion.authorize(actor, intent, kind(), target_type()),
+         do: {:ok, :complete}
+  end
 
   @impl true
   def resumes?, do: true

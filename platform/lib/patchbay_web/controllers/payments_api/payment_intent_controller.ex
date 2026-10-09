@@ -76,6 +76,22 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     end
   end
 
+  def complete(conn, %{"id" => id}) do
+    case Purchase.complete(conn.assigns.current_profile, id) do
+      {:applied, intent, receipt} ->
+        json(conn, Purchase.completion_payload(intent, receipt))
+
+      {:settled, intent, receipt} ->
+        conn |> put_status(:accepted) |> json(Purchase.completion_payload(intent, receipt))
+
+      {:settlement_pending, intent} ->
+        conn |> put_status(:conflict) |> json(Purchase.completion_payload(intent, nil))
+
+      {:error, failure} ->
+        send_failure(conn, failure)
+    end
+  end
+
   @doc """
   A page's payment. Unsigned, it answers with what the signed-in wallet is to
   sign, when the page has that wallet open; a payment that already went

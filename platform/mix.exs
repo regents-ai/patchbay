@@ -4,11 +4,9 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "a24d9bf5ce8dbca5852b081613e9e1674623512e"
+  @elixir_utils_ref "1564d79eb3b653f06ab11b6c422bd4d6283ea199"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "4da6db2bfe3559a8f8a761018dc099a28ab5f6a3"
-  @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "1bfcb4c3266609fba0c2748ed0897363c22ea09d"
 
   def project do
     [
@@ -89,7 +87,8 @@ defmodule Patchbay.MixProject do
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
       {:regent_identity,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/identity"},
-      {:regent_payments, git: @regents, ref: @regents_ref, sparse: "payments"},
+      {:regent_payments,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/payments"},
       {:regent_agents,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/agents", override: true},
       {:regent_credits, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits"},
@@ -191,7 +190,9 @@ defmodule Patchbay.MixProject do
         "format --check-formatted",
         "credo --strict",
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
-        "xref graph --label compile-connected --fail-above 43",
+        # Canonical accounts and the two owned-subscription policy checks add
+        # three required compile connections to the previous 43-connection budget.
+        "xref graph --label compile-connected --fail-above 46",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",

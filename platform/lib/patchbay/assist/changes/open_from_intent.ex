@@ -30,10 +30,10 @@ defmodule Patchbay.Assist.Changes.OpenFromIntent do
   end
 
   defp open(changeset, intent) do
-    %{"run_id" => run_id, "request" => request} = intent.payload
+    %{"request" => request} = intent.payload
 
     Ash.Changeset.force_change_attributes(changeset, %{
-      id: run_id,
+      id: intent.target_id,
       payment_intent_id: intent.id,
       goal: request["goal"],
       error: request["error"],

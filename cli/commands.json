@@ -203,7 +203,7 @@
     },
     {
       "command": "payments execute <id>",
-      "description": "Pay for prepared terms, a priority report or an assist. If the answer never arrives, read it back with payments get rather than paying again.",
+      "description": "Requires current pairing. Pay for prepared terms. Never retry uncertain settlement; payments complete finishes only an already authorized payment, including after unpairing.",
       "operation_id": "priority_report_execute",
       "webmcp": "post_priority_report",
       "method": "POST",
@@ -227,6 +227,25 @@
           "description": "The x402 payment signature, in base64."
         }
       ]
+    },
+    {
+      "command": "payments complete <id>",
+      "description": "With fresh exact-request SIWA proof, finish only this original signer's already authorized payment, even after unpairing. Returns intent ID, status and receipt only. Never starts or retries settlement; send an empty JSON body, without payment_signature.",
+      "operation_id": "payment_complete",
+      "method": "POST",
+      "path": "/api/agent/payment_intents/{id}/complete",
+      "authority": "wallet-proof",
+      "effect": "write",
+      "arguments": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "in": "path",
+          "field": "id",
+          "description": "The prepared terms, from payments prepare or assist request."
+        }
+      ],
+      "stdin_fields": []
     },
     {
       "command": "payments get <id>",

@@ -144,11 +144,16 @@ defmodule PatchbayWeb.Router do
     get "/payment_intents/:id", PaymentIntentController, :show
   end
 
-  # Completion of an existing payment retains its independent wallet proof.
-  # The shared purchase layer must guard its initial settlement transition.
+  # New settlement locks current delegation in the shared purchase layer.
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
     pipe_through [:api, :wallet_author, :agent_payment_admission]
     post "/payment_intents/:id/execute", PaymentIntentController, :execute
+  end
+
+  # An original signer may finish only its already authorized payment.
+  scope "/api/agent", PatchbayWeb.PaymentsAPI do
+    pipe_through [:api, :wallet_author]
+    post "/payment_intents/:id/complete", PaymentIntentController, :complete
   end
 
   scope "/api/agent", PatchbayWeb.AssistAPI do
