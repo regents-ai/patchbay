@@ -230,15 +230,36 @@ defmodule PatchbayWeb.WalletBenchHTML do
   @doc "An agent's squares on one test, along its row."
   def row(test, wallets, harness), do: Enum.map(wallets, &test.squares[{harness.id, &1.id}])
 
-  @doc "An agent's or a wallet's tile: its initials beside its name, and what its squares share when none runs."
+  @logos %{
+    "H04" => "hermes-agent.png",
+    "H05" => "claude-code.png",
+    "H06" => "cline.svg",
+    "H07" => "kilo-code.svg",
+    "H08" => "pi.svg",
+    "H09" => "oh-my-pi.svg",
+    "H10" => "codex-cli.png",
+    "H12" => "deepseek-harness.png",
+    "H13" => "opencode.png",
+    "W01" => "bankr.svg",
+    "W03" => "moonpay.png",
+    "W07" => "foundry-cast.png",
+    "W13" => "zerion.png"
+  }
+
+  @doc "An agent's or wallet's official mark beside its name and any shared reason it never runs."
   attr(:entry, :map, required: true)
   attr(:notes, :map, required: true)
   attr(:never_run, :string, default: nil)
 
   def entry(assigns) do
+    assigns = assign(assigns, :logo, Map.get(@logos, assigns.entry.id))
+
     ~H"""
     <span class="pb-wb-entry">
-      <span class="pb-wb-tile" aria-hidden="true">{initials(@entry.name)}</span>
+      <span class="pb-wb-tile" aria-hidden="true">
+        <img :if={@logo} src={~p"/images/wallet-bench/#{@logo}"} alt="" width="36" height="36" />
+        <span :if={!@logo}>{initials(@entry.name)}</span>
+      </span>
       <span class="pb-wb-entry-name">
         {@entry.name}
         <span :if={@never_run} class="pb-wb-entry-note">{word(@notes, @never_run)}</span>
