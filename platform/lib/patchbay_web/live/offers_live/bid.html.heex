@@ -13,9 +13,20 @@
   </p>
 
   <section class="pb-sheet-section" aria-labelledby="pb-offers-bid-slot">
-    <h2 id="pb-offers-bid-slot">This slot now</h2>
+    <h2 id="pb-offers-bid-slot">Agent Offer Slot {@number}</h2>
     <ol class="pb-offers-slots">
-      <.offer_slot slot={@slot} number={@number} opening={@opening} now={@now} />
+      <.offer_slot
+        slot={@slot}
+        number={@number}
+        opening={@opening}
+        now={@now}
+        detail?={true}
+        duration_returns={@duration_returns}
+        bid_form?={
+          !is_nil(@current_profile) and @balance != :not_linked and
+            Enum.any?(@wordings, & &1.eligible?)
+        }
+      />
     </ol>
   </section>
 

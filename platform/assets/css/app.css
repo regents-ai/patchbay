@@ -1979,6 +1979,17 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-slot { display: grid; align-content: start; gap: var(--space-1); padding: var(--space-2); border: 1px solid var(--pb-line); }
 .pb-offers-slot h4 { margin: 0; font-size: .875rem; }
 .pb-offers-slot p { margin: 0; font-size: .9375rem; overflow-wrap: anywhere; }
+#pb-offers-bid .pb-offers-slot > .pb-offmod-offer {
+  min-inline-size: 0;
+  min-height: 6rem;
+  padding: var(--space-3);
+  border: 1px solid var(--pb-line-strong);
+  border-left: 3px solid var(--pb-accent);
+  background: var(--pb-card);
+  color: var(--pb-text);
+  font-size: clamp(1.125rem, 1rem + .5vw, 1.5rem);
+  line-height: 1.55;
+}
 .pb-offers-slot .patchbay-muted, .pb-offers-slot .pb-offmod-figures { font-size: .8125rem; }
 .pb-offers-next { display: grid; gap: var(--space-1); padding-top: var(--space-1); border-top: 1px dashed var(--pb-line); }
 .pb-offers-market .pb-offmod-head a { overflow-wrap: anywhere; }

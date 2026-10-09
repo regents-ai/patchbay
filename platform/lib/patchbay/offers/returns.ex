@@ -11,6 +11,9 @@ defmodule Patchbay.Offers.Returns do
 
   The delivery records themselves stay private; only these counts are
   public, so each count reads past their policies deliberately.
+
+  A single-slot view also counts the current placement's deliveries over
+  its duration, separately from the market's 72-hour figures.
   """
 
   require Ash.Query
@@ -18,6 +21,7 @@ defmodule Patchbay.Offers.Returns do
   import Ash.Expr, only: [expr: 1]
 
   alias Patchbay.Offers.Delivery
+  alias Patchbay.Offers.DeliveryItem
 
   @window_hours 72
 
@@ -49,6 +53,17 @@ defmodule Patchbay.Offers.Returns do
       # As above.
       authorize?: false
     )
+  end
+
+  @doc "Responses that carried this placement during its duration, up to `as_of`."
+  @spec placement_returns(map() | nil, DateTime.t()) :: non_neg_integer()
+  def placement_returns(nil, _as_of), do: 0
+
+  def placement_returns(%{id: id}, as_of) do
+    DeliveryItem
+    |> Ash.Query.filter(placement_id == ^id and inserted_at < ^as_of)
+    # Only the public total is read; the delivery records stay private.
+    |> Ash.count!(authorize?: false)
   end
 
   @doc "Global's opportunities in the window, by slot number."

@@ -101,6 +101,17 @@ defmodule PatchbayWeb.OffersLive.Markets do
     end
   end
 
+  @doc "Time until the current Offer ends, rounded up to hours."
+  def hours_until(expires_at, now) do
+    seconds = max(DateTime.diff(expires_at, now, :second), 0)
+
+    case seconds do
+      seconds when seconds < 3600 -> "under 1 hour"
+      3600 -> "1 hour"
+      seconds -> "about #{div(seconds + 3599, 3600)} hours"
+    end
+  end
+
   @doc "Where a slot is, in words: its site or Global, and its number."
   def slot_label(%{number: number, market: %{scope: :global}}), do: "Global · Slot #{number}"
 
@@ -173,6 +184,9 @@ defmodule PatchbayWeb.OffersLive.Markets do
   attr(:opening, :integer, required: true, doc: "the market's opening minimum, minor units")
   attr(:now, DateTime, required: true, doc: "the moment the page was read")
   attr(:opportunities, :integer, default: nil, doc: "Global slots only")
+  attr(:detail?, :boolean, default: false, doc: "the single-slot bid page")
+  attr(:duration_returns, :integer, default: 0, doc: "returns of the current placement only")
+  attr(:bid_form?, :boolean, default: false, doc: "the bid form is visible below this slot")
 
   attr(:bid_path, :string,
     default: nil,
@@ -193,7 +207,7 @@ defmodule PatchbayWeb.OffersLive.Markets do
 
     ~H"""
     <li class="pb-offers-slot">
-      <h4>Slot {@number}</h4>
+      <h4 :if={!@detail?}>Slot {@number}</h4>
 
       <%= if @showing do %>
         <.offer_copy version={@showing.version} />
@@ -215,8 +229,12 @@ defmodule PatchbayWeb.OffersLive.Markets do
         <div class="pb-offers-next">
           <%= if @next_bid do %>
             <p>
-              Next: <strong>{credits(@next_bid.amount_minor)}</strong>
-              by <.owner profile={@next_bid.owner} />, starting when this one ends.
+              {if @detail?, do: "Slot #{@number} next period bids:", else: "Next:"}
+              <strong>{credits(@next_bid.amount_minor)}</strong>
+              by
+              <.owner profile={@next_bid.owner} />, {if @detail?,
+                do: "starting when this one ends, in #{hours_until(@showing.expires_at, @now)}.",
+                else: "starting when this one ends."}
             </p>
             <.offer_copy version={@next_bid.version} />
             <p class="patchbay-muted">
@@ -226,9 +244,20 @@ defmodule PatchbayWeb.OffersLive.Markets do
             </p>
           <% else %>
             <p class="patchbay-muted">
-              Next: no one yet. A bid for the next 72 hours starts at {credits(@opening)}.
+              <%= if @detail? do %>
+                Slot {@number} next period bids: none.
+                The next 72-hour period starts when the current Offer ends, in {hours_until(
+                  @showing.expires_at,
+                  @now
+                )}. Bids start at {credits(@opening)}.
+              <% else %>
+                Next: no one yet. A bid for the next 72 hours starts at {credits(@opening)}.
+              <% end %>
             </p>
           <% end %>
+          <p :if={@detail? && @bid_form?}>
+            <a href="#pb-offers-bid-form">Bid using the form below.</a>
+          </p>
         </div>
       <% else %>
         <p><strong>Empty</strong> · opens at {credits(@opening)}</p>
@@ -238,7 +267,12 @@ defmodule PatchbayWeb.OffersLive.Markets do
         <span :if={@opportunities}>
           Site slot {@number} was empty in {@opportunities} {responses(@opportunities)} ·
         </span>
-        Returned in {@returns} {responses(@returns)}
+        <%= if @detail? && @showing do %>
+          Returned in {@duration_returns} {responses(@duration_returns)} over its duration.
+        <% else %>
+          Returned in {@returns} {responses(@returns)}
+          <span :if={@detail?}>in the past 72 hours.</span>
+        <% end %>
       </p>
 
       <.link :if={@bid_path} navigate={@bid_path} class="rg-button rg-button--secondary">

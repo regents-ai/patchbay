@@ -149,3 +149,28 @@ Proof: `actions-light.jpg` and `actions-dark.jpg` under the artifact directory.
 The file named `actions-mobile-unverified-desktop.jpg` is explicitly not mobile proof.
 The temporary check tab was closed and viewport overrides reset. No push, deployment,
 real bid, purchase, wallet signature or provider screening was performed in this pass.
+
+## Single-slot presentation — 9 October 2026
+
+Sean requested the bid-page heading `Agent Offer Slot N`, a larger current Offer
+panel, clearer next-period wording with hours until the current Offer ends, a link
+to the available bid form, and a count over the current Offer's duration. These are
+local display changes; the Credits hold above remains in effect.
+
+The detailed view now counts only delivery items for the current placement. Market
+lists retain their existing 72-hour counts. An empty detailed slot explicitly labels
+its count as the past 72 hours. The form pointer appears only when the form exists.
+Current wording has a larger padded panel using existing theme colors. No monetary
+calculation, bid callback, wallet action, provider call or preview restart changed.
+
+Verified: formatting, warning-free compilation, asset build and two existing market
+list tests passed. The one-off `check_slot_detail.exs` driver renders occupied, empty,
+expired and blocked slots, next leaders, both form-pointer states and hour boundaries
+without starting the application or writing data. Desktop browser inspection showed
+the actual current Offer and new copy in both themes without horizontal overflow.
+The automation session is signed out; the form pointer was checked by rendering.
+Proof: `slot-detail-after.jpg` in the artifact directory. Phone verification remains
+limited by the viewport issue documented above.
+Watchdog source review found no blocking issue; its missing-hours finding for an
+existing next-period leader was fixed, and the rendering driver and both market
+list tests passed again afterward.

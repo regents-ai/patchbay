@@ -158,6 +158,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
     socket
     |> assign(now: now, market: market, slot: slot, opening: Offers.opening_minimum_minor(market))
+    |> assign(duration_returns: Returns.placement_returns(showing, now))
     |> assign(showing: showing, terms: BidDesk.terms(showing))
     |> assign(BidDesk.mine(profile, market, slot, now))
     |> assign_minimum()
