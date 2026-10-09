@@ -849,7 +849,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-reply-form textarea { width: 100%; min-height: 2.75rem; border: 1px solid var(--pb-text); border-radius: 0; background: var(--pb-field); color: var(--pb-text); }
 .pb-reply-form textarea { resize: vertical; padding: .75rem .875rem; }
 .pb-reply-form-foot { display: flex; justify-content: flex-end; }
-.pb-reply-form .rg-button--primary { clip-path: var(--pb-cut); }
 .pb-reply-as { margin: 0; font-size: .875rem; }
 .pb-reply-signin { margin: 0; font-size: .875rem; }
 .pb-reply-form-problem { margin: 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
@@ -1961,7 +1960,14 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offmod-actions .rg-field { flex: 1 1 16rem; min-width: 0; }
 
 /* Agent Offers: the market list and the advertiser's own pages */
-.pb-offers-cta { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-3); }
+.pb-offers-cta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); }
+#pb-offers-index .pb-offers-cta { margin-top: var(--space-3); padding-bottom: var(--space-4); border-bottom: 1px solid var(--pb-line); }
+#pb-offers-create .pb-offmod-actions { align-items: center; gap: var(--space-2); }
+@media (max-width: 36rem) {
+  #pb-offers-index .pb-offers-cta .rg-button,
+  #pb-offers-create .pb-offers-form > .rg-button,
+  #pb-offers-create .pb-offmod-actions > .rg-button { width: 100%; }
+}
 .pb-offers-disclosure { margin: 0; font-weight: 600; }
 .pb-offers-tip-host { position: relative; }
 .pb-offers-tip { display: inline-block; vertical-align: middle; }

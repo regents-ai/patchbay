@@ -11,8 +11,8 @@
   </p>
 
   <p class="pb-offers-cta">
-    <.link navigate={~p"/offers/create"} class="rg-button rg-button--secondary">
-      Write an Offer
+    <.link navigate={~p"/offers/create"} class="rg-button rg-button--primary">
+      <span class="rg-button__label pb-action-label" data-press-label>Write an Offer</span>
     </.link>
   </p>
 
@@ -82,7 +82,7 @@
     </p>
 
     <Regent.Primitives.button :if={@more?} variant="secondary" phx-click="more">
-      Show more sites
+      <span class="pb-action-label" data-press-label>Show more sites</span>
     </Regent.Primitives.button>
   </section>
 </main>

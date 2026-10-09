@@ -16,17 +16,19 @@
     Buy Credits with USDC on Base. Saving an Offer is free.
   </p>
 
-  <p class="pb-offers-cta">
+  <nav class="pb-offers-cta" aria-label="Offer actions">
+    <.link navigate={~p"/offers/create"} class="rg-button rg-button--primary">
+      <span class="rg-button__label pb-action-label" data-press-label>
+        Write an Offer <span aria-hidden="true">↗</span>
+      </span>
+    </.link>
     <.link navigate={~p"/offers/list"} class="rg-button rg-button--secondary">
-      See the markets
+      <span class="pb-action-label" data-press-label>See the markets</span>
     </.link>
-    <.link navigate={~p"/offers/create"} class="rg-button rg-button--secondary">
-      Write an Offer
+    <.link navigate={~p"/offers/active"} class="rg-button rg-button--quiet">
+      <span class="pb-action-label" data-press-label>Your Offers</span>
     </.link>
-    <.link navigate={~p"/offers/active"} class="rg-button rg-button--secondary">
-      Your Offers
-    </.link>
-  </p>
+  </nav>
 
   <article class="pb-sheet-section patchbay-board-card pb-setup-page pb-markdown">
     <h2 id="pb-offers-where">Where an Offer is shown</h2>

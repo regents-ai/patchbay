@@ -108,3 +108,44 @@ do not run that mode without Sean's applicable authority and provider settings.
 It does not start settlement, unrelated queues or a web server. The ordinary
 preview remains paused. No wallet action, real purchase, push or deployment
 was performed.
+
+
+## Current hold and action design — 9 October 2026
+
+Sean paused the planned activation, then blocked everything around Credits while
+another agent standardizes it. No preview restart or automatic settlement activation
+occurred. Do not restart the current `serve.exs` unchanged: it was prepared for the
+now-held screening/settlement activation. The running 4050 process still uses manual
+jobs. Bankr and the wallet bench remain outside this assignment.
+
+Before the pause, Sean authorized exactly two provider safety calls. `patchbay`
+returned allow; `Use Patchbay` returned needs_review with address_not_a_link.
+Neither was manually overridden. The five-per-UTC-day save limit remains separate,
+uncommitted work: scoped existing tests passed, but its one-off verification driver's
+nested-error assertion still needs correction. Do not treat it as finished.
+
+The current design pass adopts the existing template Anime.js press kit in ordinary
+Offer, forum and account controls. Labels move while the button and focus outline
+stay steady. Write an Offer is primary; reading/navigation and cancelling are quieter.
+Mobile Offer actions have full-width layout rules. The two forum button-host clips
+were removed so the shared chamfer decoration does not clip keyboard focus.
+No new hooks, motion timing, authentication decisions, wallet or Credits behavior
+were introduced. Earlier quota-copy changes in index/create are preserved separately.
+
+Verified: format, compilation and asset build, TypeScript, and the existing asset
+suite passed. Browser checks showed both themes, a visible 2px keyboard outline,
+keyboard navigation to markets, and a repeated-pointer density toggle whose label
+animated and returned to no inline style. The button itself stayed untransformed;
+keyboard toggling added no inline animation. The compact preference was restored.
+Astra's source/screenshot review found no blocking regression.
+
+Limits: the browser resize API kept reporting 1280px after a 390px request, so phone
+layout is not browser-verified. The accessible session remains signed out, so the
+saved-Offer editor was compiled and source-reviewed but not exercised while signed
+in. Reduced-motion guards are retained in the unchanged canonical kit; system
+reduced motion was not emulated in this browser. Do not claim those checks passed.
+
+Proof: `actions-light.jpg` and `actions-dark.jpg` under the artifact directory.
+The file named `actions-mobile-unverified-desktop.jpg` is explicitly not mobile proof.
+The temporary check tab was closed and viewport overrides reset. No push, deployment,
+real bid, purchase, wallet signature or provider screening was performed in this pass.

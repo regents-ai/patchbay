@@ -105,7 +105,6 @@
 .pb-find .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
 .pb-find .pb-fix-tools-list { background: var(--pb-field); }
 .pb-find .pb-fix-more label, .pb-find :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
-.pb-find .pb-hero-actions .rg-button { clip-path: var(--pb-cut); }
 .pb-find .pb-hero-actions .rg-button--secondary { border-color: var(--pb-text); background: var(--pb-text); color: var(--color-bg); }
 .pb-find-sites { display: flex; flex-wrap: wrap; justify-content: center; align-self: stretch; gap: var(--space-2); margin-top: var(--space-3); text-align: left; }
 .pb-find-sites a {

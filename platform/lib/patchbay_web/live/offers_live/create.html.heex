@@ -67,7 +67,7 @@
         <.offer_check check={@new_check} />
 
         <Regent.Primitives.button type="submit" class="patchbay-button">
-          Save and send for screening
+          <span class="pb-action-label" data-press-label>Save and send for screening</span>
         </Regent.Primitives.button>
       </.form>
     </section>
@@ -119,15 +119,16 @@
               <.offer_check check={check} />
 
               <div class="pb-offmod-actions">
+                <Regent.Primitives.button type="submit" class="patchbay-button">
+                  <span class="pb-action-label" data-press-label>Save as version {creative.current_version.version +
+                    1}</span>
+                </Regent.Primitives.button>
                 <Regent.Primitives.button
-                  variant="secondary"
+                  variant="quiet"
                   type="button"
                   phx-click="cancel_reword"
                 >
-                  Keep the current wording
-                </Regent.Primitives.button>
-                <Regent.Primitives.button type="submit" class="patchbay-button">
-                  Save as version {creative.current_version.version + 1}
+                  <span class="pb-action-label" data-press-label>Keep the current wording</span>
                 </Regent.Primitives.button>
               </div>
             </.form>
@@ -138,7 +139,7 @@
                 phx-click="reword"
                 phx-value-creative_id={creative.id}
               >
-                Change wording
+                <span class="pb-action-label" data-press-label>Change wording</span>
               </Regent.Primitives.button>
             </div>
           <% end %>

@@ -10,10 +10,10 @@
 
   <p class="pb-offers-cta">
     <.link navigate={~p"/offers/active"} class="rg-button rg-button--secondary">
-      Your active Offers
+      <span class="pb-action-label" data-press-label>Your active Offers</span>
     </.link>
     <.link navigate={~p"/offers/list"} class="rg-button rg-button--secondary">
-      See every market
+      <span class="pb-action-label" data-press-label>See every market</span>
     </.link>
   </p>
 
@@ -57,7 +57,7 @@
         phx-click="more"
         phx-value-list="ended"
       >
-        Show more
+        <span class="pb-action-label" data-press-label>Show more</span>
       </Regent.Primitives.button>
     </section>
 
@@ -86,7 +86,7 @@
         phx-click="more"
         phx-value-list="returned"
       >
-        Show more
+        <span class="pb-action-label" data-press-label>Show more</span>
       </Regent.Primitives.button>
     </section>
   <% end %>
