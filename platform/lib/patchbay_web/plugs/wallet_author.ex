@@ -214,9 +214,23 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   @doc """
   Refuses a signed request with what the sign-in service said: its status,
-  code, message and hint. A request refused here before it reached the
-  service answers 401 with its reason and the caller's own words.
+  code, message and hint. When the service gave no verdict (it could not be
+  reached, or its answer was not one), the request answers 503. A request
+  refused here before it reached the service answers 401 with its reason and
+  the caller's own words.
   """
+  def refuse_signed(conn, %{reason: :siwa_request_failed}, _message, _hint) do
+    refuse(
+      conn,
+      503,
+      ApiError.body(
+        "siwa_request_failed",
+        "The sign-in service could not be reached.",
+        "Try again in a moment."
+      )
+    )
+  end
+
   def refuse_signed(conn, failure, message, hint) do
     refuse(
       conn,

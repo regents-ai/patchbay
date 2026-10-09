@@ -125,6 +125,15 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
   end
 
+  # One rule on every site (8 Oct 2026): no verdict from the sign-in service is
+  # the service being unavailable, never a refused signature.
+  test "no verdict from the sign-in service answers 503" do
+    conn =
+      WalletAuthor.deny(build_conn(), %{reason: :siwa_request_failed, source: :siwa_http})
+
+    assert %{"error" => %{"code" => "siwa_request_failed"}} = json_response(conn, 503)
+  end
+
   # Founder rule, 8 Oct 2026: an extra unsigned header grants nothing. The pay
   # step reads payment-signature, so only the signed body may set it.
   test "an unsigned payment-signature header is dropped once the wallet is verified" do
