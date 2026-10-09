@@ -115,31 +115,53 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert Identity.get_profile!(profile.id).status == :suspended
   end
 
-  test "unsigned payment headers, tip authority and duplicate proof are refused before the broker" do
+  test "a tip is refused before the broker" do
+    tip =
+      Plug.Test.conn(:post, "/api/agent/payment_intents", "{}")
+      |> Map.put(:body_params, %{"kind" => "agent_tip", "args" => %{}})
+      |> assign(:raw_body, "{}")
+      |> put_req_header("content-type", "application/json")
+
+    assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
+  end
+
+  # One rule on every site (8 Oct 2026): no verdict from the sign-in service is
+  # the service being unavailable, never a refused signature.
+  test "no verdict from the sign-in service answers 503" do
+    conn =
+      WalletAuthor.deny(build_conn(), %{reason: :siwa_request_failed, source: :siwa_http})
+
+    assert %{"error" => %{"code" => "siwa_request_failed"}} = json_response(conn, 503)
+  end
+
+  # Founder rule, 8 Oct 2026: an extra unsigned header grants nothing. The pay
+  # step reads payment-signature, so only the signed body may set it.
+  test "an unsigned payment-signature header is dropped once the wallet is verified" do
     conn =
       Plug.Test.conn(:post, "/api/agent/payment_intents/123/execute", "{}")
       |> Map.put(:body_params, %{})
+      |> put_req_header("payment-signature", "unsigned")
 
-    assert {:error, %{reason: :missing_signed_body}} = WalletAuthor.before_verify(conn, %{})
-
-    conn =
-      conn
-      |> assign(:raw_body, "{}")
-      |> put_private(:wallet_body_complete, true)
-      |> put_req_header("content-type", "application/json")
-
-    assert {:error, _} = WalletAuthor.before_verify(conn, %{"payment-signature" => "unsigned"})
-    assert {:error, _} = WalletAuthor.before_verify(conn, %{"x-agent-token-id" => "1"})
-    duplicate = %{conn | req_headers: [{"signature", "first"}, {"signature", "second"}]}
-    assert {:error, _} = WalletAuthor.before_verify(duplicate, %{})
-
-    tip = %{
-      conn
-      | path_info: ["api", "agent", "payment_intents"],
-        body_params: %{"kind" => "agent_tip", "args" => %{}}
+    data = %{
+      "verified" => true,
+      "walletAddress" => @address,
+      "chainId" => 8453,
+      "principal" => %{
+        "kind" => "wallet",
+        "wallet_address" => @address,
+        "chain_id" => 8453,
+        "audience" => "patchbay"
+      },
+      "agentRegistration" => nil,
+      "agentBook" => nil
     }
 
-    assert {:error, %{reason: :unsupported_action}} = WalletAuthor.before_verify(tip, %{})
+    assert {:ok, accepted} = WalletAuthor.accept(conn, data, nil)
+    assert get_req_header(accepted, "payment-signature") == []
+
+    signed = %{conn | body_params: %{"payment_signature" => "signed"}}
+    assert {:ok, accepted} = WalletAuthor.accept(signed, data, nil)
+    assert get_req_header(accepted, "payment-signature") == ["signed"]
   end
 
   # Founder rule, 7 Oct 2026: the first World ID person an agent's sign-in names

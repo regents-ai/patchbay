@@ -30,7 +30,6 @@ const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
 const READINESS_PATH = "/forum/readiness";
 const KNOWN_FIXES_PATH = "/known-fixes";
-const HELLO_PROOF_HEADERS = ["x-siwa-receipt", "signature", "signature-input", "x-key-id", "x-timestamp", "x-agent-wallet-address", "x-agent-chain-id", "content-digest"];
 
 /**
  * What an agent sent a tool. The server checks every field; the page only
@@ -90,6 +89,8 @@ type BoardAnswer = {ok: boolean; status: number; body?: BoardBody | null; error?
 
 export type ForumToolOptions = ReadinessOptions & {
   csrfToken?: string;
+  /** The signed agent headers, as the server's sign-in library names them. */
+  proofHeaders?: readonly string[];
   payForIntent?: typeof payForIntent;
   onError?: (error: unknown) => void;
 };
@@ -205,7 +206,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         let answer;
         if (input.proof !== undefined) {
           if (!input.proof || typeof input.proof !== "object" || Array.isArray(input.proof) ||
-              Object.entries(input.proof).some(([key, value]) => !HELLO_PROOF_HEADERS.includes(key) || typeof value !== "string")) {
+              Object.entries(input.proof).some(([key, value]) => !(options.proofHeaders ?? []).includes(key) || typeof value !== "string")) {
             return boundedJson(refusal("invalid", "Supply only SIWA proof headers. No unsigned fallback was attempted.", "Send proof with only the SIWA headers, or leave it out."));
           }
           answer = await call({...options, signal}, "/api/agent/hello", {method: "POST",

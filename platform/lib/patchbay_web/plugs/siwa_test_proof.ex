@@ -25,12 +25,12 @@ defmodule PatchbayWeb.Plugs.SiwaTestProof do
   end
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def before_verify(conn, headers) do
+  def before_verify(conn, _headers) do
     permitted? =
       conn.method == "GET" and conn.path_info == ["siwa-test"] and
         conn.body_params in [%{}, %Plug.Conn.Unfetched{aspect: :body_params}]
 
-    WalletAuthor.validate_signed_request(conn, headers, permitted?)
+    WalletAuthor.validate_signed_request(conn, permitted?)
   end
 
   @impl Siwa.AgentAuthPlug.Hooks

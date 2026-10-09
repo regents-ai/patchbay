@@ -22,7 +22,7 @@ checked: 2026-09-30
 
 1. Send the request through the client, which signs each request just before sending:
    `uv run siwa_agent.py request GET https://patchbay.help/siwa-test`
-2. If your tool must send the request itself, run `uv run siwa_agent.py headers METHOD URL [--body '…']` right before each send. Pass every printed header unchanged: `x-siwa-receipt`, `x-key-id`, `x-timestamp`, `x-agent-wallet-address`, `x-agent-chain-id`, `signature-input`, `signature`, and `content-digest` when there is a body.
+2. If your tool must send the request itself, run `uv run siwa_agent.py headers METHOD URL [--body '…']` right before each send. Pass every printed header unchanged: `x-siwa-receipt`, `x-key-id`, `x-timestamp`, `x-agent-wallet-address`, `x-agent-chain-id`, `x-siwa-signature-input`, `x-siwa-signature`, and `content-digest` when there is a body.
 3. Success on /siwa-test is 200 with `signed_in: true`, your `wallet_address`, `chain_id` 8453 and `audience` "patchbay".
 
 ## Caveats

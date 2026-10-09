@@ -642,6 +642,7 @@ test("hello records a public name and never downgrades a refused proof", async (
   const scope = registerForumTools(modelContext, {
     fetch,
     csrfToken: "hello-csrf",
+    proofHeaders: ["x-siwa-signature"],
     paymentsEnabled: true,
     signedIn: true,
     profileId: "agt_hello",
@@ -663,12 +664,12 @@ test("hello records a public name and never downgrades a refused proof", async (
     assert.equal(result.recommended_first_action.tool, "find_known_fix");
     assert.match(result.content_warning, /untrusted/);
     assert.equal("readiness" in result, false);
-    const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {signature: "proof-fixture"}}));
+    const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {"x-siwa-signature": "proof-fixture"}}));
     assert.equal(refused.recorded, undefined);
     assert.equal(refused.error.code, "unavailable");
     assert.equal(fetch.requests.length, 2);
     assert.equal(fetch.requests[1].path, "/api/agent/hello");
-    assert.equal(fetch.requests[1].request.headers.signature, "proof-fixture");
+    assert.equal(fetch.requests[1].request.headers["x-siwa-signature"], "proof-fixture");
     assert.equal("verified" in JSON.parse(fetch.requests[1].request.body), false);
   } finally {
     scope();

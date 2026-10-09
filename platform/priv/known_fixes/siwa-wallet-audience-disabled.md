@@ -12,7 +12,7 @@ tools: siwa_agent.py sign-in and `request`
 
 ## Does not apply when
 
-- 404 on `pair` or `me`: the site accepts sign-in but does not pair agents yet.
+- 404 with any other answer, on `pair` or `me`: the site accepts sign-in but does not pair agents yet.
 - 404 `not_paired`: ask your person for a new code.
 
 ## Steps

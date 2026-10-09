@@ -16,9 +16,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   alias PatchbayWeb.ApiError
   alias RegentAgents.HumanBacking
 
-  @headers ~w(x-siwa-receipt signature signature-input x-key-id x-timestamp x-agent-wallet-address x-agent-chain-id content-digest)
-  @forbidden ~w(x-agent-registry-address x-agent-token-id payment-signature)
-
   @impl Plug
   def init(opts), do: opts
 
@@ -33,26 +30,15 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   end
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def before_verify(conn, headers) do
-    validate_signed_request(conn, headers, permitted_request?(conn))
+  def before_verify(conn, _headers) do
+    validate_signed_request(conn, permitted_request?(conn))
   end
 
   @doc "Shared exact-request checks; each caller supplies its own narrow route allowlist."
-  def validate_signed_request(conn, headers, permitted?) do
-    duplicates = conn.req_headers |> Enum.map(&elem(&1, 0)) |> Enum.frequencies()
-
+  def validate_signed_request(conn, permitted?) do
     cond do
-      Enum.any?(@headers, &(Map.get(duplicates, &1, 0) > 1)) ->
-        refused(:duplicate_proof)
-
-      Enum.any?(@forbidden, &Map.has_key?(headers, &1)) ->
-        refused(:unsupported_authority)
-
-      conn.method == "POST" and not signed_json?(conn) ->
+      is_map_key(conn.assigns, :raw_body) and not json?(conn) ->
         refused(:missing_signed_body)
-
-      conn.query_string != "" ->
-        refused(:unsupported_query)
 
       not permitted? ->
         refused(:unsupported_action)
@@ -62,15 +48,14 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     end
   end
 
-  defp signed_json?(%{assigns: %{raw_body: body}, private: %{wallet_body_complete: true}} = conn)
-       when is_binary(body) do
+  # The shared plug has already refused a query string and a body it did not
+  # capture whole. A body sent here is JSON.
+  defp json?(conn) do
     case get_req_header(conn, "content-type") do
       [type] -> type |> String.split(";", parts: 2) |> hd() |> String.trim() == "application/json"
       _ -> false
     end
   end
-
-  defp signed_json?(_conn), do: false
 
   defp permitted_request?(%{method: "GET", body_params: params}),
     do: params in [%{}, %Plug.Conn.Unfetched{aspect: :body_params}]
@@ -119,8 +104,6 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
     case broker_origin(config[:broker_url]) do
       {:ok, base_url} ->
-        payload = Map.update!(payload, "headers", &Map.take(&1, @headers))
-
         Siwa.AgentAuthPlug.BrokerClient.verify_http_request(payload,
           http: __MODULE__,
           base_url: base_url,
@@ -179,14 +162,14 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
          {:ok, %{authentication_origin: :wallet, status: :active} = profile} <-
            Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}),
          {:ok, profile} <- record_backing(profile, backing) do
-      # Payment signature becomes a controller input only after its body is verified.
+      # Only the signed body carries a payment signature; an unsigned header is dropped.
       conn =
         case conn.body_params do
           %{"payment_signature" => signature} ->
             put_req_header(conn, "payment-signature", signature)
 
           _ ->
-            conn
+            delete_req_header(conn, "payment-signature")
         end
 
       {:ok, conn |> assign(:current_profile, profile) |> assign(:forum_session_id, nil)}
@@ -231,9 +214,23 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   @doc """
   Refuses a signed request with what the sign-in service said: its status,
-  code, message and hint. A request refused here before it reached the
-  service answers 401 with its reason and the caller's own words.
+  code, message and hint. When the service gave no verdict (it could not be
+  reached, or its answer was not one), the request answers 503. A request
+  refused here before it reached the service answers 401 with its reason and
+  the caller's own words.
   """
+  def refuse_signed(conn, %{reason: :siwa_request_failed}, _message, _hint) do
+    refuse(
+      conn,
+      503,
+      ApiError.body(
+        "siwa_request_failed",
+        "The sign-in service could not be reached.",
+        "Try again in a moment."
+      )
+    )
+  end
+
   def refuse_signed(conn, failure, message, hint) do
     refuse(
       conn,

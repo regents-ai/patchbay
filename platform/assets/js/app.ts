@@ -98,6 +98,7 @@ const offerPageWideSurfaces = () => {
   mountForumTools(window, {
     fetch: window.fetch.bind(window),
     csrfToken,
+    proofHeaders: document.querySelector("meta[name='siwa-headers']")!.getAttribute("content")!.split(" "),
     profileId: signedInProfileId(),
     paymentsEnabled: rail ? rail.getAttribute("data-payments-enabled") === "true" : undefined,
   })
