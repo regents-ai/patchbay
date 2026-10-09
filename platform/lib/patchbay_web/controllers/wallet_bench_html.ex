@@ -183,7 +183,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
     for {key, label} <- [
           {"harness", "Agent"},
           {"wallet", "Wallet"},
-          {"model", "Model"},
+          {"model", "Coding model"},
+          {"setup", "Account setup"},
+          {"hosted_model", "Hosted model"},
           {"reasoning_effort", "Effort"},
           {"os", "Machine"},
           {"judge", "Judge"},
