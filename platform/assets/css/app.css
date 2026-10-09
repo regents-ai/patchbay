@@ -1979,17 +1979,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-slot { display: grid; align-content: start; gap: var(--space-1); padding: var(--space-2); border: 1px solid var(--pb-line); }
 .pb-offers-slot h4 { margin: 0; font-size: .875rem; }
 .pb-offers-slot p { margin: 0; font-size: .9375rem; overflow-wrap: anywhere; }
-#pb-offers-bid .pb-offers-slot > .pb-offmod-offer {
-  min-inline-size: 0;
-  min-height: 6rem;
-  padding: var(--space-3);
-  border: 1px solid var(--pb-line-strong);
-  border-left: 3px solid var(--pb-accent);
-  background: var(--pb-card);
-  color: var(--pb-text);
-  font-size: clamp(1.125rem, 1rem + .5vw, 1.5rem);
-  line-height: 1.55;
-}
 .pb-offers-slot .patchbay-muted, .pb-offers-slot .pb-offmod-figures { font-size: .8125rem; }
 .pb-offers-result {
   margin: auto;
@@ -2025,6 +2014,98 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-lane-terms { display: grid; gap: var(--space-1); }
 .pb-offers-lane-terms[data-unused] { order: 1; visibility: hidden; }
 .pb-offers-waiting h3 { margin: var(--space-2) 0 var(--space-1); font-size: .9375rem; }
+
+/* The bid desk: slot, composer and activity. Selection stays native and instant. */
+.pb-bid-nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-3); }
+.pb-bid-icon { display: inline-block; width: 1.125rem; height: 1.125rem; flex: none; vertical-align: middle; }
+.pb-bid-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr); align-items: start; gap: var(--space-3); }
+#pb-offers-bid .pb-bid-card { min-width: 0; padding: var(--space-3); }
+.pb-bid-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.pb-bid-card-head h2 { margin: 0; font-size: 1.125rem; }
+.pb-bid-icon-link { display: inline-grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; border: 1px solid var(--pb-line); color: inherit; }
+.pb-bid-state { display: inline-flex; align-items: center; gap: .5rem; font-size: .75rem; white-space: nowrap; }
+.pb-bid-state::before { content: ""; width: .375rem; height: .375rem; background: var(--pb-text-muted); }
+.pb-bid-state[data-state="placed"]::before, .pb-bid-state[data-state="leading"]::before { background: var(--pb-accent); }
+.pb-bid-current-copy { display: grid; align-content: center; min-height: 12rem; padding: var(--space-3); background: var(--pb-surface-sunk); border-left: 3px solid var(--pb-accent); }
+.pb-bid-current-copy .pb-offmod-offer { border: 0; padding: 0; font-size: clamp(1.125rem, 1rem + .35vw, 1.375rem); line-height: 1.55; }
+.pb-bid-owner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); margin-block: var(--space-2); font-size: .75rem; color: var(--pb-text-muted); }
+.pb-bid-owner a { color: inherit; text-underline-offset: .2em; }
+.pb-bid-owner > span { display: inline-flex; align-items: center; gap: .375rem; }
+.pb-bid-facts { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--space-2); margin: var(--space-3) 0; }
+.pb-bid-facts dt { display: flex; align-items: center; gap: .25rem; font-size: .6875rem; color: var(--pb-text-muted); }
+.pb-bid-facts dd { margin: .375rem 0 0; font-size: .9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pb-bid-next-summary { display: flex; align-items: center; gap: var(--space-2); padding-block: var(--space-2); border-block: 1px solid var(--pb-line); font-size: .8125rem; }
+.pb-bid-next-summary > div { display: grid; gap: .25rem; }
+.pb-bid-next-summary > div span { color: var(--pb-text-muted); font-size: .75rem; }
+.pb-bid-next-summary > span { margin-left: auto; font-variant-numeric: tabular-nums; }
+.pb-bid-details { border-top: 1px solid var(--pb-line); font-size: .8125rem; }
+.pb-bid-current > .pb-bid-details { border-top: 0; }
+.pb-bid-details > summary { min-height: 2.75rem; padding-block: .75rem; cursor: pointer; }
+.pb-bid-details > summary .pb-bid-icon { margin-left: .25rem; }
+.pb-bid-details p { margin: 0 0 var(--space-1); line-height: 1.55; overflow-wrap: anywhere; }
+.pb-bid-details > summary > span { float: right; font-variant-numeric: tabular-nums; }
+.pb-bid-wallet { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding-bottom: var(--space-2); border-bottom: 1px solid var(--pb-line); font-size: .8125rem; }
+.pb-bid-wallet > div { display: grid; gap: .125rem; }
+.pb-bid-wallet > div > span, .pb-bid-held { color: var(--pb-text-muted); font-size: .6875rem; }
+.pb-bid-wallet > .rg-button { margin-left: auto; padding-inline: var(--space-1); }
+.pb-bid-feedback { min-height: var(--space-3); }
+.pb-bid-feedback .pb-offmod-problem { margin: var(--space-1) 0; }
+.pb-bid-timing, .pb-bid-offer-picker { min-inline-size: 0; border: 0; padding: 0; margin: 0; }
+.pb-bid-timing legend, .pb-bid-offer-picker legend { margin-bottom: var(--space-1); font-size: .75rem; font-weight: 600; }
+.pb-bid-offer-picker legend { width: 100%; }
+.pb-bid-offer-picker legend > span { float: right; color: var(--pb-text-muted); }
+.pb-bid-timing-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); }
+.pb-bid-timing-options label { position: relative; display: flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: 3rem; padding: var(--space-1); border: 1px solid var(--pb-line-strong); font-size: .8125rem; cursor: pointer; }
+.pb-bid-timing-options label:only-child { grid-column: 1 / -1; }
+.pb-bid-timing-options label:has(:checked), .pb-bid-offer-option:has(:checked) { border-color: var(--pb-accent); background: color-mix(in srgb, var(--pb-accent) 8%, var(--pb-card)); }
+.pb-bid-timing-options input, .pb-bid-offer-option > input { position: absolute; width: 1px; height: 1px; padding: 0; margin: 0; clip-path: inset(50%); overflow: hidden; }
+.pb-bid-timing-options label:has(:focus-visible), .pb-bid-offer-option:has(:focus-visible) { outline: 2px solid var(--pb-text); outline-offset: 2px; }
+.pb-bid-offer-rail { display: flex; gap: var(--space-1); min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scrollbar-width: thin; padding: 6px 6px var(--space-1); }
+.pb-bid-offer-option { position: relative; display: flex; flex-direction: column; gap: var(--space-2); flex: 0 0 min(82%, 19rem); min-width: 0; min-height: 12rem; padding: var(--space-2); border: 1px solid var(--pb-line-strong); background: var(--pb-card); cursor: pointer; scroll-snap-align: start; }
+.pb-bid-offer-option:only-child { flex-basis: 100%; }
+.pb-bid-offer-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); font-size: .8125rem; }
+.pb-bid-offer-heading strong { overflow-wrap: anywhere; }
+.pb-bid-offer-heading .pb-bid-icon { visibility: hidden; color: var(--pb-accent); }
+.pb-bid-offer-option:has(:checked) .pb-bid-offer-heading .pb-bid-icon { visibility: visible; }
+.pb-bid-offer-copy { font-size: .875rem; line-height: 1.55; overflow-wrap: anywhere; }
+.pb-bid-compose .pb-offers-form { gap: var(--space-2); }
+.pb-bid-amount input { font-size: 1.5rem; font-variant-numeric: tabular-nums; min-height: 3.25rem; }
+.pb-bid-amount .rg-muted { font-size: .75rem; }
+.pb-bid-submit { display: grid; gap: var(--space-1); }
+.pb-bid-submit > .rg-button { width: 100%; }
+.pb-bid-submit > p { margin: 0; min-height: 2.5rem; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-bid-terms-body { display: grid; max-height: 13rem; overflow-y: auto; }
+.pb-bid-terms-body .pb-offers-lane-terms { grid-area: 1 / 1; align-content: start; }
+.pb-bid-paused { display: flex; align-items: center; gap: var(--space-1); margin: var(--space-1) 0; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-bid-empty, .pb-bid-open-slot { display: grid; justify-items: start; align-content: center; gap: var(--space-2); min-height: 12rem; padding-block: var(--space-3); }
+.pb-bid-open-slot { border-block: 1px dashed var(--pb-line-strong); }
+.pb-bid-open-slot > .pb-bid-icon, .pb-bid-empty > .pb-bid-icon { width: 2rem; height: 2rem; color: var(--pb-text-muted); }
+.pb-bid-empty p, .pb-bid-open-slot p { margin: 0; }
+.pb-bid-open-slot span { font-size: .8125rem; color: var(--pb-text-muted); }
+.pb-bid-activity { grid-column: 1 / -1; }
+.pb-bid-activity-list { display: grid; gap: var(--space-2); padding: 0; margin: 0; list-style: none; }
+.pb-bid-activity-summary { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); font-size: .875rem; }
+.pb-bid-activity-summary > .pb-bid-state { margin-left: auto; }
+.pb-bid-activity-lane { font-size: .75rem; color: var(--pb-text-muted); }
+.pb-bid-activity-list .pb-bid-details { margin-top: var(--space-1); }
+@media (hover: hover) and (pointer: fine) {
+  .pb-bid-icon-link:hover { border-color: var(--pb-accent); }
+  .pb-bid-offer-option:hover { border-color: var(--pb-text); }
+}
+@media (max-width: 52rem) {
+  .pb-bid-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 36rem) {
+  #pb-offers-bid .pb-bid-card { padding: var(--space-2); }
+  .pb-bid-current-copy { padding: var(--space-2); min-height: 10rem; }
+  .pb-bid-facts { gap: var(--space-1); }
+  .pb-bid-facts dd { font-size: .8125rem; }
+}
+@media (max-width: 22rem) {
+  .pb-bid-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pb-bid-facts > div:last-child { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-1); }
+  .pb-bid-facts > div:last-child dd { margin: 0; }
+}
 
 /* Agent Wallet Bench: two grids of agents by wallets, and one pair's runs. */
 #patchbay-wallet-bench, #patchbay-wallet-bench-pair {

@@ -3,216 +3,258 @@
     <:crumbs>PATCHBAY / OFFERS / BID</:crumbs>
   </.board_header>
 
-  <p class="pb-offers-cta">
-    <.link navigate={~p"/offers/list"} class="rg-button rg-button--secondary">
-      Back to the markets
+  <nav class="pb-bid-nav" aria-label="Offer navigation">
+    <.link navigate={~p"/offers/list"} class="rg-button rg-button--quiet">
+      <.bid_icon kind={:back} /> Markets
     </.link>
-    <.link :if={@site} navigate={site_path(@site)} class="rg-button rg-button--secondary">
-      {site_name(@site)}'s board
+    <.link :if={@site} navigate={site_path(@site)} class="rg-button rg-button--quiet">
+      {site_name(@site)}'s board <.bid_icon kind={:arrow} />
     </.link>
-  </p>
+  </nav>
 
-  <section class="pb-sheet-section" aria-labelledby="pb-offers-bid-slot">
-    <h2 id="pb-offers-bid-slot">Agent Offer Slot {@number}</h2>
-    <ol class="pb-offers-slots">
-      <.offer_slot
-        slot={@slot}
-        number={@number}
-        opening={@opening}
-        now={@now}
-        detail?={true}
-        duration_returns={@duration_returns}
-        bid_form?={
-          !is_nil(@current_profile) and @balance != :not_linked and
-            Enum.any?(@wordings, & &1.eligible?)
-        }
-      />
-    </ol>
-  </section>
+  <div class="pb-bid-grid">
+    <.slot_card
+      showing={@showing}
+      slot={@slot}
+      number={@number}
+      now={@now}
+      opening={@opening}
+      returns={@duration_returns}
+    />
 
-  <p :if={is_nil(@current_profile)} class="patchbay-muted">
-    Sign in at the top of the page to bid.
-  </p>
-
-  <%= if @current_profile do %>
-    <section class="pb-sheet-section" aria-labelledby="pb-offers-bid-form-title">
-      <h2 id="pb-offers-bid-form-title">Prepare your bid</h2>
-      <p class="patchbay-muted">
-        Write an Offer, wait for approval, then choose it here and submit a bid in Credits.
-        Site slots also need approval that the Offer fits that site.
-      </p>
-      <p :if={@screening_paused?} class="pb-offmod-problem" role="status">
-        Automatic screening is paused in this local preview. Saved Offers will stay waiting
-        until screening resumes. No Credits are held while you wait.
-      </p>
-
-      <%= case @balance do %>
-        <% :not_linked -> %>
-          <p class="pb-offmod-problem">{not_linked_words()}</p>
-        <% balance -> %>
-          <p class="pb-offers-balance" id="pb-offers-bid-balance">
-            Your Credits: <strong>{RegentCredits.Amount.format(balance.available)}</strong>
-            available
-            <span :if={Decimal.gt?(balance.held, 0)}>
-              · {RegentCredits.Amount.format(balance.held)} held for bids
-            </span>
-            <.buy_credits />
-          </p>
-      <% end %>
-
-      <p :if={@problem} class="pb-offmod-problem" role="alert" id="pb-offers-bid-problem">
-        {@problem} <.buy_credits :if={@short?} />
-      </p>
-
-      <%= if @balance != :not_linked and Enum.any?(@wordings, & &1.eligible?) do %>
-        <.form
-          for={%{}}
-          as={:bid}
-          id="pb-offers-bid-form"
-          phx-change="change"
-          phx-submit="bid"
-          class="pb-offers-form"
+    <Regent.Structure.panel
+      class="pb-bid-card pb-bid-compose"
+      role="region"
+      aria-labelledby="pb-offers-bid-form-title"
+    >
+      <header class="pb-bid-card-head">
+        <h2 id="pb-offers-bid-form-title">Your bid</h2>
+        <.link
+          navigate={~p"/offers/create"}
+          class="pb-bid-icon-link"
+          aria-label="Manage your Offers"
+          title="Manage your Offers"
         >
-          <fieldset class="pb-offers-choice">
-            <legend>When it starts</legend>
-            <label>
-              <input
-                type="radio"
-                name="bid[lane]"
-                value="immediate"
-                checked={@lane == :immediate}
-              />
-              {if @showing, do: "Buy out now", else: "Start now"}
-            </label>
-            <label :if={@showing}>
-              <input
-                type="radio"
-                name="bid[lane]"
-                value="next_period"
-                checked={@lane == :next_period}
-              /> Bid for next period
-            </label>
-          </fieldset>
+          <.bid_icon kind={:edit} />
+        </.link>
+      </header>
 
-          <fieldset class="pb-offers-choice">
-            <legend>Approved Offer</legend>
-            <label :for={wording <- Enum.filter(@wordings, & &1.eligible?)}>
-              <input
-                type="radio"
-                name="bid[version_id]"
-                value={wording.version.id}
-                checked={@version_id == wording.version.id}
-              />
-              <strong>{wording.creative.label}</strong>
-              <span class="pb-offers-choice-text">{wording.version.text}</span>
-            </label>
-          </fieldset>
-
-          <Regent.Primitives.field id="pb-offers-bid-amount" label="Amount in Credits">
-            <input
-              id="pb-offers-bid-amount"
-              type="text"
-              name="bid[amount]"
-              value={@amount}
-              inputmode="decimal"
-              autocomplete="off"
-              required
-            />
-            <:hint>At least {credits(@minimum)}.</:hint>
-          </Regent.Primitives.field>
-
-          <div class="pb-offers-terms" id="pb-offers-bid-terms">
-            <p>
-              <strong>{held_words(@amount)}</strong>
-            </p>
-            <%!-- With an Offer showing, both lanes' terms stay in the page; the
-                 one not chosen keeps its space, unseen and after the other, so
-                 choosing a lane never changes the form's height. --%>
-            <div
-              :if={@terms.next_period}
-              class="pb-offers-lane-terms"
-              data-unused={@lane != :next_period}
-              inert={@lane != :next_period}
-            >
-              <p>{@terms.next_period}</p>
+      <%= if @current_profile do %>
+        <%= case @balance do %>
+          <% :not_linked -> %>
+            <p class="pb-offmod-problem">{not_linked_words()}</p>
+          <% balance -> %>
+            <div class="pb-bid-wallet" id="pb-offers-bid-balance">
+              <.bid_icon kind={:wallet} />
+              <div>
+                <strong>{RegentCredits.Amount.format(balance.available)}</strong><span>available</span>
+              </div>
+              <span :if={Decimal.gt?(balance.held, 0)} class="pb-bid-held">
+                {RegentCredits.Amount.format(balance.held)} held
+              </span>
+              <.buy_credits />
             </div>
-            <div
-              class="pb-offers-lane-terms"
-              data-unused={@lane != :immediate}
-              inert={@lane != :immediate}
-            >
-              <p :for={line <- @terms.immediate}>{line}</p>
-            </div>
-          </div>
+        <% end %>
 
-          <Regent.Primitives.button type="submit" class="patchbay-button">
-            Submit bid and hold Credits
-          </Regent.Primitives.button>
-        </.form>
-      <% end %>
+        <div class="pb-bid-feedback" aria-live="polite">
+          <p :if={@problem} class="pb-offmod-problem" role="alert" id="pb-offers-bid-problem">
+            {@problem} <.buy_credits :if={@short?} />
+          </p>
+        </div>
 
-      <%= if @balance != :not_linked and !Enum.any?(@wordings, & &1.eligible?) do %>
-        <p class="patchbay-muted" id="pb-offers-bid-none">
-          <%= if @wordings == [] do %>
-            First, <.link navigate={~p"/offers/create"}>write an Offer</.link>.
-            Once it is approved for this market, the bid form appears here.
-          <% else %>
-            Your saved Offers are not approved for this market yet. Check their progress below
-            or <.link navigate={~p"/offers/create"}>manage your Offers</.link>.
-            The bid form appears here as soon as one is approved.
-          <% end %>
-        </p>
-        <Regent.Primitives.button type="button" disabled aria-describedby="pb-offers-bid-none">
-          Submit bid · awaiting approval
-        </Regent.Primitives.button>
-      <% end %>
+        <%= if @balance != :not_linked and Enum.any?(@wordings, & &1.eligible?) do %>
+          <.form
+            for={%{}}
+            as={:bid}
+            id="pb-offers-bid-form"
+            phx-change="change"
+            phx-submit="bid"
+            class="pb-offers-form"
+          >
+            <fieldset class="pb-bid-timing">
+              <legend>When</legend>
+              <div class="pb-bid-timing-options">
+                <label>
+                  <input
+                    type="radio"
+                    name="bid[lane]"
+                    value="immediate"
+                    checked={@lane == :immediate}
+                  />
+                  <.bid_icon kind={:bolt} />
+                  <span>{if @showing, do: "Replace now", else: "Start now"}</span>
+                </label>
+                <label :if={@showing}>
+                  <input
+                    type="radio"
+                    name="bid[lane]"
+                    value="next_period"
+                    checked={@lane == :next_period}
+                  />
+                  <.bid_icon kind={:clock} /> <span>Next 72h</span>
+                </label>
+              </div>
+            </fieldset>
 
-      <div :if={Enum.any?(@wordings, &(!&1.eligible?))} class="pb-offers-waiting">
-        <h3>Your Offers awaiting approval</h3>
-        <ul class="pb-offers-standing">
-          <li :for={wording <- Enum.reject(@wordings, & &1.eligible?)}>
-            <strong>{wording.creative.label}</strong>
-            <p>Safety: {safety_words(wording)}</p>
-            <%= cond do %>
-              <% fit_words(wording) -> %>
-                · Fit for this site: {fit_words(wording)}
-              <% @site && safety_approved?(wording) -> %>
-                ·
-                <Regent.Primitives.button
-                  variant="quiet"
-                  phx-click="ask_fit"
-                  phx-value-version_id={wording.version.id}
+            <fieldset class="pb-bid-offer-picker">
+              <legend>Choose your Offer <span aria-hidden="true">↔</span></legend>
+              <div class="pb-bid-offer-rail" role="group" aria-label="Approved Offers">
+                <label
+                  :for={wording <- Enum.filter(@wordings, & &1.eligible?)}
+                  class="pb-bid-offer-option"
                 >
-                  Ask whether it fits {site_name(@site)}
-                </Regent.Primitives.button>
-              <% @site -> %>
-                <p>Site fit: request this check after safety approval.</p>
-              <% true -> %>
-                <p>Global slots need safety approval before you can bid.</p>
-            <% end %>
-          </li>
-        </ul>
-      </div>
-    </section>
+                  <input
+                    type="radio"
+                    name="bid[version_id]"
+                    value={wording.version.id}
+                    checked={@version_id == wording.version.id}
+                  />
+                  <span class="pb-bid-offer-heading"><strong>{wording.creative.label}</strong><.bid_icon kind={
+                    :check
+                  } /></span>
+                  <span class="pb-bid-offer-copy">{wording.version.text}</span>
+                </label>
+              </div>
+            </fieldset>
 
-    <section
-      :if={@bids != []}
-      class="pb-sheet-section"
+            <Regent.Primitives.field
+              :let={field}
+              id="pb-offers-bid-amount"
+              label="Bid in Credits"
+              class="pb-bid-amount"
+            >
+              <input
+                id={field.id}
+                type="text"
+                name="bid[amount]"
+                value={@amount}
+                inputmode="decimal"
+                autocomplete="off"
+                required
+                aria-describedby={field.described_by}
+              />
+              <:hint>Minimum {credits(@minimum)}</:hint>
+            </Regent.Primitives.field>
+
+            <div class="pb-bid-submit">
+              <Regent.Primitives.button type="submit" class="patchbay-button">
+                <span class="pb-action-label" data-press-label>Bid &amp; hold Credits
+                <.bid_icon kind={:arrow} /></span>
+              </Regent.Primitives.button>
+              <p id="pb-offers-bid-hold">{held_words(@amount)}</p>
+            </div>
+
+            <details class="pb-bid-details" id="pb-offers-bid-terms">
+              <summary><.bid_icon kind={:info} /> Bid terms</summary>
+              <div class="pb-bid-terms-body">
+                <div
+                  :if={@terms.next_period}
+                  class="pb-offers-lane-terms"
+                  data-unused={@lane != :next_period}
+                  inert={@lane != :next_period}
+                >
+                  <p>{@terms.next_period}</p>
+                </div>
+                <div
+                  class="pb-offers-lane-terms"
+                  data-unused={@lane != :immediate}
+                  inert={@lane != :immediate}
+                >
+                  <p :for={line <- @terms.immediate}>{line}</p>
+                </div>
+              </div>
+            </details>
+          </.form>
+        <% end %>
+
+        <%= if @balance != :not_linked and !Enum.any?(@wordings, & &1.eligible?) do %>
+          <div class="pb-bid-empty">
+            <.bid_icon kind={:edit} />
+            <p id="pb-offers-bid-none">
+              {if @wordings == [],
+                do: "Write an Offer to begin.",
+                else: "No Offers are approved for this market."}
+            </p>
+            <p class="patchbay-muted">An approved Offer unlocks bidding.</p>
+            <.link navigate={~p"/offers/create"} class="rg-button rg-button--secondary">Write an Offer
+            <.bid_icon kind={:arrow} /></.link>
+            <Regent.Primitives.button type="button" disabled aria-describedby="pb-offers-bid-none">Bid · approval needed</Regent.Primitives.button>
+          </div>
+        <% end %>
+
+        <p :if={@screening_paused?} class="pb-bid-paused" role="status">
+          <.bid_icon kind={:clock} /> Screening paused in this preview
+          <Regent.Primitives.tip id="pb-bid-paused-info" label="About paused screening">
+            Saved Offers wait until automatic screening resumes. Waiting for approval holds no Credits.
+          </Regent.Primitives.tip>
+        </p>
+
+        <details
+          :if={Enum.any?(@wordings, &(!&1.eligible?))}
+          class="pb-bid-details pb-offers-waiting"
+        >
+          <summary>
+            Unavailable Offers <span>{Enum.count(@wordings, &(!&1.eligible?))}</span>
+          </summary>
+          <ul class="pb-offers-standing">
+            <li :for={wording <- Enum.reject(@wordings, & &1.eligible?)}>
+              <strong>{wording.creative.label}</strong>
+              <p>Safety: {safety_words(wording)}</p>
+              <%= cond do %>
+                <% fit_words(wording) -> %>
+                  <p>Site fit: {fit_words(wording)}</p>
+                <% @site && safety_approved?(wording) -> %>
+                  <Regent.Primitives.button
+                    variant="quiet"
+                    phx-click="ask_fit"
+                    phx-value-version_id={wording.version.id}
+                  >
+                    Check site fit <.bid_icon kind={:arrow} />
+                  </Regent.Primitives.button>
+                <% @site -> %>
+                  <p class="patchbay-muted">Safety approval first, then site fit.</p>
+                <% true -> %>
+                  <p class="patchbay-muted">Safety approval needed.</p>
+              <% end %>
+            </li>
+          </ul>
+        </details>
+      <% else %>
+        <div class="pb-bid-empty">
+          <.bid_icon kind={:wallet} />
+          <p>Sign in to bid</p>
+          <p class="patchbay-muted">Use the account button at the top of the page.</p>
+        </div>
+      <% end %>
+    </Regent.Structure.panel>
+
+    <Regent.Structure.panel
+      :if={@current_profile && @bids != []}
+      class="pb-bid-card pb-bid-activity"
+      role="region"
       aria-labelledby="pb-offers-bid-mine"
     >
-      <h2 id="pb-offers-bid-mine">Your bids on this slot</h2>
-      <ol class="pb-offmod-list" id="pb-offers-bid-mine-list">
-        <li :for={bid <- @bids} id={"pb-offers-bid-#{bid.id}"} class="pb-offmod-item">
-          <header class="pb-offmod-head">
+      <header class="pb-bid-card-head">
+        <h2 id="pb-offers-bid-mine">Your activity</h2><.bid_icon kind={:chart} />
+      </header>
+      <ol id="pb-offers-bid-mine-list" class="pb-bid-activity-list">
+        <li :for={bid <- @bids} id={"pb-offers-bid-#{bid.id}"}>
+          <div class="pb-bid-activity-summary">
             <strong>{credits(bid.amount_minor)}</strong>
-            <span>{if bid.lane == :next_period, do: "Next period", else: "Now"}</span>
-          </header>
-          <p data-state={bid.status}>{standing(bid)}</p>
-          <p class="patchbay-muted">{bid.version.text}</p>
+            <span class="pb-bid-activity-lane">{if bid.lane == :next_period,
+              do: "Next period",
+              else: "Now"}</span>
+            <span class="pb-bid-state" data-state={bid.status}>{bid_state(bid.status)}</span>
+          </div>
+          <details class="pb-bid-details">
+            <summary>Details</summary>
+            <p>{standing(bid)}</p><p class="patchbay-muted">{bid.version.text}</p>
+          </details>
         </li>
       </ol>
-    </section>
-  <% end %>
+    </Regent.Structure.panel>
+  </div>
+
   <dialog
     :if={@outbid?}
     id="pb-offers-outbid"
@@ -224,9 +266,10 @@
   >
     <h2 id="pb-offers-outbid-title">You were outbid and Credits are returned</h2>
     <form method="dialog">
-      <Regent.Primitives.button type="submit" autofocus>
-        <span class="pb-action-label" data-press-label>OK</span>
-      </Regent.Primitives.button>
+      <Regent.Primitives.button type="submit" autofocus><span
+        class="pb-action-label"
+        data-press-label
+      >OK</span></Regent.Primitives.button>
     </form>
   </dialog>
 </main>

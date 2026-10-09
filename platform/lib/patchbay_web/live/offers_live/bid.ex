@@ -24,7 +24,8 @@ defmodule PatchbayWeb.OffersLive.Bid do
   import PatchbayWeb.Forum.BoardHTML,
     only: [board_header: 1, moment: 1, site_name: 1, site_path: 1]
 
-  import PatchbayWeb.OffersLive.Markets, only: [credits: 1, offer_slot: 1]
+  import PatchbayWeb.OffersLive.Markets,
+    only: [credits: 1, offer_copy: 1, hours_until: 2, time_left: 2]
 
   alias Patchbay.Credits
   alias Patchbay.Forum.Site
@@ -35,6 +36,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
   alias Patchbay.Offers.Returns
   alias Patchbay.Offers.Review
   alias Patchbay.Offers.Slot
+  alias Patchbay.Offers.Terms
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.OffersLive.BidDesk
   alias PatchbayWeb.OffersLive.Create
@@ -252,6 +254,129 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   defp lane("next_period"), do: :next_period
   defp lane(_immediate), do: :immediate
+
+  attr(:showing, :map, required: true)
+  attr(:slot, :map, required: true)
+  attr(:number, :integer, required: true)
+  attr(:now, DateTime, required: true)
+  attr(:opening, :integer, required: true)
+  attr(:returns, :integer, required: true)
+
+  defp slot_card(assigns) do
+    assigns = assign(assigns, next: assigns.showing && assigns.slot.next_bid)
+
+    ~H"""
+    <Regent.Structure.panel
+      class="pb-bid-card pb-bid-current"
+      role="region"
+      aria-labelledby="pb-offers-bid-slot"
+    >
+      <header class="pb-bid-card-head">
+        <h2 id="pb-offers-bid-slot">Agent Offer Slot {@number}</h2>
+        <span class="pb-bid-state" data-state={if @showing, do: "placed", else: "empty"}>
+          {if @showing, do: "Live", else: "Open"}
+        </span>
+      </header>
+      <%= if @showing do %>
+        <div class="pb-bid-current-copy"><.offer_copy version={@showing.version} /></div>
+        <div class="pb-bid-owner">
+          <.link navigate={Patchbay.Identity.AgentProfile.profile_url(@showing.owner)}>{@showing.owner.agent_name}</.link>
+          <span title={"Ends #{moment(@showing.expires_at)}"}>
+            <.bid_icon kind={:clock} /> {time_left(@showing.expires_at, @now)}
+          </span>
+        </div>
+        <dl class="pb-bid-facts">
+          <div>
+            <dt>Current bid</dt><dd>{credits(@showing.amount_minor)}</dd>
+          </div>
+          <div>
+            <dt>Replace from</dt><dd>
+              {credits(Terms.replacement_minimum(@showing.amount_minor, @opening))}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              Responses
+              <Regent.Primitives.tip id="pb-bid-returns-info" label="About response count">
+                Responses carrying this Offer over its duration.
+              </Regent.Primitives.tip>
+            </dt><dd>{@returns}</dd>
+          </div>
+        </dl>
+        <div class="pb-bid-next-summary">
+          <.bid_icon kind={:clock} />
+          <div>
+            <strong>Next 72h</strong><span>Starts in {hours_until(@showing.expires_at, @now)}</span>
+          </div>
+          <span>{if @next, do: credits(@next.amount_minor), else: "No bids"}</span>
+        </div>
+        <details class="pb-bid-details">
+          <summary>Slot details</summary>
+          <p>Ends {moment(@showing.expires_at)}.</p>
+          <p>
+            Replacing it returns {credits(
+              Terms.unused(@showing.amount_minor, @showing.expires_at, @now)
+            )} to its owner.
+          </p>
+          <%= if @next do %>
+            <p>
+              Next period: <.link navigate={Patchbay.Identity.AgentProfile.profile_url(@next.owner)}>{@next.owner.agent_name}</.link>.
+            </p>
+            <.offer_copy version={@next.version} />
+            <p>
+              Next-period minimum: {credits(Terms.replacement_minimum(@next.amount_minor, @opening))}.
+            </p>
+          <% else %>
+            <p>Next-period minimum: {credits(@opening)}.</p>
+          <% end %>
+        </details>
+      <% else %>
+        <div class="pb-bid-open-slot">
+          <.bid_icon kind={:edit} /><p>Your Offer could be here.</p><span>72 hours · from {credits(
+            @opening
+          )}</span>
+        </div>
+      <% end %>
+    </Regent.Structure.panel>
+    """
+  end
+
+  # Small, decorative symbols for the bid controls; names stay in their labels.
+  @bid_icons %{
+    back: "M19 12H5m7-7-7 7 7 7",
+    arrow: "M5 12h14m-7-7 7 7-7 7",
+    bolt: "m13 2-9 12h7l-1 8 10-12h-7z",
+    clock: "M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
+    wallet: "M20 8V5H4v14h16v-5m0-6h-6v6h6zM16 11h.01",
+    edit: "m16 3 5 5-12 12H4v-5zM13 6l5 5",
+    check: "m5 12 4 4L19 6",
+    chart: "M4 4v16h16M8 15v-3m5 3V8m5 7V5",
+    info: "M12 11v6m0-10h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"
+  }
+
+  attr(:kind, :atom, required: true)
+
+  defp bid_icon(assigns) do
+    assigns = assign(assigns, path: Map.fetch!(@bid_icons, assigns.kind))
+
+    ~H"""
+    <svg
+      class="pb-bid-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    ><path d={@path} /></svg>
+    """
+  end
+
+  defp bid_state(:held), do: "Pending"
+  defp bid_state(:leading), do: "Next up"
+  defp bid_state(:placed), do: "Won"
+  defp bid_state(:returned), do: "Returned"
 
   # Opens the header's Buy Credits dialog.
   defp buy_credits(assigns) do

@@ -200,3 +200,44 @@ preview using the actual rendered page and bundled product hook. Proof is
 This is representative UI proof, not a live signed-in financial transaction test.
 Mobile and reconnect behavior were not browser-tested. Existing previews remain
 running; the temporary static preview server is stopped after verification.
+
+## Bid-page cards — 9 October 2026
+
+Sean requested two to four cards, sideways Offer selection, helpful icons and
+less text using Emil design engineering. Done: three shared panels for the
+current slot, bid composer and personal activity. The current wording is the
+largest visual; timing choices and approved Offers are native radio cards.
+Full slot details, lane terms, approval statuses and activity details remain
+accessible through native expanders. Icons have readable labels or accessible
+names. Existing press feedback remains unchanged; no carousel library or
+additional motion code was added.
+
+Only bid-page composition, private rendering helpers and scoped CSS changed.
+Existing events, eligibility, bid calculations, amount prefill, submission,
+Credits and the outbid modal remain unchanged. Credits work is still held.
+The unrelated five-per-day quota edits remain uncommitted and unfinished.
+
+Verified: formatting, warning-free compilation, assets, Credo and diff checks.
+The one-off `check_bid_cards.exs` driver checked three panels, approved-only
+choices, unchanged form names/events, selected Offer and amount preservation,
+lane minimum prefill, retained terms, pending/unlinked/signed-out/empty states,
+and moderator-blocked wording. Representation-only fixture rows rolled back
+in the existing test sandbox; no financial action, job or provider call ran.
+
+Browser checks used actual rendered signed-in sample pages: clicks and arrow
+keys select cards, the rail scrolls the focused selection into view, keyboard
+focus is visible, card heights stay stable, and each lane exposes only its own
+terms with identical disclosure height. Light/dark views and keyboard expanders
+passed. Same-origin 390px and 320px iframe layouts stack the panels without
+card overflow, including long URLs. These are responsive layout checks, not
+physical-phone gesture tests. The running 4050 page shows the new public cards
+after reload; its automation session remains signed out. No server restart,
+real bid, purchase, provider call, push or deployment occurred.
+
+Proof: `bid-cards-light.jpg` and `bid-cards-dark.jpg` in the artifact directory,
+using representative signed-in data. Temporary static previews are removed
+from the browser and their server stopped after verification.
+Astra's bounded source review found no blocker. Its non-blocking copy finding
+was fixed: ineligible Offers are labelled unavailable, because refusal, expiry
+and missing site-fit checks are not all pending approval. Their exact status
+remains visible when expanded.
