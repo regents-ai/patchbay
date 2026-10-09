@@ -371,8 +371,22 @@
   color: var(--pb-good);
 }
 
+/* Approve glows green while the chain's approval covers the amount; a glow
+   outside the border never moves anything. */
+[data-onchain-step="approve"] {
+  transition:
+    border-color 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.credits-panel__step[data-state="done"] [data-onchain-step="approve"] {
+  border-color: var(--pb-good);
+  box-shadow: 0 0 0 1px var(--pb-good), 0 0 14px color-mix(in srgb, var(--pb-good) 55%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .credits-panel__chains::before {
+  .credits-panel__chains::before,
+  [data-onchain-step="approve"] {
     transition: none;
   }
 }
