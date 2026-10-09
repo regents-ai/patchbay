@@ -1,6 +1,7 @@
 defmodule PatchbayWeb.WalletBenchController do
   @moduledoc """
-  The Agent Wallet Bench matrix, `/wallet-bench`, and one pair's runs,
+  The Agent Wallet Bench board, `/wallet-bench`, one test at a time
+  (`?test=wallet`; the first test when none is named), and one pair's runs,
   `/wallet-bench/<agent>/<wallet>`. Both read Techtree's published results
   when they are opened, so a finished run shows on the next visit.
   """
@@ -12,12 +13,14 @@ defmodule PatchbayWeb.WalletBenchController do
   alias PatchbayWeb.Forum.NotFoundError
 
   def index(conn, params) do
+    test = Map.get(params, "test", hd(Matrix.grids()))
+    unless test in Matrix.grids(), do: raise(NotFoundError)
     {:ok, matrix} = Matrix.read()
 
     render(conn, :index,
       page_title: "Agent Wallet Bench",
       matrix: matrix,
-      wallets_down?: params["by"] == "wallet"
+      test: Enum.find(matrix.grids, &(&1.grid == test))
     )
   end
 

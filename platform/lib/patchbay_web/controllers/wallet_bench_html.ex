@@ -1,12 +1,13 @@
 defmodule PatchbayWeb.WalletBenchHTML do
   @moduledoc """
-  The Agent Wallet Bench pages: two grids of agents by wallets, and one
-  pair's runs. Every name and every outcome's meaning in the grids is
-  Techtree's; the grids add only colour and layout. Below them, how the bench
-  works is the page's own write-up of the full grid.
+  The Agent Wallet Bench pages: a board of agents by wallets for one test at a
+  time, and one pair's runs. Every name and every outcome's meaning on the
+  board is Techtree's; the board adds only colour and layout. Below it, how
+  the bench works is the page's own write-up of the full grid.
 
-  A square shows one cell per check, each with a dot per run. Opening a square
-  shows the pair's runs over the grid; the same runs are the pair's own page.
+  A square shows a 3 by 3 grid of dots, one per check, coloured by how many of
+  the pair's runs the check held in. Opening a square shows the pair's runs
+  over the board; the same runs are the pair's own page.
   """
 
   use PatchbayWeb, :html
@@ -96,22 +97,33 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def tone("INCONCLUSIVE"), do: "is-inconclusive"
   def tone("NOT_RUN"), do: "is-not-run"
 
-  @doc "The colour of one run's dot for one check."
-  def dot_tone("true"), do: "is-held"
-  def dot_tone("open"), do: "is-open"
-  def dot_tone("false"), do: "is-failed"
-  def dot_tone(nil), do: "is-none"
+  @doc """
+  The colour of a check's dot: held in every run, in most, in some, or in
+  none. A check left open counts as not held.
+  """
+  def dot_tone(held, runs) when held == runs, do: "is-all"
+  def dot_tone(0, _runs), do: "is-none"
+  def dot_tone(held, runs) when held * 2 > runs, do: "is-most"
+  def dot_tone(_held, _runs), do: "is-some"
 
-  @doc "The grid's columns: wallets across the top, or agents when wallets run down the side."
-  def columns(matrix, false = _wallets_down?), do: matrix.wallets
-  def columns(matrix, true), do: matrix.harnesses
+  @doc "The legend's dot colours, in order."
+  def dot_key do
+    [
+      {"is-all", "Held in every run"},
+      {"is-most", "Held in most runs"},
+      {"is-some", "Held in some runs"},
+      {"is-none", "Held in no run"}
+    ]
+  end
 
-  @doc "The grid's rows, each with its squares' agent and wallet in column order."
-  def rows(matrix, false = _wallets_down?),
-    do: for(h <- matrix.harnesses, do: {h, Enum.map(matrix.wallets, &{h, &1})})
-
-  def rows(matrix, true),
-    do: for(w <- matrix.wallets, do: {w, Enum.map(matrix.harnesses, &{&1, w})})
+  @doc "A name's initials for its tile: the first letter of its first two words."
+  def initials(name) do
+    name
+    |> String.split([" ", "-"], trim: true)
+    |> Enum.take(2)
+    |> Enum.map_join(&String.first/1)
+    |> String.upcase()
+  end
 
   @doc "Techtree's short word for an outcome."
   def word(notes, outcome), do: Matrix.word(notes, outcome)
@@ -126,17 +138,14 @@ defmodule PatchbayWeb.WalletBenchHTML do
         %{runs: 0, fixed: fixed} ->
           Enum.map(fixed, &(word(notes, &1.fixed_outcome) <> ": " <> &1.fixed_reason))
 
-        %{tally: tally, runs: runs, cells: cells} ->
+        %{tally: tally, runs: runs, dots: dots} ->
           outcomes =
             Enum.map(tally, fn {outcome, n} -> word(notes, outcome) <> ", #{n} of #{runs}." end)
 
           checks =
-            cells
+            dots
             |> Enum.with_index(1)
-            |> Enum.map(fn {cell, n} ->
-              found = cell.dots |> Enum.reject(&is_nil/1) |> Enum.map_join(", ", &check_said/1)
-              "Check #{n}: #{found}."
-            end)
+            |> Enum.map(fn {dot, n} -> "Check #{n}: held in #{dot.held} of #{runs}." end)
 
           outcomes ++ checks
       end
@@ -196,54 +205,94 @@ defmodule PatchbayWeb.WalletBenchHTML do
   end
 
   @doc """
-  One square of a grid: a link to the pair. A tested square shows a cell for
-  each check with a dot per run; any other square says why it has none.
+  The outcome a whole row or column of squares shares when none of them runs,
+  such as a wallet that needs a person: said once beside its name instead of
+  in every square. Nil when any square has runs or they share no outcome.
+  """
+  def never_run(squares) do
+    if Enum.all?(squares, &(&1.runs == 0 and &1.fixed != [])) do
+      common =
+        squares
+        |> Enum.map(&MapSet.new(fixed_outcomes(&1)))
+        |> Enum.reduce(&MapSet.intersection/2)
+
+      Enum.find(outcomes(), &(&1 in common))
+    end
+  end
+
+  @doc "A wallet's squares on one test, down its column."
+  def column(test, harnesses, wallet), do: Enum.map(harnesses, &test.squares[{&1.id, wallet.id}])
+
+  @doc "An agent's squares on one test, along its row."
+  def row(test, wallets, harness), do: Enum.map(wallets, &test.squares[{harness.id, &1.id}])
+
+  @doc "An agent's or a wallet's tile: its initials beside its name, and what its squares share when none runs."
+  attr(:entry, :map, required: true)
+  attr(:notes, :map, required: true)
+  attr(:never_run, :string, default: nil)
+
+  def entry(assigns) do
+    ~H"""
+    <span class="pb-wb-entry">
+      <span class="pb-wb-tile" aria-hidden="true">{initials(@entry.name)}</span>
+      <span class="pb-wb-entry-name">
+        {@entry.name}
+        <span :if={@never_run} class="pb-wb-entry-note">{word(@notes, @never_run)}</span>
+      </span>
+    </span>
+    """
+  end
+
+  @doc """
+  One square of the board: a link to the pair. A tested square shows a dot for
+  each check; a square that never runs is hatched, its outcome said beside its
+  row's or column's name, or in the square when they differ.
   """
   attr(:notes, :map, required: true)
   attr(:square, :map, required: true)
   attr(:harness, :map, required: true)
   attr(:wallet, :map, required: true)
   attr(:grid, :string, required: true)
+  attr(:said, :boolean, default: false, doc: "its row or column already says why it never runs")
 
   def square(assigns) do
     ~H"""
     <a
       href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}" <> "#" <> @grid}
-      class={["pb-wb-square", (@square.runs == 0 and @square.fixed == []) && "is-untested"]}
+      class={["pb-wb-square", @square.runs == 0 && "is-empty"]}
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
       data-wb-pair={@harness.name <> " with " <> @wallet.name}
     >
-      <span :if={@square.runs > 0} class="pb-wb-cells" aria-hidden="true">
-        <span :for={cell <- @square.cells} class="pb-wb-cell">
-          <span :for={dot <- cell.dots} class={["pb-wb-dot", dot_tone(dot)]}></span>
-        </span>
+      <span :if={@square.runs > 0} class="pb-wb-dots" aria-hidden="true">
+        <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.runs)]}></span>
       </span>
-      <.chip
+      <span
         :for={outcome <- fixed_outcomes(@square)}
-        :if={@square.runs == 0}
-        notes={@notes}
-        outcome={outcome}
-      />
-      <span :if={@square.runs == 0 and @square.fixed == []} class="pb-wb-untested">Not tested yet</span>
+        :if={@square.runs == 0 and not @said}
+        class="pb-wb-empty"
+        aria-hidden="true"
+      >
+        {word(@notes, outcome)}
+      </span>
+      <span :if={@square.runs == 0 and @square.fixed == []} class="pb-wb-empty" aria-hidden="true">
+        Not tested yet
+      </span>
     </a>
     """
   end
 
-  @doc "Which cell of a square is which check: the cells numbered, and the checks behind the numbers."
-  attr(:id, :string, required: true)
+  @doc "Which dot is which check: the nine places numbered, and the checks behind the numbers."
   attr(:criteria, :list, required: true)
 
   def check_key(assigns) do
     ~H"""
     <div class="pb-wb-check-key">
-      <span class="pb-wb-cells is-key" aria-hidden="true">
-        <span :for={{_criterion, n} <- Enum.with_index(@criteria, 1)} class="pb-wb-cell">{n}</span>
+      <span class="pb-wb-dots is-key" aria-hidden="true">
+        <span :for={{_criterion, n} <- Enum.with_index(@criteria, 1)} class="pb-wb-dot">{n}</span>
       </span>
-      <Regent.Primitives.disclosure id={@id} summary="The checks">
-        <ol class="pb-wb-check-list">
-          <li :for={criterion <- @criteria}>{criterion.criterion}</li>
-        </ol>
-      </Regent.Primitives.disclosure>
+      <ol class="pb-wb-check-list">
+        <li :for={criterion <- @criteria}>{criterion.criterion}</li>
+      </ol>
     </div>
     """
   end

@@ -4,10 +4,9 @@ defmodule Patchbay.WalletBench.Matrix do
 
   Each square holds the outcomes of that pair's runs counted separately (two
   passes and an inconclusive run stay two and one, never one verdict), the
-  fixed outcome Techtree gives a square that never runs, and one cell for each
-  of the grid's checks. A cell holds one dot per run, in run order: what the
-  judge found for that check in that run, or nothing when the run has not
-  happened. A square with no runs and no fixed outcome has not been tested yet.
+  fixed outcome Techtree gives a square that never runs, and one dot for each
+  of the grid's checks: in how many of the pair's runs the judge found it held.
+  A square with no runs and no fixed outcome has not been tested yet.
   """
 
   alias Patchbay.WalletBench
@@ -18,17 +17,13 @@ defmodule Patchbay.WalletBench.Matrix do
   @outcomes ~w(PASS PASS* FAILED_TECHNICAL FAILED_SAFETY BLOCKED_AUTH BLOCKED_POLICY
                BLOCKED_ENVIRONMENT BLOCKED_UPSTREAM WAITING_HUMAN INCONCLUSIVE NOT_RUN)
 
-  # Each pair runs three times (Techtree's "runs" note), so a cell has a dot for
-  # each of the three.
-  @runs_per_pair 3
-
   @type criterion :: %{id: String.t(), criterion: String.t()}
-  @type cell :: %{criterion: criterion(), dots: [String.t() | nil]}
+  @type dot :: %{criterion: criterion(), held: non_neg_integer()}
   @type square :: %{
           runs: non_neg_integer(),
           tally: [{String.t(), pos_integer()}],
           fixed: [struct()],
-          cells: [cell()]
+          dots: [dot()]
         }
 
   @doc "Every outcome Techtree rules, in the order the page lists them."
@@ -121,17 +116,13 @@ defmodule Patchbay.WalletBench.Matrix do
       |> Enum.frequencies_by(& &1.outcome)
       |> Enum.sort_by(fn {outcome, _count} -> Enum.find_index(@outcomes, &(&1 == outcome)) end)
 
-    cells =
+    dots =
       Enum.map(criteria, fn criterion ->
-        dots = Enum.map(runs, &found[{&1.grid, &1.attempt_id, criterion.id}])
-
-        %{
-          criterion: criterion,
-          dots: dots ++ List.duplicate(nil, max(@runs_per_pair - length(runs), 0))
-        }
+        held = Enum.count(runs, &(found[{&1.grid, &1.attempt_id, criterion.id}] == "true"))
+        %{criterion: criterion, held: held}
       end)
 
-    %{runs: length(runs), tally: tally, fixed: fixed, cells: cells}
+    %{runs: length(runs), tally: tally, fixed: fixed, dots: dots}
   end
 
   defp progress(squares) do
