@@ -10,7 +10,8 @@ defmodule Patchbay.Offers.Destination do
   visited and is left for a moderator.
 
   What comes back is evidence for screening: every hop, the final status, a
-  hash of what was read and the page's title. A short excerpt of the page's
+  hash of what was read and the page's title. A page longer than is read is
+  noted as `too_long`, so a moderator sees it. A short excerpt of the page's
   words goes to the screening question and is never kept or shown.
   """
 
@@ -33,14 +34,14 @@ defmodule Patchbay.Offers.Destination do
 
   defp follow(url, hops, opts) do
     case get(url, opts) do
-      {:ok, status, location, _type, _body}
+      {:ok, status, location, _type, _body, _cut?}
       when status in [301, 302, 303, 307, 308] and is_binary(location) ->
         redirect(hops, status, url |> URI.merge(location) |> URI.to_string(), opts)
 
-      {:ok, status, _location, type, body} when status in 200..299 ->
-        read(hops, status, type, body)
+      {:ok, status, _location, type, body, cut?} when status in 200..299 ->
+        read(hops, status, type, body, cut?)
 
-      {:ok, status, _location, _type, _body} ->
+      {:ok, status, _location, _type, _body, _cut?} ->
         {ended(hops, "unreadable", status), nil}
 
       {:error, reason} when reason in [:not_https, :not_public] ->
@@ -68,7 +69,8 @@ defmodule Patchbay.Offers.Destination do
              [compressed: false, receive_timeout: @fetch_timeout_ms] ++ target.options
            ) do
       {:ok, response.status, header(response, "location"), header(response, "content-type") || "",
-       response.body |> Kernel.||("") |> IO.iodata_to_binary()}
+       response.body |> Kernel.||("") |> IO.iodata_to_binary(),
+       Map.get(response.private, :assist_cut, false)}
     else
       {:error, reason} when reason in [:not_https, :not_public] -> {:error, reason}
       _failed -> {:error, :unreachable}
@@ -76,14 +78,17 @@ defmodule Patchbay.Offers.Destination do
   end
 
   # A page or plain text is read for its words; anything else, such as a
-  # download, is left for a moderator.
-  defp read(hops, status, type, body) do
+  # download, is left for a moderator. A page cut at the bound may end inside
+  # a character, so only its whole characters are read.
+  defp read(hops, status, type, body, cut?) do
+    body = if cut?, do: whole_characters(body), else: body
+
     if type =~ ~r/\A\s*text\/(html|plain)/i and String.valid?(body) do
       words = words(body)
 
       evidence =
         hops
-        |> ended("read", status)
+        |> ended(if(cut?, do: "too_long", else: "read"), status)
         |> Map.merge(%{
           "content_sha256" => :crypto.hash(:sha256, body) |> Base.encode16(case: :lower),
           "title" => title(body)
@@ -92,6 +97,13 @@ defmodule Patchbay.Offers.Destination do
       {evidence, String.slice(words, 0, @excerpt_chars)}
     else
       {ended(hops, "not_a_page", status), nil}
+    end
+  end
+
+  defp whole_characters(body) do
+    case :unicode.characters_to_binary(body) do
+      {:incomplete, whole, _partial} -> whole
+      _whole_or_invalid -> body
     end
   end
 

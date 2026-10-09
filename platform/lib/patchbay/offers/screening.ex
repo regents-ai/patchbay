@@ -80,7 +80,8 @@ defmodule Patchbay.Offers.Screening do
     "unreadable" => "A link could not be opened, so a person checks where it goes.",
     "too_many_redirects" => "A link redirects too many times, so a person checks where it goes.",
     "not_https" => "A link is not a secure https link, so a person checks it.",
-    "not_a_page" => "A link does not lead to a web page, so a person checks it."
+    "not_a_page" => "A link does not lead to a web page, so a person checks it.",
+    "too_long" => "A link's page is longer than screening reads, so a person checks it."
   }
 
   @doc """

@@ -5,7 +5,8 @@ defmodule Patchbay.Offers.Screen do
   (the `:screen` trigger) runs while a screening is asked for.
 
   Pages are visited and Jev is asked outside any transaction; the decision
-  is written afterwards in one short update. A call that fails is tried
+  is written afterwards in one short update, and only while the request it
+  answers is still the current one. A call that fails is tried
   again with Oban's backoff, and after the last try the review goes to a
   moderator (`:screening_failed`), never to an allow. A Patchbay that cannot
   screen at all sends every review to a moderator at once.
@@ -32,7 +33,9 @@ defmodule Patchbay.Offers.Screen do
     end
   end
 
-  # Screening's own decision on its own review; no person asked for it.
+  # Screening's own decision on its own review; no person asked for it. A
+  # moderator's decision or a newer request made while it ran supersedes it,
+  # and the review is left as it is: nothing to try again.
   defp record(review, decision) do
     review
     |> Ash.Changeset.for_update(
@@ -43,5 +46,9 @@ defmodule Patchbay.Offers.Screen do
       })
     )
     |> Ash.update(authorize?: false)
+    |> case do
+      {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} -> {:ok, review}
+      result -> result
+    end
   end
 end

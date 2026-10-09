@@ -223,6 +223,8 @@ defmodule Patchbay.Offers.Review do
     update :screening_failed do
       description("Screening's last try failed; a moderator decides.")
       accept([])
+      # A request a moderator settled while the last try ran stays settled.
+      change(filter(expr(not is_nil(screen_requested_at))))
       change(set_attribute(:decision, :needs_review))
       change(set_attribute(:reason_codes, ["screening_unavailable"]))
       change(set_attribute(:fresh_until, nil))
@@ -249,22 +251,15 @@ defmodule Patchbay.Offers.Review do
 
       argument(:fresh_for_us, :integer, allow_nil?: false, constraints: [min: 0])
 
-      # The request this screening answered. A request made while it ran is
-      # kept, so the newer one is screened in turn.
+      # The request this screening answered. The decision is kept only while
+      # that request is still the current one, in the same statement: a
+      # moderator who decided meanwhile, or a newer request made while it ran,
+      # leaves the row untouched, and the newer request is screened in turn.
       argument(:answers_request_at, :utc_datetime_usec, allow_nil?: false)
 
+      change(filter(expr(screen_requested_at == ^arg(:answers_request_at))))
+      change(set_attribute(:screen_requested_at, nil))
       change(Patchbay.Offers.Changes.RecordDecision)
-
-      change(
-        atomic_update(
-          :screen_requested_at,
-          expr(
-            if screen_requested_at == ^arg(:answers_request_at),
-              do: nil,
-              else: screen_requested_at
-          )
-        )
-      )
     end
 
     update :decide do

@@ -179,8 +179,8 @@ defmodule Patchbay.Assist.Target do
     }
   end
 
-  # Reads a body up to the bound and stops there; a site's answer past it is
-  # noted as cut rather than kept.
+  # Reads a body up to the bound and stops there: at most `bound` bytes are
+  # kept, and a site's answer past it is noted as cut.
   defp take_bounded({:data, data}, {request, response}, bound) do
     body = [response.body || [], data]
 
@@ -189,7 +189,7 @@ defmodule Patchbay.Assist.Target do
        {request,
         %{
           response
-          | body: IO.iodata_to_binary(body),
+          | body: body |> IO.iodata_to_binary() |> binary_part(0, bound),
             private: Map.put(response.private, :assist_cut, true)
         }}}
     else
