@@ -182,6 +182,14 @@ config :patchbay, :shots_url, "http://patchbay-shots.flycast"
 # Rate limits key on the direct peer. Production turns on Fly's client header.
 config :patchbay, :behind_fly_proxy, false
 
+# Metrics listen on loopback, on a port the system picks, so this site runs beside the
+# other sites' local servers without taking the one port they all name in production.
+config :patchbay, :metrics_listener, ip: {127, 0, 0, 1}, port: 0
+
+# The engine's own measurements (memory, run queues, process counts), taken every
+# 10 seconds by telemetry_poller's default poller and exported as `vm.*` metrics.
+config :telemetry_poller, :default, period: 10_000
+
 # Sites are registrable domains, read from the Public Suffix List bundled with
 # domainatrex. Builds use that copy and never fetch the list.
 config :domainatrex, fetch_latest: false

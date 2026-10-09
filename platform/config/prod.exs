@@ -10,6 +10,9 @@ config :patchbay, PatchbayWeb.Endpoint, cache_static_manifest: "priv/static/cach
 # Every request reaches production through Fly's proxy, which sets Fly-Client-IP.
 config :patchbay, :behind_fly_proxy, true
 
+# The private port fly.toml names under [metrics]; Fly routes no public traffic to it.
+config :patchbay, :metrics_listener, ip: {0, 0, 0, 0, 0, 0, 0, 0}, port: 9091
+
 # Force using SSL in production. This also sets the "strict-transport-security" header,
 # known as HSTS. Note `:force_ssl` is required to be set at compile-time.
 #

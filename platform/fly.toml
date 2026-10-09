@@ -24,6 +24,10 @@ kill_timeout = "60s"
   # five connections open instead of the default ten.
   POOL_SIZE = "5"
 
+[metrics]
+  port = 9091
+  path = "/metrics"
+
 [http_service]
   internal_port = 4000
   force_https = true

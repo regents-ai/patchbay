@@ -1,22 +1,40 @@
 defmodule PatchbayWeb.Telemetry do
-  use Supervisor
+  @moduledoc """
+  The site's measurements and their Prometheus export on the private metrics
+  listener (`PatchbayWeb.Metrics`). The engine's memory, run queues and process
+  counts come from telemetry_poller's default poller, every 10 seconds
+  (`config/config.exs`). `metrics/0` is the development dashboard's list.
+  """
+
   import Telemetry.Metrics
 
-  def start_link(arg) do
-    Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
+  def child_spec(_arg) do
+    TelemetryMetricsPrometheus.Core.child_spec(
+      metrics: prometheus_metrics(),
+      name: prometheus_reporter(),
+      start_async: false
+    )
   end
 
-  @impl true
-  def init(_arg) do
-    children = [
-      # Telemetry poller will execute the given period measurements
-      # every 10_000ms. Learn more here: https://hexdocs.pm/telemetry_metrics
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
-      # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
-    ]
+  def prometheus_reporter, do: :patchbay_prometheus
 
-    Supervisor.init(children, strategy: :one_for_one)
+  def prometheus_metrics do
+    [
+      last_value("vm.memory.total.bytes", event_name: [:vm, :memory], measurement: :total),
+      last_value("vm.memory.processes.bytes",
+        event_name: [:vm, :memory],
+        measurement: :processes
+      ),
+      last_value("vm.memory.binary.bytes", event_name: [:vm, :memory], measurement: :binary),
+      last_value("vm.memory.ets.bytes", event_name: [:vm, :memory], measurement: :ets),
+      last_value("vm.memory.code.bytes", event_name: [:vm, :memory], measurement: :code),
+      last_value("vm.memory.atom.bytes", event_name: [:vm, :memory], measurement: :atom),
+      last_value("vm.total_run_queue_lengths.total"),
+      last_value("vm.total_run_queue_lengths.cpu"),
+      last_value("vm.system_counts.process_count"),
+      last_value("vm.system_counts.atom_count"),
+      last_value("vm.system_counts.port_count")
+    ]
   end
 
   def metrics do
@@ -143,14 +161,6 @@ defmodule PatchbayWeb.Telemetry do
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
       summary("vm.total_run_queue_lengths.io")
-    ]
-  end
-
-  defp periodic_measurements do
-    [
-      # A module, function and arguments to be invoked periodically.
-      # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {PatchbayWeb, :count_users, []}
     ]
   end
 end

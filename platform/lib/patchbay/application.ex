@@ -35,7 +35,8 @@ defmodule Patchbay.Application do
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
-        ]
+        ] ++
+        metrics_child()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -61,6 +62,13 @@ defmodule Patchbay.Application do
     else
       []
     end
+  end
+
+  # Metrics are served beside the site, never by a process that only runs a task.
+  defp metrics_child do
+    if Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint),
+      do: [PatchbayWeb.Metrics],
+      else: []
   end
 
   # Tell Phoenix to update the endpoint configuration
