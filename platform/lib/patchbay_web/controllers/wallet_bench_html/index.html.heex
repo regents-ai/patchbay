@@ -25,6 +25,7 @@
     </div>
 
     <div
+      :if={@test.total > 0}
       class="pb-wb-scroll"
       role="region"
       tabindex="0"
@@ -40,13 +41,13 @@
               <.entry
                 entry={wallet}
                 notes={@matrix.notes}
-                never_run={never_run(column(@test, @matrix.harnesses, wallet))}
+                never_run={never_run(column(@test, @test.harnesses, wallet))}
               />
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr :for={harness <- @matrix.harnesses}>
+          <tr :for={harness <- @test.harnesses}>
             <th scope="row">
               <.entry
                 entry={harness}
@@ -62,8 +63,8 @@
                 wallet={wallet}
                 grid={@test.grid}
                 said={
-                  never_run(column(@test, @matrix.harnesses, wallet)) != nil or
-                    never_run(row(@test, @matrix.wallets, harness)) != nil
+                  List.wrap(never_run(column(@test, @test.harnesses, wallet))) ++
+                    List.wrap(never_run(row(@test, @matrix.wallets, harness)))
                 }
               />
             </td>
@@ -71,6 +72,7 @@
         </tbody>
       </table>
     </div>
+    <p :if={@test.total == 0}>No results to show yet.</p>
 
     <div class="pb-wb-cards">
       <article class="pb-wb-card" aria-labelledby="pb-wb-checks-title">
@@ -90,7 +92,7 @@
         </ul>
         <Regent.Primitives.disclosure id="pb-wb-meanings" summary="What each result means">
           <dl class="pb-wb-meanings">
-            <div :for={outcome <- outcomes()}>
+            <div :for={outcome <- outcomes()} :if={Map.has_key?(@matrix.notes, outcome)}>
               <dt><.chip notes={@matrix.notes} outcome={outcome} /></dt>
               <dd>{@matrix.notes[outcome]}</dd>
             </div>

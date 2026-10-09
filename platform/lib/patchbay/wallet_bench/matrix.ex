@@ -63,24 +63,48 @@ defmodule Patchbay.WalletBench.Matrix do
     by_square = Enum.group_by(results, &{&1.grid, &1.harness_id, &1.wallet_id})
     found = Map.new(checks, &{{&1.grid, &1.attempt_id, &1.criterion_id}, &1.result})
 
-    %{
-      harnesses: harnesses,
-      wallets: wallets,
-      notes: notes(notes),
-      grids:
-        Enum.map(@grids, fn grid ->
-          criteria = criteria(checks, grid)
+    grids =
+      Enum.map(@grids, fn grid ->
+        criteria = criteria(checks, grid)
 
-          squares =
-            for h <- harnesses, w <- wallets, into: %{} do
-              runs = by_square |> Map.get({grid, h.id, w.id}, []) |> Enum.sort_by(& &1.run)
-              fixed = fixed_for(fixed, grid, h.id, w.id)
-              {{h.id, w.id}, square(runs, fixed, criteria, found)}
-            end
+        squares =
+          for h <- harnesses, w <- wallets, into: %{} do
+            runs = by_square |> Map.get({grid, h.id, w.id}, []) |> Enum.sort_by(& &1.run)
+            fixed = fixed_for(fixed, grid, h.id, w.id)
+            {{h.id, w.id}, square(runs, fixed, criteria, found)}
+          end
 
-          %{grid: grid, criteria: criteria, squares: squares} |> Map.merge(progress(squares))
-        end)
-    }
+        %{grid: grid, criteria: criteria, squares: squares}
+      end)
+
+    visible_wallets =
+      Enum.reject(wallets, fn wallet ->
+        harnesses != [] and
+          Enum.all?(grids, fn grid ->
+            Enum.all?(harnesses, &placeholder?(grid.squares[{&1.id, wallet.id}]))
+          end)
+      end)
+
+    grids =
+      Enum.map(grids, fn grid ->
+        visible_harnesses =
+          Enum.reject(harnesses, fn harness ->
+            wallets != [] and
+              Enum.all?(wallets, &placeholder?(grid.squares[{harness.id, &1.id}]))
+          end)
+
+        squares =
+          for h <- visible_harnesses, w <- visible_wallets, into: %{} do
+            {{h.id, w.id}, grid.squares[{h.id, w.id}]}
+          end
+
+        grid
+        |> Map.put(:harnesses, visible_harnesses)
+        |> Map.put(:squares, squares)
+        |> Map.merge(progress(squares))
+      end)
+
+    %{wallets: visible_wallets, notes: notes(notes), grids: grids}
   end
 
   @doc "The fixed outcomes that apply to one square, from Techtree's `\"*\"` keys."
@@ -123,6 +147,11 @@ defmodule Patchbay.WalletBench.Matrix do
       end)
 
     %{runs: length(runs), tally: tally, fixed: fixed, dots: dots}
+  end
+
+  defp placeholder?(square) do
+    square.runs == 0 and square.fixed != [] and
+      Enum.all?(square.fixed, &(&1.fixed_outcome in ["WAITING_HUMAN", "NOT_RUN"]))
   end
 
   defp progress(squares) do

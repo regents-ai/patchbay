@@ -7,7 +7,7 @@
 
   <div class="pb-wb-method-grid">
     <article class="patchbay-card pb-wb-method-card is-wide" aria-labelledby="wb-method-title">
-      <h3 id="wb-method-title">Method</h3>
+      <h3 id="wb-method-title">First survey</h3>
       <dl class="pb-wb-stats">
         <div>
           <dt>Agents</dt><dd>9</dd>
@@ -30,7 +30,7 @@
         and <.out href="https://github.com/zeriontech/zerion-ai">Zerion</.out>.
       </p>
       <p>
-        Each of the 36 pairs ran three times, for 108 runs in the full grid, which started 7 October at 07:00 UTC. Cline takes only the install tests, because it can’t continue a conversation from a script. Eight more wallets are listed with a fixed result and never run: six need a person to sign in, one can’t run on a server, and one makes no keys.
+        Each of the 36 pairs ran three times, for 108 runs in the full grid, which started 7 October at 07:00 UTC. Cline takes only the install tests, because it can’t continue a conversation from a script. Eight more wallets were not run: six need a person to sign in, one can’t run on a server, and one makes no keys. Their records remain on their own pages.
       </p>
       <p>
         Every agent runs on the same model, gpt-6-luna at high effort, installed as it ships with approval prompts turned off. A separate judge model, gpt-5.6-sol, reads what the agent did and rules on it. The bench itself also checks every wallet address and signature directly on <.out href="https://www.base.org">Base</.out>, so the judge never has to take the agent’s word for them.
@@ -101,7 +101,7 @@
     </article>
 
     <article class="patchbay-card pb-wb-method-card is-wide" aria-labelledby="wb-results-title">
-      <h3 id="wb-results-title">Results</h3>
+      <h3 id="wb-results-title">First survey results</h3>
       <p class="patchbay-muted">{results_total()} test results across the full grid.</p>
       <ul class="pb-wb-results">
         <li :for={result <- results()}>

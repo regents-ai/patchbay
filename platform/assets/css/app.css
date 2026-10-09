@@ -2039,7 +2039,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-kicker { margin: 0; color: var(--pb-wb-violet); font: 500 .6875rem/1.4 var(--font-family-mono); letter-spacing: .28em; text-transform: uppercase; }
 .pb-wb-kicker a { color: inherit; text-decoration: none; }
 .pb-wb-kicker a:hover { text-decoration: underline; }
-.pb-wb-head h1 { margin: 0; font: 700 clamp(2rem, 5vw, 3.25rem)/1.02 var(--font-family-ui); letter-spacing: -.035em; }
+.pb-wb-head h1 { margin: 0; font: 400 clamp(2rem, 5vw, 3.25rem)/1.02 var(--font-family-title); letter-spacing: -.035em; }
 .pb-wb-lede { max-width: 46rem; margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-md); line-height: 1.5; }
 .pb-wb-lede a, .pb-wb-sheet .rg-disclosure a { color: inherit; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: .2em; white-space: nowrap; }
 .pb-wb-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); border-bottom: 1px solid var(--pb-wb-rule); }
@@ -2089,9 +2089,9 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-dots { display: grid; grid-template-columns: repeat(3, var(--pb-wb-dot)); gap: .3rem; }
 .pb-wb-dot { display: inline-block; width: var(--pb-wb-dot); height: var(--pb-wb-dot); border-radius: 50%; }
 .pb-wb-dot.is-all { background: var(--pb-wb-all); }
-.pb-wb-dot.is-most { background: var(--pb-wb-most); }
-.pb-wb-dot.is-some { background: var(--pb-wb-some); }
-.pb-wb-dot.is-none { background: var(--pb-wb-none); }
+.pb-wb-dot.is-most { background: linear-gradient(90deg, var(--pb-wb-most) 75%, transparent 75%); box-shadow: inset 0 0 0 1px var(--pb-wb-most); }
+.pb-wb-dot.is-some { background: linear-gradient(90deg, var(--pb-wb-some) 25%, transparent 25%); box-shadow: inset 0 0 0 1px var(--pb-wb-some); }
+.pb-wb-dot.is-none { background: transparent; box-shadow: inset 0 0 0 1px var(--pb-wb-none); }
 .pb-wb-dot.is-empty { border-radius: 2px; background-image: repeating-linear-gradient(135deg, transparent 0 2px, var(--pb-wb-ink-soft) 2px 3px); }
 
 /* Under the board: the nine checks and how to read a dot, on white cards. */
@@ -2101,7 +2101,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--pb-wb-rule); border-radius: .9rem; background: var(--pb-wb-card-bg);
   box-shadow: 0 1px 2px rgb(20 30 70 / .06), 0 8px 24px rgb(20 30 70 / .06);
 }
-.pb-wb-card h2 { margin: 0; font: 700 var(--pb-fs-lg)/1.2 var(--font-family-ui); letter-spacing: -.02em; }
+.pb-wb-card h2 { margin: 0; font: 400 var(--pb-fs-lg)/1.2 var(--font-family-title); letter-spacing: -.02em; }
 .pb-wb-card p { margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-sm); }
 .pb-wb-check-key { display: flex; align-items: flex-start; gap: var(--space-3); }
 .pb-wb-dots.is-key { --pb-wb-dot: 1.5rem; flex: none; gap: .25rem; }
@@ -2183,6 +2183,9 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 @media (forced-colors: active) {
   .pb-wb-chip { forced-color-adjust: none; color: CanvasText; background: Canvas; border-color: CanvasText; }
   .pb-wb-dot { forced-color-adjust: none; box-shadow: inset 0 0 0 1px CanvasText; }
-  .pb-wb-dot.is-all, .pb-wb-dot.is-most { background: CanvasText; }
-  .pb-wb-dot.is-some { background: GrayText; }
+  .pb-wb-dot.is-most, .pb-wb-dot.is-some, .pb-wb-dot.is-none { box-shadow: inset 0 0 0 1px CanvasText; }
+  .pb-wb-dot.is-all { background: CanvasText; }
+  .pb-wb-dot.is-most { background: linear-gradient(90deg, CanvasText 75%, Canvas 75%); }
+  .pb-wb-dot.is-some { background: linear-gradient(90deg, CanvasText 25%, Canvas 25%); }
+  .pb-wb-dot.is-none { background: Canvas; }
 }

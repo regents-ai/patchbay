@@ -209,6 +209,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
   such as a wallet that needs a person: said once beside its name instead of
   in every square. Nil when any square has runs or they share no outcome.
   """
+  def never_run([]), do: nil
+
   def never_run(squares) do
     if Enum.all?(squares, &(&1.runs == 0 and &1.fixed != [])) do
       common =
@@ -253,7 +255,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:harness, :map, required: true)
   attr(:wallet, :map, required: true)
   attr(:grid, :string, required: true)
-  attr(:said, :boolean, default: false, doc: "its row or column already says why it never runs")
+  attr(:said, :list, default: [], doc: "outcomes already named by its row or column")
 
   def square(assigns) do
     ~H"""
@@ -268,7 +270,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
       </span>
       <span
         :for={outcome <- fixed_outcomes(@square)}
-        :if={@square.runs == 0 and not @said}
+        :if={@square.runs == 0 and outcome not in @said}
         class="pb-wb-empty"
         aria-hidden="true"
       >

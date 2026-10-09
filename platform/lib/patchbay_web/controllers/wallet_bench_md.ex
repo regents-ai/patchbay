@@ -23,7 +23,7 @@ defmodule PatchbayWeb.WalletBenchMD do
     rule = row(Enum.map(0..length(matrix.wallets), fn _ -> "---" end))
 
     body =
-      for h <- matrix.harnesses do
+      for h <- grid.harnesses do
         row([
           h.name
           | Enum.map(matrix.wallets, fn w ->
