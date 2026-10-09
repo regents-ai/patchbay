@@ -1991,6 +1991,18 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.55;
 }
 .pb-offers-slot .patchbay-muted, .pb-offers-slot .pb-offmod-figures { font-size: .8125rem; }
+.pb-offers-result {
+  margin: auto;
+  width: min(30rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: var(--space-3);
+  border: 1px solid var(--pb-line-strong);
+  background: var(--pb-card);
+  color: var(--pb-text);
+  overflow-y: auto;
+}
+.pb-offers-result::backdrop { background: color-mix(in srgb, var(--pb-text) 30%, transparent); }
+.pb-offers-result h2 { margin: 0 0 var(--space-3); }
 .pb-offers-next { display: grid; gap: var(--space-1); padding-top: var(--space-1); border-top: 1px dashed var(--pb-line); }
 .pb-offers-market .pb-offmod-head a { overflow-wrap: anywhere; }
 .pb-offers-empty { display: none; }

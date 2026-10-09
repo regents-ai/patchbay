@@ -125,7 +125,6 @@
             <p>
               <strong>{held_words(@amount)}</strong>
             </p>
-            <p>{@terms.compared}</p>
             <%!-- With an Offer showing, both lanes' terms stay in the page; the
                  one not chosen keeps its space, unseen and after the other, so
                  choosing a lane never changes the form's height. --%>
@@ -214,4 +213,20 @@
       </ol>
     </section>
   <% end %>
+  <dialog
+    :if={@outbid?}
+    id="pb-offers-outbid"
+    class="pb-offers-result"
+    role="alertdialog"
+    aria-labelledby="pb-offers-outbid-title"
+    phx-hook="PatchbayOfferResultDialog"
+    phx-mounted={JS.ignore_attributes("open")}
+  >
+    <h2 id="pb-offers-outbid-title">You were outbid and Credits are returned</h2>
+    <form method="dialog">
+      <Regent.Primitives.button type="submit" autofocus>
+        <span class="pb-action-label" data-press-label>OK</span>
+      </Regent.Primitives.button>
+    </form>
+  </dialog>
 </main>

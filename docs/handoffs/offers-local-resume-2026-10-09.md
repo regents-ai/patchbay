@@ -174,3 +174,29 @@ limited by the viewport issue documented above.
 Watchdog source review found no blocking issue; its missing-hours finding for an
 existing next-period leader was fixed, and the rendering driver and both market
 list tests passed again afterward.
+
+## Outbid result modal — 9 October 2026
+
+Sean asked to remove the two-second comparison paragraph from the bid form and
+show `You were outbid and Credits are returned` as a modal for losing bidders.
+The paragraph is removed from the form. Its existing API terms field remains
+unchanged. This request does not resume Credits standardization or settlement.
+
+The bid page observes its own actor-scoped bid changing from held to returned
+with reason outbid on existing PubSub refreshes. Settlement already records this
+result and refunds its hold in one transaction; no financial code was changed.
+The accepted held bid is retained before the next read to cover fast settlement.
+Historical results and repeat reads stay quiet. A transient page flag controls a
+native alert dialog; OK or Escape dismisses it, and no notice is restored on reload.
+
+Verified: format, warning-free compilation, asset build and TypeScript passed.
+`check_outbid_modal.exs` exercised held-to-outbid display, historical results,
+dismissal, duplicate notification, winners, stale and ineligible refunds using
+rolled-back display fixtures in the isolated test database. No holds, refunds,
+settlement jobs, provider calls or real bids were performed. Native modal opening,
+autofocus, OK/Escape dismissal and focus restoration passed in the isolated HTML
+preview using the actual rendered page and bundled product hook. Proof is
+`outbid-modal.jpg` in the artifact directory. Astra found no blocking source issue.
+This is representative UI proof, not a live signed-in financial transaction test.
+Mobile and reconnect behavior were not browser-tested. Existing previews remain
+running; the temporary static preview server is stopped after verification.

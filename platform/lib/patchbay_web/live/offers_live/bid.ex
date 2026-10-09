@@ -51,6 +51,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
      assign(socket,
        page_title: "Bid on an Offer slot",
        problem: nil,
+       outbid?: false,
        short?: false,
        screening_paused?: Offers.screening_paused?()
      )}
@@ -63,7 +64,15 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
     {:noreply,
      socket
-     |> assign(number: number, site: site, lane: :immediate, version_id: nil, amount: nil)
+     |> assign(
+       number: number,
+       site: site,
+       lane: :immediate,
+       version_id: nil,
+       amount: nil,
+       bids: [],
+       outbid?: false
+     )
      |> read()
      |> prefill()}
   end
@@ -76,6 +85,9 @@ defmodule PatchbayWeb.OffersLive.Bid do
   def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
 
   @impl true
+  def handle_event("dismiss_outbid", _params, socket),
+    do: {:noreply, assign(socket, outbid?: false)}
+
   def handle_event("change", %{"bid" => params}, socket) do
     lane = lane(params["lane"])
     socket = assign(socket, version_id: params["version_id"], problem: nil, short?: false)
@@ -102,7 +114,14 @@ defmodule PatchbayWeb.OffersLive.Bid do
       )
 
     case place(socket) do
-      {:ok, _bid} ->
+      {:ok, bid} ->
+        # Settlement can finish before the page's next read. Keep the accepted
+        # held bid in this view's baseline so its result is still noticed.
+        socket =
+          if bid.status == :held,
+            do: assign(socket, bids: [bid | socket.assigns.bids]),
+            else: socket
+
         {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
 
       {:error, error} ->
@@ -155,12 +174,23 @@ defmodule PatchbayWeb.OffersLive.Bid do
     market = BidDesk.market(site, Returns.window(now))
     slot = BidDesk.slot(market, number)
     showing = BidDesk.showing(slot, now)
+    mine = BidDesk.mine(profile, market, slot, now)
+    previous = Map.new(socket.assigns[:bids] || [], &{&1.id, &1.status})
+
+    # A committed returned/outbid record means its full hold was refunded in
+    # the same transaction. Historical results and repeated reads stay quiet.
+    outbid? =
+      Enum.any?(mine.bids, fn bid ->
+        bid.status == :returned and bid.return_reason == :outbid and
+          Map.get(previous, bid.id) == :held
+      end)
 
     socket
     |> assign(now: now, market: market, slot: slot, opening: Offers.opening_minimum_minor(market))
     |> assign(duration_returns: Returns.placement_returns(showing, now))
     |> assign(showing: showing, terms: BidDesk.terms(showing))
-    |> assign(BidDesk.mine(profile, market, slot, now))
+    |> assign(mine)
+    |> assign(outbid?: socket.assigns.outbid? or outbid?)
     |> assign_minimum()
     |> choose_wording()
   end
