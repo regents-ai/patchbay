@@ -49,9 +49,34 @@ defmodule PatchbayWeb.OfferModerationLive do
 
     {:ok,
      socket
+     |> hold_authority()
      |> assign(page_title: "Agent Offers moderation", problem: nil)
      |> assign(board: %Read{owner: :moderators})
      |> Read.settle({Read, :board, 0}, {:ok, read_board()})}
+  end
+
+  # CurrentProfile refreshes the profile first. A changed verified wallet or
+  # moderator list must also end the private reads an already-open page holds.
+  defp hold_authority(socket) do
+    socket
+    |> attach_hook(:moderator_authority, :handle_params, fn _params, _uri, socket ->
+      check_authority(socket)
+    end)
+    |> attach_hook(:moderator_authority, :handle_event, fn _event, _params, socket ->
+      check_authority(socket)
+    end)
+    |> attach_hook(:moderator_authority, :handle_info, fn _message, socket ->
+      check_authority(socket)
+    end)
+    |> attach_hook(:moderator_authority, :handle_async, fn _name, _result, socket ->
+      check_authority(socket)
+    end)
+  end
+
+  defp check_authority(socket) do
+    if Patchbay.Config.moderator?(socket.assigns.current_profile),
+      do: {:cont, socket},
+      else: {:halt, redirect(socket, to: "/")}
   end
 
   @impl true
@@ -159,8 +184,8 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   # The page is the moderator's own door: it reads every report and wording
   # whoever owns them, so these reads skip policy deliberately after the
-  # moderator check in `mount/3`. Every change goes through its action's
-  # moderator policy.
+  # moderator checks at mount and before every page callback. Every change goes
+  # through its action's moderator policy.
   defp fetch(resource, id) do
     case Ash.get(resource, id, authorize?: false) do
       {:ok, record} -> {:ok, record}

@@ -16,24 +16,54 @@ defmodule PatchbayWeb.CurrentProfile do
   """
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [attach_hook: 4, redirect: 2]
+  import Phoenix.LiveView, only: [attach_hook: 4, put_private: 3, redirect: 2]
 
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @public_root "/"
 
   def on_mount(:default, _params, session, socket) do
-    socket = assign(socket, :current_profile, CurrentProfile.signed_in_profile(session))
+    claim = Map.take(session, ["agent_profile_id", "signed_in_at"])
+
+    socket =
+      socket
+      |> assign(:current_profile, CurrentProfile.signed_in_profile(claim))
+      |> assign(:profile_claim, claim)
+
     {:cont, hold(socket, session)}
   end
 
+  @doc "Checks a component's events and background results against the page's signed-in claim."
+  def check_component_events(socket, take_profile) do
+    socket
+    |> attach_hook(:current_profile_event, :handle_event, fn _event, _params, socket ->
+      case recheck_component(socket, take_profile) do
+        {:halt, socket} -> {:halt, %{}, socket}
+        continuing -> continuing
+      end
+    end)
+    |> attach_hook(:current_profile_async, :handle_async, fn _name, _result, socket ->
+      recheck_component(socket, take_profile)
+    end)
+  end
+
+  defp recheck_component(socket, take_profile) do
+    case CurrentProfile.signed_in_profile(socket.assigns.profile_claim) do
+      nil ->
+        send(self(), {__MODULE__, :component_sign_in_lapsed})
+        {:halt, socket}
+
+      profile ->
+        {:cont, take_profile.(socket, profile)}
+    end
+  end
+
   defp hold(%{assigns: %{current_profile: nil}} = socket, _session), do: socket
+  defp hold(%{private: %{current_profile_hooks: true}} = socket, _session), do: socket
 
   defp hold(socket, session) do
     socket
-    |> attach_hook(:current_profile_params, :handle_params, fn _params, _uri, socket ->
-      recheck(socket, session)
-    end)
+    |> check_navigation(session)
     |> attach_hook(:current_profile_event, :handle_event, fn _event, _params, socket ->
       recheck(socket, session)
     end)
@@ -41,6 +71,16 @@ defmodule PatchbayWeb.CurrentProfile do
       recheck(socket, session)
     end)
     |> attach_hook(:current_profile_async, :handle_async, fn _name, _result, socket ->
+      recheck(socket, session)
+    end)
+    |> put_private(:current_profile_hooks, true)
+  end
+
+  # The nested Credits header has no router and receives no handle_params.
+  defp check_navigation(%{router: nil} = socket, _session), do: socket
+
+  defp check_navigation(socket, session) do
+    attach_hook(socket, :current_profile_params, :handle_params, fn _params, _uri, socket ->
       recheck(socket, session)
     end)
   end

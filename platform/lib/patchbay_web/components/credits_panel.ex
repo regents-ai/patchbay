@@ -41,6 +41,7 @@ defmodule PatchbayWeb.CreditsPanel do
     {:ok,
      socket
      |> OnchainSteps.init()
+     |> PatchbayWeb.CurrentProfile.check_component_events(&take_profile/2)
      |> assign(
        active: nil,
        signer: nil,
@@ -58,24 +59,25 @@ defmodule PatchbayWeb.CreditsPanel do
 
   @impl true
   def update(%{profile: profile} = assigns, socket) do
-    linked = [String.downcase(profile.wallet_address)]
-    # Until a press says otherwise, the wallet to pay from is the profile's own.
-    active = socket.assigns.active || hd(linked)
-
     moved? = Map.has_key?(socket.assigns, :balance) and assigns.balance != socket.assigns.balance
 
     socket =
       socket
       |> assign(
         id: assigns.id,
-        profile: profile,
         balance: assigns.balance,
-        linked: linked,
-        active: active
+        profile_claim: assigns.profile_claim
       )
+      |> take_profile(profile)
       |> sync()
 
     {:ok, if(moved?, do: check_waiting(socket), else: socket)}
+  end
+
+  defp take_profile(socket, profile) do
+    linked = [String.downcase(profile.wallet_address)]
+    # Until a press says otherwise, the wallet to pay from is the profile's own.
+    assign(socket, profile: profile, linked: linked, active: socket.assigns.active || hd(linked))
   end
 
   @impl true
