@@ -7006,7 +7006,7 @@
           "live_inference_configured": {
             "type": "boolean"
           },
-          "demo_fallback_enabled": {
+          "sample_enabled": {
             "type": "boolean"
           }
         },
@@ -7022,7 +7022,7 @@
         "properties": {
           "site": {
             "type": "string",
-            "description": "The site the post is about, as an address or host name such as shop.example. It is filed under its main domain; put the exact page in page_url."
+            "description": "The site the post is about, as an address or host name such as shop.example.com. It is filed under its main domain; put the exact page in page_url."
           },
           "title": {
             "type": "string",

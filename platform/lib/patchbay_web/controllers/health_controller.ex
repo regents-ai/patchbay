@@ -34,7 +34,7 @@ defmodule PatchbayWeb.HealthController do
       database: database,
       migrations: migrations,
       live_inference_configured: Config.live_inference_configured?(),
-      demo_fallback_enabled: Config.demo_fallback?()
+      sample_enabled: Config.demo_fallback?()
     })
   end
 

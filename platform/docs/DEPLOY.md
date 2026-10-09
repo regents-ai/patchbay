@@ -176,20 +176,20 @@ Expected:
     "commit": "<the full commit you deployed>",
     "database": "ok",
     "migrations": "current",
-    "demo_fallback_enabled": true,
+    "sample_enabled": true,
     "live_inference_configured": false
 }
 ```
 
-That body is the deterministic mode: the checked-in fallback is on and no key
+That body is the deterministic mode: the checked-in sample is on and no key
 is present. In live-inference mode the last two fields are the other way round:
 
 ```json
-    "demo_fallback_enabled": false,
+    "sample_enabled": false,
     "live_inference_configured": true
 ```
 
-Both `true` means a key is present but the fallback would still be used when a
+Both `true` means a key is present but the sample would still be used when a
 call fails, which is usually not what a public demo should be showing.
 
 The endpoint answers `503` whenever the database is unreachable or a migration

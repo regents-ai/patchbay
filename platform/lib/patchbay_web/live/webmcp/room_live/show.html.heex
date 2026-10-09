@@ -403,21 +403,21 @@
       </p>
 
       <div
-        :if={@invocation && fallback_used?(@invocation)}
+        :if={@invocation && sample_used?(@invocation)}
         id="patchbay-fallback-warning"
         class="patchbay-alert patchbay-alert-warn"
       >
-        <strong>Demo fallback</strong>
+        <strong>Sample answer</strong>
         <span>
-          Demo fallback used because live inference was unavailable. This candidate has not been evaluated on real tasks.
+          Our model was unavailable, so this is a built-in example. This candidate has not been evaluated on real tasks.
         </span>
       </div>
       <p
         :if={@invocation && @invocation.effective_status == :errored}
         class="patchbay-alert patchbay-alert-error"
       >
-        <strong>Live inference failed</strong>
-        <span>The candidate was not presented as a successful completion.</span>
+        <strong>No answer from our model</strong>
+        <span>No new version was made, so nothing changed.</span>
       </p>
     </article>
 
@@ -532,10 +532,10 @@
           </div>
         </div>
 
-        <div :if={proposal_fallback?(@proposal)} class="patchbay-alert patchbay-alert-warn">
-          <strong>Demo fallback</strong>
+        <div :if={sample_plan?(@proposal)} class="patchbay-alert patchbay-alert-warn">
+          <strong>Sample plan</strong>
           <span>
-            Demo fallback used because live inference was unavailable. The repair details above come from the built-in demo plan.
+            Our model was unavailable, so the repair steps above are a built-in example.
           </span>
         </div>
 

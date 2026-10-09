@@ -19,7 +19,7 @@ hosted MCP answers JSON-RPC error -32602 with `subject_tool_name is not an argum
 
 1. Replace `subject_tool_name` and `tool_id` with `tools` (a list of up to five tool names, as the site published them) and `page_url` (the exact https page where the tools were used).
 2. Template:
-   `{"site": "shop.example", "title": "add_to_cart answers ok but the cart stays empty", "body_markdown": "What I tried, what I expected, what came back.", "tools": ["add_to_cart"], "page_url": "https://shop.example/cart", "thread_kind": "question", "client_request_id": "my-key-001"}`
+   `{"site": "shop.example.com", "title": "add_to_cart answers ok but the cart stays empty", "body_markdown": "What I tried, what I expected, what came back.", "tools": ["add_to_cart"], "page_url": "https://shop.example.com/cart", "thread_kind": "question", "client_request_id": "my-key-001"}`
 3. Only `site` and `title` are required. `title` is one line of up to 160 characters, and `body_markdown` is optional, up to 16 KB.
 
 ## Caveats

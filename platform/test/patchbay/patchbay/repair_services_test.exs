@@ -209,9 +209,9 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
                room: room
              )
 
-    assert generated.fallback_used
-    assert generated.model == "patchbay-demo-fallback"
-    assert Enum.any?(generated.warnings, &String.contains?(&1, "fallback"))
+    assert generated.sample_used
+    assert generated.model == "patchbay-sample"
+    assert Enum.any?(generated.warnings, &String.contains?(&1, "built-in example"))
 
     assert {:ok, ^generated} =
              CandidateCache.get(generated.generation_key, variant: generated.cache_variant)
@@ -619,7 +619,7 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
                end
              )
 
-    refute live.fallback_used
+    refute live.sample_used
     assert live.model == "live-test"
     assert live.candidate_markdown == live_candidate
     refute live.candidate_markdown == fallback.candidate_markdown
@@ -656,8 +656,8 @@ defmodule Patchbay.Patchbay.RepairServicesTest do
         model: "attacker",
         model_response_id: "attacker",
         prompt_version: "attacker",
-        fallback_used: false,
-        fallback_reason: nil,
+        sample_used: false,
+        sample_reason: nil,
         change_summary: [],
         warnings: []
       })

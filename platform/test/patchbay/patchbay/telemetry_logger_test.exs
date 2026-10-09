@@ -85,14 +85,14 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
                    tool_name: @tool,
                    contract_sha256: @contract,
                    arguments_sha256: @args,
-                   fallback_used: false,
+                   sample_used: false,
                    failure_code: nil,
                    receipt: @receipt
                  }
                )
              end) ==
                [
-                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=#{@tool} contract=#{@contract} args=#{@args} outcome=success failure_code=- duration_ms=42 fallback_used=false receipt=#{@receipt}"
+                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=#{@tool} contract=#{@contract} args=#{@args} outcome=success failure_code=- duration_ms=42 sample_used=false receipt=#{@receipt}"
                ]
     end
 
@@ -105,14 +105,14 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
                    browser_session_id: @session,
                    invocation_id: @invocation,
                    tool_generation: 2,
-                   fallback_used: true,
+                   sample_used: true,
                    failure_code: :MODEL_GENERATION_FAILED,
                    receipt: @receipt
                  }
                )
              end) ==
                [
-                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=2 tool=- contract=- args=- outcome=failure failure_code=MODEL_GENERATION_FAILED duration_ms=8 fallback_used=true receipt=#{@receipt}"
+                 "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=2 tool=- contract=- args=- outcome=failure failure_code=MODEL_GENERATION_FAILED duration_ms=8 sample_used=true receipt=#{@receipt}"
                ]
     end
 
@@ -137,11 +137,11 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
       assert lines(fn ->
                Telemetry.repair_model_stop(
                  %{duration: native(120), input_tokens: 90},
-                 %{room_id: @room, invocation_id: @invocation, fallback_used: true}
+                 %{room_id: @room, invocation_id: @invocation, sample_used: true}
                )
              end) ==
                [
-                 "[webmcp] repair.model_stop room=#{@room} invocation=#{@invocation} duration_ms=120 fallback_used=true"
+                 "[webmcp] repair.model_stop room=#{@room} invocation=#{@invocation} duration_ms=120 sample_used=true"
                ]
     end
 
@@ -287,7 +287,7 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
               browser_session_id: @session,
               invocation_id: @invocation,
               tool_generation: 1,
-              fallback_used: false,
+              sample_used: false,
               failure_code: nil,
               arguments: %{"instructions" => secret},
               candidate_markdown: "---\ntitle: #{secret}\n---",
@@ -301,7 +301,7 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
       refute log =~ "candidate_markdown"
 
       assert webmcp_lines(log) == [
-               "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=- contract=- args=- outcome=success failure_code=- duration_ms=11 fallback_used=false receipt=-"
+               "[webmcp] invocation.handler_stop room=#{@room} session=#{@session} invocation=#{@invocation} generation=1 tool=- contract=- args=- outcome=success failure_code=- duration_ms=11 sample_used=false receipt=-"
              ]
     end
   end
@@ -358,7 +358,7 @@ defmodule Patchbay.Patchbay.TelemetryLoggerTest do
       assert Enum.any?(
                logged,
                &(&1 =~
-                   ~r/^\[webmcp\] invocation\.handler_stop room=#{room.id} session=#{browser_session.id} invocation=[0-9a-f-]{36} generation=1 tool=#{revision.name} contract=#{revision.contract_sha256} args=[0-9a-f]{64} outcome=success failure_code=- duration_ms=\d+ fallback_used=true receipt=#{receipt}$/)
+                   ~r/^\[webmcp\] invocation\.handler_stop room=#{room.id} session=#{browser_session.id} invocation=[0-9a-f-]{36} generation=1 tool=#{revision.name} contract=#{revision.contract_sha256} args=[0-9a-f]{64} outcome=success failure_code=- duration_ms=\d+ sample_used=true receipt=#{receipt}$/)
              )
 
       assert Enum.any?(

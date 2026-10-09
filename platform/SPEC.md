@@ -1477,7 +1477,7 @@ PATCHBAY_DEMO_FALLBACK=true
 When used, the UI must visibly say:
 
 ```text
-Demo fallback used because live inference was unavailable.
+Our model was unavailable, so this is a built-in example.
 ```
 
 Never silently present a fixture as a live model response.

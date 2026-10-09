@@ -24,12 +24,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   alias Patchbay.Assist.ModelCall
   alias Patchbay.Config
-  alias Patchbay.Patchbay.{Invocation, RepairProposal}
-
-  # A repair proposal records the model that produced its plan. These two names
-  # mean no model was called: the checked-in demo fixture, and a plan handed to
-  # the planner by its caller.
-  @offline_plan_models ["patchbay-demo-fallback", "provided-plan"]
+  alias Patchbay.Patchbay.{CandidateGenerator, Invocation, RepairProposal}
 
   @window_seconds 24 * 60 * 60
 
@@ -125,10 +120,15 @@ defmodule Patchbay.Patchbay.ModelBudget do
   defp live_repair_calls(room_id, since) do
     RepairProposal
     |> Ash.Query.for_read(:read)
-    |> Ash.Query.filter(inserted_at >= ^since and model not in ^@offline_plan_models)
+    |> Ash.Query.filter(inserted_at >= ^since and model not in ^offline_plan_models())
     |> scope_to_room(room_id)
     |> Ash.count!()
   end
+
+  # A repair proposal records the model that produced its plan. These two names
+  # mean no model was called: the built-in sample, and a plan handed to the
+  # planner by its caller.
+  defp offline_plan_models, do: [CandidateGenerator.sample_model(), "provided-plan"]
 
   defp last_live_candidate_at(room_id) do
     invocation =
@@ -142,12 +142,12 @@ defmodule Patchbay.Patchbay.ModelBudget do
   end
 
   # An invocation records candidate provenance only once a candidate exists, and
-  # `fallback_used` separates a paid call from the checked-in demo fixture.
+  # `sample_used` separates a paid call from the checked-in demo fixture.
   defp live_candidates(room_id) do
     Invocation
     |> Ash.Query.for_read(:read)
     |> Ash.Query.filter(
-      type(handler_result[:candidate_provenance][:fallback_used], :boolean) == false
+      type(handler_result[:candidate_provenance][:sample_used], :boolean) == false
     )
     |> scope_to_room(room_id)
   end
