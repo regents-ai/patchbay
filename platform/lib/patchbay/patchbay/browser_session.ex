@@ -161,7 +161,10 @@ defmodule Patchbay.Patchbay.BrowserSession do
   @permanent_tool_names [
     "get_patchbay_room_state",
     "verify_skill_uplift_goal",
-    "request_patchbay_repair"
+    "request_patchbay_repair",
+    "prepare_patchbay_room_request",
+    "finish_patchbay_room_invocation",
+    "cancel_patchbay_room_invocation"
   ]
 
   @doc """

@@ -1,3 +1,4 @@
+import {prepareRoomRequest, executeRoomRequest, roomEnvelopeFor} from "./room_signed.ts";
 import {refusal} from "../api_error.ts";
 import {BUSY_RESULT, errorResult, executeRevision, pushWithAck, sentence} from "./invocation_bridge.ts";
 import {verifyUpliftGoal} from "./goal_verifier.ts";
@@ -23,6 +24,9 @@ export const PERMANENT_TOOL_NAMES = [
   "get_patchbay_room_state",
   "verify_skill_uplift_goal",
   "request_patchbay_repair",
+  "prepare_patchbay_room_request",
+  "finish_patchbay_room_invocation",
+  "cancel_patchbay_room_invocation",
 ];
 
 /**
@@ -109,19 +113,24 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
       name: "request_patchbay_repair",
       title: "Ask Patchbay to repair its broken tool",
       description: withReportingNote("Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask."),
-      inputSchema: emptySchema(),
+      inputSchema: roomEnvelopeFor("request_patchbay_repair"),
       annotations: {readOnlyHint: false, untrustedContentHint: true},
-      execute: singleFlight(async () => {
-        try {
-          return repairRequestResult(await pushWithAck(hook, "webmcp_request_repair", {
-            room_id: hook.roomId,
-            browser_session_id: hook.browserSessionId,
-          }));
-        } catch (error) {
-          return errorResult("REPAIR_REQUEST_FAILED", (error as {message?: unknown} | null | undefined)?.message ?? "the repair request was not answered");
-        }
-      }, BUSY_RESULT),
+      execute: (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, "request_patchbay_repair", input, options),
     },
+    {
+      name: "prepare_patchbay_room_request",
+      description: "Capture this room's actual page state and prepare an exact request. Sign it with your existing SIWA signer before submitting. For invoke, arguments_json holds the current tool's original arguments. For observe, supply invocation_id after the visible editor updates.",
+      inputSchema: {type: "object", properties: {operation: {type: "string", enum: ["invoke", "observe", "cancel", "repair"]}, arguments_json: {type: "string", maxLength: 65536}, request_uuid: {type: "string"}, invocation_id: {type: "string"}}, required: ["operation"], additionalProperties: false},
+      annotations: {readOnlyHint: true, untrustedContentHint: true},
+      // The raw body appears twice in the exact signing envelope. Preserve
+      // it intact up to the site's 100 KB request bound, including escaping.
+      execute: async (input: ToolInput) => boundedJson(await prepareRoomRequest(hook, input), 512_000),
+    },
+    ...["finish_patchbay_room_invocation", "cancel_patchbay_room_invocation"].map(name => ({
+      name, description: name === "finish_patchbay_room_invocation" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request.",
+      inputSchema: roomEnvelopeFor(name), annotations: {readOnlyHint: false, untrustedContentHint: true},
+      execute: (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, name, input, options),
+    })),
   ];
 }
 
@@ -183,11 +192,11 @@ export function buildRevisionTool(hook: BridgeHook, revision: ToolRevision) {
   const tool = {
     name: revision.name,
     title: revision.title,
-    description: revision.description,
-    inputSchema: revision.input_schema ?? revision.inputSchema ?? emptySchema(),
+    description: `${revision.description} Use prepare_patchbay_room_request with operation invoke and the original arguments_json, sign the prepared request, then call this tool. Original arguments: ${JSON.stringify(revision.input_schema ?? revision.inputSchema ?? {})}. The result prepares a separate visible observation for fresh signing.`,
+    inputSchema: roomEnvelopeFor("invoke_patchbay_room"),
     annotations: revision.annotations ?? {readOnlyHint: false, untrustedContentHint: true},
     execute: singleFlight(
-      (input: ToolInput, options: ExecuteOptions = {}) => executeRevision(hook, revision, input, options),
+      (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, "invoke_patchbay_room", input, options),
       BUSY_RESULT,
     ),
   };

@@ -1,3 +1,5 @@
+import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools";
+import {signedTransport} from "./agent_transport.ts";
 import {errorIn, refusal} from "../api_error.ts";
 import type {ErrorBody, Refusal} from "../api_error.ts";
 import {sentence} from "./invocation_bridge.ts";
@@ -689,7 +691,23 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
     description: tool.description,
     inputSchema: tool.input_schema,
     annotations: tool.annotations,
-    execute: executors.get(tool.name)!,
+    execute: async (input: ForumInput = {}, execution: ToolExecution = {}) => {
+      if (tool.name === "prepare_agent_request") {
+        try {
+          return boundedJson({ok: true, request: signedTransport().prepare(String(input.operation), input.input as Record<string, unknown>)});
+        } catch (error) { return boundedJson(refusal("invalid_preparation", String(error), "Read /agents.md and use an available operation.")); }
+      }
+      if ("authentication" in tool && tool.authentication === "owner_only") {
+        return boundedJson(refusal("owner_action_required", "Use the owner interface for this action.", "An agent cannot use an owner's cookie or wallet as its authority."));
+      }
+      if ("authentication" in tool && tool.authentication === "siwa_per_request") {
+        try {
+          const response = await signedTransport().execute(tool.name, input as unknown as SignedInput, execution.signal);
+          return boundedJson(await response.json(), RESULT_LIMIT);
+        } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
+      }
+      return executors.get(tool.name)!(input, execution);
+    },
   })).map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
 }
 

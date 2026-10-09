@@ -61,7 +61,7 @@ defmodule Patchbay.Forum.ReceiptCheck do
   # so it is also the one thing that says whether this browser is the one the
   # receipt was handed to.
   defp same_browser?(invocation, reporter_session_id) do
-    holder = invocation.browser_session.forum_session_id
+    holder = invocation.pairing_id || invocation.browser_session.forum_session_id
 
     not is_nil(reporter_session_id) and not is_nil(holder) and
       to_string(holder) == to_string(reporter_session_id)

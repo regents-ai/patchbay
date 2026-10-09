@@ -34,6 +34,11 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
   defp then_ok(:ok, next), do: next.()
   defp then_ok(error, _next), do: error
 
+  # A persistent public wallet author never transfers the previous owner's
+  # thread rights when that wallet is paired with a different account.
+  defp asker?(report, _session, %Patchbay.Agents.Actor{} = actor),
+    do: Patchbay.Forum.Principal.for(report) in actor.principals
+
   defp asker?(%{author_profile_id: profile_id}, _session, %{id: id})
        when is_binary(profile_id) and profile_id == id,
        do: true

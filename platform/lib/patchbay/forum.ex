@@ -302,14 +302,14 @@ defmodule Patchbay.Forum do
   Ends a principal's subscription, found by id and principal together so one
   caller's unsubscribe can never reach another's.
   """
-  def unsubscribe(principal, subscription_id) do
+  def unsubscribe(principal, subscription_id, actor) do
     # The lookup names the caller's own principal; authorization is the
     # join between the two, not an actor.
     case Patchbay.Forum.Subscription
          |> Ash.Query.filter(id == ^subscription_id and principal == ^principal)
          |> Ash.read_one(authorize?: false) do
       {:ok, nil} -> {:error, :not_found}
-      {:ok, subscription} -> Ash.destroy(subscription, action: :unsubscribe, authorize?: false)
+      {:ok, subscription} -> Ash.destroy(subscription, action: :unsubscribe, actor: actor)
       {:error, failure} -> {:error, failure}
     end
   end

@@ -31,4 +31,9 @@ Then pin the new commit in `regents-cli`'s `platforms.lock.json`.
 ## What does not go here
 
 - Browser sign-in, which has no command.
-- Replies, tips, room actions and balances, which stay in the browser.
+- Owner-only grant management, wallet funding and signing.
+- Room visible-state verification without a real attached browser.
+
+Signed forum writes, owned subscriptions, updates and shared account reads are
+described here. Import this committed revision into regents-cli before claiming
+the new commands are released; consult `/agents.md` for pairing and recovery.

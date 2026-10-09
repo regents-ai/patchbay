@@ -70,7 +70,8 @@ config :patchbay,
     Patchbay.Forum,
     Patchbay.CreditsHelp,
     Patchbay.Patchbay,
-    Patchbay.WalletBench
+    Patchbay.WalletBench,
+    Patchbay.Accounts
   ]
 
 # The only tools the repair assistant calls on a customer's behalf, by site
@@ -188,4 +189,27 @@ config :domainatrex, fetch_latest: false
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
+
+# Shared read-only account integration. Activation and wallet actions require a separate rollout.
+config :ex_money,
+  custom_currencies: [{:XRC, name: "Credits", digits: 6}],
+  auto_start_exchange_rate_service: false
+
+config :regent_credits,
+  repo: Patchbay.Repo,
+  pubsub: Patchbay.PubSub,
+  ash_domains: [RegentCredits],
+  admins: []
+
+config :regent_points,
+  repo: Patchbay.Repo,
+  pubsub: Patchbay.PubSub,
+  ash_domains: [RegentPoints],
+  accounts: Patchbay.Points.Accounts,
+  program_id: "regents-points-v1",
+  starts_at: nil,
+  unified_activity_starts_at: nil,
+  approved_rules: [],
+  adapters: %{}
+
 import_config "#{config_env()}.exs"

@@ -38,6 +38,10 @@ defmodule Patchbay.Assist.Decision do
   attributes do
     uuid_primary_key(:id)
 
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     attribute(:site, :string, allow_nil?: false, public?: true)
     attribute(:goal, :string, allow_nil?: true, public?: true)
     attribute(:error, :string, allow_nil?: true, public?: true)
@@ -84,6 +88,9 @@ defmodule Patchbay.Assist.Decision do
 
     update :report do
       description("The agent's word on whether the fix worked, taken once.")
+      require_atomic?(false)
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+      change(Patchbay.Agents.AttributeAction)
       accept([:result])
       validate(present(:result))
       validate(Patchbay.Assist.Validations.NotReported)
@@ -96,7 +103,8 @@ defmodule Patchbay.Assist.Decision do
     # holding it is the whole check. Recording and every read are
     # Patchbay's own and say so by skipping authorization.
     policy action(:report) do
-      authorize_if(always())
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+      authorize_if(Patchbay.Agents.OwnsFixPageDecision)
     end
   end
 end

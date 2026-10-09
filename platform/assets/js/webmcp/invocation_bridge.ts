@@ -40,6 +40,7 @@ export type PushEvent = (
 export interface BridgeHook {
   el?: {ownerDocument: Document | null} | null;
   roomId: unknown;
+  pageEvidence?: string;
   browserSessionId: unknown;
   invocationEpoch: number;
   destroyedFlag?: boolean;
@@ -48,6 +49,7 @@ export interface BridgeHook {
   pushEvent: PushEvent;
   isRevisionCurrent?: (revision: ToolRevision) => boolean;
   activeRevision?: ToolRevision;
+  desiredRevisions?: Map<string, ToolRevision>;
 }
 
 export interface ExecuteOptions {

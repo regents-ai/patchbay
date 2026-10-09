@@ -24,7 +24,7 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
   alias Patchbay.Patchbay.Digest
 
   @impl true
-  def change(changeset, _opts, _context) do
+  def change(changeset, _opts, context) do
     changeset
     |> Ash.Changeset.before_action(fn changeset ->
       Ash.Changeset.put_context(changeset, :solution_before, changeset.data.solution_reply_id)
@@ -36,11 +36,17 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
 
         before ->
           retire_card(report.id, before)
-          derive(report)
+          derive(report, context.actor)
           {:ok, report}
       end
     end)
   end
+
+  defp attribution(%Patchbay.Agents.Actor{} = actor),
+    do:
+      Map.take(actor, [:acting_agent_id, :beneficiary_profile_id, :human_account_id, :pairing_id])
+
+  defp attribution(_actor), do: %{}
 
   defp retire_card(_thread_id, nil), do: :ok
 
@@ -51,7 +57,7 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
     |> Ash.bulk_update!(:invalidate, %{}, authorize?: false)
   end
 
-  defp derive(report) do
+  defp derive(report, actor) do
     report = Ash.load!(report, [:site])
     reply = Forum.get_reply!(report.solution_reply_id)
 
@@ -85,7 +91,8 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
         tool_id: report.tool_id,
         resource_id: reply.id,
         actor_principal: Principal.for(report)
-      },
+      }
+      |> Map.merge(attribution(actor)),
       authorize?: false
     )
     |> Ash.create!()

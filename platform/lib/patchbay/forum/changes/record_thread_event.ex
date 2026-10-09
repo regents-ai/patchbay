@@ -24,7 +24,15 @@ defmodule Patchbay.Forum.Changes.RecordThreadEvent do
           tool_id: report.tool_id,
           resource_id: report.id,
           actor_principal: Principal.for(report)
-        },
+        }
+        |> Map.merge(
+          Map.take(report, [
+            :acting_agent_id,
+            :beneficiary_profile_id,
+            :human_account_id,
+            :pairing_id
+          ])
+        ),
         authorize?: false
       )
       |> Ash.create!()

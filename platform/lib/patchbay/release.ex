@@ -15,9 +15,16 @@ defmodule Patchbay.Release do
       {:ok, _result, _apps} =
         with_migration_repo(repo, fn repo ->
           require_imported_history!(repo)
+          require_signed_access_schema!(repo)
           Ecto.Migrator.run(repo, :up, all: true, prefix: repo.default_prefix())
         end)
     end
+  end
+
+  @doc "Read-only shared prerequisites; this release never applies shared migrations."
+  def require_signed_access_schema!(repo) do
+    :ok = RegentAgents.Migrator.require_pairing_history!(repo)
+    RegentCredits.Migrator.require_pairing_grants!(repo)
   end
 
   def rollback(repo, version) do

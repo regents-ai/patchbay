@@ -5,9 +5,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   search what has been reported, and read one report's thread.
 
   Two rules shape this module. Nothing a caller sends names the reporter: the
-  identity comes from the signed session cookie, both the browser's forum
-  session and the profile signed in on it, so a visitor cannot post as someone
-  else or shed its own hourly limit. And nothing a caller sends reaches
+  identity comes from verified per-request agent proof and current pairing,
+  preserving the agent's public name and its owner's quota. Nothing a caller sends reaches
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
 
@@ -210,6 +209,22 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
+  def subscriptions(conn, _params) do
+    actor = conn.assigns.current_profile
+
+    case Patchbay.Forum.Subscription
+         |> Ash.Query.for_read(:for_principals, %{principals: actor.principals}, actor: actor)
+         |> Ash.read() do
+      {:ok, subscriptions} ->
+        json(conn, %{
+          subscriptions: Enum.map(subscriptions, &Map.take(&1, [:id, :scope_kind, :scope_id]))
+        })
+
+      {:error, _} ->
+        send_failure(conn, :unavailable)
+    end
+  end
+
   def subscribe(conn, params) do
     with {:ok, session_id} <- established_session(conn),
          {:ok, subscription} <- Participation.follow(session_id, current_profile(conn), params) do
@@ -251,6 +266,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
+  # A typed POST read uses the same private feed and signed admission as GET.
+  def post_updates(conn, params), do: updates(conn, params)
+
   defp feed_params(params) do
     params
     |> Map.take(["thread_ids", "cursor", "limit"])
@@ -280,7 +298,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc "What Patchbay verified about this connection; nothing here signs or spends."
   def readiness(conn, _params) do
-    json(conn, Readiness.for_page(conn.assigns.forum_session_id, current_profile(conn)))
+    json(
+      conn,
+      Readiness.for_page(conn.assigns[:forum_session_id], conn.assigns[:current_profile])
+    )
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile
@@ -309,7 +330,45 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   #
   # Both are written under the poster's hourly share, which `PostingBudget`
   # counts and locks in the same transaction as the write.
-  defp file_report(session_id, visitor, actor, %{"receipt" => receipt} = params) do
+  defp once(session_id, visitor, actor, params, kind, write) do
+    key = params["client_request_id"]
+
+    if is_binary(key) and byte_size(key) in 1..128 do
+      digest = Patchbay.Patchbay.Digest.arguments_sha256(Map.delete(params, "client_request_id"))
+
+      admit =
+        if kind == :report, do: &PostingBudget.admit_report/4, else: &PostingBudget.admit_reply/4
+
+      admit.(actor, session_id, visitor, fn ->
+        once_result(prior_request(kind, session_id, key), digest, key, write)
+      end)
+    else
+      {:error, {:invalid, ["client_request_id: is required (1 to 128 bytes)"]}}
+    end
+  end
+
+  defp prior_request(:report, session_id, key), do: Forum.get_thread_for_request(session_id, key)
+  defp prior_request(:reply, session_id, key), do: Forum.get_reply_for_request(session_id, key)
+
+  defp once_result({:ok, %{request_digest: digest} = prior}, digest, _key, _write),
+    do: {:ok, prior}
+
+  defp once_result({:ok, %{}}, _digest, _key, _write),
+    do: {:error, {:conflict, "client_request_id already names different wording."}}
+
+  defp once_result(_not_found, digest, key, write),
+    do: write.(%{"client_request_id" => key, "request_digest" => digest})
+
+  defp file_report(session_id, visitor, %Patchbay.Agents.Actor{} = actor, params) do
+    once(session_id, visitor, actor, params, :report, fn fields ->
+      do_file_report(session_id, visitor, actor, Map.merge(params, fields))
+    end)
+  end
+
+  defp file_report(session_id, visitor, actor, params),
+    do: do_file_report(session_id, visitor, actor, params)
+
+  defp do_file_report(session_id, visitor, actor, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
       PostingBudget.admit_report(actor, session_id, visitor, fn ->
         file_receipt_report(session_id, actor, receipt, params)
@@ -317,17 +376,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  defp file_report(session_id, visitor, actor, params) do
-    with {:ok, draft} <- OtherSiteReport.draft(params) do
+  defp do_file_report(session_id, visitor, actor, params) do
+    with {:ok, draft} <-
+           OtherSiteReport.draft(Map.drop(params, ["client_request_id", "request_digest"])) do
       PostingBudget.admit_report(actor, session_id, visitor, fn ->
-        file_other_site_report(session_id, actor, draft)
+        file_other_site_report(session_id, actor, draft, params)
       end)
     end
   end
 
-  defp file_other_site_report(session_id, actor, draft) do
+  defp file_other_site_report(session_id, actor, draft, params) do
     with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
-      store_report(tool, session_id, actor, draft)
+      store_report(tool, session_id, actor, draft, params)
     end
   end
 
@@ -342,10 +402,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # The whole of a receipt-backed report. Anything else a caller sends is a fact
   # it would be claiming about a call Patchbay already holds the record of, so
   # it is refused rather than quietly dropped.
-  @receipt_report_fields ~w(receipt verdict note)
+  @receipt_report_fields ~w(receipt verdict note client_request_id)
 
   defp receipt_report_fields_only(params) do
-    case params |> Map.keys() |> Kernel.--(@receipt_report_fields) |> Enum.sort() do
+    case params
+         |> Map.keys()
+         |> Kernel.--(@receipt_report_fields ++ ["request_digest"])
+         |> Enum.sort() do
       [] -> :ok
       unknown -> {:error, {:invalid, Enum.map(unknown, &unknown_with_receipt/1)}}
     end
@@ -388,7 +451,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         verdict: params["verdict"] || recorded_verdict(call),
         failure_code: call.failure_code && to_string(call.failure_code),
         note: params["note"],
-        receipt: call.receipt
+        receipt: call.receipt,
+        client_request_id: params["client_request_id"],
+        request_digest: params["request_digest"]
       },
       actor: actor
     )
@@ -403,7 +468,22 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # A reply from the page's tools and one from the form on the report page
   # draw on the same hourly share; `PostingBudget` is the one door both go
   # through.
-  defp file_reply(session_id, visitor, actor, id, params) do
+  defp file_reply(session_id, visitor, %Patchbay.Agents.Actor{} = actor, id, params) do
+    case once(session_id, visitor, actor, Map.put(params, "report_id", id), :reply, fn fields ->
+           do_file_reply(session_id, visitor, actor, id, Map.merge(params, fields))
+         end) do
+      {:ok, %Patchbay.Forum.Reply{} = reply} ->
+        with {:ok, report} <- Reads.fetch_report(id), do: {:ok, {report, reply}}
+
+      answer ->
+        answer
+    end
+  end
+
+  defp file_reply(session_id, visitor, actor, id, params),
+    do: do_file_reply(session_id, visitor, actor, id, params)
+
+  defp do_file_reply(session_id, visitor, actor, id, params) do
     PostingBudget.admit_reply(actor, session_id, visitor, fn ->
       with {:ok, report} <- Reads.fetch_report(id),
            {:ok, reply} <- add_reply(report, session_id, actor, params) do
@@ -412,15 +492,33 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end)
   end
 
-  defp store_report(tool, session_id, actor, draft) do
+  defp store_report(tool, session_id, actor, draft, params) do
     draft
     |> OtherSiteReport.report_attributes(tool.id)
     |> Map.put(:browser_session_id, session_id)
+    |> Map.merge(%{
+      client_request_id: params["client_request_id"],
+      request_digest: params["request_digest"]
+    })
     |> Forum.file_report(actor: actor)
   end
 
   defp add_reply(report, session_id, actor, params) do
-    add_reply(report, session_id, actor, params["verdict"], params["note"])
+    if match?(%Patchbay.Agents.Actor{}, actor) do
+      Forum.add_reply(
+        %{
+          report_id: report.id,
+          browser_session_id: session_id,
+          verdict: params["verdict"],
+          note: params["note"],
+          client_request_id: params["client_request_id"],
+          request_digest: params["request_digest"]
+        },
+        actor: actor
+      )
+    else
+      add_reply(report, session_id, actor, params["verdict"], params["note"])
+    end
   end
 
   # Ash strings also cast booleans and numbers; the HTTP contract accepts text

@@ -47,6 +47,7 @@ defmodule PatchbayWeb.Router do
     get "/sitemap.xml", SitemapController, :index
     get "/openapi.json", DiscoveryController, :openapi
     get "/llms.txt", DiscoveryController, :llms
+    get "/agents.md", DiscoveryController, :agents
     get "/robots.txt", DiscoveryController, :robots
     get "/.well-known/security.txt", DiscoveryController, :security
     get "/.well-known/api-catalog", DiscoveryController, :api_catalog
@@ -60,6 +61,14 @@ defmodule PatchbayWeb.Router do
 
   pipeline :wallet_author do
     plug PatchbayWeb.Plugs.WalletAuthor
+  end
+
+  pipeline :paired_agent do
+    plug PatchbayWeb.Plugs.PairedAgent
+  end
+
+  pipeline :agent_payment_admission do
+    plug PatchbayWeb.Plugs.AgentPaymentAdmission
   end
 
   pipeline :hello_proof do
@@ -121,7 +130,6 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :api
     get "/known-fixes", KnownFixController, :show
-    post "/known-fixes/:id", KnownFixController, :report
   end
 
   # A payment request draws on the share of the wallet it acts for, once the
@@ -131,14 +139,20 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
-    pipe_through [:api, :wallet_author, :payment_budget]
+    pipe_through [:api, :paired_agent, :payment_budget]
     post "/payment_intents", PaymentIntentController, :create
-    post "/payment_intents/:id/execute", PaymentIntentController, :execute
     get "/payment_intents/:id", PaymentIntentController, :show
   end
 
+  # Completion of an existing payment retains its independent wallet proof.
+  # The shared purchase layer must guard its initial settlement transition.
+  scope "/api/agent", PatchbayWeb.PaymentsAPI do
+    pipe_through [:api, :wallet_author, :agent_payment_admission]
+    post "/payment_intents/:id/execute", PaymentIntentController, :execute
+  end
+
   scope "/api/agent", PatchbayWeb.AssistAPI do
-    pipe_through [:api, :wallet_author]
+    pipe_through [:api, :paired_agent]
     post "/assists", RunController, :create
     get "/assists/:id", RunController, :show
   end
@@ -223,11 +237,9 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do
-    pipe_through :forum_tools
-
+    pipe_through [:api, :paired_agent]
     post "/reports", ReportController, :create
     post "/reports/:id/replies", ReportController, :create_reply
-    get "/reports/:id", ReportController, :show
     post "/threads", ReportController, :create_thread
     post "/threads/:id/replies", ReportController, :create_thread_reply
     get "/requests/:client_request_id", ReportController, :request_status
@@ -235,12 +247,21 @@ defmodule PatchbayWeb.Router do
     post "/replies/:id/uses", ReportController, :record_use
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
+    get "/subscriptions", ReportController, :subscriptions
     get "/updates", ReportController, :updates
-    get "/capabilities", ReportController, :capabilities
-    get "/readiness", ReportController, :readiness
+    post "/updates", ReportController, :post_updates
+    post "/threads/:id/likes", LikeController, :create
+    delete "/threads/:id/likes", LikeController, :delete
+  end
+
+  scope "/forum", PatchbayWeb.ForumAPI do
+    pipe_through :api
+    get "/reports/:id", ReportController, :show
     get "/threads/:id", ReportController, :show
     get "/search", ReportController, :search
     get "/tool-history", ToolController, :index
+    get "/capabilities", ReportController, :capabilities
+    get "/readiness", ReportController, :readiness
   end
 
   scope "/", PatchbayWeb.ForumAPI do
@@ -253,13 +274,31 @@ defmodule PatchbayWeb.Router do
 
     post "/reports/:id/accept", SolutionController, :create
     post "/reports/:id/refund", RefundController, :create
-    post "/threads/:id/likes", LikeController, :create
-    delete "/threads/:id/likes", LikeController, :delete
   end
 
   scope "/api/v1" do
     pipe_through :api
     forward "/profile", RegentIdentity.HTTP, otp_app: :patchbay
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through [:api, :paired_agent]
+    post "/known-fixes/:id", KnownFixController, :report
+  end
+
+  scope "/api/agent/rooms/:slug", PatchbayWeb do
+    pipe_through [:api, :paired_agent]
+    post "/invocations", AgentRoomController, :invoke
+    post "/invocations/:id/observations", AgentRoomController, :observe
+    post "/invocations/:id/cancel", AgentRoomController, :cancel
+    post "/repair_requests", AgentRoomController, :repair
+  end
+
+  scope "/tools/account", PatchbayWeb do
+    pipe_through [:api, :paired_agent]
+    get "/balances", AgentAccountController, :balances
+    post "/credits-history", AgentAccountController, :credits_history
+    get "/points", AgentAccountController, :points
   end
 
   # An agent pairs with a person's Regent account, and checks in on it, the

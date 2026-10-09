@@ -37,6 +37,10 @@ defmodule Patchbay.Patchbay.Invocation do
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
 
     attribute(:request_uuid, :uuid, allow_nil?: false, public?: true)
 
@@ -120,6 +124,8 @@ defmodule Patchbay.Patchbay.Invocation do
     end
 
     create :record_invocation do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+      change(Patchbay.Agents.AttributeAction)
       touches_resources([Patchbay.Patchbay.Room])
 
       accept([
@@ -241,6 +247,10 @@ defmodule Patchbay.Patchbay.Invocation do
   end
 
   policies do
+    policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
     # Invocation rows are public evidence for the seeded demo, so reads are
     # open. The named writes below are the whole life of a call; a row can only
     # be written by moving it along that line.

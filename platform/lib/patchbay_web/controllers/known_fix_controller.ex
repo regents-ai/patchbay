@@ -19,7 +19,7 @@ defmodule PatchbayWeb.KnownFixController do
   end
 
   def report(conn, %{"id" => id} = params) do
-    case KnownFixAnswer.report(id, params["result"]) do
+    case KnownFixAnswer.report(id, params["result"], conn.assigns.agent_actor) do
       {:ok, reported} -> json(conn, reported)
       {:error, {status, refusal}} -> conn |> put_status(status) |> json(refusal)
     end

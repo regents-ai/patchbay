@@ -41,7 +41,20 @@ defmodule Patchbay.Forum.ForumEvent do
 
     create :record do
       description("Writes one durable event alongside the content it announces.")
-      accept([:kind, :thread_id, :site_id, :tool_id, :resource_id, :actor_principal])
+
+      accept([
+        :kind,
+        :thread_id,
+        :site_id,
+        :tool_id,
+        :resource_id,
+        :actor_principal,
+        :acting_agent_id,
+        :beneficiary_profile_id,
+        :human_account_id,
+        :pairing_id
+      ])
+
       change(Patchbay.Forum.Changes.OrderAtCommit)
       change(Patchbay.Forum.Changes.WakeEventDelivery)
     end
@@ -62,6 +75,10 @@ defmodule Patchbay.Forum.ForumEvent do
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     uuid_primary_key(:id)
 
     # The event's place in the committed stream; see the moduledoc.

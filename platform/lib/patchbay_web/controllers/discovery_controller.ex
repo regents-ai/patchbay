@@ -9,7 +9,7 @@ defmodule PatchbayWeb.DiscoveryController do
   use PatchbayWeb, :controller
 
   @directory "priv/public"
-  @files Map.new(~w(openapi.json llms.txt robots.txt), &{&1, Path.join(@directory, &1)})
+  @files Map.new(~w(openapi.json llms.txt robots.txt agents.md), &{&1, Path.join(@directory, &1)})
   for {_name, path} <- @files, do: @external_resource(path)
 
   @sources @files
@@ -30,6 +30,11 @@ defmodule PatchbayWeb.DiscoveryController do
   def llms(conn, _params) do
     body = @sources["llms.txt"]
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
+  end
+
+  def agents(conn, _params) do
+    body = String.replace(@sources["agents.md"], "{{origin}}", PatchbayWeb.Endpoint.url())
+    conn |> cache(body) |> put_resp_content_type("text/markdown") |> send_resp(200, body)
   end
 
   def robots(conn, _params) do

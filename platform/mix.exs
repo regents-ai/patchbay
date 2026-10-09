@@ -4,7 +4,7 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "f8a93857d4ae914e752d7d838a76d4c19c995872"
+  @elixir_utils_ref "a24d9bf5ce8dbca5852b081613e9e1674623512e"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "4da6db2bfe3559a8f8a761018dc099a28ab5f6a3"
   @regents "https://github.com/regents-ai/regents.git"
@@ -54,8 +54,10 @@ defmodule Patchbay.MixProject do
     [
       {:regent_ui, git: @design_system, ref: @design_system_ref, sparse: "regent_ui"},
       {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
-      {:regent_format, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format"},
-      {:regent_chain, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain"},
+      {:regent_format,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format", override: true},
+      {:regent_chain,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain", override: true},
       {:regent_http, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "http"},
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
       {:regent_mcp_events, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "mcp_events"},
@@ -85,10 +87,18 @@ defmodule Patchbay.MixProject do
       {:domainatrex, "~> 3.2"},
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
-      {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},
+      {:regent_identity,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/identity"},
       {:regent_payments, git: @regents, ref: @regents_ref, sparse: "payments"},
-      {:regent_agents, git: @regents, ref: @regents_ref, sparse: "agents"},
-      {:siwa, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "siwa/siwa-elixir/apps/siwa"},
+      {:regent_agents,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/agents", override: true},
+      {:regent_credits, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits"},
+      {:regent_points, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "points"},
+      {:siwa,
+       git: @elixir_utils,
+       ref: @elixir_utils_ref,
+       sparse: "siwa/siwa-elixir/apps/siwa",
+       override: true},
       {:x402, "0.9.0"},
       {:ethers, "0.8.0"},
       {:ex_secp256k1, "~> 0.8.0"},
@@ -159,6 +169,7 @@ defmodule Patchbay.MixProject do
         "regent_ui.assets",
         "regent_blog.assets",
         "regent_identity.assets",
+        "regent_agent_access.assets",
         "esbuild patchbay",
         "esbuild patchbay_crown",
         "esbuild patchbay_privy"
@@ -167,6 +178,7 @@ defmodule Patchbay.MixProject do
         "regent_ui.assets",
         "regent_blog.assets",
         "regent_identity.assets",
+        "regent_agent_access.assets",
         "esbuild patchbay --minify",
         "esbuild patchbay_crown --minify",
         "esbuild patchbay_privy --minify",

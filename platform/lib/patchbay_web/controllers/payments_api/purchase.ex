@@ -65,7 +65,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   def prepare_agent_tip(actor, args) do
     with {:ok, amount_atomic} <- amount(args),
          {:ok, recipient} <- tip_recipient(args) do
-      RegentPayments.Purchase.prepare(
+      prepare_for_actor(
         AgentTip,
         %{recipient: recipient, amount_atomic: amount_atomic},
         actor
@@ -126,7 +126,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   defp frozen(actor, draft, amount_atomic) do
     with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
-      RegentPayments.Purchase.prepare(
+      prepare_for_actor(
         SpecialPost,
         %{tool: tool, draft: draft, amount_atomic: amount_atomic},
         actor
@@ -146,7 +146,31 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
          :ok <- no_assist_running(actor),
          :ok <- no_fix_running(actor, browser_session_id),
          {:ok, request} <- AssistRequest.draft(args) do
-      RegentPayments.Purchase.prepare(JevAssist, %{request: request}, actor)
+      prepare_for_actor(JevAssist, %{request: request}, actor)
+    end
+  end
+
+  # Preparing terms is a new protected action; this transaction contains no
+  # facilitator or wallet call. Later settlement retains its original authority.
+  defp prepare_for_actor(offer, input, %Patchbay.Agents.Actor{} = actor) do
+    case Ash.transact(PaymentIntent, fn -> prepare_paired(offer, input, actor) end) do
+      {:ok, {:ok, intent}} -> {:ok, intent}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp prepare_for_actor(offer, input, actor),
+    do: RegentPayments.Purchase.prepare(offer, input, actor)
+
+  defp prepare_paired(offer, input, actor) do
+    case RegentAgents.Authority.lock(
+           Patchbay.Repo,
+           actor.pairing_id,
+           actor.privy_user_id,
+           actor.wallet_address
+         ) do
+      {:ok, _} -> RegentPayments.Purchase.prepare(offer, input, actor)
+      {:error, _} -> {:error, :forbidden}
     end
   end
 

@@ -318,16 +318,19 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       reply = Ash.load!(reply, report: [:tool])
       principal = principal(actor, session_id)
 
-      Forum.record_answer_use(%{
-        reply_id: reply.id,
-        principal: principal,
-        task_token: draft.task_token,
-        outcome: draft.outcome,
-        note: draft.note,
-        same_author: principal == Principal.for(reply),
-        applicable_tool_version:
-          get_in(reply.report, [Access.key(:tool), Access.key(:contract_sha256)])
-      })
+      Forum.record_answer_use(
+        %{
+          reply_id: reply.id,
+          principal: principal,
+          task_token: draft.task_token,
+          outcome: draft.outcome,
+          note: draft.note,
+          same_author: principal == Principal.for(reply),
+          applicable_tool_version:
+            get_in(reply.report, [Access.key(:tool), Access.key(:contract_sha256)])
+        },
+        actor: actor
+      )
     end
   end
 
@@ -374,11 +377,14 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
   def follow(session_id, actor, params) do
     with {:ok, scope_kind, scope_id} <- scope_ref(params) do
-      Forum.subscribe(%{
-        principal: principal(actor, session_id),
-        scope_kind: scope_kind,
-        scope_id: scope_id
-      })
+      Forum.subscribe(
+        %{
+          principal: principal(actor, session_id),
+          scope_kind: scope_kind,
+          scope_id: scope_id
+        },
+        actor: subscription_actor(actor, session_id)
+      )
     end
   end
 
@@ -420,7 +426,12 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   @doc "Ends one of the caller's own follows."
   def unfollow(session_id, actor, subscription_id),
-    do: Forum.unsubscribe(principal(actor, session_id), subscription_id)
+    do:
+      Forum.unsubscribe(
+        principal(actor, session_id),
+        subscription_id,
+        subscription_actor(actor, session_id)
+      )
 
   @doc """
   What changed after the cursor the caller keeps, on the threads it names or
@@ -521,8 +532,14 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   # A signed-in profile is the durable principal; a session serves a caller
   # that has none.
+  defp principal(%Patchbay.Agents.Actor{beneficiary_profile_id: id}, _session),
+    do: Principal.for_profile(id)
+
   defp principal(%{id: profile_id}, _session), do: Principal.for_profile(profile_id)
   defp principal(_profile, session_id), do: Principal.for_session(session_id)
+
+  defp subscription_actor(nil, session), do: %{forum_session_id: session}
+  defp subscription_actor(actor, _session), do: actor
 
   # A field left out of a request stays out of the write: nil is not a value
   # here, and would otherwise override an action's own defaults.

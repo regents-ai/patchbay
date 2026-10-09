@@ -87,6 +87,7 @@ defmodule PatchbayWeb.Forum.PostingBudget do
 
   @doc "What a post by `actor` is counted against."
   @spec counted_by(AgentProfile.t() | nil) :: counted()
+  def counted_by(%Patchbay.Agents.Actor{}), do: :account
   def counted_by(%AgentProfile{}), do: :account
   def counted_by(nil), do: :session
 
@@ -109,6 +110,7 @@ defmodule PatchbayWeb.Forum.PostingBudget do
     )
   end
 
+  defp poster(%Patchbay.Agents.Actor{beneficiary_profile_id: id}, _session), do: {:account, id}
   defp poster(%AgentProfile{id: profile_id}, _session_id), do: {:account, profile_id}
   defp poster(nil, session_id), do: {:session, session_id}
 
@@ -202,16 +204,28 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   end
 
   defp posted_since(:reports, {:account, profile_id}, since),
-    do: Forum.reports_posted_by_author!(profile_id, since)
+    do: posted_by_beneficiary(Report, profile_id, since)
 
   defp posted_since(:reports, {:session, session_id}, since),
     do: Forum.reports_posted_by_session!(session_id, since)
 
   defp posted_since(:replies, {:account, profile_id}, since),
-    do: Forum.replies_posted_by_author!(profile_id, since)
+    do: posted_by_beneficiary(Reply, profile_id, since)
 
   defp posted_since(:replies, {:session, session_id}, since),
     do: Forum.replies_posted_by_session!(session_id, since)
+
+  defp posted_by_beneficiary(resource, id, since) do
+    require Ash.Query
+
+    # Quota bookkeeping reads only this server-resolved beneficiary's posts.
+    resource
+    |> Ash.Query.filter(
+      (author_profile_id == ^id or beneficiary_profile_id == ^id) and inserted_at > ^since
+    )
+    |> Ash.Query.sort(inserted_at: :asc)
+    |> Ash.read!(authorize?: false)
+  end
 
   # A post leaves the share an hour after it was made, oldest first, so the
   # next one is allowed when enough of the oldest have left to free one place.

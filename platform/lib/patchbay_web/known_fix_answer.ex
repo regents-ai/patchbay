@@ -55,12 +55,16 @@ defmodule PatchbayWeb.KnownFixAnswer do
   once. The refusal carries the HTTP status it answers with.
   """
   @spec report(term(), term()) :: {:ok, map()} | {:error, {atom(), map()}}
-  def report(id, result) when result in ["worked", "did_not_work"] do
+  def report(id, result, actor \\ nil)
+
+  def report(id, result, actor) when result in ["worked", "did_not_work"] do
     # Finding the decision by the id the agent holds is Patchbay's own read;
     # the report itself is authorized by holding that id.
     with {:ok, uuid} <- Ecto.UUID.cast(id),
          {:ok, %{} = decision} <- Assist.get_decision(uuid, authorize?: false) do
-      case Assist.report_decision(decision, String.to_existing_atom(result)) do
+      case Assist.report_decision(decision, String.to_existing_atom(result),
+             actor: actor || %{role: :fix_page, decision_id: uuid}
+           ) do
         {:ok, decision} ->
           {:ok,
            %{recorded: true, decision_id: decision.id, result: Atom.to_string(decision.result)}}
@@ -72,6 +76,15 @@ defmodule PatchbayWeb.KnownFixAnswer do
               "already_reported",
               "You already reported on this fix; your first report stands.",
               "Nothing more to do. A new answer from find_known_fix takes a new report."
+            )}}
+
+        {:error, _} ->
+          {:error,
+           {:forbidden,
+            ApiError.body(
+              "not_authorized",
+              "This report is not authorized.",
+              "Retry with current pairing and fresh proof."
             )}}
       end
     else
@@ -86,7 +99,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
     end
   end
 
-  def report(_id, _result),
+  def report(_id, _result, _actor),
     do:
       {:error,
        {:unprocessable_entity, ApiError.invalid(["result: must be worked or did_not_work"])}}

@@ -4,10 +4,10 @@ defmodule PatchbayWeb.MCP.Tools do
   pick up the tools a page registers in the browser.
 
   Each read answers from the same read as its WebMCP namesake and its HTTP
-  endpoint, so the record is the same whichever door a caller used, and needs
-  no session. Each free write goes through `PatchbayWeb.ForumAPI.Participation`
-  like its HTTP endpoint, under the anonymous session `initialize` issued the
-  connection: the same hourly share, the same name on the post. Every tool
+  endpoint. Public reads need no account. Each protected operation uses
+  exact-request SIWA verification and current pairing; writes go through
+  `PatchbayWeb.ForumAPI.Participation` with the agent's public identity and
+  its owner's quota and private subscription scope. Every tool
   here is free; paying, tipping and naming an agent happen on the website.
   """
 
@@ -29,7 +29,7 @@ defmodule PatchbayWeb.MCP.Tools do
              name: tool.name,
              title: tool.title,
              description: tool.description,
-             inputSchema: tool.input_schema,
+             inputSchema: tool.operation_input_schema || tool.input_schema,
              annotations: tool.annotations
            }
 
@@ -43,7 +43,7 @@ defmodule PatchbayWeb.MCP.Tools do
   # The tools that act as the connection: the free writes, and the feed,
   # which is a read of the session's own follows. Each needs a session.
   @session_tools Capabilities.hosted()
-                 |> Enum.filter(&(&1.requires == "session"))
+                 |> Enum.filter(&(&1.requires == "paired_agent"))
                  |> Enum.map(& &1.name)
 
   # The reads that answer from query-string params, as their HTTP endpoints do.
@@ -108,9 +108,13 @@ defmodule PatchbayWeb.MCP.Tools do
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     tool = Enum.find(@tools, &(&1.name == name))
 
-    case check_arguments(tool.inputSchema, arguments) do
-      :ok -> dispatch(name, arguments, caller)
-      {:error, reason} -> {:invalid_arguments, reason}
+    if name in @session_tools and not match?(%Patchbay.Agents.Actor{}, Map.get(caller, :actor)) do
+      {:error, no_session()}
+    else
+      case check_arguments(tool.inputSchema, arguments) do
+        :ok -> dispatch(name, arguments, caller)
+        {:error, reason} -> {:invalid_arguments, reason}
+      end
     end
   end
 
@@ -119,26 +123,25 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(_name, _arguments, _caller), do: :unknown_tool
 
-  defp dispatch(name, _arguments, %{session_id: nil}) when name in @session_tools,
-    do: {:error, no_session()}
-
   defp dispatch("find_known_fix", arguments, caller),
     do: find_known_fix(arguments, caller.visitor_key)
 
   defp dispatch("get_patchbay_help", _arguments, caller), do: {:ok, help(caller)}
 
   defp dispatch(name, arguments, caller) when name in @posts,
-    do: post(name, arguments, caller.session_id, caller.visitor_key)
+    do: post(name, arguments, caller.session_id, caller.visitor_key, Map.get(caller, :actor))
 
   defp dispatch(name, arguments, caller) when name in @query_reads do
     run(
       name,
       Map.new(arguments, fn {key, value} -> {key, param(value)} end),
-      caller.session_id
+      caller.session_id,
+      Map.get(caller, :actor)
     )
   end
 
-  defp dispatch(name, arguments, caller), do: run(name, arguments, caller.session_id)
+  defp dispatch(name, arguments, caller),
+    do: run(name, arguments, caller.session_id, Map.get(caller, :actor))
 
   # Jev's free look is counted by the connection it is asked from.
   defp find_known_fix(arguments, visitor_key) do
@@ -190,18 +193,18 @@ defmodule PatchbayWeb.MCP.Tools do
   defp article({"array", _strings}), do: "a list of strings"
   defp article({"object", _items}), do: "an object"
 
-  defp run("report_known_fix", %{"decision_id" => id, "result" => result}, _session_id) do
-    case KnownFixAnswer.report(id, result) do
+  defp run("report_known_fix", %{"decision_id" => id, "result" => result}, _session_id, actor) do
+    case KnownFixAnswer.report(id, result, actor) do
       {:ok, reported} -> {:ok, reported}
       {:error, {_status, refusal}} -> {:error, refusal}
     end
   end
 
-  defp run("get_webmcp_guide", _arguments, _session_id) do
+  defp run("get_webmcp_guide", _arguments, _session_id, _actor) do
     {:ok, %{format: "markdown", guide: IO.iodata_to_binary(PatchbayWeb.PagesMD.webmcp(%{}))}}
   end
 
-  defp run("list_sites", _arguments, _session_id) do
+  defp run("list_sites", _arguments, _session_id, _actor) do
     forum_answer(
       with {:ok, sites, more?} <- Board.list_directory() do
         {:ok,
@@ -214,16 +217,16 @@ defmodule PatchbayWeb.MCP.Tools do
     )
   end
 
-  defp run("search_threads", arguments, _session_id),
+  defp run("search_threads", arguments, _session_id, _actor),
     do: forum_answer(Reads.search(arguments, :free))
 
-  defp run("get_thread", %{"thread_id" => id} = arguments, _session_id),
+  defp run("get_thread", %{"thread_id" => id} = arguments, _session_id, _actor),
     do: forum_answer(Reads.thread(id, arguments, :free))
 
-  defp run("render_repair_card", %{"thread_id" => id}, _session_id),
+  defp run("render_repair_card", %{"thread_id" => id}, _session_id, _actor),
     do: forum_answer(Reads.thread(id, %{}, :free))
 
-  defp run("get_tool_history", arguments, _session_id) do
+  defp run("get_tool_history", arguments, _session_id, _actor) do
     case Reads.tool_history(arguments) do
       {:ok, history} ->
         {:ok, history}
@@ -233,7 +236,7 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("get_agent_profile", %{"profile_id" => id}, _session_id) do
+  defp run("get_agent_profile", %{"profile_id" => id}, _session_id, _actor) do
     case Reads.agent_profile(id, :free) do
       {:ok, profile} ->
         {:ok, profile}
@@ -249,7 +252,7 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # A page can read the profile signed in on it; a hosted connection has none.
-  defp run("get_agent_profile", _arguments, _session_id) do
+  defp run("get_agent_profile", _arguments, _session_id, _actor) do
     {:error,
      ApiError.body(
        "anonymous",
@@ -258,7 +261,7 @@ defmodule PatchbayWeb.MCP.Tools do
      )}
   end
 
-  defp run("get_request_status", %{"client_request_id" => key}, session_id) do
+  defp run("get_request_status", %{"client_request_id" => key}, session_id, _actor) do
     case Participation.request_status(session_id, key) do
       {:ok, written} ->
         {:ok, written |> Map.put(:status, "published") |> Map.update!(:url, &MD.absolute/1)}
@@ -274,8 +277,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("mark_solution", %{"thread_id" => id, "reply_id" => reply_id}, session_id) do
-    case Participation.mark_solution(session_id, nil, id, reply_id) do
+  defp run("mark_solution", %{"thread_id" => id, "reply_id" => reply_id}, session_id, actor) do
+    case Participation.mark_solution(session_id, actor, id, reply_id) do
       {:ok, {thread, reply_id}} ->
         {:ok, %{marked: true, solution_reply_id: reply_id, url: thread_page(thread.id)}}
 
@@ -284,15 +287,15 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("record_answer_use", %{"reply_id" => id} = arguments, session_id) do
-    case Participation.record_answer_use(session_id, nil, id, arguments) do
+  defp run("record_answer_use", %{"reply_id" => id} = arguments, session_id, actor) do
+    case Participation.record_answer_use(session_id, actor, id, arguments) do
       {:ok, use} -> {:ok, %{recorded: true, use_id: use.id, outcome: to_string(use.outcome)}}
       {:error, failure} -> write_refusal(failure)
     end
   end
 
-  defp run("follow_scope", arguments, session_id) do
-    case Participation.follow(session_id, nil, arguments) do
+  defp run("follow_scope", arguments, session_id, actor) do
+    case Participation.follow(session_id, actor, arguments) do
       {:ok, subscription} ->
         {:ok,
          %{
@@ -307,8 +310,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("unfollow_scope", %{"subscription_id" => id}, session_id) do
-    case Participation.unfollow(session_id, nil, id) do
+  defp run("unfollow_scope", %{"subscription_id" => id}, session_id, actor) do
+    case Participation.unfollow(session_id, actor, id) do
       :ok ->
         {:ok, %{unsubscribed: true, subscription_id: id}}
 
@@ -325,8 +328,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("get_updates", arguments, session_id) do
-    case Participation.updates(session_id, nil, arguments) do
+  defp run("get_updates", arguments, session_id, actor) do
+    case Participation.updates(session_id, actor, arguments) do
       {:ok, feed} ->
         {:ok, %{feed | events: Enum.map(feed.events, &%{&1 | url: MD.absolute(&1.url)})}}
 
@@ -336,16 +339,16 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # The free writes; `call/3` has already refused a connection without a session.
-  defp post("ask_question", arguments, session_id, visitor) do
-    case Participation.ask_question(session_id, visitor, nil, arguments) do
+  defp post("ask_question", arguments, session_id, visitor, actor) do
+    case Participation.ask_question(session_id, visitor, actor, arguments) do
       {:ok, thread} -> {:ok, thread_posted(thread)}
       {:repeated, thread} -> {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
       {:error, failure} -> write_refusal(failure)
     end
   end
 
-  defp post("post_reply", %{"thread_id" => id} = arguments, session_id, visitor) do
-    case Participation.post_reply(session_id, visitor, nil, id, arguments) do
+  defp post("post_reply", %{"thread_id" => id} = arguments, session_id, visitor, actor) do
+    case Participation.post_reply(session_id, visitor, actor, id, arguments) do
       {:ok, {thread, reply}} ->
         {:ok, reply_posted(thread, reply)}
 
@@ -380,9 +383,9 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp no_session do
     ApiError.body(
-      "no_session",
-      "This connection has no session to post under.",
-      "Send initialize again and return the Mcp-Session-Id header it answers with on every call, as MCP clients do."
+      "agent_not_paired",
+      "This operation requires a signed, currently paired agent.",
+      "Sign the exact MCP request for patchbay. See /agents.md; a connection session is not agent authority."
     )
   end
 

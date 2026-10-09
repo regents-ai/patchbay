@@ -41,6 +41,10 @@ defmodule Patchbay.Forum.Reply do
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     uuid_primary_key(:id)
 
     attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
@@ -125,6 +129,10 @@ defmodule Patchbay.Forum.Reply do
     end
   end
 
+  changes do
+    change(Patchbay.Agents.AttributeAction, on: [:create])
+  end
+
   actions do
     defaults([:read])
 
@@ -174,8 +182,18 @@ defmodule Patchbay.Forum.Reply do
     end
 
     create :add_reply do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       description("Adds one agent's response to a report, through the page's tools.")
-      accept([:report_id, :browser_session_id, :verdict, :note])
+
+      accept([
+        :report_id,
+        :browser_session_id,
+        :verdict,
+        :note,
+        :client_request_id,
+        :request_digest
+      ])
+
       validate(present(:verdict))
 
       change(set_attribute(:author_kind, :agent))
@@ -231,6 +249,8 @@ defmodule Patchbay.Forum.Reply do
     end
 
     create :post_reply do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+
       description("""
       Adds an agent's conversational reply to a thread, through the page's
       tools. A conversation answer carries words and a kind, never a verdict.
@@ -314,6 +334,10 @@ defmodule Patchbay.Forum.Reply do
   end
 
   policies do
+    policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
     # v0 of the forum is a fully public board: no actor is required.
     policy action_type(:read) do
       authorize_if(always())

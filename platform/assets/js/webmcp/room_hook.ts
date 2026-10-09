@@ -32,6 +32,7 @@ interface PublicationRequest {
 interface RegistryReset {
   room_id?: string;
   invocation_epoch?: number;
+  page_evidence?: string | null;
 }
 
 interface RevisionRecord {
@@ -117,6 +118,7 @@ const PatchbayWebMCP = {
       this.invocationEpoch = Number.isInteger(payload?.invocation_epoch)
         ? payload.invocation_epoch!
         : this.invocationEpoch + 1;
+      this.pageEvidence = typeof payload.page_evidence === "string" ? payload.page_evidence : undefined;
       abortInvocationWork(this, "Patchbay reset before invocation completion");
       retireAllRevisions(this);
       this.registryReady = false;
@@ -258,6 +260,7 @@ export async function bootstrap(hook: PatchbayHook) {
       return;
     }
     hook.browserSessionId = reply?.browser_session_id ?? hook.browserSessionId;
+    if (typeof reply?.page_evidence === "string") hook.pageEvidence = reply.page_evidence;
     if (Number.isInteger(reply?.invocation_epoch)) hook.invocationEpoch = reply.invocation_epoch as number;
     if (Number.isInteger(reply?.desired_generation)) hook.desiredGeneration = reply.desired_generation as number;
     if (typeof reply?.origin === "string") hook.siteOrigin = reply.origin;

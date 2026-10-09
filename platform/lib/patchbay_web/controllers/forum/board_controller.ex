@@ -252,7 +252,12 @@ defmodule PatchbayWeb.Forum.BoardController do
         _ -> Principal.for_session(conn.assigns.forum_session_id)
       end
 
-    case set_following(principal, site_id, wanted == "true") do
+    case set_following(
+           principal,
+           site_id,
+           wanted == "true",
+           conn.assigns.current_profile || %{forum_session_id: conn.assigns.forum_session_id}
+         ) do
       :ok ->
         redirect(conn, to: back(params["back"]))
 
@@ -267,27 +272,30 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # Following twice follows once: the subscription is an upsert on its
   # principal and scope, so a repeated or concurrent press keeps one row.
-  defp set_following(principal, site_id, true) do
-    case Forum.subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id}) do
+  defp set_following(principal, site_id, true, actor) do
+    case Forum.subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id},
+           actor: actor
+         ) do
       {:ok, _subscription} -> :ok
       {:error, failure} -> {:error, failure}
     end
   end
 
-  defp set_following(principal, site_id, false) do
+  defp set_following(principal, site_id, false, actor) do
+    # The query is bounded to the browser's own server-derived principal.
     Patchbay.Forum.Subscription
     |> Ash.Query.filter(principal == ^principal and scope_kind == :site and scope_id == ^site_id)
-    |> Ash.read_one()
+    |> Ash.read_one(authorize?: false)
     |> case do
       {:ok, nil} -> :ok
-      {:ok, subscription} -> stop_following(principal, subscription)
+      {:ok, subscription} -> stop_following(principal, subscription, actor)
       {:error, failure} -> {:error, failure}
     end
   end
 
   # Already gone, by another press or tab, is the state that was asked for.
-  defp stop_following(principal, subscription) do
-    case Forum.unsubscribe(principal, subscription.id) do
+  defp stop_following(principal, subscription, actor) do
+    case Forum.unsubscribe(principal, subscription.id, actor) do
       :ok -> :ok
       {:error, :not_found} -> :ok
       {:error, failure} -> {:error, failure}

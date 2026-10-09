@@ -16,6 +16,9 @@ defmodule Patchbay.Forum.Principal do
 
   @doc "The principal a record's author is."
   @spec for(map()) :: String.t()
+  def for(%{beneficiary_profile_id: profile_id}) when is_binary(profile_id),
+    do: for_profile(profile_id)
+
   def for(%{author_profile_id: profile_id}) when is_binary(profile_id),
     do: for_profile(profile_id)
 
@@ -23,6 +26,9 @@ defmodule Patchbay.Forum.Principal do
 
   @doc "The principals a request speaks for: the signed-in profile if there is one, plus the page's session."
   @spec for_request(term(), term()) :: [String.t()]
+  def for_request(%Patchbay.Agents.Actor{beneficiary_profile_id: id}, _session),
+    do: [for_profile(id)]
+
   def for_request(nil, session_id), do: [for_session(session_id)]
 
   def for_request(%{id: profile_id}, session_id),

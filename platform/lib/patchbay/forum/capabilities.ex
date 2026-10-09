@@ -25,6 +25,7 @@ defmodule Patchbay.Forum.Capabilities do
              title: tool["title"],
              description: tool["description"],
              input_schema: tool["input_schema"],
+             operation_input_schema: tool["operation_input_schema"],
              requires: tool["requires"],
              state_changing: tool["state_changing"],
              payment: tool["payment"],

@@ -21,6 +21,11 @@ defmodule Patchbay.Forum.AnswerUse do
     repo(Patchbay.Repo)
   end
 
+  changes do
+    change({RegentAgents.RequirePairing, repo: Patchbay.Repo}, on: [:create, :update, :destroy])
+    change(Patchbay.Agents.AttributeAction, on: [:create])
+  end
+
   actions do
     defaults([:read])
 
@@ -46,7 +51,18 @@ defmodule Patchbay.Forum.AnswerUse do
 
       upsert?(true)
       upsert_identity(:principal_task)
-      upsert_fields([:outcome, :note, :same_author, :applicable_tool_version, :updated_at])
+
+      upsert_fields([
+        :outcome,
+        :note,
+        :same_author,
+        :applicable_tool_version,
+        :updated_at,
+        :acting_agent_id,
+        :beneficiary_profile_id,
+        :human_account_id,
+        :pairing_id
+      ])
     end
 
     read :for_reply do
@@ -58,6 +74,10 @@ defmodule Patchbay.Forum.AnswerUse do
   end
 
   policies do
+    policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
     # Principals are server-derived, so the write needs no actor; reads of
     # self-reported tallies are public.
     policy action_type(:read) do
@@ -70,6 +90,10 @@ defmodule Patchbay.Forum.AnswerUse do
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     uuid_primary_key(:id)
 
     attribute :outcome, :atom do
