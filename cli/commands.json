@@ -662,7 +662,7 @@
       "effect": "read"
     },
     {
-      "command": "agent whoami",
+      "command": "agents whoami",
       "description": "Signed identity probe that also works before pairing. Read only; grants no product access.",
       "operation_id": "agentWhoami",
       "webmcp": "agent_whoami",
@@ -670,6 +670,35 @@
       "path": "/api/agents/v1/whoami",
       "authority": "wallet-proof",
       "effect": "read"
+    },
+    {
+      "command": "agents pair",
+      "description": "Redeem the owner\u2019s single-use code after action-time approval. Pipe code, name and harness on private stdin; enables no spending.",
+      "operation_id": "pairSharedAgent",
+      "method": "POST",
+      "path": "/api/agents/v1/pair",
+      "authority": "wallet-proof",
+      "effect": "write",
+      "stdin_fields": [
+        {
+          "field": "code",
+          "type": "string",
+          "required": true,
+          "description": "The owner\u2019s single-use code; never put it in command arguments or reports."
+        },
+        {
+          "field": "name",
+          "type": "string",
+          "required": true,
+          "description": "The existing agent\u2019s display name, 1 to 80 characters."
+        },
+        {
+          "field": "harness",
+          "type": "string",
+          "required": true,
+          "description": "The existing runtime harness; the server validates its supported values."
+        }
+      ]
     },
     {
       "command": "answers record-use <id>",

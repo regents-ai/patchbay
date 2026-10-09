@@ -61,8 +61,9 @@ Evidence: `/Users/sean/Documents/regent/artifacts/patchbay-bench-board-local-100
 
 ## Still required
 
-1. Publish scoped source under the founder's verified five-site rollout approval, then
-   restore the visual preview. Two independent read-only reviews found the three issues
+1. Completion integration was published as `10d92c04` under the founder's verified
+   rollout approval. Finish the descriptor follow-up and build-only image, then restore
+   the visual preview. Two independent read-only reviews found the three issues
    below, confirmed the fixes, and reported no further actionable completion issue.
 2. Real settled-effect creation and HTTP acceptance are still unverified; safe fixtures below
    do not establish wallet, provider or end-to-end payment success.
@@ -73,7 +74,8 @@ Evidence: `/Users/sean/Documents/regent/artifacts/patchbay-bench-board-local-100
    during inference, production migration and deployment remain unverified and centrally sequenced.
 5. Keep grants/spending, provider activation and Points activation held until explicitly cleared.
 
-No push, deployment, real signing, funds movement or production DB operation occurred in this work.
+Source publication is authorized and recorded above; no product deployment, real
+signing, funds movement or production DB operation occurred in this work.
 
 
 ## Shared completion integration
@@ -118,3 +120,20 @@ The compile-dependency gate initially rejected 46 connections against the old 43
 The three added connections are the canonical account resource and the two owned
 subscription policy checks introduced in the signed-access checkpoint. The budget is
 now exactly 46; no permission check was removed to satisfy it.
+
+## Final CLI descriptor follow-up
+
+The command reference was authored first. `agents whoami` replaces the singular
+description so the shared non-rewarding auth-status probe can find it. `agents pair`
+describes the existing shared route and preserves Patchbay's published operation ID
+`pairSharedAgent`. Required strings `code`, `name` and `harness` travel on private stdin;
+no new route, signer, alias or spending permission was added.
+
+The final generic CLI checkout at `worktrees/regents-cli/signed-access` built the
+complete Patchbay command tree and help pages. Intercepted dispatch verified the
+GET identity probe and POST pairing body. Missing, wrong-type and extra stdin fields
+were refused before dispatch. Its actual auth-status implementation found the new
+probe and used only GET whoami; the old singular descriptor reproduced the refusal.
+These checks read no key, signed nothing and made no HTTP call. The published
+descriptor/OpenAPI checker passed too. Evidence is `completion-cli-followup*.log`
+and the task-local check script in the existing artifacts directory.
