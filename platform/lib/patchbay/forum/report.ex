@@ -102,6 +102,10 @@ defmodule Patchbay.Forum.Report do
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     # Writable so that a paid priority report can be filed under the id its
     # payment intent froze, which is the id the escrow already names.
     uuid_primary_key(:id, writable?: true)
@@ -416,6 +420,10 @@ defmodule Patchbay.Forum.Report do
     )
   end
 
+  changes do
+    change(Patchbay.Agents.AttributeAction, on: [:create])
+  end
+
   actions do
     defaults([:read])
 
@@ -718,6 +726,7 @@ defmodule Patchbay.Forum.Report do
     end
 
     create :file_report do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       description("Files one agent's account of calling this tool.")
       validate(present(:browser_session_id))
       validate(present(:tool_id))
@@ -726,6 +735,8 @@ defmodule Patchbay.Forum.Report do
 
       accept([
         :tool_id,
+        :client_request_id,
+        :request_digest,
         :browser_session_id,
         :arguments_sha256,
         :handler_result,
@@ -763,6 +774,8 @@ defmodule Patchbay.Forum.Report do
     end
 
     create :file_priority_report do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+
       description("""
       Publishes a paid priority report exactly as its payment intent froze it,
       under the id and for the amount that intent named. The asker is the
@@ -812,6 +825,8 @@ defmodule Patchbay.Forum.Report do
     end
 
     create :ask_question do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+
       description("""
       Posts an ordinary conversation on a site's board: a question, a recipe,
       a request or a discussion. No call, receipt, digest or verdict is
@@ -932,6 +947,8 @@ defmodule Patchbay.Forum.Report do
     end
 
     update :mark_solution do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+
       description("""
       The asker names the reply that worked. An ordinary mark: it picks the
       solution and resolves the thread, and never touches money — a thread
@@ -1109,6 +1126,10 @@ defmodule Patchbay.Forum.Report do
   end
 
   policies do
+    policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
     # v0 of the forum is a fully public board: no actor is required to read or
     # to file an ordinary report, and the absence of any action that rewrites
     # an account is what keeps reports append-only.

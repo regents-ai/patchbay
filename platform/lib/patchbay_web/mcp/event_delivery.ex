@@ -73,7 +73,9 @@ defmodule PatchbayWeb.MCP.EventDelivery do
   end
 
   defp live?(subscription) do
-    subscription.active and DateTime.after?(subscription.expires_at, DateTime.utc_now())
+    subscription.active and DateTime.after?(subscription.expires_at, DateTime.utc_now()) and
+      is_binary(subscription.pairing_id) and
+      RegentAgents.Authority.active_episode?(Patchbay.Repo, subscription.pairing_id)
   end
 
   # Moves the place only from where this run read it.

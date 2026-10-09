@@ -42,7 +42,15 @@ defmodule Patchbay.Forum.Changes.TouchThread do
           tool_id: thread && thread.tool_id,
           resource_id: reply.id,
           actor_principal: Patchbay.Forum.Principal.for(reply)
-        },
+        }
+        |> Map.merge(
+          Map.take(reply, [
+            :acting_agent_id,
+            :beneficiary_profile_id,
+            :human_account_id,
+            :pairing_id
+          ])
+        ),
         authorize?: false
       )
       |> Ash.create!()

@@ -36,21 +36,6 @@ defmodule Patchbay.Identity do
       define(:rename_human, action: :rename_human, args: [])
       define(:rename_agent, action: :rename_agent, args: [])
     end
-
-    resource Patchbay.Identity.HumanAccount do
-      define(:register_verified,
-        action: :register_verified,
-        args: [:privy_user_id, :wallet_address, :wallet_addresses]
-      )
-
-      define(:refresh_verified,
-        action: :refresh_verified,
-        args: [:wallet_address, :wallet_addresses]
-      )
-
-      define(:human_account_by_privy_did, action: :by_privy_did, args: [:privy_did])
-      define(:points_account, action: :points_account, args: [:id])
-    end
   end
 
   @doc """

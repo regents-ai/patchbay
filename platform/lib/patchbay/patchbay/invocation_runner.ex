@@ -79,7 +79,9 @@ defmodule Patchbay.Patchbay.InvocationRunner do
       )
     rescue
       error ->
-        terminalize_failed_invocation(invocation, room, browser_session, error)
+        if is_nil(invocation.pairing_id),
+          do: terminalize_failed_invocation(invocation, room, browser_session, error)
+
         reraise(error, __STACKTRACE__)
     end
   end
@@ -102,12 +104,18 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     Invocation
     |> Ash.Query.for_read(:read)
     |> Ash.Query.filter(room_id == ^room.id and effective_status in ^Invocation.open_statuses())
+    |> protect_agent_invocations(Keyword.get(opts, :browser_session_id))
     |> maybe_filter_browser_session(Keyword.get(opts, :browser_session_id))
     |> maybe_filter_invocation_epoch(Keyword.get(opts, :invocation_epoch))
     |> Domain.mark_invocation_cancelled!(bulk_options: [strategy: [:atomic, :stream]])
 
     :ok
   end
+
+  defp protect_agent_invocations(query, nil), do: query
+
+  defp protect_agent_invocations(query, _page_session),
+    do: Ash.Query.filter(query, is_nil(pairing_id))
 
   defp begin_result!(room, browser_session, revision, arguments, opts) do
     arguments = normalize_arguments!(arguments)
@@ -123,7 +131,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
                revision.id,
                arguments,
                request_uuid,
-               expected_epoch
+               expected_epoch,
+               opts
              )
            end,
            Keyword.take(opts, [:timeout])
@@ -139,14 +148,17 @@ defmodule Patchbay.Patchbay.InvocationRunner do
          revision_id,
          arguments,
          request_uuid,
-         expected_epoch
+         expected_epoch,
+         opts
        ) do
     room = Domain.get_room_for_update!(room_id)
     browser_session = Domain.get_browser_session_for_update!(browser_session_id)
     revision = Domain.get_tool_revision_for_update!(revision_id)
+    Patchbay.Agents.RoomAccess.lock!(opts[:actor], room)
 
     case find_by_request_uuid(request_uuid) do
       %Invocation{} = existing ->
+        Patchbay.Agents.RoomAccess.lock!(opts[:actor], room, existing)
         ensure_idempotent_replay!(existing, room, browser_session, revision, arguments)
         {:replay, existing}
 
@@ -157,7 +169,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
           revision,
           arguments,
           request_uuid,
-          expected_epoch
+          expected_epoch,
+          opts
         )
     end
   end
@@ -168,7 +181,8 @@ defmodule Patchbay.Patchbay.InvocationRunner do
          revision,
          arguments,
          request_uuid,
-         expected_epoch
+         expected_epoch,
+         opts
        ) do
     validate_arguments!(revision.input_schema, arguments)
 
@@ -176,15 +190,19 @@ defmodule Patchbay.Patchbay.InvocationRunner do
     # refuses the row if the room has moved on since, so the recorded epoch is
     # always the room's own.
     {:new,
-     Domain.record_invocation!(%{
-       request_uuid: request_uuid,
-       invocation_epoch: expected_epoch,
-       room_id: room.id,
-       browser_session_id: browser_session.id,
-       tool_revision_id: revision.id,
-       tool_contract_sha256: revision.contract_sha256,
-       arguments: arguments
-     })}
+     Domain.record_invocation!(
+       %{
+         request_uuid: request_uuid,
+         invocation_epoch: expected_epoch,
+         room_id: room.id,
+         browser_session_id: browser_session.id,
+         tool_revision_id: revision.id,
+         tool_contract_sha256: revision.contract_sha256,
+         arguments: arguments,
+         pre_state: opts[:pre_state]
+       },
+       actor: opts[:actor]
+     )}
   end
 
   defp execute_new_invocation!(
@@ -439,6 +457,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
   defp verify_locked!(invocation_id, room_id, browser_session_id, opts) do
     room = Domain.get_room_for_update!(room_id)
     invocation = Domain.get_invocation_for_update!(invocation_id)
+    Patchbay.Agents.RoomAccess.lock!(opts[:actor], room, invocation)
     post_state = Keyword.fetch!(opts, :post_state)
 
     verified = VerificationService.verify_invocation!(invocation, %{post_state: post_state}, opts)
@@ -525,6 +544,7 @@ defmodule Patchbay.Patchbay.InvocationRunner do
                |> revision_id(invocation)
                |> Domain.get_tool_revision_for_update!()
 
+             Patchbay.Agents.RoomAccess.lock!(opts[:actor], room, invocation)
              fun.(invocation, room, browser_session, revision)
            end,
            Keyword.take(opts, [:timeout])

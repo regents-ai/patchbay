@@ -92,8 +92,8 @@ defmodule PatchbayWeb.MCP.Events do
   @spec subscribe(map(), String.t() | nil) :: result()
   def subscribe(_params, nil), do: no_connection()
 
-  def subscribe(params, session_id) do
-    owner_id = Principal.for_session(session_id)
+  def subscribe(params, %Patchbay.Agents.Actor{} = actor) do
+    owner_id = Principal.for_profile(actor.beneficiary_profile_id)
 
     with {:ok, name, arguments} <- event(params),
          {:ok, url, secret} <- webhook(params, true),
@@ -115,7 +115,7 @@ defmodule PatchbayWeb.MCP.Events do
         verified_at: now
       }
 
-      {:ok, answer} = Ash.transact(EventSubscription, fn -> store(fields, cursor, now) end)
+      {:ok, answer} = Ash.transact(EventSubscription, fn -> store(fields, cursor, now, actor) end)
       {:ok, answer}
     end
   end
@@ -123,24 +123,31 @@ defmodule PatchbayWeb.MCP.Events do
   @spec unsubscribe(map(), String.t() | nil) :: result()
   def unsubscribe(_params, nil), do: no_connection()
 
-  def unsubscribe(params, session_id) do
+  def unsubscribe(params, %Patchbay.Agents.Actor{} = actor) do
     with {:ok, name, arguments} <- event(params),
          {:ok, url, nil} <- webhook(params, false),
-         {:ok, id} <- identity(Principal.for_session(session_id), name, arguments, url) do
-      # The id is derived from this connection's own principal, so the row it
-      # names can only be the caller's.
-      case Ash.get(EventSubscription, id, authorize?: false, not_found_error?: false) do
-        {:ok, nil} -> :ok
-        {:ok, subscription} -> Ash.destroy!(subscription, authorize?: false)
-      end
+         {:ok, id} <-
+           identity(Principal.for_profile(actor.beneficiary_profile_id), name, arguments, url) do
+      {:ok, _} =
+        Ash.transact(EventSubscription, fn ->
+          remove_owned_subscription(id, actor)
+        end)
 
       {:ok, %{}}
     end
   end
 
+  defp remove_owned_subscription(id, actor) do
+    # This derived id names only this verified actor's beneficiary principal.
+    case Ash.get(EventSubscription, id, authorize?: false, not_found_error?: false) do
+      {:ok, nil} -> :ok
+      {:ok, subscription} -> Ash.destroy!(subscription, actor: actor)
+    end
+  end
+
   # One writer per subscription id at a time, so two subscribes racing for
   # the same id refresh one row rather than colliding on its insert.
-  defp store(fields, cursor, now) do
+  defp store(fields, cursor, now, actor) do
     Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [fields.id])
 
     case Ash.get(EventSubscription, fields.id, authorize?: false, not_found_error?: false) do
@@ -150,7 +157,7 @@ defmodule PatchbayWeb.MCP.Events do
         subscription =
           EventSubscription
           |> Ash.Changeset.for_create(:subscribe, Map.put(fields, :delivered_seq, start),
-            authorize?: false
+            actor: actor
           )
           |> Ash.create!()
 
@@ -167,7 +174,7 @@ defmodule PatchbayWeb.MCP.Events do
               secret_ciphertext: fields.secret_ciphertext,
               rotation_ends_at: DateTime.add(now, @rotation_ms, :millisecond)
             },
-            authorize?: false
+            actor: actor
           )
           |> Ash.update!()
 

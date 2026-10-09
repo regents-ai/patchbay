@@ -172,7 +172,11 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
             delete_req_header(conn, "payment-signature")
         end
 
-      {:ok, conn |> assign(:current_profile, profile) |> assign(:forum_session_id, nil)}
+      {:ok,
+       conn
+       |> assign(:current_profile, profile)
+       |> assign(:verified_agent_wallet, address)
+       |> assign(:forum_session_id, nil)}
     else
       _ -> refused(:author_unavailable)
     end

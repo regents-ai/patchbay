@@ -16,6 +16,11 @@ defmodule Patchbay.Forum.Subscription do
     repo(Patchbay.Repo)
   end
 
+  changes do
+    change({RegentAgents.RequirePairing, repo: Patchbay.Repo}, on: [:create, :update, :destroy])
+    change(Patchbay.Agents.AttributeAction, on: [:create])
+  end
+
   actions do
     defaults([:read])
 
@@ -24,10 +29,18 @@ defmodule Patchbay.Forum.Subscription do
       accept([:principal, :scope_kind, :scope_id])
       upsert?(true)
       upsert_identity(:principal_scope)
-      upsert_fields([:inserted_at])
+
+      upsert_fields([
+        :inserted_at,
+        :acting_agent_id,
+        :beneficiary_profile_id,
+        :human_account_id,
+        :pairing_id
+      ])
     end
 
     destroy :unsubscribe do
+      require_atomic?(false)
       description("Ends one principal's interest in one scope.")
     end
 
@@ -39,23 +52,30 @@ defmodule Patchbay.Forum.Subscription do
   end
 
   policies do
-    # Subscriptions are keyed by a server-derived principal, not an actor, so
-    # writes arrive through the API and browser doors that already hold the
-    # session; the read here is open because the scopes are already public.
+    policy actor_attribute_equals(:role, :agent) do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
+    # The followed scopes belong to the server-derived owner principal.
+    # Knowing a public scope does not disclose another owner's follows.
     policy action_type(:read) do
-      authorize_if(always())
+      authorize_if(expr(principal in ^actor(:principals)))
     end
 
     policy action(:subscribe) do
-      authorize_if(always())
+      authorize_if(Patchbay.Agents.OwnsPrincipal)
     end
 
     policy action(:unsubscribe) do
-      authorize_if(always())
+      authorize_if(Patchbay.Agents.OwnsPrincipal)
     end
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     uuid_primary_key(:id)
 
     attribute(:principal, :string, allow_nil?: false, public?: true)

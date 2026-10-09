@@ -102,6 +102,10 @@ defmodule Patchbay.Assist.Run do
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     uuid_primary_key(:id)
 
     # The profile the run was asked by. It names a row in the identity
@@ -282,6 +286,8 @@ defmodule Patchbay.Assist.Run do
 
       validate(one_of(:grant, [:agent]), message: "must be agent")
       change(Patchbay.Assist.Changes.OpenFree)
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+      change(Patchbay.Agents.AttributeAction)
       change(run_oban_trigger(:work))
     end
 
@@ -455,6 +461,7 @@ defmodule Patchbay.Assist.Run do
     end
 
     policy action(:open_agent_free) do
+      forbid_unless({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
       authorize_if(Patchbay.Assist.Checks.WithinAgentAllowance)
     end
 

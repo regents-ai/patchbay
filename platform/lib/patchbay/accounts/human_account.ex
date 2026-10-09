@@ -1,19 +1,14 @@
-defmodule Patchbay.Identity.HumanAccount do
-  @moduledoc """
-  A person's shared Regent account, in the table Regents owns. A Privy
-  sign-in records the person here as every Regent site does, so their Points
-  and paired agents follow them from site to site.
-  """
-
+defmodule Patchbay.Accounts.HumanAccount do
+  @moduledoc "Regents owns this table; Patchbay uses verified subjects and preserves its IDs."
   use Ash.Resource,
-    domain: Patchbay.Identity,
+    domain: Patchbay.Accounts,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
+    repo(Patchbay.Repo)
     table("platform_human_users")
     schema("regent_names")
-    repo(Patchbay.Repo)
     migrate?(false)
   end
 
@@ -31,13 +26,13 @@ defmodule Patchbay.Identity.HumanAccount do
   end
 
   actions do
-    read :by_privy_did do
+    read :by_privy do
       get?(true)
-      argument(:privy_did, :string, allow_nil?: false)
-      filter(expr(privy_user_id == ^arg(:privy_did)))
+      argument(:privy_user_id, :string, allow_nil?: false)
+      filter(expr(privy_user_id == ^arg(:privy_user_id)))
     end
 
-    read :points_account do
+    read :by_id do
       get?(true)
       argument(:id, :integer, allow_nil?: false)
       filter(expr(id == ^arg(:id)))
@@ -52,13 +47,12 @@ defmodule Patchbay.Identity.HumanAccount do
 
     update :refresh_verified do
       accept([:wallet_address, :wallet_addresses])
-      require_atomic?(false)
       validate(present(:wallet_addresses))
     end
   end
 
   policies do
-    policy action([:by_privy_did, :points_account, :register_verified, :refresh_verified]) do
+    policy always() do
       authorize_if(actor_attribute_equals(:role, :system))
     end
   end

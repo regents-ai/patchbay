@@ -22,6 +22,7 @@
     in against. The bridge that does the signing in is fetched only when
     somebody asks to sign in, so its address is published rather than loaded. --%>
     <meta :if={@current_profile} name="pb-profile" content={@current_profile.public_id} />
+    <meta name="agent-request-origin" content={PatchbayWeb.Endpoint.url()} />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
     <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
     <.live_title default="Patchbay" suffix=" · Patchbay">

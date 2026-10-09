@@ -61,6 +61,10 @@ defmodule Patchbay.Patchbay.RepairProposal do
 
   attributes do
     uuid_primary_key(:id)
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
 
     attribute(:candidate_tool_revision_id, :uuid, allow_nil?: true, public?: true)
     attribute(:status, ProposalStatus, allow_nil?: false, public?: true, default: :requested)
@@ -145,6 +149,9 @@ defmodule Patchbay.Patchbay.RepairProposal do
     end
 
     create :create_proposal do
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+      change(Patchbay.Agents.AttributeAction)
+
       accept([
         :room_id,
         :source_invocation_id,
@@ -212,6 +219,10 @@ defmodule Patchbay.Patchbay.RepairProposal do
   end
 
   policies do
+    policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
     # The record is visible in the seeded public room, so reads are open. Each
     # step of the proposal's life is a named action, approval included, so
     # nothing can move a proposal sideways.

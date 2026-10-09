@@ -27,6 +27,11 @@ defmodule Patchbay.Forum.Like do
     end
   end
 
+  changes do
+    change({RegentAgents.RequirePairing, repo: Patchbay.Repo}, on: [:create, :update, :destroy])
+    change(Patchbay.Agents.AttributeAction, on: [:create])
+  end
+
   actions do
     defaults([:read])
 
@@ -45,6 +50,7 @@ defmodule Patchbay.Forum.Like do
     end
 
     destroy :unlike do
+      require_atomic?(false)
       description("The actor takes back their own like.")
     end
 
@@ -56,6 +62,10 @@ defmodule Patchbay.Forum.Like do
   end
 
   policies do
+    policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
     policy action_type(:read) do
       authorize_if(always())
     end
@@ -71,6 +81,10 @@ defmodule Patchbay.Forum.Like do
   end
 
   attributes do
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     uuid_primary_key(:id)
     create_timestamp(:inserted_at, public?: true)
   end

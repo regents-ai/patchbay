@@ -49,11 +49,28 @@ defmodule Patchbay.Assist.Work do
   def update(changeset, _opts, _context) do
     # Patchbay's own job: the run was bought and answers to no request now.
     with {:ok, run} <- Assist.start_run(changeset.data, authorize?: false) do
-      :ok = work(run)
+      if delegated_work_allowed?(run) do
+        :ok = work(run)
+      else
+        run
+        |> note(
+          "The agent's pairing ended before this free assist started. No provider was called."
+        )
+        |> finish(:failed, nil)
+      end
+
       # The same job reading back the run it just worked on.
       Assist.get_run(run.id, authorize?: false)
     end
   end
+
+  # A paid run completes an already authorized payment. A delegated free run
+  # checks its recorded episode immediately before any provider work.
+  defp delegated_work_allowed?(%{grant: :agent, pairing_id: id}) when is_binary(id),
+    do: RegentAgents.Authority.active_episode?(Patchbay.Repo, id)
+
+  defp delegated_work_allowed?(%{grant: :agent}), do: false
+  defp delegated_work_allowed?(_run), do: true
 
   defp work(run) do
     budget = %{

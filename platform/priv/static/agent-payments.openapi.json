@@ -3,7 +3,7 @@
   "info": {
     "title": "Patchbay autonomous priority reports, assists and free fixes",
     "version": "1.1.0",
-    "description": "Base EOA only. SIWA wallet proof is distinct from x402 payment and Privy identity. No tips, moderation, human profile changes or escrow administration. Disabled until the deployment configures its SIWA broker. Browser WebMCP uses its existing human session and the same payment actions/results."
+    "description": "Base EOA only. New payment intents, free assists and private reads require exact-request SIWA and current account pairing. The x402 payment signature remains separate and user-signed. Existing settlement completion retains its original authorization. Shared initial settlement pairing support and live verification are rollout prerequisites; no Credits or Points activation is enabled by this source."
   },
   "servers": [
     {

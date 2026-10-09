@@ -78,6 +78,13 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     reply_error(socket, @readonly_message)
   end
 
+  def handle_event(event, _params, socket) when event in @mutating_webmcp_events do
+    reply_error(
+      socket,
+      "A signed agent request is required. Use prepare_patchbay_room_request and fresh SIWA proof; see /agents.md."
+    )
+  end
+
   @impl true
   def handle_event("webmcp_bootstrap", params, socket) do
     room = socket.assigns.room
@@ -111,6 +118,13 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       {:reply,
        %{
          "browser_session_id" => browser_session.id,
+         "page_evidence" =>
+           Phoenix.Token.sign(PatchbayWeb.Endpoint, "agent-room-page", %{
+             room_id: room.id,
+             browser_session_id: browser_session.id,
+             client_instance_id: client_instance_id,
+             invocation_epoch: room.invocation_epoch
+           }),
          "client_instance_id" => browser_session.client_instance_id,
          "invocation_epoch" => socket.assigns.invocation_epoch,
          "desired_generation" => room.desired_tool_generation,
@@ -411,6 +425,12 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
          |> cancel_repair(repair_key)
          |> assign(error_message: readable_error(error))}
     end
+  end
+
+  @impl true
+  def handle_info({:agent_room_changed, room_id}, socket)
+      when room_id == socket.assigns.room.id do
+    {:noreply, refresh(socket, socket.assigns.browser_session)}
   end
 
   # A repair published by the worker that answered a report reaches the page the
@@ -1121,9 +1141,21 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     socket
     |> push_event("patchbay:#{socket.assigns.room.id}:reset_browser_registry", %{
       "room_id" => socket.assigns.room.id,
-      "invocation_epoch" => epoch
+      "invocation_epoch" => epoch,
+      "page_evidence" => page_evidence(socket.assigns.room, socket.assigns.browser_session)
     })
     |> push_desired_toolset()
+  end
+
+  defp page_evidence(_room, nil), do: nil
+
+  defp page_evidence(room, session) do
+    Phoenix.Token.sign(PatchbayWeb.Endpoint, "agent-room-page", %{
+      room_id: room.id,
+      browser_session_id: session.id,
+      client_instance_id: session.client_instance_id,
+      invocation_epoch: room.invocation_epoch
+    })
   end
 
   defp cancel_repair(socket, nil), do: socket

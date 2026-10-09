@@ -47,6 +47,9 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     room = Domain.get_room_by_id!(invocation.room_id)
     source_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
 
+    {:ok, :ok} =
+      Patchbay.Repo.transaction(fn -> Patchbay.Agents.RoomAccess.lock!(opts[:actor], room) end)
+
     ensure_failed_latest!(invocation, room)
 
     candidate = CandidateGenerator.durable_candidate!(invocation, room.source_markdown)
@@ -84,6 +87,7 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     invocation = Domain.get_invocation_for_update!(invocation.id)
     room = Domain.get_room_for_update!(invocation.room_id)
     source_revision = Domain.get_tool_revision!(invocation.tool_revision_id)
+    Patchbay.Agents.RoomAccess.lock!(opts[:actor], room)
 
     ensure_failed_latest!(invocation, room)
 
@@ -106,25 +110,28 @@ defmodule Patchbay.Patchbay.RepairPlanner do
     canary_duration = System.monotonic_time() - canary_started_at
 
     proposal =
-      Domain.create_repair_proposal!(%{
-        room_id: room.id,
-        source_invocation_id: invocation.id,
-        source_tool_revision_id: source_revision.id,
-        candidate_tool_revision_id: revision.id,
-        root_cause: repair.plan.root_cause,
-        repair_plan: repair.plan,
-        contract_diff: contract_diff(source_revision, revision),
-        canary_result: canary,
-        risk_notes: repair.plan.risk_notes,
-        model: repair.metadata[:model] || candidate.model,
-        model_response_id: repair.metadata[:model_response_id] || candidate.model_response_id,
-        prompt_version: repair.metadata[:prompt_version] || plan_prompt_version(opts),
-        usage: %{
-          "candidate" => candidate.usage,
-          "repair_plan" => Client.normalize_usage(repair.metadata[:usage])
+      Domain.create_repair_proposal!(
+        %{
+          room_id: room.id,
+          source_invocation_id: invocation.id,
+          source_tool_revision_id: source_revision.id,
+          candidate_tool_revision_id: revision.id,
+          root_cause: repair.plan.root_cause,
+          repair_plan: repair.plan,
+          contract_diff: contract_diff(source_revision, revision),
+          canary_result: canary,
+          risk_notes: repair.plan.risk_notes,
+          model: repair.metadata[:model] || candidate.model,
+          model_response_id: repair.metadata[:model_response_id] || candidate.model_response_id,
+          prompt_version: repair.metadata[:prompt_version] || plan_prompt_version(opts),
+          usage: %{
+            "candidate" => candidate.usage,
+            "repair_plan" => Client.normalize_usage(repair.metadata[:usage])
+          },
+          input_sha256: candidate.generation_key
         },
-        input_sha256: candidate.generation_key
-      })
+        actor: opts[:actor]
+      )
 
     RoomTimeline.append!(
       room,

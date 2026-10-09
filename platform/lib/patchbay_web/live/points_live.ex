@@ -6,13 +6,12 @@ defmodule PatchbayWeb.PointsLive do
   the end of each 30-day period. Nothing earns until earning opens.
 
   The page reads the person's shared Regent account
-  (`Patchbay.Identity.HumanAccount`), which their sign-in recorded. Like
+  (`Patchbay.Accounts.HumanAccount`), which their sign-in recorded. Like
   `/account`, it stays in place and says so when the sign-in ends while open.
   """
 
   use PatchbayWeb, :live_view
 
-  alias Patchbay.Actors.{Human, System}
   alias PatchbayWeb.{CreditsLimit, Read}
   alias RegentPoints.{Amount, Rules}
 
@@ -38,7 +37,7 @@ defmodule PatchbayWeb.PointsLive do
   end
 
   # A points award or correction for this account; the page reads again.
-  defp subscribe(%{assigns: %{person: %Human{human_account_id: id}}} = socket) do
+  defp subscribe(%{assigns: %{person: %{human_account_id: id}}} = socket) do
     if connected?(socket), do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, "points:#{id}")
     socket
   end
@@ -46,9 +45,9 @@ defmodule PatchbayWeb.PointsLive do
   defp subscribe(socket), do: socket
 
   defp person(%{privy_user_id: did}) do
-    case Patchbay.Identity.human_account_by_privy_did(did, actor: %System{}) do
-      {:ok, account} -> %Human{human_account_id: account.id}
-      {:error, _not_found} -> nil
+    case Patchbay.Accounts.by_privy(did, actor: %{role: :system}) do
+      {:ok, %{id: id}} -> %{role: :human, human_account_id: id}
+      {:ok, nil} -> nil
     end
   end
 
@@ -59,7 +58,7 @@ defmodule PatchbayWeb.PointsLive do
   def handle_async({Read, _name, _generation} = name, result, socket),
     do: {:noreply, Read.settle(socket, name, result)}
 
-  defp read_points(%{assigns: %{person: %Human{} = person}} = socket) do
+  defp read_points(%{assigns: %{person: %{} = person}} = socket) do
     Read.start(socket, :points, person.human_account_id, fn ->
       RegentPoints.summary(actor: person)
     end)
@@ -69,7 +68,7 @@ defmodule PatchbayWeb.PointsLive do
 
   # The NFT tier is read from Base once per page open, never on each award
   # notice, against the same allowance as the Buy panel's reads.
-  defp read_bonus(%{assigns: %{person: %Human{human_account_id: id}}} = socket) do
+  defp read_bonus(%{assigns: %{person: %{human_account_id: id}}} = socket) do
     profile_id = socket.assigns.current_profile.id
 
     Read.start(socket, :bonus, id, fn ->

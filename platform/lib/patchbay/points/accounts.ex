@@ -1,19 +1,15 @@
 defmodule Patchbay.Points.Accounts do
-  @moduledoc "Verified account lookups supplied to the shared Points package."
+  @moduledoc "Read-only canonical account callbacks; Points activation stays disabled."
   @behaviour RegentPoints.Accounts
 
-  alias Patchbay.Actors.System
-  alias Patchbay.Identity
-
   @impl true
-  def human(id), do: Identity.points_account!(id, actor: %System{})
+  def human(id), do: Patchbay.Accounts.by_id!(id, actor: %{role: :system})
 
   @impl true
   def agent_names(_id, []), do: {:ok, %{}}
 
   def agent_names(id, ids) do
-    # The canonical account supplies the owner; historical episodes retain names.
-    with {:ok, account} <- Identity.points_account(id, actor: %System{}),
+    with {:ok, account} <- Patchbay.Accounts.by_id(id, actor: %{role: :system}),
          {:ok, %{rows: rows}} <-
            Ecto.Adapters.SQL.query(
              Patchbay.Repo,

@@ -177,6 +177,7 @@ defmodule Patchbay.MixProject do
         "regent_ui.assets",
         "regent_blog.assets",
         "regent_identity.assets",
+        "regent_agent_access.assets",
         "esbuild patchbay",
         "esbuild patchbay_crown",
         "esbuild patchbay_privy"
@@ -185,6 +186,7 @@ defmodule Patchbay.MixProject do
         "regent_ui.assets",
         "regent_blog.assets",
         "regent_identity.assets",
+        "regent_agent_access.assets",
         "esbuild patchbay --minify",
         "esbuild patchbay_crown --minify",
         "esbuild patchbay_privy --minify",

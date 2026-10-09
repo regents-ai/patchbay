@@ -18,7 +18,6 @@ defmodule PatchbayWeb.PrivySessionController do
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Actors.System
   alias Patchbay.Assist
   alias Patchbay.Credits
   alias Patchbay.Identity
@@ -45,7 +44,6 @@ defmodule PatchbayWeb.PrivySessionController do
     with {:ok, pair} <- session_pair(conn),
          {:ok, %{wallet_addresses: wallets} = evidence} <- Privy.verify_session_pair(pair),
          {:ok, profile} <- Identity.upsert_from_privy(Map.delete(evidence, :wallet_addresses)),
-         {:ok, _account} <- register_account(evidence),
          {:ok, _moved} <-
            RegentCredits.attach_wallets(profile.privy_user_id, wallets,
              actor: Credits.site_actor()
@@ -65,14 +63,6 @@ defmodule PatchbayWeb.PrivySessionController do
     conn
     |> CurrentProfile.sign_out()
     |> json(%{signed_out: true})
-  end
-
-  # The person's shared Regent account, recorded as every Regent site does, with
-  # the wallets this sign-in verified.
-  defp register_account(%{privy_user_id: did, wallet_address: wallet, wallet_addresses: wallets}) do
-    with {:ok, account} <- Identity.register_verified(did, wallet, wallets, actor: %System{}) do
-      Identity.refresh_verified(account, wallet, wallets, actor: %System{})
-    end
   end
 
   # Exactly one of each header is a pair. Anything else is refused before Privy

@@ -73,7 +73,13 @@ defmodule Patchbay.Forum.EventSubscription do
   end
 
   actions do
-    defaults([:read, :destroy])
+    defaults([:read])
+
+    destroy :destroy do
+      primary?(true)
+      require_atomic?(false)
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+    end
 
     create :subscribe do
       description("Starts a subscription whose callback has just answered its challenge.")
@@ -90,6 +96,8 @@ defmodule Patchbay.Forum.EventSubscription do
         :delivered_seq
       ])
 
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+      change(Patchbay.Agents.AttributeAction)
       change(run_oban_trigger(:deliver))
     end
 
@@ -107,6 +115,8 @@ defmodule Patchbay.Forum.EventSubscription do
       change(set_attribute(:active, true))
       change(set_attribute(:last_error, nil))
       change(Patchbay.Forum.Changes.RotateEventSecret)
+      change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
+      change(Patchbay.Agents.AttributeAction)
       change(run_oban_trigger(:deliver))
     end
 
@@ -140,8 +150,16 @@ defmodule Patchbay.Forum.EventSubscription do
     # There is no public way in. The MCP door subscribes for the connection's
     # own server-derived principal, and the delivery job reads and writes
     # internally; all of them skip authorization.
-    policy always() do
-      forbid_if(always())
+    policy action([:subscribe, :refresh, :destroy]) do
+      authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+    end
+
+    policy action([:refresh, :destroy]) do
+      authorize_if(expr(owner_id in ^actor(:principals)))
+    end
+
+    policy action(:subscribe) do
+      authorize_if(Patchbay.Agents.OwnsEventSubscription)
     end
   end
 
@@ -152,6 +170,10 @@ defmodule Patchbay.Forum.EventSubscription do
       writable?(true)
     end
 
+    attribute(:acting_agent_id, :uuid)
+    attribute(:beneficiary_profile_id, :uuid)
+    attribute(:human_account_id, :integer)
+    attribute(:pairing_id, :uuid)
     attribute(:owner_id, :string, allow_nil?: false)
 
     attribute :name, :string do

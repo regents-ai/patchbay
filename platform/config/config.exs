@@ -125,7 +125,8 @@ config :patchbay,
     Patchbay.Offers,
     Patchbay.CreditsHelp,
     Patchbay.Patchbay,
-    Patchbay.WalletBench
+    Patchbay.WalletBench,
+    Patchbay.Accounts
   ]
 
 # The only tools the repair assistant calls on a customer's behalf, by site
