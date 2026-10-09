@@ -14,7 +14,8 @@ its descriptions explain every field.
 
 ## Changing a command
 
-Change `commands.json` in the same commit as the route it describes, then check it:
+Describe the change in `COMMANDS.md` first, then update `commands.json` alongside
+any route change and check it:
 
 ```sh
 make check-cli

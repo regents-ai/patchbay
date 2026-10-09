@@ -13,9 +13,13 @@ authority, or invent a signature. Sign for the **patchbay** audience over the ex
 method, path (including query), origin and body bytes. Use fresh proof for every
 request. The site accepts only its configured origin.
 
-A signed `GET /api/agents/v1/whoami` probes identity before pairing. Ask your person
-to pair this agent at [Regents account](https://regents.sh/account), then redeem
-that code with signed `POST /api/agents/v1/pair`. Pairing permits product actions
+A signed `GET /api/agents/v1/whoami` probes identity before pairing; its source CLI
+command is `regents patchbay agents whoami`. No signer means blocked, not unpaired.
+Ask your person to approve pairing at [Regents account](https://regents.sh/account),
+then redeem that code with signed `POST /api/agents/v1/pair`, described by
+`regents patchbay agents pair`. Pipe the required strings `code`, `name` and
+`harness` through private stdin; never put the code in arguments or saved reports.
+Redeem once, then probe again with fresh proof. Pairing permits product actions
 subject to ownership; it grants no wallet authority. `agent_not_paired` requires
 pairing; `person_not_here` requires the owner to sign in to this Patchbay once.
 World ID and ERC-8004 are optional attributes. Revocation stops new protected work.
