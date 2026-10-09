@@ -12,10 +12,9 @@ defmodule PatchbayWeb.CreditsPanel do
   library's Oban checks it once a minute whether the page is open or not.
 
   It pays from the wallet Patchbay knows the profile by, shown as soon as the
-  panel opens with its USDC on both chains. The press reaches Privy's active
+  panel opens with its USDC on Base. The press reaches Privy's active
   wallet; when that is another wallet, nothing is sent and the panel names
-  both. The chain starts on the one the wallet is on, until the person picks
-  one, and a Switch Chain button asks the wallet onto the picked one.
+  both. Purchases use USDC on Base; Switch Chain asks the wallet onto Base.
 
   Buy is disabled only when it is certain to fail, from the chain at the latest
   block: the Base approval does not cover the amount yet, or the wallet holds
@@ -34,7 +33,7 @@ defmodule PatchbayWeb.CreditsPanel do
   alias RegentCredits.{Amount, Chains}
   alias RegentCredits.Errors.Refused
 
-  @chains %{"base" => :base, "ethereum" => :ethereum}
+  @chains %{"base" => :base}
 
   @impl true
   def mount(socket) do
@@ -47,7 +46,6 @@ defmodule PatchbayWeb.CreditsPanel do
        signer: nil,
        amount: "5",
        chain: "base",
-       chain_chosen?: false,
        wallet_chain: nil,
        number: Ecto.UUID.generate(),
        numbers: %{},
@@ -84,22 +82,17 @@ defmodule PatchbayWeb.CreditsPanel do
   def handle_event("change", %{"amount" => amount, "chain" => chain}, socket),
     do: {:noreply, socket |> choose(amount, chain) |> sync()}
 
-  # The chain the wallet is on, or nil when the page could not read one. Until
-  # the person picks a chain, the panel follows the wallet's. The page says this
-  # when the panel opens and each time it comes back into view, so the funds
-  # behind a disabled Buy are read again then too.
+  # The wallet's current chain determines whether it needs switching to Base.
   def handle_event("wallet_chain", %{"chain_id" => id}, socket)
       when is_integer(id) or is_nil(id) do
-    socket = assign(socket, wallet_chain: id)
-
-    case chain_of(id) do
-      chain when is_binary(chain) and not socket.assigns.chain_chosen? ->
-        {:noreply, socket |> assign(chain: chain) |> sync()}
-
-      _keep ->
-        {:noreply, read_funds(socket)}
-    end
+    {:noreply, socket |> assign(wallet_chain: id) |> read_funds()}
   end
+
+  def handle_event("prepare_and_send", %{"form" => %{"chain" => chain}}, socket)
+      when chain != "base",
+      do:
+        {:reply, %{reason: "base_only"},
+         assign(socket, press_note: "Credits can only be bought with USDC on Base.")}
 
   # A press whose wallet or form the review on the page does not match: the
   # wallet and the form are taken as the page's own, and the reply carries the
@@ -244,16 +237,16 @@ defmodule PatchbayWeb.CreditsPanel do
   defp failure_note("switch_declined", _linked, _active, chain_name),
     do: "Your wallet stayed where it was. Press Switch Chain to try #{chain_name} again."
 
+  defp failure_note("base_only", _linked, _active, _chain_name),
+    do: "Credits can only be bought with USDC on Base. Nothing was sent."
+
   defp failure_note(reason, linked, active, chain_name),
     do: OnchainSteps.failure_note(reason, linked, active, chain_name)
 
-  defp choose(socket, amount, chain) do
-    socket = assign(socket, amount: amount)
+  defp choose(socket, amount, "base"), do: assign(socket, amount: amount, chain: "base")
 
-    if Map.has_key?(@chains, chain) and chain != socket.assigns.chain,
-      do: assign(socket, chain: chain, chain_chosen?: true),
-      else: socket
-  end
+  defp choose(socket, _amount, _chain),
+    do: assign(socket, press_note: "Credits can only be bought with USDC on Base.")
 
   # The review follows the signer, the amount and the chain. A new amount or
   # chain is a new purchase number; a repeat press of the same review buys again
@@ -305,7 +298,8 @@ defmodule PatchbayWeb.CreditsPanel do
       RegentCredits.report_purchase(
         profile.privy_user_id,
         review.signer,
-        @chains[review.inputs["chain"]],
+        # A Buy already sent before this policy changed still reports its receipt.
+        %{"base" => :base, "ethereum" => :ethereum}[review.inputs["chain"]],
         dollars(review.inputs["amount"]),
         number,
         hash,
@@ -358,8 +352,7 @@ defmodule PatchbayWeb.CreditsPanel do
   defp put_purchase(socket, hash, shown),
     do: assign(socket, purchases: Map.put(socket.assigns.purchases, hash, shown))
 
-  # The paying wallet's USDC on both chains, and what REGENT staking may take
-  # of its Base USDC, all at the latest block.
+  # The paying wallet's Base USDC and staking allowance, at the latest block.
   defp read_funds(%{assigns: %{signer: nil}} = socket), do: socket
 
   defp read_funds(socket) do
@@ -404,7 +397,6 @@ defmodule PatchbayWeb.CreditsPanel do
   end
 
   defp chain_of(8453), do: "base"
-  defp chain_of(1), do: "ethereum"
   defp chain_of(_other), do: nil
 
   @impl true
@@ -480,7 +472,7 @@ defmodule PatchbayWeb.CreditsPanel do
         <div class="credits-panel__chain-row">
           <fieldset class="credits-panel__chains" data-chain={@chain}>
             <legend class="credits-panel__hidden">Pay with USDC on</legend>
-            <label :for={{value, name} <- [{"base", "Base"}, {"ethereum", "Ethereum"}]}>
+            <label :for={{value, name} <- [{"base", "Base"}]}>
               <input
                 type="radio"
                 name="chain"
@@ -513,19 +505,14 @@ defmodule PatchbayWeb.CreditsPanel do
         <code>{@signer && RegentFormat.short_address(@signer)}</code>
         <span class="credits-panel__usdc">
           <span>Base {usdc(@usdc[:base])}</span>
-          <span>Ethereum {usdc(@usdc[:ethereum])}</span>
         </span>
       </div>
       <p class="credits-panel__note" hidden={!@mismatch}>{@mismatch}</p>
 
       <ol class="credits-panel__steps">
-        <%!-- Ethereum has no Approve step. Its row keeps its space, unseen and after
-             Buy, so changing chain never changes the panel's height. --%>
         <li
           class="credits-panel__step"
           data-state={@approve.state}
-          data-unused={@chain != "base"}
-          inert={@chain != "base"}
         >
           <P.button variant="secondary" data-onchain-step="approve">Approve</P.button>
           <div class="credits-panel__step-words">
@@ -590,19 +577,6 @@ defmodule PatchbayWeb.CreditsPanel do
         fill="#0052FF"
         d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H0C2.35281 87.8625 26.0432 110.034 54.921 110.034Z"
       />
-    </svg>
-    """
-  end
-
-  defp chain_logo(%{chain: "ethereum"} = assigns) do
-    ~H"""
-    <svg class="credits-panel__logo" viewBox="0 0 256 417" aria-hidden="true">
-      <path fill="#343434" d="M127.961 0l-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" />
-      <path fill="#8C8C8C" d="M127.962 0L0 212.32l127.962 75.639V154.158z" />
-      <path fill="#3C3C3B" d="M127.961 312.187l-1.575 1.92v98.199l1.575 4.6L256 236.587z" />
-      <path fill="#8C8C8C" d="M127.962 416.905v-104.72L0 236.585z" />
-      <path fill="#141414" d="M127.961 287.958l127.96-75.637-127.96-58.162z" />
-      <path fill="#393939" d="M0 212.32l127.96 75.638v-133.8z" />
     </svg>
     """
   end
@@ -699,10 +673,6 @@ defmodule PatchbayWeb.CreditsPanel do
 
   defp arrival("base"),
     do: "Sends the USDC to REGENT staking. Your Credits arrive in about 2 seconds."
-
-  defp arrival("ethereum"),
-    do:
-      "Sends the USDC to the Regents treasury. Your Credits arrive after 12 blocks, about 2½ minutes."
 
   defp switch?(nil, _wallet_chain, _chain), do: false
   defp switch?(_signer, nil, _chain), do: false

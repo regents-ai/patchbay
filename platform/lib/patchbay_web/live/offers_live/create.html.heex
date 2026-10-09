@@ -9,6 +9,16 @@
     a wording saves a new version and screens it again; a version already showing never changes.
   </p>
 
+  <p class="pb-dir-lede">
+    Save an Offer, wait for safety approval, then <.link navigate={~p"/offers/list"}>choose a slot and bid in Credits</.link>.
+    For a site's slot, request its fit check from the bid page after safety approval.
+    Saving an Offer is free; Credits are held only when you submit a bid.
+  </p>
+  <p :if={@screening_paused?} class="pb-offmod-problem" role="status">
+    Automatic screening is paused in this local preview. Your saved Offers will stay waiting
+    until screening resumes.
+  </p>
+
   <p :if={is_nil(@current_profile)} class="patchbay-muted">
     Sign in at the top of the page to save an Offer.
   </p>

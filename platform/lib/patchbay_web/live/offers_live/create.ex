@@ -32,7 +32,12 @@ defmodule PatchbayWeb.OffersLive.Create do
 
     {:ok,
      socket
-     |> assign(page_title: "Your Offers", problem: nil, rewording: nil)
+     |> assign(
+       page_title: "Your Offers",
+       problem: nil,
+       rewording: nil,
+       screening_paused?: Offers.screening_paused?()
+     )
      |> assign_new_offer(%{"label" => "", "text" => ""})
      |> assign(saved: if(profile, do: saved(profile), else: []))}
   end

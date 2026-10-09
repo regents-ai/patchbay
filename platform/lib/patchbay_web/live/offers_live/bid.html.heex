@@ -25,7 +25,15 @@
 
   <%= if @current_profile do %>
     <section class="pb-sheet-section" aria-labelledby="pb-offers-bid-form-title">
-      <h2 id="pb-offers-bid-form-title">Your bid</h2>
+      <h2 id="pb-offers-bid-form-title">Prepare your bid</h2>
+      <p class="patchbay-muted">
+        Write an Offer, wait for approval, then choose it here and submit a bid in Credits.
+        Site slots also need approval that the Offer fits that site.
+      </p>
+      <p :if={@screening_paused?} class="pb-offmod-problem" role="status">
+        Automatic screening is paused in this local preview. Saved Offers will stay waiting
+        until screening resumes. No Credits are held while you wait.
+      </p>
 
       <%= case @balance do %>
         <% :not_linked -> %>
@@ -76,7 +84,7 @@
           </fieldset>
 
           <fieldset class="pb-offers-choice">
-            <legend>Wording</legend>
+            <legend>Approved Offer</legend>
             <label :for={wording <- Enum.filter(@wordings, & &1.eligible?)}>
               <input
                 type="radio"
@@ -128,28 +136,37 @@
           </div>
 
           <Regent.Primitives.button type="submit" class="patchbay-button">
-            Hold the Credits and bid
+            Submit bid and hold Credits
           </Regent.Primitives.button>
         </.form>
       <% end %>
 
       <%= if @balance != :not_linked and !Enum.any?(@wordings, & &1.eligible?) do %>
         <p class="patchbay-muted" id="pb-offers-bid-none">
-          You have no wording approved for this market yet.
-          <.link navigate={~p"/offers/create"}>Write an Offer</.link>
-          and it is screened before you can bid.
+          <%= if @wordings == [] do %>
+            First, <.link navigate={~p"/offers/create"}>write an Offer</.link>.
+            Once it is approved for this market, the bid form appears here.
+          <% else %>
+            Your saved Offers are not approved for this market yet. Check their progress below
+            or <.link navigate={~p"/offers/create"}>manage your Offers</.link>.
+            The bid form appears here as soon as one is approved.
+          <% end %>
         </p>
+        <Regent.Primitives.button type="button" disabled aria-describedby="pb-offers-bid-none">
+          Submit bid · awaiting approval
+        </Regent.Primitives.button>
       <% end %>
 
       <div :if={Enum.any?(@wordings, &(!&1.eligible?))} class="pb-offers-waiting">
-        <h3>Not ready to bid here</h3>
+        <h3>Your Offers awaiting approval</h3>
         <ul class="pb-offers-standing">
           <li :for={wording <- Enum.reject(@wordings, & &1.eligible?)}>
             <strong>{wording.creative.label}</strong>
+            <p>Safety: {safety_words(wording)}</p>
             <%= cond do %>
               <% fit_words(wording) -> %>
                 · Fit for this site: {fit_words(wording)}
-              <% @site -> %>
+              <% @site && safety_approved?(wording) -> %>
                 ·
                 <Regent.Primitives.button
                   variant="quiet"
@@ -158,8 +175,10 @@
                 >
                   Ask whether it fits {site_name(@site)}
                 </Regent.Primitives.button>
+              <% @site -> %>
+                <p>Site fit: request this check after safety approval.</p>
               <% true -> %>
-                · Waiting for screening. See <.link navigate={~p"/offers/create"}>Your Offers</.link>.
+                <p>Global slots need safety approval before you can bid.</p>
             <% end %>
           </li>
         </ul>

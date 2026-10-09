@@ -192,9 +192,9 @@ async function pressed(hook: CreditsPanel & HookInterface, name: string, push: P
   const [result] = await hook.pushEventTo(hook.el, "prepare_and_send", {form, step: name, active_wallet: wallet.address})
   // The server never heard the press, so it cannot say why; the page does.
   if (result?.status !== "fulfilled") return lost(hook.el, true)
-  const reply = result.value.reply as {review?: Review; send?: string}
+  const reply = result.value.reply as {review?: Review; send?: string; reason?: string}
   if (reply.review && reply.send) return press(reply.review, reply.send, wallet, push)
-  push("step_failed", {step: name, reason: "step_unknown"})
+  push("step_failed", {step: name, reason: reply.reason === "base_only" ? "base_only" : "step_unknown"})
 }
 
 // The panel's `data-onchain-lost` line, shown when a press could not reach the

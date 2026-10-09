@@ -17,6 +17,11 @@ defmodule Patchbay.Offers do
 
   use Ash.Domain, otp_app: :patchbay
 
+  @doc "Whether automatic screening is paused for this local preview."
+  def screening_paused? do
+    :patchbay |> Application.get_env(Oban, []) |> Keyword.get(:testing) == :manual
+  end
+
   @doc """
   How long a screening's allow counts, in microseconds, before the version
   must be screened again to be shown or promoted. 24 hours unless set in

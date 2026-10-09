@@ -196,6 +196,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
         creative: creative,
         version: version,
         eligible?: version.id in eligible,
+        safety: Enum.find(version.reviews, &(&1.kind == :safety)),
         fit: market && Enum.find(version.reviews, &(&1.market_id == market.id))
       }
     end)

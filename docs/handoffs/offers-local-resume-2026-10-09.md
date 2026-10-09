@@ -68,3 +68,43 @@ DATABASE_URL and provider keys, set PORT=4050 and PHX_SERVER=true, then use
 
 The existing browser-session authority remains; a shared paired-agent identity
 cutover is a separate change. No release approval is implied by these checks.
+
+## Founder feedback follow-up
+
+Credits purchases are Base-only in Patchbay: no Ethereum option or balance,
+no automatic selection of the wallet's Ethereum chain, and no new Ethereum
+purchase review. Unsupported form chains receive a Base-only refusal that the
+browser preserves. Already-sent historical receipts retain their reporting path.
+The shared Credits library and historical purchase records are unchanged.
+
+Offers pages explain write → safety approval → site-fit approval when needed →
+bid in Credits. Pending Offers appear on the bid page with their safety status
+and a visible disabled submission button, rather than directing their owner to
+write another Offer. A live approval notification selects approved wording and
+reveals the form without changing the entered amount. The preview explicitly
+labels paused screening. No Credits are held before a bid is submitted.
+
+Verified: 29 existing scoped bidding/API/create-page tests; warning-free
+compilation, formatting, Credo, TypeScript and assets. A rolled-back fixture
+driver exercised pending, approved and expired approval views, preserved a
+2.35 Credits input, confirmed no hold before submission, checked Base-only
+transaction reviews and switching from an Ethereum wallet, and refused
+unsupported chains. Astra source-reviewed the final changes with no blocking
+findings. Browser verification showed the revised public instructions; the
+browser session accessible to automation still showed signed out after Sean's
+sign-in reply, so the real signed-in browser flow remains unverified.
+
+Read-only inspection confirmed `patchbay` and `Use Patchbay`, version 1, both
+still have pending safety reviews in the preview. The latter's bare address
+would require a person's review even after automatic screening. No saved text
+or review decision was changed. The allowed direnv settings do not currently
+provide OPENROUTER_API_KEY. Asked Sean for the existing secret-loading path and
+approval for one safety call per saved Offer. Those answers are pending.
+
+`screen_saved_offers.exs` in the artifact directory is prepared and dry-run
+verified. By default it makes no screening calls or review writes. Only its
+`--screen` mode runs the two existing server-owned safety actions, once each;
+do not run that mode without Sean's applicable authority and provider settings.
+It does not start settlement, unrelated queues or a web server. The ordinary
+preview remains paused. No wallet action, real purchase, push or deployment
+was performed.

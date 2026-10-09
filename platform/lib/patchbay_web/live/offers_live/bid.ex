@@ -47,7 +47,13 @@ defmodule PatchbayWeb.OffersLive.Bid do
       follow_credits(socket.assigns.current_profile)
     end
 
-    {:ok, assign(socket, page_title: "Bid on an Offer slot", problem: nil, short?: false)}
+    {:ok,
+     assign(socket,
+       page_title: "Bid on an Offer slot",
+       problem: nil,
+       short?: false,
+       screening_paused?: Offers.screening_paused?()
+     )}
   end
 
   @impl true
@@ -155,6 +161,20 @@ defmodule PatchbayWeb.OffersLive.Bid do
     |> assign(showing: showing, terms: BidDesk.terms(showing))
     |> assign(BidDesk.mine(profile, market, slot, now))
     |> assign_minimum()
+    |> choose_wording()
+  end
+
+  # Approval can arrive while this page is open. Keep a still-eligible selection;
+  # otherwise choose the first approved wording without changing the bid amount.
+  defp choose_wording(socket) do
+    %{wordings: wordings, version_id: selected} = socket.assigns
+
+    if Enum.any?(wordings, &(&1.eligible? and &1.version.id == selected)) do
+      socket
+    else
+      next = first_eligible(wordings)
+      if next == selected, do: socket, else: socket |> assign(version_id: next) |> new_key()
+    end
   end
 
   defp assign_minimum(socket), do: assign(socket, minimum: minimum(socket.assigns))
@@ -257,4 +277,12 @@ defmodule PatchbayWeb.OffersLive.Bid do
   @doc "Where a wording's check for this market stands, when it can't be bid yet."
   def fit_words(%{fit: nil}), do: nil
   def fit_words(%{fit: review}), do: Create.standing(review)
+
+  @doc "Where a wording's safety screening stands."
+  def safety_words(%{safety: nil}), do: "Waiting for screening."
+  def safety_words(%{safety: review}), do: Create.standing(review)
+
+  @doc false
+  def safety_approved?(%{safety: %{approved?: true}}), do: true
+  def safety_approved?(_wording), do: false
 end
