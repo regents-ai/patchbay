@@ -21,7 +21,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "kind",
+      "source": "reporter",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "surface",
       "type": "text"
     },
     {
@@ -37,76 +49,28 @@
       "type": "text"
     },
     {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "note",
+      "type": "text"
+    },
+    {
       "allow_nil?": false,
-      "default": "nil",
+      "default": "\"open\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "idempotency_key",
+      "source": "status",
       "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "expected_generation",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "outcome",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "consumed_minor",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "forfeited_minor",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "policy_revision",
-      "type": "bigint"
     },
     {
       "allow_nil?": false,
@@ -141,40 +105,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_moderation_actions_moderator_profile_id_fkey",
-        "on_delete": "restrict",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "agent_profiles"
-      },
-      "scale": null,
-      "size": null,
-      "source": "moderator_profile_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "offer_moderation_actions_placement_id_fkey",
+        "name": "offer_reports_placement_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
@@ -187,7 +118,7 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": true,
+      "allow_nil?": false,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -207,7 +138,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_moderation_actions_version_id_fkey",
+        "name": "offer_reports_version_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
@@ -240,96 +171,44 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_moderation_actions_promoted_placement_id_fkey",
+        "name": "offer_reports_delivery_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "offer_placements"
+        "table": "offer_deliveries"
       },
       "scale": null,
       "size": null,
-      "source": "promoted_placement_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "offer_moderation_actions_report_id_fkey",
-        "on_delete": "restrict",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "offer_reports"
-      },
-      "scale": null,
-      "size": null,
-      "source": "report_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "offer_moderation_actions_review_id_fkey",
-        "on_delete": "restrict",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "offer_reviews"
-      },
-      "scale": null,
-      "size": null,
-      "source": "review_id",
+      "source": "delivery_id",
       "type": "uuid"
     }
   ],
   "base_filter": null,
-  "check_constraints": [],
+  "check_constraints": [
+    {
+      "attribute": [
+        "note"
+      ],
+      "base_filter": null,
+      "check": "char_length(note) <= 2000 AND octet_length(note) <= 8192",
+      "name": "offer_reports_note_size"
+    }
+  ],
   "create_table_options": null,
   "custom_indexes": [
     {
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
+        "status",
         "inserted_at"
       ],
       "fields": [
+        {
+          "type": "atom",
+          "value": "status"
+        },
         {
           "type": "atom",
           "value": "inserted_at"
@@ -350,12 +229,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "placement_id"
+        "placement_id",
+        "inserted_at"
       ],
       "fields": [
         {
           "type": "atom",
           "value": "placement_id"
+        },
+        {
+          "type": "atom",
+          "value": "inserted_at"
         }
       ],
       "include": null,
@@ -391,73 +275,27 @@
       "unique": false,
       "using": null,
       "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "report_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "report_id"
-        }
-      ],
-      "include": null,
-      "include_base_filter?": true,
-      "message": null,
-      "name": null,
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
-    },
-    {
-      "all_tenants?": false,
-      "concurrently": false,
-      "error_fields": [
-        "review_id"
-      ],
-      "fields": [
-        {
-          "type": "atom",
-          "value": "review_id"
-        }
-      ],
-      "include": null,
-      "include_base_filter?": true,
-      "message": null,
-      "name": null,
-      "nulls_distinct": true,
-      "prefix": null,
-      "table": null,
-      "unique": false,
-      "using": null,
-      "where": null
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "D307592B7D26CB06E21210426CDC69B275FE079F6470CAE7DFCE8D73D03E2E62",
+  "hash": "5F7956CE8D770F6FD166E0CB0FF191DCEB29C3B20BDCFDEF2611807B910DC263",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "offer_moderation_actions_unique_request_index",
+      "index_name": "offer_reports_once_per_reporter_index",
       "keys": [
         {
           "type": "atom",
-          "value": "moderator_profile_id"
+          "value": "reporter"
         },
         {
           "type": "atom",
-          "value": "idempotency_key"
+          "value": "placement_id"
         }
       ],
-      "name": "unique_request",
+      "name": "once_per_reporter",
       "nils_distinct?": true,
       "where": null
     }
@@ -469,5 +307,5 @@
   },
   "repo": "Elixir.Patchbay.Repo",
   "schema": null,
-  "table": "offer_moderation_actions"
+  "table": "offer_reports"
 }

@@ -21,43 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "payer_address",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "\"awaiting_funds\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "funding",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "commit_tx_hash",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "release_tx_hash",
+      "source": "kind",
       "type": "text"
     },
     {
@@ -69,104 +33,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "lane",
+      "source": "reason",
       "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "amount_minor",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "minimum_minor",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "opening_minimum_minor",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "policy_revision",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "duration_us",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "target_generation",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "target_next_revision",
-      "type": "bigint"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": true,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "sequence",
-      "type": "bigint"
     },
     {
       "allow_nil?": false,
@@ -181,7 +49,7 @@
       "type": "text"
     },
     {
-      "allow_nil?": false,
+      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -189,19 +57,19 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "request_sha256",
-      "type": "text"
+      "source": "expected_generation",
+      "type": "bigint"
     },
     {
-      "allow_nil?": false,
-      "default": "\"held\"",
+      "allow_nil?": true,
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "status",
+      "source": "outcome",
       "type": "text"
     },
     {
@@ -213,20 +81,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "return_reason",
-      "type": "text"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "accepted_at",
-      "type": "utc_datetime_usec"
+      "source": "consumed_minor",
+      "type": "bigint"
     },
     {
       "allow_nil?": true,
@@ -237,8 +93,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "resolved_at",
-      "type": "utc_datetime_usec"
+      "source": "forfeited_minor",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "policy_revision",
+      "type": "bigint"
     },
     {
       "allow_nil?": false,
@@ -273,7 +141,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_bids_owner_profile_id_fkey",
+        "name": "offer_moderation_actions_moderator_profile_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
@@ -282,85 +150,7 @@
       },
       "scale": null,
       "size": null,
-      "source": "owner_profile_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "offer_bids_version_id_fkey",
-        "on_delete": "restrict",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "offer_creative_versions"
-      },
-      "scale": null,
-      "size": null,
-      "source": "version_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "offer_bids_slot_id_fkey",
-        "on_delete": "restrict",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "offer_slots"
-      },
-      "scale": null,
-      "size": null,
-      "source": "slot_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "window_id",
+      "source": "moderator_profile_id",
       "type": "uuid"
     },
     {
@@ -384,7 +174,7 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_bids_target_placement_id_fkey",
+        "name": "offer_moderation_actions_placement_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
@@ -393,67 +183,153 @@
       },
       "scale": null,
       "size": null,
-      "source": "target_placement_id",
+      "source": "placement_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_moderation_actions_version_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "offer_creative_versions"
+      },
+      "scale": null,
+      "size": null,
+      "source": "version_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_moderation_actions_promoted_placement_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "offer_placements"
+      },
+      "scale": null,
+      "size": null,
+      "source": "promoted_placement_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_moderation_actions_report_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "offer_reports"
+      },
+      "scale": null,
+      "size": null,
+      "source": "report_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_moderation_actions_review_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "offer_reviews"
+      },
+      "scale": null,
+      "size": null,
+      "source": "review_id",
       "type": "uuid"
     }
   ],
   "base_filter": null,
-  "check_constraints": [
-    {
-      "attribute": [
-        "amount_minor"
-      ],
-      "base_filter": null,
-      "check": "amount_minor > 0 AND amount_minor >= minimum_minor",
-      "name": "offer_bids_amount_positive"
-    },
-    {
-      "attribute": [
-        "funding"
-      ],
-      "base_filter": null,
-      "check": "(funding = 'funded') = (commit_tx_hash IS NOT NULL)\n  AND (status NOT IN ('leading', 'placed') OR funding = 'funded')\n  AND (release_tx_hash IS NULL OR (status = 'returned' AND funding = 'funded'))\n",
-      "name": "offer_bids_funding_shape"
-    },
-    {
-      "attribute": [
-        "payer_address"
-      ],
-      "base_filter": null,
-      "check": "payer_address ~ '^0x[0-9a-f]{40}$'",
-      "name": "offer_bids_payer_address_format"
-    },
-    {
-      "attribute": [
-        "commit_tx_hash"
-      ],
-      "base_filter": null,
-      "check": "(commit_tx_hash IS NULL OR commit_tx_hash ~ '^0x[0-9a-f]{64}$') AND (release_tx_hash IS NULL OR release_tx_hash ~ '^0x[0-9a-f]{64}$')",
-      "name": "offer_bids_tx_hash_format"
-    },
-    {
-      "attribute": [
-        "return_reason"
-      ],
-      "base_filter": null,
-      "check": "(status = 'returned') = (return_reason IS NOT NULL) AND (status <> 'returned' OR resolved_at IS NOT NULL)",
-      "name": "offer_bids_return_shape"
-    }
-  ],
+  "check_constraints": [],
   "create_table_options": null,
   "custom_indexes": [
     {
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "owner_profile_id",
         "inserted_at"
       ],
       "fields": [
-        {
-          "type": "atom",
-          "value": "owner_profile_id"
-        },
         {
           "type": "atom",
           "value": "inserted_at"
@@ -474,22 +350,12 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "window_id",
-        "amount_minor",
-        "sequence"
+        "placement_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "window_id"
-        },
-        {
-          "type": "atom",
-          "value": "amount_minor"
-        },
-        {
-          "type": "atom",
-          "value": "sequence"
+          "value": "placement_id"
         }
       ],
       "include": null,
@@ -507,66 +373,84 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "id",
-        "slot_id"
+        "version_id"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "id"
-        },
-        {
-          "type": "atom",
-          "value": "slot_id"
+          "value": "version_id"
         }
       ],
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": "offer_bids_id_slot",
+      "name": null,
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
-      "unique": true,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "report_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "report_id"
+        }
+      ],
+      "include": null,
+      "include_base_filter?": true,
+      "message": null,
+      "name": null,
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
+      "using": null,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "concurrently": false,
+      "error_fields": [
+        "review_id"
+      ],
+      "fields": [
+        {
+          "type": "atom",
+          "value": "review_id"
+        }
+      ],
+      "include": null,
+      "include_base_filter?": true,
+      "message": null,
+      "name": null,
+      "nulls_distinct": true,
+      "prefix": null,
+      "table": null,
+      "unique": false,
       "using": null,
       "where": null
     }
   ],
-  "custom_statements": [
-    {
-      "after_tables": [],
-      "code?": false,
-      "down": "ALTER TABLE offer_bids DROP CONSTRAINT offer_bids_window_same_slot_and_lane",
-      "global?": false,
-      "name": "bid_in_its_window_slot_and_lane",
-      "up": "ALTER TABLE offer_bids\n  ADD CONSTRAINT offer_bids_window_same_slot_and_lane\n  FOREIGN KEY (window_id, slot_id, lane)\n  REFERENCES offer_bid_windows (id, slot_id, lane)\n  ON DELETE RESTRICT\n"
-    }
-  ],
-  "has_create_action": false,
-  "hash": "7686B8395C341C4B2DD8AC3CFE5768B3841FFAC77E7AB54D4EDDB37377739AFD",
+  "custom_statements": [],
+  "has_create_action": true,
+  "hash": "1A3D03AB7216AC7C5C196B00995467F237E819183B03EB5345D438219F97598C",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "offer_bids_one_leader_per_slot_index",
+      "index_name": "offer_moderation_actions_unique_request_index",
       "keys": [
         {
           "type": "atom",
-          "value": "slot_id"
-        }
-      ],
-      "name": "one_leader_per_slot",
-      "nils_distinct?": true,
-      "where": "status = 'leading'"
-    },
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "offer_bids_unique_request_index",
-      "keys": [
-        {
-          "type": "atom",
-          "value": "owner_profile_id"
+          "value": "moderator_profile_id"
         },
         {
           "type": "atom",
@@ -585,5 +469,5 @@
   },
   "repo": "Elixir.Patchbay.Repo",
   "schema": null,
-  "table": "offer_bids"
+  "table": "offer_moderation_actions"
 }

@@ -130,18 +130,18 @@
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": "offer_markets_one_general",
+      "name": "offer_markets_one_global",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
       "unique": true,
       "using": null,
-      "where": "scope = 'general'"
+      "where": "scope = 'global'"
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "012CDAD299642C88769564465B36ED8D15C50AEAF871DCEAA6102E2DA26EE85D",
+  "hash": "060D1C0485C8DC6A840E9A3F748E3E2E1F200D594C4494800C7AD3E881519D2E",
   "identities": [
     {
       "all_tenants?": false,

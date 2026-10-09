@@ -71,4 +71,16 @@ defmodule Patchbay.Offers.CreditAmount do
   def from_credits(%Decimal{} = credits) do
     credits |> Decimal.mult(100) |> Decimal.round(0, :ceiling) |> Decimal.to_integer()
   end
+
+  @doc """
+  Whole Credits as minor units, rounded down to the hundredth: the most a
+  balance can pay in hundredths.
+
+      iex> Patchbay.Offers.CreditAmount.spendable(Decimal.new("3.005"))
+      300
+  """
+  @spec spendable(Decimal.t()) :: non_neg_integer()
+  def spendable(%Decimal{} = credits) do
+    credits |> Decimal.mult(100) |> Decimal.round(0, :floor) |> Decimal.to_integer()
+  end
 end

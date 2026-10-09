@@ -21,38 +21,23 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "kind",
+      "source": "surface",
       "type": "text"
     },
     {
       "allow_nil?": false,
-      "default": "\"pending\"",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "decision",
+      "source": "operation",
       "type": "text"
     },
     {
       "allow_nil?": false,
-      "default": "[]",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "reason_codes",
-      "type": [
-        "array",
-        "text"
-      ]
-    },
-    {
-      "allow_nil?": true,
       "default": "nil",
       "generated?": false,
       "precision": null,
@@ -60,44 +45,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "private_reason",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "model",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "policy_version",
-      "type": "text"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "input_sha256",
-      "type": "text"
+      "source": "selected_at",
+      "type": "utc_datetime_usec"
     },
     {
       "allow_nil?": false,
@@ -108,71 +57,11 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "destinations",
+      "source": "global_opportunities",
       "type": [
         "array",
-        "map"
+        "bigint"
       ]
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "decided_at",
-      "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "fresh_until",
-      "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "screen_requested_at",
-      "type": "utc_datetime_usec"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "decided_by_profile_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "inserted_at",
-      "type": "utc_datetime_usec"
     },
     {
       "allow_nil?": false,
@@ -195,16 +84,49 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_reviews_version_id_fkey",
+        "name": "offer_deliveries_site_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "offer_creative_versions"
+        "table": "forum_sites"
       },
       "scale": null,
       "size": null,
-      "source": "version_id",
+      "source": "site_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_deliveries_report_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "forum_reports"
+      },
+      "scale": null,
+      "size": null,
+      "source": "report_id",
       "type": "uuid"
     },
     {
@@ -228,16 +150,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_reviews_market_id_fkey",
+        "name": "offer_deliveries_reply_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "offer_markets"
+        "table": "forum_replies"
       },
       "scale": null,
       "size": null,
-      "source": "market_id",
+      "source": "reply_id",
       "type": "uuid"
     }
   ],
@@ -245,11 +167,11 @@
   "check_constraints": [
     {
       "attribute": [
-        "market_id"
+        "reply_id"
       ],
       "base_filter": null,
-      "check": "(kind = 'relevance') = (market_id IS NOT NULL)",
-      "name": "offer_reviews_kind_shape"
+      "check": "(operation = 'reply') = (reply_id IS NOT NULL)",
+      "name": "offer_deliveries_operation_shape"
     }
   ],
   "create_table_options": null,
@@ -258,12 +180,17 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "screen_requested_at"
+        "site_id",
+        "selected_at"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "screen_requested_at"
+          "value": "site_id"
+        },
+        {
+          "type": "atom",
+          "value": "selected_at"
         }
       ],
       "include": null,
@@ -275,18 +202,18 @@
       "table": null,
       "unique": false,
       "using": null,
-      "where": "screen_requested_at IS NOT NULL"
+      "where": null
     },
     {
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "fresh_until"
+        "selected_at"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "fresh_until"
+          "value": "selected_at"
         }
       ],
       "include": null,
@@ -303,39 +230,35 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "A6CEEF09A586D17B1E0DAA7B27AB0D85B6B24625AD74997003717E3552926AFB",
+  "hash": "D35919737498BEA04BBA003A46BE9382B8E92DC1757C627AA29481CEB3F76EED",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "offer_reviews_unique_relevance_index",
+      "index_name": "offer_deliveries_one_per_post_index",
       "keys": [
         {
           "type": "atom",
-          "value": "version_id"
-        },
-        {
-          "type": "atom",
-          "value": "market_id"
+          "value": "report_id"
         }
       ],
-      "name": "unique_relevance",
+      "name": "one_per_post",
       "nils_distinct?": true,
-      "where": "kind = 'relevance'"
+      "where": "operation <> 'reply'"
     },
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "offer_reviews_unique_safety_index",
+      "index_name": "offer_deliveries_one_per_reply_index",
       "keys": [
         {
           "type": "atom",
-          "value": "version_id"
+          "value": "reply_id"
         }
       ],
-      "name": "unique_safety",
+      "name": "one_per_reply",
       "nils_distinct?": true,
-      "where": "kind = 'safety'"
+      "where": "operation = 'reply'"
     }
   ],
   "multitenancy": {
@@ -345,5 +268,5 @@
   },
   "repo": "Elixir.Patchbay.Repo",
   "schema": null,
-  "table": "offer_reviews"
+  "table": "offer_deliveries"
 }

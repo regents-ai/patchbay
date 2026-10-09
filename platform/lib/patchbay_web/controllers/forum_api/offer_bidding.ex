@@ -154,7 +154,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidding do
   defp credits(%{available: available, held: held}) do
     %{
       linked: true,
-      available: OfferSlots.amount(CreditAmount.from_credits(available)),
+      available: OfferSlots.amount(CreditAmount.spendable(available)),
       held: OfferSlots.amount(CreditAmount.from_credits(held))
     }
   end

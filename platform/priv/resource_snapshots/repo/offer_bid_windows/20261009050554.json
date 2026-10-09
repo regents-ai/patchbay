@@ -21,7 +21,7 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "surface",
+      "source": "lane",
       "type": "text"
     },
     {
@@ -33,8 +33,8 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "operation",
-      "type": "text"
+      "source": "target_generation",
+      "type": "bigint"
     },
     {
       "allow_nil?": false,
@@ -45,23 +45,68 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "selected_at",
+      "source": "target_next_revision",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "baseline_minor",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "opened_at",
       "type": "utc_datetime_usec"
     },
     {
       "allow_nil?": false,
-      "default": "[]",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "global_opportunities",
-      "type": [
-        "array",
-        "bigint"
-      ]
+      "source": "closes_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"open\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "state",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "settled_at",
+      "type": "utc_datetime_usec"
     },
     {
       "allow_nil?": false,
@@ -84,49 +129,16 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_deliveries_site_id_fkey",
+        "name": "offer_bid_windows_slot_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "forum_sites"
+        "table": "offer_slots"
       },
       "scale": null,
       "size": null,
-      "source": "site_id",
-      "type": "uuid"
-    },
-    {
-      "allow_nil?": false,
-      "default": "nil",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": {
-        "deferrable": false,
-        "destination_attribute": "id",
-        "destination_attribute_default": null,
-        "destination_attribute_generated": null,
-        "index?": false,
-        "index_where": null,
-        "match_tenant?": false,
-        "match_type": null,
-        "match_with": null,
-        "multitenancy": {
-          "attribute": null,
-          "global": null,
-          "strategy": null
-        },
-        "name": "offer_deliveries_report_id_fkey",
-        "on_delete": "restrict",
-        "on_update": null,
-        "primary_key?": true,
-        "schema": "public",
-        "table": "forum_reports"
-      },
-      "scale": null,
-      "size": null,
-      "source": "report_id",
+      "source": "slot_id",
       "type": "uuid"
     },
     {
@@ -150,16 +162,49 @@
           "global": null,
           "strategy": null
         },
-        "name": "offer_deliveries_reply_id_fkey",
+        "name": "offer_bid_windows_target_placement_id_fkey",
         "on_delete": "restrict",
         "on_update": null,
         "primary_key?": true,
         "schema": "public",
-        "table": "forum_replies"
+        "table": "offer_placements"
       },
       "scale": null,
       "size": null,
-      "source": "reply_id",
+      "source": "target_placement_id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "index_where": null,
+        "match_tenant?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "offer_bid_windows_winner_bid_id_fkey",
+        "on_delete": "restrict",
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "offer_bids"
+      },
+      "scale": null,
+      "size": null,
+      "source": "winner_bid_id",
       "type": "uuid"
     }
   ],
@@ -167,11 +212,19 @@
   "check_constraints": [
     {
       "attribute": [
-        "reply_id"
+        "closes_at"
       ],
       "base_filter": null,
-      "check": "(operation = 'reply') = (reply_id IS NOT NULL)",
-      "name": "offer_deliveries_operation_shape"
+      "check": "closes_at = opened_at + interval '2 seconds'",
+      "name": "offer_bid_windows_two_seconds"
+    },
+    {
+      "attribute": [
+        "state"
+      ],
+      "base_filter": null,
+      "check": "(state = 'open') = (settled_at IS NULL) AND (winner_bid_id IS NULL OR state = 'won')",
+      "name": "offer_bid_windows_terminal_shape"
     }
   ],
   "create_table_options": null,
@@ -180,17 +233,12 @@
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "site_id",
-        "selected_at"
+        "closes_at"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "site_id"
-        },
-        {
-          "type": "atom",
-          "value": "selected_at"
+          "value": "closes_at"
         }
       ],
       "include": null,
@@ -202,63 +250,63 @@
       "table": null,
       "unique": false,
       "using": null,
-      "where": null
+      "where": "state = 'open'"
     },
     {
       "all_tenants?": false,
       "concurrently": false,
       "error_fields": [
-        "selected_at"
+        "id",
+        "slot_id",
+        "lane"
       ],
       "fields": [
         {
           "type": "atom",
-          "value": "selected_at"
+          "value": "id"
+        },
+        {
+          "type": "atom",
+          "value": "slot_id"
+        },
+        {
+          "type": "atom",
+          "value": "lane"
         }
       ],
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": null,
+      "name": "offer_bid_windows_id_slot_lane",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
-      "unique": false,
+      "unique": true,
       "using": null,
       "where": null
     }
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "72E7F2328D7FA873D5B2E1EECE49DA0B5DB0EB3B919E509B12C7F63994B5DFDE",
+  "hash": "98727242202765CED757D9E1ECC062FE105AADAC8A9898C2DA6B9DE5EA2605B5",
   "identities": [
     {
       "all_tenants?": false,
       "base_filter": null,
-      "index_name": "offer_deliveries_one_per_post_index",
+      "index_name": "offer_bid_windows_one_open_per_lane_index",
       "keys": [
         {
           "type": "atom",
-          "value": "report_id"
-        }
-      ],
-      "name": "one_per_post",
-      "nils_distinct?": true,
-      "where": "operation <> 'reply'"
-    },
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "offer_deliveries_one_per_reply_index",
-      "keys": [
+          "value": "slot_id"
+        },
         {
           "type": "atom",
-          "value": "reply_id"
+          "value": "lane"
         }
       ],
-      "name": "one_per_reply",
+      "name": "one_open_per_lane",
       "nils_distinct?": true,
-      "where": "operation = 'reply'"
+      "where": "state = 'open'"
     }
   ],
   "multitenancy": {
@@ -268,5 +316,5 @@
   },
   "repo": "Elixir.Patchbay.Repo",
   "schema": null,
-  "table": "offer_deliveries"
+  "table": "offer_bid_windows"
 }
