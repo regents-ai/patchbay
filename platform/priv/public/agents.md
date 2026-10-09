@@ -61,6 +61,17 @@ starts disabled and remains held during rollout. Grant management, funding and
 wallet signing remain owner actions. Reads and identity probes earn no Points;
 this adoption does not activate Points or change historical balances.
 
+## Already authorized payments
+
+New payments and ordinary payment/assist reads require current pairing. If an
+original payment is pending, settled or applied after unpairing, use
+`regents patchbay payments complete <id>` (POST
+`/api/agent/payment_intents/{id}/complete`) with fresh exact-request SIWA proof and
+an empty JSON object. Do not include a payment signature. This can finish only
+that original payment; it never starts or retries settlement. The response
+contains only intent ID, status and receipt, without private assist content.
+Legacy pending payments without frozen signer evidence are refused.
+
 ## Repair rooms
 
 A signed agent may act only in its owner's room. Open the real room page and wait

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Patchbay autonomous priority reports, assists and free fixes",
-    "version": "1.1.0",
-    "description": "Base EOA only. New payment intents, free assists and private reads require exact-request SIWA and current account pairing. The x402 payment signature remains separate and user-signed. Existing settlement completion retains its original authorization. Shared initial settlement pairing support and live verification are rollout prerequisites; no Credits or Points activation is enabled by this source."
+    "version": "1.2.0",
+    "description": "Base EOA only. New payment intents, settlement attempts, free assists and private reads require exact-request SIWA and current account pairing. The x402 payment signature remains separate and user-signed. An original signer may complete only an already authorized payment through /complete; that response contains only intent ID, status and receipt. No Credits or Points activation is enabled by this source."
   },
   "servers": [
     {
@@ -69,7 +69,7 @@
     "/api/agent/payment_intents/{id}/execute": {
       "post": {
         "operationId": "priority_report_execute",
-        "description": "Return x402 terms, or submit payment_signature in the signed JSON body. Never retry an uncertain settlement.",
+        "description": "Requires current account pairing. Return x402 terms, or submit payment_signature in the signed JSON body. Never retry uncertain settlement; use /complete with an empty signed JSON body for an already authorized payment.",
         "security": [
           {
             "walletEnvelope": []
@@ -146,7 +146,7 @@
     "/api/agent/payment_intents/{id}": {
       "get": {
         "operationId": "priority_report_get",
-        "description": "Recover only this wallet author's priority report intent, payment receipt and result.",
+        "description": "Requires current account pairing. Read only the currently delegated payment intent and owned result. For completion after unpairing use POST /complete; that route returns no private product details.",
         "security": [
           {
             "walletEnvelope": []
@@ -311,6 +311,66 @@
             }
           }
         ]
+      }
+    },
+    "/api/agent/payment_intents/{id}/complete": {
+      "post": {
+        "operationId": "payment_complete",
+        "description": "Authenticate the original agent signer and finish only an already pending, settled or applied payment, even after unpairing. Accept only an empty JSON object, never a payment signature. Return only payment_intent_id, status and receipt. Never starts or retries settlement; legacy pending records without frozen signer evidence are refused.",
+        "security": [
+          {
+            "walletEnvelope": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Applied; intent ID, status and receipt only."
+          },
+          "202": {
+            "description": "Settled; intent ID, status and receipt only."
+          },
+          "400": {
+            "description": "Invalid request; no payment is accepted."
+          },
+          "401": {
+            "description": "Exact-request signature refused."
+          },
+          "404": {
+            "description": "Intent unavailable to the original signer."
+          },
+          "409": {
+            "description": "Settlement pending; never pay again."
+          },
+          "422": {
+            "description": "Completion not authorized."
+          },
+          "503": {
+            "description": "Signing service unavailable."
+          }
+        }
       }
     }
   },

@@ -19,6 +19,7 @@ defmodule Patchbay.Payments.JevAssist do
   alias Ash.Error.Changes.InvalidChanges
   alias Patchbay.Assist
   alias Patchbay.Assist.Request
+  alias Patchbay.Payments.Completion
   alias RegentPayments.USDC
 
   # A paid assist costs one fixed fee, named here and nowhere the caller can
@@ -72,11 +73,20 @@ defmodule Patchbay.Payments.JevAssist do
   """
   @impl true
   def carry_out(intent, _receipt, actor, context) do
-    case Assist.open_run(%{intent: intent, browser_session_id: context.browser_session_id},
-           actor: actor
-         ) do
-      {:ok, _run} -> {:ok, :complete}
-      {:error, error} -> {:error, error}
+    with :ok <- Completion.authorize(actor, intent, kind(), target_type()),
+         {:ok, _run} <-
+           Assist.open_run(
+             %{
+               intent: intent,
+               browser_session_id:
+                 if(actor.authentication_origin == :wallet,
+                   do: nil,
+                   else: context.browser_session_id
+                 )
+             },
+             actor: actor
+           ) do
+      {:ok, :complete}
     end
   end
 

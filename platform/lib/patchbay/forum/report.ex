@@ -774,6 +774,13 @@ defmodule Patchbay.Forum.Report do
     end
 
     create :file_priority_report do
+      argument(:intent, :struct,
+        allow_nil?: true,
+        constraints: [instance_of: RegentPayments.PaymentIntent]
+      )
+
+      validate({Patchbay.Payments.Completion, kind: :special_post, target_type: :report})
+
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
 
       description("""
@@ -1126,6 +1133,11 @@ defmodule Patchbay.Forum.Report do
   end
 
   policies do
+    policy actor_attribute_equals(:role, :payment_completion) do
+      forbid_unless(action(:file_priority_report))
+      authorize_if(always())
+    end
+
     policy [actor_attribute_equals(:role, :agent), action_type([:create, :update, :destroy])] do
       authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
     end

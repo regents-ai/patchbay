@@ -150,29 +150,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     end
   end
 
-  # Preparing terms is a new protected action; this transaction contains no
-  # facilitator or wallet call. Later settlement retains its original authority.
-  defp prepare_for_actor(offer, input, %Patchbay.Agents.Actor{} = actor) do
-    case Ash.transact(PaymentIntent, fn -> prepare_paired(offer, input, actor) end) do
-      {:ok, {:ok, intent}} -> {:ok, intent}
-      {:error, error} -> {:error, error}
-    end
-  end
-
+  # The shared library freezes and locks current delegated authority.
   defp prepare_for_actor(offer, input, actor),
     do: RegentPayments.Purchase.prepare(offer, input, actor)
-
-  defp prepare_paired(offer, input, actor) do
-    case RegentAgents.Authority.lock(
-           Patchbay.Repo,
-           actor.pairing_id,
-           actor.privy_user_id,
-           actor.wallet_address
-         ) do
-      {:ok, _} -> RegentPayments.Purchase.prepare(offer, input, actor)
-      {:error, _} -> {:error, :forbidden}
-    end
-  end
 
   defp assist_set_up do
     if Assist.pay_to_address(), do: :ok, else: {:error, :assist_not_configured}
@@ -218,6 +198,22 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
     actor
     |> RegentPayments.Purchase.execute(id, request)
     |> Payments.follow_up()
+  end
+
+  @doc "Finish an already authorized payment without starting or retrying settlement."
+  def complete(actor, id) do
+    actor
+    |> RegentPayments.Purchase.complete(id, %{browser_session_id: nil})
+    |> Payments.follow_up()
+  end
+
+  @doc "Only the original payment's status and receipt, without private product details."
+  def completion_payload(intent, receipt) do
+    %{
+      payment_intent_id: intent.id,
+      status: intent.status,
+      receipt: if(receipt, do: RegentPayments.Purchase.receipt_payload(receipt))
+    }
   end
 
   @doc """

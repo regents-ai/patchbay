@@ -244,6 +244,8 @@ defmodule Patchbay.Assist.Run do
       change(set_attribute(:payer_profile_id, actor(:id)))
       change(set_attribute(:browser_session_id, arg(:browser_session_id)))
       change(Patchbay.Assist.Changes.OpenFromIntent)
+      change(Patchbay.Agents.AttributeAction)
+      validate({Patchbay.Payments.Completion, kind: :jev_assist, target_type: :assist_run})
       change(run_oban_trigger(:work))
     end
 
@@ -440,6 +442,11 @@ defmodule Patchbay.Assist.Run do
   end
 
   policies do
+    policy actor_attribute_equals(:role, :payment_completion) do
+      forbid_unless(action(:open))
+      authorize_if(always())
+    end
+
     # Only the settled payment's own payer opens its run, and only the
     # purchase process holds a settled intent to open one from. A free run
     # opens for anyone at the page, under the grant the allowance gives
@@ -452,6 +459,11 @@ defmodule Patchbay.Assist.Run do
     # HTTP can reach them; Patchbay's own jobs, sign-in, and a person at its
     # console are their only callers and say so by skipping authorization
     # deliberately.
+    policy [actor_attribute_equals(:role, :agent), action_type(:read)] do
+      forbid_unless({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
+      authorize_if(expr(beneficiary_profile_id == ^actor(:beneficiary_profile_id)))
+    end
+
     policy action(:open) do
       authorize_if(actor_present())
     end
@@ -468,6 +480,8 @@ defmodule Patchbay.Assist.Run do
     # The browser's read filters on the identity in its own signed cookie,
     # so it is authorized as a whole and the filter does the choosing.
     bypass action(:as_browser) do
+      forbid_if(actor_attribute_equals(:role, :payment_completion))
+      forbid_if(actor_attribute_equals(:role, :agent))
       authorize_if(always())
     end
 

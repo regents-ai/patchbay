@@ -199,7 +199,9 @@ defmodule Patchbay.MixProject do
         "format --check-formatted",
         "credo --strict",
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
-        "xref graph --label compile-connected --fail-above 59",
+        # Canonical accounts and the two owned-subscription policy checks add
+        # three required compile connections to the previous 59-connection budget.
+        "xref graph --label compile-connected --fail-above 62",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",

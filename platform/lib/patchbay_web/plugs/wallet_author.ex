@@ -96,6 +96,14 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
             byte_size(params["payment_signature"]) in 1..65_536))
   end
 
+  # Completion cannot accept another payment, even in its signed body.
+  defp permitted_request?(%{
+         method: "POST",
+         path_info: ["api", "agent", "payment_intents", _id, "complete"],
+         body_params: params
+       }),
+       do: params == %{}
+
   defp permitted_request?(_conn), do: false
 
   @impl Siwa.AgentAuthPlug.Client
