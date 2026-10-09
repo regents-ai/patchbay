@@ -128,7 +128,8 @@ defmodule Patchbay.Offers.ScreeningTest do
       |> Ash.update!()
     end)
 
-    screened = screen(review)
+    assert {:cancel, _no_longer_applies} = screen_job(review)
+    screened = Ash.get!(Offers.Review, review.id, authorize?: false)
     assert {screened.decision, screened.model, screened.fresh_until} == {:deny, nil, nil}
     assert screened.decided_by_profile_id == moderator.id
 
@@ -147,7 +148,8 @@ defmodule Patchbay.Offers.ScreeningTest do
       review |> Ash.Changeset.for_update(:rescreen, %{}) |> Ash.update!(authorize?: false)
     end)
 
-    review = screen(review)
+    assert {:cancel, _no_longer_applies} = screen_job(review)
+    review = Ash.get!(Offers.Review, review.id, authorize?: false)
     assert review.decision == :pending
     refute is_nil(review.screen_requested_at)
 
@@ -185,6 +187,10 @@ defmodule Patchbay.Offers.ScreeningTest do
     [review] = Ash.read!(Offers.Review, actor: owner)
     review
   end
+
+  # Runs the screening job itself, the way Oban does.
+  defp screen_job(review),
+    do: perform_job(Offers.Review.Workers.Screen, %{"primary_key" => %{"id" => review.id}})
 
   # Runs the screening job's own action, as the job does: no actor.
   defp screen(review) do

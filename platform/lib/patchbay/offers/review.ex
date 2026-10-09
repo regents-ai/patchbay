@@ -223,7 +223,8 @@ defmodule Patchbay.Offers.Review do
     update :screening_failed do
       description("Screening's last try failed; a moderator decides.")
       accept([])
-      # A request a moderator settled while the last try ran stays settled.
+      # A request a moderator settled while the last try ran stays settled. A
+      # newer request waiting then goes to the moderator with this one.
       change(filter(expr(not is_nil(screen_requested_at))))
       change(set_attribute(:decision, :needs_review))
       change(set_attribute(:reason_codes, ["screening_unavailable"]))

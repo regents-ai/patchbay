@@ -34,8 +34,8 @@ defmodule Patchbay.Offers.Screen do
   end
 
   # Screening's own decision on its own review; no person asked for it. A
-  # moderator's decision or a newer request made while it ran supersedes it,
-  # and the review is left as it is: nothing to try again.
+  # moderator's decision or a newer request made while it ran supersedes it:
+  # the review is left as it is, and the job stops without trying again.
   defp record(review, decision) do
     review
     |> Ash.Changeset.for_update(
@@ -46,9 +46,5 @@ defmodule Patchbay.Offers.Screen do
       })
     )
     |> Ash.update(authorize?: false)
-    |> case do
-      {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Changes.StaleRecord{}]}} -> {:ok, review}
-      result -> result
-    end
   end
 end
