@@ -17,14 +17,29 @@ defmodule Patchbay.WalletBench.Cohorts do
   defp recorded(run, "wallet") do
     versions = run.versions || %{}
 
-    if versions["wallet_verified"] != false and wallet_release?(versions["wallet"]),
-      do: versions["wallet"]
+    if versions["wallet_verified"] != false, do: wallet_release(versions["wallet"])
+  end
+
+  defp recorded(run, "requested_wallet") do
+    requested = (run.versions || %{})["requested_wallet"]
+    wallet_release(requested) || requested
   end
 
   defp recorded(run, key), do: (run.versions || %{})[key]
 
-  def wallet_release?(value) when is_binary(value), do: match?({:ok, _}, Version.parse(value))
-  def wallet_release?(_value), do: false
+  def wallet_release?(value), do: not is_nil(wallet_release(value))
+
+  defp wallet_release(value) when is_binary(value) do
+    release =
+      case value do
+        "v" <> release -> release
+        release -> release
+      end
+
+    if match?({:ok, _}, Version.parse(release)), do: release
+  end
+
+  defp wallet_release(_value), do: nil
 
   def display(nil), do: "Unknown"
   def display(value) when is_binary(value), do: value
