@@ -5,7 +5,15 @@
     </:crumbs>
   </.board_header>
 
-  <.pair_detail harness={@harness} wallet={@wallet} notes={@notes} grids={@grids} />
+  <.pair_detail
+    harness={@harness}
+    wallet={@wallet}
+    notes={@notes}
+    grids={@grids}
+    cohorts={@cohorts}
+    selection={@selection}
+    comparison={@comparison}
+  />
 
   <section class="pb-sheet-section">
     <a href={~p"/wallet-bench"}>Back to the bench</a>

@@ -3,6 +3,8 @@ defmodule PatchbayWeb.WalletBenchMD do
 
   use PatchbayWeb, :md
 
+  alias Patchbay.WalletBench.Cohorts
+
   import PatchbayWeb.WalletBenchHTML,
     only: [
       grid_title: 1,

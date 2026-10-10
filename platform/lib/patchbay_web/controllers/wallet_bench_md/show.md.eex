@@ -1,5 +1,26 @@
 # <%= line(@harness.name) %> with <%= line(@wallet.name) %>
 
+Roster versions are last seen; each run records the versions actually tested. Unknown means not recorded.
+<%= if @selection["cohort"] not in [nil, ""] do %>
+Selected group: <%= line(Cohorts.label(Enum.find(@cohorts, &(&1.id == @selection["cohort"])))) %>
+<% end %>
+<%= if @comparison do %>
+## Version comparison
+
+<%= line(@comparison.verdict) %>
+<%= if @comparison.missing != [], do: "Not recorded: " <> Enum.join(@comparison.missing, ", ") <> ".\n" %>
+<%= for change <- @comparison.differences do %>
+- <%= change.key %>: <%= line(Cohorts.display(change.before)) %> → <%= line(Cohorts.display(change.after)) %><% end %>
+<%= for {title, group} <- [{"Baseline", @comparison.baseline}, {"Compared", @comparison.compared}] do %>
+### <%= title %>
+
+<%= line(Cohorts.label(group)) %> · <%= length(group.runs) %> completed runs
+<%= for outcome <- outcomes(), Map.has_key?(group.outcomes, outcome) do %>
+- <%= outcome %>: <%= group.outcomes[outcome] %> of <%= length(group.runs) %><% end %>
+<%= for criterion <- group.criteria do %>
+- <%= line(criterion.name) %>: <%= criterion.held %> of <%= criterion.runs %> held; <%= criterion.checked %> checked<% end %>
+<% end %><% end %>
+
 <%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %>
 <%= for grid <- @grids do %>
 ## <%= grid_title(grid.grid) %>

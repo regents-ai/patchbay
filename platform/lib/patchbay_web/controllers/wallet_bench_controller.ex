@@ -10,12 +10,19 @@ defmodule PatchbayWeb.WalletBenchController do
 
   alias Patchbay.WalletBench
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Cohorts
   alias PatchbayWeb.Forum.NotFoundError
 
   def index(conn, params) do
     test = Map.get(params, "test", hd(Matrix.grids()))
     unless test in Matrix.grids(), do: raise(NotFoundError)
-    {:ok, matrix} = Matrix.read()
+    filters = Map.take(params, Cohorts.filters())
+    {:ok, matrix} = Matrix.read(filters)
+
+    Enum.each(filters, fn {key, id} ->
+      unless id == "" or Enum.any?(matrix.options[key], &(&1.id == id)),
+        do: raise(NotFoundError)
+    end)
 
     render(conn, :index,
       page_title: "Agent Wallet Bench",
@@ -24,7 +31,7 @@ defmodule PatchbayWeb.WalletBenchController do
     )
   end
 
-  def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id}) do
+  def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
     {:ok, roster} = WalletBench.list_roster()
     harness = Enum.find(roster, &(&1.kind == "harness" and &1.id == harness_id))
     wallet = Enum.find(roster, &(&1.kind == "wallet" and &1.id == wallet_id))
@@ -34,6 +41,21 @@ defmodule PatchbayWeb.WalletBenchController do
     {:ok, fixed} = WalletBench.list_fixed()
     {:ok, results} = WalletBench.pair_results(harness_id, wallet_id)
     {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
+    cohorts = Cohorts.groups(results)
+    selection = Map.take(params, ~w(cohort baseline compare))
+
+    Enum.each(selection, fn {_key, id} ->
+      unless id == "" or Enum.any?(cohorts, &(&1.id == id)), do: raise(NotFoundError)
+    end)
+
+    comparison = Cohorts.compare(cohorts, selection["baseline"], selection["compare"], checks)
+
+    results =
+      Enum.filter(results, fn run ->
+        selection["cohort"] in [nil, ""] or
+          Enum.any?(cohorts, &(&1.id == selection["cohort"] and run in &1.runs))
+      end)
+
     checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
 
     grids =
@@ -53,7 +75,10 @@ defmodule PatchbayWeb.WalletBenchController do
       harness: harness,
       wallet: wallet,
       notes: Matrix.notes(notes),
-      grids: grids
+      grids: grids,
+      cohorts: cohorts,
+      selection: selection,
+      comparison: comparison
     )
   end
 end

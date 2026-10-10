@@ -2586,3 +2586,20 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-read-offers h3 { font-size: 0.875rem; }
 .pb-read-offers blockquote { margin: 0.75rem 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .pb-read-offers-grid article > p { font-size: 0.8rem; opacity: 0.75; }
+
+/* Recorded benchmark releases: native filters and read-only comparisons. */
+#patchbay-wallet-bench-pair .pb-wb-runs { grid-template-columns: minmax(0, 1fr); }
+#patchbay-wallet-bench-pair .pb-wb-run { min-width: 0; overflow-wrap: anywhere; }
+.pb-wb-version-form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-2); margin-block: var(--space-3); }
+.pb-wb-version-form label { display: grid; gap: var(--space-1); flex: 1 1 14rem; min-width: 0; font-size: .875rem; }
+.pb-wb-version-form select { width: 100%; min-width: 0; max-width: 100%; min-height: 2.75rem; font-size: 1rem; }
+.pb-wb-group-count { font-size: .625rem; line-height: 1.4; }
+.pb-wb-comparison { display: grid; gap: var(--space-2); overflow-wrap: anywhere; }
+.pb-wb-comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.pb-wb-comparison-card { min-width: 0; padding: var(--space-3); font-size: .875rem; }
+.pb-wb-comparison-card h3 { margin: 0; }
+.pb-wb-comparison-card ul { padding-left: var(--space-2); }
+@media (max-width: 767px) {
+  .pb-wb-comparison-grid { grid-template-columns: minmax(0, 1fr); }
+  .pb-wb-version-form > .rg-button { width: 100%; }
+}

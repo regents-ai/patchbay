@@ -2,7 +2,7 @@ defmodule Patchbay.WalletBench.Matrix do
   @moduledoc """
   The bench's two grids, agents by wallets, built from what Techtree publishes.
 
-  Each square holds the outcomes of that pair's runs counted separately (two
+  Each square holds its latest exact recorded version group's outcomes, counted separately (two
   passes and an inconclusive run stay two and one, never one verdict), the
   fixed outcome Techtree gives a square that never runs, and one dot for each
   of the grid's checks: in how many of the pair's runs the judge found it held.
@@ -10,6 +10,7 @@ defmodule Patchbay.WalletBench.Matrix do
   """
 
   alias Patchbay.WalletBench
+  alias Patchbay.WalletBench.Cohorts
 
   @grids ["install", "wallet"]
 
@@ -40,13 +41,14 @@ defmodule Patchbay.WalletBench.Matrix do
   `{harness_id, wallet_id}`.
   """
   @spec read() :: {:ok, map()} | {:error, term()}
-  def read do
+  @spec read(map()) :: {:ok, map()} | {:error, term()}
+  def read(filters \\ %{}) do
     with {:ok, roster} <- WalletBench.list_roster(),
          {:ok, notes} <- WalletBench.list_notes(),
          {:ok, fixed} <- WalletBench.list_fixed(),
          {:ok, results} <- WalletBench.list_results(),
          {:ok, checks} <- WalletBench.list_checks() do
-      {:ok, build(roster, notes, fixed, results, checks)}
+      {:ok, build(roster, notes, fixed, results, checks, filters)}
     end
   end
 
@@ -56,7 +58,10 @@ defmodule Patchbay.WalletBench.Matrix do
 
   @doc "The page's grids from the views' rows."
   @spec build([struct()], [struct()], [struct()], [struct()], [struct()]) :: map()
-  def build(roster, notes, fixed, results, checks) do
+  @spec build([struct()], [struct()], [struct()], [struct()], [struct()], map()) :: map()
+  def build(roster, notes, fixed, results, checks, filters \\ %{}) do
+    options = Cohorts.options(results)
+    results = Cohorts.filter(results, filters)
     roster = Enum.sort_by(roster, & &1.id)
     harnesses = Enum.filter(roster, &(&1.kind == "harness"))
     wallets = Enum.filter(roster, &(&1.kind == "wallet"))
@@ -71,7 +76,17 @@ defmodule Patchbay.WalletBench.Matrix do
           for h <- harnesses, w <- wallets, into: %{} do
             runs = by_square |> Map.get({grid, h.id, w.id}, []) |> Enum.sort_by(& &1.run)
             fixed = fixed_for(fixed, grid, h.id, w.id)
-            {{h.id, w.id}, square(runs, fixed, criteria, found)}
+            cohort = Cohorts.latest(runs)
+            selected = if cohort, do: cohort.runs, else: []
+            summary = square(selected, fixed, criteria, found)
+
+            summary =
+              Map.merge(summary, %{
+                cohort_id: cohort && cohort.id,
+                cohort_count: length(Cohorts.groups(runs))
+              })
+
+            {{h.id, w.id}, summary}
           end
 
         %{grid: grid, criteria: criteria, squares: squares}
@@ -104,7 +119,13 @@ defmodule Patchbay.WalletBench.Matrix do
         |> Map.merge(progress(squares))
       end)
 
-    %{wallets: visible_wallets, notes: notes(notes), grids: grids}
+    %{
+      wallets: visible_wallets,
+      notes: notes(notes),
+      grids: grids,
+      options: options,
+      filters: filters
+    }
   end
 
   @doc "The fixed outcomes that apply to one square, from Techtree's `\"*\"` keys."

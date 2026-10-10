@@ -12,12 +12,46 @@
     <nav class="pb-wb-tabs" aria-label="Tests">
       <a
         :for={grid <- @matrix.grids}
-        href={~p"/wallet-bench?test=#{grid.grid}"}
+        href={~p"/wallet-bench?#{Map.put(@matrix.filters, "test", grid.grid)}"}
         aria-current={grid.grid == @test.grid && "page"}
       >
         {grid_title(grid.grid)}
       </a>
     </nav>
+
+    <form
+      method="get"
+      action={~p"/wallet-bench"}
+      class="pb-wb-version-form"
+      aria-label="Filter recorded versions"
+    >
+      <input type="hidden" name="test" value={@test.grid} />
+      <label :for={
+        {key, title} <- [
+          {"harness", "Agent version"},
+          {"wallet", "Wallet version"},
+          {"model", "Model"},
+          {"protocol", "Protocol"}
+        ]
+      }>
+        {title}
+        <select name={key} aria-label={title}>
+          <option value="">Any recorded version</option>
+          <option
+            :for={option <- @matrix.options[key]}
+            value={option.id}
+            selected={@matrix.filters[key] == option.id}
+          >
+            {option.label}
+          </option>
+        </select>
+      </label>
+      <button class="rg-button rg-button--secondary" type="submit">Filter</button>
+      <a href={~p"/wallet-bench?test=#{@test.grid}"}>Reset</a>
+    </form>
+    <p class="patchbay-muted">
+      Each square shows its latest exact version group. Open it for older runs and comparisons.
+    </p>
 
     <div class="pb-wb-board-head">
       <h2>{grid_title(@test.grid)}</h2>
@@ -82,7 +116,7 @@
       <article class="pb-wb-card" aria-labelledby="pb-wb-key-title">
         <h2 id="pb-wb-key-title">Reading a dot</h2>
         <p>
-          A dot shows how often the check held across the pair’s completed runs, including reruns.
+          A dot shows how often the check held within the selected version group. Different releases and contexts are kept apart.
         </p>
         <ul class="pb-wb-legend">
           <li :for={{tone, label} <- dot_key()}>

@@ -15,6 +15,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Cohorts
 
   embed_templates("wallet_bench_html/*")
 
@@ -177,23 +178,41 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def plain_file(value), do: value
 
   @doc "What a run's versions record, in a fixed order, skipping what was not recorded."
-  def versions(nil), do: []
+  def versions(nil), do: versions(%{})
 
   def versions(versions) do
+    versions =
+      cond do
+        versions["wallet_verified"] == false ->
+          Map.put(versions, "wallet", "Unknown (release verification failed)")
+
+        not Cohorts.wallet_release?(versions["wallet"]) ->
+          Map.put(versions, "wallet", "Unknown (not a recorded release)")
+
+        true ->
+          versions
+      end
+
     for {key, label} <- [
           {"harness", "Agent"},
           {"wallet", "Wallet"},
+          {"wallet_verified", "Wallet release verified"},
           {"model", "Coding model"},
           {"setup", "Account setup"},
           {"hosted_model", "Hosted model"},
           {"reasoning_effort", "Effort"},
           {"os", "Machine"},
           {"judge", "Judge"},
-          {"recipe", "Recipe"}
+          {"recipe", "Recipe"},
+          {"batch", "Batch"},
+          {"requested_wallet", "Requested wallet"},
+          {"protocol", "Protocol"},
+          {"access", "Access"}
         ],
-        value = versions[key],
+        value <-
+          [Map.get(versions, key, if(key in ~w(protocol access), do: "Unknown (not recorded)"))],
         value not in [nil, ""],
-        do: {label, value}
+        do: {label, Cohorts.display(value)}
   end
 
   @doc "One outcome as a coloured chip."
@@ -283,7 +302,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def square(assigns) do
     ~H"""
     <a
-      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}" <> "#" <> @grid}
+      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}" <> if(@square.cohort_id, do: "?cohort=" <> @square.cohort_id, else: "") <> "#" <> @grid}
       class={["pb-wb-square", @square.runs == 0 && "is-empty"]}
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
       data-wb-pair={@harness.name <> " with " <> @wallet.name}
@@ -291,6 +310,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
       <span :if={@square.runs > 0} class="pb-wb-dots" aria-hidden="true">
         <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.runs)]}></span>
       </span>
+      <span :if={@square.runs > 0} class="pb-wb-group-count">{@square.runs} runs · {@square.cohort_count} groups</span>
       <span
         :for={outcome <- fixed_outcomes(@square)}
         :if={@square.runs == 0 and outcome not in @said}
@@ -331,11 +351,116 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:wallet, :map, required: true)
   attr(:notes, :map, required: true)
   attr(:grids, :list, required: true)
+  attr(:cohorts, :list, default: [])
+  attr(:selection, :map, default: %{})
+  attr(:comparison, :map, default: nil)
 
   def pair_detail(assigns) do
     ~H"""
     <div id="pb-wb-pair" class="pb-wb-pair">
+      <section :if={@cohorts != []} class="pb-sheet-section">
+        <h2>Versions &amp; comparisons</h2>
+        <p class="patchbay-muted">
+          Runs are grouped by their recorded versions and test context. Unknown means it was not recorded.
+        </p>
+        <form
+          method="get"
+          action={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}"}
+          class="pb-wb-version-form"
+        >
+          <label>
+            Version group
+            <select name="cohort" aria-label="Version group">
+              <option value="">All historical runs</option>
+              <option
+                :for={group <- @cohorts}
+                value={group.id}
+                selected={@selection["cohort"] == group.id}
+              >
+                {Cohorts.label(group)}
+              </option>
+            </select>
+          </label>
+          <button class="rg-button rg-button--secondary" type="submit">Show runs</button>
+        </form>
+        <form
+          method="get"
+          action={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}"}
+          class="pb-wb-version-form"
+        >
+          <label>
+            Baseline
+            <select name="baseline" aria-label="Baseline" required>
+              <option value="">Choose a group</option>
+              <option
+                :for={group <- @cohorts}
+                value={group.id}
+                selected={@selection["baseline"] == group.id}
+              >
+                {Cohorts.label(group)}
+              </option>
+            </select>
+          </label>
+          <label>
+            Compare with
+            <select name="compare" aria-label="Compare with" required>
+              <option value="">Choose a group</option>
+              <option
+                :for={group <- @cohorts}
+                value={group.id}
+                selected={@selection["compare"] == group.id}
+              >
+                {Cohorts.label(group)}
+              </option>
+            </select>
+          </label>
+          <button class="rg-button rg-button--secondary" type="submit">Compare</button>
+        </form>
+        <div :if={@comparison} class="pb-wb-comparison">
+          <p role="status"><strong>{@comparison.verdict}</strong></p>
+          <p :if={@comparison.missing != []} class="patchbay-muted">
+            Not recorded: {Enum.join(@comparison.missing, ", ")}.
+          </p>
+          <dl :if={@comparison.differences != []} class="patchbay-facts">
+            <div :for={change <- @comparison.differences}>
+              <dt>{change.key}</dt><dd>
+                {Cohorts.display(change.before)} → {Cohorts.display(change.after)}
+              </dd>
+            </div>
+          </dl>
+          <div class="pb-wb-comparison-grid">
+            <Regent.Structure.panel
+              :for={
+                {title, group} <- [
+                  {"Baseline", @comparison.baseline},
+                  {"Compared", @comparison.compared}
+                ]
+              }
+              class="pb-wb-comparison-card"
+            >
+              <h3>{title}</h3>
+              <p>{Cohorts.label(group)}</p>
+              <p>{length(group.runs)} completed runs</p>
+              <ul>
+                <li :for={outcome <- outcomes()} :if={Map.has_key?(group.outcomes, outcome)}>
+                  <.chip notes={@notes} outcome={outcome} /> {group.outcomes[outcome]} of {length(
+                    group.runs
+                  )}
+                </li>
+              </ul>
+              <ul>
+                <li :for={criterion <- group.criteria}>
+                  {criterion.name}: {criterion.held} of {criterion.runs} held · {criterion.checked} checked
+                </li>
+              </ul>
+            </Regent.Structure.panel>
+          </div>
+        </div>
+      </section>
       <section class="pb-sheet-section">
+        <p class="patchbay-muted">
+          Roster versions are last seen. Each run below records what was actually tested.
+        </p>
         <div class="patchbay-facts">
           <div :if={@harness.version}>
             <span>{@harness.name}</span><code>{@harness.version}</code>
