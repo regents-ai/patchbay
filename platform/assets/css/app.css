@@ -159,7 +159,8 @@ body {
   color: var(--pb-text);
   font: var(--font-weight-semibold) var(--pb-fs-sm)/1.2 var(--font-family-ui);
 }
-/* The signed-in name and its sign-out icon are one control, joined edge to edge. */
+/* The signed-in name, the Account link and the sign-out icon are one control,
+   joined edge to edge. */
 .pb-account-chip {
   display: inline-flex;
   align-items: stretch;
@@ -195,7 +196,18 @@ body {
   color: var(--pb-text);
   cursor: pointer;
 }
+.pb-account-link {
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-2);
+  border-left: 1px solid var(--pb-line-strong);
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
 .pb-account-sign-out svg { width: 1.125rem; height: 1.125rem; }
+.pb-account-link:hover,
+.pb-account-link:focus-visible,
 .pb-account-sign-out:hover:not(:disabled),
 .pb-account-sign-out:focus-visible { color: var(--pb-accent); }
 .pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: var(--font-weight-regular); }
@@ -850,6 +862,9 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-reply-form textarea { width: 100%; min-height: 2.75rem; border: 1px solid var(--pb-text); border-radius: 0; background: var(--pb-field); color: var(--pb-text); }
 .pb-reply-form textarea { resize: vertical; padding: .75rem .875rem; }
 .pb-reply-form-foot { display: flex; justify-content: flex-end; }
+/* The cut corners go on the button's painted skin, never on the button, so its
+   focus ring is never cut. */
+.pb-reply-form .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
 .pb-reply-as { margin: 0; font-size: .875rem; }
 .pb-reply-signin { margin: 0; font-size: .875rem; }
 .pb-reply-form-problem { margin: 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
@@ -1905,8 +1920,9 @@ h1, h2, h3, h4, h5, h6 {
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
 .pb-home-search { align-items: end; }
 .pb-account { flex-wrap: wrap; }
-.pb-profile-panel { width: min(100%, 48rem); margin-inline: auto; }
-.pb-profile-panel .rg-profile { width: 100%; padding: var(--rg-panel-padding); }
+.pb-account-panel { display: grid; gap: var(--space-3); width: min(100%, 48rem); margin-inline: auto; padding: var(--rg-panel-padding); }
+.pb-account-panel > h1 { margin: 0; }
+.pb-account-panel .rg-profile { width: 100%; padding: 0; }
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
 .pb-error-inner .pb-kicker { margin: 0; }
 .patchbay-notice.rg-panel { background: transparent; border: 0; }

@@ -105,7 +105,18 @@
 .pb-find .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
 .pb-find .pb-fix-tools-list { background: var(--pb-field); }
 .pb-find .pb-fix-more label, .pb-find :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
-.pb-find .pb-hero-actions .rg-button--secondary { border-color: var(--pb-text); background: var(--pb-text); color: var(--color-bg); }
+/* The hero buttons take the form's cut corners on their painted skin only, so
+   the focus ring round each button is never cut. */
+.pb-find .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
+.pb-find .pb-hero-actions .rg-button--secondary { border-color: transparent; background: transparent; color: var(--color-bg); }
+.pb-find .pb-hero-actions .rg-button--secondary::before {
+  content: ""; position: absolute; inset: -1px; z-index: -1; pointer-events: none;
+  background: var(--pb-text); clip-path: var(--pb-cut);
+}
+.pb-find .pb-hero-actions .rg-button--secondary:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
+@media (forced-colors: active) {
+  .pb-find .pb-hero-actions .rg-button--secondary::before { display: none; }
+}
 .pb-find-sites { display: flex; flex-wrap: wrap; justify-content: center; align-self: stretch; gap: var(--space-2); margin-top: var(--space-3); text-align: left; }
 .pb-find-sites a {
   display: grid;

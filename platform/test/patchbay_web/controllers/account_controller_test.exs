@@ -1,4 +1,4 @@
-defmodule PatchbayWeb.SharedProfileControllerTest do
+defmodule PatchbayWeb.AccountControllerTest do
   use PatchbayWeb.ConnCase, async: false
 
   setup_all do
@@ -21,10 +21,12 @@ defmodule PatchbayWeb.SharedProfileControllerTest do
     %{key: key}
   end
 
-  test "profile page and private API use shared components and signed ownership", %{key: key} do
-    html = build_conn() |> get("/profile") |> html_response(200)
-    assert html =~ "data-regent-profile"
-    assert html =~ "Connect X"
+  test "account page and private profile API use shared components and signed ownership", %{
+    key: key
+  } do
+    html = build_conn() |> get("/account") |> html_response(200)
+    assert html =~ "Sign in to see your account."
+    refute html =~ "data-regent-profile"
     assert build_conn() |> get("/api/v1/profile") |> response(401)
 
     assert build_conn()

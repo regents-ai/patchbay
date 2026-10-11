@@ -50,21 +50,21 @@ function spoken(error: ErrorBody | undefined): string | undefined {
 }
 
 /**
- * Wires the account strip in the root layout to Privy.
+ * Wires every `data-pb-account` control on the page to Privy: the account
+ * strip in the root layout, and the Account page's own Sign in.
  *
- * The strip is the same on every page and is drawn from the signed session, so
- * this only has to answer two clicks. Nothing here reconciles state on load: a
- * Privy that is still waking up says nothing about whether this browser is
- * signed in to Patchbay, and the page already knows the answer to that.
+ * Both are drawn from the signed session, so this only has to answer two
+ * clicks. Nothing here reconciles state on load: a Privy that is still waking
+ * up says nothing about whether this browser is signed in to Patchbay, and the
+ * page already knows the answer to that.
  */
 export function installAccountControl(options: AccountOptions = {}) {
   const doc = options.document ?? globalThis.document
-  const strip = doc?.getElementById?.("pb-account")
-  if (!strip) return
+  if (!doc) return
 
   let running = false
 
-  strip.addEventListener("click", async event => {
+  doc.addEventListener("click", async event => {
     const button = (event.target as Element).closest?.<HTMLButtonElement>("[data-pb-account]")
     if (!button || running) return
 

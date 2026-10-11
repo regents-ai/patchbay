@@ -1571,7 +1571,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </div>
         <div>
           <dt>USDC Balance</dt>
-          <dd id="pb-fund-balance"></dd>
+          <dd id="pb-fund-balance">{if @payments_enabled, do: "Loading…", else: "Unavailable"}</dd>
         </div>
       </dl>
       <label class="visually-hidden" for="pb-funding-request">Funding request</label>

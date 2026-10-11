@@ -243,8 +243,11 @@ export function mountAgentFunding(options: MountOptions = {}) {
   const paymentsEnabled = root.getAttribute("data-payments-enabled") === "true";
   const signedIn = Boolean(profileId());
 
+  const balance = root.querySelector("#pb-fund-balance");
+
   const refresh = () => {
     if (!paymentsEnabled || !signedIn) return;
+    if (balance) balance.textContent = "Loading…";
     load({
       fetch: options.fetch,
       signedIn: true,
@@ -280,9 +283,10 @@ function paintFunding(root: Element, readiness: RailReadiness | null) {
   const wallet = root.querySelector("#pb-fund-wallet");
   if (wallet && readiness?.wallet_address) wallet.textContent = readiness.wallet_address;
 
+  // A failed read says so; it never shows as zero or as the last figure.
   const balance = root.querySelector("#pb-fund-balance");
-  if (balance && readiness?.balance_usdc) {
-    balance.textContent = `${readiness.balance_usdc} USDC`;
+  if (balance) {
+    balance.textContent = readiness?.balance_usdc ? `${readiness.balance_usdc} USDC` : "Couldn’t be read";
   }
 
   const request = root.querySelector<HTMLTextAreaElement>("#pb-funding-request");

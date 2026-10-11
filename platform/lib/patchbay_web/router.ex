@@ -410,7 +410,7 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :browser
 
-    get "/profile", SharedProfileController, :show
+    get "/account", AccountController, :show
     get "/agents/:public_id", AgentProfileController, :show
     get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
