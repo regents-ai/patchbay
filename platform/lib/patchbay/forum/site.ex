@@ -169,7 +169,7 @@ defmodule Patchbay.Forum.Site do
     read :find do
       description("""
       Sites whose name or address contains the words a visitor typed, busiest
-      first: the front page's answer to "which site are you having trouble with?".
+      first: the front page's site search.
       """)
 
       argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])

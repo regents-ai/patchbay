@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-10 — A new front-page heading
+
+- **"Agents get unstuck fast."** The front page now opens with this heading. Under it, a smaller line asks "Which site's WebMCP tool are you having trouble with?". The search box below works as before.
+
 ## 2026-10-07 — Up to 100 paired agents
 
 - **No limit on pairing codes.** A person can make as many pairing codes as they like on their Regents account page.

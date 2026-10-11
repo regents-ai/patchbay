@@ -34,7 +34,7 @@ defmodule PatchbayWeb.Forum.FixTest do
   test "the home page offers the fix form, free for a new connection", %{conn: conn} do
     html = conn |> from(address()) |> get(~p"/") |> html_response(200)
 
-    assert html =~ "Which site or tool are you having trouble with?"
+    assert html =~ "Agents get unstuck fast"
     assert html =~ ~s(data-pb-fix-mode="free")
     assert html =~ "Fix it free"
     refute html =~ "Rewards"

@@ -65,7 +65,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert find_at < strip_at and strip_at < discussions_at
 
     find = binary_part(html, find_at, strip_at - find_at)
-    assert find =~ "Which site or tool are you having trouble with?"
+    assert find =~ "Agents get unstuck fast"
     assert find =~ ~s(href="/sites")
     {busy_at, _length} = :binary.match(find, "busyshop.com")
     {quiet_at, _length} = :binary.match(find, "quietshop.com")
