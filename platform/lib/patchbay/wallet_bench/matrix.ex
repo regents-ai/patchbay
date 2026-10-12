@@ -74,19 +74,9 @@ defmodule Patchbay.WalletBench.Matrix do
 
         squares =
           for h <- harnesses, w <- wallets, into: %{} do
-            runs = by_square |> Map.get({grid, h.id, w.id}, []) |> Enum.sort_by(& &1.run)
+            runs = Map.get(by_square, {grid, h.id, w.id}, [])
             fixed = fixed_for(fixed, grid, h.id, w.id)
-            cohort = Cohorts.latest(runs)
-            selected = if cohort, do: cohort.runs, else: []
-            summary = square(selected, fixed, criteria, found)
-
-            summary =
-              Map.merge(summary, %{
-                cohort_id: cohort && cohort.id,
-                cohort_count: length(Cohorts.groups(runs))
-              })
-
-            {{h.id, w.id}, summary}
+            {{h.id, w.id}, latest_square(runs, fixed, criteria, found)}
           end
 
         %{grid: grid, criteria: criteria, squares: squares}
@@ -153,6 +143,18 @@ defmodule Patchbay.WalletBench.Matrix do
     |> Enum.uniq_by(& &1.criterion_id)
     |> Enum.sort_by(& &1.criterion_id)
     |> Enum.map(&%{id: &1.criterion_id, criterion: &1.criterion})
+  end
+
+  # A square counts only its latest exact version group's runs, and says which
+  # group that is and how many groups the pair has.
+  defp latest_square(runs, fixed, criteria, found) do
+    groups = Cohorts.groups(runs)
+    latest = List.first(groups)
+    selected = if latest, do: latest.runs, else: []
+
+    selected
+    |> square(fixed, criteria, found)
+    |> Map.merge(%{cohort_id: latest && latest.id, cohort_count: length(groups)})
   end
 
   defp square(runs, fixed, criteria, found) do

@@ -86,8 +86,6 @@ defmodule Patchbay.WalletBench.Cohorts do
     |> Enum.sort_by(& &1.latest.finished_at, {:desc, DateTime})
   end
 
-  def latest(runs), do: runs |> groups() |> List.first()
-
   def label(group) do
     run = group.latest
 
@@ -97,75 +95,68 @@ defmodule Patchbay.WalletBench.Cohorts do
   def compare(groups, baseline_id, compared_id, checks) do
     baseline = Enum.find(groups, &(&1.id == baseline_id))
     compared = Enum.find(groups, &(&1.id == compared_id))
+    if baseline && compared, do: comparison(baseline, compared, checks)
+  end
 
-    if baseline && compared do
-      keys =
-        (@fields ++
-           Map.keys(baseline.latest.versions || %{}) ++ Map.keys(compared.latest.versions || %{}))
-        |> Enum.uniq()
-        |> Enum.reject(&(&1 == "batch"))
+  defp comparison(baseline, compared, checks) do
+    differences = differences(baseline.latest, compared.latest)
 
-      differences =
-        for key <- keys,
-            recorded(baseline.latest, key) != recorded(compared.latest, key),
-            do: %{
-              key: key,
-              before: recorded(baseline.latest, key),
-              after: recorded(compared.latest, key)
-            }
+    missing =
+      Enum.filter(
+        @required,
+        &(is_nil(value(baseline.latest, &1)) or is_nil(value(compared.latest, &1)))
+      )
 
-      missing =
-        Enum.filter(
-          @required,
-          &(is_nil(value(baseline.latest, &1)) or is_nil(value(compared.latest, &1)))
-        )
+    %{
+      baseline: summarize(baseline, checks),
+      compared: summarize(compared, checks),
+      differences: differences,
+      missing: missing,
+      verdict: verdict(baseline, compared, differences, missing)
+    }
+  end
 
-      changed_versions = Enum.filter(differences, &(&1.key in ~w(harness wallet)))
+  defp differences(before, later) do
+    (@fields ++ Map.keys(before.versions || %{}) ++ Map.keys(later.versions || %{}))
+    |> Enum.uniq()
+    |> Enum.reject(&(&1 == "batch" or recorded(before, &1) == recorded(later, &1)))
+    |> Enum.map(&%{key: &1, before: recorded(before, &1), after: recorded(later, &1)})
+  end
 
-      verified_wallet_upgrade? =
-        match?([%{key: "wallet"}], changed_versions) and
-          Enum.all?([baseline.latest, compared.latest], fn run ->
-            (run.versions || %{})["wallet_verified"] == true and
-              not is_nil(value(run, "wallet")) and
-              value(run, "wallet") == value(run, "requested_wallet")
-          end)
+  defp verdict(%{grid: grid}, %{grid: other}, _differences, _missing) when grid != other,
+    do: "Different tests — results are not comparable"
 
-      changed_context =
-        Enum.reject(differences, fn change ->
-          change.key in ~w(harness wallet) or
-            (change.key == "requested_wallet" and verified_wallet_upgrade?)
-        end)
+  defp verdict(%{id: id}, %{id: id}, _differences, _missing),
+    do: "Choose two different version groups"
 
-      verdict =
-        cond do
-          baseline.grid != compared.grid ->
-            "Different tests — results are not comparable"
+  defp verdict(baseline, compared, differences, missing) do
+    {changed_versions, context} = Enum.split_with(differences, &(&1.key in ~w(harness wallet)))
+    upgrade? = verified_wallet_upgrade?(changed_versions, [baseline.latest, compared.latest])
+    changed_context = Enum.reject(context, &(&1.key == "requested_wallet" and upgrade?))
 
-          baseline.id == compared.id ->
-            "Choose two different version groups"
-
-          changed_context != [] ->
-            "Context changed — not an isolated version comparison"
-
-          missing != [] ->
-            "Context incomplete — comparison is descriptive only"
-
-          length(changed_versions) != 1 ->
-            "Multiple versions changed — comparison is descriptive only"
-
-          true ->
-            "Same recorded context — #{hd(changed_versions).key} version comparison"
-        end
-
-      %{
-        baseline: summarize(baseline, checks),
-        compared: summarize(compared, checks),
-        differences: differences,
-        missing: missing,
-        verdict: verdict
-      }
+    cond do
+      changed_context != [] -> "Context changed — not an isolated version comparison"
+      missing != [] -> "Context incomplete — comparison is descriptive only"
+      true -> versions_verdict(changed_versions)
     end
   end
+
+  defp versions_verdict([%{key: key}]), do: "Same recorded context — #{key} version comparison"
+
+  defp versions_verdict(_changed),
+    do: "Multiple versions changed — comparison is descriptive only"
+
+  # Only the wallet changed, and both runs verified they got the wallet release
+  # they asked for.
+  defp verified_wallet_upgrade?([%{key: "wallet"}], runs) do
+    Enum.all?(runs, fn run ->
+      (run.versions || %{})["wallet_verified"] == true and
+        not is_nil(value(run, "wallet")) and
+        value(run, "wallet") == value(run, "requested_wallet")
+    end)
+  end
+
+  defp verified_wallet_upgrade?(_changed, _runs), do: false
 
   defp summarize(group, checks) do
     ids = MapSet.new(group.runs, & &1.attempt_id)

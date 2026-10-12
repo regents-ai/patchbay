@@ -417,7 +417,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
               </option>
             </select>
           </label>
-          <button class="rg-button rg-button--secondary" type="submit">Show runs</button>
+          <button class="rg-button rg-button--secondary" type="submit"><span class="rg-button__label">Show runs</span></button>
         </form>
         <form
           method="get"
@@ -452,7 +452,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
               </option>
             </select>
           </label>
-          <button class="rg-button rg-button--secondary" type="submit">Compare</button>
+          <button class="rg-button rg-button--secondary" type="submit"><span class="rg-button__label">Compare</span></button>
         </form>
         <div :if={@comparison} class="pb-wb-comparison">
           <p role="status"><strong>{@comparison.verdict}</strong></p>

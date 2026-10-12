@@ -34,10 +34,7 @@ defmodule PatchbayWeb.WalletBenchController do
   def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
     context = bench_context(params)
     test = context["test"]
-    {:ok, roster} = WalletBench.list_roster()
-    harness = Enum.find(roster, &(&1.kind == "harness" and &1.id == harness_id))
-    wallet = Enum.find(roster, &(&1.kind == "wallet" and &1.id == wallet_id))
-    unless harness && wallet, do: raise(NotFoundError)
+    {harness, wallet} = pair!(harness_id, wallet_id)
 
     {:ok, notes} = WalletBench.list_notes()
     {:ok, fixed} = WalletBench.list_fixed()
@@ -52,11 +49,7 @@ defmodule PatchbayWeb.WalletBenchController do
 
     comparison = Cohorts.compare(cohorts, selection["baseline"], selection["compare"], checks)
 
-    results =
-      Enum.filter(results, fn run ->
-        selection["cohort"] in [nil, ""] or
-          Enum.any?(cohorts, &(&1.id == selection["cohort"] and run in &1.runs))
-      end)
+    results = in_cohort(results, cohorts, selection["cohort"])
 
     checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
 
@@ -85,6 +78,21 @@ defmodule PatchbayWeb.WalletBenchController do
       context: context,
       filters: Map.take(context, Cohorts.filters())
     )
+  end
+
+  defp pair!(harness_id, wallet_id) do
+    {:ok, roster} = WalletBench.list_roster()
+    harness = Enum.find(roster, &(&1.kind == "harness" and &1.id == harness_id))
+    wallet = Enum.find(roster, &(&1.kind == "wallet" and &1.id == wallet_id))
+    unless harness && wallet, do: raise(NotFoundError)
+    {harness, wallet}
+  end
+
+  defp in_cohort(results, _cohorts, cohort) when cohort in [nil, ""], do: results
+
+  defp in_cohort(results, cohorts, cohort) do
+    runs = cohorts |> Enum.find(%{runs: []}, &(&1.id == cohort)) |> Map.fetch!(:runs)
+    Enum.filter(results, &(&1 in runs))
   end
 
   defp bench_context(params) do

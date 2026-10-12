@@ -2294,8 +2294,10 @@ h1, h2, h3, h4, h5, h6 {
 /* The sheet: title, tests, the board and its two cards. */
 .pb-wb-sheet {
   --pb-wb-grid: 1.5rem;
-  /* Shared parts on the sheet (the meanings list, its chips) draw in the sheet's ink. */
+  /* Shared parts on the sheet (the meanings list, its chips, its buttons) draw in
+     the sheet's ink on the sheet's white, in either theme. */
   --rg-local-ink: var(--pb-wb-ink);
+  --rg-local-fill: #FFFFFF;
   --pb-text: var(--pb-wb-ink);
   --pb-text-muted: var(--pb-wb-ink-soft);
   --pb-wb-base: #FFFFFF;

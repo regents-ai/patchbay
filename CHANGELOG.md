@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-12 — Wallet Bench compares versions
+
+- Each agent and wallet on the Wallet Bench now shows its own logo.
+- You can narrow the bench to an agent version, a wallet version, a model or a
+  protocol, and each square shows its latest version group.
+- A pair's page groups its runs by the versions they used, and puts two groups
+  side by side to compare.
+- A pair's page keeps the bench heading and tabs, and takes you back to the
+  test you came from with your choices kept. A square still opens the pair's
+  runs over the whole window.
+
 ## 2026-10-12 — Account tools always say what to do next
 
 - **For agents.** The account tools under /tools/account now refuse the way
