@@ -5,88 +5,24 @@ defmodule Patchbay.ReleaseMigrationTest do
 
   setup do
     previous = Application.fetch_env!(:patchbay, Repo)
-    direct = System.get_env("DATABASE_DIRECT_URL")
-
-    on_exit(fn ->
-      Application.put_env(:patchbay, Repo, previous)
-
-      if direct,
-        do: System.put_env("DATABASE_DIRECT_URL", direct),
-        else: System.delete_env("DATABASE_DIRECT_URL")
-    end)
-
+    on_exit(fn -> Application.put_env(:patchbay, Repo, previous) end)
     :ok
-  end
-
-  test "direct credentials replace runtime endpoints while retaining schema and TLS" do
-    config = Application.fetch_env!(:patchbay, Repo)
-
-    Application.put_env(
-      :patchbay,
-      Repo,
-      Keyword.merge(config,
-        url: "postgres://runtime:private@runtime.invalid/runtime",
-        socket_dir: "/unusable",
-        endpoints: [{"runtime.invalid", 5432}],
-        default_prefix: "patchbay",
-        migration_default_prefix: "patchbay",
-        ssl: [verify: :verify_peer]
-      )
-    )
-
-    selected =
-      Release.migration_config!(Repo, fn "DATABASE_DIRECT_URL" ->
-        "postgresql://migration:fixture@127.0.0.1:55438/selected"
-      end)
-
-    assert selected[:username] == "migration"
-    assert selected[:database] == "selected"
-    assert selected[:hostname] == "127.0.0.1"
-    assert selected[:port] == 55_438
-    assert selected[:ssl] == [verify: :verify_peer]
-    assert selected[:default_prefix] == "patchbay"
-    assert selected[:migration_default_prefix] == "patchbay"
-    refute Keyword.has_key?(selected, :url)
-    refute Keyword.has_key?(selected, :socket_dir)
-    refute Keyword.has_key?(selected, :endpoints)
-
-    assert Release.migration_config!(Repo, fn "DATABASE_DIRECT_URL" ->
-             "postgresql://migration:fixture@127.0.0.1/selected"
-           end)[:port] == 5432
-  end
-
-  test "missing or malformed direct credentials fail without disclosing their value" do
-    for value <- [
-          nil,
-          "",
-          "https://migration:secret@host/db",
-          "postgres://host/db",
-          "postgres://migration:secret@host/",
-          "postgres://migration:secret@host:0/db",
-          "postgres://migration:secret@host/db?username=runtime",
-          "postgres://migration:secret@host/db#fragment"
-        ] do
-      error =
-        assert_raise RuntimeError, fn ->
-          Release.migration_config!(Repo, fn "DATABASE_DIRECT_URL" -> value end)
-        end
-
-      assert error.message ==
-               "DATABASE_DIRECT_URL must be a PostgreSQL URL with credentials and no query or fragment"
-    end
   end
 
   test "a running application connection cannot be reused for migration" do
     previous = Application.fetch_env!(:patchbay, Repo)
     pid = Process.whereis(Repo)
     assert is_pid(pid)
-    System.put_env("DATABASE_DIRECT_URL", "postgres://migration:fixture@127.0.0.1/unused")
-    assert_raise RuntimeError, ~r/fresh release eval/, fn -> Release.migrate() end
+
+    assert_raise RuntimeError, ~r/fresh release eval/, fn ->
+      Release.migrate(url: "postgres://migration:fixture@127.0.0.1/unused")
+    end
+
     assert Process.whereis(Repo) == pid
     assert Application.fetch_env!(:patchbay, Repo) == previous
   end
 
-  test "a fresh migration command uses the direct database, reruns harmlessly and restores runtime config" do
+  test "a fresh migration command uses the release connection, reruns harmlessly and restores runtime config" do
     {config, database, name} = disposable_database()
 
     # If the release falls back to runtime configuration, this user/database cannot connect.
@@ -96,12 +32,10 @@ defmodule Patchbay.ReleaseMigrationTest do
     url =
       "postgresql://#{URI.encode_www_form(config[:username])}:fixture@127.0.0.1:#{config[:port] || 5432}/#{name}"
 
-    System.put_env("DATABASE_DIRECT_URL", url)
-
-    Release.migrate()
+    Release.migrate(url: url)
     assert Application.fetch_env!(:patchbay, Repo) == runtime
     refute Process.whereis(Repo)
-    Release.migrate()
+    Release.migrate(url: url)
     assert Application.fetch_env!(:patchbay, Repo) == runtime
 
     {:ok, connection} = Postgrex.start_link(database)
@@ -128,10 +62,8 @@ defmodule Patchbay.ReleaseMigrationTest do
 
     Application.put_env(:patchbay, Repo, options)
 
-    System.put_env(
-      "DATABASE_DIRECT_URL",
+    url =
       "postgresql://#{URI.encode_www_form(config[:username])}:fixture@127.0.0.1:#{config[:port] || 5432}/#{name}"
-    )
 
     {:ok, connection} = Postgrex.start_link(database)
 
@@ -153,7 +85,7 @@ defmodule Patchbay.ReleaseMigrationTest do
       )
 
       assert_raise RuntimeError, ~r/Import the complete Patchbay schema/, fn ->
-        Release.migrate()
+        Release.migrate(url: url)
       end
 
       assert Postgrex.query!(connection, "SELECT version FROM public.schema_migrations", []).rows ==

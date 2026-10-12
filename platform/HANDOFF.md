@@ -352,7 +352,7 @@ work loads `.env.local`; production values are Fly secrets.
 | `ASSIST_WALLET_ADDRESS`, `STAKING_CONTRACT_ADDRESS` | Paid assists: the operator wallet the fee is paid to, and the REGENT staking contract it is forwarded to |
 | `PATCHBAY_ROOM_COOLDOWN_SECONDS`, `PATCHBAY_ROOM_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_FREE_FIXES`, `PATCHBAY_AGENT_REPAIRS`, `PATCHBAY_DEMO_FALLBACK` | Room limits and demo behaviour, all optional |
 | `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, `PATCHBAY_DB_PASSWORD` | Local database, optional |
-| `DATABASE_URL`, `SECRET_KEY_BASE`, `PHX_HOST` | Production only |
+| `DATABASE_POOLED_URL`, `DATABASE_DIRECT_URL`, `SECRET_KEY_BASE`, `PHX_HOST` | Production only |
 | `USDC`, `TREASURY`, `OPERATOR`, `ETHERSCAN_API_KEY` | Deploying the contract with Foundry, not needed by the server |
 
 Anything missing degrades honestly rather than crashing: without the escrow
@@ -432,8 +432,9 @@ Live at `https://patchbay.help`, Fly release 31, built from `main` at
 `01eb7e0`. Health reports the database connected and the migrations current.
 
 Everything described above is built, tested and deployed. What is not yet
-switched on is the set of secrets only the founder holds. Four are set on Fly:
-`PHX_HOST`, `SECRET_KEY_BASE`, `DATABASE_URL` and `OPENAI_API_KEY`. So the board
+switched on is the set of secrets only the founder holds. These are set on Fly:
+`PHX_HOST`, `SECRET_KEY_BASE`, `DATABASE_POOLED_URL`, `DATABASE_DIRECT_URL` and
+`OPENAI_API_KEY`. So the board
 and the demo room work in full today, and the parts that need a wallet do not.
 
 To turn the money on, in this order:

@@ -400,7 +400,7 @@ The handoff names one hosting provider: Fly.io.
 - Production domain: [patchbay.help](https://patchbay.help)
 - Deployment from the repository root, after the commit is on `main`: `scripts/deploy.sh`
 - Secrets/configuration: Fly secrets
-- Database connection: PostgreSQL through `DATABASE_URL`
+- Database connection: the shared Regent PostgreSQL cluster, through `DATABASE_POOLED_URL` (serving) and `DATABASE_DIRECT_URL` (release commands)
 - Health endpoint: `/webmcp/health`
 - Base image: Debian Bookworm
 
@@ -426,7 +426,7 @@ Exact locked Hex versions live in `mix.lock`; the list above is the stack shape.
 ## Deployment
 
 The public site runs as a Phoenix release on Fly.io behind HTTPS, with all
-application state in PostgreSQL via `DATABASE_URL`. The exact steps are in
+application state in the shared Regent PostgreSQL cluster. The exact steps are in
 [docs/DEPLOY.md](docs/DEPLOY.md).
 
 Once it is live, [docs/TESTING.md](docs/TESTING.md) walks through checking the deployed room from a browser and from the server log.

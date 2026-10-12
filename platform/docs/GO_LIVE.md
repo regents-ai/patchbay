@@ -4,8 +4,8 @@ The site itself is already up at <https://patchbay.help> and every unpaid part
 of it works. This sheet is the rest: the money. Follow it in order — each step
 assumes the one before it is done.
 
-Four things are set on the Fly app today: `PHX_HOST`, `SECRET_KEY_BASE`,
-`DATABASE_URL` and `OPENAI_API_KEY`. Everything below is what is missing.
+These are set on the Fly app today: `PHX_HOST`, `SECRET_KEY_BASE`,
+`DATABASE_POOLED_URL`, `DATABASE_DIRECT_URL` and `OPENAI_API_KEY`. Everything below is what is missing.
 
 Two rules that apply throughout:
 

@@ -8,12 +8,16 @@ defmodule Patchbay.Release do
   # contain public-qualified references and must never replay after relocation.
   @imported_through 20_260_904_074_137
 
-  def migrate do
+  @doc """
+  Runs every pending migration over the release connection
+  (`Patchbay.DatabaseConfig.release_config!/0`), or over `connection` when given.
+  """
+  def migrate(connection \\ Patchbay.DatabaseConfig.release_config!()) do
     load_app()
 
     for repo <- repos() do
       {:ok, _result, _apps} =
-        with_migration_repo(repo, fn repo ->
+        with_migration_repo(repo, connection, fn repo ->
           require_imported_history!(repo)
           Ecto.Migrator.run(repo, :up, all: true, prefix: repo.default_prefix())
         end)
@@ -28,7 +32,7 @@ defmodule Patchbay.Release do
     end
 
     {:ok, _result, _apps} =
-      with_migration_repo(repo, fn repo ->
+      with_migration_repo(repo, Patchbay.DatabaseConfig.release_config!(), fn repo ->
         require_imported_history!(repo)
         Ecto.Migrator.run(repo, :down, to: version, prefix: repo.default_prefix())
       end)
@@ -53,59 +57,37 @@ defmodule Patchbay.Release do
     end
   end
 
-  @doc """
-  Select the explicitly supplied migration connection, retaining schema and transport settings.
-  Release commands never fall back to the application's runtime credentials.
-  """
-  def migration_config!(repo, getenv \\ &System.get_env/1) do
-    url = getenv.("DATABASE_DIRECT_URL")
-
-    connection =
-      try do
-        %URI{scheme: scheme, host: host, userinfo: userinfo, query: query, fragment: nil} =
-          URI.new!(url || "")
-
-        true = scheme in ["postgres", "postgresql"] and is_binary(host) and host != ""
-        true = query in [nil, ""]
-        [username, password] = String.split(userinfo || "", ":", parts: 2)
-        true = String.trim(username) != "" and String.trim(password) != ""
-        parsed = Ecto.Repo.Supervisor.parse_url(url) |> Keyword.put_new(:port, 5432)
-        true = Keyword.get(parsed, :port, 5432) in 1..65_535
-        true = String.trim(Keyword.fetch!(parsed, :database)) != ""
-        parsed
-      rescue
-        _error -> :invalid_url
-      end
-
-    if connection == :invalid_url do
-      raise "DATABASE_DIRECT_URL must be a PostgreSQL URL with credentials and no query or fragment"
-    end
-
-    @app
-    |> Application.fetch_env!(repo)
-    |> Keyword.drop([
-      :url,
-      :hostname,
-      :port,
-      :socket,
-      :socket_dir,
-      :endpoints,
-      :username,
-      :password,
-      :database
-    ])
-    |> Keyword.merge(connection)
-  end
-
   # with_repo reuses a running Repo. Changing its configuration would not change
   # those existing credentials, so migration commands require a fresh release eval.
-  defp with_migration_repo(repo, fun) do
+  # The release connection replaces every endpoint and login setting while the
+  # schema and transport settings stay; it never falls back to the serving one.
+  defp with_migration_repo(repo, connection, fun) do
     if Process.whereis(repo) do
       raise "Migration requires a fresh release eval; the application Repo is already running"
     end
 
     previous = Application.fetch_env!(@app, repo)
-    Application.put_env(@app, repo, migration_config!(repo))
+
+    Application.put_env(
+      @app,
+      repo,
+      previous
+      |> Keyword.drop([
+        :url,
+        :hostname,
+        :port,
+        :socket,
+        :socket_dir,
+        :endpoints,
+        :username,
+        :password,
+        :database,
+        :ssl,
+        :socket_options,
+        :prepare
+      ])
+      |> Keyword.merge(connection)
+    )
 
     try do
       Ecto.Migrator.with_repo(repo, fun)

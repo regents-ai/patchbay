@@ -168,26 +168,25 @@ config :patchbay, :assist,
   pay_to_address: System.get_env("ASSIST_WALLET_ADDRESS"),
   staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
 
+migrating? = System.get_env("PATCHBAY_RELEASE_COMMAND") == "migrate"
+
+case config_env() do
+  :prod ->
+    config :patchbay,
+           Patchbay.Repo,
+           if(migrating?,
+             do: Patchbay.DatabaseConfig.release_config!(),
+             else: Patchbay.DatabaseConfig.runtime_config!(:prod)
+           )
+
+  :dev ->
+    config :patchbay, Patchbay.Repo, Patchbay.DatabaseConfig.runtime_config!(:dev)
+
+  :test ->
+    :ok
+end
+
 if config_env() == :prod do
-  database_url =
-    System.get_env("DATABASE_URL") ||
-      raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
-      """
-
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
-
-  config :patchbay, Patchbay.Repo,
-    # No TLS: docs/DEPLOY.md targets an unmanaged `fly postgres create` cluster,
-    # which is reached only over the app's private IPv6 network. A managed or
-    # off-platform database needs `ssl: true` here.
-    url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
-    socket_options: maybe_ipv6
-
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want

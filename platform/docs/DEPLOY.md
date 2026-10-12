@@ -30,33 +30,23 @@ fly apps create patchbay-regents --org regent
 
 Replace `personal` with the organisation from `fly orgs list`.
 
-## 2. Create and attach Postgres
+## 2. Connect to the shared database
 
-This sheet targets an unmanaged Postgres cluster created with `fly postgres
-create`. The app reaches it only over the organisation's private IPv6 network,
-which is why `ECTO_IPV6` is set in `fly.toml` and no TLS is configured for the
-database connection. Fly's separate Managed Postgres product is a different
-service with a different connection string: it expects a TLS connection, so it
-needs `ssl: true` added to the repository configuration in
-`config/runtime.exs`, and `ECTO_IPV6` revisited to match the address it hands
-out. Do not mix the two.
+Patchbay keeps its data in the shared Regent PostgreSQL cluster
+(`regents-platform-prod`, id `dzx6qo6xqzvojpv5`), in its own schema, beside
+every other Regent site. `Patchbay.DatabaseConfig` admits only the cluster's
+direct host, `direct.dzx6qo6xqzvojpv5.flympg.net`, over verified TLS, on port
+5432 and with no query options. Two secrets name it:
 
-```sh
-fly postgres create \
-  --name patchbay-regents-db \
-  --org regent \
-  --region ewr \
-  --initial-cluster-size 1 \
-  --vm-size shared-cpu-1x \
-  --volume-size 1
-```
+- `DATABASE_POOLED_URL`: the serving connection, five connections named
+  `patchbay-web`.
+- `DATABASE_DIRECT_URL`: release commands (`/app/bin/migrate`), with the
+  migration owner's login.
 
-```sh
-fly postgres attach patchbay-regents-db --app patchbay-regents
-```
-
-`attach` creates the database and role and sets the `DATABASE_URL` secret on the
-app. Do not set `DATABASE_URL` by hand.
+`fly.toml` sets the role and the cluster (`PATCHBAY_DEPLOYMENT_ROLE`,
+`PATCHBAY_DATABASE_TARGET_MODE`, `PATCHBAY_DATABASE_CLUSTER_ID`,
+`PATCHBAY_DATABASE_CLUSTER_NAME`); none of them is secret. A boot that finds
+any of these missing or different stops before connecting.
 
 ## 3. Set the remaining secrets
 
@@ -301,11 +291,10 @@ fly console --app patchbay-regents \
 
 ### Separate migration credentials
 
-`Patchbay.Release.migrate()` requires `DATABASE_DIRECT_URL`, a PostgreSQL URL
-with explicit migration-owner credentials and no query parameters or fragment.
-`DATABASE_URL` remains the runtime connection. Run migration commands in a fresh
-release `eval` process; they refuse an already-running Repo and restore its
-configuration afterward. Local `mix ecto.migrate` keeps its existing development
-configuration. The selected product schema, TLS and socket options are retained;
-supply transport settings appropriate to the direct endpoint. Existing imported
+`Patchbay.Release.migrate()` connects through `DATABASE_DIRECT_URL`, read by
+`Patchbay.DatabaseConfig.release_config!/0`, never through the serving
+connection. Run migration commands in a fresh release `eval` process; they
+refuse an already-running Repo and restore its configuration afterward. Local
+`mix ecto.migrate` keeps its development configuration. The selected product
+schema is retained. Existing imported
 history must be present before selecting the shared product namespace.

@@ -2,4 +2,7 @@
 set -eu
 
 cd -P -- "$(dirname -- "$0")"
+# The release reads its database through DATABASE_DIRECT_URL, never the
+# serving connection (Patchbay.DatabaseConfig.release_config!/0).
+export PATCHBAY_RELEASE_COMMAND=migrate
 exec ./patchbay eval Patchbay.Release.migrate
