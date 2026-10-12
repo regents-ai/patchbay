@@ -30,9 +30,13 @@ defmodule Patchbay.Offers.Bidding do
 
   @window_us 2_000_000
 
-  @doc "Places one bid for `profile`, or refuses it with nothing held."
-  def submit(args, profile) do
-    with {:ok, spender} <- spender(profile),
+  @doc """
+  Places one bid for `profile`, or refuses it with nothing held. Its Credits
+  are held by `spender`: a paired agent's own Credits actor, whose person's
+  limits for it apply, or with none given the person themselves.
+  """
+  def submit(args, profile, spender) do
+    with {:ok, spender} <- spender(profile, spender),
          {:ok, amount_minor} <- amount(args.amount),
          %Slot{} = slot <-
            Advance.lock(args.slot_id, [spender.privy_user_id]) || {:error, not_found()} do
@@ -70,7 +74,9 @@ defmodule Patchbay.Offers.Bidding do
     end
   end
 
-  defp spender(profile) do
+  defp spender(_profile, %RegentCredits.Actor{role: :agent} = agent), do: {:ok, agent}
+
+  defp spender(profile, nil) do
     case Credits.spender(profile) do
       {:ok, spender} -> {:ok, spender}
       :not_linked -> refuse(:not_linked)

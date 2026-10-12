@@ -20,6 +20,17 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
   alias Patchbay.Offers.Terms
   alias PatchbayWeb.OffersLive.Markets
   alias RegentCredits.Errors.NotEnoughCredits
+  alias RegentCredits.Errors.Refused
+
+  # What the person's settings for their agent at regents.sh/account say, in
+  # the words an agent's bid is refused with.
+  @agent_spending %{
+    agent_off: "Spending is off for this agent.",
+    agent_site: "This agent may not spend Credits on Patchbay.",
+    agent_max_per_spend: "This bid is more than this agent may spend at once.",
+    agent_daily_limit: "This bid would go past this agent's daily spending limit.",
+    agent_not_paired: "This agent is no longer paired with the account."
+  }
 
   @doc "Global's market (`site` nil) or the site's, if it has been opened, with its slots."
   @spec market(map() | nil, term()) :: map() | nil
@@ -106,10 +117,11 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
   Places a bid for `profile` on the slot numbered `number` of Global's
   market (`site` nil) or the site's, opening the site's market if this is
   its first bid. The counters are the slot's as the bidder read them; a
-  slot that moved on since refuses the bid.
+  slot that moved on since refuses the bid. A paired agent passes its own
+  Credits actor as `:spender`, so its person's limits for it apply.
   """
-  @spec place(map(), map() | nil, 1..3, map()) :: {:ok, Bid.t()} | {:error, term()}
-  def place(profile, site, number, bid) do
+  @spec place(map(), map() | nil, 1..3, map(), keyword()) :: {:ok, Bid.t()} | {:error, term()}
+  def place(profile, site, number, bid, opts \\ []) do
     Offers.submit_bid(
       %{
         slot_id: slot_id(site, number),
@@ -120,20 +132,27 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
         target_next_revision: bid.next_revision,
         idempotency_key: bid.key
       },
-      actor: profile
+      actor: profile,
+      context: %{spender: opts[:spender]}
     )
   end
 
   @doc """
   Why a bid was not placed, in the words the page and agents both show:
-  short of Credits (more Credits would cover it), refused by the market, or
-  not placed for a reason a retry may clear. Nothing is held in any case.
+  short of Credits (more Credits would cover it), outside what the person
+  lets their agent spend, refused by the market, or not placed for a reason a
+  retry may clear. Nothing is held in any case.
   """
-  @spec refusal(term()) :: {:not_enough_credits | :refused | :unavailable, String.t()}
+  @spec refusal(term()) ::
+          {:not_enough_credits | :agent_spending | :refused | :unavailable, String.t()}
   def refusal(%Ash.Error.Invalid{errors: [%NotEnoughCredits{shortfall: shortfall} | _]}),
     do:
       {:not_enough_credits,
        "You need #{CreditAmount.format(CreditAmount.from_credits(shortfall))} more Credits."}
+
+  def refusal(%Ash.Error.Invalid{errors: [%Refused{reason: reason} | _]})
+      when is_map_key(@agent_spending, reason),
+      do: {:agent_spending, Map.fetch!(@agent_spending, reason)}
 
   # The market's own words, without the trail of where in the code it was
   # refused.

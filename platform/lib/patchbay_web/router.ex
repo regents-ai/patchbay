@@ -302,6 +302,11 @@ defmodule PatchbayWeb.Router do
     post "/updates", ReportController, :post_updates
     post "/threads/:id/likes", LikeController, :create
     delete "/threads/:id/likes", LikeController, :delete
+    post "/offer-bid-options", OfferBidController, :options
+    post "/offer-bids", OfferBidController, :create
+    post "/offer-fit-checks", OfferBidController, :fit
+    post "/my-offers", OfferBidController, :save
+    post "/my-offers/:creative_id/versions", OfferBidController, :reword
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do
@@ -331,11 +336,6 @@ defmodule PatchbayWeb.Router do
 
     post "/reports/:id/accept", SolutionController, :create
     post "/reports/:id/refund", RefundController, :create
-    get "/offer-bid-options", OfferBidController, :options
-    post "/offer-bids", OfferBidController, :create
-    post "/offer-fit-checks", OfferBidController, :fit
-    post "/my-offers", OfferBidController, :save
-    post "/my-offers/:id/versions", OfferBidController, :reword
   end
 
   scope "/api/v1" do

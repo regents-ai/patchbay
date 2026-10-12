@@ -395,19 +395,21 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
   end
 
-  describe "an agent bidding for the person signed in" do
+  describe "a paired agent bidding for its person" do
     # A bid holds its full amount from the person's Credits the moment it is
-    # accepted, the read beside it says so first, a retry with the same key
-    # holds nothing more, and a refused bid holds nothing.
+    # accepted, within what the person lets that agent spend; the read beside
+    # it says so first, a retry with the same key holds nothing more, and a
+    # refused bid holds nothing.
     test "the read says what a bid holds, the bid holds it once, a refusal holds nothing",
          %{conn: conn, origin: origin, site: site, owner: owner} do
+      agent = SignedAgent.pair!(owner)
+      let_spend(agent, max_per_spend: "4", daily_limit: "20")
       give_credits(owner, "5")
       approved_version(owner, "Owner fixes flaky builds.", site)
 
       options =
         conn
-        |> signed_in(owner)
-        |> get("/forum/offer-bid-options?slot=2&origin=#{origin}")
+        |> signed_post(agent, "/forum/offer-bid-options", %{slot: 2, origin: origin})
         |> json_response(200)
 
       assert options["terms"]["holds"] =~ "holds its full amount from your Credits"
@@ -425,20 +427,27 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
         request_key: Ecto.UUID.generate()
       }
 
-      placed = conn |> bid_as(owner, bid) |> json_response(201)
+      placed = conn |> signed_post(agent, "/forum/offer-bids", bid) |> json_response(201)
       assert placed["bid"]["amount"]["credits"] == "2.00"
       assert credits(owner) == %{available: "3", held: "2"}
 
-      again = conn |> bid_as(owner, bid) |> json_response(201)
+      again = conn |> signed_post(agent, "/forum/offer-bids", bid) |> json_response(201)
       assert again["bid"]["bid_id"] == placed["bid"]["bid_id"]
       assert credits(owner) == %{available: "3", held: "2"}
 
-      short = %{bid | amount: "10.00", request_key: Ecto.UUID.generate()}
+      over_limit = %{bid | amount: "4.50", request_key: Ecto.UUID.generate()}
+
+      assert %{"error" => %{"code" => "agent_spending_refused", "message" => message}} =
+               conn |> signed_post(agent, "/forum/offer-bids", over_limit) |> json_response(403)
+
+      assert message == "This bid is more than this agent may spend at once."
+
+      short = %{bid | amount: "3.50", request_key: Ecto.UUID.generate()}
 
       assert %{"error" => %{"code" => "not_enough_credits", "message" => message}} =
-               conn |> bid_as(owner, short) |> json_response(422)
+               conn |> signed_post(agent, "/forum/offer-bids", short) |> json_response(422)
 
-      assert message == "You need 7.00 more Credits."
+      assert message == "You need 0.50 more Credits."
       assert credits(owner) == %{available: "3", held: "2"}
     end
   end
@@ -641,11 +650,31 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
   end
 
-  defp bid_as(conn, profile, bid) do
+  defp signed_post(conn, agent, path, body) do
     conn
-    |> signed_in(profile)
-    |> put_req_header("content-type", "application/json")
-    |> post("/forum/offer-bids", Jason.encode!(bid))
+    |> again()
+    |> SignedAgent.sign(agent)
+    |> post(path, Jason.encode!(body))
+  end
+
+  # The person's settings for this agent, as regents.sh/account saves them
+  # once agent spending is switched on for every site.
+  defp let_spend(agent, limits) do
+    previous = Application.get_env(:regent_credits, :agent_grants_enabled)
+    Application.put_env(:regent_credits, :agent_grants_enabled, true)
+    on_exit(fn -> Application.put_env(:regent_credits, :agent_grants_enabled, previous) end)
+
+    RegentCredits.set_agent_permission!(
+      %{
+        privy_user_id: agent.owner.privy_user_id,
+        agent_address: agent.wallet,
+        enabled: true,
+        max_per_spend: Decimal.new(limits[:max_per_spend]),
+        daily_limit: Decimal.new(limits[:daily_limit]),
+        sites: [Patchbay.Credits.site()]
+      },
+      authorize?: false
+    )
   end
 
   defp report_offer(posted, agent, offer) do

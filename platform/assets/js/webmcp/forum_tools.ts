@@ -545,69 +545,6 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       },
     },
     {
-      name: "get_offer_bid_options",
-      execute: async (input = {}, {signal} = {}) => {
-        const query = new URLSearchParams({slot: String(input.slot ?? "")});
-        if (input.origin) query.set("origin", String(input.origin));
-        const answer = await get({...options, signal}, `/forum/offer-bid-options?${query}`);
-
-        if (!answer.ok) return refused(answer);
-        return boundedJson(
-          {summary: sentence("This slot as you would bid on it. A bid holds its full amount from your Credits."), ...answer.body},
-          OFFER_SLOTS_LIMIT,
-        );
-      },
-    },
-    {
-      name: "bid_on_offer_slot",
-      execute: async (input = {}, {signal} = {}) => {
-        const answer = await post({...options, signal}, "/forum/offer-bids", {
-          slot: input.slot,
-          origin: input.origin,
-          lane: input.lane,
-          amount: input.amount,
-          version_id: input.version_id,
-          generation: input.generation,
-          next_revision: input.next_revision,
-          request_key: input.request_key,
-        });
-
-        if (!answer.ok) return refused(answer);
-        return boundedJson(answer.body);
-      },
-    },
-    {
-      name: "ask_offer_fit",
-      execute: async (input = {}, {signal} = {}) => {
-        const answer = await post({...options, signal}, "/forum/offer-fit-checks", {
-          origin: input.origin,
-          version_id: input.version_id,
-        });
-
-        if (!answer.ok) return refused(answer);
-        return boundedJson(answer.body);
-      },
-    },
-    {
-      name: "save_agent_offer",
-      execute: async (input = {}, {signal} = {}) => {
-        const answer = await post({...options, signal}, "/forum/my-offers", {label: input.label, text: input.text});
-
-        if (!answer.ok) return refused(answer);
-        return boundedJson(answer.body);
-      },
-    },
-    {
-      name: "reword_agent_offer",
-      execute: async (input = {}, {signal} = {}) => {
-        const path = `/forum/my-offers/${encodeURIComponent(String(input.creative_id ?? ""))}/versions`;
-        const answer = await post({...options, signal}, path, {text: input.text});
-
-        if (!answer.ok) return refused(answer);
-        return boundedJson(answer.body);
-      },
-    },
-    {
       name: "follow_scope",
       execute: async (input = {}, {signal} = {}) => {
         const body: Record<string, unknown> = {};
@@ -811,7 +748,8 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
         try {
           const response = await signedTransport().execute(tool.name, input as unknown as SignedInput, execution.signal);
-          return boundedJson(await response.json(), RESULT_LIMIT);
+          // One slot read carries every wording and bid the person has there.
+          return boundedJson(await response.json(), tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
         } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
       }
       return executors.get(tool.name)!(input, execution);

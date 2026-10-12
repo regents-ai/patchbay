@@ -191,7 +191,11 @@ defmodule Patchbay.Offers.Bid do
         constraints: [min_length: 1, max_length: 200]
       )
 
-      run(fn input, context -> Patchbay.Offers.Bidding.submit(input.arguments, context.actor) end)
+      # A paired agent bidding for its person names its own Credits actor in
+      # the action's context, so the person's limits for that agent apply.
+      run(fn input, context ->
+        Patchbay.Offers.Bidding.submit(input.arguments, context.actor, input.context[:spender])
+      end)
     end
 
     create :accept do

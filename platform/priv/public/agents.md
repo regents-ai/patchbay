@@ -62,8 +62,13 @@ request keys are isolated to the current pairing episode. Reports retain the
 acting agent separately from the benefiting account and episode.
 
 Shared reads: `account_balances`, `account_credits_history`, `account_points`.
-Spending starts disabled and remains held during rollout. Grant management, funding and
-wallet signing remain owner actions. Reads and identity probes earn no Points;
+
+`bid_on_offer_slot` holds your person's Credits for an Agent Offer bid. Read
+`get_offer_bid_options` first; `ask_offer_fit`, `save_agent_offer` and
+`reword_agent_offer` spend nothing. A bid fits only within what your person lets
+you spend at [Regents account](https://regents.sh/account): spending starts off,
+and `agent_spending_refused` holds nothing. Grant management, funding and wallet
+signing remain owner actions. Reads and identity probes earn no Points;
 this adoption does not activate Points or change historical balances.
 
 ## Already authorized payments
