@@ -8,13 +8,34 @@ defmodule Patchbay.Offers.Creative do
   carry, so editing or archiving a saved Offer never changes copy that is
   already bid or showing. The label is the advertiser's own name for it and
   is never shown to anyone else or sent with an Offer.
+
+  An Offer none of whose wordings was ever bid with can be deleted, for
+  good, with every wording and screening it had. A block of its words, and
+  the log of its turn-downs, stay.
   """
 
   use Ash.Resource,
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
+
+  # A new or deleted Offer tells the open admin page to read again.
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    publish(:create, ["offers:creatives"], transform: &__MODULE__.changed_message/1)
+    publish(:delete, ["offers:creatives"], transform: &__MODULE__.changed_message/1)
+  end
+
+  @doc "The PubSub topic a new or deleted Offer is announced on."
+  @spec topic() :: String.t()
+  def topic, do: "offers:creatives"
+
+  @doc false
+  def changed_message(_notification), do: :offer_creatives_changed
 
   postgres do
     table("offer_creatives")
@@ -73,12 +94,17 @@ defmodule Patchbay.Offers.Creative do
     end
   end
 
+  aggregates do
+    # Whether any wording of it was ever bid with, which keeps it from deletion.
+    exists(:has_bids?, [:versions, :bids], public?: true)
+  end
+
   actions do
     defaults([:read])
 
     action :save, :struct do
       description("""
-      Saves a new Offer with its first wording, which then waits for review.
+      Saves a new Offer with its first wording, which is then screened.
       The same request key again answers with the Offer it saved, saves
       nothing more and uses no daily save.
       """)
@@ -116,6 +142,16 @@ defmodule Patchbay.Offers.Creative do
       accept([])
       change(set_attribute(:archived_at, &DateTime.utc_now/0))
     end
+
+    destroy :delete do
+      description("""
+      Deletes a saved Offer for good, with every wording and screening it
+      had. An Offer any of whose wordings was ever bid with cannot be deleted.
+      """)
+
+      require_atomic?(false)
+      validate(Patchbay.Offers.Validations.NeverBid)
+    end
   end
 
   policies do
@@ -127,7 +163,7 @@ defmodule Patchbay.Offers.Creative do
       authorize_if(relates_to_actor_via(:owner))
     end
 
-    policy action(:archive) do
+    policy action([:archive, :delete]) do
       authorize_if(relates_to_actor_via(:owner))
     end
   end

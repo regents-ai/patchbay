@@ -7,9 +7,10 @@ defmodule Patchbay.Offers.CreativeVersion do
   version waits for a safety review (`Patchbay.Offers.Review`) before it can
   be bid with, and a site market also needs its own relevance review.
 
-  A moderator may block a version. A blocked version never shows again, is
-  never promoted into a slot, and the same text cannot be saved again under
-  another label.
+  An admin may block a wording's words (`Patchbay.Offers.OfferText`). A
+  blocked wording never shows again, is never promoted into a slot, and the
+  same text cannot be saved again under any name. Deleting its saved Offer
+  deletes the wording and its reviews with it.
   """
 
   use Ash.Resource,
@@ -32,11 +33,11 @@ defmodule Patchbay.Offers.CreativeVersion do
 
     custom_indexes do
       index([:text_sha256])
-      index([:blocked_at])
     end
 
     references do
-      reference(:creative, on_delete: :restrict)
+      reference(:creative, on_delete: :delete)
+      reference(:offer_text, on_delete: :restrict)
     end
   end
 
@@ -45,10 +46,6 @@ defmodule Patchbay.Offers.CreativeVersion do
 
     attribute(:version, :integer, allow_nil?: false, public?: true)
     attribute(:text, :string, allow_nil?: false, public?: true, constraints: [trim?: false])
-
-    # The SHA-256 of the normalized text, hex, so a blocked text is known
-    # again whatever it is saved under.
-    attribute(:text_sha256, :string, allow_nil?: false, public?: true)
 
     attribute(:code_points, :integer, allow_nil?: false, public?: true)
     attribute(:byte_count, :integer, allow_nil?: false, public?: true)
@@ -66,14 +63,6 @@ defmodule Patchbay.Offers.CreativeVersion do
       constraints: [min_length: 8, max_length: 100]
     )
 
-    attribute(:blocked_at, :utc_datetime_usec, allow_nil?: true, public?: true)
-
-    attribute(:block_reason, :string,
-      allow_nil?: true,
-      public?: true,
-      constraints: [max_length: 500]
-    )
-
     create_timestamp(:inserted_at, public?: true)
   end
 
@@ -84,6 +73,16 @@ defmodule Patchbay.Offers.CreativeVersion do
 
   relationships do
     belongs_to(:creative, Patchbay.Offers.Creative, allow_nil?: false, public?: true)
+
+    # The SHA-256 of the normalized text, hex: the words' own row, where a
+    # block lives, whatever name they are saved under.
+    belongs_to :offer_text, Patchbay.Offers.OfferText do
+      source_attribute(:text_sha256)
+      destination_attribute(:text_sha256)
+      attribute_type(:string)
+      allow_nil?(false)
+      public?(true)
+    end
 
     has_many :reviews, Patchbay.Offers.Review do
       destination_attribute(:version_id)
@@ -106,7 +105,12 @@ defmodule Patchbay.Offers.CreativeVersion do
     end
   end
 
-  # What the moderator page ranks a wording by. Neither the reporters nor the
+  calculations do
+    # When an admin blocked these words, under this or any other Offer.
+    calculate(:blocked_at, :utc_datetime_usec, expr(offer_text.blocked_at), public?: true)
+  end
+
+  # What the admin page ranks a wording by. Neither the reporters nor the
   # count prove that reports are independent of one another.
   aggregates do
     count(:report_count, :reports)
@@ -169,7 +173,7 @@ defmodule Patchbay.Offers.CreativeVersion do
 
       filter(
         expr(
-          is_nil(blocked_at) and
+          is_nil(offer_text.blocked_at) and
             exists(reviews, kind == :safety and decision == :allow and fresh_until > ^arg(:at)) and
             (^arg(:global) or
                exists(
@@ -179,19 +183,6 @@ defmodule Patchbay.Offers.CreativeVersion do
                ))
         )
       )
-    end
-
-    update :block do
-      description("Blocks this wording everywhere, at once, and records who did and why.")
-      accept([])
-      require_atomic?(false)
-      argument(:reason, :string, allow_nil?: false, constraints: [min_length: 1, max_length: 500])
-      argument(:idempotency_key, :string, allow_nil?: false, constraints: [max_length: 200])
-
-      validate(attribute_equals(:blocked_at, nil), message: "is already blocked")
-      change(set_attribute(:blocked_at, &DateTime.utc_now/0))
-      change(set_attribute(:block_reason, arg(:reason)))
-      change({Patchbay.Offers.Changes.RecordModeration, kind: :block_version})
     end
   end
 
@@ -206,10 +197,6 @@ defmodule Patchbay.Offers.CreativeVersion do
     # Saving checks the owner itself, under the saved Offer's lock.
     policy action([:save, :write]) do
       authorize_if(actor_present())
-    end
-
-    policy action(:block) do
-      authorize_if(Patchbay.Offers.Checks.Moderator)
     end
   end
 end

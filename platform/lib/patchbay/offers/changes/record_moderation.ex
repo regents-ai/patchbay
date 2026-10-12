@@ -4,9 +4,8 @@ defmodule Patchbay.Offers.Changes.RecordModeration do
   the same transaction as the change it records, so a decision is never
   made without its audit row or recorded without being made.
 
-  Option `:kind` names the decision, or `:from_argument` takes it from the
-  action's `:decision` argument: `:dismissed` or `:confirmed` for a report,
-  `:allow` or `:deny` for a screening.
+  Option `:kind` names the decision, or `:from_argument` takes it from a
+  report's `:decision` argument: `:dismissed` or `:confirmed`.
   """
 
   use Ash.Resource.Change
@@ -18,7 +17,7 @@ defmodule Patchbay.Offers.Changes.RecordModeration do
   def change(changeset, opts, context) do
     Ash.Changeset.after_action(changeset, fn changeset, record ->
       attrs =
-        Map.merge(subject(record), %{
+        Map.merge(subject(record, changeset), %{
           kind: kind(changeset, opts[:kind]),
           reason: Ash.Changeset.get_argument(changeset, :reason),
           idempotency_key: Ash.Changeset.get_argument(changeset, :idempotency_key)
@@ -41,18 +40,14 @@ defmodule Patchbay.Offers.Changes.RecordModeration do
     case Ash.Changeset.get_argument(changeset, :decision) do
       :dismissed -> :dismiss_report
       :confirmed -> :confirm_report
-      :allow -> :allow_version
-      :deny -> :refuse_version
     end
   end
 
   defp kind(_changeset, kind), do: kind
 
-  defp subject(%OfferReport{} = report),
+  defp subject(%OfferReport{} = report, _changeset),
     do: %{report_id: report.id, placement_id: report.placement_id, version_id: report.version_id}
 
-  defp subject(%Patchbay.Offers.CreativeVersion{} = version), do: %{version_id: version.id}
-
-  defp subject(%Patchbay.Offers.Review{} = review),
-    do: %{review_id: review.id, version_id: review.version_id}
+  defp subject(%Patchbay.Offers.OfferText{}, changeset),
+    do: %{version_id: Ash.Changeset.get_argument(changeset, :version_id)}
 end

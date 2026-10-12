@@ -20,7 +20,8 @@ defmodule Patchbay.Offers.CreativeText do
   Links are found by `urls/1`, the same parser the pages use to make links,
   so what is reviewed and what is linked can never differ. Only links written
   in full with `http://` or `https://` count; a bare address such as
-  `example.com` is reported by `bare_addresses/1` so review can look at it.
+  `example.com` is reported by `bare_addresses/1`, and screening visits it
+  as `https`.
   """
 
   @max_code_points 160
@@ -144,7 +145,7 @@ defmodule Patchbay.Offers.CreativeText do
 
   @doc """
   Address-like words that are not full links, such as `example.com/start`.
-  Review looks at each one; they are never made into links.
+  Screening visits each one as `https`; they are never made into links.
 
       iex> Patchbay.Offers.CreativeText.bare_addresses("Visit example.com or https://ok.dev")
       ["example.com"]

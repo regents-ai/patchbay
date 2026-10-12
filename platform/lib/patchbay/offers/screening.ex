@@ -12,9 +12,10 @@ defmodule Patchbay.Offers.Screening do
     * the relevance question, for a site market: would an agent using that
       site's tools plausibly want it.
 
-  A link that could not be read, a link that is not `https`, or an address
-  written without a link leaves the version for a moderator, whatever Jev
-  says, unless Jev is sure it breaks the policy. An allow is screening
+  An address written without `https://`, such as `example.com/start`, is
+  visited as an `https` link. A link that could not be read, a link that is
+  not `https`, or an answer Jev is not sure of turns the version down, with
+  words saying why. Nobody reviews it by hand. An allow is screening
   evidence, not a promise.
   """
 
@@ -53,7 +54,7 @@ defmodule Patchbay.Offers.Screening do
   }
 
   @type decision :: %{
-          decision: :allow | :deny | :needs_review,
+          decision: :allow | :deny,
           reason_codes: [String.t()],
           private_reason: String.t() | nil,
           model: String.t() | nil,
@@ -62,11 +63,11 @@ defmodule Patchbay.Offers.Screening do
           destinations: [map()]
         }
 
-  @doc "The decision kept when screening cannot run: a moderator decides."
+  @doc "The decision kept when screening cannot run: the version is turned down."
   @spec unavailable() :: decision()
   def unavailable do
     %{
-      decision: :needs_review,
+      decision: :deny,
       reason_codes: ["screening_unavailable"],
       private_reason: nil,
       model: nil,
@@ -77,11 +78,12 @@ defmodule Patchbay.Offers.Screening do
   end
 
   @link_outcomes %{
-    "unreadable" => "A link could not be opened, so a person checks where it goes.",
-    "too_many_redirects" => "A link redirects too many times, so a person checks where it goes.",
-    "not_https" => "A link is not a secure https link, so a person checks it.",
-    "not_a_page" => "A link does not lead to a web page, so a person checks it.",
-    "too_long" => "A link's page is longer than screening reads, so a person checks it."
+    "unreadable" => "A link could not be opened.",
+    "too_many_redirects" => "A link redirects too many times.",
+    "not_https" => "A link is not a secure https link.",
+    "not_a_page" => "A link does not lead to a web page.",
+    "too_long" => "A link's page is longer than screening reads.",
+    "not_public" => "A link does not lead to a public website."
   }
 
   @doc """
@@ -90,22 +92,19 @@ defmodule Patchbay.Offers.Screening do
   """
   @spec reason_words(String.t()) :: String.t()
   def reason_words("screening_unavailable"),
-    do: "Screening could not run, so a person decides."
+    do: "Screening could not run just now. Save it again later to try once more."
 
   def reason_words("unsure"),
-    do: "Screening was not sure it is an ordinary advertisement, so a person decides."
+    do: "Screening was not sure it is an ordinary advertisement."
 
   def reason_words("unsure_relevance"),
-    do: "Screening was not sure it suits this board, so a person decides."
-
-  def reason_words("address_not_a_link"),
-    do: "It names a web address without a full link, so a person checks it."
+    do: "Screening was not sure it suits this board."
 
   def reason_words("link_" <> outcome) when is_map_key(@link_outcomes, outcome),
     do: Map.fetch!(@link_outcomes, outcome)
 
   def reason_words("possible_" <> choice) when is_map_key(@safety, choice),
-    do: "Possibly not allowed, so a person decides: " <> Map.fetch!(@safety, choice)
+    do: "Possibly not allowed: " <> Map.fetch!(@safety, choice)
 
   def reason_words(choice) when is_map_key(@safety, choice), do: Map.fetch!(@safety, choice)
   def reason_words(choice) when is_map_key(@relevance, choice), do: Map.fetch!(@relevance, choice)
@@ -128,13 +127,13 @@ defmodule Patchbay.Offers.Screening do
   end
 
   defp visit_and_ask(version, site, opts) do
-    visits = Enum.map(version.urls, &Destination.visit(&1, opts))
+    visits = version |> links() |> Enum.map(&Destination.visit(&1, opts))
     destinations = Enum.map(visits, &elem(&1, 0))
     state = state(version, site, visits)
 
     with {:ok, answer} <- ask(state, site) do
       {:ok,
-       Map.merge(decide(answer, site, version, destinations), %{
+       Map.merge(decide(answer, site, destinations), %{
          model: answer.model,
          policy_version: @policy_version,
          input_sha256: state |> Jason.encode!() |> sha256(),
@@ -193,46 +192,37 @@ defmodule Patchbay.Offers.Screening do
 
   defp answer(_body, _criteria), do: {:error, :unexpected_answers}
 
-  # Jev's answer, then what the links and addresses add. A sure refusal
-  # stands; anything left unread or unclear goes to a moderator.
-  defp decide(%{choice: choice, confidence: confidence}, site, version, destinations) do
+  # Every link written in full, then every address written without one,
+  # visited as an https link.
+  defp links(version), do: version.urls ++ Enum.map(version.bare_addresses, &("https://" <> &1))
+
+  # Jev's answer, then what the links add. Only a sure allow with every link
+  # read is allowed; anything else is turned down with every reason found.
+  defp decide(%{choice: choice, confidence: confidence}, site, destinations) do
     unread =
       for %{"outcome" => outcome} <- destinations,
           outcome != "read",
           uniq: true,
           do: "link_#{outcome}"
 
-    unread = if version.bare_addresses == [], do: unread, else: unread ++ ["address_not_a_link"]
-
     case {jev(choice, confidence, site), unread} do
-      {{:deny, code}, _unread} ->
-        decided(:deny, [code], choice, confidence)
-
-      {{:allow, _code}, []} ->
-        decided(:allow, [], choice, confidence)
-
-      {{:allow, _code}, unread} ->
-        decided(:needs_review, unread, choice, confidence)
-
-      {{:needs_review, code}, unread} ->
-        decided(:needs_review, [code | unread], choice, confidence)
+      {:allow, []} -> decided(:allow, [], choice, confidence)
+      {:allow, unread} -> decided(:deny, unread, choice, confidence)
+      {{:deny, code}, unread} -> decided(:deny, [code | unread], choice, confidence)
     end
   end
 
-  defp jev("ordinary_offer", confidence, nil) when confidence >= @allow_confidence,
-    do: {:allow, nil}
-
-  defp jev("ordinary_offer", _confidence, nil), do: {:needs_review, "unsure"}
+  defp jev("ordinary_offer", confidence, nil) when confidence >= @allow_confidence, do: :allow
+  defp jev("ordinary_offer", _confidence, nil), do: {:deny, "unsure"}
   defp jev(choice, confidence, nil) when confidence >= @deny_confidence, do: {:deny, choice}
-  defp jev(choice, _confidence, nil), do: {:needs_review, "possible_#{choice}"}
+  defp jev(choice, _confidence, nil), do: {:deny, "possible_#{choice}"}
 
-  defp jev("relevant", confidence, _site) when confidence >= @relevant_confidence,
-    do: {:allow, nil}
+  defp jev("relevant", confidence, _site) when confidence >= @relevant_confidence, do: :allow
 
   defp jev("not_relevant", confidence, _site) when confidence >= @irrelevant_confidence,
     do: {:deny, "not_relevant"}
 
-  defp jev(_choice, _confidence, _site), do: {:needs_review, "unsure_relevance"}
+  defp jev(_choice, _confidence, _site), do: {:deny, "unsure_relevance"}
 
   defp decided(decision, codes, choice, confidence) do
     %{
@@ -256,8 +246,7 @@ defmodule Patchbay.Offers.Screening do
             page_title: evidence["title"],
             page_words: excerpt
           }
-        end),
-      addresses_not_linked: version.bare_addresses
+        end)
     }
     |> Map.merge(site_state(site))
   end

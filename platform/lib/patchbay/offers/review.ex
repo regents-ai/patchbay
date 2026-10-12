@@ -10,12 +10,12 @@ defmodule Patchbay.Offers.Review do
 
     * `:pending` - not screened yet; the version cannot be bid with;
     * `:allow` - screened and allowed until `fresh_until`;
-    * `:deny` - screened and refused;
-    * `:needs_review` - screening could not decide, so a moderator does.
+    * `:deny` - turned down: screening refused it, was not sure, or could
+      not run. Every turn-down is logged (`Patchbay.Offers.TurnDown`).
 
-  A moderator's own decision is recorded the same way, with no model named.
-  An allow is screening evidence, never a public promise that the Offer is
-  safe. The private reason is never shown with an Offer.
+  Nobody decides a review by hand. An allow is screening evidence, never a
+  public promise that the Offer is safe. The private reason is never shown
+  with an Offer.
   """
 
   use Ash.Resource,
@@ -29,7 +29,7 @@ defmodule Patchbay.Offers.Review do
   oban do
     triggers do
       # A screening that fails is tried again with Oban's backoff; after the
-      # last try a moderator decides. It runs on its own queue so slow pages
+      # last try the version is turned down. It runs on its own queue so slow pages
       # never hold up bidding or report reading.
       trigger :screen do
         action(:screen)
@@ -73,7 +73,6 @@ defmodule Patchbay.Offers.Review do
 
     publish(:record, ["offers:reviews"], transform: &__MODULE__.changed_message/1)
     publish(:screening_failed, ["offers:reviews"], transform: &__MODULE__.changed_message/1)
-    publish(:decide, ["offers:reviews"], transform: &__MODULE__.changed_message/1)
   end
 
   @doc "The PubSub topic a screening decision is announced on."
@@ -107,7 +106,7 @@ defmodule Patchbay.Offers.Review do
     )
 
     references do
-      reference(:version, on_delete: :restrict)
+      reference(:version, on_delete: :delete)
       reference(:market, on_delete: :restrict)
     end
   end
@@ -125,17 +124,17 @@ defmodule Patchbay.Offers.Review do
       allow_nil?: false,
       default: :pending,
       public?: true,
-      constraints: [one_of: [:pending, :allow, :deny, :needs_review]]
+      constraints: [one_of: [:pending, :allow, :deny]]
     )
 
     # Short fixed codes for the advertiser, such as `link_unreadable`.
     attribute(:reason_codes, {:array, :string}, allow_nil?: false, default: [], public?: true)
 
-    # Moderator-only words from the screening; never shown with an Offer.
+    # Admin-only words from the screening; never shown with an Offer.
     attribute(:private_reason, :string, allow_nil?: true, constraints: [max_length: 2000])
 
-    # What screened it: the model and provider, or nil for a moderator, and
-    # the policy the screening followed.
+    # What screened it: the model and provider, or nil when screening could
+    # not run, and the policy the screening followed.
     attribute(:model, :string, allow_nil?: true, public?: true)
     attribute(:policy_version, :string, allow_nil?: true, public?: true)
 
@@ -155,8 +154,6 @@ defmodule Patchbay.Offers.Review do
     # Set when a screening is wanted and cleared when it has run; the
     # screening job picks up every row with it set.
     attribute(:screen_requested_at, :utc_datetime_usec, allow_nil?: true)
-
-    attribute(:decided_by_profile_id, :uuid, allow_nil?: true)
 
     create_timestamp(:inserted_at, public?: true)
   end
@@ -221,16 +218,17 @@ defmodule Patchbay.Offers.Review do
     end
 
     update :screening_failed do
-      description("Screening's last try failed; a moderator decides.")
+      description("Screening's last try failed; the version is turned down.")
       accept([])
-      # A request a moderator settled while the last try ran stays settled. A
-      # newer request waiting then goes to the moderator with this one.
+      require_atomic?(false)
+      # A request already answered while the last try ran stays answered.
       change(filter(expr(not is_nil(screen_requested_at))))
-      change(set_attribute(:decision, :needs_review))
+      change(set_attribute(:decision, :deny))
       change(set_attribute(:reason_codes, ["screening_unavailable"]))
       change(set_attribute(:fresh_until, nil))
       change(set_attribute(:decided_at, &DateTime.utc_now/0))
       change(set_attribute(:screen_requested_at, nil))
+      change(Patchbay.Offers.Changes.LogTurnDown)
     end
 
     update :record do
@@ -254,31 +252,14 @@ defmodule Patchbay.Offers.Review do
 
       # The request this screening answered. The decision is kept only while
       # that request is still the current one, in the same statement: a
-      # moderator who decided meanwhile, or a newer request made while it ran,
-      # leaves the row untouched, and the newer request is screened in turn.
+      # newer request made while it ran leaves the row untouched, and the
+      # newer request is screened in turn.
       argument(:answers_request_at, :utc_datetime_usec, allow_nil?: false)
 
       change(filter(expr(screen_requested_at == ^arg(:answers_request_at))))
       change(set_attribute(:screen_requested_at, nil))
       change(Patchbay.Offers.Changes.RecordDecision)
-    end
-
-    update :decide do
-      description("A moderator allows or refuses a wording, with the reason kept privately.")
-      accept([])
-      require_atomic?(false)
-      argument(:decision, :atom, allow_nil?: false, constraints: [one_of: [:allow, :deny]])
-      argument(:reason, :string, allow_nil?: false, constraints: [min_length: 1, max_length: 500])
-      argument(:idempotency_key, :string, allow_nil?: false, constraints: [max_length: 200])
-      argument(:fresh_for_us, :integer, allow_nil?: false, constraints: [min: 0])
-      change(set_attribute(:decision, arg(:decision)))
-      change(set_attribute(:private_reason, arg(:reason)))
-      change(set_attribute(:decided_by_profile_id, actor(:id)))
-      change(set_attribute(:model, nil))
-      # A moderator's decision stands over any screening still waiting.
-      change(set_attribute(:screen_requested_at, nil))
-      change(Patchbay.Offers.Changes.RecordDecision)
-      change({Patchbay.Offers.Changes.RecordModeration, kind: :from_argument})
+      change(Patchbay.Offers.Changes.LogTurnDown)
     end
   end
 
@@ -288,19 +269,15 @@ defmodule Patchbay.Offers.Review do
   end
 
   policies do
-    # The owner reads the reviews of their own versions; screening and
-    # moderation read and write them inside Patchbay's own actions, which
-    # skip authorization deliberately.
+    # The owner reads the reviews of their own versions; screening reads and
+    # writes them inside Patchbay's own actions, which skip authorization
+    # deliberately.
     policy action_type(:read) do
       authorize_if(expr(version.creative.owner_profile_id == ^actor(:id)))
     end
 
     policy action(:request_relevance) do
       authorize_if(actor_present())
-    end
-
-    policy action(:decide) do
-      authorize_if(Patchbay.Offers.Checks.Moderator)
     end
   end
 end

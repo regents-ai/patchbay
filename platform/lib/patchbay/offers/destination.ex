@@ -7,11 +7,11 @@ defmodule Patchbay.Offers.Destination do
   at the checked address, with no cookies, no credentials and a bounded
   answer. A redirect is followed by hand, each new address checked the same
   way, up to three times. A plain `http` link, or a redirect to one, is not
-  visited and is left for a moderator.
+  visited, and screening turns the wording down.
 
   What comes back is evidence for screening: every hop, the final status, a
   hash of what was read and the page's title. A page longer than is read is
-  noted as `too_long`, so a moderator sees it. A short excerpt of the page's
+  noted as `too_long`, and screening turns the wording down. A short excerpt of the page's
   words goes to the screening question and is never kept or shown.
   """
 
@@ -78,7 +78,7 @@ defmodule Patchbay.Offers.Destination do
   end
 
   # A page or plain text is read for its words; anything else, such as a
-  # download, is left for a moderator. A page cut at the bound may end inside
+  # download, is not read, and screening turns the wording down. A page cut at the bound may end inside
   # a character, so only its whole characters are read.
   defp read(hops, status, type, body, cut?) do
     body = if cut?, do: whole_characters(body), else: body

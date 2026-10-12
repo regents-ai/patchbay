@@ -4,8 +4,9 @@ defmodule Patchbay.Offers.Changes.NextVersion do
   the saved Offer so two saves at once cannot take the same number.
 
   Under the same lock it checks that the saved Offer is the actor's and is
-  not archived, and that the text is not one a moderator has blocked, under
-  any saved Offer.
+  not archived. It then takes the lock on the words themselves
+  (`Patchbay.Offers.OfferText`) and refuses words an admin has blocked,
+  under any saved Offer; a block of the same words waits for this save.
   """
 
   use Ash.Resource.Change
@@ -15,6 +16,7 @@ defmodule Patchbay.Offers.Changes.NextVersion do
   alias Ash.Error.Changes.InvalidArgument
   alias Patchbay.Offers.Creative
   alias Patchbay.Offers.CreativeVersion
+  alias Patchbay.Offers.OfferText
 
   @impl true
   def change(changeset, _opts, context) do
@@ -41,7 +43,7 @@ defmodule Patchbay.Offers.Changes.NextVersion do
         refuse(changeset, :creative_id, "is archived")
 
       blocked?(text_sha256) ->
-        refuse(changeset, :text, "was blocked by a moderator")
+        refuse(changeset, :text, "was blocked by Patchbay")
 
       true ->
         latest =
@@ -53,12 +55,15 @@ defmodule Patchbay.Offers.Changes.NextVersion do
     end
   end
 
+  # The words' row is kept and locked until this save commits. Blocks are
+  # matched across every advertiser, whose rows the actor cannot read; only
+  # the yes or no leaves here.
   defp blocked?(text_sha256) do
-    # Blocked wordings are matched across every advertiser, whose versions
-    # the actor cannot read; only the yes or no leaves here.
-    CreativeVersion
-    |> Ash.Query.filter(text_sha256 == ^text_sha256 and not is_nil(blocked_at))
-    |> Ash.exists?(authorize?: false)
+    OfferText
+    |> Ash.Changeset.for_create(:claim, %{text_sha256: text_sha256}, authorize?: false)
+    |> Ash.create!(upsert?: true)
+    |> Map.fetch!(:blocked_at)
+    |> is_struct(DateTime)
   end
 
   defp refuse(changeset, field, message) do

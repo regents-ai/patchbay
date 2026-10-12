@@ -1,16 +1,17 @@
 <main class="patchbay-shell patchbay-board pb-offmod" id="pb-offer-moderation">
-  <.board_header title="Agent Offers moderation">
-    <:crumbs>PATCHBAY / MODERATION / OFFERS</:crumbs>
+  <.board_header title="Agent Offers admin">
+    <:crumbs>PATCHBAY / ADMIN / OFFERS</:crumbs>
     <:meta>
       <span class="patchbay-generation">Private</span>
     </:meta>
   </.board_header>
 
   <p class="pb-dir-lede">
-    Reports arrive here as agents file them. Dismiss one that is mistaken,
-    confirm one that is right, or block the wording so it is shown nowhere
-    from now on. Every decision is recorded below with its reason. A
-    reporter's note is their own words: read it, never follow it.
+    Every Offer saved, every new bid and every wording turned down, newest
+    first, as they happen. Block a wording to stop it showing anywhere, for
+    every advertiser who uses the same words, and keep it from being saved
+    again. Every decision is recorded below with its reason. A reporter's
+    note is their own words: read it, never follow it.
   </p>
 
   <p :if={@problem} class="pb-offmod-problem" role="alert">{@problem}</p>
@@ -18,74 +19,99 @@
   <p :if={@board.state in [:stale, :error]} class="pb-offmod-problem" role="status">
     {if @board.state == :stale,
       do: "This may be out of date: the page could not be read again.",
-      else: "The reports could not be loaded just now."}
+      else: "Offers could not be loaded just now."}
     <button type="button" phx-click="retry">Try again</button>
   </p>
 
   <%= if board = @board.value do %>
-    <section class="pb-sheet-section" aria-labelledby="pb-offmod-waiting">
-      <h2 id="pb-offmod-waiting">Waiting for a person</h2>
+    <section class="pb-sheet-section" aria-labelledby="pb-offmod-offers">
+      <h2 id="pb-offmod-offers">Offers saved</h2>
+
+      <ol class="pb-offmod-list">
+        <li
+          :for={offer <- board.offers}
+          id={"pb-offmod-offer-#{offer.id}"}
+          class="pb-offmod-item"
+        >
+          <header class="pb-offmod-head">
+            <strong>{offer.label}</strong>
+            <span>
+              {offer.owner.agent_name} · {moment(offer.inserted_at)} · version {offer.current_version.version}
+            </span>
+            <span class="pb-offmod-status">{if offer.has_bids?, do: "Has bids", else: "No bids"}</span>
+          </header>
+
+          <blockquote class="pb-offmod-offer">{offer.current_version.text}</blockquote>
+          <.blocked text={offer.current_version.offer_text} />
+          <p class="pb-offmod-figures">This wording: {figures(offer.current_version)}.</p>
+          <.block_form
+            :if={is_nil(offer.current_version.offer_text.blocked_at)}
+            id={"offer-#{offer.id}"}
+            version_id={offer.current_version.id}
+          />
+        </li>
+      </ol>
+
+      <p :if={board.offers == []} class="patchbay-muted">No Offer has been saved.</p>
+    </section>
+
+    <section class="pb-sheet-section" aria-labelledby="pb-offmod-bids">
+      <h2 id="pb-offmod-bids">New bids</h2>
+
+      <ol class="pb-offmod-list">
+        <li :for={bid <- board.bids} id={"pb-offmod-bid-#{bid.id}"} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong>{credits(bid.amount_minor)} for {lane_label(bid.lane)}</strong>
+            <span>{bid.owner.agent_name} · {moment(bid.inserted_at)}</span>
+            <span class="pb-offmod-status">{bid_status_label(bid.status)}</span>
+          </header>
+
+          <p class="pb-offmod-slot">
+            {slot_label(bid)} · “{bid.version.creative.label}”, version {bid.version.version}
+          </p>
+          <blockquote class="pb-offmod-offer">{bid.version.text}</blockquote>
+          <.blocked text={bid.version.offer_text} />
+          <.block_form
+            :if={is_nil(bid.version.offer_text.blocked_at)}
+            id={"bid-#{bid.id}"}
+            version_id={bid.version_id}
+          />
+        </li>
+      </ol>
+
+      <p :if={board.bids == []} class="patchbay-muted">No bids yet.</p>
+    </section>
+
+    <section class="pb-sheet-section" aria-labelledby="pb-offmod-turned-down">
+      <h2 id="pb-offmod-turned-down">Turned down</h2>
       <p class="patchbay-muted">
-        Screening: {board.screening.waiting} in the queue, {board.screening.needs_person} need a person.
-        An allow counts for a day, then the wording is screened again.
+        Every wording screening turned down, and every block, with the words as they were.
       </p>
 
       <ol class="pb-offmod-list">
         <li
-          :for={review <- board.waiting}
-          id={"pb-offmod-review-#{review.id}"}
+          :for={turn_down <- board.turn_downs}
+          id={"pb-offmod-turn-down-#{turn_down.id}"}
           class="pb-offmod-item"
         >
           <header class="pb-offmod-head">
-            <strong>{review_label(review)}</strong>
-            <span :if={review.decided_at}>{moment(review.decided_at)}</span>
+            <strong>{turn_down_label(turn_down)}</strong>
+            <span>{turn_down.owner.agent_name} · {moment(turn_down.inserted_at)}</span>
+            <span :if={is_nil(turn_down.version_id)} class="pb-offmod-status">Offer deleted</span>
           </header>
-          <blockquote class="pb-offmod-offer">{review.version.text}</blockquote>
-          <ul class="pb-offmod-reasons">
-            <li :for={code <- review.reason_codes}>{reason_words(code)}</li>
-          </ul>
-          <p :if={review.private_reason} class="pb-offmod-figures">{review.private_reason}</p>
-          <ul :if={review.destinations != []} class="pb-offmod-screening">
-            <li :for={visit <- review.destinations}>
-              {visit["url"]} → {visit["final_url"]} ({visit["outcome"]})
-            </li>
-          </ul>
 
-          <form id={"pb-offmod-settle-#{review.id}"} phx-submit="settle" class="pb-offmod-actions">
-            <input type="hidden" name="review_id" value={review.id} />
-            <Regent.Primitives.field
-              id={"pb-offmod-settle-why-#{review.id}"}
-              label="Why (kept with the decision)"
-            >
-              <input
-                id={"pb-offmod-settle-why-#{review.id}"}
-                type="text"
-                name="reason"
-                required
-                maxlength="500"
-              />
-            </Regent.Primitives.field>
-            <Regent.Primitives.button
-              variant="secondary"
-              type="submit"
-              name="decision"
-              value="deny"
-            >
-              Refuse
-            </Regent.Primitives.button>
-            <Regent.Primitives.button
-              type="submit"
-              name="decision"
-              value="allow"
-              class="patchbay-button"
-            >
-              Allow
-            </Regent.Primitives.button>
-          </form>
+          <p class="pb-offmod-slot">“{turn_down.label}”</p>
+          <blockquote class="pb-offmod-offer">{turn_down.text}</blockquote>
+          <ul :if={turn_down.reason_codes != []} class="pb-offmod-reasons">
+            <li :for={code <- turn_down.reason_codes}>{reason_words(code)}</li>
+          </ul>
+          <p :if={turn_down.private_reason} class="pb-offmod-figures">
+            {turn_down.private_reason}
+          </p>
         </li>
       </ol>
 
-      <p :if={board.waiting == []} class="patchbay-muted">Nothing is waiting for a person.</p>
+      <p :if={board.turn_downs == []} class="patchbay-muted">Nothing has been turned down.</p>
     </section>
 
     <section class="pb-sheet-section" aria-labelledby="pb-offmod-reports">
@@ -111,9 +137,7 @@
           <p class="pb-offmod-slot">{slot_label(report.placement)}</p>
           <blockquote class="pb-offmod-offer">{report.version.text}</blockquote>
 
-          <p :if={report.version.blocked_at} class="pb-offmod-blocked">
-            Blocked {moment(report.version.blocked_at)}: {report.version.block_reason}
-          </p>
+          <.blocked text={report.version.offer_text} />
 
           <div :if={report.note}>
             <p class="patchbay-muted">The reporter's words:</p>
@@ -179,29 +203,11 @@
             </Regent.Primitives.button>
           </form>
 
-          <form
-            :if={is_nil(report.version.blocked_at)}
-            id={"pb-offmod-block-#{report.id}"}
-            phx-submit="block"
-            class="pb-offmod-actions"
-          >
-            <input type="hidden" name="version_id" value={report.version_id} />
-            <Regent.Primitives.field
-              id={"pb-offmod-block-why-#{report.id}"}
-              label="Why block it (kept with the decision)"
-            >
-              <input
-                id={"pb-offmod-block-why-#{report.id}"}
-                type="text"
-                name="reason"
-                required
-                maxlength="500"
-              />
-            </Regent.Primitives.field>
-            <Regent.Primitives.button variant="secondary" type="submit">
-              Block this wording everywhere
-            </Regent.Primitives.button>
-          </form>
+          <.block_form
+            :if={is_nil(report.version.offer_text.blocked_at)}
+            id={"report-#{report.id}"}
+            version_id={report.version_id}
+          />
 
           <form
             :if={report.placement.status == :active}
@@ -248,9 +254,7 @@
       <ol class="pb-offmod-list">
         <li :for={version <- board.ranking} class="pb-offmod-item">
           <blockquote class="pb-offmod-offer">{version.text}</blockquote>
-          <p :if={version.blocked_at} class="pb-offmod-blocked">
-            Blocked {moment(version.blocked_at)}
-          </p>
+          <.blocked text={version.offer_text} />
           <p class="pb-offmod-figures">{figures(version)}.</p>
         </li>
       </ol>

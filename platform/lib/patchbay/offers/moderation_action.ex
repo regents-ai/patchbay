@@ -1,13 +1,12 @@
 defmodule Patchbay.Offers.ModerationAction do
   @moduledoc """
-  A moderator's decision about an Offer, kept for good.
+  An admin's decision about an Offer, kept for good.
 
     * `:remove_placement` - ended one exact placement for improper use, with
       no refund, and promoted the committed next leader if it could start;
-    * `:block_version` - stopped one wording showing anywhere, at once;
-    * `:dismiss_report` and `:confirm_report` - closed an agent's report;
-    * `:allow_version` and `:refuse_version` - decided a screening that
-      needed a person.
+    * `:block_version` - stopped some words showing anywhere, at once,
+      pressed on one wording, which is cleared if its Offer is deleted;
+    * `:dismiss_report` and `:confirm_report` - closed an agent's report.
 
   Each carries the moderator's idempotency key, so repeating a request
   answers with the first decision and never acts on whatever came next.
@@ -28,16 +27,14 @@ defmodule Patchbay.Offers.ModerationAction do
       index([:placement_id])
       index([:version_id])
       index([:report_id])
-      index([:review_id])
     end
 
     references do
       reference(:moderator, on_delete: :restrict)
       reference(:placement, on_delete: :restrict)
-      reference(:version, on_delete: :restrict)
+      reference(:version, on_delete: :nilify)
       reference(:promoted_placement, on_delete: :restrict)
       reference(:report, on_delete: :restrict)
-      reference(:review, on_delete: :restrict)
     end
   end
 
@@ -52,9 +49,7 @@ defmodule Patchbay.Offers.ModerationAction do
           :remove_placement,
           :block_version,
           :dismiss_report,
-          :confirm_report,
-          :allow_version,
-          :refuse_version
+          :confirm_report
         ]
       ]
     )
@@ -108,9 +103,6 @@ defmodule Patchbay.Offers.ModerationAction do
 
     # For a dismissed or confirmed report: the report decided.
     belongs_to(:report, Patchbay.Offers.OfferReport, allow_nil?: true, public?: true)
-
-    # For an allowed or refused wording: the screening decided.
-    belongs_to(:review, Patchbay.Offers.Review, allow_nil?: true, public?: true)
   end
 
   actions do
@@ -126,7 +118,6 @@ defmodule Patchbay.Offers.ModerationAction do
         :placement_id,
         :version_id,
         :report_id,
-        :review_id,
         :expected_generation,
         :outcome,
         :consumed_minor,

@@ -66,6 +66,7 @@ defmodule Patchbay.Offers do
     resource Patchbay.Offers.Creative do
       define(:create_creative, action: :save, args: [:label, :text, :request_key])
       define(:archive_creative, action: :archive)
+      define(:delete_creative, action: :delete)
       define(:my_creatives, action: :mine)
     end
 
@@ -73,6 +74,13 @@ defmodule Patchbay.Offers do
       define(:save_creative_version, action: :save, args: [:creative_id, :text, :request_key])
       define(:get_creative_version, action: :read, get_by: [:id])
     end
+
+    resource Patchbay.Offers.OfferText do
+      define(:block_words, action: :block, args: [:version_id, :reason, :idempotency_key])
+    end
+
+    resource(Patchbay.Offers.DailySave)
+    resource(Patchbay.Offers.TurnDown)
 
     resource Patchbay.Offers.Review do
       define(:request_market_review, action: :request_relevance, args: [:version_id, :market_id])

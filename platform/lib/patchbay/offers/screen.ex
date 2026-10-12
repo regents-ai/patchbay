@@ -7,9 +7,9 @@ defmodule Patchbay.Offers.Screen do
   Pages are visited and Jev is asked outside any transaction; the decision
   is written afterwards in one short update, and only while the request it
   answers is still the current one. A call that fails is tried
-  again with Oban's backoff, and after the last try the review goes to a
-  moderator (`:screening_failed`), never to an allow. A Patchbay that cannot
-  screen at all sends every review to a moderator at once.
+  again with Oban's backoff, and after the last try the wording is turned
+  down (`:screening_failed`), never allowed. A Patchbay that cannot screen
+  at all turns every wording down at once.
   """
 
   use Ash.Resource.ManualUpdate

@@ -81,8 +81,8 @@ defmodule PatchbayWeb.OffersLive.Markets do
     Slot
     |> Returns.count_slot_returns(window)
     |> Ash.Query.load(
-      active_placement: [:owner, :version],
-      next_bid: [:owner, :version]
+      active_placement: [:owner, version: [:blocked_at]],
+      next_bid: [:owner, version: [:blocked_at]]
     )
   end
 
@@ -295,11 +295,11 @@ defmodule PatchbayWeb.OffersLive.Markets do
 
   attr(:version, :map, required: true)
 
-  @doc "An Offer's words, or that a moderator blocked them."
+  @doc "An Offer's words, or that Patchbay blocked them."
   def offer_copy(assigns) do
     ~H"""
     <p :if={@version.blocked_at} class="pb-offmod-blocked">
-      Blocked by a moderator. This Offer is not shown.
+      Blocked by Patchbay. This Offer is not shown.
     </p>
     <blockquote :if={!@version.blocked_at} class="pb-offmod-offer">{@version.text}</blockquote>
     """

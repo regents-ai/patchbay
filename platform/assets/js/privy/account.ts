@@ -1,21 +1,6 @@
-import {refusal} from "../api_error.ts"
-import type {ErrorBody} from "../api_error.ts"
 import type * as PrivyBridge from "../privy_bridge.tsx"
 
 const SESSION_PATH = "/auth/privy/session"
-
-const MESSAGES = {
-  unconfigured: "Signing in is not set up on this Patchbay.",
-  unloadable: "The sign-in window could not be loaded. Check your connection and try again.",
-  unready: "Privy did not answer in time. Try again.",
-  closed: "That sign-in was closed before it finished.",
-  refused: "Privy could not finish that sign-in. Try again.",
-  no_access_token: "Privy did not hand back the proof Patchbay needs. Try again.",
-  no_identity_token: "Privy did not hand back the proof Patchbay needs. Try again.",
-  unreachable: "Patchbay could not be reached.",
-  refused_locally: "That sign-in could not be verified.",
-  sign_out_failed: "Signing out did not go through. Try again.",
-}
 
 export type PrivyBridgeModule = typeof PrivyBridge
 
@@ -32,18 +17,6 @@ type AccountOptions = {
   fetch?: typeof globalThis.fetch
   csrfToken?: string
   location?: {reload?: () => void}
-}
-
-type Say = (message: string) => void
-
-// What the session endpoint answers with; only its refusal's words are read.
-type SessionBody = {error?: ErrorBody}
-
-type SessionAnswer = {ok: boolean, body?: SessionBody | null}
-
-// A refusal is read to the visitor whole: what went wrong, then what to do.
-function spoken(error: ErrorBody | undefined): string | undefined {
-  return error && `${error.message} ${error.hint}`
 }
 
 /**
@@ -90,43 +63,37 @@ export function requestAccountAction(action: string, doc: Document, options: Acc
   return attempt
 }
 
+// Signing in and out says nothing, even when it does not go through: a page
+// that signed in or out reloads, and one that did not stays as it was.
 async function performAccountAction(action: string, doc: Document, options: AccountOptions = {}): Promise<void> {
   const appId = privyAppId(doc)
-  const say: Say = message => report(doc, message)
-
-  // Nothing is said while signing in or out; a new press clears the last failure.
-  say("")
-
-  if (!appId) return say(MESSAGES.unconfigured)
+  if (!appId) return
 
   const bridge = await loadPrivyBridge(doc)
-  if (!bridge) return say(MESSAGES.unloadable)
+  if (!bridge) return
 
-  if (action === "sign-in") return signIn(bridge, appId, options, say)
-  return signOut(bridge, appId, options, say)
+  if (action === "sign-in") return signIn(bridge, appId, options)
+  return signOut(bridge, appId, options)
 }
 
-async function signIn(bridge: PrivyBridgeModule, appId: string, options: AccountOptions, say: Say): Promise<void> {
+async function signIn(bridge: PrivyBridgeModule, appId: string, options: AccountOptions): Promise<void> {
   const proof = await bridge.signIn(appId)
-  if (!proof.ok) return say((MESSAGES as Partial<Record<string, string>>)[proof.reason] ?? MESSAGES.refused)
+  if (!proof.ok) return
 
-  const answer = await call(options, "POST", {
+  const signedIn = await call(options, "POST", {
     authorization: `Bearer ${proof.access}`,
     "privy-id-token": proof.identity,
   })
 
   // The page is drawn from the session, so the session is what a reload reads.
-  if (answer.ok) return reload(options)
-
-  say(spoken(answer.body?.error) ?? MESSAGES.refused_locally)
+  if (signedIn) reload(options)
 }
 
 // The Patchbay session goes first, because that is the one this page is drawn
 // from. Ending the Privy session behind it is cleanup: if it fails, the visitor
-// is still signed out of Patchbay, and saying otherwise would be untrue.
-async function signOut(bridge: PrivyBridgeModule, appId: string, options: AccountOptions, say: Say): Promise<void> {
-  const answer = await call(options, "DELETE", {})
-  if (!answer.ok) return say(spoken(answer.body?.error) ?? MESSAGES.sign_out_failed)
+// is still signed out of Patchbay.
+async function signOut(bridge: PrivyBridgeModule, appId: string, options: AccountOptions): Promise<void> {
+  if (!(await call(options, "DELETE", {}))) return
 
   try {
     await bridge.signOut(appId)
@@ -161,9 +128,10 @@ export async function loadPrivyBridge(doc: MetaDocument | undefined): Promise<Pr
   }
 }
 
-async function call(options: AccountOptions, method: string, headers: Record<string, string>): Promise<SessionAnswer> {
+// Whether the session endpoint took the request.
+async function call(options: AccountOptions, method: string, headers: Record<string, string>): Promise<boolean> {
   const fetchImpl = options.fetch ?? globalThis.fetch
-  if (typeof fetchImpl !== "function") return {ok: false}
+  if (typeof fetchImpl !== "function") return false
 
   try {
     const response = await fetchImpl(SESSION_PATH, {
@@ -172,28 +140,15 @@ async function call(options: AccountOptions, method: string, headers: Record<str
       headers: {accept: "application/json", "x-csrf-token": options.csrfToken ?? "", ...headers},
     })
 
-    return {ok: response.ok === true, body: await readBody(response)}
+    return response.ok === true
   } catch {
-    return {ok: false, body: refusal("unreachable", MESSAGES.unreachable, "Check your connection and try again.")}
-  }
-}
-
-async function readBody(response: Response): Promise<SessionBody | null> {
-  try {
-    return await response.json()
-  } catch {
-    return null
+    return false
   }
 }
 
 function reload(options: AccountOptions) {
   const location = options.location ?? globalThis.location
   location?.reload?.()
-}
-
-function report(doc: Document, message: string) {
-  const note = doc.getElementById("pb-account-note")
-  if (note) note.textContent = message
 }
 
 function metaContent(doc: MetaDocument | undefined, name: string): string | null {

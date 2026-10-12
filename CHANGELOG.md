@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-12 — Offers: delete saved Offers, plain addresses work
+
+- A saved Offer that has never been bid with now has a trash icon in its top
+  right corner. It asks first, then deletes the Offer and every version of it
+  for good. An Offer that has been bid with says "Has bids" instead.
+- An address written without `https://`, such as `patchbay.help`, now counts
+  as a link: screening opens it the same way.
+- Screening decides every Offer on its own. When it cannot open a link, cannot
+  run, or is not sure, the Offer is turned down with the reason, and you can
+  change the words and save again.
+- Words Patchbay blocks are blocked for every Offer that uses them, and cannot
+  be saved again.
+- Deleting an Offer does not give back a save for the day.
+- Signing in and out no longer shows a note beside the account button.
+
 ## 2026-10-12 — Wallet Bench compares versions
 
 - Each agent and wallet on the Wallet Bench now shows its own logo.

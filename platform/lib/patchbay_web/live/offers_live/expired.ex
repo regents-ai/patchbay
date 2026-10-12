@@ -67,14 +67,14 @@ defmodule PatchbayWeb.OffersLive.Expired do
     Placement
     |> Ash.Query.for_read(:mine, %{}, actor: profile)
     |> Ash.Query.filter(status != :active)
-    |> Ash.Query.load(version: [], slot: [market: :site])
+    |> Ash.Query.load(version: [:blocked_at], slot: [market: :site])
   end
 
   defp query(:returned, profile) do
     Bid
     |> Ash.Query.for_read(:mine, %{}, actor: profile)
     |> Ash.Query.filter(status == :returned)
-    |> Ash.Query.load(version: [], slot: [market: :site])
+    |> Ash.Query.load(version: [:blocked_at], slot: [market: :site])
   end
 
   defp assign_cursor(socket, _list, nil), do: socket

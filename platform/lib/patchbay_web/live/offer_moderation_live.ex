@@ -1,15 +1,16 @@
 defmodule PatchbayWeb.OfferModerationLive do
   @moduledoc """
-  The private page where moderators look after Agent Offers: the wordings
-  screening left for a person; the reports agents file, newest first, as
-  they arrive; the Offers reported most, with the figures that put a count
-  in proportion; what screening found; and the decisions already on record.
+  The private page where admins watch Agent Offers, newest first, as they
+  happen: every Offer saved, every new bid, and every wording turned down,
+  by screening or by an admin's block. Below them, the reports agents file,
+  the Offers reported most, and the decisions already on record.
 
-  A moderator allows or refuses a wording screening could not decide,
-  dismisses or confirms a report, or blocks a wording so it is shown nowhere
-  from that moment. Each decision is written with its reason
-  and the moderator's name in the same transaction as the change. A report's
-  note is the reporter's own words and is shown only as text.
+  Nobody reviews an Offer by hand. An admin blocks a wording so it is shown
+  nowhere from that moment and can never be saved again, dismisses or
+  confirms a report, or removes a showing Offer. Each decision is written
+  with its reason and the admin's name in the same transaction as the
+  change. A report's note is the reporter's own words and is shown only as
+  text.
 
   Only a signed-in profile whose verified wallet is on the moderator list
   reaches the page; anyone else is answered as though it does not exist.
@@ -25,11 +26,15 @@ defmodule PatchbayWeb.OfferModerationLive do
   import PatchbayWeb.OffersLive.Markets, only: [credits: 1]
 
   alias Patchbay.Offers.Advance
+  alias Patchbay.Offers.Bid
+  alias Patchbay.Offers.Creative
   alias Patchbay.Offers.CreativeVersion
   alias Patchbay.Offers.ModerationAction
   alias Patchbay.Offers.OfferReport
+  alias Patchbay.Offers.OfferText
   alias Patchbay.Offers.Review
   alias Patchbay.Offers.Terms
+  alias Patchbay.Offers.TurnDown
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Read
 
@@ -45,12 +50,15 @@ defmodule PatchbayWeb.OfferModerationLive do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, OfferReport.topic())
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Review.topic())
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Patchbay.Offers.Slot.topic())
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Creative.topic())
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Bid.topic())
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, TurnDown.topic())
     end
 
     {:ok,
      socket
      |> hold_authority()
-     |> assign(page_title: "Agent Offers moderation", problem: nil)
+     |> assign(page_title: "Agent Offers admin", problem: nil)
      |> assign(board: %Read{owner: :moderators})
      |> Read.settle({Read, :board, 0}, {:ok, read_board()})}
   end
@@ -81,7 +89,14 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   @impl true
   def handle_info(changed, socket)
-      when changed in [:offer_reports_changed, :offer_reviews_changed, :offer_markets_changed],
+      when changed in [
+             :offer_reports_changed,
+             :offer_reviews_changed,
+             :offer_markets_changed,
+             :offer_creatives_changed,
+             :offer_bids_changed,
+             :offer_turn_downs_changed
+           ],
       do: {:noreply, reread(socket)}
 
   @impl true
@@ -108,38 +123,18 @@ defmodule PatchbayWeb.OfferModerationLive do
     end
   end
 
-  def handle_event("settle", %{"review_id" => id, "decision" => decision} = params, socket) do
-    with {:ok, decision} <- screening_decision(decision),
-         {:ok, review} <- fetch(Review, id),
-         {:ok, _decided} <-
-           review
-           |> Ash.Changeset.for_update(
-             :decide,
-             %{
-               decision: decision,
-               reason: params["reason"],
-               idempotency_key: Ecto.UUID.generate(),
-               fresh_for_us: Patchbay.Offers.approval_fresh_for_us()
-             },
-             actor: socket.assigns.current_profile
-           )
-           |> Ash.update() do
-      {:noreply, socket |> assign(problem: nil) |> reread()}
-    else
-      {:error, problem} -> {:noreply, assign(socket, problem: words(problem))}
-    end
-  end
-
+  # Blocks the words of the wording pressed, wherever they are used.
   def handle_event("block", %{"version_id" => id} = params, socket) do
     with {:ok, version} <- fetch(CreativeVersion, id),
+         {:ok, text} <- fetch(OfferText, version.text_sha256),
          {:ok, _blocked} <-
-           version
-           |> Ash.Changeset.for_update(
-             :block,
-             %{reason: params["reason"], idempotency_key: Ecto.UUID.generate()},
+           Patchbay.Offers.block_words(
+             text,
+             version.id,
+             params["reason"],
+             Ecto.UUID.generate(),
              actor: socket.assigns.current_profile
-           )
-           |> Ash.update() do
+           ) do
       {:noreply, socket |> assign(problem: nil) |> reread()}
     else
       {:error, problem} -> {:noreply, assign(socket, problem: words(problem))}
@@ -178,14 +173,10 @@ defmodule PatchbayWeb.OfferModerationLive do
   defp decision("confirmed"), do: {:ok, :confirmed}
   defp decision(_other), do: {:error, "That is not a decision this page makes."}
 
-  defp screening_decision("allow"), do: {:ok, :allow}
-  defp screening_decision("deny"), do: {:ok, :deny}
-  defp screening_decision(_other), do: {:error, "That is not a decision this page makes."}
-
-  # The page is the moderator's own door: it reads every report and wording
-  # whoever owns them, so these reads skip policy deliberately after the
-  # moderator checks at mount and before every page callback. Every change goes
-  # through its action's moderator policy.
+  # The page is the admin's own door: it reads every Offer, bid, report and
+  # turn-down whoever owns them, so these reads skip policy deliberately after
+  # the admin check at mount and before every page callback. Every change goes
+  # through its action's admin policy.
   defp fetch(resource, id) do
     case Ash.get(resource, id, authorize?: false) do
       {:ok, record} -> {:ok, record}
@@ -202,7 +193,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     end)
   end
 
-  defp words(%Ash.Error.Forbidden{}), do: "Only a moderator can do that."
+  defp words(%Ash.Error.Forbidden{}), do: "Only an admin can do that."
 
   defp words(_problem), do: "That could not be saved. Try again in a moment."
 
@@ -214,15 +205,43 @@ defmodule PatchbayWeb.OfferModerationLive do
      %{
        now: now,
        starts: starts(reports, now),
-       waiting: waiting(),
+       offers: offers(),
+       bids: bids(),
+       turn_downs: turn_downs(),
        reports: reports,
        ranking: ranking(),
-       decisions: decisions(),
-       screening: screening()
+       decisions: decisions()
      }}
   end
 
-  # Moderator reads, as above.
+  # Admin reads, as above.
+  defp offers do
+    Creative
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.Query.limit(@limit)
+    |> Ash.Query.load([:owner, :has_bids?, current_version: [:offer_text | @figures]])
+    |> Ash.read!(authorize?: false)
+  end
+
+  # As above.
+  defp bids do
+    Bid
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.Query.limit(@limit)
+    |> Ash.Query.load([:owner, version: [:creative, :offer_text], slot: [market: :site]])
+    |> Ash.read!(authorize?: false)
+  end
+
+  # As above.
+  defp turn_downs do
+    TurnDown
+    |> Ash.Query.sort(inserted_at: :desc)
+    |> Ash.Query.limit(@limit)
+    |> Ash.Query.load([:owner, market: :site])
+    |> Ash.read!(authorize?: false)
+  end
+
+  # As above.
   defp reports do
     reviews = Review |> Ash.Query.sort(inserted_at: :desc) |> Ash.Query.load(market: :site)
 
@@ -230,7 +249,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.Query.limit(@limit)
     |> Ash.Query.load(
-      version: [{:reviews, reviews} | @figures],
+      version: [:offer_text, {:reviews, reviews} | @figures],
       placement: [slot: [next_bid: [:version], market: :site]]
     )
     |> Ash.read!(authorize?: false)
@@ -249,20 +268,10 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> MapSet.new()
   end
 
-  # As above. Oldest first: the advertiser has waited longest.
-  defp waiting do
-    Review
-    |> Ash.Query.filter(decision == :needs_review)
-    |> Ash.Query.sort(decided_at: :asc)
-    |> Ash.Query.limit(@limit)
-    |> Ash.Query.load([:version, market: :site])
-    |> Ash.read!(authorize?: false)
-  end
-
   # As above.
   defp ranking do
     CreativeVersion
-    |> Ash.Query.load(@figures)
+    |> Ash.Query.load([:offer_text | @figures])
     |> Ash.Query.filter(report_count > 0)
     |> Ash.Query.sort(report_count: :desc, inserted_at: :asc)
     |> Ash.Query.limit(@limit)
@@ -278,14 +287,34 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.read!(authorize?: false)
   end
 
-  # As above.
-  defp screening do
-    %{
-      waiting:
-        Ash.count!(Ash.Query.filter(Review, not is_nil(screen_requested_at)), authorize?: false),
-      needs_person:
-        Ash.count!(Ash.Query.filter(Review, decision == :needs_review), authorize?: false)
-    }
+  attr(:text, :map, required: true)
+
+  defp blocked(assigns) do
+    ~H"""
+    <p :if={@text.blocked_at} class="pb-offmod-blocked">
+      Blocked {moment(@text.blocked_at)}: {@text.block_reason}
+    </p>
+    """
+  end
+
+  attr(:id, :string, required: true)
+  attr(:version_id, :string, required: true)
+
+  defp block_form(assigns) do
+    ~H"""
+    <form id={"pb-offmod-block-#{@id}"} phx-submit="block" class="pb-offmod-actions">
+      <input type="hidden" name="version_id" value={@version_id} />
+      <Regent.Primitives.field
+        id={"pb-offmod-block-why-#{@id}"}
+        label="Why block it (kept with the decision)"
+      >
+        <input id={"pb-offmod-block-why-#{@id}"} type="text" name="reason" required maxlength="500" />
+      </Regent.Primitives.field>
+      <Regent.Primitives.button variant="secondary" type="submit">
+        Block these words everywhere
+      </Regent.Primitives.button>
+    </form>
+    """
   end
 
   @doc false
@@ -319,8 +348,7 @@ defmodule PatchbayWeb.OfferModerationLive do
   @doc false
   def review_decision_label(:pending), do: "waiting"
   def review_decision_label(:allow), do: "allowed"
-  def review_decision_label(:deny), do: "refused"
-  def review_decision_label(:needs_review), do: "needs a person"
+  def review_decision_label(:deny), do: "turned down"
 
   @doc false
   def slot_label(%{slot: %{number: number, market: %{scope: :global}}}),
@@ -369,6 +397,22 @@ defmodule PatchbayWeb.OfferModerationLive do
   def decision_label(:confirm_report), do: "Confirmed a report"
   def decision_label(:block_version), do: "Blocked a wording"
   def decision_label(:remove_placement), do: "Removed a placement"
-  def decision_label(:allow_version), do: "Allowed a wording"
-  def decision_label(:refuse_version), do: "Refused a wording"
+
+  @doc false
+  def turn_down_label(%{kind: :safety}), do: "Screening turned it down"
+
+  def turn_down_label(%{kind: :relevance, market: %{site: site}}),
+    do: "Screening turned it down for #{site_name(site)}"
+
+  def turn_down_label(%{kind: :blocked}), do: "Blocked by an admin"
+
+  @doc false
+  def lane_label(:immediate), do: "now"
+  def lane_label(:next_period), do: "next period"
+
+  @doc false
+  def bid_status_label(:held), do: "Waiting for its window"
+  def bid_status_label(:leading), do: "Leads the next period"
+  def bid_status_label(:placed), do: "Won"
+  def bid_status_label(:returned), do: "Returned"
 end

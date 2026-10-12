@@ -203,7 +203,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
     reviews = Ash.Query.load(Review, [:approved?, market: :site])
 
     versions =
-      [actor: profile, load: [current_version: [reviews: reviews]]]
+      [actor: profile, load: [current_version: [:blocked_at, reviews: reviews]]]
       |> Offers.my_creatives!()
       |> Enum.reject(&(&1.archived_at || &1.current_version.blocked_at))
       |> Enum.map(&{&1, &1.current_version})

@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.OffersLive.Create do
   @moduledoc """
   An advertiser's own Offers: write a new one, see it checked as it is
-  typed, and follow each saved Offer through screening.
+  typed, follow each saved Offer through screening, and delete one that
+  was never bid with.
 
   The check as you type is the same rule the save applies
   (`Patchbay.Offers.CreativeText`), so the counts, the links found and the
@@ -28,6 +29,7 @@ defmodule PatchbayWeb.OffersLive.Create do
   embed_templates "create/*"
 
   @not_saved "That could not be saved. Try again in a moment."
+  @not_deleted "That Offer could not be deleted. Try again in a moment."
 
   @impl true
   def mount(_params, _session, socket),
@@ -35,7 +37,7 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   @impl true
   def handle_params(params, uri, socket),
-    do: {:noreply, editor_params(socket, params["reword"], uri)}
+    do: {:noreply, editor_params(socket, params, uri)}
 
   @doc "Initialize the shared Offer editor on its hosting page's socket."
   def initialize_editor(socket) do
@@ -48,6 +50,7 @@ defmodule PatchbayWeb.OffersLive.Create do
     |> assign(
       problem: nil,
       rewording: nil,
+      deleting: nil,
       screening_paused?: Offers.screening_paused?()
     )
     |> assign_new_offer(blank_offer())
@@ -57,12 +60,17 @@ defmodule PatchbayWeb.OffersLive.Create do
   @doc """
   Takes the editor's state from the page address, so a reload or a
   reconnect shows the same form and the browser restores what was typed in
-  it. `creative_id` names the saved Offer being reworded; only one of the
-  signed-in account's own saved Offers opens its form, so any other id
-  shows none.
+  it. `"reword"` names the saved Offer being reworded and `"delete"` the one
+  whose deletion is being confirmed; only the signed-in account's own saved
+  Offers open either, and only one never bid with can be deleted, so any
+  other id shows nothing.
   """
-  def editor_params(socket, creative_id, uri),
-    do: socket |> assign(editor_uri: uri) |> choose(creative_id)
+  def editor_params(socket, params, uri) do
+    socket
+    |> assign(editor_uri: uri)
+    |> choose(params["reword"])
+    |> choose_deletion(params["delete"])
+  end
 
   @doc "Moves to the same page with `changes` made to its address; a `nil` value drops that key."
   def patch_editor(socket, changes) do
@@ -95,6 +103,11 @@ defmodule PatchbayWeb.OffersLive.Create do
           }
         )
     end
+  end
+
+  defp choose_deletion(socket, creative_id) do
+    deleting = Enum.find(socket.assigns.saved, &(&1.id == creative_id and not &1.has_bids?))
+    assign(socket, deleting: deleting)
   end
 
   # Each form carries the key for the one save it is for. A retry of the same
@@ -186,11 +199,41 @@ defmodule PatchbayWeb.OffersLive.Create do
     end
   end
 
+  def handle_event("ask_delete", %{"creative_id" => id}, socket) when is_binary(id),
+    do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"delete" => id})}
+
+  def handle_event("cancel_delete", _params, socket),
+    do: {:noreply, patch_editor(socket, %{"delete" => nil})}
+
+  # Deletes only the Offer the open confirmation names. The action checks
+  # again that it is the account's own and was never bid with.
+  def handle_event("delete", %{"creative_id" => id}, %{assigns: %{deleting: %{id: id}}} = socket) do
+    profile = socket.assigns.current_profile
+
+    case Offers.delete_creative(socket.assigns.deleting, actor: profile) do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign(problem: nil, saved: saved(profile), deleting: nil)
+         |> patch_editor(%{"delete" => nil, "reword" => nil})}
+
+      {:error, error} ->
+        {:noreply,
+         socket
+         |> assign(problem: deletion_words(error), saved: saved(profile))
+         |> patch_editor(%{"delete" => nil})}
+    end
+  end
+
+  def handle_event("delete", _params, socket),
+    do: {:noreply, socket |> assign(problem: @not_deleted) |> patch_editor(%{"delete" => nil})}
+
   def handle_event(event, _params, socket) when event in ["save", "save_reword"],
     do: {:noreply, assign(socket, problem: @not_saved)}
 
-  def handle_event(event, _params, socket) when event in ["check", "reword", "check_reword"],
-    do: {:noreply, socket}
+  def handle_event(event, _params, socket)
+      when event in ["check", "reword", "check_reword", "ask_delete"],
+      do: {:noreply, socket}
 
   defp assign_new_offer(socket, params) do
     assign(socket,
@@ -204,7 +247,11 @@ defmodule PatchbayWeb.OffersLive.Create do
 
     Offers.my_creatives!(
       actor: profile,
-      load: [current_version: [reviews: reviews], versions: [reviews: reviews]]
+      load: [
+        :has_bids?,
+        current_version: [:blocked_at, reviews: reviews],
+        versions: [:blocked_at, reviews: reviews]
+      ]
     )
     |> Enum.reject(& &1.archived_at)
   end
@@ -220,6 +267,11 @@ defmodule PatchbayWeb.OffersLive.Create do
   end
 
   def words(_problem), do: @not_saved
+
+  defp deletion_words(%Ash.Error.Invalid{errors: [%{field: :id, message: message} | _rest]}),
+    do: "That Offer #{message}."
+
+  defp deletion_words(_problem), do: @not_deleted
 
   @doc """
   The text as it will be kept, its counts and its links, or what is wrong
@@ -270,7 +322,7 @@ defmodule PatchbayWeb.OffersLive.Create do
         Links screening will visit: {Enum.join(@check.urls, ", ")}
       </p>
       <p :if={@check.bare_addresses != []} class="pb-offmod-figures">
-        Not written as a full link, so a person checks it: {Enum.join(@check.bare_addresses, ", ")}
+        Addresses screening will open as https links: {Enum.join(@check.bare_addresses, ", ")}
       </p>
       <pre :if={@check.text} class="pb-offers-preview">{preview(@check.text)}</pre>
     </details>
@@ -289,7 +341,7 @@ defmodule PatchbayWeb.OffersLive.Create do
       </li>
     </ul>
     <p :if={@version.blocked_at} class="pb-offmod-blocked">
-      Blocked by a moderator. It cannot be shown again.
+      Blocked by Patchbay. It cannot be shown again.
     </p>
     <details class="pb-bid-details">
       <summary>Screening details</summary>
@@ -297,7 +349,7 @@ defmodule PatchbayWeb.OffersLive.Create do
         {@version.code_points} of {max_code_points()} characters · {@version.byte_count} of {max_bytes()} bytes
         <span :if={@version.urls != []}>· links: {Enum.join(@version.urls, ", ")}</span>
         <span :if={@version.bare_addresses != []}>
-          · not full links: {Enum.join(@version.bare_addresses, ", ")}
+          · opened as https links: {Enum.join(@version.bare_addresses, ", ")}
         </span>
       </p>
       <ul class="pb-offers-standing">
@@ -324,14 +376,12 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   def standing(%{decision: :allow}), do: "Allowed before; screened again before it can be shown."
 
-  def standing(%{decision: :deny}), do: "Refused."
-  def standing(%{decision: :needs_review}), do: "A person at Patchbay is checking it."
+  def standing(%{decision: :deny}), do: "Turned down."
 
   defp review_state(%{decision: :allow, approved?: true}), do: "Ready"
   defp review_state(%{decision: :allow}), do: "Recheck needed"
   defp review_state(%{decision: :pending}), do: "Waiting"
-  defp review_state(%{decision: :deny}), do: "Refused"
-  defp review_state(%{decision: :needs_review}), do: "In review"
+  defp review_state(%{decision: :deny}), do: "Turned down"
 
   @doc false
   def review_label(%{kind: :safety}), do: "Safety"

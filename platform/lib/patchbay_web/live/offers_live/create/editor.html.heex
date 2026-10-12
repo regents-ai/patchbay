@@ -21,7 +21,7 @@
         <h2 id="pb-offers-new">New Offer</h2>
         <Regent.Primitives.tip id="pb-offers-save-info" label="About saving an Offer">
           Saving is free. Each account can save five new or changed Offers per UTC day.
-          Wording is screened automatically; uncertain checks go to a person.
+          Wording is screened automatically. Anything it is unsure of is turned down, with the reason.
           Approval comes before bidding. A site slot also needs a fit check from its bid page.
         </Regent.Primitives.tip>
       </header>
@@ -98,7 +98,35 @@
         >
           <header class="pb-offmod-head">
             <strong>{creative.label}</strong>
-            <span class="pb-offers-eyebrow">v{creative.current_version.version}</span>
+            <span class="pb-offers-saved-tools">
+              <span class="pb-offers-eyebrow">v{creative.current_version.version}</span>
+              <span :if={creative.has_bids?} class="pb-offers-has-bids">Has bids</span>
+              <button
+                :if={!creative.has_bids?}
+                type="button"
+                class="pb-offers-delete"
+                aria-label={"Delete #{creative.label}"}
+                phx-click="ask_delete"
+                phx-value-creative_id={creative.id}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </span>
           </header>
 
           <.offer_version version={creative.current_version} />
@@ -181,4 +209,36 @@
       </p>
     </Regent.Structure.panel>
   </div>
+
+  <dialog
+    :if={@deleting}
+    id={"pb-offers-delete-#{@deleting.id}"}
+    class="pb-offers-result"
+    role="alertdialog"
+    aria-labelledby="pb-offers-delete-title"
+    aria-describedby="pb-offers-delete-words"
+    phx-hook="PatchbayConfirmDialog"
+    data-close-event="cancel_delete"
+    phx-mounted={JS.ignore_attributes("open")}
+  >
+    <h2 id="pb-offers-delete-title">Delete “{@deleting.label}”?</h2>
+    <p id="pb-offers-delete-words">
+      It is deleted for good, with every version. This cannot be undone.
+    </p>
+    <div class="pb-offmod-actions">
+      <form method="dialog">
+        <Regent.Primitives.button variant="quiet" type="submit" autofocus>
+          <span class="pb-action-label" data-press-label>Keep it</span>
+        </Regent.Primitives.button>
+      </form>
+      <Regent.Primitives.button
+        variant="secondary"
+        type="button"
+        phx-click="delete"
+        phx-value-creative_id={@deleting.id}
+      >
+        <span class="pb-action-label" data-press-label>Delete for good</span>
+      </Regent.Primitives.button>
+    </div>
+  </dialog>
 <% end %>

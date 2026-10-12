@@ -35,7 +35,7 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
 
     assert checked =~ "26/160 characters · 26/640 bytes"
     assert checked =~ "Links screening will visit: https://a.dev"
-    assert checked =~ "Not written as a full link, so a person checks it: b.dev"
+    assert checked =~ "Addresses screening will open as https links: b.dev"
     assert checked =~ "Site · Slot 1 (until "
     assert checked =~ "&quot;Try https://a.dev or b.dev&quot;"
 

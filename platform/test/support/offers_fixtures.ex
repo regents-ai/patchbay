@@ -131,14 +131,15 @@ defmodule Patchbay.OffersFixtures do
   end
 
   @doc """
-  Blocks `version` as `moderator`, through the moderator's own action.
+  Blocks the words of `version` as `moderator`, through the moderator's own
+  action.
   """
   def block(version, moderator, reason \\ "misleading") do
-    version
-    |> Ash.Changeset.for_update(:block, %{reason: reason, idempotency_key: Ecto.UUID.generate()},
-      actor: moderator
-    )
-    |> Ash.update!()
+    # The words' row is read as the admin page reads it; the block itself
+    # goes through the moderator's policy.
+    Patchbay.Offers.OfferText
+    |> Ash.get!(version.text_sha256, authorize?: false)
+    |> Offers.block_words!(version.id, reason, Ecto.UUID.generate(), actor: moderator)
   end
 
   @doc """

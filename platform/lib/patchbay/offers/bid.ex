@@ -29,7 +29,23 @@ defmodule Patchbay.Offers.Bid do
     otp_app: :patchbay,
     domain: Patchbay.Offers,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
+
+  # A new bid tells the open admin page to read again.
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    publish(:accept, ["offers:bids"], transform: &__MODULE__.changed_message/1)
+  end
+
+  @doc "The PubSub topic a new bid is announced on."
+  @spec topic() :: String.t()
+  def topic, do: "offers:bids"
+
+  @doc false
+  def changed_message(_notification), do: :offer_bids_changed
 
   postgres do
     table("offer_bids")

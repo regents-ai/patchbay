@@ -30,6 +30,7 @@ import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.ts"
 import {PatchbayRelativeTime} from "./hooks/relative_time.ts"
 import {PatchbayOfferResultDialog} from "./hooks/offer_result.ts"
+import {PatchbayConfirmDialog} from "./hooks/confirm_dialog.ts"
 import {MotionCount, MotionList, MotionRefusal} from "./hooks/motion/moments.ts"
 import {MotionCascade} from "./hooks/motion/reveals.ts"
 import {HolographicCard} from "./hooks/holographic_card.ts"
@@ -59,6 +60,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     PatchbayWebMCP,
     PatchbayRelativeTime,
     PatchbayOfferResultDialog,
+    PatchbayConfirmDialog,
     MotionCount,
     MotionList,
     MotionRefusal,

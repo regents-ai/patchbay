@@ -212,8 +212,6 @@ body {
 .pb-account-link:focus-visible,
 .pb-account-sign-out:hover:not(:disabled),
 .pb-account-sign-out:focus-visible { color: var(--pb-accent); }
-.pb-account-note { margin: 0; color: var(--pb-text-muted); font-weight: var(--font-weight-regular); }
-.pb-account-note:empty { display: none; }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
@@ -2161,6 +2159,11 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-saved-card > .pb-offmod-offer { min-height: 10rem; padding: var(--space-2); border: 0; background: var(--pb-surface-sunk); font-size: 1rem; line-height: 1.6; }
 .pb-offers-saved-card .pb-offmod-head { justify-content: space-between; }
 .pb-offers-saved-card .pb-offmod-head strong { overflow-wrap: anywhere; }
+.pb-offers-saved-tools { display: inline-flex; align-items: center; gap: var(--space-1); }
+.pb-offers-has-bids { color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-offers-delete { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -.75rem -.75rem -.75rem 0; padding: 0; border: 0; background: none; color: var(--pb-text-muted); cursor: pointer; }
+.pb-offers-delete:hover { color: var(--pb-text); }
+.pb-offers-delete:focus-visible { outline: 2px solid var(--pb-text); outline-offset: -.5rem; }
 .pb-offers-review-states { display: grid; gap: var(--space-1); padding: 0; margin: 0; list-style: none; font-size: .8125rem; }
 .pb-offers-review-states li { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); }
 .pb-offers-review-states li strong::before { content: ""; display: inline-block; width: .375rem; height: .375rem; margin-right: .5rem; border: 1px solid currentColor; vertical-align: middle; }

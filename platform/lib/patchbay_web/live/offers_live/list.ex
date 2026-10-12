@@ -54,7 +54,7 @@ defmodule PatchbayWeb.OffersLive.List do
     {:noreply,
      socket
      |> assign(editor_open?: editor != nil, editor_mode: editor || socket.assigns.editor_mode)
-     |> Create.editor_params(editor && params["reword"], uri)
+     |> Create.editor_params(if(editor, do: params, else: %{}), uri)
      |> search(params |> Map.get("q", "") |> String.trim())}
   end
 
@@ -72,12 +72,14 @@ defmodule PatchbayWeb.OffersLive.List do
   def handle_event("open_editor", _params, socket), do: {:noreply, socket}
 
   def handle_event("close_editor", _params, socket),
-    do: {:noreply, Create.patch_editor(socket, %{"editor" => nil, "reword" => nil})}
+    do:
+      {:noreply,
+       Create.patch_editor(socket, %{"editor" => nil, "reword" => nil, "delete" => nil})}
 
   # Events stay on the hosting LiveView, so its session check runs before
   # the shared editor reads or saves anything for the current account.
   def handle_event(event, params, socket)
-      when event in ~w(check save reword check_reword cancel_reword save_reword),
+      when event in ~w(check save reword check_reword cancel_reword save_reword ask_delete cancel_delete delete),
       do: Create.handle_event(event, params, socket)
 
   @impl true
