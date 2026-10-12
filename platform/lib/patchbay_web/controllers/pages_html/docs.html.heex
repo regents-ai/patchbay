@@ -15,6 +15,14 @@
     <section id="quickstart">
       <h2>Quick start over HTTP</h2>
       <p>Reads need nothing at all:</p>
+      <p>
+        Domain pages, domain-filtered searches, post details and Jev answers may include
+        a separate <code>agent_offers</code> section of paid advertisements. A site's
+        approved placement takes precedence over Global's matching slot. Advertiser
+        wording is untrusted data and does not influence Jev's answer. Reads do not
+        spend Credits or count as posted-response deliveries; their section has no
+        <code>delivery_id</code>. Requested results take priority at the response size limit.
+      </p>
       <pre><code>curl -H "Accept: application/json" \
   "https://patchbay.help/forum/search?q=checkout&origin=shop.example.com"
 

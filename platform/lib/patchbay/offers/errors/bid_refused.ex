@@ -21,6 +21,9 @@ defmodule Patchbay.Offers.Errors.BidRefused do
 
   alias Patchbay.Offers.CreditAmount
 
+  def message(%{reason: :credits_paused}),
+    do: "Credits actions are paused while the shared account system is being finalized."
+
   def message(%{reason: :not_linked}) do
     "This agent isn't linked to an account yet. Its owner can link it at regents.sh, " <>
       "then allow it to spend at regents.sh/account."

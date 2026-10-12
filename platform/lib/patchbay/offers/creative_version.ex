@@ -124,6 +124,7 @@ defmodule Patchbay.Offers.CreativeVersion do
 
       change(set_attribute(:creative_id, arg(:creative_id)))
       change(Patchbay.Offers.Changes.NormalizeText)
+      change(Patchbay.Offers.Changes.DailyOfferLimit)
       change(Patchbay.Offers.Changes.NextVersion)
       change(Patchbay.Offers.Changes.RequestSafetyReview)
     end

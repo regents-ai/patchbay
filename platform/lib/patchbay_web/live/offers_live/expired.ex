@@ -11,7 +11,9 @@ defmodule PatchbayWeb.OffersLive.Expired do
 
   use PatchbayWeb, :live_view
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
+  import PatchbayWeb.OffersLive.Navigation, only: [offers_header: 1]
+
+  import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, duration: 1, offer_copy: 1, slot_name: 1]
@@ -27,7 +29,10 @@ defmodule PatchbayWeb.OffersLive.Expired do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(page_title: "Past Offers", signed_in?: not is_nil(socket.assigns.current_profile))
+      |> assign(
+        page_title: "Offer history",
+        signed_in?: not is_nil(socket.assigns.current_profile)
+      )
       |> stream(:ended, [])
       |> stream(:returned, [])
 

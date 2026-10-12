@@ -13,8 +13,17 @@ defmodule PatchbayWeb.KnownFixController do
 
   def show(conn, params) do
     case KnownFixAnswer.look_up(params, ClientAddress.visitor_key(conn)) do
-      {:ok, answer} -> json(conn, KnownFixAnswer.json(answer))
-      {:error, refusal} -> conn |> put_status(:unprocessable_entity) |> json(refusal)
+      {:ok, answer} ->
+        json(
+          conn,
+          Patchbay.Offers.Disclosure.attach(
+            KnownFixAnswer.json(answer),
+            Patchbay.Offers.Serving.for_domain(answer.site)
+          )
+        )
+
+      {:error, refusal} ->
+        conn |> put_status(:unprocessable_entity) |> json(refusal)
     end
   end
 

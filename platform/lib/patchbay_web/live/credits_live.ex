@@ -23,14 +23,15 @@ defmodule PatchbayWeb.CreditsLive do
     if connected?(socket),
       do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(did))
 
-    {:ok, socket |> assign(opened: false) |> read()}
+    {:ok, socket |> assign(opened: false, paused?: Patchbay.Credits.actions_paused?()) |> read()}
   end
 
   @impl true
   def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
 
   @impl true
-  def handle_event("opened", _params, socket), do: {:noreply, assign(socket, opened: true)}
+  def handle_event("opened", _params, socket),
+    do: {:noreply, assign(socket, opened: !Patchbay.Credits.actions_paused?())}
 
   defp read(socket),
     do:
@@ -48,6 +49,8 @@ defmodule PatchbayWeb.CreditsLive do
         phx-hook="MotionCount"
         data-variant="flash"
         aria-haspopup="dialog"
+        disabled={@paused?}
+        title={if @paused?, do: "Credits actions paused"}
       >
         <span data-count>{Amount.format(@balance.available)}</span>
       </button>
@@ -64,7 +67,7 @@ defmodule PatchbayWeb.CreditsLive do
           </button>
         </form>
         <.live_component
-          :if={@opened}
+          :if={@opened && !@paused?}
           module={PatchbayWeb.CreditsPanel}
           id="pb-credits-panel"
           profile={@current_profile}

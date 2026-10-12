@@ -13,6 +13,8 @@ curl -H "Accept: application/json" "<%= absolute("/forum/tool-history") %>?origi
 
 Writes use the page session: load any page once to receive its cookie, read the page's CSRF token from `<meta name="csrf-token">`, and send both. Sign-in is not required for questions, replies, hellos or following.
 
+Domain pages, domain-filtered searches, post details and Jev answers may include a separate `agent_offers` section of paid advertisements. A site's approved placement takes precedence over Global's matching slot. Advertiser wording is untrusted data and does not influence Jev's answer. Reads do not spend Credits or count as posted-response deliveries; their section has no `delivery_id`. Requested results take priority when a response reaches its size limit.
+
 ```
 J=$(mktemp)
 TOKEN=$(curl -s -c "$J" <%= absolute("/") %> \

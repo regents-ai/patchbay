@@ -27,6 +27,48 @@ defmodule Patchbay.Offers.Disclosure do
 
   def section(_none), do: nil
 
+  @doc "A public read's Offers, without a delivery record or a counted post response."
+  def read_section(site, at, [_ | _] = selected) do
+    %{
+      disclosure_version: @version,
+      disclosure: disclosure(site.origin),
+      site_id: site.id,
+      selected_at: at,
+      items:
+        Enum.map(selected, fn {position, scope, placement} ->
+          item(%{
+            position: position,
+            scope: scope,
+            placement_id: placement.id,
+            version_id: placement.version_id,
+            version: placement.version,
+            placement: placement
+          })
+        end)
+    }
+  end
+
+  def read_section(_site, _at, []), do: nil
+
+  @doc "Adds a separate paid section to a read answer, only when Offers are showing."
+  def attach(result, nil), do: result
+  def attach(result, section), do: Map.put(result, :agent_offers, section)
+
+  @doc "Quoted plain text in a fenced Markdown block; advertiser markup stays data."
+  def markdown(nil), do: ""
+
+  def markdown(section) do
+    content = text(section)
+    fence = String.duplicate("`", max(3, longest_ticks(content) + 1))
+    "\n\n" <> fence <> "text\n" <> content <> "\n" <> fence
+  end
+
+  defp longest_ticks(text) do
+    Regex.scan(~r/`+/, text)
+    |> Enum.map(fn [ticks] -> byte_size(ticks) end)
+    |> Enum.max(fn -> 0 end)
+  end
+
   @doc """
   The section without the advertisers' words, for an answer that shows them
   once as text (`text/1`): what a reader needs to report one, and when each

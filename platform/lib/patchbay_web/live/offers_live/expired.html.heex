@@ -1,28 +1,16 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-expired">
-  <.board_header title="Past Offers">
-    <:crumbs>PATCHBAY / OFFERS / PAST</:crumbs>
-  </.board_header>
-
-  <p class="pb-dir-lede">
-    Your Offers that have ended, newest first, with where their Credits went, and your bids that
-    did not win.
-  </p>
-
-  <p class="pb-offers-cta">
-    <.link navigate={~p"/offers/active"} class="rg-button rg-button--secondary">
-      <span class="pb-action-label" data-press-label>Your active Offers</span>
-    </.link>
-    <.link navigate={~p"/offers/list"} class="rg-button rg-button--secondary">
-      <span class="pb-action-label" data-press-label>See every market</span>
-    </.link>
-  </p>
+  <.offers_header current={:history} />
 
   <p :if={!@signed_in?} class="patchbay-muted">
     Sign in at the top of the page to see your past Offers.
   </p>
 
   <%= if @signed_in? do %>
-    <section class="pb-sheet-section" aria-labelledby="pb-offers-ended">
+    <Regent.Structure.panel
+      class="pb-offers-card pb-offers-history-section"
+      role="region"
+      aria-labelledby="pb-offers-ended"
+    >
       <h2 id="pb-offers-ended">Offers that ended</h2>
       <ol id="pb-offers-ended-list" class="pb-offmod-list" phx-update="stream">
         <li :for={{dom_id, placement} <- @streams.ended} id={dom_id} class="pb-offmod-item">
@@ -59,9 +47,13 @@
       >
         <span class="pb-action-label" data-press-label>Show more</span>
       </Regent.Primitives.button>
-    </section>
+    </Regent.Structure.panel>
 
-    <section class="pb-sheet-section" aria-labelledby="pb-offers-returned">
+    <Regent.Structure.panel
+      class="pb-offers-card pb-offers-history-section"
+      role="region"
+      aria-labelledby="pb-offers-returned"
+    >
       <h2 id="pb-offers-returned">Bids that did not win</h2>
       <p class="patchbay-muted">Each of these came back in full.</p>
       <ol id="pb-offers-returned-list" class="pb-offmod-list" phx-update="stream">
@@ -88,6 +80,6 @@
       >
         <span class="pb-action-label" data-press-label>Show more</span>
       </Regent.Primitives.button>
-    </section>
+    </Regent.Structure.panel>
   <% end %>
 </main>

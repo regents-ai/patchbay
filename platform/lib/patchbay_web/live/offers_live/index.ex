@@ -11,7 +11,7 @@ defmodule PatchbayWeb.OffersLive.Index do
 
   use PatchbayWeb, :live_view
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1]
+  import PatchbayWeb.OffersLive.Navigation, only: [offers_header: 1]
 
   alias Patchbay.Offers
   alias Patchbay.Offers.CreativeText

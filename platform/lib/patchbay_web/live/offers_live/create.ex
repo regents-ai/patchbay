@@ -15,7 +15,9 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   use PatchbayWeb, :live_view
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1, site_name: 1]
+  import PatchbayWeb.OffersLive.Navigation, only: [offers_header: 1]
+
+  import PatchbayWeb.Forum.BoardHTML, only: [moment: 1, site_name: 1]
 
   alias Patchbay.Offers
   alias Patchbay.Offers.CreativeText
@@ -23,23 +25,27 @@ defmodule PatchbayWeb.OffersLive.Create do
   alias Patchbay.Offers.Review
   alias Patchbay.Offers.Screening
 
+  embed_templates "create/*"
+
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(_params, _session, socket),
+    do: {:ok, socket |> initialize_editor() |> assign(page_title: "Your Offers")}
+
+  @doc "Initialize the shared Offer editor on its hosting page's socket."
+  def initialize_editor(socket) do
     profile = socket.assigns.current_profile
 
     if profile && connected?(socket),
       do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Review.topic())
 
-    {:ok,
-     socket
-     |> assign(
-       page_title: "Your Offers",
-       problem: nil,
-       rewording: nil,
-       screening_paused?: Offers.screening_paused?()
-     )
-     |> assign_new_offer(%{"label" => "", "text" => ""})
-     |> assign(saved: if(profile, do: saved(profile), else: []))}
+    socket
+    |> assign(
+      problem: nil,
+      rewording: nil,
+      screening_paused?: Offers.screening_paused?()
+    )
+    |> assign_new_offer(%{"label" => "", "text" => ""})
+    |> assign(saved: if(profile, do: saved(profile), else: []))
   end
 
   @impl true
@@ -66,13 +72,17 @@ defmodule PatchbayWeb.OffersLive.Create do
   end
 
   def handle_event("reword", %{"creative_id" => id}, socket) do
-    creative = Enum.find(socket.assigns.saved, &(&1.id == id))
+    case Enum.find(socket.assigns.saved, &(&1.id == id)) do
+      nil ->
+        {:noreply, assign(socket, problem: "That Offer is no longer available.")}
 
-    {:noreply,
-     assign(socket,
-       rewording: %{id: id, text: creative.current_version.text},
-       problem: nil
-     )}
+      creative ->
+        {:noreply,
+         assign(socket,
+           rewording: %{id: id, text: creative.current_version.text},
+           problem: nil
+         )}
+    end
   end
 
   def handle_event("check_reword", %{"reword" => %{"text" => text}}, socket),
@@ -162,16 +172,20 @@ defmodule PatchbayWeb.OffersLive.Create do
   @doc "What a wording being typed will be: its links, any bare address, and its preview."
   def offer_check(assigns) do
     ~H"""
-    <div :if={@check.text} class="pb-offers-check">
+    <details
+      class="pb-bid-details pb-offers-check"
+      data-empty={is_nil(@check.text)}
+      inert={is_nil(@check.text)}
+    >
+      <summary>Preview &amp; links</summary>
       <p :if={@check.urls != []} class="pb-offmod-figures">
         Links screening will visit: {Enum.join(@check.urls, ", ")}
       </p>
       <p :if={@check.bare_addresses != []} class="pb-offmod-figures">
         Not written as a full link, so a person checks it: {Enum.join(@check.bare_addresses, ", ")}
       </p>
-      <p class="patchbay-muted">How an agent will get it:</p>
-      <pre class="pb-offers-preview">{preview(@check.text)}</pre>
-    </div>
+      <pre :if={@check.text} class="pb-offers-preview">{preview(@check.text)}</pre>
+    </details>
     """
   end
 
@@ -181,22 +195,30 @@ defmodule PatchbayWeb.OffersLive.Create do
   def offer_version(assigns) do
     ~H"""
     <blockquote class="pb-offmod-offer">{@version.text}</blockquote>
-    <p class="pb-offmod-figures">
-      {@version.code_points} of {max_code_points()} characters · {@version.byte_count} of {max_bytes()} bytes
-      <span :if={@version.urls != []}>· links: {Enum.join(@version.urls, ", ")}</span>
-      <span :if={@version.bare_addresses != []}>
-        · not full links: {Enum.join(@version.bare_addresses, ", ")}
-      </span>
-    </p>
-    <p :if={@version.blocked_at} class="pb-offmod-blocked">
-      Blocked by a moderator on {moment(@version.blocked_at)}. It cannot be shown again.
-    </p>
-    <ul class="pb-offers-standing">
-      <li :for={review <- @version.reviews}>
-        <strong>{review_label(review)}:</strong> {standing(review)}
-        <span :for={code <- review.reason_codes}>{reason_words(code)}</span>
+    <ul class="pb-offers-review-states" aria-label="Approval status">
+      <li :for={review <- @version.reviews} data-decision={review.decision}>
+        <span>{review_label(review)}</span><strong>{review_state(review)}</strong>
       </li>
     </ul>
+    <p :if={@version.blocked_at} class="pb-offmod-blocked">
+      Blocked by a moderator. It cannot be shown again.
+    </p>
+    <details class="pb-bid-details">
+      <summary>Screening details</summary>
+      <p class="pb-offmod-figures">
+        {@version.code_points} of {max_code_points()} characters · {@version.byte_count} of {max_bytes()} bytes
+        <span :if={@version.urls != []}>· links: {Enum.join(@version.urls, ", ")}</span>
+        <span :if={@version.bare_addresses != []}>
+          · not full links: {Enum.join(@version.bare_addresses, ", ")}
+        </span>
+      </p>
+      <ul class="pb-offers-standing">
+        <li :for={review <- @version.reviews}>
+          <strong>{review_label(review)}:</strong> {standing(review)}
+          <span :for={code <- review.reason_codes}>{reason_words(code)}</span>
+        </li>
+      </ul>
+    </details>
     """
   end
 
@@ -216,6 +238,12 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   def standing(%{decision: :deny}), do: "Refused."
   def standing(%{decision: :needs_review}), do: "A person at Patchbay is checking it."
+
+  defp review_state(%{decision: :allow, approved?: true}), do: "Ready"
+  defp review_state(%{decision: :allow}), do: "Recheck needed"
+  defp review_state(%{decision: :pending}), do: "Waiting"
+  defp review_state(%{decision: :deny}), do: "Refused"
+  defp review_state(%{decision: :needs_review}), do: "In review"
 
   @doc false
   def review_label(%{kind: :safety}), do: "Safety"

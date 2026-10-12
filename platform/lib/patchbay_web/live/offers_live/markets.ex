@@ -217,48 +217,51 @@ defmodule PatchbayWeb.OffersLive.Markets do
         <p class="patchbay-muted">
           Ends {moment(@showing.expires_at)} · {time_left(@showing.expires_at, @now)}
         </p>
-        <p>
-          Replace it now with at least {credits(
-            Terms.replacement_minimum(@showing.amount_minor, @opening)
-          )};
-          its owner would get back {credits(
-            Terms.unused(@showing.amount_minor, @showing.expires_at, @now)
-          )}.
-        </p>
-
-        <div class="pb-offers-next">
-          <%= if @next_bid do %>
-            <p>
-              {if @detail?, do: "Slot #{@number} next period bids:", else: "Next:"}
-              <strong>{credits(@next_bid.amount_minor)}</strong>
-              by
-              <.owner profile={@next_bid.owner} />, {if @detail?,
-                do: "starting when this one ends, in #{hours_until(@showing.expires_at, @now)}.",
-                else: "starting when this one ends."}
-            </p>
-            <.offer_copy version={@next_bid.version} />
-            <p class="patchbay-muted">
-              Outbid it with at least {credits(
-                Terms.replacement_minimum(@next_bid.amount_minor, @opening)
-              )}.
-            </p>
-          <% else %>
-            <p class="patchbay-muted">
-              <%= if @detail? do %>
-                Slot {@number} next period bids: none.
-                The next 72-hour period starts when the current Offer ends, in {hours_until(
-                  @showing.expires_at,
-                  @now
-                )}. Bids start at {credits(@opening)}.
-              <% else %>
-                Next: no one yet. A bid for the next 72 hours starts at {credits(@opening)}.
-              <% end %>
-            </p>
-          <% end %>
-          <p :if={@detail? && @bid_form?}>
-            <a href="#pb-offers-bid-form">Bid using the form below.</a>
+        <details class="pb-bid-details">
+          <summary>Slot details</summary>
+          <p>
+            Replace it now with at least {credits(
+              Terms.replacement_minimum(@showing.amount_minor, @opening)
+            )};
+            its owner would get back {credits(
+              Terms.unused(@showing.amount_minor, @showing.expires_at, @now)
+            )}.
           </p>
-        </div>
+
+          <div class="pb-offers-next">
+            <%= if @next_bid do %>
+              <p>
+                {if @detail?, do: "Slot #{@number} next period bids:", else: "Next:"}
+                <strong>{credits(@next_bid.amount_minor)}</strong>
+                by
+                <.owner profile={@next_bid.owner} />, {if @detail?,
+                  do: "starting when this one ends, in #{hours_until(@showing.expires_at, @now)}.",
+                  else: "starting when this one ends."}
+              </p>
+              <.offer_copy version={@next_bid.version} />
+              <p class="patchbay-muted">
+                Outbid it with at least {credits(
+                  Terms.replacement_minimum(@next_bid.amount_minor, @opening)
+                )}.
+              </p>
+            <% else %>
+              <p class="patchbay-muted">
+                <%= if @detail? do %>
+                  Slot {@number} next period bids: none.
+                  The next 72-hour period starts when the current Offer ends, in {hours_until(
+                    @showing.expires_at,
+                    @now
+                  )}. Bids start at {credits(@opening)}.
+                <% else %>
+                  Next: no one yet. A bid for the next 72 hours starts at {credits(@opening)}.
+                <% end %>
+              </p>
+            <% end %>
+            <p :if={@detail? && @bid_form?}>
+              <a href="#pb-offers-bid-form">Bid using the form below.</a>
+            </p>
+          </div>
+        </details>
       <% else %>
         <p><strong>Empty</strong> · opens at {credits(@opening)}</p>
       <% end %>
@@ -276,7 +279,7 @@ defmodule PatchbayWeb.OffersLive.Markets do
       </p>
 
       <.link :if={@bid_path} navigate={@bid_path} class="rg-button rg-button--secondary">
-        Bid on this slot
+        <span data-press-label>View slot <span aria-hidden="true">→</span></span>
       </.link>
     </li>
     """

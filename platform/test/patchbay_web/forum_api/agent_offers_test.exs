@@ -85,7 +85,8 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       )
     )
 
-    place(global, 3, approved_version(owner, "Global three", global))
+    # Six placements need two advertisers under the five-wordings daily cap.
+    place(global, 3, approved_version(advertiser(), "Global three", global))
 
     items = conn |> ask(origin) |> json_response(201) |> get_in(["agent_offers", "items"])
 

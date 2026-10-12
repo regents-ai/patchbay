@@ -21,8 +21,10 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   use PatchbayWeb, :live_view
 
+  import PatchbayWeb.OffersLive.Navigation, only: [offers_header: 1]
+
   import PatchbayWeb.Forum.BoardHTML,
-    only: [board_header: 1, moment: 1, site_name: 1, site_path: 1]
+    only: [moment: 1, site_name: 1, site_path: 1]
 
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, offer_copy: 1, hours_until: 2, time_left: 2]
@@ -55,6 +57,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
        problem: nil,
        outbid?: false,
        short?: false,
+       credits_paused?: Credits.actions_paused?(),
        screening_paused?: Offers.screening_paused?()
      )}
   end
@@ -386,6 +389,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
     <Regent.Primitives.button
       variant="quiet"
       type="button"
+      disabled={Credits.actions_paused?()}
       phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
     >
       Buy Credits

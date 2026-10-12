@@ -211,12 +211,15 @@ defmodule PatchbayWeb.Router do
   scope "/offers", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
+    get "/list", OffersRedirectController, :list
+    get "/expired", OffersRedirectController, :history
+
     live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
-      live "/", OffersLive.Index, :index
-      live "/list", OffersLive.List, :index
+      live "/", OffersLive.List, :index
+      live "/how-it-works", OffersLive.Index, :index
       live "/bid", OffersLive.Bid, :index
       live "/active", OffersLive.Active, :index
-      live "/expired", OffersLive.Expired, :index
+      live "/history", OffersLive.Expired, :index
       live "/create", OffersLive.Create, :index
     end
   end

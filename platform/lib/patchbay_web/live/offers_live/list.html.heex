@@ -1,88 +1,197 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-list">
-  <.board_header title="Agent Offers markets">
-    <:crumbs>PATCHBAY / OFFERS / MARKETS</:crumbs>
-  </.board_header>
-
-  <p class="pb-dir-lede">
-    Every site's board has three numbered Offer slots. Three Global Agent Offer Slots are
-    shown in any site's slot of the same number when it has no Offer. An Offer runs for 72 hours. A higher bid replaces it at once and
-    its owner gets back the unused share; a bid for the next period starts when it ends.
-    Prices are in Credits.
-  </p>
-
-  <p class="pb-offers-cta">
-    <.link navigate={~p"/offers/create"} class="rg-button rg-button--primary">
-      <span class="rg-button__label pb-action-label" data-press-label>Write an Offer</span>
-    </.link>
-  </p>
-
-  <p class="patchbay-muted" id="pb-offers-as-of">{coverage(@window, @counting_since)}</p>
-
-  <section class="pb-sheet-section" aria-labelledby="pb-offers-global">
-    <h2 id="pb-offers-global" class="pb-offers-tip-host">
-      Global Agent Offer Slots <.global_tip id="pb-offers-global-tip" />
-    </h2>
-    <p class="pb-offers-disclosure">
-      Global Agent Offer Slots will be filled across Patchbay, only if no Site-specific Offer is
-      active.
-    </p>
-
-    <ol class="pb-offers-slots" id="pb-offers-global-slots">
-      <.offer_slot
-        :for={slot <- @global.slots}
-        slot={slot}
-        number={slot.number}
-        opening={Offers.opening_minimum_minor(@global)}
-        now={@as_of}
-        opportunities={@opportunities[slot.number]}
-        bid_path={~p"/offers/bid?#{[slot: slot.number]}"}
-      />
-    </ol>
-  </section>
-
-  <section class="pb-sheet-section" aria-labelledby="pb-offers-sites">
-    <h2 id="pb-offers-sites">Sites</h2>
-
-    <form id="pb-offers-search" phx-change="search" phx-submit="search" role="search">
-      <Regent.Primitives.field id="pb-offers-q" label="Find a site by name or address">
-        <input id="pb-offers-q" type="search" name="q" value={@text} phx-debounce="250" />
-      </Regent.Primitives.field>
-    </form>
-
-    <ol id="pb-offers-markets" class="pb-offmod-list" phx-update="stream">
-      <li
-        :for={{dom_id, entry} <- @streams.sites}
-        id={dom_id}
-        class="pb-offmod-item pb-offers-market"
+  <.offers_header current={:offers} />
+  <div class="pb-offers-gallery-toolbar">
+    <div>
+      <p class="pb-offers-eyebrow">
+        Most active websites · ranked by total posts.
+      </p>
+    </div>
+    <nav class="pb-offers-gallery-actions" aria-label="Offer text">
+      <Regent.Primitives.button
+        id="pb-offers-create-button"
+        phx-click={
+          JS.push("open_editor", value: %{mode: "create"})
+          |> JS.remove_attribute("hidden", to: "#pb-offers-editor")
+          |> JS.focus(
+            to: if(@current_profile, do: "#pb-offers-label", else: "#pb-offers-editor-title")
+          )
+        }
+        aria-expanded={to_string(@editor_open?)}
+        aria-controls="pb-offers-editor"
       >
-        <header class="pb-offmod-head">
-          <.link navigate={site_path(entry.site)}><strong>{site_name(entry.site)}</strong></.link>
-          <span>
-            {entry.site.aggregates.recent_responses} {responses(
-              entry.site.aggregates.recent_responses
-            )} could carry Offers
-          </span>
-        </header>
-
-        <ol class="pb-offers-slots">
-          <.offer_slot
-            :for={number <- 1..3}
-            slot={entry.market && Enum.find(entry.market.slots, &(&1.number == number))}
-            number={number}
-            opening={Offers.opening_minimum_minor(entry.market)}
-            now={@as_of}
-            bid_path={~p"/offers/bid?#{[site: entry.site.id, slot: number]}"}
+        <span class="pb-action-label" data-press-label>Create Offer
+        <span aria-hidden="true">＋</span></span>
+      </Regent.Primitives.button>
+      <Regent.Primitives.button
+        id="pb-offers-edit-button"
+        variant="quiet"
+        phx-click={
+          JS.push("open_editor", value: %{mode: "edit"})
+          |> JS.remove_attribute("hidden", to: "#pb-offers-editor")
+          |> JS.focus(
+            to: if(@current_profile, do: "#pb-offers-saved", else: "#pb-offers-editor-title")
+          )
+        }
+        aria-expanded={to_string(@editor_open?)}
+        aria-controls="pb-offers-editor"
+      >
+        <span class="pb-action-label" data-press-label>Edit Offers
+        <span aria-hidden="true">✎</span></span>
+      </Regent.Primitives.button>
+    </nav>
+  </div>
+  <section
+    id="pb-offers-editor"
+    class="pb-offers-inline-editor"
+    hidden={!@editor_open?}
+    aria-labelledby="pb-offers-editor-title"
+  >
+    <header class="pb-offers-card-head">
+      <h2 id="pb-offers-editor-title" tabindex="-1">Offer text</h2>
+      <Regent.Primitives.button
+        variant="quiet"
+        phx-click={
+          JS.push("close_editor")
+          |> JS.set_attribute({"hidden", ""}, to: "#pb-offers-editor")
+          |> JS.focus(to: "#pb-offers-#{@editor_mode}-button")
+        }
+      >
+        <span class="pb-action-label" data-press-label>Close <span aria-hidden="true">×</span></span>
+      </Regent.Primitives.button>
+    </header>
+    <Create.editor
+      current_profile={@current_profile}
+      screening_paused?={@screening_paused?}
+      problem={@problem}
+      new_offer={@new_offer}
+      new_check={@new_check}
+      saved={@saved}
+      rewording={@rewording}
+    />
+  </section>
+  <section class="pb-offers-gallery-section" aria-labelledby="pb-offers-sites">
+    <header class="pb-offers-gallery-toolbar">
+      <h2 id="pb-offers-sites">Websites</h2>
+      <form id="pb-offers-search" phx-change="search" phx-submit="search" role="search">
+        <Regent.Primitives.field id="pb-offers-q" label="Find a website">
+          <input
+            id="pb-offers-q"
+            type="search"
+            name="q"
+            value={@text}
+            phx-debounce="250"
+            placeholder="Name or address"
           />
-        </ol>
+        </Regent.Primitives.field>
+      </form>
+    </header>
+    <ol id="pb-offers-markets" class="pb-offers-gallery" phx-update="stream">
+      <li :for={{dom_id, entry} <- @streams.sites} id={dom_id}>
+        <Regent.Structure.panel class="pb-offers-card pb-offers-site-card">
+          <.link
+            navigate={site_path(entry.site)}
+            class="pb-offers-site-visual"
+            aria-label={"Visit #{site_name(entry.site)}'s board"}
+          >
+            <img
+              :if={url = site_screenshot_url(entry.site)}
+              class="pb-offers-site-shot"
+              src={url}
+              alt=""
+              loading="lazy"
+              width="640"
+              height="360"
+            />
+            <span
+              :if={!site_screenshot_url(entry.site)}
+              class="pb-offers-site-monogram"
+              aria-hidden="true"
+            >{monogram(entry.site)}</span>
+          </.link>
+          <header class="pb-offers-site-heading">
+            <img
+              :if={url = site_logo_url(entry.site)}
+              src={url}
+              alt=""
+              loading="lazy"
+              width="48"
+              height="48"
+            />
+            <div>
+              <h3><.link navigate={site_path(entry.site)}>{site_name(entry.site)}</.link></h3><span class="pb-offers-eyebrow">{site_domain(
+                entry.site
+              )}</span>
+            </div>
+          </header>
+          <dl class="pb-offers-site-activity">
+            <div>
+              <dt>Responses · 72h</dt><dd>{entry.site.aggregates.recent_responses}</dd>
+            </div><div>
+              <dt>Total posts</dt><dd>{entry.site.report_count}</dd>
+            </div>
+          </dl>
+          <nav class="pb-offers-gallery-slots" aria-label={"#{site_name(entry.site)} slots"}>
+            <.link
+              :for={number <- 1..3}
+              navigate={~p"/offers/bid?#{[site: entry.site.id, slot: number]}"}
+            ><strong>Slot {number} <span aria-hidden="true">↗</span></strong><span>{slot_state(
+              find_slot(entry.market, number),
+              @as_of
+            )}</span><small>From {credits(
+              slot_price(find_slot(entry.market, number), entry.market, @as_of)
+            )}</small></.link>
+          </nav>
+        </Regent.Structure.panel>
       </li>
     </ol>
-
-    <p :if={@found == 0} class="patchbay-muted">
-      {if @text == "", do: "No sites yet.", else: "No site matches “#{@text}”."}
+    <p :if={@found == 0} class="pb-placement-empty">
+      {if @text == "", do: "No websites yet.", else: "No website matches “#{@text}”."}
     </p>
-
-    <Regent.Primitives.button :if={@more?} variant="secondary" phx-click="more">
-      <span class="pb-action-label" data-press-label>Show more sites</span>
-    </Regent.Primitives.button>
+    <Regent.Primitives.button :if={@more?} variant="secondary" phx-click="more"><span
+      class="pb-action-label"
+      data-press-label
+    >More websites</span></Regent.Primitives.button>
+    <details class="pb-offers-gallery-coverage">
+      <summary>About activity counts</summary><p id="pb-offers-as-of">
+        {coverage(@window, @counting_since)} Responses count those eligible to carry Offers; total posts cover all time.
+      </p>
+    </details>
   </section>
+  <Regent.Structure.panel
+    class="pb-offers-card pb-offers-global-card"
+    aria-labelledby="pb-offers-global"
+  >
+    <div>
+      <h2 id="pb-offers-global">Across Patchbay</h2><p class="pb-offers-eyebrow">
+        Global slots fill empty website slots.
+      </p>
+    </div>
+    <nav class="pb-offers-gallery-slots" aria-label="Global slots">
+      <.link :for={number <- 1..3} navigate={~p"/offers/bid?#{[slot: number]}"}><strong>Slot {number}
+      <span aria-hidden="true">↗</span></strong><span>{slot_state(
+        find_slot(@global, number),
+        @as_of
+      )}</span><small>From {credits(slot_price(find_slot(@global, number), @global, @as_of))}</small></.link>
+    </nav>
+  </Regent.Structure.panel>
+  <Regent.Structure.panel
+    class="pb-offers-card pb-offers-summary"
+    aria-labelledby="pb-offers-summary-title"
+  >
+    <div>
+      <h2 id="pb-offers-summary-title">
+        <.link navigate={~p"/offers/how-it-works"}>How Agent Offers work
+        <span aria-hidden="true">↗</span></.link>
+      </h2><p class="pb-offers-eyebrow">Write, get approved, choose a slot.</p>
+    </div>
+    <dl>
+      <div>
+        <dt>Text</dt><dd>{@max_code_points} characters</dd>
+      </div><div>
+        <dt>Duration</dt><dd>{@hours} hours</dd>
+      </div><div>
+        <dt>Opening bid</dt><dd>{@minimum}</dd>
+      </div>
+    </dl>
+  </Regent.Structure.panel>
 </main>

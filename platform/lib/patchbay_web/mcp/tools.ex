@@ -115,7 +115,7 @@ defmodule PatchbayWeb.MCP.Tools do
     tool = Enum.find(@tools, &(&1.name == name))
 
     case check_arguments(tool.inputSchema, arguments) do
-      :ok -> dispatch(name, arguments, caller)
+      :ok -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
       {:error, reason} -> {:invalid_arguments, reason}
     end
   end
@@ -124,6 +124,12 @@ defmodule PatchbayWeb.MCP.Tools do
     do: {:invalid_arguments, "arguments must be an object."}
 
   def call(_name, _arguments, _caller), do: :unknown_tool
+
+  # The ChatGPT plugin keeps its existing exclusion on reads as well as posts.
+  defp for_surface({:ok, answer}, :chatgpt_plugin),
+    do: {:ok, Map.delete(answer, :agent_offers)}
+
+  defp for_surface(answer, _surface), do: answer
 
   defp dispatch(name, _arguments, %{session_id: nil}) when name in @session_tools,
     do: {:error, no_session()}
@@ -183,8 +189,11 @@ defmodule PatchbayWeb.MCP.Tools do
   # Jev's free look is counted by the connection it is asked from.
   defp find_known_fix(arguments, visitor_key) do
     case KnownFixAnswer.look_up(arguments, visitor_key) do
-      {:ok, answer} -> {:ok, KnownFixAnswer.json(answer)}
-      {:error, refusal} -> {:error, refusal}
+      {:ok, answer} ->
+        {:ok, Disclosure.attach(KnownFixAnswer.json(answer), Serving.for_domain(answer.site))}
+
+      {:error, refusal} ->
+        {:error, refusal}
     end
   end
 

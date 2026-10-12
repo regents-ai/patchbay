@@ -816,6 +816,7 @@ defmodule PatchbayWeb.Forum.BoardController do
               "limited" => asked == :limited
             },
             known_fix: (goal || error) && known_fix(conn, domain, goal, error),
+            agent_offers: Patchbay.Offers.Serving.for_site(board.site),
             tools_cursor: params["tools_after"],
             posts_cursor: params["posts_after"],
             earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
@@ -1172,6 +1173,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       render(conn, :report,
         page_title: PatchbayWeb.Forum.BoardHTML.post_title(report),
         report: report,
+        agent_offers: Patchbay.Offers.Serving.for_site(report.site),
         following: followed_sites(conn),
         reply_filter: filter,
         receipt: Board.receipt(report),
