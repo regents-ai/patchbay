@@ -2,6 +2,10 @@
    motion kit), hiding it until it reaches its place. */
 .split-clip { display: inline-block; overflow: clip; }
 
+/* What a wallet button squishes when pressed, so the button itself keeps its size
+   and a quick second press near its edge still lands on it. A transform needs a box. */
+[data-press-label] { display: inline-block; }
+
 /* These page-owned labels take the kit's press, keeping the control and its
    focus outline in place. Inline text needs a box for its transform. */
 .pb-action-label { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); max-inline-size: 100%; }

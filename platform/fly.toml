@@ -28,6 +28,10 @@ kill_timeout = "60s"
   PATCHBAY_DATABASE_CLUSTER_ID = "dzx6qo6xqzvojpv5"
   PATCHBAY_DATABASE_CLUSTER_NAME = "regents-platform-prod"
 
+  # The motion lab at /animations (PatchbayWeb.Showcase): "off" until Sean
+  # opens it, then "public".
+  PATCHBAY_SHOWCASE = "off"
+
 [http_service]
   internal_port = 4000
   force_https = true

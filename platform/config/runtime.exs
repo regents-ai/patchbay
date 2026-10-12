@@ -23,6 +23,21 @@ config :patchbay, Patchbay.Repo,
 config :patchbay, Oban, prefix: database_schema
 config :error_tracker, prefix: database_schema
 
+# The motion lab at /animations (PatchbayWeb.Showcase). Production must choose
+# "public" or "off", and any other value stops the boot. Development and tests
+# are "public" unless told otherwise.
+showcase =
+  case {config_env(), System.get_env("PATCHBAY_SHOWCASE")} do
+    {:prod, "public"} -> :public
+    {:prod, "off"} -> :off
+    {:prod, _setting} -> raise ~s(PATCHBAY_SHOWCASE must be set to "public" or "off")
+    {_env, setting} when setting in [nil, "public"] -> :public
+    {_env, "off"} -> :off
+    {_env, _setting} -> raise ~s(PATCHBAY_SHOWCASE must be "public" or "off")
+  end
+
+config :patchbay, :showcase, showcase
+
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
 # system starts, so it is typically used to load production configuration

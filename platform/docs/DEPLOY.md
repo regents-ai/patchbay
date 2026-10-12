@@ -46,7 +46,9 @@ direct host, `direct.dzx6qo6xqzvojpv5.flympg.net`, over verified TLS, on port
 `fly.toml` sets the role and the cluster (`PATCHBAY_DEPLOYMENT_ROLE`,
 `PATCHBAY_DATABASE_TARGET_MODE`, `PATCHBAY_DATABASE_CLUSTER_ID`,
 `PATCHBAY_DATABASE_CLUSTER_NAME`); none of them is secret. A boot that finds
-any of these missing or different stops before connecting.
+any of these missing or different stops before connecting. It also sets
+`PATCHBAY_SHOWCASE`, `public` or `off`: whether the motion lab at `/animations`
+exists. A boot without it stops.
 
 ## 3. Set the remaining secrets
 

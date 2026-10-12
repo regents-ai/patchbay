@@ -35,6 +35,7 @@ import {MotionCascade} from "./hooks/motion/reveals.ts"
 import {HolographicCard} from "./hooks/holographic_card.ts"
 import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
 import {mountMotion} from "./motion.ts"
+import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
@@ -65,6 +66,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     HolographicCard,
     PatchbayCreditsDialog,
     PatchbayCreditsPanel,
+    // The motion lab's own presses and moments, used only on /animations.
+    ...labHooks,
   },
 })
 

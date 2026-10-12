@@ -292,6 +292,19 @@ defmodule PatchbayWeb.Router do
     )
   end
 
+  # The motion lab: public unless the showcase is off (PatchbayWeb.Showcase).
+  pipeline :motion_lab do
+    plug PatchbayWeb.Showcase, :motion_lab
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through [:motion_lab, :browser, :html_only]
+
+    live_session :motion_lab, on_mount: [{PatchbayWeb.Showcase, :motion_lab}] do
+      live "/animations", AnimationsLive, :index
+    end
+  end
+
   # The Account and Points pages are the signed-in person's own, so no copy of
   # them is kept.
   scope "/", PatchbayWeb do
