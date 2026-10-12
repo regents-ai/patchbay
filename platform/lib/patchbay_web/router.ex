@@ -265,6 +265,33 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  use ErrorTracker.Web, :router
+
+  # The saved errors: Credits admins only. Anyone else gets the not-found page
+  # under the reading policy; an admin's page replaces it with one carrying this
+  # request's nonce (PatchbayWeb.ErrorsAdmin).
+  pipeline :errors_admin do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :protect_from_forgery
+
+    plug :put_secure_browser_headers, %{
+      "content-security-policy" => ContentSecurityPolicy.reading(),
+      "referrer-policy" => "no-referrer"
+    }
+
+    plug PatchbayWeb.ErrorsAdmin
+  end
+
+  scope "/admin" do
+    pipe_through :errors_admin
+
+    error_tracker_dashboard("/errors",
+      on_mount: [PatchbayWeb.ErrorsAdmin],
+      csp_nonce_assign_key: %{script: :csp_nonce, style: :csp_nonce}
+    )
+  end
+
   # The Account and Points pages are the signed-in person's own, so no copy of
   # them is kept.
   scope "/", PatchbayWeb do

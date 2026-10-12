@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-12 — Crash reports stay with Patchbay
+
+- When something on Patchbay breaks, Patchbay now keeps its own short record of
+  it until an admin clears it, instead of sending it to an outside service.
+- The record notes only which page or step broke. It never keeps what you
+  typed, your sign-in or any keys.
+- Only Patchbay's own admins can see these records.
+
 ## 2026-10-12 — Cards settle in on sight; Points names ways to earn
 
 - Lists of cards settle in once, the first time they scroll into view; one

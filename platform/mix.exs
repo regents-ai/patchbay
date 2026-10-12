@@ -87,7 +87,7 @@ defmodule Patchbay.MixProject do
       # 3.1.1 has the EEF-CVE-2026-97853 advisory in Decimal.round/3.
       {:decimal, "== 3.1.2"},
       {:jason, "~> 1.2"},
-      {:sentry, "~> 13.0"},
+      {:error_tracker, "~> 0.9"},
       {:mdex, "~> 0.13"},
       {:domainatrex, "~> 3.2"},
       {:regent_privy,
@@ -201,8 +201,9 @@ defmodule Patchbay.MixProject do
         "credo --strict",
         "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
         # Canonical accounts and the two owned-subscription policy checks add
-        # three required compile connections to the previous 59-connection budget.
-        "xref graph --label compile-connected --fail-above 62",
+        # three required compile connections to the previous 59-connection budget;
+        # the saved-errors page's admin check (a router plug and mount hook) adds one.
+        "xref graph --label compile-connected --fail-above 63",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
