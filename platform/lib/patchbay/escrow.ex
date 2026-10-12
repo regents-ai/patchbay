@@ -27,7 +27,7 @@ defmodule Patchbay.Escrow do
   differently.
   """
 
-  alias Patchbay.Escrow.Contract
+  alias Patchbay.Escrow.{Contract, Signer}
 
   @private_key ~r/\A(?:0x)?[0-9a-fA-F]{64}\z/
 
@@ -237,21 +237,18 @@ defmodule Patchbay.Escrow do
   end
 
   @doc """
-  The operator account that signs Patchbay's transactions on Base: its
-  address, its key and the endpoint they are sent through, or
+  The operator account that signs Patchbay's transactions on Base, or
   `:not_configured` when either value is missing. The key is only ever
   handed to a signer; nothing that receives this may write it anywhere.
   """
-  @spec signer() ::
-          {:ok, %{address: String.t(), private_key: String.t(), rpc_url: String.t()}}
-          | {:error, :not_configured}
+  @spec signer() :: {:ok, Signer.t()} | {:error, :not_configured}
   def signer do
     settings = settings()
 
     with rpc_url when is_binary(rpc_url) <- present(settings[:rpc_url]),
          private_key when is_binary(private_key) <- private_key(settings[:operator_private_key]),
          {:ok, [address]} <- Ethers.Signer.Local.accounts(private_key: private_key) do
-      {:ok, %{address: address, private_key: private_key, rpc_url: rpc_url}}
+      {:ok, %Signer{address: address, private_key: private_key, rpc_url: rpc_url}}
     else
       _missing -> {:error, :not_configured}
     end
@@ -263,7 +260,7 @@ defmodule Patchbay.Escrow do
     with contract_address when is_binary(contract_address) <-
            present(settings()[:contract_address]),
          {:ok, signer} <- signer() do
-      {:ok, Map.put(signer, :contract_address, contract_address)}
+      {:ok, %{signer | contract_address: contract_address}}
     else
       _missing -> {:error, :not_configured}
     end

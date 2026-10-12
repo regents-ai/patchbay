@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-12 — Sentry events leave without arguments or process state
+
+- `Patchbay.SentryScrub`, Sentry's `before_send`, clears every stack frame's
+  arguments and drops a crashed process's state, last message and sender
+  before an event is sent, so a crash in a signing call or a page cannot carry
+  a key or the page's assigns (template c9b73b4).
+- The operator signer is a `Patchbay.Escrow.Signer` struct whose inspection
+  shows only its address, so an error that carries it never carries the key.
+
 ## 2026-10-12 — Browser agents' signed tools
 
 - Browser agents' signed tools are built only from the tools that have their own signed inputs. Public reads no longer appear among them.
