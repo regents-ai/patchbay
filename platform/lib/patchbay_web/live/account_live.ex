@@ -103,25 +103,24 @@ defmodule PatchbayWeb.AccountLive do
           profile_claim={@profile_claim}
         />
 
-        <section class="pb-account-panel">
+        <div class="pb-account-credits">
           <Regent.Account.credits_summary
             id="account-credits"
             available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
             held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
             state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
           />
-          <p>
-            <a href={~p"/points"}>See your Points</a>, shared by every Regent site.
-          </p>
-          <p>
-            All account settings, including what your agents may spend, live at <a href="https://regents.sh/account">regents.sh/account</a>.
-            Sign in there with the same login you use here.
-          </p>
-        </section>
+          <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
+          <a href={~p"/points"}>Your Points</a>
+        </div>
 
         <section class="pb-account-panel" aria-labelledby="account-session-title">
-          <h2 id="account-session-title">Session</h2>
-          <p>Signing out ends this session on this browser only.</p>
+          <h2 id="account-session-title">
+            Session
+            <Regent.Primitives.tip id="account-session-tip" label="About signing out">
+              Signing out ends the session on this browser only.
+            </Regent.Primitives.tip>
+          </h2>
           <Regent.Primitives.button type="button" variant="secondary" data-pb-account="sign-out">
             Sign out
           </Regent.Primitives.button>

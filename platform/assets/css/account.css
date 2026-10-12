@@ -1,6 +1,7 @@
 /* The Account page, laid out as the Regent template's: a heading, the shared
    holographic identity card across the top, then one hairline panel each for
-   Profile, Agents, Credits and Session, in Patchbay's own tokens. */
+   Profile, Agents and Session, and the shared Credits summary with its links,
+   in Patchbay's own tokens. */
 
 .pb-account-page {
   display: grid;
@@ -80,6 +81,23 @@
 
 .pb-account-panel p {
   color: var(--pb-text-muted);
+}
+
+.pb-account-credits {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  min-width: 0;
+}
+
+.pb-account-credits > .rg-account {
+  justify-self: stretch;
+}
+
+.pb-account-credits a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .pb-account-agents__code {
