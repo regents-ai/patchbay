@@ -13,7 +13,8 @@
 ## 2026-10-12 — Crash reports stay with Patchbay
 
 - When something on Patchbay breaks, Patchbay now keeps its own short record of
-  it until an admin clears it, instead of sending it to an outside service.
+  it for a week after it last happened, instead of sending it to an outside
+  service.
 - The record notes only which page or step broke. It never keeps what you
   typed, your sign-in or any keys.
 - Only Patchbay's own admins can see these records.

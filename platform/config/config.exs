@@ -91,7 +91,8 @@ config :regent_agents,
 # purchases on chain (`regent_credits`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
-# sites wait only on each other.
+# sites wait only on each other; and the daily clearing of saved errors
+# (`Patchbay.ErrorPruner`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   queues: [
@@ -106,10 +107,11 @@ config :patchbay, Oban,
     site_checks: 2,
     site_pictures: 1,
     points: 5,
-    points_chain: 2
+    points_chain: 2,
+    errors: 1
   ],
   # AshOban adds each trigger's minute sweep here.
-  cron: [crontab: []],
+  cron: [crontab: [{"17 4 * * *", Patchbay.ErrorPruner}]],
   pruner: [max_age: {7, :days}],
   lifeline: [rescue_after: {10, :minutes}]
 
@@ -224,14 +226,14 @@ config :logger, :default_formatter,
 # Failed requests, pages and jobs are saved in the site's own schema (set in
 # config/runtime.exs) and shown to Credits admins at /admin/errors. Only server
 # faults are saved (Patchbay.ErrorIgnorer), only where each one happened is kept
-# (Patchbay.ErrorFilter), and a resolved error is cleared after a week.
+# (Patchbay.ErrorFilter), and Patchbay.ErrorPruner clears each one a week after
+# it was last seen.
 config :error_tracker,
   repo: Patchbay.Repo,
   otp_app: :patchbay,
   prefix: "public",
   ignorer: Patchbay.ErrorIgnorer,
-  filter: Patchbay.ErrorFilter,
-  plugins: [{ErrorTracker.Plugins.Pruner, max_age: :timer.hours(24 * 7)}]
+  filter: Patchbay.ErrorFilter
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
