@@ -10,6 +10,11 @@
 - A pair's page keeps the bench heading and tabs, and takes you back to the
   test you came from with your choices kept. A square still opens the pair's
   runs over the whole window.
+- Version groups that share a name now say what sets them apart, such as a
+  different recipe or model.
+- A wallet square whose install did not pass now says "Stopped at install" and
+  opens that install run, since the wallet test runs only after the install
+  test passes.
 
 ## 2026-10-12 — Account tools always say what to do next
 

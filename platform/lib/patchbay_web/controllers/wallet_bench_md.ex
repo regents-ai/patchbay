@@ -8,6 +8,7 @@ defmodule PatchbayWeb.WalletBenchMD do
   import PatchbayWeb.WalletBenchHTML,
     only: [
       grid_title: 1,
+      empty_grid: 1,
       word: 2,
       outcomes: 0,
       check_said: 1,
@@ -36,6 +37,10 @@ defmodule PatchbayWeb.WalletBenchMD do
 
     Enum.join([head, rule | body], "\n")
   end
+
+  defp cell(_notes, %{runs: 0, fixed: [], stopped: %{cohort_id: id}}, h, w),
+    do:
+      "stopped at install ([runs](/wallet-bench/#{h.id}/#{w.id}?test=install&cohort=#{id}#install))"
 
   defp cell(_notes, %{runs: 0, fixed: []}, _h, _w), do: "not tested yet"
 

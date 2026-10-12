@@ -49,6 +49,7 @@ defmodule PatchbayWeb.WalletBenchController do
 
     comparison = Cohorts.compare(cohorts, selection["baseline"], selection["compare"], checks)
 
+    stopped = Matrix.stopped_at(results)
     results = in_cohort(results, cohorts, selection["cohort"])
 
     checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
@@ -57,6 +58,7 @@ defmodule PatchbayWeb.WalletBenchController do
       Enum.map(Matrix.grids(), fn grid ->
         %{
           grid: grid,
+          stopped: if(grid == "wallet", do: stopped),
           fixed: Matrix.fixed_for(fixed, grid, harness_id, wallet_id),
           runs:
             for run <- results, run.grid == grid do

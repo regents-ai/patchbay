@@ -49,6 +49,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def grid_title("install"), do: "Install"
   def grid_title("wallet"), do: "Make a wallet"
 
+  defp count(1, word), do: "1 #{word}"
+  defp count(number, word), do: "#{number} #{word}s"
+
   @doc "The full grid's test results by outcome, as the write-up counts them."
   def results do
     [
@@ -149,6 +152,12 @@ defmodule PatchbayWeb.WalletBenchHTML do
     |> String.upcase()
   end
 
+  @doc "What a pair's grid with no runs says: stopped at install, or not tested yet."
+  def empty_grid(%{stopped: %{}}),
+    do: "Stopped at install. The wallet test runs only after the install test passes."
+
+  def empty_grid(_grid), do: "Not tested yet."
+
   @doc "Techtree's short word for an outcome."
   def word(notes, outcome), do: Matrix.word(notes, outcome)
 
@@ -156,6 +165,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def square_label(notes, square, harness, wallet, grid) do
     said =
       case square do
+        %{runs: 0, fixed: [], stopped: %{}} ->
+          ["Stopped at install."]
+
         %{runs: 0, fixed: []} ->
           ["Not tested yet."]
 
@@ -325,18 +337,20 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:filters, :map, default: %{})
 
   def square(assigns) do
-    params = Map.put(assigns.filters, "test", assigns.grid)
+    {grid, cohort_id} =
+      case assigns.square do
+        %{stopped: %{cohort_id: cohort_id}} -> {"install", cohort_id}
+        square -> {assigns.grid, square.cohort_id}
+      end
 
-    params =
-      if assigns.square.cohort_id,
-        do: Map.put(params, "cohort", assigns.square.cohort_id),
-        else: params
+    params = Map.put(assigns.filters, "test", grid)
+    params = if cohort_id, do: Map.put(params, "cohort", cohort_id), else: params
 
-    assigns = assign(assigns, :params, params)
+    assigns = assign(assigns, params: params, anchor: grid)
 
     ~H"""
     <a
-      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}?#{@params}" <> "#" <> @grid}
+      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}?#{@params}" <> "#" <> @anchor}
       class={["pb-wb-square", @square.runs == 0 && "is-empty"]}
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
       data-wb-pair={@harness.name <> " with " <> @wallet.name}
@@ -344,7 +358,10 @@ defmodule PatchbayWeb.WalletBenchHTML do
       <span :if={@square.runs > 0} class="pb-wb-dots" aria-hidden="true">
         <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.runs)]}></span>
       </span>
-      <span :if={@square.runs > 0} class="pb-wb-group-count">{@square.runs} runs · {@square.cohort_count} groups</span>
+      <span :if={@square.runs > 0} class="pb-wb-group-count">{count(@square.runs, "run")} · {count(
+        @square.cohort_count,
+        "group"
+      )}</span>
       <span
         :for={outcome <- fixed_outcomes(@square)}
         :if={@square.runs == 0 and outcome not in @said}
@@ -354,7 +371,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
         {word(@notes, outcome)}
       </span>
       <span :if={@square.runs == 0 and @square.fixed == []} class="pb-wb-empty" aria-hidden="true">
-        Not tested yet
+        {if @square.stopped, do: "Stopped at install", else: "Not tested yet"}
       </span>
     </a>
     """
@@ -520,7 +537,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
         <p :for={fixed <- grid.fixed} class="pb-wb-fixed">
           <.chip notes={@notes} outcome={fixed.fixed_outcome} /> {fixed.fixed_reason}
         </p>
-        <p :if={grid.runs == [] and grid.fixed == []} class="patchbay-muted">Not tested yet.</p>
+        <p :if={grid.runs == [] and grid.fixed == []} class="patchbay-muted">
+          {empty_grid(grid)}
+        </p>
 
         <ol :if={grid.runs != []} class="pb-wb-runs">
           <li :for={%{result: run, checks: checks} <- grid.runs} class="pb-wb-run">

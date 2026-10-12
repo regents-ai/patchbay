@@ -6,7 +6,9 @@ defmodule Patchbay.WalletBench.Matrix do
   passes and an inconclusive run stay two and one, never one verdict), the
   fixed outcome Techtree gives a square that never runs, and one dot for each
   of the grid's checks: in how many of the pair's runs the judge found it held.
-  A square with no runs and no fixed outcome has not been tested yet.
+  A wallet square with no runs stopped at install when the pair's latest
+  install run did not pass; any other square with no runs and no fixed
+  outcome has not been tested yet.
   """
 
   alias Patchbay.WalletBench
@@ -24,8 +26,11 @@ defmodule Patchbay.WalletBench.Matrix do
           runs: non_neg_integer(),
           tally: [{String.t(), pos_integer()}],
           fixed: [struct()],
-          dots: [dot()]
+          dots: [dot()],
+          stopped: %{cohort_id: String.t()} | nil
         }
+
+  @passed ~w(PASS PASS*)
 
   @doc "Every outcome Techtree rules, in the order the page lists them."
   @spec outcomes() :: [String.t()]
@@ -76,7 +81,14 @@ defmodule Patchbay.WalletBench.Matrix do
           for h <- harnesses, w <- wallets, into: %{} do
             runs = Map.get(by_square, {grid, h.id, w.id}, [])
             fixed = fixed_for(fixed, grid, h.id, w.id)
-            {{h.id, w.id}, latest_square(runs, fixed, criteria, found)}
+            installs = Map.get(by_square, {"install", h.id, w.id}, [])
+
+            square =
+              runs
+              |> latest_square(fixed, criteria, found)
+              |> Map.put(:stopped, stopped(grid, runs, fixed, installs))
+
+            {{h.id, w.id}, square}
           end
 
         %{grid: grid, criteria: criteria, squares: squares}
@@ -117,6 +129,29 @@ defmodule Patchbay.WalletBench.Matrix do
       filters: filters
     }
   end
+
+  @doc """
+  The install run a pair's wallet test stopped at: its latest install run,
+  when that did not pass and no wallet run came from it. Techtree runs the
+  wallet test only after the install test passes.
+  """
+  @spec stopped_at([struct()]) :: struct() | nil
+  def stopped_at(runs) do
+    {installs, wallets} = Enum.split_with(runs, &(&1.grid == "install"))
+    latest = installs != [] && Enum.max_by(installs, & &1.finished_at, DateTime)
+
+    if latest && latest.outcome not in @passed &&
+         not Enum.any?(wallets, &(&1.attempt_id == latest.attempt_id)),
+       do: latest
+  end
+
+  # A wallet square with nothing to show links to the install runs it
+  # stopped at.
+  defp stopped("wallet", [], [], installs) do
+    if stopped_at(installs), do: %{cohort_id: hd(Cohorts.groups(installs)).id}
+  end
+
+  defp stopped(_grid, _runs, _fixed, _installs), do: nil
 
   @doc "The fixed outcomes that apply to one square, from Techtree's `\"*\"` keys."
   @spec fixed_for([struct()], String.t(), String.t(), String.t()) :: [struct()]

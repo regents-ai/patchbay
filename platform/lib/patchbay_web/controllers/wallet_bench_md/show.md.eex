@@ -26,7 +26,7 @@ Selected group: <%= line(Cohorts.label(Enum.find(@cohorts, &(&1.id == @selection
 ## <%= grid_title(grid.grid) %>
 <%= for fixed <- grid.fixed do %>
 <%= word(@notes, fixed.fixed_outcome) %> (`<%= fixed.fixed_outcome %>`): <%= line(fixed.fixed_reason) %>
-<% end %><%= if grid.runs == [] and grid.fixed == [], do: "\nNot tested yet.\n" %><%= for %{result: run, checks: checks} <- grid.runs do %>
+<% end %><%= if grid.runs == [] and grid.fixed == [], do: "\n" <> empty_grid(grid) <> "\n" %><%= for %{result: run, checks: checks} <- grid.runs do %>
 ### Run <%= run.run %>: <%= word(@notes, run.outcome) %> (`<%= run.outcome %>`)
 
 <%= if !steps?(run) && plain_file(run.plain_file), do: "- " <> line(run.plain_file) <> "\n" %>- Finished: <%= stamp(run.finished_at) %>

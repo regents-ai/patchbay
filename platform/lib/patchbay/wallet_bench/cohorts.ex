@@ -84,12 +84,54 @@ defmodule Patchbay.WalletBench.Cohorts do
       %{id: token(key), runs: runs, latest: latest, grid: latest.grid}
     end)
     |> Enum.sort_by(& &1.latest.finished_at, {:desc, DateTime})
+    |> named()
   end
 
-  def label(group) do
+  # Groups that read alike by test, versions and model also name the first
+  # recorded field that keeps them apart, so a reader can tell them apart.
+  defp named(groups) do
+    Enum.map(groups, fn group ->
+      alike = Enum.filter(groups, &(&1.id != group.id and headline(&1) == headline(group)))
+      Map.put(group, :apart, apart(group.latest, Enum.map(alike, & &1.latest)))
+    end)
+  end
+
+  defp headline(group) do
     run = group.latest
 
-    "#{run.grid} · #{value(run, "harness") || "Unknown agent"} × #{value(run, "wallet") || "Unknown wallet"} · #{value(run, "model") || "Unknown model"} · runs #{Enum.map_join(group.runs, ", ", & &1.run)}"
+    "#{run.grid} · #{value(run, "harness") || "Unknown agent"} × #{value(run, "wallet") || "Unknown wallet"} · #{value(run, "model") || "Unknown model"}"
+  end
+
+  defp apart(_run, []), do: nil
+
+  defp apart(run, others) do
+    keys =
+      (@fields -- ~w(harness wallet model)) ++
+        ((Enum.flat_map([run | others], &Map.keys(&1.versions || %{})) -- ["batch" | @fields])
+         |> Enum.uniq()
+         |> Enum.sort())
+
+    keys
+    |> Enum.find(fn key -> Enum.any?(others, &(recorded(&1, key) != recorded(run, key))) end)
+    |> apart_by(run)
+  end
+
+  defp apart_by(nil, _run), do: "a separate attempt"
+  defp apart_by(key, run), do: "#{field_name(key)} #{short(recorded(run, key))}"
+
+  defp field_name("reasoning_effort"), do: "effort"
+  defp field_name("os"), do: "system"
+  defp field_name(key), do: String.replace(key, "_", " ")
+
+  defp short(nil), do: "not recorded"
+  defp short(value) when is_binary(value) and byte_size(value) > 16, do: binary_part(value, 0, 8)
+  defp short(value), do: display(value)
+
+  def label(group) do
+    runs = Enum.map_join(group.runs, ", ", & &1.run)
+    count = if match?([_], group.runs), do: "run", else: "runs"
+
+    Enum.join(Enum.reject([headline(group), group.apart, "#{count} #{runs}"], &is_nil/1), " · ")
   end
 
   def compare(groups, baseline_id, compared_id, checks) do
