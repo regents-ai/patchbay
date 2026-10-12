@@ -1,10 +1,10 @@
 import {prepareRoomRequest, executeRoomRequest, roomEnvelopeFor} from "./room_signed.ts";
 import {refusal} from "../api_error.ts";
-import {BUSY_RESULT, errorResult, executeRevision, pushWithAck, sentence} from "./invocation_bridge.ts";
+import {BUSY_RESULT, sentence} from "./invocation_bridge.ts";
 import {verifyUpliftGoal} from "./goal_verifier.ts";
 import {captureRoomState, readRoomMetadata, sha256Hex} from "./state_snapshot.ts";
 import {singleFlight} from "./webmcpify.ts";
-import type {BridgeHook, ExecuteOptions, RoomReply, ToolInput, ToolRevision} from "./invocation_bridge.ts";
+import type {BridgeHook, ExecuteOptions, ToolInput, ToolRevision} from "./invocation_bridge.ts";
 
 export type PermanentToolsHook = BridgeHook & {
   siteOrigin?: string | null;
@@ -41,13 +41,6 @@ export const VERIFIED_REPORTING_NOTE =
 export function withReportingNote(description: string) {
   return `${description} ${VERIFIED_REPORTING_NOTE}`;
 }
-
-const REPAIR_REQUEST_STATUSES: readonly unknown[] = [
-  "repair_requested",
-  "already_in_progress",
-  "no_failed_invocation",
-  "proposal_ready",
-];
 
 export function buildPermanentTools(hook: PermanentToolsHook) {
   return [
@@ -119,7 +112,7 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
     },
     {
       name: "prepare_patchbay_room_request",
-      description: "Capture this room's actual page state and prepare an exact request. Sign it with your existing SIWA signer before submitting. For invoke, arguments_json holds the current tool's original arguments. For observe, supply invocation_id after the visible editor updates.",
+      description: withReportingNote("Capture this room's actual page state and prepare an exact request. Sign it with your existing SIWA signer before submitting. For invoke, arguments_json holds the current tool's original arguments. For observe, supply invocation_id after the visible editor updates."),
       inputSchema: {type: "object", properties: {operation: {type: "string", enum: ["invoke", "observe", "cancel", "repair"]}, arguments_json: {type: "string", maxLength: 65536}, request_uuid: {type: "string"}, invocation_id: {type: "string"}}, required: ["operation"], additionalProperties: false},
       annotations: {readOnlyHint: true, untrustedContentHint: true},
       // The raw body appears twice in the exact signing envelope. Preserve
@@ -127,7 +120,7 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
       execute: async (input: ToolInput) => boundedJson(await prepareRoomRequest(hook, input), 512_000),
     },
     ...["finish_patchbay_room_call", "cancel_patchbay_room_call"].map(name => ({
-      name, description: name === "finish_patchbay_room_call" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request.",
+      name, description: withReportingNote(name === "finish_patchbay_room_call" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request."),
       inputSchema: roomEnvelopeFor(name), annotations: {readOnlyHint: false, untrustedContentHint: true},
       execute: (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, name, input, options),
     })),
@@ -164,28 +157,6 @@ function activeTool(hook: PermanentToolsHook) {
     contract_sha256: revision.contract_sha256 ?? null,
     generation: revision.generation ?? hook.desiredGeneration ?? null,
   };
-}
-
-/**
- * A repair request is only ever a request: whatever the room answers, the
- * result says this tool cannot publish a replacement. Publication happens
- * by the room's owner or by the Patchbay Agent, never from a tool call.
- */
-function repairRequestResult(reply: RoomReply) {
-  if (REPAIR_REQUEST_STATUSES.includes(reply?.status)) {
-    return boundedJson({
-      summary: sentence(
-        `Patchbay answered the repair request with ${reply.status}; publishing a replacement is not something a tool can do.`,
-      ),
-      status: reply.status,
-      detail: sentence(reply.detail ?? "", 300),
-      tool_can_publish: false,
-    });
-  }
-  return errorResult(
-    "REPAIR_REQUEST_FAILED",
-    reply?.error ?? "the room did not answer the repair request",
-  );
 }
 
 export function buildRevisionTool(hook: BridgeHook, revision: ToolRevision) {

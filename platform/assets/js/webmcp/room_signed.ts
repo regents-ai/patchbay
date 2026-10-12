@@ -43,7 +43,12 @@ export async function executeRoomRequest(hook: BridgeHook, operation: string, in
   if (operation === "invoke_patchbay_room" && body.invocation_id) {
     // The second proof is prepared only after the actual editor has changed.
     // Nothing here signs automatically or substitutes a browser cookie.
-    if (body.ui_commit_required) await waitForRevision(hook.el?.ownerDocument ?? document, body.expected_ui_revision, {signal: options.signal, timeoutMs: options.revisionTimeoutMs ?? 2500});
+    // An editor that misses the timeout is observed as it stands, so the
+    // server's verifier records the visible failure against this call.
+    if (body.ui_commit_required) {
+      await waitForRevision(hook.el?.ownerDocument ?? document, body.expected_ui_revision, {signal: options.signal, timeoutMs: options.revisionTimeoutMs ?? 2500})
+        .catch(error => { if (error?.code !== "UI_REVISION_TIMEOUT") throw error; });
+    }
     const observation = await prepareRoomRequest(hook, {operation: "observe", invocation_id: body.invocation_id});
     return JSON.stringify({...body, verification: "not_recorded", observation});
   }
