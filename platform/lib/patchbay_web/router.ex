@@ -239,12 +239,14 @@ defmodule PatchbayWeb.Router do
     end
   end
 
-  # The Account page is the signed-in person's own, so no copy of it is kept.
+  # The Account and Points pages are the signed-in person's own, so no copy of
+  # them is kept.
   scope "/", PatchbayWeb do
     pipe_through [:browser, :html_only, :no_store]
 
     live_session :account, on_mount: [{PatchbayWeb.CurrentProfile, :account}] do
       live "/account", AccountLive, :show
+      live "/points", PointsLive, :show
     end
   end
 

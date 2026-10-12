@@ -5,10 +5,12 @@ defmodule Patchbay.ChainClient do
   `safe` or `finalized`. The node is the site's own for the chain
   (`config :patchbay, :chain_nodes`), never the public address a wallet adds
   the chain with. Regent Credits checks a purchase through `transaction/2`,
-  `receipt/2` and `block_number/1`.
+  `receipt/2` and `block_number/1`; Regent Points reads the NFTs a person
+  holds through `rpc/3`.
   """
 
   @behaviour RegentCredits.ChainClient
+  @behaviour RegentPoints.ChainClient
 
   @doc "The transaction sent as `hash`, or `nil` while the chain does not know it."
   @impl RegentCredits.ChainClient
@@ -31,6 +33,7 @@ defmodule Patchbay.ChainClient do
   def logs(chain, filter), do: rpc(chain, "eth_getLogs", [filter])
 
   @doc "One JSON-RPC request to the chain's node."
+  @impl RegentPoints.ChainClient
   def rpc(%{chain_id: chain_id}, method, params) do
     url = :patchbay |> Application.fetch_env!(:chain_nodes) |> Map.fetch!(chain_id)
 

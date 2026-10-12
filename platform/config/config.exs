@@ -13,6 +13,21 @@ config :ash, default_string_length_count: :codepoints
 
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
+# Regent Points: one account per person, shared by every Regent site, in the
+# `regent_points` schema Regents migrates. Nothing earns until Sean sets the
+# rules and the start time; until then Patchbay only shows the account.
+config :regent_points,
+  repo: Patchbay.Repo,
+  pubsub: Patchbay.PubSub,
+  ash_domains: [RegentPoints],
+  accounts: Patchbay.Points.Accounts,
+  chain_client: Patchbay.ChainClient,
+  program_id: "regents-points-v1",
+  starts_at: nil,
+  unified_activity_starts_at: nil,
+  approved_rules: [],
+  adapters: %{}
+
 # Regent Credits: one prepaid balance per Privy account, shared by every Regent
 # site. Credits are the private currency XRC, kept to the millionth. The ledger
 # lives in the shared `regent_credits` schema, which Regents migrates; Patchbay

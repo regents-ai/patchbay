@@ -111,6 +111,9 @@ defmodule PatchbayWeb.AccountLive do
             state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
           />
           <p>
+            <a href={~p"/points"}>See your Points</a>, shared by every Regent site.
+          </p>
+          <p>
             All account settings, including what your agents may spend, live at <a href="https://regents.sh/account">regents.sh/account</a>.
             Sign in there with the same login you use here.
           </p>
