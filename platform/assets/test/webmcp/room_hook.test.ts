@@ -9,7 +9,6 @@ import {
   buildRevisionTool,
   PERMANENT_TOOL_NAMES,
 } from "../../js/webmcp/tool_definitions.ts";
-import {validateArguments} from "../../js/webmcp/invocation_bridge.ts";
 import type {ExecuteOptions, RoomReply, ToolInput, ToolRevision} from "../../js/webmcp/invocation_bridge.ts";
 import {PatchbayWebMCP} from "../../js/webmcp/room_hook.ts";
 import type {PatchbayHook} from "../../js/webmcp/room_hook.ts";
@@ -366,12 +365,6 @@ test("keeps the registry disconnected when reconciliation is rejected", async ()
   assert.equal(value.hook.registryReady, false);
   assert.equal(value.hook.el.dataset.webmcpStatus, "error");
   assert.match(value.hook.el.textContent, /registry mismatch/);
-});
-
-test("validates the JSON Schema instruction character limit", () => {
-  assert.equal(validateArguments({instructions: "a".repeat(1000)}), null);
-  assert.equal(validateArguments({instructions: "é".repeat(1000)}), null);
-  assert.match(validateArguments({instructions: "é".repeat(1001)})!, /1000 characters/);
 });
 
 test("a signed call goes to the room as prepared and hands back an observation of the committed editor", async () => {

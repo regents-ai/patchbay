@@ -4,8 +4,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   This LiveView is deliberately small: Phoenix owns the durable room state and
   the WebMCP island reports browser observations back through the event names
-  below. A browser tool can ask for a diagnosis, which runs the same path as the
-  owner's button. No browser tool can approve or publish a repair.
+  below. An agent works in the room through signed requests, never through this
+  page's events. No agent can approve or publish a repair.
 
   Every publication reaches this page the same way, whether the owner approved
   it here or the worker that answers receipt-verified reports about this room's
@@ -47,10 +47,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     update_source upload_skill request_repair approve_repair reject_repair
     retry_original_goal ask_reset_demo reset_demo
   )
-  @mutating_webmcp_events ~w(
-    webmcp_request_repair webmcp_invocation_begin webmcp_execute
-    webmcp_invocation_cancel webmcp_poststate_observed
-  )
 
   # Everything the page says about a room, read with the room itself: the call
   # it is showing and the tool that call ran, the tool it offers now, and the
@@ -73,16 +69,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     {:noreply, assign(socket, error_message: @readonly_message)}
   end
 
-  def handle_event(event, _params, %{assigns: %{readonly?: true}} = socket)
-      when event in @mutating_webmcp_events do
+  # The page reports the visible state after the owner's own retry. A call an
+  # agent started is that agent's to report, and the domain refuses it here.
+  def handle_event("webmcp_poststate_observed", _params, %{assigns: %{readonly?: true}} = socket) do
     reply_error(socket, @readonly_message)
-  end
-
-  def handle_event(event, _params, socket) when event in @mutating_webmcp_events do
-    reply_error(
-      socket,
-      "A signed agent request is required. Use prepare_patchbay_room_request and fresh SIWA proof; see /agents.md."
-    )
   end
 
   @impl true
@@ -168,78 +158,10 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
       {:noreply,
        socket
-       |> cancel_invocations(:disconnected)
        |> refresh(browser_session)
        |> assign(error_message: nil)}
     else
       {:error, message} -> {:noreply, assign(socket, error_message: message)}
-    end
-  end
-
-  @impl true
-  def handle_event("webmcp_invocation_begin", params, socket) do
-    room = socket.assigns.room
-    revision = socket.assigns.active_tool
-
-    with :ok <- valid_room_event?(params, room),
-         {:ok, browser_session} <- browser_session_for(params, socket),
-         :ok <- browser_session_connected?(browser_session),
-         :ok <- invocation_revision_matches?(params, revision),
-         :ok <- invocation_epoch_matches?(params, room),
-         {:ok, arguments} <- invocation_arguments(params) do
-      request_uuid = Map.get(params, "request_uuid") || Ash.UUID.generate()
-
-      try do
-        invocation =
-          InvocationRunner.begin!(room, browser_session, revision, arguments,
-            request_uuid: request_uuid,
-            invocation_epoch: room.invocation_epoch
-          )
-
-        {:reply,
-         %{
-           "invocation_id" => invocation.id,
-           "request_uuid" => invocation.request_uuid,
-           "effective_status" => to_string(invocation.effective_status)
-         }, socket}
-      rescue
-        error -> reply_error(socket, readable_error(error))
-      end
-    else
-      {:error, message} -> reply_error(socket, message)
-    end
-  end
-
-  @impl true
-  def handle_event("webmcp_execute", %{"invocation_id" => invocation_id} = params, socket) do
-    room = socket.assigns.room
-
-    with {:ok, invocation} <- room_invocation(invocation_id, room),
-         :ok <- invocation_epoch_matches?(params, room),
-         :ok <- invocation_epoch_matches?(invocation, room) do
-      execute_reply(socket, invocation, room)
-    else
-      {:error, message} ->
-        reply_error(socket, message)
-    end
-  end
-
-  def handle_event("webmcp_execute", _params, socket),
-    do: reply_error(socket, "invocation_id is required")
-
-  @impl true
-  def handle_event("webmcp_invocation_cancel", params, socket) do
-    room = socket.assigns.room
-
-    with {:ok, invocation} <- room_invocation(Map.get(params, "invocation_id"), room),
-         {:ok, browser_session} <- browser_session_for(params, socket),
-         :ok <- invocation_browser_session_matches?(invocation, browser_session),
-         :ok <- invocation_epoch_matches?(params, room),
-         :ok <- invocation_epoch_matches?(invocation, room) do
-      invocation = InvocationRunner.cancel!(invocation)
-      {:reply, %{"effective_status" => to_string(invocation.effective_status)}, socket}
-    else
-      {:error, message} -> reply_error(socket, message)
     end
   end
 
@@ -300,30 +222,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   @impl true
   def handle_event("request_repair", _params, socket) do
     case start_repair(socket) do
-      {:repair_requested, _detail, socket} -> {:noreply, socket}
-      {_status, detail, socket} -> {:noreply, assign(socket, error_message: detail)}
-    end
-  end
-
-  @impl true
-  def handle_event("webmcp_request_repair", params, socket) do
-    case valid_room_event?(params, socket.assigns.room) do
-      :ok ->
-        case start_repair(socket) do
-          {:error, message, socket} ->
-            reply_error(socket, message)
-
-          {status, detail, socket} ->
-            {:reply,
-             %{
-               "status" => to_string(status),
-               "detail" => detail,
-               "tool_can_publish" => false
-             }, socket}
-        end
-
-      {:error, message} ->
-        reply_error(socket, message)
+      {:ok, socket} -> {:noreply, socket}
+      {:error, message} -> {:noreply, assign(socket, error_message: message)}
     end
   end
 
@@ -407,7 +307,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   @impl true
   def handle_event("reset_demo", _params, socket) do
     {socket, repair_key} = invalidate_repair(socket)
-    socket = cancel_invocations(socket, :reset)
 
     try do
       room = DemoReset.reset!(socket.assigns.room)
@@ -484,7 +383,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     {:noreply,
      socket
      |> invalidate_repair_for_reset()
-     |> cancel_invocations(:reset)
      |> apply_room_reset(epoch)}
   end
 
@@ -540,151 +438,54 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     end
   end
 
-  @impl true
-  def handle_async({:invocation, epoch, request_uuid} = key, {:ok, {:ok, invocation}}, socket) do
-    if invocation_current?(socket, key, epoch) do
-      browser_session = Domain.get_browser_session!(invocation.browser_session_id)
-      revision = Domain.get_tool_revision!(invocation.tool_revision_id)
-
-      {:noreply,
-       socket
-       |> finish_invocation(key)
-       |> refresh(browser_session)
-       |> assign(error_message: nil)
-       |> push_invocation_result(invocation, revision, request_uuid, epoch)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_async({:invocation, epoch, request_uuid} = key, {:ok, {:error, reason}}, socket) do
-    if invocation_current?(socket, key, epoch) do
-      message = readable_error(reason)
-
-      {:noreply,
-       socket
-       |> finish_invocation(key)
-       |> assign(error_message: message)
-       |> push_invocation_error(request_uuid, message, epoch)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_async({:invocation, epoch, request_uuid} = key, {:exit, reason}, socket) do
-    if invocation_current?(socket, key, epoch) do
-      message = readable_error(reason)
-
-      {:noreply,
-       socket
-       |> finish_invocation(key)
-       |> assign(error_message: message)
-       |> push_invocation_error(request_uuid, message, epoch)}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  @impl true
-  def handle_async(_key, _result, socket), do: {:noreply, socket}
-
-  defp execute_reply(socket, %Invocation{effective_status: :started} = invocation, room) do
-    key = {:invocation, room.invocation_epoch, invocation.request_uuid}
-
-    {:reply,
-     %{
-       "accepted" => true,
-       "invocation_id" => invocation.id,
-       "request_uuid" => invocation.request_uuid
-     }, run_invocation(socket, invocation, key)}
-  end
-
-  defp execute_reply(socket, invocation, room) do
-    revision = Domain.get_tool_revision!(invocation.tool_revision_id)
-    {:reply, invocation_reply(invocation, revision, room), socket}
-  end
-
-  # A call runs once. The browser is free to ask again, and asking again while
-  # the first run is still going is answered without starting a second one.
-  defp run_invocation(socket, invocation, key) do
-    if MapSet.member?(socket.assigns.invocation_keys, key) do
-      socket
-    else
-      fallback? = Config.demo_fallback?()
-
-      socket
-      |> update(:invocation_keys, &MapSet.put(&1, key))
-      |> start_async(key, fn -> execute_invocation(invocation, fallback?) end)
-    end
-  end
-
-  defp execute_invocation(invocation, fallback?) do
-    {:ok, InvocationRunner.execute!(invocation, fallback: fallback?)}
-  rescue
-    error -> {:error, error}
-  catch
-    kind, reason -> {:error, {kind, reason}}
-  end
-
-  # The owner's button and the agent's request both come through here, so a room
-  # can only ever have one diagnosis running, and the spend limits inside
-  # RepairPlanner apply to a tool-triggered request exactly as to a click.
-  # Neither caller can approve or publish: this only produces a proposal.
+  # The owner's button asks for a diagnosis; a signed agent asks through its own
+  # request. A room has one diagnosis running at a time, and asking only ever
+  # produces a proposal.
   defp start_repair(socket) do
     proposal = socket.assigns.proposal
 
     cond do
       socket.assigns.pending_operation == :repair or socket.assigns.room.status == :diagnosing ->
-        {:already_in_progress, "Patchbay is already working out a repair for this room.", socket}
+        {:error, "Patchbay is already working out a repair for this room."}
 
       match?(%RepairProposal{status: :ready_for_approval}, proposal) ->
-        {:proposal_ready,
-         "A repair is already proposed and waiting to be approved. This tool cannot approve it.",
-         socket}
+        {:error, "A repair is already proposed and waiting for your approval."}
 
       is_nil(proposal) and socket.assigns.room.status == :failed ->
         repair_failed_call(socket)
 
       socket.assigns.room.status == :error ->
-        {:no_failed_invocation,
-         "The last repair attempt did not complete. A person has to reset the demo before another repair can be asked for.",
-         socket}
+        {:error,
+         "The last repair attempt did not complete. Reset the demo before asking for another repair."}
 
       true ->
-        {:no_failed_invocation, "This room has no failed tool call waiting for a repair.", socket}
+        {:error, "This room has no failed tool call waiting for a repair."}
     end
   end
 
   defp repair_failed_call(socket) do
-    case latest_failed_invocation(socket.assigns.room) do
-      {:ok, invocation} -> begin_repair(socket, invocation)
-      {:error, detail} -> {:no_failed_invocation, detail, socket}
+    with {:ok, invocation} <- latest_failed_invocation(socket.assigns.room),
+         {:ok, _room} <- begin_diagnosis(socket.assigns.room) do
+      {:ok, run_repair(socket, invocation)}
     end
   end
 
-  defp begin_repair(socket, invocation) do
-    case Domain.begin_diagnosis(socket.assigns.room) do
-      {:ok, _room} -> run_repair(socket, invocation)
-      {:error, error} -> {:error, readable_error(error), socket}
+  defp begin_diagnosis(room) do
+    case Domain.begin_diagnosis(room) do
+      {:ok, room} -> {:ok, room}
+      {:error, error} -> {:error, readable_error(error)}
     end
   end
 
   defp run_repair(socket, invocation) do
     repair_token = Ash.UUID.generate()
 
-    socket =
-      socket
-      |> refresh(socket.assigns.browser_session)
-      |> assign(error_message: nil, pending_operation: :repair, repair_token: repair_token)
-      |> start_async({:repair, repair_token}, fn ->
-        {:repair_result, repair_token, propose_repair(invocation)}
-      end)
-
-    {:repair_requested,
-     "Patchbay is working out a repair. This tool cannot approve or publish one; asking is all it does.",
-     socket}
+    socket
+    |> refresh(socket.assigns.browser_session)
+    |> assign(error_message: nil, pending_operation: :repair, repair_token: repair_token)
+    |> start_async({:repair, repair_token}, fn ->
+      {:repair_result, repair_token, propose_repair(invocation)}
+    end)
   end
 
   defp propose_repair(invocation) do
@@ -890,8 +691,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
        confirming_reset: false,
        pending_operation: nil,
        repair_token: nil,
-       invocation_epoch: room.invocation_epoch,
-       invocation_keys: MapSet.new()
+       invocation_epoch: room.invocation_epoch
      )
      |> allow_upload(:skill,
        accept: ~w(.md .markdown),
@@ -993,25 +793,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       %BrowserSession{id: id} -> {:ok, id}
       _ -> {:error, "browser_session_id is required"}
     end
-  end
-
-  defp push_invocation_result(socket, invocation, revision, request_uuid, epoch) do
-    push_event(
-      socket,
-      "patchbay:#{socket.assigns.room.id}:invocation_result",
-      invocation
-      |> invocation_reply(revision, socket.assigns.room)
-      |> Map.put("request_uuid", request_uuid)
-      |> Map.put("invocation_epoch", epoch)
-    )
-  end
-
-  defp push_invocation_error(socket, request_uuid, message, epoch) do
-    push_event(socket, "patchbay:#{socket.assigns.room.id}:invocation_result", %{
-      "request_uuid" => request_uuid,
-      "invocation_epoch" => epoch,
-      "error" => message
-    })
   end
 
   defp push_ui_retry_started(socket, invocation) do
@@ -1160,25 +941,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
   defp cancel_repair(socket, nil), do: socket
   defp cancel_repair(socket, key), do: cancel_async(socket, key, {:shutdown, :reset})
-
-  defp cancel_invocations(socket, reason) do
-    socket.assigns.invocation_keys
-    |> Enum.reduce(socket, fn key, current ->
-      cancel_async(current, key, {:shutdown, reason})
-    end)
-    |> assign(invocation_keys: MapSet.new())
-  end
-
-  # A reset cancels the calls it interrupted and forgets their keys, so a result
-  # that belongs to an earlier lifecycle of this room has nothing left to match.
-  defp invocation_current?(socket, key, epoch) do
-    epoch == socket.assigns.invocation_epoch and
-      MapSet.member?(socket.assigns.invocation_keys, key)
-  end
-
-  defp finish_invocation(socket, key) do
-    update(socket, :invocation_keys, &MapSet.delete(&1, key))
-  end
 
   # Every browser-facing refusal answers the tool that asked and puts the same
   # sentence on the page, so a tool and a person never read different reasons.

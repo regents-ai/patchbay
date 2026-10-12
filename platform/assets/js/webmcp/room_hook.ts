@@ -9,8 +9,8 @@ import {
 } from "./tool_definitions.ts";
 import {createToolScope, getModelContext} from "./webmcpify.ts";
 import type {ModelContext, ToolScopeHandle} from "./webmcpify.ts";
-import {completeInvocation, pushWithAck} from "./invocation_bridge.ts";
-import type {BridgeHook, PendingInvocation, RoomReply, ToolRevision} from "./invocation_bridge.ts";
+import {pushWithAck, reportRetry} from "./invocation_bridge.ts";
+import type {BridgeHook, RoomReply, ToolRevision} from "./invocation_bridge.ts";
 import {readRoomMetadata, sha256Hex} from "./state_snapshot.ts";
 
 const SESSION_KEY_PREFIX = "patchbay:webmcp:client:";
@@ -82,7 +82,6 @@ export interface PatchbayHook extends BridgeHook {
   reconcileEpoch: number;
   desiredRevisions: Map<string, ToolRevision>;
   pendingDesired: DesiredToolset | null;
-  pendingInvocations: Map<string, PendingInvocation>;
   retryControllers: Set<AbortController>;
   bootstrapped: boolean;
   bootstrapping: boolean;
@@ -119,7 +118,7 @@ const PatchbayWebMCP = {
         ? payload.invocation_epoch!
         : this.invocationEpoch + 1;
       this.pageEvidence = typeof payload.page_evidence === "string" ? payload.page_evidence : undefined;
-      abortInvocationWork(this, "Patchbay reset before invocation completion");
+      abortRetries(this);
       retireAllRevisions(this);
       this.registryReady = false;
       setCapability(this, "connecting");
@@ -128,17 +127,13 @@ const PatchbayWebMCP = {
       if (payload?.invocation_epoch !== this.invocationEpoch) return;
       const controller = new AbortController();
       this.retryControllers.add(controller);
-      void completeInvocation(this, payload, {signal: controller.signal})
+      void reportRetry(this, payload, controller.signal)
         .catch(error => {
           if (!this.destroyedFlag && !controller.signal.aborted) {
             setCapability(this, "error", error?.message);
           }
         })
         .finally(() => this.retryControllers.delete(controller));
-    });
-    this.handleEvent(`${eventPrefix(this)}:invocation_result`, (payload: RoomReply) => {
-      if (payload?.invocation_epoch !== this.invocationEpoch) return;
-      this.pendingInvocations?.get(payload?.request_uuid as string)?.resolve(payload);
     });
 
     if (this.modelContext?.addEventListener) {
@@ -155,7 +150,7 @@ const PatchbayWebMCP = {
   disconnected(this: PatchbayHook) {
     if (this.destroyedFlag) return;
     const browserSessionId = this.browserSessionId;
-    abortInvocationWork(this, "WebMCP disconnected before invocation completion");
+    abortRetries(this);
     invalidateBootstrap(this);
     if (!browserSessionId) return;
     void push(this, "webmcp_session_disconnected", {
@@ -170,7 +165,7 @@ const PatchbayWebMCP = {
     this.onToolChange?.abort?.();
     this.modelContext?.removeEventListener?.("toolchange", this.onToolChange);
     retireAllRevisions(this);
-    abortInvocationWork(this, "WebMCP hook was destroyed before invocation completion");
+    abortRetries(this);
     this.permanentScope?.();
     this.permanentScope = null;
   },
@@ -195,7 +190,6 @@ export function initialise(hook: PatchbayHook) {
   hook.reconcileEpoch = 0;
   hook.desiredRevisions = new Map();
   hook.pendingDesired = null;
-  hook.pendingInvocations = new Map();
   hook.retryControllers = new Set();
   hook.invocationEpoch = 0;
   hook.bootstrapped = false;
@@ -498,11 +492,7 @@ export function retireAllRevisions(hook: PatchbayHook) {
   for (const name of names) retireRevision(hook, name);
 }
 
-function abortInvocationWork(hook: PatchbayHook, message: string) {
-  for (const pending of hook.pendingInvocations?.values() ?? []) {
-    pending.reject(new Error(message));
-  }
-  hook.pendingInvocations?.clear();
+function abortRetries(hook: PatchbayHook) {
   for (const controller of hook.retryControllers ?? []) controller.abort();
   hook.retryControllers?.clear();
 }

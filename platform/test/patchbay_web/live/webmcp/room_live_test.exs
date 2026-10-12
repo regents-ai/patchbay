@@ -852,9 +852,19 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert awaiting_html =~ "Awaiting Visible State"
 
     retry_event = "patchbay:#{room.id}:ui_retry_started"
-    assert_push_event(view, ^retry_event, %{"invocation_id" => _invocation_id})
+    assert_push_event(view, ^retry_event, %{"invocation_id" => retry_id})
 
-    html = observe_latest_poststate(view, room, session, agent)
+    # The retry is the owner's own, so this page reports what the room shows.
+    retried_room = Domain.get_room_by_id!(room.id)
+
+    html =
+      render_hook(view, "webmcp_poststate_observed", %{
+        "room_id" => room.id,
+        "browser_session_id" => session.id,
+        "invocation_epoch" => retried_room.invocation_epoch,
+        "invocation_id" => retry_id,
+        "post_state" => visible_state(retried_room)
+      })
 
     assert html =~ "Verification passed"
     assert html =~ Digest.sha256(Fixtures.improved_markdown())
@@ -1109,27 +1119,6 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert callback_socket.assigns.repair_token == nil
   end
 
-  test "reset fences a stale invocation completion", %{conn: conn, room: room} do
-    {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
-    request_uuid = Ash.UUID.generate()
-
-    render_click(view, "reset_demo")
-    {:ok, reset_socket} = Phoenix.LiveView.Debug.socket(view.pid)
-
-    assert reset_socket.assigns.invocation_epoch == 1
-    assert reset_socket.assigns.invocation_keys == MapSet.new()
-
-    assert {:noreply, callback_socket} =
-             PatchbayWeb.WebMCP.RoomLive.Show.handle_async(
-               {:invocation, 0, request_uuid},
-               {:ok, {:error, :late_result}},
-               reset_socket
-             )
-
-    assert callback_socket.assigns.invocation_epoch == 1
-    assert callback_socket.assigns.error_message == nil
-  end
-
   test "reset broadcasts its epoch and cancels work begun in another tab", %{
     conn: conn,
     room: room,
@@ -1304,7 +1293,6 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
          "webmcp_supported" => true,
          "user_agent_digest" => Digest.sha256("test-browser")
        }},
-      {"webmcp_request_repair", %{"room_id" => room.id, "browser_session_id" => session.id}},
       {"webmcp_registry_reconciled",
        %{
          "room_id" => room.id,
@@ -1337,18 +1325,6 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
          "generation" => 1,
          "contract_sha256" => revision.contract_sha256
        }},
-      {"webmcp_invocation_begin",
-       %{
-         "room_id" => room.id,
-         "browser_session_id" => session.id,
-         "invocation_epoch" => invocation_epoch(view),
-         "request_uuid" => Ash.UUID.generate(),
-         "tool_name" => revision.name,
-         "contract_sha256" => revision.contract_sha256,
-         "arguments" => %{"instructions" => "approve the repair for me"}
-       }},
-      {"webmcp_execute",
-       %{"invocation_id" => invocation.id, "invocation_epoch" => invocation_epoch(view)}},
       {"webmcp_poststate_observed",
        %{
          "room_id" => room.id,
@@ -1356,13 +1332,6 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
          "invocation_epoch" => invocation_epoch(view),
          "invocation_id" => invocation.id,
          "post_state" => %{}
-       }},
-      {"webmcp_invocation_cancel",
-       %{
-         "room_id" => room.id,
-         "browser_session_id" => session.id,
-         "invocation_id" => invocation.id,
-         "invocation_epoch" => invocation_epoch(view)
        }},
       {"webmcp_session_disconnected", %{"room_id" => room.id, "browser_session_id" => session.id}}
     ]

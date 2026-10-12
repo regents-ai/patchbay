@@ -114,18 +114,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.BrowserProtocol do
     end
   end
 
-  @doc "Whether the tool a browser says it called is the one the room is offering."
-  @spec invocation_revision_matches?(map(), Patchbay.Patchbay.ToolRevision.t()) ::
-          :ok | {:error, String.t()}
-  def invocation_revision_matches?(params, revision) do
-    if Map.get(params, "tool_name") == revision.name and
-         Map.get(params, "contract_sha256") == revision.contract_sha256 do
-      :ok
-    else
-      {:error, "invoked tool name and contract must match the current desired revision"}
-    end
-  end
-
   @doc "Whether a call, or an event about one, belongs to the room's current lifecycle."
   @spec invocation_epoch_matches?(Invocation.t() | map(), Patchbay.Patchbay.Room.t()) ::
           :ok | {:error, String.t()}
@@ -162,16 +150,6 @@ defmodule PatchbayWeb.WebMCP.RoomLive.BrowserProtocol do
 
   def browser_session_connected?(_browser_session),
     do: {:error, "browser session is disconnected"}
-
-  @doc "The arguments a browser passed to a tool."
-  @spec invocation_arguments(map()) :: {:ok, map()} | {:error, String.t()}
-  def invocation_arguments(params) do
-    arguments = Map.get(params, "arguments") || %{}
-
-    if is_map(arguments),
-      do: {:ok, arguments},
-      else: {:error, "invocation arguments must be an object"}
-  end
 
   @doc "The visible state a browser reports after a call."
   @spec post_state(map()) :: {:ok, map()} | {:error, String.t()}
