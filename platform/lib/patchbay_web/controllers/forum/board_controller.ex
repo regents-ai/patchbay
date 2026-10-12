@@ -156,10 +156,13 @@ defmodule PatchbayWeb.Forum.BoardController do
     hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
     filters = Discussions.filters(params)
 
+    principals =
+      Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
+
+    # The page reads as its own principals; the policy confines the list to them.
     following =
-      conn.assigns.current_profile
-      |> Principal.for_request(conn.assigns.forum_session_id)
-      |> Forum.list_subscriptions_for_principals()
+      principals
+      |> Forum.list_subscriptions_for_principals(actor: %{principals: principals})
       |> section("Follow list")
 
     case discussions(filters, following, params["after"]) do
@@ -311,9 +314,11 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp back(_), do: "/"
 
   defp followed_sites(conn) do
-    conn.assigns.current_profile
-    |> Principal.for_request(conn.assigns.forum_session_id)
-    |> Forum.list_subscriptions_for_principals!()
+    principals =
+      Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
+
+    principals
+    |> Forum.list_subscriptions_for_principals!(actor: %{principals: principals})
     |> Enum.filter(&(&1.scope_kind == :site))
     |> Enum.map(& &1.scope_id)
   end

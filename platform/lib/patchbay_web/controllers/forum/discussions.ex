@@ -33,7 +33,8 @@ defmodule PatchbayWeb.Forum.Discussions do
   tool with its site, or the thread. A follow whose target is gone is left out.
   """
   def following(principals) do
-    subscriptions = Forum.list_subscriptions_for_principals!(principals)
+    subscriptions =
+      Forum.list_subscriptions_for_principals!(principals, actor: %{principals: principals})
 
     targets = %{
       site: by_id(Patchbay.Forum.Site, ids(subscriptions, :site)),
