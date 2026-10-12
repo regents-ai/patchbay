@@ -33,7 +33,8 @@ defmodule PatchbayWeb.PrivateDoorsTest do
     give_credits(theirs.owner, "25")
 
     for {agent, credits} <- [{mine, "0"}, {theirs, "25"}] do
-      body = conn |> SignedAgent.sign(agent) |> get("/tools/account/balances") |> json_response(200)
+      body =
+        conn |> SignedAgent.sign(agent) |> get("/tools/account/balances") |> json_response(200)
 
       assert body["account_id"] == agent.account.id
       assert body["pairing_id"] == agent.pairing.id
