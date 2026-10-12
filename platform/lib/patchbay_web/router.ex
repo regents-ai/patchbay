@@ -234,9 +234,6 @@ defmodule PatchbayWeb.Router do
   scope "/offers", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
-    get "/list", OffersRedirectController, :list
-    get "/expired", OffersRedirectController, :history
-
     live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
       live "/", OffersLive.List, :index
       live "/how-it-works", OffersLive.Index, :index
