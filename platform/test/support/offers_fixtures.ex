@@ -147,7 +147,7 @@ defmodule Patchbay.OffersFixtures do
   allows stop counting (default a day from now).
   """
   def approved_version(owner, text, market, opts \\ []) do
-    {:ok, _creative} = Offers.create_creative("Offer", text, actor: owner)
+    {:ok, _creative} = Offers.create_creative("Offer", text, Ecto.UUID.generate(), actor: owner)
 
     [version] =
       Offers.CreativeVersion

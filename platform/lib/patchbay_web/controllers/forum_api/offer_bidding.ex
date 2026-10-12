@@ -116,25 +116,39 @@ defmodule PatchbayWeb.ForumAPI.OfferBidding do
     end
   end
 
-  @doc "Saves a new Offer for `profile`; it is screened before it can be bid."
+  @doc """
+  Saves a new Offer for `profile`; it is screened before it can be bid. A
+  repeat with the same `request_key` answers with the Offer already saved
+  and uses no daily save.
+  """
   @spec save(map(), map()) :: {:ok, map()} | {:error, refusal()}
   def save(profile, params) do
-    with :ok <- OfferSlots.known_keys(params, ["label", "text"]),
+    with :ok <- OfferSlots.known_keys(params, ["label", "text", "request_key"]),
          {:ok, label} <- text(params, "label"),
-         {:ok, text} <- text(params, "text") do
-      case Offers.create_creative(label, text, actor: profile, load: [:current_version]) do
-        {:ok, creative} -> {:ok, saved(creative.id, creative.current_version)}
-        {:error, error} -> {:error, {:not_saved, Create.words(error)}}
+         {:ok, text} <- text(params, "text"),
+         {:ok, key} <- text(params, "request_key") do
+      case Offers.create_creative(label, text, key, actor: profile) do
+        {:ok, creative} ->
+          creative = Ash.load!(creative, :current_version, actor: profile)
+          {:ok, saved(creative.id, creative.current_version)}
+
+        {:error, error} ->
+          {:error, {:not_saved, Create.words(error)}}
       end
     end
   end
 
-  @doc "Saves new wording for one of `profile`'s Offers; it is screened again."
+  @doc """
+  Saves new wording for one of `profile`'s Offers; it is screened again. A
+  repeat with the same `request_key` answers with the wording already saved
+  and uses no daily save.
+  """
   @spec reword(map(), map()) :: {:ok, map()} | {:error, refusal()}
   def reword(profile, params) do
-    with :ok <- OfferSlots.known_keys(params, ["creative_id", "text"]),
-         {:ok, text} <- text(params, "text") do
-      case Offers.save_creative_version(params["creative_id"], text, actor: profile) do
+    with :ok <- OfferSlots.known_keys(params, ["creative_id", "text", "request_key"]),
+         {:ok, text} <- text(params, "text"),
+         {:ok, key} <- text(params, "request_key") do
+      case Offers.save_creative_version(params["creative_id"], text, key, actor: profile) do
         {:ok, version} -> {:ok, saved(params["creative_id"], version)}
         {:error, error} -> {:error, {:not_saved, Create.words(error)}}
       end

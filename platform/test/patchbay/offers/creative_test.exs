@@ -12,7 +12,10 @@ defmodule Patchbay.Offers.CreativeTest do
     owner = person()
 
     assert {:ok, creative} =
-             Offers.create_creative("Spring", "Cafe\u{0301} deals at https://example.com.",
+             Offers.create_creative(
+               "Spring",
+               "Cafe\u{0301} deals at https://example.com.",
+               Ecto.UUID.generate(),
                actor: owner
              )
 
@@ -31,19 +34,26 @@ defmodule Patchbay.Offers.CreativeTest do
   test "text that breaks a rule saves nothing" do
     owner = person()
 
-    assert {:error, error} = Offers.create_creative("Two lines", "first\nsecond", actor: owner)
+    assert {:error, error} =
+             Offers.create_creative("Two lines", "first\nsecond", Ecto.UUID.generate(),
+               actor: owner
+             )
+
     assert Exception.message(error) =~ "must be a single line"
     assert Ash.read!(Offers.Creative, actor: owner) == []
   end
 
   test "wordings number up, and only the owner can add one" do
     owner = person()
-    {:ok, creative} = Offers.create_creative("Plan", "One", actor: owner)
+    {:ok, creative} = Offers.create_creative("Plan", "One", Ecto.UUID.generate(), actor: owner)
 
-    assert {:ok, %{version: 2}} = Offers.save_creative_version(creative.id, "Two", actor: owner)
+    assert {:ok, %{version: 2}} =
+             Offers.save_creative_version(creative.id, "Two", Ecto.UUID.generate(), actor: owner)
 
     assert {:error, error} =
-             Offers.save_creative_version(creative.id, "Mine now", actor: person())
+             Offers.save_creative_version(creative.id, "Mine now", Ecto.UUID.generate(),
+               actor: person()
+             )
 
     assert Exception.message(error) =~ "is not one of your saved Offers"
   end
@@ -52,7 +62,9 @@ defmodule Patchbay.Offers.CreativeTest do
     owner = person()
 
     {:ok, _creative} =
-      Offers.create_creative("First", "Free keys at https://bad.example", actor: owner)
+      Offers.create_creative("First", "Free keys at https://bad.example", Ecto.UUID.generate(),
+        actor: owner
+      )
 
     [version] = Ash.read!(Offers.CreativeVersion, actor: owner)
 
@@ -67,7 +79,12 @@ defmodule Patchbay.Offers.CreativeTest do
     |> Ash.update!(authorize?: false)
 
     assert {:error, error} =
-             Offers.create_creative("Second", "Free keys at https://bad.example", actor: owner)
+             Offers.create_creative(
+               "Second",
+               "Free keys at https://bad.example",
+               Ecto.UUID.generate(),
+               actor: owner
+             )
 
     assert Exception.message(error) =~ "was blocked by a moderator"
   end

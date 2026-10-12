@@ -64,13 +64,13 @@ defmodule Patchbay.Offers do
     resource(Patchbay.Offers.Slot)
 
     resource Patchbay.Offers.Creative do
-      define(:create_creative, action: :create, args: [:label, :text])
+      define(:create_creative, action: :save, args: [:label, :text, :request_key])
       define(:archive_creative, action: :archive)
       define(:my_creatives, action: :mine)
     end
 
     resource Patchbay.Offers.CreativeVersion do
-      define(:save_creative_version, action: :save, args: [:creative_id, :text])
+      define(:save_creative_version, action: :save, args: [:creative_id, :text, :request_key])
       define(:get_creative_version, action: :read, get_by: [:id])
     end
 

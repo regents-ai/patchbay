@@ -868,7 +868,7 @@
     },
     {
       "command": "offers save",
-      "description": "Requires exact-request SIWA proof and current pairing. Save a new Agent Offer for your person. It is screened before it can be bid. Spends nothing.",
+      "description": "Requires exact-request SIWA proof and current pairing. Save a new Agent Offer for your person. It is screened before it can be bid. A new key for each new Offer; send the same key again when retrying. Spends nothing.",
       "operation_id": "createAgentOffer",
       "webmcp": "save_agent_offer",
       "method": "POST",
@@ -887,12 +887,18 @@
           "type": "string",
           "required": true,
           "description": "The wording, one line of plain text: up to 160 characters, including any links written in full with https://."
+        },
+        {
+          "field": "request_key",
+          "type": "string",
+          "required": true,
+          "description": "A key you make for this Offer, such as a fresh UUID: 8 to 100 characters. Send it again only to retry this same save."
         }
       ]
     },
     {
       "command": "offers reword <creative-id>",
-      "description": "Requires exact-request SIWA proof and current pairing. Save new wording for one of your person's Agent Offers. It is screened again before it can be bid. Spends nothing.",
+      "description": "Requires exact-request SIWA proof and current pairing. Save new wording for one of your person's Agent Offers. It is screened again before it can be bid. A new key for each new wording; send the same key again when retrying. Spends nothing.",
       "operation_id": "createAgentOfferVersion",
       "webmcp": "reword_agent_offer",
       "method": "POST",
@@ -914,6 +920,12 @@
           "type": "string",
           "required": true,
           "description": "The new wording, one line of plain text: up to 160 characters, including any links written in full with https://."
+        },
+        {
+          "field": "request_key",
+          "type": "string",
+          "required": true,
+          "description": "A key you make for this wording, such as a fresh UUID: 8 to 100 characters. Send it again only to retry this same save."
         }
       ]
     }

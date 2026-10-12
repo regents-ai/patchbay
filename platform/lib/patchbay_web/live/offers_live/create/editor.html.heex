@@ -33,6 +33,11 @@
         phx-submit="save"
         class="pb-offers-form"
       >
+        <input
+          type="hidden"
+          name={@new_offer[:request_key].name}
+          value={@new_offer[:request_key].value}
+        />
         <Regent.Primitives.field id="pb-offers-label" label="Private name">
           <input
             id="pb-offers-label"
@@ -109,6 +114,7 @@
               class="pb-offers-form"
             >
               <input type="hidden" name="reword[creative_id]" value={creative.id} />
+              <input type="hidden" name="reword[request_key]" value={@rewording.request_key} />
               <Regent.Primitives.field
                 id={"pb-offers-reword-text-#{creative.id}"}
                 label="New wording"

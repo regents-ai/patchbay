@@ -278,7 +278,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
     test "a wording screening left for a person is allowed there, for a day, on record",
          %{conn: conn, owner: owner} do
-      {:ok, creative} = Offers.create_creative("Mine", "Try https://broken.example", actor: owner)
+      {:ok, creative} =
+        Offers.create_creative("Mine", "Try https://broken.example", Ecto.UUID.generate(),
+          actor: owner
+        )
+
       %{current_version: version} = Ash.load!(creative, :current_version, actor: owner)
 
       Patchbay.Repo.query!(

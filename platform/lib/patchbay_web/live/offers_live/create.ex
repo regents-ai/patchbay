@@ -50,7 +50,7 @@ defmodule PatchbayWeb.OffersLive.Create do
       rewording: nil,
       screening_paused?: Offers.screening_paused?()
     )
-    |> assign_new_offer(%{"label" => "", "text" => ""})
+    |> assign_new_offer(blank_offer())
     |> assign(saved: if(profile, do: saved(profile), else: []))
   end
 
@@ -87,9 +87,22 @@ defmodule PatchbayWeb.OffersLive.Create do
         assign(socket, rewording: nil)
 
       creative ->
-        assign(socket, rewording: %{id: creative.id, text: creative.current_version.text})
+        assign(socket,
+          rewording: %{
+            id: creative.id,
+            text: creative.current_version.text,
+            request_key: request_key()
+          }
+        )
     end
   end
+
+  # Each form carries the key for the one save it is for. A retry of the same
+  # form, after a lost answer or a reconnect, sends the same key and gets the
+  # first save back; a form starts again with a new key once it has saved.
+  defp blank_offer, do: %{"label" => "", "text" => "", "request_key" => request_key()}
+
+  defp request_key, do: Ecto.UUID.generate()
 
   @impl true
   def handle_info(:offer_reviews_changed, socket),
@@ -99,26 +112,36 @@ defmodule PatchbayWeb.OffersLive.Create do
   # one (a missing field, or wording for an Offer that is no longer being
   # reworded) changes nothing and never stops the page.
   @impl true
-  def handle_event("check", %{"offer" => %{"label" => label, "text" => text}}, socket)
-      when is_binary(label) and is_binary(text),
-      do: {:noreply, assign_new_offer(socket, %{"label" => label, "text" => text})}
+  def handle_event(
+        "check",
+        %{"offer" => %{"label" => label, "text" => text, "request_key" => key}},
+        socket
+      )
+      when is_binary(label) and is_binary(text) and is_binary(key),
+      do:
+        {:noreply,
+         assign_new_offer(socket, %{"label" => label, "text" => text, "request_key" => key})}
 
-  def handle_event("save", %{"offer" => %{"label" => label, "text" => text}}, socket)
-      when is_binary(label) and is_binary(text) do
+  def handle_event(
+        "save",
+        %{"offer" => %{"label" => label, "text" => text, "request_key" => key}},
+        socket
+      )
+      when is_binary(label) and is_binary(text) and is_binary(key) do
     profile = socket.assigns.current_profile
 
-    case Offers.create_creative(label, text, actor: profile) do
+    case Offers.create_creative(label, text, key, actor: profile) do
       {:ok, _creative} ->
         {:noreply,
          socket
          |> assign(problem: nil, saved: saved(profile))
-         |> assign_new_offer(%{"label" => "", "text" => ""})}
+         |> assign_new_offer(blank_offer())}
 
       {:error, error} ->
         {:noreply,
          socket
          |> assign(problem: words(error))
-         |> assign_new_offer(%{"label" => label, "text" => text})}
+         |> assign_new_offer(%{"label" => label, "text" => text, "request_key" => key})}
     end
   end
 
@@ -130,24 +153,24 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   def handle_event(
         "check_reword",
-        %{"reword" => %{"creative_id" => id, "text" => text}},
+        %{"reword" => %{"creative_id" => id, "text" => text, "request_key" => key}},
         %{assigns: %{rewording: %{id: id}}} = socket
       )
-      when is_binary(text),
-      do: {:noreply, update(socket, :rewording, &%{&1 | text: text})}
+      when is_binary(text) and is_binary(key),
+      do: {:noreply, assign(socket, rewording: %{id: id, text: text, request_key: key})}
 
   def handle_event("cancel_reword", _params, socket),
     do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"reword" => nil})}
 
   def handle_event(
         "save_reword",
-        %{"reword" => %{"creative_id" => id, "text" => text}},
+        %{"reword" => %{"creative_id" => id, "text" => text, "request_key" => key}},
         %{assigns: %{rewording: %{id: id}}} = socket
       )
-      when is_binary(text) do
+      when is_binary(text) and is_binary(key) do
     profile = socket.assigns.current_profile
 
-    case Offers.save_creative_version(id, text, actor: profile) do
+    case Offers.save_creative_version(id, text, key, actor: profile) do
       {:ok, _version} ->
         {:noreply,
          socket
@@ -156,7 +179,10 @@ defmodule PatchbayWeb.OffersLive.Create do
 
       {:error, error} ->
         {:noreply,
-         socket |> assign(problem: words(error)) |> assign(rewording: %{id: id, text: text})}
+         assign(socket,
+           problem: words(error),
+           rewording: %{id: id, text: text, request_key: key}
+         )}
     end
   end
 

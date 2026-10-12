@@ -18,7 +18,12 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
   test "a wording is checked as typed, saved for screening, and changed as a new version",
        %{conn: conn} do
     owner = advertiser()
-    {:ok, _theirs} = Offers.create_creative("Theirs", "Someone else's Offer", actor: advertiser())
+
+    {:ok, _theirs} =
+      Offers.create_creative("Theirs", "Someone else's Offer", Ecto.UUID.generate(),
+        actor: advertiser()
+      )
+
     {:ok, view, _html} = conn |> signed_in(owner) |> live("/offers/create")
 
     checked =

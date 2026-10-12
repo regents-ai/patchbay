@@ -58,6 +58,14 @@ defmodule Patchbay.Offers.CreativeVersion do
     attribute(:urls, {:array, :string}, allow_nil?: false, default: [], public?: true)
     attribute(:bare_addresses, {:array, :string}, allow_nil?: false, default: [], public?: true)
 
+    # The key the saving form or agent made for this wording: the same key
+    # again, for the same saved Offer, answers with this wording instead of
+    # saving another. A first wording carries its Offer's key.
+    attribute(:request_key, :string,
+      allow_nil?: false,
+      constraints: [min_length: 8, max_length: 100]
+    )
+
     attribute(:blocked_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
     attribute(:block_reason, :string,
@@ -71,6 +79,7 @@ defmodule Patchbay.Offers.CreativeVersion do
 
   identities do
     identity(:unique_version, [:creative_id, :version])
+    identity(:unique_request, [:creative_id, :request_key])
   end
 
   relationships do
@@ -113,12 +122,30 @@ defmodule Patchbay.Offers.CreativeVersion do
   actions do
     defaults([:read])
 
-    create :save do
-      description(
-        "Saves a new wording of one of the advertiser's Offers, which then waits for review."
+    action :save, :struct do
+      description("""
+      Saves a new wording of one of the advertiser's Offers, which then waits
+      for review. The same request key again, for the same Offer, answers
+      with the wording it saved, saves nothing more and uses no daily save.
+      """)
+
+      constraints(instance_of: __MODULE__)
+      transaction?(true)
+
+      argument(:creative_id, :uuid, allow_nil?: false)
+      argument(:text, :string, allow_nil?: false, constraints: [trim?: false, allow_empty?: true])
+
+      argument(:request_key, :string,
+        allow_nil?: false,
+        constraints: [min_length: 8, max_length: 100]
       )
 
-      accept([])
+      run(fn input, context -> Patchbay.Offers.Saving.wording(input.arguments, context.actor) end)
+    end
+
+    create :write do
+      description("Writes a new wording of an Offer, for a request key not used on it before.")
+      accept([:request_key])
       argument(:creative_id, :uuid, allow_nil?: false)
       argument(:text, :string, allow_nil?: false, constraints: [trim?: false, allow_empty?: true])
 
@@ -177,7 +204,7 @@ defmodule Patchbay.Offers.CreativeVersion do
     end
 
     # Saving checks the owner itself, under the saved Offer's lock.
-    policy action(:save) do
+    policy action([:save, :write]) do
       authorize_if(actor_present())
     end
 

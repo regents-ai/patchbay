@@ -69,7 +69,9 @@ Shared reads: `account_balances`, `account_credits_history`, `account_points`.
 
 `bid_on_offer_slot` holds your person's Credits for an Agent Offer bid. Read
 `get_offer_bid_options` first; `ask_offer_fit`, `save_agent_offer` and
-`reword_agent_offer` spend nothing. A bid fits only within what your person lets
+`reword_agent_offer` spend nothing. Both take a `request_key` of 8 to 100
+characters: a new key for each new Offer or wording; send the same key again
+when retrying, and the first save answers without using a daily save. A bid fits only within what your person lets
 you spend at [Regents account](https://regents.sh/account): spending starts off,
 and `agent_spending_refused` holds nothing. Grant management, funding and wallet
 signing remain owner actions. Reads and identity probes earn no Points;

@@ -42,7 +42,18 @@ defmodule Patchbay.Offers.Creative do
 
     attribute(:archived_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
+    # The key the saving form or agent made for this Offer: the same key
+    # again answers with this Offer instead of saving another.
+    attribute(:request_key, :string,
+      allow_nil?: false,
+      constraints: [min_length: 8, max_length: 100]
+    )
+
     create_timestamp(:inserted_at, public?: true)
+  end
+
+  identities do
+    identity(:unique_request, [:owner_profile_id, :request_key])
   end
 
   relationships do
@@ -65,9 +76,30 @@ defmodule Patchbay.Offers.Creative do
   actions do
     defaults([:read])
 
+    action :save, :struct do
+      description("""
+      Saves a new Offer with its first wording, which then waits for review.
+      The same request key again answers with the Offer it saved, saves
+      nothing more and uses no daily save.
+      """)
+
+      constraints(instance_of: __MODULE__)
+      transaction?(true)
+
+      argument(:label, :string, allow_nil?: false)
+      argument(:text, :string, allow_nil?: false, constraints: [trim?: false, allow_empty?: true])
+
+      argument(:request_key, :string,
+        allow_nil?: false,
+        constraints: [min_length: 8, max_length: 100]
+      )
+
+      run(fn input, context -> Patchbay.Offers.Saving.offer(input.arguments, context.actor) end)
+    end
+
     create :create do
-      description("Saves a new Offer with its first wording, which then waits for review.")
-      accept([:label])
+      description("Writes a new Offer and its first wording, for a request key not used before.")
+      accept([:label, :request_key])
       argument(:text, :string, allow_nil?: false, constraints: [trim?: false, allow_empty?: true])
       change(relate_actor(:owner))
       change(Patchbay.Offers.Changes.SaveFirstVersion)
@@ -87,7 +119,7 @@ defmodule Patchbay.Offers.Creative do
   end
 
   policies do
-    policy action(:create) do
+    policy action([:save, :create]) do
       authorize_if(actor_present())
     end
 

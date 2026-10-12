@@ -183,7 +183,7 @@ defmodule Patchbay.Offers.ScreeningTest do
         wallet_address: "0x" <> String.duplicate("d", 40)
       })
 
-    {:ok, _creative} = Offers.create_creative("Label", text, actor: owner)
+    {:ok, _creative} = Offers.create_creative("Label", text, Ecto.UUID.generate(), actor: owner)
     [review] = Ash.read!(Offers.Review, actor: owner)
     review
   end
