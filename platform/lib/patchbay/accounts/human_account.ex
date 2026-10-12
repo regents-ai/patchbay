@@ -26,6 +26,11 @@ defmodule Patchbay.Accounts.HumanAccount do
   end
 
   actions do
+    # An update reads the account again through the primary read.
+    read :read do
+      primary?(true)
+    end
+
     read :by_privy do
       get?(true)
       argument(:privy_user_id, :string, allow_nil?: false)
@@ -47,6 +52,7 @@ defmodule Patchbay.Accounts.HumanAccount do
 
     update :refresh_verified do
       accept([:wallet_address, :wallet_addresses])
+      require_atomic?(false)
       validate(present(:wallet_addresses))
     end
   end
