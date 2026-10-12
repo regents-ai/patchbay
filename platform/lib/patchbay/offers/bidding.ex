@@ -32,8 +32,7 @@ defmodule Patchbay.Offers.Bidding do
 
   @doc "Places one bid for `profile`, or refuses it with nothing held."
   def submit(args, profile) do
-    with :ok <- credits_available(),
-         {:ok, spender} <- spender(profile),
+    with {:ok, spender} <- spender(profile),
          {:ok, amount_minor} <- amount(args.amount),
          %Slot{} = slot <-
            Advance.lock(args.slot_id, [spender.privy_user_id]) || {:error, not_found()} do
@@ -58,10 +57,6 @@ defmodule Patchbay.Offers.Bidding do
           refuse(:key_reused)
       end
     end
-  end
-
-  defp credits_available do
-    if Credits.actions_paused?(), do: refuse(:credits_paused), else: :ok
   end
 
   defp place(slot, args, profile, spender, now) do

@@ -57,7 +57,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
        problem: nil,
        outbid?: false,
        short?: false,
-       credits_paused?: Credits.actions_paused?(),
        screening_paused?: Offers.screening_paused?()
      )}
   end
@@ -389,7 +388,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
     <Regent.Primitives.button
       variant="quiet"
       type="button"
-      disabled={Credits.actions_paused?()}
       phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
     >
       Buy Credits

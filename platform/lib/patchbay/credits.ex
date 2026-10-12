@@ -14,9 +14,6 @@ defmodule Patchbay.Credits do
 
   @site "patchbay"
 
-  @doc "Whether Credits actions are held in a local preview during shared rollout."
-  def actions_paused?, do: Application.get_env(:patchbay, :credits_actions_paused, false)
-
   @doc "The name Patchbay places holds and attaches wallets under."
   def site, do: @site
 

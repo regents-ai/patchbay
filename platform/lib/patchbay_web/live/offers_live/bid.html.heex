@@ -33,14 +33,6 @@
         </.link>
       </header>
 
-      <p :if={@credits_paused?} class="pb-offers-hold" id="pb-offers-credits-hold" role="status">
-        <.bid_icon kind={:clock} /> Credits actions paused
-        <Regent.Primitives.tip id="pb-offers-hold-info" label="About paused Credits">
-          Bidding and buying Credits stay blocked until the shared account rollout is cleared.
-          You can prepare your Offer here.
-        </Regent.Primitives.tip>
-      </p>
-
       <%= if @current_profile do %>
         <%= case @balance do %>
           <% :not_linked -> %>
@@ -142,17 +134,11 @@
               <Regent.Primitives.button
                 type="submit"
                 class="patchbay-button"
-                disabled={@credits_paused?}
-                aria-describedby={if @credits_paused?, do: "pb-offers-credits-hold"}
               >
                 <span class="pb-action-label" data-press-label>Bid &amp; hold Credits
                 <.bid_icon kind={:arrow} /></span>
               </Regent.Primitives.button>
-              <p id="pb-offers-bid-hold">
-                {if @credits_paused?,
-                  do: "No Credits will be held in this preview.",
-                  else: held_words(@amount)}
-              </p>
+              <p id="pb-offers-bid-hold">{held_words(@amount)}</p>
             </div>
 
             <details class="pb-bid-details" id="pb-offers-bid-terms">
