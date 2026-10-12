@@ -207,6 +207,10 @@
   font-size: var(--pb-fs-sm);
 }
 
+.credits-panel__rate a {
+  color: inherit;
+}
+
 .credits-panel__problem {
   color: var(--pb-bad);
   font-size: var(--pb-fs-sm);
