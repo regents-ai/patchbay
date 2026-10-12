@@ -27,6 +27,8 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   embed_templates "create/*"
 
+  @not_saved "That could not be saved. Try again in a moment."
+
   @impl true
   def mount(_params, _session, socket),
     do: {:ok, socket |> initialize_editor() |> assign(page_title: "Your Offers")}
@@ -93,11 +95,16 @@ defmodule PatchbayWeb.OffersLive.Create do
   def handle_info(:offer_reviews_changed, socket),
     do: {:noreply, assign(socket, saved: saved(socket.assigns.current_profile))}
 
+  # Each event names exactly the fields its form sends. A malformed or stale
+  # one (a missing field, or wording for an Offer that is no longer being
+  # reworded) changes nothing and never stops the page.
   @impl true
-  def handle_event("check", %{"offer" => params}, socket),
-    do: {:noreply, assign_new_offer(socket, params)}
+  def handle_event("check", %{"offer" => %{"label" => label, "text" => text}}, socket)
+      when is_binary(label) and is_binary(text),
+      do: {:noreply, assign_new_offer(socket, %{"label" => label, "text" => text})}
 
-  def handle_event("save", %{"offer" => %{"label" => label, "text" => text} = params}, socket) do
+  def handle_event("save", %{"offer" => %{"label" => label, "text" => text}}, socket)
+      when is_binary(label) and is_binary(text) do
     profile = socket.assigns.current_profile
 
     case Offers.create_creative(label, text, actor: profile) do
@@ -108,23 +115,36 @@ defmodule PatchbayWeb.OffersLive.Create do
          |> assign_new_offer(%{"label" => "", "text" => ""})}
 
       {:error, error} ->
-        {:noreply, socket |> assign(problem: words(error)) |> assign_new_offer(params)}
+        {:noreply,
+         socket
+         |> assign(problem: words(error))
+         |> assign_new_offer(%{"label" => label, "text" => text})}
     end
   end
 
-  def handle_event("reword", %{"creative_id" => id}, socket) do
+  def handle_event("reword", %{"creative_id" => id}, socket) when is_binary(id) do
     if Enum.any?(socket.assigns.saved, &(&1.id == id)),
       do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"reword" => id})},
       else: {:noreply, assign(socket, problem: "That Offer is no longer available.")}
   end
 
-  def handle_event("check_reword", %{"reword" => %{"text" => text}}, socket),
-    do: {:noreply, update(socket, :rewording, &%{&1 | text: text})}
+  def handle_event(
+        "check_reword",
+        %{"reword" => %{"creative_id" => id, "text" => text}},
+        %{assigns: %{rewording: %{id: id}}} = socket
+      )
+      when is_binary(text),
+      do: {:noreply, update(socket, :rewording, &%{&1 | text: text})}
 
   def handle_event("cancel_reword", _params, socket),
     do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"reword" => nil})}
 
-  def handle_event("save_reword", %{"reword" => %{"creative_id" => id, "text" => text}}, socket) do
+  def handle_event(
+        "save_reword",
+        %{"reword" => %{"creative_id" => id, "text" => text}},
+        %{assigns: %{rewording: %{id: id}}} = socket
+      )
+      when is_binary(text) do
     profile = socket.assigns.current_profile
 
     case Offers.save_creative_version(id, text, actor: profile) do
@@ -139,6 +159,12 @@ defmodule PatchbayWeb.OffersLive.Create do
          socket |> assign(problem: words(error)) |> assign(rewording: %{id: id, text: text})}
     end
   end
+
+  def handle_event(event, _params, socket) when event in ["save", "save_reword"],
+    do: {:noreply, assign(socket, problem: @not_saved)}
+
+  def handle_event(event, _params, socket) when event in ["check", "reword", "check_reword"],
+    do: {:noreply, socket}
 
   defp assign_new_offer(socket, params) do
     assign(socket,
@@ -167,7 +193,7 @@ defmodule PatchbayWeb.OffersLive.Create do
     end)
   end
 
-  def words(_problem), do: "That could not be saved. Try again in a moment."
+  def words(_problem), do: @not_saved
 
   @doc """
   The text as it will be kept, its counts and its links, or what is wrong

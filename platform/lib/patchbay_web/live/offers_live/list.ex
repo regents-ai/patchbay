@@ -69,6 +69,8 @@ defmodule PatchbayWeb.OffersLive.List do
   def handle_event("open_editor", %{"mode" => mode}, socket) when mode in ["create", "edit"],
     do: {:noreply, Create.patch_editor(socket, %{"editor" => mode})}
 
+  def handle_event("open_editor", _params, socket), do: {:noreply, socket}
+
   def handle_event("close_editor", _params, socket),
     do: {:noreply, Create.patch_editor(socket, %{"editor" => nil, "reword" => nil})}
 
