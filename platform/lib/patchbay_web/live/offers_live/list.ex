@@ -44,43 +44,33 @@ defmodule PatchbayWeb.OffersLive.List do
          minimum: credits(Offers.default_minimum_minor())
        )}
 
-  # Every new search reads the whole page again as of one moment, so the
-  # times, prices and figures on it all agree; "Show more" adds sites as of
-  # that same moment.
+  # The address holds the search and the editor: whether it is open, which
+  # way, and the saved Offer being reworded, so a reload or a reconnect shows
+  # the same page.
   @impl true
-  def handle_params(params, _uri, socket) do
-    as_of = DateTime.utc_now()
-    window = Returns.window(as_of)
+  def handle_params(params, uri, socket) do
+    editor = if params["editor"] in ["create", "edit"], do: params["editor"]
 
     {:noreply,
      socket
-     |> assign(
-       text: params |> Map.get("q", "") |> String.trim(),
-       as_of: as_of,
-       window: window,
-       counting_since: Returns.counting_since(),
-       global: Markets.global(window),
-       cursor: nil,
-       more?: false,
-       found: 0
-     )
-     |> stream(:sites, [], reset: true)
-     |> read_sites()}
+     |> assign(editor_open?: editor != nil, editor_mode: editor || socket.assigns.editor_mode)
+     |> Create.editor_params(editor && params["reword"], uri)
+     |> search(params |> Map.get("q", "") |> String.trim())}
   end
 
   @impl true
   def handle_event("search", %{"q" => text}, socket) do
-    query = if String.trim(text) == "", do: [], else: [q: text]
-    {:noreply, push_patch(socket, to: ~p"/offers?#{query}")}
+    q = if String.trim(text) == "", do: nil, else: text
+    {:noreply, Create.patch_editor(socket, %{"q" => q})}
   end
 
   def handle_event("more", _params, socket), do: {:noreply, read_sites(socket)}
 
   def handle_event("open_editor", %{"mode" => mode}, socket) when mode in ["create", "edit"],
-    do: {:noreply, assign(socket, editor_open?: true, editor_mode: mode)}
+    do: {:noreply, Create.patch_editor(socket, %{"editor" => mode})}
 
   def handle_event("close_editor", _params, socket),
-    do: {:noreply, assign(socket, editor_open?: false)}
+    do: {:noreply, Create.patch_editor(socket, %{"editor" => nil, "reword" => nil})}
 
   # Events stay on the hosting LiveView, so its session check runs before
   # the shared editor reads or saves anything for the current account.
@@ -91,6 +81,30 @@ defmodule PatchbayWeb.OffersLive.List do
   @impl true
   def handle_info(:offer_reviews_changed, socket),
     do: Create.handle_info(:offer_reviews_changed, socket)
+
+  # The same search keeps the sites already shown. Every new search reads the
+  # whole page again as of one moment, so the times, prices and figures on it
+  # all agree; "Show more" adds sites as of that same moment.
+  defp search(%{assigns: %{text: text}} = socket, text), do: socket
+
+  defp search(socket, text) do
+    as_of = DateTime.utc_now()
+    window = Returns.window(as_of)
+
+    socket
+    |> assign(
+      text: text,
+      as_of: as_of,
+      window: window,
+      counting_since: Returns.counting_since(),
+      global: Markets.global(window),
+      cursor: nil,
+      more?: false,
+      found: 0
+    )
+    |> stream(:sites, [], reset: true)
+    |> read_sites()
+  end
 
   defp read_sites(socket) do
     %{text: text, cursor: cursor, window: window} = socket.assigns

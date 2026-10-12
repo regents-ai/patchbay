@@ -31,6 +31,10 @@ defmodule PatchbayWeb.OffersLive.Create do
   def mount(_params, _session, socket),
     do: {:ok, socket |> initialize_editor() |> assign(page_title: "Your Offers")}
 
+  @impl true
+  def handle_params(params, uri, socket),
+    do: {:noreply, editor_params(socket, params["reword"], uri)}
+
   @doc "Initialize the shared Offer editor on its hosting page's socket."
   def initialize_editor(socket) do
     profile = socket.assigns.current_profile
@@ -46,6 +50,43 @@ defmodule PatchbayWeb.OffersLive.Create do
     )
     |> assign_new_offer(%{"label" => "", "text" => ""})
     |> assign(saved: if(profile, do: saved(profile), else: []))
+  end
+
+  @doc """
+  Takes the editor's state from the page address, so a reload or a
+  reconnect shows the same form and the browser restores what was typed in
+  it. `creative_id` names the saved Offer being reworded; only one of the
+  signed-in account's own saved Offers opens its form, so any other id
+  shows none.
+  """
+  def editor_params(socket, creative_id, uri),
+    do: socket |> assign(editor_uri: uri) |> choose(creative_id)
+
+  @doc "Moves to the same page with `changes` made to its address; a `nil` value drops that key."
+  def patch_editor(socket, changes) do
+    uri = URI.parse(socket.assigns.editor_uri)
+
+    query =
+      (uri.query || "")
+      |> URI.decode_query()
+      |> Map.merge(changes)
+      |> Map.reject(fn {_key, value} -> is_nil(value) end)
+
+    query = if query == %{}, do: nil, else: URI.encode_query(query)
+    push_patch(socket, to: URI.to_string(%URI{path: uri.path, query: query}))
+  end
+
+  # The same Offer chosen again keeps what is being typed for it.
+  defp choose(%{assigns: %{rewording: %{id: id}}} = socket, id), do: socket
+
+  defp choose(socket, creative_id) do
+    case Enum.find(socket.assigns.saved, &(&1.id == creative_id)) do
+      nil ->
+        assign(socket, rewording: nil)
+
+      creative ->
+        assign(socket, rewording: %{id: creative.id, text: creative.current_version.text})
+    end
   end
 
   @impl true
@@ -72,31 +113,26 @@ defmodule PatchbayWeb.OffersLive.Create do
   end
 
   def handle_event("reword", %{"creative_id" => id}, socket) do
-    case Enum.find(socket.assigns.saved, &(&1.id == id)) do
-      nil ->
-        {:noreply, assign(socket, problem: "That Offer is no longer available.")}
-
-      creative ->
-        {:noreply,
-         assign(socket,
-           rewording: %{id: id, text: creative.current_version.text},
-           problem: nil
-         )}
-    end
+    if Enum.any?(socket.assigns.saved, &(&1.id == id)),
+      do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"reword" => id})},
+      else: {:noreply, assign(socket, problem: "That Offer is no longer available.")}
   end
 
   def handle_event("check_reword", %{"reword" => %{"text" => text}}, socket),
     do: {:noreply, update(socket, :rewording, &%{&1 | text: text})}
 
   def handle_event("cancel_reword", _params, socket),
-    do: {:noreply, assign(socket, rewording: nil, problem: nil)}
+    do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"reword" => nil})}
 
   def handle_event("save_reword", %{"reword" => %{"creative_id" => id, "text" => text}}, socket) do
     profile = socket.assigns.current_profile
 
     case Offers.save_creative_version(id, text, actor: profile) do
       {:ok, _version} ->
-        {:noreply, assign(socket, rewording: nil, problem: nil, saved: saved(profile))}
+        {:noreply,
+         socket
+         |> assign(problem: nil, saved: saved(profile))
+         |> patch_editor(%{"reword" => nil})}
 
       {:error, error} ->
         {:noreply,
