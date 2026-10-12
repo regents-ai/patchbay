@@ -6,9 +6,6 @@ const SESSION_PATH = "/auth/privy/session"
 
 const MESSAGES = {
   unconfigured: "Signing in is not set up on this Patchbay.",
-  opening: "Opening the sign-in window.",
-  signing_in: "Checking that sign-in.",
-  signing_out: "Signing out.",
   unloadable: "The sign-in window could not be loaded. Check your connection and try again.",
   unready: "Privy did not answer in time. Try again.",
   closed: "That sign-in was closed before it finished.",
@@ -97,6 +94,9 @@ async function performAccountAction(action: string, doc: Document, options: Acco
   const appId = privyAppId(doc)
   const say: Say = message => report(doc, message)
 
+  // Nothing is said while signing in or out; a new press clears the last failure.
+  say("")
+
   if (!appId) return say(MESSAGES.unconfigured)
 
   const bridge = await loadPrivyBridge(doc)
@@ -107,12 +107,8 @@ async function performAccountAction(action: string, doc: Document, options: Acco
 }
 
 async function signIn(bridge: PrivyBridgeModule, appId: string, options: AccountOptions, say: Say): Promise<void> {
-  say(MESSAGES.opening)
-
   const proof = await bridge.signIn(appId)
   if (!proof.ok) return say((MESSAGES as Partial<Record<string, string>>)[proof.reason] ?? MESSAGES.refused)
-
-  say(MESSAGES.signing_in)
 
   const answer = await call(options, "POST", {
     authorization: `Bearer ${proof.access}`,
@@ -129,8 +125,6 @@ async function signIn(bridge: PrivyBridgeModule, appId: string, options: Account
 // from. Ending the Privy session behind it is cleanup: if it fails, the visitor
 // is still signed out of Patchbay, and saying otherwise would be untrue.
 async function signOut(bridge: PrivyBridgeModule, appId: string, options: AccountOptions, say: Say): Promise<void> {
-  say(MESSAGES.signing_out)
-
   const answer = await call(options, "DELETE", {})
   if (!answer.ok) return say(spoken(answer.body?.error) ?? MESSAGES.sign_out_failed)
 
