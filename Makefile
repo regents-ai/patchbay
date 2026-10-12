@@ -2,7 +2,7 @@
 .PHONY: help check check-platform check-required-fixes check-cli check-contracts release readiness
 help:
 	@echo "Run make check for every gate, or check-platform, check-required-fixes, check-cli or check-contracts for one component."
-	@echo "Run make release to run every gate, then build the committed tree into an image and start it against a throwaway database."
+	@echo "Run make release to run every gate, then build the committed tree into an image."
 	@echo "Run make readiness to start the local server and check what the agent-readiness scorer looks for."
 check: check-platform check-required-fixes check-cli check-contracts
 check-platform:
