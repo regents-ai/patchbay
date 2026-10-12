@@ -311,8 +311,14 @@ defmodule PatchbayWeb.Router do
     get "/search", ReportController, :search
     get "/tool-history", ToolController, :index
     get "/capabilities", ReportController, :capabilities
-    get "/readiness", ReportController, :readiness
     get "/offer-slots", OfferSlotController, :index
+  end
+
+  # What Patchbay verified about the page's own session and signed-in profile.
+  # It reads the visitor's own state and grants nothing.
+  scope "/forum", PatchbayWeb.ForumAPI do
+    pipe_through :forum_tools
+    get "/readiness", ReportController, :readiness
   end
 
   scope "/", PatchbayWeb.ForumAPI do
