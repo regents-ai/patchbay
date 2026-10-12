@@ -3,8 +3,9 @@ defmodule PatchbayWeb.CreditsLive do
   The Credits balance in the header of every page, for a profile signed in
   with Privy, and the Buy Credits dialog it opens, as in the Regent template.
   It stays put while a person moves between live pages, and the balance
-  changes the moment Credits move, whichever Regent site moved them. Until the
-  balance is read, or when it can't be, the figure is a dash.
+  changes the moment Credits move, whichever Regent site moved them. Only a
+  balance just read shows; while it is read again, or when it can't be, the
+  figure is a dash.
 
   The panel (`PatchbayWeb.CreditsPanel`) is drawn only once the dialog has
   been opened, so a page that never opens it never reads a wallet. Any page
@@ -85,25 +86,25 @@ defmodule PatchbayWeb.CreditsLive do
     """
   end
 
-  defp label(%{value: nil, state: :error}), do: "Credits unavailable"
-  defp label(%{value: nil}), do: "Credits loading"
-  defp label(%{value: balance}), do: Amount.format(balance.available)
+  defp label(%{state: :ready, value: balance}), do: Amount.format(balance.available)
+  defp label(%{state: state}) when state in [:error, :stale], do: "Credits unavailable"
+  defp label(_credits), do: "Credits loading"
 
   attr :credits, Read, required: true
 
   # "12.40 Credits", whose unit a phone's header leaves out for room.
-  defp amount(%{credits: %{value: nil}} = assigns) do
-    ~H"""
-    <span data-count>—</span> <span class="pb-credits-balance__unit">Credits</span>
-    """
-  end
-
-  defp amount(%{credits: %{value: balance}} = assigns) do
+  defp amount(%{credits: %{state: :ready, value: balance}} = assigns) do
     [number, unit] = String.split(Amount.format(balance.available), " ", parts: 2)
     assigns = assign(assigns, number: number, unit: unit)
 
     ~H"""
     <span data-count>{@number}</span> <span class="pb-credits-balance__unit">{@unit}</span>
+    """
+  end
+
+  defp amount(assigns) do
+    ~H"""
+    <span data-count>—</span> <span class="pb-credits-balance__unit">Credits</span>
     """
   end
 end

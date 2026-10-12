@@ -21,7 +21,7 @@ defmodule PatchbayWeb.CreditsPanel do
 
   The parent passes `profile` (signed in with Privy), its `credits` reading
   (`state` and the `RegentCredits.balance/1` value, kept current by the
-  parent; until it has a value the figures show a dash), the page's
+  parent; the figures show only while it is `:ready`, and a dash otherwise), the page's
   `profile_claim` and `id`.
   """
   use PatchbayWeb, :live_component
@@ -52,6 +52,7 @@ defmodule PatchbayWeb.CreditsPanel do
        numbers: %{},
        usdc: nil,
        allowance: nil,
+       latest: %{},
        purchases: %{}
      )}
   end
@@ -74,8 +75,9 @@ defmodule PatchbayWeb.CreditsPanel do
   def handle_event("change", %{"amount" => amount}, socket),
     do: {:noreply, socket |> assign(amount: amount) |> sync()}
 
-  # The page asks when the panel opens, when it comes back into view and after
-  # each press, so the funds behind a disabled Buy are read again then.
+  # The page asks when the panel opens, each time the dialog holding it opens,
+  # when it comes back into view and after each press, so the funds behind a
+  # disabled Buy are read again then.
   def handle_event("refresh_funds", _params, socket), do: {:noreply, read_funds(socket)}
 
   # A press made before the review caught up with the form: the form is taken
@@ -183,11 +185,18 @@ defmodule PatchbayWeb.CreditsPanel do
 
   # Each read answers with the wallet it was for, and lands only while that
   # wallet is still the one shown: the check before it can move the panel to
-  # another.
+  # another. Only a figure read now may hold Buy back.
   def handle_async(figure, result, socket) when figure in [:usdc, :allowance] do
     case read(result, socket.assigns.wallet) do
-      :other_wallet -> {:noreply, socket}
-      micro -> {:noreply, assign(socket, figure, micro)}
+      :other_wallet ->
+        {:noreply, socket}
+
+      :unread ->
+        {:noreply, assign(socket, figure, :unread)}
+
+      micro ->
+        {:noreply,
+         assign(socket, [{figure, micro}, latest: Map.put(socket.assigns.latest, figure, micro)])}
     end
   end
 
@@ -238,7 +247,7 @@ defmodule PatchbayWeb.CreditsPanel do
         do: assign(socket, signer: signer),
         else:
           socket
-          |> assign(signer: signer, wallet: wallet, usdc: nil, allowance: nil)
+          |> assign(signer: signer, wallet: wallet, usdc: nil, allowance: nil, latest: %{})
           |> read_funds()
 
     socket
@@ -308,12 +317,14 @@ defmodule PatchbayWeb.CreditsPanel do
     do: assign(socket, purchases: Map.put(socket.assigns.purchases, hash, shown))
 
   # The shown wallet's USDC on Base, and what REGENT staking may take of it,
-  # both at the latest block. Each profile has a read allowance; past it, the
-  # figures already shown stay, and a wallet not read yet shows them unavailable.
+  # both at the latest block. The figures already shown stay on screen, but from
+  # here until each new read lands none of them holds Buy back. Each profile has
+  # a read allowance; past it, a wallet not read yet shows them unavailable.
   defp read_funds(%{assigns: %{wallet: nil}} = socket), do: socket
 
   defp read_funds(socket) do
     %{usdc: usdc, allowance: allowance} = socket.assigns
+    socket = assign(socket, latest: %{})
 
     case CreditsLimit.spend(:wallet_read, socket.assigns.profile.id) do
       :ok -> start_reads(socket)
@@ -400,7 +411,7 @@ defmodule PatchbayWeb.CreditsPanel do
       )
 
     ~H"""
-    <section id={@id} class="credits-panel" phx-hook="OnchainSteps" data-refresh-funds>
+    <section id={@id} class="credits-panel" phx-hook="PatchbayCreditsPanel" data-refresh-funds>
       <header class="credits-panel__head">
         <dl
           id={"#{@id}-figures"}
@@ -591,16 +602,17 @@ defmodule PatchbayWeb.CreditsPanel do
 
   defp covered?(_allowance, _dollars), do: false
 
-  # Why Buy is certain to fail right now, from the chain at the latest block; nil
-  # when it may go through. An unread figure is never a reason.
+  # Why Buy is certain to fail right now, from the shown wallet's last read at
+  # the latest block; nil when it may go through. A figure still being read,
+  # unread or past the read allowance is never a reason.
   defp blocked(_assigns, nil), do: nil
 
-  defp blocked(%{usdc: usdc, allowance: allowance}, dollars) do
+  defp blocked(%{latest: latest}, dollars) do
     micro = Chains.micro(dollars)
 
     cond do
-      is_integer(usdc) and usdc < micro -> "Not enough USDC on Base"
-      is_integer(allowance) and allowance < micro -> "Approve first"
+      is_integer(latest[:usdc]) and latest.usdc < micro -> "Not enough USDC on Base"
+      is_integer(latest[:allowance]) and latest.allowance < micro -> "Approve first"
       true -> nil
     end
   end
@@ -613,18 +625,20 @@ defmodule PatchbayWeb.CreditsPanel do
   defp stalled?(entry, nil), do: Presses.stalled?(entry)
   defp stalled?(_entry, _shown), do: false
 
-  # Until the balance is read, or when it can't be, each figure is a dash, as
-  # in the header; a word beside it would wrap on a phone and move the buttons.
-  defp figure(%{value: nil}, _field), do: "—"
-
-  defp figure(%{value: balance}, field),
+  # Only a balance just read shows; while it is read again, or when it can't
+  # be, each figure is a dash, as in the header; a word beside it would wrap on
+  # a phone and move the buttons.
+  defp figure(%{state: :ready, value: balance}, field),
     do: balance |> Map.fetch!(field) |> Amount.format() |> String.replace_suffix(" Credits", "")
 
-  defp missing(%{value: nil, state: :error} = assigns),
+  defp figure(_credits, _field), do: "—"
+
+  defp missing(%{state: :ready}), do: nil
+
+  defp missing(%{state: state} = assigns) when state in [:error, :stale],
     do: ~H|<span class="visually-hidden">Unavailable</span>|
 
-  defp missing(%{value: nil} = assigns), do: ~H|<span class="visually-hidden">Loading</span>|
-  defp missing(_credits), do: nil
+  defp missing(assigns), do: ~H|<span class="visually-hidden">Loading</span>|
 
   defp state(entry, nil), do: OnchainSteps.describe(entry, chain_name_of(entry)).state
   defp state(_entry, %{purchase: :reporting}), do: :checking

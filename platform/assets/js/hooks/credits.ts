@@ -111,7 +111,8 @@ type CreditsPanel = {
  * with `data-onchain-step`, and each field the review depends on is marked
  * `data-onchain-input="name"`. The server hears Privy's active wallet
  * (`onchain_active_wallet`) and reads the funds again (`refresh_funds`) when
- * the panel opens, whenever the page comes back into view and after each press.
+ * the panel opens, each time its dialog opens (`pb:refresh-funds` on the root),
+ * whenever the page comes back into view and after each press.
  */
 export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
   mounted() {
@@ -130,6 +131,7 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
       })
     this.looked()
     window.addEventListener("focus", this.looked)
+    this.el.addEventListener("pb:refresh-funds", this.looked)
 
     // Every press runs on its own and reaches the wallet, even while an earlier
     // one is still there.
@@ -153,7 +155,10 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
 
   destroyed() {
     if (this.clicked) this.el.removeEventListener("click", this.clicked)
-    if (this.looked) window.removeEventListener("focus", this.looked)
+    if (this.looked) {
+      window.removeEventListener("focus", this.looked)
+      this.el.removeEventListener("pb:refresh-funds", this.looked)
+    }
   },
 }
 
@@ -208,14 +213,19 @@ type CreditsDialog = {opened?: () => void}
 /**
  * The dialog the header's balance opens, and any page's Buy Credits button
  * (`JS.dispatch("pb:credits-open", to: "#pb-credits")`). The server draws the
- * panel inside it once it has been opened.
+ * panel inside it once it has been opened; each later opening reads the
+ * wallet's funds again, so Buy is held back only by what the chain says now.
  */
 export const PatchbayCreditsDialog: Hook<CreditsDialog> = {
   mounted() {
     this.opened = () => {
       const dialog = this.el as HTMLDialogElement
-      if (!dialog.open) dialog.showModal()
+      if (dialog.open) return
+      dialog.showModal()
       this.pushEvent("opened", {})
+      dialog
+        .querySelectorAll("[data-refresh-funds]")
+        .forEach(panel => panel.dispatchEvent(new CustomEvent("pb:refresh-funds")))
     }
     this.el.addEventListener("pb:credits-open", this.opened)
   },
