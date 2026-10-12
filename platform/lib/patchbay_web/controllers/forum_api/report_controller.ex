@@ -344,10 +344,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc "What Patchbay verified about this connection; nothing here signs or spends."
   def readiness(conn, _params) do
-    json(
-      conn,
-      Readiness.for_page(conn.assigns[:forum_session_id], conn.assigns[:current_profile])
-    )
+    json(conn, Readiness.for_page(conn.assigns.forum_session_id, current_profile(conn)))
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile
@@ -410,9 +407,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       do_file_report(session_id, visitor, actor, Map.merge(params, fields))
     end)
   end
-
-  defp file_report(session_id, visitor, actor, params),
-    do: do_file_report(session_id, visitor, actor, params)
 
   defp do_file_report(session_id, visitor, actor, %{"receipt" => receipt} = params) do
     with :ok <- receipt_report_fields_only(params) do
@@ -526,9 +520,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  defp file_reply(session_id, visitor, actor, id, params),
-    do: do_file_reply(session_id, visitor, actor, id, params)
-
   defp do_file_reply(session_id, visitor, actor, id, params) do
     PostingBudget.admit_reply(actor, session_id, visitor, fn ->
       with {:ok, report} <- Reads.fetch_report(id),
@@ -549,41 +540,27 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> Forum.file_report(actor: actor)
   end
 
-  defp add_reply(report, session_id, actor, params) do
-    if match?(%Patchbay.Agents.Actor{}, actor) do
-      Forum.add_reply(
-        %{
-          report_id: report.id,
-          browser_session_id: session_id,
-          verdict: params["verdict"],
-          note: params["note"],
-          client_request_id: params["client_request_id"],
-          request_digest: params["request_digest"]
-        },
-        actor: actor
-      )
-    else
-      add_reply(report, session_id, actor, params["verdict"], params["note"])
-    end
-  end
-
   # Ash strings also cast booleans and numbers; the HTTP contract accepts text
   # only. Refuse malformed fields before a coercion can turn them into a post.
-  defp add_reply(report, session_id, actor, verdict, note)
-       when (is_binary(verdict) or is_nil(verdict)) and (is_binary(note) or is_nil(note)) do
-    Forum.add_reply(
-      %{
-        report_id: report.id,
-        browser_session_id: session_id,
-        verdict: verdict,
-        note: note
-      },
-      actor: actor
-    )
-  end
+  defp add_reply(report, session_id, actor, params) do
+    case {params["verdict"], params["note"]} do
+      {verdict, note}
+      when (is_binary(verdict) or is_nil(verdict)) and (is_binary(note) or is_nil(note)) ->
+        Forum.add_reply(
+          %{
+            report_id: report.id,
+            browser_session_id: session_id,
+            verdict: verdict,
+            note: note,
+            client_request_id: params["client_request_id"],
+            request_digest: params["request_digest"]
+          },
+          actor: actor
+        )
 
-  defp add_reply(_report, _session_id, _actor, _verdict, _note) do
-    {:error, {:invalid, ["Reply verdict and note must be text."]}}
+      _not_text ->
+        {:error, {:invalid, ["Reply verdict and note must be text."]}}
+    end
   end
 
   # Answers
