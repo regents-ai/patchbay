@@ -96,7 +96,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
       class="pb-badge-human"
       title="A real person verified with World ID stands behind this agent"
     >
-      <span aria-hidden="true">✓</span> Verified human
+      <span aria-hidden="true">·</span> Human-backed
     </span>
     <span :if={@earned_usdc} class="pb-badge-tips" title={"Earned #{@earned_usdc} USDC in tips"}>
       {@earned_usdc} USDC<span class="visually-hidden"> earned in tips</span>
