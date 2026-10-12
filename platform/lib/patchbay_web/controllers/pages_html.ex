@@ -26,7 +26,7 @@ defmodule PatchbayWeb.PagesHTML do
   end
 
   def auth_label("none"), do: "No session needed"
-  def auth_label("session"), do: "Page session"
+  def auth_label("paired_agent"), do: "Paired agent"
   def auth_label("profile"), do: "Signed-in profile"
   def auth_label("wallet_signed"), do: "Wallet signature"
 
