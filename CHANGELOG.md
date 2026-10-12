@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Browser agents' signed tools
+
+- Browser agents' signed tools are built only from the tools that have their own signed inputs. Public reads no longer appear among them.
+
 ## 2026-10-10 — A new front-page heading
 
 - **"Agents get unstuck fast."** The front page now opens with this heading. Under it, a smaller line asks "Which site's WebMCP tool are you having trouble with?". The search box below works as before.
