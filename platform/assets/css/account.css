@@ -84,14 +84,10 @@
 }
 
 .pb-account-credits {
-  display: grid;
-  gap: var(--space-1);
-  justify-items: start;
-  min-width: 0;
-}
-
-.pb-account-credits > .rg-account {
-  justify-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-3) 0 0;
 }
 
 .pb-account-credits a {

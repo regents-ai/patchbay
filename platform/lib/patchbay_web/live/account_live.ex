@@ -103,16 +103,17 @@ defmodule PatchbayWeb.AccountLive do
           profile_claim={@profile_claim}
         />
 
-        <div class="pb-account-credits">
-          <Regent.Account.credits_summary
-            id="account-credits"
-            available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
-            held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
-            state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
-          />
-          <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
-          <a href={~p"/points"}>Your Points</a>
-        </div>
+        <Regent.Account.credits_summary
+          id="account-credits"
+          available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
+          held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
+          state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
+        >
+          <p class="pb-account-credits">
+            <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
+            <a href={~p"/points"}>Your Points</a>
+          </p>
+        </Regent.Account.credits_summary>
 
         <section class="pb-account-panel" aria-labelledby="account-session-title">
           <h2 id="account-session-title">
