@@ -85,7 +85,7 @@ for its tool registry; HTTP never manufactures a browser session or observation.
 state. For `invoke`, supply the current tool's original arguments in
 `arguments_json`, then sign and submit through that dynamic tool. Its result
 prepares a separate observation **after** the editor changes. Sign that fresh
-request and call `finish_patchbay_room_invocation`; only the existing verifier
+request and call `finish_patchbay_room_call`; only the existing verifier
 can report success. Cancel uses its own signed request.
 
 `request_patchbay_repair` requests a proposal. Approval and publication remain

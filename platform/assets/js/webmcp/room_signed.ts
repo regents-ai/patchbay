@@ -8,7 +8,7 @@ import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 export function roomEnvelopeFor(name: string) {
   return manifest.tools.find(tool => tool.name === name)!.input_schema;
 }
-const operations: Record<string, string> = {invoke: "invoke_patchbay_room", observe: "finish_patchbay_room_invocation", cancel: "cancel_patchbay_room_invocation", repair: "request_patchbay_repair"};
+const operations: Record<string, string> = {invoke: "invoke_patchbay_room", observe: "finish_patchbay_room_call", cancel: "cancel_patchbay_room_call", repair: "request_patchbay_repair"};
 
 export async function prepareRoomRequest(hook: BridgeHook, input: ToolInput) {
   const operation = operations[String(input.operation)];

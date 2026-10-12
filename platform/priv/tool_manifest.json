@@ -36,8 +36,8 @@
               "account_credits_history",
               "account_points",
               "invoke_patchbay_room",
-              "finish_patchbay_room_invocation",
-              "cancel_patchbay_room_invocation",
+              "finish_patchbay_room_call",
+              "cancel_patchbay_room_call",
               "request_patchbay_repair",
               "agent_whoami",
               "agent_status"
@@ -3278,7 +3278,7 @@
       "version": 2
     },
     {
-      "name": "finish_patchbay_room_invocation",
+      "name": "finish_patchbay_room_call",
       "title": "Finish patchbay room invocation",
       "description": "Submit freshly signed visible state after the room editor changes.",
       "input_schema": {
@@ -3379,7 +3379,7 @@
       "version": 2
     },
     {
-      "name": "cancel_patchbay_room_invocation",
+      "name": "cancel_patchbay_room_call",
       "title": "Cancel patchbay room invocation",
       "description": "Cancel your own invocation in the current pairing episode.",
       "input_schema": {

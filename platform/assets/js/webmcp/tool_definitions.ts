@@ -25,8 +25,8 @@ export const PERMANENT_TOOL_NAMES = [
   "verify_skill_uplift_goal",
   "request_patchbay_repair",
   "prepare_patchbay_room_request",
-  "finish_patchbay_room_invocation",
-  "cancel_patchbay_room_invocation",
+  "finish_patchbay_room_call",
+  "cancel_patchbay_room_call",
 ];
 
 /**
@@ -126,8 +126,8 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
       // it intact up to the site's 100 KB request bound, including escaping.
       execute: async (input: ToolInput) => boundedJson(await prepareRoomRequest(hook, input), 512_000),
     },
-    ...["finish_patchbay_room_invocation", "cancel_patchbay_room_invocation"].map(name => ({
-      name, description: name === "finish_patchbay_room_invocation" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request.",
+    ...["finish_patchbay_room_call", "cancel_patchbay_room_call"].map(name => ({
+      name, description: name === "finish_patchbay_room_call" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request.",
       inputSchema: roomEnvelopeFor(name), annotations: {readOnlyHint: false, untrustedContentHint: true},
       execute: (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, name, input, options),
     })),

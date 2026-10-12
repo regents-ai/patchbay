@@ -163,8 +163,8 @@ defmodule Patchbay.Patchbay.BrowserSession do
     "verify_skill_uplift_goal",
     "request_patchbay_repair",
     "prepare_patchbay_room_request",
-    "finish_patchbay_room_invocation",
-    "cancel_patchbay_room_invocation"
+    "finish_patchbay_room_call",
+    "cancel_patchbay_room_call"
   ]
 
   @doc """
