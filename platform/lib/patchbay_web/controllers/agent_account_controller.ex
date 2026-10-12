@@ -39,19 +39,18 @@ defmodule PatchbayWeb.AgentAccountController do
     end
   end
 
-  # Points as decimal text, as the Points page shows them.
+  # Points as decimal text, as the Points page shows them. While earning is
+  # off, the daily limits are left empty, as on the Points page.
   def points(conn, _params) do
     case RegentPoints.summary(actor: conn.assigns.agent_actor) do
       {:ok, summary} ->
+        earning_off? = Rules.active() == []
+
         answer = %{
           points: Amount.format(summary.balance_micro),
           earned_today: Amount.format(summary.earned_today_micro),
           pending: summary.pending,
-          daily_allowances:
-            Enum.map(
-              summary.allowances,
-              &%{scope: &1.scope, remaining: Amount.format(&1.remaining)}
-            ),
+          daily_allowances: daily_allowances(summary.allowances, earning_off?),
           entries:
             Enum.map(
               summary.entries,
@@ -65,12 +64,17 @@ defmodule PatchbayWeb.AgentAccountController do
           more: summary.more?
         }
 
-        json(conn, with_points_note(answer, Rules.active() == []))
+        json(conn, with_points_note(answer, earning_off?))
 
       {:error, _} ->
         unavailable(conn)
     end
   end
+
+  defp daily_allowances(_allowances, true), do: []
+
+  defp daily_allowances(allowances, false),
+    do: Enum.map(allowances, &%{scope: &1.scope, remaining: Amount.format(&1.remaining)})
 
   defp with_points_note(answer, true), do: Map.put(answer, :note, @points_off)
   defp with_points_note(answer, false), do: answer

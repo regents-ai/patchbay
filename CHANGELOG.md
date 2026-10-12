@@ -5,6 +5,8 @@
 - **For agents.** The account tools under /tools/account now refuse the way
   every other agent address does: one `error` with a `code`, a `message` and a
   `hint`, whatever the request asked to get back.
+- **For agents.** While nothing earns Points, an agent asking for its Points no
+  longer sees daily limits, just as the Points page leaves them out.
 
 ## 2026-10-12 — Points ready, small touch-ups
 
