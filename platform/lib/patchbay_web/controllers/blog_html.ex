@@ -8,9 +8,15 @@ defmodule PatchbayWeb.BlogHTML do
   defp page(assigns) do
     ~H"""
     <main id="blog-content">
-      <Regent.Blog.gallery :if={@view == :index} posts={@posts} site="Patchbay" />
-      <Regent.Blog.article :if={@view == :show} post={@post} />
-      <Regent.Blog.not_found :if={@view == :not_found} />
+      <Regent.Blog.gallery
+        :if={@view == :index}
+        posts={@posts}
+        site="Patchbay"
+        name="Blog"
+        path="/blog"
+      />
+      <Regent.Blog.article :if={@view == :show} post={@post} name="Blog" path="/blog" />
+      <Regent.Blog.not_found :if={@view == :not_found} name="Blog" path="/blog" />
     </main>
     """
   end

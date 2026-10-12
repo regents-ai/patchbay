@@ -26,6 +26,10 @@ defmodule Patchbay.ChainClient do
     end
   end
 
+  @doc "`eth_getLogs` with `filter` as given."
+  @impl RegentCredits.ChainClient
+  def logs(chain, filter), do: rpc(chain, "eth_getLogs", [filter])
+
   @doc "One JSON-RPC request to the chain's node."
   def rpc(%{chain_id: chain_id}, method, params) do
     url = :patchbay |> Application.fetch_env!(:chain_nodes) |> Map.fetch!(chain_id)

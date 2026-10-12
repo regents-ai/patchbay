@@ -4,11 +4,9 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "f8a93857d4ae914e752d7d838a76d4c19c995872"
+  @elixir_utils_ref "fd0719c3a1bcbb8906aea69302ede09d51b7e6ee"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "4da6db2bfe3559a8f8a761018dc099a28ab5f6a3"
-  @regents "https://github.com/regents-ai/regents.git"
-  @regents_ref "1bfcb4c3266609fba0c2748ed0897363c22ea09d"
+  @design_system_ref "9faee245bad741a40e0dcd232dddb29e244b8c2e"
 
   def project do
     [
@@ -61,6 +59,7 @@ defmodule Patchbay.MixProject do
       {:regent_chain,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain", override: true},
       {:regent_credits, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits"},
+      {:regent_points, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "points"},
       {:regent_http, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "http"},
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
       {:regent_mcp_events, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "mcp_events"},
@@ -85,14 +84,19 @@ defmodule Patchbay.MixProject do
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
+      # 3.1.1 has the EEF-CVE-2026-97853 advisory in Decimal.round/3.
+      {:decimal, "== 3.1.2"},
       {:jason, "~> 1.2"},
       {:mdex, "~> 0.13"},
       {:domainatrex, "~> 3.2"},
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
-      {:regent_identity, git: @regents, ref: @regents_ref, sparse: "identity"},
-      {:regent_payments, git: @regents, ref: @regents_ref, sparse: "payments"},
-      {:regent_agents, git: @regents, ref: @regents_ref, sparse: "agents"},
+      {:regent_identity,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/identity"},
+      {:regent_payments,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/payments"},
+      {:regent_agents,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ash_components/agents", override: true},
       # regent_agents pins its own elixir-utils commit; this pin replaces it.
       {:siwa,
        git: @elixir_utils,
