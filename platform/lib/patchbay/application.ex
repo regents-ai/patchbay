@@ -27,6 +27,7 @@ defmodule Patchbay.Application do
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},
+        {PatchbayWeb.CreditsLimit, clean_period: :timer.minutes(1)},
         PatchbayWeb.FixCheckLimit,
         # AshOban adds a queue and a sweep for every trigger in Patchbay's
         # domains and in Regent Credits, whose purchase checks run here.

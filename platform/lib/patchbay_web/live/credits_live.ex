@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.CreditsLive do
   @moduledoc """
   The Credits balance in the header of every page, for a profile signed in
-  with Privy, and the Buy Credits dialog it opens. It stays put while a person
-  moves between live pages, and the balance changes the moment Credits move,
-  whichever Regent site moved them.
+  with Privy, and the Buy Credits dialog it opens, as in the Regent template.
+  It stays put while a person moves between live pages, and the balance
+  changes the moment Credits move, whichever Regent site moved them. Until the
+  balance is read, or when it can't be, the figure is a dash.
 
   The panel (`PatchbayWeb.CreditsPanel`) is drawn only once the dialog has
   been opened, so a page that never opens it never reads a wallet. Any page
@@ -12,6 +13,7 @@ defmodule PatchbayWeb.CreditsLive do
 
   use PatchbayWeb, :live_view
 
+  alias PatchbayWeb.Read
   alias RegentCredits.Amount
 
   on_mount {PatchbayWeb.CurrentProfile, :default}
@@ -23,19 +25,23 @@ defmodule PatchbayWeb.CreditsLive do
     if connected?(socket),
       do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(did))
 
-    {:ok, socket |> assign(opened: false, paused?: Patchbay.Credits.actions_paused?()) |> read()}
+    {:ok, socket |> assign(opened: false, credits: %Read{}) |> read()}
   end
 
   @impl true
   def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
 
   @impl true
-  def handle_event("opened", _params, socket),
-    do: {:noreply, assign(socket, opened: !Patchbay.Credits.actions_paused?())}
+  def handle_event("opened", _params, socket), do: {:noreply, assign(socket, opened: true)}
 
-  defp read(socket),
-    do:
-      assign(socket, balance: RegentCredits.balance(socket.assigns.current_profile.privy_user_id))
+  @impl true
+  def handle_async({Read, :credits, _generation} = name, result, socket),
+    do: {:noreply, Read.settle(socket, name, result)}
+
+  defp read(socket) do
+    did = socket.assigns.current_profile.privy_user_id
+    Read.start(socket, :credits, did, fn -> {:ok, RegentCredits.balance(did)} end)
+  end
 
   @impl true
   def render(assigns) do
@@ -49,10 +55,10 @@ defmodule PatchbayWeb.CreditsLive do
         phx-hook="MotionCount"
         data-variant="flash"
         aria-haspopup="dialog"
-        disabled={@paused?}
-        title={if @paused?, do: "Credits actions paused"}
+        aria-controls="pb-credits"
+        aria-label={label(@credits)}
       >
-        <span data-count>{Amount.format(@balance.available)}</span>
+        <.amount credits={@credits} />
       </button>
       <dialog
         id="pb-credits"
@@ -67,15 +73,37 @@ defmodule PatchbayWeb.CreditsLive do
           </button>
         </form>
         <.live_component
-          :if={@opened && !@paused?}
+          :if={@opened}
           module={PatchbayWeb.CreditsPanel}
           id="pb-credits-panel"
           profile={@current_profile}
           profile_claim={@profile_claim}
-          balance={@balance}
+          credits={@credits}
         />
       </dialog>
     </div>
+    """
+  end
+
+  defp label(%{value: nil, state: :error}), do: "Credits unavailable"
+  defp label(%{value: nil}), do: "Credits loading"
+  defp label(%{value: balance}), do: Amount.format(balance.available)
+
+  attr :credits, Read, required: true
+
+  # "12.40 Credits", whose unit a phone's header leaves out for room.
+  defp amount(%{credits: %{value: nil}} = assigns) do
+    ~H"""
+    <span data-count>—</span> <span class="pb-credits-balance__unit">Credits</span>
+    """
+  end
+
+  defp amount(%{credits: %{value: balance}} = assigns) do
+    [number, unit] = String.split(Amount.format(balance.available), " ", parts: 2)
+    assigns = assign(assigns, number: number, unit: unit)
+
+    ~H"""
+    <span data-count>{@number}</span> <span class="pb-credits-balance__unit">{@unit}</span>
     """
   end
 end

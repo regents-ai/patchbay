@@ -107,15 +107,6 @@
   overflow-wrap: anywhere;
 }
 
-.credits-panel__hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .credits-panel__muted,
 .credits-panel__note {
   color: var(--pb-text-muted);
@@ -221,76 +212,7 @@
   font-size: var(--pb-fs-sm);
 }
 
-/* The chain: a two-way slider with each chain's mark. */
-
-.credits-panel__chain-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-block-start: var(--space-2);
-}
-
-.credits-panel__chains {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 0;
-  padding: 0.25rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--pb-surface-sunk);
-}
-
-/* The thumb slides under whichever chain is picked. */
-.credits-panel__chains::before {
-  content: "";
-  position: absolute;
-  inset: 0.25rem auto 0.25rem 0.25rem;
-  width: calc(50% - 0.25rem);
-  border-radius: 999px;
-  background: var(--pb-surface);
-  box-shadow: 0 1px 3px color-mix(in oklch, var(--pb-text) 20%, transparent);
-  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.credits-panel__chains[data-chain="ethereum"]::before {
-  transform: translateX(100%);
-}
-
-.credits-panel__chains label {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-height: 2.75rem;
-  padding-inline: var(--space-3);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.credits-panel__chains input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.credits-panel__chains label:has(input:focus-visible) {
-  outline: 2px solid var(--pb-text);
-  outline-offset: 2px;
-}
-
-.credits-panel__chains label:not(:has(input:checked)) {
-  color: var(--pb-text-muted);
-}
-
-.credits-panel__logo {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-/* The wallet the purchase comes from, with its USDC on both chains. */
+/* The wallet the purchase comes from, with its USDC on Base. */
 
 .credits-panel__wallet {
   display: grid;
@@ -307,9 +229,6 @@
 
 .credits-panel__usdc {
   grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
   font-variant-numeric: tabular-nums;
 }
 
@@ -331,16 +250,6 @@
   grid-template-columns: subgrid;
   align-items: center;
   row-gap: var(--space-1);
-}
-
-/* A button or step this chain does not use keeps its space, unseen, so changing
-   chain never changes the panel's height; an unused step sits after the rest. */
-.credits-panel [data-unused] {
-  visibility: hidden;
-}
-
-.credits-panel__step[data-unused] {
-  order: 1;
 }
 
 .credits-panel__step > .credits-panel__again {
@@ -385,7 +294,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .credits-panel__chains::before,
   [data-onchain-step="approve"] {
     transition: none;
   }
@@ -411,6 +319,11 @@
 }
 
 @media (max-width: 47.99rem) {
+  /* The balance keeps its figure; its unit gives way on a phone. */
+  .pb-credits-balance__unit {
+    display: none;
+  }
+
   .pb-credits-dialog {
     width: calc(100% - 1rem);
     --pb-credits-pad-top: var(--space-3);

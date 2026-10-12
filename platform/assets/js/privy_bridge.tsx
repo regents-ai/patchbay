@@ -8,7 +8,6 @@ import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
-import {chainId} from "./wallet_actions/send_step.ts"
 import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
@@ -290,10 +289,10 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
 }
 
 /**
- * The chain Privy's active wallet is on, read without opening anything: null
- * when Privy holds no sign-in or no active wallet here.
+ * The address of Privy's active wallet, lowercased, read without opening
+ * anything: null when Privy holds no sign-in or no active wallet here.
  */
-export async function walletChain(appId: string): Promise<number | null> {
+export async function activeAddress(appId: string): Promise<string | null> {
   start(appId)
 
   let state
@@ -304,13 +303,7 @@ export async function walletChain(appId: string): Promise<number | null> {
   }
 
   const active = state.authenticated ? sendingWallet(state) : null
-  if (!active) return null
-
-  try {
-    return await chainId(await active.getEthereumProvider())
-  } catch {
-    return null
-  }
+  return active ? active.address.toLowerCase() : null
 }
 
 /**

@@ -3,13 +3,15 @@
  * the Regent template's `OnchainSteps` hook. The server builds each step and
  * pushes it to the page before anyone presses; every press reaches Privy's
  * active wallet, even while an earlier one is still there, and reports only
- * what the wallet answered.
+ * what the wallet answered. Privy lives in a bundle of its own here, so the
+ * wallet is read from it when the panel opens, when the page comes back into
+ * view and at each press, rather than followed as it changes.
  */
 import type {Hook, HookInterface} from "phoenix_live_view"
 
 import {loadPrivyBridge, privyAppId} from "../privy/account.ts"
 import type {MetaDocument, PrivyBridgeModule} from "../privy/account.ts"
-import {chainId, sendFailure, sendStep, switchChain} from "../wallet_actions/send_step.ts"
+import {sendFailure, sendStep} from "../wallet_actions/send_step.ts"
 import type {SelectedWallet, StepChain, TransactionStep} from "../wallet_actions/send_step.ts"
 
 /**
@@ -37,7 +39,7 @@ export type PressWallet =
   | {ok: true; wallet: SelectedWallet}
   | {ok: false; reason: "wallet_unreachable" | "privy_signed_out" | "wallet_unavailable"}
 
-type LoadBridge = (doc: MetaDocument) => Promise<Pick<PrivyBridgeModule, "activeWallet" | "walletChain"> | null>
+type LoadBridge = (doc: MetaDocument) => Promise<Pick<PrivyBridgeModule, "activeWallet" | "activeAddress"> | null>
 
 export async function pressWallet(doc: MetaDocument, loadBridge: LoadBridge = loadPrivyBridge): Promise<PressWallet> {
   const appId = privyAppId(doc)
@@ -51,11 +53,11 @@ export async function pressWallet(doc: MetaDocument, loadBridge: LoadBridge = lo
   return {ok: false, reason: "wallet_unreachable"}
 }
 
-/** The chain Privy's active wallet is on, read without opening anything; null with none. */
-export async function walletChain(doc: MetaDocument, loadBridge: LoadBridge = loadPrivyBridge): Promise<number | null> {
+/** Privy's active wallet, read without opening anything; null with none. */
+export async function activeAddress(doc: MetaDocument, loadBridge: LoadBridge = loadPrivyBridge): Promise<string | null> {
   const appId = privyAppId(doc)
   const bridge = appId && (await loadBridge(doc))
-  return appId && bridge ? bridge.walletChain(appId) : null
+  return appId && bridge ? bridge.activeAddress(appId) : null
 }
 
 /**
@@ -107,10 +109,9 @@ type CreditsPanel = {
 /**
  * The panel's root carries the hook and a DOM id; each button names its step
  * with `data-onchain-step`, and each field the review depends on is marked
- * `data-onchain-input="name"`. The server hears which chain the wallet is on
- * when the panel opens, whenever the page comes back into view, and after a
- * press of the `data-switch-chain` button, which asks the wallet onto the
- * review's chain.
+ * `data-onchain-input="name"`. The server hears Privy's active wallet
+ * (`onchain_active_wallet`) and reads the funds again (`refresh_funds`) when
+ * the panel opens, whenever the page comes back into view and after each press.
  */
 export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
   mounted() {
@@ -122,24 +123,17 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
       if (component_id === this.el.id) this.review = review ?? undefined
     })
 
-    // Every press runs on its own. A press whose wallet or form the review on
-    // the page does not match asks the server for the matching review, telling
-    // it the wallet, and sends what comes back.
-    this.looked = () => void walletChain(document).then(chain_id => push("wallet_chain", {chain_id}))
+    this.looked = () =>
+      void activeAddress(document).then(address => {
+        push("onchain_active_wallet", {address})
+        push("refresh_funds", {})
+      })
     this.looked()
     window.addEventListener("focus", this.looked)
 
+    // Every press runs on its own and reaches the wallet, even while an earlier
+    // one is still there.
     this.clicked = event => {
-      const switching = (event.target as Element | null)?.closest<HTMLElement>("[data-switch-chain]")
-      if (switching && this.el.contains(switching)) {
-        const release = mark(switching)
-        lost(this.el, false)
-        void switched(this, push)
-          .catch(() => lost(this.el, true))
-          .finally(release)
-        return
-      }
-
       const button = (event.target as Element | null)?.closest<HTMLElement>("[data-onchain-step]")
       const name = button?.dataset.onchainStep
       if (!button || !name || !this.el.contains(button)) return
@@ -150,8 +144,8 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
         .catch(() => lost(this.el, true))
         .finally(() => {
           release()
-          // The wallet may have moved chain for the press.
-          this.looked?.()
+          // The press may have spent funds or changed what the wallet allows.
+          push("refresh_funds", {})
         })
     }
     this.el.addEventListener("click", this.clicked)
@@ -163,38 +157,27 @@ export const PatchbayCreditsPanel: Hook<CreditsPanel> = {
   },
 }
 
-// Asks the wallet onto the review's chain, then tells the server where it is.
-async function switched(hook: CreditsPanel, push: Push): Promise<void> {
-  const found = await pressWallet(document)
-  if (!found.ok) {
-    const seen = found.reason === "wallet_unavailable" ? {active_wallet: null} : {}
-    return push("step_failed", {step: "switch", reason: found.reason, ...seen})
-  }
-  const chain = hook.review?.chain
-  if (!chain) return
-
-  const {provider} = found.wallet
-  await switchChain(provider, chain).catch(() => push("step_failed", {step: "switch", reason: "switch_declined"}))
-  push("wallet_chain", {chain_id: await chainId(provider).catch(() => null)})
-}
-
+// Tells the server the wallet Privy has active at the press, then sends the
+// review as it stands, or asks the server for the one matching the wallet and
+// the form on screen and sends what comes back.
 async function pressed(hook: CreditsPanel & HookInterface, name: string, push: Push): Promise<void> {
   const found = await pressWallet(document)
   if (!found.ok) {
-    const seen = found.reason === "wallet_unavailable" ? {active_wallet: null} : {}
-    return push("step_failed", {step: name, reason: found.reason, ...seen})
+    if (found.reason === "wallet_unavailable") push("onchain_active_wallet", {address: null})
+    return push("step_failed", {step: name, reason: found.reason})
   }
 
   const {wallet} = found
+  push("onchain_active_wallet", {address: wallet.address})
   const form = formInputs(hook.el)
   if (current(hook.review, wallet, form)) return press(hook.review, name, wallet, push)
 
-  const [result] = await hook.pushEventTo(hook.el, "prepare_and_send", {form, step: name, active_wallet: wallet.address})
+  const [result] = await hook.pushEventTo(hook.el, "prepare_and_send", {form, step: name})
   // The server never heard the press, so it cannot say why; the page does.
   if (result?.status !== "fulfilled") return lost(hook.el, true)
-  const reply = result.value.reply as {review?: Review; send?: string; reason?: string}
+  const reply = result.value.reply as {review?: Review; send?: string}
   if (reply.review && reply.send) return press(reply.review, reply.send, wallet, push)
-  push("step_failed", {step: name, reason: reply.reason === "base_only" ? "base_only" : "step_unknown"})
+  push("step_failed", {step: name, reason: "step_unknown"})
 }
 
 // The panel's `data-onchain-lost` line, shown when a press could not reach the

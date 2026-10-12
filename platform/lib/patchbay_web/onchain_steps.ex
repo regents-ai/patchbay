@@ -3,10 +3,10 @@ defmodule PatchbayWeb.OnchainSteps do
   The server half of a wallet-button component, as in the Regent template
   (`skills/onchain-buttons` has the rules). `PatchbayWeb.CreditsPanel` uses it.
 
-  The component builds a `RegentChain.Review` for the signer and hands it to
-  `put_review/2`, which pushes it to the page before anyone presses. The page
-  reports each press against the review it sent from, and every sent step is
-  then read at the latest block of the review's chain, every two seconds,
+  The component builds a `RegentChain.Review` for the eligible signer and hands
+  it to `put_review/2`, which pushes it to the page before anyone presses. The
+  page reports each press against the review it sent from, and every sent step
+  is then read at the latest block of the review's chain, every two seconds,
   until it lands or the page stops asking. Nothing is kept beyond the page.
 
   The only wallet that may act is Privy's active wallet when it is one of the
@@ -27,9 +27,10 @@ defmodule PatchbayWeb.OnchainSteps do
 
   @doc """
   The wallet that may act: Privy's `active` wallet when the signed-in account
-  links it, lowercased. With no active wallet, or one the account does not
-  link, nothing may act.
+  links it, lowercased. Signed out (`linked` is `nil`), with no active wallet, or
+  with one the account does not link, nothing may act.
   """
+  def signer(nil, _active), do: nil
   def signer(_linked, nil), do: nil
 
   def signer(linked, active) do
@@ -37,12 +38,20 @@ defmodule PatchbayWeb.OnchainSteps do
     if active in Enum.map(linked, &String.downcase/1), do: active
   end
 
+  @doc """
+  The wallet a panel shows figures for. Signed in, the wallet that may act, or
+  with none the account's own wallet (`own`), so a wrong or missing active wallet
+  never empties the panel. Signed out (`linked` is `nil`), Privy's active wallet.
+  """
+  def shown_wallet(nil, _own, active), do: active
+  def shown_wallet(linked, own, active), do: signer(linked, active) || own
+
   @doc "Privy's active wallet as the page reported it, or `nil`."
-  def active_wallet(address) when is_binary(address) do
+  def active_wallet(%{"address" => address}) when is_binary(address) do
     if Regex.match?(@address, address), do: String.downcase(address)
   end
 
-  def active_wallet(_none), do: nil
+  def active_wallet(_params), do: nil
 
   @doc """
   Puts `review` (or none) on the page when it is not the one already there. A
@@ -96,8 +105,12 @@ defmodule PatchbayWeb.OnchainSteps do
   @doc """
   What to say when a press sent nothing, or may have sent something, in words
   for the person who pressed. `linked` and `active` are the account's wallets
-  and Privy's active wallet, as for `signer/2`.
+  (`nil` signed out) and Privy's active wallet, as for `signer/2`.
   """
+  def failure_note(reason, nil, _active, _chain_name)
+      when reason in ~w(step_unknown wallet_unavailable),
+      do: "Sign in to send this. Nothing was sent."
+
   def failure_note(reason, linked, nil, _chain_name)
       when reason in ~w(step_unknown wallet_unavailable),
       do:
@@ -107,7 +120,7 @@ defmodule PatchbayWeb.OnchainSteps do
       when reason in ~w(step_unknown wallet_unavailable) do
     cond do
       signer(linked, active) == nil ->
-        "Switch to #{wallets(linked, " or ")} in your wallet app, then press again. Nothing was sent."
+        "#{mismatch_note(linked, active)} Nothing was sent."
 
       reason == "step_unknown" ->
         "This can't be sent as it stands. Check the details above, then press again. Nothing was sent."
@@ -133,15 +146,15 @@ defmodule PatchbayWeb.OnchainSteps do
 
   @doc """
   The note beside the buttons while the wallet app has open a wallet the
-  signed-in account does not link, naming both.
+  signed-in account does not link, naming both and asking the person to switch.
   """
-  def mismatch_note(linked, active) when is_binary(active) do
+  def mismatch_note(linked, active) when is_list(linked) and is_binary(active) do
     if signer(linked, active) == nil do
-      "You're signed in with #{wallets(linked, " and ")}, but your wallet app has #{short(active)} open."
+      "Your wallet is on #{short(active)}, which isn't linked to this account. Switch to #{wallets(linked, " or ")}."
     end
   end
 
-  def mismatch_note(_linked, nil), do: nil
+  def mismatch_note(_linked, _active), do: nil
 
   @doc """
   One sent step as the page shows it: its state and generic words. A component

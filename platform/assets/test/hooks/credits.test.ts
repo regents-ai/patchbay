@@ -16,7 +16,7 @@ const review: Review = {
   signer: SIGNER,
   chain: {chain_id: 8453, name: "Base", rpc_url: "https://mainnet.base.org"},
   steps: [{kind: "transaction", step: "buy", to: OTHER, data: "0x1234", value: "0x0"}],
-  inputs: {amount: "10", chain: "base"},
+  inputs: {amount: "10"},
 }
 
 // A wallet answering by method name, on `chain` as `account`, recording every request.
@@ -73,10 +73,10 @@ test("nothing is sent from the wrong account or on the wrong chain", async () =>
 
 test("a review is sent as it stands only for its own wallet and the form on screen", () => {
   const {selected} = wallet()
-  assert.equal(current(review, selected, {amount: "10", chain: "base"}), true)
-  assert.equal(current(review, selected, {amount: "11", chain: "base"}), false)
-  assert.equal(current(review, {...selected, address: OTHER}, {amount: "10", chain: "base"}), false)
-  assert.equal(current(undefined, selected, {amount: "10", chain: "base"}), false)
+  assert.equal(current(review, selected, {amount: "10"}), true)
+  assert.equal(current(review, selected, {amount: "11"}), false)
+  assert.equal(current(review, {...selected, address: OTHER}, {amount: "10"}), false)
+  assert.equal(current(undefined, selected, {amount: "10"}), false)
 })
 
 test("a press with no Privy to reach, or no sign-in there, says which", async () => {
@@ -84,7 +84,7 @@ test("a press with no Privy to reach, or no sign-in there, says which", async ()
     querySelector: selector =>
       selector === 'meta[name="privy-app-id"]' && appId !== null ? {getAttribute: () => appId} : null,
   })
-  const bridge = (answer: {ok: false; reason: string}) => async () => ({activeWallet: async () => answer, walletChain: async () => null})
+  const bridge = (answer: {ok: false; reason: string}) => async () => ({activeWallet: async () => answer, activeAddress: async () => null})
 
   assert.deepEqual(await pressWallet(page(null), async () => assert.fail("loaded")), {ok: false, reason: "wallet_unreachable"})
   assert.deepEqual(await pressWallet(page("app-1"), async () => null), {ok: false, reason: "wallet_unreachable"})

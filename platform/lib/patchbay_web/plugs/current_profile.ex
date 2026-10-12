@@ -6,8 +6,8 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   else does: no header, parameter or body a caller sends can name one, so a
   request cannot sign itself in as somebody else. A sign-in lasts 30 days: one
   older than that, or naming a profile that is no longer there, reads as signed
-  out until the person signs in again. The session cookie expires after the same
-  30 days.
+  out until the person signs in again, and says the sign-in ended
+  (`signed_out_reason/1`). The session cookie expires after the same 30 days.
 
   Each sign-in names the live pages it opens. Signing out, or signing in again,
   disconnects those pages, so an open tab never keeps acting for a sign-in that
@@ -30,7 +30,15 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
 
   @impl Plug
   def call(conn, _opts) do
-    assign(conn, :current_profile, conn |> get_session() |> signed_in_profile())
+    session = get_session(conn)
+
+    case signed_in_profile(session) do
+      nil ->
+        merge_assigns(conn, current_profile: nil, signed_out_reason: signed_out_reason(session))
+
+      profile ->
+        merge_assigns(conn, current_profile: profile, signed_out_reason: nil)
+    end
   end
 
   @doc """
@@ -76,6 +84,18 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   end
 
   def signed_in_profile(_session), do: nil
+
+  @doc """
+  Why a session that `signed_in_profile/1` reads as signed out holds no
+  profile: `:expired` when it still names a sign-in, which has then passed its
+  lifetime or lost its profile, and `:signed_out` when it names none.
+  """
+  @spec signed_out_reason(map()) :: :expired | :signed_out
+  def signed_out_reason(%{@profile_key => id, @signed_in_at_key => signed_in_at})
+      when is_binary(id) and is_integer(signed_in_at),
+      do: :expired
+
+  def signed_out_reason(_session), do: :signed_out
 
   defp profile(id) do
     case Identity.get_profile(id) do

@@ -1,55 +1,56 @@
 defmodule PatchbayWeb.CreditsPanel do
   @moduledoc """
   The Buy Credits panel, as in the Regent template: the balance, the amount,
-  the chain, the wallet presses and what each press did, all in one place. The
-  server builds the steps (`RegentCredits.Chains.steps/3`), every press goes
-  straight to the wallet, and each sent Buy is reported as a purchase at once.
-  The Credits library records it only once the chain holds the Buy; until then
-  the panel asks the person to keep the page open, and reports it again when
-  the chain confirms the Buy or the person presses Check again. A recorded
-  purchase is checked when the chain confirms the Buy, again each time the
-  balance changes, and when the person presses Check again; the Credits
-  library's Oban checks it once a minute whether the page is open or not.
+  the wallet presses and what each press did, all in one place. The server
+  builds the steps
+  (`RegentCredits.Chains.steps/3`), every press goes straight to the wallet, and
+  each sent Buy is reported as a purchase once the chain holds it, then checked
+  every two seconds until it counts. The site's Oban keeps checking once a minute after the page stops.
 
-  It pays from the wallet Patchbay knows the profile by, shown as soon as the
-  panel opens with its USDC on Base. The press reaches Privy's active
-  wallet; when that is another wallet, nothing is sent and the panel names
-  both. Purchases use USDC on Base; Switch Chain asks the wallet onto Base.
+  Credits are bought with USDC on Base only: the wallet is asked onto Base when
+  a press needs it. The USDC of the wallet that pays is shown.
 
   Buy is disabled only when it is certain to fail, from the chain at the latest
   block: the Base approval does not cover the amount yet, or the wallet holds
   too little USDC. Explanations wait in tips; the panel shows figures, choices,
   presses and outcomes.
 
-  The parent passes `profile` (signed in with Privy), its `balance`
-  (`RegentCredits.balance/1`, kept current by the parent) and `id`.
+  It pays from the wallet Patchbay knows the profile by. The press reaches
+  Privy's active wallet; when that is another wallet, nothing is sent and the
+  panel names both.
+
+  The parent passes `profile` (signed in with Privy), its `credits` reading
+  (`state` and the `RegentCredits.balance/1` value, kept current by the
+  parent; until it has a value the figures show a dash), the page's
+  `profile_claim` and `id`.
   """
   use PatchbayWeb, :live_component
 
   alias Patchbay.{ChainClient, Credits}
-  alias PatchbayWeb.OnchainSteps
+  alias PatchbayWeb.{CreditsLimit, CurrentProfile, OnchainSteps}
   alias Regent.Primitives, as: P
   alias RegentChain.{Call, Presses, Review}
   alias RegentCredits.{Amount, Chains}
   alias RegentCredits.Errors.Refused
 
-  @chains %{"base" => :base}
+  @recheck_ms 2_000
+  @purchase_reads 150
+  @report_tries 150
 
   @impl true
   def mount(socket) do
     {:ok,
      socket
+     |> CurrentProfile.check_component_events(&take_profile/2)
      |> OnchainSteps.init()
-     |> PatchbayWeb.CurrentProfile.check_component_events(&take_profile/2)
      |> assign(
        active: nil,
        signer: nil,
+       wallet: nil,
        amount: "5",
-       chain: "base",
-       wallet_chain: nil,
        number: Ecto.UUID.generate(),
        numbers: %{},
-       usdc: %{},
+       usdc: nil,
        allowance: nil,
        purchases: %{}
      )}
@@ -57,53 +58,35 @@ defmodule PatchbayWeb.CreditsPanel do
 
   @impl true
   def update(%{profile: profile} = assigns, socket) do
-    moved? = Map.has_key?(socket.assigns, :balance) and assigns.balance != socket.assigns.balance
-
-    socket =
-      socket
-      |> assign(
-        id: assigns.id,
-        balance: assigns.balance,
-        profile_claim: assigns.profile_claim
-      )
-      |> take_profile(profile)
-      |> sync()
-
-    {:ok, if(moved?, do: check_waiting(socket), else: socket)}
-  end
-
-  defp take_profile(socket, profile) do
-    linked = [String.downcase(profile.wallet_address)]
-    # Until a press says otherwise, the wallet to pay from is the profile's own.
-    assign(socket, profile: profile, linked: linked, active: socket.assigns.active || hd(linked))
+    {:ok,
+     socket
+     |> assign(id: assigns.id, profile_claim: assigns.profile_claim, credits: assigns.credits)
+     |> take_profile(profile)}
   end
 
   @impl true
-  def handle_event("change", %{"amount" => amount, "chain" => chain}, socket),
-    do: {:noreply, socket |> choose(amount, chain) |> sync()}
-
-  # The wallet's current chain determines whether it needs switching to Base.
-  def handle_event("wallet_chain", %{"chain_id" => id}, socket)
-      when is_integer(id) or is_nil(id) do
-    {:noreply, socket |> assign(wallet_chain: id) |> read_funds()}
+  def handle_event("onchain_active_wallet", params, socket) do
+    active = OnchainSteps.active_wallet(params)
+    socket = if active == socket.assigns.active, do: socket, else: assign(socket, press_note: nil)
+    {:noreply, socket |> assign(active: active) |> sync()}
   end
 
-  def handle_event("prepare_and_send", %{"form" => %{"chain" => chain}}, socket)
-      when chain != "base",
-      do:
-        {:reply, %{reason: "base_only"},
-         assign(socket, press_note: "Credits can only be bought with USDC on Base.")}
+  def handle_event("change", %{"amount" => amount}, socket),
+    do: {:noreply, socket |> assign(amount: amount) |> sync()}
 
-  # A press whose wallet or form the review on the page does not match: the
-  # wallet and the form are taken as the page's own, and the reply carries the
-  # review for them, or none.
+  # The page asks when the panel opens, when it comes back into view and after
+  # each press, so the funds behind a disabled Buy are read again then.
+  def handle_event("refresh_funds", _params, socket), do: {:noreply, read_funds(socket)}
+
+  # A press made before the review caught up with the form: the form is taken
+  # as the page's own, and the reply carries the review for it.
   def handle_event(
         "prepare_and_send",
-        %{"form" => %{"amount" => amount, "chain" => chain}, "step" => name} = params,
+        %{"form" => %{"amount" => amount}, "step" => name},
         socket
       )
-      when is_binary(amount) and is_binary(chain) do
-    socket = socket |> see_wallet(params) |> choose(amount, chain) |> sync()
+      when is_binary(amount) do
+    socket = socket |> assign(amount: amount) |> sync()
 
     case socket.assigns.review do
       %{} = review when is_binary(name) -> {:reply, %{review: review, send: name}, socket}
@@ -119,21 +102,17 @@ defmodule PatchbayWeb.CreditsPanel do
       %{name: "buy", review: %{} = review} = entry ->
         {:noreply,
          socket
-         |> put_purchase(entry.hash, %{purchase: :unseen, checked?: false})
-         |> report(entry.hash, review)}
+         |> put_purchase(entry.hash, %{purchase: :reporting, reads: 0})
+         |> report(entry.hash, review, 0)}
 
       _other ->
         {:noreply, socket}
     end
   end
 
-  def handle_event("step_failed", %{"reason" => reason} = params, socket)
-      when is_binary(reason) do
-    socket = socket |> see_wallet(params) |> sync()
-    %{linked: linked, active: active, chain: chain, amount: amount} = socket.assigns
-
-    note =
-      amount_problem(amount) || failure_note(reason, linked, active, chain_name(chain))
+  def handle_event("step_failed", %{"reason" => reason}, socket) when is_binary(reason) do
+    %{linked: linked, active: active, amount: amount} = socket.assigns
+    note = amount_problem(amount) || failure_note(reason, linked, active)
 
     {:noreply, assign(socket, press_note: note)}
   end
@@ -143,12 +122,8 @@ defmodule PatchbayWeb.CreditsPanel do
 
   def handle_event("check_purchase_again", %{"hash" => hash}, socket) do
     case socket.assigns.purchases do
-      %{^hash => %{purchase: %{id: _id}}} ->
-        {:noreply, check_purchase(socket, hash)}
-
-      %{^hash => %{purchase: :unseen}} ->
-        %{review: review} = Enum.find(socket.assigns.presses.sent, &(&1.hash == hash))
-        {:noreply, report(socket, hash, review)}
+      %{^hash => %{purchase: %{id: _id}} = shown} ->
+        {:noreply, check_purchase(socket, hash, %{shown | reads: 0})}
 
       _unknown ->
         {:noreply, socket}
@@ -156,58 +131,76 @@ defmodule PatchbayWeb.CreditsPanel do
   end
 
   @impl true
+  # The funds are read again once a step lands, not at every read while it waits.
   def handle_async({:onchain_step, hash}, result, socket) do
-    {:noreply,
-     socket
-     |> OnchainSteps.checked(hash, result)
-     |> approved(hash)
-     |> bought(hash)
-     |> read_funds()}
+    socket = socket |> OnchainSteps.checked(hash, result) |> approved(hash)
+
+    case Enum.find(socket.assigns.presses.sent, &(&1.hash == hash)) do
+      %{outcome: outcome} when outcome in [:confirmed, :reverted] ->
+        {:noreply, read_funds(socket)}
+
+      _waiting ->
+        {:noreply, socket}
+    end
   end
 
-  def handle_async({:report, hash}, {:ok, {:ok, purchase}}, socket),
-    do:
-      {:noreply,
-       socket |> put_purchase(hash, %{purchase: purchase, checked?: false}) |> bought(hash)}
+  def handle_async({:report, hash}, {:ok, {_review, _tries, {:ok, purchase}}}, socket),
+    do: {:noreply, check_purchase(socket, hash, %{purchase: purchase, reads: 0})}
 
-  def handle_async({:report, hash}, {:ok, {:error, error}}, socket) do
-    # Not seen yet is expected until the chain confirms the Buy; after that,
-    # Check again reports it once more.
-    if not_seen_yet?(error),
-      do:
-        {:noreply,
-         put_purchase(socket, hash, %{purchase: :unseen, checked?: confirmed?(socket, hash)})},
-      else: {:noreply, put_purchase(socket, hash, %{purchase: nil, checked?: false})}
+  def handle_async({:report, hash}, {:ok, {review, tries, answer}}, socket) do
+    if again?(answer) and tries + 1 < @report_tries,
+      do: {:noreply, report(socket, hash, review, tries + 1, @recheck_ms)},
+      else: {:noreply, put_purchase(socket, hash, %{purchase: nil, reads: 0})}
   end
 
-  # An unanswered report leaves the Buy waiting, with Check again beside it.
   def handle_async({:report, hash}, _unanswered, socket),
-    do: {:noreply, put_purchase(socket, hash, %{purchase: :unseen, checked?: true})}
+    do: {:noreply, put_purchase(socket, hash, %{purchase: nil, reads: 0})}
 
-  def handle_async({:purchase, hash}, {:ok, {:ok, purchase}}, socket),
-    do: {:noreply, put_purchase(socket, hash, %{purchase: purchase, checked?: true})}
+  def handle_async({:purchase, hash}, {:ok, {:ok, purchase}}, socket) do
+    shown = %{purchase: purchase, reads: socket.assigns.purchases[hash].reads + 1}
 
-  # An unanswered check leaves the purchase as it was, with Check again beside it.
-  def handle_async({:purchase, hash}, _unanswered, socket),
-    do: {:noreply, put_purchase(socket, hash, %{socket.assigns.purchases[hash] | checked?: true})}
+    cond do
+      purchase.status == :credited ->
+        {:noreply, put_purchase(socket, hash, shown)}
 
-  def handle_async({:usdc, chain}, {:ok, {:ok, micro}}, socket),
-    do: {:noreply, assign(socket, usdc: Map.put(socket.assigns.usdc, chain, micro))}
+      purchase.status == :checking and shown.reads < @purchase_reads ->
+        {:noreply, check_purchase(socket, hash, shown)}
 
-  def handle_async({:usdc, chain}, _unread, socket),
-    do: {:noreply, assign(socket, usdc: Map.put(socket.assigns.usdc, chain, :unread))}
+      true ->
+        {:noreply, put_purchase(socket, hash, shown)}
+    end
+  end
 
-  def handle_async(:allowance, {:ok, {:ok, micro}}, socket),
-    do: {:noreply, assign(socket, allowance: micro)}
+  # An unanswered read counts like any other; the next one tries again.
+  def handle_async({:purchase, hash}, _unanswered, socket) do
+    %{purchase: purchase, reads: reads} = socket.assigns.purchases[hash]
+    shown = %{purchase: purchase, reads: reads + 1}
 
-  def handle_async(:allowance, _unread, socket),
-    do: {:noreply, assign(socket, allowance: :unread)}
+    if shown.reads < @purchase_reads,
+      do: {:noreply, check_purchase(socket, hash, shown)},
+      else: {:noreply, put_purchase(socket, hash, shown)}
+  end
+
+  # Each read answers with the wallet it was for, and lands only while that
+  # wallet is still the one shown: the check before it can move the panel to
+  # another.
+  def handle_async(figure, result, socket) when figure in [:usdc, :allowance] do
+    case read(result, socket.assigns.wallet) do
+      :other_wallet -> {:noreply, socket}
+      micro -> {:noreply, assign(socket, figure, micro)}
+    end
+  end
 
   # A confirmed approval sets what staking may take to exactly its amount, so
-  # the panel knows it from the receipt it just read, before the next read.
-  defp approved(socket, hash) do
+  # the panel knows it from the receipt it just read, before the next read. It
+  # is the shown wallet's figure only when that wallet sent it.
+  defp approved(%{assigns: %{wallet: wallet}} = socket, hash) do
     case Enum.find(socket.assigns.presses.sent, &(&1.hash == hash)) do
-      %{name: "approve", outcome: :confirmed, review: %{inputs: %{"amount" => amount}}} ->
+      %{
+        name: "approve",
+        outcome: :confirmed,
+        review: %{signer: ^wallet, inputs: %{"amount" => amount}}
+      } ->
         assign(socket, allowance: Chains.micro(dollars(amount)))
 
       _other ->
@@ -215,47 +208,14 @@ defmodule PatchbayWeb.CreditsPanel do
     end
   end
 
-  # The wallet Privy had active at the press; `nil` when it had none. A press
-  # that could not reach Privy says nothing about the wallet.
-  defp see_wallet(socket, %{"active_wallet" => address}) do
-    active = OnchainSteps.active_wallet(address)
-    socket = if active == socket.assigns.active, do: socket, else: assign(socket, press_note: nil)
-    assign(socket, active: active)
-  end
-
-  defp see_wallet(socket, _no_wallet_read), do: socket
-
-  # Privy could not be reached, or holds no sign-in in this browser: words of
-  # Patchbay's own. Every other reason is the template's.
-  defp failure_note("wallet_unreachable", _linked, _active, _chain_name),
-    do:
-      "Your wallet couldn't be reached from this page. Reload it, then press again. Nothing was sent."
-
-  defp failure_note("privy_signed_out", _linked, _active, _chain_name),
-    do: "Sign in again at the top of the page, then press again. Nothing was sent."
-
-  defp failure_note("switch_declined", _linked, _active, chain_name),
-    do: "Your wallet stayed where it was. Press Switch Chain to try #{chain_name} again."
-
-  defp failure_note("base_only", _linked, _active, _chain_name),
-    do: "Credits can only be bought with USDC on Base. Nothing was sent."
-
-  defp failure_note(reason, linked, active, chain_name),
-    do: OnchainSteps.failure_note(reason, linked, active, chain_name)
-
-  defp choose(socket, amount, "base"), do: assign(socket, amount: amount, chain: "base")
-
-  defp choose(socket, _amount, _chain),
-    do: assign(socket, press_note: "Credits can only be bought with USDC on Base.")
-
-  # The review follows the signer, the amount and the chain. A new amount or
-  # chain is a new purchase number; a repeat press of the same review buys again
-  # under the same number, which is a second purchase.
+  # The review follows the signer and the amount. A new amount is a new purchase
+  # number; a repeat press of the same review buys again under the same number,
+  # which is a second purchase.
   defp sync(socket) do
-    %{linked: linked, active: active, chain: chain, amount: amount} = socket.assigns
+    %{linked: linked, active: active, amount: amount} = socket.assigns
     signer = OnchainSteps.signer(linked, active)
     dollars = dollars(amount)
-    inputs = %{"amount" => amount, "chain" => chain}
+    inputs = %{"amount" => amount}
 
     socket =
       if {inputs, signer} == {socket.assigns[:inputs], socket.assigns.signer},
@@ -265,21 +225,26 @@ defmodule PatchbayWeb.CreditsPanel do
     review =
       if signer do
         steps =
-          if dollars, do: Chains.steps(@chains[chain], dollars, socket.assigns.number), else: []
+          if dollars, do: Chains.steps(:base, dollars, socket.assigns.number), else: []
 
-        Review.new(socket.assigns.id, signer, Chains.chain(@chains[chain]), steps, inputs)
+        Review.new(socket.assigns.id, signer, Chains.chain(:base), steps, inputs)
       end
 
+    # A new amount changes no balance, so only a new wallet reads them.
+    wallet = OnchainSteps.shown_wallet(linked, socket.assigns.own, active)
+
     socket =
-      if signer == socket.assigns.signer,
-        do: socket,
-        else: assign(socket, signer: signer, usdc: %{}, allowance: nil)
+      if wallet == socket.assigns.wallet,
+        do: assign(socket, signer: signer),
+        else:
+          socket
+          |> assign(signer: signer, wallet: wallet, usdc: nil, allowance: nil)
+          |> read_funds()
 
     socket
     |> assign(mismatch: OnchainSteps.mismatch_note(linked, active))
     |> remember_number(review)
     |> OnchainSteps.put_review(review)
-    |> read_funds()
   end
 
   defp remember_number(socket, nil), do: socket
@@ -287,64 +252,54 @@ defmodule PatchbayWeb.CreditsPanel do
   defp remember_number(socket, review),
     do: assign(socket, numbers: Map.put(socket.assigns.numbers, review.id, socket.assigns.number))
 
-  # The library reads the chain before it records the purchase, so the report
-  # runs off the page's process.
-  defp report(socket, hash, review) do
-    %{profile: profile, numbers: numbers} = socket.assigns
-    {:ok, actor} = Credits.spender(profile)
-    number = Map.fetch!(numbers, review.id)
+  # A sent Buy is reported once the chain holds it: until then the report is
+  # refused as not seen yet, and the page reports again every two seconds, for
+  # up to five minutes. Each report counts against the person's report
+  # allowance; past it, the page waits its turn the same way.
+  defp report(socket, hash, review, tries, wait_ms \\ 0) do
+    profile = socket.assigns.profile
+    number = Map.fetch!(socket.assigns.numbers, review.id)
 
     start_async(socket, {:report, hash}, fn ->
+      Process.sleep(wait_ms)
+      {review, tries, send_report(profile, review, number, hash)}
+    end)
+  end
+
+  defp send_report(profile, review, number, hash) do
+    {:ok, actor} = Credits.spender(profile)
+
+    with :ok <- CreditsLimit.spend(:credits_report, profile.id) do
       RegentCredits.report_purchase(
         profile.privy_user_id,
         review.signer,
-        # A Buy already sent before this policy changed still reports its receipt.
-        %{"base" => :base, "ethereum" => :ethereum}[review.inputs["chain"]],
+        :base,
         dollars(review.inputs["amount"]),
         number,
         hash,
         actor: actor
       )
-    end)
-  end
-
-  defp confirmed?(socket, hash),
-    do: Enum.any?(socket.assigns.presses.sent, &match?(%{hash: ^hash, outcome: :confirmed}, &1))
-
-  defp not_seen_yet?(%Ash.Error.Invalid{errors: errors}),
-    do: Enum.any?(errors, &match?(%Refused{reason: :not_seen_yet}, &1))
-
-  defp not_seen_yet?(_error), do: false
-
-  # The chain confirmed a Buy: one the library had not seen yet is reported
-  # again, and a recorded one is checked now rather than at the next
-  # once-a-minute check.
-  defp bought(socket, hash) do
-    case {Enum.find(socket.assigns.presses.sent, &(&1.hash == hash)), socket.assigns.purchases} do
-      {%{name: "buy", outcome: :confirmed, review: review}, %{^hash => %{purchase: :unseen}}} ->
-        report(socket, hash, review)
-
-      {%{name: "buy", outcome: :confirmed}, %{^hash => %{purchase: %{status: :checking}}}} ->
-        check_purchase(socket, hash)
-
-      _other ->
-        socket
     end
   end
 
-  # The balance moved: any purchase still being checked may be what moved it.
-  defp check_waiting(socket) do
-    Enum.reduce(socket.assigns.purchases, socket, fn
-      {hash, %{purchase: %{status: :checking}}}, socket -> check_purchase(socket, hash)
-      _done, socket -> socket
-    end)
-  end
+  # Reported again: past the allowance, before the chain holds the Buy, or when
+  # the chain could not be read. Any other refusal is final.
+  defp again?(:limited), do: true
 
-  defp check_purchase(socket, hash) do
+  defp again?({:error, %Ash.Error.Invalid{errors: errors}}),
+    do: Enum.any?(errors, &match?(%Refused{reason: :not_seen_yet}, &1))
+
+  defp again?({:error, %Ash.Error.Unknown{}}), do: true
+  defp again?(_refused), do: false
+
+  defp check_purchase(socket, hash, shown) do
     {:ok, actor} = Credits.spender(socket.assigns.profile)
-    id = socket.assigns.purchases[hash].purchase.id
+    id = shown.purchase.id
 
-    start_async(socket, {:purchase, hash}, fn ->
+    socket
+    |> put_purchase(hash, shown)
+    |> start_async({:purchase, hash}, fn ->
+      Process.sleep(@recheck_ms)
       RegentCredits.check_purchase(id, actor: actor)
     end)
   end
@@ -352,32 +307,67 @@ defmodule PatchbayWeb.CreditsPanel do
   defp put_purchase(socket, hash, shown),
     do: assign(socket, purchases: Map.put(socket.assigns.purchases, hash, shown))
 
-  # The paying wallet's Base USDC and staking allowance, at the latest block.
-  defp read_funds(%{assigns: %{signer: nil}} = socket), do: socket
+  # The shown wallet's USDC on Base, and what REGENT staking may take of it,
+  # both at the latest block. Each profile has a read allowance; past it, the
+  # figures already shown stay, and a wallet not read yet shows them unavailable.
+  defp read_funds(%{assigns: %{wallet: nil}} = socket), do: socket
 
   defp read_funds(socket) do
-    signer = socket.assigns.signer
+    %{usdc: usdc, allowance: allowance} = socket.assigns
 
-    socket =
-      Enum.reduce(Map.values(@chains), socket, fn chain, socket ->
-        start_async(socket, {:usdc, chain}, fn ->
-          usdc_call(chain, "balanceOf(address)", [signer])
-        end)
-      end)
+    case CreditsLimit.spend(:wallet_read, socket.assigns.profile.id) do
+      :ok -> start_reads(socket)
+      :limited -> assign(socket, usdc: usdc || :unread, allowance: allowance || :unread)
+    end
+  end
 
-    start_async(socket, :allowance, fn ->
-      usdc_call(:base, "allowance(address,address)", [signer, Chains.staking()])
+  defp start_reads(socket) do
+    wallet = socket.assigns.wallet
+
+    socket
+    |> start_async(:usdc, fn -> {wallet, usdc_call("balanceOf(address)", [wallet])} end)
+    |> start_async(:allowance, fn ->
+      {wallet, usdc_call("allowance(address,address)", [wallet, Chains.staking()])}
     end)
   end
 
-  defp usdc_call(chain, signature, args) do
-    call = %{to: Chains.usdc(chain), data: Call.encode(signature, args)}
+  defp read({:ok, {wallet, {:ok, micro}}}, wallet), do: micro
+  defp read({:ok, {wallet, _unread}}, wallet), do: :unread
+  defp read({:ok, {_other, _answer}}, _wallet), do: :other_wallet
+  defp read({:exit, _reason}, _wallet), do: :unread
+
+  defp usdc_call(signature, args) do
+    call = %{to: Chains.usdc(:base), data: Call.encode(signature, args)}
 
     with {:ok, "0x" <> hex} <-
-           ChainClient.rpc(Chains.chain(chain), "eth_call", [call, "latest"]) do
+           ChainClient.rpc(Chains.chain(:base), "eth_call", [call, "latest"]) do
       {:ok, String.to_integer(hex, 16)}
     end
   end
+
+  # The profile as the page gave it, or as it reads now before each event and
+  # each background result (`CurrentProfile.check_component_events/2`): the
+  # wallet that may act and the review follow it.
+  defp take_profile(socket, profile) do
+    wallet = String.downcase(profile.wallet_address)
+
+    socket
+    |> assign(profile: profile, linked: [wallet], own: wallet)
+    |> sync()
+  end
+
+  # Privy could not be reached from this page, or holds no sign-in in this
+  # browser: words of Patchbay's own, which reads Privy's wallet only at a
+  # press. Every other reason is the template's.
+  defp failure_note("wallet_unreachable", _linked, _active),
+    do:
+      "Your wallet couldn't be reached from this page. Reload it, then press again. Nothing was sent."
+
+  defp failure_note("privy_signed_out", _linked, _active),
+    do: "Sign in again at the top of the page, then press again. Nothing was sent."
+
+  defp failure_note(reason, linked, active),
+    do: OnchainSteps.failure_note(reason, linked, active, "Base")
 
   defp dollars(amount) do
     case Integer.parse(String.trim(amount)) do
@@ -396,9 +386,6 @@ defmodule PatchbayWeb.CreditsPanel do
     end
   end
 
-  defp chain_of(8453), do: "base"
-  defp chain_of(_other), do: nil
-
   @impl true
   def render(assigns) do
     dollars = dollars(assigns.amount)
@@ -413,7 +400,7 @@ defmodule PatchbayWeb.CreditsPanel do
       )
 
     ~H"""
-    <section id={@id} class="credits-panel" phx-hook="PatchbayCreditsPanel">
+    <section id={@id} class="credits-panel" phx-hook="OnchainSteps" data-refresh-funds>
       <header class="credits-panel__head">
         <dl
           id={"#{@id}-figures"}
@@ -422,9 +409,9 @@ defmodule PatchbayWeb.CreditsPanel do
           data-variant="flash"
         >
           <dt>Regents Credits</dt>
-          <dd data-count>{figure(@balance.available)}</dd>
+          <dd><span data-count>{figure(@credits, :available)}</span>{missing(@credits)}</dd>
           <dt>Active Bids</dt>
-          <dd data-count>{figure(@balance.held)}</dd>
+          <dd><span data-count>{figure(@credits, :held)}</span>{missing(@credits)}</dd>
         </dl>
         <a
           class="credits-panel__history"
@@ -457,7 +444,7 @@ defmodule PatchbayWeb.CreditsPanel do
           />
           <span aria-hidden="true">USDC</span>
         </div>
-        <p id={"#{@id}-rate"} class="credits-panel__rate">1 USDC buys 1 Regents Credit</p>
+        <p id={"#{@id}-rate"} class="credits-panel__rate">1 USDC on Base buys 1 Regents Credit</p>
         <p
           id={"#{@id}-problem"}
           class="credits-panel__problem"
@@ -468,53 +455,22 @@ defmodule PatchbayWeb.CreditsPanel do
         >
           {@problem}
         </p>
-
-        <div class="credits-panel__chain-row">
-          <fieldset class="credits-panel__chains" data-chain={@chain}>
-            <legend class="credits-panel__hidden">Pay with USDC on</legend>
-            <label :for={{value, name} <- [{"base", "Base"}]}>
-              <input
-                type="radio"
-                name="chain"
-                value={value}
-                checked={@chain == value}
-                data-onchain-input="chain"
-              />
-              <.chain_logo chain={value} />
-              <span>{name}</span>
-            </label>
-          </fieldset>
-          <%!-- Kept in place while the wallet is already on the chain, unseen, so
-               it never moves the rows below. --%>
-          <P.button
-            variant="secondary"
-            class="credits-panel__switch"
-            data-switch-chain
-            data-unused={!switch?(@signer, @wallet_chain, @chain)}
-            inert={!switch?(@signer, @wallet_chain, @chain)}
-          >
-            Switch Chain
-          </P.button>
-        </div>
       </form>
 
       <%!-- Lines above the buttons stay in the page and are only hidden, so one
            appearing never replaces the button a person has just pressed. --%>
-      <div class="credits-panel__wallet" hidden={!@signer}>
-        <span class="credits-panel__muted">Paying from</span>
-        <code>{@signer && RegentFormat.short_address(@signer)}</code>
-        <span class="credits-panel__usdc">
-          <span>Base {usdc(@usdc[:base])}</span>
-        </span>
+      <div class="credits-panel__wallet" hidden={!@wallet}>
+        <span class="credits-panel__muted">{if @signer, do: "Paying from", else: "Wallet"}</span>
+        <code>{@wallet && RegentFormat.short_address(@wallet)}</code>
+        <span class="credits-panel__usdc">{usdc(@usdc)}</span>
       </div>
       <p class="credits-panel__note" hidden={!@mismatch}>{@mismatch}</p>
 
       <ol class="credits-panel__steps">
-        <li
-          class="credits-panel__step"
-          data-state={@approve.state}
-        >
-          <P.button variant="secondary" data-onchain-step="approve">Approve</P.button>
+        <li class="credits-panel__step" data-state={@approve.state}>
+          <P.button variant="secondary" data-onchain-step="approve">
+            <span data-press-label>Approve</span>
+          </P.button>
           <div class="credits-panel__step-words">
             <strong>
               Approve {@dollars && "#{@dollars} "}USDC
@@ -532,17 +488,19 @@ defmodule PatchbayWeb.CreditsPanel do
             disabled={@blocked != nil}
             aria-describedby={@blocked && "#{@id}-buy-why"}
           >
-            Buy
+            <span data-press-label>Buy</span>
           </P.button>
           <div class="credits-panel__step-words">
             <strong>
               Buy {@dollars && "#{@dollars} "}Credits
-              <P.tip id={"#{@id}-buy-tip"} label="About buying">{arrival(@chain)}</P.tip>
+              <P.tip id={"#{@id}-buy-tip"} label="About buying">
+                Sends the USDC to REGENT staking. Your Credits arrive in about 2 seconds.
+              </P.tip>
             </strong>
             <span :if={@buy.words}>{@buy.words}</span>
             <span :if={@buy.help?}>
               If USDC left your wallet, post the link in <a
-                href="https://patchbay.help/credits-help"
+                href={~p"/credits-help"}
                 target="_blank"
                 rel="noopener"
               >Credits help</a>.
@@ -565,19 +523,6 @@ defmodule PatchbayWeb.CreditsPanel do
         </a>
       </footer>
     </section>
-    """
-  end
-
-  attr :chain, :string, required: true
-
-  defp chain_logo(%{chain: "base"} = assigns) do
-    ~H"""
-    <svg class="credits-panel__logo" viewBox="0 0 111 111" aria-hidden="true">
-      <path
-        fill="#0052FF"
-        d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H0C2.35281 87.8625 26.0432 110.034 54.921 110.034Z"
-      />
-    </svg>
     """
   end
 
@@ -650,16 +595,13 @@ defmodule PatchbayWeb.CreditsPanel do
   # when it may go through. An unread figure is never a reason.
   defp blocked(_assigns, nil), do: nil
 
-  defp blocked(%{chain: chain, usdc: usdc, allowance: allowance}, dollars) do
+  defp blocked(%{usdc: usdc, allowance: allowance}, dollars) do
     micro = Chains.micro(dollars)
 
-    case usdc[@chains[chain]] do
-      held when is_integer(held) and held < micro ->
-        "Not enough USDC on #{chain_name(chain)}"
-
-      _enough_or_unread ->
-        if chain == "base" and is_integer(allowance) and allowance < micro,
-          do: "Approve first"
+    cond do
+      is_integer(usdc) and usdc < micro -> "Not enough USDC on Base"
+      is_integer(allowance) and allowance < micro -> "Approve first"
+      true -> nil
     end
   end
 
@@ -671,18 +613,21 @@ defmodule PatchbayWeb.CreditsPanel do
   defp stalled?(entry, nil), do: Presses.stalled?(entry)
   defp stalled?(_entry, _shown), do: false
 
-  defp arrival("base"),
-    do: "Sends the USDC to REGENT staking. Your Credits arrive in about 2 seconds."
+  # Until the balance is read, or when it can't be, each figure is a dash, as
+  # in the header; a word beside it would wrap on a phone and move the buttons.
+  defp figure(%{value: nil}, _field), do: "—"
 
-  defp switch?(nil, _wallet_chain, _chain), do: false
-  defp switch?(_signer, nil, _chain), do: false
-  defp switch?(_signer, wallet_chain, chain), do: chain_of(wallet_chain) != chain
+  defp figure(%{value: balance}, field),
+    do: balance |> Map.fetch!(field) |> Amount.format() |> String.replace_suffix(" Credits", "")
 
-  defp figure(amount),
-    do: amount |> Amount.format() |> String.replace_suffix(" Credits", "")
+  defp missing(%{value: nil, state: :error} = assigns),
+    do: ~H|<span class="visually-hidden">Unavailable</span>|
+
+  defp missing(%{value: nil} = assigns), do: ~H|<span class="visually-hidden">Loading</span>|
+  defp missing(_credits), do: nil
 
   defp state(entry, nil), do: OnchainSteps.describe(entry, chain_name_of(entry)).state
-  defp state(_entry, %{purchase: :unseen}), do: :checking
+  defp state(_entry, %{purchase: :reporting}), do: :checking
   defp state(_entry, %{purchase: nil}), do: :unrecorded
   defp state(_entry, %{purchase: purchase}), do: purchase.status
 
@@ -695,8 +640,7 @@ defmodule PatchbayWeb.CreditsPanel do
     end
   end
 
-  defp words(entry, %{purchase: :unseen}),
-    do: "Waiting for #{chain_name_of(entry)}. Keep this page open until it's recorded."
+  defp words(entry, %{purchase: :reporting}), do: "Waiting for #{chain_name_of(entry)}"
 
   defp words(_entry, %{purchase: nil}),
     do: "Your wallet sent this, but this page couldn't record it."
@@ -713,7 +657,7 @@ defmodule PatchbayWeb.CreditsPanel do
         "Already counted."
 
       %{status: :failed, reason: "not found"} ->
-        "#{chain_name(purchase.chain)} never showed this payment. No Credits added."
+        "Base never showed this payment. No Credits added."
 
       %{status: :failed} ->
         "Not the purchase this page prepared. No Credits added."
@@ -731,31 +675,19 @@ defmodule PatchbayWeb.CreditsPanel do
 
   defp help?(_shown), do: false
 
-  defp checking_words(%{purchase: purchase} = shown) do
-    cond do
-      purchase.chain == :ethereum and purchase.block_number ->
-        "Waiting for 12 Ethereum blocks, about 2½ minutes"
-
-      purchase_stalled?(shown) ->
-        "Still checking. It counts even if you close this page."
-
-      true ->
-        "Waiting for #{chain_name(purchase.chain)}"
-    end
+  defp checking_words(shown) do
+    if purchase_stalled?(shown),
+      do: "Still checking. It counts even if you close this page.",
+      else: "Waiting for Base"
   end
 
-  # Checked after the chain confirmed it, and still not counted; or reported,
-  # and not recorded yet.
-  defp purchase_stalled?(%{purchase: %{status: :checking}, checked?: checked?}), do: checked?
-  defp purchase_stalled?(%{purchase: :unseen, checked?: checked?}), do: checked?
+  defp purchase_stalled?(%{purchase: %{status: :checking}, reads: reads}),
+    do: reads >= @purchase_reads
 
   defp purchase_stalled?(_shown), do: false
 
   defp chain_name_of(%{review: %{chain: %{name: name}}}), do: name
   defp chain_name_of(_unknown), do: "the network"
-
-  defp chain_name(chain) when chain in ["base", :base], do: "Base"
-  defp chain_name(chain) when chain in ["ethereum", :ethereum], do: "Ethereum"
 
   defp usdc(nil), do: "…"
   defp usdc(:unread), do: "unavailable"
