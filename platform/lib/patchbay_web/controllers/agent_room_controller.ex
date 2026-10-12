@@ -2,8 +2,9 @@ defmodule PatchbayWeb.AgentRoomController do
   @moduledoc "Signed room operations retain the real page session and visible-state verifier."
   use PatchbayWeb, :controller
   alias Patchbay.Agents.RoomAccess
+  alias Patchbay.Config
   alias Patchbay.Patchbay, as: Domain
-  alias Patchbay.Patchbay.{InvocationRunner, RepairPlanner, Room}
+  alias Patchbay.Patchbay.{Invocation, InvocationRunner, RepairPlanner, Room}
 
   def invoke(conn, params),
     do:
@@ -43,7 +44,7 @@ defmodule PatchbayWeb.AgentRoomController do
       operation(conn, params, fn actor, room, session ->
         invocation = owned_invocation!(params["id"], actor, room, session)
         true = is_map(params["post_state"])
-        verified = InvocationRunner.verify!(invocation, params["post_state"], actor: actor)
+        verified = verify_once(invocation, params["post_state"], actor)
 
         %{
           invocation_id: verified.id,
@@ -74,9 +75,22 @@ defmodule PatchbayWeb.AgentRoomController do
         # The existing planner performs inference outside its committing transaction
         # and rechecks this actor when it saves the proposal. It never approves it.
         invocation = Domain.get_invocation!(room.last_failed_invocation_id)
-        proposal = RepairPlanner.propose!(invocation, actor: actor)
+
+        proposal =
+          RepairPlanner.propose!(invocation, actor: actor, fallback: Config.demo_fallback?())
+
         %{proposal_id: proposal.id, status: proposal.status, requires_owner_approval: true}
       end)
+
+  # A call is verified once, so a repeated post-state report reads the answer
+  # already recorded, and a call that ended before visible proof answers with
+  # the ending it has.
+  defp verify_once(%Invocation{effective_status: status} = invocation, _post_state, _actor)
+       when status in [:verified_failure, :verified_success, :errored, :cancelled],
+       do: invocation
+
+  defp verify_once(invocation, post_state, actor),
+    do: InvocationRunner.verify!(invocation, post_state, actor: actor)
 
   defp operation(conn, params, fun) do
     actor = conn.assigns.agent_actor
