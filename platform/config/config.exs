@@ -26,7 +26,7 @@ config :regent_points,
   starts_at: nil,
   unified_activity_starts_at: nil,
   approved_rules: [],
-  adapters: %{}
+  adapters: %{"credits.purchase_settled" => Patchbay.Points.CreditsPurchase}
 
 # Regent Credits: one prepaid balance per Privy account, shared by every Regent
 # site. Credits are the private currency XRC, kept to the millionth. The ledger
@@ -104,7 +104,9 @@ config :patchbay, Oban,
     webhooks: 10,
     regent_credits: 3,
     site_checks: 2,
-    site_pictures: 1
+    site_pictures: 1,
+    points: 5,
+    points_chain: 2
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [crontab: []],

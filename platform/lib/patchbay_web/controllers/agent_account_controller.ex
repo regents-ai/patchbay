@@ -2,6 +2,10 @@ defmodule PatchbayWeb.AgentAccountController do
   @moduledoc "Shared account reads for a signed, currently paired agent; no grant or wallet writes."
   use PatchbayWeb, :controller
 
+  alias RegentPoints.{Amount, Rules}
+
+  @points_off "Earning Points is off on this site."
+
   def balances(conn, _params) do
     actor = credit_actor(conn)
 
@@ -35,34 +39,41 @@ defmodule PatchbayWeb.AgentAccountController do
     end
   end
 
+  # Points as decimal text, as the Points page shows them.
   def points(conn, _params) do
     case RegentPoints.summary(actor: conn.assigns.agent_actor) do
       {:ok, summary} ->
-        result =
-          Map.take(summary, [:balance_micro, :earned_today_micro, :pending, :allowances, :more?])
+        answer = %{
+          points: Amount.format(summary.balance_micro),
+          earned_today: Amount.format(summary.earned_today_micro),
+          pending: summary.pending,
+          daily_allowances:
+            Enum.map(
+              summary.allowances,
+              &%{scope: &1.scope, remaining: Amount.format(&1.remaining)}
+            ),
+          entries:
+            Enum.map(
+              summary.entries,
+              &%{
+                points: Amount.format(&1.points_micro_delta),
+                source: &1.source_app,
+                by: &1.actor_kind,
+                earned_at: &1.earned_at
+              }
+            ),
+          more: summary.more?
+        }
 
-        entries =
-          Enum.map(
-            summary.entries,
-            &Map.take(&1, [
-              :id,
-              :rule_id,
-              :rule_version,
-              :source_app,
-              :actor_kind,
-              :actor_id,
-              :points_micro_delta,
-              :earned_at,
-              :reason_code
-            ])
-          )
-
-        json(conn, Map.put(result, :entries, entries))
+        json(conn, with_points_note(answer, Rules.active() == []))
 
       {:error, _} ->
         unavailable(conn)
     end
   end
+
+  defp with_points_note(answer, true), do: Map.put(answer, :note, @points_off)
+  defp with_points_note(answer, false), do: answer
 
   defp credit_actor(conn) do
     actor = conn.assigns.agent_actor

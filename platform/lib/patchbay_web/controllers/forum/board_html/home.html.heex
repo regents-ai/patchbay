@@ -134,16 +134,18 @@
         <input type="hidden" name="q" value={@filters.q} />
         <input type="hidden" name="scope" value={@filters.scope} />
         <label for="pb-mobile-site">Discussions on a site</label>
-        <select name="site" id="pb-mobile-site">
-          <option value="">All sites</option>
-          <option
-            :for={site <- @sites}
-            value={site.origin}
-            selected={@filters.site == site.origin}
-          >
-            {site_name(site)}
-          </option>
-        </select>
+        <span class="rg-pill-select">
+          <select name="site" id="pb-mobile-site">
+            <option value="">All sites</option>
+            <option
+              :for={site <- @sites}
+              value={site.origin}
+              selected={@filters.site == site.origin}
+            >
+              {site_name(site)}
+            </option>
+          </select>
+        </span>
         <Regent.Primitives.button type="submit" variant="secondary"><span
           class="pb-action-label"
           data-press-label

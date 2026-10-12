@@ -129,6 +129,7 @@ defmodule PatchbayWeb.PointsLive do
       >
         <Regent.Account.points_summary
           id="account-points-summary"
+          title="Balance"
           confirmed={Amount.format(@points.value.balance_micro)}
           today={Amount.format(@points.value.earned_today_micro)}
           pending={to_string(@points.value.pending)}

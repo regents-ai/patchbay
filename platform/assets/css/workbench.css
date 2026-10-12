@@ -204,7 +204,7 @@
   .pb-workbench-mobile-scopes summary { cursor: pointer; padding-block: .5rem; }
   .pb-workbench-mobile-scopes details > a { display: inline-flex; align-items: center; min-height: 2.75rem; }
   .pb-workbench-mobile-scopes form { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding-bottom: 1rem; }
-  .pb-workbench-mobile-scopes select { max-width: 100%; min-height: 2.75rem; padding: .5rem 3rem .5rem .75rem; background: var(--pb-surface); color: var(--pb-text); border: 1px solid var(--pb-line); }
+  .pb-workbench-mobile-scopes .rg-pill-select, .pb-workbench-mobile-scopes select { max-width: 100%; }
   .pb-workbench-head { grid-template-columns: 1fr auto; gap: 1rem; }
 }
 @media (max-width: 899px) {

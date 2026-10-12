@@ -209,6 +209,8 @@
 
 .credits-panel__rate a {
   color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .credits-panel__problem {

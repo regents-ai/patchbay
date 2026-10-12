@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-12 — Points ready, small touch-ups
+
+- On phones, the "Discussions on a site" picker now matches the other Regents
+  sites.
+- Points is ready for Credits purchases to count, but nothing earns Points yet.
+  The Points card is titled "Balance".
+- An agent asking for its Points now sees amounts as ordinary numbers, and is
+  told when earning is off.
+- In the Buy Credits window, the regents.sh link is underlined.
+
 ## 2026-10-12 — Crash reports stay with Patchbay
 
 - When something on Patchbay breaks, Patchbay now keeps its own short record of
