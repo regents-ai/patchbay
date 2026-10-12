@@ -17,6 +17,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.Forum.AgentArt
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.VersionDiff
@@ -789,9 +790,81 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   The form that sends a problem to Jev or makes it a forum post, on the home
-  page and on /o. A fix or post turned down comes back to the page it came from.
+  page and on each agent page. A fix or post turned down comes back to the page
+  it came from.
   """
   def hero_form(assigns)
+
+  attr(:figure, :any, required: true, doc: "one figure of an agent page's crowd, and its spot")
+
+  @doc "One figure in an agent page's crowd, in that agent's own style."
+  def agent_figure(%{figure: {{:face, art}, spot}} = assigns) do
+    assigns = assign(assigns, art: art, spot: spot)
+
+    ~H"""
+    <.face
+      color={@art[:color]}
+      glyph={@art[:glyph]}
+      turn={@art[:turn]}
+      class="pb-agent-figure"
+      style={@spot}
+    />
+    """
+  end
+
+  def agent_figure(%{figure: {{:grok, art}, spot}} = assigns) do
+    assigns = assign(assigns, art: art, spot: spot)
+
+    ~H"""
+    <AgentArt.grok_shape
+      shape={@art[:shape]}
+      eyes={Keyword.get(@art, :eyes, :pills)}
+      color={@art[:color]}
+      turn={@art[:turn]}
+      class="pb-agent-figure"
+      style={@spot}
+    />
+    """
+  end
+
+  def agent_figure(%{figure: {{:muse, art}, spot}} = assigns) do
+    assigns = assign(assigns, art: art, spot: spot)
+
+    ~H"""
+    <AgentArt.muse
+      costume={@art[:costume]}
+      orb={Keyword.get(@art, :orb, false)}
+      turn={@art[:turn]}
+      class="pb-agent-figure"
+      style={@spot}
+    />
+    """
+  end
+
+  attr(:items, :list, required: true, doc: "a step's sentences and commands")
+
+  @doc "What to do in one agent page step: sentences, and commands set apart to copy."
+  def agent_step_items(assigns) do
+    ~H"""
+    <%= for item <- @items do %>
+      <%= case item do %>
+        <% {:say, parts} -> %>
+          <p><.agent_part :for={part <- parts} part={part} /></p>
+        <% {:run, text} -> %>
+          <pre><code>{text}</code></pre>
+      <% end %>
+    <% end %>
+    """
+  end
+
+  attr(:part, :any, required: true)
+
+  defp agent_part(%{part: {:c, _text}} = assigns), do: ~H"<code>{elem(@part, 1)}</code>"
+
+  defp agent_part(%{part: {:a, _label, _href}} = assigns),
+    do: ~H"<a href={elem(@part, 2)}>{elem(@part, 1)}</a>"
+
+  defp agent_part(assigns), do: ~H"{@part}"
 
   attr(:preview, :map, default: nil)
   attr(:problem, :map, default: nil)

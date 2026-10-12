@@ -26,6 +26,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias PatchbayWeb.ClientAddress
+  alias PatchbayWeb.Forum.AgentPages
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.Fix
@@ -42,13 +43,21 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
-  @o_posts 8
+  @agent_page_posts 8
 
   @doc """
   The home page. A link can open its form with the site, a tool and what
   to ask about filled in.
   """
   def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
+
+  @doc "An agent page's quickstart on its own, as the agents.md that agent reads."
+  def agent_guide(%{private: %{home_page: id}} = conn, _params) do
+    conn
+    |> put_format("md")
+    |> put_resp_content_type("text/markdown")
+    |> render(:agent_page, agent: AgentPages.fetch!(id), reports: nil)
+  end
 
   defp hero(draft, found \\ %{}),
     do: Map.merge(%{draft: draft, problem: nil, preview: nil}, found)
@@ -130,18 +139,21 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
-  # /o carries the form and the newest posts on a black page of its own. It
-  # is always dark, whatever the visitor chose elsewhere on Patchbay.
-  defp render_home(%{private: %{home_page: :o}} = conn, _params, hero) do
+  # An agent's own page carries its quickstart, the form and the newest posts,
+  # in that agent's look.
+  defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
+    agent = AgentPages.fetch!(id)
+
     reports =
       case Discussions.page(Discussions.filters(%{}), [], nil) do
-        {:ok, reports, _next_page} -> Enum.take(reports, @o_posts)
+        {:ok, reports, _next_page} -> Enum.take(reports, @agent_page_posts)
         {:error, failure} -> section({:error, failure}, "Discussions")
       end
 
-    render(conn, :o,
-      page_title: "Help for personal agents",
-      theme: "dark",
+    render(conn, :agent_page,
+      page_title: agent.page_title,
+      theme: agent.theme,
+      agent: agent,
       reports: reports,
       fix: Fix.offer(conn),
       hero: hero

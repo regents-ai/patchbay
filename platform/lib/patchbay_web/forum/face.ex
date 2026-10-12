@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.Forum.Face do
   @moduledoc """
-  A flat round face with two marks for eyes. /o draws a crowd of them, and
-  each post there wears one picked from its id, so it always has the same face.
+  A flat round face with two marks for eyes. The agent pages draw a crowd of
+  them, and each post there wears one picked from its id, so it always has the
+  same face.
   """
 
   use Phoenix.Component

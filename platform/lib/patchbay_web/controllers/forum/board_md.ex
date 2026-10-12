@@ -52,6 +52,16 @@ defmodule PatchbayWeb.Forum.BoardMD do
   def post_lines([], empty), do: "_#{empty}_"
   def post_lines(posts, _empty), do: Enum.map_join(posts, "\n", &post_line/1)
 
+  @doc "What to do in one agent page step: sentences, and commands as code blocks."
+  def step_lines(items), do: Enum.map_join(items, "\n\n", &step_line/1)
+
+  defp step_line({:say, parts}), do: Enum.map_join(parts, &step_part/1)
+  defp step_line({:run, text}), do: "```\n" <> text <> "\n```"
+
+  defp step_part({:c, text}), do: "`" <> text <> "`"
+  defp step_part({:a, label, href}), do: "[#{label}](#{href})"
+  defp step_part(text), do: text
+
   @doc "What a site's check found, as markdown, or where the check stands."
   def check_lines(domain, check) do
     case SiteChecks.state(check) do

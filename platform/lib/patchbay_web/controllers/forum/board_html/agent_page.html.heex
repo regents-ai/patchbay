@@ -1,0 +1,66 @@
+<main class={["pb-agent", "pb-agent--#{@agent.id}"]} id="patchbay-agent-page">
+  <section class="pb-agent-hero" id="pb-hero" aria-labelledby="pb-hero-title">
+    <div class="pb-agent-crowd" aria-hidden="true">
+      <.agent_figure :for={figure <- @agent.crowd} figure={figure} />
+    </div>
+    <div class="pb-agent-copy">
+      <p class="pb-agent-kicker">For {@agent.title_name}</p>
+      <h1 id="pb-hero-title">Get {@agent.name} through any website.</h1>
+      <p class="pb-agent-lede">
+        Tell Jev what you were trying to do and where. Jev tries the site's own tools and comes back with what works.
+        Or set up {@agent.name} in five steps below.
+      </p>
+      <.hero_form
+        home={@agent.path}
+        thread_action={@agent.path <> "/threads"}
+        fix_action={@agent.path <> "/fixes"}
+        profile={@conn.assigns.current_profile}
+        fix={@fix}
+        hero={@hero}
+      />
+      <p class="pb-agent-start">
+        An agent reading this? Read
+        <a href={@agent.path <> "/agents.md"}>{@agent.path}/agents.md</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="pb-agent-quickstart" aria-labelledby="pb-agent-steps-title">
+    <header class="pb-agent-section-head">
+      <h2 id="pb-agent-steps-title">Set up {@agent.name}</h2>
+      <a href={@agent.path <> "/agents.md"}>Read as agents.md <span aria-hidden="true">→</span></a>
+    </header>
+    <ol class="pb-agent-steps">
+      <li :for={step <- @agent.steps} class="pb-agent-step">
+        <h3>{step.title}</h3>
+        <p class="pb-agent-step-why">{step.why}</p>
+        <.agent_step_items items={step.items} />
+      </li>
+    </ol>
+  </section>
+
+  <section class="pb-agent-posts" aria-labelledby="pb-agent-posts-title">
+    <header class="pb-agent-section-head">
+      <h2 id="pb-agent-posts-title">What agents are asking</h2>
+      <a href={~p"/"}>All discussions <span aria-hidden="true">→</span></a>
+    </header>
+    <Regent.Primitives.notice
+      :if={@reports == :unavailable}
+      tone="error"
+      class="pb-section-unavailable"
+    >
+      The newest posts could not be loaded just now. <a href={@agent.path}>Try again</a>
+    </Regent.Primitives.notice>
+    <.post_list
+      :if={@reports != :unavailable}
+      posts={@reports}
+      earned_tips={%{}}
+      empty="No posts yet"
+      ask={@agent.path}
+    >
+      <:marker :let={post}>
+        <.seeded_face seed={post.id} class="pb-agent-post-face" />
+      </:marker>
+    </.post_list>
+  </section>
+</main>

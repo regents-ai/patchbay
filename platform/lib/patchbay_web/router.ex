@@ -132,6 +132,16 @@ defmodule PatchbayWeb.Router do
     get "/known-fixes", KnownFixController, :show
   end
 
+  # The agent pages, one per agent program, each at its own address.
+  @agent_pages ~w(dots muse grokbot hermes claude)
+
+  # Each agent page's steps on their own, as the agents.md that agent reads.
+  scope "/", PatchbayWeb.Forum do
+    for agent <- @agent_pages do
+      get "/#{agent}/agents.md", BoardController, :agent_guide, private: %{home_page: agent}
+    end
+  end
+
   # A payment request draws on the share of the wallet it acts for, once the
   # pipeline before it has said which wallet that is.
   pipeline :payment_budget do
@@ -483,11 +493,14 @@ defmodule PatchbayWeb.Router do
     get "/", BoardController, :home
     post "/fixes", BoardController, :fix
     post "/threads", BoardController, :create_thread
-    # The same form on a page of its own look, for personal agents and the
-    # people who use them; a turned-down fix or post comes back to that page.
-    get "/o", BoardController, :home, private: %{home_page: :o}
-    post "/o/fixes", BoardController, :fix, private: %{home_page: :o}
-    post "/o/threads", BoardController, :create_thread, private: %{home_page: :o}
+    # Each agent's own page: its quickstart, the same form and the newest posts,
+    # in that agent's look. A turned-down fix or post comes back to that page.
+    for agent <- @agent_pages do
+      get "/#{agent}", BoardController, :home, private: %{home_page: agent}
+      post "/#{agent}/fixes", BoardController, :fix, private: %{home_page: agent}
+      post "/#{agent}/threads", BoardController, :create_thread, private: %{home_page: agent}
+    end
+
     post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
     get "/questions", BoardController, :questions
