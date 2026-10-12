@@ -316,40 +316,35 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   describe "the market list" do
-    test "shows each slot's Offer, the least that replaces it, the next leader and the counts",
+    test "shows each slot's status, the least that takes it, and the responses",
          %{conn: conn, origin: origin, site: site, global: global, owner: owner, agent: agent} do
       place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
       lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
       place(global, 2, approved_version(owner, "Global two", global))
       ask(conn, agent, origin)
 
-      {:ok, view, html} = live(conn, "/offers?q=#{origin}")
+      {:ok, view, _html} = live(conn, "/offers?q=#{origin}")
 
-      global_section = text_of(view, ~s(section[aria-labelledby="pb-offers-global"]))
+      site_card = text_of(view, "#pb-offers-markets .pb-offers-site-card", origin)
+      assert site_card =~ ~r/Responses · 72h\s*1Total posts/
 
-      assert global_section =~
-               "Global Agent Offer Slots will be filled across Patchbay, only if no Site-specific Offer is active."
+      assert text_of(view, ~s(a[href="/offers/bid?site=#{site.site_id}&slot=1"])) =~
+               ~r/Slot 1 ↗\s*Live\s*From 11\.02 Credits/
 
-      assert global_section =~
-               "Global Agent Offer Slots are filled in only if site-specific Agent Offers are not active."
+      assert text_of(view, ~s(a[href="/offers/bid?site=#{site.site_id}&slot=2"])) =~
+               ~r/Slot 2 ↗\s*Open\s*From 1\.00 Credits/
 
-      assert html =~ "Site slot 2 was empty in 1 response"
-      assert html =~ "1 response could carry Offers"
-      assert html =~ "<strong>Empty</strong> · opens at 1.00 Credits"
+      global_card = text_of(view, ".pb-offers-global-card")
+      assert global_card =~ "Global slots fill empty website slots."
 
-      site_one = text_of(view, "#pb-offers-markets .pb-offers-slot", "Site one")
-      assert site_one =~ "10.01 Credits by #{owner.agent_name}"
-      assert site_one =~ "Replace it now with at least 11.02 Credits"
-      assert site_one =~ "Next: 20.00 Credits by #{owner.agent_name}"
-      assert site_one =~ "Next one"
-      assert site_one =~ "Outbid it with at least 22.00 Credits"
-      assert site_one =~ "Returned in 1 response"
+      assert text_of(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=2"])) =~
+               ~r/Slot 2 ↗\s*Live\s*From 1\.10 Credits/
 
-      assert text_of(view, "#pb-offers-global-slots .pb-offers-slot", "Global two") =~
-               "Returned in 1 response"
+      assert text_of(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=1"])) =~
+               ~r/Slot 1 ↗\s*Open\s*From 1\.00 Credits/
 
       assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
-      assert render(view) =~ "No site matches “no-such-site”."
+      assert render(view) =~ "No website matches “no-such-site”."
     end
 
     # Agents read the same figures the page shows, so a bid they plan is one
@@ -449,34 +444,31 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   describe "the advertiser's own pages" do
-    test "active shows what is yours now and then every site showing an Offer",
+    test "active shows your Offers showing now and next, with their bid and buyout figures",
          %{conn: conn, origin: origin, site: site, owner: owner} do
       place(site, 1, approved_version(owner, "Showing one", site), amount_minor: 1001)
       lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
 
       {:ok, view, html} = live(signed_in(conn, owner), "/offers/active")
 
-      showing = text_of(view, "#pb-offers-mine-showing-list li", "Showing one")
+      showing = text_of(view, "#pb-offers-mine-showing-list .pb-placement-card", origin)
       assert showing =~ "#{origin} · Slot 1"
-      assert showing =~ "10.01 Credits"
-      assert showing =~ ~r/you would get back 10\.0[01] Credits/
+      assert showing =~ ~r/Bid\s*10\.01 Credits/
+      assert showing =~ ~r/Buyout from\s*11\.02 Credits/
+      assert showing =~ ~r/Returned on buyout\s*10\.0[01] Credits/
+      [_, ends] = Regex.run(~r/End\s*(\d+ \w+ \d{4}, \d\d:\d\d UTC)/, showing)
 
-      next = text_of(view, "#pb-offers-mine-next-list li", "Next one")
+      next = text_of(view, "#pb-offers-mine-next-list .pb-placement-card", origin)
       assert next =~ "#{origin} · Slot 1"
-      assert next =~ "20.00 Credits"
-      assert next =~ "Starts when the current Offer ends"
-      assert next =~ "at least 22.00 Credits to take your place"
+      assert next =~ ~r/Bid\s*20\.00 Credits/
+      assert next =~ ~r/Expected start\s*#{ends}/
+      assert next =~ ~r/Outbid from\s*22\.00 Credits/
 
-      ranked = text_of(view, "#pb-offers-ranked-list li", origin)
-      assert ranked =~ "Highest bid 10.01 Credits"
-      assert ranked =~ "Showing one"
-
-      refute html =~ "Sign in at the top of the page"
+      refute html =~ "Sign in to see Offer activity."
 
       {:ok, _view, signed_out} = live(conn, "/offers/active")
-      assert signed_out =~ "Sign in at the top of the page to see your own Offers."
-      assert signed_out =~ "Showing one"
-      refute signed_out =~ "Yours, showing now"
+      assert signed_out =~ "Sign in to see Offer activity."
+      refute signed_out =~ "pb-offers-mine-showing-list"
     end
 
     test "past Offers show why each ended, where its Credits went, and bids that came back",
