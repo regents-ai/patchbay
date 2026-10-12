@@ -353,7 +353,7 @@ defmodule PatchbayWeb.Router do
   scope "/tools/account", PatchbayWeb do
     pipe_through [:api, :paired_agent]
     get "/balances", AgentAccountController, :balances
-    post "/credits-history", AgentAccountController, :credits_history
+    post "/credits/history", AgentAccountController, :credits_history
     get "/points", AgentAccountController, :points
   end
 

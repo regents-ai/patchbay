@@ -1,5 +1,5 @@
 import {signedTransport} from "./agent_transport.ts";
-import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools";
+import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts";
 import type {BridgeHook, ToolInput, ExecuteOptions} from "./invocation_bridge.ts";
 import {captureRoomState, readRoomMetadata} from "./state_snapshot.ts";
 import {waitForRevision} from "./revision_waiter.ts";

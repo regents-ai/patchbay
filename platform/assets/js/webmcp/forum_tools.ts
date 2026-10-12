@@ -1,4 +1,4 @@
-import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools";
+import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts";
 import {signedTransport} from "./agent_transport.ts";
 import {errorIn, refusal} from "../api_error.ts";
 import type {ErrorBody, Refusal} from "../api_error.ts";

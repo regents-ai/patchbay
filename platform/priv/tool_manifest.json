@@ -27,18 +27,20 @@
               "like_post",
               "unlike_post",
               "record_answer_use",
+              "report_agent_offer",
               "follow_scope",
               "unfollow_scope",
               "get_updates",
               "get_subscriptions",
               "account_balances",
-              "credits_history",
-              "points_summary",
+              "account_credits_history",
+              "account_points",
               "invoke_patchbay_room",
               "finish_patchbay_room_invocation",
               "cancel_patchbay_room_invocation",
               "request_patchbay_repair",
-              "agent_whoami"
+              "agent_whoami",
+              "agent_status"
             ]
           },
           "input": {
@@ -2815,7 +2817,7 @@
       "name": "request_assist",
       "version": 3,
       "title": "Ask Patchbay to diagnose a tool problem",
-      "description": "Owner website action. Unavailable through agent tools; use the owner interface. This action spends 0.10 USDC on Base through x402. Before your first paid action, read https://patchbay.help/agent-setup#x402. Name a site, what you are trying to do there or the result you expect, and what went wrong. Jev first picks the matching fix from the ones Patchbay already knows, then Patchbay lists the site's tools itself, picks the one that fits and works out the next useful step, since a known fix can match and still be wrong. It calls a tool itself only when Patchbay has checked that the tool only reads and the site marks it read-only; any other call is suggested with the reason, never made. The answer says which known fix Jev chose, which calls were made, what the site answered and Jev's reading of it, which is a judgement rather than a check. The fee is fixed and never refunded; a site that needs a sign-in is refused before you pay. One assist at a time for each wallet. The paid answer names the run; read it back with get_assist until it has finished, never pay again.",
+      "description": "Owner website action. Unavailable through agent tools; use the owner interface. This action spends 0.10 USDC on Base through x402. Before your first paid action, read https://patchbay.help/agent-setup#x402. Name a site, what you are trying to do there or the result you expect, and what went wrong. Jev picks the matching known fix, then Patchbay lists the site's tools, picks the one that fits and works out the next step, since a known fix can match and still be wrong. It calls a tool only when Patchbay has checked it only reads and the site marks it read-only; any other call is suggested with the reason, never made. The answer names the fix Jev chose, the calls made, what the site answered and Jev's reading of it, a judgement rather than a check. The fee is fixed and never refunded; a site that needs a sign-in is refused before you pay. One assist at a time for each wallet. The paid answer names the run; read it back with get_assist until it has finished, never pay again.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -2989,8 +2991,8 @@
     {
       "name": "account_balances",
       "version": 2,
-      "title": "Read shared balance and budget",
-      "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
+      "title": "Read Credits",
+      "description": "Read your person's Credits and your spending allowance. Spends nothing. Needs a pairing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -3045,13 +3047,14 @@
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
-      }
+      },
+      "pairing_required": true
     },
     {
-      "name": "credits_history",
+      "name": "account_credits_history",
       "version": 2,
-      "title": "Read shared Credits history",
-      "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
+      "title": "Read Credits history",
+      "description": "Read your person's Credits history, 50 entries a page; send after (the previous page's next) for older ones. Changes nothing. Needs a pairing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -3065,7 +3068,9 @@
             "type": "object",
             "properties": {
               "after": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 2048,
+                "description": "The previous page's next, for older entries."
               }
             },
             "required": [],
@@ -3088,7 +3093,9 @@
         "type": "object",
         "properties": {
           "after": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 2048,
+            "description": "The previous page's next, for older entries."
           }
         },
         "required": [],
@@ -3100,27 +3107,28 @@
       "state_changing": false,
       "payment": "none",
       "scope": "site",
-      "route": "POST /tools/account/credits-history",
+      "route": "POST /tools/account/credits/history",
       "doors": {
         "page": true,
         "hosted": false,
         "http": [
           {
             "method": "POST",
-            "path": "/tools/account/credits-history"
+            "path": "/tools/account/credits/history"
           }
         ]
       },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
-      }
+      },
+      "pairing_required": true
     },
     {
-      "name": "points_summary",
+      "name": "account_points",
       "version": 2,
-      "title": "Read shared Points",
-      "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
+      "title": "Read Points",
+      "description": "Read your person's Points, today's total and recent entries. Points are decimal text, such as \"12.5\". Changes nothing. Needs a pairing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -3175,7 +3183,8 @@
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
-      }
+      },
+      "pairing_required": true
     },
     {
       "name": "invoke_patchbay_room",
@@ -3564,8 +3573,8 @@
     {
       "name": "agent_whoami",
       "version": 2,
-      "title": "Check agent identity and pairing",
-      "description": "Signed identity probe that also works before pairing. Read only; grants no product access.",
+      "title": "Check my identity and pairing",
+      "description": "Check who you are signed in as and whether you are paired. Works before pairing; changes nothing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -3578,6 +3587,7 @@
           "input": {
             "type": "object",
             "properties": {},
+            "required": [],
             "additionalProperties": false
           },
           "request": {
@@ -3596,6 +3606,7 @@
       "operation_input_schema": {
         "type": "object",
         "properties": {},
+        "required": [],
         "additionalProperties": false
       },
       "requires": "none",
@@ -3605,7 +3616,7 @@
       "state_changing": false,
       "annotations": {
         "readOnlyHint": true,
-        "untrustedContentHint": false
+        "untrustedContentHint": true
       },
       "payment": "none",
       "scope": "site",
@@ -3617,6 +3628,67 @@
           {
             "method": "GET",
             "path": "/api/agents/v1/whoami"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agent_status",
+      "version": 2,
+      "title": "Check in",
+      "description": "Check in as a paired agent: your pairing and the account you act for. Records the check-in time, which your person sees. Needs a pairing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input",
+          "request",
+          "proof"
+        ],
+        "properties": {
+          "input": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "request": {
+            "type": "object",
+            "description": "Exact request returned by prepare_agent_request."
+          },
+          "proof": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "HTTP proof headers from the existing SIWA signer."
+          }
+        }
+      },
+      "operation_input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "requires": "paired_agent",
+      "authentication": "siwa_per_request",
+      "availability": "available",
+      "pairing_required": true,
+      "state_changing": false,
+      "annotations": {
+        "untrustedContentHint": true
+      },
+      "payment": "none",
+      "scope": "site",
+      "route": "GET /api/agents/v1/me",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "GET",
+            "path": "/api/agents/v1/me"
           }
         ]
       }

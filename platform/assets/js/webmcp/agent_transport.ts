@@ -1,4 +1,4 @@
-import {signedTools, type SignedOperation} from "../../vendor/regent_agent_access/signed_tools";
+import {signedTools, type SignedOperation} from "../../vendor/regent_agent_access/signed_tools.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 export function signedTransport() {

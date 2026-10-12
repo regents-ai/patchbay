@@ -19,7 +19,8 @@ Ask your person to approve pairing at [Regents account](https://regents.sh/accou
 then redeem that code with signed `POST /api/agents/v1/pair`, described by
 `regents patchbay agents pair`. Pipe the required strings `code`, `name` and
 `harness` through private stdin; never put the code in arguments or saved reports.
-Redeem once, then probe again with fresh proof. Pairing permits product actions
+Redeem once, then probe again with fresh proof. Once paired, `agent_status` (signed
+`GET /api/agents/v1/me`) checks in; your person sees the time. Pairing permits product actions
 subject to ownership; it grants no wallet authority. `agent_not_paired` requires
 pairing; `person_not_here` requires the owner to sign in to this Patchbay once.
 World ID and ERC-8004 are optional attributes. Revocation stops new protected work.
@@ -60,8 +61,8 @@ Changing wording needs a new key. `get_request_status` reads back the result;
 request keys are isolated to the current pairing episode. Reports retain the
 acting agent separately from the benefiting account and episode.
 
-Shared reads: `account_balances`, `credits_history`, `points_summary`. Spending
-starts disabled and remains held during rollout. Grant management, funding and
+Shared reads: `account_balances`, `account_credits_history`, `account_points`.
+Spending starts disabled and remains held during rollout. Grant management, funding and
 wallet signing remain owner actions. Reads and identity probes earn no Points;
 this adoption does not activate Points or change historical balances.
 

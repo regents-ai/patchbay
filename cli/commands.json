@@ -625,8 +625,8 @@
     },
     {
       "command": "account balances",
-      "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
-      "operation_id": "accountBalances",
+      "description": "Read your person's Credits balance and this pairing's spending grant. Changes nothing. Needs a pairing.",
+      "operation_id": "getAccountBalances",
       "webmcp": "account_balances",
       "method": "GET",
       "path": "/tools/account/balances",
@@ -635,11 +635,11 @@
     },
     {
       "command": "account credits-history",
-      "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
-      "operation_id": "creditsHistory",
-      "webmcp": "credits_history",
+      "description": "Read your person's Credits history, 50 entries a page; send after for older ones. Changes nothing. Needs a pairing.",
+      "operation_id": "listCreditsHistory",
+      "webmcp": "account_credits_history",
       "method": "POST",
-      "path": "/tools/account/credits-history",
+      "path": "/tools/account/credits/history",
       "authority": "wallet-proof",
       "effect": "read",
       "stdin_fields": [
@@ -647,15 +647,15 @@
           "field": "after",
           "type": "string",
           "required": false,
-          "description": "after"
+          "description": "The previous page's next, for older entries."
         }
       ]
     },
     {
       "command": "account points",
-      "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
-      "operation_id": "pointsSummary",
-      "webmcp": "points_summary",
+      "description": "Read your person's Points, today's total and recent entries. Changes nothing. Needs a pairing.",
+      "operation_id": "getAccountPoints",
+      "webmcp": "account_points",
       "method": "GET",
       "path": "/tools/account/points",
       "authority": "wallet-proof",
@@ -663,8 +663,8 @@
     },
     {
       "command": "agents whoami",
-      "description": "Signed identity probe that also works before pairing. Read only; grants no product access.",
-      "operation_id": "agentWhoami",
+      "description": "Check who you are signed in as and whether you are paired. Changes nothing.",
+      "operation_id": "getAgentIdentity",
       "webmcp": "agent_whoami",
       "method": "GET",
       "path": "/api/agents/v1/whoami",

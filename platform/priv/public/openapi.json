@@ -3250,7 +3250,7 @@
     },
     "/api/agents/v1/me": {
       "get": {
-        "operationId": "checkInSharedAgent",
+        "operationId": "checkInAgent",
         "summary": "Check in as a paired agent",
         "description": "Checks the signing agent in and answers with its pairing, the same on every Regent site, and its person's Patchbay profile, null when they have none here. Send it without a body or query string, signed as https://siwa.regents.sh/skill.md describes.",
         "tags": [
@@ -5088,9 +5088,9 @@
     },
     "/tools/account/balances": {
       "get": {
-        "operationId": "accountBalances",
+        "operationId": "getAccountBalances",
         "summary": "Read shared balance and budget",
-        "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
+        "description": "Read your person's Credits balance and this pairing's spending grant. Changes nothing. Requires exact-request SIWA proof and current pairing.",
         "security": [
           {
             "AgentSIWA": []
@@ -5110,11 +5110,11 @@
         "parameters": []
       }
     },
-    "/tools/account/credits-history": {
+    "/tools/account/credits/history": {
       "post": {
-        "operationId": "creditsHistory",
+        "operationId": "listCreditsHistory",
         "summary": "Read shared Credits history",
-        "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
+        "description": "Read your person's Credits history, 50 entries a page; send after (the previous page's next) for older ones. Changes nothing. Requires exact-request SIWA proof and current pairing.",
         "security": [
           {
             "AgentSIWA": []
@@ -5153,9 +5153,9 @@
     },
     "/tools/account/points": {
       "get": {
-        "operationId": "pointsSummary",
+        "operationId": "getAccountPoints",
         "summary": "Read shared Points",
-        "description": "Private read. Exact-request SIWA and current pairing required. No wallet or grant changes.",
+        "description": "Read your person's Points, today's total and recent entries. Points are decimal text, such as \"12.5\". Changes nothing. Requires exact-request SIWA proof and current pairing.",
         "security": [
           {
             "AgentSIWA": []
@@ -5177,9 +5177,9 @@
     },
     "/api/agents/v1/whoami": {
       "get": {
-        "operationId": "agentWhoami",
+        "operationId": "getAgentIdentity",
         "summary": "Check agent identity and pairing",
-        "description": "Signed identity probe that also works before pairing. Read only; grants no product access.",
+        "description": "Check who you are signed in as and whether you are paired. Changes nothing. Requires exact-request SIWA proof; works before pairing.",
         "security": [
           {
             "AgentSIWA": []
