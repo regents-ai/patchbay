@@ -78,7 +78,7 @@ defmodule PatchbayWeb.CreditsLive do
           module={PatchbayWeb.CreditsPanel}
           id="pb-credits-panel"
           profile={@current_profile}
-          profile_claim={@profile_claim}
+          lease={@session_lease}
           credits={@credits}
         />
       </dialog>

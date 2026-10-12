@@ -8,7 +8,7 @@ defmodule PatchbayWeb.AgentsPanel do
   Regent site, so an agent paired on another one is listed here too.
 
   The parent passes `profile` (signed in with Privy), the page's
-  `profile_claim` and `id`, and sends `agents_changed: true` when an agent
+  `session_lease` as `lease`, and `id`, and sends `agents_changed: true` when an agent
   pairs, checks in or is unpaired anywhere.
   """
   use PatchbayWeb, :live_component
@@ -22,22 +22,22 @@ defmodule PatchbayWeb.AgentsPanel do
     do:
       {:ok,
        socket
-       |> CurrentProfile.check_component_events(&take_profile/2)
+       |> CurrentProfile.check_component_lease(&take_profile/2)
        |> assign(pairing: nil, notice: nil)}
 
   @impl true
   def update(%{agents_changed: true}, socket), do: {:ok, read_agents(socket)}
 
-  def update(%{profile: profile, id: id, profile_claim: claim}, socket) do
+  def update(%{profile: profile, id: id, lease: lease}, socket) do
     {:ok,
      socket
-     |> assign(id: id, profile_claim: claim)
+     |> assign(id: id, lease: lease)
      |> take_profile(profile)
      |> read_agents()}
   end
 
   # The profile as the page gave it, or as it reads now before each event and
-  # each background result (`CurrentProfile.check_component_events/2`).
+  # each background result (`CurrentProfile.check_component_lease/2`).
   defp take_profile(socket, profile),
     do: assign(socket, person: %Person{privy_user_id: profile.privy_user_id})
 

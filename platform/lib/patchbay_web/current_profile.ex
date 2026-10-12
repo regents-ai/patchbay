@@ -16,6 +16,9 @@ defmodule PatchbayWeb.CurrentProfile do
   rest send `:default` pages to the front too, which ends their process and
   every subscription and read they held; an `:account` page instead drops the
   profile and says the sign-in ended, as the Regent template does.
+
+  A signed-in page holds its claim as `session_lease`, nil when no one is signed
+  in, and passes it to each component that acts (`check_component_lease/2`).
   """
 
   import Phoenix.Component, only: [assign: 2, assign: 3]
@@ -40,37 +43,54 @@ defmodule PatchbayWeb.CurrentProfile do
           assign(socket, current_profile: profile, signed_out_reason: nil)
       end
 
-    {:cont, socket |> assign(:profile_claim, claim) |> hold(claim, lapsed(mode))}
+    {:cont, socket |> assign(:session_lease, lease(socket, claim)) |> hold(claim, lapsed(mode))}
   end
 
   @doc """
-  Checks a component's events and background results against the page's
-  signed-in claim, which the page passes it as `profile_claim`. A lapsed claim
-  drops the event or result and tells the page, which checks its own.
+  A LiveComponent's events and background results never reach the page's own
+  hooks, so every component that acts calls this from `mount/1`, and its page
+  passes it the page's `session_lease` as `lease`. Each event and each result
+  first re-reads that lease, as the page does for its own. A current lease
+  hands `take_profile`, the component's own function (the one its `update/2`
+  uses too), the profile as it reads now. A lapsed lease refuses the event with
+  an empty reply, or drops the result unseen, and tells the page, which checks
+  its own. A page with no one signed in passes a nil lease and the component
+  acts on what the page gave it.
   """
-  def check_component_events(socket, take_profile) do
+  def check_component_lease(socket, take_profile) do
     socket
     |> attach_hook(:current_profile_event, :handle_event, fn _event, _params, socket ->
-      case recheck_component(socket, take_profile) do
-        {:halt, socket} -> {:halt, %{}, socket}
-        continuing -> continuing
+      case component_profile(socket) do
+        :lapsed -> {:halt, %{}, socket}
+        profile -> {:cont, take(socket, take_profile, profile)}
       end
     end)
     |> attach_hook(:current_profile_async, :handle_async, fn _name, _result, socket ->
-      recheck_component(socket, take_profile)
+      case component_profile(socket) do
+        :lapsed -> {:halt, socket}
+        profile -> {:cont, take(socket, take_profile, profile)}
+      end
     end)
   end
 
-  defp recheck_component(socket, take_profile) do
-    case CurrentProfile.signed_in_profile(socket.assigns.profile_claim) do
+  defp component_profile(%{assigns: %{lease: nil}}), do: :signed_out
+
+  defp component_profile(%{assigns: %{lease: lease}}) do
+    case CurrentProfile.signed_in_profile(lease) do
       nil ->
-        send(self(), {__MODULE__, :component_sign_in_lapsed})
-        {:halt, socket}
+        send(self(), {__MODULE__, :component_lease_lapsed})
+        :lapsed
 
       profile ->
-        {:cont, take_profile.(socket, profile)}
+        profile
     end
   end
+
+  defp take(socket, _take_profile, :signed_out), do: socket
+  defp take(socket, take_profile, profile), do: take_profile.(socket, profile)
+
+  defp lease(%{assigns: %{current_profile: nil}}, _claim), do: nil
+  defp lease(_socket, claim), do: claim
 
   defp lapsed(:default), do: &redirect(&1, to: @public_root)
   defp lapsed(:account), do: & &1
@@ -85,7 +105,7 @@ defmodule PatchbayWeb.CurrentProfile do
       recheck(socket, claim, lapsed)
     end)
     |> attach_hook(:current_profile_info, :handle_info, fn
-      {__MODULE__, :component_sign_in_lapsed}, socket ->
+      {__MODULE__, :component_lease_lapsed}, socket ->
         {_cont_or_halt, socket} = recheck(socket, claim, lapsed)
         {:halt, socket}
 

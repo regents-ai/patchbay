@@ -100,7 +100,7 @@ defmodule PatchbayWeb.AccountLive do
           module={PatchbayWeb.AgentsPanel}
           id="account-agents"
           profile={@current_profile}
-          profile_claim={@profile_claim}
+          lease={@session_lease}
         />
 
         <Regent.Account.credits_summary

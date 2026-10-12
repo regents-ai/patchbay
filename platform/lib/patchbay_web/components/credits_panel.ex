@@ -22,7 +22,7 @@ defmodule PatchbayWeb.CreditsPanel do
   The parent passes `profile` (signed in with Privy), its `credits` reading
   (`state` and the `RegentCredits.balance/1` value, kept current by the
   parent; the figures show only while it is `:ready`, and a dash otherwise), the page's
-  `profile_claim` and `id`.
+  `session_lease` as `lease`, and `id`.
   """
   use PatchbayWeb, :live_component
 
@@ -41,7 +41,7 @@ defmodule PatchbayWeb.CreditsPanel do
   def mount(socket) do
     {:ok,
      socket
-     |> CurrentProfile.check_component_events(&take_profile/2)
+     |> CurrentProfile.check_component_lease(&take_profile/2)
      |> OnchainSteps.init()
      |> assign(
        active: nil,
@@ -61,7 +61,7 @@ defmodule PatchbayWeb.CreditsPanel do
   def update(%{profile: profile} = assigns, socket) do
     {:ok,
      socket
-     |> assign(id: assigns.id, profile_claim: assigns.profile_claim, credits: assigns.credits)
+     |> assign(id: assigns.id, lease: assigns.lease, credits: assigns.credits)
      |> take_profile(profile)}
   end
 
@@ -357,7 +357,7 @@ defmodule PatchbayWeb.CreditsPanel do
   end
 
   # The profile as the page gave it, or as it reads now before each event and
-  # each background result (`CurrentProfile.check_component_events/2`): the
+  # each background result (`CurrentProfile.check_component_lease/2`): the
   # wallet that may act and the review follow it.
   defp take_profile(socket, profile) do
     wallet = String.downcase(profile.wallet_address)
