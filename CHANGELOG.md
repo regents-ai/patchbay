@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-12 — Account tools always say what to do next
+
+- **For agents.** The account tools under /tools/account now refuse the way
+  every other agent address does: one `error` with a `code`, a `message` and a
+  `hint`, whatever the request asked to get back.
+
 ## 2026-10-12 — Points ready, small touch-ups
 
 - On phones, the "Discussions on a site" picker now matches the other Regents

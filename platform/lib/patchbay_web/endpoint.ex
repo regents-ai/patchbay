@@ -56,7 +56,7 @@ defmodule PatchbayWeb.Endpoint do
   plug RegentAgentAccess.Plug,
     documents: &PatchbayWeb.PublicDocuments.document/1,
     guide: "/llms.txt",
-    json_prefixes: ~w(api forum hello mcp)
+    json_prefixes: ~w(api forum hello mcp tools)
 
   plug PatchbayWeb.Plugs.Parsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},
