@@ -9,8 +9,8 @@
 # the Dockerfile fetches every dependency at the version the lockfiles pin; the
 # shared libraries' repositories are public, so the build takes no credentials.
 #
-# Patchbay runs against production only, so the image is not started here;
-# catching a release that fails once deployed is Sentinel's job.
+# Patchbay runs against production only, so the image is not started here.
+# Sentinel alerts when a deployed release fails; it does not roll one back.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
