@@ -16,6 +16,9 @@ kill_timeout = "60s"
 
 [deploy]
   release_command = "/app/bin/migrate"
+  # A new machine starts and must answer the health check below before it
+  # takes traffic; until then the running release keeps serving.
+  strategy = "bluegreen"
 
 [env]
   # The shared Regent database cluster (Patchbay.DatabaseConfig). None of these

@@ -19,9 +19,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Tool
+  alias Patchbay.Identity
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
-  alias Patchbay.Identity
   alias Patchbay.Payments
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Board

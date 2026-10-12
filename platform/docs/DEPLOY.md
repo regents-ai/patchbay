@@ -78,6 +78,9 @@ Turn it off again with `fly secrets unset --app patchbay-regents
 PATCHBAY_DEMO_FALLBACK`. Never set both a real key and the fallback if the
 demo is meant to show live inference.
 
+Error reports go to Sentry once `SENTRY_DSN` is set; `SENTRY_ENVIRONMENT` and
+`SENTRY_RELEASE` label them. Unset, errors are only logged.
+
 Check what is set at any time with `fly secrets list --app patchbay-regents`;
 values are never displayed.
 
@@ -147,10 +150,10 @@ runs the release command `/app/bin/migrate`, which applies every pending
 migration. A failed migration fails the deploy and leaves the previous release
 serving.
 
-With a single machine, a deploy replaces it rather than draining traffic onto a
-second one, so expect a gap of a few seconds during which the URL is
-unreachable and open rooms reconnect. Do not deploy while a demo is being
-watched.
+Deploys are blue-green (`strategy = "bluegreen"` in `platform/fly.toml`): Fly
+starts a new machine beside the running one and moves traffic to it only once
+it answers `/webmcp/health`. A new release that never answers is removed and
+the previous one keeps serving. Open rooms reconnect when traffic moves.
 
 ## 5. Verify
 

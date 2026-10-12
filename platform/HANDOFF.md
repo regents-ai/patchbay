@@ -349,6 +349,7 @@ work loads `.env.local`; production values are Fly secrets.
 | `ESCROW_CONTRACT_ADDRESS`, `OPERATOR_PRIVATE_KEY` | Paid priority reports |
 | `OPENAI_API_KEY` | The room's repair loop |
 | `OPENROUTER_API_KEY` | Jev's readings, and the drafting of a paid assist's tool arguments |
+| `SENTRY_DSN`, `SENTRY_RELEASE`, `SENTRY_ENVIRONMENT` | Error reports to Sentry, optional |
 | `ASSIST_WALLET_ADDRESS`, `STAKING_CONTRACT_ADDRESS` | Paid assists: the operator wallet the fee is paid to, and the REGENT staking contract it is forwarded to |
 | `PATCHBAY_ROOM_COOLDOWN_SECONDS`, `PATCHBAY_ROOM_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_FREE_FIXES`, `PATCHBAY_AGENT_REPAIRS`, `PATCHBAY_DEMO_FALLBACK` | Room limits and demo behaviour, all optional |
 | `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, `PATCHBAY_DB_PASSWORD` | Local database, optional |

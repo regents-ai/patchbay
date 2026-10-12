@@ -12,12 +12,12 @@ defmodule Patchbay.Offers.Serving do
 
   require Logger
 
-  alias Patchbay.Offers.Delivery
-  alias Patchbay.Offers.Disclosure
-  alias Patchbay.Offers.Selection
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Site
+  alias Patchbay.Offers.Delivery
+  alias Patchbay.Offers.Disclosure
+  alias Patchbay.Offers.Selection
 
   @doc "Public Offers for a site's read. No delivery, Credits or worker writes."
   def for_site(%Site{} = site) do

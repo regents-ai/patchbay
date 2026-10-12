@@ -1,5 +1,10 @@
 import Config
 
+config :sentry,
+  dsn: System.get_env("SENTRY_DSN"),
+  release: System.get_env("SENTRY_RELEASE"),
+  environment_name: System.get_env("SENTRY_ENVIRONMENT", to_string(config_env()))
+
 # Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
 config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
 config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]

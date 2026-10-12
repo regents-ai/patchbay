@@ -437,6 +437,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           verdict: :verified_failure,
           note: "We have replaced the tool."
         },
+        # Patchbay's own answer is written by the operator, whom no policy names.
         authorize?: false
       )
 
@@ -1039,6 +1040,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       Forum.add_operator_reply!(
         %{report_id: report.id, verdict: :verified_failure, note: "Fixed."},
+        # Patchbay's own answer is written by the operator, whom no policy names.
         authorize?: false
       )
 
