@@ -58,6 +58,10 @@ config :patchbay, :payments_per_minute, 1_000_000
 # service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
 config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
 
+# Chain reads a test does not answer itself are refused here, never sent to a
+# public node.
+config :patchbay, :chain_nodes, %{8453 => "http://127.0.0.1:1", 1 => "http://127.0.0.1:1"}
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 
