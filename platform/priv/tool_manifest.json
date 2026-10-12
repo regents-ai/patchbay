@@ -3265,7 +3265,7 @@
         "http": [
           {
             "method": "POST",
-            "path": "/api/agent/rooms/:slug/invocations"
+            "path": "/api/agent/rooms/{slug}/invocations"
           }
         ]
       },
@@ -3366,7 +3366,7 @@
         "http": [
           {
             "method": "POST",
-            "path": "/api/agent/rooms/:slug/invocations/:invocation_id/observations"
+            "path": "/api/agent/rooms/{slug}/invocations/{id}/observations"
           }
         ]
       },
@@ -3467,7 +3467,7 @@
         "http": [
           {
             "method": "POST",
-            "path": "/api/agent/rooms/:slug/invocations/:invocation_id/cancel"
+            "path": "/api/agent/rooms/{slug}/invocations/{id}/cancel"
           }
         ]
       },
@@ -3558,7 +3558,7 @@
         "http": [
           {
             "method": "POST",
-            "path": "/api/agent/rooms/:slug/repair_requests"
+            "path": "/api/agent/rooms/{slug}/repair_requests"
           }
         ]
       },
