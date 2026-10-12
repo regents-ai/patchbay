@@ -124,7 +124,7 @@ defmodule Patchbay.WalletBench.Cohorts do
   defp field_name(key), do: String.replace(key, "_", " ")
 
   defp short(nil), do: "not recorded"
-  defp short(value) when is_binary(value) and byte_size(value) > 16, do: binary_part(value, 0, 8)
+  defp short(value) when is_binary(value) and byte_size(value) > 16, do: String.slice(value, 0, 8)
   defp short(value), do: display(value)
 
   def label(group) do
