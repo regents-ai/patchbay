@@ -31,6 +31,8 @@ import {PatchbayWebMCP} from "./webmcp/room_hook.ts"
 import {PatchbayRelativeTime} from "./hooks/relative_time.ts"
 import {PatchbayOfferResultDialog} from "./hooks/offer_result.ts"
 import {MotionCount, MotionList, MotionRefusal} from "./hooks/motion/moments.ts"
+import {MotionCascade} from "./hooks/motion/reveals.ts"
+import {HolographicCard} from "./hooks/holographic_card.ts"
 import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
 import {mountMotion} from "./motion.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
@@ -59,6 +61,8 @@ const liveSocket = new LiveSocket("/live", Socket, {
     MotionCount,
     MotionList,
     MotionRefusal,
+    MotionCascade,
+    HolographicCard,
     PatchbayCreditsDialog,
     PatchbayCreditsPanel,
   },

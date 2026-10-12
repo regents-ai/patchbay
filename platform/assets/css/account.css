@@ -1,0 +1,93 @@
+/* The Account page, laid out as the Regent template's: a heading, the shared
+   holographic identity card across the top, then one hairline panel each for
+   Profile, Agents, Credits and Session, in Patchbay's own tokens. */
+
+.pb-account-page {
+  display: grid;
+  gap: var(--space-4);
+  width: min(100%, 64rem);
+  margin-inline: auto;
+  padding-block: var(--space-4);
+  min-width: 0;
+}
+
+.pb-account-page h1,
+.pb-account-page h2,
+.pb-account-page p {
+  margin: 0;
+}
+
+.pb-account-heading {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pb-account-heading h1:focus {
+  outline: none;
+}
+
+.pb-account-heading p {
+  color: var(--pb-text-muted);
+}
+
+.pb-account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.pb-account-identity {
+  grid-column: 1 / -1;
+}
+
+.pb-account-identity .rg-holo__content {
+  display: grid;
+  gap: var(--space-2);
+  min-height: 10rem;
+  align-content: end;
+  padding: var(--rg-panel-padding);
+}
+
+.pb-account-identity h2 {
+  overflow-wrap: anywhere;
+}
+
+.pb-account-kicker {
+  color: color-mix(in srgb, var(--rg-holo-ink) 70%, transparent);
+  font-size: var(--pb-fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pb-account-identity code {
+  color: color-mix(in srgb, var(--rg-holo-ink) 70%, transparent);
+}
+
+.pb-account-panel {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--rg-panel-padding);
+  border: 1px solid var(--pb-line);
+  background: var(--pb-surface);
+}
+
+.pb-account-panel .rg-profile {
+  width: 100%;
+  padding: 0;
+}
+
+.pb-account-panel p {
+  color: var(--pb-text-muted);
+}
+
+.pb-account-agents__code {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pb-account-agents__code pre {
+  margin: 0;
+  overflow-x: auto;
+}

@@ -14,6 +14,7 @@
 @import "./runtime.css";
 @import "./o.css";
 @import "./credits.css";
+@import "./account.css";
 
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
@@ -1920,9 +1921,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
 .pb-home-search { align-items: end; }
 .pb-account { flex-wrap: wrap; }
-.pb-account-panel { display: grid; gap: var(--space-3); width: min(100%, 48rem); margin-inline: auto; padding: var(--rg-panel-padding); }
-.pb-account-panel > h1 { margin: 0; }
-.pb-account-panel .rg-profile { width: 100%; padding: 0; }
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
 .pb-error-inner .pb-kicker { margin: 0; }
 .patchbay-notice.rg-panel { background: transparent; border: 0; }

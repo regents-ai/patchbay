@@ -29,9 +29,9 @@ export const byPointer = (event: MouseEvent) => event.detail > 0
 
 // Menus and dialogs can open without a click of their own, from a hover or
 // from the server. They move only when the reader was last using a mouse or a
-// finger. Going back or forward, including a page restored whole from the
-// browser's back-forward cache, starts afresh, as a key press does, so what
-// that reopens is simply there.
+// finger. Going back or forward starts afresh, as a key press does, so what
+// that reopens is simply there; so does a page the browser kept and shows
+// again on Back.
 let pointer = false
 
 export const lastInputByPointer = () => pointer

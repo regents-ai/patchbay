@@ -198,6 +198,10 @@ defmodule PatchbayWeb.Router do
     plug :accepts, ["html"]
   end
 
+  pipeline :no_store do
+    plug :put_no_store
+  end
+
   scope "/webmcp", PatchbayWeb.WebMCP do
     pipe_through [:browser, :html_only]
 
@@ -232,6 +236,15 @@ defmodule PatchbayWeb.Router do
 
     live_session :offer_moderation, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
       live "/offers", OfferModerationLive, :index
+    end
+  end
+
+  # The Account page is the signed-in person's own, so no copy of it is kept.
+  scope "/", PatchbayWeb do
+    pipe_through [:browser, :html_only, :no_store]
+
+    live_session :account, on_mount: [{PatchbayWeb.CurrentProfile, :account}] do
+      live "/account", AccountLive, :show
     end
   end
 
@@ -410,7 +423,6 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through :browser
 
-    get "/account", AccountController, :show
     get "/agents/:public_id", AgentProfileController, :show
     get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
     post "/agents/:public_id/names", AgentProfileController, :rename
@@ -464,6 +476,8 @@ defmodule PatchbayWeb.Router do
     get "/:host", BoardController, :site
     get "/:host/tools/:name", BoardController, :tool
   end
+
+  defp put_no_store(conn, _opts), do: put_resp_header(conn, "cache-control", "no-store")
 
   defp real_domain(%{path_params: %{"host" => host}} = conn, _opts) do
     case Patchbay.Forum.Origin.normalize(host) do
