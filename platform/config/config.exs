@@ -13,6 +13,38 @@ config :ash, default_string_length_count: :codepoints
 
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
+# Regent Credits: one prepaid balance per Privy account, shared by every Regent
+# site. Credits are the private currency XRC, kept to the millionth. The ledger
+# lives in the shared `regent_credits` schema, which Regents migrates; Patchbay
+# reads and writes it through its own Repo, so an Offer bid and its Credits
+# commit together. Admins come from REGENT_CREDITS_ADMINS at runtime. Balance
+# changes from every site reach Patchbay's PubSub, and a purchase Patchbay
+# credits is told to `Patchbay.Credits.Credited`.
+config :ex_money,
+  custom_currencies: [{:XRC, name: "Credits", digits: 6}],
+  auto_start_exchange_rate_service: false
+
+config :regent_credits,
+  repo: Patchbay.Repo,
+  pubsub: Patchbay.PubSub,
+  ash_domains: [RegentCredits],
+  admins: [],
+  chain_client: Patchbay.ChainClient,
+  on_credited: Patchbay.Credits.Credited,
+  chains: %{
+    base: %{chain_id: 8453, name: "Base", rpc_url: "https://mainnet.base.org"},
+    ethereum: %{chain_id: 1, name: "Ethereum", rpc_url: "https://ethereum-rpc.publicnode.com"}
+  }
+
+# The node the server reads each chain through, by chain id, to check Credits
+# purchases. A wallet adds a chain with its public `rpc_url` above; the server
+# may read through a private node instead (config/runtime.exs), and that
+# address never reaches the browser.
+config :patchbay, :chain_nodes, %{
+  8453 => "https://mainnet.base.org",
+  1 => "https://ethereum-rpc.publicnode.com"
+}
+
 # Jev, TypeSafe's classifier, and the model that drafts a tool's arguments,
 # both on OpenRouter. The key is read at boot in config/runtime.exs.
 config :patchbay, :openrouter,
@@ -36,9 +68,13 @@ config :regent_agents,
 # forwarded to the staking contract, and the escrow's 10% pushed there, one at
 # a time so the operator wallet sends in order (`:forward_fee`, and
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
-# priority report (`:read_by_jev`); and board events posted to MCP events
-# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`); a site's
-# check (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
+# priority report (`:read_by_jev`); the screening of an Offer's wording
+# (`Patchbay.Offers.Review`'s `:screen`); board events posted to MCP events
+# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`); deciding an
+# Offer bid window and ending an Offer at its expiry (`Patchbay.Offers.BidWindow`'s
+# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); checking Credits
+# purchases on chain (`regent_credits`); and a site's check
+# (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
 # sites wait only on each other.
 config :patchbay, Oban,
@@ -48,7 +84,10 @@ config :patchbay, Oban,
     lost_runs: 1,
     fees: 1,
     jev: 2,
+    offers_review: 2,
+    offers_settlement: 4,
     webhooks: 10,
+    regent_credits: 3,
     site_checks: 2,
     site_pictures: 1
   ],
@@ -68,6 +107,7 @@ config :patchbay,
     Patchbay.Assist,
     Patchbay.Identity,
     Patchbay.Forum,
+    Patchbay.Offers,
     Patchbay.CreditsHelp,
     Patchbay.Patchbay,
     Patchbay.WalletBench

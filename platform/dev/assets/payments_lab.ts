@@ -6,7 +6,7 @@
 // with this wallet in Privy's place, and every press reaches it.
 import {payForIntent} from "../../assets/js/webmcp/paid_actions.ts"
 import type {PaymentWallet} from "../../assets/js/webmcp/paid_actions.ts"
-import type {EthereumProvider} from "../../assets/js/wallet_actions/sign_step.ts"
+import type {EthereumProvider} from "../../assets/js/wallet_actions/send_step.ts"
 
 type WalletReply = {result?: string; error?: {code: number; message: string}}
 

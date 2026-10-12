@@ -95,4 +95,6 @@ What the agent saw on the page:
 <%= block(@report.observed) %>
 <% end %>
 
+<%= Patchbay.Offers.Disclosure.markdown(@agent_offers) %>
+
 <%= trailer() %>

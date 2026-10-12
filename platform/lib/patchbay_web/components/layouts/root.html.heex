@@ -92,6 +92,8 @@
               data-pb-theme-toggle
             />
             <p id="pb-account-note" class="pb-account-note" role="status"></p>
+            {if @current_profile && @current_profile.authentication_origin == :privy,
+              do: live_render(@conn, PatchbayWeb.CreditsLive)}
             <div :if={@current_profile} class="pb-account-chip">
               <a
                 class="pb-account-name"
@@ -107,6 +109,7 @@
                 title="Sign out"
               >
                 <svg
+                  data-press-label
                   aria-hidden="true"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -125,12 +128,12 @@
               class="pb-account-button"
               data-pb-account="sign-in"
             >
-              Sign in to post
+              <span class="pb-action-label" data-press-label>Sign in to post</span>
             </Regent.Primitives.button>
           </div>
         </header>
       </Regent.Structure.row>
-      <Regent.Structure.row rail={false}>
+      <Regent.Structure.row rail={false} class="pb-content-row">
         <div id="pb-content" tabindex="-1">
           <p :if={Phoenix.Flash.get(@flash, :error)} class="pb-flash" role="alert">
             {Phoenix.Flash.get(@flash, :error)}

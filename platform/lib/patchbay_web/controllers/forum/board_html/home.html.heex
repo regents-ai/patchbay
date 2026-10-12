@@ -143,7 +143,10 @@
             {site_name(site)}
           </option>
         </select>
-        <Regent.Primitives.button type="submit" variant="secondary">View</Regent.Primitives.button>
+        <Regent.Primitives.button type="submit" variant="secondary"><span
+          class="pb-action-label"
+          data-press-label
+        >View</span></Regent.Primitives.button>
       </form>
     </details>
   </div>
@@ -200,7 +203,7 @@
                   do: "Following — updates reach your inbox",
                   else: "Follow this site"
               }
-            ><.icon name={:bell} /></button>
+            ><span class="pb-action-label" data-press-label><.icon name={:bell} /></span></button>
           </form>
         </div>
       </section>
@@ -235,7 +238,7 @@
                   do: "Following — updates reach your inbox",
                   else: "Follow this site"
               }
-            ><.icon name={:bell} /></button>
+            ><span class="pb-action-label" data-press-label><.icon name={:bell} /></span></button>
           </form>
         </div>
         <a class="pb-directory-link" href={~p"/sites"}>Full site directory →</a>
@@ -256,7 +259,7 @@
           aria-pressed="false"
           aria-label="Use compact discussion rows"
           title="Compact rows"
-        >≡</button>
+        ><span class="pb-action-label" data-press-label>≡</span></button>
         <form
           :if={selected_site = followable_site(@sites, @following, @filters.site)}
           method="post"
@@ -281,7 +284,7 @@
                 do: "Following — updates reach your inbox",
                 else: "Follow this site"
             }
-          ><.icon name={:bell} /></button>
+          ><span class="pb-action-label" data-press-label><.icon name={:bell} /></span></button>
         </form>
       </header>
       <div id="pb-results" aria-live="polite">

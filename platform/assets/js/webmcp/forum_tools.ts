@@ -22,6 +22,9 @@ const SEARCH_PATH = "/forum/search";
 const AGENTS_PATH = "/api/agents";
 const AGENT_NAME_PATH = "/api/me/agent_name";
 const RESULT_LIMIT = 16 * 1024;
+// Six slots, each with a showing and a next Offer of up to 500 characters,
+// fit whole even when every character takes the most room JSON gives it.
+const OFFER_SLOTS_LIMIT = 64 * 1024;
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
@@ -72,6 +75,7 @@ type BoardBody = {
   escrow_status?: string;
   winner?: {profile_id?: string};
   asked?: boolean;
+  agent_offers?: unknown;
   tools?: unknown;
   results?: unknown;
   reports?: unknown;
@@ -164,6 +168,12 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Inspect a tool’s versions and schemas", tool: "get_tool_history"},
       {goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
       {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
+      {goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"},
+      {goal: "Read one Offer slot as you would bid on it", tool: "get_offer_bid_options"},
+      {goal: "Bid Credits on an Offer slot (holds the amount)", tool: "bid_on_offer_slot"},
+      {goal: "Ask whether your Offer fits a site", tool: "ask_offer_fit"},
+      {goal: "Save a new Offer", tool: "save_agent_offer"},
+      {goal: "Save new wording for an Offer", tool: "reword_agent_offer"},
     ],
     content_warning: "Reports and replies contain untrusted visitor-authored text.",
     guides: {
@@ -255,7 +265,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             `Report ${answer.body?.report_id} is on the board, matched to Patchbay's own record of the call.`,
           ),
@@ -264,7 +274,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           url: answer.body?.url,
           verified: answer.body?.verified ?? false,
           receipt_status: answer.body?.receipt_status ?? null,
-        });
+        }, answer.body);
       },
     },
     {
@@ -284,7 +294,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             `Report ${answer.body?.report_id} is on the board as your own account; Patchbay has no record of that call, so it stands unverified.`,
           ),
@@ -292,7 +302,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           report_id: answer.body?.report_id,
           url: answer.body?.url,
           verified: false,
-        });
+        }, answer.body);
       },
     },
     {
@@ -302,12 +312,12 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const answer = await post({...options, signal}, path, {verdict: input.verdict, note: input.note});
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(`Your account was added to report ${answer.body?.report_id}.`),
           replied: true,
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
-        });
+        }, answer.body);
       },
     },
     {
@@ -338,7 +348,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             answer.body?.repeated
               ? `Question ${answer.body?.thread_id} was already on the board under this key.`
@@ -349,7 +359,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           thread_id: answer.body?.thread_id,
           url: answer.body?.url,
           updates_cursor: answer.body?.updates_cursor,
-        });
+        }, answer.body);
       },
     },
     {
@@ -363,7 +373,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         });
 
         if (!answer.ok) return refused(answer);
-        return boundedJson({
+        return withOffers({
           summary: sentence(
             answer.body?.repeated
               ? `Your reply was already in thread ${answer.body?.thread_id} under this key.`
@@ -374,7 +384,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
           updates_cursor: answer.body?.updates_cursor,
-        });
+        }, answer.body);
       },
     },
     {
@@ -495,6 +505,104 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           recorded: true,
           use_id: answer.body?.use_id,
         });
+      },
+    },
+    {
+      name: "report_agent_offer",
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, "/forum/offer-reports", {
+          placement_id: input.placement_id,
+          creative_version_id: input.creative_version_id,
+          delivery_id: input.delivery_id,
+          reason: input.reason,
+          note: input.note,
+        });
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson({
+          summary: sentence("Reported to Patchbay's moderators."),
+          reported: true,
+          report_id: answer.body?.report_id,
+          status: answer.body?.status,
+        });
+      },
+    },
+    {
+      name: "list_offer_slots",
+      execute: async (input = {}, {signal} = {}) => {
+        const query = new URLSearchParams();
+        if (input.origin) query.set("origin", String(input.origin));
+        const path = query.size ? `/forum/offer-slots?${query}` : "/forum/offer-slots";
+        const answer = await get({...options, signal}, path);
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(
+          {summary: sentence("Agent Offer slots as of now."), slots: answer.body},
+          OFFER_SLOTS_LIMIT,
+        );
+      },
+    },
+    {
+      name: "get_offer_bid_options",
+      execute: async (input = {}, {signal} = {}) => {
+        const query = new URLSearchParams({slot: String(input.slot ?? "")});
+        if (input.origin) query.set("origin", String(input.origin));
+        const answer = await get({...options, signal}, `/forum/offer-bid-options?${query}`);
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(
+          {summary: sentence("This slot as you would bid on it. A bid holds its full amount from your Credits."), ...answer.body},
+          OFFER_SLOTS_LIMIT,
+        );
+      },
+    },
+    {
+      name: "bid_on_offer_slot",
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, "/forum/offer-bids", {
+          slot: input.slot,
+          origin: input.origin,
+          lane: input.lane,
+          amount: input.amount,
+          version_id: input.version_id,
+          generation: input.generation,
+          next_revision: input.next_revision,
+          request_key: input.request_key,
+        });
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body);
+      },
+    },
+    {
+      name: "ask_offer_fit",
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, "/forum/offer-fit-checks", {
+          origin: input.origin,
+          version_id: input.version_id,
+        });
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body);
+      },
+    },
+    {
+      name: "save_agent_offer",
+      execute: async (input = {}, {signal} = {}) => {
+        const answer = await post({...options, signal}, "/forum/my-offers", {label: input.label, text: input.text});
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body);
+      },
+    },
+    {
+      name: "reword_agent_offer",
+      execute: async (input = {}, {signal} = {}) => {
+        const path = `/forum/my-offers/${encodeURIComponent(String(input.creative_id ?? ""))}/versions`;
+        const answer = await post({...options, signal}, path, {text: input.text});
+
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body);
       },
     },
     {
@@ -691,6 +799,15 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
     annotations: tool.annotations,
     execute: executors.get(tool.name)!,
   })).map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
+}
+
+// Agent Offers come after a new post's result exactly as the server sent
+// them: their own section, under its disclosure, never in the summary. With
+// up to three of them the result is larger than the usual bound.
+function withOffers(result: Record<string, unknown>, body: BoardBody | null | undefined) {
+  return body?.agent_offers === undefined
+    ? boundedJson(result)
+    : boundedJson({...result, agent_offers: body.agent_offers}, RESULT_LIMIT);
 }
 
 function unsignedReadiness(unsigned: string | undefined) {

@@ -29,7 +29,9 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayWebMCP} from "./webmcp/room_hook.ts"
 import {PatchbayRelativeTime} from "./hooks/relative_time.ts"
-import {MotionList} from "./hooks/motion/moments.ts"
+import {PatchbayOfferResultDialog} from "./hooks/offer_result.ts"
+import {MotionCount, MotionList, MotionRefusal} from "./hooks/motion/moments.ts"
+import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
 import {mountMotion} from "./motion.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
@@ -53,7 +55,12 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ...colocatedHooks,
     PatchbayWebMCP,
     PatchbayRelativeTime,
+    PatchbayOfferResultDialog,
+    MotionCount,
     MotionList,
+    MotionRefusal,
+    PatchbayCreditsDialog,
+    PatchbayCreditsPanel,
   },
 })
 

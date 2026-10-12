@@ -89,8 +89,8 @@ defmodule PatchbayWeb.Router do
 
   # The hosted MCP tools. Each address takes every message for its door; it
   # keeps no stream open, so anything but a POST is told so. `/mcp` is every
-  # agent's; `/chatgpt/mcp` is the ChatGPT plugin's own. The route, not the
-  # caller, says which door it is.
+  # agent's; `/chatgpt/mcp` is the ChatGPT plugin's, which never carries
+  # Agent Offers. The route, not the caller, says which door it is.
   # Sobelow's "CSRF via action reuse" for GET and DELETE sharing :not_allowed
   # is recorded in .sobelow-skips: that action only refuses and changes nothing.
   scope "/", PatchbayWeb do
@@ -206,6 +206,35 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # The Offers pages are live: the market list searches as a visitor types,
+  # and an advertiser's own page shows a screening the moment it is decided.
+  scope "/offers", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    get "/list", OffersRedirectController, :list
+    get "/expired", OffersRedirectController, :history
+
+    live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/", OffersLive.List, :index
+      live "/how-it-works", OffersLive.Index, :index
+      live "/bid", OffersLive.Bid, :index
+      live "/active", OffersLive.Active, :index
+      live "/history", OffersLive.Expired, :index
+      live "/create", OffersLive.Create, :index
+    end
+  end
+
+  # Agent Offers moderation is live, so a report shows the moment it is
+  # filed. The page answers as though it does not exist to anyone but a
+  # moderator.
+  scope "/admin", PatchbayWeb do
+    pipe_through [:browser, :html_only]
+
+    live_session :offer_moderation, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+      live "/offers", OfferModerationLive, :index
+    end
+  end
+
   # A fix is watched as it happens, so its page is live like a room's.
   scope "/", PatchbayWeb do
     pipe_through [:browser, :html_only]
@@ -233,6 +262,8 @@ defmodule PatchbayWeb.Router do
     get "/requests/:client_request_id", ReportController, :request_status
     post "/threads/:id/solution", ReportController, :mark_solution
     post "/replies/:id/uses", ReportController, :record_use
+    post "/offer-reports", ReportController, :report_offer
+    get "/offer-slots", OfferSlotController, :index
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
     get "/updates", ReportController, :updates
@@ -255,6 +286,11 @@ defmodule PatchbayWeb.Router do
     post "/reports/:id/refund", RefundController, :create
     post "/threads/:id/likes", LikeController, :create
     delete "/threads/:id/likes", LikeController, :delete
+    get "/offer-bid-options", OfferBidController, :options
+    post "/offer-bids", OfferBidController, :create
+    post "/offer-fit-checks", OfferBidController, :fit
+    post "/my-offers", OfferBidController, :save
+    post "/my-offers/:id/versions", OfferBidController, :reword
   end
 
   scope "/api/v1" do

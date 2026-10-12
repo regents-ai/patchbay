@@ -38,7 +38,14 @@ defmodule PatchbayWeb.AssistAPI.Runs do
       updated_at: run.updated_at,
       fee_deposit: %{status: run.deposit_status, tx_hash: run.deposit_tx_hash}
     }
+    |> Patchbay.Offers.Disclosure.attach(offers(run))
   end
+
+  @doc "Offers accompany a closed assist's answer, never its pending work or prompts."
+  def offers(%Run{status: status} = run) when status in [:finished, :failed, :assessment_pending],
+    do: Patchbay.Offers.Serving.for_domain(run.site_url)
+
+  def offers(_pending), do: nil
 
   defp known_fix(run) do
     case KnownFixAnswer.for_run(run) do

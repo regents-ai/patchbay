@@ -8,7 +8,8 @@ import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
-import type {SelectedWallet} from "./wallet_actions/sign_step.ts"
+import {chainId} from "./wallet_actions/send_step.ts"
+import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
 // page fetches only when somebody asks to sign in. Everything it does is driven
@@ -274,7 +275,7 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
 
   if (!state.authenticated) return {ok: false, reason: "signed_out"}
 
-  const active = eligibleActiveWallet(state.activeWallet, state.wallets)
+  const active = sendingWallet(state)
   if (!active) {
     state.connectWallet()
     return {ok: false, reason: "wallet_unavailable"}
@@ -285,6 +286,30 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
     return {ok: true, wallet: {address: active.address.toLowerCase(), provider}}
   } catch {
     return {ok: false, reason: "wallet_unavailable"}
+  }
+}
+
+/**
+ * The chain Privy's active wallet is on, read without opening anything: null
+ * when Privy holds no sign-in or no active wallet here.
+ */
+export async function walletChain(appId: string): Promise<number | null> {
+  start(appId)
+
+  let state
+  try {
+    state = await waitFor(one => one.ready && one.walletsReady, READY_TIMEOUT_MS)
+  } catch {
+    return null
+  }
+
+  const active = state.authenticated ? sendingWallet(state) : null
+  if (!active) return null
+
+  try {
+    return await chainId(await active.getEthereumProvider())
+  } catch {
+    return null
   }
 }
 
@@ -320,10 +345,19 @@ export async function addFundsByCard(appId: string): Promise<{ok: true, status: 
 
 // An Ethereum wallet Privy has selected and still holds connected. A Solana
 // selection, or one the wallet app has dropped, is no wallet rather than a
-// reason to pick another.
-function eligibleActiveWallet(active: BridgeState["activeWallet"], wallets: ConnectedWallet[]): ConnectedWallet | null {
-  if (!active || active.type !== "ethereum") return null
-  return wallets.some(one => sameAddress(one.address, active.address)) ? active : null
+// reason to pick another. Privy names no wallet after a sign-in that skipped
+// its window, or in a new tab: the signed-in wallet then sends as this browser
+// has it connected, when exactly one connected wallet is linked to the account.
+function sendingWallet({activeWallet: active, wallets, user}: BridgeState): ConnectedWallet | null {
+  if (active) {
+    if (active.type !== "ethereum") return null
+    return wallets.some(one => sameAddress(one.address, active.address)) ? active : null
+  }
+  const linked = (user?.linkedAccounts ?? []).flatMap(account =>
+    account.type === "wallet" && account.chainType === "ethereum" ? [account.address] : [],
+  )
+  const signedIn = wallets.filter(one => linked.some(address => sameAddress(address, one.address)))
+  return signedIn.length === 1 ? signedIn[0] : null
 }
 
 function sameAddress(left: unknown, right: unknown): boolean {

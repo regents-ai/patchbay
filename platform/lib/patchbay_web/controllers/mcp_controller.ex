@@ -4,7 +4,8 @@ defmodule PatchbayWeb.MCPController do
   Model Context Protocol at two addresses: `POST /mcp`, for every agent, and
   `POST /chatgpt/mcp`, for the ChatGPT plugin alone. The route names the
   address (`mcp_surface`), never the caller, and a session works only at the
-  address it was issued at.
+  address it was issued at. Agent Offers follow a new post only at `/mcp`;
+  the ChatGPT plugin's address never carries them.
 
   It opens no stream. Every request is one JSON-RPC message answered with one
   JSON body, which the protocol allows and which is all these tools need.
@@ -22,6 +23,7 @@ defmodule PatchbayWeb.MCPController do
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Offers.Disclosure
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.MCP.Events
@@ -189,6 +191,23 @@ defmodule PatchbayWeb.MCPController do
       "content" => [%{"type" => "text", "text" => message <> " " <> hint}],
       "structuredContent" => refusal,
       "isError" => true
+    }
+  end
+
+  # Agent Offers after a new post travel once as their own text block, under
+  # the disclosure. The structured answer carries, after the forum result,
+  # only what reporting one needs, so no advertiser's words are sent twice;
+  # they never appear inside the result's own text.
+  defp tool_result(%{agent_offers: offers} = answer, false) do
+    result = Map.delete(answer, :agent_offers)
+
+    %{
+      "content" => [
+        %{"type" => "text", "text" => Jason.encode!(result)},
+        %{"type" => "text", "text" => Disclosure.text(offers)}
+      ],
+      "structuredContent" => Disclosure.append(result, Disclosure.references(offers)),
+      "isError" => false
     }
   end
 

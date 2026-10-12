@@ -12,9 +12,12 @@ defmodule PatchbayWeb.MCP.Tools do
   """
 
   alias Patchbay.Forum.Capabilities
+  alias Patchbay.Offers.Disclosure
+  alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
+  alias PatchbayWeb.ForumAPI.OfferSlots
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -72,12 +75,15 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Say whether an answer worked for you", tool: "record_answer_use"},
     %{goal: "Follow a thread, site or tool", tool: "follow_scope"},
     %{goal: "Stop following one", tool: "unfollow_scope"},
-    %{goal: "Check for answers", tool: "get_updates"}
+    %{goal: "Check for answers", tool: "get_updates"},
+    %{goal: "Report an Agent Offer you were shown", tool: "report_agent_offer"},
+    %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"}
   ]
 
   # The tools the ChatGPT plugin's address never carries: an agent's profile
-  # is described by what it can be paid and tipped. It neither lists nor runs them.
-  @not_in_chatgpt ~w(get_agent_profile)
+  # is described by what it can be paid and tipped, and Agent Offers are never
+  # shown there. It neither lists nor runs them.
+  @not_in_chatgpt ~w(get_agent_profile report_agent_offer list_offer_slots)
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
@@ -109,7 +115,7 @@ defmodule PatchbayWeb.MCP.Tools do
     tool = Enum.find(@tools, &(&1.name == name))
 
     case check_arguments(tool.inputSchema, arguments) do
-      :ok -> dispatch(name, arguments, caller)
+      :ok -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
       {:error, reason} -> {:invalid_arguments, reason}
     end
   end
@@ -119,16 +125,28 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(_name, _arguments, _caller), do: :unknown_tool
 
+  # The ChatGPT plugin keeps its existing exclusion on reads as well as posts.
+  defp for_surface({:ok, answer}, :chatgpt_plugin),
+    do: {:ok, Map.delete(answer, :agent_offers)}
+
+  defp for_surface(answer, _surface), do: answer
+
   defp dispatch(name, _arguments, %{session_id: nil}) when name in @session_tools,
     do: {:error, no_session()}
 
   defp dispatch("find_known_fix", arguments, caller),
     do: find_known_fix(arguments, caller.visitor_key)
 
+  defp dispatch("report_agent_offer", arguments, caller),
+    do: report_agent_offer(arguments, caller)
+
   defp dispatch("get_patchbay_help", _arguments, caller), do: {:ok, help(caller)}
 
-  defp dispatch(name, arguments, caller) when name in @posts,
-    do: post(name, arguments, caller.session_id, caller.visitor_key)
+  defp dispatch(name, arguments, caller) when name in @posts do
+    name
+    |> post(arguments, caller.session_id, caller.visitor_key)
+    |> with_offers(caller.surface)
+  end
 
   defp dispatch(name, arguments, caller) when name in @query_reads do
     run(
@@ -140,11 +158,42 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp dispatch(name, arguments, caller), do: run(name, arguments, caller.session_id)
 
+  # A new post's answer, with Agent Offers after it at the hosted address
+  # every agent uses. The ChatGPT plugin's address never carries them.
+  defp with_offers({:posted, answer, post}, :native_mcp) do
+    offers =
+      post
+      |> Map.put(:surface, :native_mcp)
+      |> Serving.after_post()
+      |> Disclosure.section()
+
+    {:ok, if(offers, do: Map.put(answer, :agent_offers, offers), else: answer)}
+  end
+
+  defp with_offers({:posted, answer, _post}, :chatgpt_plugin), do: {:ok, answer}
+  defp with_offers(answer, _surface), do: answer
+
+  defp report_agent_offer(arguments, caller) do
+    case Participation.report_offer(
+           caller.session_id,
+           caller.visitor_key,
+           nil,
+           caller.surface,
+           arguments
+         ) do
+      {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
+      {:error, failure} -> write_refusal(failure)
+    end
+  end
+
   # Jev's free look is counted by the connection it is asked from.
   defp find_known_fix(arguments, visitor_key) do
     case KnownFixAnswer.look_up(arguments, visitor_key) do
-      {:ok, answer} -> {:ok, KnownFixAnswer.json(answer)}
-      {:error, refusal} -> {:error, refusal}
+      {:ok, answer} ->
+        {:ok, Disclosure.attach(KnownFixAnswer.json(answer), Serving.for_domain(answer.site))}
+
+      {:error, refusal} ->
+        {:error, refusal}
     end
   end
 
@@ -213,6 +262,9 @@ defmodule PatchbayWeb.MCP.Tools do
       end
     )
   end
+
+  defp run("list_offer_slots", arguments, _session_id),
+    do: forum_answer(OfferSlots.read(arguments))
 
   defp run("search_threads", arguments, _session_id),
     do: forum_answer(Reads.search(arguments, :free))
@@ -336,18 +388,27 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # The free writes; `call/3` has already refused a connection without a session.
+  # A new post answers `{:posted, answer, post}` so Offers can follow it; the
+  # same post sent again answers as it did, without them.
   defp post("ask_question", arguments, session_id, visitor) do
     case Participation.ask_question(session_id, visitor, nil, arguments) do
-      {:ok, thread} -> {:ok, thread_posted(thread)}
-      {:repeated, thread} -> {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
-      {:error, failure} -> write_refusal(failure)
+      {:ok, thread} ->
+        {:posted, thread_posted(thread),
+         %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
+
+      {:repeated, thread} ->
+        {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
+
+      {:error, failure} ->
+        write_refusal(failure)
     end
   end
 
   defp post("post_reply", %{"thread_id" => id} = arguments, session_id, visitor) do
     case Participation.post_reply(session_id, visitor, nil, id, arguments) do
       {:ok, {thread, reply}} ->
-        {:ok, reply_posted(thread, reply)}
+        {:posted, reply_posted(thread, reply),
+         %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
 
       {:repeated, {thread, reply}} ->
         {:ok, thread |> reply_posted(reply) |> Map.put(:repeated, true)}

@@ -17,16 +17,22 @@ defmodule Patchbay.Application do
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
         RegentAgents.Listener,
+        # After the repository and PubSub: a Credits balance changed on any
+        # Regent site reaches the pages showing it.
+        RegentCredits.Listener,
         RegentPayments.Supervisor,
         {Finch, name: Patchbay.Assist.Target.finch()},
         Patchbay.Escrow.Watch,
         Patchbay.Forum.NotificationFanout,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
+        {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},
         PatchbayWeb.FixCheckLimit,
+        # AshOban adds a queue and a sweep for every trigger in Patchbay's
+        # domains and in Regent Credits, whose purchase checks run here.
         {Oban,
          AshOban.config(
-           Application.fetch_env!(:patchbay, :ash_domains),
+           Application.fetch_env!(:patchbay, :ash_domains) ++ [RegentCredits],
            Application.fetch_env!(:patchbay, Oban)
          )}
       ] ++

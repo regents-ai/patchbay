@@ -1,0 +1,95 @@
+<main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-active">
+  <.offers_header current={:active} />
+
+  <p :if={is_nil(@mine)} class="patchbay-muted">Sign in to see Offer activity.</p>
+
+  <div :if={@mine} class="pb-placement-sections">
+    <section aria-labelledby="pb-offers-mine-showing">
+      <h2 id="pb-offers-mine-showing" class="pb-placement-section-title">Active</h2>
+      <div class="pb-placement-grid" id="pb-offers-mine-showing-list">
+        <Regent.Structure.panel
+          :for={placement <- @mine.showing}
+          class="pb-offers-card pb-placement-card"
+        >
+          <header class="pb-placement-head">
+            <h3>{placement.version.creative.label}</h3>
+            <span class="pb-offers-eyebrow">{slot_label(placement.slot)}</span>
+          </header>
+          <dl class="pb-placement-figures">
+            <div>
+              <dt>Bid</dt><dd>{credits(placement.amount_minor)}</dd>
+            </div>
+            <div>
+              <dt>Buyout from</dt><dd>{credits(buyout(placement))}</dd>
+            </div>
+            <div>
+              <dt>Returned on buyout</dt><dd>{credits(unused(placement, @as_of))}</dd>
+            </div>
+          </dl>
+          <.duration_timeline
+            starts_at={placement.starts_at}
+            ends_at={placement.expires_at}
+            now={@as_of}
+          />
+        </Regent.Structure.panel>
+      </div>
+      <p :if={@mine.showing == []} class="pb-placement-empty">No active Offers.</p>
+    </section>
+
+    <section aria-labelledby="pb-offers-mine-next">
+      <h2 id="pb-offers-mine-next" class="pb-placement-section-title">Upcoming</h2>
+      <div class="pb-placement-grid" id="pb-offers-mine-next-list">
+        <Regent.Structure.panel
+          :for={bid <- @mine.leading}
+          class="pb-offers-card pb-placement-card"
+        >
+          <header class="pb-placement-head">
+            <h3>{bid.version.creative.label}</h3>
+            <span class="pb-offers-eyebrow">{slot_label(bid.slot)}</span>
+          </header>
+          <dl class="pb-placement-figures">
+            <div>
+              <dt>Bid</dt><dd>{credits(bid.amount_minor)}</dd>
+            </div>
+            <div>
+              <dt>Outbid from</dt><dd>{credits(buyout(bid))}</dd>
+            </div>
+            <div>
+              <dt>Returned if outbid</dt><dd>{credits(bid.amount_minor)}</dd>
+            </div>
+          </dl>
+          <.duration_timeline
+            starts_at={upcoming_start(bid)}
+            ends_at={if upcoming_start(bid), do: Terms.expires_at(upcoming_start(bid))}
+            now={@as_of}
+            planned
+          />
+        </Regent.Structure.panel>
+      </div>
+      <p :if={@mine.leading == []} class="pb-placement-empty">No upcoming Offers.</p>
+    </section>
+
+    <section :if={@mine.waiting != []} aria-labelledby="pb-offers-mine-waiting">
+      <h2 id="pb-offers-mine-waiting" class="pb-placement-section-title">Pending</h2>
+      <div class="pb-placement-grid">
+        <Regent.Structure.panel
+          :for={bid <- @mine.waiting}
+          class="pb-offers-card pb-placement-card"
+        >
+          <header class="pb-placement-head">
+            <h3>{bid.version.creative.label}</h3>
+            <span class="pb-offers-eyebrow">{slot_label(bid.slot)}</span>
+          </header>
+          <dl class="pb-placement-figures">
+            <div>
+              <dt>Bid</dt><dd>{credits(bid.amount_minor)}</dd>
+            </div>
+            <div>
+              <dt>Status</dt><dd>Awaiting result</dd>
+            </div>
+          </dl>
+        </Regent.Structure.panel>
+      </div>
+    </section>
+  </div>
+</main>

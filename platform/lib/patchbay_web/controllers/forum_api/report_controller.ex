@@ -32,6 +32,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
+  alias Patchbay.Offers.Disclosure
+  alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.PostingBudget
@@ -49,14 +51,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     with {:ok, session_id} <- established_session(conn),
          {:ok, report} <-
            file_report(session_id, visitor(conn), conn.assigns.current_profile, params) do
-      conn
-      |> put_status(:created)
-      |> json(%{
-        report_id: report.id,
-        url: Reads.report_url(report.id),
-        verified: report.verified,
-        receipt_status: report.receipt_status
-      })
+      posted(
+        conn,
+        :ok,
+        %{
+          report_id: report.id,
+          url: Reads.report_url(report.id),
+          verified: report.verified,
+          receipt_status: report.receipt_status
+        },
+        %{operation: :report, site_id: report.site_id, report_id: report.id, reply_id: nil}
+      )
     else
       {:error, failure} -> send_failure(conn, failure)
     end
@@ -70,7 +75,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     with {:ok, session_id} <- established_session(conn),
          {outcome, thread} when outcome != :error <-
            Participation.ask_question(session_id, visitor(conn), current_profile(conn), params) do
-      posted(conn, outcome, thread_posted(thread))
+      posted(conn, outcome, thread_posted(thread), %{
+        operation: :thread,
+        site_id: thread.site_id,
+        report_id: thread.id,
+        reply_id: nil
+      })
     else
       {:error, failure} -> send_failure(conn, failure)
     end
@@ -91,16 +101,31 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     with {:ok, session_id} <- established_session(conn),
          {outcome, {thread, reply}} when outcome != :error <-
            Participation.post_reply(session_id, visitor(conn), current_profile(conn), id, params) do
-      posted(conn, outcome, reply_posted(thread, reply))
+      posted(conn, outcome, reply_posted(thread, reply), %{
+        operation: :reply,
+        site_id: thread.site_id,
+        report_id: thread.id,
+        reply_id: reply.id
+      })
     else
       {:error, failure} -> send_failure(conn, failure)
     end
   end
 
-  # A write that just landed is 201; the same write sent again under its
-  # request key is 200 with the original answer and `repeated`.
-  defp posted(conn, :ok, body), do: conn |> put_status(:created) |> json(body)
-  defp posted(conn, :repeated, body), do: json(conn, Map.put(body, :repeated, true))
+  # A write that just landed is 201, followed by any Agent Offers chosen for
+  # it; the same write sent again under its request key is 200 with the
+  # original answer and `repeated`, and never carries Offers.
+  defp posted(conn, :ok, body, post) do
+    offers =
+      post
+      |> Map.put(:surface, :http_api)
+      |> Serving.after_post()
+      |> Disclosure.section()
+
+    conn |> put_status(:created) |> json(Disclosure.append(body, offers))
+  end
+
+  defp posted(conn, :repeated, body, _post), do: json(conn, Map.put(body, :repeated, true))
 
   defp reply_posted(thread, reply) do
     %{
@@ -141,9 +166,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     with {:ok, session_id} <- established_session(conn),
          {:ok, {report, reply}} <-
            file_reply(session_id, visitor(conn), conn.assigns.current_profile, id, params) do
-      conn
-      |> put_status(:created)
-      |> json(%{reply_id: reply.id, report_id: report.id, url: Reads.report_url(report.id)})
+      posted(
+        conn,
+        :ok,
+        %{reply_id: reply.id, report_id: report.id, url: Reads.report_url(report.id)},
+        %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
+      )
     else
       {:error, failure} -> send_failure(conn, failure)
     end
@@ -205,6 +233,24 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       conn
       |> put_status(:created)
       |> json(%{recorded: true, use_id: use.id, outcome: to_string(use.outcome)})
+    else
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
+  def report_offer(conn, params) do
+    with {:ok, session_id} <- established_session(conn),
+         {:ok, report} <-
+           Participation.report_offer(
+             session_id,
+             visitor(conn),
+             current_profile(conn),
+             :http_api,
+             params
+           ) do
+      conn
+      |> put_status(:created)
+      |> json(Participation.offer_report_answer(report))
     else
       {:error, failure} -> send_failure(conn, failure)
     end

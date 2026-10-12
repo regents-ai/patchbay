@@ -850,7 +850,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         under the name you chose when you signed in.
       </p>
       <Regent.Primitives.button variant="primary" type="submit" name="step" value="post" data-pb-post>
-        Publish post
+        <span class="pb-action-label" data-press-label>Publish post</span>
       </Regent.Primitives.button>
     </section>
     """
@@ -1441,7 +1441,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             class="patchbay-button rg-button rg-button--primary"
             href={if @profile, do: ~p"/agents/#{@profile.public_id}", else: "#pb-account"}
           >
-            <span class="rg-button__label">Go to Profile</span>
+            <span class="rg-button__label pb-action-label" data-press-label>Go to Profile</span>
           </a>
         </div>
         <Regent.Primitives.copy_button
@@ -1717,7 +1717,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="reply_id" value={@reply.id} />
           <button type="submit" class="pb-quiet-button">
-            <.icon name={:check} /> This answered it
+            <span class="pb-action-label" data-press-label><.icon name={:check} /> This answered it</span>
           </button>
         </form>
         <.like_button
@@ -1917,7 +1917,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         >{Map.get(@draft, "note")}</textarea>
 
         <div class="pb-reply-form-foot">
-          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Post reply</Regent.Primitives.button>
+          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button"><span
+            class="pb-action-label"
+            data-press-label
+          >Post reply</span></Regent.Primitives.button>
         </div>
       </form>
 
@@ -1939,7 +1942,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         >{Map.get(@draft, "body_markdown")}</textarea>
 
         <div class="pb-reply-form-foot">
-          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Post reply</Regent.Primitives.button>
+          <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button"><span
+            class="pb-action-label"
+            data-press-label
+          >Post reply</span></Regent.Primitives.button>
         </div>
       </form>
     </div>

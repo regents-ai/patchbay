@@ -1,0 +1,85 @@
+<main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-expired">
+  <.offers_header current={:history} />
+
+  <p :if={!@signed_in?} class="patchbay-muted">
+    Sign in at the top of the page to see your past Offers.
+  </p>
+
+  <%= if @signed_in? do %>
+    <Regent.Structure.panel
+      class="pb-offers-card pb-offers-history-section"
+      role="region"
+      aria-labelledby="pb-offers-ended"
+    >
+      <h2 id="pb-offers-ended">Offers that ended</h2>
+      <ol id="pb-offers-ended-list" class="pb-offmod-list" phx-update="stream">
+        <li :for={{dom_id, placement} <- @streams.ended} id={dom_id} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong><.slot_name slot={placement.slot} id={"pb-offers-tip-#{placement.id}"} /></strong>
+            <span>{ended(placement.status)}</span>
+          </header>
+          <.offer_copy version={placement.version} />
+          <p class="patchbay-muted">
+            Started {moment(placement.starts_at)} · ended {moment(placement.ended_at)} · ran for {ran_for(
+              placement
+            )}
+          </p>
+          <p class="pb-offmod-figures">
+            Paid {credits(placement.amount_minor)} · used {credits(placement.consumed_minor)} ·
+            returned {credits(placement.returned_minor)} · forfeited {credits(
+              placement.forfeited_minor
+            )}
+          </p>
+          <p>
+            Cost in the end:
+            <strong>{credits(placement.amount_minor - placement.returned_minor)}</strong>
+          </p>
+        </li>
+        <li id="pb-offers-ended-empty" class="pb-offers-empty patchbay-muted">
+          None of your Offers has ended yet.
+        </li>
+      </ol>
+      <Regent.Primitives.button
+        :if={@ended_more?}
+        variant="secondary"
+        phx-click="more"
+        phx-value-list="ended"
+      >
+        <span class="pb-action-label" data-press-label>Show more</span>
+      </Regent.Primitives.button>
+    </Regent.Structure.panel>
+
+    <Regent.Structure.panel
+      class="pb-offers-card pb-offers-history-section"
+      role="region"
+      aria-labelledby="pb-offers-returned"
+    >
+      <h2 id="pb-offers-returned">Bids that did not win</h2>
+      <p class="patchbay-muted">Each of these came back in full.</p>
+      <ol id="pb-offers-returned-list" class="pb-offmod-list" phx-update="stream">
+        <li :for={{dom_id, bid} <- @streams.returned} id={dom_id} class="pb-offmod-item">
+          <header class="pb-offmod-head">
+            <strong><.slot_name slot={bid.slot} id={"pb-offers-tip-#{bid.id}"} /></strong>
+            <span>{credits(bid.amount_minor)} returned</span>
+          </header>
+          <.offer_copy version={bid.version} />
+          <p>{returned(bid.return_reason)}</p>
+          <p class="patchbay-muted">
+            Bid {moment(bid.accepted_at)} · returned {moment(bid.resolved_at)}
+          </p>
+        </li>
+        <li id="pb-offers-returned-empty" class="pb-offers-empty patchbay-muted">
+          No bid of yours has come back.
+        </li>
+      </ol>
+      <Regent.Primitives.button
+        :if={@returned_more?}
+        variant="secondary"
+        phx-click="more"
+        phx-value-list="returned"
+      >
+        <span class="pb-action-label" data-press-label>Show more</span>
+      </Regent.Primitives.button>
+    </Regent.Structure.panel>
+  <% end %>
+</main>

@@ -32,7 +32,7 @@
           <input type="hidden" name="ids[]" value={notice.id} />
           <input type="hidden" name="back" value={inbox_path(@current_page)} />
           <Regent.Primitives.button variant="secondary" type="submit">
-            Acknowledge
+            <span class="pb-action-label" data-press-label>Acknowledge</span>
           </Regent.Primitives.button>
         </form>
       </li>
@@ -71,7 +71,7 @@
           <input type="hidden" name="follow" value="false" />
           <input type="hidden" name="back" value="/inbox" />
           <Regent.Primitives.button variant="secondary" type="submit">
-            Stop following
+            <span class="pb-action-label" data-press-label>Stop following</span>
           </Regent.Primitives.button>
         </form>
       </li>
