@@ -158,6 +158,19 @@
   font-weight: var(--font-weight-regular);
 }
 
+/* Before earning opens, the ways to earn are listed with no amounts. */
+.pb-points-ways {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--pb-fs-sm);
+}
+
+.pb-points-ways li {
+  padding: var(--space-2);
+  border-block-end: 1px solid var(--pb-line);
+}
+
 .pb-points-soon {
   margin-inline-start: var(--space-2);
   color: var(--pb-text-muted);

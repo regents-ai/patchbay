@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-12 — Cards settle in on sight; Points names ways to earn
+
+- Lists of cards settle in once, the first time they scroll into view; one
+  already in view when the page opens is simply there (`onFirstSight` in
+  `hooks/motion/reveals.ts`, template 8f7ce51, Sean 45 a).
+- Until earning opens, the Points page names the ways to earn with no points,
+  limits or bonus tiers (Sean, 46 a).
+
 ## 2026-10-12 — Sentry events leave without arguments or process state
 
 - `Patchbay.SentryScrub`, Sentry's `before_send`, clears every stack frame's
