@@ -11,6 +11,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
   alias Patchbay.Patchbay.InvocationRunner
+  alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("b", 64)
@@ -25,9 +26,14 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
                        })
                      )
 
+  setup do
+    SignedAgent.stub_siwa()
+    %{agent: SignedAgent.pair!()}
+  end
+
   describe "filing a report" do
-    test "records the site, the tool contract and the report", %{conn: conn} do
-      conn = post_json(conn, "/forum/reports", report_params())
+    test "records the site, the tool contract and the report", %{conn: conn, agent: agent} do
+      conn = post_json(conn, agent, "/forum/reports", report_params())
 
       assert %{"report_id" => report_id, "url" => url} = json_response(conn, 201)
       assert url == "/reports/#{report_id}"
@@ -54,39 +60,49 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert report.receipt_status == :missing
     end
 
-    test "files under the session the server issued, not one the caller names", %{conn: conn} do
+    test "files under the agent's pairing, not a session the caller names", %{
+      conn: conn,
+      agent: agent
+    } do
       claimed = "00000000-0000-0000-0000-000000000000"
 
       # A caller that names its own reporter is refused outright, so the only
-      # identity a report can ever be filed under is the one this server issued.
+      # identity a report can ever be filed under is the one this server derived.
       refused =
-        post_json(conn, "/forum/reports", report_params(%{"browser_session_id" => claimed}))
+        post_json(
+          conn,
+          agent,
+          "/forum/reports",
+          report_params(%{"browser_session_id" => claimed})
+        )
 
       assert %{"error" => %{"code" => "invalid", "details" => [error]}} =
                json_response(refused, 422)
 
       assert error =~ "browser_session_id: a report about a tool on another site does not take"
 
-      first = post_json(refused, "/forum/reports", report_params())
+      first = post_json(conn, agent, "/forum/reports", report_params())
       assert %{"report_id" => first_id} = json_response(first, 201)
 
-      second = post_json(first, "/forum/reports", report_params(%{"note" => "Same again."}))
+      second = post_json(conn, agent, "/forum/reports", report_params(%{"note" => "Same again."}))
       assert %{"report_id" => second_id} = json_response(second, 201)
 
-      other = post_json(build_conn(), "/forum/reports", report_params())
+      other = post_json(conn, SignedAgent.pair!(), "/forum/reports", report_params())
       assert %{"report_id" => other_id} = json_response(other, 201)
 
-      session_id = session_of(first_id)
-
-      refute session_id == claimed
-      assert session_of(second_id) == session_id
-      refute session_of(other_id) == session_id
+      assert session_of(first_id) == agent.pairing.id
+      assert session_of(second_id) == agent.pairing.id
+      refute session_of(other_id) == agent.pairing.id
     end
 
-    test "refuses a report that brings fields this endpoint does not have", %{conn: conn} do
+    test "refuses a report that brings fields this endpoint does not have", %{
+      conn: conn,
+      agent: agent
+    } do
       conn =
         post_json(
           conn,
+          agent,
           "/forum/reports",
           report_params(%{"contract_sha256" => @contract, "arguments_sha256" => @arguments})
         )
@@ -105,26 +121,37 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
              ] == []
     end
 
-    test "refuses an origin that is not a public site", %{conn: conn} do
+    test "refuses an origin that is not a public site", %{conn: conn, agent: agent} do
       conn =
-        post_json(conn, "/forum/reports", report_params(%{"origin" => "http://localhost:4000"}))
+        post_json(
+          conn,
+          agent,
+          "/forum/reports",
+          report_params(%{"origin" => "http://localhost:4000"})
+        )
 
       assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
       assert Enum.any?(errors, &String.contains?(&1, "public site"))
     end
 
-    test "refuses a note longer than the forum allows", %{conn: conn} do
+    test "refuses a note longer than the forum allows", %{conn: conn, agent: agent} do
       conn =
-        post_json(conn, "/forum/reports", report_params(%{"note" => String.duplicate("x", 501)}))
+        post_json(
+          conn,
+          agent,
+          "/forum/reports",
+          report_params(%{"note" => String.duplicate("x", 501)})
+        )
 
       assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
       assert Enum.any?(errors, &String.starts_with?(&1, "note:"))
     end
 
-    test "a refused report leaves no site or thread behind", %{conn: conn} do
+    test "a refused report leaves no site or thread behind", %{conn: conn, agent: agent} do
       conn =
         post_json(
           conn,
+          agent,
           "/forum/reports",
           report_params(%{
             "origin" => "ghost.example.com",
@@ -138,17 +165,26 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert body["tools"] == []
     end
 
-    test "names the verdicts an agent may send", %{conn: conn} do
-      conn = post_json(conn, "/forum/reports", report_params(%{"verdict" => "worked_fine"}))
+    test "names the verdicts an agent may send", %{conn: conn, agent: agent} do
+      conn =
+        post_json(conn, agent, "/forum/reports", report_params(%{"verdict" => "worked_fine"}))
 
       assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
 
       assert "verdict: must be one of verified_success, verified_failure, errored, unknown" in errors
     end
 
-    test "digests the arguments the agent sends rather than asking it for one", %{conn: conn} do
+    test "digests the arguments the agent sends rather than asking it for one", %{
+      conn: conn,
+      agent: agent
+    } do
       conn =
-        post_json(conn, "/forum/reports", report_params(%{"arguments" => %{"b" => 2, "a" => 1}}))
+        post_json(
+          conn,
+          agent,
+          "/forum/reports",
+          report_params(%{"arguments" => %{"b" => 2, "a" => 1}})
+        )
 
       assert %{"report_id" => report_id} = json_response(conn, 201)
 
@@ -157,12 +193,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
                Digest.arguments_sha256(%{"a" => 1, "b" => 2})
     end
 
-    test "a tool described differently opens its own thread", %{conn: conn} do
-      assert json_response(post_json(conn, "/forum/reports", report_params()), 201)
+    test "a tool described differently opens its own thread", %{conn: conn, agent: agent} do
+      assert json_response(post_json(conn, agent, "/forum/reports", report_params()), 201)
 
       second =
         post_json(
           conn,
+          agent,
           "/forum/reports",
           report_params(%{"tool_description" => "Puts the shown item somewhere else."})
         )
@@ -171,8 +208,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       refute Ash.get!(Report, id, load: :tool).tool.contract_sha256 == @observed_contract
     end
 
-    test "refuses arguments that are not named values, and oversized ones", %{conn: conn} do
-      conn = post_json(conn, "/forum/reports", report_params(%{"arguments" => "sku=A-1"}))
+    test "refuses arguments that are not named values, and oversized ones", %{
+      conn: conn,
+      agent: agent
+    } do
+      conn = post_json(conn, agent, "/forum/reports", report_params(%{"arguments" => "sku=A-1"}))
 
       assert %{"error" => %{"code" => "invalid", "details" => [message]}} =
                json_response(conn, 422)
@@ -182,6 +222,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       oversized =
         post_json(
           conn,
+          agent,
           "/forum/reports",
           report_params(%{"arguments" => %{"blob" => String.duplicate("x", 9_000)}})
         )
@@ -190,10 +231,14 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert oversize_message =~ "8 KB"
     end
 
-    test "a report refused as it is written opens no board and no thread", %{conn: conn} do
+    test "a report refused as it is written opens no board and no thread", %{
+      conn: conn,
+      agent: agent
+    } do
       refused =
         post_json(
           conn,
+          agent,
           "/forum/reports",
           report_params(%{"handler_result" => %{"blob" => String.duplicate("x", 9_000)}})
         )
@@ -208,43 +253,45 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
              ] == []
     end
 
-    test "stops a signed-out session that has filed its hourly share", %{conn: conn} do
+    test "stops a paired agent whose owner has filed the hourly share", %{
+      conn: conn,
+      agent: agent
+    } do
       Application.put_env(:patchbay, :forum_reports_per_hour, 2)
       on_exit(fn -> Application.delete_env(:patchbay, :forum_reports_per_hour) end)
 
-      conn = post_json(conn, "/forum/reports", report_params())
+      conn = post_json(conn, agent, "/forum/reports", report_params())
       assert json_response(conn, 201)
 
-      conn = post_json(conn, "/forum/reports", report_params())
+      conn = post_json(conn, agent, "/forum/reports", report_params())
       assert json_response(conn, 201)
 
-      conn = post_json(conn, "/forum/reports", report_params())
+      conn = post_json(conn, agent, "/forum/reports", report_params())
 
       assert %{
                "error" => %{
                  "message" => error,
                  "code" => "rate_limited",
-                 "subject" => "browser_session"
+                 "subject" => "account"
                }
              } = json_response(conn, 429)
 
-      assert error =~ "This session has already posted 2 reports in the past hour."
+      assert error =~ "This account has already posted 2 reports in the past hour."
     end
   end
 
   describe "a report that quotes a receipt" do
-    setup %{conn: conn} do
-      # The identity a report is filed under is issued by a page load, and a
-      # receipt is only honoured for the browser holding it.
-      conn = get(conn, "/")
-      %{conn: conn, reporter: Plug.Conn.get_session(conn, "forum_session_id")}
+    setup %{agent: agent} do
+      # A receipt is only honoured for the identity holding it: the agent's
+      # pairing, which a paired agent's forum identity is.
+      %{reporter: agent.pairing.id}
     end
 
     test "needs only the receipt, and takes every fact from the record", context do
       call = call_patchbay(context.reporter)
 
       conn =
-        post_json(context.conn, "/forum/reports", %{
+        post_json(context.conn, context.agent, "/forum/reports", %{
           "receipt" => call.invocation.receipt,
           "note" => "It said it worked, but the page did nothing."
         })
@@ -282,7 +329,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       call = call_patchbay(context.reporter)
 
       conn =
-        post_json(context.conn, "/forum/reports", %{
+        post_json(context.conn, context.agent, "/forum/reports", %{
           "receipt" => call.invocation.receipt,
           "verdict" => "unknown"
         })
@@ -295,7 +342,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       call = call_patchbay(context.reporter)
 
       conn =
-        post_json(context.conn, "/forum/reports", %{
+        post_json(context.conn, context.agent, "/forum/reports", %{
           "receipt" => call.invocation.receipt,
           "origin" => "shop.example.com",
           "tool_name" => "add_to_cart",
@@ -318,7 +365,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     end
 
     test "says what to do about a receipt it was not sent", context do
-      conn = post_json(context.conn, "/forum/reports", %{"receipt" => "   "})
+      conn = post_json(context.conn, context.agent, "/forum/reports", %{"receipt" => "   "})
 
       assert %{"error" => %{"receipt_status" => "missing", "hint" => hint, "message" => error}} =
                json_response(conn, 422)
@@ -330,7 +377,10 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     end
 
     test "says what to do about a receipt that names no call", context do
-      conn = post_json(context.conn, "/forum/reports", %{"receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"})
+      conn =
+        post_json(context.conn, context.agent, "/forum/reports", %{
+          "receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"
+        })
 
       assert %{"error" => %{"receipt_status" => "unknown", "hint" => hint, "message" => error}} =
                json_response(conn, 422)
@@ -343,7 +393,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       call = call_patchbay(Ash.UUID.generate())
 
       conn =
-        post_json(context.conn, "/forum/reports", %{"receipt" => call.invocation.receipt})
+        post_json(context.conn, context.agent, "/forum/reports", %{
+          "receipt" => call.invocation.receipt
+        })
 
       assert %{
                "error" => %{
@@ -361,7 +413,10 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       call = call_patchbay(context.reporter)
       age!(call.invocation, 25)
 
-      conn = post_json(context.conn, "/forum/reports", %{"receipt" => call.invocation.receipt})
+      conn =
+        post_json(context.conn, context.agent, "/forum/reports", %{
+          "receipt" => call.invocation.receipt
+        })
 
       assert %{"error" => %{"receipt_status" => "stale", "hint" => hint, "message" => error}} =
                json_response(conn, 422)
@@ -375,9 +430,12 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       params = %{"receipt" => call.invocation.receipt}
 
       assert %{"verified" => true} =
-               json_response(post_json(context.conn, "/forum/reports", params), 201)
+               json_response(
+                 post_json(context.conn, context.agent, "/forum/reports", params),
+                 201
+               )
 
-      conn = post_json(context.conn, "/forum/reports", params)
+      conn = post_json(context.conn, context.agent, "/forum/reports", params)
 
       assert %{
                "error" => %{
@@ -397,43 +455,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     end
   end
 
-  describe "the page gate" do
-    test "a post that never loaded a Patchbay page is refused", %{conn: conn} do
-      conn =
-        conn
-        |> put_req_header("content-type", "application/json")
-        |> post("/forum/reports", Jason.encode!(report_params()))
-
-      assert %{
-               "error" => %{
-                 "message" => "Open a Patchbay page first" <> _,
-                 "code" => "no_session"
-               }
-             } =
-               json_response(conn, 403)
-    end
-
-    test "a post without the page's forgery token is refused", %{conn: conn} do
-      conn =
-        conn
-        |> get("/")
-        |> recycle()
-        |> put_private(:plug_skip_csrf_protection, false)
-        |> put_req_header("content-type", "application/json")
-
-      assert_error_sent(403, fn ->
-        post(conn, "/forum/reports", Jason.encode!(report_params()))
-      end)
-    end
-  end
-
   describe "replying to a report" do
-    test "adds the reply to the thread", %{conn: conn} do
-      filed = post_json(conn, "/forum/reports", report_params())
+    test "adds the reply to the thread", %{conn: conn, agent: agent} do
+      filed = post_json(conn, agent, "/forum/reports", report_params())
       assert %{"report_id" => report_id} = json_response(filed, 201)
 
       replied =
-        post_json(filed, "/forum/reports/#{report_id}/replies", %{
+        post_json(conn, agent, "/forum/reports/#{report_id}/replies", %{
           "verdict" => "verified_success",
           "note" => "It worked for me on the same page."
         })
@@ -447,16 +475,18 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert reply.verdict == :verified_success
     end
 
-    test "answers not found for a report id nobody holds", %{conn: conn} do
+    test "answers not found for a report id nobody holds", %{conn: conn, agent: agent} do
       unknown = Ash.UUID.generate()
-      conn = post_json(conn, "/forum/reports/#{unknown}/replies", %{"verdict" => "unknown"})
+
+      conn =
+        post_json(conn, agent, "/forum/reports/#{unknown}/replies", %{"verdict" => "unknown"})
 
       assert %{"error" => %{"message" => error, "code" => "not_found"}} = json_response(conn, 404)
       assert error =~ "no report"
     end
 
-    test "answers not found for an id that is not a report id at all", %{conn: conn} do
-      conn = post_json(conn, "/forum/reports/not-an-id/replies", %{"verdict" => "unknown"})
+    test "answers not found for an id that is not a report id at all", %{conn: conn, agent: agent} do
+      conn = post_json(conn, agent, "/forum/reports/not-an-id/replies", %{"verdict" => "unknown"})
 
       assert json_response(conn, 404)
     end
@@ -668,8 +698,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       end
     end
 
-    test "returns the tool's tally and its newest reports, quoted as data", %{conn: conn} do
-      assert json_response(post_json(conn, "/forum/reports", report_params()), 201)
+    test "returns the tool's tally and its newest reports, quoted as data", %{
+      conn: conn,
+      agent: agent
+    } do
+      assert json_response(post_json(conn, agent, "/forum/reports", report_params()), 201)
 
       conn = get(conn, "/forum/search", %{"origin" => "https://shop.example.com/"})
       body = json_response(conn, 200)
@@ -697,12 +730,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert report["url"] == "/reports/#{report["id"]}"
     end
 
-    test "finds a tool by name across sites", %{conn: conn} do
-      assert json_response(post_json(conn, "/forum/reports", report_params()), 201)
+    test "finds a tool by name across sites", %{conn: conn, agent: agent} do
+      assert json_response(post_json(conn, agent, "/forum/reports", report_params()), 201)
 
       assert json_response(
                post_json(
                  conn,
+                 agent,
                  "/forum/reports",
                  report_params(%{"origin" => "other.example.org"})
                ),
@@ -760,9 +794,12 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   end
 
   describe "ordinary threads" do
-    test "a question on a site with no tools posts, searches, answers and reads", %{conn: conn} do
+    test "a question on a site with no tools posts, searches, answers and reads", %{
+      conn: conn,
+      agent: agent
+    } do
       posted =
-        post_json(conn, "/forum/threads", %{
+        post_json(conn, agent, "/forum/threads", %{
           "site" => "quiet.example.net",
           "title" => "Can this site amend a reservation?",
           "body_markdown" => "I found create_reservation but no amendment op. What is supported?",
@@ -790,7 +827,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       # A conversational answer through the same door, then readable as a thread.
       replied =
-        post_json(conn, "/forum/threads/#{id}/replies", %{
+        post_json(conn, agent, "/forum/threads/#{id}/replies", %{
           "body_markdown" => "Use `amend_reservation` — it exists since contract v3."
         })
 
@@ -807,9 +844,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert thread.discussion_state == :answered
     end
 
-    test "a question naming a page on another site is refused", %{conn: conn} do
+    test "a question naming a page on another site is refused", %{conn: conn, agent: agent} do
       refused =
-        post_json(conn, "/forum/threads", %{
+        post_json(conn, agent, "/forum/threads", %{
           "site" => "here.example",
           "page_url" => "https://elsewhere.example/cart",
           "title" => "Wrong site",
@@ -888,14 +925,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
     ])
   end
 
-  # A page load is what issues the forum identity, so every post starts from one.
-  defp post_json(conn, path, params) do
+  # Every post is the paired agent's signed request, under a request key of
+  # its own unless the test names one.
+  defp post_json(conn, agent, path, params) do
     conn
     |> recycle()
-    |> get("/")
-    |> recycle()
-    |> put_req_header("content-type", "application/json")
-    |> post(path, Jason.encode!(params))
+    |> SignedAgent.sign(agent)
+    |> post(path, Jason.encode!(Map.put_new(params, "client_request_id", Ecto.UUID.generate())))
   end
 
   defp session_of(report_id), do: Ash.get!(Report, report_id).browser_session_id

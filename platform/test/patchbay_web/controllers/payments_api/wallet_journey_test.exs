@@ -6,6 +6,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   import Plug.Conn
   alias Patchbay.Escrow.Watch
   alias Patchbay.Identity
+  alias PatchbayWeb.SignedAgent
 
   @funded_at 1_790_000_000
   @intents "/api/agent/payment_intents"
@@ -101,6 +102,10 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       end)
 
     Application.put_env(:patchbay, :wallet_author, broker_url: broker)
+    old_siwa = Application.fetch_env!(:regent_agents, :siwa)
+    old_req_options = Application.fetch_env!(:regent_agents, :req_options)
+    Application.put_env(:regent_agents, :siwa, Keyword.put(old_siwa, :url, broker))
+    Application.put_env(:regent_agents, :req_options, [])
 
     Application.put_env(:patchbay, :escrow,
       contract_address: "0x" <> String.duplicate("c", 40),
@@ -121,7 +126,13 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     other_address = Siwa.EvmPersonalSign.public_key_to_address(other_public)
     other_receipt = issue_receipt(secret, other_address)
 
+    # Both wallets are agents paired with a person, each with their own.
+    SignedAgent.pair!(nil, address)
+    SignedAgent.pair!(nil, other_address)
+
     on_exit(fn ->
+      Application.put_env(:regent_agents, :siwa, old_siwa)
+      Application.put_env(:regent_agents, :req_options, old_req_options)
       Application.put_env(:patchbay, :wallet_author, old_wallet)
       Application.put_env(:patchbay, :escrow, old_escrow)
     end)

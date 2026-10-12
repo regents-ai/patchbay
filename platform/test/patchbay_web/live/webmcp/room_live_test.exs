@@ -10,6 +10,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures, RoomEntrance, RoomEvent}
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
 
   # What a repair writes into the timeline, so the room's other entries can be
@@ -21,11 +22,13 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     "Repair finished"
   ]
 
-  # Every room here is opened by the person it belongs to, who alone may change it.
+  # Every room here is opened by the person it belongs to, who alone may change
+  # it, and their paired agent calls the room's tools with signed requests.
   setup %{conn: conn} do
     owner = room_owner()
     room = Domain.create_seeded_room!(RoomEntrance.personal_slug(owner))
     conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(owner.id)
+    SignedAgent.stub_siwa()
 
     previous_fallback = Application.get_env(:patchbay, :demo_fallback)
     Application.put_env(:patchbay, :demo_fallback, true)
@@ -38,7 +41,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       end
     end)
 
-    %{conn: conn, room: room}
+    %{conn: conn, room: room, agent: SignedAgent.pair!(owner)}
   end
 
   test "renders the seeded room with stable editor and state identifiers", %{
@@ -103,7 +106,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "the prompt strip marks the step the room is on and names the tool it offers now", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
@@ -112,7 +116,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert has_element?(view, "li.patchbay-prompt-chip.is-waiting #patchbay-prompt-retry")
 
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     assert Domain.get_room_by_id!(room.id).status == :failed
     assert has_element?(view, "li[aria-current=\"step\"] #patchbay-prompt-repair")
@@ -139,11 +143,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "the room and the board say a tool did not work in the same words", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
     html = render(view)
 
     assert html =~ "Did not work"
@@ -172,10 +177,14 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            )
   end
 
-  test "resetting the demo asks before it throws the room away", %{conn: conn, room: room} do
+  test "resetting the demo asks before it throws the room away", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     view |> element("#patchbay-reset") |> render_click()
 
@@ -207,11 +216,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "timeline entries carry a machine timestamp for the client to word", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     event =
       Domain.list_room_events!(query: [filter: [room_id: room.id], sort: [sequence: :asc]])
@@ -288,10 +298,14 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
              "contract, what the handler returned, and the short fingerprints of what this page was showing."
   end
 
-  test "shows the invocation arguments beside the raw handler result", %{conn: conn, room: room} do
+  test "shows the invocation arguments beside the raw handler result", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     assert has_element?(view, "#patchbay-invocation-arguments", "instructions")
     assert has_element?(view, "#patchbay-invocation-arguments", "clarify the workflow")
@@ -300,11 +314,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "states the sample-answer sentence required by the specification", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     assert has_element?(
              view,
@@ -321,11 +336,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "shows both tool names and contract digests before human approval", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     render_click(view, "request_repair")
     render_async(view, 2_000)
@@ -355,11 +371,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "asking for a repair records it on the room, and the page shows only that one", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     render_click(view, "request_repair")
     render_async(view, 2_000)
@@ -394,35 +411,23 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "an agent can ask for the repair, and asking twice does not start a second one", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    render_hook(view, "webmcp_request_repair", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id
-    })
+    assert %{"status" => "ready_for_approval", "requires_owner_approval" => true} =
+             request_repair(agent, room, session) |> json_response(200)
 
-    assert_reply(view, %{
-      "status" => "repair_requested",
-      "tool_can_publish" => false,
-      "detail" => detail
-    })
-
-    assert detail =~ "cannot approve or publish one"
-
-    # The diagnosis runs beside this test, so the room is read once it has
-    # settled rather than at a moment mid-flight the test cannot pin down.
-    html = render_async(view, 2_000)
+    html = render(view)
     assert html =~ "CONTRACT DIFF"
     assert html =~ "DETERMINISTIC CANARY"
     assert html =~ "Approve &amp; hot-swap"
 
-    # The proposal is waiting for a person, so a further request only says so.
-    render_hook(view, "webmcp_request_repair", %{"room_id" => room.id})
-    assert_reply(view, %{"status" => "proposal_ready", "tool_can_publish" => false})
+    # The proposal is waiting for a person, so a further request makes no other.
+    assert request_repair(agent, room, session) |> json_response(422)
 
     # Asking twice left one proposal behind, and neither ask published anything.
     assert [proposal] = Domain.list_repair_proposals!(query: [filter: [room_id: room.id]])
@@ -430,44 +435,30 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).desired_tool_generation == 1
   end
 
-  test "an agent asking before any failure is told there is nothing to repair", %{
+  test "an agent asking before any failure gets no repair", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
 
-    render_hook(view, "webmcp_request_repair", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id
-    })
-
-    assert_reply(view, %{"status" => "no_failed_invocation", "tool_can_publish" => false})
+    assert request_repair(agent, room, session) |> json_response(422)
 
     assert Domain.get_room_by_id!(room.id).status == :ready
     assert Domain.list_repair_proposals!(query: [filter: [room_id: room.id]]) == []
-
-    html =
-      render_hook(view, "webmcp_request_repair", %{
-        "room_id" => Ash.UUID.generate(),
-        "browser_session_id" => session.id
-      })
-
-    assert html =~ "event belongs to another room"
-    assert Domain.get_room_by_id!(room.id).status == :ready
   end
 
-  test "no event a page tool can send approves or publishes a repair", %{conn: conn, room: room} do
+  test "no event a page tool can send approves or publishes a repair", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    render_hook(view, "webmcp_request_repair", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id
-    })
-
-    render_async(view, 2_000)
+    request_repair(agent, room, session) |> json_response(200)
     proposal = latest_proposal(room)
     assert proposal.status == :ready_for_approval
 
@@ -569,11 +560,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "a forged upload event cannot change the Source Skill while the room is working", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     locked = Domain.get_room_by_id!(room.id)
     assert locked.status != :ready
@@ -630,91 +622,46 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert html =~ "Choose a Markdown Skill file before uploading."
   end
 
-  test "shows a visible failure when live inference is unavailable", %{conn: conn, room: room} do
+  test "shows a visible failure when live inference is unavailable", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     without_live_inference(fn ->
       {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
       session = bootstrap(view, room)
-      revision = desired_revision(room)
 
-      render_hook(view, "webmcp_invocation_begin", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "request_uuid" => Ash.UUID.generate(),
-        "tool_name" => revision.name,
-        "contract_sha256" => revision.contract_sha256,
-        "arguments" => %{"instructions" => "uplift without a model"}
-      })
+      %{"invocation_id" => invocation_id} =
+        invoke(agent, room, session, "uplift without a model") |> json_response(200)
 
-      invocation = latest_invocation(room)
-
-      render_hook(view, "webmcp_execute", %{
-        "invocation_id" => invocation.id,
-        "invocation_epoch" => invocation_epoch(view)
-      })
-
-      html = render_async(view, 2_000)
+      html = render(view)
 
       assert html =~ "No answer from our model"
       assert html =~ "No new version was made, so nothing changed."
-      assert Domain.get_invocation!(invocation.id).effective_status == :errored
+      assert Domain.get_invocation!(invocation_id).effective_status == :errored
       assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
     end)
   end
 
-  # The browser reports the page state after every call, whatever the handler
+  # The agent reports the page state after every call, whatever the handler
   # did, so a call that failed before visible proof answers with that failure.
   test "answers a post-state report for a call that already failed with the failure",
-       %{conn: conn, room: room} do
+       %{conn: conn, room: room, agent: agent} do
     without_live_inference(fn ->
       {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
       session = bootstrap(view, room)
-      revision = desired_revision(room)
 
-      render_hook(view, "webmcp_invocation_begin", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "request_uuid" => Ash.UUID.generate(),
-        "tool_name" => revision.name,
-        "contract_sha256" => revision.contract_sha256,
-        "arguments" => %{"instructions" => "uplift without a model"}
-      })
-
-      invocation = latest_invocation(room)
-
-      render_hook(view, "webmcp_execute", %{
-        "invocation_id" => invocation.id,
-        "invocation_epoch" => invocation_epoch(view)
-      })
-
-      render_async(view, 2_000)
-      assert Domain.get_invocation!(invocation.id).effective_status == :errored
+      %{"invocation_id" => invocation_id, "effective_status" => "errored"} =
+        invoke(agent, room, session, "uplift without a model") |> json_response(200)
 
       room = Domain.get_room_by_id!(room.id)
 
-      render_hook(view, "webmcp_poststate_observed", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "invocation_id" => invocation.id,
-        "post_state" => %{
-          "ui_revision" => room.ui_revision,
-          "source" => %{"present" => true, "sha256" => room.source_sha256},
-          "candidate" => %{"present" => false, "sha256" => nil}
-        }
-      })
+      assert %{"invocation_id" => ^invocation_id, "effective_status" => "errored"} =
+               room_request(agent, room, session, "invocations/#{invocation_id}/observations", %{
+                 "post_state" => visible_state(room)
+               })
+               |> json_response(200)
 
-      assert_reply(view, %{
-        "effective_status" => "errored",
-        "handler_reported_success" => false,
-        "handler_result" => %{"error" => handler_error},
-        "next_action" => next_action
-      })
-
-      assert handler_error =~ "model_generation_failed"
-      assert next_action =~ "call the tool again"
-      assert Process.alive?(view.pid)
       assert render(view) =~ "No answer from our model"
     end)
   end
@@ -724,7 +671,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   # all three of them together. The second half leaves the application setting
   # off, so the environment flag alone is what all three of them read.
   test "the demo fallback switch moves the health probe, the generator, and the room together",
-       %{conn: conn, room: room} do
+       %{conn: conn, room: room, agent: agent} do
     without_live_inference(fn ->
       refute Config.demo_fallback?()
 
@@ -738,24 +685,9 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
       session = bootstrap(view, room)
-      revision = desired_revision(room)
+      invoke(agent, room, session, "uplift with the switch off") |> json_response(200)
 
-      render_hook(view, "webmcp_invocation_begin", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "request_uuid" => Ash.UUID.generate(),
-        "tool_name" => revision.name,
-        "contract_sha256" => revision.contract_sha256,
-        "arguments" => %{"instructions" => "uplift with the switch off"}
-      })
-
-      render_hook(view, "webmcp_execute", %{
-        "invocation_id" => latest_invocation(room).id,
-        "invocation_epoch" => invocation_epoch(view)
-      })
-
-      assert render_async(view, 2_000) =~ "No answer from our model"
+      assert render(view) =~ "No answer from our model"
 
       System.put_env("PATCHBAY_DEMO_FALLBACK", "true")
 
@@ -770,7 +702,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
                })
 
       render_click(view, "reset_demo")
-      invoke_v1(view, room, bootstrap(view, room))
+      invoke_v1(view, room, bootstrap(view, room), agent)
 
       assert has_element?(
                view,
@@ -790,10 +722,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).source_sha256 == Digest.sha256(source)
   end
 
-  test "locks the source once invocation evidence exists", %{conn: conn, room: room} do
+  test "locks the source once invocation evidence exists", %{conn: conn, room: room, agent: agent} do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
     original_source = Domain.get_room_by_id!(room.id).source_markdown
 
     html =
@@ -807,33 +739,15 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "shows raw success beside effective visible failure and fallback provenance", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    revision = desired_revision(room)
+    invoke(agent, room, session, "clarify the workflow") |> json_response(200)
 
-    _accepted_html =
-      render_hook(view, "webmcp_invocation_begin", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "request_uuid" => Ash.UUID.generate(),
-        "tool_name" => revision.name,
-        "contract_sha256" => revision.contract_sha256,
-        "arguments" => %{"instructions" => "clarify the workflow"}
-      })
-
-    invocation = latest_invocation(room)
-
-    render_hook(view, "webmcp_execute", %{
-      "invocation_id" => invocation.id,
-      "invocation_epoch" => invocation_epoch(view)
-    })
-
-    awaiting_html = render_async(view, 2_000)
-    assert awaiting_html =~ "Awaiting Visible State"
-    html = observe_latest_poststate(view, room, session)
+    assert render(view) =~ "Awaiting Visible State"
+    html = observe_latest_poststate(view, room, session, agent)
 
     assert html =~ "Raw handler result"
     assert html =~ "success"
@@ -844,35 +758,20 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
   end
 
-  test "hands the agent a receipt for the call, bound to this browser", %{conn: conn, room: room} do
+  test "hands the agent a receipt for the call, bound to this browser", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
     forum_session_id = Plug.Conn.get_session(conn, "forum_session_id")
     {:ok, view, _html} = live(conn)
     session = bootstrap(view, room)
-    revision = desired_revision(room)
 
-    render_hook(view, "webmcp_invocation_begin", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "request_uuid" => Ash.UUID.generate(),
-      "tool_name" => revision.name,
-      "contract_sha256" => revision.contract_sha256,
-      "arguments" => %{"instructions" => "clarify the workflow"}
-    })
+    %{"invocation_id" => invocation_id, "receipt" => receipt} =
+      invoke(agent, room, session, "clarify the workflow") |> json_response(200)
 
-    invocation = latest_invocation(room)
-
-    render_hook(view, "webmcp_execute", %{
-      "invocation_id" => invocation.id,
-      "invocation_epoch" => invocation_epoch(view)
-    })
-
-    render_async(view, 2_000)
-
-    assert_push_event(view, "patchbay:" <> _topic, %{"patchbay_receipt" => receipt})
-
-    assert receipt == Domain.get_invocation!(invocation.id).receipt
+    assert receipt == Domain.get_invocation!(invocation_id).receipt
     assert receipt =~ ~r/\A[A-Za-z0-9_-]{22}\z/
 
     # The receipt belongs to the browser that made the call, so a report quoting
@@ -883,7 +782,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "runs repair, human approval, observed generation, retry, and reset on one page", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
 
@@ -896,7 +796,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).status == :ready
 
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     render_click(view, "request_repair")
     html = render_async(view, 2_000)
@@ -954,7 +854,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     retry_event = "patchbay:#{room.id}:ui_retry_started"
     assert_push_event(view, ^retry_event, %{"invocation_id" => _invocation_id})
 
-    html = observe_latest_poststate(view, room, session)
+    html = observe_latest_poststate(view, room, session, agent)
 
     assert html =~ "Verification passed"
     assert html =~ Digest.sha256(Fixtures.improved_markdown())
@@ -991,13 +891,14 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "an open page hot-swaps a tool the worker published on a report", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    file_verified_report!(room, session)
+    file_verified_report!(room, agent)
 
     # The worker runs outside this page's process, exactly as it does in the
     # deployed room.
@@ -1019,12 +920,16 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert has_element?(view, "#patchbay-room-reports .pb-badge--patchbay")
   end
 
-  test "the card follows a repair the worker is still running", %{conn: conn, room: room} do
+  test "the card follows a repair the worker is still running", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    report = file_verified_report!(room, session)
+    report = file_verified_report!(room, agent)
 
     # A repair claimed and stepped forward the way the worker steps it, so the
     # page is watched part-way through instead of only after it has finished.
@@ -1056,13 +961,14 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "a finished repair leaves every step behind it, in the timeline too", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    file_verified_report!(room, session)
+    file_verified_report!(room, agent)
     assert {:ok, %{status: :published}} = PatchbayAgent.sweep()
 
     render(view)
@@ -1080,12 +986,16 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
            ]
   end
 
-  test "the card says which step a repair stopped on, and why", %{conn: conn, room: room} do
+  test "the card says which step a repair stopped on, and why", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    file_verified_report!(room, session)
+    file_verified_report!(room, agent)
 
     assert {:ok, %{status: :errored}} = without_repair_budget(&PatchbayAgent.sweep/0)
 
@@ -1105,10 +1015,14 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   # A repair that cannot even be attempted still has to land on the page, or the
   # visitor is left watching a room that says it is diagnosing forever.
-  test "a repair the model cannot attempt leaves the room in error", %{conn: conn, room: room} do
+  test "a repair the model cannot attempt leaves the room in error", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     without_live_inference(fn ->
       render_click(view, "request_repair")
@@ -1151,12 +1065,12 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert timeline_sequences(view) == [1]
   end
 
-  test "a reset clears a finished repair off the card", %{conn: conn, room: room} do
+  test "a reset clears a finished repair off the card", %{conn: conn, room: room, agent: agent} do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
-    file_verified_report!(room, session)
+    file_verified_report!(room, agent)
     assert {:ok, %{status: :published}} = PatchbayAgent.sweep()
 
     render_click(view, "reset_demo")
@@ -1165,10 +1079,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     refute has_element?(view, "#patchbay-agent-stopped")
   end
 
-  test "reset invalidates a stale repair callback", %{conn: conn, room: room} do
+  test "reset invalidates a stale repair callback", %{conn: conn, room: room, agent: agent} do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    invoke_v1(view, room, session)
+    invoke_v1(view, room, session, agent)
 
     render_click(view, "request_repair")
 
@@ -1218,29 +1132,19 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "reset broadcasts its epoch and cancels work begun in another tab", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, reset_view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     {:ok, stale_view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(stale_view, room)
-    revision = desired_revision(room)
-    request_uuid = Ash.UUID.generate()
 
-    render_hook(stale_view, "webmcp_invocation_begin", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => 0,
-      "request_uuid" => request_uuid,
-      "tool_name" => revision.name,
-      "contract_sha256" => revision.contract_sha256,
-      "arguments" => %{"instructions" => "wait across reset"}
-    })
-
-    invocation = latest_invocation(room)
-    assert invocation.effective_status == :started
+    %{"invocation_id" => invocation_id} =
+      invoke(agent, room, session, "wait across reset") |> json_response(200)
 
     render_click(reset_view, "reset_demo")
     reset_event = "patchbay:#{room.id}:reset_browser_registry"
+
     assert_push_event(stale_view, ^reset_event, %{"invocation_epoch" => 1})
 
     # The page that clicked is on the room's channel too, so it hears its own
@@ -1255,70 +1159,51 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
                reset_socket
              )
 
-    html =
-      render_hook(stale_view, "webmcp_execute", %{
-        "invocation_id" => invocation.id,
-        "invocation_epoch" => 0
-      })
+    # The call made before the reset cannot be finished with the page evidence
+    # from before it.
+    assert room_request(agent, room, session, "invocations/#{invocation_id}/observations", %{
+             "post_state" => visible_state(Domain.get_room_by_id!(room.id))
+           })
+           |> json_response(403)
 
-    assert html =~ "invocation belongs to an earlier room lifecycle"
     assert invocation_epoch(stale_view) == 1
-    assert Domain.get_invocation!(invocation.id).effective_status == :cancelled
+    assert Domain.get_invocation!(invocation_id).effective_status == :cancelled
   end
 
-  test "begin failures return an error without terminating the room", %{conn: conn, room: room} do
+  test "a request id already used for one call cannot carry another", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    revision = desired_revision(room)
     request_uuid = Ash.UUID.generate()
 
-    params = %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "request_uuid" => request_uuid,
-      "tool_name" => revision.name,
-      "contract_sha256" => revision.contract_sha256,
-      "arguments" => %{"instructions" => "first request"}
-    }
+    invoke(agent, room, session, "first request", request_uuid) |> json_response(200)
+    invoke(agent, room, session, "conflicting replay", request_uuid) |> json_response(422)
 
-    render_hook(view, "webmcp_invocation_begin", params)
+    assert [%{arguments: %{"instructions" => "first request"}}] =
+             Domain.list_invocations!(query: [filter: [room_id: room.id]])
 
-    html =
-      render_hook(view, "webmcp_invocation_begin", %{
-        params
-        | "arguments" => %{"instructions" => "conflicting replay"}
-      })
-
-    assert html =~ "request UUID is already bound to different invocation evidence"
     assert render(view) =~ "Skill Uplift Studio"
   end
 
-  test "the browser can durably cancel a begun invocation", %{conn: conn, room: room} do
+  test "an agent can durably cancel its call before the page proves it", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
-    revision = desired_revision(room)
 
-    render_hook(view, "webmcp_invocation_begin", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "request_uuid" => Ash.UUID.generate(),
-      "tool_name" => revision.name,
-      "contract_sha256" => revision.contract_sha256,
-      "arguments" => %{"instructions" => "cancel me"}
-    })
+    %{"invocation_id" => invocation_id} =
+      invoke(agent, room, session, "cancel me") |> json_response(200)
 
-    invocation = latest_invocation(room)
+    assert %{"effective_status" => "cancelled"} =
+             room_request(agent, room, session, "invocations/#{invocation_id}/cancel", %{})
+             |> json_response(200)
 
-    render_hook(view, "webmcp_invocation_cancel", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "invocation_id" => invocation.id
-    })
-
-    assert Domain.get_invocation!(invocation.id).effective_status == :cancelled
+    assert Domain.get_invocation!(invocation_id).effective_status == :cancelled
   end
 
   test "discloses a browser registry error instead of accepting a forged room event", %{
@@ -1363,53 +1248,48 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   test "rejects post-state evidence from a different browser session", %{
     conn: conn,
-    room: room
+    room: room,
+    agent: agent
   } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     first_session = bootstrap(view, room)
-    invoke_v1(view, room, first_session)
-
-    invocation =
-      Domain.list_invocations!(
-        query: [filter: [room_id: room.id], sort: [started_at: :desc], limit: 1]
-      )
-      |> List.first()
-
+    invoke_v1(view, room, first_session, agent)
+    invocation = latest_invocation(room)
     second_session = bootstrap(view, room)
 
     events_before =
       Domain.list_room_events!(query: [filter: [room_id: room.id], sort: [sequence: :asc]])
 
-    html =
-      render_hook(view, "webmcp_poststate_observed", %{
-        "room_id" => room.id,
-        "browser_session_id" => second_session.id,
-        "invocation_id" => invocation.id,
-        "post_state" => %{}
-      })
-
-    assert html =~ "post-state observation must come from the invocation browser session"
+    assert room_request(
+             agent,
+             room,
+             second_session,
+             "invocations/#{invocation.id}/observations",
+             %{"post_state" => visible_state(Domain.get_room_by_id!(room.id))}
+           )
+           |> json_response(403)
 
     assert length(Domain.list_room_events!(query: [filter: [room_id: room.id]])) ==
              length(events_before)
   end
 
-  test "rejects a stale or forged tool revision before invocation", %{conn: conn, room: room} do
+  test "rejects a stale or forged tool revision before invocation", %{
+    conn: conn,
+    room: room,
+    agent: agent
+  } do
     {:ok, view, _html} = live(conn, ~p"/webmcp/rooms/#{room.slug}")
     session = bootstrap(view, room)
 
-    html =
-      render_hook(view, "webmcp_invocation_begin", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "request_uuid" => Ash.UUID.generate(),
-        "tool_name" => "uplift_current_skill_v2",
-        "contract_sha256" => String.duplicate("0", 64),
-        "arguments" => %{"instructions" => "bypass the current revision"}
-      })
+    assert room_request(agent, room, session, "invocations", %{
+             "tool_name" => "uplift_current_skill_v2",
+             "contract_sha256" => String.duplicate("0", 64),
+             "request_uuid" => Ash.UUID.generate(),
+             "arguments" => %{"instructions" => "bypass the current revision"},
+             "pre_state" => visible_state(Domain.get_room_by_id!(room.id))
+           })
+           |> json_response(422)
 
-    assert html =~ "invoked tool name and contract must match the current desired revision"
     assert Domain.list_invocations!(query: [filter: [room_id: room.id]]) == []
   end
 
@@ -1495,9 +1375,9 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     |> List.first()
   end
 
-  # One receipt-verified report about the call this page just made, filed by the
-  # same browser, which is the only kind the worker acts on.
-  defp file_verified_report!(room, session) do
+  # One receipt-verified report about the call the paired agent just made, filed
+  # under that agent's pairing, which is the only kind the worker acts on.
+  defp file_verified_report!(room, agent) do
     revision = desired_revision(room)
     invocation = latest_invocation(room)
     site = Patchbay.Forum.register_site!(Patchbay.Forum.RoomMirror.origin())
@@ -1515,7 +1395,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     report =
       Patchbay.Forum.file_report!(%{
         tool_id: tool.id,
-        browser_session_id: Domain.get_browser_session!(session.id).forum_session_id,
+        browser_session_id: agent.pairing.id,
         arguments_sha256: invocation.arguments_sha256,
         handler_result: %{"reported_success" => true},
         observed: %{"candidate_present" => false},
@@ -1599,6 +1479,8 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
   defp restore_env(_name, nil), do: :ok
   defp restore_env(name, value), do: System.put_env(name, value)
 
+  # The page's browser session as its bootstrap reply hands it over: the
+  # session's id and the evidence a signed room request carries.
   defp bootstrap(view, room) do
     client_instance_id = Ash.UUID.generate()
 
@@ -1611,37 +1493,15 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       })
 
     assert html =~ "WebMCP connected"
-
-    Domain.list_browser_sessions!(
-      query: [filter: [room_id: room.id], sort: [connected_at: :desc], limit: 1]
-    )
-    |> List.first()
+    assert_reply(view, %{"browser_session_id" => id, "page_evidence" => page_evidence})
+    %{id: id, client_instance_id: client_instance_id, page_evidence: page_evidence}
   end
 
-  defp invoke_v1(view, room, session) do
-    revision = desired_revision(room)
+  defp invoke_v1(view, room, session, agent) do
+    invoke(agent, room, session, "clarify the workflow") |> json_response(200)
 
-    _accepted_html =
-      render_hook(view, "webmcp_invocation_begin", %{
-        "room_id" => room.id,
-        "browser_session_id" => session.id,
-        "invocation_epoch" => invocation_epoch(view),
-        "request_uuid" => Ash.UUID.generate(),
-        "tool_name" => revision.name,
-        "contract_sha256" => revision.contract_sha256,
-        "arguments" => %{"instructions" => "clarify the workflow"}
-      })
-
-    invocation = latest_invocation(room)
-
-    render_hook(view, "webmcp_execute", %{
-      "invocation_id" => invocation.id,
-      "invocation_epoch" => invocation_epoch(view)
-    })
-
-    awaiting_html = render_async(view, 2_000)
-    assert awaiting_html =~ "Awaiting Visible State"
-    html = observe_latest_poststate(view, room, session)
+    assert render(view) =~ "Awaiting Visible State"
+    html = observe_latest_poststate(view, room, session, agent)
 
     assert html =~ "Raw handler result"
     assert html =~ "success"
@@ -1651,29 +1511,57 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     assert Domain.get_room_by_id!(room.id).candidate_markdown == nil
   end
 
-  defp observe_latest_poststate(view, room, session) do
+  # The paired agent calls the tool the room offers now, from the state the page
+  # shows now.
+  defp invoke(agent, room, session, instructions, request_uuid \\ Ash.UUID.generate()) do
+    room = Domain.get_room_by_id!(room.id)
+    revision = desired_revision(room)
+
+    room_request(agent, room, session, "invocations", %{
+      "tool_name" => revision.name,
+      "contract_sha256" => revision.contract_sha256,
+      "request_uuid" => request_uuid,
+      "arguments" => %{"instructions" => instructions},
+      "pre_state" => visible_state(room)
+    })
+  end
+
+  defp observe_latest_poststate(view, room, session, agent) do
     room = Domain.get_room_by_id!(room.id)
 
-    invocation =
-      Domain.list_invocations!(
-        query: [filter: [room_id: room.id], sort: [started_at: :desc], limit: 1]
-      )
-      |> List.first()
+    room_request(
+      agent,
+      room,
+      session,
+      "invocations/#{latest_invocation(room).id}/observations",
+      %{"post_state" => visible_state(room)}
+    )
+    |> json_response(200)
 
-    render_hook(view, "webmcp_poststate_observed", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "invocation_id" => invocation.id,
-      "post_state" => %{
-        "ui_revision" => room.ui_revision,
-        "source" => %{"present" => true, "sha256" => room.source_sha256},
-        "candidate" => %{
-          "present" => is_binary(room.candidate_markdown),
-          "sha256" => room.candidate_sha256
-        }
+    render(view)
+  end
+
+  defp request_repair(agent, room, session),
+    do: room_request(agent, room, session, "repair_requests", %{})
+
+  defp visible_state(room) do
+    %{
+      "ui_revision" => room.ui_revision,
+      "source" => %{"present" => true, "sha256" => room.source_sha256},
+      "candidate" => %{
+        "present" => is_binary(room.candidate_markdown),
+        "sha256" => room.candidate_sha256
       }
-    })
+    }
+  end
+
+  defp room_request(agent, room, session, path, params) do
+    build_conn()
+    |> SignedAgent.sign(agent)
+    |> post(
+      "/api/agent/rooms/#{room.slug}/#{path}",
+      Jason.encode!(Map.put(params, "page_evidence", session.page_evidence))
+    )
   end
 
   defp desired_revision(room) do

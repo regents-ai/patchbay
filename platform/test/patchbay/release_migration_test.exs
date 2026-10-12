@@ -25,6 +25,12 @@ defmodule Patchbay.ReleaseMigrationTest do
   test "a fresh migration command uses the release connection, reruns harmlessly and restores runtime config" do
     {config, database, name} = disposable_database()
 
+    # Regents migrates the shared agent pairings and Credits ledger before any
+    # site release runs; the release only checks that they are there.
+    Application.put_env(:patchbay, Repo, database)
+    RegentAgents.Migrator.up(Repo)
+    RegentCredits.Migrator.up(Repo)
+
     # If the release falls back to runtime configuration, this user/database cannot connect.
     runtime = Keyword.merge(config, username: "unusable_runtime", database: "unusable_runtime")
     Application.put_env(:patchbay, Repo, runtime)

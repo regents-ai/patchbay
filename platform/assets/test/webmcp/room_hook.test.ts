@@ -7,11 +7,13 @@ import {
   boundedJson,
   buildPermanentTools,
   buildRevisionTool,
+  PERMANENT_TOOL_NAMES,
 } from "../../js/webmcp/tool_definitions.ts";
 import {validateArguments} from "../../js/webmcp/invocation_bridge.ts";
 import type {ExecuteOptions, RoomReply, ToolInput, ToolRevision} from "../../js/webmcp/invocation_bridge.ts";
 import {PatchbayWebMCP} from "../../js/webmcp/room_hook.ts";
 import type {PatchbayHook} from "../../js/webmcp/room_hook.ts";
+import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 type ToolAnnotations = {readOnlyHint?: boolean; untrustedContentHint?: boolean};
 
@@ -36,9 +38,6 @@ type ListedTool = Omit<PageTool, "inputSchema" | "execute"> & {
 /** What the page sent with an event, as the fake LiveView recorded it. */
 type SentPayload = {
   [field: string]: unknown;
-  request_uuid?: string;
-  invocation_id?: string;
-  invocation_epoch?: number;
   tool_name?: string;
   room_id?: string;
   browser_session_id?: string;
@@ -46,7 +45,6 @@ type SentPayload = {
   observed_generation?: number;
   observed_tool_names?: string[];
   observed_contracts?: Record<string, string>;
-  post_state?: Awaited<ReturnType<typeof captureRoomState>>;
 };
 
 type SentEvent = {event: string; payload: SentPayload};
@@ -63,22 +61,23 @@ type SetupOptions = {
   bootstrapOrigin?: string;
   bootstrapRevisions?: ToolRevision[];
   bootstrapError?: string | null;
-  asyncInvocation?: boolean;
-  onInvocationBegin?: (payload: SentPayload, document: Document) => void;
-  invocationReply?: RoomReply;
-  executeReply?: RoomReply;
-  deferInvocationResult?: boolean;
-  repairReply?: RoomReply;
-  postStateReply?: RoomReply;
   registryError?: string;
   pushTimeoutMs?: number;
 };
+
+const PAGE_ORIGIN = "https://patchbay.test";
+const PROOF = Object.fromEntries(manifest.proof_headers.map(name => [name, `signed-${name}`]));
+const INVOCATION_ID = "8d0f3b5e-5a51-4c2e-9d55-2f7f4b1d9a10";
+
+/** A request the page sent to the room's agent door, as the fake network saw it. */
+type SentRequest = {url: string; init: RequestInit & {headers: Record<string, string>; body: string}};
 
 class Element extends EventTarget {
   declare id: string;
   declare dataset: DOMStringMap;
   declare value: string;
   declare textContent: string;
+  declare content: string;
   declare ownerDocument: Document | null;
   declare attributes: Record<string, string>;
 
@@ -88,6 +87,7 @@ class Element extends EventTarget {
     this.dataset = {...dataset};
     this.value = value;
     this.textContent = textContent;
+    this.content = "";
     this.ownerDocument = null;
     this.attributes = {};
   }
@@ -116,6 +116,8 @@ class Document extends EventTarget {
     this.add("patchbay-source-editor", {}, "server source", "stale source");
     this.add("patchbay-candidate-editor", {}, "", "stale candidate");
     this.add("patchbay-invocation-evidence", {}, "", "");
+    // The origin the page's layout names as the one signed requests may go to.
+    this.add("agent-request-origin").content = PAGE_ORIGIN;
   }
 
   add(id: string, dataset: DOMStringMap = {}, value = "", textContent = ""): Element {
@@ -127,6 +129,8 @@ class Document extends EventTarget {
 
   querySelector(selector: string): Element | null {
     if (selector.startsWith("#")) return this.elements.get(selector.slice(1)) ?? null;
+    const meta = /^meta\[name="(.+)"\]$/.exec(selector);
+    if (meta) return this.elements.get(meta[1]) ?? null;
     return null;
   }
 }
@@ -178,10 +182,11 @@ class ModelContext extends EventTarget {
   }
 }
 
-// The island only trusts a registry entry that belongs to this page, so the fake
-// browser has to have an origin and a window like a real one does.
-(globalThis as {window?: object}).window ??= {name: "patchbay-test-window"};
-(globalThis as {location?: {origin: string}}).location ??= {origin: "https://patchbay.test"};
+// The island only trusts a registry entry that belongs to this page, and signed
+// requests only go to the page's own origin, so the fake browser has to have an
+// origin and a window like a real one does.
+(globalThis as {location?: {origin: string}}).location ??= {origin: PAGE_ORIGIN};
+(globalThis as {window?: object}).window ??= {name: "patchbay-test-window", location: globalThis.location};
 
 function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options: SetupOptions = {}) {
   const document = new Document(roomId);
@@ -193,7 +198,6 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options: 
   marker.ownerDocument = document;
   const events: SentEvent[] = [];
   const callbacks = new Map<string, EventCallback>();
-  let pendingRequestUuid: string | undefined;
   const hook = {
     el: marker,
     pushEvent(event: string, payload: SentPayload, callback?: (reply: RoomReply) => void) {
@@ -208,46 +212,9 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options: 
           desired_generation: options.bootstrapGeneration ?? 1,
           origin: options.bootstrapOrigin ?? "patchbay.help",
           revisions: options.bootstrapRevisions ?? [],
+          page_evidence: `evidence-${roomId}`,
         };
         if (options.bootstrapError) reply = {error: options.bootstrapError};
-      } else if (event === "webmcp_invocation_begin") {
-        pendingRequestUuid = payload.request_uuid;
-        options.onInvocationBegin?.(payload, document);
-        if (!options.onInvocationBegin) {
-          document.querySelector("#patchbay-room-state")!.dataset.uiRevision = "1";
-        }
-        reply = options.invocationReply ?? {
-          invocation_id: "invocation-1",
-          request_uuid: payload.request_uuid,
-          effective_status: "started",
-        };
-      } else if (event === "webmcp_execute") {
-        reply = options.executeReply ?? {
-          accepted: true,
-          invocation_id: payload.invocation_id,
-          request_uuid: pendingRequestUuid,
-        };
-        if (!options.deferInvocationResult && reply.ui_commit_required === undefined) {
-          queueMicrotask(() => queueMicrotask(() => {
-            callbacks.get(`patchbay:${roomId}:invocation_result`)?.({
-              invocation_id: payload.invocation_id,
-              request_uuid: pendingRequestUuid,
-              invocation_epoch: hook.invocationEpoch,
-              expected_ui_revision: 1,
-              ui_commit_required: true,
-              effective_status: "awaiting_visible_state",
-              handler_result: {reported_success: true},
-            });
-          }));
-        }
-      } else if (event === "webmcp_request_repair") {
-        reply = options.repairReply ?? {
-          status: "repair_requested",
-          detail: "Patchbay is working out a repair.",
-          tool_can_publish: false,
-        };
-      } else if (event === "webmcp_poststate_observed") {
-        reply = options.postStateReply ?? {effective_status: "verified_success"};
       } else if (event === "webmcp_registry_reconciled" && options.registryError) {
         reply = {error: options.registryError};
       } else {
@@ -278,6 +245,28 @@ function revision(name: string, generation: number, digest: string): ToolRevisio
     },
     annotations: {readOnlyHint: false, untrustedContentHint: true},
   };
+}
+
+/**
+ * Answer every signed request the page sends with `answer`, and hand back the
+ * requests in the order they went out.
+ */
+function serveRoom(answer: (request: SentRequest) => RoomReply | Promise<RoomReply>, status = 200) {
+  const sent: SentRequest[] = [];
+  globalThis.fetch = (async (url: string, init: SentRequest["init"]) => {
+    const request = {url, init};
+    sent.push(request);
+    const body = await answer(request);
+    return {ok: status < 400, status, json: async () => body};
+  }) as unknown as typeof globalThis.fetch;
+  return sent;
+}
+
+/** Prepare `operation` on the room's page and sign it as the agent's own signer would. */
+async function signedCall(value: Setup, operation: string, fields: ToolInput = {}) {
+  const prepare = value.context.tools.get("prepare_patchbay_room_request")!;
+  const prepared = JSON.parse(await prepare.execute!({operation, ...fields}));
+  return {input: prepared.input, request: prepared.request, proof: PROOF};
 }
 
 async function waitFor<T>(predicate: () => T, timeoutMs = 1000): Promise<NonNullable<T>> {
@@ -343,11 +332,14 @@ test("registers permanent tools and v1 once, then hot-swaps to a distinct v2", a
   assert.deepEqual(
     [...(await context.getTools())].map(tool => tool.name).sort(),
     [
+      "cancel_patchbay_room_call",
+      "finish_patchbay_room_call",
       "get_patchbay_room_state",
+      "prepare_patchbay_room_request",
       "request_patchbay_repair",
       "uplift_current_skill_v1",
       "verify_skill_uplift_goal",
-    ].sort(),
+    ],
   );
   const callsAfterFirstRegistration = context.registerCalls.length;
   await value.callbacks.get(desired)!({room_id: "registry-room", generation: 1, revisions: [v1]});
@@ -382,90 +374,80 @@ test("validates the JSON Schema instruction character limit", () => {
   assert.match(validateArguments({instructions: "é".repeat(1001)})!, /1000 characters/);
 });
 
-test("executes the two-phase bridge against the committed DOM state", async () => {
+test("a signed call goes to the room as prepared and hands back an observation of the committed editor", async () => {
   const candidate = "---\nname: visible\n---\n\n# Visible candidate\n";
-  const value = setup("two-phase-room", {
-    onInvocationBegin(_payload, document) {
-      document.querySelector("#patchbay-candidate-editor")!.value = candidate;
-      document.querySelector("#patchbay-room-state")!.dataset.uiRevision = "1";
-    },
-  });
+  const value = setup("signed-call-room");
   await PatchbayWebMCP.mounted.call(value.hook);
   const v2 = revision("uplift_current_skill_v2", 2, "2".repeat(64));
-  await reconcileTo(value, {room_id: "two-phase-room", generation: 2, revisions: [v2]});
+  await reconcileTo(value, {room_id: "signed-call-room", generation: 2, revisions: [v2]});
+  const state = value.document.querySelector("#patchbay-room-state")!;
+  state.dataset.desiredGeneration = "2";
+  const sent = serveRoom(() => {
+    // The room commits the new candidate to the page after it answers.
+    setTimeout(() => {
+      value.document.querySelector("#patchbay-candidate-editor")!.value = candidate;
+      state.dataset.uiRevision = "1";
+    }, 5);
+    return {invocation_id: INVOCATION_ID, ui_commit_required: true, expected_ui_revision: 1};
+  });
 
-  const result = await value.context.tools.get(v2.name)!.execute!({instructions: "make it visible"});
-  const begin = value.events.find(event => event.event === "webmcp_invocation_begin")!;
-  const observed = value.events.find(event => event.event === "webmcp_poststate_observed")!;
+  const call = await signedCall(value, "invoke", {arguments_json: JSON.stringify({instructions: "make it visible"})});
+  const result = JSON.parse(await value.context.tools.get(v2.name)!.execute!(call));
 
-  assert.equal(JSON.parse(result).effective_status, "verified_success");
-  assert.equal(begin.payload.tool_name, v2.name);
-  assert.equal(observed.payload.invocation_id, "invocation-1");
-  assert.equal(observed.payload.post_state!.ui_revision, 1);
-  assert.equal(observed.payload.post_state!.candidate.sha256, await sha256Hex(candidate));
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].url, `${PAGE_ORIGIN}/api/agent/rooms/skill-uplift/invocations`);
+  assert.equal(sent[0].init.body, call.request.body);
+  assert.equal(sent[0].init.credentials, "omit");
+  assert.equal(sent[0].init.headers["x-siwa-signature"], PROOF["x-siwa-signature"]);
+  const invoked = JSON.parse(sent[0].init.body);
+  assert.equal(invoked.tool_name, v2.name);
+  assert.equal(invoked.contract_sha256, v2.contract_sha256);
+  assert.equal(invoked.page_evidence, "evidence-signed-call-room");
+  assert.deepEqual(invoked.arguments, {instructions: "make it visible"});
+  assert.equal(invoked.pre_state.ui_revision, 0);
+
+  // Nothing was signed or sent for the observation: the agent signs it fresh.
+  assert.equal(result.invocation_id, INVOCATION_ID);
+  assert.equal(result.verification, "not_recorded");
   assert.equal(
-    observed.payload.post_state!.source.sha256,
+    result.observation.request.path,
+    `/api/agent/rooms/skill-uplift/invocations/${INVOCATION_ID}/observations`,
+  );
+  const observed = JSON.parse(result.observation.input.raw_body);
+  assert.equal(observed.page_evidence, "evidence-signed-call-room");
+  assert.equal(observed.post_state.ui_revision, 1);
+  assert.equal(observed.post_state.candidate.sha256, await sha256Hex(candidate));
+  assert.equal(
+    observed.post_state.source.sha256,
     await sha256Hex(value.document.querySelector("#patchbay-source-editor")!.value),
   );
 });
 
-test("waits for an asynchronous LiveView invocation result", async () => {
-  const value = setup("async-invocation-room", {
-    asyncInvocation: true,
-    onInvocationBegin(_payload, document) {
-      document.querySelector("#patchbay-room-state")!.dataset.uiRevision = "1";
-    },
-  });
+test("a UI revision timeout still records visible failed proof", async () => {
+  const value = setup("revision-timeout-room");
   await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "async-invocation-room", generation: 1, revisions: [v1]});
+  const v2 = revision("uplift_current_skill_v2", 2, "2".repeat(64));
+  await reconcileTo(value, {room_id: "revision-timeout-room", generation: 2, revisions: [v2]});
+  value.document.querySelector("#patchbay-room-state")!.dataset.desiredGeneration = "2";
+  const sent = serveRoom(() => ({invocation_id: INVOCATION_ID, ui_commit_required: true, expected_ui_revision: 1}));
 
+  const call = await signedCall(value, "invoke", {arguments_json: JSON.stringify({instructions: "time out visibly"})});
   const result = JSON.parse(
-    await value.context.tools.get(v1.name)!.execute!({instructions: "run asynchronously"}),
+    await value.context.tools.get(v2.name)!.execute!(call, {revisionTimeoutMs: 10}),
   );
 
-  assert.equal(result.effective_status, "verified_success");
-  assert.equal(result.reported_result.reported_success, true);
-  assert.equal(value.hook.pendingInvocations.size, 0);
-});
-
-test("hands the agent the receipt the server issued for the call", async () => {
-  const receipt = "Ab3xQ7pL-t2ZmR4nS_1wCg";
-  const value = setup("receipt-room", {
-    postStateReply: {effective_status: "verified_success", patchbay_receipt: receipt},
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "receipt-room", generation: 1, revisions: [v1]});
-
-  const result = JSON.parse(
-    await value.context.tools.get(v1.name)!.execute!({instructions: "make it warmer"}),
+  // The editor never moved, so the agent is handed the call and an observation
+  // of the room as it stands, for the room's verifier to record as a failure.
+  assert.equal(sent.length, 1);
+  assert.equal(result.invocation_id, INVOCATION_ID);
+  assert.equal(result.verification, "not_recorded");
+  assert.equal(result.observation.request.operation, "finish_patchbay_room_call");
+  assert.equal(
+    result.observation.request.path,
+    `/api/agent/rooms/skill-uplift/invocations/${INVOCATION_ID}/observations`,
   );
-
-  assert.equal(result.patchbay_receipt, receipt);
-});
-
-test("names the call to report, so the receipt cannot be missed", async () => {
-  const receipt = "Ab3xQ7pL-t2ZmR4nS_1wCg";
-  const value = setup("report-this-call-room", {
-    postStateReply: {
-      effective_status: "verified_failure",
-      patchbay_receipt: receipt,
-      report_this_call: {receipt},
-      next_action:
-        "Call report_tool_problem with receipt set to the patchbay_receipt value in this result.",
-    },
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "report-this-call-room", generation: 1, revisions: [v1]});
-
-  const result = JSON.parse(
-    await value.context.tools.get(v1.name)!.execute!({instructions: "make it warmer"}),
-  );
-
-  assert.deepEqual(result.report_this_call, {receipt});
-  assert.match(result.next_action, /^Call report_tool_problem with receipt set to/);
+  assert.equal(result.observation.input.invocation_id, INVOCATION_ID);
+  assert.equal(JSON.parse(result.observation.input.raw_body).post_state.ui_revision, 0);
 });
 
 test("the room state names the site and the tool a report would land on", async () => {
@@ -484,112 +466,6 @@ test("the room state names the site and the tool a report would land on", async 
     contract_sha256: "1".repeat(64),
     generation: 1,
   });
-});
-
-test("keeps the receipt when the result is too long to return whole", async () => {
-  const receipt = "Ab3xQ7pL-t2ZmR4nS_1wCg";
-  const value = setup("long-receipt-room", {
-    postStateReply: {
-      effective_status: "verified_success",
-      patchbay_receipt: receipt,
-      patchbay_verification: {passed: true, checks: {}, observed: {page: "z".repeat(9000)}},
-    },
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "long-receipt-room", generation: 1, revisions: [v1]});
-
-  const serialized = await value.context.tools.get(v1.name)!.execute!({instructions: "warmer"});
-  const result = JSON.parse(serialized);
-
-  assert.equal(result.patchbay_verification.details_truncated, true);
-  assert.equal(result.patchbay_receipt, receipt);
-});
-
-test("a dropped execute acknowledgement durably cancels the begun invocation", async () => {
-  const value = setup("cancel-invocation-room", {
-    asyncInvocation: true,
-    dropReplies: new Set(["webmcp_execute"]),
-    pushTimeoutMs: 10,
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "cancel-invocation-room", generation: 1, revisions: [v1]});
-
-  const result = JSON.parse(
-    await value.context.tools.get(v1.name)!.execute!({instructions: "drop execute"}),
-  );
-  const cancellation = await waitFor(
-    () => value.events.find(event => event.event === "webmcp_invocation_cancel"),
-  );
-
-  // A failure arrives in the one shape every refusal takes: a code, a sentence
-  // and the thing to do next.
-  assert.equal(result.error.code, "INVOCATION_FAILED");
-  assert.equal(result.error.retryable, true);
-  assert.match(result.error.message, /did not complete/);
-  assert.match(result.error.hint, /get_patchbay_room_state/);
-  assert.equal(cancellation.payload.invocation_id, "invocation-1");
-  assert.equal(cancellation.payload.invocation_epoch, 0);
-});
-
-test("reset rejects pending invocation work and ignores its stale result", async () => {
-  const value = setup("reset-invocation-room", {
-    asyncInvocation: true,
-    deferInvocationResult: true,
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "reset-invocation-room", generation: 1, revisions: [v1]});
-
-  const call = value.context.tools.get(v1.name)!.execute!({instructions: "remain pending"});
-  const beginEvent = await waitFor(
-    () => value.events.find(event => event.event === "webmcp_invocation_begin"),
-  );
-  const requestUuid = beginEvent.payload.request_uuid;
-  assert.equal(value.hook.pendingInvocations.size, 1);
-
-  await value.callbacks.get("patchbay:reset-invocation-room:reset_browser_registry")!({
-    room_id: "reset-invocation-room",
-    invocation_epoch: 1,
-  });
-  const reset = JSON.parse(await call);
-  assert.equal(reset.error.code, "INVOCATION_FAILED");
-  assert.match(reset.error.detail, /^Patchbay reset/);
-
-  value.callbacks.get("patchbay:reset-invocation-room:invocation_result")!({
-    request_uuid: requestUuid,
-    invocation_epoch: 0,
-    invocation_id: "stale-invocation",
-  });
-  assert.equal(value.hook.pendingInvocations.size, 0);
-});
-
-test("a UI revision timeout still records visible failed proof", async () => {
-  const value = setup("revision-timeout-room", {
-    onInvocationBegin() {},
-    postStateReply: {
-      effective_status: "verified_failure",
-      failure_code: "UI_REVISION_NOT_APPLIED",
-    },
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v2 = revision("uplift_current_skill_v2", 2, "2".repeat(64));
-  await reconcileTo(value, {room_id: "revision-timeout-room", generation: 2, revisions: [v2]});
-
-  const result = JSON.parse(
-    await value.context.tools.get(v2.name)!.execute!(
-      {instructions: "time out visibly"},
-      {revisionTimeoutMs: 10},
-    ),
-  );
-
-  assert.equal(result.effective_status, "verified_failure");
-  assert.equal(result.failure_code, "UI_REVISION_NOT_APPLIED");
-  assert.equal(
-    value.events.some(event => event.event === "webmcp_poststate_observed"),
-    true,
-  );
 });
 
 test("reset retires v2 and rebuilds v1 without touching foreign tools", async () => {
@@ -956,7 +832,10 @@ test("reconciliation reports a Patchbay tool the browser no longer holds", async
   const reported = [...value.events].reverse().find(event => event.event === "webmcp_registry_reconciled")!;
   assert.equal(reported.payload.observed_tool_names!.includes(v1.name), false);
   assert.deepEqual(reported.payload.observed_tool_names, [
+    "cancel_patchbay_room_call",
+    "finish_patchbay_room_call",
     "get_patchbay_room_state",
+    "prepare_patchbay_room_request",
     "request_patchbay_repair",
     "verify_skill_uplift_goal",
   ]);
@@ -1063,33 +942,27 @@ test("contract fields behind prototype accessors are still compared", async () =
 });
 
 test("a browser that reports a contract differently still reconciles as healthy", async () => {
-  const registeredSchema = {
-    type: "object",
-    required: ["instructions"],
-    additionalProperties: false,
-    properties: {instructions: {type: "string", minLength: 1, maxLength: 1000}},
-  };
   // Each row: how a browser might report the tools back, and how many contract
-  // fields that leaves unverifiable across the four registered tools.
+  // fields that leaves unverifiable across the seven registered tools.
   const variants: [string, (tool: ListedTool) => ListedTool, number][] = [
     ["exact echo", tool => ({...tool}), 0],
     ["missing untrustedContentHint", tool => ({
       ...tool,
       annotations: {readOnlyHint: tool.annotations!.readOnlyHint},
-    }), 4],
+    }), 7],
     ["annotations absent", tool => {
       const {annotations, ...rest} = tool;
       return rest;
-    }, 4],
+    }, 7],
     ["inputSchema absent", tool => {
       const {inputSchema, ...rest} = tool;
       return rest;
-    }, 4],
+    }, 7],
     ["inputSchema with an added $schema key", tool => ({
       ...tool,
       inputSchema: JSON.stringify({
         $schema: "https://json-schema.org/draft/2020-12/schema",
-        ...registeredSchema,
+        ...JSON.parse(tool.inputSchema!),
       }),
     }), 0],
     ["extra origin and window fields", tool => ({
@@ -1124,7 +997,10 @@ test("a browser that reports a contract differently still reconciles as healthy"
     assert.deepEqual(
       reported.payload.observed_tool_names,
       [
+        "cancel_patchbay_room_call",
+        "finish_patchbay_room_call",
         "get_patchbay_room_state",
+        "prepare_patchbay_room_request",
         "request_patchbay_repair",
         "uplift_current_skill_v1",
         "verify_skill_uplift_goal",
@@ -1181,7 +1057,10 @@ test("tools from another origin or window are never claimed as Patchbay's", asyn
 
   const reported = [...value.events].reverse().find(event => event.event === "webmcp_registry_reconciled")!;
   assert.deepEqual(reported.payload.observed_tool_names, [
+    "cancel_patchbay_room_call",
+    "finish_patchbay_room_call",
     "get_patchbay_room_state",
+    "prepare_patchbay_room_request",
     "request_patchbay_repair",
     "uplift_current_skill_v1",
     "verify_skill_uplift_goal",
@@ -1260,30 +1139,12 @@ test("shows an unsupported capability and reconstructs on reconnect", async () =
   assert.equal(value.hook.el.dataset.webmcpStatus, "connected");
 });
 
-test("revision waiter times out and invocation abort prevents the post-state bridge", async () => {
+test("revision waiter times out when the visible room never reaches the revision", async () => {
   const value = setup("abort-room");
   await assert.rejects(
     waitForRevision(value.document as unknown as ParentNode, 3, {timeoutMs: 10}),
     (error: {code?: string}) => error.code === "UI_REVISION_TIMEOUT",
   );
-
-  const controller = new AbortController();
-  const revisionValue = revision("uplift_current_skill_v1", 1, "b".repeat(64));
-  const pendingHook = {
-    ...value.hook,
-    activeRevision: revisionValue,
-    isRevisionCurrent: () => true,
-    pushEvent(event: string) {
-      if (event === "webmcp_invocation_begin") return new Promise<RoomReply>(() => {});
-      return Promise.resolve({effective_status: "verified_success"});
-    },
-  };
-  const tool = buildRevisionTool(pendingHook, revisionValue);
-  const call = tool.execute({instructions: "cancel me"}, {signal: controller.signal});
-  controller.abort();
-  const result = await call;
-  assert.match(result, /EXECUTION_CANCELLED/);
-  assert.equal(value.events.some(event => event.event === "webmcp_poststate_observed"), false);
 });
 
 test("the repair request tool asks the room and can only ask", async () => {
@@ -1294,65 +1155,32 @@ test("the repair request tool asks the room and can only ask", async () => {
 
   const registered = value.context.tools.get("request_patchbay_repair")!;
   assert.equal(registered.title, "Ask Patchbay to repair its broken tool");
-  assert.deepEqual(JSON.parse(registered.inputSchema!), {
-    type: "object",
-    properties: {},
-    additionalProperties: false,
-  });
+  assert.deepEqual(
+    JSON.parse(registered.inputSchema!),
+    manifest.tools.find(tool => tool.name === "request_patchbay_repair")!.input_schema,
+  );
 
-  const result = JSON.parse(await registered.execute!({}));
-  assert.equal(result.status, "repair_requested");
-  assert.equal(result.tool_can_publish, false);
+  const answer = {status: "ready_for_approval", requires_owner_approval: true};
+  const sent = serveRoom(() => answer);
+  const result = JSON.parse(await registered.execute!(await signedCall(value, "repair")));
 
-  const asked = [...value.events].reverse().find(event => event.event === "webmcp_request_repair")!;
-  assert.equal(asked.payload.room_id, "repair-request-room");
-  assert.equal(asked.payload.browser_session_id, "session-repair-request-room");
+  // The room's own answer comes back unchanged.
+  assert.deepEqual(result, answer);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].url, `${PAGE_ORIGIN}/api/agent/rooms/skill-uplift/repair_requests`);
+  assert.deepEqual(JSON.parse(sent[0].init.body), {page_evidence: "evidence-repair-request-room"});
 
   // Every tool the page hands the browser was exercised here; none of them can
-  // send the room anything but the enumerated observation events, and approval
-  // is not one of them.
+  // send the room anything but the enumerated observation events and the
+  // agent's signed ask, and approval is not one of them.
   await value.context.tools.get("get_patchbay_room_state")!.execute!({});
   await value.context.tools.get("verify_skill_uplift_goal")!.execute!({});
+  assert.equal(sent.length, 1);
   assert.equal(value.events.every(event => event.event.startsWith("webmcp_")), true);
   assert.equal(
     value.events.some(event => /approve|publish|reject/.test(event.event)),
     false,
   );
-});
-
-test("a repair request reports the room's answer and never claims approval", async () => {
-  const statuses = [
-    "repair_requested",
-    "already_in_progress",
-    "no_failed_invocation",
-    "proposal_ready",
-  ];
-
-  for (const status of statuses) {
-    const value = setup(`repair-status-${status}`, {
-      repairReply: {status, detail: `detail for ${status}`, tool_can_publish: false},
-    });
-    await PatchbayWebMCP.mounted.call(value.hook);
-
-    const result = JSON.parse(
-      await value.context.tools.get("request_patchbay_repair")!.execute!({}),
-    );
-    assert.equal(result.status, status);
-    assert.equal(result.detail, `detail for ${status}`);
-    assert.equal(result.tool_can_publish, false);
-    assert.match(result.summary, new RegExp(`${status}`));
-  }
-
-  const refused = setup("repair-refused-room", {
-    repairReply: {error: "event belongs to another room"},
-  });
-  await PatchbayWebMCP.mounted.call(refused.hook);
-  const result = JSON.parse(
-    await refused.context.tools.get("request_patchbay_repair")!.execute!({}),
-  );
-  assert.equal(result.status, undefined);
-  assert.equal(result.error.code, "REPAIR_REQUEST_FAILED");
-  assert.match(result.error.detail, /another room/);
 });
 
 /** Run `body` with console.info captured, and hand back what it logged. */
@@ -1374,9 +1202,9 @@ test("the console names every registered tool and the digest it went up under", 
 
   assert.equal(lines.length, 1);
   const [line] = lines;
-  assert.match(line, /registered 3 tools/);
+  assert.match(line, /registered 6 tools/);
 
-  for (const name of ["get_patchbay_room_state", "verify_skill_uplift_goal", "request_patchbay_repair"]) {
+  for (const name of PERMANENT_TOOL_NAMES) {
     const digest = value.hook.registeredDigests.get(name)!.reported;
     assert.ok(line.includes(`${name}@${digest}`), `${name} and its digest are named`);
   }
@@ -1424,61 +1252,25 @@ test("every permanent description names the check and the way to report a mismat
 });
 
 test("a second call while one is in flight is refused in the error shape", async () => {
-  const value = setup("busy-room", {asyncInvocation: true, deferInvocationResult: true});
+  const value = setup("busy-room");
   await PatchbayWebMCP.mounted.call(value.hook);
   const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
   await reconcileTo(value, {room_id: "busy-room", generation: 1, revisions: [v1]});
+  value.document.querySelector("#patchbay-room-state")!.dataset.desiredGeneration = "1";
+  let answer!: (reply: RoomReply) => void;
+  const sent = serveRoom(() => new Promise<RoomReply>(resolve => { answer = resolve; }), 422);
 
   const tool = value.context.tools.get(v1.name)!;
-  const first = tool.execute!({instructions: "hold the line"});
-  const second = JSON.parse(await tool.execute!({instructions: "cut in"}));
+  const call = await signedCall(value, "invoke", {arguments_json: JSON.stringify({instructions: "hold the line"})});
+  const first = tool.execute!(call);
+  const second = JSON.parse(await tool.execute!(call));
 
   assert.equal(second.error.code, "BUSY");
   assert.equal(second.error.retryable, true);
   assert.match(second.error.hint, /Wait for the call already in flight/);
 
-  await value.callbacks.get("patchbay:busy-room:reset_browser_registry")!({
-    room_id: "busy-room",
-    invocation_epoch: 1,
-  });
-  await first;
-});
-
-test("arguments the tool does not accept are refused with the rule they broke", async () => {
-  const value = setup("invalid-arguments-room");
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "invalid-arguments-room", generation: 1, revisions: [v1]});
-
-  const result = JSON.parse(
-    await value.context.tools.get(v1.name)!.execute!({instructions: "", extra: true}),
-  );
-
-  assert.equal(result.error.code, "INVALID_ARGUMENTS");
-  assert.match(result.error.hint, /instructions field/);
-  assert.equal(
-    value.events.some(event => event.event === "webmcp_invocation_begin"),
-    false,
-  );
-});
-
-test("a verified failure summarises the outcome and points at the receipt", async () => {
-  const value = setup("summary-failure-room", {
-    postStateReply: {
-      effective_status: "verified_failure",
-      failure_code: "CANDIDATE_EMPTY",
-      patchbay_receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
-    },
-  });
-  await PatchbayWebMCP.mounted.call(value.hook);
-  const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
-  await reconcileTo(value, {room_id: "summary-failure-room", generation: 1, revisions: [v1]});
-
-  const result = JSON.parse(
-    await value.context.tools.get(v1.name)!.execute!({instructions: "make it warmer"}),
-  );
-
-  assert.match(result.summary, /CANDIDATE_EMPTY/);
-  assert.match(result.summary, /report_tool_problem/);
-  assert.ok(result.summary.length <= 200);
+  await waitFor(() => sent.length === 1);
+  answer({error: {code: "request_already_used", message: "This request id already carried a call."}});
+  assert.equal(JSON.parse(await first).error.code, "request_already_used");
+  assert.equal(sent.length, 1);
 });

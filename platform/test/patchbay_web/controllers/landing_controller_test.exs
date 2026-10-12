@@ -3,6 +3,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
   alias Patchbay.Identity
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias PatchbayWeb.SignedAgent
 
   test "GET / is the report board", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
@@ -42,9 +43,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the form and the busiest sites, then the newest posts and the discussions",
-       %{conn: conn} do
-    visitor = get(conn, ~p"/")
+  test "GET / opens with the form and the busiest sites, then the newest posts and the discussions" do
+    visitor = visitor()
     ask(visitor, "quietshop.com", "Does the quiet site have a search tool?")
     ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busyshop.com", "Which tool lists the opening hours?")
@@ -76,9 +76,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert strip =~ ~s(href="/posts/)
   end
 
-  test "a search on the front page names the matching sites and tools and offers the question",
-       %{conn: conn} do
-    visitor = get(conn, ~p"/")
+  test "a search on the front page names the matching sites and tools and offers the question" do
+    visitor = visitor()
     ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
     with_card("busyshop.com")
 
@@ -94,13 +93,22 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert none =~ ~s(href="/?goal=nowhere-at-all#pb-hero")
   end
 
-  defp ask(conn, site, title) do
-    conn
-    |> recycle()
-    |> put_req_header("content-type", "application/json")
+  defp visitor do
+    SignedAgent.stub_siwa()
+    SignedAgent.pair!()
+  end
+
+  defp ask(agent, site, title) do
+    build_conn()
+    |> SignedAgent.sign(agent)
     |> post(
       "/forum/threads",
-      Jason.encode!(%{"site" => site, "title" => title, "body_markdown" => "What I tried."})
+      Jason.encode!(%{
+        "site" => site,
+        "title" => title,
+        "body_markdown" => "What I tried.",
+        "client_request_id" => Ecto.UUID.generate()
+      })
     )
     |> json_response(201)
   end

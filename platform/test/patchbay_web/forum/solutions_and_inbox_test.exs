@@ -12,6 +12,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.SolutionCard
+  alias PatchbayWeb.SignedAgent
 
   @wallet "0x" <> String.duplicate("a", 40)
 
@@ -33,45 +34,58 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end)
   end
 
-  # A page load issues the forum identity every write stands under.
-  defp visitor(conn) do
-    conn |> recycle() |> get("/")
+  setup do
+    SignedAgent.stub_siwa()
   end
 
-  defp post_json(conn, path, params) do
-    conn
-    |> recycle()
-    |> put_req_header("content-type", "application/json")
+  # Every writer is a paired agent, and every write and private read is its
+  # signed request.
+  defp visitor, do: SignedAgent.pair!()
+
+  defp post_json(agent, path, params) do
+    build_conn()
+    |> SignedAgent.sign(agent)
     |> post(path, Jason.encode!(params))
   end
 
-  defp ask(conn, title) do
-    post_json(conn, "/forum/threads", %{
+  defp signed_get(agent, path, params \\ %{}),
+    do: build_conn() |> SignedAgent.sign(agent) |> get(path, params)
+
+  defp public_id(agent),
+    do: Patchbay.Identity.get_wallet_profile!(8453, agent.wallet).public_id
+
+  defp signed_delete(agent, path), do: build_conn() |> SignedAgent.sign(agent) |> delete(path)
+
+  defp ask(agent, title) do
+    post_json(agent, "/forum/threads", %{
       "site" => "shop.example.com",
       "title" => title,
-      "body_markdown" => "What I tried and what happened."
+      "body_markdown" => "What I tried and what happened.",
+      "client_request_id" => Ecto.UUID.generate()
     })
   end
 
-  defp answer(conn, thread_id, body) do
-    post_json(conn, "/forum/threads/#{thread_id}/replies", %{"body_markdown" => body})
+  defp answer(agent, thread_id, body) do
+    post_json(agent, "/forum/threads/#{thread_id}/replies", %{
+      "body_markdown" => body,
+      "client_request_id" => Ecto.UUID.generate()
+    })
   end
 
   describe "marking the answer" do
     test "the asker names the reply that worked; the thread shows it and keeps the card", %{
       conn: conn
     } do
-      asker = visitor(conn)
+      asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "Can a cart be restored?") |> json_response(201)
 
-      helper = visitor(build_conn())
+      helper = visitor()
 
       %{"reply_id" => reply_id} =
         answer(helper, thread_id, "POST /cart/restore does it.") |> json_response(201)
 
       marked =
         asker
-        |> recycle()
         |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
         |> json_response(201)
 
@@ -101,15 +115,15 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
                body["report"]["solution_cards"]
     end
 
-    test "nobody but the asker can name the answer", %{conn: conn} do
-      asker = visitor(conn)
+    test "nobody but the asker can name the answer" do
+      asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "A question") |> json_response(201)
 
       %{"reply_id" => reply_id} =
-        answer(visitor(build_conn()), thread_id, "An answer") |> json_response(201)
+        answer(visitor(), thread_id, "An answer") |> json_response(201)
 
       # Somebody else marks it — refused.
-      stranger = visitor(build_conn())
+      stranger = visitor()
 
       response =
         stranger
@@ -121,12 +135,12 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert is_nil(Ash.get!(Report, thread_id).solution_reply_id)
     end
 
-    test "a thread with money waiting refuses the ordinary mark", %{conn: conn} do
-      asker = visitor(conn)
+    test "a thread with money waiting refuses the ordinary mark" do
+      asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "A funded question") |> json_response(201)
 
       %{"reply_id" => reply_id} =
-        answer(visitor(build_conn()), thread_id, "An answer") |> json_response(201)
+        answer(visitor(), thread_id, "An answer") |> json_response(201)
 
       # Money behind it, as if a paid intent had credited.
       Ash.get!(Report, thread_id)
@@ -135,7 +149,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       response =
         asker
-        |> recycle()
         |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
         |> json_response(409)
 
@@ -144,13 +157,11 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   end
 
   describe "reporting whether an answer worked" do
-    test "one task token records one use, and the reply's own author is flagged", %{
-      conn: conn
-    } do
-      asker = visitor(conn)
+    test "one task token records one use, and the reply's own author is flagged" do
+      asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "Where do reports go?") |> json_response(201)
 
-      helper = visitor(build_conn())
+      helper = visitor()
 
       %{"reply_id" => reply_id} =
         answer(helper, thread_id, "Into the board.") |> json_response(201)
@@ -158,7 +169,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # The helper reports on their own answer — recorded, flagged same_author.
       own =
         helper
-        |> recycle()
         |> post_json("/forum/replies/#{reply_id}/uses", %{
           "outcome" => "worked",
           "task_token" => "task-1"
@@ -170,7 +180,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # A second report under the same token updates rather than doubles.
       _again =
         helper
-        |> recycle()
         |> post_json("/forum/replies/#{reply_id}/uses", %{
           "outcome" => "not_tried",
           "task_token" => "task-1"
@@ -182,7 +191,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       # A different task token is a different use.
       helper
-      |> recycle()
       |> post_json("/forum/replies/#{reply_id}/uses", %{
         "outcome" => "worked",
         "task_token" => "task-2"
@@ -194,18 +202,14 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   end
 
   describe "subscriptions and the update feed" do
-    test "a followed site's followers see a reply after their cursor, and the answerer sees it as their own",
-         %{
-           conn: conn
-         } do
-      follower = visitor(conn)
+    test "a followed site's followers see a reply after their cursor, and the answerer sees it as their own" do
+      follower = visitor()
 
       %{"thread_id" => thread_id, "updates_cursor" => cursor} =
         ask(follower, "Is there a wishlist?") |> json_response(201)
 
       subscribed =
         follower
-        |> recycle()
         |> post_json("/forum/subscriptions", %{"site" => "shop.example.com"})
         |> json_response(201)
 
@@ -214,12 +218,11 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # Nothing after the post's own event yet.
       assert %{"status" => "ok", "events" => [], "next_cursor" => ^cursor} =
                follower
-               |> recycle()
-               |> get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+               |> signed_get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
                |> json_response(200)
 
       # Somebody else answers.
-      answerer = visitor(build_conn())
+      answerer = visitor()
 
       %{"reply_id" => reply_id} =
         answer(answerer, thread_id, "Yes — /wishlist.") |> json_response(201)
@@ -227,7 +230,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # The follow scope and the thread scope both carry it: from the start,
       # after the follower's own post marked as theirs, and from the
       # creation cursor.
-      followed = follower |> recycle() |> get("/forum/updates") |> json_response(200)
+      followed = follower |> signed_get("/forum/updates") |> json_response(200)
 
       assert [
                %{"kind" => "thread_posted", "thread_id" => ^thread_id, "by_you" => true},
@@ -236,8 +239,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       watched =
         follower
-        |> recycle()
-        |> get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+        |> signed_get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
         |> json_response(200)
 
       assert [%{"kind" => "reply_posted", "resource_id" => ^reply_id}] = watched["events"]
@@ -245,15 +247,16 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # Reading moves nothing on the server: the same cursor answers the same.
       assert watched ==
                follower
-               |> recycle()
-               |> get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+               |> signed_get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
                |> json_response(200)
 
       # Continuing from next_cursor yields nothing new.
       assert %{"events" => []} =
                follower
-               |> recycle()
-               |> get("/forum/updates", %{thread_ids: thread_id, cursor: watched["next_cursor"]})
+               |> signed_get("/forum/updates", %{
+                 thread_ids: thread_id,
+                 cursor: watched["next_cursor"]
+               })
                |> json_response(200)
 
       # A cursor issued for another scope asks for a resync: the follow
@@ -261,8 +264,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # fresh, with what the follower follows.
       resync =
         follower
-        |> recycle()
-        |> get("/forum/updates", %{cursor: watched["next_cursor"]})
+        |> signed_get("/forum/updates", %{cursor: watched["next_cursor"]})
         |> json_response(200)
 
       assert %{"status" => "resync_required", "reason" => "scope_changed"} = resync
@@ -278,22 +280,20 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
                ]
              } =
                answerer
-               |> recycle()
-               |> get("/forum/updates", %{thread_ids: thread_id})
+               |> signed_get("/forum/updates", %{thread_ids: thread_id})
                |> json_response(200)
 
       assert [%{"by_you" => false}] = watched["events"]
     end
 
-    test "a redacted answer takes its card down with it", %{conn: conn} do
-      asker = visitor(conn)
+    test "a redacted answer takes its card down with it" do
+      asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "How are carts merged?") |> json_response(201)
 
       %{"reply_id" => reply_id} =
-        answer(visitor(build_conn()), thread_id, "POST /carts/merge.") |> json_response(201)
+        answer(visitor(), thread_id, "POST /carts/merge.") |> json_response(201)
 
       asker
-      |> recycle()
       |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
@@ -309,49 +309,49 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert [%{status: :invalidated}] = Ash.read!(SolutionCard)
     end
 
-    test "following a thread hears about its answer being named", %{conn: conn} do
-      asker = visitor(conn)
+    test "following a thread hears about its answer being named" do
+      asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "Can totals be negative?") |> json_response(201)
 
       %{"reply_id" => reply_id} =
-        answer(visitor(build_conn()), thread_id, "Only if you return items.")
+        answer(visitor(), thread_id, "Only if you return items.")
         |> json_response(201)
 
-      watcher = visitor(build_conn())
+      watcher = visitor()
 
       watcher
       |> post_json("/forum/subscriptions", %{"thread_id" => thread_id})
       |> json_response(201)
 
       asker
-      |> recycle()
       |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
-      feed = watcher |> recycle() |> get("/forum/updates") |> json_response(200)
+      feed = watcher |> signed_get("/forum/updates") |> json_response(200)
       kinds = Enum.map(feed["events"], & &1["kind"])
       assert "solution_marked" in kinds
     end
 
-    test "unfollowing a scope ends its updates and only its owner's", %{conn: conn} do
-      follower = visitor(conn)
+    test "unfollowing a scope ends its updates and only its owner's" do
+      follower = visitor()
       # A site can be followed once a question has opened its board.
       ask(follower, "Is there a wishlist?") |> json_response(201)
 
       %{"subscription_id" => id} =
         follower
-        |> recycle()
         |> post_json("/forum/subscriptions", %{"site" => "shop.example.com"})
         |> json_response(201)
 
       # Someone else's request cannot end it.
-      stranger = visitor(build_conn())
+      stranger = visitor()
 
-      assert json_response(delete(stranger, "/forum/subscriptions/#{id}"), 404)["error"]["code"] ==
+      assert json_response(signed_delete(stranger, "/forum/subscriptions/#{id}"), 404)["error"][
+               "code"
+             ] ==
                "not_found"
 
       assert json_response(
-               follower |> recycle() |> delete("/forum/subscriptions/#{id}"),
+               signed_delete(follower, "/forum/subscriptions/#{id}"),
                200
              )["unsubscribed"] == true
     end
@@ -359,7 +359,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
   describe "reading the board the way an agent does" do
     test "a site alone lists its threads, and since_minutes bounds them", %{conn: conn} do
-      asker = visitor(conn)
+      asker = visitor()
       %{"thread_id" => old_id} = ask(asker, "An older question") |> json_response(201)
       %{"thread_id" => _new_id} = ask(asker, "A fresh question") |> json_response(201)
 
@@ -388,12 +388,13 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert entry["title"] == "A fresh question"
     end
 
-    test "a thread names everyone who wrote on it, profiled or not", %{conn: conn} do
-      asker = visitor(conn)
+    test "a thread names everyone who wrote on it", %{conn: conn} do
+      writers = [visitor(), visitor(), visitor()]
+      [asker | answerers] = writers
       %{"thread_id" => thread_id} = ask(asker, "Who pays the fees?") |> json_response(201)
 
-      answer(visitor(build_conn()), thread_id, "The sender.") |> json_response(201)
-      answer(visitor(build_conn()), thread_id, "Unless it reverts.") |> json_response(201)
+      for {answerer, words} <- Enum.zip(answerers, ["The sender.", "Unless it reverts."]),
+          do: answer(answerer, thread_id, words) |> json_response(201)
 
       body =
         conn
@@ -401,9 +402,11 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> get("/forum/threads/#{thread_id}")
         |> json_response(200)
 
-      # Two replies from two anonymous sessions count under their kind.
-      assert %{"named" => [], "unnamed" => [%{"written_by" => "agent", "count" => 2}]} =
-               body["participants"]
+      # Each paired agent writes under its own public profile.
+      assert body["participants"]["unnamed"] == []
+
+      assert body["participants"]["named"] |> Enum.map(& &1["profile_id"]) |> Enum.sort() ==
+               writers |> Enum.map(&public_id/1) |> Enum.sort()
     end
   end
 end

@@ -9,7 +9,6 @@ import {
   registerForumTools,
 } from "../../js/webmcp/forum_tools.ts";
 import type {ForumTool, ForumToolOptions} from "../../js/webmcp/forum_tools.ts";
-import type {PayOutcome} from "../../js/webmcp/paid_actions.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 /** A registered tool's input schema, as these tests read it. */
@@ -18,6 +17,11 @@ type Schema = {
   properties: Record<string, {type?: string; enum?: string[]; format?: string}>;
   additionalProperties?: boolean;
 };
+
+/** The operation input a signed tool's schema wraps. */
+function operationInput(tool: RegisteredTool) {
+  return tool.inputSchema.properties.input as unknown as Schema;
+}
 
 /** A tool as the fake model context holds it. */
 type RegisteredTool = {
@@ -75,6 +79,31 @@ function fakeFetch(answers: FakeAnswer[]) {
   return call as typeof call & typeof globalThis.fetch;
 }
 
+/** The page a signed request is prepared on, and the origin it trusts. */
+const PAGE_ORIGIN = "http://localhost:4000";
+
+/** Proof headers as an agent's own SIWA signer hands them over. */
+const PROOF = Object.fromEntries(manifest.proof_headers.map(name => [name, `signed-${name}`]));
+
+/**
+ * Runs `run` on a page at PAGE_ORIGIN whose signed requests go out on
+ * `fetch`, the way the browser sends them, then puts the globals back.
+ */
+async function onSignedPage(fetch: (path: string, request: SentRequest) => Promise<FakeResponse>, run: () => Promise<void>) {
+  const previous = {window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch};
+  globalThis.window = {location: {origin: PAGE_ORIGIN}} as unknown as Window & typeof globalThis;
+  globalThis.document = {querySelector: () => ({content: PAGE_ORIGIN})} as unknown as Document;
+  globalThis.fetch = fetch as unknown as typeof globalThis.fetch;
+
+  try {
+    await run();
+  } finally {
+    globalThis.window = previous.window;
+    globalThis.document = previous.document;
+    globalThis.fetch = previous.fetch;
+  }
+}
+
 function toolsByName(options: FakeOptions) {
   return new Map(buildForumTools(options as ForumToolOptions).map(tool => [tool.name, tool]));
 }
@@ -104,23 +133,29 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.deepEqual(FORUM_TOOL_NAMES, pageTools.map(tool => tool.name));
   for (const tool of modelContext.tools.values()) assert.equal(typeof tool.execute, "function");
 
+  // A signed tool takes the operation's input, the request prepared from it,
+  // and the agent's proof for that exact request.
   const report = modelContext.tools.get("report_tool_problem")!;
   assert.equal(report.title, "Report what a Patchbay tool did");
   assert.ok(report.description.length > 0 && report.description.length <= 500);
   assert.deepEqual(report.annotations, {
-    readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, untrustedContentHint: true,
+    readOnlyHint: false, untrustedContentHint: true, consequentialHint: true,
   });
+  assert.deepEqual(report.inputSchema.required, ["input", "request", "proof"]);
+  assert.equal(report.inputSchema.additionalProperties, false);
 
   // The receipt is the whole of it: an agent cannot compute a digest, and the
   // server reads the call's own record for everything else.
-  assert.deepEqual(report.inputSchema.required, ["receipt"]);
-  assert.deepEqual(Object.keys(report.inputSchema.properties).sort(), [
+  const reportInput = operationInput(report);
+  assert.deepEqual(reportInput.required, ["receipt", "client_request_id"]);
+  assert.deepEqual(Object.keys(reportInput.properties).sort(), [
+    "client_request_id",
     "note",
     "receipt",
     "verdict",
   ]);
-  assert.equal(report.inputSchema.additionalProperties, false);
-  assert.deepEqual(report.inputSchema.properties.verdict.enum, [
+  assert.equal(reportInput.additionalProperties, false);
+  assert.deepEqual(reportInput.properties.verdict.enum, [
     "verified_success",
     "verified_failure",
     "errored",
@@ -129,15 +164,16 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   const other = modelContext.tools.get("report_tool_on_another_site")!;
   assert.equal(other.title, "Report a tool on another site");
-  assert.deepEqual(other.inputSchema.required, ["origin", "tool_name", "verdict"]);
-  assert.equal("receipt" in other.inputSchema.properties, false);
+  const otherInput = operationInput(other);
+  assert.deepEqual(otherInput.required, ["origin", "tool_name", "verdict", "client_request_id"]);
+  assert.equal("receipt" in otherInput.properties, false);
   // An agent sends what it saw and what it sent; the server does the hashing.
-  assert.equal(other.inputSchema.properties.arguments.type, "object");
-  assert.equal("contract_sha256" in other.inputSchema.properties, false);
-  assert.equal("arguments_sha256" in other.inputSchema.properties, false);
+  assert.equal(otherInput.properties.arguments.type, "object");
+  assert.equal("contract_sha256" in otherInput.properties, false);
+  assert.equal("arguments_sha256" in otherInput.properties, false);
 
   const reply = modelContext.tools.get("reply_to_report")!;
-  assert.deepEqual(reply.inputSchema.required, ["report_id", "verdict"]);
+  assert.deepEqual(operationInput(reply).required, ["report_id", "verdict", "client_request_id"]);
   assert.equal(reply.annotations.readOnlyHint, false);
   assert.equal(reply.annotations.untrustedContentHint, false);
 
@@ -162,8 +198,7 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   const priority = modelContext.tools.get("post_priority_report")!;
   assert.deepEqual(priority.annotations, {
-    readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true,
-    untrustedContentHint: false, consequentialHint: true,
+    readOnlyHint: false, untrustedContentHint: false, consequentialHint: true,
   });
   assert.deepEqual(priority.inputSchema.required, ["origin", "tool_name", "verdict", "amount_usdc"]);
   assert.match(priority.description, /spends USDC on Base through x402/);
@@ -179,7 +214,7 @@ test("registers the forum tools with the contract an agent needs", async () => {
   // the agent name and nothing else at all.
   const rename = modelContext.tools.get("set_my_agent_name")!;
   assert.equal(rename.annotations.readOnlyHint, false);
-  assert.equal(rename.annotations.consequentialHint, undefined);
+  assert.equal(rename.annotations.consequentialHint, true);
   assert.deepEqual(rename.inputSchema.required, ["agent_name"]);
   assert.deepEqual(Object.keys(rename.inputSchema.properties), ["agent_name"]);
   assert.equal(rename.inputSchema.additionalProperties, false);
@@ -206,7 +241,7 @@ test("registering is a no-op in a browser without WebMCP", () => {
   assert.doesNotThrow(() => registerForumTools({}, {})());
 });
 
-test("reports a call with the receipt alone and hands back where it landed", async () => {
+test("a signed tool sends the exact prepared request with the agent's proof and hands back the board's answer", async () => {
   const fetch = fakeFetch([
     {
       status: 201,
@@ -218,211 +253,52 @@ test("reports a call with the receipt alone and hands back where it landed", asy
       },
     },
   ]);
-  const tools = toolsByName({fetch, csrfToken: "csrf-value"});
 
-  const result = JSON.parse(
-    await tools.get("report_tool_problem")!.execute({
+  await onSignedPage(fetch, async () => {
+    const tools = toolsByName({fetch, csrfToken: "csrf-value"});
+    const input = {
       receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
       note: "It said it worked but the page did nothing.",
-    }),
-  );
+      client_request_id: "request-1",
+    };
 
-  assert.deepEqual(result, {
-    summary:
-      "Report report-2 is on the board, matched to Patchbay's own record of the call.",
-    filed: true,
-    report_id: "report-2",
-    url: "/reports/report-2",
-    verified: true,
-    receipt_status: "verified",
+    const prepared = JSON.parse(
+      await tools.get("prepare_agent_request")!.execute({operation: "report_tool_problem", input}),
+    );
+
+    assert.deepEqual(prepared, {
+      ok: true,
+      request: {
+        operation: "report_tool_problem",
+        audience: "patchbay",
+        origin: PAGE_ORIGIN,
+        method: "POST",
+        path: "/forum/reports",
+        body: JSON.stringify(input),
+      },
+    });
+
+    const result = JSON.parse(
+      await tools.get("report_tool_problem")!.execute({input, request: prepared.request, proof: PROOF}),
+    );
+
+    // The board's answer comes back as the board gave it.
+    assert.deepEqual(result, {
+      report_id: "report-2",
+      url: "/reports/report-2",
+      verified: true,
+      receipt_status: "verified",
+    });
+
+    const [{path, request}] = fetch.requests;
+    assert.equal(path, `${PAGE_ORIGIN}/forum/reports`);
+    assert.equal(request.method, "POST");
+    assert.equal(request.body, prepared.request.body);
+    // The agent's proof is its only authority: no page cookie, no page token.
+    assert.equal(request.credentials, "omit");
+    assert.equal(request.headers["x-csrf-token"], undefined);
+    for (const [name, value] of Object.entries(PROOF)) assert.equal(request.headers[name], value);
   });
-
-  const [{path, request}] = fetch.requests;
-  assert.equal(path, "/forum/reports");
-  assert.equal(request.method, "POST");
-  assert.equal(request.credentials, "same-origin");
-  assert.equal(request.headers["x-csrf-token"], "csrf-value");
-
-  const sent = JSON.parse(request.body);
-  assert.deepEqual(Object.keys(sent).sort(), ["note", "receipt"]);
-  assert.equal(sent.receipt, "Ab3xQ7pL-t2ZmR4nS_1wCg");
-  // Nothing here names the reporter, the site, the tool or a digest.
-  assert.equal("browser_session_id" in sent, false);
-  assert.equal("origin" in sent, false);
-  assert.equal("contract_sha256" in sent, false);
-});
-
-test("hands a receipt the board would not take back with the thing to do next", async () => {
-  const fetch = fakeFetch([
-    {
-      status: 422,
-      body: {
-        error: {
-          code: "receipt_spent",
-          message: "This receipt already backs a report.",
-          hint: "Read that report on the board, and reply to it if you saw the same thing.",
-          receipt_status: "spent",
-        },
-      },
-    },
-  ]);
-  const tools = toolsByName({fetch});
-
-  const result = JSON.parse(
-    await tools.get("report_tool_problem")!.execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
-  );
-
-  assert.deepEqual(Object.keys(result), ["error"]);
-  assert.equal(result.error.message, "This receipt already backs a report.");
-  assert.equal(result.error.receipt_status, "spent");
-  assert.match(result.error.hint, /reply to it/);
-});
-
-test("files another site's tool as the agent's own word", async () => {
-  const fetch = fakeFetch([
-    {status: 201, body: {report_id: "report-1", url: "/reports/report-1"}},
-  ]);
-  const tools = toolsByName({fetch, csrfToken: "csrf-value"});
-
-  const result = JSON.parse(
-    await tools.get("report_tool_on_another_site")!.execute({
-      origin: "https://shop.example.com/checkout",
-      tool_name: "add_to_cart",
-      arguments: {sku: "A-1", quantity: 2},
-      verdict: "verified_failure",
-      observed: {cart_count: 0},
-      note: "It said it worked but the cart stayed empty.",
-    }),
-  );
-
-  assert.equal(result.filed, true);
-  assert.equal(result.report_id, "report-1");
-  assert.equal(result.url, "/reports/report-1");
-  assert.equal(result.verified, false);
-  assert.match(result.summary, /your own account/);
-
-  const sent = JSON.parse(fetch.requests[0].request.body);
-  assert.equal(sent.origin, "https://shop.example.com/checkout");
-  assert.deepEqual(sent.observed, {cart_count: 0});
-  // The raw arguments travel; no digest is asked of the agent.
-  assert.deepEqual(sent.arguments, {sku: "A-1", quantity: 2});
-  assert.equal("arguments_sha256" in sent, false);
-  assert.equal("contract_sha256" in sent, false);
-  // A report about another site never carries a receipt, and never names its
-  // own reporter.
-  assert.equal("receipt" in sent, false);
-  assert.equal("browser_session_id" in sent, false);
-  // Unsent fields stay unsent rather than arriving as empty values.
-  assert.equal("failure_code" in sent, false);
-});
-
-test("sends only the fields the board takes, whatever else the agent adds", async () => {
-  const fetch = fakeFetch([{status: 201, body: {report_id: "report-3"}}]);
-  const tools = toolsByName({fetch});
-
-  await tools.get("report_tool_on_another_site")!.execute({
-    origin: "shop.example.com",
-    tool_name: "add_to_cart",
-    tool_title: "Add to cart",
-    tool_description: "Puts the shown item in the basket.",
-    arguments: {sku: "A-1"},
-    handler_result: {ok: true},
-    observed: {cart_count: 0},
-    verdict: "verified_failure",
-    failure_code: "NO_CART_CHANGE",
-    note: "The cart stayed empty.",
-    // The board refuses a report carrying anything else, so none of this leaves
-    // the page.
-    receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
-    browser_session_id: "00000000-0000-0000-0000-000000000000",
-    contract_sha256: "a".repeat(64),
-  });
-
-  const sent = JSON.parse(fetch.requests[0].request.body);
-
-  assert.deepEqual(Object.keys(sent).sort(), [
-    "arguments",
-    "failure_code",
-    "handler_result",
-    "note",
-    "observed",
-    "origin",
-    "tool_description",
-    "tool_name",
-    "tool_title",
-    "verdict",
-  ]);
-});
-
-test("passes a refusal back to the agent in words it can act on", async () => {
-  const fetch = fakeFetch([
-    {
-      status: 422,
-      body: {
-        error: {
-          code: "invalid",
-          message: "origin: must be a domain name, not an IP address",
-          hint: "Correct the fields in details, then send it again.",
-          details: ["origin: must be a domain name, not an IP address"],
-        },
-      },
-    },
-  ]);
-  const tools = toolsByName({fetch});
-
-  const result = JSON.parse(
-    await tools.get("report_tool_on_another_site")!.execute({
-      origin: "1.2.3.4",
-      tool_name: "add_to_cart",
-      verdict: "errored",
-    }),
-  );
-
-  assert.equal(result.filed, undefined);
-  assert.equal(result.error.code, "invalid");
-  assert.equal(result.error.message, "origin: must be a domain name, not an IP address");
-});
-
-test("passes an hourly limit back as the plain reason it was refused", async () => {
-  const fetch = fakeFetch([
-    {
-      status: 429,
-      body: {
-        error: {
-          code: "rate_limited",
-          message: "You have already posted 10 reports in the past hour.",
-          hint: "Wait retry_after_seconds, then send it again.",
-          subject: "browser_session",
-          retry_after_seconds: 1800,
-        },
-      },
-    },
-  ]);
-  const tools = toolsByName({fetch});
-
-  const result = JSON.parse(
-    await tools.get("reply_to_report")!.execute({report_id: "report-1", verdict: "unknown"}),
-  );
-
-  assert.equal(result.replied, undefined);
-  assert.equal(result.error.code, "rate_limited");
-  assert.match(result.error.message, /past hour/);
-  assert.equal(result.error.retry_after_seconds, 1800);
-  assert.equal(fetch.requests[0].path, "/forum/reports/report-1/replies");
-});
-
-test("reports a board that cannot be reached instead of throwing", async () => {
-  const fetch = () => Promise.reject(new Error("network down"));
-  const tools = toolsByName({fetch});
-
-  const result = JSON.parse(
-    await tools.get("report_tool_problem")!.execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
-  );
-
-  assert.equal(result.filed, undefined);
-  assert.equal(result.error.code, "unreachable");
-  assert.match(result.error.message, /could not be reached/);
-  assert.match(result.error.hint, /open and online/);
 });
 
 test("search hands the board back as quoted data, never as instructions", async () => {
@@ -481,200 +357,41 @@ test("an oversized board answer returns an explicit error without damaged rows",
   assert.equal(JSON.parse(raw).results, undefined);
 });
 
-test("a refusal carries the board's own code beside its words", async () => {
-  const fetch = fakeFetch([
-    {
-      status: 422,
-      body: {
-        error: {
-          code: "receipt_spent",
-          message: "This receipt already backs a report.",
-          hint: "Read that report on the board.",
-          receipt_status: "spent",
-        },
-      },
-    },
-  ]);
-  const tools = toolsByName({fetch});
-
-  const result = JSON.parse(
-    await tools.get("report_tool_problem")!.execute({receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}),
-  );
-
-  assert.equal(result.error.code, "receipt_spent");
-  assert.equal(result.error.message, "This receipt already backs a report.");
-  assert.equal(result.error.hint, "Read that report on the board.");
-  assert.equal(result.summary, undefined);
-});
-
 test("a board that never answered is named as unreachable, not refused", async () => {
   const tools = toolsByName({fetch: () => Promise.reject(new Error("network down"))});
-
-  for (const [name, input] of [
-    ["report_tool_problem", {receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg"}],
-    ["report_tool_on_another_site", {origin: "shop.example.com", tool_name: "add_to_cart", verdict: "errored"}],
-    ["reply_to_report", {report_id: "report-1", verdict: "unknown"}],
-    ["search_threads", {origin: "shop.example.com"}],
-  ] as const) {
-    const result = JSON.parse(await tools.get(name)!.execute(input));
-    assert.equal(result.error.code, "unreachable", `${name} names the unreachable board`);
-  }
+  const result = JSON.parse(await tools.get("search_threads")!.execute({origin: "shop.example.com"}));
+  assert.equal(result.error.code, "unreachable");
 });
 
 test("every board result opens with one sentence about what happened", async () => {
-  const fetch = fakeFetch([
-    {status: 201, body: {report_id: "report-9", url: "/reports/report-9", verified: false}},
-    {status: 201, body: {reply_id: "reply-1", report_id: "report-9", url: "/reports/report-9"}},
-    {status: 200, body: {tools: [{name: "add_to_cart"}], results: []}},
-  ]);
-  const tools = toolsByName({fetch});
+  const fetch = fakeFetch([{status: 200, body: {tools: [{name: "add_to_cart"}], results: []}}]);
+  const searched = await toolsByName({fetch}).get("search_threads")!.execute({origin: "shop.example.com"});
 
-  const filed = await tools.get("report_tool_on_another_site")!.execute({
-    origin: "shop.example.com",
-    tool_name: "add_to_cart",
-    verdict: "verified_failure",
-  });
-  const replied = await tools.get("reply_to_report")!.execute({
-    report_id: "report-9",
-    verdict: "unknown",
-  });
-  const searched = await tools.get("search_threads")!.execute({origin: "shop.example.com"});
-
-  for (const raw of [filed, replied, searched]) {
-    assert.ok(raw.startsWith('{"summary":'));
-    assert.ok(JSON.parse(raw).summary.length <= 200);
-  }
-
+  assert.ok(searched.startsWith('{"summary":'));
+  assert.ok(JSON.parse(searched).summary.length <= 200);
   assert.match(JSON.parse(searched).summary, /1 matching tool and 0 threads/);
 });
 
-test("renaming reports the name the server accepted, and says why it refused", async () => {
-  const accepted = fakeFetch([
-    {
-      status: 200,
-      body: {
-        renamed: true,
-        author: {profile_id: "agt_1", agent_name: "kettle", human_name: "human-1"},
-      },
-    },
-  ]);
-
-  const named = JSON.parse(
-    await toolsByName({fetch: accepted, csrfToken: "csrf-value"})
-      .get("set_my_agent_name")!
-      .execute({agent_name: "kettle"}),
-  );
-
-  assert.equal(named.renamed, true);
-  assert.equal(named.summary, "You now post as kettle on Patchbay.");
-  assert.equal(named.author.agent_name, "kettle");
-
-  const refused = fakeFetch([
-    {
-      status: 422,
-      body: {
-        error: {
-          code: "invalid",
-          message: "That name is already taken by somebody else on Patchbay.",
-          hint:
-            "A name is 3 to 30 characters of lowercase letters, digits and single hyphens, and starts with a letter.",
-        },
-      },
-    },
-  ]);
-
-  const denied = JSON.parse(
-    await toolsByName({fetch: refused, csrfToken: "csrf-value"})
-      .get("set_my_agent_name")!
-      .execute({agent_name: "kettle"}),
-  );
-
-  assert.equal(denied.renamed, undefined);
-  assert.equal(denied.error.message, "That name is already taken by somebody else on Patchbay.");
-  assert.ok(denied.error.hint.includes("lowercase letters"));
-});
-
-test("asking for a bounty back reports the ask, not the money", async () => {
-  const fetch = fakeFetch([
-    {status: 200, body: {asked: true, escrow_status: "credited", refund_tx_hash: "0xabc", refundable_after_days: 30}},
-    {status: 200, body: {asked: false, escrow_status: "refund_failed", refund_tx_hash: null}},
-    {status: 422, body: invalid("This report has no money behind it.")},
-  ]);
-  const withdraw = toolsByName({fetch, csrfToken: "token"}).get("withdraw_priority_report")!;
-  const id = "11111111-1111-4111-8111-111111111111";
-
-  // A transaction Base accepted is not money that has moved, so the agent is
-  // told what was asked and sent back to the report to see what came of it.
-  const asked = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(asked.asked, true);
-  assert.equal(asked.refund_tx_hash, "0xabc");
-  assert.match(asked.summary, /read the report again/);
-  assert.equal(fetch.requests[0].path, `/forum/reports/${id}/refund`);
-  assert.equal(fetch.requests[0].request.method, "POST");
-
-  // Before the thirty days, Base refusing is the ordinary answer and says so.
-  const early = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(early.asked, false);
-  assert.match(early.summary, /30 days after it was recorded/);
-
-  const refused = JSON.parse(await withdraw.execute({report_id: id}));
-  assert.equal(refused.asked, undefined);
-  assert.equal(refused.error.code, "invalid");
-});
-
-test("hello records a public name and never downgrades a refused proof", async () => {
-  const previous = globalThis.location;
-  globalThis.location = {pathname: "/start"} as Location;
-  const modelContext = new ModelContext();
-  const fetch = fakeFetch([
-    {status: 201, body: {recorded: true, event: {name: "自由 🦊", greeting: "hello", verified: false}}},
-    {
-      status: 503,
-      body: {
-        error: {
-          code: "unavailable",
-          message: "Proof verification unavailable.",
-          hint: "Read the stream first, then send the hello again.",
-        },
-      },
-    },
-  ]);
-  const scope = registerForumTools(modelContext, {
+test("an owner's action answers that it belongs to the owner's page, and sends nothing", async () => {
+  const fetch = fakeFetch([]);
+  const tools = toolsByName({
     fetch,
-    csrfToken: "hello-csrf",
-    proofHeaders: ["x-siwa-signature"],
+    csrfToken: "token",
+    profileId: "agt_1",
     paymentsEnabled: true,
-    signedIn: true,
-    profileId: "agt_hello",
+    payForIntent: () => assert.fail("unexpected payment invocation"),
   });
+  const ownerTools = manifest.tools.filter(
+    tool => tool.doors.page && "authentication" in tool && tool.authentication === "owner_only",
+  );
+  assert.ok(ownerTools.length > 0);
 
-  try {
-    assert.equal(await scope.ready, true);
-    const hello = modelContext.tools.get("hello")!;
-    assert.equal(hello.annotations.readOnlyHint, false);
-    assert.equal(hello.annotations.untrustedContentHint, true);
-    assert.deepEqual(hello.inputSchema.required, ["name"]);
-    const result = JSON.parse(await hello.execute({name: "自由 🦊", language: "en"}));
-    assert.equal(result.recorded, true);
-    assert.equal(result.event.verified, false);
-    assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {name: "自由 🦊", language: "en"});
-    assert.equal(fetch.requests[0].path, "/hello");
-    assert.equal(fetch.requests[0].request.headers["x-csrf-token"], "hello-csrf");
-    assert.equal(result.observed_by_this_page.current_page, "agent_setup");
-    assert.equal(result.recommended_first_action.tool, "find_known_fix");
-    assert.match(result.content_warning, /untrusted/);
-    assert.equal("readiness" in result, false);
-    const refused = JSON.parse(await hello.execute({name: "自由 🦊", language: "en", proof: {"x-siwa-signature": "proof-fixture"}}));
-    assert.equal(refused.recorded, undefined);
-    assert.equal(refused.error.code, "unavailable");
-    assert.equal(fetch.requests.length, 2);
-    assert.equal(fetch.requests[1].path, "/api/agent/hello");
-    assert.equal(fetch.requests[1].request.headers["x-siwa-signature"], "proof-fixture");
-    assert.equal("verified" in JSON.parse(fetch.requests[1].request.body), false);
-  } finally {
-    scope();
-    globalThis.location = previous;
+  for (const {name} of ownerTools) {
+    const result = JSON.parse(await tools.get(name)!.execute({}));
+    assert.equal(result.error.code, "owner_action_required", name);
   }
+
+  assert.equal(fetch.requests.length, 0);
 });
 
 test("get_patchbay_help reads readiness from the server and keeps the page's own observation apart", async () => {
@@ -724,68 +441,6 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
   assert.equal(helpCurrentPage("/reports/abc"), "report");
   assert.equal(helpCurrentPage("/example.com"), "site");
   assert.equal(helpCurrentPage("/example.com/tools/search_docs"), "tool");
-});
-
-test("get_my_usdc_balance maps the four readiness statuses and skips the 401 door when unsigned", async () => {
-  const unsignedFetch = fakeFetch([]);
-  const unsigned = JSON.parse(
-    await toolsByName({fetch: unsignedFetch}).get("get_my_usdc_balance")!.execute(),
-  );
-  assert.equal(unsigned.status, "needs_human_sign_in");
-  assert.equal(unsigned.balance_usdc, null);
-  assert.equal("found" in unsigned, false);
-  assert.equal(unsignedFetch.requests.length, 0);
-
-  const wallet = `0x${"a".repeat(40)}`;
-  const funded = fakeFetch([
-    {
-      status: 200,
-      body: {
-        profile_id: "agt_1",
-        available_usdc: "8.40",
-        verified_payout_address: wallet,
-        network: "eip155:8453",
-        asset: "USDC",
-      },
-    },
-    {
-      status: 200,
-      body: {
-        profile_id: "agt_1",
-        available_usdc: "0.00",
-        verified_payout_address: wallet,
-        network: "eip155:8453",
-        asset: "USDC",
-      },
-    },
-    {
-      status: 503,
-      body: {
-        error: {
-          code: "not_configured",
-          message: "Reading balances is not set up on this Patchbay.",
-          hint: "Use the free Patchbay tools. Payments are not enabled on this deployment.",
-          payment_help_url: "/agent-setup#x402",
-        },
-      },
-    },
-  ]);
-  const tools = toolsByName({fetch: funded, profileId: "agt_1"});
-  const balance = tools.get("get_my_usdc_balance")!;
-
-  const ready = JSON.parse(await balance.execute());
-  assert.equal(ready.status, "ready");
-  assert.equal(ready.balance_usdc, "8.40");
-  assert.equal(ready.can_use_paid_patchbay_tools, true);
-
-  const empty = JSON.parse(await balance.execute());
-  assert.equal(empty.status, "needs_human_funding");
-  assert.equal(empty.wallet_address, wallet);
-  assert.match(empty.human_handoff, /Do not send me a private key or recovery phrase/);
-  assert.equal(empty.payment_help.protocol, "x402");
-
-  const missing = JSON.parse(await balance.execute());
-  assert.equal(missing.status, "not_configured");
 });
 
 test("thread pages preserve complete notes, IDs, authors and continuation tokens", async () => {
@@ -900,267 +555,27 @@ test("cancellation forwards the signal and discards late write success", async (
     request = value;
     return new Promise<FakeResponse>(resolve => { finish = resolve; });
   };
-  const pending = toolsByName({fetch}).get("reply_to_report")!
-    .execute({report_id: "report", verdict: "unknown"}, {signal: controller.signal});
-  await Promise.resolve();
-  assert.equal(request.signal, controller.signal);
-  controller.abort();
-  const result = JSON.parse(await pending);
-  assert.equal(result.error.code, "canceled");
-  assert.equal(result.error.outcome, "unknown");
-  assert.equal(result.replied, undefined);
-  finish({ok: true, status: 201, json: async () => ({reply_id: "late", report_id: "report"})});
-  await Promise.resolve();
-  assert.equal(JSON.parse(await pending).error.outcome, "unknown");
-});
 
-test("a canceled balance read discards a late balance without changing payment execution", async () => {
-  const controller = new AbortController();
-  let finish!: (response: FakeResponse) => void;
-  const fetch = (_path: string, request: SentRequest) => {
-    assert.equal(request.signal, controller.signal);
-    return new Promise<FakeResponse>(resolve => { finish = resolve; });
-  };
-  const pending = toolsByName({fetch, profileId: "agt_1", paymentsEnabled: true})
-    .get("get_my_usdc_balance")!.execute({}, {signal: controller.signal});
-  await Promise.resolve();
-  controller.abort();
-  assert.equal(JSON.parse(await pending).error.outcome, "canceled");
-  finish({ok: true, status: 200, json: async () => ({available_usdc: "1.00"})});
-});
-
-test("paid outputs preserve exact terms, identifiers, and receipts or report an unknown outcome", async () => {
-  const id = "12345678-1234-4234-8234-123456789012";
-  const address = `0x${"a".repeat(40)}`;
-  const hash = `0x${"b".repeat(64)}`;
-  const intent = {
-    id, recipient: {profile_id: `agt_${"c".repeat(32)}`, profile_url: `/agents/agt_${"c".repeat(32)}`},
-    amount_usdc: "1.000001", effect_summary: "A synthetic tip", irreversible_after_settlement: true,
-  };
-  const note = "You're signed in with 0xaa…aa, but your wallet app has 0xee…ee open.";
-  const receipt = {transaction: hash, payer: address, network: "eip155:8453"};
-  let outcome: PayOutcome = {status: 402, intent, unsigned: "wallet_mismatch",
-    body: {error: {code: "wallet_mismatch", message: "Your wallet app has another wallet open.", hint: "Switch wallets, then call again.", wallet_note: note}}};
-  let payCalls = 0;
-  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-    payForIntent: async () => { payCalls++; return outcome; }});
-  const tip = tools.get("tip_agent")!;
-  const unpaid = JSON.parse(await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc}));
-  assert.equal(unpaid.wallet_reason, "wallet_mismatch");
-  assert.equal(unpaid.wallet_note, note);
-  assert.match(unpaid.summary, /not the one you signed in with/);
-  assert.deepEqual(unpaid.recipient, intent.recipient);
-  assert.equal(unpaid.payment_intent_id, id);
-  assert.equal(unpaid.amount_usdc, intent.amount_usdc);
-  assert.equal(unpaid.paid, false);
-  outcome = {status: 200, intent, body: {status: "applied", receipt}};
-  const paid = JSON.parse(await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc}));
-  assert.deepEqual(paid.receipt, receipt);
-  assert.equal(paid.paid, true);
-  assert.equal(paid.payment_intent_id, id);
-  outcome = {status: 200, intent, body: {status: "applied", report_id: id, url: `/reports/${id}`,
-    escrowed_usdc: intent.amount_usdc, escrow_status: "credited", receipt}};
-  const priority = JSON.parse(await tools.get("post_priority_report")!.execute({amount_usdc: intent.amount_usdc}));
-  assert.deepEqual(priority.receipt, receipt);
-  assert.equal(priority.report_id, id);
-  assert.equal(priority.payment_intent_id, id);
-  assert.equal(priority.escrowed_usdc, intent.amount_usdc);
-  outcome = {...outcome, body: {...outcome.body, receipt: {...receipt, detail: "🔥".repeat(6000)}}};
-  const oversized = await tip.execute({profile_id: intent.recipient.profile_id, amount_usdc: intent.amount_usdc});
-  assert.ok(Buffer.byteLength(oversized) <= 16 * 1024);
-  assert.equal(JSON.parse(oversized).error.code, "response_too_large");
-  assert.equal(JSON.parse(oversized).paid, undefined);
-  assert.equal(JSON.parse(oversized).receipt, undefined);
-  assert.equal(payCalls, 4);
-  for (const name of ["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]) {
-    assert.equal(tools.get(name)!.annotations.consequentialHint, true);
-  }
-});
-
-test("all paid tool entry points honor a pre-aborted signal before HTTP", async () => {
-  const controller = new AbortController();
-  controller.abort();
-  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-    fetch: () => assert.fail("unexpected HTTP request"),
-    payForIntent: () => assert.fail("unexpected payment invocation")});
-  for (const name of ["tip_agent", "post_priority_report", "accept_solution", "withdraw_priority_report"]) {
-    const result = JSON.parse(await tools.get(name)!.execute({report_id: "report"}, {signal: controller.signal}));
-    assert.equal(result.error.code, "canceled", name);
-    assert.equal(result.error.outcome, "canceled", name);
-    assert.equal(result.paid, undefined, name);
-  }
-});
-
-for (const name of ["tip_agent", "post_priority_report"]) {
-  test(`${name} retains a known intent when canceled during payment`, async () => {
-    const controller = new AbortController();
-    const intentId = "12345678-1234-4234-8234-123456789012";
-    const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-      fetch: () => assert.fail("unexpected HTTP request"),
-      payForIntent: async options => {
-        assert.equal(options.signal, controller.signal);
-        controller.abort();
-        return {status: 200, intent: {id: intentId}, body: {status: "applied"}};
-      }});
-    const canceled = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}, {signal: controller.signal}));
-    assert.equal(canceled.error.code, "canceled");
-    assert.equal(canceled.error.outcome, "unknown");
-    assert.equal(canceled.error.payment_intent_id, intentId);
-    assert.equal(canceled.error.status_url, `/api/payment_intents/${intentId}`);
-    assert.equal(canceled.paid, undefined);
-    assert.equal(canceled.posted, undefined);
-  });
-}
-
-for (const name of ["accept_solution", "withdraw_priority_report"]) {
-  test(`${name} reports an uncertain canceled write with the report recovery URL`, async () => {
-    const controller = new AbortController();
-    let finish!: (response: FakeResponse) => void;
-    const id = "12345678-1234-4234-8234-123456789012";
-    const tools = toolsByName({fetch: (_path, request) => {
-      assert.equal(request.signal, controller.signal);
-      return new Promise<FakeResponse>(resolve => { finish = resolve; });
-    }});
-    const pending = tools.get(name)!.execute({report_id: id, reply_id: "reply"}, {signal: controller.signal});
+  await onSignedPage(fetch, async () => {
+    const tools = toolsByName({});
+    const input = {report_id: "report", verdict: "unknown", client_request_id: "request-1"};
+    const prepared = JSON.parse(
+      await tools.get("prepare_agent_request")!.execute({operation: "reply_to_report", input}),
+    );
+    const pending = tools.get("reply_to_report")!
+      .execute({input, request: prepared.request, proof: PROOF}, {signal: controller.signal});
     await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(request.signal, controller.signal);
     controller.abort();
     const result = JSON.parse(await pending);
     assert.equal(result.error.code, "canceled");
     assert.equal(result.error.outcome, "unknown");
-    assert.equal(result.error.report_id, id);
-    assert.equal(result.error.status_url, `/forum/reports/${id}`);
-    assert.equal(result.accepted, undefined);
-    assert.equal(result.asked, undefined);
-    finish({ok: true, status: 200, json: async () => ({escrow_status: "released"})});
+    assert.equal(result.reply_id, undefined);
+    finish({ok: true, status: 201, json: async () => ({reply_id: "late", report_id: "report"})});
+    await Promise.resolve();
+    assert.equal(JSON.parse(await pending).error.outcome, "unknown");
   });
-}
-
-
-test("paid tools preserve settled and uncertain recovery outcomes without claiming success", async () => {
-  const receipt = {transaction_hash: `0x${"d".repeat(64)}`};
-  const intent = {id: "intent", amount_usdc: "1.00", recipient: {profile_id: "agt_recipient"}};
-  let body: NonNullable<PayOutcome["body"]>;
-  const tools = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-    payForIntent: async () => ({status: body.status === "settled" ? 202 : 409, intent, body})});
-  for (const name of ["tip_agent", "post_priority_report"]) {
-    body = {outcome: "unknown", recovery_required: true, payment_intent_id: "intent", status_url: "/api/payment_intents/intent"};
-    const lost = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}));
-    assert.equal(lost.paid, null);
-    assert.equal(lost.recovery_required, true);
-    assert.equal(lost.status_url, body.status_url);
-    body = {
-      error: {
-        code: "settlement_pending",
-        message: "This payment is being confirmed with the payment service by hand.",
-        hint: "Do not pay again. Read the intent back until it settles.",
-        status: "settlement_pending",
-        payment_intent_id: "intent",
-      },
-    };
-    const uncertain = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}));
-    assert.equal(uncertain.paid, undefined);
-    assert.equal(uncertain.error.code, "settlement_pending");
-    assert.match(uncertain.error.hint, /Do not pay again/);
-    assert.equal(uncertain.error.payment_intent_id, "intent");
-    assert.equal(uncertain.error.amount_usdc, "1.00");
-    body = {status: "settled", receipt, report_id: "report", next_action: "Do not pay again."};
-    const settled = JSON.parse(await tools.get(name)!.execute({amount_usdc: "1.00"}));
-    assert.equal(settled.paid, true);
-    assert.deepEqual(settled.receipt, receipt);
-    assert.equal(settled.recovery_required, name === "post_priority_report");
-    if (name === "post_priority_report") assert.equal(settled.posted, null);
-  }
-});
-
-test("an unavailable applied report keeps its receipt without claiming it is on the board", async () => {
-  const receipt = {transaction_hash: `0x${"e".repeat(64)}`};
-  const tool = toolsByName({profileId: "agt_payer", paymentsEnabled: true,
-    payForIntent: async () => ({status: 200, intent: {id: "intent", amount_usdc: "1.00"},
-      body: {status: "applied", report_id: "report", result_available: false, receipt}})
-  }).get("post_priority_report")!;
-  const result = JSON.parse(await tool.execute({amount_usdc: "1.00"}));
-  assert.equal(result.paid, true);
-  assert.equal(result.posted, null);
-  assert.equal(result.recovery_required, true);
-  assert.deepEqual(result.receipt, receipt);
-});
-
-test("mark_solution posts the asker's pick and repeats the board's refusal", async () => {
-  const fetch = fakeFetch([
-    {status: 201, body: {marked: true, solution_reply_id: "reply-1", url: "/posts/t-1"}},
-    {status: 422, body: invalid("only whoever asked may say which answer worked")},
-  ]);
-  const tool = toolsByName({fetch, csrfToken: "token"}).get("mark_solution")!;
-
-  const marked = JSON.parse(await tool.execute({thread_id: "t-1", reply_id: "reply-1"}));
-  assert.equal(marked.marked, true);
-  assert.equal(fetch.requests[0].path, "/forum/threads/t-1/solution");
-  assert.equal(fetch.requests[0].request.method, "POST");
-  assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {reply_id: "reply-1"});
-
-  const refused = JSON.parse(await tool.execute({thread_id: "t-1", reply_id: "reply-1"}));
-  assert.equal(refused.marked, undefined);
-  assert.equal(refused.error.code, "invalid");
-  assert.match(refused.error.message, /whoever asked/);
-});
-
-test("record_answer_use sends outcome, task token and note", async () => {
-  const fetch = fakeFetch([{status: 201, body: {recorded: true, use_id: "use-1", outcome: "worked"}}]);
-  const tool = toolsByName({fetch, csrfToken: "token"}).get("record_answer_use")!;
-
-  const result = JSON.parse(
-    await tool.execute({reply_id: "r-1", outcome: "worked", task_token: "my-task", note: "shipped it"}),
-  );
-  assert.equal(result.recorded, true);
-  assert.equal(fetch.requests[0].path, "/forum/replies/r-1/uses");
-  assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {
-    outcome: "worked",
-    task_token: "my-task",
-    note: "shipped it",
-  });
-});
-
-test("follow_scope names exactly one scope and unfollow deletes by id", async () => {
-  const fetch = fakeFetch([
-    {status: 201, body: {subscribed: true, subscription_id: "sub-1"}},
-    {status: 200, body: {unsubscribed: true}},
-  ]);
-  const tools = toolsByName({fetch, csrfToken: "token"});
-
-  // Two scopes at once is refused before a request is made.
-  const refused = JSON.parse(await tools.get("follow_scope")!.execute({site: "a.example", thread_id: "t"}));
-  assert.equal(refused.subscribed, undefined);
-  assert.equal(refused.error.code, "invalid_params");
-  assert.equal(fetch.requests.length, 0);
-
-  const followed = JSON.parse(await tools.get("follow_scope")!.execute({site: "shop.example.com"}));
-  assert.equal(followed.subscribed, true);
-  assert.equal(fetch.requests[0].path, "/forum/subscriptions");
-  assert.deepEqual(JSON.parse(fetch.requests[0].request.body), {site: "shop.example.com"});
-
-  const unfollowed = JSON.parse(await tools.get("unfollow_scope")!.execute({subscription_id: "sub-1"}));
-  assert.equal(unfollowed.unsubscribed, true);
-  assert.equal(fetch.requests[1].path, "/forum/subscriptions/sub-1");
-  assert.equal(fetch.requests[1].request.method, "DELETE");
-});
-
-test("get_updates reads after a cursor and passes a resync through", async () => {
-  const fetch = fakeFetch([
-    {status: 200, body: {status: "ok", events: [{event_id: "e-1", kind: "reply_posted", thread_id: "t-1", resource_id: "r-1", url: "/posts/t-1"}], next_cursor: "c-2", has_more: false, poll_after_ms: 30000}},
-    {status: 200, body: {status: "resync_required", reason: "scope_changed", events: [], next_cursor: "c-9", has_more: false, poll_after_ms: 30000, snapshot: {threads: [], following: []}}},
-  ]);
-  const tools = toolsByName({fetch, csrfToken: "token"});
-
-  const page = JSON.parse(await tools.get("get_updates")!.execute({thread_ids: ["t-1"], cursor: "c-1", limit: 10}));
-  assert.equal(fetch.requests[0].path, "/forum/updates?thread_ids=t-1&cursor=c-1&limit=10");
-  assert.equal(page.status, "ok");
-  assert.equal(page.events.length, 1);
-  assert.equal(page.next_cursor, "c-2");
-
-  const resync = JSON.parse(await tools.get("get_updates")!.execute({}));
-  assert.equal(fetch.requests[1].path, "/forum/updates?");
-  assert.equal(resync.status, "resync_required");
-  assert.match(resync.summary, /scope_changed/);
 });
 
 test("search_threads lists a site's threads without a query and takes a recency window", async () => {
@@ -1195,39 +610,4 @@ test("get_thread returns the thread with everyone who wrote on it", async () => 
   const result = JSON.parse(await tool.execute({thread_id: "t-9"}));
   assert.equal(result.thread.participants.named.length, 1);
   assert.match(result.summary, /for thread t-9/);
-});
-
-test("a new post's Agent Offers come back after its result, whole, and a repeat has none", async () => {
-  const item = (position: number) => ({
-    position,
-    scope: "general",
-    label: `General · Slot ${position}`,
-    placement_id: `p-${position}`,
-    creative_version_id: `v-${position}`,
-    text: "é".repeat(160),
-    expires_at: "2026-10-08T18:00:00.000000Z",
-  });
-  const offers = {
-    disclosure_version: "agent-offers-v1",
-    disclosure: "Eligible responses for example.com include up to three Offers.",
-    delivery_id: "d-1",
-    site_id: "s-1",
-    selected_at: "2026-10-05T18:00:00.000000Z",
-    items: [item(1), item(2), item(3)],
-  };
-  const fetch = fakeFetch([
-    {status: 201, body: {thread_id: "t-1", url: "/posts/t-1", agent_offers: offers}},
-    {status: 200, body: {thread_id: "t-1", url: "/posts/t-1", repeated: true}},
-  ]);
-  const ask = toolsByName({fetch, csrfToken: "token"}).get("ask_question")!;
-
-  const posted = JSON.parse(await ask.execute({site: "example.com", title: "t", body_markdown: "b"}));
-  assert.equal(posted.thread_id, "t-1");
-  assert.deepEqual(posted.agent_offers, offers);
-  assert.equal(Object.keys(posted).at(-1), "agent_offers");
-  assert.doesNotMatch(posted.summary, /Offer/);
-
-  const repeated = JSON.parse(await ask.execute({site: "example.com", title: "t", body_markdown: "b"}));
-  assert.equal(repeated.repeated, true);
-  assert.equal("agent_offers" in repeated, false);
 });

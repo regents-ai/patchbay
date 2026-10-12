@@ -5,6 +5,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   alias Patchbay.Forum.Report
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
+  alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)
   @other_contract String.duplicate("b", 64)
@@ -836,7 +837,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a reply not shaped like the form's is refused without a write, keeping what was typed",
          %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
-      conn = signed_in(conn, person!("eee"))
+      person = person!("eee")
+      conn = signed_in(conn, person)
 
       # The container is not the form's, then one field at a time is not.
       for reply <- [
@@ -877,20 +879,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       # JSON preserves these types. Ash would coerce boolean/numeric notes to
       # strings, but neither HTTP entry point accepts non-text reply fields.
-      api_conn =
-        Plug.Conn.put_session(
-          conn,
-          PatchbayWeb.Plugs.ForumSession.session_key(),
-          Ash.UUID.generate()
-        )
+      SignedAgent.stub_siwa()
+      agent = SignedAgent.pair!(person)
 
       for field <- ["verdict", "note"], value <- [%{}, ["text"], true, 42] do
         payload = Map.put(%{"verdict" => "unknown", "note" => "safe"}, field, value)
 
         assert %{"error" => %{"code" => "invalid"}} =
-                 api_conn
-                 |> put_req_header("content-type", "application/json")
-                 |> post("/forum/reports/#{report.id}/replies", Jason.encode!(payload))
+                 agent
+                 |> agent_reply(report, payload)
                  |> json_response(422)
       end
 
@@ -903,16 +900,19 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       report = "shopify.com" |> site!() |> tool!() |> report!()
       session_id = Ash.UUID.generate()
+      person = person!("fff")
 
       conn =
         conn
-        |> signed_in(person!("fff"))
+        |> signed_in(person)
         |> Plug.Conn.put_session(PatchbayWeb.Plugs.ForumSession.session_key(), session_id)
 
+      SignedAgent.stub_siwa()
+      agent = SignedAgent.pair!(person)
       reply = %{"verdict" => "verified_success", "note" => "worked for me"}
 
-      # One through the page's tools and one from the form, both this account's.
-      assert conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(201)
+      # One from the person's paired agent and one from the form, both this account's.
+      assert agent |> agent_reply(report, reply) |> json_response(201)
 
       assert conn
              |> post(~p"/reports/#{report.id}/replies", %{"reply" => reply})
@@ -930,55 +930,51 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert refused =~ "kept while waiting"
 
       assert %{"error" => %{"code" => "rate_limited", "subject" => "account"}} =
-               conn |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(429)
+               agent |> agent_reply(report, reply) |> json_response(429)
 
       replies = Forum.list_replies_for_report!(report.id).results
       assert Enum.map(replies, & &1.author_kind) == [:agent, :human]
-      assert Enum.all?(replies, &(&1.browser_session_id == session_id))
+      assert Enum.map(replies, & &1.browser_session_id) == [agent.pairing.id, session_id]
 
-      # A signed-out browser's share is its own.
-      other =
-        build_conn()
-        |> Plug.Test.init_test_session(%{})
-        |> Plug.Conn.put_session(
-          PatchbayWeb.Plugs.ForumSession.session_key(),
-          Ash.UUID.generate()
-        )
-
-      assert other |> post("/forum/reports/#{report.id}/replies", reply) |> json_response(201)
+      # Another person's agent's share is its own.
+      assert SignedAgent.pair!() |> agent_reply(report, reply) |> json_response(201)
     end
 
-    test "an account's share is used up across every session it posts from", %{conn: conn} do
+    test "an account's share is used up across every agent it pairs" do
       Application.put_env(:patchbay, :forum_replies_per_hour, 2)
       on_exit(fn -> Application.delete_env(:patchbay, :forum_replies_per_hour) end)
 
+      SignedAgent.stub_siwa()
       report = "shopify.com" |> site!() |> tool!() |> report!()
-      account = signed_in(conn, person!("eee"))
+      person = person!("eee")
       reply = %{"verdict" => "verified_success", "note" => "worked for me"}
 
-      in_new_session = fn ->
-        Plug.Conn.put_session(
-          account,
-          PatchbayWeb.Plugs.ForumSession.session_key(),
-          Ash.UUID.generate()
-        )
-      end
-
-      # Two sessions, one account: each posts once and the share is spent.
-      for _session <- 1..2 do
-        assert in_new_session.()
-               |> post("/forum/reports/#{report.id}/replies", reply)
+      # Two agents, one account: each posts once and the share is spent.
+      for _agent <- 1..2 do
+        assert person
+               |> SignedAgent.pair!()
+               |> agent_reply(report, reply)
                |> json_response(201)
       end
 
-      # A third session of the same account starts with nothing left.
+      # A third agent of the same account starts with nothing left.
       assert %{"error" => %{"code" => "rate_limited", "subject" => "account", "message" => error}} =
-               in_new_session.()
-               |> post("/forum/reports/#{report.id}/replies", reply)
+               person
+               |> SignedAgent.pair!()
+               |> agent_reply(report, reply)
                |> json_response(429)
 
       assert error =~ "This account has already posted 2 replies in the past hour."
       assert length(Forum.list_replies_for_report!(report.id).results) == 2
+    end
+
+    defp agent_reply(agent, report, reply) do
+      build_conn()
+      |> SignedAgent.sign(agent)
+      |> post(
+        "/forum/reports/#{report.id}/replies",
+        Jason.encode!(Map.put(reply, "client_request_id", Ecto.UUID.generate()))
+      )
     end
   end
 

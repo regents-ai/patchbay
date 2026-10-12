@@ -2,8 +2,8 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
   @moduledoc """
   The whole loop, driven with nothing an agent would not actually be holding.
 
-  Everything the report is filed with comes out of the result the page handed
-  back for the call. No digest is computed here, because a language model
+  Everything the report is filed with comes out of the result the room handed
+  back for the agent's signed call. No digest is computed here, because a language model
   calling these tools could not compute one either.
   """
 
@@ -21,10 +21,12 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{Digest, RoomEntrance}
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias PatchbayWeb.SignedAgent
 
   setup do
     put_setting(:demo_fallback, true)
     put_setting(:agent_repairs, true)
+    SignedAgent.stub_siwa()
 
     :ok
   end
@@ -38,6 +40,7 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
       })
 
     room = Domain.create_seeded_room!(RoomEntrance.personal_slug(owner))
+    agent = SignedAgent.pair!(owner)
 
     conn =
       conn
@@ -48,24 +51,23 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
     {:ok, view, _html} = live(conn)
     session = bootstrap(view, room)
 
-    result = call_the_broken_tool(view, room, session)
+    result = call_the_broken_tool(agent, room, session)
 
-    # Everything the agent is told about what to do next, and the one value it
-    # needs to do it.
-    assert result["effective_status"] == "verified_failure"
-
-    assert result["next_action"] ==
-             "Call report_tool_problem with receipt set to the patchbay_receipt value in this result."
-
-    assert %{"receipt" => receipt} = result["report_this_call"]
-    assert receipt == result["patchbay_receipt"]
+    # What the call came to, and the one value the agent needs to report it.
+    assert %{"effective_status" => "verified_failure", "receipt" => receipt} = result
 
     # The report carries the receipt and the agent's own words. Nothing else.
     filed =
-      post_json(conn, "/forum/reports", %{
-        "receipt" => receipt,
-        "note" => "It said it worked, but the page did nothing."
-      })
+      build_conn()
+      |> SignedAgent.sign(agent)
+      |> post(
+        "/forum/reports",
+        Jason.encode!(%{
+          "receipt" => receipt,
+          "note" => "It said it worked, but the page did nothing.",
+          "client_request_id" => Ecto.UUID.generate()
+        })
+      )
 
     assert %{"report_id" => report_id, "verified" => true, "receipt_status" => "verified"} =
              json_response(filed, 201)
@@ -92,65 +94,51 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
     assert reply.note =~ "Please retry with uplift_current_skill_v2."
   end
 
-  # One call to the tool the page is offering, taken to its visible verdict, and
-  # answered with the same map the browser receives.
-  defp call_the_broken_tool(view, room, session) do
+  # One signed call to the tool the page is offering, taken to its visible
+  # verdict, and answered with the result the agent receives.
+  defp call_the_broken_tool(agent, room, session) do
     revision = desired_revision(room)
 
-    render_hook(view, "webmcp_invocation_begin", %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "request_uuid" => Ash.UUID.generate(),
-      "tool_name" => revision.name,
-      "contract_sha256" => revision.contract_sha256,
-      "arguments" => %{"instructions" => "make the greeting warmer"}
+    %{"invocation_id" => invocation_id} =
+      room_request(agent, room, session, "invocations", %{
+        "tool_name" => revision.name,
+        "contract_sha256" => revision.contract_sha256,
+        "request_uuid" => Ash.UUID.generate(),
+        "arguments" => %{"instructions" => "make the greeting warmer"},
+        "pre_state" => visible_state(room)
+      })
+      |> json_response(200)
+
+    room_request(agent, room, session, "invocations/#{invocation_id}/observations", %{
+      "post_state" => visible_state(room)
     })
-
-    invocation = latest_invocation(room)
-
-    render_hook(view, "webmcp_execute", %{
-      "invocation_id" => invocation.id,
-      "invocation_epoch" => invocation_epoch(view)
-    })
-
-    render_async(view, 2_000)
-    observe_post_state(view, room, session)
+    |> json_response(200)
   end
 
-  # The page reports what it is showing and is answered with the tool result.
-  # The observation is run twice: once through the live page, which is what
-  # moves the room on, and once directly, which is the only way a test can read
-  # the reply the browser is handed. Verification has already happened by then,
-  # so the second call reads the record rather than writing it.
-  defp observe_post_state(view, room, session) do
+  # What the page is showing, as the page reports it.
+  defp visible_state(room) do
     current = Domain.get_room_by_id!(room.id)
 
-    params = %{
-      "room_id" => room.id,
-      "browser_session_id" => session.id,
-      "invocation_epoch" => invocation_epoch(view),
-      "invocation_id" => latest_invocation(room).id,
-      "post_state" => %{
-        "ui_revision" => current.ui_revision,
-        "source" => %{"present" => true, "sha256" => current.source_sha256},
-        "candidate" => %{
-          "present" => is_binary(current.candidate_markdown),
-          "sha256" => current.candidate_sha256
-        }
+    %{
+      "ui_revision" => current.ui_revision,
+      "source" => %{"present" => true, "sha256" => current.source_sha256},
+      "candidate" => %{
+        "present" => is_binary(current.candidate_markdown),
+        "sha256" => current.candidate_sha256
       }
     }
-
-    render_hook(view, "webmcp_poststate_observed", params)
-
-    {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)
-
-    {:reply, reply, _socket} =
-      PatchbayWeb.WebMCP.RoomLive.Show.handle_event("webmcp_poststate_observed", params, socket)
-
-    reply
   end
 
+  defp room_request(agent, room, session, path, params) do
+    build_conn()
+    |> SignedAgent.sign(agent)
+    |> post(
+      "/api/agent/rooms/#{room.slug}/#{path}",
+      Jason.encode!(Map.put(params, "page_evidence", session.page_evidence))
+    )
+  end
+
+  # The page's browser session as its bootstrap reply hands it over.
   defp bootstrap(view, room) do
     html =
       render_hook(view, "webmcp_bootstrap", %{
@@ -161,11 +149,8 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
       })
 
     assert html =~ "WebMCP connected"
-
-    Domain.list_browser_sessions!(
-      query: [filter: [room_id: room.id], sort: [connected_at: :desc], limit: 1]
-    )
-    |> List.first()
+    assert_reply(view, %{"page_evidence" => page_evidence})
+    %{page_evidence: page_evidence}
   end
 
   defp desired_revision(room) do
@@ -183,18 +168,6 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
       query: [filter: [room_id: room.id], sort: [started_at: :desc], limit: 1]
     )
     |> List.first()
-  end
-
-  defp invocation_epoch(view) do
-    {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)
-    socket.assigns.invocation_epoch
-  end
-
-  defp post_json(conn, path, params) do
-    conn
-    |> recycle()
-    |> put_req_header("content-type", "application/json")
-    |> post(path, Jason.encode!(params))
   end
 
   defp put_setting(key, value) do

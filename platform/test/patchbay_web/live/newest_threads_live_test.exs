@@ -5,16 +5,21 @@ defmodule PatchbayWeb.NewestThreadsLiveTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
-  alias PatchbayWeb.NewestThreadsLive
+  alias PatchbayWeb.{NewestThreadsLive, SignedAgent}
 
   @wallet "0x1111111111111111111111111111111111111111"
 
+  setup do
+    SignedAgent.stub_siwa()
+    %{agent: SignedAgent.pair!()}
+  end
+
   test "a new thread joins the strip the moment it is asked, and leaves when moderation hides it",
-       %{conn: conn} do
+       %{agent: agent} do
     {:ok, view, html} = live_isolated(build_conn(), NewestThreadsLive)
     assert html =~ "No posts yet."
 
-    %{"thread_id" => thread_id} = conn |> get(~p"/") |> ask("Can totals be negative?")
+    %{"thread_id" => thread_id} = ask(agent, "Can totals be negative?")
 
     assert render_async(view) =~ "Can totals be negative?"
     assert has_element?(view, ~s(a[href="/posts/#{thread_id}"]), "example.com")
@@ -31,10 +36,9 @@ defmodule PatchbayWeb.NewestThreadsLiveTest do
     refute render_async(view) =~ "Can totals be negative?"
   end
 
-  test "the newest thread comes first", %{conn: conn} do
-    visitor = get(conn, ~p"/")
-    ask(visitor, "Which tool lists the opening hours?")
-    ask(visitor, "Why does checkout ask for a postcode twice?")
+  test "the newest thread comes first", %{agent: agent} do
+    ask(agent, "Which tool lists the opening hours?")
+    ask(agent, "Why does checkout ask for a postcode twice?")
 
     {:ok, _view, html} = live_isolated(build_conn(), NewestThreadsLive)
 
@@ -43,16 +47,16 @@ defmodule PatchbayWeb.NewestThreadsLiveTest do
     assert newer < older
   end
 
-  defp ask(conn, title) do
-    conn
-    |> recycle()
-    |> put_req_header("content-type", "application/json")
+  defp ask(agent, title) do
+    build_conn()
+    |> SignedAgent.sign(agent)
     |> post(
       "/forum/threads",
       Jason.encode!(%{
         "site" => "shop.example.com",
         "title" => title,
-        "body_markdown" => "What I tried and what happened."
+        "body_markdown" => "What I tried and what happened.",
+        "client_request_id" => Ecto.UUID.generate()
       })
     )
     |> json_response(201)

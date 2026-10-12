@@ -266,9 +266,10 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     assert found.kind == :jev_assist
     assert {:error, :not_found} = RegentPayments.Purchase.read(c.payer, intent.id)
 
-    # The agent door's read is behind the wallet proof, not a page's cookie.
+    # The agent door's read is behind a signed agent's proof, not a page's cookie.
+    PatchbayWeb.SignedAgent.stub_siwa()
     cookie_read = c.payer |> signed_in() |> get(~p"/api/agent/assists/#{intent.target_id}")
-    assert cookie_read.status in [401, 503]
+    assert cookie_read.status == 401
   end
 
   test "a settled assist whose run was not opened is opened on the next call", c do

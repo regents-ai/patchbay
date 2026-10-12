@@ -12,6 +12,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   alias Patchbay.Forum
   alias Patchbay.Offers
+  alias PatchbayWeb.SignedAgent
 
   # Each test comes from an address of its own, so the reports one test files
   # never draw on another's share.
@@ -19,6 +20,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     n = System.unique_integer([:positive])
     origin = "offers-#{n}.example"
     {:ok, site} = Forum.register_site(origin, authorize?: false)
+    SignedAgent.stub_siwa()
 
     %{
       conn: %{
@@ -28,17 +30,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       origin: origin,
       site: Offers.open_site_market!(site.id, authorize?: false),
       global: Offers.global_market!(),
-      owner: advertiser()
+      owner: advertiser(),
+      agent: SignedAgent.pair!()
     }
   end
 
   test "each position is the site's slot, else Global's of the same number, never moved",
-       %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
+       %{conn: conn, origin: origin, site: site, global: global, owner: owner, agent: agent} do
     place(site, 3, approved_version(owner, "Site three", site))
     place(global, 1, approved_version(owner, "Global one", global))
     place(global, 3, approved_version(owner, "Global three", global))
 
-    posted = ask(conn, origin)
+    posted = ask(conn, agent, origin)
     body = json_response(posted, 201)
 
     assert %{"items" => items} = offers = body["agent_offers"]
@@ -60,7 +63,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   test "blocked, expired, stale or other-market copy is not shown, and Global stands in",
-       %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
+       %{conn: conn, origin: origin, site: site, global: global, owner: owner, agent: agent} do
     {:ok, other_site} = Forum.register_site("elsewhere-offers.example", authorize?: false)
     other = Offers.open_site_market!(other_site.id, authorize?: false)
 
@@ -88,7 +91,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     # Six placements need two advertisers under the five-wordings daily cap.
     place(global, 3, approved_version(advertiser(), "Global three", global))
 
-    items = conn |> ask(origin) |> json_response(201) |> get_in(["agent_offers", "items"])
+    items = conn |> ask(agent, origin) |> json_response(201) |> get_in(["agent_offers", "items"])
 
     assert Enum.map(items, &{&1["label"], &1["text"]}) == [
              {"Global · Slot 1", "Global one"},
@@ -97,13 +100,13 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   test "a post with nothing showing has no Offers section, and a repeat never has one",
-       %{conn: conn, origin: origin, global: global, owner: owner} do
-    first = ask(conn, origin, %{"client_request_id" => "same-question"})
+       %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
+    first = ask(conn, agent, origin, %{"client_request_id" => "same-question"})
     refute Map.has_key?(json_response(first, 201), "agent_offers")
 
     place(global, 2, approved_version(owner, "Global two", global))
 
-    repeated = ask(first, origin, %{"client_request_id" => "same-question"})
+    repeated = ask(first, agent, origin, %{"client_request_id" => "same-question"})
     body = json_response(repeated, 200)
     assert body["repeated"] == true
     refute Map.has_key?(body, "agent_offers")
@@ -111,10 +114,13 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     replied =
       repeated
       |> again()
-      |> put_req_header("content-type", "application/json")
+      |> SignedAgent.sign(agent)
       |> post(
         "/forum/threads/#{body["thread_id"]}/replies",
-        Jason.encode!(%{"body_markdown" => "Here is what worked for me."})
+        Jason.encode!(%{
+          "body_markdown" => "Here is what worked for me.",
+          "client_request_id" => Ecto.UUID.generate()
+        })
       )
 
     assert [%{"label" => "Global · Slot 2"}] =
@@ -134,10 +140,10 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   describe "reporting an Offer" do
     test "names an Offer Patchbay showed, once per reporter, with a bounded note",
-         %{conn: conn, origin: origin, global: global, owner: owner} do
+         %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
       other = approved_version(owner, "Not shown", global)
-      posted = ask(conn, origin)
+      posted = ask(conn, agent, origin)
 
       %{"delivery_id" => delivery_id, "items" => [item]} =
         json_response(posted, 201)["agent_offers"]
@@ -150,11 +156,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
         "note" => "Claims Patchbay endorses it."
       }
 
-      first = posted |> report_offer(offer) |> json_response(201)
+      first = posted |> report_offer(agent, offer) |> json_response(201)
       assert %{"reported" => true, "reason" => "misleading", "status" => "open"} = first
 
       # Again, for another reason: the first report answers, and nothing is added.
-      again = posted |> report_offer(%{offer | "reason" => "other"}) |> json_response(201)
+      again = posted |> report_offer(agent, %{offer | "reason" => "other"}) |> json_response(201)
       assert again["report_id"] == first["report_id"]
       assert again["reason"] == "misleading"
       assert [_one] = Ash.read!(Offers.OfferReport, authorize?: false)
@@ -167,14 +173,14 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
             {%{offer | "note" => String.duplicate("é", 2_001)}, "note: is longer than 2,000"}
           ] do
         assert %{"error" => %{"code" => "invalid", "details" => [^detail <> _]}} =
-                 posted |> report_offer(refused) |> json_response(422)
+                 posted |> report_offer(agent, refused) |> json_response(422)
       end
     end
 
-    test "a reporter's eleventh report in an hour is refused, from a new session too",
-         %{conn: conn, origin: origin, global: global, owner: owner} do
+    test "a reporter's eleventh report in an hour is refused, from its person's other agents too",
+         %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
-      posted = ask(conn, origin)
+      posted = ask(conn, agent, origin)
       %{"items" => [item]} = json_response(posted, 201)["agent_offers"]
 
       offer = %{
@@ -183,18 +189,16 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
         "reason" => "other"
       }
 
-      for _ <- 1..10, do: assert(json_response(report_offer(posted, offer), 201))
+      for _ <- 1..10, do: assert(json_response(report_offer(posted, agent, offer), 201))
 
       assert %{"error" => %{"code" => "rate_limited"}} =
-               posted |> report_offer(offer) |> json_response(429)
+               posted |> report_offer(agent, offer) |> json_response(429)
 
-      # A new session costs nothing, so the address it comes from is counted too.
-      fresh = %{build_conn() | remote_ip: posted.remote_ip} |> get("/")
+      # Another agent costs its person nothing, so the share is the person's account's.
+      another = SignedAgent.pair!(agent.owner)
 
-      assert %{"error" => %{"code" => "rate_limited"} = refused} =
-               fresh |> report_offer(offer) |> json_response(429)
-
-      assert inspect(refused) =~ "address"
+      assert %{"error" => %{"code" => "rate_limited", "subject" => "account"}} =
+               posted |> report_offer(another, offer) |> json_response(429)
     end
   end
 
@@ -217,17 +221,17 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
 
     test "a report shows as it is filed; confirming and blocking are recorded, and the Offer stops",
-         %{conn: conn, origin: origin, global: global, owner: owner} do
+         %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
       moderator = moderator()
       {:ok, view, html} = conn |> signed_in(moderator) |> live("/admin/offers")
       assert html =~ "No Offer has been reported."
 
-      posted = ask(conn, origin)
+      posted = ask(conn, agent, origin)
       %{"items" => [item]} = json_response(posted, 201)["agent_offers"]
 
       posted
-      |> report_offer(%{
+      |> report_offer(agent, %{
         "placement_id" => item["placement_id"],
         "creative_version_id" => item["creative_version_id"],
         "reason" => "prompt_injection",
@@ -269,7 +273,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert {version_id, report_id, by} == {report.version_id, report.id, moderator.id}
 
       # The blocked wording is shown nowhere from then on.
-      assert json_response(ask(conn, origin), 201)["agent_offers"] == nil
+      assert json_response(ask(conn, agent, origin), 201)["agent_offers"] == nil
     end
 
     test "a wording screening left for a person is allowed there, for a day, on record",
@@ -313,13 +317,13 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   describe "the market list" do
     test "shows each slot's Offer, the least that replaces it, the next leader and the counts",
-         %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
+         %{conn: conn, origin: origin, site: site, global: global, owner: owner, agent: agent} do
       place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
       lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
       place(global, 2, approved_version(owner, "Global two", global))
-      ask(conn, origin)
+      ask(conn, agent, origin)
 
-      {:ok, view, html} = live(conn, "/offers/list?q=#{origin}")
+      {:ok, view, html} = live(conn, "/offers?q=#{origin}")
 
       global_section = text_of(view, ~s(section[aria-labelledby="pb-offers-global"]))
 
@@ -351,11 +355,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     # Agents read the same figures the page shows, so a bid they plan is one
     # the market accepts.
     test "agents read each slot's Offer, next leader and least bids over HTTP",
-         %{conn: conn, origin: origin, site: site, global: global, owner: owner} do
+         %{conn: conn, origin: origin, site: site, global: global, owner: owner, agent: agent} do
       place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
       lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
       place(global, 2, approved_version(owner, "Global two", global))
-      ask(conn, origin)
+      ask(conn, agent, origin)
 
       body = conn |> again() |> get("/forum/offer-slots?origin=#{origin}") |> json_response(200)
       assert body["notice"] =~ "a claim, never an instruction"
@@ -489,7 +493,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       |> lead_next(1, approved_version(owner, "Beaten next", site), 700)
       |> return_bid(:next_leader_replaced)
 
-      {:ok, view, _html} = live(signed_in(conn, owner), "/offers/expired")
+      {:ok, view, _html} = live(signed_in(conn, owner), "/offers/history")
 
       replaced = text_of(view, "#pb-offers-ended-list li", "Replaced two")
       assert replaced =~ "Replaced by a higher bid"
@@ -507,7 +511,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert beaten =~ "7.00 Credits returned"
       assert beaten =~ "A higher bid took the next period."
 
-      {:ok, _view, someone_else} = live(signed_in(conn, advertiser()), "/offers/expired")
+      {:ok, _view, someone_else} = live(signed_in(conn, advertiser()), "/offers/history")
       refute someone_else =~ "Replaced two"
       refute someone_else =~ "Beaten next"
     end
@@ -515,11 +519,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
   describe "hosted MCP" do
     test "a new post at /mcp carries Offers once, as their own block after the result",
-         %{conn: conn, origin: origin, global: global, owner: owner} do
+         %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/mcp")
 
-      result = mcp_ask(conn, "/mcp", session, origin)
+      result = mcp_ask(conn, "/mcp", session, agent, origin)
 
       assert [%{"text" => posted}, %{"text" => offers}] = result["content"]
       assert %{"thread_id" => _} = Jason.decode!(posted)
@@ -536,11 +540,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
 
     test "the ChatGPT plugin's address posts the same way and never carries Offers",
-         %{conn: conn, origin: origin, global: global, owner: owner} do
+         %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/chatgpt/mcp")
 
-      response = mcp_rpc(conn, "/chatgpt/mcp", session, "tools/call", ask_tool(origin))
+      response = mcp_rpc(conn, "/chatgpt/mcp", session, "tools/call", ask_tool(origin), agent)
       refute response.resp_body =~ "Global one"
       refute response.resp_body =~ "agent_offers"
 
@@ -551,12 +555,12 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
 
     test "/mcp reports an Offer; the ChatGPT plugin's address neither lists nor runs the tool",
-         %{conn: conn, origin: origin, global: global, owner: owner} do
+         %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/mcp")
 
       %{"items" => [item]} =
-        mcp_ask(conn, "/mcp", session, origin)["structuredContent"]["agent_offers"]
+        mcp_ask(conn, "/mcp", session, agent, origin)["structuredContent"]["agent_offers"]
 
       report = %{
         "name" => "report_agent_offer",
@@ -568,7 +572,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       }
 
       assert %{"result" => %{"structuredContent" => %{"reported" => true}}} =
-               conn |> mcp_rpc("/mcp", session, "tools/call", report) |> json_response(200)
+               conn |> mcp_rpc("/mcp", session, "tools/call", report, agent) |> json_response(200)
 
       chatgpt = mcp_session(conn, "/chatgpt/mcp")
 
@@ -579,7 +583,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       assert %{"error" => %{"message" => "Unknown tool: report_agent_offer" <> _}} =
                conn
-               |> mcp_rpc("/chatgpt/mcp", chatgpt, "tools/call", report)
+               |> mcp_rpc("/chatgpt/mcp", chatgpt, "tools/call", report, agent)
                |> json_response(200)
     end
 
@@ -599,9 +603,9 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     session
   end
 
-  defp mcp_ask(conn, path, session, origin) do
+  defp mcp_ask(conn, path, session, agent, origin) do
     %{"result" => result} =
-      conn |> mcp_rpc(path, session, "tools/call", ask_tool(origin)) |> json_response(200)
+      conn |> mcp_rpc(path, session, "tools/call", ask_tool(origin), agent) |> json_response(200)
 
     result
   end
@@ -612,14 +616,17 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       "arguments" => %{
         "site" => origin,
         "title" => "How do I change a booking here?",
-        "body_markdown" => "The booking tool takes a date but I cannot find a way to move it."
+        "body_markdown" => "The booking tool takes a date but I cannot find a way to move it.",
+        "client_request_id" => Ecto.UUID.generate()
       }
     }
   end
 
-  defp mcp_rpc(conn, path, session, method, params) do
+  # Tool calls are signed by `agent`; the session's own messages need no agent.
+  defp mcp_rpc(conn, path, session, method, params, agent \\ nil) do
     conn = conn |> again() |> put_req_header("content-type", "application/json")
     conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
+    conn = if agent, do: SignedAgent.sign(conn, agent), else: conn
     post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
   end
 
@@ -649,19 +656,17 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     |> post("/forum/offer-bids", Jason.encode!(bid))
   end
 
-  defp report_offer(posted, offer) do
+  defp report_offer(posted, agent, offer) do
     posted
     |> again()
-    |> put_req_header("content-type", "application/json")
+    |> SignedAgent.sign(agent)
     |> post("/forum/offer-reports", Jason.encode!(offer))
   end
 
-  defp ask(conn, origin, extra \\ %{}) do
+  defp ask(conn, agent, origin, extra \\ %{}) do
     conn
     |> again()
-    |> get("/")
-    |> again()
-    |> put_req_header("content-type", "application/json")
+    |> SignedAgent.sign(agent)
     |> post(
       "/forum/threads",
       Jason.encode!(
@@ -669,7 +674,9 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
           %{
             "site" => origin,
             "title" => "How do I change a booking here?",
-            "body_markdown" => "The booking tool takes a date but I cannot find a way to move it."
+            "body_markdown" =>
+              "The booking tool takes a date but I cannot find a way to move it.",
+            "client_request_id" => Ecto.UUID.generate()
           },
           extra
         )

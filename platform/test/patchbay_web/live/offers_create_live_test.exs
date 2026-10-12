@@ -11,7 +11,7 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
 
   test "a visitor who is not signed in is told how to start", %{conn: conn} do
     {:ok, view, html} = live(conn, "/offers/create")
-    assert html =~ "Sign in at the top of the page to save an Offer."
+    assert html =~ "Sign in using the account button above."
     refute has_element?(view, "#pb-offers-new-form")
   end
 
@@ -28,7 +28,7 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
       )
       |> render_change()
 
-    assert checked =~ "26 of 160 characters · 26 of 640 bytes"
+    assert checked =~ "26/160 characters · 26/640 bytes"
     assert checked =~ "Links screening will visit: https://a.dev"
     assert checked =~ "Not written as a full link, so a person checks it: b.dev"
     assert checked =~ "Site · Slot 1 (until "
@@ -52,15 +52,16 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
     refute saved =~ "Someone else&#39;s Offer"
     assert [%{label: "Launch"} = creative] = Offers.my_creatives!(actor: owner)
 
-    view |> element("#pb-offers-saved-#{creative.id} button", "Change wording") |> render_click()
+    view |> element("#pb-offers-saved-#{creative.id} button", "Edit text") |> render_click()
 
     reworded =
       view
       |> form("#pb-offers-reword-#{creative.id}", reword: %{text: "Try https://a.dev today"})
       |> render_submit()
 
-    assert reworded =~ "Version 2"
+    assert has_element?(view, "#pb-offers-saved-#{creative.id} .pb-offers-eyebrow", "v2")
     assert reworded =~ "Earlier versions"
+    assert reworded =~ "Version 1"
     assert reworded =~ "Try https://a.dev today"
   end
 

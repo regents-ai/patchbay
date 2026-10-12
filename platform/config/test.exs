@@ -78,3 +78,7 @@ config :phoenix,
 # A site check's outside lists (the MCP Registry, GitHub, npm) answer from
 # the tests, never the internet.
 config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
+
+# The SIWA service answers signed agent requests from each test's own stub
+# (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
+config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}

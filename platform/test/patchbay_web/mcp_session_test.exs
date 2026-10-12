@@ -1,25 +1,30 @@
 defmodule PatchbayWeb.MCPSessionTest do
   @moduledoc """
-  The identity a hosted MCP connection posts under: issued at `initialize`,
-  returned in the `Mcp-Session-Id` header, never chosen by the caller.
+  Who a hosted MCP connection posts as: the signed, paired agent's pairing,
+  never the connection's `Mcp-Session-Id`, which `initialize` issues and the
+  caller cannot choose.
   """
 
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum.Report
   alias PatchbayWeb.MCP.Session
+  alias PatchbayWeb.SignedAgent
 
-  describe "the session a connection posts under" do
-    test "initialize issues one, and the free writes stand under it", %{conn: conn} do
-      {session, _} = initialize(conn)
-      {:ok, session_id} = Session.verify(session, :native_mcp)
+  describe "who a connection posts as" do
+    setup do
+      SignedAgent.stub_siwa()
+      %{agent: SignedAgent.pair!()}
+    end
 
+    test "a paired agent's free writes stand under its pairing", %{conn: conn, agent: agent} do
       asked =
-        call(conn, session, "ask_question", %{
+        call(conn, agent, "ask_question", %{
           "site" => "quiet.example.net",
           "title" => "Can this site amend a reservation?",
           "body_markdown" => "I found create_reservation but nothing to amend one.",
-          "topic_tags" => ["Reservations"]
+          "topic_tags" => ["Reservations"],
+          "client_request_id" => Ecto.UUID.generate()
         })
 
       refute asked["isError"]
@@ -29,47 +34,47 @@ defmodule PatchbayWeb.MCPSessionTest do
 
       assert url == PatchbayWeb.Endpoint.url() <> "/posts/#{thread_id}"
 
-      # The thread is filed under the session the server issued, with no
-      # profile: the same anonymous identity a page load gives a browser.
-      thread = Ash.get!(Report, thread_id)
-      assert thread.browser_session_id == session_id
-      assert is_nil(thread.author_profile_id)
+      # The thread is filed under the agent's pairing, whatever connection
+      # session the request carries.
+      assert Ash.get!(Report, thread_id).browser_session_id == agent.pairing.id
 
-      followed = call(conn, session, "follow_scope", %{"thread_id" => thread_id})
+      followed = call(conn, agent, "follow_scope", %{"thread_id" => thread_id})
       assert %{"subscribed" => true, "scope_kind" => "thread"} = followed["structuredContent"]
 
-      # Somebody else answers from a browser; the reply is the first update
-      # after the post's own cursor, and the follow scope carries it too.
+      # Another agent answers over HTTP; the reply is the first update after
+      # the post's own cursor, and the follow scope carries it too.
+      other = SignedAgent.pair!()
+
       answered =
         conn
         |> recycle()
-        |> get("/")
-        |> recycle()
-        |> put_req_header("content-type", "application/json")
+        |> SignedAgent.sign(other)
         |> post(
           "/forum/threads/#{thread_id}/replies",
-          Jason.encode!(%{"body_markdown" => "Call amend_reservation.", "reply_kind" => "answer"})
+          Jason.encode!(%{
+            "body_markdown" => "Call amend_reservation.",
+            "reply_kind" => "answer",
+            "client_request_id" => Ecto.UUID.generate()
+          })
         )
         |> json_response(201)
 
       watched =
-        call(conn, session, "get_updates", %{"thread_ids" => [thread_id], "cursor" => cursor})[
+        call(conn, agent, "get_updates", %{"thread_ids" => [thread_id], "cursor" => cursor})[
           "structuredContent"
         ]
 
       assert [%{"kind" => "reply_posted", "thread_id" => ^thread_id, "url" => ^url}] =
                watched["events"]
 
-      followed = call(conn, session, "get_updates", %{})["structuredContent"]
+      followed = call(conn, agent, "get_updates", %{})["structuredContent"]
 
       assert [
                %{"kind" => "thread_posted", "thread_id" => ^thread_id, "by_you" => true},
                %{"kind" => "reply_posted", "thread_id" => ^thread_id, "by_you" => false}
              ] = followed["events"]
 
-      # Only the asker's session can name the reply that worked.
-      {other, _} = initialize(conn)
-
+      # Only the asker can name the reply that worked.
       refused =
         call(conn, other, "mark_solution", %{
           "thread_id" => thread_id,
@@ -79,7 +84,7 @@ defmodule PatchbayWeb.MCPSessionTest do
       assert refused["isError"]
 
       marked =
-        call(conn, session, "mark_solution", %{
+        call(conn, agent, "mark_solution", %{
           "thread_id" => thread_id,
           "reply_id" => answered["reply_id"]
         })
@@ -89,7 +94,7 @@ defmodule PatchbayWeb.MCPSessionTest do
 
       # The asker's own marking is an update for the asker, marked as its own.
       after_mark =
-        call(conn, session, "get_updates", %{
+        call(conn, agent, "get_updates", %{
           "thread_ids" => [thread_id],
           "cursor" => watched["next_cursor"]
         })["structuredContent"]
@@ -97,23 +102,23 @@ defmodule PatchbayWeb.MCPSessionTest do
       assert [%{"kind" => "solution_marked", "by_you" => true}] = after_mark["events"]
     end
 
-    test "a connection without a session can read but not write", %{conn: conn} do
+    test "an unsigned connection can read but not write", %{conn: conn} do
       before = Ash.count!(Report)
 
       refused =
-        call(conn, nil, "ask_question", %{
-          "site" => "quiet.example.net",
-          "title" => "Anyone home?",
-          "body_markdown" => "Testing."
+        conn
+        |> recycle()
+        |> rpc("tools/call", %{
+          "name" => "ask_question",
+          "arguments" => %{
+            "site" => "quiet.example.net",
+            "title" => "Anyone home?",
+            "body_markdown" => "Testing."
+          }
         })
 
-      assert refused["isError"]
-      assert refused["structuredContent"]["error"]["code"] == "no_session"
+      assert json_response(refused, 401)
       assert Ash.count!(Report) == before
-
-      # The feed is a read, but of the session's own follows: no session, no feed.
-      no_feed = call(conn, nil, "get_updates", %{})
-      assert no_feed["structuredContent"]["error"]["code"] == "no_session"
 
       searched = call(conn, nil, "search_threads", %{"q" => "anything"})
       refute searched["isError"]
@@ -141,27 +146,27 @@ defmodule PatchbayWeb.MCPSessionTest do
   end
 
   defp initialize(conn) do
-    response = rpc(conn, nil, "initialize", %{"protocolVersion" => "2025-06-18"})
+    response = conn |> recycle() |> rpc("initialize", %{"protocolVersion" => "2025-06-18"})
     [session] = Plug.Conn.get_resp_header(response, "mcp-session-id")
     {session, json_response(response, 200)}
   end
 
-  defp call(conn, session, name, arguments) do
+  # A call by `agent`, signed, or an unsigned one when `agent` is nil.
+  defp call(conn, agent, name, arguments) do
+    conn = recycle(conn)
+    conn = if agent, do: SignedAgent.sign(conn, agent), else: conn
+
     %{"result" => result} =
-      rpc(conn, session, "tools/call", %{"name" => name, "arguments" => arguments})
+      conn
+      |> rpc("tools/call", %{"name" => name, "arguments" => arguments})
       |> json_response(200)
 
     result
   end
 
-  defp rpc(conn, session, method, params) do
-    conn = conn |> recycle() |> put_req_header("content-type", "application/json")
-    conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
-
-    post(
-      conn,
-      "/mcp",
-      Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params})
-    )
+  defp rpc(conn, method, params) do
+    conn
+    |> put_req_header("content-type", "application/json")
+    |> post("/mcp", Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))
   end
 end
