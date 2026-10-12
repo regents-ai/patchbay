@@ -12,12 +12,35 @@ defmodule PatchbayWeb.WalletBenchHTML do
 
   use PatchbayWeb, :html
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
+  import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
-  alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.Cohorts
+  alias Patchbay.WalletBench.Matrix
 
   embed_templates("wallet_bench_html/*")
+
+  attr(:test, :string, required: true)
+  attr(:filters, :map, default: %{})
+  attr(:pair, :boolean, default: false)
+
+  def bench_header(assigns) do
+    ~H"""
+    <header class="pb-wb-head">
+      <p class="pb-wb-kicker"><a href={~p"/"}>Patchbay</a> · Wallet bench</p>
+      <h1 id="pb-wb-title" data-motion="reduced">Agent × Wallet Bench</h1>
+      <p class="pb-wb-lede">Coding agents set up crypto wallets and use them on their own.</p>
+    </header>
+    <nav class="pb-wb-tabs" aria-label="Wallet Bench matrices">
+      <a
+        :for={grid <- Matrix.grids()}
+        href={~p"/wallet-bench?#{Map.put(@filters, "test", grid)}"}
+        aria-current={grid == @test && if(@pair, do: "location", else: "page")}
+      >
+        {grid_title(grid)}
+      </a>
+    </nav>
+    """
+  end
 
   @doc "Every outcome, in legend order."
   def outcomes, do: Matrix.outcomes()
@@ -299,10 +322,21 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:grid, :string, required: true)
   attr(:said, :list, default: [], doc: "outcomes already named by its row or column")
 
+  attr(:filters, :map, default: %{})
+
   def square(assigns) do
+    params = Map.put(assigns.filters, "test", assigns.grid)
+
+    params =
+      if assigns.square.cohort_id,
+        do: Map.put(params, "cohort", assigns.square.cohort_id),
+        else: params
+
+    assigns = assign(assigns, :params, params)
+
     ~H"""
     <a
-      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}" <> if(@square.cohort_id, do: "?cohort=" <> @square.cohort_id, else: "") <> "#" <> @grid}
+      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}?#{@params}" <> "#" <> @grid}
       class={["pb-wb-square", @square.runs == 0 && "is-empty"]}
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
       data-wb-pair={@harness.name <> " with " <> @wallet.name}
@@ -354,11 +388,12 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:cohorts, :list, default: [])
   attr(:selection, :map, default: %{})
   attr(:comparison, :map, default: nil)
+  attr(:context, :map, default: %{})
 
   def pair_detail(assigns) do
     ~H"""
     <div id="pb-wb-pair" class="pb-wb-pair">
-      <section :if={@cohorts != []} class="pb-sheet-section">
+      <section :if={@cohorts != []} class="pb-sheet-section" id="versions">
         <h2>Versions &amp; comparisons</h2>
         <p class="patchbay-muted">
           Runs are grouped by their recorded versions and test context. Unknown means it was not recorded.
@@ -368,6 +403,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
           action={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}"}
           class="pb-wb-version-form"
         >
+          <input :for={{key, value} <- @context} type="hidden" name={key} value={value} />
           <label>
             Version group
             <select name="cohort" aria-label="Version group">
@@ -388,6 +424,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
           action={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}"}
           class="pb-wb-version-form"
         >
+          <input :for={{key, value} <- @context} type="hidden" name={key} value={value} />
+          <input :if={@selection["cohort"]} type="hidden" name="cohort" value={@selection["cohort"]} />
           <label>
             Baseline
             <select name="baseline" aria-label="Baseline" required>

@@ -1,21 +1,23 @@
-<main class="patchbay-shell patchbay-board" id="patchbay-wallet-bench-pair">
-  <.board_header title={@harness.name <> " with " <> @wallet.name}>
-    <:crumbs>
-      <a href={~p"/wallet-bench"}>PATCHBAY / WALLET BENCH</a>
-    </:crumbs>
-  </.board_header>
-
-  <.pair_detail
-    harness={@harness}
-    wallet={@wallet}
-    notes={@notes}
-    grids={@grids}
-    cohorts={@cohorts}
-    selection={@selection}
-    comparison={@comparison}
-  />
-
-  <section class="pb-sheet-section">
-    <a href={~p"/wallet-bench"}>Back to the bench</a>
+<main class="patchbay-shell" id="patchbay-wallet-bench-pair">
+  <section class="pb-wb-sheet" aria-labelledby="pb-wb-title">
+    <.bench_header test={@test} filters={@filters} pair={true} />
+    <div class="pb-wb-pair-head">
+      <a class="pb-wb-return" href={~p"/wallet-bench?#{@context}"}>← Back to {grid_title(@test)}</a>
+      <h2>{@harness.name} with {@wallet.name}</h2>
+      <nav aria-label="Pair details" class="pb-wb-detail-links">
+        <a href={"#" <> @test}>Run history</a>
+        <a :if={@cohorts != []} href="#versions">Versions &amp; comparisons</a>
+      </nav>
+    </div>
+    <.pair_detail
+      harness={@harness}
+      wallet={@wallet}
+      notes={@notes}
+      grids={@grids}
+      cohorts={@cohorts}
+      selection={@selection}
+      comparison={@comparison}
+      context={@context}
+    />
   </section>
 </main>

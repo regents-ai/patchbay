@@ -2326,7 +2326,7 @@ h1, h2, h3, h4, h5, h6 {
   font: 600 var(--pb-fs-sm)/1.2 var(--font-family-ui); text-decoration: none;
 }
 .pb-wb-tabs a:hover { color: var(--pb-wb-ink); }
-.pb-wb-tabs a[aria-current="page"] { border-top-color: var(--pb-wb-violet); color: var(--pb-wb-ink); }
+.pb-wb-tabs a[aria-current="page"], .pb-wb-tabs a[aria-current="location"] { border-top-color: var(--pb-wb-violet); color: var(--pb-wb-ink); }
 .pb-wb-board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); }
 .pb-wb-board-head h2 { margin: 0; font: 400 var(--pb-fs-xl)/1.1 var(--font-family-title); letter-spacing: -.02em; }
 .pb-wb-board-head p { margin: 0; color: var(--pb-wb-ink-soft); font: 500 .75rem/1.3 var(--font-family-mono); letter-spacing: .04em; }
@@ -2603,3 +2603,11 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
   .pb-wb-comparison-grid { grid-template-columns: minmax(0, 1fr); }
   .pb-wb-version-form > .rg-button { width: 100%; }
 }
+
+/* A pair page keeps the bench header and its tabs. */
+.pb-wb-pair-head { display: grid; gap: var(--space-2); min-width: 0; }
+.pb-wb-pair-head h2 { margin: 0; overflow-wrap: anywhere; }
+.pb-wb-detail-links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
+.pb-wb-return, .pb-wb-detail-links a { color: var(--pb-wb-ink); text-underline-offset: .2em; }
+.pb-wb-pair { min-width: 0; }
+.pb-wb-tabs a:focus-visible, .pb-wb-return:focus-visible, .pb-wb-detail-links a:focus-visible { outline: 2px solid var(--pb-wb-violet); outline-offset: 4px; }

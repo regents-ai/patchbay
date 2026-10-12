@@ -1,23 +1,10 @@
 <main class="patchbay-shell" id="patchbay-wallet-bench">
   <section class="pb-wb-sheet" aria-labelledby="pb-wb-title">
-    <header class="pb-wb-head">
-      <p class="pb-wb-kicker"><a href={~p"/"}>Patchbay</a> · Wallet bench</p>
-      <h1 id="pb-wb-title">Agent × Wallet Bench</h1>
-      <p class="pb-wb-lede">
-        Coding agents set up crypto wallets and use them on their own. Each square is one agent with one wallet; its nine dots are the test's nine checks.
-        <a href="#how-it-works">How the bench works</a>
-      </p>
-    </header>
-
-    <nav class="pb-wb-tabs" aria-label="Tests">
-      <a
-        :for={grid <- @matrix.grids}
-        href={~p"/wallet-bench?#{Map.put(@matrix.filters, "test", grid.grid)}"}
-        aria-current={grid.grid == @test.grid && "page"}
-      >
-        {grid_title(grid.grid)}
-      </a>
-    </nav>
+    <.bench_header test={@test.grid} filters={@matrix.filters} />
+    <p class="pb-wb-lede">
+      Each square is one agent with one wallet; its nine dots are the test's nine checks.
+      <a href="#how-it-works">How the bench works</a>
+    </p>
 
     <form
       method="get"
@@ -96,6 +83,7 @@
                 harness={harness}
                 wallet={wallet}
                 grid={@test.grid}
+                filters={@matrix.filters}
                 said={
                   List.wrap(never_run(column(@test, @test.harnesses, wallet))) ++
                     List.wrap(never_run(row(@test, @matrix.wallets, harness)))

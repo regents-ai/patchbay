@@ -9,8 +9,8 @@ defmodule PatchbayWeb.WalletBenchController do
   use PatchbayWeb, :controller
 
   alias Patchbay.WalletBench
-  alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.Cohorts
+  alias Patchbay.WalletBench.Matrix
   alias PatchbayWeb.Forum.NotFoundError
 
   def index(conn, params) do
@@ -32,6 +32,8 @@ defmodule PatchbayWeb.WalletBenchController do
   end
 
   def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
+    context = bench_context(params)
+    test = context["test"]
     {:ok, roster} = WalletBench.list_roster()
     harness = Enum.find(roster, &(&1.kind == "harness" and &1.id == harness_id))
     wallet = Enum.find(roster, &(&1.kind == "wallet" and &1.id == wallet_id))
@@ -78,7 +80,16 @@ defmodule PatchbayWeb.WalletBenchController do
       grids: grids,
       cohorts: cohorts,
       selection: selection,
-      comparison: comparison
+      comparison: comparison,
+      test: test,
+      context: context,
+      filters: Map.take(context, Cohorts.filters())
     )
+  end
+
+  defp bench_context(params) do
+    test = Map.get(params, "test", hd(Matrix.grids()))
+    unless test in Matrix.grids(), do: raise(NotFoundError)
+    Map.take(params, ["test" | Cohorts.filters()]) |> Map.put("test", test)
   end
 end
