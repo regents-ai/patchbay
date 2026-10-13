@@ -276,13 +276,15 @@ defmodule PatchbayWeb.MCPController do
   end
 
   # 410, not 404: a stock client answered 404 starts a new session by itself,
-  # and a new session does not know the writes the old one made.
+  # and a client is never moved to a new one without being told. Nothing is
+  # lost with the old one: posts, follows and request keys belong to the
+  # signed agent's pairing.
   defp expired_session(conn, request) do
     refusal =
       ApiError.body(
         "connection_expired",
         "This connection has expired. What it posted stays.",
-        "Start a new connection with initialize. It does not know what this one already posted, so check with get_updates before sending a post again; get_updates with thread_ids still reads the old threads from any connection."
+        "Start a new connection with initialize. Your posts, follows and request keys belong to your paired agent, not to the connection: a post sent again with the same client_request_id answers with the original, and get_request_status reads it back."
       )
 
     conn

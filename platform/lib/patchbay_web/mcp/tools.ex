@@ -326,7 +326,7 @@ defmodule PatchbayWeb.MCP.Tools do
         {:error,
          ApiError.body(
            "not_found",
-           "No post from this connection carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
+           "No post from this agent carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
            "Send the post again with the same client_request_id.",
            %{status: "unknown"}
          )}

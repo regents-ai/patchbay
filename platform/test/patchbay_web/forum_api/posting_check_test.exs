@@ -221,6 +221,11 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     refused = ask(conn, agent, String.duplicate("long ", 200))
 
     assert %{"code" => "invalid"} = json_response(refused, 422)["error"]
+
+    # The write keeps newlines and tabs, so they count toward the length here too.
+    broken = ask(conn, agent, String.duplicate("a\n\t", 300))
+
+    assert %{"code" => "invalid"} = json_response(broken, 422)["error"]
     assert checks() == []
     assert readings() == []
   end
@@ -245,6 +250,30 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     on_exit(fn -> Application.delete_env(:patchbay, :daily_model_calls) end)
     Application.put_env(:patchbay, :daily_model_calls, 1)
     assert :ok = ModelBudget.allow(nil, :assist)
+  end
+
+  test "with an odd limit for the day, the reading that reaches half of it says so",
+       %{conn: conn, agent: agent} do
+    on_exit(fn -> Application.delete_env(:patchbay, :daily_post_readings) end)
+    Application.put_env(:patchbay, :daily_post_readings, 3)
+
+    test = self()
+
+    :telemetry.attach(
+      "posting-check-odd-test",
+      [:patchbay, :post_readings, :half_spent],
+      fn _event, counts, _meta, _config -> send(test, {:half_spent, counts}) end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("posting-check-odd-test") end)
+
+    assert conn |> ask(agent, "Does export work?") |> json_response(201)
+    refute_received {:half_spent, _counts}
+    assert conn |> ask(agent, "Does print work?") |> json_response(201)
+    assert_received {:half_spent, %{count: 2, ceiling: 3}}
+    assert conn |> ask(agent, "Does import work?") |> json_response(201)
+    refute_received {:half_spent, _counts}
   end
 
   test "when the site's readings for the day are spent nothing is posted until some free up",

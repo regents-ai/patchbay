@@ -423,12 +423,11 @@ defmodule Patchbay.Forum.PostingCheck do
   defp at(moment), do: Calendar.strftime(moment, "%-d %b %Y, %H:%M UTC")
 
   # Whether the write is certain to refuse `text` for its length. The write
-  # may first drop control characters and the space around the text, so the
-  # text is measured with every one of them gone: longer than the limit even
-  # so, and no write accepts it.
-  defp too_long?(text, limit) when is_binary(text) and byte_size(text) > limit do
-    text |> String.replace(~r/[\p{Cc}\p{Cf}]/u, "") |> String.trim() |> byte_size() > limit
-  end
+  # may first clean the text as `StripControlCharacters` does, which keeps
+  # its newlines and tabs, so the text is measured cleaned the same way:
+  # longer than the limit even so, and no write accepts it.
+  defp too_long?(text, limit) when is_binary(text) and byte_size(text) > limit,
+    do: text |> StripControlCharacters.strip() |> byte_size() > limit
 
   defp too_long?(_text, _limit), do: false
 

@@ -144,15 +144,72 @@ defmodule PatchbayWeb.MCPSessionTest do
     end
   end
 
+  describe "a connection that ends" do
+    setup do
+      SignedAgent.stub_siwa()
+      %{agent: SignedAgent.pair!()}
+    end
+
+    test "an expired one is told its posts and keys stay with the agent, and the same key on a new one answers with the original",
+         %{conn: conn, agent: agent} do
+      long_ago = System.os_time(:second) - 91 * 24 * 60 * 60
+
+      expired =
+        Phoenix.Token.sign(PatchbayWeb.Endpoint, "mcp session", Ash.UUID.generate(),
+          signed_at: long_ago
+        )
+
+      refused =
+        conn
+        |> recycle()
+        |> put_req_header("mcp-session-id", expired)
+        |> rpc("ping", %{})
+        |> json_response(410)
+
+      assert %{"code" => "connection_expired", "hint" => hint} = refused["error"]["data"]
+      assert hint =~ "same client_request_id answers with the original"
+
+      question = %{
+        "site" => "quiet.example.net",
+        "title" => "Can this site amend a reservation?",
+        "body_markdown" => "I found create_reservation but nothing to amend one.",
+        "client_request_id" => Ecto.UUID.generate()
+      }
+
+      {first, _} = initialize(conn)
+      {second, _} = initialize(conn)
+
+      asked = call(conn, agent, "ask_question", question, first)
+      again = call(conn, agent, "ask_question", question, second)
+
+      refute asked["isError"]
+      assert again["structuredContent"]["thread_id"] == asked["structuredContent"]["thread_id"]
+      assert Ash.count!(Report) == 1
+
+      status =
+        call(
+          conn,
+          agent,
+          "get_request_status",
+          %{"client_request_id" => question["client_request_id"]},
+          second
+        )
+
+      assert %{"status" => "published"} = status["structuredContent"]
+    end
+  end
+
   defp initialize(conn) do
     response = conn |> recycle() |> rpc("initialize", %{"protocolVersion" => "2025-06-18"})
     [session] = Plug.Conn.get_resp_header(response, "mcp-session-id")
     {session, json_response(response, 200)}
   end
 
-  # A call by `agent`, signed, or an unsigned one when `agent` is nil.
-  defp call(conn, agent, name, arguments) do
+  # A call by `agent`, signed, or an unsigned one when `agent` is nil, on the
+  # connection `session` names when there is one.
+  defp call(conn, agent, name, arguments, session \\ nil) do
     conn = recycle(conn)
+    conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
     conn = if agent, do: SignedAgent.sign(conn, agent), else: conn
 
     %{"result" => result} =
