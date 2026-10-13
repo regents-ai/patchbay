@@ -18,6 +18,7 @@ defmodule Patchbay.PageSite do
 
     Application.put_env(:patchbay, :assist_target,
       resolve: fn _host -> [@address] end,
+      lookup: fn _host -> {:ok, [@address]} end,
       req_options: [plug: &answer(&1, pages)]
     )
   end

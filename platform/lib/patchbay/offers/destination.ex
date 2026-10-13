@@ -9,9 +9,10 @@ defmodule Patchbay.Offers.Destination do
   way, up to three times. A plain `http` link, or a redirect to one, is not
   visited, and screening turns the wording down.
 
-  A name with no website at all ends as `no_website`, so screening can tell
-  a word that only looks like an address, such as `Node.js`, from a site
-  that would not answer.
+  A name the lookup says does not exist ends as `no_website`, so screening
+  can tell a word that only looks like an address, such as `Node.js`, from a
+  site that would not answer. A lookup that failed any other way, such as
+  timing out, ends as `unreadable`.
 
   What comes back is evidence for screening: every hop, the final status, a
   hash of what was read and the page's title. A page longer than is read is
@@ -31,7 +32,8 @@ defmodule Patchbay.Offers.Destination do
 
   @doc """
   Where `url` leads: the evidence to keep, and the excerpt to screen.
-  `opts` are `Patchbay.Assist.Target.connect/2`'s.
+  `opts` are `Patchbay.Assist.Target.connect/2`'s, and `:lookup`, which
+  finds a name's addresses as `lookup/1` does.
   """
   @spec visit(String.t(), keyword()) :: {evidence(), String.t() | nil}
   def visit(url, opts \\ []), do: follow(url, [url], opts)
@@ -69,7 +71,15 @@ defmodule Patchbay.Offers.Destination do
 
   defp get(url, opts) do
     with true <- https?(url) || {:error, :not_https},
-         {:ok, target} <- Target.connect(url, Keyword.put(opts, :max_body_bytes, @max_body_bytes)),
+         {:ok, addresses} <- addresses(url, opts),
+         {:ok, target} <-
+           Target.connect(
+             url,
+             Keyword.merge(opts,
+               max_body_bytes: @max_body_bytes,
+               resolve: fn _host -> addresses end
+             )
+           ),
          {:ok, %Req.Response{} = response} <-
            Req.get(
              target.url,
@@ -84,6 +94,36 @@ defmodule Patchbay.Offers.Destination do
 
       _failed ->
         {:error, :unreachable}
+    end
+  end
+
+  defp addresses(url, opts) do
+    lookup = Keyword.get(opts, :lookup, &lookup/1)
+
+    case URI.new(url) do
+      {:ok, %URI{host: host}} when is_binary(host) and host != "" ->
+        host |> String.downcase() |> String.trim_trailing(".") |> lookup.()
+
+      _no_name ->
+        {:error, :not_public}
+    end
+  end
+
+  @doc """
+  The addresses `host` has right now, IPv4 first. Only a name that does not
+  exist, for both IPv4 and IPv6, is `:unresolvable`; a lookup that failed
+  any other way is `:unreachable`.
+  """
+  @spec lookup(String.t()) ::
+          {:ok, [:inet.ip_address()]} | {:error, :unresolvable | :unreachable}
+  def lookup(host) do
+    name = String.to_charlist(host)
+
+    with {:error, ipv4} <- :inet.getaddrs(name, :inet),
+         {:error, ipv6} <- :inet.getaddrs(name, :inet6) do
+      if ipv4 == :nxdomain and ipv6 == :nxdomain,
+        do: {:error, :unresolvable},
+        else: {:error, :unreachable}
     end
   end
 
