@@ -188,11 +188,19 @@ defmodule PatchbayWeb.ForumAPI.OfferBidding do
 
   defp wording_standing(%{eligible?: true}, _site), do: "Ready to bid here."
 
+  # Safety first, then fit for the site, as the bid page words them.
   defp wording_standing(wording, site) do
+    safety = "Safety: #{Bid.safety_words(wording)}"
+
     cond do
-      fit = Bid.fit_words(wording) -> "Fit for this site: #{fit}"
-      site -> "Not yet asked for this site; ask_offer_fit asks."
-      true -> "Waiting for screening."
+      fit = Bid.fit_words(wording) ->
+        "#{safety} Fit for this site: #{fit}"
+
+      site && Bid.safety_approved?(wording) ->
+        "#{safety} Not yet asked for this site; ask_offer_fit asks."
+
+      true ->
+        safety
     end
   end
 
