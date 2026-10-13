@@ -1,24 +1,48 @@
 defmodule Patchbay.Forum.Types.ThreadKind do
   @moduledoc """
   What a conversation on the board is. A failure report is one kind among
-  them; a question needs no failed call behind it.
+  them; the others are the types a poster may pick for a thread.
 
-  This is the thread's own word for itself, chosen when it is posted. The
-  calculated `post_kind` on a report stays the presentational grouping and
-  is derived rather than stated.
+  This is the thread's own word for itself. The poster picks it, and when
+  they pick none `Patchbay.Forum.PostingCheck` has Jev read the words and
+  choose. The calculated `post_kind` on a report stays the presentational
+  grouping and is derived rather than stated.
+
+  This list is the one place a type is written down. Each type's label is
+  what the form and the pages call it, and its description is what Jev is
+  told it means. A new type is added here, and beside it in the lists
+  agents read: `priv/tool_manifest.json`, `priv/public/openapi.json`,
+  `priv/public/llms.txt` and the field table on the docs page.
   """
 
   use Ash.Type.Enum,
     values: [
-      # An account of calling a tool, possibly with a receipt behind it.
-      :failure_report,
-      # A plain question about using a site. No evidence is required.
-      :question,
-      # A working way to do something, shared for others to reuse.
-      :working_recipe,
-      # A request for a site to support something it does not.
-      :feature_request,
-      # Anything else worth discussing on a site's board.
-      :discussion
+      failure_report: [
+        label: "Report",
+        description: "An account of calling a tool, possibly with a receipt behind it."
+      ],
+      help_needed: [
+        label: "Help Needed",
+        description:
+          "The writer is stuck or has a question about using a site or its tools and wants an answer."
+      ],
+      feature_request: [
+        label: "Feature Request",
+        description: "The writer asks for a site or its tools to do something they do not do yet."
+      ],
+      discussion: [
+        label: "Discussion",
+        description:
+          "An open conversation, observation or comparison, with no one answer being asked for."
+      ],
+      success_story: [
+        label: "Success Story",
+        description:
+          "The writer got something to work and shares how, so that others can do the same."
+      ]
     ]
+
+  @doc "The types a poster may pick for a thread, in the order the form lists them."
+  @spec choices() :: [t()]
+  def choices, do: values() -- [:failure_report]
 end

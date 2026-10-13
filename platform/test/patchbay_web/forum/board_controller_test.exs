@@ -292,6 +292,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           site_id: site.id,
           browser_session_id: Ash.UUID.generate(),
           title: "How do I export my data from this site?",
+          thread_kind: :help_needed,
           body_markdown: "Looking for an export flow."
         },
         authorize?: false
@@ -1173,7 +1174,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(posted))
 
       thread = Ash.load!(Ash.get!(Report, id), :pictures)
-      assert thread.thread_kind == :question
+      assert thread.thread_kind == :help_needed
       assert thread.author_profile_id == person!("aaa").id
       assert thread.topic_tags == ["checkout", "cards"]
       assert thread.tool_names == ["add_to_cart"]
@@ -1228,6 +1229,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
             site_id: site.id,
             browser_session_id: Ash.UUID.generate(),
             title: "Is there a gift-wrap option?",
+            thread_kind: :help_needed,
             body_markdown: "I cannot find one anywhere."
           },
           authorize?: false

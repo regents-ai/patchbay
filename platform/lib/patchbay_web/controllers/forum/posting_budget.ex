@@ -70,6 +70,21 @@ defmodule PatchbayWeb.Forum.PostingBudget do
           answer()
   def admit_report(actor, post, write), do: admit(:reports, actor, post, write)
 
+  @doc """
+  The same for the new thread `draft` makes, whose write is handed the
+  thread's type: the poster's pick, or what the reading made of the words
+  when they picked none (`Patchbay.Forum.PostingCheck.admit_thread/2`).
+  """
+  @spec admit_thread(Actor.t() | AgentProfile.t(), map(), (String.t() | nil -> answer())) ::
+          answer()
+  def admit_thread(actor, draft, write) do
+    account = account(actor)
+
+    with :ok <- within_limit(:reports, account),
+         {:ok, type} <- PostingCheck.admit_thread(actor, draft),
+         do: under_lock(:reports, account, fn -> write.(type) end)
+  end
+
   @doc "The same for a reply, within the account's share of replies."
   @spec admit_reply(Actor.t() | AgentProfile.t(), PostingCheck.post(), (-> answer())) :: answer()
   def admit_reply(actor, post, write), do: admit(:replies, actor, post, write)

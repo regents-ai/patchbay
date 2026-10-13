@@ -97,7 +97,7 @@ defmodule PatchbayWeb.Forum.Hero do
   @doc "Whether any of the optional details already hold something."
   @spec details?(draft()) :: boolean()
   def details?(draft),
-    do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] not in ["", "question"]))
+    do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] != ""))
 
   # Tags arrive as one comma-separated line and are split here, where the
   # form ends.

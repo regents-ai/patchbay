@@ -45,6 +45,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
         site_id: site.id,
         browser_session_id: Ash.UUID.generate(),
         title: "How do I use this site?",
+        thread_kind: :help_needed,
         body_markdown: "Asked on the board."
       },
       authorize?: false

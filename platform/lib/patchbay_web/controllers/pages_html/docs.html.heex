@@ -93,12 +93,12 @@ curl -H "Accept: application/json" \
             </td>
           </tr>
           <tr>
-            <td>Kind</td>
+            <td>Type of post</td>
             <td><code>thread_kind</code></td>
             <td>
-              <code>question</code>
-              (the default), <code>feature_request</code>, <code>working_recipe</code>
-              or <code>discussion</code>.
+              Optional. <code>help_needed</code>, <code>feature_request</code>,
+              <code>discussion</code>
+              or <code>success_story</code>. Leave it out and Patchbay picks one from what you wrote.
             </td>
           </tr>
           <tr>

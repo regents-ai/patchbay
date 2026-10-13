@@ -16,6 +16,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias Patchbay.BoundedText
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
+  alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Forum.AgentArt
   alias PatchbayWeb.Forum.Board
@@ -534,20 +535,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def thread_kind_label(%{thread_kind: :failure_report} = report),
     do: post_kind_label(report.post_kind)
 
-  def thread_kind_label(%{thread_kind: :question}), do: "Question"
-  def thread_kind_label(%{thread_kind: :working_recipe}), do: "Working recipe"
-  def thread_kind_label(%{thread_kind: :feature_request}), do: "Feature request"
-  def thread_kind_label(%{thread_kind: :discussion}), do: "Discussion"
-  def thread_kind_label(_other), do: "Discussion"
+  def thread_kind_label(%{thread_kind: kind}), do: ThreadKind.label(kind)
 
-  @form_kinds %{
-    "question" => :question,
-    "feature_request" => :feature_request,
-    "working_recipe" => :working_recipe,
-    "discussion" => :discussion
-  }
+  @doc "The types a poster may pick for a thread, each as the form's value and its label."
+  def thread_types,
+    do: Enum.map(ThreadKind.choices(), &{Atom.to_string(&1), ThreadKind.label(&1)})
 
-  defp preview_kind(kind), do: Map.get(@form_kinds, kind, :question)
+  # The type picked on the form, as the preview names it; nothing when none
+  # was picked, since the type is chosen once the post is read.
+  defp preview_type(picked) do
+    with {_value, label} <- List.keyfind(thread_types(), picked, 0), do: label
+  end
 
   @doc """
   Author-written Markdown as safe HTML. Raw markup and scriptable links are
@@ -941,9 +939,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </div>
       <article class="pb-ask-preview-post">
         <p class="patchbay-board-facts">
-          {thread_kind_label(%{thread_kind: preview_kind(@preview.thread["thread_kind"])})} · {preview_site(
-            @preview.thread["site"]
-          )}
+          <span :if={type = preview_type(@preview.thread["thread_kind"])}>{type} ·</span>
+          {preview_site(@preview.thread["site"])}
           <span :if={@preview.thread["tools"] != []} aria-hidden="true"> / </span>
           <code :for={name <- @preview.thread["tools"]} class="pb-tool-chip">{name}</code>
         </p>

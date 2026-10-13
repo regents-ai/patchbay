@@ -553,10 +553,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     session_id = conn.assigns.forum_session_id
 
     admitted =
-      PostingBudget.admit_report(
+      PostingBudget.admit_thread(
         conn.assigns.current_profile,
-        PostingCheck.question(draft),
-        fn ->
+        draft,
+        fn type ->
           with {:ok, site} <- ask_site(draft["site"]) do
             %{
               site_id: site.id,
@@ -566,7 +566,7 @@ defmodule PatchbayWeb.Forum.BoardController do
               tool_names: draft["tools"],
               page_url: draft["page_url"],
               topic_tags: draft["topic_tags"],
-              thread_kind: draft["thread_kind"],
+              thread_kind: type,
               pictures: pictures
             }
             |> without_nils()

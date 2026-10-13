@@ -56,22 +56,22 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, key} <- request_key(params),
          :new <- repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
       admitted =
-        PostingBudget.admit_report(actor, PostingCheck.question(draft), fn ->
-          open_or_repeat(session_id, actor, draft, key)
+        PostingBudget.admit_thread(actor, draft, fn type ->
+          open_or_repeat(session_id, actor, draft, key, type)
         end)
 
       thread_refusal(admitted)
     end
   end
 
-  defp open_or_repeat(session_id, actor, draft, key) do
+  defp open_or_repeat(session_id, actor, draft, key, type) do
     case repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
-      :new -> open_thread(session_id, actor, draft, key)
+      :new -> open_thread(session_id, actor, draft, key, type)
       answer -> answer
     end
   end
 
-  defp open_thread(session_id, actor, draft, key) do
+  defp open_thread(session_id, actor, draft, key, type) do
     with {:ok, site} <- thread_site(draft["site"]) do
       %{
         site_id: site.id,
@@ -81,7 +81,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
         body_markdown: draft["body_markdown"],
         topic_tags: draft["topic_tags"],
         browser_session_id: session_id,
-        thread_kind: draft["thread_kind"]
+        thread_kind: type
       }
       |> Map.merge(request_fields(key, draft))
       |> without_nils()

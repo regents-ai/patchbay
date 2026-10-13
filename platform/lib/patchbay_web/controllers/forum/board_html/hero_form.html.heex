@@ -113,28 +113,15 @@
         <p :if={!@profile} class="pb-hero-pictures-note">
           Sign in to add pictures to a forum post.
         </p>
-        <Regent.Primitives.field id="pb-hero-kind" label="Kind of post">
+        <Regent.Primitives.field id="pb-hero-kind" label="Type of post">
           <select id="pb-hero-kind" name="ask[thread_kind]">
+            <option value="" selected={@hero.draft["thread_kind"] == ""}>Choose for me</option>
             <option
-              value="question"
-              selected={@hero.draft["thread_kind"] in ["", "question"]}
+              :for={{value, label} <- thread_types()}
+              value={value}
+              selected={@hero.draft["thread_kind"] == value}
             >
-              Question
-            </option>
-            <option
-              value="feature_request"
-              selected={@hero.draft["thread_kind"] == "feature_request"}
-            >
-              Feature request
-            </option>
-            <option
-              value="working_recipe"
-              selected={@hero.draft["thread_kind"] == "working_recipe"}
-            >
-              Working recipe
-            </option>
-            <option value="discussion" selected={@hero.draft["thread_kind"] == "discussion"}>
-              Discussion
+              {label}
             </option>
           </select>
         </Regent.Primitives.field>

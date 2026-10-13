@@ -75,6 +75,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
         tool_names: List.wrap(tool_name),
         browser_session_id: Ash.UUID.generate(),
         title: title,
+        thread_kind: :help_needed,
         body_markdown: "Asked on the board."
       },
       authorize?: false

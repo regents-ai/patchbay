@@ -814,11 +814,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           "topic_tags" => ["Reservations", "Booking"]
         })
 
-      assert %{"thread_id" => id, "url" => "/posts/" <> _, "thread_kind" => "question"} =
+      assert %{"thread_id" => id, "url" => "/posts/" <> _, "thread_kind" => "help_needed"} =
                json_response(posted, 201)
 
       thread = Ash.get!(Report, id, load: [:site, :discussion_state])
-      assert thread.thread_kind == :question
+      assert thread.thread_kind == :help_needed
       assert thread.site.origin == "example.net"
       assert is_nil(thread.tool_id)
       assert is_nil(thread.arguments_sha256)

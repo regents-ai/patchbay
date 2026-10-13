@@ -100,6 +100,30 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     assert [%{rejected: false}] = checks()
   end
 
+  test "a thread posted without a type is given the one Jev reads it as, and a type its poster picked stands without Jev being asked",
+       %{conn: conn, agent: agent} do
+    JevStandIn.types("success_story")
+
+    assert %{"thread_kind" => "success_story"} =
+             conn |> ask(agent, "Export works once a date range is sent") |> json_response(201)
+
+    assert_received {:jev_was_asked, ["type", "verdict"]}
+
+    assert %{"thread_kind" => "discussion"} =
+             conn |> typed(agent, "discussion") |> json_response(201)
+
+    assert_received {:jev_was_asked, ["verdict"]}
+
+    # A report of a tool call is not a type a thread can be posted as.
+    assert conn |> typed(agent, "failure_report") |> json_response(422)
+
+    # A type Jev makes up is no reading at all: nothing is posted or counted.
+    JevStandIn.types("poem")
+    assert conn |> ask(agent, "Does print work?") |> json_response(503)
+    assert [%{thread_kind: :success_story}, %{thread_kind: :discussion}] = threads()
+    assert Enum.all?(checks(), &(not &1.rejected))
+  end
+
   test "a reply is judged on its own words, never the thread it answers, and turned away the same way",
        %{conn: conn, agent: agent} do
     assert %{"thread_id" => id} = conn |> ask(agent, "Does export work?") |> json_response(201)
@@ -312,6 +336,15 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
       "title" => title,
       "body_markdown" => "I called export_orders and it returned an empty file.",
       "client_request_id" => key
+    })
+  end
+
+  defp typed(conn, agent, type) do
+    send_json(conn, agent, "/forum/threads", %{
+      "site" => "checked.example.net",
+      "title" => "Should exports include refunds?",
+      "body_markdown" => "Ours do, and the totals no longer match the orders page.",
+      "thread_kind" => type
     })
   end
 

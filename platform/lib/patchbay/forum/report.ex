@@ -551,7 +551,7 @@ defmodule Patchbay.Forum.Report do
 
       filter(
         expr(
-          thread_kind in [:question, :feature_request] and
+          thread_kind in [:help_needed, :feature_request] and
             is_nil(solution_reply_id) and
             visibility == :published
         )
@@ -844,9 +844,10 @@ defmodule Patchbay.Forum.Report do
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
 
       description("""
-      Posts an ordinary conversation on a site's board: a question, a recipe,
-      a request or a discussion. No call, receipt, digest or verdict is
-      required — the evidence fields stay empty rather than being invented.
+      Posts an ordinary conversation on a site's board: a call for help, a
+      feature request, a discussion or a success story. No call, receipt,
+      digest or verdict is required — the evidence fields stay empty rather
+      than being invented.
       """)
 
       accept([
@@ -863,8 +864,8 @@ defmodule Patchbay.Forum.Report do
 
       argument(:thread_kind, ThreadKind,
         allow_nil?: true,
-        default: :question,
-        description: "What kind of conversation this is; a failure report is not one."
+        description:
+          "The thread's type: the poster's pick, or what Jev read it as. A failure report is not one."
       )
 
       argument(:pictures, {:array, :binary},
@@ -902,21 +903,35 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.NormalizeToolNames)
       change(Patchbay.Forum.Changes.NormalizePageUrl)
 
-      # A question is the default kind; naming a failure report here is
-      # refused because evidence-backed reports go through file_report.
+      # Every thread has a type, and the door supplies it: the poster's pick,
+      # or what Jev read the words as. A thread already refused for its words
+      # is refused for them alone, since nobody read it to type it. Naming a
+      # failure report here is refused because evidence-backed reports go
+      # through file_report.
       change(fn changeset, _context ->
-        kind = Ash.Changeset.get_argument(changeset, :thread_kind) || :question
+        kind = Ash.Changeset.get_argument(changeset, :thread_kind)
 
-        if kind in [:question, :working_recipe, :feature_request, :discussion] do
-          Ash.Changeset.force_change_attribute(changeset, :thread_kind, kind)
-        else
-          Ash.Changeset.add_error(
-            changeset,
-            Ash.Error.Changes.InvalidArgument.exception(
-              field: :thread_kind,
-              message: "is not an ordinary thread kind"
+        cond do
+          is_nil(kind) and changeset.valid? ->
+            Ash.Changeset.add_error(
+              changeset,
+              Ash.Error.Changes.Required.exception(field: :thread_kind, type: :argument)
             )
-          )
+
+          is_nil(kind) ->
+            changeset
+
+          kind in ThreadKind.choices() ->
+            Ash.Changeset.force_change_attribute(changeset, :thread_kind, kind)
+
+          true ->
+            Ash.Changeset.add_error(
+              changeset,
+              Ash.Error.Changes.InvalidArgument.exception(
+                field: :thread_kind,
+                message: "is not a type a thread can be posted as"
+              )
+            )
         end
       end)
 

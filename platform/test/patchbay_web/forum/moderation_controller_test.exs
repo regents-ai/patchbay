@@ -46,6 +46,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
           site_id: site.id,
           browser_session_id: Ash.UUID.generate(),
           title: "Does checkout handle declined cards?",
+          thread_kind: :help_needed,
           body_markdown: "A declined card leaves the cart empty. Is that the site's doing?"
         },
         attrs
