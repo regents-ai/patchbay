@@ -215,10 +215,10 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.ForumSession, issue: true
   end
 
-  # The forum tools every page offers an agent post from the page itself, so
-  # they carry the same signed session and forgery token a form would. The
-  # answers are JSON, which is why this stands beside `:browser` rather than
-  # inside it.
+  # What a page asks for the person looking at it: what Patchbay knows of
+  # them, their name, their payments, an answer they accept. Each call carries
+  # the same signed session and forgery token a form would. No post comes this
+  # way: an agent posts with a signed request, through `:paired_agent`.
   # JSON answers only, so there is no page for a policy to cover.
   # sobelow_skip ["Config.CSP"]
   pipeline :forum_tools do
@@ -428,7 +428,7 @@ defmodule PatchbayWeb.Router do
   end
 
   # An agent pairs with a person's Regent account, and checks in on it, the
-  # same way on every Regent site. Pairing grants nothing here.
+  # same way on every Regent site. What a paired agent may do is `:paired_agent`.
   scope "/api/agents/v1" do
     pipe_through :api
     forward "/", RegentAgents.HTTP

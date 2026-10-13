@@ -43,13 +43,6 @@ defmodule PatchbayWeb.MCP.Tools do
 
   @names Enum.map(@tools, & &1.name)
 
-  # The tools that act as a signed, paired agent: the free writes, and the
-  # feed, which is a read of its owner's account's follows. A connection's
-  # session is never enough for one.
-  @session_tools Capabilities.hosted()
-                 |> Enum.filter(&(&1.requires == "paired_agent"))
-                 |> Enum.map(& &1.name)
-
   # The reads that answer from query-string params, as their HTTP endpoints do.
   @query_reads ~w(search_threads get_thread get_tool_history)
 
@@ -123,13 +116,9 @@ defmodule PatchbayWeb.MCP.Tools do
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     tool = Enum.find(@tools, &(&1.name == name))
 
-    if name in @session_tools and not match?(%Patchbay.Agents.Actor{}, Map.get(caller, :actor)) do
-      {:error, no_session()}
-    else
-      case check_arguments(tool.inputSchema, arguments) do
-        :ok -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
-        {:error, reason} -> {:invalid_arguments, reason}
-      end
+    case check_arguments(tool.inputSchema, arguments) do
+      :ok -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
+      {:error, reason} -> {:invalid_arguments, reason}
     end
   end
 
@@ -185,12 +174,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp with_offers(answer, _surface), do: answer
 
   defp report_agent_offer(arguments, caller) do
-    case Participation.report_offer(
-           caller.session_id,
-           Map.get(caller, :actor),
-           caller.surface,
-           arguments
-         ) do
+    case Participation.report_offer(caller.actor, caller.surface, arguments) do
       {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
       {:error, failure} -> write_refusal(failure)
     end
@@ -346,15 +330,15 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("record_answer_use", %{"reply_id" => id} = arguments, session_id, actor) do
-    case Participation.record_answer_use(session_id, actor, id, arguments) do
+  defp run("record_answer_use", %{"reply_id" => id} = arguments, _session_id, actor) do
+    case Participation.record_answer_use(actor, id, arguments) do
       {:ok, use} -> {:ok, %{recorded: true, use_id: use.id, outcome: to_string(use.outcome)}}
       {:error, failure} -> write_refusal(failure)
     end
   end
 
-  defp run("follow_scope", arguments, session_id, actor) do
-    case Participation.follow(session_id, actor, arguments) do
+  defp run("follow_scope", arguments, _session_id, actor) do
+    case Participation.follow(actor, arguments) do
       {:ok, subscription} ->
         {:ok,
          %{
@@ -369,8 +353,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp run("unfollow_scope", %{"subscription_id" => id}, session_id, actor) do
-    case Participation.unfollow(session_id, actor, id) do
+  defp run("unfollow_scope", %{"subscription_id" => id}, _session_id, actor) do
+    case Participation.unfollow(actor, id) do
       :ok ->
         {:ok, %{unsubscribed: true, subscription_id: id}}
 
@@ -397,8 +381,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  # The free writes; `call/3` has already refused a caller that is not a
-  # signed, paired agent.
+  # The free writes. The door has already admitted the caller as a signed,
+  # paired agent (`PatchbayWeb.MCPController`).
   # A new post answers `{:posted, answer, post}` so Offers can follow it; the
   # same post sent again answers as it did, without them.
   defp post("ask_question", arguments, session_id, actor) do
@@ -448,14 +432,6 @@ defmodule PatchbayWeb.MCP.Tools do
       url: thread_page(thread.id),
       updates_cursor: Participation.updates_cursor(:reply, reply)
     }
-  end
-
-  defp no_session do
-    ApiError.body(
-      "agent_not_paired",
-      "This operation requires a signed, currently paired agent.",
-      "Sign the exact MCP request for patchbay. See /agents.md; a connection session is not agent authority."
-    )
   end
 
   # The same refusals the HTTP endpoints give, as a tool answer. Only a signed

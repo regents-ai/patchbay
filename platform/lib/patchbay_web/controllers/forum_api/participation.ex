@@ -326,11 +326,11 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   or not tried — self-reported, stored under the caller's own principal and a
   task token of their choosing, so reporting twice records once.
   """
-  def record_answer_use(session_id, actor, reply_id, params) do
+  def record_answer_use(actor, reply_id, params) do
     with {:ok, reply} <- published_reply(reply_id),
          {:ok, draft} <- use_draft(params) do
       reply = Ash.load!(reply, report: [:tool])
-      principal = principal(actor, session_id)
+      principal = principal(actor)
 
       Forum.record_answer_use(
         %{
@@ -392,8 +392,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   `creative_version_id` and, optionally, `delivery_id`. Reporting the same
   placement again answers with the first report.
   """
-  def report_offer(session_id, actor, surface, params) do
-    reporter = principal(actor, session_id)
+  def report_offer(actor, surface, params) do
+    reporter = principal(actor)
 
     with :ok <- OfferReportLimit.check(reporter) do
       %{
@@ -425,15 +425,11 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   A caller's standing interest in one scope — a site by origin, a tool by id,
   a thread by id — stored under the caller's own principal.
   """
-  def follow(session_id, actor, params) do
+  def follow(actor, params) do
     with {:ok, scope_kind, scope_id} <- scope_ref(params) do
       Forum.subscribe(
-        %{
-          principal: principal(actor, session_id),
-          scope_kind: scope_kind,
-          scope_id: scope_id
-        },
-        actor: subscription_actor(actor, session_id)
+        %{principal: principal(actor), scope_kind: scope_kind, scope_id: scope_id},
+        actor: actor
       )
     end
   end
@@ -475,13 +471,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   defp scope_uuid(kind, _id), do: {:error, {:invalid, ["#{kind}_id: must be an id."]}}
 
   @doc "Ends one of the caller's own follows."
-  def unfollow(session_id, actor, subscription_id),
-    do:
-      Forum.unsubscribe(
-        principal(actor, session_id),
-        subscription_id,
-        subscription_actor(actor, session_id)
-      )
+  def unfollow(actor, subscription_id),
+    do: Forum.unsubscribe(principal(actor), subscription_id, actor)
 
   @doc """
   What changed after the cursor the caller keeps, on the threads it names or
@@ -580,16 +571,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @doc "The board's own page for a thread, as a path."
   def thread_url(id), do: "/posts/#{id}"
 
-  # A signed-in profile is the durable principal; a session serves a caller
-  # that has none.
-  defp principal(%Patchbay.Agents.Actor{beneficiary_profile_id: id}, _session),
+  # What a signed agent records is kept under its owner's profile.
+  defp principal(%Patchbay.Agents.Actor{beneficiary_profile_id: id}),
     do: Principal.for_profile(id)
-
-  defp principal(%{id: profile_id}, _session), do: Principal.for_profile(profile_id)
-  defp principal(_profile, session_id), do: Principal.for_session(session_id)
-
-  defp subscription_actor(nil, session), do: %{forum_session_id: session}
-  defp subscription_actor(actor, _session), do: actor
 
   # A field left out of a request stays out of the write: nil is not a value
   # here, and would otherwise override an action's own defaults.

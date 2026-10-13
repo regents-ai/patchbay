@@ -90,9 +90,7 @@ defmodule PatchbayWeb.MCP.Events do
   @spec list() :: {:ok, map()}
   def list, do: {:ok, %{"events" => @definitions}}
 
-  @spec subscribe(map(), String.t() | nil) :: result()
-  def subscribe(_params, nil), do: no_connection()
-
+  @spec subscribe(map(), struct()) :: result()
   def subscribe(params, %Patchbay.Agents.Actor{} = actor) do
     owner_id = Principal.for_profile(actor.beneficiary_profile_id)
 
@@ -121,9 +119,7 @@ defmodule PatchbayWeb.MCP.Events do
     end
   end
 
-  @spec unsubscribe(map(), String.t() | nil) :: result()
-  def unsubscribe(_params, nil), do: no_connection()
-
+  @spec unsubscribe(map(), struct()) :: result()
   def unsubscribe(params, %Patchbay.Agents.Actor{} = actor) do
     with {:ok, name, arguments} <- event(params),
          {:ok, url, nil} <- webhook(params, false),
@@ -286,9 +282,4 @@ defmodule PatchbayWeb.MCP.Events do
   end
 
   defp invalid(message), do: {:error, -32_602, message}
-
-  defp no_connection,
-    do:
-      {:error, -32_000,
-       "Events belong to a connection. Send initialize, then subscribe with its Mcp-Session-Id."}
 end

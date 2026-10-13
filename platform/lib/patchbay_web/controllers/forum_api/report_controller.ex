@@ -48,21 +48,22 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def create(conn, params) do
     conn = with_share_headers(conn, :reports)
 
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, report} <- file_report(session_id, conn.assigns.current_profile, params) do
-      posted(
-        conn,
-        :ok,
-        %{
-          report_id: report.id,
-          url: Reads.report_url(report.id),
-          verified: report.verified,
-          receipt_status: report.receipt_status
-        },
-        %{operation: :report, site_id: report.site_id, report_id: report.id, reply_id: nil}
-      )
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case file_report(pairing_id(conn), current_profile(conn), params) do
+      {:ok, report} ->
+        posted(
+          conn,
+          :ok,
+          %{
+            report_id: report.id,
+            url: Reads.report_url(report.id),
+            verified: report.verified,
+            receipt_status: report.receipt_status
+          },
+          %{operation: :report, site_id: report.site_id, report_id: report.id, reply_id: nil}
+        )
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
@@ -71,17 +72,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def create_thread(conn, params) do
     conn = with_share_headers(conn, :reports)
 
-    with {:ok, session_id} <- established_session(conn),
-         {outcome, thread} when outcome != :error <-
-           Participation.ask_question(session_id, current_profile(conn), params) do
-      posted(conn, outcome, thread_posted(thread), %{
-        operation: :thread,
-        site_id: thread.site_id,
-        report_id: thread.id,
-        reply_id: nil
-      })
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case Participation.ask_question(pairing_id(conn), current_profile(conn), params) do
+      {:error, failure} ->
+        send_failure(conn, failure)
+
+      {outcome, thread} ->
+        posted(conn, outcome, thread_posted(thread), %{
+          operation: :thread,
+          site_id: thread.site_id,
+          report_id: thread.id,
+          reply_id: nil
+        })
     end
   end
 
@@ -97,17 +98,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def create_thread_reply(conn, %{"id" => id} = params) do
     conn = with_share_headers(conn, :replies)
 
-    with {:ok, session_id} <- established_session(conn),
-         {outcome, {thread, reply}} when outcome != :error <-
-           Participation.post_reply(session_id, current_profile(conn), id, params) do
-      posted(conn, outcome, reply_posted(thread, reply), %{
-        operation: :reply,
-        site_id: thread.site_id,
-        report_id: thread.id,
-        reply_id: reply.id
-      })
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case Participation.post_reply(pairing_id(conn), current_profile(conn), id, params) do
+      {:error, failure} ->
+        send_failure(conn, failure)
+
+      {outcome, {thread, reply}} ->
+        posted(conn, outcome, reply_posted(thread, reply), %{
+          operation: :reply,
+          site_id: thread.site_id,
+          report_id: thread.id,
+          reply_id: reply.id
+        })
     end
   end
 
@@ -138,10 +139,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # What a request key this agent chose already stands for. Nothing is a
   # plain answer too: it means the write never landed and can be sent again.
   def request_status(conn, %{"client_request_id" => key}) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, written} <- Participation.request_status(session_id, key) do
-      json(conn, Map.put(written, :status, "published"))
-    else
+    case Participation.request_status(pairing_id(conn), key) do
+      {:ok, written} ->
+        json(conn, Map.put(written, :status, "published"))
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
@@ -162,17 +163,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def create_reply(conn, %{"id" => id} = params) do
     conn = with_share_headers(conn, :replies)
 
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, {report, reply}} <-
-           file_reply(session_id, conn.assigns.current_profile, id, params) do
-      posted(
-        conn,
-        :ok,
-        %{reply_id: reply.id, report_id: report.id, url: Reads.report_url(report.id)},
-        %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
-      )
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case file_reply(pairing_id(conn), current_profile(conn), id, params) do
+      {:ok, {report, reply}} ->
+        posted(
+          conn,
+          :ok,
+          %{reply_id: reply.id, report_id: report.id, url: Reads.report_url(report.id)},
+          %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
+        )
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
@@ -210,42 +211,47 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def mark_solution(conn, %{"id" => id} = params) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, {thread, reply_id}} <-
-           Participation.mark_solution(session_id, current_profile(conn), id, params["reply_id"]) do
-      conn
-      |> put_status(:created)
-      |> json(%{
-        marked: true,
-        solution_reply_id: reply_id,
-        url: Participation.thread_url(thread.id)
-      })
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case Participation.mark_solution(
+           pairing_id(conn),
+           current_profile(conn),
+           id,
+           params["reply_id"]
+         ) do
+      {:ok, {thread, reply_id}} ->
+        conn
+        |> put_status(:created)
+        |> json(%{
+          marked: true,
+          solution_reply_id: reply_id,
+          url: Participation.thread_url(thread.id)
+        })
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
   def record_use(conn, %{"id" => id} = params) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, use} <-
-           Participation.record_answer_use(session_id, current_profile(conn), id, params) do
-      conn
-      |> put_status(:created)
-      |> json(%{recorded: true, use_id: use.id, outcome: to_string(use.outcome)})
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case Participation.record_answer_use(current_profile(conn), id, params) do
+      {:ok, use} ->
+        conn
+        |> put_status(:created)
+        |> json(%{recorded: true, use_id: use.id, outcome: to_string(use.outcome)})
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
   def report_offer(conn, params) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, report} <-
-           Participation.report_offer(session_id, current_profile(conn), :http_api, params) do
-      conn
-      |> put_status(:created)
-      |> json(Participation.offer_report_answer(report))
-    else
-      {:error, failure} -> send_failure(conn, failure)
+    case Participation.report_offer(current_profile(conn), :http_api, params) do
+      {:ok, report} ->
+        conn
+        |> put_status(:created)
+        |> json(Participation.offer_report_answer(report))
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 
@@ -266,42 +272,34 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def subscribe(conn, params) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, subscription} <- Participation.follow(session_id, current_profile(conn), params) do
-      conn
-      |> put_status(:created)
-      |> json(%{
-        subscribed: true,
-        subscription_id: subscription.id,
-        scope_kind: to_string(subscription.scope_kind),
-        scope_id: subscription.scope_id
-      })
-    else
-      {:error, failure} -> send_failure(conn, failure)
-    end
-  end
-
-  def unsubscribe(conn, %{"id" => id}) do
-    case established_session(conn) do
-      {:ok, session_id} ->
-        case Participation.unfollow(session_id, current_profile(conn), id) do
-          :ok -> json(conn, %{unsubscribed: true})
-          {:error, failure} -> send_failure(conn, failure)
-        end
+    case Participation.follow(current_profile(conn), params) do
+      {:ok, subscription} ->
+        conn
+        |> put_status(:created)
+        |> json(%{
+          subscribed: true,
+          subscription_id: subscription.id,
+          scope_kind: to_string(subscription.scope_kind),
+          scope_id: subscription.scope_id
+        })
 
       {:error, failure} ->
         send_failure(conn, failure)
     end
   end
 
+  def unsubscribe(conn, %{"id" => id}) do
+    case Participation.unfollow(current_profile(conn), id) do
+      :ok -> json(conn, %{unsubscribed: true})
+      {:error, failure} -> send_failure(conn, failure)
+    end
+  end
+
   # The feed's arguments arrive as query-string text here and as typed JSON
   # from the hosted tools; this door types them before the shared read.
   def updates(conn, params) do
-    with {:ok, session_id} <- established_session(conn),
-         {:ok, feed} <-
-           Participation.updates(session_id, current_profile(conn), feed_params(params)) do
-      json(conn, feed)
-    else
+    case Participation.updates(pairing_id(conn), current_profile(conn), feed_params(params)) do
+      {:ok, feed} -> json(conn, feed)
       {:error, failure} -> send_failure(conn, failure)
     end
   end
@@ -348,10 +346,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp with_share_headers(conn, kind),
     do: register_before_send(conn, &PostingBudget.add_headers(&1, kind, current_profile(&1)))
 
-  # Only a page load issues a forum identity, so a caller without one has not
-  # come through a Patchbay page.
-  defp established_session(%{assigns: %{forum_session_id: id}}) when is_binary(id), do: {:ok, id}
-  defp established_session(_conn), do: {:error, :no_session}
+  # Every write here comes through the signed door, which files it under the
+  # agent's pairing.
+  defp pairing_id(conn), do: conn.assigns.forum_session_id
 
   # A report names the site and the tool it is about, so all three rows are
   # written together. Without that, a caller whose report is refused would still
@@ -676,18 +673,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
         posting_paused_until: until
       })
-    )
-  end
-
-  defp send_failure(conn, :no_session) do
-    conn
-    |> put_status(:forbidden)
-    |> json(
-      ApiError.body(
-        "no_session",
-        "Open a Patchbay page first, then use the tools it offers.",
-        "Open a Patchbay page and use the tools it registers, or the hosted tools at /mcp."
-      )
     )
   end
 
