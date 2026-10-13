@@ -25,7 +25,7 @@ defmodule Patchbay.Config do
 
   @default_daily_model_calls 2000
   @default_daily_free_fixes 200
-  @default_daily_post_readings 10_000
+  @default_daily_post_readings 30_000
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
   @default_agent_poll_seconds 15

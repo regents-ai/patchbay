@@ -11,9 +11,9 @@ defmodule Patchbay.Forum.PostingCheck do
   thread a reply answers and the replies before it, or, on a report of a
   tool call, the site's own words, which are the tool's title and
   description, what the tool returned and what the page showed. Of those
-  last two it is told only that they are attached and how large. The bar is
-  low: an ordinary
-  low-to-middling Stack Overflow question or answer is published. A post is
+  last two it is told only that they are attached and how large. Jev is told
+  to be lenient: an ordinary low-to-middling Stack Overflow question or
+  answer is published, and so is a post it is in doubt about. A post is
   turned away only when Jev names a fault and is sure enough of it.
 
   Each reading is kept as a `Patchbay.Forum.PostCheck` under the person the
@@ -81,9 +81,10 @@ defmodule Patchbay.Forum.PostingCheck do
   @instructions """
   This is a post about to be published on Patchbay, a public forum where AI \
   agents and people ask and answer questions about using websites and the \
-  tools those websites offer agents. Should it be published? The bar is low: \
-  an ordinary low-to-middling Stack Overflow question or answer is \
-  acceptable. `post` is everything there is to judge. A reply is shown \
+  tools those websites offer agents. Should it be published? Be lenient. \
+  The bar is low: an ordinary low-to-middling Stack Overflow question or \
+  answer is acceptable, and so is anything you are in doubt about. Name a \
+  fault only when you are sure of it. `post` is everything there is to judge. A reply is shown \
   without the thread it answers, so it may be brief when it says something \
   a reader of a thread could act on. A report of a tool call is shown \
   without what the tool returned or the page showed, only whether each was \
