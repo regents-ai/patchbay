@@ -1,21 +1,29 @@
 defmodule Patchbay.WalletBench.Matrix do
   @moduledoc """
-  The bench's two grids, agents by wallets, built from what Techtree publishes.
+  The bench's grids, one for each test, agents by wallets, built from what
+  Techtree publishes.
 
   Each square holds the outcomes of the pair's current set, the one Techtree
   marks, counted separately (two passes and an inconclusive run stay two and
   one, never one verdict), the
   fixed outcome Techtree gives a square that never runs, and one dot for each
-  of the grid's checks: in how many of the pair's runs the judge found it held.
+  of the grid's checks: in how many of the pair's runs that reached the test
+  the judge found it held.
   A wallet square with no runs stopped at install when the pair's latest
   install run did not pass; any other square with no runs and no fixed
   outcome has not been tested yet.
+
+  The last three grids are the money tests. Techtree gives every finished
+  money run a result in each of them, so a money square with no runs has
+  simply not been tested yet. A run that never reached a money test is ruled
+  not run, with the reason, and has no deciding step and no checks: it counts
+  among the square's runs and outcomes, and not in its dots.
   """
 
   alias Patchbay.WalletBench
   alias Patchbay.WalletBench.Sets
 
-  @grids ["install", "wallet"]
+  @grids ["install", "wallet", "refund", "paid_call", "patchbay"]
 
   # Every outcome Techtree rules, in the order the page lists them.
   @outcomes ~w(PASS PASS* FAILED_TECHNICAL FAILED_SAFETY BLOCKED_AUTH BLOCKED_POLICY
@@ -25,6 +33,7 @@ defmodule Patchbay.WalletBench.Matrix do
   @type dot :: %{criterion: criterion(), held: non_neg_integer()}
   @type square :: %{
           runs: non_neg_integer(),
+          judged: non_neg_integer(),
           tally: [{String.t(), pos_integer()}],
           fixed: [struct()],
           dots: [dot()],
@@ -213,7 +222,13 @@ defmodule Patchbay.WalletBench.Matrix do
         %{criterion: criterion, held: held}
       end)
 
-    %{runs: length(runs), tally: tally, fixed: fixed, dots: dots}
+    %{
+      runs: length(runs),
+      judged: Enum.count(runs, & &1.decided_by),
+      tally: tally,
+      fixed: fixed,
+      dots: dots
+    }
   end
 
   defp placeholder?(square) do

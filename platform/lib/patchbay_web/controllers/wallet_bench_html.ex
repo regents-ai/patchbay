@@ -5,8 +5,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
   board is Techtree's; the board adds only colour and layout. Below it, how
   the bench works is the page's own write-up of the full grid.
 
-  A square shows a 3 by 3 grid of dots, one per check, coloured by how many of
-  the pair's runs the check held in. Opening a square shows the pair's runs
+  A square shows its dots three to a row, one per check, coloured by how many of
+  the pair's runs that reached the test the check held in. Opening a square shows the pair's runs
   over the board; the same runs are the pair's own page.
   """
 
@@ -48,6 +48,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
   @doc "The heading for a grid."
   def grid_title("install"), do: "Install"
   def grid_title("wallet"), do: "Make a wallet"
+  def grid_title("refund"), do: "Refund"
+  def grid_title("paid_call"), do: "Paid call"
+  def grid_title("patchbay"), do: "Patchbay sign-in"
 
   defp count(1, word), do: "1 #{word}"
   defp count(number, word), do: "#{number} #{word}s"
@@ -174,14 +177,14 @@ defmodule PatchbayWeb.WalletBenchHTML do
         %{runs: 0, fixed: fixed} ->
           Enum.map(fixed, &(word(notes, &1.fixed_outcome) <> ": " <> &1.fixed_reason))
 
-        %{tally: tally, runs: runs, dots: dots} ->
+        %{tally: tally, runs: runs, judged: judged, dots: dots} ->
           outcomes =
             Enum.map(tally, fn {outcome, n} -> word(notes, outcome) <> ", #{n} of #{runs}." end)
 
           checks =
-            dots
-            |> Enum.with_index(1)
-            |> Enum.map(fn {dot, n} -> "Check #{n}: held in #{dot.held} of #{runs}." end)
+            for {dot, n} <- Enum.with_index(dots, 1), judged > 0 do
+              "Check #{n}: held in #{dot.held} of #{judged}."
+            end
 
           outcomes ++ checks
       end
@@ -404,8 +407,11 @@ defmodule PatchbayWeb.WalletBenchHTML do
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
       data-wb-pair={@harness.name <> " with " <> @wallet.name}
     >
-      <span :if={@square.runs > 0} class="pb-wb-dots" aria-hidden="true">
-        <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.runs)]}></span>
+      <span :if={@square.judged > 0} class="pb-wb-dots" aria-hidden="true">
+        <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.judged)]}></span>
+      </span>
+      <span :if={@square.runs > 0 and @square.judged == 0} class="pb-wb-empty" aria-hidden="true">
+        {word(@notes, "NOT_RUN")}
       </span>
       <span :if={@square.runs > 0} class="pb-wb-set-count">{count(@square.runs, "run")} · {count(
         @square.set_count,
@@ -426,7 +432,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
     """
   end
 
-  @doc "Which dot is which check: the nine places numbered, and the checks behind the numbers."
+  @doc "Which dot is which check: the places numbered, and the checks behind the numbers."
   attr(:criteria, :list, required: true)
 
   def check_key(assigns) do

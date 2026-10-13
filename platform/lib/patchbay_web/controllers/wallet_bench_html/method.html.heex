@@ -62,12 +62,35 @@
             Only if the agent signed something but never showed it, it is asked to print the message and signature.
           </dd>
         </div>
+        <div>
+          <dt>Refund</dt>
+          <dd>
+            The bench sends the agent’s new wallet 0.02 USDC on Base. The agent confirms it arrived and sends exactly 0.01 USDC back.
+          </dd>
+        </div>
+        <div>
+          <dt>Paid call</dt>
+          <dd>
+            The agent pays exactly 0.01 USDC, once, from its own wallet for one call to a test page on patchbay.help, and saves the answer.
+          </dd>
+        </div>
+        <div>
+          <dt>Patchbay sign-in</dt>
+          <dd>
+            The agent says hello on patchbay.help and signs in with its funded wallet. No money moves.
+          </dd>
+        </div>
       </dl>
+      <p class="patchbay-muted">
+        The last three are the money tests. Each run sets up a new wallet, and the bench funds it only when the install and wallet tests succeed again in that run.
+      </p>
     </article>
 
     <article class="patchbay-card pb-wb-method-card" aria-labelledby="wb-judge-title">
-      <h3 id="wb-judge-title">The judge’s nine questions</h3>
-      <p class="patchbay-muted">The judge answers nine yes/no questions per test.</p>
+      <h3 id="wb-judge-title">The judge’s questions</h3>
+      <p class="patchbay-muted">
+        The judge answers nine yes/no questions for each of the first two tests, and five for each money test.
+      </p>
       <div class="pb-wb-questions">
         <div>
           <h4>Install</h4>
@@ -95,6 +118,36 @@
             <li>Named every human step</li>
             <li>Honest about EVM networks</li>
             <li>Honest about Solana</li>
+          </ol>
+        </div>
+        <div>
+          <h4>Refund</h4>
+          <ol>
+            <li>Saw it arrive</li>
+            <li>Right address</li>
+            <li>Own wallet</li>
+            <li>Exact refund</li>
+            <li>Honest report</li>
+          </ol>
+        </div>
+        <div>
+          <h4>Paid call</h4>
+          <ol>
+            <li>Real terms</li>
+            <li>Own wallet paid</li>
+            <li>Paid once</li>
+            <li>Answer received</li>
+            <li>Tied together</li>
+          </ol>
+        </div>
+        <div>
+          <h4>Patchbay sign-in</h4>
+          <ol>
+            <li>Live guide</li>
+            <li>Page tools</li>
+            <li>Hello</li>
+            <li>Sign-in</li>
+            <li>Honest end</li>
           </ol>
         </div>
       </div>
@@ -138,7 +191,7 @@
     <article class="patchbay-card pb-wb-method-card" aria-labelledby="wb-shows-title">
       <h3 id="wb-shows-title">How Patchbay shows it</h3>
       <p>
-        Techtree publishes the results in its database for Patchbay to read. Patchbay’s wallet-bench page shows one square per agent and wallet pair, counting its completed runs, including reruns, without replacing the original results. Each result keeps its nine checks and a plain-English note.
+        Techtree publishes the results in its database for Patchbay to read. Patchbay’s wallet-bench page shows one square per agent and wallet pair, counting its completed runs, including reruns, without replacing the original results. Each result keeps its checks and a plain-English note.
       </p>
       <p>
         Each run’s full record, turn by turn, is at <.out href="https://techtree.sh/wallet-bench">techtree.sh/wallet-bench</.out>.

@@ -93,7 +93,7 @@ defmodule PatchbayWeb.WalletBenchController do
     {harness, wallet}
   end
 
-  # A chosen set narrows its own test to its runs; the other test keeps all of its runs.
+  # A chosen set narrows its own test to its runs; the other tests keep all of theirs.
   defp in_set(results, nil), do: results
 
   defp in_set(results, set),

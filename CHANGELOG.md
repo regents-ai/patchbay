@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-13 — Three money-test boards on the Wallet Bench
+
+- `https://patchbay.help/wallet-bench` has three more boards beside Install
+  and Make a wallet: Refund, Paid call and Patchbay sign-in. Each reads
+  "Not tested yet" until Techtree publishes a run of that test.
+- A run that never reached a money test shows as "Not run" with Techtree's
+  reason, and is left out of the square's dots.
+- "How the bench works" says what the three money tests ask and lists their
+  five checks each.
+
 ## 2026-10-13 — A paid-call test page for the Wallet Bench
 
 - `GET https://patchbay.help/bench/x402-test` is a test page for wallets that
