@@ -21,6 +21,8 @@ defmodule Patchbay.Application do
         # Regent site reaches the pages showing it.
         RegentCredits.Listener,
         RegentPayments.Supervisor,
+        # The paid-call test page's record of payments it has already seen.
+        PatchbayWeb.Plugs.X402Test.replays(),
         {Finch, name: Patchbay.Assist.Target.finch()},
         Patchbay.Escrow.Watch,
         Patchbay.Forum.NotificationFanout,

@@ -80,6 +80,17 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.HelloProof
   end
 
+  # The Wallet Bench's paid-call test: 0.01 USDC by x402, then a fixed answer.
+  pipeline :x402_test do
+    plug :accepts, ["json"]
+    plug PatchbayWeb.Plugs.X402Test
+  end
+
+  scope "/bench", PatchbayWeb do
+    pipe_through :x402_test
+    get "/x402-test", X402TestController, :show
+  end
+
   pipeline :siwa_test do
     plug PatchbayWeb.Plugs.SignedBudget
     plug PatchbayWeb.Plugs.SiwaTestProof
