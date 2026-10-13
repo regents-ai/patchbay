@@ -6,6 +6,8 @@ defmodule Patchbay.Offers.Errors.BidRefused do
     * `:not_linked` - the signed-in profile has no Credits account to spend;
     * `:invalid_amount` - not an amount of Credits to the hundredth;
     * `:stale` - the slot moved on since its price was read;
+    * `:waiting` - an open slot whose turn has not come: slot `for_sale` is
+      the one for sale (`Patchbay.Offers.SlotOrder`);
     * `:not_approved` - the wording is not the bidder's, or not approved for
       this market now;
     * `:nothing_showing` - a next-period bid on a slot with nothing showing;
@@ -16,7 +18,7 @@ defmodule Patchbay.Offers.Errors.BidRefused do
   """
 
   use Splode.Error,
-    fields: [:reason, :minimum_minor, :expires_at],
+    fields: [:reason, :minimum_minor, :expires_at, :for_sale],
     class: :invalid
 
   alias Patchbay.Offers.CreditAmount
@@ -30,6 +32,9 @@ defmodule Patchbay.Offers.Errors.BidRefused do
 
   def message(%{reason: :stale}),
     do: "This slot changed since you looked. Check its new price, then bid again."
+
+  def message(%{reason: :waiting, for_sale: for_sale}),
+    do: "This slot opens when slot #{for_sale} is taken. Bid for slot #{for_sale} instead."
 
   def message(%{reason: :not_approved}),
     do: "This wording isn't approved for this market yet."

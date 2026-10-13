@@ -291,21 +291,21 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert site_card =~ ~r/Responses · 72h\s*1Total posts/
 
       assert text_of(view, ~s(a[href="/offers/bid?site=#{site.site_id}&slot=1"])) =~
-               ~r/Slot 1 ↗\s*Live\s*From 11\.02 Credits/
+               ~r/Slot 1\s*▸\s*Live\s*From 11\.02 Credits/
 
       assert text_of(view, ~s(a[href="/offers/bid?site=#{site.site_id}&slot=2"])) =~
-               ~r/Slot 2 ↗\s*Available\s*From 1\.00 Credits/
+               ~r/Slot 2\s*Bid ▸\s*Available\s*From 1\.00 Credits/
 
       global_card = text_of(view, ".pb-offers-global-card")
       assert global_card =~ "Shows in any empty slot, on every website."
-      assert global_card =~ ~r/Slot 3\s*Waiting\s*Opens when slot 1 is taken/
+      assert global_card =~ "Slot 3: opens when slot 1 is taken"
       refute has_element?(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=3"]))
 
       assert text_of(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=2"])) =~
-               ~r/Slot 2 ↗\s*Live\s*From 1\.10 Credits/
+               ~r/Slot 2\s*▸\s*Live\s*From 1\.10 Credits/
 
       assert text_of(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=1"])) =~
-               ~r/Slot 1 ↗\s*Available\s*From 1\.00 Credits/
+               ~r/Slot 1\s*Bid ▸\s*Available\s*From 1\.00 Credits/
 
       assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
       assert render(view) =~ "No website matches “no-such-site”."
@@ -330,6 +330,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       assert %{
                "label" => "Site · Slot 1",
+               "turn" => %{"state" => "showing", "opens_when_slot_taken" => nil},
                "showing" => %{"text" => "Site one", "amount" => %{"credits" => "10.01"}},
                "next_period" => %{"text" => "Next one", "amount" => %{"credits" => "20.00"}},
                "minimum_bid" => %{
@@ -345,10 +346,14 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert [
                %{
                  "showing" => nil,
+                 "turn" => %{"state" => "for_sale"},
                  "minimum_bid" => %{"immediate" => %{"credits" => "1.00"}, "next_period" => nil}
                },
-               %{"showing" => %{"text" => "Global two"}},
-               %{"showing" => nil}
+               %{"showing" => %{"text" => "Global two"}, "turn" => %{"state" => "showing"}},
+               %{
+                 "showing" => nil,
+                 "turn" => %{"state" => "waiting", "opens_when_slot_taken" => 1}
+               }
              ] = global_slots
 
       assert %{"error" => %{"code" => "invalid"}} =
@@ -373,7 +378,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       options =
         conn
-        |> signed_post(agent, "/forum/offer-bid-options", %{slot: 2, origin: origin})
+        |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
         |> json_response(200)
 
       assert options["terms"]["holds"] =~ "holds its full amount from your Credits"
@@ -381,7 +386,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert [%{"version_id" => version_id, "can_bid_here" => true}] = options["wordings"]
 
       bid = %{
-        slot: 2,
+        slot: 1,
         origin: origin,
         lane: "immediate",
         amount: "2.00",

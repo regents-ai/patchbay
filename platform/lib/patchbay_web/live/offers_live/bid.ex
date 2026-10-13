@@ -191,6 +191,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
     socket
     |> assign(now: now, market: market, slot: slot, opening: Offers.opening_minimum_minor(market))
+    |> assign(turn: BidDesk.turn(market, number, now))
     |> assign(duration_returns: Returns.placement_returns(showing, now))
     |> assign(showing: showing, terms: BidDesk.terms(showing))
     |> assign(mine)
@@ -405,6 +406,10 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   @doc false
   def not_linked_words, do: Exception.message(BidRefused.exception(reason: :not_linked))
+
+  # The bid page for another slot of the same market.
+  defp bid_path(nil, number), do: ~p"/offers/bid?#{[slot: number]}"
+  defp bid_path(site, number), do: ~p"/offers/bid?#{[site: site.id, slot: number]}"
 
   @doc "The slot's name: Global's or its site's, and its number."
   def label(nil, number), do: "Global · Slot #{number}"

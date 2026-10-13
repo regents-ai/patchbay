@@ -5,7 +5,8 @@ defmodule Patchbay.Offers.Bidding do
   It locks the slot and brings it up to date first (`Patchbay.Offers.Advance`),
   so a late job never lets a bid skip past an expiry or a due window. Then:
   the same request key answers with its bid; the slot must still be as the
-  bidder saw it; the wording must be theirs and approved for this market;
+  bidder saw it; it must be the slot's turn (`Patchbay.Offers.SlotOrder`);
+  the wording must be theirs and approved for this market;
   the bid joins the lane's open window or opens one closing two seconds
   later; it must meet the window's minimum; and its full amount is held
   from the bidder's Credits. Any refusal rolls everything back, so nothing
@@ -26,6 +27,7 @@ defmodule Patchbay.Offers.Bidding do
   alias Patchbay.Offers.Errors.BidRefused
   alias Patchbay.Offers.Holds
   alias Patchbay.Offers.Slot
+  alias Patchbay.Offers.SlotOrder
   alias Patchbay.Offers.Terms
 
   @window_us 2_000_000
@@ -65,6 +67,7 @@ defmodule Patchbay.Offers.Bidding do
 
   defp place(slot, args, profile, spender, now) do
     with :ok <- current(slot, args),
+         :ok <- in_turn(slot, now),
          :ok <- approved(slot.market, args.version_id, profile, now),
          {:ok, window} <- window(slot, args.lane, now),
          {:ok, minimum} <- minimum(window, slot.market, args.amount_minor),
@@ -119,6 +122,30 @@ defmodule Patchbay.Offers.Bidding do
 
   defp same(true), do: :ok
   defp same(false), do: refuse(:stale)
+
+  # A slot with no Offer showing takes bids only while every slot before it
+  # shows one. The slots before it are read as they stand at `now`, so one
+  # whose Offer has ended counts as open even before its job catches up.
+  defp in_turn(slot, now) do
+    # Part of the action that asked, whose policy already decided.
+    showing =
+      Slot
+      |> Ash.Query.filter(
+        market_id == ^slot.market_id and number <= ^slot.number and
+          active_placement.status == :active and active_placement.expires_at > ^now
+      )
+      |> Ash.Query.select([:number])
+      |> Ash.read!(authorize?: false)
+      |> Enum.map(& &1.number)
+
+    case SlotOrder.state(slot.number, showing) do
+      {:waiting, for_sale} ->
+        {:error, BidRefused.exception(reason: :waiting, for_sale: for_sale)}
+
+      _turn ->
+        :ok
+    end
+  end
 
   defp approved(market, version_id, profile, now) do
     # Part of the action that asked, whose policy already decided.

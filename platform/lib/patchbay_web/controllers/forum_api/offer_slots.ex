@@ -83,8 +83,9 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
 
   @doc """
   One slot of `market` (Global's when `site` is nil) as an agent reads it:
-  what is showing and until when, what comes next, the least a bid in each
-  lane may be, the counters a bid names and the page to bid on.
+  whether it is for sale or waiting for an earlier slot, what is showing and
+  until when, what comes next, the least a bid in each lane may be, the
+  counters a bid names and the page to bid on.
   """
   @spec slot_entry(map() | nil, 1..3, map() | nil, DateTime.t()) :: map()
   def slot_entry(site, number, market, now) do
@@ -96,6 +97,7 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
     %{
       number: number,
       label: "#{if site, do: "Site", else: "Global"} · Slot #{number}",
+      turn: market |> BidDesk.turn(number, now) |> turn(),
       showing: showing && offer(showing),
       next_period: next && offer(next),
       minimum_bid: %{
@@ -107,6 +109,11 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
     |> Map.merge(counters(slot))
     |> Map.merge(if showing, do: %{ends_at: showing.expires_at}, else: %{})
   end
+
+  # One open slot is for sale at a time; the ones after it wait for it.
+  defp turn(:showing), do: %{state: "showing", opens_when_slot_taken: nil}
+  defp turn(:for_sale), do: %{state: "for_sale", opens_when_slot_taken: nil}
+  defp turn({:waiting, for_sale}), do: %{state: "waiting", opens_when_slot_taken: for_sale}
 
   @doc "An amount of Credits as agents read it: the words and the hundredths."
   @spec amount(non_neg_integer()) :: map()

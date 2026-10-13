@@ -62,7 +62,7 @@
   >
     <h2 id="pb-offers-global">Global</h2>
     <p class="pb-offers-eyebrow">Shows in any empty slot, on every website.</p>
-    <.slots label="Global slots" market={@global} as_of={@as_of} />
+    <.slots id="pb-slots-global" label="Global slots" market={@global} as_of={@as_of} />
     <p class="pb-offers-global-note">
       Your Offer is a note of up to {@max_code_points} characters shown beside answers for {@hours} hours.
     </p>
@@ -132,6 +132,7 @@
             </div>
           </dl>
           <.slots
+            id={"pb-slots-#{entry.site.id}"}
             label={"#{site_name(entry.site)} slots"}
             market={entry.market}
             site_id={entry.site.id}

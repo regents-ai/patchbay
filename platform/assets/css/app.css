@@ -2547,26 +2547,84 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-site-heading h3 { font-size: 1.125rem; margin: 0 0 .25rem; }
 .pb-offers-site-activity { display: flex; justify-content: space-between; gap: var(--space-1); margin: auto 0 0; padding-block: var(--space-1); border-block: 1px solid var(--pb-line); }
 .pb-offers-site-activity dd { margin: .25rem 0 0; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
-.pb-offers-gallery-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-.pb-offers-gallery-slots > * { display: grid; align-content: start; gap: .5rem; padding: .75rem .5rem; min-width: 0; min-height: 6rem; border: 1px solid var(--pb-line-strong); overflow-wrap: anywhere; font-size: .75rem; }
-.pb-offers-gallery-slots > a { transition: transform 160ms cubic-bezier(.23, 1, .32, 1); }
-.pb-offers-gallery-slots > a:active { transform: scale(.97); }
-.pb-offers-gallery-slots > .pb-offers-slot-open { border-color: var(--pb-text); background: var(--pb-surface); }
-/* Waits, greyed, until the slot before it is taken. */
-.pb-offers-gallery-slots > .pb-offers-slot-waiting { color: var(--pb-text-muted); border-style: dashed; opacity: .6; }
-.pb-offers-gallery-slots strong { display: flex; align-items: center; justify-content: space-between; gap: .25rem; }
-/* Three lines kept for the price, the most a narrow tile wraps it to, so a
-   figure that changes moves nothing below. */
-.pb-offers-gallery-slots small { min-height: 4.35em; color: var(--pb-text-muted); font-size: .6875rem; line-height: 1.45; }
-.pb-offers-gallery-slots > a:focus-visible, .pb-offers-site-visual:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
+.pb-offers-site-visual:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
+
+/* Offer slots, read like a game menu: cut-corner tiles with a 1px edge drawn
+   by the tile's own background showing round an inset fill. A slot with an
+   Offer showing and the one slot for sale are full tiles; a slot waiting its
+   turn is a narrow locked part. Each tile's height is set by its rows, so a
+   price that changes moves nothing below. */
+.pb-slots {
+  --slot-cut: 8px;
+  --slot-shape: polygon(var(--slot-cut) 0, 100% 0, 100% calc(100% - var(--slot-cut)), calc(100% - var(--slot-cut)) 100%, 0 100%, 0 var(--slot-cut));
+  --slot-number: 1.25rem;
+  --slot-small: .6875rem;
+  --slot-locked: 2rem;
+  display: flex;
+  gap: .375rem;
+}
+.pb-slot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto calc(2 * 1.25 * var(--slot-small));
+  align-content: start;
+  gap: .25rem;
+  padding: .5rem .625rem;
+  overflow: hidden;
+  clip-path: var(--slot-shape);
+  background: var(--pb-line-strong);
+  color: var(--pb-text);
+  text-align: start;
+  isolation: isolate;
+  container-type: inline-size;
+}
+.pb-slot::before { content: ""; position: absolute; inset: 1px; z-index: -1; clip-path: var(--slot-shape); background: var(--pb-surface); }
+.pb-slot-top { display: flex; align-items: center; justify-content: space-between; gap: .25rem; }
+.pb-slot-number { font: 400 var(--slot-number)/1 var(--font-family-title); font-variant-numeric: tabular-nums; }
+.pb-slot-tag { font: 600 var(--slot-small)/1.25 var(--font-family-mono); letter-spacing: .08em; text-transform: uppercase; }
+.pb-slot-price { font: 400 var(--slot-small)/1.25 var(--font-family-mono); font-variant-numeric: tabular-nums; color: var(--pb-text-muted); overflow-wrap: anywhere; }
+.pb-slot-go { font: 600 var(--slot-small)/1 var(--font-family-mono); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+a.pb-slot { text-decoration: none; transition: transform 160ms cubic-bezier(.23, 1, .32, 1); }
+a.pb-slot:active { transform: scale(.97); }
+a.pb-slot:focus-visible { outline: none; background: var(--pb-text); }
+a.pb-slot:focus-visible::before { box-shadow: inset 0 0 0 1px var(--pb-text); }
+
+/* Showing an Offer: quiet, a dot beside the tag says it is on screen now. */
+.pb-slot--live .pb-slot-tag::before { content: ""; display: inline-block; width: .375rem; height: .375rem; margin-inline-end: .375rem; vertical-align: .0625rem; background: var(--pb-text); }
+.pb-slot--live .pb-slot-go { color: var(--pb-text-muted); }
+
+/* For sale: the lit tile, in the tangerine of the buttons' corners: a bar
+   down its left side and a glow that fades across it. */
+.pb-slot--open { --slot-signal: var(--palette-tangerine-tango); background: var(--pb-text); }
+.pb-slot--open::before { background: linear-gradient(90deg, color-mix(in srgb, var(--slot-signal) 18%, var(--pb-surface)), var(--pb-surface) 75%); box-shadow: inset 3px 0 0 var(--slot-signal); }
+.pb-slot--open .pb-slot-go { padding: .25rem .375rem; color: var(--pb-accent-ink); background: var(--pb-accent); clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px); }
+.pb-slot-scan { position: absolute; inset: 0 auto 0 0; width: 40%; pointer-events: none; opacity: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--slot-signal) 30%, transparent), transparent); }
+
+/* Waiting: a hatched, locked part with its number and three bars. */
+.pb-slot--locked { flex: 0 0 var(--slot-locked); grid-template-rows: auto 1fr; justify-items: center; padding-inline: 0; color: var(--pb-text-muted); }
+.pb-slot--locked::before { background: repeating-linear-gradient(135deg, var(--pb-surface-sunk) 0 4px, var(--pb-surface) 4px 8px); }
+.pb-slot--locked .pb-slot-number { font-size: calc(var(--slot-number) * .7); }
+.pb-slot-bars { display: grid; align-content: end; gap: 3px; }
+.pb-slot-bars > i { display: block; width: .75rem; height: 2px; background: currentColor; opacity: .7; }
+
+/* Global's slots, the page's first thing, sit larger. */
+.pb-offers-global-card .pb-slots { --slot-number: 1.75rem; --slot-small: .75rem; --slot-locked: 2.5rem; gap: .5rem; }
+.pb-offers-global-card .pb-slot:not(.pb-slot--locked) { padding: .75rem .875rem; }
+
+/* A narrow tile drops the word from its prompt and keeps the arrow. */
+@container (max-width: 6.5rem) { .pb-slot-go-word { display: none; } }
+
+@media (hover: hover) and (pointer: fine) {
+  a.pb-slot:hover { background: var(--pb-text); }
+  .pb-slot--open:hover { background: var(--slot-signal); }
+}
 .pb-offers-gallery-coverage { font-size: .75rem; color: var(--pb-text-muted); }
 .pb-offers-gallery-coverage summary { cursor: pointer; min-height: 2.75rem; display: list-item; align-content: center; }
 .pb-offers .pb-offers-global-card { display: grid; gap: var(--space-2); width: min(100%, 44rem); margin: var(--space-3) auto; text-align: center; }
 .pb-offers-global-card h2 { margin: 0; font-size: 1.5rem; }
 .pb-offers-global-card p { margin: 0; }
-.pb-offers-global-card .pb-offers-gallery-slots { text-align: start; }
-.pb-offers-global-card .pb-offers-gallery-slots > * { min-height: 7rem; padding: var(--space-1); font-size: .875rem; }
-.pb-offers-global-card .pb-offers-gallery-slots small { font-size: .75rem; }
 .pb-offers-global-note { font-size: .875rem; color: var(--pb-text-muted); }
 .pb-offers-guide { display: grid; gap: var(--space-3); }
 .pb-offers-guide-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
@@ -2574,9 +2632,8 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-guide-head .pb-offers-cta { border: 0; margin: 0; }
 .pb-offers-guide > section { padding-top: var(--space-2); border-top: 1px solid var(--pb-line); }
 
-@media (hover: hover) and (pointer: fine) { .pb-offers-gallery-slots > a:hover { background: var(--pb-surface-sunk); text-decoration: none; } }
 @media (max-width: 64rem) { .pb-offers-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 42rem) { .pb-offers-gallery { grid-template-columns: minmax(0, 1fr); } .pb-offers-global-card .pb-offers-gallery-slots > * { padding: .75rem .5rem; font-size: .75rem; } .pb-offers-global-card .pb-offers-gallery-slots small { font-size: .6875rem; } .pb-offers-summary dl { gap: var(--space-2); } }
+@media (max-width: 42rem) { .pb-offers-gallery { grid-template-columns: minmax(0, 1fr); } .pb-offers-summary dl { gap: var(--space-2); } }
 
 .pb-offers-summary { position: relative; }
 .pb-offers-summary h2 a::after { content: ""; position: absolute; inset: 0; }

@@ -3,9 +3,13 @@
 ## 2026-10-13 — Offers: Global first, one slot at a time
 
 - Global slots now sit at the top of the Offers page.
-- The Offers page offers one slot at a time: the first open one. The open
-  slots after it wait, greyed, until it is taken. A live slot can still be
-  outbid.
+- One slot is for sale at a time: the first open one. The open slots after it
+  wait until it is taken, and a bid on one of them is turned down with the
+  slot to bid for instead. A live slot can still be outbid.
+- Slots show as a row of tiles: live ones, the one for sale lit up, and the
+  slots still waiting as small locked tabs beside them.
+- Agents' slot list says whether each slot is for sale, live or waiting, and
+  which slot it waits for.
 - Website pictures show whole, no longer cut off.
 - One line under Global says what an Offer is: a note of up to 160
   characters, shown beside answers for 72 hours.

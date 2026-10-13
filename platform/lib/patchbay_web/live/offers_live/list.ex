@@ -24,6 +24,7 @@ defmodule PatchbayWeb.OffersLive.List do
   alias Patchbay.Forum.Site
   alias Patchbay.Offers
   alias Patchbay.Offers.Returns
+  alias PatchbayWeb.OffersLive.BidDesk
   alias PatchbayWeb.OffersLive.Create
   alias PatchbayWeb.OffersLive.Markets
 
@@ -157,38 +158,72 @@ defmodule PatchbayWeb.OffersLive.List do
   attr(:market, :map, required: true)
   attr(:site_id, :string, default: nil, doc: "none for Global's slots")
   attr(:as_of, DateTime, required: true)
+  attr(:id, :string, required: true)
 
-  # One slot is for sale at a time: the lowest-numbered open one. The open
-  # slots after it wait, greyed, until it is taken. A live slot can always be
-  # outbid. Each tile keeps three lines, so the card's height never changes.
+  # A rail of the market's slots, read like a game menu. Slots with an Offer
+  # showing and the one slot for sale are full tiles; the open slots after it
+  # wait as narrow locked parts until it is taken (`Patchbay.Offers.SlotOrder`).
+  # The rail's height is fixed, so no state moves what sits below it.
   defp slots(assigns) do
     %{market: market, as_of: as_of} = assigns
-    live = Enum.filter(1..3, &live?(find_slot(market, &1), as_of))
-    assigns = assign(assigns, live: live, for_sale: Enum.find(1..3, &(&1 not in live)))
+
+    assigns =
+      assign(assigns,
+        tiles:
+          for number <- 1..3 do
+            slot = find_slot(market, number)
+
+            %{
+              number: number,
+              turn: BidDesk.turn(market, number, as_of),
+              price: credits(slot_price(slot, market, as_of))
+            }
+          end
+      )
 
     ~H"""
-    <nav class="pb-offers-gallery-slots" aria-label={@label}>
-      <%= for number <- 1..3 do %>
-        <.link
-          :if={number in @live}
-          navigate={bid_path(@site_id, number)}
-          class="pb-offers-slot-live"
-        ><strong>Slot {number}
-        <span aria-hidden="true">↗</span></strong><span>Live</span><small>From {credits(
-          slot_price(find_slot(@market, number), @market, @as_of)
-        )}</small></.link>
-        <.link
-          :if={number == @for_sale}
-          navigate={bid_path(@site_id, number)}
-          class="pb-offers-slot-open"
-        ><strong>Slot {number}
-        <span aria-hidden="true">↗</span></strong><span>Available</span><small>From {credits(
-          slot_price(find_slot(@market, number), @market, @as_of)
-        )}</small></.link>
-        <span
-          :if={number not in @live and number != @for_sale}
-          class="pb-offers-slot-waiting"
-        ><strong>Slot {number}</strong><span>Waiting</span><small>Opens when slot {@for_sale} is taken</small></span>
+    <nav class="pb-slots" aria-label={@label} phx-hook="OfferSlots" id={@id}>
+      <%= for tile <- @tiles do %>
+        <%= case tile.turn do %>
+          <% :showing -> %>
+            <.link
+              navigate={bid_path(@site_id, tile.number)}
+              class="pb-slot pb-slot--live"
+              data-slot
+            >
+              <span class="pb-slot-top"><span class="pb-slot-number" aria-hidden="true">0{tile.number}</span><span class="visually-hidden">Slot {tile.number}</span><span
+                class="pb-slot-go"
+                aria-hidden="true"
+              >▸</span></span>
+              <span class="pb-slot-tag">Live</span>
+              <span class="pb-slot-price">From {tile.price}</span>
+            </.link>
+          <% :for_sale -> %>
+            <.link
+              navigate={bid_path(@site_id, tile.number)}
+              class="pb-slot pb-slot--open"
+              data-slot
+              data-open
+            >
+              <span class="pb-slot-scan" aria-hidden="true" data-scan></span>
+              <span class="pb-slot-top"><span class="pb-slot-number" aria-hidden="true">0{tile.number}</span><span class="visually-hidden">Slot {tile.number}</span><span
+                class="pb-slot-go"
+                aria-hidden="true"
+              ><span class="pb-slot-go-word">Bid </span>▸</span></span>
+              <span class="pb-slot-tag">Available</span>
+              <span class="pb-slot-price">From {tile.price}</span>
+            </.link>
+          <% {:waiting, for_sale} -> %>
+            <span
+              class="pb-slot pb-slot--locked"
+              title={"Opens when slot #{for_sale} is taken"}
+              data-slot
+            >
+              <span class="pb-slot-number" aria-hidden="true">0{tile.number}</span>
+              <span class="pb-slot-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="visually-hidden">Slot {tile.number}: opens when slot {for_sale} is taken</span>
+            </span>
+        <% end %>
       <% end %>
     </nav>
     """
@@ -198,11 +233,6 @@ defmodule PatchbayWeb.OffersLive.List do
   defp bid_path(site_id, number), do: ~p"/offers/bid?#{[site: site_id, slot: number]}"
 
   defp find_slot(market, number), do: market && Enum.find(market.slots, &(&1.number == number))
-
-  defp live?(%{active_placement: placement}, now) when not is_nil(placement),
-    do: showing?(placement, now)
-
-  defp live?(_slot, _now), do: false
 
   defp slot_price(%{active_placement: placement}, market, now) when not is_nil(placement) do
     if showing?(placement, now),

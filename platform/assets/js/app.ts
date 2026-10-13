@@ -34,6 +34,7 @@ import {PatchbayConfirmDialog} from "./hooks/confirm_dialog.ts"
 import {MotionCount, MotionList, MotionRefusal} from "./hooks/motion/moments.ts"
 import {MotionCascade} from "./hooks/motion/reveals.ts"
 import {HolographicCard} from "./hooks/holographic_card.ts"
+import {OfferSlots} from "./hooks/offer_slots.ts"
 import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
@@ -66,6 +67,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     MotionRefusal,
     MotionCascade,
     HolographicCard,
+    OfferSlots,
     PatchbayCreditsDialog,
     PatchbayCreditsPanel,
     // The motion lab's own presses and moments, used only on /animations.

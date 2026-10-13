@@ -17,6 +17,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
   alias Patchbay.Offers.Errors.BidRefused
   alias Patchbay.Offers.Review
   alias Patchbay.Offers.Slot
+  alias Patchbay.Offers.SlotOrder
   alias Patchbay.Offers.Terms
   alias PatchbayWeb.OffersLive.Markets
   alias RegentCredits.Errors.NotEnoughCredits
@@ -48,6 +49,13 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
     do: if(Markets.showing?(placement, now), do: placement)
 
   def showing(_slot, _now), do: nil
+
+  @doc "Slot `number`'s turn in `market` at `now` (`Patchbay.Offers.SlotOrder`)."
+  @spec turn(map() | nil, 1..3, DateTime.t()) :: SlotOrder.state()
+  def turn(market, number, now) do
+    showing = for n <- 1..3, showing(slot(market, n), now), do: n
+    SlotOrder.state(number, showing)
+  end
 
   @doc """
   The least a bid in `lane` may be: the replacement minimum over what holds
