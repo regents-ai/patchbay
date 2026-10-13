@@ -1,6 +1,6 @@
 <main class="pb-thread-page" id="patchbay-report">
   <nav class="pb-thread-navigation" aria-label="Discussion navigation">
-    <a href={~p"/"} class="pb-thread-back">← All discussions</a>
+    <a href={~p"/"} class="pb-thread-back">← All questions</a>
     <form method="post" action={~p"/follow"} class="pb-follow-form">
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
       <input type="hidden" name="site_id" value={@report.site.id} />

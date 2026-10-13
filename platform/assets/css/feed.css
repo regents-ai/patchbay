@@ -1,10 +1,4 @@
 /* Discussion-first composition; shared controls and palette stay Regent-owned. */
-.pb-feed-home .pb-workbench-head h1 {
-  margin: 0 0 .4rem;
-  font-family: var(--font-family-title);
-  font-size: clamp(1.5rem, 3vw, 2rem);
-  font-weight: 400;
-}
 .pb-feed-layout {
   display: grid;
   grid-template-columns: 15rem minmax(0, 1fr);
@@ -17,7 +11,7 @@
 }
 .pb-feed-layout .pb-discussions { border-right: 0; }
 .pb-feed-home > .rg-disclosure { margin-top: 1rem; }
-.pb-feed-home .pb-follow-form button, .pb-feed-home .pb-density {
+.pb-feed-home .pb-follow-form button {
   min-height: 2.75rem;
   min-width: 2.75rem;
   padding: .4rem .5rem;
@@ -32,6 +26,7 @@
 .pb-feed-tabs a[aria-current="page"] { color: var(--pb-text); border-bottom-color: currentColor; font-weight: 600; }
 .pb-feed-tabs :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 .pb-feed-list { list-style: none; margin: 0; padding: 0; }
+/* The Credits help list keeps its own rows. */
 .pb-post-preview-row {
   position: relative;
   min-width: 0;
@@ -40,7 +35,7 @@
 }
 .pb-post-preview-row:last-child { border-bottom: 0; }
 .pb-feed-heading { padding: 1rem 1rem 1rem 4rem; min-width: 0; }
-.pb-feed-context, .pb-feed-meta {
+.pb-feed-meta {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -50,8 +45,6 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
-.pb-feed-context a { color: var(--pb-text); }
-.pb-feed-context code { font-family: var(--font-family-mono); }
 .pb-feed-title {
   display: block;
   margin: .3rem 0 .45rem;
@@ -62,9 +55,6 @@
   text-decoration: none;
 }
 .pb-feed-title:hover { text-decoration: underline; }
-.pb-feed-meta .pb-feed-bounty { color: var(--pb-text); }
-.pb-feed-replies { display: inline-flex; align-items: center; gap: .3rem; color: var(--pb-text-muted); text-decoration: none; }
-.pb-feed-replies:hover { color: var(--pb-text); }
 .pb-feed-preview > summary {
   position: absolute;
   left: .5rem;
@@ -94,12 +84,76 @@
   font-size: 1rem;
   line-height: 1.65;
 }
-.pb-feed-note { margin: 0; white-space: pre-wrap; }
 .pb-feed-open { display: inline-block; margin-top: 1rem; font-size: .8125rem; }
+/* One question per row: the counts a reader scans first, then what it is
+   about, who asked and when. The same row on every list. */
+.pb-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: .5rem 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border-bottom: 1px solid var(--pb-card-line);
+  background: var(--pb-card);
+}
+.pb-row:last-child { border-bottom: 0; }
+.pb-row-stats {
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  gap: .3rem;
+  margin: 0;
+  color: var(--pb-text-muted);
+  font-size: .75rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.pb-row-stats strong { color: var(--pb-text); font-weight: 600; }
+.pb-row-answers { padding: .15rem .4rem; border: 1px solid var(--pb-line); }
+/* The asker marked an answer: the count is filled green. */
+.pb-row-answers.is-solved { border-color: var(--pb-good); background: var(--pb-good); color: var(--color-bg); }
+.pb-row-answers.is-solved strong { color: inherit; }
+.pb-row-main { display: grid; gap: .35rem; min-width: 0; }
+.pb-row-title {
+  color: var(--pb-text);
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.pb-row-title:hover { text-decoration: underline; }
+.pb-row-excerpt {
+  margin: 0;
+  color: var(--pb-text-muted);
+  font-size: .875rem;
+  line-height: 1.5;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pb-row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .5rem;
+  min-width: 0;
+  color: var(--pb-text-muted);
+  font-size: .75rem;
+  line-height: 1.6;
+}
+.pb-tag {
+  display: inline-block;
+  padding: 0 .45rem;
+  background: var(--pb-accent-wash);
+  color: var(--pb-text);
+  font: .75rem/1.6 var(--font-family-mono);
+  text-decoration: none;
+}
+a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-surface)); }
+.pb-site-chip { color: var(--pb-text); font-weight: 600; }
+.pb-row-foot .pb-feed-bounty { color: var(--pb-text); }
+.pb-row-asked { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 .3rem; margin-inline-start: auto; }
 .pb-feed-list :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
-.pb-feed-home[data-density="compact"] .pb-feed-heading { padding-block: .65rem; }
-.pb-feed-home[data-density="compact"] .pb-feed-title { margin-block: .15rem; }
-.pb-feed-home[data-density="compact"] .pb-feed-preview > summary { top: .5rem; }
 @media (max-width: 1199px) {
   .pb-feed-layout { grid-template-columns: minmax(0, 1fr); }
 }
@@ -107,5 +161,14 @@
   .pb-feed-heading { padding-right: .75rem; padding-left: 3.75rem; }
   .pb-feed-body { margin-inline: .75rem; padding: .75rem; }
   .pb-feed-title { font-size: 1rem; }
-  .pb-feed-context, .pb-feed-meta { gap: .2rem .6rem; }
+  .pb-feed-meta { gap: .2rem .6rem; }
+  /* The counts sit in one line above the title. */
+  .pb-row { grid-template-columns: minmax(0, 1fr); padding: .75rem; }
+  .pb-row-stats { display: flex; flex-wrap: wrap; justify-items: start; gap: .25rem .75rem; }
+  .pb-row-title { font-size: 1rem; }
+  .pb-row-asked { margin-inline-start: 0; }
+  /* The four lists stay on one line and swipe sideways. */
+  .pb-feed-tabs { flex-wrap: nowrap; gap: 0 1rem; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .pb-feed-tabs a { flex: none; margin-bottom: 0; }
+  .pb-feed-tabs :focus-visible { outline-offset: -2px; }
 }

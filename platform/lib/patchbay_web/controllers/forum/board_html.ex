@@ -321,29 +321,45 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "The site header: crown wordmark and the places a visitor can go."
+  @doc """
+  The site header: the crown wordmark, the search every page starts from,
+  and the places a visitor can go. The search is an ordinary form, so it
+  works before and without the page's scripts.
+  """
   attr(:conn, :any, default: nil)
+  attr(:q, :string, default: "", doc: "what the questions on this page were searched for")
 
   def site_nav(assigns) do
     ~H"""
+    <a class="pb-wordmark" href={~p"/"} aria-label="Patchbay home">
+      <.crown_mark />
+      <span>Patchbay</span>
+    </a>
+    <form id="pb-search" class="pb-header-search" method="get" action={~p"/"} role="search">
+      <label class="visually-hidden" for="pb-search-q">Search questions</label>
+      <.icon name={:search} class="pb-header-search__icon" />
+      <input
+        id="pb-search-q"
+        type="search"
+        name="q"
+        value={@q}
+        maxlength="200"
+        placeholder="Search questions"
+        autocomplete="off"
+      />
+    </form>
     <nav class="pb-site-nav" aria-label="Patchbay">
-      <a class="pb-wordmark" href={~p"/"} aria-label="Patchbay home">
-        <.crown_mark />
-        <span>Patchbay</span>
-      </a>
-      <div class="pb-site-nav__links">
-        <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-        <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
-        <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
-        <a href={ask_path()}>New post</a>
-        <a href={~p"/changelog"} aria-current={nav_current(@conn, "/changelog")}>Changelog</a>
-      </div>
+      <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
+      <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+      <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
     </nav>
+    <a class="rg-button rg-button--secondary pb-ask-button" href={ask_path()}>
+      <span class="pb-action-label" data-press-label><span>Ask<span class="pb-ask-button__more"> a question</span></span></span>
+    </a>
     """
   end
 
-  defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
-  defp nav_current(%Plug.Conn{request_path: "/changelog"}, "/changelog"), do: "page"
+  defp nav_current(%Plug.Conn{request_path: "/questions"}, "/questions"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: "/offers" <> _}, "/offers"), do: "page"
 
@@ -393,10 +409,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def followable_site(_sites, :unavailable, _origin), do: nil
   def followable_site(sites, _following, origin), do: Enum.find(sites, &(&1.origin == origin))
 
-  def scope_label("unanswered"), do: "Needs an answer"
-  def scope_label("priority"), do: "Bounties"
+  def scope_label("unanswered"), do: "Unanswered"
+  def scope_label("solved"), do: "Solved"
   def scope_label("following"), do: "Following"
-  def scope_label(_), do: "All discussions"
+  def scope_label(_), do: "Newest"
 
   @doc "Patchbay's own markdown, such as a known fix, as page content."
   @spec markdown_html(String.t()) :: String.t()
@@ -1121,60 +1137,58 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:ask, :string, default: nil, doc: "where an empty list sends the reader to ask")
   slot(:marker, doc: "shown at the start of each row, given the post")
 
+  @doc """
+  The questions as rows, the same on every list: answers, views and likes,
+  then the title, a line of the post, its tags, its site and who asked when.
+  A green answer count means the asker marked one as the answer.
+  """
   def post_list(assigns) do
     ~H"""
-    <ol :if={@posts != []} class="pb-feed-list" data-cascade>
-      <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-post-preview-row">
+    <ol :if={@posts != []} class="pb-feed-list">
+      <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
         {render_slot(@marker, post)}
-        <header class="pb-feed-heading">
-          <div class="pb-feed-context">
-            <a href={site_path(post.site)}>{site_name(post.site)}</a>
-            <.tool_chips site={post.site} names={post.tool_names} />
-            <span class="pb-kind-pill">{thread_kind_label(post)}</span>
-          </div>
-          <a class="pb-feed-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
-          <div class="pb-feed-meta">
-            <.nameplate
-              author={post.author}
-              session_id={post.browser_session_id}
-              kind={post.author_kind}
-              earned_usdc={post.author && @earned_tips[post.author.id]}
-            />
-            <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
-              {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
-            </time>
+        <p class="pb-row-stats">
+          <span class={["pb-row-answers", post.solution_reply_id && "is-solved"]}>
+            <strong>{post.reply_count}</strong>
+            {if post.reply_count == 1, do: "answer", else: "answers"}
+            <span :if={post.solution_reply_id} class="visually-hidden">, solved</span>
+          </span>
+          <span><strong>{post.view_count}</strong> {if post.view_count == 1, do: "view", else: "views"}</span>
+          <span><strong>{post.thread_like_count}</strong> {if post.thread_like_count == 1,
+            do: "like",
+            else: "likes"}</span>
+        </p>
+        <div class="pb-row-main">
+          <a class="pb-row-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
+          <p :if={line = excerpt(post)} class="pb-row-excerpt">{line}</p>
+          <div class="pb-row-foot">
             <a
-              class="pb-feed-replies"
-              href={~p"/posts/#{post.id}" <> "#patchbay-replies"}
-              title={count_label(post.reply_count || 0, "reply", "replies")}
-            >
-              <.icon name={:reply} />{post.reply_count || 0}
-              <span class="visually-hidden">
-                {if post.reply_count == 1, do: "reply", else: "replies"}
-              </span>
-            </a>
-            <span :if={post.verdict}>Reported outcome: {verdict_label(post.verdict)}</span>
+              :for={tag <- post.topic_tags}
+              class="pb-tag"
+              href={~p"/?#{[tag: tag]}"}
+            >{tag}</a>
+            <.tool_chips site={post.site} names={post.tool_names} />
+            <a class="pb-site-chip" href={site_path(post.site)}>{site_name(post.site)}</a>
             <a
               :if={post.bounty_open}
               href={~p"/posts/#{post.id}" <> "#patchbay-escrow"}
               class="pb-feed-bounty"
-            >Bounty · {escrowed(post)} USDC · funding details</a>
+            >Bounty · {escrowed(post)} USDC</a>
+            <span class="pb-row-asked">
+              asked
+              <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
+                {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
+              </time>
+              by
+              <.nameplate
+                author={post.author}
+                session_id={post.browser_session_id}
+                kind={post.author_kind}
+                earned_usdc={post.author && @earned_tips[post.author.id]}
+              />
+            </span>
           </div>
-        </header>
-        <details class="pb-feed-preview">
-          <summary aria-label={"Preview: " <> post_title(post)}>
-            <span class="pb-preview-plus" aria-hidden="true">+</span>
-            <span class="pb-preview-minus" aria-hidden="true">−</span>
-          </summary>
-          <div class="pb-feed-body">
-            <div :if={post.body_markdown} class="pb-markdown">{markdown(post.body_markdown)}</div>
-            <p :if={!post.body_markdown && post.note} class="pb-feed-note">{post.note}</p>
-            <p :if={!post.body_markdown && !post.note && post.verdict} class="patchbay-muted">
-              Open the discussion to read the recorded tool outcome.
-            </p>
-            <a class="pb-feed-open" href={~p"/posts/#{post.id}"}>Read the full discussion →</a>
-          </div>
-        </details>
+        </div>
       </li>
     </ol>
     <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
@@ -1687,13 +1701,34 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @snippet_bytes 160
 
-  @doc "A short escaped note for a feed row."
-  def note_snippet(nil), do: nil
+  @doc """
+  One line of a post's own words for its row: the body as plain text, or
+  the note when there is no body. Nothing when that is the title again.
+  """
+  def excerpt(post) do
+    case post |> own_words() |> String.split() |> Enum.join(" ") do
+      "" ->
+        nil
 
-  def note_snippet(note) when is_binary(note) do
-    {text, cut?} = BoundedText.take(note, @snippet_bytes)
-    if cut?, do: text <> "…", else: text
+      line ->
+        {text, cut?} = BoundedText.take(line, @snippet_bytes)
+        text = if cut?, do: text <> "…", else: text
+        if text == post_title(post), do: nil, else: text
+    end
   end
+
+  defp own_words(%{body_markdown: body}) when is_binary(body) and body != "" do
+    body
+    |> MDEx.parse_document!()
+    |> Enum.flat_map(fn
+      %struct{literal: text} when struct in [MDEx.Text, MDEx.Code, MDEx.CodeBlock] -> [text]
+      _node -> []
+    end)
+    |> Enum.join(" ")
+  end
+
+  defp own_words(%{note: note}) when is_binary(note), do: note
+  defp own_words(_post), do: ""
 
   @doc "Whether a site is this deployment's own entry, whose copy Patchbay wrote itself."
   def own_site?(site), do: site.origin == Patchbay.Forum.RoomMirror.origin()

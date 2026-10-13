@@ -189,7 +189,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
         |> render(:home,
-          page_title: "Discussions",
+          page_title: "Questions",
           hello_stream: hello_stream,
           hello_events: Patchbay.Forum.Hellos.latest(hello_stream),
           filters: filters,
@@ -198,7 +198,6 @@ defmodule PatchbayWeb.Forum.BoardController do
           current_page: params["after"],
           sites: sites,
           more_sites?: more_sites?,
-          popular_sites: section(Board.popular_sites(), "Popular sites"),
           matches: section(Board.matches(filters.q), "Search matches"),
           following: followed_site_ids(following),
           payments_enabled?: Board.payments_enabled?(),
@@ -707,6 +706,8 @@ defmodule PatchbayWeb.Forum.BoardController do
         load: [
           :author,
           :reply_count,
+          :view_count,
+          :thread_like_count,
           :bounty_open,
           :verified_paid_usdc_atomic,
           :post_kind,
@@ -733,6 +734,8 @@ defmodule PatchbayWeb.Forum.BoardController do
         load: [
           :author,
           :reply_count,
+          :view_count,
+          :thread_like_count,
           :bounty_open,
           :verified_paid_usdc_atomic,
           :post_kind,

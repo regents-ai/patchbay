@@ -18,7 +18,6 @@ defmodule Patchbay.Forum.Report do
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    notifiers: [Ash.Notifier.PubSub],
     extensions: [AshOban]
 
   import Ash.Expr
@@ -89,16 +88,6 @@ defmodule Patchbay.Forum.Report do
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.PushEscrowRevenue)
       end
     end
-  end
-
-  pub_sub do
-    module(Phoenix.PubSub)
-    name(Patchbay.PubSub)
-
-    # A new thread, or one moderation puts out of sight or back, changes the
-    # list of newest threads; `threads_topic/0` is this same channel.
-    publish_all(:create, ["forum:threads"], transform: &__MODULE__.threads_message/1)
-    publish(:set_visibility, ["forum:threads"], transform: &__MODULE__.threads_message/1)
   end
 
   attributes do
@@ -460,17 +449,6 @@ defmodule Patchbay.Forum.Report do
       filter(expr(visibility == :published))
       pagination(keyset?: true, default_limit: 40, max_page_size: 200)
       prepare(build(sort: [last_activity_at: :desc, id: :desc]))
-    end
-
-    read :newest do
-      description("""
-      Threads newest first, every site, leaving out the Techtree Result
-      discussions that open automatically.
-      """)
-
-      filter(expr(visibility == :published and is_nil(techtree_digest)))
-      pagination(keyset?: true, default_limit: 12, max_page_size: 50)
-      prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end
 
     read :for_tools do
@@ -1199,12 +1177,4 @@ defmodule Patchbay.Forum.Report do
     # authorization to write what the escrow said, and Jev's job to write what
     # Jev said.
   end
-
-  @doc "The channel a new thread, or one moderated in or out of sight, is announced on."
-  @spec threads_topic() :: String.t()
-  def threads_topic, do: "forum:threads"
-
-  @doc false
-  @spec threads_message(Ash.Notifier.Notification.t()) :: :threads_changed
-  def threads_message(%Ash.Notifier.Notification{}), do: :threads_changed
 end

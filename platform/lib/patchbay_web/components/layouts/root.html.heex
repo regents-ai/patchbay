@@ -82,7 +82,7 @@
     <Regent.Structure.frame class="pb-frame">
       <Regent.Structure.row rail={false}>
         <header class="pb-masthead">
-          <.site_nav conn={@conn} />
+          <.site_nav conn={@conn} q={PatchbayWeb.Layouts.search_text(assigns)} />
 
           <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
@@ -101,6 +101,7 @@
               >
                 {@current_profile.human_name}
               </a>
+              <a class="pb-account-link" href={~p"/inbox"}>Inbox</a>
               <a class="pb-account-link" href={~p"/account"}>Account</a>
               <button
                 type="button"

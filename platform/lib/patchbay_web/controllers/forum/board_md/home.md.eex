@@ -20,7 +20,7 @@ _The discussions could not be read just now. Read this page again in a moment._
 Older discussions: [next page](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@filters, %{after: @next_page}) %>)
 <% end %>
 
-Scopes: [All](/?scope=all) · [Needs an answer](/?scope=unanswered) · [Bounties](/?scope=priority) · [Following](/?scope=following) · [Open questions](/questions)
+Lists: [Newest](/?scope=newest) · [Unanswered](/?scope=unanswered) · [Solved](/?scope=solved) · [Following](/?scope=following) · [Open questions](/questions) · [Bounties](/priority)
 
 ## Sites with WebMCP tools
 

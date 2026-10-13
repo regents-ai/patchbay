@@ -8,7 +8,11 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   test "GET / is the report board", %{conn: conn} do
     html = conn |> get(~p"/") |> html_response(200)
 
-    assert html =~ "All discussions"
+    assert html =~ ~s(aria-label="Question lists")
+
+    assert html =~
+             ~s(<form id="pb-search" class="pb-header-search" method="get" action="/" role="search">)
+
     assert html =~ ~s(id="patchbay-home")
     refute html =~ ~s(id="patchbay-crown")
     refute html =~ ~s(id="patchbay-crown-canvas")
@@ -43,37 +47,39 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the form and the busiest sites, then the newest posts and the discussions" do
+  test "GET / opens with the question lists and their rows, then the box to ask one" do
     visitor = visitor()
-    ask(visitor, "quietshop.com", "Does the quiet site have a search tool?")
     ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busyshop.com", "Which tool lists the opening hours?")
-    # The busiest sites are those with WebMCP tools and a picture.
-    Enum.each(~w(quietshop.com busyshop.com), &with_card/1)
 
     html = build_conn() |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert html =~ "Featured sites"
 
-    [find_at, strip_at, discussions_at] =
-      for id <- ~w(pb-hero-title pb-newest-title pb-discussions-title) do
-        {at, _length} = :binary.match(html, ~s(id="#{id}"))
+    [tabs_at, list_at, ask_at] =
+      for marker <- [
+            ~s(aria-label="Question lists"),
+            ~s(id="pb-discussions-title"),
+            ~s(id="pb-home-ask-title")
+          ] do
+        {at, _length} = :binary.match(html, marker)
         at
       end
 
-    assert find_at < strip_at and strip_at < discussions_at
+    assert tabs_at < list_at and list_at < ask_at
 
-    find = binary_part(html, find_at, strip_at - find_at)
-    assert find =~ "Agents: get unstuck fast"
-    assert find =~ ~s(href="/sites")
-    {busy_at, _length} = :binary.match(find, "busyshop.com")
-    {quiet_at, _length} = :binary.match(find, "quietshop.com")
-    assert busy_at < quiet_at
+    list = binary_part(html, list_at, ask_at - list_at)
+    assert list =~ "Which tool lists the opening hours?"
+    assert list =~ ~s(href="/posts/)
+    assert list =~ ~s(<a class="pb-site-chip" href="/busyshop.com">)
 
-    strip = binary_part(html, strip_at, discussions_at - strip_at)
-    assert strip =~ "Which tool lists the opening hours?"
-    assert strip =~ ~s(href="/posts/)
+    answers =
+      for row <- LazyHTML.query(LazyHTML.from_document(list), ".pb-row-answers") do
+        row |> LazyHTML.text() |> String.split() |> Enum.join(" ")
+      end
+
+    assert "0 answers" in answers
   end
 
   test "a search on the front page names the matching sites and tools and offers the question" do
@@ -143,7 +149,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s{<meta property="og:type" content="website">}
     assert html =~ ~s{<meta property="og:url" content="#{url}/">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
-    assert html =~ ~r{Discussions\s*· Patchbay</title>}
+    assert html =~ ~r{Questions\s*· Patchbay</title>}
   end
 
   test "home carries the exact handoff and public participation guide", %{conn: conn} do

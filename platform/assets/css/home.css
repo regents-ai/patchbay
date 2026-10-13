@@ -1,99 +1,19 @@
-/* The front page: a search for the site or tool in trouble, the newest
-   posts in a strip, the discussions, then the fix. */
+/* The front page: the question lists first, then the box to ask one. */
 :root { --pb-hard-shadow: light-dark(var(--pb-text), color-mix(in srgb, var(--pb-text) 35%, transparent)); }
 
 .pb-feed-home { padding-top: var(--space-3); }
 
-/* The strip: one thin line the width of the page, newest post first. */
-.pb-newest {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  min-height: 2.75rem;
-  border-block: 1px solid var(--pb-text);
-}
-.pb-newest-label {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex: none;
-  margin: 0;
-  padding: 0 var(--space-2) 0 0;
-  border-right: 1px dashed var(--pb-line-strong);
-  color: var(--pb-text);
-  font: 600 .6875rem/1 var(--font-family-mono);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.pb-newest-dot {
-  width: .5rem;
-  height: .5rem;
-  border-radius: 50%;
-  background: var(--brand-accent);
-}
-.pb-newest-list {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
-  mask-image: linear-gradient(to right, #000 calc(100% - 3rem), transparent);
-}
-.pb-newest-list::-webkit-scrollbar { display: none; }
-.pb-newest-list li { display: flex; flex: none; }
-.pb-newest-list li + li { border-left: 1px dashed var(--pb-line-strong); }
-.pb-newest-list a {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: 0 var(--space-2);
-  color: var(--pb-text);
-  font-size: .8125rem;
-  line-height: 1.2;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.pb-newest-list a:hover .pb-newest-title { text-decoration: underline; text-underline-offset: 2px; }
-.pb-newest-list a:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
-.pb-newest-site { color: var(--pb-text-muted); font: .6875rem/1 var(--font-family-mono); }
-.pb-newest-title { max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
-.pb-newest-list time { color: var(--pb-text-muted); font-size: .6875rem; }
-.pb-newest-empty { display: flex; align-items: center; margin: 0; padding: 0 var(--space-2); font-size: .8125rem; color: var(--pb-text-muted); }
-.pb-newest-retry { margin-left: .5rem; padding: 0; border: 0; background: none; color: var(--pb-text); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
-.pb-newest-retry:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-/* The dot is still; only a post that arrives while the page is open moves,
-   briefly, so motion always means something happened. It drops in with the
-   standard list bounce and is lit for a moment. */
-.pb-newest-list li.is-arriving { animation: pb-newest-arrived 1.6s ease-out both; }
-@keyframes pb-newest-arrived { from { background: color-mix(in srgb, var(--pb-accent) 28%, transparent); } to { background: transparent; } }
-
-/* Where an agent that lands on the front page finds its orientation, folded
-   away so people read the question first. */
-.pb-agent-start { margin: 0 0 var(--space-2); }
-.pb-agent-start > p { font-family: var(--font-family-mono); overflow-wrap: anywhere; }
-.pb-agent-start a { color: var(--pb-text); }
-/* The form comes first: a large heading, a row of authors peeking over one
-   powder box, then the sites people ask about most. */
-.pb-find { display: flex; flex-direction: column; align-items: center; margin: var(--space-4) 0 var(--space-5); text-align: center; }
-.pb-find h1 {
-  max-width: 22ch;
-  margin: 0 0 var(--space-4);
+/* Asking comes after reading: one boxed form under the list. */
+.pb-home-ask { display: flex; flex-direction: column; align-items: center; margin: var(--space-6) 0 var(--space-5); }
+.pb-home-ask h2 {
+  margin: 0 0 var(--space-3);
   font-family: var(--font-family-title);
-  font-size: clamp(2rem, 4.4vw, 3.5rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 400;
-  line-height: 1.04;
-  letter-spacing: -.03em;
-  text-wrap: balance;
+  line-height: 1.1;
 }
-.pb-find-crowd { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; gap: clamp(.5rem, 2vw, 1.5rem); margin-bottom: -1.125rem; }
-.pb-find-crowd-av { width: auto; height: clamp(2.75rem, 7vw, 5.25rem); }
 /* The cut takes the border off the two corners, so each diagonal draws its own line. */
-.pb-find .pb-fix-form {
+.pb-home-ask .pb-fix-form {
   width: 100%; max-width: 48rem; padding: 1.75rem .75rem .75rem; border: 1px solid var(--pb-form-edge);
   background:
     linear-gradient(135deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) left top / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
@@ -101,46 +21,21 @@
     var(--pb-form);
   clip-path: var(--pb-cut); text-align: left;
 }
-.pb-find .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
-.pb-find .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
-.pb-find .pb-fix-tools-list { background: var(--pb-field); }
-.pb-find .pb-fix-more label, .pb-find :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
-/* The hero buttons take the form's cut corners on their painted skin only, so
+.pb-home-ask .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
+.pb-home-ask .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
+.pb-home-ask .pb-fix-tools-list { background: var(--pb-field); }
+.pb-home-ask .pb-fix-more label, .pb-home-ask :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
+/* The form's buttons take the form's cut corners on their painted skin only, so
    the focus ring round each button is never cut. */
-.pb-find .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
-.pb-find .pb-hero-actions .rg-button--secondary { border-color: transparent; background: transparent; color: var(--color-bg); }
-.pb-find .pb-hero-actions .rg-button--secondary::before {
+.pb-home-ask .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
+.pb-home-ask .pb-hero-actions .rg-button--secondary { border-color: transparent; background: transparent; color: var(--color-bg); }
+.pb-home-ask .pb-hero-actions .rg-button--secondary::before {
   content: ""; position: absolute; inset: -1px; z-index: -1; pointer-events: none;
   background: var(--pb-text); clip-path: var(--pb-cut);
 }
-.pb-find .pb-hero-actions .rg-button--secondary:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
+.pb-home-ask .pb-hero-actions .rg-button--secondary:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
 @media (forced-colors: active) {
-  .pb-find .pb-hero-actions .rg-button--secondary::before { display: none; }
-}
-.pb-find-sites { display: flex; flex-wrap: wrap; justify-content: center; align-self: stretch; gap: var(--space-2); margin-top: var(--space-3); text-align: left; }
-.pb-find-sites a {
-  display: grid;
-  gap: .15rem;
-  min-height: 2.75rem;
-  padding: .45rem .75rem;
-  border: 1px solid var(--pb-line);
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  text-decoration: none;
-}
-.pb-find-sites a strong { font-size: .875rem; font-weight: 600; }
-.pb-find-sites a span { color: var(--pb-text-muted); font: .6875rem/1.2 var(--font-family-mono); }
-.pb-find-sites a:hover { border-color: var(--pb-text); }
-.pb-find-sites .pb-find-all {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  white-space: nowrap;
-  border-style: dashed;
-  background: transparent;
-  font: 600 .75rem/1 var(--font-family-mono);
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  .pb-home-ask .pb-hero-actions .rg-button--secondary::before { display: none; }
 }
 .pb-find-answers {
   display: grid;
@@ -166,22 +61,12 @@
   border-color: var(--pb-text);
   box-shadow: 4px 4px 0 var(--pb-hard-shadow);
 }
-.pb-feed-home .pb-workbench-head--discussions { grid-template-columns: minmax(0, 1fr) auto; padding: var(--space-5) 0 var(--space-2); }
-.pb-feed-home .pb-workbench-head--discussions h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); letter-spacing: -.02em; }
 
 @media (max-width: 899px) {
   .pb-feed-home { padding-top: var(--space-2); }
   .pb-feed-home .pb-fix { margin: var(--space-5) 0 var(--space-4); padding: var(--space-3); }
 }
 @media (max-width: 599px) {
-  .pb-newest-label { padding-right: var(--space-1); }
-  .pb-newest-title { max-width: 22ch; }
-  .pb-find { margin-top: var(--space-2); }
-  /* One row that swipes sideways, so the discussions stay near the top. */
-  .pb-find-sites { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
-  .pb-find-sites a { flex: 0 0 auto; }
+  .pb-home-ask { margin-top: var(--space-4); }
   .pb-find-answers { padding: var(--space-3); }
-}
-@media (forced-colors: active) {
-  .pb-newest-dot { background: CanvasText; }
 }

@@ -11,6 +11,8 @@ defmodule PatchbayWeb.Layouts do
       <footer aria-label="Project links" class="product-links">
         <a href="/help">Help &amp; docs</a>
         <a href="/about">About</a>
+        <a href="/agents.md">For agents</a>
+        <a href="/changelog">Changelog</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
         <a href="https://github.com/regents-ai/patchbay" rel="noopener noreferrer">GitHub</a>
@@ -27,6 +29,10 @@ defmodule PatchbayWeb.Layouts do
     </Regent.Structure.panel>
     """
   end
+
+  @doc "What the questions on this page were searched for, shown again in the header's search."
+  def search_text(%{filters: %{q: q}}) when is_binary(q), do: q
+  def search_text(_assigns), do: ""
 
   @doc "The one address a page is known by, whatever query it was reached with."
   def canonical_url(conn), do: PatchbayWeb.Endpoint.url() <> conn.request_path

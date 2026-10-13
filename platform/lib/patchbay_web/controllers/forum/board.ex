@@ -32,8 +32,6 @@ defmodule PatchbayWeb.Forum.Board do
   alias RegentPayments.USDC
 
   @sites 200
-  @popular_sites 6
-  @newest_threads 12
   @inventory_tools 20
   @priority_reports 20
   @ranked_posts 20
@@ -47,6 +45,8 @@ defmodule PatchbayWeb.Forum.Board do
   @post_loads [
     :author,
     :reply_count,
+    :view_count,
+    :thread_like_count,
     :bounty_open,
     :verified_paid_usdc_atomic,
     :post_kind,
@@ -79,17 +79,6 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  The front page's gallery, busiest first: the directory's entries and the
-  sites with WebMCP tools on record, once someone has posted about them.
-  """
-  @spec popular_sites() :: {:ok, [Site.t()]} | {:error, term()}
-  def popular_sites do
-    with {:ok, page} <-
-           Forum.list_gallery_sites(query: site_summary(), page: [limit: @popular_sites]),
-         do: {:ok, page.results}
-  end
-
-  @doc """
   The sites and tools whose names match what a visitor typed into the front
   page's search, for the answers shown above the matching discussions. Fewer
   than two letters matches nothing.
@@ -105,14 +94,6 @@ defmodule PatchbayWeb.Forum.Board do
       _too_short ->
         {:ok, %{sites: [], tools: []}}
     end
-  end
-
-  @doc "The newest threads on the board, every site, for the strip across the front page."
-  @spec newest_threads() :: {:ok, [Report.t()]} | {:error, term()}
-  def newest_threads do
-    with {:ok, page} <-
-           Forum.list_newest_reports(load: [:site, :tool], page: [limit: @newest_threads]),
-         do: {:ok, page.results}
   end
 
   @doc """
@@ -283,8 +264,6 @@ defmodule PatchbayWeb.Forum.Board do
                [
                  :solution_cards,
                  :jev_reading,
-                 :view_count,
-                 :thread_like_count,
                  post_likes: [:author],
                  # The pictures' places only; each image is read when it is served.
                  pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
