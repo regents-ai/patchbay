@@ -91,8 +91,9 @@ config :regent_agents,
 # purchases on chain (`regent_credits`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
-# sites wait only on each other; and the daily clearing of saved errors
-# (`Patchbay.ErrorPruner`).
+# sites wait only on each other; the daily clearing of saved errors
+# (`Patchbay.ErrorPruner`); and the daily forgetting of the words of posts
+# turned away a month ago (`Patchbay.Forum.PostCheckPruner`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   queues: [
@@ -108,10 +109,16 @@ config :patchbay, Oban,
     site_pictures: 1,
     points: 5,
     points_chain: 2,
-    errors: 1
+    errors: 1,
+    post_checks: 1
   ],
   # AshOban adds each trigger's minute sweep here.
-  cron: [crontab: [{"17 4 * * *", Patchbay.ErrorPruner}]],
+  cron: [
+    crontab: [
+      {"17 4 * * *", Patchbay.ErrorPruner},
+      {"47 4 * * *", Patchbay.Forum.PostCheckPruner}
+    ]
+  ],
   pruner: [max_age: {7, :days}],
   lifeline: [rescue_after: {10, :minutes}]
 

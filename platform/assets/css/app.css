@@ -1934,6 +1934,9 @@ h1, h2, h3, h4, h5, h6 {
 .pb-frame > .pb-content-row { flex: 1; }
 .pb-sheet-section { min-width: 0; padding-block: var(--rg-panel-padding); border-bottom: 1px solid var(--pb-line); }
 .pb-sheet-section > :last-child { margin-bottom: 0; }
+.pb-mod-words { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.pb-mod-words dt { font-weight: 600; }
+.pb-mod-words dd { margin: 0 0 var(--rg-space-2, 0.5rem); }
 .pb-sheet-section .patchbay-card-heading { flex-wrap: wrap; }
 .pb-section-head { flex-wrap: wrap; }
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }

@@ -9,6 +9,15 @@ Hold keeps a record out of every public view until you decide, put back returns 
 - <%= subject_label(kind) %> `<%= record.id %>` · <%= stamp(record.inserted_at) %> · [view](<%= subject_path(kind, record) %>) — <%= line(subject_text(record)) %>
 <% end %>
 
+## Turned away
+
+Posts the reader refused before they were published. Rulings, examples and lifting a pause are made with the buttons on the HTML page.
+
+<%= if @turned_away == [], do: "_Nothing has been turned away._" %>
+<%= for entry <- @turned_away do %>
+- <%= turned_away_kind(entry.check.kind) %> `<%= entry.check.id %>` · <%= finding(entry.check.finding) %> · <%= sure(entry.check.confidence) %> · <%= stamp(entry.check.inserted_at) %> · <%= line(person_name(entry.person)) %><%= if entry.check.ruling, do: " · ruled #{entry.check.ruling} to block" %><%= if entry.check.example, do: " · an example" %><%= if entry.paused_until, do: " · paused until #{stamp(entry.paused_until)}" %>
+<% end %>
+
 ## Latest records
 
 <%= if @latest == [], do: "_Nothing recorded yet._" %>

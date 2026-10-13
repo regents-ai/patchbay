@@ -176,6 +176,13 @@ defmodule Patchbay.Forum do
         action: :for_profile_since,
         args: [:profile_id, :since]
       )
+
+      define(:posts_turned_away, action: :turned_away)
+      define(:posts_turned_away_since, action: :turned_away_since, args: [:profile_ids, :since])
+      define(:post_check_examples, action: :examples)
+      define(:get_post_check, action: :read, get_by: [:id])
+      define(:rule_post_check, action: :rule)
+      define(:set_post_check_example, action: :set_example)
     end
 
     resource(Patchbay.Forum.ForumEvent)

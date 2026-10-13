@@ -7,6 +7,12 @@ defmodule PatchbayWeb.Forum.ModerationController do
   transaction. The page itself is the only way in: it lists the board as
   moderators need to see it — quarantined records waiting for a decision,
   the newest published activity, and the decisions already on record.
+
+  It also lists the posts turned away before they were published, with the
+  words that were refused. A moderator rules on one, makes a ruled one an
+  example for the reader, or lifts a person's pause, each through
+  `Patchbay.Forum.PostReview`. A press carries the row's id and nothing of
+  its words.
   """
 
   use PatchbayWeb, :controller
@@ -15,6 +21,7 @@ defmodule PatchbayWeb.Forum.ModerationController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.ModerationAction
+  alias Patchbay.Forum.PostReview
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
 
@@ -26,10 +33,29 @@ defmodule PatchbayWeb.Forum.ModerationController do
     render(conn, :index,
       page_title: "Moderation",
       quarantined: load_quarantined(),
+      turned_away: PostReview.turned_away(),
       latest: load_latest(),
       decisions: load_decisions(),
       problem: nil
     )
+  end
+
+  def decide(conn, %{"subject" => %{"kind" => "post", "id" => id, "action" => action}}) do
+    moderator = conn.assigns.current_profile
+
+    case action do
+      "right" -> PostReview.rule(id, :right, moderator)
+      "wrong" -> PostReview.rule(id, :wrong, moderator)
+      "none" -> PostReview.rule(id, :none, moderator)
+      "example" -> PostReview.use_as_example(id, moderator)
+      "no_example" -> PostReview.drop_example(id, moderator)
+      _other -> {:error, "That is not a decision this page makes."}
+    end
+    |> answered(conn)
+  end
+
+  def decide(conn, %{"subject" => %{"kind" => "person", "id" => id, "action" => "lift"}}) do
+    id |> PostReview.lift_pause(conn.assigns.current_profile) |> answered(conn)
   end
 
   def decide(conn, %{"subject" => %{"kind" => kind, "id" => id} = subject}) do
@@ -49,6 +75,14 @@ defmodule PatchbayWeb.Forum.ModerationController do
   def decide(conn, _params) do
     conn
     |> put_flash(:error, "Nothing to decide arrived with that.")
+    |> redirect(to: ~p"/moderation")
+  end
+
+  defp answered({:ok, _done}, conn), do: redirect(conn, to: ~p"/moderation")
+
+  defp answered({:error, problem}, conn) do
+    conn
+    |> put_flash(:error, problem)
     |> redirect(to: ~p"/moderation")
   end
 

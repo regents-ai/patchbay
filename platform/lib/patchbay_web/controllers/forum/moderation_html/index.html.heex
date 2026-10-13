@@ -42,6 +42,98 @@
     <p :if={@quarantined == []} class="patchbay-muted">Nothing is waiting.</p>
   </section>
 
+  <section class="pb-sheet-section" aria-labelledby="pb-mod-turned-away">
+    <h2 id="pb-mod-turned-away">Turned away</h2>
+    <p class="patchbay-muted">
+      Posts the reader refused. They were never published. Ruling one wrong stops it
+      counting toward that person's pause.
+    </p>
+
+    <ul class="pb-mod-list">
+      <li :for={entry <- @turned_away} class="pb-mod-item">
+        <header class="pb-mod-item-head">
+          <span>
+            {turned_away_kind(entry.check.kind)} · {finding(entry.check.finding)} · {sure(
+              entry.check.confidence
+            )} · {entry.check.inserted_at}
+          </span>
+          <span>
+            {person_name(entry.person)}<span :if={entry.check.acting_agent_id}> · sent by their agent</span>
+          </span>
+        </header>
+
+        <dl :if={entry.check.shown} class="pb-mod-words">
+          <div :for={{part, text} <- words(entry.check.shown)}>
+            <dt>{part}</dt>
+            <dd>{text}</dd>
+          </div>
+        </dl>
+        <p :if={!entry.check.shown} class="patchbay-muted">Its words are no longer kept.</p>
+
+        <p :if={entry.check.ruling} class="pb-mod-state">
+          Ruled {entry.check.ruling} to block.
+        </p>
+        <p :if={entry.check.lifted_at} class="pb-mod-state">No longer counts: pause lifted.</p>
+
+        <form method="post" action={~p"/moderation"} class="pb-mod-actions">
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="subject[kind]" value="post" />
+          <input type="hidden" name="subject[id]" value={entry.check.id} />
+          <button type="submit" name="subject[action]" value="right">Right to block</button>
+          <button type="submit" name="subject[action]" value="wrong">Wrong to block</button>
+          <button :if={entry.check.ruling} type="submit" name="subject[action]" value="none">
+            Clear ruling
+          </button>
+        </form>
+
+        <div :if={entry.check.example} class="pb-mod-example">
+          <p>The reader is shown this with every post, as an example:</p>
+          <pre class="pb-mod-words">{entry.check.example}</pre>
+          <form method="post" action={~p"/moderation"} class="pb-mod-actions">
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <input type="hidden" name="subject[kind]" value="post" />
+            <input type="hidden" name="subject[id]" value={entry.check.id} />
+            <button type="submit" name="subject[action]" value="no_example">
+              Stop using as an example
+            </button>
+          </form>
+        </div>
+
+        <div
+          :if={entry.check.ruling && entry.check.shown && !entry.check.example}
+          class="pb-mod-example"
+        >
+          <p>
+            Use as an example and the reader will be shown exactly this with every post it
+            checks:
+          </p>
+          <pre class="pb-mod-words">{example_cut(entry.check.shown)}</pre>
+          <form method="post" action={~p"/moderation"} class="pb-mod-actions">
+            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+            <input type="hidden" name="subject[kind]" value="post" />
+            <input type="hidden" name="subject[id]" value={entry.check.id} />
+            <button type="submit" name="subject[action]" value="example">Use as an example</button>
+          </form>
+        </div>
+
+        <form
+          :if={entry.paused_until}
+          method="post"
+          action={~p"/moderation"}
+          class="pb-mod-actions"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="subject[kind]" value="person" />
+          <input type="hidden" name="subject[id]" value={entry.check.profile_id} />
+          <span>Paused until {until(entry.paused_until)}.</span>
+          <button type="submit" name="subject[action]" value="lift">Lift pause</button>
+        </form>
+      </li>
+    </ul>
+
+    <p :if={@turned_away == []} class="patchbay-muted">Nothing has been turned away.</p>
+  </section>
+
   <section class="pb-sheet-section" aria-labelledby="pb-mod-latest">
     <h2 id="pb-mod-latest">Newest published</h2>
 
