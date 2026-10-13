@@ -172,17 +172,6 @@ defmodule Patchbay.Forum.Reply do
   actions do
     defaults([:read])
 
-    read :guest_posts_by_session do
-      description("""
-      What one browser posted as a guest, with nobody signed in: the rows
-      that use up its one post.
-      """)
-
-      argument(:browser_session_id, :uuid, allow_nil?: false)
-      filter(expr(browser_session_id == ^arg(:browser_session_id) and is_nil(author_profile_id)))
-      prepare(build(select: [:id]))
-    end
-
     read :posted_by_author do
       description("""
       What one signed-in account posted after a moment, from any session,
@@ -359,17 +348,18 @@ defmodule Patchbay.Forum.Reply do
       authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
     end
 
-    # v0 of the forum is a fully public board: no actor is required.
+    # The board is public to read: no actor is required.
     policy action_type(:read) do
       authorize_if(always())
     end
 
+    # Only a signed-in caller replies.
     policy action(:add_reply) do
-      authorize_if(always())
+      authorize_if(actor_present())
     end
 
     policy action(:post_reply) do
-      authorize_if(always())
+      authorize_if(actor_present())
     end
 
     # A person replies under their own name, so there has to be one.

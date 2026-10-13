@@ -86,3 +86,7 @@ config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 # The SIWA service answers signed agent requests from each test's own stub
 # (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
 config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}
+
+# Jev answers from each test's own stand-in (`Patchbay.JevStandIn`), never
+# the internet.
+config :patchbay, :jev_req_options, plug: {Req.Test, Patchbay.Forum.Jev}

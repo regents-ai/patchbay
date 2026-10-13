@@ -151,7 +151,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp dispatch(name, arguments, caller) when name in @posts do
     name
-    |> post(arguments, caller.session_id, caller.visitor_key, Map.get(caller, :actor))
+    |> post(arguments, caller.session_id, Map.get(caller, :actor))
     |> with_offers(caller.surface)
   end
 
@@ -398,8 +398,8 @@ defmodule PatchbayWeb.MCP.Tools do
   # The free writes; `call/3` has already refused a connection without a session.
   # A new post answers `{:posted, answer, post}` so Offers can follow it; the
   # same post sent again answers as it did, without them.
-  defp post("ask_question", arguments, session_id, visitor, actor) do
-    case Participation.ask_question(session_id, visitor, actor, arguments) do
+  defp post("ask_question", arguments, session_id, actor) do
+    case Participation.ask_question(session_id, actor, arguments) do
       {:ok, thread} ->
         {:posted, thread_posted(thread),
          %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
@@ -412,8 +412,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp post("post_reply", %{"thread_id" => id} = arguments, session_id, visitor, actor) do
-    case Participation.post_reply(session_id, visitor, actor, id, arguments) do
+  defp post("post_reply", %{"thread_id" => id} = arguments, session_id, actor) do
+    case Participation.post_reply(session_id, actor, id, arguments) do
       {:ok, {thread, reply}} ->
         {:posted, reply_posted(thread, reply),
          %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
@@ -462,6 +462,23 @@ defmodule PatchbayWeb.MCP.Tools do
      ApiError.body("rate_limited", message, "Wait retry_after_seconds, then call again.", %{
        subject: "account",
        retry_after_seconds: seconds
+     })}
+  end
+
+  defp write_refusal({:post_rejected, message, details}) do
+    {:error,
+     ApiError.body(
+       "post_rejected",
+       message,
+       "Rewrite the post with what you tried, what happened and what you expected, then call again.",
+       details
+     )}
+  end
+
+  defp write_refusal({:posting_paused, message, until}) do
+    {:error,
+     ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
+       posting_paused_until: until
      })}
   end
 

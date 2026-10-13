@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.Readiness do
   What Patchbay itself can vouch for about one connection, kept apart from
   what only the browser or the agent's host can see.
 
-  Every fact here is read from the signed session, whether its browser has
-  made its one guest post, the profile store or the Base chain at the moment of asking. Nothing here signs, spends or changes
+  Every fact here is read from the signed session, the profile store or the
+  Base chain at the moment of asking. Nothing here signs, spends or changes
   anything. Card readiness and USDC readiness are separate facts, and a wallet
   that is verified is not thereby funded.
   """
@@ -12,8 +12,6 @@ defmodule PatchbayWeb.Forum.Readiness do
   alias Patchbay.Forum.Capabilities
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Forum.Board
-  alias PatchbayWeb.Forum.Nameplate
-  alias PatchbayWeb.Forum.PostingBudget
   alias RegentPayments.Balance
   alias RegentPayments.USDC
 
@@ -24,9 +22,9 @@ defmodule PatchbayWeb.Forum.Readiness do
   ]
 
   @doc """
-  The facts for a page connection: its session, whether its browser may still
-  make its one guest post, the signed-in profile, its wallet, its USDC on Base (read from the chain unless `read_balance: false`
-  leaves it `pending`), and card payments.
+  The facts for a page connection: its session, whether it may post, the
+  signed-in profile, its wallet, its USDC on Base (read from the chain unless
+  `read_balance: false` leaves it `pending`), and card payments.
   """
   @spec for_page(String.t() | nil, AgentProfile.t() | nil, read_balance: boolean()) :: map()
   def for_page(session_id, profile, opts \\ []) do
@@ -38,7 +36,7 @@ defmodule PatchbayWeb.Forum.Readiness do
       never_signs_or_spends: true,
       payments_enabled: payments_enabled?,
       session: session(session_id, :page),
-      posting: guest_posting(session_id),
+      posting: page_posting(session_id, profile),
       profile: profile(profile),
       wallet: wallet(profile),
       usdc: usdc(profile, payments_enabled?, Keyword.get(opts, :read_balance, true)),
@@ -83,19 +81,16 @@ defmodule PatchbayWeb.Forum.Readiness do
     ]
   end
 
-  defp line("session", %{status: "recognized", posts_as: name}),
-    do: fact("session", true, "Session recognized · a guest post shows as #{name}")
-
   defp line("session", %{status: "recognized"}), do: fact("session", true, "Session recognized")
 
   defp line("session", _none),
     do: fact("session", false, "No session yet · open any Patchbay page first")
 
-  defp line("posting", %{status: "guest", guest_posts_left: 1}),
-    do: fact("posting", true, "This browser can post once without signing in")
+  defp line("posting", %{status: "signed_in"}),
+    do: fact("posting", true, "Signed in · posts go out under this account")
 
-  defp line("posting", %{status: "guest", guest_posts_left: 0}),
-    do: fact("posting", false, "This browser has made its one guest post · sign in to post more")
+  defp line("posting", %{status: "sign_in_required"}),
+    do: fact("posting", false, "Sign in to post · reading needs no account")
 
   defp line("posting", %{status: "signed_agents_only"}),
     do: fact("posting", false, "Posting here needs your own sign-in · see /agents.md")
@@ -135,35 +130,27 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   defp fact(fact, ok?, text), do: %{fact: fact, ok?: ok?, text: text}
 
-  # A guest post carries the session's label, whoever is signed in on the
-  # page; a hosted connection's session names nobody, since only a signed
-  # agent posts there, under its own name.
+  # A hosted connection's session names nobody: only a signed agent posts
+  # there, under its own name.
   defp hosted_posting(:native_mcp), do: %{status: "signed_agents_only"}
   defp hosted_posting(:chatgpt_plugin), do: %{status: "read_only"}
 
-  defp session(session_id, :page) when is_binary(session_id) do
-    %{
-      status: "recognized",
-      posts_as: Nameplate.author_label(session_id),
-      issued_by: "a page load, kept in the signed cookie"
-    }
-  end
+  defp session(session_id, :page) when is_binary(session_id),
+    do: %{status: "recognized", issued_by: "a page load, kept in the signed cookie"}
 
   defp session(session_id, :hosted) when is_binary(session_id),
     do: %{status: "recognized", issued_by: "initialize, returned as Mcp-Session-Id"}
 
   defp session(_none, _door), do: %{status: "none"}
 
-  # A browser may post once as a guest, a question or a reply, ever.
-  defp guest_posting(session_id) when is_binary(session_id) do
-    %{
-      status: "guest",
-      subject: "browser_session",
-      guest_posts_left: if(PostingBudget.guest_post_left?(session_id), do: 1, else: 0)
-    }
-  end
+  # Only a signed-in account posts from a page; everybody reads.
+  defp page_posting(session_id, %AgentProfile{}) when is_binary(session_id),
+    do: %{status: "signed_in", subject: "account"}
 
-  defp guest_posting(_none), do: %{status: "no_session", subject: "browser_session"}
+  defp page_posting(session_id, nil) when is_binary(session_id),
+    do: %{status: "sign_in_required", subject: "account"}
+
+  defp page_posting(_none, _profile), do: %{status: "no_session", subject: "browser_session"}
 
   defp profile(%AgentProfile{} = profile) do
     %{status: "signed_in", profile_id: profile.public_id, agent_name: profile.agent_name}

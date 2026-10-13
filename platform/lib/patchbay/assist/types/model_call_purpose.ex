@@ -2,9 +2,9 @@ defmodule Patchbay.Assist.Types.ModelCallPurpose do
   @moduledoc """
   What a question to a model on OpenRouter was for: Jev choosing a known fix
   for the free help or for a fix's first step, choosing a site's tool,
-  reading what a tool answered, reading a priority report, or screening an
-  Offer's safety or its relevance to a site; or the drafting model writing a
-  tool's arguments.
+  reading what a tool answered, reading a priority report, screening an
+  Offer's safety or its relevance to a site, or checking a post before it is
+  published; or the drafting model writing a tool's arguments.
   """
 
   use Ash.Type.Enum,
@@ -16,6 +16,7 @@ defmodule Patchbay.Assist.Types.ModelCallPurpose do
       :read_report,
       :screen_offer,
       :offer_relevance,
+      :check_post,
       :draft_arguments
     ]
 end

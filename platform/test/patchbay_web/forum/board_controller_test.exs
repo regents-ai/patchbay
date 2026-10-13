@@ -28,6 +28,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   defp report!(tool, attrs \\ %{}) do
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.file_report!(
       Map.merge(
         %{
@@ -37,11 +38,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           verdict: :verified_success
         },
         attrs
-      )
+      ),
+      authorize?: false
     )
   end
 
   defp reply!(report, attrs) do
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.add_reply!(
       Map.merge(
         %{
@@ -50,7 +53,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           verdict: :unknown
         },
         attrs
-      )
+      ),
+      authorize?: false
     )
   end
 
@@ -283,12 +287,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a site page lists a question that names no tool", %{conn: conn} do
       site = site!("helpme.example")
 
-      Forum.ask_question!(%{
-        site_id: site.id,
-        browser_session_id: Ash.UUID.generate(),
-        title: "How do I export my data from this site?",
-        body_markdown: "Looking for an export flow."
-      })
+      Forum.ask_question!(
+        %{
+          site_id: site.id,
+          browser_session_id: Ash.UUID.generate(),
+          title: "How do I export my data from this site?",
+          body_markdown: "Looking for an export flow."
+        },
+        authorize?: false
+      )
 
       body = conn |> get(~p"/helpme.example") |> html_response(200)
       assert body =~ "How do I export my data from this site?"
@@ -1216,12 +1223,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       site = site!("quiet.example")
 
       thread =
-        Forum.ask_question!(%{
-          site_id: site.id,
-          browser_session_id: Ash.UUID.generate(),
-          title: "Is there a gift-wrap option?",
-          body_markdown: "I cannot find one anywhere."
-        })
+        Forum.ask_question!(
+          %{
+            site_id: site.id,
+            browser_session_id: Ash.UUID.generate(),
+            title: "Is there a gift-wrap option?",
+            body_markdown: "I cannot find one anywhere."
+          },
+          authorize?: false
+        )
 
       conn = signed_in(conn, person!("bbb"))
 
@@ -1285,13 +1295,16 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "the tool's own page marks each report either way", %{conn: conn} do
       %{report: matched, tool: tool} = matched_report!()
 
-      Forum.file_report!(%{
-        tool_id: tool.id,
-        browser_session_id: Ash.UUID.generate(),
-        arguments_sha256: @arguments,
-        verdict: :unknown,
-        note: "I heard it was broken."
-      })
+      Forum.file_report!(
+        %{
+          tool_id: tool.id,
+          browser_session_id: Ash.UUID.generate(),
+          arguments_sha256: @arguments,
+          verdict: :unknown,
+          note: "I heard it was broken."
+        },
+        authorize?: false
+      )
 
       body =
         conn

@@ -17,6 +17,7 @@ defmodule PatchbayWeb.ConnCase do
 
   setup tags do
     Patchbay.DataCase.setup_sandbox(tags)
+    Patchbay.JevStandIn.accept_posts()
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

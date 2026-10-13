@@ -425,17 +425,21 @@ defmodule Patchbay.Forum.PatchbayAgentTest do
     overrides = Map.new(overrides)
     revision = call.revision
 
-    Forum.file_report!(%{
-      tool_id: tool_id(Map.get(overrides, :origin, RoomMirror.origin()), revision),
-      browser_session_id: call.forum_session_id,
-      arguments_sha256: call.invocation.arguments_sha256,
-      handler_result: %{"reported_success" => true},
-      observed: %{"candidate_present" => false},
-      verdict: :verified_failure,
-      failure_code: "CANDIDATE_EMPTY",
-      note: Map.get(overrides, :note, "It said it worked, but the page did nothing."),
-      receipt: Map.get(overrides, :receipt, call.invocation.receipt)
-    })
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+    Forum.file_report!(
+      %{
+        tool_id: tool_id(Map.get(overrides, :origin, RoomMirror.origin()), revision),
+        browser_session_id: call.forum_session_id,
+        arguments_sha256: call.invocation.arguments_sha256,
+        handler_result: %{"reported_success" => true},
+        observed: %{"candidate_present" => false},
+        verdict: :verified_failure,
+        failure_code: "CANDIDATE_EMPTY",
+        note: Map.get(overrides, :note, "It said it worked, but the page did nothing."),
+        receipt: Map.get(overrides, :receipt, call.invocation.receipt)
+      },
+      authorize?: false
+    )
   end
 
   defp tool_id(origin, revision) do

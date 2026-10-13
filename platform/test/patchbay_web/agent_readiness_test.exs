@@ -24,13 +24,17 @@ defmodule PatchbayWeb.AgentReadinessTest do
   end
 
   defp report!(tool) do
-    Forum.file_report!(%{
-      tool_id: tool.id,
-      browser_session_id: Ash.UUID.generate(),
-      arguments_sha256: String.duplicate("c", 64),
-      verdict: :verified_success,
-      note: "Checkout worked | once the cart had an item"
-    })
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+    Forum.file_report!(
+      %{
+        tool_id: tool.id,
+        browser_session_id: Ash.UUID.generate(),
+        arguments_sha256: String.duplicate("c", 64),
+        verdict: :verified_success,
+        note: "Checkout worked | once the cart had an item"
+      },
+      authorize?: false
+    )
   end
 
   defp markdown(conn, path) do

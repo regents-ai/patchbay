@@ -14,7 +14,7 @@ defmodule Patchbay.DataCase do
 
   setup tags do
     Patchbay.DataCase.setup_sandbox(tags)
-    :ok
+    Patchbay.JevStandIn.accept_posts()
   end
 
   @doc """

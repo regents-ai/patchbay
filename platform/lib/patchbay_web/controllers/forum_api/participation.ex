@@ -8,13 +8,13 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   The HTTP endpoints and the hosted MCP tools both call these, so a post is
   shaped, counted and refused the same way from either door. The identity is
   the forum session the server issued the caller, plus the profile signed in
-  on it if there is one; nothing a caller sends names it. The posts take the
-  caller's `visitor` key as well, which counts a post with nobody signed in
-  against the address it came from.
+  on it if there is one; nothing a caller sends names it. Only a signed-in
+  caller posts.
   """
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
@@ -40,7 +40,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   @max_request_key_bytes 128
 
   @doc """
-  Opens a thread under the poster's hourly share of reports. The site's board
+  Opens a thread once its words have been read and let through, under the
+  poster's hourly share of reports. The site's board
   is opened inside the same admitted transaction as the thread, so a question
   refused for its share or its words leaves no board behind, and the same
   write asks for the site's check and picture; see
@@ -50,12 +51,12 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   same key and the same words is answered again as `{:repeated, thread}`;
   the same key with different words is refused.
   """
-  def ask_question(session_id, visitor, actor, params) do
+  def ask_question(session_id, actor, params) do
     with {:ok, draft} <- thread_draft(params),
          {:ok, key} <- request_key(params),
          :new <- repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
       admitted =
-        PostingBudget.admit_report(actor, session_id, visitor, fn ->
+        PostingBudget.admit_report(actor, PostingCheck.question(draft), fn ->
           open_or_repeat(session_id, actor, draft, key)
         end)
 
@@ -90,10 +91,10 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   # The write a key already stands for, if any: the same words again is the
   # original answer, different words under the same key is a refusal. It is
-  # asked before the share is counted, so sending a post again never uses up
-  # a share or a browser's one guest post, and again inside the admitted
-  # transaction, under the share's lock, so two copies of one request sent at
-  # once cannot both write.
+  # asked before the post is read and the share counted, so sending a post
+  # again is never read twice and never uses up a share, and again inside the
+  # admitted transaction, under the share's lock, so two copies of one request
+  # sent at once cannot both write.
   defp repeated(nil, _draft, _lookup), do: :new
 
   defp repeated(_key, draft, lookup) do
@@ -169,17 +170,27 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   defp thread_site(_origin), do: {:error, {:invalid, ["site: name the site the thread is on"]}}
 
   @doc """
-  A conversational reply, through the same door a browser reply uses: the
-  poster's hourly share, the writer's own name, and no verdict invented for it.
+  A conversational reply, through the same door a browser reply uses: read
+  before it is published, the poster's hourly share, the writer's own name,
+  and no verdict invented for it.
   """
-  def post_reply(session_id, visitor, actor, thread_id, params) do
+  def post_reply(session_id, actor, thread_id, params) do
     with {:ok, draft} <- reply_draft(thread_id, params),
          {:ok, key} <- request_key(params),
-         :new <- replied_before(session_id, thread_id, draft, key) do
-      PostingBudget.admit_reply(actor, session_id, visitor, fn ->
-        reply_or_repeat(session_id, actor, thread_id, draft, key)
+         :new <- replied_before(session_id, thread_id, draft, key),
+         {:ok, report} <- Reads.fetch_report(thread_id) do
+      PostingBudget.admit_reply(actor, PostingCheck.reply(report, draft["body_markdown"]), fn ->
+        reply_once(report, session_id, actor, draft, key)
       end)
     end
+  end
+
+  # Under the share's lock: the reply this key already stands for, if one
+  # landed while this one was being read, or the reply itself.
+  defp reply_once(report, session_id, actor, draft, key) do
+    key
+    |> repeated(draft, fn -> Forum.get_reply_for_request(session_id, key) end)
+    |> reply_answer(report, session_id, actor, draft, key)
   end
 
   defp replied_before(session_id, thread_id, draft, key) do
@@ -187,14 +198,6 @@ defmodule PatchbayWeb.ForumAPI.Participation do
            repeated(key, draft, fn -> Forum.get_reply_for_request(session_id, key) end),
          {:ok, report} <- Reads.fetch_report(thread_id),
          do: {:repeated, {report, reply}}
-  end
-
-  defp reply_or_repeat(session_id, actor, thread_id, draft, key) do
-    with {:ok, report} <- Reads.fetch_report(thread_id) do
-      key
-      |> repeated(draft, fn -> Forum.get_reply_for_request(session_id, key) end)
-      |> reply_answer(report, session_id, actor, draft, key)
-    end
   end
 
   defp reply_answer(:new, report, session_id, actor, draft, key),

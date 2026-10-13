@@ -38,7 +38,9 @@ defmodule Patchbay.ForumTest do
     )
   end
 
-  defp report!(tool, attrs \\ %{}), do: Forum.file_report!(report_attrs(tool, attrs))
+  # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+  defp report!(tool, attrs \\ %{}),
+    do: Forum.file_report!(report_attrs(tool, attrs), authorize?: false)
 
   defp reply_attrs(report, attrs) do
     Map.merge(
@@ -307,7 +309,6 @@ defmodule Patchbay.ForumTest do
                  {:ranked_for_site, :read},
                  {:for_invocation, :read},
                  {:for_request, :read},
-                 {:guest_posts_by_session, :read},
                  {:posted_by_author, :read},
                  {:recent, :read},
                  {:verified_awaiting_repair, :read},
@@ -342,7 +343,6 @@ defmodule Patchbay.ForumTest do
       assert action_names(Reply) ==
                Enum.sort([
                  {:read, :read},
-                 {:guest_posts_by_session, :read},
                  {:posted_by_author, :read},
                  {:for_report, :read},
                  {:for_request, :read},
@@ -418,7 +418,9 @@ defmodule Patchbay.ForumTest do
 
       # 251 two-byte characters: under the 500-character limit, over 500 bytes.
       assert {:error, error} =
-               Forum.file_report(report_attrs(tool, %{note: String.duplicate("é", 251)}))
+               Forum.file_report(report_attrs(tool, %{note: String.duplicate("é", 251)}),
+                 authorize?: false
+               )
 
       assert Exception.message(error) =~ "note"
       assert Exception.message(error) =~ "500 bytes"
@@ -431,7 +433,9 @@ defmodule Patchbay.ForumTest do
       tool = tool!(site!())
 
       assert {:error, error} =
-               Forum.file_report(report_attrs(tool, %{failure_code: String.duplicate("é", 33)}))
+               Forum.file_report(report_attrs(tool, %{failure_code: String.duplicate("é", 33)}),
+                 authorize?: false
+               )
 
       assert Exception.message(error) =~ "failure_code"
       assert Exception.message(error) =~ "64 bytes"
@@ -452,12 +456,14 @@ defmodule Patchbay.ForumTest do
       assert %{} = report!(tool, %{observed: at_limit})
 
       assert {:error, error} =
-               Forum.file_report(report_attrs(tool, %{observed: over_limit}))
+               Forum.file_report(report_attrs(tool, %{observed: over_limit}), authorize?: false)
 
       assert Exception.message(error) =~ "observed"
 
       assert {:error, error} =
-               Forum.file_report(report_attrs(tool, %{handler_result: over_limit}))
+               Forum.file_report(report_attrs(tool, %{handler_result: over_limit}),
+                 authorize?: false
+               )
 
       assert Exception.message(error) =~ "handler_result"
     end
@@ -467,7 +473,7 @@ defmodule Patchbay.ForumTest do
       older = report!(tool, %{note: "older"})
       newer = report!(tool, %{note: "newer"})
 
-      Forum.add_reply!(reply_attrs(older, %{note: "seen it too"}))
+      Forum.add_reply!(reply_attrs(older, %{note: "seen it too"}), authorize?: false)
 
       assert [first, second] =
                results(Forum.list_reports_for_tools!([tool.id], load: [:replies]))
@@ -483,8 +489,13 @@ defmodule Patchbay.ForumTest do
     test "lists replies oldest first" do
       report = report!(tool!(site!()))
 
-      Forum.add_reply!(reply_attrs(report, %{verdict: :verified_failure, note: "reproduced"}))
-      Forum.add_reply!(reply_attrs(report, %{verdict: :verified_success, note: "fixed now"}))
+      Forum.add_reply!(reply_attrs(report, %{verdict: :verified_failure, note: "reproduced"}),
+        authorize?: false
+      )
+
+      Forum.add_reply!(reply_attrs(report, %{verdict: :verified_success, note: "fixed now"}),
+        authorize?: false
+      )
 
       assert [%{note: "reproduced"}, %{note: "fixed now"}] =
                results(Forum.list_replies_for_report!(report.id))
@@ -493,22 +504,27 @@ defmodule Patchbay.ForumTest do
     test "never accepts owner_response from a caller" do
       report = report!(tool!(site!()))
 
-      assert {:error, error} = Forum.add_reply(reply_attrs(report, %{owner_response: true}))
+      assert {:error, error} =
+               Forum.add_reply(reply_attrs(report, %{owner_response: true}), authorize?: false)
+
       assert Exception.message(error) =~ "No such input `owner_response`"
 
       refute :owner_response in Ash.Resource.Info.action(Reply, :add_reply).accept
-      refute Forum.add_reply!(reply_attrs(report, %{})).owner_response
+      refute Forum.add_reply!(reply_attrs(report, %{}), authorize?: false).owner_response
     end
 
     test "rejects a note longer than 500 bytes and strips control characters" do
       report = report!(tool!(site!()))
 
       assert {:error, error} =
-               Forum.add_reply(reply_attrs(report, %{note: String.duplicate("é", 251)}))
+               Forum.add_reply(reply_attrs(report, %{note: String.duplicate("é", 251)}),
+                 authorize?: false
+               )
 
       assert Exception.message(error) =~ "500 bytes"
 
-      assert %{note: "ab"} = Forum.add_reply!(reply_attrs(report, %{note: "a\u0000b"}))
+      assert %{note: "ab"} =
+               Forum.add_reply!(reply_attrs(report, %{note: "a\u0000b"}), authorize?: false)
     end
   end
 

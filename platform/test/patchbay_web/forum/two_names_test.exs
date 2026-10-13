@@ -24,14 +24,18 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
         contract_sha256: @contract
       })
 
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     report =
-      Forum.file_report!(%{
-        tool_id: tool.id,
-        browser_session_id: Ash.UUID.generate(),
-        arguments_sha256: @arguments,
-        verdict: :verified_failure,
-        note: "The cart never changed."
-      })
+      Forum.file_report!(
+        %{
+          tool_id: tool.id,
+          browser_session_id: Ash.UUID.generate(),
+          arguments_sha256: @arguments,
+          verdict: :verified_failure,
+          note: "The cart never changed."
+        },
+        authorize?: false
+      )
 
     %{site: site, tool: tool, report: report}
   end

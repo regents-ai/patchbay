@@ -39,6 +39,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
   defp thread!(attrs \\ %{}) do
     {:ok, site} = Forum.register_site("shop.example")
 
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.ask_question!(
       Map.merge(
         %{
@@ -48,7 +49,8 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
           body_markdown: "A declined card leaves the cart empty. Is that the site's doing?"
         },
         attrs
-      )
+      ),
+      authorize?: false
     )
   end
 

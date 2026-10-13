@@ -39,12 +39,16 @@ defmodule Patchbay.Forum.SiteCheckTest do
   end
 
   defp post!(site) do
-    Forum.ask_question!(%{
-      site_id: site.id,
-      browser_session_id: Ash.UUID.generate(),
-      title: "How do I use this site?",
-      body_markdown: "Asked on the board."
-    })
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+    Forum.ask_question!(
+      %{
+        site_id: site.id,
+        browser_session_id: Ash.UUID.generate(),
+        title: "How do I use this site?",
+        body_markdown: "Asked on the board."
+      },
+      authorize?: false
+    )
   end
 
   defp run_jobs do

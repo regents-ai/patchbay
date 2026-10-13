@@ -362,6 +362,53 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
     |> json(ApiError.invalid(messages))
   end
 
+  # A paid priority report is read like any other post before it is priced;
+  # these are that reading's refusals. Nothing was charged.
+  defp send_failure(conn, {:post_rejected, message, details}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(
+      ApiError.body(
+        "post_rejected",
+        message,
+        "Rewrite the report with what you tried, what happened and what you expected, then send it again.",
+        details
+      )
+    )
+  end
+
+  defp send_failure(conn, {:posting_paused, message, until}) do
+    conn
+    |> put_resp_header(
+      "retry-after",
+      Integer.to_string(max(DateTime.diff(until, DateTime.utc_now()), 1))
+    )
+    |> put_status(:forbidden)
+    |> json(
+      ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
+        posting_paused_until: until
+      })
+    )
+  end
+
+  defp send_failure(conn, {:rate_limited, :account, message, seconds}) do
+    conn
+    |> put_resp_header("retry-after", Integer.to_string(seconds))
+    |> put_status(:too_many_requests)
+    |> json(
+      ApiError.body("rate_limited", message, "Wait retry_after_seconds, then send it again.", %{
+        subject: "account",
+        retry_after_seconds: seconds
+      })
+    )
+  end
+
+  defp send_failure(conn, {:unavailable, words}) do
+    conn
+    |> put_status(:service_unavailable)
+    |> json(ApiError.body("unavailable", words, "Try the same call again in a moment."))
+  end
+
   defp send_failure(conn, %Ash.Error.Forbidden{}), do: send_failure(conn, :forbidden)
 
   defp send_failure(conn, error),

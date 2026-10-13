@@ -24,6 +24,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
+  alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
@@ -92,11 +93,14 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
   @doc """
   Freezes the terms of a paid priority report drafted by `actor` from the
-  report's fields and its `amount_usdc`.
+  report's fields and its `amount_usdc`. The draft is read like any other
+  post first, so nobody is asked to pay for a report that would be turned
+  away.
   """
   @spec prepare_special_post(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
   def prepare_special_post(actor, args) do
-    with {:ok, draft, amount_atomic} <- special_post_terms(args) do
+    with {:ok, draft, amount_atomic} <- special_post_terms(args),
+         :ok <- PostingCheck.admit(actor, PostingCheck.tool_report(draft)) do
       prepare(actor, draft, amount_atomic)
     end
   end

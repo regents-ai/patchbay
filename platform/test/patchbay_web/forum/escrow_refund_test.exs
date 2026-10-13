@@ -95,12 +95,16 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   end
 
   defp free_report(tool) do
-    Forum.file_report!(%{
-      tool_id: tool.id,
-      browser_session_id: Ash.UUID.generate(),
-      arguments_sha256: @arguments,
-      verdict: :verified_failure
-    })
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+    Forum.file_report!(
+      %{
+        tool_id: tool.id,
+        browser_session_id: Ash.UUID.generate(),
+        arguments_sha256: @arguments,
+        verdict: :verified_failure
+      },
+      authorize?: false
+    )
   end
 
   describe "what the board decides" do

@@ -460,17 +460,6 @@ defmodule Patchbay.Forum.Report do
       prepare(build(lock: :for_update))
     end
 
-    read :guest_posts_by_session do
-      description("""
-      What one browser posted as a guest, with nobody signed in: the rows
-      that use up its one post.
-      """)
-
-      argument(:browser_session_id, :uuid, allow_nil?: false)
-      filter(expr(browser_session_id == ^arg(:browser_session_id) and is_nil(author_profile_id)))
-      prepare(build(select: [:id]))
-    end
-
     read :posted_by_author do
       description("""
       What one signed-in account posted after a moment, from any session,
@@ -1150,22 +1139,21 @@ defmodule Patchbay.Forum.Report do
       authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
     end
 
-    # v0 of the forum is a fully public board: no actor is required to read or
-    # to file an ordinary report, and the absence of any action that rewrites
-    # an account is what keeps reports append-only.
+    # The board is public to read: no actor is required. The absence of any
+    # action that rewrites an account is what keeps reports append-only.
     policy action_type(:read) do
       authorize_if(always())
     end
 
+    # Only a signed-in caller posts: a paired agent through the page's tools,
+    # the hosted tools or the API, a person through the form. What each may
+    # write is the action's to decide.
     policy action(:file_report) do
-      authorize_if(always())
+      authorize_if(actor_present())
     end
 
-    # Ordinary conversation is open to the same doors a report is: anonymous
-    # browser agents through the page's tools, signed-in people through the
-    # form. What each caller may write is the action's to decide.
     policy action(:ask_question) do
-      authorize_if(always())
+      authorize_if(actor_present())
     end
 
     # Patchbay opens a Result's discussion only after reading the Result

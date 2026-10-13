@@ -6,8 +6,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   Two rules shape this module. Nothing a caller sends names the reporter: the
   identity comes from verified per-request agent proof and current pairing,
-  preserving the agent's public name and its owner's quota, or, for a guest
-  post, from the browser's own session. Nothing a caller sends reaches
+  preserving the agent's public name and its owner's quota. Nothing a caller
+  sends reaches
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
 
@@ -30,6 +30,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
+  alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Offers.Disclosure
@@ -49,8 +50,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     conn = with_share_headers(conn, :reports)
 
     with {:ok, session_id} <- established_session(conn),
-         {:ok, report} <-
-           file_report(session_id, visitor(conn), conn.assigns.current_profile, params) do
+         {:ok, report} <- file_report(session_id, conn.assigns.current_profile, params) do
       posted(
         conn,
         :ok,
@@ -69,18 +69,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # The conversation writes — questions, replies, solutions, uses, follows and
   # the update feed — live in `Participation`, which the hosted MCP tools share.
-  def create_thread(conn, params),
-    do: conn |> with_share_headers(:reports) |> ask(current_profile(conn), params)
+  def create_thread(conn, params) do
+    conn = with_share_headers(conn, :reports)
 
-  # A page agent with no signer posts as a guest: its browser's one post,
-  # under the browser's own label. Whoever is signed in on the page lends it
-  # nothing.
-  def create_guest_thread(conn, params), do: ask(conn, nil, params)
-
-  defp ask(conn, actor, params) do
     with {:ok, session_id} <- established_session(conn),
          {outcome, thread} when outcome != :error <-
-           Participation.ask_question(session_id, visitor(conn), actor, params) do
+           Participation.ask_question(session_id, current_profile(conn), params) do
       posted(conn, outcome, thread_posted(thread), %{
         operation: :thread,
         site_id: thread.site_id,
@@ -101,15 +95,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     }
   end
 
-  def create_thread_reply(conn, params),
-    do: conn |> with_share_headers(:replies) |> post_in_thread(current_profile(conn), params)
+  def create_thread_reply(conn, %{"id" => id} = params) do
+    conn = with_share_headers(conn, :replies)
 
-  def create_guest_thread_reply(conn, params), do: post_in_thread(conn, nil, params)
-
-  defp post_in_thread(conn, actor, %{"id" => id} = params) do
     with {:ok, session_id} <- established_session(conn),
          {outcome, {thread, reply}} when outcome != :error <-
-           Participation.post_reply(session_id, visitor(conn), actor, id, params) do
+           Participation.post_reply(session_id, current_profile(conn), id, params) do
       posted(conn, outcome, reply_posted(thread, reply), %{
         operation: :reply,
         site_id: thread.site_id,
@@ -174,7 +165,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     with {:ok, session_id} <- established_session(conn),
          {:ok, {report, reply}} <-
-           file_reply(session_id, visitor(conn), conn.assigns.current_profile, id, params) do
+           file_reply(session_id, conn.assigns.current_profile, id, params) do
       posted(
         conn,
         :ok,
@@ -379,59 +370,71 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # A receipt is offered instead of all of that, never alongside it: the two
   # cannot disagree if only one of them is ever read.
   #
-  # Both are written under the poster's hourly share, which `PostingBudget`
-  # counts and locks in the same transaction as the write.
-  defp once(session_id, visitor, actor, params, kind, write) do
+  # Both are read before they are published and written under the poster's
+  # hourly share, which `PostingBudget` counts and locks in the same
+  # transaction as the write.
+  defp file_report(session_id, %Patchbay.Agents.Actor{} = actor, params) do
+    with {:ok, request} <- request(params),
+         :new <- sent_before(:report, session_id, request),
+         {:ok, post, file} <- filing(session_id, actor, Map.merge(params, request)) do
+      PostingBudget.admit_report(actor, post, fn -> file_once(session_id, request, file) end)
+    end
+  end
+
+  # Under the share's lock: the report this key already stands for, if one
+  # landed while this one was being read, or the report itself.
+  defp file_once(session_id, request, file) do
+    with :new <- sent_before(:report, session_id, request), do: file.()
+  end
+
+  defp filing(session_id, actor, %{"receipt" => receipt} = params) do
+    with :ok <- receipt_report_fields_only(params) do
+      {:ok, PostingCheck.receipt_report(params),
+       fn -> file_receipt_report(session_id, actor, receipt, params) end}
+    end
+  end
+
+  defp filing(session_id, actor, params) do
+    with {:ok, draft} <-
+           OtherSiteReport.draft(Map.drop(params, ["client_request_id", "request_digest"])) do
+      {:ok, PostingCheck.tool_report(params),
+       fn -> file_other_site_report(session_id, actor, draft, params) end}
+    end
+  end
+
+  # A write names itself with a key of its caller's choosing, so one it never
+  # heard back from can be sent again instead of posted twice. The key and the
+  # digest of what it was sent with are stored on the post.
+  defp request(params) do
     key = params["client_request_id"]
 
     if is_binary(key) and byte_size(key) in 1..128 do
-      digest = Patchbay.Patchbay.Digest.arguments_sha256(Map.delete(params, "client_request_id"))
-
-      admit =
-        if kind == :report, do: &PostingBudget.admit_report/4, else: &PostingBudget.admit_reply/4
-
-      admit.(actor, session_id, visitor, fn ->
-        once_result(prior_request(kind, session_id, key), digest, key, write)
-      end)
+      {:ok,
+       %{
+         "client_request_id" => key,
+         "request_digest" =>
+           Patchbay.Patchbay.Digest.arguments_sha256(Map.delete(params, "client_request_id"))
+       }}
     else
       {:error, {:invalid, ["client_request_id: is required (1 to 128 bytes)"]}}
     end
   end
 
+  # The post a key already stands for, if any: the same words again is the
+  # original answer, different words under the same key is a refusal. It is
+  # asked before the post is read and its share counted, so sending a post
+  # again is never read twice, and again under the share's lock, so two copies
+  # of one request sent at once cannot both write.
+  defp sent_before(kind, session_id, %{"client_request_id" => key, "request_digest" => digest}) do
+    case prior_request(kind, session_id, key) do
+      {:ok, %{request_digest: ^digest} = prior} -> {:ok, prior}
+      {:ok, %{}} -> {:error, {:conflict, "client_request_id already names different wording."}}
+      _not_found -> :new
+    end
+  end
+
   defp prior_request(:report, session_id, key), do: Forum.get_thread_for_request(session_id, key)
   defp prior_request(:reply, session_id, key), do: Forum.get_reply_for_request(session_id, key)
-
-  defp once_result({:ok, %{request_digest: digest} = prior}, digest, _key, _write),
-    do: {:ok, prior}
-
-  defp once_result({:ok, %{}}, _digest, _key, _write),
-    do: {:error, {:conflict, "client_request_id already names different wording."}}
-
-  defp once_result(_not_found, digest, key, write),
-    do: write.(%{"client_request_id" => key, "request_digest" => digest})
-
-  defp file_report(session_id, visitor, %Patchbay.Agents.Actor{} = actor, params) do
-    once(session_id, visitor, actor, params, :report, fn fields ->
-      do_file_report(session_id, visitor, actor, Map.merge(params, fields))
-    end)
-  end
-
-  defp do_file_report(session_id, visitor, actor, %{"receipt" => receipt} = params) do
-    with :ok <- receipt_report_fields_only(params) do
-      PostingBudget.admit_report(actor, session_id, visitor, fn ->
-        file_receipt_report(session_id, actor, receipt, params)
-      end)
-    end
-  end
-
-  defp do_file_report(session_id, visitor, actor, params) do
-    with {:ok, draft} <-
-           OtherSiteReport.draft(Map.drop(params, ["client_request_id", "request_digest"])) do
-      PostingBudget.admit_report(actor, session_id, visitor, fn ->
-        file_other_site_report(session_id, actor, draft, params)
-      end)
-    end
-  end
 
   defp file_other_site_report(session_id, actor, draft, params) do
     with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
@@ -514,27 +517,29 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp recorded_verdict(_call), do: :unknown
 
   # A reply from the page's tools and one from the form on the report page
-  # draw on the same hourly share; `PostingBudget` is the one door both go
-  # through.
-  defp file_reply(session_id, visitor, %Patchbay.Agents.Actor{} = actor, id, params) do
-    case once(session_id, visitor, actor, Map.put(params, "report_id", id), :reply, fn fields ->
-           do_file_reply(session_id, visitor, actor, id, Map.merge(params, fields))
-         end) do
-      {:ok, %Patchbay.Forum.Reply{} = reply} ->
-        with {:ok, report} <- Reads.fetch_report(id), do: {:ok, {report, reply}}
+  # are read the same way and draw on the same hourly share; `PostingBudget`
+  # is the one door both go through.
+  defp file_reply(session_id, %Patchbay.Agents.Actor{} = actor, id, params) do
+    with {:ok, request} <- request(Map.put(params, "report_id", id)),
+         {:ok, report} <- Reads.fetch_report(id),
+         :new <- replied_before(session_id, report, request) do
+      post = PostingCheck.verdict_reply(report, params["verdict"], params["note"])
 
-      answer ->
-        answer
+      PostingBudget.admit_reply(actor, post, fn ->
+        reply_once(session_id, report, actor, Map.merge(params, request), request)
+      end)
     end
   end
 
-  defp do_file_reply(session_id, visitor, actor, id, params) do
-    PostingBudget.admit_reply(actor, session_id, visitor, fn ->
-      with {:ok, report} <- Reads.fetch_report(id),
-           {:ok, reply} <- add_reply(report, session_id, actor, params) do
-        {:ok, {report, reply}}
-      end
-    end)
+  defp reply_once(session_id, report, actor, params, request) do
+    with :new <- replied_before(session_id, report, request),
+         {:ok, reply} <- add_reply(report, session_id, actor, params) do
+      {:ok, {report, reply}}
+    end
+  end
+
+  defp replied_before(session_id, report, request) do
+    with {:ok, reply} <- sent_before(:reply, session_id, request), do: {:ok, {report, reply}}
   end
 
   defp store_report(tool, session_id, actor, draft, params) do
@@ -654,15 +659,32 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> json(ApiError.body("unavailable", words, @try_again))
   end
 
-  defp send_failure(conn, {:sign_in_required, message}) do
+  # A post Jev read and turned away, with the fault it found and how many
+  # were turned away today.
+  defp send_failure(conn, {:post_rejected, message, details}) do
     conn
-    |> put_status(:forbidden)
+    |> put_status(:unprocessable_entity)
     |> json(
       ApiError.body(
-        "sign_in_required",
+        "post_rejected",
         message,
-        "Sign in with your own signer and pair with your person as /agents.md shows, then post with ask_question or post_reply."
+        "Rewrite the post with what you tried, what happened and what you expected, then send it again.",
+        details
       )
+    )
+  end
+
+  defp send_failure(conn, {:posting_paused, message, until}) do
+    conn
+    |> put_resp_header(
+      "retry-after",
+      Integer.to_string(max(DateTime.diff(until, DateTime.utc_now()), 1))
+    )
+    |> put_status(:forbidden)
+    |> json(
+      ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
+        posting_paused_until: until
+      })
     )
   end
 
@@ -698,8 +720,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  # Whose hourly share was used up: the signed-in account, or the network a
-  # guest post came from.
+  # Whose hourly share was used up: the signed-in account, or the network an
+  # Offer report with nobody signed in came from.
   defp rate_subject(:account), do: "account"
   defp rate_subject(:address), do: "address"
 

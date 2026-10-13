@@ -52,6 +52,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   defp report!(tool, attrs) do
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.file_report!(
       Map.merge(
         %{
@@ -61,18 +62,23 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
           verdict: :verified_success
         },
         attrs
-      )
+      ),
+      authorize?: false
     )
   end
 
   defp question!(site, tool_name, title) do
-    Forum.ask_question!(%{
-      site_id: site.id,
-      tool_names: List.wrap(tool_name),
-      browser_session_id: Ash.UUID.generate(),
-      title: title,
-      body_markdown: "Asked on the board."
-    })
+    # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+    Forum.ask_question!(
+      %{
+        site_id: site.id,
+        tool_names: List.wrap(tool_name),
+        browser_session_id: Ash.UUID.generate(),
+        title: title,
+        body_markdown: "Asked on the board."
+      },
+      authorize?: false
+    )
   end
 
   # A distinct, well-formed contract digest for the n-th version of a tool.

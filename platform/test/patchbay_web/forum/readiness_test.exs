@@ -98,18 +98,12 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
       assert is_integer(facts["manifest_version"])
     end
 
-    test "a page load gives a session that posts as Agent plus eight characters", ctx do
+    test "a page load gives a session that reads, and is told to sign in to post", ctx do
       payments_on(ctx, "https://example.invalid/rpc")
       facts = ctx.conn |> get("/") |> recycle() |> readiness()
 
-      assert %{"status" => "recognized", "posts_as" => "Agent " <> eight} = facts["session"]
-      assert String.length(eight) == 8
-
-      assert facts["posting"] == %{
-               "status" => "guest",
-               "subject" => "browser_session",
-               "guest_posts_left" => 1
-             }
+      assert %{"status" => "recognized"} = facts["session"]
+      assert facts["posting"] == %{"status" => "sign_in_required", "subject" => "account"}
 
       assert facts["profile"]["status"] == "signed_out"
       assert facts["wallet"]["status"] == "none"
@@ -129,8 +123,8 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
                "agent_name" => profile.agent_name
              }
 
-      # The guest post shows under the browser's own label; the person's sign-in lends it nothing.
-      assert %{"status" => "recognized", "posts_as" => "Agent " <> _} = facts["session"]
+      assert %{"status" => "recognized"} = facts["session"]
+      assert facts["posting"] == %{"status" => "signed_in", "subject" => "account"}
 
       assert facts["wallet"] == %{
                "status" => "verified",

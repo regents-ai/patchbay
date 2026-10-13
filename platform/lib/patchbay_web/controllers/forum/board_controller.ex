@@ -23,6 +23,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Assist
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias PatchbayWeb.ClientAddress
@@ -554,8 +555,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     admitted =
       PostingBudget.admit_report(
         conn.assigns.current_profile,
-        session_id,
-        ClientAddress.visitor_key(conn),
+        PostingCheck.question(draft),
         fn ->
           with {:ok, site} <- ask_site(draft["site"]) do
             %{
@@ -582,16 +582,22 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:ok, thread} ->
         {:ok, thread}
 
-      {:error, {:rate_limited, _counted, said, _seconds}} ->
-        {:error, %{said: said}}
-
       {:error, %{said: _said} = refused} ->
         {:error, refused}
 
       {:error, refused} ->
-        {:error, %{said: thread_refusal(refused)}}
+        {:error, %{said: not_admitted(refused) || thread_refusal(refused)}}
     end
   end
+
+  # What the posting door itself says, in its own words: the account's hourly
+  # share is used up, the post was read and turned away, posting is paused, or
+  # the post could not be read just now. Anything else is the write's refusal.
+  defp not_admitted({:rate_limited, _counted, said, _seconds}), do: said
+  defp not_admitted({:post_rejected, said, _details}), do: said
+  defp not_admitted({:posting_paused, said, _until}), do: said
+  defp not_admitted({:unavailable, said}), do: said
+  defp not_admitted(_refused), do: nil
 
   defp thread_refusal(%Ash.Error.Invalid{errors: errors}) do
     cond do
@@ -628,7 +634,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     report = fetch_report!(id)
 
     with {:ok, draft} <- conversation_draft(params["reply"]),
-         {:ok, posted} <- post_thread_reply(conn, report.id, draft) do
+         {:ok, posted} <- post_thread_reply(conn, report, draft) do
       landing(conn, report, posted, :posts)
     else
       {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
@@ -652,7 +658,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp conversation_draft(_reply), do: {:error, %{said: @not_posted, draft: %{}}}
 
-  defp post_thread_reply(%{assigns: %{current_profile: nil}}, _id, draft) do
+  defp post_thread_reply(%{assigns: %{current_profile: nil}}, _report, draft) do
     {:error,
      %{
        said: "Sign in to reply here. Your reply keeps the name you chose for yourself.",
@@ -660,17 +666,16 @@ defmodule PatchbayWeb.Forum.BoardController do
      }}
   end
 
-  defp post_thread_reply(conn, id, draft) do
+  defp post_thread_reply(conn, report, draft) do
     session_id = conn.assigns.forum_session_id
 
     admitted =
       PostingBudget.admit_reply(
         conn.assigns.current_profile,
-        session_id,
-        ClientAddress.visitor_key(conn),
+        PostingCheck.reply(report, draft["body_markdown"]),
         fn ->
           %{
-            report_id: id,
+            report_id: report.id,
             browser_session_id: session_id,
             body_markdown: draft["body_markdown"]
           }
@@ -680,9 +685,11 @@ defmodule PatchbayWeb.Forum.BoardController do
       )
 
     case admitted do
-      {:ok, reply} -> {:ok, reply}
-      {:error, {:rate_limited, _counted, said, _seconds}} -> {:error, %{said: said, draft: draft}}
-      {:error, refused} -> {:error, %{said: conversation_refusal(refused), draft: draft}}
+      {:ok, reply} ->
+        {:ok, reply}
+
+      {:error, refused} ->
+        {:error, %{said: not_admitted(refused) || conversation_refusal(refused), draft: draft}}
     end
   end
 
@@ -1075,7 +1082,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     report = fetch_report!(id)
 
     with {:ok, draft} <- reply_draft(params["reply"]),
-         {:ok, posted} <- add_reply(conn, report.id, draft) do
+         {:ok, posted} <- add_reply(conn, report, draft) do
       landing(conn, report, posted)
     else
       {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
@@ -1129,7 +1136,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp replies_path(:posts, id, cursor),
     do: ~p"/posts/#{id}?after=#{cursor}" <> "#patchbay-replies"
 
-  defp add_reply(%{assigns: %{current_profile: nil}}, _id, draft) do
+  defp add_reply(%{assigns: %{current_profile: nil}}, _report, draft) do
     {:error,
      %{
        said: "Sign in to reply here. Your reply keeps the name you chose for yourself.",
@@ -1139,11 +1146,11 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # The reply is a person's, under their own name, and it is counted against
   # their account's hourly share of replies like one the page's tools post.
-  defp add_reply(conn, id, draft) do
+  defp add_reply(conn, report, draft) do
     session_id = conn.assigns.forum_session_id
 
     input = %{
-      report_id: id,
+      report_id: report.id,
       browser_session_id: session_id,
       verdict: draft["verdict"],
       note: draft["note"]
@@ -1152,17 +1159,18 @@ defmodule PatchbayWeb.Forum.BoardController do
     admitted =
       PostingBudget.admit_reply(
         conn.assigns.current_profile,
-        session_id,
-        ClientAddress.visitor_key(conn),
+        PostingCheck.verdict_reply(report, draft["verdict"], draft["note"]),
         fn ->
           Forum.add_human_reply(input, actor: conn.assigns.current_profile)
         end
       )
 
     case admitted do
-      {:ok, reply} -> {:ok, reply}
-      {:error, {:rate_limited, _counted, said, _seconds}} -> {:error, %{said: said, draft: draft}}
-      {:error, refused} -> {:error, %{said: refusal(refused), draft: draft}}
+      {:ok, reply} ->
+        {:ok, reply}
+
+      {:error, refused} ->
+        {:error, %{said: not_admitted(refused) || refusal(refused), draft: draft}}
     end
   end
 

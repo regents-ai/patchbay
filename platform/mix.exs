@@ -205,8 +205,9 @@ defmodule Patchbay.MixProject do
         # the saved-errors page's admin check (a router plug and mount hook) adds one.
         # The moderator check depends on no other Patchbay module, so the Offers
         # and Credits help policies that name it add none. The bench's set
-        # summaries are one more resource its domain must name, which adds one.
-        "xref graph --label compile-connected --fail-above 61",
+        # summaries are one more resource its domain must name, which adds one,
+        # and so is the forum's record of each post Jev read.
+        "xref graph --label compile-connected --fail-above 62",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",

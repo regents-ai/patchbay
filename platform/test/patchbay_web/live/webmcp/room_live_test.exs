@@ -1362,17 +1362,20 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
       })
 
     report =
-      Patchbay.Forum.file_report!(%{
-        tool_id: tool.id,
-        browser_session_id: agent.pairing.id,
-        arguments_sha256: invocation.arguments_sha256,
-        handler_result: %{"reported_success" => true},
-        observed: %{"candidate_present" => false},
-        verdict: :verified_failure,
-        failure_code: "CANDIDATE_EMPTY",
-        note: "It said it worked, but the page did nothing.",
-        receipt: invocation.receipt
-      })
+      Patchbay.Forum.file_report!(
+        %{
+          tool_id: tool.id,
+          browser_session_id: agent.pairing.id,
+          arguments_sha256: invocation.arguments_sha256,
+          handler_result: %{"reported_success" => true},
+          observed: %{"candidate_present" => false},
+          verdict: :verified_failure,
+          failure_code: "CANDIDATE_EMPTY",
+          note: "It said it worked, but the page did nothing.",
+          receipt: invocation.receipt
+        },
+        authorize?: false
+      )
 
     assert report.verified
     report

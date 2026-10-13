@@ -38,4 +38,12 @@ Application.put_env(
   Keyword.put(Application.fetch_env!(:regent_agents, :siwa), :url, "https://siwa.test")
 )
 
+# config/runtime.exs takes Jev's key from the environment too. Tests ask the
+# stand-in in `Patchbay.JevStandIn`, which no key reaches.
+Application.put_env(
+  :patchbay,
+  :openrouter,
+  Keyword.put(Application.fetch_env!(:patchbay, :openrouter), :api_key, "test-key-never-sent")
+)
+
 Ecto.Adapters.SQL.Sandbox.mode(Patchbay.Repo, :manual)

@@ -210,17 +210,20 @@ defmodule Patchbay.Patchbay.TelemetryTest do
 
     call = failed_call()
 
-    Forum.file_report!(%{
-      tool_id: board_tool_id(call),
-      browser_session_id: call.forum_session_id,
-      arguments_sha256: call.invocation.arguments_sha256,
-      handler_result: %{"reported_success" => true},
-      observed: %{"candidate_present" => false},
-      verdict: :verified_failure,
-      failure_code: "CANDIDATE_EMPTY",
-      note: "It said it worked, but the page did nothing.",
-      receipt: call.invocation.receipt
-    })
+    Forum.file_report!(
+      %{
+        tool_id: board_tool_id(call),
+        browser_session_id: call.forum_session_id,
+        arguments_sha256: call.invocation.arguments_sha256,
+        handler_result: %{"reported_success" => true},
+        observed: %{"candidate_present" => false},
+        verdict: :verified_failure,
+        failure_code: "CANDIDATE_EMPTY",
+        note: "It said it worked, but the page did nothing.",
+        receipt: call.invocation.receipt
+      },
+      authorize?: false
+    )
 
     assert {:ok, attempt} = PatchbayAgent.sweep()
     assert attempt.status == :published

@@ -655,7 +655,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         verdict: :verified_failure,
         note: note
       },
-      actor: actor
+      seeded_by(actor)
     )
   end
 
@@ -667,9 +667,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         verdict: :unknown,
         note: note
       },
-      actor: actor
+      seeded_by(actor)
     )
   end
+
+  # A thread nobody in particular wrote is put there by Patchbay itself.
+  defp seeded_by(nil), do: [authorize?: false]
+  defp seeded_by(actor), do: [actor: actor]
 
   defp thread_pages(conn, report_id, cursor \\ nil, seen \\ MapSet.new()) do
     params = if cursor, do: %{"after" => cursor}, else: %{}
@@ -776,13 +780,17 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         })
 
       for _ <- 1..25 do
-        Forum.file_report!(%{
-          tool_id: tool.id,
-          browser_session_id: Ash.UUID.generate(),
-          arguments_sha256: @arguments,
-          verdict: :errored,
-          note: String.duplicate("n", 500)
-        })
+        # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
+        Forum.file_report!(
+          %{
+            tool_id: tool.id,
+            browser_session_id: Ash.UUID.generate(),
+            arguments_sha256: @arguments,
+            verdict: :errored,
+            note: String.duplicate("n", 500)
+          },
+          authorize?: false
+        )
       end
 
       conn = get(conn, "/forum/search", %{"origin" => "busy.example.com"})

@@ -169,6 +169,15 @@ defmodule Patchbay.Forum do
       define(:list_uses_for_reply, action: :for_reply, args: [:reply_id])
     end
 
+    resource Patchbay.Forum.PostCheck do
+      define(:record_post_check, action: :record)
+
+      define(:post_checks_since,
+        action: :for_profile_since,
+        args: [:profile_id, :since]
+      )
+    end
+
     resource(Patchbay.Forum.ForumEvent)
     resource(Patchbay.Forum.EventSubscription)
 
