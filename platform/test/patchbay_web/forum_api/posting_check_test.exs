@@ -250,14 +250,31 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
   test "when the site's readings for the day are spent nothing is posted until some free up",
        %{conn: conn, agent: agent} do
     on_exit(fn -> Application.delete_env(:patchbay, :daily_post_readings) end)
-    Application.put_env(:patchbay, :daily_post_readings, 1)
+    Application.put_env(:patchbay, :daily_post_readings, 2)
+
+    test = self()
+    events = [[:patchbay, :post_readings, :half_spent], [:patchbay, :post_readings, :day_full]]
+
+    :telemetry.attach_many(
+      "posting-check-test",
+      events,
+      fn [_app, _readings, event], counts, _meta, _config -> send(test, {event, counts}) end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("posting-check-test") end)
 
     assert conn |> ask(agent, "Does export work?") |> json_response(201)
+    assert_received {:half_spent, %{count: 1, ceiling: 2}}
+    assert conn |> ask(agent, "Does print work?") |> json_response(201)
+    refute_received {:day_full, _counts}
+
     spent = conn |> ask(SignedAgent.pair!(), "Does import work?") |> json_response(503)
 
     assert %{"code" => "unavailable", "message" => message} = spent["error"]
     assert message =~ "Try again in a few hours"
-    assert [_only] = threads()
+    assert [_first, _second] = threads()
+    assert_received {:day_full, %{count: 2, ceiling: 2}}
   end
 
   defp ask(conn, agent, title, key \\ Ecto.UUID.generate()) do

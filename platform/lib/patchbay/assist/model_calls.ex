@@ -5,9 +5,16 @@ defmodule Patchbay.Assist.ModelCalls do
   with what came back. Each close also emits
   `[:patchbay, :model_call, :stop]` with the tokens and cost as
   measurements and the purpose, model and outcome as metadata.
+
+  The day's readings of posts emit two events of their own, each with the
+  readings counted and the ceiling as measurements:
+  `[:patchbay, :post_readings, :half_spent]` when the reading that takes
+  half the ceiling opens, and `[:patchbay, :post_readings, :day_full]` each
+  time a post is refused because the ceiling is reached.
   """
 
   require Ash.Query
+  require Logger
 
   alias Patchbay.Assist
   alias Patchbay.Assist.ModelCall
@@ -97,15 +104,34 @@ defmodule Patchbay.Assist.ModelCalls do
   end
 
   defp open_reading(model, person_id, now) do
-    if readings_counted(DateTime.add(now, -1, :day)) < Patchbay.Config.daily_post_readings() do
+    counted = readings_counted(DateTime.add(now, -1, :day))
+    ceiling = Patchbay.Config.daily_post_readings()
+
+    if counted < ceiling do
+      if (counted + 1) * 2 == ceiling, do: readings_event(:half_spent, counted + 1, ceiling)
+
       # Patchbay's own record, opened within the limits just counted.
       {:ok,
        Assist.ask_model_to_check_post!(%{model: model, visitor_key: person_id},
          authorize?: false
        )}
     else
+      readings_event(:day_full, counted, ceiling)
+
+      Logger.warning(
+        "The day's post readings are spent (#{counted} of #{ceiling}): nothing is posted until some free up"
+      )
+
       :day_full
     end
+  end
+
+  defp readings_event(event, counted, ceiling) do
+    :telemetry.execute(
+      [:patchbay, :post_readings, event],
+      %{count: counted, ceiling: ceiling},
+      %{}
+    )
   end
 
   # The seconds until this person's oldest reading of the past hour leaves

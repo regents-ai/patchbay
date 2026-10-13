@@ -48,6 +48,7 @@ defmodule Patchbay.Forum.PostingCheck do
   alias Patchbay.Forum.Jev
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.ToolName
   alias Patchbay.Forum.Types.PostFinding
   alias Patchbay.Forum.Validations.BoundedMap
   alias Patchbay.Identity.AgentProfile
@@ -167,7 +168,9 @@ defmodule Patchbay.Forum.PostingCheck do
   @doc """
   A report of a call to a tool on another site, from the fields the caller
   sent: which site and tool, whether it worked and the note are the caller's
-  words, and a report without a note has none to judge. The tool's title and
+  words, and a report without a note has none to judge. The tool is named
+  only as a tool can be named, so the name carries no sentence; any other
+  name the write refuses. The tool's title and
   description, what it returned and what the page showed are the site's
   words carried in: Jev is told only that the last two are attached.
   """
@@ -177,6 +180,7 @@ defmodule Patchbay.Forum.PostingCheck do
     note = params["note"]
 
     with false <- no_words?(note),
+         true <- ToolName.valid?(params["tool_name"]),
          false <- too_long?(note, limits.note),
          false <- too_long?(params["failure_code"], limits.failure_code),
          {:ok, returned} <- evidence(params["handler_result"], limits.evidence),
@@ -187,7 +191,7 @@ defmodule Patchbay.Forum.PostingCheck do
            written(%{
              kind: "a report of a call to a website's tool",
              origin: shown(params["origin"], @name_characters),
-             tool_name: shown(params["tool_name"], @name_characters),
+             tool_name: params["tool_name"],
              verdict: shown(params["verdict"], @name_characters),
              failure_code: shown(params["failure_code"], limits.failure_code),
              note: shown(note, limits.note),
