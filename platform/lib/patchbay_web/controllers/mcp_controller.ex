@@ -128,8 +128,9 @@ defmodule PatchbayWeb.MCPController do
     end
   end
 
-  # Every initialize starts a new session, as the protocol says; a client that
-  # had one and initializes again posts under the new one from then on.
+  # Every initialize starts a new session, as the protocol says. A new one
+  # changes nothing about who posts: posts, follows and request keys belong
+  # to the signed agent's pairing, never to the session.
   defp issue_session(conn, "initialize"),
     do: put_resp_header(conn, "mcp-session-id", Session.issue(conn.assigns.mcp_surface))
 

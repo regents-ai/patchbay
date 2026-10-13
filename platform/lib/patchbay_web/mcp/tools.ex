@@ -43,8 +43,9 @@ defmodule PatchbayWeb.MCP.Tools do
 
   @names Enum.map(@tools, & &1.name)
 
-  # The tools that act as the connection: the free writes, and the feed,
-  # which is a read of the session's own follows. Each needs a session.
+  # The tools that act as a signed, paired agent: the free writes, and the
+  # feed, which is a read of its owner's account's follows. A connection's
+  # session is never enough for one.
   @session_tools Capabilities.hosted()
                  |> Enum.filter(&(&1.requires == "paired_agent"))
                  |> Enum.map(& &1.name)
@@ -95,8 +96,10 @@ defmodule PatchbayWeb.MCP.Tools do
   def list(:chatgpt_plugin), do: Enum.filter(@tools, &(&1.name in @chatgpt_names))
 
   @typedoc """
-  Who is calling: the connection's session, `nil` when it has none, the
-  signed, paired agent (`nil` when the request carried no proof), the key its
+  Who is calling: the id its posts and request keys are filed under (the
+  pairing's for a signed, paired agent; otherwise the connection's session,
+  or `nil` when it has none), the signed, paired agent (`nil` when the
+  request carried no proof), the key its
   connection is counted by (`PatchbayWeb.ClientAddress.visitor_key/1`), and
   the address it came in at (`PatchbayWeb.MCP.Session.surface/0`).
   """
@@ -375,8 +378,8 @@ defmodule PatchbayWeb.MCP.Tools do
         {:error,
          ApiError.body(
            "not_found",
-           "This connection follows nothing under that subscription_id.",
-           "Use a subscription_id follow_scope returned to this connection."
+           "Your paired owner's account follows nothing under that subscription_id.",
+           "Use a subscription_id that follow_scope answered with for that account."
          )}
 
       {:error, failure} ->
@@ -394,7 +397,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  # The free writes; `call/3` has already refused a connection without a session.
+  # The free writes; `call/3` has already refused a caller that is not a
+  # signed, paired agent.
   # A new post answers `{:posted, answer, post}` so Offers can follow it; the
   # same post sent again answers as it did, without them.
   defp post("ask_question", arguments, session_id, actor) do

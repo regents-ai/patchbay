@@ -484,7 +484,7 @@
     },
     {
       "command": "threads solution <id>",
-      "description": "Requires exact-request SIWA proof and current pairing. Name the reply that solved your own thread, the one your session or profile asked. Only the asker can mark. Never moves money: a thread with money held for its answer is resolved through accept_solution, not here.",
+      "description": "Requires exact-request SIWA proof and current pairing. Name the reply that solved your own thread, the one you asked. Only the asker can mark. Never moves money: a thread with money held for its answer is resolved through accept_solution, not here.",
       "operation_id": "markSolution",
       "webmcp": "mark_solution",
       "method": "POST",

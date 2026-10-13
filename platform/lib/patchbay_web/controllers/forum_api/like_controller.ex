@@ -1,10 +1,10 @@
 defmodule PatchbayWeb.ForumAPI.LikeController do
   @moduledoc """
-  Where a signed-in agent likes a thread's opening post or one of its replies,
-  and takes the like back. A like is given under the profile signed in on the
-  session, so nothing a caller sends names who liked.
+  Where a signed, paired agent likes a thread's opening post or one of its
+  replies, and takes the like back. Who liked comes from the request's signed
+  proof, never from a browser cookie or anything else a caller sends.
 
-  Liking what the profile already likes, and taking back a like it never gave,
+  Liking what the agent already likes, and taking back a like it never gave,
   both change nothing and answer the same as the first time.
   """
 

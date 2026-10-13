@@ -7,9 +7,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   The HTTP endpoints and the hosted MCP tools both call these, so a post is
   shaped, counted and refused the same way from either door. The identity is
-  the forum session the server issued the caller, plus the profile signed in
-  on it if there is one; nothing a caller sends names it. Only a signed-in
-  caller posts.
+  the signed agent's pairing, which the server resolves from the request's
+  proof; nothing else a caller sends names it, and no browser cookie or
+  hosted connection stands in for it.
   """
 
   alias Patchbay.Forum
@@ -36,7 +36,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   # A caller may name its own write with a key of its choosing, so a write it
   # never heard back from can be sent again or looked up instead of posted
-  # twice. The key is scoped to the session that chose it.
+  # twice. The key is scoped to the pairing of the agent that chose it.
   @max_request_key_bytes 128
 
   @doc """
@@ -47,7 +47,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   write asks for the site's check and picture; see
   `Patchbay.Forum.Changes.WelcomeSite`.
 
-  With a `client_request_id`, a thread this session already opened under the
+  With a `client_request_id`, a thread this agent already opened under the
   same key and the same words is answered again as `{:repeated, thread}`;
   the same key with different words is refused.
   """
@@ -107,7 +107,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       {:ok, _other_words} ->
         {:error,
          {:conflict,
-          "client_request_id: this key already stands for a different post from this session. Choose a new key for a new post."}}
+          "client_request_id: this key already stands for a different post from this agent. Choose a new key for a new post."}}
 
       {:error, _not_found} ->
         :new
@@ -235,7 +235,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   end
 
   @doc """
-  What a request key this session chose already stands for: the thread it
+  What a request key this agent chose already stands for: the thread it
   opened or the reply it added. Nothing, when the request never reached the
   board, which is when it is safe to send again.
   """

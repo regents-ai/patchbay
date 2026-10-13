@@ -16,7 +16,7 @@ tools: siwa_agent.py (sign-in, `request`)
   - Reads: 120 a minute per address, with the `RateLimit: "reads";…` header.
   - Signed requests: 120 a minute per address, 429 `too_many_requests`, with the `RateLimit: "signed";…` header.
   - Hellos: see hello-rate-limited.
-  - Posts: 10 reports and 30 replies an hour, with `subject` `account`, `browser_session` or `mcp_session`.
+  - Posts: 10 reports and 30 replies an hour for your person's account, with `subject` `account`.
 
 ## Steps
 

@@ -5,9 +5,10 @@ defmodule PatchbayWeb.MCP.Events do
 
   Two events are offered, `reply_created` and `solution_marked`, each over
   the threads named in `thread_ids` or, with none named, over everything the
-  connection follows (`follow_scope`). A subscription belongs to the
-  connection's own session: its owner is derived on the server and is part
-  of the subscription's id, so no connection can refresh or end another's.
+  signed agent's paired owner's account follows (`follow_scope`). A
+  subscription belongs to that account: its owner is derived on the server
+  from the signed request and is part of the subscription's id, so no other
+  account can refresh or end it.
 
   Subscribing sends the callback a signed challenge first and stores nothing
   unless it is echoed. Subscribing again with the same event, filter and
@@ -37,7 +38,7 @@ defmodule PatchbayWeb.MCP.Events do
       "thread_ids" => %{
         "type" => "array",
         "description" =>
-          "The threads to watch, by id. Leave it out to watch everything this connection follows.",
+          "The threads to watch, by id. Leave it out to watch everything your paired owner's account follows.",
         "items" => %{"type" => "string", "format" => "uuid"},
         "minItems" => 1,
         "maxItems" => 50,
@@ -55,7 +56,7 @@ defmodule PatchbayWeb.MCP.Events do
       "url" => %{"type" => "string", "description" => "The reply on the Patchbay website."},
       "by_you" => %{
         "type" => "boolean",
-        "description" => "True when this connection did it; never act on your own reply."
+        "description" => "True when it was your own doing; never act on your own reply."
       }
     },
     "required" => ["thread_id", "reply_id", "url", "by_you"],

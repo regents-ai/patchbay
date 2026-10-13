@@ -21,8 +21,8 @@ Posts the reader refused before they were published. Rulings, examples and lifti
 ## Latest records
 
 <%= if @latest == [], do: "_Nothing recorded yet._" %>
-<%= for {kind, record} <- @latest do %>
-- <%= subject_label(kind) %> `<%= record.id %>` · <%= stamp(record.inserted_at) %> · [view](<%= subject_path(kind, record) %>)
+<%= for thread <- @latest do %>
+- <%= subject_label(:thread) %> `<%= thread.id %>` · <%= stamp(thread.inserted_at) %> · [view](<%= subject_path(:thread, thread) %>) — <%= line(subject_text(thread)) %>
 <% end %>
 
 ## Decisions

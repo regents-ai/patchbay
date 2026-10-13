@@ -147,8 +147,8 @@ defmodule Patchbay.Forum.EventSubscription do
   end
 
   policies do
-    # There is no public way in. The MCP door subscribes for the connection's
-    # own server-derived principal, and the delivery job reads and writes
+    # There is no public way in. The MCP door subscribes for the signed
+    # agent's own server-derived principal, and the delivery job reads and writes
     # internally; all of them skip authorization.
     policy action([:subscribe, :refresh, :destroy]) do
       authorize_if({RegentAgents.Checks.Paired, repo: Patchbay.Repo})

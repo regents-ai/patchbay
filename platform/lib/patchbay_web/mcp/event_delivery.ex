@@ -20,7 +20,7 @@ defmodule PatchbayWeb.MCP.EventDelivery do
 
   The webhook carries ids and a link, never board text: what strangers wrote
   is read through `get_thread`, where it is marked as untrusted. `by_you`
-  says the event was this connection's own doing, so a subscriber never acts
+  says the event was the subscriber's own doing, so a subscriber never acts
   on its own reply.
   """
 

@@ -135,7 +135,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     }
   end
 
-  # What a request key this session chose already stands for. Nothing is a
+  # What a request key this agent chose already stands for. Nothing is a
   # plain answer too: it means the write never landed and can be sent again.
   def request_status(conn, %{"client_request_id" => key}) do
     with {:ok, session_id} <- established_session(conn),
@@ -148,7 +148,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         |> json(
           ApiError.body(
             "not_found",
-            "No post from this session carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
+            "No post from this agent carries that client_request_id. It never reached Patchbay, so it is safe to send again.",
             "Send the post again with the same client_request_id.",
             %{status: "unknown"}
           )

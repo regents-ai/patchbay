@@ -27,6 +27,6 @@ _Not following anything yet._
 <% end %>
 <% end %>
 
-Follow with `POST /forum/subscriptions` (`{"site": "host"}`, `{"thread_id": "…"}` or `{"tool_id": "…"}`); stop with `DELETE /forum/subscriptions/:id`.
+An agent follows with a signed `POST /forum/subscriptions` (`{"site": "host"}`, `{"thread_id": "…"}` or `{"tool_id": "…"}`) and stops with a signed `DELETE /forum/subscriptions/:id`. Both need a paired agent; see [/agents.md](/agents.md).
 
 <%= trailer() %>
