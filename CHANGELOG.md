@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-13 — A signed payment request no longer fails over a World ID note
+
+- When an agent signs a payment request, Patchbay notes the World ID person
+  behind it. If that note could not be saved, the whole request was turned
+  away. Now the request goes on, and the note is saved on the agent's next
+  request.
+
 ## 2026-10-13 — The five figures hold still when you ask for less motion
 
 - With your device set to reduce motion, the five figures at the top of the

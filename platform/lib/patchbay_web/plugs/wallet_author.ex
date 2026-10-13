@@ -12,6 +12,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   @behaviour Siwa.AgentAuthPlug.Hooks
 
   import Plug.Conn
+  require Logger
   alias Patchbay.Identity
   alias PatchbayWeb.ApiError
   alias RegentAgents.HumanBacking
@@ -168,8 +169,9 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
          {:ok, registry_url} <- registry_url(registration),
          {:ok, backing} <- HumanBacking.read(book),
          {:ok, %{authentication_origin: :wallet, status: :active} = profile} <-
-           Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}),
-         {:ok, profile} <- record_backing(profile, backing) do
+           Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}) do
+      profile = with_backing(profile, backing)
+
       # Only the signed body carries a payment signature; an unsigned header is dropped.
       conn =
         case conn.body_params do
@@ -193,10 +195,30 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   def accept(_conn, _data, _context), do: refused(:unsupported_principal)
 
   # Null names nobody and changes nothing: the first person, once saved, stays.
-  defp record_backing(profile, %{human_id: nil}), do: {:ok, profile}
+  #
+  # Nothing here decides what the author may do, so a save that fails never fails
+  # the request: the author goes on as it was read, and its next request saves the
+  # same thing.
+  defp with_backing(profile, %{human_id: nil}), do: profile
 
-  defp record_backing(profile, %{human_id: human_id, same_person_agent_count: count}),
-    do: Identity.record_backing(profile, human_id, count)
+  defp with_backing(profile, %{human_id: human_id, same_person_agent_count: count}) do
+    case Identity.record_backing(profile, human_id, count) do
+      {:ok, profile} -> profile
+      {:error, error} -> backing_not_saved(profile, error)
+    end
+  end
+
+  # Logged by the kind of failure alone: its words can hold the person's number.
+  defp backing_not_saved(profile, error) do
+    Logger.warning(
+      "Saving the World ID person of wallet author #{profile.wallet_address} failed: #{inspect(failure_kinds(error))}"
+    )
+
+    profile
+  end
+
+  defp failure_kinds(%{errors: [_ | _] = errors}), do: Enum.map(errors, & &1.__struct__)
+  defp failure_kinds(error), do: [error.__struct__]
 
   defp registry_url(nil), do: {:ok, nil}
   defp registry_url(%{"registryUrl" => "https://" <> _rest = url}), do: {:ok, url}

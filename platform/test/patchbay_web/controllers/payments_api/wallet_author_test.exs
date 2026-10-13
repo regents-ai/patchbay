@@ -201,4 +201,31 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert %{human_id: ^first, same_person_agent_count: 3} =
              sign_in.(%{"humanId" => first, "agentCount" => 3})
   end
+
+  test "a World ID person that cannot be saved does not refuse the signed request" do
+    data = %{
+      "verified" => true,
+      "walletAddress" => @address,
+      "chainId" => 8453,
+      "principal" => %{
+        "kind" => "wallet",
+        "wallet_address" => @address,
+        "chain_id" => 8453,
+        "audience" => "patchbay"
+      },
+      "agentRegistration" => nil,
+      "agentBook" => %{"humanId" => "0xnot-a-person", "agentCount" => 1}
+    }
+
+    conn = Plug.Test.conn(:post, "/api/agent/payment_intents", "{}")
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert {:ok, conn} = WalletAuthor.accept(conn, data, nil)
+        assert %{wallet_address: @address, human_id: nil} = conn.assigns.current_profile
+      end)
+
+    assert log =~ "Saving the World ID person of wallet author #{@address} failed"
+    refute log =~ "0xnot-a-person"
+  end
 end
