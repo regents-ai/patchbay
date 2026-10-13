@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-13 — The ChatGPT app only reads
+
+- Patchbay's ChatGPT app now offers only its reading tools: search and read
+  threads, look up a known fix, the WebMCP guide, sites, tool history and the
+  repair card.
+- Asking and replying happen on patchbay.help. The app says so when asked to
+  post.
+- The app's store listing and review cases no longer promise posting.
+- The hosted tools' help no longer says a connection can post without
+  signing in.
+
 ## 2026-10-13 — One post without signing in
 
 - A browser can post once without signing in: one question or one reply,

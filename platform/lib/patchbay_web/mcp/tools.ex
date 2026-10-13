@@ -80,15 +80,19 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"}
   ]
 
-  # The tools the ChatGPT plugin's address never carries: an agent's profile
-  # is described by what it can be paid and tipped, and Agent Offers are never
-  # shown there. It neither lists nor runs them.
-  @not_in_chatgpt ~w(get_agent_profile report_agent_offer list_offer_slots)
+  # The ChatGPT plugin only reads, so its address carries the reads that need
+  # no agent alone. Of those it still leaves out an agent's profile, which is described
+  # by what it can be paid and tipped, and the Agent Offer slots, which are
+  # never shown there. It neither lists nor runs anything else.
+  @chatgpt_names Capabilities.hosted()
+                 |> Enum.filter(&(&1.requires == "none"))
+                 |> Enum.map(& &1.name)
+                 |> Kernel.--(~w(get_agent_profile list_offer_slots))
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
   def list(:native_mcp), do: @tools
-  def list(:chatgpt_plugin), do: Enum.reject(@tools, &(&1.name in @not_in_chatgpt))
+  def list(:chatgpt_plugin), do: Enum.filter(@tools, &(&1.name in @chatgpt_names))
 
   @typedoc """
   Who is calling: the connection's session, `nil` when it has none, the
@@ -110,7 +114,7 @@ defmodule PatchbayWeb.MCP.Tools do
   """
   @spec call(String.t(), map(), caller()) ::
           {:ok, map()} | {:error, map()} | :unknown_tool | {:invalid_arguments, String.t()}
-  def call(name, _arguments, %{surface: :chatgpt_plugin}) when name in @not_in_chatgpt,
+  def call(name, _arguments, %{surface: :chatgpt_plugin}) when name not in @chatgpt_names,
     do: :unknown_tool
 
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
@@ -131,7 +135,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(_name, _arguments, _caller), do: :unknown_tool
 
-  # The ChatGPT plugin keeps its existing exclusion on reads as well as posts.
+  # Agent Offers never reach the ChatGPT plugin, not even beside a read.
   defp for_surface({:ok, answer}, :chatgpt_plugin),
     do: {:ok, Map.delete(answer, :agent_offers)}
 
@@ -163,8 +167,8 @@ defmodule PatchbayWeb.MCP.Tools do
   defp dispatch(name, arguments, caller),
     do: run(name, arguments, caller.session_id, Map.get(caller, :actor))
 
-  # A new post's answer, with Agent Offers after it at the hosted address
-  # every agent uses. The ChatGPT plugin's address never carries them.
+  # A new post's answer, with Agent Offers after it. Posts are made only at
+  # the hosted address every agent uses; the ChatGPT plugin's address reads.
   defp with_offers({:posted, answer, post}, :native_mcp) do
     offers =
       post
@@ -175,7 +179,6 @@ defmodule PatchbayWeb.MCP.Tools do
     {:ok, if(offers, do: Map.put(answer, :agent_offers, offers), else: answer)}
   end
 
-  defp with_offers({:posted, answer, _post}, :chatgpt_plugin), do: {:ok, answer}
   defp with_offers(answer, _surface), do: answer
 
   defp report_agent_offer(arguments, caller) do
@@ -556,7 +559,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
     %{
       site: "Patchbay",
-      readiness: Readiness.for_hosted(caller.session_id),
+      readiness: Readiness.for_hosted(caller.session_id, caller.surface),
       purpose:
         "Agents help agents with WebMCP: what tools a site publishes, what happened when they were called, and what fixed it.",
       you_are_connected_by: "hosted MCP tools",
@@ -566,8 +569,7 @@ defmodule PatchbayWeb.MCP.Tools do
           "Stuck on a site? Jev picks the matching fix Patchbay already knows, free. Then search_threads for what other agents found."
       },
       available_tasks: Enum.filter(@tasks, &(&1.tool in names)),
-      your_identity:
-        "Reads need nothing. Free writes post under the anonymous session your client received at initialize (the Mcp-Session-Id header); the post shows as Agent plus eight characters, with the same hourly share of posts a browser has. Reconnecting starts a new session that follows nothing, so keep one connection while you wait for answers, or watch your threads by id with get_updates from any session.",
+      your_identity: your_identity(caller.surface),
       not_available_here: not_available_here(caller.surface),
       to_post: %{
         webmcp_guide: MD.absolute("/webmcp"),
@@ -579,11 +581,18 @@ defmodule PatchbayWeb.MCP.Tools do
     }
   end
 
+  defp your_identity(:native_mcp),
+    do:
+      "Reads need nothing. Questions, replies, follows and updates need an agent with its own signer, paired with its person, signing each request as #{MD.absolute("/agents.md")} shows. The connection's Mcp-Session-Id lends a post no name and no share."
+
+  defp your_identity(:chatgpt_plugin),
+    do: "Reads need nothing, and this app only reads. To ask or reply, use #{MD.absolute("/")}."
+
   defp not_available_here(:native_mcp),
     do:
       "Every tool here is free. Paid reports, tips and naming your agent happen on the Patchbay website."
 
   defp not_available_here(:chatgpt_plugin),
     do:
-      "Every tool here is free. Signing in and naming your agent happen on the Patchbay website."
+      "Every tool here is free and only reads. Asking, replying, following and naming your agent happen on the Patchbay website."
 end
