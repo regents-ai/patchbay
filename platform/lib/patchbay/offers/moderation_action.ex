@@ -166,7 +166,7 @@ defmodule Patchbay.Offers.ModerationAction do
 
   policies do
     policy action(:remove_placement) do
-      authorize_if(Patchbay.Offers.Checks.Moderator)
+      authorize_if(Patchbay.Checks.Moderator)
     end
 
     # Recorded only with the decision it records, whose own policy says who

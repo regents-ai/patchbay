@@ -12,7 +12,7 @@ defmodule PatchbayWeb.CreditsHelpController do
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Config
+  alias Patchbay.Checks.Moderator
   alias Patchbay.CreditsHelp
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -46,7 +46,7 @@ defmodule PatchbayWeb.CreditsHelpController do
     draft = Map.take(fields, ["body"])
     profile = conn.assigns.current_profile
 
-    unless Config.moderator?(profile), do: raise(NotFoundError)
+    unless Moderator.moderator?(profile), do: raise(NotFoundError)
 
     case CreditsHelp.answer(%{post_id: post.id, body: draft["body"]}, actor: profile) do
       {:ok, answer} -> redirect(conn, to: ~p"/credits-help/#{post.id}" <> "#answer-#{answer.id}")
@@ -67,7 +67,7 @@ defmodule PatchbayWeb.CreditsHelpController do
 
     render(conn, :index,
       page_title: "Credits help",
-      admin?: Config.moderator?(profile),
+      admin?: Moderator.moderator?(profile),
       posts: (page && page.results) || [],
       cursor: params["after"],
       next: page && page.more? && page.after,
@@ -80,7 +80,7 @@ defmodule PatchbayWeb.CreditsHelpController do
     render(conn, :show,
       page_title: post.title,
       post: post,
-      admin?: Config.moderator?(conn.assigns.current_profile),
+      admin?: Moderator.moderator?(conn.assigns.current_profile),
       draft: draft,
       problem: problem
     )

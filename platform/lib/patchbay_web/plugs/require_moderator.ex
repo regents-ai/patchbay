@@ -16,7 +16,7 @@ defmodule PatchbayWeb.Plugs.RequireModerator do
 
   @impl Plug
   def call(conn, _opts) do
-    if Patchbay.Config.moderator?(conn.assigns[:current_profile]) do
+    if Patchbay.Checks.Moderator.moderator?(conn.assigns[:current_profile]) do
       conn
     else
       conn

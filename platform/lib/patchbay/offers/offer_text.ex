@@ -98,7 +98,7 @@ defmodule Patchbay.Offers.OfferText do
     end
 
     policy action(:block) do
-      authorize_if(Patchbay.Offers.Checks.Moderator)
+      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 end

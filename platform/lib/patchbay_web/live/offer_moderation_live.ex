@@ -44,7 +44,8 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    if !Patchbay.Config.moderator?(socket.assigns.current_profile), do: raise(NotFoundError)
+    if !Patchbay.Checks.Moderator.moderator?(socket.assigns.current_profile),
+      do: raise(NotFoundError)
 
     if connected?(socket) do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, OfferReport.topic())
@@ -82,7 +83,7 @@ defmodule PatchbayWeb.OfferModerationLive do
   end
 
   defp check_authority(socket) do
-    if Patchbay.Config.moderator?(socket.assigns.current_profile),
+    if Patchbay.Checks.Moderator.moderator?(socket.assigns.current_profile),
       do: {:cont, socket},
       else: {:halt, redirect(socket, to: "/")}
   end

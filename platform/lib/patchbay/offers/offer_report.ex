@@ -152,7 +152,7 @@ defmodule Patchbay.Offers.OfferReport do
 
   policies do
     policy action(:decide) do
-      authorize_if(Patchbay.Offers.Checks.Moderator)
+      authorize_if(Patchbay.Checks.Moderator)
     end
 
     # Filed only by Patchbay's forum doors, which name the reporter from the

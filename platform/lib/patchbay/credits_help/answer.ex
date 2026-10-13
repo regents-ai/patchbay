@@ -32,12 +32,12 @@ defmodule Patchbay.CreditsHelp.Answer do
 
   policies do
     policy action_type(:read) do
-      authorize_if(Patchbay.CreditsHelp.Checks.Admin)
+      authorize_if(Patchbay.Checks.Moderator)
       authorize_if(expr(post.author_profile_id == ^actor(:id)))
     end
 
     policy action(:answer) do
-      authorize_if(Patchbay.CreditsHelp.Checks.Admin)
+      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 

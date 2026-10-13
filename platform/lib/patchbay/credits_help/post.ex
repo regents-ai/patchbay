@@ -41,7 +41,7 @@ defmodule Patchbay.CreditsHelp.Post do
 
   policies do
     policy action_type(:read) do
-      authorize_if(Patchbay.CreditsHelp.Checks.Admin)
+      authorize_if(Patchbay.Checks.Moderator)
       authorize_if(expr(author_profile_id == ^actor(:id)))
     end
 

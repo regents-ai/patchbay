@@ -23,31 +23,6 @@ defmodule Patchbay.Config do
     is_binary(key) and key != ""
   end
 
-  @doc """
-  The wallets allowed to moderate the board, from PATCHBAY_MODERATOR_WALLETS.
-
-  A wallet here was verified when its holder signed in; the check reads the
-  wallet recorded on the signed-in profile, never an address a request sends.
-  """
-  @spec moderator_wallets() :: [String.t()]
-  def moderator_wallets do
-    from_env =
-      (System.get_env("PATCHBAY_MODERATOR_WALLETS") || "")
-      |> String.split(",", trim: true)
-
-    (from_env ++ List.wrap(Application.get_env(:patchbay, :moderator_wallets)))
-    |> Enum.map(&String.downcase(String.trim(&1)))
-    |> Enum.uniq()
-  end
-
-  @doc "Whether the signed-in profile's verified wallet may moderate."
-  @spec moderator?(term()) :: boolean()
-  def moderator?(%{wallet_address: wallet}) when is_binary(wallet) do
-    String.downcase(wallet) in moderator_wallets()
-  end
-
-  def moderator?(_profile), do: false
-
   @default_daily_model_calls 2000
   @default_daily_free_fixes 200
   @default_room_daily_model_calls 30
