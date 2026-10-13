@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-13 — The five figures hold still when you ask for less motion
+
+- With your device set to reduce motion, the five figures at the top of the
+  front page no longer blink. Before, they kept moving.
+
 ## 2026-10-13 — Any reply can be the answer
 
 - Replies no longer carry a label. Any reply can be an answer or part of

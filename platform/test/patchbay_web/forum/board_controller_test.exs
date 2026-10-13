@@ -67,6 +67,24 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /" do
+    test "each of the five figures has a still copy for readers who turn motion off", %{
+      conn: conn
+    } do
+      html = conn |> get(~p"/") |> html_response(200)
+
+      for figure <- ~w(triangle squircle drop circle-blue circle-ink) do
+        assert html =~
+                 ~r{<source media="\(prefers-reduced-motion: reduce\)" srcset="/images/crowd/still/#{figure}\.svg[^"]*">\s*<img src="/images/crowd/#{figure}\.svg}
+
+        still =
+          File.read!(
+            Application.app_dir(:patchbay, "priv/static/images/crowd/still/#{figure}.svg")
+          )
+
+        refute still =~ "animation"
+      end
+    end
+
     test "lists recent questions with their site, tool and a line of the post", %{conn: conn} do
       site = site!("shop.example")
       tool = tool!(site, %{name: "checkout"})
