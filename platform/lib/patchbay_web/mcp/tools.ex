@@ -184,7 +184,6 @@ defmodule PatchbayWeb.MCP.Tools do
   defp report_agent_offer(arguments, caller) do
     case Participation.report_offer(
            caller.session_id,
-           caller.visitor_key,
            Map.get(caller, :actor),
            caller.surface,
            arguments

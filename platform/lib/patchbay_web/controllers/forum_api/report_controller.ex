@@ -36,7 +36,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
-  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation
@@ -241,13 +240,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def report_offer(conn, params) do
     with {:ok, session_id} <- established_session(conn),
          {:ok, report} <-
-           Participation.report_offer(
-             session_id,
-             visitor(conn),
-             current_profile(conn),
-             :http_api,
-             params
-           ) do
+           Participation.report_offer(session_id, current_profile(conn), :http_api, params) do
       conn
       |> put_status(:created)
       |> json(Participation.offer_report_answer(report))
@@ -349,8 +342,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile
-
-  defp visitor(conn), do: ClientAddress.visitor_key(conn)
 
   # A signed post answers with its account's hourly share as it stands once
   # the post is settled, whether it landed or was refused.
@@ -605,13 +596,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     )
   end
 
-  defp send_failure(conn, {:rate_limited, counted, message, seconds}) do
+  defp send_failure(conn, {:rate_limited, :account, message, seconds}) do
     conn
     |> put_resp_header("retry-after", Integer.to_string(seconds))
     |> put_status(:too_many_requests)
     |> json(
       ApiError.body("rate_limited", message, @wait_then_retry, %{
-        subject: rate_subject(counted),
+        subject: "account",
         retry_after_seconds: seconds
       })
     )
@@ -719,11 +710,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       send_failure(conn, {:invalid, Refusal.messages(error)})
     end
   end
-
-  # Whose hourly share was used up: the signed-in account, or the network an
-  # Offer report with nobody signed in came from.
-  defp rate_subject(:account), do: "account"
-  defp rate_subject(:address), do: "address"
 
   defp solution_status(:not_asker), do: :forbidden
   defp solution_status(:reply_not_on_thread), do: :not_found
