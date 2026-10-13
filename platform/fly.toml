@@ -50,8 +50,10 @@ kill_timeout = "60s"
     protocol = "http"
     timeout = "5s"
 
+# One dedicated core and 2 GB: the shared 1 GB machine was the thinnest in
+# the fleet for the crowd Patchbay is sized for.
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "1gb"
-  cpu_kind = "shared"
+  size = "performance-1x"
+  memory = "2gb"
+  cpu_kind = "performance"
   cpus = 1
