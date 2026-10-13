@@ -2537,8 +2537,9 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); padding: 0; margin: 0 0 var(--space-3); list-style: none; }
 .pb-offers-gallery > li { min-width: 0; display: flex; }
 .pb-offers .pb-offers-site-card { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; padding: var(--space-2); }
-.pb-offers-site-visual { display: grid; place-items: center; height: 10rem; overflow: hidden; background: var(--pb-surface-sunk); color: var(--pb-text); }
-.pb-offers-site-shot { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+/* The pictures are 16:10, so the box matches them and shows each one whole. */
+.pb-offers-site-visual { display: grid; place-items: center; aspect-ratio: 16 / 10; overflow: hidden; background: var(--pb-surface-sunk); color: var(--pb-text); }
+.pb-offers-site-shot { display: block; width: 100%; height: 100%; object-fit: contain; }
 .pb-offers-site-monogram { font: 400 3rem/1 var(--font-family-title); opacity: .5; }
 .pb-offers-site-heading { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .pb-offers-site-heading > img { flex: none; width: 2.5rem; height: 2.5rem; object-fit: contain; padding: .25rem; background: #e9e8d5; }
@@ -2547,11 +2548,12 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-site-activity { display: flex; justify-content: space-between; gap: var(--space-1); margin: auto 0 0; padding-block: var(--space-1); border-block: 1px solid var(--pb-line); }
 .pb-offers-site-activity dd { margin: .25rem 0 0; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .pb-offers-gallery-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-.pb-offers-gallery-slots > a { display: grid; align-content: start; gap: .5rem; padding: .75rem .5rem; min-width: 0; min-height: 6rem; border: 1px solid var(--pb-line-strong); overflow-wrap: anywhere; font-size: .75rem; }
-/* All three open: one box over the row of tiles, which keep its height. */
-.pb-offers-gallery-slots[data-all-open] { position: relative; }
-.pb-offers-gallery-slots[data-all-open] > a:not(.pb-offers-gallery-open) { visibility: hidden; }
-.pb-offers-gallery-slots > .pb-offers-gallery-open { position: absolute; inset: 0; min-height: 0; }
+.pb-offers-gallery-slots > * { display: grid; align-content: start; gap: .5rem; padding: .75rem .5rem; min-width: 0; min-height: 6rem; border: 1px solid var(--pb-line-strong); overflow-wrap: anywhere; font-size: .75rem; }
+.pb-offers-gallery-slots > a { transition: transform 160ms cubic-bezier(.23, 1, .32, 1); }
+.pb-offers-gallery-slots > a:active { transform: scale(.97); }
+.pb-offers-gallery-slots > .pb-offers-slot-open { border-color: var(--pb-text); background: var(--pb-surface); }
+/* Waits, greyed, until the slot before it is taken. */
+.pb-offers-gallery-slots > .pb-offers-slot-waiting { color: var(--pb-text-muted); border-style: dashed; opacity: .6; }
 .pb-offers-gallery-slots strong { display: flex; align-items: center; justify-content: space-between; gap: .25rem; }
 /* Three lines kept for the price, the most a narrow tile wraps it to, so a
    figure that changes moves nothing below. */
@@ -2559,8 +2561,13 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-gallery-slots > a:focus-visible, .pb-offers-site-visual:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
 .pb-offers-gallery-coverage { font-size: .75rem; color: var(--pb-text-muted); }
 .pb-offers-gallery-coverage summary { cursor: pointer; min-height: 2.75rem; display: list-item; align-content: center; }
-.pb-offers .pb-offers-global-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
-.pb-offers-global-card p { margin-bottom: 0; }
+.pb-offers .pb-offers-global-card { display: grid; gap: var(--space-2); width: min(100%, 44rem); margin: var(--space-3) auto; text-align: center; }
+.pb-offers-global-card h2 { margin: 0; font-size: 1.5rem; }
+.pb-offers-global-card p { margin: 0; }
+.pb-offers-global-card .pb-offers-gallery-slots { text-align: start; }
+.pb-offers-global-card .pb-offers-gallery-slots > * { min-height: 7rem; padding: var(--space-1); font-size: .875rem; }
+.pb-offers-global-card .pb-offers-gallery-slots small { font-size: .75rem; }
+.pb-offers-global-note { font-size: .875rem; color: var(--pb-text-muted); }
 .pb-offers-guide { display: grid; gap: var(--space-3); }
 .pb-offers-guide-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .pb-offers-guide-head h2 { margin: var(--space-1) 0; font-size: 1.5rem; }
@@ -2569,7 +2576,7 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 
 @media (hover: hover) and (pointer: fine) { .pb-offers-gallery-slots > a:hover { background: var(--pb-surface-sunk); text-decoration: none; } }
 @media (max-width: 64rem) { .pb-offers-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 42rem) { .pb-offers-gallery { grid-template-columns: minmax(0, 1fr); } .pb-offers .pb-offers-global-card { grid-template-columns: minmax(0, 1fr); } .pb-offers-summary dl { gap: var(--space-2); } }
+@media (max-width: 42rem) { .pb-offers-gallery { grid-template-columns: minmax(0, 1fr); } .pb-offers-global-card .pb-offers-gallery-slots > * { padding: .75rem .5rem; font-size: .75rem; } .pb-offers-global-card .pb-offers-gallery-slots small { font-size: .6875rem; } .pb-offers-summary dl { gap: var(--space-2); } }
 
 .pb-offers-summary { position: relative; }
 .pb-offers-summary h2 a::after { content: ""; position: absolute; inset: 0; }

@@ -278,7 +278,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   end
 
   describe "the market list" do
-    test "shows each slot's status, the least that takes it, and the responses",
+    test "sells one open slot at a time and shows each slot's status, price and responses",
          %{conn: conn, origin: origin, site: site, global: global, owner: owner, agent: agent} do
       place(site, 1, approved_version(owner, "Site one", site), amount_minor: 1001)
       lead_next(site, 1, approved_version(owner, "Next one", site), 2000)
@@ -294,16 +294,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                ~r/Slot 1 ↗\s*Live\s*From 11\.02 Credits/
 
       assert text_of(view, ~s(a[href="/offers/bid?site=#{site.site_id}&slot=2"])) =~
-               ~r/Slot 2 ↗\s*Open\s*From 1\.00 Credits/
+               ~r/Slot 2 ↗\s*Available\s*From 1\.00 Credits/
 
       global_card = text_of(view, ".pb-offers-global-card")
-      assert global_card =~ "Global slots fill empty website slots."
+      assert global_card =~ "Shows in any empty slot, on every website."
+      assert global_card =~ ~r/Slot 3\s*Waiting\s*Opens when slot 1 is taken/
+      refute has_element?(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=3"]))
 
       assert text_of(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=2"])) =~
                ~r/Slot 2 ↗\s*Live\s*From 1\.10 Credits/
 
       assert text_of(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=1"])) =~
-               ~r/Slot 1 ↗\s*Open\s*From 1\.00 Credits/
+               ~r/Slot 1 ↗\s*Available\s*From 1\.00 Credits/
 
       assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
       assert render(view) =~ "No website matches “no-such-site”."

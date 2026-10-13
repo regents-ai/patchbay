@@ -37,24 +37,22 @@ defmodule PatchbayWeb.OffersLive.List do
        |> Create.initialize_editor()
        |> assign(
          editor_open?: false,
-         editor_mode: "create",
          page_title: "Agent Offers",
          max_code_points: Patchbay.Offers.CreativeText.max_code_points(),
          hours: div(Patchbay.Offers.Terms.duration_us(), 3_600_000_000),
          minimum: credits(Offers.default_minimum_minor())
        )}
 
-  # The address holds the search and the editor: whether it is open, which
-  # way, and the saved Offer being reworded, so a reload or a reconnect shows
-  # the same page.
+  # The address holds the search and the editor: whether it is open and the
+  # saved Offer being reworded, so a reload or a reconnect shows the same page.
   @impl true
   def handle_params(params, uri, socket) do
-    editor = if params["editor"] in ["create", "edit"], do: params["editor"]
+    editor_open? = params["editor"] == "create"
 
     {:noreply,
      socket
-     |> assign(editor_open?: editor != nil, editor_mode: editor || socket.assigns.editor_mode)
-     |> Create.editor_params(if(editor, do: params, else: %{}), uri)
+     |> assign(editor_open?: editor_open?)
+     |> Create.editor_params(if(editor_open?, do: params, else: %{}), uri)
      |> search(params |> Map.get("q", "") |> String.trim())}
   end
 
@@ -66,10 +64,8 @@ defmodule PatchbayWeb.OffersLive.List do
 
   def handle_event("more", _params, socket), do: {:noreply, read_sites(socket)}
 
-  def handle_event("open_editor", %{"mode" => mode}, socket) when mode in ["create", "edit"],
-    do: {:noreply, Create.patch_editor(socket, %{"editor" => mode})}
-
-  def handle_event("open_editor", _params, socket), do: {:noreply, socket}
+  def handle_event("open_editor", _params, socket),
+    do: {:noreply, Create.patch_editor(socket, %{"editor" => "create"})}
 
   def handle_event("close_editor", _params, socket),
     do:
@@ -162,23 +158,38 @@ defmodule PatchbayWeb.OffersLive.List do
   attr(:site_id, :string, default: nil, doc: "none for Global's slots")
   attr(:as_of, DateTime, required: true)
 
-  # While no Offer shows in any of the three, they read as one: three alike
-  # tiles saying "Open" tell a visitor nothing the one box does not. The
-  # tiles stay underneath, unseen, so the card is the same height either way.
+  # One slot is for sale at a time: the lowest-numbered open one. The open
+  # slots after it wait, greyed, until it is taken. A live slot can always be
+  # outbid. Each tile keeps three lines, so the card's height never changes.
   defp slots(assigns) do
-    assigns = assign(assigns, all_open?: all_open?(assigns.market, assigns.as_of))
+    %{market: market, as_of: as_of} = assigns
+    live = Enum.filter(1..3, &live?(find_slot(market, &1), as_of))
+    assigns = assign(assigns, live: live, for_sale: Enum.find(1..3, &(&1 not in live)))
 
     ~H"""
-    <nav class="pb-offers-gallery-slots" aria-label={@label} data-all-open={@all_open?}>
-      <.link :for={number <- 1..3} navigate={bid_path(@site_id, number)}><strong>Slot {number}
-      <span aria-hidden="true">↗</span></strong><span>{slot_state(
-        find_slot(@market, number),
-        @as_of
-      )}</span><small>From {credits(slot_price(find_slot(@market, number), @market, @as_of))}</small></.link>
-      <.link :if={@all_open?} class="pb-offers-gallery-open" navigate={bid_path(@site_id, 1)}><strong>Bid for a slot
-      <span aria-hidden="true">↗</span></strong><span>All 3 open</span><small>From {credits(
-        slot_price(nil, @market, @as_of)
-      )}</small></.link>
+    <nav class="pb-offers-gallery-slots" aria-label={@label}>
+      <%= for number <- 1..3 do %>
+        <.link
+          :if={number in @live}
+          navigate={bid_path(@site_id, number)}
+          class="pb-offers-slot-live"
+        ><strong>Slot {number}
+        <span aria-hidden="true">↗</span></strong><span>Live</span><small>From {credits(
+          slot_price(find_slot(@market, number), @market, @as_of)
+        )}</small></.link>
+        <.link
+          :if={number == @for_sale}
+          navigate={bid_path(@site_id, number)}
+          class="pb-offers-slot-open"
+        ><strong>Slot {number}
+        <span aria-hidden="true">↗</span></strong><span>Available</span><small>From {credits(
+          slot_price(find_slot(@market, number), @market, @as_of)
+        )}</small></.link>
+        <span
+          :if={number not in @live and number != @for_sale}
+          class="pb-offers-slot-waiting"
+        ><strong>Slot {number}</strong><span>Waiting</span><small>Opens when slot {@for_sale} is taken</small></span>
+      <% end %>
     </nav>
     """
   end
@@ -186,15 +197,12 @@ defmodule PatchbayWeb.OffersLive.List do
   defp bid_path(nil, number), do: ~p"/offers/bid?#{[slot: number]}"
   defp bid_path(site_id, number), do: ~p"/offers/bid?#{[site: site_id, slot: number]}"
 
-  defp all_open?(market, now),
-    do: Enum.all?(1..3, &(slot_state(find_slot(market, &1), now) == "Open"))
-
   defp find_slot(market, number), do: market && Enum.find(market.slots, &(&1.number == number))
 
-  defp slot_state(%{active_placement: placement}, now) when not is_nil(placement),
-    do: if(showing?(placement, now), do: "Live", else: "Open")
+  defp live?(%{active_placement: placement}, now) when not is_nil(placement),
+    do: showing?(placement, now)
 
-  defp slot_state(_slot, _now), do: "Open"
+  defp live?(_slot, _now), do: false
 
   defp slot_price(%{active_placement: placement}, market, now) when not is_nil(placement) do
     if showing?(placement, now),

@@ -12,7 +12,7 @@
       <Regent.Primitives.button
         id="pb-offers-create-button"
         phx-click={
-          JS.push("open_editor", value: %{mode: "create"})
+          JS.push("open_editor")
           |> JS.remove_attribute("hidden", to: "#pb-offers-editor")
           |> JS.focus(
             to: if(@current_profile, do: "#pb-offers-label", else: "#pb-offers-editor-title")
@@ -23,22 +23,6 @@
       >
         <span class="pb-action-label" data-press-label>Create Offer
         <span aria-hidden="true">＋</span></span>
-      </Regent.Primitives.button>
-      <Regent.Primitives.button
-        id="pb-offers-edit-button"
-        variant="quiet"
-        phx-click={
-          JS.push("open_editor", value: %{mode: "edit"})
-          |> JS.remove_attribute("hidden", to: "#pb-offers-editor")
-          |> JS.focus(
-            to: if(@current_profile, do: "#pb-offers-saved", else: "#pb-offers-editor-title")
-          )
-        }
-        aria-expanded={to_string(@editor_open?)}
-        aria-controls="pb-offers-editor"
-      >
-        <span class="pb-action-label" data-press-label>Edit Offers
-        <span aria-hidden="true">✎</span></span>
       </Regent.Primitives.button>
     </nav>
   </div>
@@ -55,7 +39,7 @@
         phx-click={
           JS.push("close_editor")
           |> JS.set_attribute({"hidden", ""}, to: "#pb-offers-editor")
-          |> JS.focus(to: "#pb-offers-#{@editor_mode}-button")
+          |> JS.focus(to: "#pb-offers-create-button")
         }
       >
         <span class="pb-action-label" data-press-label>Close <span aria-hidden="true">×</span></span>
@@ -72,6 +56,17 @@
       deleting={@deleting}
     />
   </section>
+  <Regent.Structure.panel
+    class="pb-offers-card pb-offers-global-card"
+    aria-labelledby="pb-offers-global"
+  >
+    <h2 id="pb-offers-global">Global</h2>
+    <p class="pb-offers-eyebrow">Shows in any empty slot, on every website.</p>
+    <.slots label="Global slots" market={@global} as_of={@as_of} />
+    <p class="pb-offers-global-note">
+      Your Offer is a note of up to {@max_code_points} characters shown beside answers for {@hours} hours.
+    </p>
+  </Regent.Structure.panel>
   <section class="pb-offers-gallery-section" aria-labelledby="pb-offers-sites">
     <header class="pb-offers-gallery-toolbar">
       <div>
@@ -105,8 +100,8 @@
               src={url}
               alt=""
               loading="lazy"
-              width="640"
-              height="360"
+              width="1600"
+              height="1000"
             />
             <span
               :if={!site_screenshot_url(entry.site)}
@@ -158,17 +153,6 @@
       </p>
     </details>
   </section>
-  <Regent.Structure.panel
-    class="pb-offers-card pb-offers-global-card"
-    aria-labelledby="pb-offers-global"
-  >
-    <div>
-      <h2 id="pb-offers-global">Across Patchbay</h2><p class="pb-offers-eyebrow">
-        Global slots fill empty website slots.
-      </p>
-    </div>
-    <.slots label="Global slots" market={@global} as_of={@as_of} />
-  </Regent.Structure.panel>
   <Regent.Structure.panel
     class="pb-offers-card pb-offers-summary"
     aria-labelledby="pb-offers-summary-title"

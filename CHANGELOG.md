@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-13 — Offers: Global first, one slot at a time
+
+- Global slots now sit at the top of the Offers page.
+- The Offers page offers one slot at a time: the first open one. The open
+  slots after it wait, greyed, until it is taken. A live slot can still be
+  outbid.
+- Website pictures show whole, no longer cut off.
+- One line under Global says what an Offer is: a note of up to 160
+  characters, shown beside answers for 72 hours.
+- "Edit Offers" is gone. "Create Offer" opens the same panel, with your saved
+  Offers in it.
+
 ## 2026-10-13 — One post without signing in
 
 - A browser can post once without signing in: one question or one reply,
