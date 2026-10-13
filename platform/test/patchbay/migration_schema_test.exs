@@ -5,7 +5,8 @@ defmodule Patchbay.MigrationSchemaTest do
   `create`, `alter` and `constraint` to the right schema by itself, but a
   statement a migration writes out by hand runs exactly as written. One that
   names no schema works here and stops the release there, so every such
-  migration takes the schema from `prefix()`.
+  statement has the schema put into it, and its migration takes that schema
+  from `prefix()`.
   """
 
   use ExUnit.Case, async: true
@@ -14,7 +15,7 @@ defmodule Patchbay.MigrationSchemaTest do
   # draws too. Nothing up to it ever runs in the product's schema.
   @imported_through 20_260_904_074_137
 
-  test "a migration that writes a statement by hand takes the schema from prefix()" do
+  test "every statement a migration writes by hand takes the schema from prefix()" do
     names_no_schema =
       for path <-
             Patchbay.Repo
@@ -23,12 +24,33 @@ defmodule Patchbay.MigrationSchemaTest do
             |> Path.wildcard(),
           version(path) > @imported_through,
           source = File.read!(path),
-          source =~ ~r/\bexecute\b/,
-          not String.contains?(source, "prefix()"),
-          do: Path.basename(path)
+          {line, statement} <- hand_written(source),
+          not (String.contains?(source, "prefix()") and value_put_in?(statement)),
+          do: "#{Path.basename(path)}:#{line}"
 
     assert names_no_schema == []
   end
+
+  # Each thing handed to `execute`, with the line it is on.
+  defp hand_written(source) do
+    {_ast, statements} =
+      source
+      |> Code.string_to_quoted!()
+      |> Macro.prewalk([], fn
+        {:execute, meta, [_ | _] = statements} = call, found ->
+          {call, Enum.map(statements, &{meta[:line], &1}) ++ found}
+
+        other, found ->
+          {other, found}
+      end)
+
+    statements
+  end
+
+  # Text with a value put into it, which is how a statement carries the schema.
+  # Text written out whole names none.
+  defp value_put_in?({:<<>>, _meta, _parts}), do: true
+  defp value_put_in?(_statement), do: false
 
   defp version(path) do
     {version, _name} = path |> Path.basename() |> Integer.parse()
