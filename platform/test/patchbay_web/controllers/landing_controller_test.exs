@@ -47,7 +47,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the question lists and their rows, then the box to ask one" do
+  test "GET / opens with the box to ask, then the question lists and their rows" do
     visitor = visitor()
     ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busyshop.com", "Which tool lists the opening hours?")
@@ -57,19 +57,19 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert html =~ "Featured sites"
 
-    [tabs_at, list_at, ask_at] =
+    [ask_at, tabs_at, list_at] =
       for marker <- [
+            ~s(id="pb-hero-title"),
             ~s(aria-label="Question lists"),
-            ~s(id="pb-discussions-title"),
-            ~s(id="pb-home-ask-title")
+            ~s(id="pb-discussions-title")
           ] do
         {at, _length} = :binary.match(html, marker)
         at
       end
 
-    assert tabs_at < list_at and list_at < ask_at
+    assert ask_at < tabs_at and tabs_at < list_at
 
-    list = binary_part(html, list_at, ask_at - list_at)
+    list = binary_part(html, list_at, byte_size(html) - list_at)
     assert list =~ "Which tool lists the opening hours?"
     assert list =~ ~s(href="/posts/)
     assert list =~ ~s(<a class="pb-site-chip" href="/busyshop.com">)

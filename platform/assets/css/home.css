@@ -1,41 +1,55 @@
-/* The front page: the question lists first, then the box to ask one. */
+/* The front page: the box to ask, kept short, then the question lists. */
 :root { --pb-hard-shadow: light-dark(var(--pb-text), color-mix(in srgb, var(--pb-text) 35%, transparent)); }
 
 .pb-feed-home { padding-top: var(--space-3); }
 
-/* Asking comes after reading: one boxed form under the list. */
-.pb-home-ask { display: flex; flex-direction: column; align-items: center; margin: var(--space-6) 0 var(--space-5); }
-.pb-home-ask h2 {
-  margin: 0 0 var(--space-3);
+/* A heading, a row of authors peeking over one powder box, and no more, so
+   the questions start high on the page. */
+.pb-home-hero { display: flex; flex-direction: column; align-items: center; margin: 0 0 var(--space-4); text-align: center; }
+.pb-home-hero h1 {
+  max-width: 22ch;
+  margin: 0 0 var(--space-1);
   font-family: var(--font-family-title);
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
   font-weight: 400;
-  line-height: 1.1;
+  line-height: 1.04;
+  letter-spacing: -.03em;
+  text-wrap: balance;
 }
+.pb-home-crowd { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; gap: clamp(.5rem, 1.5vw, 1rem); margin-bottom: -.75rem; }
+.pb-home-crowd img { width: auto; height: clamp(2.25rem, 4.5vw, 3.25rem); }
 /* The cut takes the border off the two corners, so each diagonal draws its own line. */
-.pb-home-ask .pb-fix-form {
-  width: 100%; max-width: 48rem; padding: 1.75rem .75rem .75rem; border: 1px solid var(--pb-form-edge);
+.pb-home-hero .pb-fix-form {
+  width: 100%; max-width: 48rem; padding: 1.25rem .75rem .75rem; border: 1px solid var(--pb-form-edge);
   background:
     linear-gradient(135deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) left top / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
     linear-gradient(315deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) right bottom / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
     var(--pb-form);
   clip-path: var(--pb-cut); text-align: left;
 }
-.pb-home-ask .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
-.pb-home-ask .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
-.pb-home-ask .pb-fix-tools-list { background: var(--pb-field); }
-.pb-home-ask .pb-fix-more label, .pb-home-ask :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
-/* The form's buttons take the form's cut corners on their painted skin only, so
+/* Where there is room, the buttons stand beside the question, and the rest
+   of the form opens underneath without moving them. */
+@media (min-width: 50rem) {
+  .pb-home-hero .pb-fix-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .pb-home-hero .pb-fix-form > * { grid-column: 1 / -1; }
+  .pb-home-hero .pb-fix-form > .pb-fix-ask { grid-area: 1 / 1; }
+  .pb-home-hero .pb-fix-form > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
+}
+.pb-home-hero .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
+.pb-home-hero .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
+.pb-home-hero .pb-fix-tools-list { background: var(--pb-field); }
+.pb-home-hero .pb-fix-more label, .pb-home-hero :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
+/* The hero buttons take the form's cut corners on their painted skin only, so
    the focus ring round each button is never cut. */
-.pb-home-ask .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
-.pb-home-ask .pb-hero-actions .rg-button--secondary { border-color: transparent; background: transparent; color: var(--color-bg); }
-.pb-home-ask .pb-hero-actions .rg-button--secondary::before {
+.pb-home-hero .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
+.pb-home-hero .pb-hero-actions .rg-button--secondary { border-color: transparent; background: transparent; color: var(--color-bg); }
+.pb-home-hero .pb-hero-actions .rg-button--secondary::before {
   content: ""; position: absolute; inset: -1px; z-index: -1; pointer-events: none;
   background: var(--pb-text); clip-path: var(--pb-cut);
 }
-.pb-home-ask .pb-hero-actions .rg-button--secondary:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
+.pb-home-hero .pb-hero-actions .rg-button--secondary:focus-visible { text-decoration: underline; text-underline-offset: .2em; }
 @media (forced-colors: active) {
-  .pb-home-ask .pb-hero-actions .rg-button--secondary::before { display: none; }
+  .pb-home-hero .pb-hero-actions .rg-button--secondary::before { display: none; }
 }
 .pb-find-answers {
   display: grid;
@@ -67,6 +81,5 @@
   .pb-feed-home .pb-fix { margin: var(--space-5) 0 var(--space-4); padding: var(--space-3); }
 }
 @media (max-width: 599px) {
-  .pb-home-ask { margin-top: var(--space-4); }
   .pb-find-answers { padding: var(--space-3); }
 }

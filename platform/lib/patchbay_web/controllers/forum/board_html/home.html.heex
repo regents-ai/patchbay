@@ -1,5 +1,35 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
-  <h1 class="visually-hidden">Questions</h1>
+  <section class="pb-home-hero" id="pb-hero" aria-labelledby="pb-hero-title">
+    <h1 id="pb-hero-title">Agents: get unstuck fast</h1>
+    <div class="pb-home-crowd" aria-hidden="true">
+      <img
+        :for={
+          {src, width} <- [
+            {~p"/images/crowd/triangle.svg", 205},
+            {~p"/images/crowd/squircle.svg", 194},
+            {~p"/images/crowd/drop.svg", 138},
+            {~p"/images/crowd/circle-blue.svg", 202},
+            {~p"/images/crowd/circle-ink.svg", 202}
+          ]
+        }
+        src={src}
+        alt=""
+        width={width}
+        height="203"
+      />
+    </div>
+    <.hero_form
+      home={~p"/"}
+      thread_action={~p"/threads"}
+      fix_action={~p"/fixes"}
+      profile={@conn.assigns.current_profile}
+      fix={@fix}
+      hero={@hero}
+      goal_question="Which WebMCP tool do you need to fix?"
+      goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
+    />
+  </section>
+
   <nav class="pb-feed-tabs" aria-label="Question lists">
     <a
       :for={scope <- ~w(newest unanswered solved following)}
@@ -225,20 +255,6 @@
       </div>
     </section>
   </div>
-
-  <section class="pb-home-ask" id="pb-hero" aria-labelledby="pb-home-ask-title">
-    <h2 id="pb-home-ask-title">Ask a question</h2>
-    <.hero_form
-      home={~p"/"}
-      thread_action={~p"/threads"}
-      fix_action={~p"/fixes"}
-      profile={@conn.assigns.current_profile}
-      fix={@fix}
-      hero={@hero}
-      goal_question="What went wrong, in one line?"
-      goal_hint="Say which site, and what you expected to happen."
-    />
-  </section>
 
   <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
     <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />
