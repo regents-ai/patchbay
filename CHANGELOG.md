@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-13 — Offers: names are words, at most 3 links
+
+- A name that only looks like an address, such as `Node.js`, is read as plain
+  words when there is no website by that name.
+- A long linked page is judged by its first part instead of being turned down.
+- An Offer can have at most 3 links or addresses. Saving one with more says
+  the wording has too many links (3 at most).
+
 ## 2026-10-12 — Offers: delete saved Offers, plain addresses work
 
 - A saved Offer that has never been bid with now has a trash icon in its top

@@ -9,10 +9,14 @@ defmodule Patchbay.Offers.Destination do
   way, up to three times. A plain `http` link, or a redirect to one, is not
   visited, and screening turns the wording down.
 
+  A name with no website at all ends as `no_website`, so screening can tell
+  a word that only looks like an address, such as `Node.js`, from a site
+  that would not answer.
+
   What comes back is evidence for screening: every hop, the final status, a
   hash of what was read and the page's title. A page longer than is read is
-  noted as `too_long`, and screening turns the wording down. A short excerpt of the page's
-  words goes to the screening question and is never kept or shown.
+  judged by its first part. A short excerpt of the page's words goes to the
+  screening question and is never kept or shown.
   """
 
   alias Patchbay.Assist.Target
@@ -47,6 +51,9 @@ defmodule Patchbay.Offers.Destination do
       {:error, reason} when reason in [:not_https, :not_public] ->
         {ended(hops, Atom.to_string(reason), nil), nil}
 
+      {:error, :unresolvable} ->
+        {ended(hops, "no_website", nil), nil}
+
       {:error, _unreachable} ->
         {ended(hops, "unreadable", nil), nil}
     end
@@ -72,14 +79,18 @@ defmodule Patchbay.Offers.Destination do
        response.body |> Kernel.||("") |> IO.iodata_to_binary(),
        Map.get(response.private, :assist_cut, false)}
     else
-      {:error, reason} when reason in [:not_https, :not_public] -> {:error, reason}
-      _failed -> {:error, :unreachable}
+      {:error, reason} when reason in [:not_https, :not_public, :unresolvable] ->
+        {:error, reason}
+
+      _failed ->
+        {:error, :unreachable}
     end
   end
 
   # A page or plain text is read for its words; anything else, such as a
-  # download, is not read, and screening turns the wording down. A page cut at the bound may end inside
-  # a character, so only its whole characters are read.
+  # download, is not read, and screening turns the wording down. A page cut
+  # at the bound may end inside a character, so only its whole characters
+  # are read.
   defp read(hops, status, type, body, cut?) do
     body = if cut?, do: whole_characters(body), else: body
 
@@ -88,7 +99,7 @@ defmodule Patchbay.Offers.Destination do
 
       evidence =
         hops
-        |> ended(if(cut?, do: "too_long", else: "read"), status)
+        |> ended("read", status)
         |> Map.merge(%{
           "content_sha256" => :crypto.hash(:sha256, body) |> Base.encode16(case: :lower),
           "title" => title(body)

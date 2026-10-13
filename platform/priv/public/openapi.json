@@ -6314,7 +6314,7 @@
                   "text": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "One line of plain text, up to 160 characters."
+                    "description": "One line of plain text, up to 160 characters, with at most 3 links or web addresses."
                   },
                   "request_key": {
                     "type": "string",
@@ -6429,7 +6429,7 @@
                   "text": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "One line of plain text, up to 160 characters."
+                    "description": "One line of plain text, up to 160 characters, with at most 3 links or web addresses."
                   },
                   "request_key": {
                     "type": "string",

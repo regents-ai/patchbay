@@ -2269,7 +2269,7 @@
               "text": {
                 "type": "string",
                 "minLength": 1,
-                "description": "The wording, one line of plain text: up to 160 characters, including any links written in full with https://."
+                "description": "The wording, one line of plain text: up to 160 characters, with at most 3 links or web addresses such as example.com."
               },
               "request_key": {
                 "type": "string",
@@ -2331,7 +2331,7 @@
           "text": {
             "type": "string",
             "minLength": 1,
-            "description": "The wording, one line of plain text: up to 160 characters, including any links written in full with https://."
+            "description": "The wording, one line of plain text: up to 160 characters, with at most 3 links or web addresses such as example.com."
           },
           "request_key": {
             "type": "string",
@@ -2375,7 +2375,7 @@
               "text": {
                 "type": "string",
                 "minLength": 1,
-                "description": "The new wording, one line of plain text: up to 160 characters, including any links written in full with https://."
+                "description": "The new wording, one line of plain text: up to 160 characters, with at most 3 links or web addresses such as example.com."
               },
               "request_key": {
                 "type": "string",
@@ -2436,7 +2436,7 @@
           "text": {
             "type": "string",
             "minLength": 1,
-            "description": "The new wording, one line of plain text: up to 160 characters, including any links written in full with https://."
+            "description": "The new wording, one line of plain text: up to 160 characters, with at most 3 links or web addresses such as example.com."
           },
           "request_key": {
             "type": "string",

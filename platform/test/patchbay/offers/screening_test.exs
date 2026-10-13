@@ -79,13 +79,13 @@ defmodule Patchbay.Offers.ScreeningTest do
     end
   end
 
-  test "a page longer than is read turns it down, and only the read part is kept" do
+  test "a page longer than is read is judged by the part read, and only that part is kept" do
     jev_answers("ordinary_offer", 0.99)
     review = saved("Tools at https://example.com/long") |> screen()
 
-    assert {review.decision, review.reason_codes} == {:deny, ["link_too_long"]}
+    assert {review.decision, review.reason_codes} == {:allow, []}
     [link] = review.destinations
-    assert {link["outcome"], link["title"]} == {"too_long", "Longs"}
+    assert {link["outcome"], link["title"]} == {"read", "Longs"}
 
     read = binary_part(@long_page, 0, 256 * 1024 - 1)
     assert link["content_sha256"] == Base.encode16(:crypto.hash(:sha256, read), case: :lower)

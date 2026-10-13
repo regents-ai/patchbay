@@ -21,11 +21,12 @@ defmodule Patchbay.Offers.CreativeText do
   so what is reviewed and what is linked can never differ. Only links written
   in full with `http://` or `https://` count; a bare address such as
   `example.com` is reported by `bare_addresses/1`, and screening visits it
-  as `https`.
+  as `https`. Links and addresses together are at most 3.
   """
 
   @max_code_points 160
   @max_bytes 640
+  @max_links 3
 
   @doc "The most code points an Offer's text may have."
   @spec max_code_points() :: pos_integer()
@@ -35,12 +36,17 @@ defmodule Patchbay.Offers.CreativeText do
   @spec max_bytes() :: pos_integer()
   def max_bytes, do: @max_bytes
 
+  @doc "The most links and addresses an Offer's text may have, together."
+  @spec max_links() :: pos_integer()
+  def max_links, do: @max_links
+
   @doc """
   The normalized text, or the reason it can't be an Offer.
 
   Reasons: `:invalid_utf8`, `:blank`, `:too_long` (more than 160 code
   points), `:too_many_bytes` (more than 640 bytes), `:not_one_line`,
-  `:invisible_or_control`, `:unusual_space`.
+  `:invisible_or_control`, `:unusual_space`, `:too_many_links` (more than
+  3 links and addresses together).
   """
   @spec normalize(term()) :: {:ok, String.t()} | {:error, atom()}
   def normalize(text) when is_binary(text) do
@@ -51,7 +57,8 @@ defmodule Patchbay.Offers.CreativeText do
          :ok <- visible(normalized),
          :ok <- ordinary_spaces(normalized),
          :ok <- within_code_points(normalized),
-         :ok <- within_bytes(normalized) do
+         :ok <- within_bytes(normalized),
+         :ok <- within_links(normalized) do
       {:ok, normalized}
     end
   end
@@ -65,7 +72,8 @@ defmodule Patchbay.Offers.CreativeText do
     invisible_or_control: "contains an invisible or control character",
     unusual_space: "contains a space that is not an ordinary space",
     too_long: "is longer than #{@max_code_points} characters",
-    too_many_bytes: "is longer than #{@max_bytes} bytes"
+    too_many_bytes: "is longer than #{@max_bytes} bytes",
+    too_many_links: "has too many links (#{@max_links} at most)"
   }
 
   @doc "What is wrong with a text `normalize/1` refused, to follow the field's name."
@@ -103,6 +111,13 @@ defmodule Patchbay.Offers.CreativeText do
 
   defp within_bytes(text),
     do: if(byte_size(text) > @max_bytes, do: {:error, :too_many_bytes}, else: :ok)
+
+  # Each link and address is visited by screening, so a wording keeps to a few.
+  defp within_links(text) do
+    if length(urls(text)) + length(bare_addresses(text)) > @max_links,
+      do: {:error, :too_many_links},
+      else: :ok
+  end
 
   @url ~r/https?:\/\/[^\s<>"'`]+/iu
   @closing_punctuation ~r/[.,;:!?)\]}]+\z/u

@@ -13,9 +13,10 @@ defmodule Patchbay.Offers.Screening do
       site's tools plausibly want it.
 
   An address written without `https://`, such as `example.com/start`, is
-  visited as an `https` link. A link that could not be read, a link that is
-  not `https`, or an answer Jev is not sure of turns the version down, with
-  words saying why. Nobody reviews it by hand. An allow is screening
+  visited as an `https` link; when no website has that name it is a word
+  that only looks like an address, such as `Node.js`, and is left out. A
+  link that could not be read, a link that is not `https`, or an answer Jev
+  is not sure of turns the version down, with words saying why. Nobody reviews it by hand. An allow is screening
   evidence, not a promise.
   """
 
@@ -82,7 +83,7 @@ defmodule Patchbay.Offers.Screening do
     "too_many_redirects" => "A link redirects too many times.",
     "not_https" => "A link is not a secure https link.",
     "not_a_page" => "A link does not lead to a web page.",
-    "too_long" => "A link's page is longer than screening reads.",
+    "no_website" => "A link's website does not exist.",
     "not_public" => "A link does not lead to a public website."
   }
 
@@ -127,7 +128,7 @@ defmodule Patchbay.Offers.Screening do
   end
 
   defp visit_and_ask(version, site, opts) do
-    visits = version |> links() |> Enum.map(&Destination.visit(&1, opts))
+    visits = version |> links(opts) |> Enum.reject(&word?/1) |> Enum.map(&elem(&1, 1))
     destinations = Enum.map(visits, &elem(&1, 0))
     state = state(version, site, visits)
 
@@ -193,8 +194,16 @@ defmodule Patchbay.Offers.Screening do
   defp answer(_body, _criteria), do: {:error, :unexpected_answers}
 
   # Every link written in full, then every address written without one,
-  # visited as an https link.
-  defp links(version), do: version.urls ++ Enum.map(version.bare_addresses, &("https://" <> &1))
+  # visited as an https link, each marked with how it was written.
+  defp links(version, opts) do
+    Enum.map(version.urls, &{:written, Destination.visit(&1, opts)}) ++
+      Enum.map(version.bare_addresses, &{:bare, Destination.visit("https://" <> &1, opts)})
+  end
+
+  # An address written without https:// whose name has no website is an
+  # ordinary word, such as Node.js.
+  defp word?({:bare, {%{"outcome" => "no_website", "hops" => [_first]}, _excerpt}}), do: true
+  defp word?(_visit), do: false
 
   # Jev's answer, then what the links add. Only a sure allow with every link
   # read is allowed; anything else is turned down with every reason found.
