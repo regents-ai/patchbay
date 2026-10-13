@@ -163,25 +163,22 @@ defmodule PatchbayWeb.OffersLive.List do
   attr(:as_of, DateTime, required: true)
 
   # While no Offer shows in any of the three, they read as one: three alike
-  # tiles saying "Open" tell a visitor nothing the one line does not.
+  # tiles saying "Open" tell a visitor nothing the one box does not. The
+  # tiles stay underneath, unseen, so the card is the same height either way.
   defp slots(assigns) do
+    assigns = assign(assigns, all_open?: all_open?(assigns.market, assigns.as_of))
+
     ~H"""
-    <nav class="pb-offers-gallery-slots" aria-label={@label}>
-      <.link
-        :if={all_open?(@market, @as_of)}
-        class="pb-offers-gallery-open"
-        navigate={bid_path(@site_id, 1)}
-      ><strong>Bid for a slot <span aria-hidden="true">↗</span></strong><span>All 3 open</span><small>From {credits(
-        slot_price(nil, @market, @as_of)
-      )}</small></.link>
-      <.link
-        :for={number <- 1..3}
-        :if={!all_open?(@market, @as_of)}
-        navigate={bid_path(@site_id, number)}
-      ><strong>Slot {number} <span aria-hidden="true">↗</span></strong><span>{slot_state(
+    <nav class="pb-offers-gallery-slots" aria-label={@label} data-all-open={@all_open?}>
+      <.link :for={number <- 1..3} navigate={bid_path(@site_id, number)}><strong>Slot {number}
+      <span aria-hidden="true">↗</span></strong><span>{slot_state(
         find_slot(@market, number),
         @as_of
       )}</span><small>From {credits(slot_price(find_slot(@market, number), @market, @as_of))}</small></.link>
+      <.link :if={@all_open?} class="pb-offers-gallery-open" navigate={bid_path(@site_id, 1)}><strong>Bid for a slot
+      <span aria-hidden="true">↗</span></strong><span>All 3 open</span><small>From {credits(
+        slot_price(nil, @market, @as_of)
+      )}</small></.link>
     </nav>
     """
   end
