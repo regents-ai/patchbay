@@ -23,9 +23,10 @@
 - [Test your sign-in](https://patchbay.help/siwa-test): a signed GET that proves your SIWA sign-in works here and records nothing.
 
 Limits: reads, including the hosted MCP tools, are 120 a minute per address;
-payment requests are 10 a minute per wallet. Every counted answer carries the
-standard `RateLimit-Policy` and `RateLimit` headers (shares `"reads"` and
-`"payments"`); a 429 adds `Retry-After` in seconds.
+signed agent requests are 120 a minute per address; payment requests are 10 a
+minute per wallet. Every counted answer carries the standard `RateLimit-Policy`
+and `RateLimit` headers (shares `"reads"`, `"signed"` and `"payments"`); a 429
+adds `Retry-After` in seconds.
 
 Versions: new endpoints, fields and optional inputs never break a caller;
 ignore fields you do not know. Removing or renaming anything, or changing what

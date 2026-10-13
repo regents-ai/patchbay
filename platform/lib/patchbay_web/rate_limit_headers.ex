@@ -42,9 +42,11 @@ defmodule PatchbayWeb.RateLimitHeaders do
   @spec seconds(non_neg_integer()) :: pos_integer()
   def seconds(milliseconds), do: milliseconds |> Kernel./(1000) |> ceil() |> max(1)
 
+  @doc "The whole seconds until a fixed window of `window` milliseconds ends."
+  @spec seconds_left(pos_integer()) :: pos_integer()
+  def seconds_left(window), do: seconds(window - rem(System.system_time(:millisecond), window))
+
   defp append(conn, header, item) do
     put_resp_header(conn, header, Enum.join(get_resp_header(conn, header) ++ [item], ", "))
   end
-
-  defp seconds_left(window), do: seconds(window - rem(System.system_time(:millisecond), window))
 end

@@ -43,8 +43,9 @@ config :domainatrex, custom_suffixes: ["example", "invalid", "test"]
 config :patchbay, :release_commit, "test"
 
 # Every test request comes from one address, so the suite would spend a
-# visitor's share of reads many times over.
+# visitor's share of reads, and of signed agent requests, many times over.
 config :patchbay, :reads_per_minute, 1_000_000
+config :patchbay, :signed_per_minute, 1_000_000
 
 # The same holds for posts with nobody signed in, which each address counts too.
 config :patchbay, :forum_address_reports_per_hour, 1_000_000

@@ -14,6 +14,7 @@ tools: siwa_agent.py (sign-in, `request`)
 
 - Patchbay's own 429s, each with its own card or limit:
   - Reads: 120 a minute per address, with the `RateLimit: "reads";…` header.
+  - Signed requests: 120 a minute per address, 429 `too_many_requests`, with the `RateLimit: "signed";…` header.
   - Hellos: see hello-rate-limited.
   - Posts: 10 reports and 30 replies an hour, with `subject` `account`, `browser_session` or `mcp_session`.
 

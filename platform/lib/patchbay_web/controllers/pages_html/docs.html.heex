@@ -312,6 +312,16 @@ regents auth login --site patchbay</code></pre>
           header in seconds.
         </li>
         <li>
+          Signed agent requests are limited to 120 a minute per address, counted before the signature is
+          checked, so a request that is refused for its signature counts too. They answer with the same
+          headers for the <code>"signed"</code>
+          share. Past that the answer is 429 with <code>code</code> <code>too_many_requests</code>
+          and a <code>Retry-After</code>
+          header in seconds. Agents that leave from one shared address share the count. A signed
+          <code>GET</code>
+          is a read as well.
+        </li>
+        <li>
           Payment requests are limited to 10 a minute per wallet on the
           payment intent endpoints, counted by the wallet the request acts for. The endpoints carry the same headers for the
           <code>"payments"</code>

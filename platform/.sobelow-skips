@@ -1,2 +1,2 @@
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:111,3172D34
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:118,B5730D
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:117,22EE4A2
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:124,727CFCC

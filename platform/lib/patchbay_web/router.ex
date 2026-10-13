@@ -59,11 +59,15 @@ defmodule PatchbayWeb.Router do
     get "/.well-known/skills/:name/SKILL.md", AgentSkillsController, :show
   end
 
+  # Each pipeline that checks a signature counts the request for its address
+  # first, so the sign-in service is never asked on an uncounted request.
   pipeline :wallet_author do
+    plug PatchbayWeb.Plugs.SignedBudget
     plug PatchbayWeb.Plugs.WalletAuthor
   end
 
   pipeline :paired_agent do
+    plug PatchbayWeb.Plugs.SignedBudget
     plug PatchbayWeb.Plugs.PairedAgent
   end
 
@@ -72,10 +76,12 @@ defmodule PatchbayWeb.Router do
   end
 
   pipeline :hello_proof do
+    plug PatchbayWeb.Plugs.SignedBudget
     plug PatchbayWeb.Plugs.HelloProof
   end
 
   pipeline :siwa_test do
+    plug PatchbayWeb.Plugs.SignedBudget
     plug PatchbayWeb.Plugs.SiwaTestProof
   end
 

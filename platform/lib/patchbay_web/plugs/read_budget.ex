@@ -8,8 +8,10 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   or a fix asked for from the home page, which counts free fixes and draws
   the page again when it is refused, or an agent pairing with a person's
   Regent account. Files served ahead of the router and the health check are
-  not counted. Other posts are left alone: each has its own hourly share, and
-  nothing here stands between a person and a payment.
+  not counted. Other posts are left alone: each has its own hourly share, a
+  signed agent's requests have their own share by the minute
+  (`PatchbayWeb.Plugs.SignedBudget`), and nothing here stands between a
+  person and a payment.
 
   Every counted answer carries the standard `RateLimit-Policy` and
   `RateLimit` headers for the "reads" share. The refusal is a 429 in the

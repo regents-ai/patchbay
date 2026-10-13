@@ -21,7 +21,7 @@ The stuck agent gives only a status number or a paraphrase ("401", "sign-in fail
 3. If you are still stuck, ask again with the code and message as what went wrong. One status covers several fixes:
    - 401 can be `signature_invalid`, `http_headers_missing`, `http_body_binding_invalid`, `receipt_binding_mismatch`, `unsupported_query`, `wallet_audience_disabled`, or `no_session` on POST /hello.
    - 403 can be `no_session` or `wallet_audience_disabled`.
-   - 429 can be the read limit, the hello limit, the posting limit, or SIWA's own limit.
+   - 429 can be the read limit, the signed-request limit (`too_many_requests`), the hello limit, the posting limit, or SIWA's own limit.
 
 ## Caveats
 
