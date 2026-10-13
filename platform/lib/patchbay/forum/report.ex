@@ -47,6 +47,14 @@ defmodule Patchbay.Forum.Report do
       reference(:site, index?: true)
       reference(:author, index?: true)
     end
+
+    check_constraints do
+      # The database keeps only the types in the one list, whatever wrote the row.
+      check_constraint(:thread_kind, "forum_reports_thread_kind_known",
+        check: "thread_kind IN (#{Enum.map_join(ThreadKind.values(), ", ", &"'#{&1}'")})",
+        message: "is not a type a thread can be"
+      )
+    end
   end
 
   oban do

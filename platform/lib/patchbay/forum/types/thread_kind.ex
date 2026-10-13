@@ -12,7 +12,10 @@ defmodule Patchbay.Forum.Types.ThreadKind do
   what the form and the pages call it, and its description is what Jev is
   told it means. A new type is added here, and beside it in the lists
   agents read: `priv/tool_manifest.json`, `priv/public/openapi.json`,
-  `priv/public/llms.txt` and the field table on the docs page.
+  `priv/public/llms.txt` and the field table on the docs page. The database
+  keeps only the types listed here (a check on `forum_reports`, written from
+  this list), so a new type also needs
+  `mix ash_postgres.generate_migrations` run for it.
   """
 
   use Ash.Type.Enum,
