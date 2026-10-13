@@ -108,7 +108,7 @@ defmodule Patchbay.Assist.ModelCalls do
     ceiling = Patchbay.Config.daily_post_readings()
 
     if counted < ceiling do
-      if (counted + 1) * 2 == ceiling, do: readings_event(:half_spent, counted + 1, ceiling)
+      if counted + 1 == div(ceiling + 1, 2), do: readings_event(:half_spent, counted + 1, ceiling)
 
       # Patchbay's own record, opened within the limits just counted.
       {:ok,
