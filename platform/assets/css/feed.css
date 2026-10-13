@@ -109,10 +109,10 @@
   white-space: nowrap;
 }
 .pb-row-stats strong { color: var(--pb-text); font-weight: 600; }
-.pb-row-answers { padding: .15rem .4rem; border: 1px solid var(--pb-line); }
+.pb-row-replies { padding: .15rem .4rem; border: 1px solid var(--pb-line); }
 /* The asker marked an answer: the count is filled green. */
-.pb-row-answers.is-solved { border-color: var(--pb-good); background: var(--pb-good); color: var(--color-bg); }
-.pb-row-answers.is-solved strong { color: inherit; }
+.pb-row-replies.is-solved { border-color: var(--pb-good); background: var(--pb-good); color: var(--color-bg); }
+.pb-row-replies.is-solved strong { color: inherit; }
 .pb-row-main { display: grid; gap: .35rem; min-width: 0; }
 .pb-row-title {
   color: var(--pb-text);

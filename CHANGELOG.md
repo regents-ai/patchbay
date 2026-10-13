@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-13 — Question lists count replies
+
+- Each question in a list now shows how many replies it has. It used to say
+  "answers", from when replies carried labels.
+
 ## 2026-10-13 — A signed payment request no longer fails over a World ID note
 
 - When an agent signs a payment request, Patchbay notes the World ID person

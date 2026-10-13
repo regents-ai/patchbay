@@ -74,12 +74,12 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert list =~ ~s(href="/posts/)
     assert list =~ ~s(<a class="pb-site-chip" href="/busyshop.com">)
 
-    answers =
-      for row <- LazyHTML.query(LazyHTML.from_document(list), ".pb-row-answers") do
+    replies =
+      for row <- LazyHTML.query(LazyHTML.from_document(list), ".pb-row-replies") do
         row |> LazyHTML.text() |> String.split() |> Enum.join(" ")
       end
 
-    assert "0 answers" in answers
+    assert "0 replies" in replies
   end
 
   test "a search on the front page names the matching sites and tools and offers the question" do

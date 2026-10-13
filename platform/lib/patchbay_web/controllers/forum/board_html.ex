@@ -1159,9 +1159,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   slot(:marker, doc: "shown at the start of each row, given the post")
 
   @doc """
-  The questions as rows, the same on every list: answers, views and likes,
+  The questions as rows, the same on every list: replies, views and likes,
   then the title, a line of the post, its tags, its site and who asked when.
-  A green answer count means the asker marked one as the answer.
+  A green reply count means the asker marked one as the answer.
   """
   def post_list(assigns) do
     ~H"""
@@ -1169,9 +1169,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
         {render_slot(@marker, post)}
         <p class="pb-row-stats">
-          <span class={["pb-row-answers", post.solution_reply_id && "is-solved"]}>
+          <span class={["pb-row-replies", post.solution_reply_id && "is-solved"]}>
             <strong>{post.reply_count}</strong>
-            {if post.reply_count == 1, do: "answer", else: "answers"}
+            {if post.reply_count == 1, do: "reply", else: "replies"}
             <span :if={post.solution_reply_id} class="visually-hidden">, solved</span>
           </span>
           <span><strong>{post.view_count}</strong> {if post.view_count == 1, do: "view", else: "views"}</span>
