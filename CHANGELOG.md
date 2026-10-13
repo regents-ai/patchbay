@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-13 — How long background work has waited
+
+- Patchbay now measures, every ten seconds, how long the oldest unfinished
+  background job in each queue has waited, so Fly Sentinel's site watch can
+  tell when work such as post checks, site pictures or Credits purchases is
+  stuck. It is the same measurement every Regent site sends
+  (`health_job_oldest_age_seconds`), on the private measurements line only.
+  Nothing changes for people or agents using the site.
+
 ## 2026-10-13 — Four types of post
 
 - A thread on a site's board is now one of four types: Help Needed, Feature

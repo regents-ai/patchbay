@@ -5,10 +5,14 @@ defmodule PatchbayWeb.Telemetry do
   metrics listener (`PatchbayWeb.Metrics`), which Fly Sentinel's site watch
   reads. The export keeps the names every Regent site shares: Ecto's
   `[:patchbay, :repo, :query]` (`queue_time` is the wait for a connection),
-  each background job's outcome and time from Oban's own events, each
-  question asked of a model (`[:patchbay, :model_call, :stop]`) by outcome
-  with its tokens and what OpenRouter charged, and the engine's memory, run
-  queues and process counts from telemetry_poller's default poller.
+  each background job's outcome and time from Oban's own events,
+  `[:patchbay, :jobs, :oldest_unfinished]` (`age_ms` of the oldest available,
+  running or retrying job in each running `queue`, 0 when there is none,
+  every ten seconds; a paused queue keeps its jobs waiting on purpose, so it
+  is not measured), each question asked of a model
+  (`[:patchbay, :model_call, :stop]`) by outcome with its tokens and what
+  OpenRouter charged, and the engine's memory, run queues and process counts
+  from telemetry_poller's default poller.
 
   Beside them are Patchbay's own three: the day's readings of posts reaching
   half their limit, each post refused because the limit is reached
@@ -18,7 +22,10 @@ defmodule PatchbayWeb.Telemetry do
   """
 
   use Supervisor
+  import Ecto.Query, only: [from: 2]
   import Telemetry.Metrics
+
+  require Logger
 
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
@@ -27,9 +34,6 @@ defmodule PatchbayWeb.Telemetry do
   @impl true
   def init(_arg) do
     children = [
-      # Telemetry poller will execute the given period measurements
-      # every 10_000ms. Learn more here: https://hexdocs.pm/telemetry_metrics
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000},
       {TelemetryMetricsPrometheus.Core,
        metrics: prometheus_metrics(), name: prometheus_reporter(), start_async: false}
     ]
@@ -38,6 +42,66 @@ defmodule PatchbayWeb.Telemetry do
   end
 
   def prometheus_reporter, do: :patchbay_prometheus
+
+  @doc "The poller for the measurements the site takes itself, started after Oban."
+  def site_poller,
+    do:
+      {:telemetry_poller,
+       measurements: [{__MODULE__, :oldest_unfinished_jobs, []}],
+       period: 10_000,
+       name: :patchbay_site_poller}
+
+  # The poller drops for good a measurement that raises or exits, and the row
+  # would then keep its last number. So whatever stops this tick (a database
+  # that cannot answer, a queue too busy to say whether it runs, Oban or the
+  # repo restarting) is logged and skipped; the next tick measures again.
+  @doc false
+  def oldest_unfinished_jobs do
+    measure_oldest_unfinished_jobs()
+  rescue
+    error -> not_measured(Exception.message(error))
+  catch
+    :exit, reason -> not_measured(Exception.format_exit(reason))
+  end
+
+  defp not_measured(why), do: Logger.warning("background job age not measured: #{why}")
+
+  # Only running queues are measured: a paused queue holds its jobs on purpose,
+  # and its age would only grow. Where no queue runs (tests), nothing is read.
+  defp measure_oldest_unfinished_jobs do
+    case for %{queue: queue, paused: false} <- Oban.check_all_queues(), do: queue do
+      [] -> :ok
+      running -> report_oldest(running)
+    end
+  end
+
+  defp report_oldest(running) do
+    %{prefix: prefix} = Oban.config()
+
+    oldest =
+      from(j in Oban.Job,
+        where: j.state in ["available", "executing", "retryable"],
+        group_by: j.queue,
+        select: {j.queue, min(j.inserted_at)}
+      )
+      # Oban's job table has no Ash resource; this only reads it.
+      |> Patchbay.Repo.all(prefix: prefix)
+      |> Map.new()
+
+    now = DateTime.utc_now()
+
+    for queue <- running do
+      age_ms =
+        case oldest[queue] do
+          nil -> 0
+          inserted_at -> DateTime.diff(now, inserted_at, :millisecond)
+        end
+
+      :telemetry.execute([:patchbay, :jobs, :oldest_unfinished], %{age_ms: age_ms}, %{
+        queue: queue
+      })
+    end
+  end
 
   # No tag here ever holds a wallet, an account or anything a caller wrote:
   # only queue and worker names and the fixed outcomes.
@@ -49,6 +113,14 @@ defmodule PatchbayWeb.Telemetry do
         unit: {:native, :second},
         description: "Seconds a query waited for a database connection",
         reporter_options: [buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]]
+      ),
+      last_value("health.job.oldest_age.seconds",
+        event_name: [:patchbay, :jobs, :oldest_unfinished],
+        measurement: :age_ms,
+        unit: {:millisecond, :second},
+        tags: [:queue],
+        description:
+          "Age of the oldest unfinished background job in the queue, counted from when it was added"
       ),
       counter("patchbay.jobs.finished.total",
         event_name: [:oban, :job, :stop],
@@ -243,14 +315,6 @@ defmodule PatchbayWeb.Telemetry do
       summary("vm.total_run_queue_lengths.total"),
       summary("vm.total_run_queue_lengths.cpu"),
       summary("vm.total_run_queue_lengths.io")
-    ]
-  end
-
-  defp periodic_measurements do
-    [
-      # A module, function and arguments to be invoked periodically.
-      # This function must call :telemetry.execute/3 and a metric must be added above.
-      # {PatchbayWeb, :count_users, []}
     ]
   end
 end

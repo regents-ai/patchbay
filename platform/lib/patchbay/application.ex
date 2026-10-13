@@ -37,7 +37,9 @@ defmodule Patchbay.Application do
          AshOban.config(
            Application.fetch_env!(:patchbay, :ash_domains) ++ [RegentCredits],
            Application.fetch_env!(:patchbay, Oban)
-         )}
+         )},
+        # After Oban: it measures how long each queue's oldest job has waited.
+        PatchbayWeb.Telemetry.site_poller()
       ] ++
         catalog_loader() ++
         patchbay_agent() ++
