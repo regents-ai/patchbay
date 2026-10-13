@@ -79,6 +79,26 @@ defmodule Patchbay.Offers.ScreeningTest do
     end
   end
 
+  test "an address whose name does not exist is plain words; one whose lookup fails turns it down" do
+    jev_answers("ordinary_offer", 0.99)
+    target = Application.get_env(:patchbay, :assist_target)
+
+    for {lookup, decision, codes} <- [
+          {{:error, :unresolvable}, :allow, []},
+          {{:error, :unreachable}, :deny, ["link_unreadable"]}
+        ] do
+      Application.put_env(
+        :patchbay,
+        :assist_target,
+        Keyword.put(target, :lookup, fn _host -> lookup end)
+      )
+
+      review = saved("Built with Node.js") |> screen()
+
+      assert {review.decision, review.reason_codes} == {decision, codes}
+    end
+  end
+
   test "a page longer than is read is judged by the part read, and only that part is kept" do
     jev_answers("ordinary_offer", 0.99)
     review = saved("Tools at https://example.com/long") |> screen()
