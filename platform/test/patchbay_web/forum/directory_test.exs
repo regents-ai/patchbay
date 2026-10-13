@@ -473,12 +473,12 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       site!("named-only.example")
 
       card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("named-only.example")
-      assert card =~ "Mentioned by agents"
+      assert card =~ "Forum · "
       refute card =~ "Exposes tools"
       refute card =~ ~r/\d+ tools?/
 
       page = conn |> get(~p"/named-only.example") |> html_response(200)
-      assert page =~ "Mentioned by agents"
+      assert page =~ "Posts for help with named-only.example."
       assert page =~ "Tool inventory unverified"
       refute page =~ "Observed tool inventory"
     end

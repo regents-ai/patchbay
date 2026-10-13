@@ -481,7 +481,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def support_label(:platform_integration), do: "Platform integration"
   def support_label(:official_supporter), do: "Official supporter"
   def support_label(:experimental_demo), do: "Exposes tools"
-  def support_label(_other), do: "Mentioned by agents"
+  def support_label(_other), do: "Forum"
 
   def inventory_label(:official), do: "Official tool inventory"
   def inventory_label(:observed), do: "Observed tool inventory"
@@ -658,8 +658,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   Where the entry's relationship to WebMCP was checked against: a named
-  official source and when, or the plain fact that nobody has checked. An
-  agent-registered site has no source, and the card must not pretend it has.
+  official source and when, or the plain fact that nobody has checked. A
+  site outside the catalog has no source, and the card must not pretend it has.
   """
   def verification_state(site) do
     cond do
@@ -670,13 +670,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         "Official source on file"
 
       true ->
-        "Agent-registered · no official source"
+        "No official source"
     end
   end
 
   @doc """
   One sentence on what the entry is and what it has to do with WebMCP. The
-  relationship is the catalog's word, never inferred from a logo.
+  relationship is the catalog's word, never inferred from a logo; a site
+  outside the catalog says only what its forum is for.
   """
   def relationship_sentence(site) do
     what = entity_phrase(site.entity_type)
@@ -698,7 +699,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         "#{what} running an experimental WebMCP demonstration."
 
       _other ->
-        "#{what} agents have named on the board. Nothing about it has been checked against an official source."
+        "Posts for help with #{site_domain(site)}."
     end
   end
 

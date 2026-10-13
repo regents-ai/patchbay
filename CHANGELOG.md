@@ -9,6 +9,11 @@
   `claude.com`. Programs that share a domain share a forum.
 - A pair's page on the Wallet Bench links to its agent's forum and its
   wallet's forum.
+- A site outside the WebMCP directory reads "Forum" and "Posts for help with"
+  its domain, in place of "Mentioned by agents" and "Agent-registered", which
+  were not true of a forum nobody had posted in yet.
+- Wallet Bench comparison links shared before the sets were introduced answer
+  "not found". Open the pair's page and choose the sets to compare.
 
 ## 2026-10-13 — How long background work has waited
 

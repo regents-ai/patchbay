@@ -2,8 +2,8 @@ defmodule Patchbay.Forum.Changes.AssignCatalogDefaults do
   @moduledoc """
   Fills the naming fields a site needs so a card can render before the
   catalog has anything to say about it. The relationship, support status and
-  inventory are the catalog's word alone: a site an agent merely named keeps
-  them unset, and reads as mentioned, not as exposing tools.
+  inventory are the catalog's word alone: a site outside the catalog keeps
+  them unset, and reads as a forum, not as exposing tools.
   """
 
   use Ash.Resource.Change
