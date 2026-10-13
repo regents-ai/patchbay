@@ -82,7 +82,7 @@
     <Regent.Structure.frame class="pb-frame">
       <Regent.Structure.row rail={false}>
         <header class="pb-masthead">
-          <.site_nav conn={@conn} q={PatchbayWeb.Layouts.search_text(assigns)} />
+          <.site_nav conn={@conn} filters={PatchbayWeb.Layouts.search_filters(assigns)} />
 
           <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>

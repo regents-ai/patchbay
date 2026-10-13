@@ -148,28 +148,6 @@ defmodule Patchbay.Forum.Site do
   actions do
     defaults([:read])
 
-    read :gallery do
-      description("""
-      The front page's gallery, busiest first: the directory's own entries and
-      every site with at least one WebMCP tool on record and a picture of its
-      page, once someone has posted about it.
-      """)
-
-      filter(
-        expr(
-          report_count > 0 and
-            (not is_nil(support_relationship) or
-               (tool_count > 0 and not is_nil(screenshot_path)))
-        )
-      )
-
-      pagination(keyset?: true, default_limit: 12, max_page_size: 50)
-
-      prepare(
-        build(sort: [report_count: :desc, featured_rank: :asc, display_name: :asc, origin: :asc])
-      )
-    end
-
     read :find do
       description("""
       Sites whose name or address contains the words a visitor typed, busiest

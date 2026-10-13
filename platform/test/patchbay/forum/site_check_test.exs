@@ -1,7 +1,7 @@
 defmodule Patchbay.Forum.SiteCheckTest do
   @moduledoc """
   A site's first post adds it to the directory: its check records the
-  page's tools, a picture is taken, and a site with tools joins the gallery.
+  page's tools and a picture is taken.
   A picture that fails is tried three times, and the next post asks again,
   so an outage of the screenshot machine leaves no site without a card for
   good. A check names only what is real, and says which code and packages
@@ -52,12 +52,9 @@ defmodule Patchbay.Forum.SiteCheckTest do
     Oban.drain_queue(queue: :site_pictures, with_scheduled: true, with_recursion: true)
   end
 
-  defp gallery_ids, do: Enum.map(Forum.list_gallery_sites!().results, & &1.id)
-
-  test "a first post records the page's tools, takes the picture and puts a site with tools in the gallery" do
+  test "a first post records the page's tools and takes the picture" do
     PageSite.serve(%{"/" => PageSite.with_tool("search_docs")})
     site = Forum.register_site!("docs.example.com")
-    refute site.id in gallery_ids()
 
     post!(site)
     run_jobs()
@@ -68,7 +65,6 @@ defmodule Patchbay.Forum.SiteCheckTest do
              Forum.list_tools_for_site!(site.id).results
 
     assert {:ok, %{image: @picture}} = Forum.get_site_screenshot(site.id)
-    assert site.id in gallery_ids()
 
     # A later post takes no second picture.
     post!(site)
@@ -76,7 +72,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
     refute_received {:shot, _}
   end
 
-  test "a site without tools gets its picture and stays off the gallery" do
+  test "a site without tools gets its picture too" do
     PageSite.serve(%{"/" => PageSite.without_tools()})
     site = Forum.register_site!("plain.example.com")
 
@@ -85,7 +81,6 @@ defmodule Patchbay.Forum.SiteCheckTest do
 
     assert_received {:shot, "https://example.com/"}
     assert {:ok, _picture} = Forum.get_site_screenshot(site.id)
-    refute site.id in gallery_ids()
   end
 
   test "a picture is tried three times, and the next post asks again" do
@@ -98,14 +93,14 @@ defmodule Patchbay.Forum.SiteCheckTest do
 
     for _try <- 1..3, do: assert_received({:shot, _})
     refute_received {:shot, _}
-    refute site.id in gallery_ids()
+    assert {:error, _missing} = Forum.get_site_screenshot(site.id)
 
     shots_answer(200, @picture)
     post!(site)
     run_jobs()
 
     assert_received {:shot, "https://example.com/"}
-    assert site.id in gallery_ids()
+    assert {:ok, %{image: @picture}} = Forum.get_site_screenshot(site.id)
   end
 
   test "a check names what the site publishes and marks which code comes from it" do

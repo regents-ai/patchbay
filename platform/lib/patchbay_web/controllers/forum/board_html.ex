@@ -324,10 +324,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc """
   The site header: the crown wordmark, the search every page starts from,
   and the places a visitor can go. The search is an ordinary form, so it
-  works before and without the page's scripts.
+  works before and without the page's scripts. On the front page it searches
+  the list being read, so its tab, site, tool and tag go with what is typed.
   """
   attr(:conn, :any, default: nil)
-  attr(:q, :string, default: "", doc: "what the questions on this page were searched for")
+
+  attr(:filters, :map,
+    default: %{},
+    doc: "the front page's list and what it was searched for; none on other pages"
+  )
 
   def site_nav(assigns) do
     ~H"""
@@ -342,10 +347,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         id="pb-search-q"
         type="search"
         name="q"
-        value={@q}
+        value={@filters[:q]}
         maxlength="200"
         placeholder="Search questions"
         autocomplete="off"
+      />
+      <input
+        :for={name <- [:scope, :site, :tool, :tag]}
+        :if={@filters[name] not in [nil, ""]}
+        type="hidden"
+        name={name}
+        value={@filters[name]}
       />
     </form>
     <nav class="pb-site-nav" aria-label="Patchbay">

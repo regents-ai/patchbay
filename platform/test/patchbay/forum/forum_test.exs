@@ -49,17 +49,6 @@ defmodule Patchbay.ForumTest do
 
   defp results(%Ash.Page.Keyset{results: results}), do: results
 
-  # The picture a site's card shows, as Patchbay's own background work records it.
-  defp pictured!(site) do
-    site
-    |> Ash.Changeset.for_update(
-      :record_screenshot,
-      %{screenshot_path: "/site-screenshots/#{site.id}"},
-      authorize?: false
-    )
-    |> Ash.update!()
-  end
-
   # Only a verified report names a call, and only the forum's own action can
   # mark one. Writing the column straight is how the stored guarantee itself —
   # rather than the path that normally sets it — gets exercised.
@@ -168,7 +157,6 @@ defmodule Patchbay.ForumTest do
       assert action_names(Patchbay.Forum.Site) ==
                [
                  {:read, :read},
-                 {:gallery, :read},
                  {:find, :read},
                  {:directory, :read},
                  {:register_site, :create},
@@ -180,34 +168,12 @@ defmodule Patchbay.ForumTest do
     end
   end
 
-  describe "get_site_by_origin/1 and the gallery" do
+  describe "get_site_by_origin/1 and site counts" do
     test "finds a site by its normalized origin" do
       site = Forum.register_site!("https://Shopify.com/path")
 
       assert {:ok, found} = Forum.get_site_by_origin("shopify.com")
       assert found.id == site.id
-    end
-
-    test "orders sites with tools and a picture by report count, busiest first, and leaves out the rest" do
-      quiet = pictured!(site!("quiet.example"))
-      busy = pictured!(site!("busy.example"))
-      # Asked about, but no tool on record and no directory entry.
-      pictured!(site!("bare.example"))
-      # A tool and a picture, but nobody has posted about it.
-      tool!(pictured!(site!("unasked.example")))
-      # Tools on record, but no picture yet.
-      report!(tool!(site!("unpictured.example")))
-
-      busy_tool = tool!(busy)
-      report!(busy_tool)
-      report!(busy_tool)
-      report!(tool!(quiet))
-
-      assert [%{id: first}, %{id: second}] =
-               results(Forum.list_gallery_sites!(load: [:report_count, :tool_count]))
-
-      assert first == busy.id
-      assert second == quiet.id
     end
 
     test "counts tool names and reports per site" do

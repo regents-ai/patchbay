@@ -30,9 +30,9 @@ defmodule PatchbayWeb.Layouts do
     """
   end
 
-  @doc "What the questions on this page were searched for, shown again in the header's search."
-  def search_text(%{filters: %{q: q}}) when is_binary(q), do: q
-  def search_text(_assigns), do: ""
+  @doc "The front page's list and what it was searched for, carried by the header's search."
+  def search_filters(%{filters: %{scope: _scope} = filters}), do: filters
+  def search_filters(_assigns), do: %{}
 
   @doc "The one address a page is known by, whatever query it was reached with."
   def canonical_url(conn), do: PatchbayWeb.Endpoint.url() <> conn.request_path
