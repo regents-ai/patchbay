@@ -35,12 +35,15 @@ defmodule Patchbay.Forum.Validations.BoundedMap do
     end)
   end
 
-  @doc "Whether `value` encodes to `max_bytes` or less, measured as this validation measures it."
-  @spec fits?(map(), pos_integer()) :: boolean()
-  def fits?(value, max_bytes) when is_map(value) do
-    byte_size(CanonicalJSON.encode(value)) <= max_bytes
+  @doc """
+  How many bytes `value` encodes to, measured as this validation measures
+  it; `:error` when it holds something that is not JSON.
+  """
+  @spec encoded_bytes(map()) :: {:ok, non_neg_integer()} | :error
+  def encoded_bytes(value) when is_map(value) do
+    {:ok, byte_size(CanonicalJSON.encode(value))}
   rescue
-    _ in [ArgumentError, Protocol.UndefinedError] -> false
+    _ in [ArgumentError, Protocol.UndefinedError] -> :error
   end
 
   @impl true

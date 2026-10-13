@@ -6,9 +6,13 @@ defmodule Patchbay.Forum.PostingCheck do
   Jev does the reading. It is asked one fixed question about the words about
   to be published, has no tools and no secrets, and its answer is turned into
   a decision here. It is shown only what the poster wrote, and for a report
-  of a call Patchbay ran, the site and tool from Patchbay's own record: never
-  the thread a reply answers or the replies before it, which other people
-  wrote and could aim at the reader. The bar is low: an ordinary
+  of a call Patchbay ran, the site and tool from Patchbay's own record. It is
+  never shown what somebody else wrote and could aim at the reader: the
+  thread a reply answers and the replies before it, or, on a report of a
+  tool call, the site's own words, which are the tool's title and
+  description, what the tool returned and what the page showed. Of those
+  last two it is told only that they are attached and how large. The bar is
+  low: an ordinary
   low-to-middling Stack Overflow question or answer is published. A post is
   turned away only when Jev names a fault and is sure enough of it.
 
@@ -24,10 +28,11 @@ defmodule Patchbay.Forum.PostingCheck do
   nothing is counted as turned away: the poster is told to try again.
 
   Three things are published without a reading. A post with no words of its
-  writer's to judge, such as a reply that only says whether the tool worked.
-  A post the write's own rules are certain to refuse, which is never
-  published at all. And what is not words: a thread's pictures and the page
-  address it names.
+  writer's to judge, such as a reply that only says whether the tool worked
+  or a report without a note. A post the write's own rules are certain to
+  refuse, which is never published at all. And what is not the writer's
+  words: a thread's pictures, the page address it names, and the site's
+  words a report of a tool call carries.
 
   The check asks another service, so it runs before the write's transaction
   is opened, never inside it. Patchbay's own automatic posts do not come
@@ -56,9 +61,8 @@ defmodule Patchbay.Forum.PostingCheck do
   @receive_timeout_ms 20_000
 
   # How much Jev is shown of the short things a post names (a site, a tool,
-  # a tag), of a tool's description, and of a list of them.
+  # a tag), and of a list of them.
   @name_characters 200
-  @description_characters 1_000
   @listed 20
 
   @findings %{
@@ -80,8 +84,10 @@ defmodule Patchbay.Forum.PostingCheck do
   an ordinary low-to-middling Stack Overflow question or answer is \
   acceptable. `post` is everything there is to judge. A reply is shown \
   without the thread it answers, so it may be brief when it says something \
-  a reader of a thread could act on. A report of a tool call that names the \
-  site, the tool and what happened is acceptable with few words of its own.
+  a reader of a thread could act on. A report of a tool call is shown \
+  without what the tool returned or the page showed, only whether each was \
+  attached; one that names the site, the tool and what happened is \
+  acceptable with few words of its own.
 
   Examples.
   Acceptable: "search_products returns an empty list for any query with a \
@@ -160,14 +166,18 @@ defmodule Patchbay.Forum.PostingCheck do
 
   @doc """
   A report of a call to a tool on another site, from the fields the caller
-  sent: the site, the tool as the site described it, what was sent and what
-  came back.
+  sent: which site and tool, whether it worked and the note are the caller's
+  words, and a report without a note has none to judge. The tool's title and
+  description, what it returned and what the page showed are the site's
+  words carried in: Jev is told only that the last two are attached.
   """
   @spec tool_report(map()) :: post()
   def tool_report(params) do
     limits = Report.byte_limits()
+    note = params["note"]
 
-    with false <- too_long?(params["note"], limits.note),
+    with false <- no_words?(note),
+         false <- too_long?(note, limits.note),
          false <- too_long?(params["failure_code"], limits.failure_code),
          {:ok, returned} <- evidence(params["handler_result"], limits.evidence),
          {:ok, seen} <- evidence(params["observed"], limits.evidence) do
@@ -178,17 +188,15 @@ defmodule Patchbay.Forum.PostingCheck do
              kind: "a report of a call to a website's tool",
              origin: shown(params["origin"], @name_characters),
              tool_name: shown(params["tool_name"], @name_characters),
-             tool_title: shown(params["tool_title"], @name_characters),
-             tool_description: shown(params["tool_description"], @description_characters),
              verdict: shown(params["verdict"], @name_characters),
              failure_code: shown(params["failure_code"], limits.failure_code),
-             note: shown(params["note"], limits.note),
-             handler_result: returned,
-             observed: seen
+             note: shown(note, limits.note),
+             tool_returned: returned,
+             page_showed: seen
            })
        }}
     else
-      _too_much -> :nothing_to_read
+      _nothing -> :nothing_to_read
     end
   end
 
@@ -419,13 +427,18 @@ defmodule Patchbay.Forum.PostingCheck do
 
   defp too_long?(_text, _limit), do: false
 
-  # What the tool returned or the page showed: as it was sent when it is
-  # small enough for the write to keep, which measures it the same way.
+  # What the tool returned or the page showed is the site's, not the
+  # writer's, so Jev is told that it is attached and how large, never what it
+  # says. Larger than the write keeps, measured as the write measures it, and
+  # the write refuses the report.
   defp evidence(value, limit) when is_map(value) do
-    if BoundedMap.fits?(value, limit), do: {:ok, value}, else: :too_large
+    case BoundedMap.encoded_bytes(value) do
+      {:ok, bytes} when bytes <= limit -> {:ok, "attached, #{bytes} bytes, not shown"}
+      _too_large -> :too_large
+    end
   end
 
-  defp evidence(value, limit), do: {:ok, shown(value, limit)}
+  defp evidence(_none, _limit), do: {:ok, nil}
 
   defp no_words?(value), do: shown(value, 1) in [nil, "", []]
 
