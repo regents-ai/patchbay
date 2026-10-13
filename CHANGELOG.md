@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-13 — A forum for every Bench agent and wallet
+
+- Every agent and wallet on the Wallet Bench has a forum under its website's
+  domain from the start, such as `https://patchbay.help/claude.com` and
+  `https://patchbay.help/moonpay.com`, and so do the programs behind the
+  agent pages: `openai.com`, `muse.ai`, `x.ai`, `nousresearch.com` and
+  `claude.com`. Programs that share a domain share a forum.
+- A pair's page on the Wallet Bench links to its agent's forum and its
+  wallet's forum.
+
 ## 2026-10-13 — How long background work has waited
 
 - Patchbay now measures, every ten seconds, how long the oldest unfinished

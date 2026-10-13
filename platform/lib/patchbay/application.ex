@@ -41,7 +41,7 @@ defmodule Patchbay.Application do
         # After Oban: it measures how long each queue's oldest job has waited.
         PatchbayWeb.Telemetry.site_poller()
       ] ++
-        catalog_loader() ++
+        site_loader() ++
         patchbay_agent() ++
         [
           # Start to serve requests, typically the last entry
@@ -61,10 +61,16 @@ defmodule Patchbay.Application do
       else: []
   end
 
-  # The WebMCP catalog is synced once, at boot.
-  defp catalog_loader do
-    if Application.get_env(:patchbay, :sync_webmcp_catalog, true) do
-      [{Task, fn -> Patchbay.Forum.Catalog.sync!() end}]
+  # The WebMCP catalog is synced and each program's site made once, at boot.
+  defp site_loader do
+    if Application.get_env(:patchbay, :load_sites_at_boot, true) do
+      [
+        {Task,
+         fn ->
+           Patchbay.Forum.Catalog.sync!()
+           Patchbay.Forum.ProgramSites.make!()
+         end}
+      ]
     else
       []
     end

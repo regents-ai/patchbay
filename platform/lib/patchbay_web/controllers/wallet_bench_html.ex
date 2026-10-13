@@ -14,10 +14,19 @@ defmodule PatchbayWeb.WalletBenchHTML do
 
   import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
+  alias Patchbay.Forum.ProgramSites
   alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.Sets
 
   embed_templates("wallet_bench_html/*")
+
+  @doc """
+  A pair's forums, each a name and its site's domain: the agent's and the
+  wallet's, for each that has a website on record.
+  """
+  def forums(harness, wallet) do
+    for entry <- [harness, wallet], domain = ProgramSites.domain(entry), do: {entry.name, domain}
+  end
 
   attr(:test, :string, required: true)
   attr(:filters, :map, default: %{})

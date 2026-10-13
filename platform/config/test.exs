@@ -31,7 +31,7 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
 # racing a loop it did not ask for. The notification worker the same: tests
 # run its pass directly.
 config :patchbay, start_patchbay_agent: false
-config :patchbay, :sync_webmcp_catalog, false
+config :patchbay, :load_sites_at_boot, false
 config :patchbay, :notification_fanout, false
 config :patchbay, Oban, testing: :manual
 

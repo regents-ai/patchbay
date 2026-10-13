@@ -2,7 +2,8 @@
 
 Roster versions are last seen; each run records the versions actually tested. Unknown means not recorded.
 
-<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %><%= if @shown do %>
+<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %><%= for {name, domain} <- forums(@harness, @wallet) do %>- [<%= line(name) %> forum](/<%= domain %>)
+<% end %><%= if @shown do %>
 Selected set: <%= line(Sets.label(@shown)) %>
 <%= for {label, value} <- set_facts(@shown.summary) do %>
 - <%= label %>: <%= value %><% end %>

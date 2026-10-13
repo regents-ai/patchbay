@@ -1,5 +1,8 @@
 defmodule Patchbay.WalletBench.RosterEntry do
-  @moduledoc "An agent or a wallet on the bench, with the version last seen."
+  @moduledoc """
+  An agent or a wallet on the bench, with the version last seen and the
+  website it publishes as its home, when the bench has one on record.
+  """
 
   use Ash.Resource,
     otp_app: :patchbay,
@@ -30,5 +33,6 @@ defmodule Patchbay.WalletBench.RosterEntry do
     attribute(:id, :string, primary_key?: true, allow_nil?: false, public?: true)
     attribute(:name, :string, allow_nil?: false, public?: true)
     attribute(:version, :string, public?: true)
+    attribute(:website, :string, public?: true)
   end
 end

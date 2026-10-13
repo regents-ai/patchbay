@@ -13,6 +13,7 @@ defmodule PatchbayWeb.WalletBenchMD do
       outcomes: 0,
       check_said: 1,
       versions: 1,
+      forums: 2,
       set_facts: 1,
       steps?: 1,
       deciding_step: 1,
