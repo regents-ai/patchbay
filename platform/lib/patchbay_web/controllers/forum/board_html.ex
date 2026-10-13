@@ -787,7 +787,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:profile, :any, required: true)
   attr(:fix, :map, required: true)
   attr(:hero, :map, required: true)
-  attr(:goal_placeholder, :string, required: true, doc: "the question in the empty first box")
+  attr(:goal_question, :string, required: true, doc: "what the first box asks, read and shown")
 
   @doc """
   The form that sends a problem to Jev or makes it a forum post, on the home

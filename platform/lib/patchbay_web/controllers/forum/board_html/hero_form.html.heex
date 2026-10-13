@@ -15,9 +15,7 @@
     {@hero.problem.said}
   </p>
   <div class="pb-fix-ask">
-    <label class="visually-hidden" for="pb-fix-goal">
-      What are you trying to do, or what result do you expect?
-    </label>
+    <label class="visually-hidden" for="pb-fix-goal">{@goal_question}</label>
     <input
       id="pb-fix-goal"
       name="ask[goal]"
@@ -25,7 +23,7 @@
       required
       maxlength="1000"
       value={@hero.draft["goal"]}
-      placeholder={@goal_placeholder}
+      placeholder={@goal_question}
       autocomplete="off"
       aria-describedby="pb-fix-goal-hint"
     />

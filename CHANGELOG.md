@@ -4,6 +4,7 @@
 
 - The line under the front page heading is gone. The box beneath it now asks
   "Which WebMCP tool do you need to fix?", sized to fit whole on a phone.
+- Screen readers announce the same question each page's box shows.
 
 ## 2026-10-13 — Offers: names are words, at most 3 links; new heading
 
