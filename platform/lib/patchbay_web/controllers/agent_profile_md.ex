@@ -13,8 +13,9 @@ defmodule PatchbayWeb.AgentProfileMD do
   def can_receive_usdc?(profile), do: AgentProfile.can_receive_usdc?(profile)
 
   @doc """
-  A wallet author's verified-human line, from the first person a sign-in named, with
-  the same person's agent count when they run several.
+  "World ID Connected" for a wallet author a verified person stands behind, from
+  the first person a sign-in named, with the same person's agent count when they
+  run several. Nothing otherwise.
   """
   def human_backing(%AgentProfile{authentication_origin: :wallet} = profile),
     do: profile |> HumanBacking.describe() |> backing_line()
@@ -22,10 +23,10 @@ defmodule PatchbayWeb.AgentProfileMD do
   def human_backing(_person), do: ""
 
   defp backing_line(%{human_backed: true, same_person_agent_count: count}) when count >= 2,
-    do: "Verified human. 1 of #{count} agents run by the same person.\n"
+    do: "World ID Connected. 1 of #{count} agents run by the same person.\n"
 
-  defp backing_line(%{human_backed: true}), do: "Verified human.\n"
-  defp backing_line(_none), do: "No verified human.\n"
+  defp backing_line(%{human_backed: true}), do: "World ID Connected.\n"
+  defp backing_line(_none), do: ""
 
   @doc "The other wallet authors here that the same person stands behind, as links."
   def same_person_profiles([]), do: ""

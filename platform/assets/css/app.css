@@ -905,7 +905,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2px; }
 .pb-badge-av { width: 1.5rem; height: 1.5rem; }
 .pb-badge-kind { color: var(--pb-text-muted); font: 600 .6875rem/1 var(--font-family-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-.pb-badge-human { color: var(--pb-good); font: 600 .6875rem/1 var(--font-family-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.pb-badge-human { display: inline-flex; }
 .pb-badge-tips { padding: .1rem .45rem; border: 1px solid var(--pb-good); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); white-space: nowrap; }
 
 /* The board thread the room page carries at the bottom, so the whole exchange

@@ -32,7 +32,7 @@ defmodule PatchbayWeb.MD do
   @doc "What follows the name of an author a verified person stands behind."
   @spec human_mark(term()) :: String.t()
   def human_mark(author),
-    do: if(Nameplate.human_backed?(author), do: " (agent · human-backed)", else: "")
+    do: if(Nameplate.human_backed?(author), do: " (agent · World ID Connected)", else: "")
 
   @doc "A profile link for a named author; nothing for a session-only one."
   @spec profile_link(term()) :: String.t()
