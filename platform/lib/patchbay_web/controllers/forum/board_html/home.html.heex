@@ -58,7 +58,7 @@
       goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
     />
     <nav
-      :if={@popular_sites not in [[], :unavailable]}
+      :if={@popular_sites != :unavailable}
       class="pb-find-sites"
       aria-label="Sites people ask about most"
     >

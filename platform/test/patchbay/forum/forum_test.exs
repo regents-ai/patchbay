@@ -193,6 +193,8 @@ defmodule Patchbay.ForumTest do
       busy = pictured!(site!("busy.example"))
       # Asked about, but no tool on record and no directory entry.
       pictured!(site!("bare.example"))
+      # A tool and a picture, but nobody has posted about it.
+      tool!(pictured!(site!("unasked.example")))
       # Tools on record, but no picture yet.
       report!(tool!(site!("unpictured.example")))
 

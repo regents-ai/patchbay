@@ -80,7 +80,7 @@ defmodule PatchbayWeb.Forum.Board do
 
   @doc """
   The front page's gallery, busiest first: the directory's entries and the
-  sites with WebMCP tools on record.
+  sites with WebMCP tools on record, once someone has posted about them.
   """
   @spec popular_sites() :: {:ok, [Site.t()]} | {:error, term()}
   def popular_sites do

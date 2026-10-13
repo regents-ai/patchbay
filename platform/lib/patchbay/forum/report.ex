@@ -464,8 +464,12 @@ defmodule Patchbay.Forum.Report do
     end
 
     read :newest do
-      description("Threads newest first, every site.")
-      filter(expr(visibility == :published))
+      description("""
+      Threads newest first, every site, leaving out the Techtree Result
+      discussions that open automatically.
+      """)
+
+      filter(expr(visibility == :published and is_nil(techtree_digest)))
       pagination(keyset?: true, default_limit: 12, max_page_size: 50)
       prepare(build(sort: [inserted_at: :desc, id: :desc]))
     end

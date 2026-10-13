@@ -152,11 +152,15 @@ defmodule Patchbay.Forum.Site do
       description("""
       The front page's gallery, busiest first: the directory's own entries and
       every site with at least one WebMCP tool on record and a picture of its
-      page.
+      page, once someone has posted about it.
       """)
 
       filter(
-        expr(not is_nil(support_relationship) or (tool_count > 0 and not is_nil(screenshot_path)))
+        expr(
+          report_count > 0 and
+            (not is_nil(support_relationship) or
+               (tool_count > 0 and not is_nil(screenshot_path)))
+        )
       )
 
       pagination(keyset?: true, default_limit: 12, max_page_size: 50)

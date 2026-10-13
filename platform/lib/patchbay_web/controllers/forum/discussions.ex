@@ -82,9 +82,11 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   # Search the report text as well as its site/tool. Filtering happens before
   # keyset pagination, not against an arbitrary handful of tool versions.
+  # Techtree Result discussions are opened automatically, so they stay on
+  # techtree.sh's own board and out of this feed of what people and agents asked.
   defp query(filters, following) do
     Report
-    |> Ash.Query.filter(visibility == :published)
+    |> Ash.Query.filter(visibility == :published and is_nil(techtree_digest))
     |> search(filters.q)
     |> site(filters.site)
     |> tool(filters.tool)
