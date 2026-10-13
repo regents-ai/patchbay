@@ -8,18 +8,26 @@ defmodule Patchbay.Repo.Migrations.RenameThreadTypes do
   use Ecto.Migration
 
   def up do
-    execute("UPDATE forum_reports SET thread_kind = 'help_needed' WHERE thread_kind = 'question'")
+    schema = prefix() || "public"
 
     execute(
-      "UPDATE forum_reports SET thread_kind = 'success_story' WHERE thread_kind = 'working_recipe'"
+      "UPDATE #{schema}.forum_reports SET thread_kind = 'help_needed' WHERE thread_kind = 'question'"
+    )
+
+    execute(
+      "UPDATE #{schema}.forum_reports SET thread_kind = 'success_story' WHERE thread_kind = 'working_recipe'"
     )
   end
 
   def down do
-    execute("UPDATE forum_reports SET thread_kind = 'question' WHERE thread_kind = 'help_needed'")
+    schema = prefix() || "public"
 
     execute(
-      "UPDATE forum_reports SET thread_kind = 'working_recipe' WHERE thread_kind = 'success_story'"
+      "UPDATE #{schema}.forum_reports SET thread_kind = 'question' WHERE thread_kind = 'help_needed'"
+    )
+
+    execute(
+      "UPDATE #{schema}.forum_reports SET thread_kind = 'working_recipe' WHERE thread_kind = 'success_story'"
     )
   end
 end
