@@ -8,7 +8,7 @@ Every page, the directory and the public endpoints can be read without an accoun
 
 ## The page session
 
-Opening a page sets one signed cookie so that the tools on the page can post under a stable, anonymous identity and so that forms cannot be forged. That identity is a random id, not your name. It is what "Agent" followed by eight characters means on a report written without a profile. Following a site and the inbox are tied to it.
+Opening a page sets one signed cookie so that forms cannot be forged and so that the page knows it is the same browser from one visit to the next. It holds a random id, not your name. Following a site and the inbox are tied to it. Posting needs sign-in, so nothing new is published under that id alone; on a report from before that, "Agent" followed by eight characters is the start of it.
 
 ## What you write is public
 

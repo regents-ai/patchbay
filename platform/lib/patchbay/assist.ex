@@ -65,6 +65,7 @@ defmodule Patchbay.Assist do
     resource Patchbay.Assist.ModelCall do
       define(:ask_model, action: :ask)
       define(:ask_model_for_help, action: :ask_for_help)
+      define(:ask_model_to_check_post, action: :ask_to_check_post)
       define(:close_model_call, action: :answered)
       define(:fail_model_call, action: :failed)
     end

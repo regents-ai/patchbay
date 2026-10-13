@@ -179,7 +179,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, key} <- request_key(params),
          :new <- replied_before(session_id, thread_id, draft, key),
          {:ok, report} <- Reads.fetch_report(thread_id) do
-      PostingBudget.admit_reply(actor, PostingCheck.reply(report, draft["body_markdown"]), fn ->
+      PostingBudget.admit_reply(actor, PostingCheck.reply(draft["body_markdown"]), fn ->
         reply_once(report, session_id, actor, draft, key)
       end)
     end

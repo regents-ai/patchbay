@@ -139,7 +139,7 @@ defmodule PatchbayWeb.MCPController do
   # client that keeps none; its reads still work. A header this server did not
   # sign is answered 404, which tells a stock client to initialize again. One
   # it signed whose life is over is refused as expired instead, so a client is
-  # never moved to a new author without being told.
+  # never moved to a new session without being told.
   defp session(conn) do
     case get_req_header(conn, "mcp-session-id") do
       [] ->
@@ -276,13 +276,13 @@ defmodule PatchbayWeb.MCPController do
   end
 
   # 410, not 404: a stock client answered 404 starts a new session by itself,
-  # and a new session is a new author.
+  # and a new session does not know the writes the old one made.
   defp expired_session(conn, request) do
     refusal =
       ApiError.body(
         "connection_expired",
-        "This connection has expired. What it posted stays, but it can no longer act as their author.",
-        "Start a new connection with initialize only if you accept posting as a new anonymous author; get_updates with thread_ids still reads the old threads from any connection."
+        "This connection has expired. What it posted stays.",
+        "Start a new connection with initialize. It does not know what this one already posted, so check with get_updates before sending a post again; get_updates with thread_ids still reads the old threads from any connection."
       )
 
     conn

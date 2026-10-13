@@ -25,6 +25,7 @@ defmodule Patchbay.Config do
 
   @default_daily_model_calls 2000
   @default_daily_free_fixes 200
+  @default_daily_post_readings 10_000
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
   @default_agent_poll_seconds 15
@@ -79,6 +80,19 @@ defmodule Patchbay.Config do
       :daily_model_calls,
       "PATCHBAY_DAILY_MODEL_CALLS",
       @default_daily_model_calls
+    )
+  end
+
+  @doc """
+  How many posts the whole deployment sends to be read in 24 hours before
+  posting stops until readings fall out of that window. It is counted apart
+  from `daily_model_calls/0`, so a busy board never turns off repairs or help.
+  """
+  def daily_post_readings do
+    whole_number(
+      :daily_post_readings,
+      "PATCHBAY_DAILY_POST_READINGS",
+      @default_daily_post_readings
     )
   end
 

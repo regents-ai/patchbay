@@ -35,6 +35,14 @@ defmodule Patchbay.Forum.Validations.BoundedMap do
     end)
   end
 
+  @doc "Whether `value` encodes to `max_bytes` or less, measured as this validation measures it."
+  @spec fits?(map(), pos_integer()) :: boolean()
+  def fits?(value, max_bytes) when is_map(value) do
+    byte_size(CanonicalJSON.encode(value)) <= max_bytes
+  rescue
+    _ in [ArgumentError, Protocol.UndefinedError] -> false
+  end
+
   @impl true
   def describe(opts) do
     [message: "must encode to at most %{max_bytes} bytes", vars: [max_bytes: opts[:max_bytes]]]

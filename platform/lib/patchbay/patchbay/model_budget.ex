@@ -17,7 +17,9 @@ defmodule Patchbay.Patchbay.ModelBudget do
   are counted as distinct generation keys rather than as rows. The
   OpenRouter questions belong to no room, so they count against the
   deployment's ceiling alone; a fix already under way finishes its own
-  questions once it has started.
+  questions once it has started. The readings of posts before they are
+  published are not counted here: `Patchbay.Assist.ModelCalls` holds them to
+  a ceiling of their own.
   """
 
   require Ash.Query
@@ -103,7 +105,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
   # A count of the deployment's own questions, read for a limit and shown to no one.
   defp openrouter_calls(nil, since) do
     ModelCall
-    |> Ash.Query.filter(inserted_at >= ^since)
+    |> Ash.Query.filter(inserted_at >= ^since and purpose != :check_post)
     |> Ash.count!(authorize?: false)
   end
 

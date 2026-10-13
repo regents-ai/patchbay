@@ -35,12 +35,15 @@ defmodule Patchbay.Forum.OtherSiteReport do
 
   @doc """
   The draft as the caller wrote it, if it holds only the fields this kind of
-  report takes and arguments Patchbay can digest.
+  report takes, arguments Patchbay can digest and a page address Patchbay
+  can put a board under. All of it is refused here, from the request alone,
+  before the report is read or anything is written.
   """
   @spec draft(map()) :: {:ok, draft()} | {:error, refusal()}
   def draft(params) when is_map(params) do
     with :ok <- fields_only(params),
-         :ok <- digestible_arguments(params["arguments"]) do
+         :ok <- digestible_arguments(params["arguments"]),
+         {:ok, _address} <- seen_at(params["origin"]) do
       {:ok, params}
     end
   end

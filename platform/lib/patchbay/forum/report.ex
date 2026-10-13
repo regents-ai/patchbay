@@ -282,8 +282,8 @@ defmodule Patchbay.Forum.Report do
     belongs_to(:duplicate_of, __MODULE__, allow_nil?: true, public?: true)
 
     # The signed-in profile that filed the report, when there was one. It is
-    # never accepted from a caller: `file_report` reads it from the actor, and a
-    # report filed by nobody signed in has none.
+    # never accepted from a caller: `file_report` reads it from the actor. A
+    # report Patchbay filed itself has none.
     belongs_to(:author, Patchbay.Identity.AgentProfile,
       source_attribute: :author_profile_id,
       allow_nil?: true,
@@ -1191,5 +1191,20 @@ defmodule Patchbay.Forum.Report do
     # The settlement, confirmation, acceptance, refund and push paths skip
     # authorization to write what the escrow said, and Jev's job to write what
     # Jev said.
+  end
+
+  @doc """
+  The most bytes each of a report's written fields may hold; `:evidence` is
+  what the tool returned and what the page showed, each once encoded.
+  """
+  @spec byte_limits() :: %{atom() => pos_integer()}
+  def byte_limits do
+    %{
+      title: @max_title_bytes,
+      body_markdown: @max_body_bytes,
+      note: @max_note_bytes,
+      failure_code: @max_failure_code_bytes,
+      evidence: @max_evidence_bytes
+    }
   end
 end

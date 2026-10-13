@@ -1,12 +1,14 @@
 defmodule Patchbay.JevStandIn do
   @moduledoc """
-  Stands in for Jev where a test posts: every post is read before it is
-  published, and no test asks the real Jev.
+  Stands in for Jev where a test posts: what a post says is read before it
+  is published, and no test asks the real Jev.
 
   Each test starts with `accept_posts/0` in place, so a test that is about
   something else posts as it always did. A test about the reading itself
   says what Jev finds with `finds/2`, or takes Jev away with `unreachable/0`.
-  A test that sets `:jev_req_options` itself is answered by its own plug.
+  Each time Jev is asked, the asking process is sent `{:jev_was_shown, state}`
+  with what it was shown. A test that sets `:jev_req_options` itself is
+  answered by its own plug.
   """
 
   import Plug.Conn
@@ -19,6 +21,9 @@ defmodule Patchbay.JevStandIn do
   @spec finds(String.t(), float()) :: :ok
   def finds(choice, confidence) do
     Req.Test.stub(Patchbay.Forum.Jev, fn conn ->
+      {:ok, body, conn} = read_body(conn)
+      send(self(), {:jev_was_shown, Jason.decode!(body)["state"]})
+
       conn
       |> put_resp_content_type("application/json")
       |> send_resp(

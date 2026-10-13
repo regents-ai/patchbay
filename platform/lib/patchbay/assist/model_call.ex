@@ -6,8 +6,8 @@ defmodule Patchbay.Assist.ModelCall do
   closed with the tokens and cost the provider said the answer took.
 
   Every write is Patchbay's own and says so by skipping authorization;
-  `Patchbay.Assist.ModelCalls` holds the free help's look-ups to their
-  daily limits before it opens one.
+  `Patchbay.Assist.ModelCalls` holds the free help's look-ups and the
+  readings of posts to their limits before it opens one.
   """
 
   use Ash.Resource,
@@ -30,7 +30,8 @@ defmodule Patchbay.Assist.ModelCall do
     custom_indexes do
       # The deployment's daily ceiling counts every question of the last day.
       index([:inserted_at])
-      # The free help's limits count its own look-ups, and each connection's.
+      # The free help's limits count its own look-ups, and each connection's;
+      # the posting check's count its readings, and each person's.
       index([:purpose, :visitor_key, :inserted_at])
       # A run's removal clears its questions' link to it.
       index([:assist_run_id])
@@ -43,7 +44,8 @@ defmodule Patchbay.Assist.ModelCall do
     attribute(:purpose, ModelCallPurpose, allow_nil?: false, public?: true)
     attribute(:model, :string, allow_nil?: false, public?: true)
 
-    # The key the free help's connection is counted by, never the address.
+    # Who a limit counts the question against, never the address: the free
+    # help's connection, or the person a post is read for.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 
     attribute(:outcome, ModelCallOutcome, allow_nil?: false, default: :asked, public?: true)
@@ -74,6 +76,13 @@ defmodule Patchbay.Assist.ModelCall do
       accept([:model, :visitor_key])
       validate(present(:visitor_key))
       change(set_attribute(:purpose, :known_fix_for_help))
+    end
+
+    create :ask_to_check_post do
+      description("The reading of a post before it is published, for the person it goes out for.")
+      accept([:model, :visitor_key])
+      validate(present(:visitor_key))
+      change(set_attribute(:purpose, :check_post))
     end
 
     update :answered do

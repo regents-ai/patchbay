@@ -1,13 +1,15 @@
 defmodule PatchbayWeb.MCP.Session do
   @moduledoc """
-  The identity a hosted MCP connection posts under.
+  The session a hosted MCP connection writes under.
 
   `initialize` hands the client a session id in the `Mcp-Session-Id` header,
   as the protocol provides, and the client returns it on every later message
   without the model ever seeing it. The value is a fresh forum session id
-  signed by this server: the same kind of anonymous identity a page load puts
-  in a browser's cookie, chosen by the server and never by the caller. A
-  write tool files under it and is counted against it; a read needs none.
+  signed by this server: the same kind of session a page load puts in a
+  browser's cookie, chosen by the server and never by the caller. A write
+  tool files under it and is counted against it, and the request keys that
+  stop a post being made twice belong to it; a read needs none. Who wrote a
+  post is the signed agent, never the session.
 
   A session belongs to the address it was issued at: the hosted address
   every agent uses, or the ChatGPT plugin's own. Each address signs with its
@@ -17,7 +19,8 @@ defmodule PatchbayWeb.MCP.Session do
   Like the cookie, the signature has a life, so a value that leaked stops
   working on its own. A session past it is told apart from one Patchbay never
   issued: the expired one is refused as expired, never quietly replaced,
-  because a new session is a new author that cannot mark its old threads.
+  because a new session does not know the writes the old one made, so a
+  post sent again under it would be made twice.
   """
 
   alias PatchbayWeb.Endpoint

@@ -55,6 +55,91 @@ defmodule Patchbay.Assist.ModelCalls do
     end
   end
 
+  @post_readings_per_person_an_hour 60
+  @hour_seconds 60 * 60
+
+  @doc "How many posts one person may send to be read in an hour."
+  @spec post_readings_per_person_an_hour() :: pos_integer()
+  def post_readings_per_person_an_hour, do: @post_readings_per_person_an_hour
+
+  @doc """
+  Opens the record of the reading of a post that goes out for the person
+  `person_id`; or `{:hour_full, seconds}` when that person has sent
+  #{@post_readings_per_person_an_hour} posts to be read in the past hour,
+  with the seconds until one more may be; or `:day_full` when the site has
+  read all the posts it may in 24 hours
+  (`Patchbay.Config.daily_post_readings/0`).
+
+  Every reading counts, in flight, answered or failed, so neither a burst
+  sent together nor a Jev that cannot be reached lets a person past their
+  hour's worth. A person's readings are counted and opened under that
+  person's lock; the site's ceiling is read without one, so posts sent
+  together by different people can overshoot it by a few.
+  """
+  @spec ask_to_check_post(String.t(), Ash.UUID.t()) ::
+          {:ok, ModelCall.t()} | {:hour_full, pos_integer()} | :day_full
+  def ask_to_check_post(model, person_id) when is_binary(person_id) do
+    {:ok, opened} =
+      Ash.transact(ModelCall, fn ->
+        Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+          "patchbay post readings " <> person_id
+        ])
+
+        now = DateTime.utc_now()
+
+        case person_hour_full(person_id, now) do
+          nil -> open_reading(model, person_id, now)
+          seconds -> {:hour_full, seconds}
+        end
+      end)
+
+    opened
+  end
+
+  defp open_reading(model, person_id, now) do
+    if readings_counted(DateTime.add(now, -1, :day)) < Patchbay.Config.daily_post_readings() do
+      # Patchbay's own record, opened within the limits just counted.
+      {:ok,
+       Assist.ask_model_to_check_post!(%{model: model, visitor_key: person_id},
+         authorize?: false
+       )}
+    else
+      :day_full
+    end
+  end
+
+  # The seconds until this person's oldest reading of the past hour leaves
+  # it, when the hour is full; `nil` when there is room.
+  defp person_hour_full(person_id, now) do
+    since = DateTime.add(now, -@hour_seconds)
+
+    # Patchbay's own records of one person's readings, read for a limit.
+    recent =
+      ModelCall
+      |> Ash.Query.filter(
+        purpose == :check_post and visitor_key == ^person_id and inserted_at > ^since
+      )
+      |> Ash.Query.sort(inserted_at: :asc)
+      |> Ash.Query.limit(@post_readings_per_person_an_hour)
+      |> Ash.read!(authorize?: false)
+
+    if length(recent) >= @post_readings_per_person_an_hour do
+      recent
+      |> hd()
+      |> Map.fetch!(:inserted_at)
+      |> DateTime.add(@hour_seconds)
+      |> DateTime.diff(now)
+      |> max(1)
+    end
+  end
+
+  # Same: the site's readings, for its ceiling.
+  defp readings_counted(since) do
+    ModelCall
+    |> Ash.Query.filter(purpose == :check_post and inserted_at >= ^since)
+    |> Ash.count!(authorize?: false)
+  end
+
   @doc """
   Closes `call` with what the provider answered, and hands that answer back
   unchanged. `tokens` names the answer's `usage` fields holding the tokens

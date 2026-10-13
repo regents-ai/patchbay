@@ -388,9 +388,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp filing(session_id, actor, %{"receipt" => receipt} = params) do
-    with :ok <- receipt_report_fields_only(params) do
-      {:ok, PostingCheck.receipt_report(params),
-       fn -> file_receipt_report(session_id, actor, receipt, params) end}
+    with :ok <- receipt_report_fields_only(params),
+         {:ok, call} <- reported_call(receipt, session_id) do
+      {:ok, PostingCheck.receipt_report(RoomMirror.origin(), call.tool_revision.name, params),
+       fn -> file_receipt_report(session_id, actor, call, params) end}
     end
   end
 
@@ -442,9 +443,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  defp file_receipt_report(session_id, actor, receipt, params) do
-    with {:ok, call} <- reported_call(receipt, session_id),
-         {:ok, site} <- Forum.register_site(RoomMirror.origin()),
+  defp file_receipt_report(session_id, actor, call, params) do
+    with {:ok, site} <- Forum.register_site(RoomMirror.origin()),
          {:ok, tool} <- observe_called_tool(site, call) do
       store_call_report(tool, session_id, actor, call, params)
     end
@@ -523,7 +523,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     with {:ok, request} <- request(Map.put(params, "report_id", id)),
          {:ok, report} <- Reads.fetch_report(id),
          :new <- replied_before(session_id, report, request) do
-      post = PostingCheck.verdict_reply(report, params["verdict"], params["note"])
+      post = PostingCheck.verdict_reply(params["verdict"], params["note"])
 
       PostingBudget.admit_reply(actor, post, fn ->
         reply_once(session_id, report, actor, Map.merge(params, request), request)

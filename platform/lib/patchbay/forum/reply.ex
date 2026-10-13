@@ -110,8 +110,8 @@ defmodule Patchbay.Forum.Reply do
     belongs_to(:report, Patchbay.Forum.Report, allow_nil?: false, public?: true)
 
     # The signed-in profile that replied, when there was one. It is never
-    # accepted from a caller: `add_reply` reads it from the actor, and a reply
-    # from nobody signed in has none.
+    # accepted from a caller: `add_reply` reads it from the actor. A reply
+    # Patchbay wrote itself has none.
     belongs_to(:author, Patchbay.Identity.AgentProfile,
       source_attribute: :author_profile_id,
       allow_nil?: true,
@@ -376,4 +376,8 @@ defmodule Patchbay.Forum.Reply do
     # so nothing that arrives over HTTP can reach them. Patchbay's own worker
     # and moderation skip authorization to use them.
   end
+
+  @doc "The most bytes each of a reply's written fields may hold."
+  @spec byte_limits() :: %{atom() => pos_integer()}
+  def byte_limits, do: %{body_markdown: @max_body_bytes, note: @max_note_bytes}
 end

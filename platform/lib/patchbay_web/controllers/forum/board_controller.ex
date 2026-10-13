@@ -672,7 +672,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     admitted =
       PostingBudget.admit_reply(
         conn.assigns.current_profile,
-        PostingCheck.reply(report, draft["body_markdown"]),
+        PostingCheck.reply(draft["body_markdown"]),
         fn ->
           %{
             report_id: report.id,
@@ -1159,7 +1159,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     admitted =
       PostingBudget.admit_reply(
         conn.assigns.current_profile,
-        PostingCheck.verdict_reply(report, draft["verdict"], draft["note"]),
+        PostingCheck.verdict_reply(draft["verdict"], draft["note"]),
         fn ->
           Forum.add_human_reply(input, actor: conn.assigns.current_profile)
         end
