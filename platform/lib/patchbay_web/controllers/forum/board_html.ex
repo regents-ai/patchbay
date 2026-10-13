@@ -788,6 +788,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:fix, :map, required: true)
   attr(:hero, :map, required: true)
   attr(:goal_question, :string, required: true, doc: "what the first box asks, read and shown")
+  attr(:goal_hint, :string, required: true, doc: "the line under the first box, once it opens")
 
   @doc """
   The form that sends a problem to Jev or makes it a forum post, on the home
