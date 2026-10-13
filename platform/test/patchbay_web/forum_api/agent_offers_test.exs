@@ -509,16 +509,15 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       refute Map.has_key?(item, "text")
     end
 
-    test "the ChatGPT plugin's address posts the same way and never carries Offers",
+    test "the ChatGPT plugin's address only reads: even a signed agent cannot post there",
          %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
       place(global, 1, approved_version(owner, "Global one", global))
       session = mcp_session(conn, "/chatgpt/mcp")
 
       response = mcp_rpc(conn, "/chatgpt/mcp", session, "tools/call", ask_tool(origin), agent)
       refute response.resp_body =~ "Global one"
-      refute response.resp_body =~ "agent_offers"
 
-      assert %{"result" => %{"content" => [_only], "structuredContent" => %{"thread_id" => _}}} =
+      assert %{"error" => %{"message" => "Unknown tool: ask_question" <> _}} =
                json_response(response, 200)
 
       assert Ash.read!(Offers.Delivery, authorize?: false) == []

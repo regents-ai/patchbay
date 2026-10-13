@@ -48,18 +48,19 @@ defmodule PatchbayWeb.Forum.Readiness do
   end
 
   @doc """
-  The facts for a hosted MCP connection, which carries a session and no
-  signed-in profile. Only a signed agent posts here. Every hosted tool is
-  free, so nothing about a wallet, USDC or payments is part of it.
+  The facts for a hosted MCP connection at `surface`, which carries a session
+  and no signed-in profile. Only a signed agent posts at `/mcp`; the ChatGPT
+  plugin's address only reads. Every hosted tool is free, so nothing about a
+  wallet, USDC or payments is part of it.
   """
-  @spec for_hosted(String.t() | nil) :: map()
-  def for_hosted(session_id) do
+  @spec for_hosted(String.t() | nil, PatchbayWeb.MCP.Session.surface()) :: map()
+  def for_hosted(session_id, surface) do
     %{
       verified_by: "patchbay",
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
       session: session(session_id, :hosted),
-      posting: %{status: "signed_agents_only"},
+      posting: hosted_posting(surface),
       profile: %{status: "not_available_here"},
       only_your_host_can_tell: @only_the_host_knows
     }
@@ -137,6 +138,9 @@ defmodule PatchbayWeb.Forum.Readiness do
   # A guest post carries the session's label, whoever is signed in on the
   # page; a hosted connection's session names nobody, since only a signed
   # agent posts there, under its own name.
+  defp hosted_posting(:native_mcp), do: %{status: "signed_agents_only"}
+  defp hosted_posting(:chatgpt_plugin), do: %{status: "read_only"}
+
   defp session(session_id, :page) when is_binary(session_id) do
     %{
       status: "recognized",
