@@ -635,7 +635,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  @conversation_fields ~w(body_markdown reply_kind)
+  @conversation_fields ~w(body_markdown)
 
   defp conversation_draft(nil), do: {:ok, %{}}
 
@@ -672,8 +672,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           %{
             report_id: id,
             browser_session_id: session_id,
-            body_markdown: draft["body_markdown"],
-            reply_kind: draft["reply_kind"]
+            body_markdown: draft["body_markdown"]
           }
           |> without_nils()
           |> Forum.post_human_reply(actor: conn.assigns.current_profile)

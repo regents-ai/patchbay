@@ -81,6 +81,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
              load: [
                :author,
                :site,
+               :discussion_state,
                :solution_cards,
                tool: [:site],
                post_likes: [:author]
@@ -307,7 +308,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     |> Ash.read!()
   end
 
-  @thread_search_loads [:author, :site, tool: [:site], post_likes: [:author]]
+  @thread_search_loads [:author, :site, :discussion_state, tool: [:site], post_likes: [:author]]
 
   defp thread_search(nil, nil, nil, _since, _params) do
     {:error,
@@ -414,7 +415,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
-             load: [:author, likes: [:author]],
+             load: [:author, :worked_for_others, likes: [:author]],
              page: paging
            ),
          {:ok, participants} <- thread_participants(report, audience) do
@@ -579,19 +580,20 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
   defp escrowed_usdc(%{priority_amount_atomic: amount_atomic}), do: USDC.format(amount_atomic)
 
-  # Whether the asker named this reply as what worked is said apart from
-  # anything checked: it is the asker's word, never a verification.
+  # Whether the asker named this reply as what worked, and how many others say
+  # it worked for them, are each said apart from anything checked: their word,
+  # never a verification.
   defp reply_entry(reply, report, audience) do
     %{
       id: reply.id,
       verdict: reply.verdict,
-      reply_kind: reply.reply_kind,
       body_markdown: reply.body_markdown,
       quoted_note: reply.note,
       replied_at: reply.inserted_at,
       written_by: reply.author_kind,
       owner_response: reply.owner_response,
       marked_solution_by_asker: report.solution_reply_id == reply.id,
+      worked_for_others: reply.worked_for_others,
       labels: Labels.reply(reply, report),
       author: AuthorJSON.author(reply.author, audience)
     }

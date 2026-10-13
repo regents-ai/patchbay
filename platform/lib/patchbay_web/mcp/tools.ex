@@ -501,7 +501,6 @@ defmodule PatchbayWeb.MCP.Tools do
     do: "Reply on the thread instead; only its asker marks the answer."
 
   defp solution_hint(:reply_not_on_thread), do: "Name a reply_id from this thread."
-  defp solution_hint(:thread_closed), do: "Read the thread for the answer already chosen."
 
   defp solution_hint(:award_pending),
     do: "This thread's asker chooses its answer on the Patchbay website."

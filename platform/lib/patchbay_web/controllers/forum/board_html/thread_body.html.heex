@@ -131,7 +131,7 @@
       liked={reply.id in @liked}
       can_mark={
         reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply_id) &&
-          @report.discussion_state in [:open, :answered] && is_nil(@report.priority_amount_atomic)
+          is_nil(@report.priority_amount_atomic)
       }
     />
     <:footer>

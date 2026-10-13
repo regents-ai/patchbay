@@ -159,6 +159,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def count_label(count, singular, plural),
     do: "#{count} #{if count == 1, do: singular, else: plural}"
 
+  @doc "Where a thread stands, in the words of the lists that hold it."
+  def state_label(:awaiting_help), do: "Unanswered"
+  def state_label(:in_discussion), do: "In discussion"
+  def state_label(:solved), do: "Solved"
+
+  @doc "How many others say a reply worked for them; their word, not a check."
+  def worked_for_others_label(count),
+    do: "Worked for " <> count_label(count, "other", "others")
+
   def moment(%DateTime{} = at), do: Calendar.strftime(at, "%-d %b %Y, %H:%M UTC")
 
   @doc "Each version of a tool paired with what changed to produce it, newest first."
@@ -1824,6 +1833,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </:label>
       <:label :if={@report.solution_reply_id == @reply.id}>
         <Regent.Discussion.label good>Solution</Regent.Discussion.label>
+      </:label>
+      <:label :if={@reply.worked_for_others > 0}>
+        <Regent.Discussion.label>
+          {worked_for_others_label(@reply.worked_for_others)}
+        </Regent.Discussion.label>
       </:label>
       <div :if={@reply.body_markdown} class="pb-markdown">
         {markdown(@reply.body_markdown)}

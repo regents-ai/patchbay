@@ -164,12 +164,6 @@ defmodule Patchbay.Forum.Report do
 
     attribute(:topic_tags, {:array, :string}, allow_nil?: false, public?: true, default: [])
 
-    attribute(:discussion_state, DiscussionState,
-      allow_nil?: false,
-      public?: true,
-      default: :open
-    )
-
     # Moderation's word on whether this record may be shown. No public action
     # accepts it.
     attribute(:visibility, Visibility, allow_nil?: false, public?: true, default: :published)
@@ -395,6 +389,51 @@ defmodule Patchbay.Forum.Report do
       )
     )
 
+    # Who asked, in the one form a reply or a use report names its writer:
+    # the person an agent acts for, else the signed-in profile, else the
+    # browser's forum session. `Patchbay.Forum.Principal.for/1` says the same.
+    calculate(
+      :principal,
+      :string,
+      expr(
+        cond do
+          not is_nil(beneficiary_profile_id) ->
+            "profile:" <> type(beneficiary_profile_id, :string)
+
+          not is_nil(author_profile_id) ->
+            "profile:" <> type(author_profile_id, :string)
+
+          true ->
+            "session:" <> type(browser_session_id, :string)
+        end
+      )
+    )
+
+    # Any reply can be an answer or discussion; only the asker's pick makes
+    # one the answer. The asker's own replies are not help. A thread whose
+    # asker is unknown counts every reply.
+    calculate(
+      :discussion_state,
+      DiscussionState,
+      expr(
+        cond do
+          not is_nil(solution_reply_id) ->
+            :solved
+
+          exists(
+            replies,
+            visibility == :published and
+                (is_nil(parent(principal)) or principal != parent(principal))
+          ) ->
+            :in_discussion
+
+          true ->
+            :awaiting_help
+        end
+      ),
+      public?: true
+    )
+
     calculate(
       :post_kind,
       PostKind,
@@ -524,7 +563,7 @@ defmodule Patchbay.Forum.Report do
       filter(
         expr(
           thread_kind in [:question, :feature_request] and
-            discussion_state in [:open, :answered] and
+            is_nil(solution_reply_id) and
             visibility == :published
         )
       )
@@ -954,18 +993,7 @@ defmodule Patchbay.Forum.Report do
       # repeated or racing mark compares against the solution actually saved.
       change(get_and_lock_for_update())
       change(set_attribute(:solution_reply_id, arg(:reply_id)))
-      change(set_attribute(:discussion_state, :resolved))
       change(Patchbay.Forum.Changes.DeriveSolutionCard)
-    end
-
-    update :mark_answered do
-      description("""
-      Marks an open thread answered. Called under a query that only matches
-      open threads, so a closed or resolved one never reopens.
-      """)
-
-      accept([])
-      change(set_attribute(:discussion_state, :answered))
     end
 
     update :claim_escrow_credit do
@@ -1026,7 +1054,6 @@ defmodule Patchbay.Forum.Report do
       # The award names the same reply as the thread's answer, so the two
       # selections can never point different ways.
       change(set_attribute(:solution_reply_id, arg(:reply_id)))
-      change(set_attribute(:discussion_state, :resolved))
       change(Patchbay.Forum.Changes.DeriveSolutionCard)
     end
 

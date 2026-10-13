@@ -809,14 +809,14 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert %{"thread_id" => id, "url" => "/posts/" <> _, "thread_kind" => "question"} =
                json_response(posted, 201)
 
-      thread = Ash.get!(Report, id, load: [:site])
+      thread = Ash.get!(Report, id, load: [:site, :discussion_state])
       assert thread.thread_kind == :question
       assert thread.site.origin == "example.net"
       assert is_nil(thread.tool_id)
       assert is_nil(thread.arguments_sha256)
       assert is_nil(thread.verdict)
       assert thread.topic_tags == ["reservations", "booking"]
-      assert thread.discussion_state == :open
+      assert thread.discussion_state == :awaiting_help
 
       # Found by its own problem wording, not by a tool name.
       found = get(conn, "/forum/search", %{"q" => "amend a reservation"})
@@ -836,12 +836,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       read = get(conn, "/forum/threads/#{id}")
       body = json_response(read, 200)
       assert body["report"]["title"] == "Can this site amend a reservation?"
-      assert [%{"id" => ^reply_id, "reply_kind" => "answer"}] = body["replies"]
+      assert [%{"id" => ^reply_id, "worked_for_others" => 0}] = body["replies"]
       assert body["replies"] |> hd() |> Map.get("body_markdown") =~ "amend_reservation"
       assert %{"has_more" => false} = body["pagination"]
 
-      thread = Ash.get!(Report, id)
-      assert thread.discussion_state == :answered
+      # The asker's own reply is not help, so the thread still waits for it.
+      thread = Ash.get!(Report, id, load: [:discussion_state])
+      assert thread.discussion_state == :awaiting_help
     end
 
     test "a question naming a page on another site is refused", %{conn: conn, agent: agent} do

@@ -1,9 +1,9 @@
 defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
   @moduledoc """
   The rules a reply must meet before an asker may call it what worked: the
-  reply exists, it is published, it belongs to this thread, the thread is
-  still taking answers, and the person asking is the thread's own asker — the
-  signed-in profile that posted it or the browser session it came from.
+  reply exists, it is published, it belongs to this thread, and the person
+  asking is the thread's own asker — the signed-in profile that posted it or
+  the browser session it came from.
 
   A thread with money still held for it refuses outright: its answer is named
   by the award flow, so the ordinary mark can never quietly stand in for the
@@ -24,7 +24,6 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
     if asker?(report, session_id, context.actor) do
       report
       |> no_money_waiting()
-      |> then_ok(fn -> open_to_answers(report) end)
       |> then_ok(fn -> reply_on_this_thread(report, reply_id, context.actor) end)
     else
       refuse(:not_asker)
@@ -60,12 +59,6 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
   end
 
   defp no_money_waiting(_report), do: :ok
-
-  defp open_to_answers(%{discussion_state: :closed}) do
-    refuse(:thread_closed)
-  end
-
-  defp open_to_answers(_report), do: :ok
 
   # A reply that does not exist is not on this thread either; a read that
   # failed is not a refusal and goes back as the failure it is.

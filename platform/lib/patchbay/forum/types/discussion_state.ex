@@ -2,19 +2,18 @@ defmodule Patchbay.Forum.Types.DiscussionState do
   @moduledoc """
   How far along a conversation is, independent of any money behind it.
 
-  This answers "did anyone respond and did the asker call it done"; it says
-  nothing about escrow, which `escrow_status` records separately.
+  Worked out from the thread itself, never stored: any reply can be an answer
+  or discussion, and only the asker's pick makes one *the* answer. The asker's
+  own replies are not help, so they leave a thread waiting.
   """
 
   use Ash.Type.Enum,
     values: [
-      # Posted and waiting.
-      :open,
-      # At least one published reply exists.
-      :answered,
+      # Nobody but the asker has replied.
+      :awaiting_help,
+      # Someone else replied; the asker has not picked an answer.
+      :in_discussion,
       # The asker picked the reply that worked.
-      :resolved,
-      # No further replies are taken.
-      :closed
+      :solved
     ]
 end

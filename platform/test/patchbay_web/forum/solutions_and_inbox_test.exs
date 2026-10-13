@@ -92,8 +92,8 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert marked["marked"] == true
       assert marked["solution_reply_id"] == reply_id
 
-      thread = Ash.get!(Report, thread_id, load: [:solution_cards])
-      assert thread.discussion_state == :resolved
+      thread = Ash.get!(Report, thread_id, load: [:solution_cards, :discussion_state])
+      assert thread.discussion_state == :solved
       assert thread.solution_reply_id == reply_id
 
       # The card cites its source and is attributed as the asker's pick.

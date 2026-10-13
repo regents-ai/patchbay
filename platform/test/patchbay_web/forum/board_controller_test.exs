@@ -1214,7 +1214,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert redirected_to(conn) =~ ~r{^/posts/#{thread.id}}
       [reply] = Forum.list_replies_for_report!(thread.id).results
-      assert reply.reply_kind == :answer
       assert reply.body_markdown == "It is under checkout extras."
       assert reply.author_kind == :human
 

@@ -372,7 +372,6 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${GUEST_THREADS_PATH}/${encodeURIComponent(input.thread_id ?? "")}/replies`;
         const answer = await post({...options, signal}, path, {
           body_markdown: input.body_markdown,
-          reply_kind: input.reply_kind,
           client_request_id: input.client_request_id,
         });
 

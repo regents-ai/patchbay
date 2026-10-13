@@ -335,7 +335,6 @@ defmodule Patchbay.ForumTest do
                  {:set_visibility, :update},
                  {:mark_solution, :update},
                  {:touch, :update},
-                 {:mark_answered, :update},
                  {:read_by_jev, :update},
                  {:give_up_on_jev, :update}
                ])

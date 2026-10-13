@@ -7,7 +7,7 @@ defmodule Patchbay.Forum.SolutionRefused do
 
   use Splode.Error, fields: [:reason], class: :invalid
 
-  @type reason :: :not_asker | :award_pending | :thread_closed | :reply_not_on_thread
+  @type reason :: :not_asker | :award_pending | :reply_not_on_thread
 
   def message(%{reason: reason}), do: words(reason)
 
@@ -18,8 +18,6 @@ defmodule Patchbay.Forum.SolutionRefused do
   def words(:award_pending),
     do:
       "This question has money waiting on its answer. Choose the answer by awarding that money instead."
-
-  def words(:thread_closed), do: "This question is closed, so its answer can no longer be marked."
 
   def words(:reply_not_on_thread),
     do:

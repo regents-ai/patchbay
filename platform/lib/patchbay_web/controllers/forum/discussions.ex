@@ -144,7 +144,9 @@ defmodule PatchbayWeb.Forum.Discussions do
   defp tag(query, ""), do: query
   defp tag(query, name), do: Ash.Query.filter(query, ^name in topic_tags)
 
-  defp scope(query, "unanswered", _following), do: Ash.Query.filter(query, reply_count == 0)
+  # Unanswered waits for anyone but the asker: their own follow-ups are not help.
+  defp scope(query, "unanswered", _following),
+    do: Ash.Query.filter(query, discussion_state == :awaiting_help)
 
   # Solved is the asker's own word: they marked a reply as the answer.
   defp scope(query, "solved", _following),

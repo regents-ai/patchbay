@@ -262,6 +262,7 @@ defmodule PatchbayWeb.Forum.Board do
            load:
              @post_loads ++
                [
+                 :discussion_state,
                  :solution_cards,
                  :jev_reading,
                  post_likes: [:author],
@@ -365,7 +366,7 @@ defmodule PatchbayWeb.Forum.Board do
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
              query: query,
-             load: [:author, likes: [:author]],
+             load: [:author, :worked_for_others, likes: [:author]],
              page: paging
            ) do
       {:ok, page.results, continuation(report, page)}
@@ -451,7 +452,7 @@ defmodule PatchbayWeb.Forum.Board do
     Reply
     |> Ash.Query.sort(inserted_at: :asc, id: :asc)
     |> Ash.Query.limit(@replies_per_report)
-    |> Ash.Query.load(:author)
+    |> Ash.Query.load([:author, :worked_for_others])
   end
 
   @doc "Every author shown on a page of reports and their loaded replies, signed in or not."

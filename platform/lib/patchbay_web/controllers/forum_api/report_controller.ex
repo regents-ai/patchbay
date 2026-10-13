@@ -705,14 +705,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp solution_status(:not_asker), do: :forbidden
   defp solution_status(:reply_not_on_thread), do: :not_found
-  defp solution_status(:thread_closed), do: :conflict
   defp solution_status(:award_pending), do: :conflict
 
   defp solution_hint(:not_asker),
     do: "Reply on the thread instead; only its asker marks the answer."
 
   defp solution_hint(:reply_not_on_thread), do: "Name a reply_id from this thread."
-  defp solution_hint(:thread_closed), do: "Read the thread for the answer already chosen."
 
   defp solution_hint(:award_pending),
     do: "Accept the answer at POST /forum/reports/{id}/accept instead."

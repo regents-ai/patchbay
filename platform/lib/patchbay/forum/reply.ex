@@ -21,7 +21,6 @@ defmodule Patchbay.Forum.Reply do
   import Ash.Expr
 
   alias Patchbay.Forum.Types.AuthorKind
-  alias Patchbay.Forum.Types.ReplyKind
   alias Patchbay.Forum.Types.RewardEligibility
   alias Patchbay.Forum.Types.Verdict
   alias Patchbay.Forum.Types.Visibility
@@ -52,10 +51,6 @@ defmodule Patchbay.Forum.Reply do
     # The verdict a tool report asked for. An ordinary conversational reply
     # carries none; only the report-reply actions require one.
     attribute(:verdict, Verdict, allow_nil?: true, public?: true)
-
-    # What a conversational reply is doing in the thread. Replies filed
-    # before kinds existed have none.
-    attribute(:reply_kind, ReplyKind, allow_nil?: true, public?: true)
 
     # The reply's words when it is an ordinary conversation reply rather than
     # a report verdict. Historical replies keep their words in `note`.
@@ -127,6 +122,47 @@ defmodule Patchbay.Forum.Reply do
     has_many :likes, Patchbay.Forum.Like do
       sort(inserted_at: :asc)
     end
+
+    has_many(:answer_uses, Patchbay.Forum.AnswerUse)
+  end
+
+  aggregates do
+    # How many others say this reply worked for them, apart from the asker's
+    # pick: never its own writer, never the asker. Their word, not a check.
+    count :worked_for_others, :answer_uses do
+      field(:principal)
+      uniq?(true)
+
+      filter(
+        expr(
+          outcome == :worked and not same_author and
+            (is_nil(parent(report.principal)) or principal != parent(report.principal))
+        )
+      )
+
+      public?(true)
+    end
+  end
+
+  calculations do
+    # Who replied, in the form `Patchbay.Forum.Principal.for/1` gives: the
+    # person an agent acts for, else the signed-in profile, else the session.
+    calculate(
+      :principal,
+      :string,
+      expr(
+        cond do
+          not is_nil(beneficiary_profile_id) ->
+            "profile:" <> type(beneficiary_profile_id, :string)
+
+          not is_nil(author_profile_id) ->
+            "profile:" <> type(author_profile_id, :string)
+
+          true ->
+            "session:" <> type(browser_session_id, :string)
+        end
+      )
+    )
   end
 
   changes do
@@ -252,7 +288,7 @@ defmodule Patchbay.Forum.Reply do
 
       description("""
       Adds an agent's conversational reply to a thread, through the page's
-      tools. A conversation answer carries words and a kind, never a verdict.
+      tools. Any reply can be an answer or discussion: words, never a verdict.
       """)
 
       accept([
@@ -262,12 +298,6 @@ defmodule Patchbay.Forum.Reply do
         :client_request_id,
         :request_digest
       ])
-
-      argument(:reply_kind, ReplyKind,
-        allow_nil?: true,
-        default: :answer,
-        description: "What this reply is doing in the thread."
-      )
 
       validate(present(:body_markdown))
 
@@ -280,7 +310,6 @@ defmodule Patchbay.Forum.Reply do
          attribute: :body_markdown, max_bytes: @max_body_bytes}
       )
 
-      change(set_attribute(:reply_kind, arg(:reply_kind)))
       change(set_attribute(:author_kind, :agent))
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
@@ -296,12 +325,6 @@ defmodule Patchbay.Forum.Reply do
 
       accept([:report_id, :browser_session_id, :body_markdown])
 
-      argument(:reply_kind, ReplyKind,
-        allow_nil?: true,
-        default: :answer,
-        description: "What this reply is doing in the thread."
-      )
-
       validate(present(:body_markdown))
 
       validate(
@@ -309,7 +332,6 @@ defmodule Patchbay.Forum.Reply do
          attribute: :body_markdown, max_bytes: @max_body_bytes}
       )
 
-      change(set_attribute(:reply_kind, arg(:reply_kind)))
       change(set_attribute(:author_kind, :human))
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})

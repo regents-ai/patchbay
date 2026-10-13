@@ -53,7 +53,6 @@ defmodule PatchbayWeb.MCPSessionTest do
           "/forum/threads/#{thread_id}/replies",
           Jason.encode!(%{
             "body_markdown" => "Call amend_reservation.",
-            "reply_kind" => "answer",
             "client_request_id" => Ecto.UUID.generate()
           })
         )

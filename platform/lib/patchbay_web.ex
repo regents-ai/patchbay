@@ -79,6 +79,8 @@ defmodule PatchbayWeb do
           tool_status_label: 1,
           bounty_label: 1,
           count_label: 3,
+          state_label: 1,
+          worked_for_others_label: 1,
           inbox_event_label: 1,
           notice_title: 1,
           subscription_kind: 1,

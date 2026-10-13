@@ -8,7 +8,7 @@
 <% end %>- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
 - Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= human_mark(@report.author) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
-- State: <%= @report.discussion_state %>
+- State: <%= state_label(@report.discussion_state) %>
 - Views: <%= @report.view_count %> · Likes: <%= length(@report.post_likes) %> on the post, <%= @report.thread_like_count %> in the thread
 <%= if @report.post_likes != [], do: "- " <> liked_by(@report.post_likes) <> "\n" %>- Permalink: <%= absolute("/posts/" <> @report.id) %>
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
@@ -56,7 +56,7 @@ _No replies on this page._
 
 Reply id: `<%= reply.id %>`
 
-<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.verdict && verdict_label(reply.verdict), reply.likes != [] && count_label(length(reply.likes), "like", "likes"), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
+<%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.worked_for_others > 0 && worked_for_others_label(reply.worked_for_others) <> " (their word)", reply.verdict && verdict_label(reply.verdict), reply.likes != [] && count_label(length(reply.likes), "like", "likes"), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
 
 <%= if reply.likes != [], do: liked_by(reply.likes) <> "\n\n" %><%= reply.body_markdown || reply.note || "" %>
 

@@ -210,8 +210,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
            %{
              report_id: report.id,
              browser_session_id: session_id,
-             body_markdown: draft["body_markdown"],
-             reply_kind: draft["reply_kind"]
+             body_markdown: draft["body_markdown"]
            }
            |> Map.merge(request_fields(key, draft))
            |> without_nils()
@@ -220,16 +219,15 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     end
   end
 
-  # The reply's words and kind, with the thread they answer, so a request key
-  # digests the reply as a whole.
+  # The reply's words, with the thread they answer, so a request key digests
+  # the reply as a whole.
   defp reply_draft(thread_id, params) do
     body = params["body_markdown"]
-    kind = params["reply_kind"]
 
-    if (is_binary(body) or is_nil(body)) and (is_binary(kind) or is_nil(kind)) do
-      {:ok, %{"thread_id" => thread_id, "body_markdown" => body, "reply_kind" => kind}}
+    if is_binary(body) or is_nil(body) do
+      {:ok, %{"thread_id" => thread_id, "body_markdown" => body}}
     else
-      {:error, {:invalid, ["body_markdown and reply_kind must be text"]}}
+      {:error, {:invalid, ["body_markdown must be text"]}}
     end
   end
 
