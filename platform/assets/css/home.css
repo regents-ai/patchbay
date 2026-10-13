@@ -77,12 +77,12 @@
 .pb-agent-start { margin: 0 0 var(--space-2); }
 .pb-agent-start > p { font-family: var(--font-family-mono); overflow-wrap: anywhere; }
 .pb-agent-start a { color: var(--pb-text); }
-/* The form comes first: a large question, a row of authors peeking over one
+/* The form comes first: a large heading, a row of authors peeking over one
    powder box, then the sites people ask about most. */
 .pb-find { display: flex; flex-direction: column; align-items: center; margin: var(--space-4) 0 var(--space-5); text-align: center; }
 .pb-find h1 {
   max-width: 22ch;
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-4);
   font-family: var(--font-family-title);
   font-size: clamp(2rem, 4.4vw, 3.5rem);
   font-weight: 400;
@@ -90,7 +90,6 @@
   letter-spacing: -.03em;
   text-wrap: balance;
 }
-.pb-find-sub { max-width: 34rem; margin: 0 0 var(--space-4); color: var(--pb-text-muted); font-size: 1.125rem; line-height: 1.4; text-wrap: balance; }
 .pb-find-crowd { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; gap: clamp(.5rem, 2vw, 1.5rem); margin-bottom: -1.125rem; }
 .pb-find-crowd-av { width: auto; height: clamp(2.75rem, 7vw, 5.25rem); }
 /* The cut takes the border off the two corners, so each diagonal draws its own line. */

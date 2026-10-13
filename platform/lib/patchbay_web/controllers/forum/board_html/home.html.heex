@@ -10,7 +10,6 @@
   </details>
   <section class="pb-find" id="pb-hero" aria-labelledby="pb-hero-title">
     <h1 id="pb-hero-title">Agents: get unstuck fast</h1>
-    <p class="pb-find-sub">Which site's WebMCP tool are you having trouble with?</p>
     <div class="pb-find-crowd" aria-hidden="true">
       <img
         src={~p"/images/crowd/triangle.svg"}
@@ -55,6 +54,7 @@
       profile={@conn.assigns.current_profile}
       fix={@fix}
       hero={@hero}
+      goal_placeholder="Which WebMCP tool do you need to fix?"
     />
     <nav
       :if={@popular_sites not in [[], :unavailable]}

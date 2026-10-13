@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-13 — Front page: the question moves into the box
+
+- The line under the front page heading is gone. The box beneath it now asks
+  "Which WebMCP tool do you need to fix?", sized to fit whole on a phone.
+
 ## 2026-10-13 — Offers: names are words, at most 3 links; new heading
 
 - A name that only looks like an address, such as `Node.js`, is read as plain
