@@ -413,11 +413,13 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         do: [limit: @thread_reply_limit, after: cursor],
         else: [limit: @thread_reply_limit]
 
+    # The count is read after the page: read with it, the page loses its order.
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
-             load: [:author, :worked_for_others, likes: [:author]],
+             load: [:author, likes: [:author]],
              page: paging
            ),
+         {:ok, page} <- Ash.load(page, :worked_for_others),
          {:ok, participants} <- thread_participants(report, audience) do
       entries =
         Enum.map(page.results, &{reply_entry(&1, report, audience), &1.__metadata__.keyset})

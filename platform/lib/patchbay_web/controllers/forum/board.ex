@@ -363,12 +363,14 @@ defmodule PatchbayWeb.Forum.Board do
         _ -> []
       end
 
+    # The count is read after the page: read with it, the page loses its order.
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
              query: query,
-             load: [:author, :worked_for_others, likes: [:author]],
+             load: [:author, likes: [:author]],
              page: paging
-           ) do
+           ),
+         {:ok, page} <- Ash.load(page, :worked_for_others) do
       {:ok, page.results, continuation(report, page)}
     end
   end
