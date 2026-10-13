@@ -32,6 +32,11 @@ kill_timeout = "60s"
   # opens it, then "public".
   PATCHBAY_SHOWCASE = "off"
 
+# Read by Fly's own scraper over the private network; never routed publicly.
+[metrics]
+  port = 9091
+  path = "/metrics"
+
 [http_service]
   internal_port = 4000
   force_https = true

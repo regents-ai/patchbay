@@ -83,6 +83,7 @@ defmodule Patchbay.MixProject do
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
+      {:telemetry_metrics_prometheus_core, "~> 1.2"},
       {:telemetry_poller, "~> 1.0"},
       # 3.1.1 has the EEF-CVE-2026-97853 advisory in Decimal.round/3.
       {:decimal, "== 3.1.2"},

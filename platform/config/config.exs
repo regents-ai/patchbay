@@ -122,6 +122,14 @@ config :patchbay, Oban,
   pruner: [max_age: {7, :days}],
   lifeline: [rescue_after: {10, :minutes}]
 
+# Metrics listen on loopback, on a port the system picks, so this site runs
+# beside the others; production names the port Fly reads (config/prod.exs).
+config :patchbay, :metrics_listener, ip: {127, 0, 0, 1}, port: 0
+
+# The engine's memory, run queues and process counts are measured every
+# 10 seconds by telemetry_poller's default poller and exported as `vm.*` metrics.
+config :telemetry_poller, :default, period: 10_000
+
 # Jobs are internal bookkeeping on resources closed to public reads, and skip
 # authorization as Patchbay's other internal reads and writes do.
 config :ash_oban, pro?: false, authorize?: false

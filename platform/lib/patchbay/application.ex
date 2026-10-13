@@ -42,12 +42,19 @@ defmodule Patchbay.Application do
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
-        ]
+        ] ++ metrics()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Patchbay.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Metrics are served beside the site, never by a process that only runs a task.
+  defp metrics do
+    if Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint),
+      do: [PatchbayWeb.Metrics],
+      else: []
   end
 
   # The WebMCP catalog is synced once, at boot.

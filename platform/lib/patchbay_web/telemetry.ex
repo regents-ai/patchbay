@@ -1,4 +1,22 @@
 defmodule PatchbayWeb.Telemetry do
+  @moduledoc """
+  The site's measurements, as `:telemetry` events: the list the developer
+  dashboard draws (`metrics/0`), and their Prometheus export on the private
+  metrics listener (`PatchbayWeb.Metrics`), which Fly Sentinel's site watch
+  reads. The export keeps the names every Regent site shares: Ecto's
+  `[:patchbay, :repo, :query]` (`queue_time` is the wait for a connection),
+  each background job's outcome and time from Oban's own events, each
+  question asked of a model (`[:patchbay, :model_call, :stop]`) by outcome
+  with its tokens and what OpenRouter charged, and the engine's memory, run
+  queues and process counts from telemetry_poller's default poller.
+
+  Beside them are Patchbay's own three: the day's readings of posts reaching
+  half their limit, each post refused because the limit is reached
+  (`Patchbay.Assist.ModelCalls`), and each post turned away whose words
+  were not kept because the day's count of them was reached
+  (`Patchbay.Forum.PostingCheck`).
+  """
+
   use Supervisor
   import Telemetry.Metrics
 
@@ -11,12 +29,94 @@ defmodule PatchbayWeb.Telemetry do
     children = [
       # Telemetry poller will execute the given period measurements
       # every 10_000ms. Learn more here: https://hexdocs.pm/telemetry_metrics
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
-      # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
+      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000},
+      {TelemetryMetricsPrometheus.Core,
+       metrics: prometheus_metrics(), name: prometheus_reporter(), start_async: false}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  def prometheus_reporter, do: :patchbay_prometheus
+
+  # No tag here ever holds a wallet, an account or anything a caller wrote:
+  # only queue and worker names and the fixed outcomes.
+  defp prometheus_metrics do
+    [
+      distribution("health.db_queue.seconds",
+        event_name: [:patchbay, :repo, :query],
+        measurement: :queue_time,
+        unit: {:native, :second},
+        description: "Seconds a query waited for a database connection",
+        reporter_options: [buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]]
+      ),
+      counter("patchbay.jobs.finished.total",
+        event_name: [:oban, :job, :stop],
+        tags: [:queue, :worker, :state],
+        description: "Job runs that ended done, cancelled or snoozed"
+      ),
+      counter("patchbay.jobs.failed.total",
+        event_name: [:oban, :job, :exception],
+        tags: [:queue, :worker, :state],
+        description: "Job runs that failed; state says whether the job will retry"
+      ),
+      distribution("patchbay.jobs.duration.seconds",
+        event_name: [:oban, :job, :stop],
+        measurement: :duration,
+        unit: {:native, :second},
+        tags: [:queue, :worker],
+        reporter_options: [buckets: [0.01, 0.05, 0.1, 0.5, 1, 5, 15, 60]]
+      ),
+      counter("patchbay.jev.questions.total",
+        event_name: [:patchbay, :model_call, :stop],
+        tags: [:outcome],
+        description: "Questions asked of a model, by outcome"
+      ),
+      sum("patchbay.jev.input_tokens.total",
+        event_name: [:patchbay, :model_call, :stop],
+        measurement: :prompt_tokens,
+        description: "Input tokens the questions were billed for"
+      ),
+      sum("patchbay.jev.output_tokens.total",
+        event_name: [:patchbay, :model_call, :stop],
+        measurement: :completion_tokens,
+        description: "Output tokens the questions were billed for"
+      ),
+      # A Prometheus sum adds whole numbers only, so the dollars are a histogram;
+      # its `_sum` series is the running total.
+      distribution("patchbay.jev.cost.usd",
+        event_name: [:patchbay, :model_call, :stop],
+        measurement: :cost_usd,
+        description: "US dollars OpenRouter charged per question",
+        reporter_options: [buckets: [0.00001, 0.0001, 0.001, 0.01, 0.1]]
+      ),
+      counter("patchbay.post_readings.half_spent.total",
+        event_name: [:patchbay, :post_readings, :half_spent],
+        description: "Times the day's readings of posts reached half their limit"
+      ),
+      counter("patchbay.post_readings.day_full.total",
+        event_name: [:patchbay, :post_readings, :day_full],
+        description: "Posts refused because the day's readings were spent"
+      ),
+      counter("patchbay.post_readings.words_not_kept.total",
+        event_name: [:patchbay, :post_readings, :words_not_kept],
+        description: "Posts turned away past the day's count of kept words"
+      ),
+      last_value("vm.memory.total.bytes", event_name: [:vm, :memory], measurement: :total),
+      last_value("vm.memory.processes.bytes",
+        event_name: [:vm, :memory],
+        measurement: :processes
+      ),
+      last_value("vm.memory.binary.bytes", event_name: [:vm, :memory], measurement: :binary),
+      last_value("vm.memory.ets.bytes", event_name: [:vm, :memory], measurement: :ets),
+      last_value("vm.memory.code.bytes", event_name: [:vm, :memory], measurement: :code),
+      last_value("vm.memory.atom.bytes", event_name: [:vm, :memory], measurement: :atom),
+      last_value("vm.total_run_queue_lengths.total"),
+      last_value("vm.total_run_queue_lengths.cpu"),
+      last_value("vm.system_counts.process_count"),
+      last_value("vm.system_counts.atom_count"),
+      last_value("vm.system_counts.port_count")
+    ]
   end
 
   def metrics do

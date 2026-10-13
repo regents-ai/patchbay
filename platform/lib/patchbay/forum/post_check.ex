@@ -28,6 +28,9 @@ defmodule Patchbay.Forum.PostCheck do
 
   alias Patchbay.Forum.Types.PostFinding
 
+  # What counting toward a pause reads of a reading (`counts?/1`).
+  @counted [:profile_id, :rejected, :ruling, :lifted_at, :inserted_at]
+
   postgres do
     table("forum_post_checks")
     repo(Patchbay.Repo)
@@ -136,7 +139,8 @@ defmodule Patchbay.Forum.PostCheck do
       argument(:profile_id, :uuid, allow_nil?: false)
       argument(:since, :utc_datetime_usec, allow_nil?: false)
       filter(expr(profile_id == ^arg(:profile_id) and inserted_at > ^arg(:since)))
-      prepare(build(sort: [inserted_at: :asc, id: :asc]))
+      # Read to count toward a pause, so without the kept words.
+      prepare(build(select: @counted, sort: [inserted_at: :asc, id: :asc]))
     end
 
     read :turned_away do
@@ -150,7 +154,8 @@ defmodule Patchbay.Forum.PostCheck do
       argument(:profile_ids, {:array, :uuid}, allow_nil?: false)
       argument(:since, :utc_datetime_usec, allow_nil?: false)
       filter(expr(rejected and profile_id in ^arg(:profile_ids) and inserted_at > ^arg(:since)))
-      prepare(build(sort: [inserted_at: :asc, id: :asc]))
+      # Read to count toward a pause, so without the kept words.
+      prepare(build(select: @counted, sort: [inserted_at: :asc, id: :asc]))
     end
 
     read :examples do
