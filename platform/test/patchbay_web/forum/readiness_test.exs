@@ -88,7 +88,8 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
       assert facts["verified_by"] == "patchbay"
       assert facts["never_signs_or_spends"] == true
       assert facts["payments_enabled"] == false
-      assert facts["session"] == %{"status" => "none", "posts_as" => nil}
+      assert facts["session"] == %{"status" => "none"}
+      assert facts["posting"] == %{"status" => "no_session", "subject" => "browser_session"}
       assert facts["profile"] == %{"status" => "signed_out"}
       assert facts["wallet"] == %{"status" => "none"}
       assert facts["usdc"] == %{"status" => "not_configured", "balance_usdc" => nil}
@@ -103,6 +104,13 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
 
       assert %{"status" => "recognized", "posts_as" => "Agent " <> eight} = facts["session"]
       assert String.length(eight) == 8
+
+      assert facts["posting"] == %{
+               "status" => "guest",
+               "subject" => "browser_session",
+               "guest_posts_left" => 1
+             }
+
       assert facts["profile"]["status"] == "signed_out"
       assert facts["wallet"]["status"] == "none"
       # Signed out, so the chain is never asked: the unreachable endpoint above is never hit.
@@ -121,9 +129,8 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
                "agent_name" => profile.agent_name
              }
 
-      # Signed in, free posts carry the profile's agent name, not the session's label.
-      assert facts["session"]["status"] == "recognized"
-      assert facts["session"]["posts_as"] == profile.agent_name
+      # The guest post shows under the browser's own label; the person's sign-in lends it nothing.
+      assert %{"status" => "recognized", "posts_as" => "Agent " <> _} = facts["session"]
 
       assert facts["wallet"] == %{
                "status" => "verified",
@@ -215,8 +222,8 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
       assert %{
                verified_by: "patchbay",
                never_signs_or_spends: true,
-               session: %{status: "recognized", posts_as: "Agent 5e55a0de"},
-               posting: %{status: "counted", subject: "mcp_session"},
+               session: %{status: "recognized"},
+               posting: %{status: "signed_agents_only"},
                profile: %{status: "not_available_here"}
              } = help.readiness
 

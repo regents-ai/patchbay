@@ -1,34 +1,33 @@
 defmodule PatchbayWeb.Forum.PostingBudget do
   @moduledoc """
-  How much one poster may post in an hour, and the door every post goes
-  through to be counted against it.
+  How much one poster may post, and the door every post goes through to be
+  counted against it.
 
-  A post by a signed-in account is counted against that account, whichever
-  browser or hosted connection it came from: an account has one share, not
-  one per place it posts from. A post with nobody signed in is counted
-  against its forum session, a browser's signed cookie or a hosted MCP
-  connection's `Mcp-Session-Id`. A new session costs nothing, since every
-  page load or connection is handed one, so a post with nobody signed in is
-  also counted against the address it came from (`PatchbayWeb.ClientAddress`),
-  which has the same hourly share as a session.
+  A post by a signed-in account is counted against that account's hourly
+  share, whichever browser or agent it came from: an account has one share,
+  not one per place it posts from. A post with nobody signed in is a guest
+  post, and a browser gets one of those ever, a question or a reply, counted
+  against its forum session's signed cookie. A new cookie costs nothing, since
+  every page load is handed one, so a guest post is also counted against the
+  address it came from (`PatchbayWeb.ClientAddress`), which may make only so
+  many guest posts in an hour.
 
-  Every door goes through here. An agent posts through the page's tools and a
-  person posts through the form on the report page; both draw on the same
-  share. A share that one door counted and the other did not would be no
-  share at all.
+  Every door goes through here: an agent's signed posts, a page agent's guest
+  post and a person's form all draw on the poster's one share. A share that
+  one door counted and the other did not would be no share at all.
 
   The count and the write happen under one lock per share, inside one
   transaction, so a burst of parallel posts cannot all read the same count and
-  all get through, even when one account sends them from several sessions.
+  all get through, even when one account sends them from several places.
   What each door writes, and under whose name, is the door's own business:
   this module admits a write, it does not shape it.
 
-  The window rolls: a post leaves the count an hour after it was made. The
-  address count is kept in this node's memory instead (`PatchbayWeb.ReadLimit`),
-  in fixed hours, and counts every post it let through to be written.
+  An account's window rolls: a post leaves the count an hour after it was
+  made. The address count is kept in this node's memory instead
+  (`PatchbayWeb.ReadLimit`), in fixed hours, and counts every guest post it
+  let through to be written.
   """
 
-  alias Patchbay.Forum
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
@@ -44,10 +43,10 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   @type kind :: :reports | :replies
 
   @typedoc """
-  What a post is counted against: the signed-in account, or the session and
-  the address it came from.
+  What a refused post was counted against: the signed-in account's hour, or
+  the address a guest post came from.
   """
-  @type counted :: :account | :session | :address
+  @type counted :: :account | :address
 
   @typedoc """
   One share as every door reports it: its size, its window in seconds, what
@@ -66,39 +65,36 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   @type answer :: {:ok, term()} | {:error, term()}
 
   @doc """
-  Runs `write` once the poster is within its hourly share of reports.
+  Runs `write` once the poster is within its share of reports.
 
-  The poster is the signed-in `actor` when there is one, else `session_id`
-  together with `visitor`, the key `PatchbayWeb.ClientAddress.visitor_key/1`
-  gives its address. The answer is the write's own, or
-  `{:error, {:rate_limited, counted, words, seconds}}` when the share is used
-  up, naming what was counted and the seconds until it may post again. A
-  write that fails with an exception is rolled back whole, so a refused
-  report leaves no board or thread behind it.
+  The poster is the signed-in `actor` when there is one, else the guest
+  browser `session_id` together with `visitor`, the key
+  `PatchbayWeb.ClientAddress.visitor_key/1` gives its address. The answer is
+  the write's own; `{:error, {:rate_limited, counted, words, seconds}}` when
+  an hourly share is used up, naming what was counted and the seconds until
+  it may post again; or `{:error, {:sign_in_required, words}}` when the
+  browser has made its one guest post. A write that fails with an exception
+  is rolled back whole, so a refused report leaves no board or thread behind
+  it.
   """
   @spec admit_report(AgentProfile.t() | nil, String.t(), String.t(), (-> answer())) :: answer()
   def admit_report(actor, session_id, visitor, write),
     do: admit(:reports, actor, session_id, visitor, write)
 
-  @doc "Runs `write` once the poster is within its hourly share of replies."
+  @doc "Runs `write` once the poster is within its share of replies."
   @spec admit_reply(AgentProfile.t() | nil, String.t(), String.t(), (-> answer())) :: answer()
   def admit_reply(actor, session_id, visitor, write),
     do: admit(:replies, actor, session_id, visitor, write)
 
-  @doc "What a post by `actor` is counted against."
-  @spec counted_by(AgentProfile.t() | nil) :: counted()
-  def counted_by(%Patchbay.Agents.Actor{}), do: :account
-  def counted_by(%AgentProfile{}), do: :account
-  def counted_by(nil), do: :session
+  @doc "Whether the browser behind `session_id` may still make its one guest post."
+  @spec guest_post_left?(String.t()) :: boolean()
+  def guest_post_left?(session_id), do: not posted_as_guest?(session_id)
 
-  @doc "The poster's share of `kind` as it stands now."
-  @spec share(kind(), AgentProfile.t() | nil, String.t()) :: share()
-  def share(kind, actor, session_id), do: share_of(kind, poster(actor, session_id))
-
-  @doc "The standard rate-limit headers for the poster's share of `kind`."
-  @spec add_headers(Plug.Conn.t(), kind(), AgentProfile.t() | nil, String.t()) :: Plug.Conn.t()
-  def add_headers(conn, kind, actor, session_id) do
-    share = share(kind, actor, session_id)
+  @doc "The standard rate-limit headers for the signed-in account's share of `kind`."
+  @spec add_headers(Plug.Conn.t(), kind(), Patchbay.Agents.Actor.t() | AgentProfile.t()) ::
+          Plug.Conn.t()
+  def add_headers(conn, kind, actor) do
+    share = share_of(kind, poster(actor, nil))
 
     RateLimitHeaders.add(
       conn,
@@ -166,12 +162,12 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   defp lock_key({:account, profile_id}), do: Principal.for_profile(profile_id)
   defp lock_key({:session, session_id}), do: Principal.for_session(session_id)
 
-  defp within_limit(kind, {counted, _id} = poster) do
+  defp within_limit(kind, {:account, _profile_id} = poster) do
     case share_of(kind, poster) do
       %{remaining: 0, limit: limit, retry_after_seconds: seconds} ->
         {:error,
-         {:rate_limited, counted,
-          "#{poster_words(counted)} has already posted #{limit} #{kind} in the past hour. " <>
+         {:rate_limited, :account,
+          "This account has already posted #{limit} #{kind} in the past hour. " <>
             "It can post again in #{wait_words(seconds)}.", seconds}}
 
       _left ->
@@ -179,8 +175,24 @@ defmodule PatchbayWeb.Forum.PostingBudget do
     end
   end
 
-  defp poster_words(:account), do: "This account"
-  defp poster_words(:session), do: "This session"
+  # A question and a reply use up the same one guest post.
+  defp within_limit(_kind, {:session, session_id}) do
+    if posted_as_guest?(session_id),
+      do:
+        {:error,
+         {:sign_in_required,
+          "This browser has already made its one post without signing in. Sign in to keep posting."}},
+      else: :ok
+  end
+
+  defp posted_as_guest?(session_id) do
+    # Quota bookkeeping asks only whether the server-issued session has posted.
+    Enum.any?([Report, Reply], fn resource ->
+      resource
+      |> Ash.Query.for_read(:guest_posts_by_session, %{browser_session_id: session_id})
+      |> Ash.exists?(authorize?: false)
+    end)
+  end
 
   # A signed-in account is one share wherever it posts from, so only a post
   # with nobody signed in is counted against its address.
@@ -206,14 +218,8 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   defp posted_since(:reports, {:account, profile_id}, since),
     do: posted_by_beneficiary(Report, profile_id, since)
 
-  defp posted_since(:reports, {:session, session_id}, since),
-    do: Forum.reports_posted_by_session!(session_id, since)
-
   defp posted_since(:replies, {:account, profile_id}, since),
     do: posted_by_beneficiary(Reply, profile_id, since)
-
-  defp posted_since(:replies, {:session, session_id}, since),
-    do: Forum.replies_posted_by_session!(session_id, since)
 
   defp posted_by_beneficiary(resource, id, since) do
     require Ash.Query
@@ -251,7 +257,7 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   defp wait_words(seconds) when seconds <= 60, do: "a minute"
   defp wait_words(seconds), do: "#{ceil(seconds / 60)} minutes"
 
-  @doc "How many of `kind` one account, or one session with nobody signed in, may post in any hour."
+  @doc "How many of `kind` one signed-in account may post in any hour."
   @spec limit(kind()) :: pos_integer()
   def limit(:reports),
     do: Application.get_env(:patchbay, :forum_reports_per_hour, @default_reports_per_hour)
@@ -259,7 +265,7 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   def limit(:replies),
     do: Application.get_env(:patchbay, :forum_replies_per_hour, @default_replies_per_hour)
 
-  @doc "How many of `kind` one address may post in an hour with nobody signed in."
+  @doc "How many guest posts of `kind` one address may make in an hour."
   @spec address_limit(kind()) :: pos_integer()
   def address_limit(:reports),
     do: Application.get_env(:patchbay, :forum_address_reports_per_hour, @default_reports_per_hour)

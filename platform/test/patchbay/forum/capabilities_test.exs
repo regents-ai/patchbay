@@ -33,7 +33,10 @@ defmodule Patchbay.Forum.CapabilitiesTest do
 
     for tool <- Capabilities.tools() do
       assert is_integer(tool.version) and tool.version >= 1, "#{tool.name} has no version"
-      assert tool.requires in ~w(none paired_agent profile wallet_signed), tool.name
+
+      assert tool.requires in ~w(none browser_session paired_agent profile wallet_signed),
+             tool.name
+
       assert tool.payment in ~w(none moves_usdc holds_credits), tool.name
 
       assert tool.doors["page"] or tool.doors["hosted"] or tool.doors["http"] != [],

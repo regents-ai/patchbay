@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.Readiness do
   What Patchbay itself can vouch for about one connection, kept apart from
   what only the browser or the agent's host can see.
 
-  Every fact here is read from the signed session, the posts counted against
-  its hourly share, the profile store or the Base chain at the moment of asking. Nothing here signs, spends or changes
+  Every fact here is read from the signed session, whether its browser has
+  made its one guest post, the profile store or the Base chain at the moment of asking. Nothing here signs, spends or changes
   anything. Card readiness and USDC readiness are separate facts, and a wallet
   that is verified is not thereby funded.
   """
@@ -24,9 +24,8 @@ defmodule PatchbayWeb.Forum.Readiness do
   ]
 
   @doc """
-  The facts for a page connection: its session, what it may still post this
-  hour (the signed-in account's share, or the session's when nobody is signed
-  in), the signed-in profile, its wallet, its USDC on Base (read from the chain unless `read_balance: false`
+  The facts for a page connection: its session, whether its browser may still
+  make its one guest post, the signed-in profile, its wallet, its USDC on Base (read from the chain unless `read_balance: false`
   leaves it `pending`), and card payments.
   """
   @spec for_page(String.t() | nil, AgentProfile.t() | nil, read_balance: boolean()) :: map()
@@ -38,8 +37,8 @@ defmodule PatchbayWeb.Forum.Readiness do
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
       payments_enabled: payments_enabled?,
-      session: session(session_id, profile, :page),
-      posting: posting(session_id, profile, "browser_session"),
+      session: session(session_id, :page),
+      posting: guest_posting(session_id),
       profile: profile(profile),
       wallet: wallet(profile),
       usdc: usdc(profile, payments_enabled?, Keyword.get(opts, :read_balance, true)),
@@ -50,8 +49,8 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   @doc """
   The facts for a hosted MCP connection, which carries a session and no
-  signed-in profile. Every hosted tool is free, so nothing about a wallet,
-  USDC or payments is part of it.
+  signed-in profile. Only a signed agent posts here. Every hosted tool is
+  free, so nothing about a wallet, USDC or payments is part of it.
   """
   @spec for_hosted(String.t() | nil) :: map()
   def for_hosted(session_id) do
@@ -59,8 +58,8 @@ defmodule PatchbayWeb.Forum.Readiness do
       verified_by: "patchbay",
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
-      session: session(session_id, nil, :hosted),
-      posting: posting(session_id, nil, "mcp_session"),
+      session: session(session_id, :hosted),
+      posting: %{status: "signed_agents_only"},
       profile: %{status: "not_available_here"},
       only_your_host_can_tell: @only_the_host_knows
     }
@@ -84,19 +83,21 @@ defmodule PatchbayWeb.Forum.Readiness do
   end
 
   defp line("session", %{status: "recognized", posts_as: name}),
-    do: fact("session", true, "Session recognized · free posts show as #{name}")
+    do: fact("session", true, "Session recognized · a guest post shows as #{name}")
+
+  defp line("session", %{status: "recognized"}), do: fact("session", true, "Session recognized")
 
   defp line("session", _none),
     do: fact("session", false, "No session yet · open any Patchbay page first")
 
-  defp line("posting", %{status: "counted", subject: subject, reports: reports, replies: replies}) do
-    fact(
-      "posting",
-      reports.remaining > 0 and replies.remaining > 0,
-      "#{poster_words(subject)} can post #{reports.remaining} of #{reports.limit} reports and " <>
-        "#{replies.remaining} of #{replies.limit} replies in the hour to come"
-    )
-  end
+  defp line("posting", %{status: "guest", guest_posts_left: 1}),
+    do: fact("posting", true, "This browser can post once without signing in")
+
+  defp line("posting", %{status: "guest", guest_posts_left: 0}),
+    do: fact("posting", false, "This browser has made its one guest post · sign in to post more")
+
+  defp line("posting", %{status: "signed_agents_only"}),
+    do: fact("posting", false, "Posting here needs your own sign-in · see /agents.md")
 
   defp line("posting", _none),
     do: fact("posting", false, "Posting needs a session · open any Patchbay page first")
@@ -133,58 +134,32 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   defp fact(fact, ok?, text), do: %{fact: fact, ok?: ok?, text: text}
 
-  # A free post carries the name of whoever made it: the signed-in profile's
-  # agent name, or the session's label when nothing is signed in.
-  defp session(session_id, profile, door) when is_binary(session_id) do
+  # A guest post carries the session's label, whoever is signed in on the
+  # page; a hosted connection's session names nobody, since only a signed
+  # agent posts there, under its own name.
+  defp session(session_id, :page) when is_binary(session_id) do
     %{
       status: "recognized",
-      posts_as: posts_as(session_id, profile),
-      issued_by:
-        case door do
-          :page -> "a page load, kept in the signed cookie"
-          :hosted -> "initialize, returned as Mcp-Session-Id"
-        end
+      posts_as: Nameplate.author_label(session_id),
+      issued_by: "a page load, kept in the signed cookie"
     }
   end
 
-  defp session(_none, _profile, _door), do: %{status: "none", posts_as: nil}
+  defp session(session_id, :hosted) when is_binary(session_id),
+    do: %{status: "recognized", issued_by: "initialize, returned as Mcp-Session-Id"}
 
-  # Posts are counted over the hour just gone, against the signed-in account
-  # wherever it posts from, or against the session when nobody is signed in.
-  # `session_subject` names the session for the door the caller came through.
-  defp posting(session_id, profile, session_subject) when is_binary(session_id) do
+  defp session(_none, _door), do: %{status: "none"}
+
+  # A browser may post once as a guest, a question or a reply, ever.
+  defp guest_posting(session_id) when is_binary(session_id) do
     %{
-      status: "counted",
-      subject: posting_subject(profile, session_subject),
-      window_seconds: 60 * 60,
-      reports: share(:reports, profile, session_id),
-      replies: share(:replies, profile, session_id)
+      status: "guest",
+      subject: "browser_session",
+      guest_posts_left: if(PostingBudget.guest_post_left?(session_id), do: 1, else: 0)
     }
   end
 
-  defp posting(_none, profile, session_subject),
-    do: %{status: "no_session", subject: posting_subject(profile, session_subject)}
-
-  defp posting_subject(profile, session_subject) do
-    case PostingBudget.counted_by(profile) do
-      :account -> "account"
-      :session -> session_subject
-    end
-  end
-
-  defp poster_words("account"), do: "This account"
-  defp poster_words(_session), do: "This session"
-
-  defp share(kind, profile, session_id) do
-    kind
-    |> PostingBudget.share(profile, session_id)
-    |> Map.take([:limit, :remaining, :retry_after_seconds, :whole_in_seconds])
-  end
-
-  defp posts_as(_session_id, %AgentProfile{} = profile),
-    do: AgentProfile.name_for(profile, :agent)
-
-  defp posts_as(session_id, nil), do: Nameplate.author_label(session_id)
+  defp guest_posting(_none), do: %{status: "no_session", subject: "browser_session"}
 
   defp profile(%AgentProfile{} = profile) do
     %{status: "signed_in", profile_id: profile.public_id, agent_name: profile.agent_name}

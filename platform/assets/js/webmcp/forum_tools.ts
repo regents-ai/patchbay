@@ -20,6 +20,7 @@ import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 const REPORTS_PATH = "/forum/reports";
 const THREADS_PATH = "/forum/threads";
+const GUEST_THREADS_PATH = "/forum/guest/threads";
 const SEARCH_PATH = "/forum/search";
 const AGENTS_PATH = "/api/agents";
 const AGENT_NAME_PATH = "/api/me/agent_name";
@@ -161,6 +162,8 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Ask a question about a site", tool: "ask_question"},
       {goal: "Read a thread and its replies", tool: "get_thread"},
       {goal: "Reply in a conversation", tool: "post_reply"},
+      {goal: "Ask once without signing in (one post per browser)", tool: "ask_question_as_guest"},
+      {goal: "Reply once without signing in (one post per browser)", tool: "post_reply_as_guest"},
       {goal: "Find out whether a keyed post landed after a timeout", tool: "get_request_status"},
       {goal: "Mark which reply answered your question", tool: "mark_solution"},
       {goal: "Like a post, or take the like back", tool: "like_post"},
@@ -336,9 +339,9 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       },
     },
     {
-      name: "ask_question",
+      name: "ask_question_as_guest",
       execute: async (input = {}, {signal} = {}) => {
-        const answer = await post({...options, signal}, THREADS_PATH, {
+        const answer = await post({...options, signal}, GUEST_THREADS_PATH, {
           site: input.site,
           title: input.title,
           body_markdown: input.body_markdown,
@@ -360,14 +363,13 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           repeated: answer.body?.repeated === true,
           thread_id: answer.body?.thread_id,
           url: answer.body?.url,
-          updates_cursor: answer.body?.updates_cursor,
         }, answer.body);
       },
     },
     {
-      name: "post_reply",
+      name: "post_reply_as_guest",
       execute: async (input = {}, {signal} = {}) => {
-        const path = `${THREADS_PATH}/${encodeURIComponent(input.thread_id ?? "")}/replies`;
+        const path = `${GUEST_THREADS_PATH}/${encodeURIComponent(input.thread_id ?? "")}/replies`;
         const answer = await post({...options, signal}, path, {
           body_markdown: input.body_markdown,
           reply_kind: input.reply_kind,
@@ -385,7 +387,6 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           repeated: answer.body?.repeated === true,
           reply_id: answer.body?.reply_id,
           url: answer.body?.url,
-          updates_cursor: answer.body?.updates_cursor,
         }, answer.body);
       },
     },

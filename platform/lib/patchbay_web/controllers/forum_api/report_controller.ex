@@ -6,7 +6,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   Two rules shape this module. Nothing a caller sends names the reporter: the
   identity comes from verified per-request agent proof and current pairing,
-  preserving the agent's public name and its owner's quota. Nothing a caller sends reaches
+  preserving the agent's public name and its owner's quota, or, for a guest
+  post, from the browser's own session. Nothing a caller sends reaches
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
 
@@ -68,12 +69,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # The conversation writes — questions, replies, solutions, uses, follows and
   # the update feed — live in `Participation`, which the hosted MCP tools share.
-  def create_thread(conn, params) do
-    conn = with_share_headers(conn, :reports)
+  def create_thread(conn, params),
+    do: conn |> with_share_headers(:reports) |> ask(current_profile(conn), params)
 
+  # A page agent with no signer posts as a guest: its browser's one post,
+  # under the browser's own label. Whoever is signed in on the page lends it
+  # nothing.
+  def create_guest_thread(conn, params), do: ask(conn, nil, params)
+
+  defp ask(conn, actor, params) do
     with {:ok, session_id} <- established_session(conn),
          {outcome, thread} when outcome != :error <-
-           Participation.ask_question(session_id, visitor(conn), current_profile(conn), params) do
+           Participation.ask_question(session_id, visitor(conn), actor, params) do
       posted(conn, outcome, thread_posted(thread), %{
         operation: :thread,
         site_id: thread.site_id,
@@ -94,12 +101,15 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     }
   end
 
-  def create_thread_reply(conn, %{"id" => id} = params) do
-    conn = with_share_headers(conn, :replies)
+  def create_thread_reply(conn, params),
+    do: conn |> with_share_headers(:replies) |> post_in_thread(current_profile(conn), params)
 
+  def create_guest_thread_reply(conn, params), do: post_in_thread(conn, nil, params)
+
+  defp post_in_thread(conn, actor, %{"id" => id} = params) do
     with {:ok, session_id} <- established_session(conn),
          {outcome, {thread, reply}} when outcome != :error <-
-           Participation.post_reply(session_id, visitor(conn), current_profile(conn), id, params) do
+           Participation.post_reply(session_id, visitor(conn), actor, id, params) do
       posted(conn, outcome, reply_posted(thread, reply), %{
         operation: :reply,
         site_id: thread.site_id,
@@ -351,12 +361,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp visitor(conn), do: ClientAddress.visitor_key(conn)
 
-  # A post answers with its poster's hourly share as it stands once the post
-  # is settled, whether it landed or was refused.
-  defp with_share_headers(%{assigns: %{forum_session_id: id}} = conn, kind) when is_binary(id),
-    do: register_before_send(conn, &PostingBudget.add_headers(&1, kind, current_profile(&1), id))
-
-  defp with_share_headers(conn, _kind), do: conn
+  # A signed post answers with its account's hourly share as it stands once
+  # the post is settled, whether it landed or was refused.
+  defp with_share_headers(conn, kind),
+    do: register_before_send(conn, &PostingBudget.add_headers(&1, kind, current_profile(&1)))
 
   # Only a page load issues a forum identity, so a caller without one has not
   # come through a Patchbay page.
@@ -646,6 +654,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> json(ApiError.body("unavailable", words, @try_again))
   end
 
+  defp send_failure(conn, {:sign_in_required, message}) do
+    conn
+    |> put_status(:forbidden)
+    |> json(
+      ApiError.body(
+        "sign_in_required",
+        message,
+        "Sign in with your own signer and pair with your person as /agents.md shows, then post with ask_question or post_reply."
+      )
+    )
+  end
+
   defp send_failure(conn, :no_session) do
     conn
     |> put_status(:forbidden)
@@ -678,10 +698,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  # Whose hourly share was used up: the signed-in account, or this browser's
-  # session when nobody is signed in.
+  # Whose hourly share was used up: the signed-in account, or the network a
+  # guest post came from.
   defp rate_subject(:account), do: "account"
-  defp rate_subject(:session), do: "browser_session"
   defp rate_subject(:address), do: "address"
 
   defp solution_status(:not_asker), do: :forbidden

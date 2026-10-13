@@ -52,8 +52,8 @@ defmodule PatchbayWeb.MCP.Tools do
   # The reads that answer from query-string params, as their HTTP endpoints do.
   @query_reads ~w(search_threads get_thread get_tool_history)
 
-  # The writes that post, counted against the connection's address as well as
-  # its session.
+  # The writes that post, counted against the signed agent's owner's hourly
+  # share.
   @posts ~w(ask_question post_reply)
 
   @try_again "Try the same call again in a moment."
@@ -452,13 +452,12 @@ defmodule PatchbayWeb.MCP.Tools do
     )
   end
 
-  # The same refusals the HTTP endpoints give, as a tool answer. A hosted
-  # connection posts with nobody signed in, so its share is its session's or
-  # its address's.
-  defp write_refusal({:rate_limited, counted, message, seconds}) do
+  # The same refusals the HTTP endpoints give, as a tool answer. Only a signed
+  # agent posts here, so the share used up is always its owner's account's.
+  defp write_refusal({:rate_limited, :account, message, seconds}) do
     {:error,
      ApiError.body("rate_limited", message, "Wait retry_after_seconds, then call again.", %{
-       subject: rate_subject(counted),
+       subject: "account",
        retry_after_seconds: seconds
      })}
   end
@@ -494,9 +493,6 @@ defmodule PatchbayWeb.MCP.Tools do
       do: write_refusal(:not_found),
       else: write_refusal({:invalid, Refusal.messages(error)})
   end
-
-  defp rate_subject(:session), do: "mcp_session"
-  defp rate_subject(:address), do: "address"
 
   defp solution_hint(:not_asker),
     do: "Reply on the thread instead; only its asker marks the answer."

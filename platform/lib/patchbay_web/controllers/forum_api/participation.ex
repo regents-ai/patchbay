@@ -52,7 +52,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
   def ask_question(session_id, visitor, actor, params) do
     with {:ok, draft} <- thread_draft(params),
-         {:ok, key} <- request_key(params) do
+         {:ok, key} <- request_key(params),
+         :new <- repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
       admitted =
         PostingBudget.admit_report(actor, session_id, visitor, fn ->
           open_or_repeat(session_id, actor, draft, key)
@@ -88,9 +89,11 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   end
 
   # The write a key already stands for, if any: the same words again is the
-  # original answer, different words under the same key is a refusal. The
-  # lookup runs inside the admitted transaction, under the share's lock,
-  # so two copies of one request sent at once cannot both write.
+  # original answer, different words under the same key is a refusal. It is
+  # asked before the share is counted, so sending a post again never uses up
+  # a share or a browser's one guest post, and again inside the admitted
+  # transaction, under the share's lock, so two copies of one request sent at
+  # once cannot both write.
   defp repeated(nil, _draft, _lookup), do: :new
 
   defp repeated(_key, draft, lookup) do
@@ -171,11 +174,19 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
   def post_reply(session_id, visitor, actor, thread_id, params) do
     with {:ok, draft} <- reply_draft(thread_id, params),
-         {:ok, key} <- request_key(params) do
+         {:ok, key} <- request_key(params),
+         :new <- replied_before(session_id, thread_id, draft, key) do
       PostingBudget.admit_reply(actor, session_id, visitor, fn ->
         reply_or_repeat(session_id, actor, thread_id, draft, key)
       end)
     end
+  end
+
+  defp replied_before(session_id, thread_id, draft, key) do
+    with {:repeated, reply} <-
+           repeated(key, draft, fn -> Forum.get_reply_for_request(session_id, key) end),
+         {:ok, report} <- Reads.fetch_report(thread_id),
+         do: {:repeated, {report, reply}}
   end
 
   defp reply_or_repeat(session_id, actor, thread_id, draft, key) do

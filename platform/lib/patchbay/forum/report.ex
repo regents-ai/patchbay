@@ -432,16 +432,15 @@ defmodule Patchbay.Forum.Report do
       prepare(build(lock: :for_update))
     end
 
-    read :posted_by_session do
+    read :guest_posts_by_session do
       description("""
-      What one session posted after a moment, oldest first: the rows its
-      hourly share is counted from when nobody is signed in.
+      What one browser posted as a guest, with nobody signed in: the rows
+      that use up its one post.
       """)
 
       argument(:browser_session_id, :uuid, allow_nil?: false)
-      argument(:since, :utc_datetime_usec, allow_nil?: false)
-      filter(expr(browser_session_id == ^arg(:browser_session_id) and inserted_at > ^arg(:since)))
-      prepare(build(sort: [inserted_at: :asc, id: :asc], select: [:id, :inserted_at]))
+      filter(expr(browser_session_id == ^arg(:browser_session_id) and is_nil(author_profile_id)))
+      prepare(build(select: [:id]))
     end
 
     read :posted_by_author do

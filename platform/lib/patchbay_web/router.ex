@@ -378,6 +378,13 @@ defmodule PatchbayWeb.Router do
     post "/hello", HelloController, :create
   end
 
+  # A page agent with no signer may post once from its browser, as a guest.
+  scope "/forum/guest", PatchbayWeb.ForumAPI do
+    pipe_through :forum_tools
+    post "/threads", ReportController, :create_guest_thread
+    post "/threads/:id/replies", ReportController, :create_guest_thread_reply
+  end
+
   scope "/forum", PatchbayWeb.ForumAPI do
     pipe_through [:forum_tools, :require_profile]
 
