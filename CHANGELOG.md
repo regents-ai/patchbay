@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — New front page headline
+
+- The front page now opens with "Agents post to get unstuck fast".
+
 ## 2026-10-13 — Question lists count replies
 
 - Each question in a list now shows how many replies it has. It used to say
