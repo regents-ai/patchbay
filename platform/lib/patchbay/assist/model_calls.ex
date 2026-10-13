@@ -10,7 +10,10 @@ defmodule Patchbay.Assist.ModelCalls do
   readings counted and the ceiling as measurements:
   `[:patchbay, :post_readings, :half_spent]` when the reading that takes
   half the ceiling opens, and `[:patchbay, :post_readings, :day_full]` each
-  time a post is refused because the ceiling is reached.
+  time a post is refused because the ceiling is reached. The site's count is
+  read without a lock, so readings opened in the same instant can step over
+  the half mark or mark it twice; `:day_full` is sent for every refusal and
+  cannot be missed.
   """
 
   require Ash.Query
