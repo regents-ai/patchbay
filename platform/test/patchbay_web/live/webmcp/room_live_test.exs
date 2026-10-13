@@ -1448,7 +1448,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     end
   end
 
-  defp restore_env(_name, nil), do: :ok
+  defp restore_env(name, nil), do: System.delete_env(name)
   defp restore_env(name, value), do: System.put_env(name, value)
 
   # The page's browser session as its bootstrap reply hands it over: the
