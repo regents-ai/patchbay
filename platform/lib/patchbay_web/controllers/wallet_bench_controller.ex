@@ -9,14 +9,14 @@ defmodule PatchbayWeb.WalletBenchController do
   use PatchbayWeb, :controller
 
   alias Patchbay.WalletBench
-  alias Patchbay.WalletBench.Cohorts
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Sets
   alias PatchbayWeb.Forum.NotFoundError
 
   def index(conn, params) do
     test = Map.get(params, "test", hd(Matrix.grids()))
     unless test in Matrix.grids(), do: raise(NotFoundError)
-    filters = Map.take(params, Cohorts.filters())
+    filters = Map.take(params, Sets.filters())
     {:ok, matrix} = Matrix.read(filters)
 
     Enum.each(filters, fn {key, id} ->
@@ -39,18 +39,20 @@ defmodule PatchbayWeb.WalletBenchController do
     {:ok, notes} = WalletBench.list_notes()
     {:ok, fixed} = WalletBench.list_fixed()
     {:ok, results} = WalletBench.pair_results(harness_id, wallet_id)
+    {:ok, summaries} = WalletBench.pair_sets(harness_id, wallet_id)
     {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
-    cohorts = Cohorts.groups(results)
-    selection = Map.take(params, ~w(cohort baseline compare))
+    sets = Sets.build(results, summaries)
+    selection = Map.take(params, ~w(set baseline compare))
 
     Enum.each(selection, fn {_key, id} ->
-      unless id == "" or Enum.any?(cohorts, &(&1.id == id)), do: raise(NotFoundError)
+      unless id == "" or Enum.any?(sets, &(&1.id == id)), do: raise(NotFoundError)
     end)
 
-    comparison = Cohorts.compare(cohorts, selection["baseline"], selection["compare"], checks)
+    comparison = Sets.compare(sets, selection["baseline"], selection["compare"], checks)
 
     stopped = Matrix.stopped_at(results)
-    results = in_cohort(results, cohorts, selection["cohort"])
+    shown = Enum.find(sets, &(&1.id == selection["set"]))
+    results = in_set(results, shown)
 
     checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
 
@@ -73,12 +75,13 @@ defmodule PatchbayWeb.WalletBenchController do
       wallet: wallet,
       notes: Matrix.notes(notes),
       grids: grids,
-      cohorts: cohorts,
+      sets: sets,
+      shown: shown,
       selection: selection,
       comparison: comparison,
       test: test,
       context: context,
-      filters: Map.take(context, Cohorts.filters())
+      filters: Map.take(context, Sets.filters())
     )
   end
 
@@ -90,16 +93,15 @@ defmodule PatchbayWeb.WalletBenchController do
     {harness, wallet}
   end
 
-  defp in_cohort(results, _cohorts, cohort) when cohort in [nil, ""], do: results
+  # A chosen set narrows its own test to its runs; the other test keeps all of its runs.
+  defp in_set(results, nil), do: results
 
-  defp in_cohort(results, cohorts, cohort) do
-    runs = cohorts |> Enum.find(%{runs: []}, &(&1.id == cohort)) |> Map.fetch!(:runs)
-    Enum.filter(results, &(&1 in runs))
-  end
+  defp in_set(results, set),
+    do: Enum.filter(results, &(&1.grid != set.grid or &1.set_id == set.id))
 
   defp bench_context(params) do
     test = Map.get(params, "test", hd(Matrix.grids()))
     unless test in Matrix.grids(), do: raise(NotFoundError)
-    Map.take(params, ["test" | Cohorts.filters()]) |> Map.put("test", test)
+    Map.take(params, ["test" | Sets.filters()]) |> Map.put("test", test)
   end
 end

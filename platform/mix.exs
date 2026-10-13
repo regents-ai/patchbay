@@ -204,8 +204,9 @@ defmodule Patchbay.MixProject do
         # three required compile connections to the previous 59-connection budget;
         # the saved-errors page's admin check (a router plug and mount hook) adds one.
         # The moderator check depends on no other Patchbay module, so the Offers
-        # and Credits help policies that name it add none.
-        "xref graph --label compile-connected --fail-above 60",
+        # and Credits help policies that name it add none. The bench's set
+        # summaries are one more resource its domain must name, which adds one.
+        "xref graph --label compile-connected --fail-above 61",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",

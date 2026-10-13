@@ -1,8 +1,11 @@
 # <%= line(@harness.name) %> with <%= line(@wallet.name) %>
 
 Roster versions are last seen; each run records the versions actually tested. Unknown means not recorded.
-<%= if @selection["cohort"] not in [nil, ""] do %>
-Selected group: <%= line(Cohorts.label(Enum.find(@cohorts, &(&1.id == @selection["cohort"])))) %>
+
+<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %><%= if @shown do %>
+Selected set: <%= line(Sets.label(@shown)) %>
+<%= for {label, value} <- set_facts(@shown.summary) do %>
+- <%= label %>: <%= value %><% end %>
 <% end %>
 <%= if @comparison do %>
 ## Version comparison
@@ -10,18 +13,19 @@ Selected group: <%= line(Cohorts.label(Enum.find(@cohorts, &(&1.id == @selection
 <%= line(@comparison.verdict) %>
 <%= if @comparison.missing != [], do: "Not recorded: " <> Enum.join(@comparison.missing, ", ") <> ".\n" %>
 <%= for change <- @comparison.differences do %>
-- <%= change.key %>: <%= line(Cohorts.display(change.before)) %> → <%= line(Cohorts.display(change.after)) %><% end %>
+- <%= change.key %>: <%= line(Sets.display(change.before)) %> → <%= line(Sets.display(change.after)) %><% end %>
 <%= for {title, group} <- [{"Baseline", @comparison.baseline}, {"Compared", @comparison.compared}] do %>
 ### <%= title %>
 
-<%= line(Cohorts.label(group)) %> · <%= length(group.runs) %> completed runs
+<%= line(Sets.label(group)) %>
+<%= for {label, value} <- set_facts(group.summary) do %>
+- <%= label %>: <%= value %><% end %>
 <%= for outcome <- outcomes(), Map.has_key?(group.outcomes, outcome) do %>
 - <%= outcome %>: <%= group.outcomes[outcome] %> of <%= length(group.runs) %><% end %>
 <%= for criterion <- group.criteria do %>
 - <%= line(criterion.name) %>: <%= criterion.held %> of <%= criterion.runs %> held; <%= criterion.checked %> checked<% end %>
 <% end %><% end %>
 
-<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %>
 <%= for grid <- @grids do %>
 ## <%= grid_title(grid.grid) %>
 <%= for fixed <- grid.fixed do %>
@@ -31,7 +35,7 @@ Selected group: <%= line(Cohorts.label(Enum.find(@cohorts, &(&1.id == @selection
 
 <%= if !steps?(run) && plain_file(run.plain_file), do: "- " <> line(run.plain_file) <> "\n" %>- Finished: <%= stamp(run.finished_at) %>
 - Run on techtree.sh: <%= run.run_url %>
-<%= for {label, value} <- versions(run.versions) do %>- <%= label %>: <%= line(value) %>
+<%= for {label, value} <- versions(run) do %>- <%= label %>: <%= line(value) %>
 <% end %><%= if steps?(run) do %>
 Steps, in order; the result is <%= line(deciding_step(run).name) %>'s:
 <%= for step <- run.turns do %>

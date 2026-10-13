@@ -16,6 +16,11 @@ defmodule Patchbay.WalletBench do
       define(:pair_results, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 
+    resource Patchbay.WalletBench.SetSummary do
+      define(:list_sets, action: :read)
+      define(:pair_sets, action: :for_pair, args: [:harness_id, :wallet_id])
+    end
+
     resource Patchbay.WalletBench.Check do
       define(:list_checks, action: :read)
       define(:pair_checks, action: :for_pair, args: [:harness_id, :wallet_id])

@@ -4,6 +4,8 @@ defmodule Patchbay.WalletBench.Result do
   wallet), as Techtree ruled it. Runs are numbered in the order they finished.
   A run's steps are listed in order, and `decided_by` names the step whose
   ruling is the run's result: a safety failure in any step, otherwise the last.
+  `set_id` names the set Techtree put the run in, and `set_versions` is what
+  every run of that set shares.
   """
 
   use Ash.Resource,
@@ -51,6 +53,8 @@ defmodule Patchbay.WalletBench.Result do
     attribute(:turns, {:array, Patchbay.WalletBench.Turn}, allow_nil?: false, public?: true)
     attribute(:run_url, :string, allow_nil?: false, public?: true)
     attribute(:versions, :map, public?: true)
+    attribute(:set_versions, :map, allow_nil?: false, public?: true)
+    attribute(:set_id, :string, allow_nil?: false, public?: true)
     attribute(:finished_at, :utc_datetime_usec, allow_nil?: false, public?: true)
   end
 end

@@ -3,7 +3,7 @@ defmodule PatchbayWeb.WalletBenchMD do
 
   use PatchbayWeb, :md
 
-  alias Patchbay.WalletBench.Cohorts
+  alias Patchbay.WalletBench.Sets
 
   import PatchbayWeb.WalletBenchHTML,
     only: [
@@ -13,6 +13,7 @@ defmodule PatchbayWeb.WalletBenchMD do
       outcomes: 0,
       check_said: 1,
       versions: 1,
+      set_facts: 1,
       steps?: 1,
       deciding_step: 1,
       plain_file: 1
@@ -38,9 +39,9 @@ defmodule PatchbayWeb.WalletBenchMD do
     Enum.join([head, rule | body], "\n")
   end
 
-  defp cell(_notes, %{runs: 0, fixed: [], stopped: %{cohort_id: id}}, h, w),
+  defp cell(_notes, %{runs: 0, fixed: [], stopped: %{set_id: id}}, h, w),
     do:
-      "stopped at install ([runs](/wallet-bench/#{h.id}/#{w.id}?test=install&cohort=#{id}#install))"
+      "stopped at install ([runs](/wallet-bench/#{h.id}/#{w.id}?test=install&set=#{id}#install))"
 
   defp cell(_notes, %{runs: 0, fixed: []}, _h, _w), do: "not tested yet"
 

@@ -37,7 +37,7 @@
       <a href={~p"/wallet-bench?test=#{@test.grid}"}>Reset</a>
     </form>
     <p class="patchbay-muted">
-      Each square shows its latest exact version group. Open it for older runs and comparisons.
+      Each square shows the pair's current set: its newest runs that share every recorded version and setting. Open it for older sets and comparisons.
     </p>
 
     <div class="pb-wb-board-head">
@@ -104,7 +104,7 @@
       <article class="pb-wb-card" aria-labelledby="pb-wb-key-title">
         <h2 id="pb-wb-key-title">Reading a dot</h2>
         <p>
-          A dot shows how often the check held within the selected version group. Different releases and contexts are kept apart.
+          A dot shows how often the check held within the set shown. Different releases and settings are kept apart.
         </p>
         <ul class="pb-wb-legend">
           <li :for={{tone, label} <- dot_key()}>

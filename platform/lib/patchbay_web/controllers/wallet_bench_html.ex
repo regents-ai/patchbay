@@ -14,8 +14,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
 
   import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
-  alias Patchbay.WalletBench.Cohorts
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Sets
 
   embed_templates("wallet_bench_html/*")
 
@@ -212,21 +212,16 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def plain_file(value) when value in [nil, ""], do: nil
   def plain_file(value), do: value
 
-  @doc "What a run's versions record, in a fixed order, skipping what was not recorded."
-  def versions(nil), do: versions(%{})
-
-  def versions(versions) do
+  @doc """
+  What a run's versions record, in a fixed order, skipping what was not
+  recorded. They are its set's, as Techtree settled them, with the run's own
+  batch.
+  """
+  def versions(run) do
     versions =
-      cond do
-        versions["wallet_verified"] == false ->
-          Map.put(versions, "wallet", "Unknown (release verification failed)")
-
-        not Cohorts.wallet_release?(versions["wallet"]) ->
-          Map.put(versions, "wallet", "Unknown (not a recorded release)")
-
-        true ->
-          versions
-      end
+      run.set_versions
+      |> Map.put("batch", (run.versions || %{})["batch"])
+      |> Map.update!("wallet", &(&1 || "Unknown (no verified release recorded)"))
 
     for {key, label} <- [
           {"harness", "Agent"},
@@ -247,7 +242,61 @@ defmodule PatchbayWeb.WalletBenchHTML do
         value <-
           [Map.get(versions, key, if(key in ~w(protocol access), do: "Unknown (not recorded)"))],
         value not in [nil, ""],
-        do: {label, Cohorts.display(value)}
+        do: {label, Sets.display(value)}
+  end
+
+  @doc """
+  Techtree's summary of a set in words: how many runs succeeded, what a
+  success cost and how long it took, and how a success is proven.
+  """
+  def set_facts(summary) do
+    [
+      {"Succeeded", succeeded(summary)},
+      {"Cost per success", per_success(summary, summary.cost_per_success_usd, &dollars/1)},
+      {"Time per success", per_success(summary, summary.seconds_per_success, &duration/1)},
+      {"A success is proven by", proof(summary.proof_kind)}
+    ]
+  end
+
+  defp succeeded(%{caveat_runs: 0} = summary),
+    do: "#{summary.successes} of #{count(summary.runs, "run")}"
+
+  defp succeeded(summary),
+    do: "#{succeeded(%{summary | caveat_runs: 0})}, #{summary.caveat_runs} with a caveat"
+
+  defp per_success(%{successes: 0}, _value, _said), do: "No success yet"
+  defp per_success(_summary, nil, _said), do: "Not recorded"
+  defp per_success(_summary, value, said), do: said.(value)
+
+  # Whole cents where that says it all, and up to four places for less.
+  defp dollars(amount) do
+    amount = Decimal.normalize(amount)
+    amount = if Decimal.scale(amount) < 2, do: Decimal.round(amount, 2), else: amount
+    "$" <> Decimal.to_string(amount, :normal)
+  end
+
+  defp duration(seconds) do
+    case seconds |> Decimal.round() |> Decimal.to_integer() do
+      seconds when seconds < 60 -> "#{seconds} s"
+      seconds -> "#{div(seconds, 60)} min #{rem(seconds, 60)} s"
+    end
+  end
+
+  defp proof("signature_checked"), do: "A checked signature"
+  defp proof("payment_read_from_base"), do: "The payment, read from Base"
+  defp proof("judge_only"), do: "The judge’s reading of the run"
+
+  @doc "A set's summary as a short list of facts."
+  attr(:summary, :map, required: true)
+
+  def facts(assigns) do
+    ~H"""
+    <div class="patchbay-facts pb-wb-set-facts">
+      <div :for={{label, value} <- set_facts(@summary)}>
+        <span>{label}</span><strong>{value}</strong>
+      </div>
+    </div>
+    """
   end
 
   @doc "One outcome as a coloured chip."
@@ -337,14 +386,14 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:filters, :map, default: %{})
 
   def square(assigns) do
-    {grid, cohort_id} =
+    {grid, set_id} =
       case assigns.square do
-        %{stopped: %{cohort_id: cohort_id}} -> {"install", cohort_id}
-        square -> {assigns.grid, square.cohort_id}
+        %{stopped: %{set_id: set_id}} -> {"install", set_id}
+        square -> {assigns.grid, square.set_id}
       end
 
     params = Map.put(assigns.filters, "test", grid)
-    params = if cohort_id, do: Map.put(params, "cohort", cohort_id), else: params
+    params = if set_id, do: Map.put(params, "set", set_id), else: params
 
     assigns = assign(assigns, params: params, anchor: grid)
 
@@ -358,9 +407,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
       <span :if={@square.runs > 0} class="pb-wb-dots" aria-hidden="true">
         <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.runs)]}></span>
       </span>
-      <span :if={@square.runs > 0} class="pb-wb-group-count">{count(@square.runs, "run")} · {count(
-        @square.cohort_count,
-        "group"
+      <span :if={@square.runs > 0} class="pb-wb-set-count">{count(@square.runs, "run")} · {count(
+        @square.set_count,
+        "set"
       )}</span>
       <span
         :for={outcome <- fixed_outcomes(@square)}
@@ -402,7 +451,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:wallet, :map, required: true)
   attr(:notes, :map, required: true)
   attr(:grids, :list, required: true)
-  attr(:cohorts, :list, default: [])
+  attr(:sets, :list, default: [])
+  attr(:shown, :map, default: nil)
   attr(:selection, :map, default: %{})
   attr(:comparison, :map, default: nil)
   attr(:context, :map, default: %{})
@@ -410,10 +460,10 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def pair_detail(assigns) do
     ~H"""
     <div id="pb-wb-pair" class="pb-wb-pair">
-      <section :if={@cohorts != []} class="pb-sheet-section" id="versions">
-        <h2>Versions &amp; comparisons</h2>
+      <section :if={@sets != []} class="pb-sheet-section" id="versions">
+        <h2>Sets &amp; comparisons</h2>
         <p class="patchbay-muted">
-          Runs are grouped by their recorded versions and test context. Unknown means it was not recorded.
+          A set is the runs that share every recorded version and setting. Unknown means it was not recorded.
         </p>
         <form
           method="get"
@@ -422,50 +472,39 @@ defmodule PatchbayWeb.WalletBenchHTML do
         >
           <input :for={{key, value} <- @context} type="hidden" name={key} value={value} />
           <label>
-            Version group
-            <select name="cohort" aria-label="Version group">
-              <option value="">All historical runs</option>
-              <option
-                :for={group <- @cohorts}
-                value={group.id}
-                selected={@selection["cohort"] == group.id}
-              >
-                {Cohorts.label(group)}
+            Set
+            <select name="set" aria-label="Set">
+              <option value="">All runs</option>
+              <option :for={set <- @sets} value={set.id} selected={@selection["set"] == set.id}>
+                {Sets.label(set)}
               </option>
             </select>
           </label>
           <button class="rg-button rg-button--secondary" type="submit"><span class="rg-button__label">Show runs</span></button>
         </form>
+        <.facts :if={@shown} summary={@shown.summary} />
         <form
           method="get"
           action={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}"}
           class="pb-wb-version-form"
         >
           <input :for={{key, value} <- @context} type="hidden" name={key} value={value} />
-          <input :if={@selection["cohort"]} type="hidden" name="cohort" value={@selection["cohort"]} />
+          <input :if={@selection["set"]} type="hidden" name="set" value={@selection["set"]} />
           <label>
             Baseline
             <select name="baseline" aria-label="Baseline" required>
-              <option value="">Choose a group</option>
-              <option
-                :for={group <- @cohorts}
-                value={group.id}
-                selected={@selection["baseline"] == group.id}
-              >
-                {Cohorts.label(group)}
+              <option value="">Choose a set</option>
+              <option :for={set <- @sets} value={set.id} selected={@selection["baseline"] == set.id}>
+                {Sets.label(set)}
               </option>
             </select>
           </label>
           <label>
             Compare with
             <select name="compare" aria-label="Compare with" required>
-              <option value="">Choose a group</option>
-              <option
-                :for={group <- @cohorts}
-                value={group.id}
-                selected={@selection["compare"] == group.id}
-              >
-                {Cohorts.label(group)}
+              <option value="">Choose a set</option>
+              <option :for={set <- @sets} value={set.id} selected={@selection["compare"] == set.id}>
+                {Sets.label(set)}
               </option>
             </select>
           </label>
@@ -479,7 +518,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
           <dl :if={@comparison.differences != []} class="patchbay-facts">
             <div :for={change <- @comparison.differences}>
               <dt>{change.key}</dt><dd>
-                {Cohorts.display(change.before)} → {Cohorts.display(change.after)}
+                {Sets.display(change.before)} → {Sets.display(change.after)}
               </dd>
             </div>
           </dl>
@@ -494,8 +533,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
               class="pb-wb-comparison-card"
             >
               <h3>{title}</h3>
-              <p>{Cohorts.label(group)}</p>
-              <p>{length(group.runs)} completed runs</p>
+              <p>{Sets.label(group)}</p>
+              <.facts summary={group.summary} />
               <ul>
                 <li :for={outcome <- outcomes()} :if={Map.has_key?(group.outcomes, outcome)}>
                   <.chip notes={@notes} outcome={outcome} /> {group.outcomes[outcome]} of {length(
@@ -580,12 +619,12 @@ defmodule PatchbayWeb.WalletBenchHTML do
               </li>
             </ul>
             <Regent.Primitives.disclosure
-              :if={versions(run.versions) != []}
+              :if={versions(run) != []}
               id={"pb-wb-versions-" <> run.attempt_id <> "-" <> grid.grid}
               summary="Versions"
             >
               <div class="patchbay-facts">
-                <div :for={{label, value} <- versions(run.versions)}>
+                <div :for={{label, value} <- versions(run)}>
                   <span>{label}</span><code>{value}</code>
                 </div>
               </div>

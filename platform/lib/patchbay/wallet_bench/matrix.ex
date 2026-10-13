@@ -2,8 +2,9 @@ defmodule Patchbay.WalletBench.Matrix do
   @moduledoc """
   The bench's two grids, agents by wallets, built from what Techtree publishes.
 
-  Each square holds its latest exact recorded version group's outcomes, counted separately (two
-  passes and an inconclusive run stay two and one, never one verdict), the
+  Each square holds the outcomes of the pair's current set, the one Techtree
+  marks, counted separately (two passes and an inconclusive run stay two and
+  one, never one verdict), the
   fixed outcome Techtree gives a square that never runs, and one dot for each
   of the grid's checks: in how many of the pair's runs the judge found it held.
   A wallet square with no runs stopped at install when the pair's latest
@@ -12,7 +13,7 @@ defmodule Patchbay.WalletBench.Matrix do
   """
 
   alias Patchbay.WalletBench
-  alias Patchbay.WalletBench.Cohorts
+  alias Patchbay.WalletBench.Sets
 
   @grids ["install", "wallet"]
 
@@ -27,7 +28,7 @@ defmodule Patchbay.WalletBench.Matrix do
           tally: [{String.t(), pos_integer()}],
           fixed: [struct()],
           dots: [dot()],
-          stopped: %{cohort_id: String.t()} | nil
+          stopped: %{set_id: String.t()} | nil
         }
 
   @passed ~w(PASS PASS*)
@@ -52,8 +53,9 @@ defmodule Patchbay.WalletBench.Matrix do
          {:ok, notes} <- WalletBench.list_notes(),
          {:ok, fixed} <- WalletBench.list_fixed(),
          {:ok, results} <- WalletBench.list_results(),
+         {:ok, summaries} <- WalletBench.list_sets(),
          {:ok, checks} <- WalletBench.list_checks() do
-      {:ok, build(roster, notes, fixed, results, checks, filters)}
+      {:ok, build(roster, notes, fixed, results, summaries, checks, filters)}
     end
   end
 
@@ -62,15 +64,22 @@ defmodule Patchbay.WalletBench.Matrix do
   def notes(notes), do: Map.new(notes, &{&1.key, &1.text})
 
   @doc "The page's grids from the views' rows."
-  @spec build([struct()], [struct()], [struct()], [struct()], [struct()]) :: map()
-  @spec build([struct()], [struct()], [struct()], [struct()], [struct()], map()) :: map()
-  def build(roster, notes, fixed, results, checks, filters \\ %{}) do
-    options = Cohorts.options(results)
-    results = Cohorts.filter(results, filters)
+  @spec build([struct()], [struct()], [struct()], [struct()], [struct()], [struct()]) :: map()
+  @spec build([struct()], [struct()], [struct()], [struct()], [struct()], [struct()], map()) ::
+          map()
+  def build(roster, notes, fixed, results, summaries, checks, filters \\ %{}) do
+    options = Sets.options(results)
+    results = Sets.filter(results, filters)
     roster = Enum.sort_by(roster, & &1.id)
     harnesses = Enum.filter(roster, &(&1.kind == "harness"))
     wallets = Enum.filter(roster, &(&1.kind == "wallet"))
-    by_square = Enum.group_by(results, &{&1.grid, &1.harness_id, &1.wallet_id})
+    installs = Enum.group_by(results, &{&1.harness_id, &1.wallet_id})
+
+    by_square =
+      results
+      |> Sets.build(summaries)
+      |> Enum.group_by(&{&1.grid, &1.summary.harness_id, &1.summary.wallet_id})
+
     found = Map.new(checks, &{{&1.grid, &1.attempt_id, &1.criterion_id}, &1.result})
 
     grids =
@@ -79,14 +88,14 @@ defmodule Patchbay.WalletBench.Matrix do
 
         squares =
           for h <- harnesses, w <- wallets, into: %{} do
-            runs = Map.get(by_square, {grid, h.id, w.id}, [])
+            sets = Map.get(by_square, {grid, h.id, w.id}, [])
             fixed = fixed_for(fixed, grid, h.id, w.id)
-            installs = Map.get(by_square, {"install", h.id, w.id}, [])
+            runs = Map.get(installs, {h.id, w.id}, [])
 
             square =
-              runs
-              |> latest_square(fixed, criteria, found)
-              |> Map.put(:stopped, stopped(grid, runs, fixed, installs))
+              sets
+              |> shown_square(fixed, criteria, found)
+              |> Map.put(:stopped, stopped(grid, sets, fixed, runs))
 
             {{h.id, w.id}, square}
           end
@@ -147,11 +156,11 @@ defmodule Patchbay.WalletBench.Matrix do
 
   # A wallet square with nothing to show links to the install runs it
   # stopped at.
-  defp stopped("wallet", [], [], installs) do
-    if stopped_at(installs), do: %{cohort_id: hd(Cohorts.groups(installs)).id}
+  defp stopped("wallet", [], [], runs) do
+    if run = stopped_at(runs), do: %{set_id: run.set_id}
   end
 
-  defp stopped(_grid, _runs, _fixed, _installs), do: nil
+  defp stopped(_grid, _sets, _fixed, _runs), do: nil
 
   @doc "The fixed outcomes that apply to one square, from Techtree's `\"*\"` keys."
   @spec fixed_for([struct()], String.t(), String.t(), String.t()) :: [struct()]
@@ -180,16 +189,16 @@ defmodule Patchbay.WalletBench.Matrix do
     |> Enum.map(&%{id: &1.criterion_id, criterion: &1.criterion})
   end
 
-  # A square counts only its latest exact version group's runs, and says which
-  # group that is and how many groups the pair has.
-  defp latest_square(runs, fixed, criteria, found) do
-    groups = Cohorts.groups(runs)
-    latest = List.first(groups)
-    selected = if latest, do: latest.runs, else: []
+  # A square counts only the runs of the first of its sets, the pair's current
+  # one unless a filter leaves it out, and says which set that is and how many
+  # sets the pair has.
+  defp shown_square(sets, fixed, criteria, found) do
+    shown = List.first(sets)
+    runs = if shown, do: shown.runs, else: []
 
-    selected
+    runs
     |> square(fixed, criteria, found)
-    |> Map.merge(%{cohort_id: latest && latest.id, cohort_count: length(groups)})
+    |> Map.merge(%{set_id: shown && shown.id, set_count: length(sets)})
   end
 
   defp square(runs, fixed, criteria, found) do

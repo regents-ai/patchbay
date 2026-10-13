@@ -2696,7 +2696,7 @@ a.pb-slot:focus-visible::before { box-shadow: inset 0 0 0 1px var(--pb-text); }
 .pb-wb-version-form { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-2); margin-block: var(--space-3); }
 .pb-wb-version-form label { display: grid; gap: var(--space-1); flex: 1 1 14rem; min-width: 0; font-size: .875rem; }
 .pb-wb-version-form select { width: 100%; min-width: 0; max-width: 100%; min-height: 2.75rem; font-size: 1rem; }
-.pb-wb-group-count { font-size: .625rem; line-height: 1.4; }
+.pb-wb-set-count { font-size: .625rem; line-height: 1.4; }
 .pb-wb-comparison { display: grid; gap: var(--space-2); overflow-wrap: anywhere; }
 .pb-wb-comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .pb-wb-comparison-card { min-width: 0; padding: var(--space-3); font-size: .875rem; }
