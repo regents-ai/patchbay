@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-13 — Offers: a link at the top, and a page that says what it is
+
+- Offers now has its own link in the bar at the top of every page.
+- The Offers page opens by saying what an Offer is and what to do: write it,
+  wait for its check, then bid for a slot.
+- A website whose three slots are all open shows one "Bid for a slot" box
+  instead of three alike ones. Websites with an Offer showing still list each
+  slot.
+- On the narrowest phones the top bar's links stay on one line.
+
 ## 2026-10-13 — Front page: the question moves into the box
 
 - The line under the front page heading is gone. The box beneath it now asks

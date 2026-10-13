@@ -157,6 +157,41 @@ defmodule PatchbayWeb.OffersLive.List do
     ])
   end
 
+  attr(:label, :string, required: true)
+  attr(:market, :map, required: true)
+  attr(:site_id, :string, default: nil, doc: "none for Global's slots")
+  attr(:as_of, DateTime, required: true)
+
+  # While no Offer shows in any of the three, they read as one: three alike
+  # tiles saying "Open" tell a visitor nothing the one line does not.
+  defp slots(assigns) do
+    ~H"""
+    <nav class="pb-offers-gallery-slots" aria-label={@label}>
+      <.link
+        :if={all_open?(@market, @as_of)}
+        class="pb-offers-gallery-open"
+        navigate={bid_path(@site_id, 1)}
+      ><strong>Bid for a slot <span aria-hidden="true">↗</span></strong><span>All 3 open</span><small>From {credits(
+        slot_price(nil, @market, @as_of)
+      )}</small></.link>
+      <.link
+        :for={number <- 1..3}
+        :if={!all_open?(@market, @as_of)}
+        navigate={bid_path(@site_id, number)}
+      ><strong>Slot {number} <span aria-hidden="true">↗</span></strong><span>{slot_state(
+        find_slot(@market, number),
+        @as_of
+      )}</span><small>From {credits(slot_price(find_slot(@market, number), @market, @as_of))}</small></.link>
+    </nav>
+    """
+  end
+
+  defp bid_path(nil, number), do: ~p"/offers/bid?#{[slot: number]}"
+  defp bid_path(site_id, number), do: ~p"/offers/bid?#{[site: site_id, slot: number]}"
+
+  defp all_open?(market, now),
+    do: Enum.all?(1..3, &(slot_state(find_slot(market, &1), now) == "Open"))
+
   defp find_slot(market, number), do: market && Enum.find(market.slots, &(&1.number == number))
 
   defp slot_state(%{active_placement: placement}, now) when not is_nil(placement),

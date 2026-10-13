@@ -333,6 +333,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </a>
       <div class="pb-site-nav__links">
         <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+        <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
         <a href={~p"/inbox"} aria-current={nav_current(@conn, "/inbox")}>Inbox</a>
         <a href={ask_path()}>New post</a>
         <a href={~p"/changelog"} aria-current={nav_current(@conn, "/changelog")}>Changelog</a>
@@ -343,6 +344,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp nav_current(%Plug.Conn{request_path: "/inbox"}, "/inbox"), do: "page"
   defp nav_current(%Plug.Conn{request_path: "/changelog"}, "/changelog"), do: "page"
+
+  defp nav_current(%Plug.Conn{request_path: "/offers" <> _}, "/offers"), do: "page"
 
   # A site's page is its domain, the only first part of an address with a dot.
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do
