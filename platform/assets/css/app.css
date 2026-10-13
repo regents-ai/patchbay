@@ -134,14 +134,17 @@ body {
    whole page, so it draws none, not even the browser's own. */
 #pb-content:focus { outline: none; }
 
-/* Site header: TechTree masthead rhythm — name, selector, account. */
+/* Site header: the wordmark, the search, the places to go, asking, then the
+   account, on one line. Narrower windows wrap it into fixed rows, and nothing
+   typed into the search changes them. */
 .pb-masthead {
   position: relative;
   z-index: 20;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(10rem, 26rem) minmax(0, 1fr) auto auto;
+  grid-template-areas: "brand search nav ask account";
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   /* Header and content use the same responsive panel inset. */
   width: 100%;
   min-height: var(--pb-header-height);
@@ -1276,58 +1279,70 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   font-weight: var(--font-weight-semibold);
 }
 
-/* Site header, collapsed help, and the Agent setup rail. */
-.pb-site-nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  min-width: 0;
-  flex: 1;
-}
-.pb-site-nav .pb-wordmark {
+.pb-wordmark {
+  grid-area: brand;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  min-height: 2.75rem;
   color: var(--pb-text);
   font-family: var(--font-family-title);
   font-size: 1.05rem;
-  font-weight: var(--font-weight-regular);
+  font-weight: 400;
+  font-synthesis: none;
   text-decoration: none;
- font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.pb-site-nav .patchbay-mark {
-  width: 1.45rem;
-  height: 1.45rem;
-
 }
+.pb-wordmark .patchbay-mark { width: 1.45rem; height: 1.45rem; }
 
-.pb-site-nav__links {
-  display: inline-flex;
-  align-items: stretch;
+.pb-header-search { grid-area: search; position: relative; display: grid; min-width: 0; margin: 0; }
+.pb-header-search__icon {
+  position: absolute;
+  top: 50%;
+  left: .75rem;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--pb-text-muted);
+  pointer-events: none;
+}
+/* 1rem text, so a phone does not zoom in when the box is pressed. */
+.pb-header-search input {
+  min-width: 0;
+  height: 2.75rem;
+  padding: 0 .75rem 0 2.25rem;
   border: 1px solid var(--pb-line-strong);
   border-radius: var(--radius);
   background: var(--pb-surface);
+  color: var(--pb-text);
+  font: inherit;
+  font-size: 1rem;
 }
-.pb-site-nav__links a {
-  min-height: 2.75rem;
-  padding: 0 var(--space-2);
+.pb-header-search input::placeholder { color: var(--pb-text-muted); }
+.pb-header-search input:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+
+.pb-site-nav { grid-area: nav; display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.pb-site-nav a {
   display: inline-flex;
   align-items: center;
-  border-radius: var(--radius);
+  min-height: 2.75rem;
+  padding: 0 var(--space-1);
+  border-block: 2px solid transparent;
   color: var(--pb-text-muted);
-  font-family: var(--font-family-ui);
-  font-size: .82rem;
-  font-weight: var(--font-weight-regular);
+  font-size: .875rem;
   text-decoration: none;
   white-space: nowrap;
-  transition: background-color 140ms ease, color 140ms ease;
+  transition: color 140ms ease;
 }
-.pb-site-nav__links a:hover { background: var(--pb-surface-sunk); color: var(--pb-text); }
-.pb-site-nav__links a[aria-current="page"] {
-  color: var(--pb-text);
-  background: var(--pb-surface-sunk);
-
- border-block-end: 2px solid currentColor; }
+.pb-site-nav a:hover { color: var(--pb-text); }
+.pb-site-nav a[aria-current="page"] { color: var(--pb-text); border-block-end-color: currentColor; }
+.pb-ask-button { grid-area: ask; white-space: nowrap; }
+.pb-account { grid-area: account; }
+@media (max-width: 1099px) {
+  .pb-masthead {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "brand search account" "nav nav ask";
+  }
+}
 
 .pb-section-head {
   display: flex;
@@ -1831,15 +1846,19 @@ body:has(#patchbay-home),
 }
 
 @media (max-width: 760px) {
+  /* The account goes beside the wordmark, and to a line of its own when a
+     signed-in name does not fit there. */
   .pb-masthead {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--space-1) var(--space-2);
     min-height: 0;
     padding-block: var(--space-1);
   }
-  .pb-site-nav { width: 100%; }
-  .pb-site-nav__links { flex-wrap: wrap; }
-  .pb-account { width: 100%; justify-content: flex-start; }
+  .pb-account { order: 1; margin-inline-start: auto; }
+  .pb-header-search { order: 2; flex: 1 1 100%; }
+  .pb-site-nav { order: 3; }
+  .pb-ask-button { order: 4; margin-inline-start: auto; }
 }
 
 /* Compact reports and setup keep long evidence within the reading column. */
@@ -1949,17 +1968,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 @media (max-width: 767px) {
   .pb-dir-grid { grid-template-columns: minmax(0, 1fr); }
-  .pb-site-nav__links { flex-wrap: wrap; }
 }
-@media (max-width: 479px) {
-  .pb-site-nav__links a { padding-inline: var(--space-1); }
-}
-/* The five links stay on one line down to the narrowest phones. */
-@media (max-width: 399px) {
-  .pb-site-nav__links a { padding-inline: 6px; }
-}
-@media (max-width: 359px) {
-  .pb-site-nav__links a { padding-inline: 4px; font-size: .75rem; }
+/* The places to go and the Ask button share one line down to the narrowest
+   phones; the button says only "Ask" there. */
+@media (max-width: 429px) {
+  .pb-masthead { column-gap: var(--space-1); padding-inline: 12px; }
+  .pb-account { gap: 4px; }
+  .pb-site-nav { gap: 4px; }
+  .pb-site-nav a { padding-inline: 4px; }
+  .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 @media (forced-colors: active) {
   .patchbay-button-danger.rg-button { color: ButtonText; border-color: ButtonText; }

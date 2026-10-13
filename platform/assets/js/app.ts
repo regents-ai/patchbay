@@ -42,7 +42,6 @@ import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
-import {mountDiscussionWorkbench} from "./discussion_workbench.ts"
 import {mountHelloStream} from "./hello_stream.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountDiscussionSearch} from "./discussion_search.ts"
@@ -105,7 +104,6 @@ const offerPageWideSurfaces = () => {
   mountAgentFunding()
   mountCardTopUp()
   hideBrokenSiteLogos()
-  mountDiscussionWorkbench()
 
   const rail = document.getElementById("pb-agent-setup") ?? document.getElementById("pb-readiness")
   mountForumTools(window, {

@@ -12,7 +12,7 @@ defmodule PatchbayWeb.ErrorHTMLTest do
     assert html =~ ~r{<link rel="stylesheet" href="/assets/js/app.css[^"]*">}
 
     assert html =~
-             ~r{<a class="pb-cta rg-button rg-button--primary" href="/">\s*<span class="rg-button__label">Back to discussions</span>\s*</a>}
+             ~r{<a class="pb-cta rg-button rg-button--primary" href="/">\s*<span class="rg-button__label">Back to questions</span>\s*</a>}
   end
 
   test "an unknown address renders the styled not-found page", %{conn: conn} do

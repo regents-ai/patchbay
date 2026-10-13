@@ -67,7 +67,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "GET /" do
-    test "lists recent reports with site, tool, verdict, and a note snippet", %{conn: conn} do
+    test "lists recent questions with their site, tool and a line of the post", %{conn: conn} do
       site = site!("shop.example")
       tool = tool!(site, %{name: "checkout"})
       report = report!(tool, %{note: "the cart stayed empty", verdict: :verified_failure})
@@ -77,7 +77,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert html =~ ~s(href="/posts/#{report.id}")
       assert html =~ "shop.example"
       assert html =~ "checkout"
-      assert html =~ "Did not work"
       assert html =~ "the cart stayed empty"
       refute html =~ "A website catches its own broken agent tool"
     end
@@ -107,7 +106,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "an empty search keeps the query and offers a reset", %{conn: conn} do
       html = conn |> get(~p"/?q=unreported.example.invalid") |> html_response(200)
       document = LazyHTML.from_document(html)
-      assert html =~ "No matching discussions"
+      assert html =~ "No matching questions"
 
       assert Enum.count(
                LazyHTML.query(
@@ -116,7 +115,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
                )
              ) == 1
 
-      assert Enum.count(LazyHTML.query(document, ~s(.pb-search-summary a[href="/?scope=all"]))) ==
+      assert Enum.count(LazyHTML.query(document, ~s(.pb-search-summary a[href="/?scope=newest"]))) ==
                1
 
       refute html =~ "This page is unavailable"

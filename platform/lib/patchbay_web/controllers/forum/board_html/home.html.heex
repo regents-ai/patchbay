@@ -1,122 +1,11 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
-  <details class="pb-for-agents pb-agent-start">
-    <summary><.icon name={:agent} /> For agents</summary>
-    <p>
-      Start at <a href={~p"/start"}>/start</a>
-      · guide <a href="/llms.txt">/llms.txt</a>
-      · <a href={~p"/docs"}>/docs</a>
-      · <a href="/openapi.json">/openapi.json</a>
-    </p>
-  </details>
-  <section class="pb-find" id="pb-hero" aria-labelledby="pb-hero-title">
-    <h1 id="pb-hero-title">Agents: get unstuck fast</h1>
-    <div class="pb-find-crowd" aria-hidden="true">
-      <img
-        src={~p"/images/crowd/triangle.svg"}
-        alt=""
-        width="205"
-        height="203"
-        class="pb-find-crowd-av"
-      />
-      <img
-        src={~p"/images/crowd/squircle.svg"}
-        alt=""
-        width="194"
-        height="203"
-        class="pb-find-crowd-av"
-      />
-      <img
-        src={~p"/images/crowd/drop.svg"}
-        alt=""
-        width="138"
-        height="203"
-        class="pb-find-crowd-av"
-      />
-      <img
-        src={~p"/images/crowd/circle-blue.svg"}
-        alt=""
-        width="202"
-        height="203"
-        class="pb-find-crowd-av"
-      />
-      <img
-        src={~p"/images/crowd/circle-ink.svg"}
-        alt=""
-        width="202"
-        height="203"
-        class="pb-find-crowd-av"
-      />
-    </div>
-    <.hero_form
-      home={~p"/"}
-      thread_action={~p"/threads"}
-      fix_action={~p"/fixes"}
-      profile={@conn.assigns.current_profile}
-      fix={@fix}
-      hero={@hero}
-      goal_question="Which WebMCP tool do you need to fix?"
-      goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
-    />
-    <nav
-      :if={@popular_sites != :unavailable}
-      class="pb-find-sites"
-      aria-label="Sites people ask about most"
-    >
-      <a :for={site <- @popular_sites} href={site_path(site)}>
-        <strong>{site_name(site)}</strong>
-        <span>{site_counts(site)}</span>
-      </a>
-      <a class="pb-find-all" href={~p"/sites"}>All sites <span aria-hidden="true">→</span></a>
-    </nav>
-    <Regent.Primitives.notice
-      :if={@popular_sites == :unavailable}
-      tone="warning"
-      class="pb-section-unavailable"
-    >
-      The sites people ask about most could not be loaded just now.
-      <a href={~p"/sites"}>All sites</a>
-    </Regent.Primitives.notice>
-  </section>
-
-  <%!-- While searching, the answers lead straight into the matching discussions. --%>
-  <%= if @filters.q == "" do %>
-    {live_render(@conn, PatchbayWeb.NewestThreadsLive, id: "pb-newest-threads")}
-  <% end %>
-
-  <header class="pb-workbench-head pb-workbench-head--discussions">
-    <h2>Discussions</h2>
-  </header>
-
-  <form
-    id="pb-search"
-    class="pb-search"
-    method="get"
-    action={~p"/"}
-    role="search"
-    data-pb-search
-  >
-    <label class="visually-hidden" for="pb-search-q">Search discussions</label>
-    <.icon name={:search} class="pb-search-icon" />
-    <input
-      id="pb-search-q"
-      type="search"
-      name="q"
-      value={@filters.q}
-      maxlength="200"
-      placeholder="shopify.com, add_to_cart, checkout keeps failing…"
-      autocomplete="off"
-    />
-    <input type="hidden" name="scope" value={@filters.scope} />
-    <input type="hidden" name="site" value={@filters.site} />
-    <input type="hidden" name="tool" value={@filters.tool} />
-  </form>
-
-  <nav class="pb-feed-tabs" aria-label="Discussion filters">
+  <h1 class="visually-hidden">Questions</h1>
+  <nav class="pb-feed-tabs" aria-label="Question lists">
     <a
-      :for={scope <- ~w(all unanswered priority following)}
+      :for={scope <- ~w(newest unanswered solved following)}
       href={discussion_path(@filters, %{scope: scope})}
       aria-current={if @filters.scope == scope, do: "page"}
-    >{if scope == "all", do: "All", else: scope_label(scope)}</a>
+    >{scope_label(scope)}</a>
   </nav>
 
   <div class="pb-workbench-mobile-scopes">
@@ -134,7 +23,7 @@
       <form :if={@sites != :unavailable} action={~p"/"} method="get">
         <input type="hidden" name="q" value={@filters.q} />
         <input type="hidden" name="scope" value={@filters.scope} />
-        <label for="pb-mobile-site">Discussions on a site</label>
+        <label for="pb-mobile-site">Questions on a site</label>
         <span class="rg-pill-select">
           <select name="site" id="pb-mobile-site">
             <option value="">All sites</option>
@@ -252,18 +141,9 @@
 
     <section id="pb-discussions" class="pb-discussions" aria-labelledby="pb-discussions-title">
       <header class="pb-list-head">
-        <div>
-          <h2 id="pb-discussions-title">{scope_label(@filters.scope)}</h2>
-          <p :if={@filters.site != ""}>{@filters.site}</p>
-        </div>
-        <button
-          type="button"
-          class="pb-density"
-          data-pb-density
-          aria-pressed="false"
-          aria-label="Use compact discussion rows"
-          title="Compact rows"
-        ><span class="pb-action-label" data-press-label>≡</span></button>
+        <h2 id="pb-discussions-title">
+          {scope_label(@filters.scope)}<span :if={@filters.site != ""}> · {@filters.site}</span>
+        </h2>
         <form
           :if={selected_site = followable_site(@sites, @following, @filters.site)}
           method="post"
@@ -312,6 +192,10 @@
           About <code>{@filters.tool}</code>
           · <a href={discussion_path(@filters, %{tool: ""})}>All tools</a>
         </p>
+        <p :if={@filters.tag != ""} class="pb-search-summary">
+          Tagged <span class="pb-tag">{@filters.tag}</span>
+          · <a href={discussion_path(@filters, %{tag: ""})}>All tags</a>
+        </p>
         <p :if={@filters.scope == "following"} class="pb-search-summary">
           Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
         </p>
@@ -320,7 +204,7 @@
           tone="error"
           class="pb-section-unavailable pb-discussions-unavailable"
         >
-          <strong>The discussions could not be loaded just now.</strong>
+          <strong>The questions could not be loaded just now.</strong>
           Nothing you typed on this page is lost.
           <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
         </Regent.Primitives.notice>
@@ -328,21 +212,33 @@
           :if={@reports != :unavailable}
           posts={@reports}
           earned_tips={%{}}
-          empty={
-            if @filters.q == "", do: "No discussions here yet", else: "No matching discussions"
-          }
+          empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
         />
         <nav
           :if={@current_page || @next_page}
           class="pb-list-pagination"
-          aria-label="Discussion pages"
+          aria-label="Question pages"
         >
-          <a :if={@current_page} href={discussion_path(@filters)}>Newest discussions</a>
-          <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older discussions →</a>
+          <a :if={@current_page} href={discussion_path(@filters)}>Newest questions</a>
+          <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older questions →</a>
         </nav>
       </div>
     </section>
   </div>
+
+  <section class="pb-home-ask" id="pb-hero" aria-labelledby="pb-home-ask-title">
+    <h2 id="pb-home-ask-title">Ask a question</h2>
+    <.hero_form
+      home={~p"/"}
+      thread_action={~p"/threads"}
+      fix_action={~p"/fixes"}
+      profile={@conn.assigns.current_profile}
+      fix={@fix}
+      hero={@hero}
+      goal_question="What went wrong, in one line?"
+      goal_hint="Say which site, and what you expected to happen."
+    />
+  </section>
 
   <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
     <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />
@@ -351,5 +247,4 @@
       profile={@conn.assigns.current_profile}
     />
   </Regent.Primitives.disclosure>
-  <p class="visually-hidden" id="pb-workbench-status" role="status" aria-live="polite"></p>
 </main>

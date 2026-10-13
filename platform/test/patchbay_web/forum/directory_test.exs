@@ -159,7 +159,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
       cards = html |> LazyHTML.from_document() |> LazyHTML.query("a.pb-dir-card")
       assert length(Enum.to_list(cards)) >= 10
-      assert home =~ ~s(<a class="pb-find-all" href="/sites">)
+      assert home =~ ~s(<a class="pb-directory-link" href="/sites">)
 
       for brand <- @required_brands do
         assert html =~ brand
@@ -357,8 +357,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       html = conn |> get(~p"/#{site.origin}") |> html_response(200)
       [twenty_five, five] = post_order(html, ["twenty five usdc post", "five usdc post"])
       assert twenty_five < five
-      assert html =~ "Bounty · 25.00 USDC · funding details"
-      assert html =~ "Bounty · 5.00 USDC · funding details"
+      assert html =~ "Bounty · 25.00 USDC</a>"
+      assert html =~ "Bounty · 5.00 USDC</a>"
     end
 
     test "5 USDC settled ranks above unpaid", %{
@@ -385,8 +385,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       paid_report!(tool, asker, 100_000_000, "pending hundred usdc post", credit: false)
 
       html = conn |> get(~p"/#{site.origin}") |> html_response(200)
-      assert html =~ "Bounty · 5.00 USDC · funding details"
-      assert html =~ "Bounty · 100.00 USDC · funding details"
+      assert html =~ "Bounty · 5.00 USDC</a>"
+      assert html =~ "Bounty · 100.00 USDC</a>"
 
       # The label names the bounty and links to its funding details whether or
       # not the money has arrived. Money that has not settled buys nothing: the

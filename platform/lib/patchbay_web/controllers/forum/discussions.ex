@@ -9,10 +9,12 @@ defmodule PatchbayWeb.Forum.Discussions do
   alias PatchbayWeb.Endpoint
 
   @salt "discussion-pages-v1"
-  @scopes ~w(all unanswered priority following)
+  @scopes ~w(newest unanswered solved following)
   @loads [
     :author,
     :reply_count,
+    :view_count,
+    :thread_like_count,
     :bounty_open,
     :verified_paid_usdc_atomic,
     :post_kind,
@@ -24,7 +26,8 @@ defmodule PatchbayWeb.Forum.Discussions do
       q: text(params["q"], 200),
       site: params["site"] |> text(255) |> site_domain(),
       tool: text(params["tool"], 64),
-      scope: if(params["scope"] in @scopes, do: params["scope"], else: "all")
+      tag: text(params["tag"], 64),
+      scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest")
     }
   end
 
@@ -90,6 +93,7 @@ defmodule PatchbayWeb.Forum.Discussions do
     |> search(filters.q)
     |> site(filters.site)
     |> tool(filters.tool)
+    |> tag(filters.tag)
     |> scope(filters.scope, following)
   end
 
@@ -137,13 +141,14 @@ defmodule PatchbayWeb.Forum.Discussions do
   defp tool(query, ""), do: query
   defp tool(query, name), do: Ash.Query.filter(query, ^name in tool_names)
 
+  defp tag(query, ""), do: query
+  defp tag(query, name), do: Ash.Query.filter(query, ^name in topic_tags)
+
   defp scope(query, "unanswered", _following), do: Ash.Query.filter(query, reply_count == 0)
 
-  # Money recorded in escrow is not proof that an answer is correct. Do not
-  # include pending payment intents or refunded reports in this scope.
-  defp scope(query, "priority", _following) do
-    Ash.Query.filter(query, verified_paid_usdc_atomic > 0)
-  end
+  # Solved is the asker's own word: they marked a reply as the answer.
+  defp scope(query, "solved", _following),
+    do: Ash.Query.filter(query, not is_nil(solution_reply_id))
 
   # Following is the caller's own subscriptions: followed sites, tools and
   # threads all surface here.

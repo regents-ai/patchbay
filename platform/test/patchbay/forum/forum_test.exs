@@ -344,7 +344,6 @@ defmodule Patchbay.ForumTest do
                  {:guest_posts_by_session, :read},
                  {:posted_by_author, :read},
                  {:recent, :read},
-                 {:newest, :read},
                  {:verified_awaiting_repair, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},

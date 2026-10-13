@@ -3,16 +3,17 @@ const WAIT_MS = 300
 type SearchOptions = {document?: Document; fetch?: typeof globalThis.fetch}
 
 /**
- * The Search field at the top of the discussions. As the person types, the
- * discussions under it narrow to what matches, with the sites and tools by
- * that name above them, and the address follows so the page can be shared
- * or reloaded as it is. Pressing Enter searches the ordinary way.
+ * The search in the header. On the front page, as the person types, the
+ * questions narrow to what matches, with the sites and tools by that name
+ * above them, and the address follows so the page can be shared or reloaded
+ * as it is. On every other page, and when Enter is pressed, it searches the
+ * ordinary way and opens the front page.
  */
 export function mountDiscussionSearch(options: SearchOptions = {}) {
   const doc = options.document ?? globalThis.document
   const form = doc?.getElementById?.("pb-search") as HTMLFormElement | null
   const field = form?.elements.namedItem("q") as HTMLInputElement | null
-  if (!form || !field) return
+  if (!form || !field || !doc.getElementById("pb-results")) return
 
   const fetcher = options.fetch ?? globalThis.fetch
   let timer: ReturnType<typeof setTimeout> | undefined
