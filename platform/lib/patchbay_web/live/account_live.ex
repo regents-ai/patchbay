@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.AccountLive do
   @moduledoc """
   The signed-in person's Account page, as in the Regent template: who
-  Patchbay knows them as, their Profile on every Regent site, the agents they
-  paired, their Credits and this browser's session.
+  Patchbay knows them as, their wallet with its ENS name when it has one, their
+  Profile on every Regent site, the agents they paired, their Credits and this
+  browser's session.
 
   Everything here is read from the sign-in the page already holds; nothing on
   it asks the visitor to sign in again. When the sign-in ends while the page is
@@ -17,7 +18,7 @@ defmodule PatchbayWeb.AccountLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    socket = assign(socket, page_title: "Account", credits: %Read{})
+    socket = assign(socket, page_title: "Account", credits: %Read{}, ens_name: nil)
 
     case socket.assigns.current_profile do
       nil ->
@@ -29,7 +30,7 @@ defmodule PatchbayWeb.AccountLive do
           :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
         end
 
-        {:ok, read_credits(socket)}
+        {:ok, socket |> assign(:ens_name, Patchbay.Accounts.ens(did).name) |> read_credits()}
     end
   end
 
@@ -87,6 +88,7 @@ defmodule PatchbayWeb.AccountLive do
           <p class="pb-account-kicker">Your account</p>
           <h2>{@current_profile.human_name}</h2>
           <p :if={@current_profile.wallet_address}>
+            <span :if={@ens_name} id="account-ens-name">{@ens_name}</span>
             <code>{RegentFormat.short_address(@current_profile.wallet_address)}</code>
           </p>
         </Regent.HolographicCard.card>

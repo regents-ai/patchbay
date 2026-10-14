@@ -190,6 +190,15 @@ body {
   text-decoration-color: var(--pb-accent);
   text-underline-offset: .3em;
 }
+/* Their wallet's ENS picture, else the face their posts carry. */
+.pb-account-picture {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-right: var(--space-1);
+  border-radius: 50%;
+  object-fit: cover;
+}
 .pb-account-sign-out {
   display: grid;
   place-items: center;

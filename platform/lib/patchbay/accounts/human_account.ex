@@ -21,6 +21,36 @@ defmodule Patchbay.Accounts.HumanAccount do
     update_timestamp(:updated_at)
   end
 
+  relationships do
+    has_one :ens_identity, Patchbay.Accounts.EnsIdentity do
+      destination_attribute(:human_account_id)
+    end
+  end
+
+  calculations do
+    # The ENS name and picture, only while they were read for the account's
+    # current wallet.
+    calculate(
+      :ens_name,
+      :string,
+      expr(
+        if ens_identity.wallet_address == wallet_address do
+          ens_identity.ens_name
+        end
+      )
+    )
+
+    calculate(
+      :ens_avatar_url,
+      :string,
+      expr(
+        if ens_identity.wallet_address == wallet_address do
+          ens_identity.ens_avatar_url
+        end
+      )
+    )
+  end
+
   identities do
     identity(:unique_privy_user_id, [:privy_user_id])
   end

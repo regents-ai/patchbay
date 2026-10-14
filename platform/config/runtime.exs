@@ -154,6 +154,21 @@ config :patchbay,
        :chain_nodes,
        Map.merge(Application.fetch_env!(:patchbay, :chain_nodes), node_overrides)
 
+# Each sign-in reads the wallet's ENS name and picture from Ethereum mainnet
+# while this endpoint is set (Patchbay.Accounts.EnsIdentity). Tests never read
+# it.
+if config_env() != :test do
+  if ethereum_read_rpc_url = System.get_env("ETHEREUM_READ_RPC_URL") do
+    case URI.new(ethereum_read_rpc_url) do
+      {:ok, %URI{scheme: "https", host: host}} when host not in [nil, ""] ->
+        config :patchbay, :ethereum_read_rpc_url, ethereum_read_rpc_url
+
+      _invalid ->
+        raise "ETHEREUM_READ_RPC_URL must be an https address"
+    end
+  end
+end
+
 # The Privy accounts that may give Credits and handle refunds, comma separated.
 if admins = System.get_env("REGENT_CREDITS_ADMINS") do
   config :regent_credits,

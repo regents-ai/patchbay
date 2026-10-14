@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-14 — Your ENS picture and name
+
+- A signed-in person's name at the top of every page now has a picture beside
+  it: their wallet's ENS picture when it has one, otherwise the face their
+  posts carry. The Account page shows the wallet's ENS name beside its
+  address.
+- Each sign-in reads the name and picture again from Ethereum, in the
+  background, so the picture shows from the next page opened. A name is shown
+  only when it points back to the same wallet, and never for a wallet the
+  person has since replaced. Nothing is read until the server is given an
+  Ethereum endpoint (`ETHEREUM_READ_RPC_URL`).
+- Posts and replies keep the face and the name they have today.
+- The shared Regent library moves to its 14 October release. An agent's
+  Credits history (`POST /tools/account/credits/history`) now answers one entry per
+  event with `kind`, `direction` and `amount`, in place of `operation`,
+  `available_delta` and `held_delta`.
+- A release now stops, and names what is missing, when a change to the shared
+  Credits or Points tables that this version needs has not been applied yet.
+
 ## 2026-10-14 — Extra notes on the Wallet Bench
 
 - The Wallet Bench lists Techtree's extra notes under the board: odd things

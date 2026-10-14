@@ -24,7 +24,6 @@ config :regent_points,
   chain_client: Patchbay.ChainClient,
   program_id: "regents-points-v1",
   starts_at: nil,
-  unified_activity_starts_at: nil,
   approved_rules: [],
   adapters: %{"credits.purchase_settled" => Patchbay.Points.CreditsPurchase}
 
@@ -92,8 +91,11 @@ config :regent_agents,
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
 # sites wait only on each other; the daily clearing of saved errors
-# (`Patchbay.ErrorPruner`); and the daily forgetting of the words of posts
-# turned away a month ago (`Patchbay.Forum.PostCheckPruner`).
+# (`Patchbay.ErrorPruner`); the daily forgetting of the words of posts
+# turned away a month ago (`Patchbay.Forum.PostCheckPruner`); and reading a
+# signed-in wallet's ENS name and picture from Ethereum
+# (`Patchbay.Accounts.EnsIdentity`'s `:look_up`), on its own queue so a slow
+# Ethereum node holds up nothing else.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   queues: [
@@ -110,7 +112,8 @@ config :patchbay, Oban,
     points: 5,
     points_chain: 2,
     errors: 1,
-    post_checks: 1
+    post_checks: 1,
+    ens: 3
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [

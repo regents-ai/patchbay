@@ -346,6 +346,7 @@ work loads `.env.local`; production values are Fly secrets.
 | `PRIVY_APP_ID`, `PRIVY_VERIFICATION_KEY` | Sign-in |
 | `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET` | Settling payments |
 | `BASE_RPC_URL` | Reading balances and sending escrow transactions |
+| `ETHEREUM_READ_RPC_URL` | Reading a signed-in wallet's ENS name and picture, optional; https only |
 | `ESCROW_CONTRACT_ADDRESS`, `OPERATOR_PRIVATE_KEY` | Paid priority reports |
 | `OPENAI_API_KEY` | The room's repair loop |
 | `OPENROUTER_API_KEY` | Jev's readings, and the drafting of a paid assist's tool arguments |
