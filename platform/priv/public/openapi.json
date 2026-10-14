@@ -7648,7 +7648,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Facts the server cannot verify: saved skills, whether tools reached the agent, routines."
+            "description": "Facts the server cannot verify: the saved skill, whether tools reached the agent, the scheduled check."
           }
         },
         "required": [

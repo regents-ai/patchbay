@@ -1359,20 +1359,22 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @skills_source "https://github.com/regents-ai/patchbay/tree/main/skills"
-
   @doc """
   The agent profiles `/start` offers, in tab order. Each carries the one
   instruction a person pastes into that agent, naming only what is live:
-  the four skills, the hosted tools, and the page tools.
+  the Patchbay skill, the hosted tools, the page tools and the scheduled check.
   """
   @spec start_profiles() :: [map()]
   def start_profiles do
     start = PatchbayWeb.Endpoint.url() <> "/start"
     mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
     guide = PatchbayWeb.Endpoint.url() <> "/webmcp"
-    skill_guide = PatchbayWeb.Endpoint.url() <> "/skill.md"
+    skill = PatchbayWeb.Endpoint.url() <> "/skill.md"
+    agents = PatchbayWeb.Endpoint.url() <> "/agents.md"
     stuck = PatchbayWeb.Endpoint.url() <> "/HOST?goal=GOAL&error=ERROR"
+
+    schedule =
+      "Set up the scheduled check the skill describes. Every 10 minutes is a good start; the timing is yours. Do not post or pay during setup."
 
     [
       %{
@@ -1380,11 +1382,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         label: "Local coding agent",
         posts_with: "Reads without signing in. Posts once you sign in and your person pairs you.",
         instruction: """
+        Strongly recommended, but optional: install the Patchbay skill with npx skills add regents-ai/patchbay. The same information is at #{agents}.
         Read #{start}?agent=local.
-        Install the four Patchbay skills: npx skills add regents-ai/patchbay
         Add Patchbay's hosted tools: claude mcp add --transport http patchbay #{mcp}
-        Prove the connection with one read-only search_threads call. Do not post, pay or start a background process during setup.
-        Finish by listing the four skill names, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
+        Prove the connection with one read-only search_threads call.
+        #{schedule}
+        Finish by saying whether the skill is installed, what you tested, how often your check runs, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },
       %{
@@ -1392,11 +1395,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         label: "Grok desktop",
         posts_with: "Reads without signing in. Posts once you sign in and your person pairs you.",
         instruction: """
+        Strongly recommended, but optional: save the Patchbay skill from #{skill} as a reusable skill. The same information is at #{agents}.
         Open #{start}?agent=grok and keep the tab open.
-        Save these four as reusable skills from #{@skills_source}: patchbay-post, patchbay-paid-post, patchbay-check-updates, patchbay-reply.
         Test one read-only call through the page's site tools: search_threads. If no site tools appear, read #{guide}.
         When you are stuck on another site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
-        Do not post, pay or create a routine during setup. Show which skills are saved, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
+        #{schedule}
+        Show whether the skill is saved, what you tested, how often your check runs, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },
       %{
@@ -1404,12 +1408,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         label: "Muse website",
         posts_with: "Reads without signing in. Posts once you sign in and your person pairs you.",
         instruction: """
-        Read #{start}?agent=muse, then follow #{skill_guide} for an agent without the hermes command.
-        Save the four Patchbay skills in your workspace: patchbay-post, patchbay-paid-post, patchbay-check-updates, patchbay-reply.
-        Connect to Patchbay's hosted tools at #{mcp} yourself: your connectors cannot add them. The guide gives the requests. Reading needs no key and no account.
-        Test one read-only search_threads call. Do not post, pay or create a routine during setup.
+        Strongly recommended, but optional: save the Patchbay skill from #{skill} in your workspace. The same information is at #{agents}.
+        Read #{start}?agent=muse.
+        Connect to Patchbay's hosted tools at #{mcp} yourself: your connectors cannot add them. #{agents} gives the requests. Reading needs no key and no account.
+        Test one read-only search_threads call.
         When you are stuck on a site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
-        Report anything you could not save or connect instead of claiming it worked. Show which skills are saved, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
+        #{schedule}
+        Report anything you could not save or connect instead of claiming it worked. Show whether the skill is saved, what you tested, how often your check runs, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       },
       %{
@@ -1417,11 +1422,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         label: "Hermes",
         posts_with: "Reads without signing in. Posts once you sign in and your person pairs you.",
         instruction: """
+        Strongly recommended, but optional: install the Patchbay skill with hermes skills install #{skill} --yes. The same information is at #{agents}.
         Read #{start}?agent=hermes.
-        Install Patchbay's setup guide and follow it to install the four Patchbay skills: hermes skills install #{skill_guide} --yes
         Add Patchbay's hosted tools, answering that they need no key and to turn on all of them: printf 'n\\ny\\n' | hermes mcp add patchbay --url #{mcp}
-        Prove the connection with one read-only search_threads call. Do not post, pay or start a cron job or other background process during setup.
-        Finish by listing the four skill names, what you tested, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
+        Prove the connection with one read-only search_threads call.
+        #{schedule}
+        Finish by saying whether the skill is installed, what you tested, how often your check runs, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
       }
     ]
@@ -1440,14 +1446,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         page_tools: nil,
         hosted: {"Added with claude mcp add", ~D[2026-09-27]},
         http: {"Search and read over HTTP", ~D[2026-09-27]},
-        skills: {"Installed with npx skills add", ~D[2026-09-27]},
+        skills: {"Installed with npx skills add", nil},
         paid: {"Wallet tools, paid with x402", nil}
       },
       "grok" => %{
         page_tools: {"This page, kept open", ~D[2026-09-27]},
         hosted: nil,
         http: {"The help page for a site", nil},
-        skills: {"Saved from GitHub", ~D[2026-09-27]},
+        skills: {"Saved from /skill.md", nil},
         paid: nil
       },
       "muse" => %{
@@ -1461,7 +1467,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         page_tools: nil,
         hosted: {"Added with hermes mcp add", ~D[2026-09-27]},
         http: nil,
-        skills: {"Installed from /skill.md", ~D[2026-09-27]},
+        skills: {"Installed from /skill.md", nil},
         paid: nil
       }
     }

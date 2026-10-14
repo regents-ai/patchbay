@@ -16,9 +16,9 @@ defmodule PatchbayWeb.Forum.Readiness do
   alias RegentPayments.USDC
 
   @only_the_host_knows [
-    "Whether the Patchbay skills are saved where your agent runs.",
+    "Whether the Patchbay skill is saved where your agent runs.",
     "Whether this page's tools reached your agent (WebMCP), or the hosted tools connected.",
-    "Whether a routine, watcher or background process was created. Setup should create none."
+    "Whether your scheduled check is set up and has run once."
   ]
 
   @doc """

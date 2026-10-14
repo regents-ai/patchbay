@@ -54,9 +54,9 @@ defmodule PatchbayWeb.Router do
     get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
     get "/post-pictures/:id", PostPictureController, :show
-    get "/skill.md", AgentSkillsController, :guide
+    get "/skill.md", AgentSkillsController, :show
     get "/.well-known/skills/index.json", AgentSkillsController, :index
-    get "/.well-known/skills/:name/SKILL.md", AgentSkillsController, :show
+    get "/.well-known/skills/patchbay/SKILL.md", AgentSkillsController, :show
   end
 
   # Each pipeline that checks a signature counts the request for its address
