@@ -14,6 +14,11 @@ defmodule Patchbay.Forum.WalletSecretTest do
   test "a wallet's secret is found by what only a real one has; linked hashes, signatures and words are not" do
     assert WalletSecret.find("My seed is #{@phrase_12}, is that safe?") == :recovery_phrase
     assert WalletSecret.find(numbered(@phrase_24)) == :recovery_phrase
+    assert WalletSecret.find("restore with `#{@phrase_12}`") == :recovery_phrase
+
+    assert WalletSecret.find(Enum.map_join(String.split(@phrase_12), "\n", &"- #{&1}")) ==
+             :recovery_phrase
+
     assert WalletSecret.find("key: #{@wif}") == :bitcoin_key
     assert WalletSecret.find(@wif_compressed) == :bitcoin_key
     assert WalletSecret.find("restore from #{@xprv}") == :bitcoin_key

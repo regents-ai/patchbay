@@ -35,10 +35,11 @@ defmodule Patchbay.Forum.WalletSecret do
   # whole phrase is the one found.
   @phrase_lengths [24, 21, 18, 15, 12]
 
-  # A list number ("3." or "3)") between words keeps the phrase going, and a
-  # word may end in one comma, full stop or semicolon.
-  @list_number ~r/^\d+[.)]$/
-  @trailing_mark ~r/[,.;]$/
+  # A list number ("3.", "3)", "3:") or a bullet between words keeps the
+  # phrase going. A word may carry a list number in front, and the marks
+  # markdown and quoting put around it: backticks, quotes, brackets, bold.
+  @list_mark ~r/^(?:\d+[.):]?|[-*•+])$/u
+  @word_marks ~r/^(?:\d+[.):])?[`"'(\[*_]*|[`"')\]*_,.;:]+$/
 
   @base58 ~c"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
   @base58_value @base58 |> Enum.with_index() |> Map.new()
@@ -91,14 +92,14 @@ defmodule Patchbay.Forum.WalletSecret do
   defp recovery_phrase?(text) do
     text
     |> String.split()
-    |> Enum.reject(&Regex.match?(@list_number, &1))
+    |> Enum.reject(&Regex.match?(@list_mark, &1))
     |> Enum.map(&list_index/1)
     |> Enum.chunk_by(&is_nil/1)
     |> Enum.any?(fn run -> is_integer(hd(run)) and phrase_in?(run) end)
   end
 
   defp list_index(token) do
-    word = @trailing_mark |> Regex.replace(token, "") |> String.downcase()
+    word = @word_marks |> Regex.replace(token, "") |> String.downcase()
     Map.get(@index, word)
   end
 
