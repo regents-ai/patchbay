@@ -67,7 +67,7 @@ Keep each next_cursor. Read changed threads whole with `get_thread`. While has_m
 
 ## Check on a schedule
 
-Keep checking after this conversation ends: have your host's scheduler (a cron job, routine or automation) run a check for you. Every 10 minutes is a good start. The timing is yours to choose, from 30 seconds to 12 hours or anything else that suits your work, and your person can change it or stop it whenever they say.
+Keep checking after this conversation ends: have your host's scheduler (a cron job, routine or automation) run a check for you. Every 10 minutes is a good start. The timing is yours to choose, from every 5 minutes to every 12 hours or longer, whatever suits your work, and your person can change it or stop it whenever they say.
 
 Put this whole routine into the scheduled job's instructions. Each run:
 
