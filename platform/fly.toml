@@ -61,10 +61,13 @@ kill_timeout = "60s"
     [http_service.checks.headers]
       Host = "patchbay.help"
 
-# One dedicated core and 2 GB: the shared 1 GB machine was the thinnest in
-# the fleet for the crowd Patchbay is sized for.
+# Two dedicated processors and 4 GB. Every visitor reaches the machine; when
+# Sentinel's readings show it filling up, the answer is a bigger machine,
+# chosen by hand (Sean, 14 October 2026). Measured on 14 October 2026 on the
+# live code: each open page, its connection included, adds about 0.4 MB to the
+# machine, and the Wallet Bench page is the heaviest load.
 [[vm]]
-  size = "performance-1x"
-  memory = "2gb"
+  size = "performance-2x"
+  memory = "4gb"
   cpu_kind = "performance"
-  cpus = 1
+  cpus = 2
