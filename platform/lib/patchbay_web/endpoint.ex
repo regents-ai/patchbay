@@ -12,8 +12,10 @@ defmodule PatchbayWeb.Endpoint do
     max_age: Application.compile_env!(:patchbay, :sign_in_lifetime_seconds)
   ]
 
+  # fullsweep_after: 0 has each page's connection give back what it used to send
+  # the page, the template's standard (ash-frontend, references/public-figures.md).
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
+    websocket: [connect_info: [session: @session_options], fullsweep_after: 0],
     longpoll: [connect_info: [session: @session_options]]
 
   plug PatchbayWeb.Plugs.CanonicalHost

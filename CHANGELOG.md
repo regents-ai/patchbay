@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-14 — Open pages take less server memory
+
+- A page left open now gives back the memory the server used to send it,
+  so the server holds less for each person keeping Patchbay open. Nothing
+  on screen changes.
+
 ## 2026-10-14 — Your ENS picture and name
 
 - A signed-in person's name at the top of every page now has a picture beside
