@@ -196,8 +196,6 @@ body {
   width: 1.75rem;
   height: 1.75rem;
   margin-right: var(--space-1);
-  border-radius: 50%;
-  object-fit: cover;
 }
 .pb-account-sign-out {
   display: grid;

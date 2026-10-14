@@ -35,17 +35,6 @@ defmodule Patchbay.Accounts do
          do: {:ok, account}
   end
 
-  @doc """
-  The ENS name and picture read for the wallet the person's sign-in verified,
-  each nil while there is none.
-  """
-  def ens(privy_user_id) do
-    case by_privy!(privy_user_id, load: [:ens_name, :ens_avatar_url], actor: @actor) do
-      nil -> %{name: nil, avatar_url: nil}
-      account -> %{name: account.ens_name, avatar_url: account.ens_avatar_url}
-    end
-  end
-
   defp request_ens_lookup(account) do
     if EnsIdentity.looking_up?() do
       with {:ok, _identity} <-

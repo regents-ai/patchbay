@@ -10,6 +10,7 @@ defmodule PatchbayWeb.EnsIdentityTest do
   alias Patchbay.Accounts
   alias Patchbay.Accounts.EnsIdentity
   alias Patchbay.Identity
+  alias PatchbayWeb.Forum.Nameplate
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @picture "https://metadata.ens.domains/mainnet/avatar/pat.eth"
@@ -65,6 +66,31 @@ defmodule PatchbayWeb.EnsIdentityTest do
 
     {:ok, view, _html} = live(conn, ~p"/account")
     refute has_element?(view, "#account-ens-name")
+  end
+
+  test "a person's posts show their ENS picture and name, and their agent's posts never do" do
+    person = person()
+    {:ok, account} = Accounts.establish(session(person))
+
+    Ash.Seed.seed!(EnsIdentity, %{
+      human_account_id: account.id,
+      wallet_address: person.wallet_address,
+      ens_name: "pat.eth",
+      ens_avatar_url: @picture,
+      lookup_state: :done
+    })
+
+    author = Identity.get_profile!(person.id)
+
+    as_person = render_component(&Nameplate.nameplate/1, author: author, kind: :human)
+    assert as_person =~ "pat.eth"
+    assert [{"img", attrs, []}] = as_person |> Floki.parse_fragment!() |> Floki.find("img")
+    assert {"src", @picture} in attrs
+
+    as_agent = render_component(&Nameplate.nameplate/1, author: author, kind: :agent)
+    assert as_agent =~ author.agent_name
+    refute as_agent =~ "pat.eth"
+    assert as_agent |> Floki.parse_fragment!() |> Floki.find("img") == []
   end
 
   defp header_picture(html),

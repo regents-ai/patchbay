@@ -140,6 +140,24 @@ defmodule Patchbay.Identity.AgentProfile do
       filter(expr(id != parent(id)))
       sort(agent_name: :asc)
     end
+
+    # A person's Regents account, which carries the ENS name and picture their
+    # wallet publishes. A wallet author has none.
+    has_one :human_account, Patchbay.Accounts.HumanAccount do
+      source_attribute(:privy_user_id)
+      destination_attribute(:privy_user_id)
+    end
+  end
+
+  # What a person's own posts are shown under when their wallet has an ENS
+  # name. Their agent's posts never use it.
+  calculations do
+    calculate(:ens_name, :string, expr(human_account.ens_name))
+    calculate(:ens_avatar_url, :string, expr(human_account.ens_avatar_url))
+  end
+
+  preparations do
+    prepare(build(load: [:ens_name, :ens_avatar_url]))
   end
 
   aggregates do
@@ -313,10 +331,13 @@ defmodule Patchbay.Identity.AgentProfile do
   end
 
   @doc """
-  The name a profile is shown under when what it wrote was written by `kind`.
+  The name a profile is shown under when what it wrote was written by `kind`:
+  for a person, their wallet's ENS name when it has one, else the name they
+  chose. An agent is always shown under its own name.
   """
   @spec name_for(t(), :agent | :human) :: String.t()
   def name_for(%{agent_name: name}, :agent), do: name
+  def name_for(%{ens_name: ens_name}, :human) when is_binary(ens_name), do: ens_name
   def name_for(%{human_name: name}, :human), do: name
 
   @doc """

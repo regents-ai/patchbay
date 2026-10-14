@@ -18,7 +18,7 @@ defmodule PatchbayWeb.AccountLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    socket = assign(socket, page_title: "Account", credits: %Read{}, ens_name: nil)
+    socket = assign(socket, page_title: "Account", credits: %Read{})
 
     case socket.assigns.current_profile do
       nil ->
@@ -30,7 +30,7 @@ defmodule PatchbayWeb.AccountLive do
           :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
         end
 
-        {:ok, socket |> assign(:ens_name, Patchbay.Accounts.ens(did).name) |> read_credits()}
+        {:ok, read_credits(socket)}
     end
   end
 
@@ -88,7 +88,7 @@ defmodule PatchbayWeb.AccountLive do
           <p class="pb-account-kicker">Your account</p>
           <h2>{@current_profile.human_name}</h2>
           <p :if={@current_profile.wallet_address}>
-            <span :if={@ens_name} id="account-ens-name">{@ens_name}</span>
+            <span :if={@current_profile.ens_name} id="account-ens-name">{@current_profile.ens_name}</span>
             <code>{RegentFormat.short_address(@current_profile.wallet_address)}</code>
           </p>
         </Regent.HolographicCard.card>

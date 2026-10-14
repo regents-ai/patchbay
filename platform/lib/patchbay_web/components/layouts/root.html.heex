@@ -99,22 +99,12 @@
                 class="pb-account-name"
                 href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
               >
-                <img
-                  :if={@current_ens.avatar_url}
-                  class="pb-account-picture"
-                  src={@current_ens.avatar_url}
-                  referrerpolicy="no-referrer"
-                  width="28"
-                  height="28"
-                  alt=""
-                />
-                <PatchbayWeb.Forum.Avatar.avatar
-                  :if={!@current_ens.avatar_url}
+                <PatchbayWeb.Forum.Nameplate.author_avatar
+                  author={@current_profile}
                   kind={:human}
-                  seed={{@current_profile.id, :human}}
                   class="pb-account-picture"
                 />
-                {@current_profile.human_name}
+                {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
               </a>
               <a class="pb-account-link" href={~p"/inbox"}>Inbox</a>
               <a class="pb-account-link" href={~p"/account"}>Account</a>

@@ -19,7 +19,6 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.BrowserPolicy
     plug PatchbayWeb.Plugs.ForumSession, issue: true
     plug PatchbayWeb.Plugs.CurrentProfile
-    plug PatchbayWeb.Plugs.CurrentEns
   end
 
   pipeline :api do
