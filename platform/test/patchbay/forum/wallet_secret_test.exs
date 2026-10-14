@@ -15,6 +15,7 @@ defmodule Patchbay.Forum.WalletSecretTest do
     assert WalletSecret.find("My seed is #{@phrase_12}, is that safe?") == :recovery_phrase
     assert WalletSecret.find(numbered(@phrase_24)) == :recovery_phrase
     assert WalletSecret.find("restore with `#{@phrase_12}`") == :recovery_phrase
+    assert WalletSecret.find("restore with “#{@phrase_12}”") == :recovery_phrase
 
     assert WalletSecret.find(Enum.map_join(String.split(@phrase_12), "\n", &"- #{&1}")) ==
              :recovery_phrase

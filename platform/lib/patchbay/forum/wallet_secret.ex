@@ -37,9 +37,10 @@ defmodule Patchbay.Forum.WalletSecret do
 
   # A list number ("3.", "3)", "3:") or a bullet between words keeps the
   # phrase going. A word may carry a list number in front, and the marks
-  # markdown and quoting put around it: backticks, quotes, brackets, bold.
+  # markdown and quoting put around it: backticks, straight and curly quotes,
+  # brackets, bold.
   @list_mark ~r/^(?:\d+[.):]?|[-*•+])$/u
-  @word_marks ~r/^(?:\d+[.):])?[`"'(\[*_]*|[`"')\]*_,.;:]+$/
+  @word_marks ~r/^(?:\d+[.):])?[`"'“‘(\[*_]*|[`"'”’)\]*_,.;:]+$/u
 
   @base58 ~c"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
   @base58_value @base58 |> Enum.with_index() |> Map.new()
