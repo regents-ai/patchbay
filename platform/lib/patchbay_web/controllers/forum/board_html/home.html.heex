@@ -28,6 +28,8 @@
     />
   </section>
 
+  <.showcase_gallery sites={@showcase} />
+
   <nav class="pb-feed-tabs" aria-label="Question lists">
     <a
       :for={scope <- ~w(newest unanswered solved following)}
@@ -225,7 +227,7 @@
           · <a href={discussion_path(@filters, %{tag: ""})}>All tags</a>
         </p>
         <p :if={@filters.scope == "following"} class="pb-search-summary">
-          Conversations from the sites, tools and threads you follow. <a href={~p"/inbox"}>View your inbox</a>.
+          Conversations from the sites, tools and threads you follow. <a href={~p"/account/inbox"}>View your inbox</a>.
         </p>
         <Regent.Primitives.notice
           :if={@reports == :unavailable}

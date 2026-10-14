@@ -82,7 +82,7 @@
     <Regent.Structure.frame class="pb-frame">
       <Regent.Structure.row rail={false}>
         <header class="pb-masthead">
-          <.site_nav conn={@conn} filters={PatchbayWeb.Layouts.search_filters(assigns)} />
+          <.site_nav conn={@conn} />
 
           <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
@@ -95,10 +95,7 @@
             {if @current_profile && @current_profile.authentication_origin == :privy,
               do: live_render(@conn, PatchbayWeb.CreditsLive)}
             <div :if={@current_profile} class="pb-account-chip">
-              <a
-                class="pb-account-name"
-                href={Patchbay.Identity.AgentProfile.profile_url(@current_profile)}
-              >
+              <a class="pb-account-name" href={~p"/account/profile"}>
                 <PatchbayWeb.Forum.Nameplate.author_avatar
                   author={@current_profile}
                   kind={:human}
@@ -106,7 +103,6 @@
                 />
                 {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
               </a>
-              <a class="pb-account-link" href={~p"/inbox"}>Inbox</a>
               <a class="pb-account-link" href={~p"/account"}>Account</a>
               <button
                 type="button"
@@ -139,6 +135,7 @@
             </Regent.Primitives.button>
           </div>
         </header>
+        {live_render(@conn, PatchbayWeb.SearchLive, id: "pb-search-live")}
       </Regent.Structure.row>
       <Regent.Structure.row rail={false} class="pb-content-row">
         <div id="pb-content" tabindex="-1">

@@ -15,8 +15,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   @other_contract String.duplicate("b", 64)
   @arguments String.duplicate("c", 64)
 
-  @required_brands ~w(Render Netlify OpenAI Chrome Shopify)
-
   # No page read writes the catalog any more; the directory is imported once,
   # the way boot does it.
   setup do
@@ -160,35 +158,30 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site directory catalog" do
-    test "/sites shows a grid of at least ten entries and the homepage links to it", %{conn: conn} do
+    test "/sites shows every site with WebMCP tools and the homepage links to it", %{conn: conn} do
+      Rooms.create_seeded_room!("room-one")
       home = conn |> get(~p"/") |> html_response(200)
       html = conn |> get(~p"/sites") |> html_response(200)
 
-      cards = html |> LazyHTML.from_document() |> LazyHTML.query("a.pb-dir-card")
-      assert length(Enum.to_list(cards)) >= 10
+      hrefs =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("a.pb-dir-card")
+        |> LazyHTML.attribute("href")
+
+      assert Enum.sort(hrefs) == ["/nested.deals", "/patchbay.help", "/shopify.com"]
       assert home =~ ~s(<a class="pb-directory-link" href="/sites">)
-
-      for brand <- @required_brands do
-        assert html =~ brand
-      end
-
-      assert html =~ ~s(href="/render.com")
-      assert html =~ ~s(href="/netlify.com")
-      assert html =~ ~s(href="/openai.com")
-      assert html =~ ~s(href="/google.com")
-      assert html =~ ~s(href="/shopify.com")
     end
 
     test "a site card is one link to that site's page", %{conn: conn} do
       home = conn |> get(~p"/sites") |> html_response(200)
-      card = card_chunk(home, "google.com")
-      assert card =~ ~s(alt="Screenshot of google.com")
-      assert card =~ "Browser support"
+      card = card_chunk(home, "shopify.com")
+      assert card =~ "View 10 WebMCP tools"
       assert card =~ "Source verified"
       assert length(String.split(card, "<a ")) == 2, "a card is one link with none inside it"
 
-      site = conn |> get(~p"/google.com") |> html_response(200)
-      assert site =~ "Chrome"
+      site = conn |> get(~p"/shopify.com") |> html_response(200)
+      assert site =~ "Shopify"
       assert site =~ ~s(id="pb-site-tools")
       assert site =~ ~s(id="pb-site-posts")
     end
@@ -315,6 +308,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
     test "a site's post count includes questions that name no tool", %{conn: conn} do
       site = site!("counted.example")
+      tool!(site)
       question!(site, nil, "Does this site have any tools at all?")
 
       card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("counted.example")
@@ -472,11 +466,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     test "a site an agent merely named is not shown as exposing tools", %{conn: conn} do
       site!("named-only.example")
 
-      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("named-only.example")
-      assert card =~ "Forum · "
-      refute card =~ "Exposes tools"
-      refute card =~ ~r/\d+ tools?/
-
       page = conn |> get(~p"/named-only.example") |> html_response(200)
       assert page =~ "Posts for help with named-only.example."
       assert page =~ "Tool inventory unverified"
@@ -502,13 +491,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
-      home = conn |> get(~p"/sites") |> html_response(200)
-      netlify = card_chunk(home, "netlify.com")
-
-      assert netlify =~ "Official supporter"
-      refute netlify =~ "Exposes tools"
-      refute netlify =~ ~r/\d+ tools?/
-
       site = conn |> get(~p"/netlify.com") |> html_response(200)
       assert site =~ "Official supporter"
       assert site =~ "No public tool inventory"
@@ -535,7 +517,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "a missing screenshot shows the domain on a plain plate", %{conn: conn} do
-      site!("bare-plate.example")
+      "bare-plate.example" |> site!() |> tool!()
 
       html = conn |> get(~p"/sites") |> html_response(200)
       card = card_chunk(html, "bare-plate.example")

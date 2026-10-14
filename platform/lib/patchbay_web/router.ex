@@ -329,6 +329,8 @@ defmodule PatchbayWeb.Router do
 
     live_session :account, on_mount: [{PatchbayWeb.CurrentProfile, :account}] do
       live "/account", AccountLive, :show
+      live "/account/inbox", AccountLive, :inbox
+      live "/account/profile", AccountLive, :profile
       live "/points", PointsLive, :show
     end
   end
@@ -541,7 +543,6 @@ defmodule PatchbayWeb.Router do
 
     get "/agents/:public_id", AgentProfileController, :show
     get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
-    post "/agents/:public_id/names", AgentProfileController, :rename
   end
 
   scope "/", PatchbayWeb.Forum do
@@ -565,8 +566,6 @@ defmodule PatchbayWeb.Router do
     get "/moderation", ModerationController, :index
     post "/moderation", ModerationController, :decide
     post "/follow", BoardController, :follow
-    get "/inbox", BoardController, :inbox
-    post "/inbox/acknowledge", BoardController, :acknowledge
     post "/posts/:id/solution", BoardController, :mark_solution
     post "/posts/:id/likes", BoardController, :like
     get "/start", BoardController, :start

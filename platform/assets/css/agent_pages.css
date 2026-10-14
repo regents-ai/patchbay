@@ -117,7 +117,7 @@ body:has(.pb-agent) {
 html:has(.pb-agent) { overflow-x: clip; background: var(--agent-bg); }
 body:has(.pb-agent) .rg-sheet { --rg-page-rule: var(--agent-surface); }
 body:has(.pb-agent) .pb-theme-toggle { display: none; }
-body:has(.pb-agent) .pb-header-search input {
+body:has(.pb-agent) .pb-header-search {
   border-color: var(--agent-line);
   border-radius: 999px;
   background: var(--agent-surface);

@@ -2,6 +2,7 @@
 @import "../vendor/regent_ui/design_system_tokens.css";
 @import "../vendor/regent_ui/primitives.css";
 @import "./components/motion.css";
+@import "./components/search_dialog.css";
 @import "./faces.css";
 @import "./workbench.css";
 @import "./feed.css";
@@ -141,8 +142,10 @@ body {
   position: relative;
   z-index: 20;
   display: grid;
-  grid-template-columns: auto minmax(10rem, 26rem) minmax(0, 1fr) auto auto;
-  grid-template-areas: "brand search nav ask account";
+  /* The places to go keep their own width; the space left over sits before
+     the Ask button, so the links never run under it. */
+  grid-template-columns: auto minmax(10rem, 22rem) max-content minmax(0, 1fr) auto auto;
+  grid-template-areas: "brand search nav . ask account";
   align-items: center;
   gap: var(--space-2) var(--space-3);
   /* Header and content use the same responsive panel inset. */
@@ -1301,31 +1304,37 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 }
 .pb-wordmark .patchbay-mark { width: 1.45rem; height: 1.45rem; }
 
-.pb-header-search { grid-area: search; position: relative; display: grid; min-width: 0; margin: 0; }
-.pb-header-search__icon {
-  position: absolute;
-  top: 50%;
-  left: .75rem;
-  width: 1rem;
-  height: 1rem;
-  transform: translateY(-50%);
-  color: var(--pb-text-muted);
-  pointer-events: none;
-}
-/* 1rem text, so a phone does not zoom in when the box is pressed. */
-.pb-header-search input {
+/* Looks like a search box; pressing it opens the search window. */
+.pb-header-search {
+  grid-area: search;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   min-width: 0;
   height: 2.75rem;
-  padding: 0 .75rem 0 2.25rem;
+  margin: 0;
+  padding: 0 .75rem;
   border: 1px solid var(--pb-line-strong);
   border-radius: var(--radius);
   background: var(--pb-surface);
-  color: var(--pb-text);
+  color: var(--pb-text-muted);
   font: inherit;
-  font-size: 1rem;
+  font-size: .875rem;
+  text-align: left;
+  cursor: pointer;
 }
-.pb-header-search input::placeholder { color: var(--pb-text-muted); }
-.pb-header-search input:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-header-search:hover { border-color: var(--pb-text); }
+.pb-header-search:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-header-search__icon { flex: none; width: 1rem; height: 1rem; }
+.pb-header-search__prompt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-header-search__shortcut {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--pb-line);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: .75rem;
+}
 
 .pb-site-nav { grid-area: nav; display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
 .pb-site-nav a {
@@ -1678,12 +1687,33 @@ body:has(#patchbay-home),
 .pb-dir-card:hover .pb-dir-brand,
 .pb-dir-card:focus-visible .pb-dir-brand { opacity: 1; transform: none; }
 .pb-dir-body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
   padding: var(--space-2);
 }
+/* The tool count, as a button in the card's empty corner, shown only while
+   the card is pointed at or reached. The whole card is the link it follows. */
+.pb-dir-tools {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  padding: 4px 10px;
+  border: 1px solid var(--pb-text);
+  border-radius: var(--radius);
+  background: var(--pb-text);
+  color: var(--pb-surface);
+  font-size: .75rem;
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.pb-dir-card:hover .pb-dir-tools,
+.pb-dir-card:focus-visible .pb-dir-tools { opacity: 1; transform: none; }
 .pb-dir-name {
   margin: 0;
   color: var(--pb-text);
@@ -1845,7 +1875,8 @@ body:has(#patchbay-home),
 @media (prefers-reduced-motion: reduce) {
   .pb-dir-card,
   .pb-dir-shot-wrap::after,
-  .pb-dir-brand { transition: none; }
+  .pb-dir-brand,
+  .pb-dir-tools { transition: none; }
   .pb-dir-card:hover,
   .pb-dir-card:focus-visible,
   .pb-dir-card:hover .pb-dir-brand,

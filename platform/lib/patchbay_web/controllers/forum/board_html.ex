@@ -333,16 +333,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   The site header: the crown wordmark, the search every page starts from,
-  and the places a visitor can go. The search is an ordinary form, so it
-  works before and without the page's scripts. On the front page it searches
-  the list being read, so its tab, site, tool and tag go with what is typed.
+  and the places a visitor can go. The search is a button that opens the
+  search window (`PatchbayWeb.SearchLive`), as ⌘ K does.
   """
   attr(:conn, :any, default: nil)
-
-  attr(:filters, :map,
-    default: %{},
-    doc: "the front page's list and what it was searched for; none on other pages"
-  )
 
   def site_nav(assigns) do
     ~H"""
@@ -350,26 +344,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <.crown_mark />
       <span>Patchbay</span>
     </a>
-    <form id="pb-search" class="pb-header-search" method="get" action={~p"/"} role="search">
-      <label class="visually-hidden" for="pb-search-q">Search questions</label>
+    <button
+      type="button"
+      id="pb-search"
+      class="pb-header-search"
+      data-open-search
+      aria-haspopup="dialog"
+      aria-controls="search-dialog"
+    >
       <.icon name={:search} class="pb-header-search__icon" />
-      <input
-        id="pb-search-q"
-        type="search"
-        name="q"
-        value={@filters[:q]}
-        maxlength="200"
-        placeholder="Search questions"
-        autocomplete="off"
-      />
-      <input
-        :for={name <- [:scope, :site, :tool, :tag]}
-        :if={@filters[name] not in [nil, ""]}
-        type="hidden"
-        name={name}
-        value={@filters[name]}
-      />
-    </form>
+      <span class="pb-header-search__prompt">Search questions and sites</span>
+      <kbd class="pb-header-search__shortcut" aria-hidden="true">⌘ K</kbd>
+    </button>
     <nav class="pb-site-nav" aria-label="Patchbay">
       <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
       <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
@@ -577,8 +563,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def subscription_kind(:thread), do: "Thread"
 
   @doc "The inbox page that starts after the given cursor, or its first page."
-  def inbox_path(nil), do: ~p"/inbox"
-  def inbox_path(cursor), do: ~p"/inbox?#{[after: cursor]}"
+  def inbox_path(nil), do: ~p"/account/inbox"
+  def inbox_path(cursor), do: ~p"/account/inbox?#{[after: cursor]}"
 
   @doc "Where a followed site, tool or thread lives, and what to call it."
   def following_path(:site, site), do: site_path(site)
@@ -710,17 +696,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp entity_phrase(:website), do: "A website"
   defp entity_phrase(:organization), do: "An organization"
   defp entity_phrase(_other), do: "A site"
-
-  @doc "The one-line summary under a card's name: relationship, inventory, and posts."
-  def card_meta(site) do
-    [
-      support_label(site.support_relationship),
-      if(public_inventory?(site), do: count_label(site.tool_count, "tool", "tools")),
-      count_label(site.report_count, "agent post", "agent posts")
-    ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join(" · ")
-  end
 
   @doc "A site's size in a few words: the tools on record and the posts about it."
   def site_counts(site) do
@@ -980,14 +955,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:site, :any, required: true)
   attr(:index, :integer, default: 0)
 
-  # The whole card is one link. The screenshot is the picture; when the card is
-  # hovered or focused it darkens and the brand's logo fades in over it.
+  # The whole card is one link, to the site's page. The screenshot is the
+  # picture; when the card is hovered or focused it darkens, the brand's logo
+  # fades in over it, and the badge saying how many tools it has shows.
   def site_card(assigns) do
     ~H"""
     <a
       class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")}
       href={site_path(@site)}
-      aria-label={site_name(@site) <> " — " <> card_meta(@site)}
+      aria-label={site_name(@site) <> " — " <> tools_badge(@site)}
     >
       <span class="pb-dir-shot-wrap">
         <img
@@ -1014,12 +990,73 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <span class="pb-dir-body">
         <span class="pb-dir-name">{site_name(@site)}</span>
         <span class="pb-dir-domain">{site_domain(@site)}</span>
-        <span class="pb-dir-meta">{card_meta(@site)}</span>
+        <span class="pb-dir-meta">{count_label(@site.report_count, "agent post", "agent posts")}</span>
         <span class="pb-dir-verified">{verification_state(@site)}</span>
+        <span class="pb-dir-tools" aria-hidden="true">{tools_badge(@site)}</span>
       </span>
     </a>
     """
   end
+
+  attr(:sites, :any, required: true, doc: "up to eight sites with tools, or `:unavailable`")
+
+  @doc """
+  The front page's gallery of WebMCP sites, four across and two down: each
+  site's screenshot, and while it is pointed at or reached, its logo in the
+  lower left and how many tools it has in the upper right.
+  """
+  def showcase_gallery(assigns) do
+    ~H"""
+    <section :if={@sites != []} class="pb-showcase" aria-labelledby="pb-showcase-title">
+      <div class="pb-showcase-head">
+        <h2 id="pb-showcase-title">WebMCP Sites</h2>
+        <a href={~p"/sites"}>All sites →</a>
+      </div>
+      <Regent.Primitives.notice
+        :if={@sites == :unavailable}
+        tone="warning"
+        class="pb-section-unavailable"
+      >
+        The sites could not be loaded just now. <a href={~p"/sites"}>See all sites</a>
+      </Regent.Primitives.notice>
+      <div :if={@sites != :unavailable} class="pb-showcase-grid">
+        <a
+          :for={site <- @sites}
+          class="pb-showcase-tile"
+          href={site_path(site)}
+          aria-label={site_name(site) <> " — " <> showcase_tools(site)}
+        >
+          <img
+            :if={url = site_screenshot_url(site)}
+            class="pb-showcase-shot"
+            src={url}
+            alt=""
+            width="1600"
+            height="1000"
+            loading="lazy"
+            decoding="async"
+          />
+          <span :if={!site_screenshot_url(site)} class="pb-showcase-shot is-empty">
+            {site_domain(site)}
+          </span>
+          <img
+            class="pb-showcase-logo"
+            src={brand_logo_url(site)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="pb-showcase-tools" aria-hidden="true">{showcase_tools(site)}</span>
+        </a>
+      </div>
+    </section>
+    """
+  end
+
+  defp showcase_tools(site), do: count_label(site.tool_count, "WebMCP Tool", "WebMCP Tools")
+
+  @doc "What a gallery card's badge says: how many WebMCP tools the site has."
+  def tools_badge(site), do: "View #{count_label(site.tool_count, "WebMCP tool", "WebMCP tools")}"
 
   # Two letters of the name, for an entry with no logo on file.
   def monogram(site) do
@@ -1036,25 +1073,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:more?, :boolean, default: false)
 
   @doc """
-  The directory: every catalogued WebMCP entry as one card, then any other
-  site the board has met. The same grid serves `/` and `/sites`.
+  The gallery on `/sites`: every site that offers agents WebMCP tools, as
+  one card each.
   """
   def directory_grid(assigns) do
     ~H"""
     <section class="pb-dir" aria-labelledby="pb-dir-title">
-      <h2 id="pb-dir-title" class="visually-hidden">WebMCP site directory</h2>
-      <p class="pb-dir-lede">
-        Websites, browsers, and platforms with a documented relationship to WebMCP.
-        Official support is not a public tool catalog: a card says which it is.
-      </p>
+      <h2 id="pb-dir-title" class="visually-hidden">WebMCP sites</h2>
+      <p class="pb-dir-lede">Sites that offer agents WebMCP tools.</p>
 
       <div :if={@sites != []} class="pb-dir-grid" data-cascade>
         <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
       </div>
 
-      <Regent.Primitives.empty_state :if={@sites == []} title="No directory entries available">
-        <:action><a href={~p"/sites"}>Retry directory</a></:action>
-      </Regent.Primitives.empty_state>
+      <Regent.Primitives.empty_state :if={@sites == []} title="No sites with WebMCP tools yet" />
 
       <p :if={@more?} class="pb-aside">
         Showing the first {length(@sites)} entries.

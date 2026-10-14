@@ -176,3 +176,7 @@
   color: var(--pb-text-muted);
   font-size: var(--pb-fs-xs);
 }
+
+/* Account, Inbox and Profile: the same tabs as the question lists. */
+.pb-account-page .pb-account-tabs { margin-bottom: 0; }
+.pb-account-tab { display: grid; gap: var(--space-3); min-width: 0; }

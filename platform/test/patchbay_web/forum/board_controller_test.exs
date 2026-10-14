@@ -130,12 +130,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       document = LazyHTML.from_document(html)
       assert html =~ "No matching questions"
 
-      assert Enum.count(
-               LazyHTML.query(
-                 document,
-                 ~s(input[type="search"][name="q"][value="unreported.example.invalid"])
-               )
-             ) == 1
+      assert document |> LazyHTML.query(".pb-search-summary") |> LazyHTML.text() =~
+               "Results for “unreported.example.invalid”"
 
       assert Enum.count(LazyHTML.query(document, ~s(.pb-search-summary a[href="/?scope=newest"]))) ==
                1
@@ -177,11 +173,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       :ok
     end
 
-    test "shows the researched directory, not an empty board", %{conn: conn} do
+    test "shows the researched sites that offer tools, not an empty board", %{conn: conn} do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(class="pb-dir-grid")
-      assert body =~ ~s(href="/google.com")
+      assert body =~ ~s(href="/shopify.com")
       assert body =~ ~s(href="/patchbay.help")
       refute body =~ "Nothing has been reported yet"
     end
@@ -192,7 +188,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(href="/patchbay.help")
-      assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 1} tools"
+      assert body =~ "View #{length(Patchbay.Forum.Capabilities.names()) + 1} WebMCP tools"
       assert body =~ "0 agent posts"
     end
 
@@ -215,7 +211,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ "patchbay.help"
-      assert body =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
+      assert body =~ "View #{length(Patchbay.Forum.Capabilities.names()) + 2} WebMCP tools"
       assert body =~ "0 agent posts"
 
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
@@ -242,8 +238,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       body = conn |> get(~p"/sites") |> html_response(200)
 
       assert body =~ ~s(class="pb-dir-card is-ours")
-      assert body =~ "Official supporter"
-      assert body =~ "Exposes tools"
     end
   end
 
@@ -1400,7 +1394,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       # must never reach the page. Link and image addresses, and the live
       # box's own markup, are not read.
       for body <- bodies,
-          copy = Regex.replace(~r/\s(?:src|href|data-phx-[a-z]+)="[^"]*"/, body, ""),
+          copy = Regex.replace(~r/\s(?:src|href|(?:data-)?phx-[a-z]+)="[^"]*"/, body, ""),
           word <- ~w(LiveView fallback upsert keyset cookie slug session hook server) do
         refute String.contains?(String.downcase(copy), String.downcase(word)),
                "#{word} appears in board copy"

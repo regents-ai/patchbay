@@ -107,6 +107,17 @@ defmodule PatchbayWeb.Forum.Board do
          do: {:ok, page.results, page.more?}
   end
 
+  @doc """
+  The sites that offer agents WebMCP tools, at most `limit` of them: the
+  gallery on `/sites` and on the front page, and the search window's sites
+  before anything is typed.
+  """
+  @spec list_showcase(pos_integer()) :: {:ok, [Site.t()], boolean()} | {:error, term()}
+  def list_showcase(limit \\ @sites) do
+    with {:ok, page} <- Forum.list_showcase(query: site_summary(), page: [limit: limit]),
+         do: {:ok, page.results, page.more?}
+  end
+
   # A site card carries the same summary wherever it is read: how much has been
   # reported, how it broke down, and when the last word came in. All of it is
   # counted alongside the site itself, so a page of cards is still one read.

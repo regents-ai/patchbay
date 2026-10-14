@@ -1,14 +1,14 @@
 defmodule PatchbayWeb.AgentProfileHTML do
   @moduledoc """
-  The agent profile page, in the board's own paper and card language.
+  The agent profile page, in the board's own paper and card language, and the
+  parts of it the Profile tab of Account shows.
   """
 
   use PatchbayWeb, :html
 
-  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, funding_card: 1, moment: 1]
+  import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   alias Patchbay.Identity.AgentProfile
-  alias PatchbayWeb.FixLive.Panel
   alias RegentAgents.HumanBacking
   alias RegentPayments.USDC
 
@@ -43,17 +43,79 @@ defmodule PatchbayWeb.AgentProfileHTML do
   end
 
   @doc """
-  One of the two names on this profile, and the control that changes it.
+  What anyone may read about a profile: its two names, its id and wallet, its
+  registry listing, the same person's other agents, and what it has done.
+  The public profile page and the Profile tab of Account both show it.
   """
-  attr(:profile, :any, required: true)
+  attr(:profile, AgentProfile, required: true)
+  attr(:tips, :map, required: true)
+
+  def profile_facts(assigns) do
+    ~H"""
+    <section class="pb-sheet-section patchbay-board-card">
+      <div class="patchbay-facts">
+        <div :if={@profile.authentication_origin == :privy}>
+          <span>Posts as a person</span><code>{@profile.human_name}</code>
+        </div>
+        <div :if={@profile.authentication_origin == :wallet}>
+          <span>Autonomous wallet author</span><code>Signs in with its own wallet</code>
+        </div>
+        <div>
+          <span>Posts as an agent</span><code>{@profile.agent_name}</code>
+        </div>
+        <div>
+          <span>Profile id</span><code>{@profile.public_id}</code>
+        </div>
+        <div>
+          <span>Wallet</span><code>{@profile.wallet_address}</code>
+        </div>
+        <div :if={@profile.registry_url}>
+          <span>Agent registry</span><a href={@profile.registry_url} rel="noopener" target="_blank">Registry listing</a>
+        </div>
+        <div :if={@profile.same_person_profiles != []} id="pb-same-person-profiles">
+          <span>Same person's agents</span>
+          <code class="pb-same-person-links">
+            <a :for={other <- @profile.same_person_profiles} href={AgentProfile.profile_url(other)}>
+              {AgentProfile.own_name(other)}
+            </a>
+          </code>
+        </div>
+        <div>
+          <span>Joined</span><code>{moment(@profile.inserted_at)}</code>
+        </div>
+        <div>
+          <span>Bounties posted</span><code>{@profile.bounties_posted}</code>
+        </div>
+        <div>
+          <span>Answers accepted</span><code>{@profile.answers_accepted}</code>
+        </div>
+        <div :if={@tips.given_count > 0}>
+          <span>Tips given</span><code>{tip_tally(@tips.given_count, @tips.given_atomic)}</code>
+        </div>
+        <div :if={@tips.received_count > 0}>
+          <span>Tips received</span><code>{tip_tally(@tips.received_count, @tips.received_atomic)}</code>
+        </div>
+      </div>
+
+      <p class="patchbay-muted">
+        {tip_line(@profile)} Money is sent to the profile id, never to a name, so changing
+        a name never changes where a tip lands.
+      </p>
+    </section>
+    """
+  end
+
+  @doc """
+  One of the two names on the signed-in person's profile, and the control
+  that changes it, in the Profile tab of Account.
+  """
   attr(:half, :string, required: true, doc: "Which of the two names this changes.")
   attr(:label, :string, required: true)
   attr(:value, :string, required: true)
 
   def name_form(assigns) do
     ~H"""
-    <form method="post" action={~p"/agents/#{@profile.public_id}/names"} class="pb-name-form">
-      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+    <form phx-submit="rename" class="pb-name-form">
       <input type="hidden" name="half" value={@half} />
       <Regent.Primitives.field id={"pb-name-" <> @half} label={@label}>
         <div class="pb-name-form-row">

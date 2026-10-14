@@ -2,7 +2,7 @@
   <.board_header title="Sites">
     <:crumbs>PATCHBAY / SITES</:crumbs>
     <:meta :if={@sites != :unavailable}>
-      <span class="patchbay-generation">{count_label(length(@sites), "entry", "entries")}</span>
+      <span class="patchbay-generation">{count_label(length(@sites), "site", "sites")}</span>
     </:meta>
   </.board_header>
 
@@ -11,7 +11,7 @@
     tone="error"
     class="pb-section-unavailable"
   >
-    <strong>The site directory could not be loaded just now.</strong>
+    <strong>The sites could not be loaded just now.</strong>
     <a href={~p"/sites"}>Try again</a>
   </Regent.Primitives.notice>
   <.directory_grid :if={@sites != :unavailable} sites={@sites} more?={@more?} />

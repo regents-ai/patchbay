@@ -163,8 +163,12 @@ defmodule Patchbay.ForumTest do
                  {:directory, :read},
                  {:register_site, :create},
                  {:upsert_catalog_entry, :create},
+                 {:showcase, :read},
+                 {:refresh, :update},
+                 {:record_refresh, :update},
                  {:take_picture, :update},
-                 {:record_screenshot, :update}
+                 {:record_screenshot, :update},
+                 {:picture_failed, :update}
                ]
                |> Enum.sort()
     end

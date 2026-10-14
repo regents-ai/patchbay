@@ -36,6 +36,7 @@ import {MotionCascade} from "./hooks/motion/reveals.ts"
 import {HolographicCard} from "./hooks/holographic_card.ts"
 import {OfferSlots} from "./hooks/offer_slots.ts"
 import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
+import {SearchDialog} from "./hooks/search_dialog.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
@@ -44,7 +45,6 @@ import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
 import {mountHelloStream} from "./hello_stream.ts"
 import {mountHeroForm} from "./hero_form.ts"
-import {mountDiscussionSearch} from "./discussion_search.ts"
 import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.ts"
@@ -69,6 +69,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     OfferSlots,
     PatchbayCreditsDialog,
     PatchbayCreditsPanel,
+    SearchDialog,
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
   },
@@ -99,7 +100,6 @@ const offerPageWideSurfaces = () => {
   mountReadinessCard()
   mountHelloStream()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
-  mountDiscussionSearch()
   mountWalletBench()
   mountAgentFunding()
   mountCardTopUp()

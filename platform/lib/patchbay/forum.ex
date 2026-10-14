@@ -25,6 +25,7 @@ defmodule Patchbay.Forum do
       define(:get_site_by_origin, action: :read, get_by: [:origin])
       define(:get_site_by_slug, action: :read, get_by: [:slug])
       define(:list_directory, action: :directory)
+      define(:list_showcase, action: :showcase)
       define(:find_sites, action: :find, args: [:text])
     end
 

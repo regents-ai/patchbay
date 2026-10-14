@@ -42,18 +42,40 @@ defmodule Patchbay.Forum.Site do
 
   oban do
     triggers do
-      # A site's first post asks for its picture; a later post asks again
-      # while it has none. Never on a sweep, and three tries per ask, so a
-      # picture missed while the screenshot machine was away comes with the
-      # next post. Directory entries bring their own pictures.
+      # Once a day for every site: a fresh check of its tools and of its
+      # official source. Looked for every hour, so a new site, or every site
+      # right after a release, is refreshed within the hour.
+      trigger :refresh do
+        action(:refresh)
+        queue(:site_checks)
+        where(expr(is_nil(refreshed_at) or refreshed_at < ago(1, :day)))
+        scheduler_cron("0 * * * *")
+        max_attempts(3)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Site.Workers.Refresh)
+        scheduler_module_name(Patchbay.Forum.Site.Schedulers.Refresh)
+      end
+
+      # A new picture of every site's page once a week, and as soon as a
+      # site's first post asks for one. A picture that could not be taken
+      # after three tries is tried again the next day.
       trigger :take_picture do
         action(:take_picture)
         queue(:site_pictures)
-        where(expr(is_nil(screenshot_path) and is_nil(support_relationship)))
+
+        where(
+          expr(
+            (is_nil(screenshot_captured_at) or screenshot_captured_at < ago(7, :day)) and
+              (is_nil(picture_failed_at) or picture_failed_at < ago(1, :day))
+          )
+        )
+
+        scheduler_cron("0 * * * *")
         max_attempts(3)
+        on_error(:picture_failed)
         lock_for_update?(false)
-        scheduler_cron(false)
         worker_module_name(Patchbay.Forum.Site.Workers.TakePicture)
+        scheduler_module_name(Patchbay.Forum.Site.Schedulers.TakePicture)
       end
     end
   end
@@ -97,6 +119,8 @@ defmodule Patchbay.Forum.Site do
     attribute(:screenshot_path, :string, allow_nil?: true, public?: true)
     attribute(:screenshot_source_url, :string, allow_nil?: true, public?: true)
     attribute(:screenshot_captured_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+    attribute(:picture_failed_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+    attribute(:refreshed_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
     attribute(:featured_rank, :integer, allow_nil?: true, public?: true)
 
@@ -172,6 +196,17 @@ defmodule Patchbay.Forum.Site do
       prepare(build(sort: [featured_rank: :asc, display_name: :asc, origin: :asc]))
     end
 
+    read :showcase do
+      description("""
+      The sites that offer agents WebMCP tools, in directory order: the
+      gallery on `/sites` and on the front page.
+      """)
+
+      filter(expr(tool_count > 0))
+      pagination(keyset?: true, default_limit: 50, max_page_size: 200)
+      prepare(build(sort: [featured_rank: :asc, display_name: :asc, origin: :asc]))
+    end
+
     create :register_site do
       description("Records a site the first time an agent reports on it.")
       accept([])
@@ -186,6 +221,23 @@ defmodule Patchbay.Forum.Site do
       change(Patchbay.Forum.Changes.NormalizeOrigin)
       change(Patchbay.Forum.Changes.AssignOriginSlug)
       change(Patchbay.Forum.Changes.AssignCatalogDefaults)
+    end
+
+    update :refresh do
+      description("""
+      Checks the site's tools and its official source again. It reads other
+      sites, so nothing here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.RefreshSite)
+    end
+
+    update :record_refresh do
+      description("Keeps when the site was refreshed, and the day its source was last verified.")
+      accept([:refreshed_at, :last_verified_at])
     end
 
     update :take_picture do
@@ -203,7 +255,13 @@ defmodule Patchbay.Forum.Site do
 
     update :record_screenshot do
       description("Points the site's card at the picture Patchbay took of its page.")
-      accept([:screenshot_path, :screenshot_source_url, :screenshot_captured_at])
+      accept([:screenshot_path, :screenshot_captured_at])
+    end
+
+    update :picture_failed do
+      description("Three tries at a picture failed: the next try waits a day.")
+      accept([])
+      change(set_attribute(:picture_failed_at, &DateTime.utc_now/0))
     end
 
     create :upsert_catalog_entry do
@@ -224,9 +282,7 @@ defmodule Patchbay.Forum.Site do
         :logo_path,
         :logo_source_url,
         :logo_usage_note,
-        :screenshot_path,
         :screenshot_source_url,
-        :screenshot_captured_at,
         :featured_rank
       ])
 
@@ -235,6 +291,8 @@ defmodule Patchbay.Forum.Site do
       upsert?(true)
       upsert_identity(:unique_origin)
 
+      # The day the source was last verified is the catalog's only for a new
+      # entry; after that the daily refresh keeps it.
       upsert_fields([
         :slug,
         :display_name,
@@ -245,14 +303,11 @@ defmodule Patchbay.Forum.Site do
         :support_status,
         :support_evidence_url,
         :support_evidence_label,
-        :last_verified_at,
         :tool_inventory_status,
         :logo_path,
         :logo_source_url,
         :logo_usage_note,
-        :screenshot_path,
         :screenshot_source_url,
-        :screenshot_captured_at,
         :featured_rank
       ])
 

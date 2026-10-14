@@ -16,10 +16,8 @@
       "logo_path": null,
       "logo_source_url": "https://partnermarketinghub.withgoogle.com/brands/chrome/",
       "logo_usage_note": "No logo shown. Chrome brand assets are released only through Google's partner hub under login and the mark is trademarked, so the directory uses a text monogram.",
-      "screenshot_path": "/images/directory/chrome.webp",
       "screenshot_source_url": "https://www.google.com/chrome/",
-      "featured_rank": 1,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 1
     },
     {
       "slug": "openai",
@@ -36,10 +34,8 @@
       "logo_path": "/images/directory/openai-logo.svg",
       "logo_source_url": "https://openai.com/brand/",
       "logo_usage_note": "Official OpenAI wordmark (black) from the OpenAI brand package, unmodified. Marks usage terms apply; the Blossom symbol is not used as primary branding.",
-      "screenshot_path": "/images/directory/openai.webp",
       "screenshot_source_url": "https://learn.chatgpt.com/docs/webmcp",
-      "featured_rank": 2,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 2
     },
     {
       "slug": "shopify",
@@ -56,10 +52,8 @@
       "logo_path": "/images/directory/shopify-logo.svg",
       "logo_source_url": "https://www.shopify.com/brand-assets",
       "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Shopify asks for at least 80px width and no stretching or effects.",
-      "screenshot_path": "/images/directory/shopify.webp",
       "screenshot_source_url": "https://www.shopify.com/",
       "featured_rank": 3,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z",
       "tools": [
         {
           "name": "search_catalog",
@@ -118,10 +112,8 @@
       "logo_path": "/images/directory/netlify-logo.svg",
       "logo_source_url": "https://www.netlify.com/press/",
       "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Netlify asks that the file not be modified.",
-      "screenshot_path": "/images/directory/netlify.webp",
       "screenshot_source_url": "https://www.netlify.com/",
-      "featured_rank": 4,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 4
     },
     {
       "slug": "render",
@@ -138,10 +130,8 @@
       "logo_path": "/images/directory/render-logo.svg",
       "logo_source_url": "https://render.com/press",
       "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Guidelines ship inside the Render brand kit.",
-      "screenshot_path": "/images/directory/render.webp",
       "screenshot_source_url": "https://render.com/",
-      "featured_rank": 5,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 5
     },
     {
       "slug": "cloudflare",
@@ -158,10 +148,8 @@
       "logo_path": null,
       "logo_source_url": "https://www.cloudflare.com/press-kit/",
       "logo_usage_note": "No logo shown. Cloudflare's press kit offers only colour raster files and no monochrome vector, so the directory uses a text monogram.",
-      "screenshot_path": "/images/directory/cloudflare.webp",
       "screenshot_source_url": "https://www.cloudflare.com/",
-      "featured_rank": 6,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 6
     },
     {
       "slug": "vercel",
@@ -178,10 +166,8 @@
       "logo_path": "/images/directory/vercel-logo.svg",
       "logo_source_url": "https://vercel.com/geist/brands",
       "logo_usage_note": "Official monochrome logo, unmodified, from the brand asset package linked as the source. Shown in one colour on a neutral plate. Listing does not imply endorsement by Vercel.",
-      "screenshot_path": "/images/directory/vercel.webp",
       "screenshot_source_url": "https://vercel.com/",
-      "featured_rank": 7,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 7
     },
     {
       "slug": "microsoft",
@@ -198,10 +184,8 @@
       "logo_path": null,
       "logo_source_url": "https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks",
       "logo_usage_note": "No logo shown. Microsoft logos need a licence for this use, so the directory uses a text monogram.",
-      "screenshot_path": "/images/directory/microsoft.webp",
       "screenshot_source_url": "https://www.microsoft.com/",
-      "featured_rank": 8,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 8
     },
     {
       "slug": "mcp-b",
@@ -218,10 +202,8 @@
       "logo_path": "/images/directory/mcp-b-logo.svg",
       "logo_source_url": "https://mcp-b.ai/",
       "logo_usage_note": "Official MCP-B logo as published on mcp-b.ai. It is a colour mark with no monochrome variant; the directory shows it in greyscale.",
-      "screenshot_path": "/images/directory/mcp-b.webp",
       "screenshot_source_url": "https://mcp-b.ai/",
-      "featured_rank": 9,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 9
     },
     {
       "slug": "patchbay",
@@ -238,10 +220,8 @@
       "logo_path": "/favicon.svg",
       "logo_source_url": "https://patchbay.help/",
       "logo_usage_note": "Patchbay's own mark.",
-      "screenshot_path": "/images/directory/patchbay.webp",
       "screenshot_source_url": "https://patchbay.help/",
-      "featured_rank": 10,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 10
     },
     {
       "slug": "w3c",
@@ -258,10 +238,8 @@
       "logo_path": "/images/directory/w3c-logo.svg",
       "logo_source_url": "https://www.w3.org/Consortium/Legal/logo-usage-20000308",
       "logo_usage_note": "Official W3C 2025 black logo, unmodified. W3C asks that it stand alone and imply no endorsement.",
-      "screenshot_path": "/images/directory/w3c.webp",
       "screenshot_source_url": "https://www.w3.org/",
-      "featured_rank": 11,
-      "screenshot_captured_at": "2026-09-11T20:30:00Z"
+      "featured_rank": 11
     },
     {
       "slug": "nested",
@@ -279,9 +257,7 @@
       "logo_path": "/images/directory/nested-logo.png",
       "logo_source_url": "https://nested.deals/apple-touch-icon.png",
       "logo_usage_note": "The site's own icon, unmodified, from its public site.",
-      "screenshot_path": "/images/directory/nested.webp",
       "screenshot_source_url": "https://nested.deals/",
-      "screenshot_captured_at": "2026-09-29T06:25:00Z",
       "tools": [
         {
           "name": "search_products",

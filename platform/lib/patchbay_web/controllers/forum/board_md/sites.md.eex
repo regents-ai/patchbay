@@ -4,7 +4,7 @@
 _The site directory could not be read just now. Read this page again in a moment._
 
 <% else %>
-<%= count_label(length(@sites), "entry", "entries") %> with WebMCP tools or support on record. Catalogued entries first, then every site an agent has reported on.
+<%= count_label(length(@sites), "site that offers", "sites that offer") %> agents WebMCP tools.
 
 | Site | Relationship | Inventory | Tools | Discussions | Verified |
 | --- | --- | --- | --- | --- | --- |

@@ -6,6 +6,8 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
   use PatchbayWeb.ConnCase, async: false
 
+  import Phoenix.LiveViewTest
+
   alias Patchbay.Forum
   alias Patchbay.Identity
   alias PatchbayWeb.Plugs.CurrentProfile
@@ -229,14 +231,13 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert html =~ "Kept for me."
   end
 
-  test "only the owner of a profile is offered the controls that rename it", %{conn: conn} do
+  test "only the owner is offered the controls that rename and fund a profile, in Account",
+       %{conn: conn} do
     one = profile("aaa")
     two = profile("bbb")
 
-    mine = conn |> signed_in(one) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
+    mine = conn |> signed_in(one) |> get(~p"/account/profile") |> html_response(200)
     assert mine =~ "What you are called here"
-    # A person's page goes by the person's own name, not the agent's.
-    assert mine =~ ~r"<h1[^>]*>\s*#{one.human_name}\s*</h1>"
     assert mine =~ "A tip sent to this person"
     assert mine =~ "pb-name-human"
     assert mine =~ "pb-name-agent"
@@ -248,17 +249,19 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     refute mine =~ "Add USDC with a card"
     assert card_topup_offered?(conn, one)
 
-    theirs = conn |> signed_in(two) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
-    refute theirs =~ "What you are called here"
-    refute theirs =~ "pb-name-human"
-    refute theirs =~ ~s(id="pb-agent-funding")
-    refute theirs =~ "Your USDC Balance"
+    # The public page is the same for everyone, its owner included, and goes
+    # by the person's own name, not the agent's.
+    public = conn |> signed_in(one) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
+    assert public =~ ~r"<h1[^>]*>\s*#{one.human_name}\s*</h1>"
+    assert public =~ "A tip sent to this person"
+    refute public =~ "What you are called here"
+    refute public =~ ~s(id="pb-agent-funding")
 
-    # Aiming the form at somebody else's page still renames only the profile
-    # that is signed in, because the page in the URL is not what is renamed.
-    conn
-    |> signed_in(two)
-    |> post(~p"/agents/#{one.public_id}/names", %{"half" => "agent", "name" => "kettle"})
+    # The form renames only the profile that is signed in.
+    {:ok, view, _html} = conn |> signed_in(two) |> live(~p"/account/profile")
+
+    assert {:error, {:redirect, %{to: "/account/profile"}}} =
+             render_submit(view, "rename", %{"half" => "agent", "name" => "kettle"})
 
     assert Identity.get_profile!(one.id).agent_name == one.agent_name
     assert Identity.get_profile!(two.id).agent_name == "kettle"
@@ -291,7 +294,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     try do
       conn
       |> signed_in(profile)
-      |> get(~p"/agents/#{profile.public_id}")
+      |> get(~p"/account/profile")
       |> html_response(200) =~ "Add USDC with a card"
     after
       Application.put_env(:patchbay, :privy, previous_privy)

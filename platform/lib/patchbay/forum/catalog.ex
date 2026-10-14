@@ -2,7 +2,10 @@ defmodule Patchbay.Forum.Catalog do
   @moduledoc """
   The researched WebMCP directory. Official support is not a tool catalog.
 
-  Entries come from `priv/data/webmcp_sites.json`. Tools are never invented
+  Entries come from `priv/data/webmcp_sites.json`. An entry's verified day is
+  the file's only when the entry is new; after that the daily refresh keeps
+  it (`Patchbay.Forum.RefreshSite`). Its picture is taken by Patchbay, of the
+  page the entry names. Tools are never invented
   for a supporter banner. The one inventory this server publishes on its own
   authority is Patchbay's: the tool manifest it serves at
   `/forum/capabilities`, written onto this deployment's own site row as
@@ -124,7 +127,6 @@ defmodule Patchbay.Forum.Catalog do
 
   defp normalize_entry(entry, default_verified) do
     verified = parse_time(entry["last_verified_at"]) || default_verified
-    captured = parse_time(entry["screenshot_captured_at"]) || default_verified
 
     %{
       origin: entry["origin"],
@@ -142,9 +144,7 @@ defmodule Patchbay.Forum.Catalog do
       logo_path: entry["logo_path"],
       logo_source_url: entry["logo_source_url"],
       logo_usage_note: entry["logo_usage_note"],
-      screenshot_path: entry["screenshot_path"],
       screenshot_source_url: entry["screenshot_source_url"],
-      screenshot_captured_at: captured,
       featured_rank: entry["featured_rank"],
       tools: entry["tools"] || []
     }

@@ -1,18 +1,21 @@
 defmodule Patchbay.Forum.SiteCheckTest do
   @moduledoc """
   A site's first post adds it to the directory: its check records the
-  page's tools and a picture is taken.
-  A picture that fails is tried three times, and the next post asks again,
-  so an outage of the screenshot machine leaves no site without a card for
-  good. A check names only what is real, and says which code and packages
+  page's tools and a picture is taken. Every day each site is checked again,
+  and its official source is verified again while it still mentions WebMCP.
+  A picture that fails is tried three times, then again a day later, so an
+  outage of the screenshot machine leaves no site without a card for good. A check names only what is real, and says which code and packages
   come from the site and which only share its name.
   """
 
   use Patchbay.DataCase, async: false
+  use AshOban.Test, repo: Patchbay.Repo
 
   @moduletag :capture_log
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Catalog
+  alias Patchbay.Forum.Site
   alias Patchbay.Forum.SiteScan
   alias Patchbay.OutsideLists
   alias Patchbay.PageSite
@@ -88,7 +91,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
     assert {:ok, _picture} = Forum.get_site_screenshot(site.id)
   end
 
-  test "a picture is tried three times, and the next post asks again" do
+  test "a picture is tried three times, then again a day later" do
     PageSite.serve(%{"/" => PageSite.with_tool("search_docs")})
     site = Forum.register_site!("docs.example.com")
     shots_answer(503, "away")
@@ -103,9 +106,44 @@ defmodule Patchbay.Forum.SiteCheckTest do
     shots_answer(200, @picture)
     post!(site)
     run_jobs()
+    refute_received {:shot, _}
+
+    Patchbay.Repo.query!(
+      "UPDATE forum_sites SET picture_failed_at = now() - interval '25 hours' WHERE id = $1",
+      [Ecto.UUID.dump!(site.id)]
+    )
+
+    post!(site)
+    run_jobs()
 
     assert_received {:shot, "https://example.com/"}
     assert {:ok, %{image: @picture}} = Forum.get_site_screenshot(site.id)
+  end
+
+  test "the daily refresh verifies a source again only while it still mentions WebMCP" do
+    Catalog.sync!()
+
+    PageSite.serve(%{
+      "/docs/api/web-mcp" => "<html><body>Storefronts can offer WebMCP tools.</body></html>",
+      "/webmcp-challenge/" => {404, [], "gone"}
+    })
+
+    started = DateTime.utc_now()
+    listed = Enum.find(Catalog.entries(), &(&1.slug == "netlify")).last_verified_at
+
+    assert %{failure: 0} = schedule_and_run_triggers({Site, :refresh})
+
+    {:ok, shopify} = Forum.get_site_by_origin("shopify.com", authorize?: false)
+    {:ok, netlify} = Forum.get_site_by_origin("netlify.com", authorize?: false)
+
+    assert DateTime.compare(shopify.last_verified_at, started) != :lt
+    assert DateTime.compare(netlify.last_verified_at, listed) == :eq
+    assert shopify.refreshed_at && netlify.refreshed_at
+
+    # Refreshed today, so the next hour's look leaves it alone.
+    assert %{failure: 0} = schedule_and_run_triggers({Site, :refresh})
+    {:ok, again} = Forum.get_site_by_origin("shopify.com", authorize?: false)
+    assert again.refreshed_at == shopify.refreshed_at
   end
 
   test "a check names what the site publishes and marks which code comes from it" do
