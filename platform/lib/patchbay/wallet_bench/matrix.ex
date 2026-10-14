@@ -21,6 +21,7 @@ defmodule Patchbay.WalletBench.Matrix do
   """
 
   alias Patchbay.WalletBench
+  alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Sets
 
   @grids ["install", "wallet", "refund", "paid_call", "patchbay"]
@@ -52,8 +53,8 @@ defmodule Patchbay.WalletBench.Matrix do
 
   @doc """
   Everything the page shows, read now: the agents and wallets, Techtree's
-  notes by key, and for each grid its checks and its squares by
-  `{harness_id, wallet_id}`.
+  notes by key, its extra notes by release, and for each grid its checks and
+  its squares by `{harness_id, wallet_id}`.
   """
   @spec read() :: {:ok, map()} | {:error, term()}
   @spec read(map()) :: {:ok, map()} | {:error, term()}
@@ -63,8 +64,12 @@ defmodule Patchbay.WalletBench.Matrix do
          {:ok, fixed} <- WalletBench.list_fixed(),
          {:ok, results} <- WalletBench.list_results(),
          {:ok, summaries} <- WalletBench.list_sets(),
-         {:ok, checks} <- WalletBench.list_checks() do
-      {:ok, build(roster, notes, fixed, results, summaries, checks, filters)}
+         {:ok, checks} <- WalletBench.list_checks(),
+         {:ok, extra_notes} <- WalletBench.list_extra_notes() do
+      {:ok,
+       roster
+       |> build(notes, fixed, results, summaries, checks, filters)
+       |> Map.put(:extra_notes, ExtraNotes.by_release(extra_notes, roster))}
     end
   end
 

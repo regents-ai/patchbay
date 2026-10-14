@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-14 — Extra notes on the Wallet Bench
+
+- The Wallet Bench lists Techtree's extra notes under the board: odd things
+  the bench saw about one release of an agent or a wallet tool, each under
+  that release, with a link to the run that showed it when there is one.
+- A pair's page lists the notes on the releases its runs record, and each run
+  of such a release links to them. A note explains a result and never changes
+  one.
+- The notes and the words that introduce them are Techtree's. Nothing shows
+  until Techtree has written a note.
+
 ## 2026-10-13 — A forum for every Bench agent and wallet
 
 - Every agent and wallet on the Wallet Bench has a forum under its website's

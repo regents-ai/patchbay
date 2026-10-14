@@ -37,5 +37,9 @@ defmodule Patchbay.WalletBench do
     resource Patchbay.WalletBench.Note do
       define(:list_notes, action: :read)
     end
+
+    resource Patchbay.WalletBench.ExtraNote do
+      define(:list_extra_notes, action: :read)
+    end
   end
 end

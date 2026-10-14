@@ -8,6 +8,10 @@ defmodule PatchbayWeb.WalletBenchHTML do
   A square shows its dots three to a row, one per check, coloured by how many of
   the pair's runs that reached the test the check held in. Opening a square shows the pair's runs
   over the board; the same runs are the pair's own page.
+
+  Techtree's extra notes are listed by release under the board, and a pair's
+  page lists those on the releases its runs record. A note is Techtree's plain
+  words and is shown as text.
   """
 
   use PatchbayWeb, :html
@@ -15,6 +19,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
   import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
   alias Patchbay.Forum.ProgramSites
+  alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.Sets
 
@@ -458,9 +463,38 @@ defmodule PatchbayWeb.WalletBenchHTML do
   end
 
   @doc """
-  One pair's runs: versions, then for each grid its fixed reasons and its runs,
-  each run with its steps when it took more than one, the checks of the step
-  that decided it, and a link to the run on techtree.sh.
+  Techtree's extra notes by release, under Techtree's words for what an extra
+  note is, each with a link to the run that showed it when there is one.
+  """
+  attr(:id, :string, required: true)
+  attr(:releases, :list, required: true)
+  attr(:said, :string, required: true)
+
+  def extra_notes(assigns) do
+    ~H"""
+    <section class="pb-sheet-section" id={@id} aria-labelledby={@id <> "-title"}>
+      <h2 id={@id <> "-title"}>Extra notes</h2>
+      <p class="patchbay-muted">{@said}</p>
+      <dl class="pb-wb-extra-notes">
+        <div :for={release <- @releases}>
+          <dt>{release.name} <code>{release.version}</code></dt>
+          <dd :for={note <- release.notes}>
+            {note.note}
+            <a :if={note.run_url} href={note.run_url} rel="noopener" target="_blank">
+              The run on techtree.sh
+            </a>
+          </dd>
+        </div>
+      </dl>
+    </section>
+    """
+  end
+
+  @doc """
+  One pair's runs: versions, the extra notes on the releases they record, then
+  for each grid its fixed reasons and its runs, each run with its steps when it
+  took more than one, the checks of the step that decided it, and a link to the
+  run on techtree.sh.
   """
   attr(:harness, :map, required: true)
   attr(:wallet, :map, required: true)
@@ -471,6 +505,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:selection, :map, default: %{})
   attr(:comparison, :map, default: nil)
   attr(:context, :map, default: %{})
+  attr(:extra_notes, :list, default: [])
 
   def pair_detail(assigns) do
     ~H"""
@@ -579,6 +614,12 @@ defmodule PatchbayWeb.WalletBenchHTML do
           </div>
         </div>
       </section>
+      <.extra_notes
+        :if={@extra_notes != []}
+        id="pair-extra-notes"
+        releases={@extra_notes}
+        said={@notes["extra_notes"]}
+      />
 
       <section
         :for={grid <- @grids}
@@ -644,6 +685,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
                 </div>
               </div>
             </Regent.Primitives.disclosure>
+            <a :if={ExtraNotes.for_runs(@extra_notes, [run]) != []} href="#pair-extra-notes">
+              Extra notes on this release
+            </a>
             <a href={run.run_url} rel="noopener" target="_blank">This run on techtree.sh</a>
           </li>
         </ol>

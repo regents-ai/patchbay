@@ -1,8 +1,8 @@
 defmodule Patchbay.WalletBench.Note do
   @moduledoc """
   Techtree's words for the bench: what each outcome means, keyed by the
-  outcome, and the shared setup (`setup`), how runs combine (`runs`) and when
-  the grid started (`grid_started`).
+  outcome, and the shared setup (`setup`), how runs combine (`runs`), when
+  the grid started (`grid_started`) and what an extra note is (`extra_notes`).
   """
 
   use Ash.Resource,

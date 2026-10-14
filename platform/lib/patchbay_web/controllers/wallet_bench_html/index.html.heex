@@ -127,6 +127,13 @@
     </div>
   </section>
 
+  <.extra_notes
+    :if={@matrix.extra_notes != []}
+    id="extra-notes"
+    releases={@matrix.extra_notes}
+    said={@matrix.notes["extra_notes"]}
+  />
+
   <.method />
 
   <section class="pb-sheet-section">

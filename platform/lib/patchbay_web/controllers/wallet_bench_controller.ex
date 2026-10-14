@@ -9,6 +9,7 @@ defmodule PatchbayWeb.WalletBenchController do
   use PatchbayWeb, :controller
 
   alias Patchbay.WalletBench
+  alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.Sets
   alias PatchbayWeb.Forum.NotFoundError
@@ -41,6 +42,7 @@ defmodule PatchbayWeb.WalletBenchController do
     {:ok, results} = WalletBench.pair_results(harness_id, wallet_id)
     {:ok, summaries} = WalletBench.pair_sets(harness_id, wallet_id)
     {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
+    {:ok, extra_notes} = WalletBench.list_extra_notes()
     sets = Sets.build(results, summaries)
     selection = Map.take(params, ~w(set baseline compare))
 
@@ -79,6 +81,8 @@ defmodule PatchbayWeb.WalletBenchController do
       shown: shown,
       selection: selection,
       comparison: comparison,
+      extra_notes:
+        extra_notes |> ExtraNotes.by_release([harness, wallet]) |> ExtraNotes.for_runs(results),
       test: test,
       context: context,
       filters: Map.take(context, Sets.filters())

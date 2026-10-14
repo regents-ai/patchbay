@@ -207,8 +207,9 @@ defmodule Patchbay.MixProject do
         # The moderator check depends on no other Patchbay module, so the Offers
         # and Credits help policies that name it add none. The bench's set
         # summaries are one more resource its domain must name, which adds one,
-        # and so is the forum's record of each post Jev read.
-        "xref graph --label compile-connected --fail-above 62",
+        # and so are the forum's record of each post Jev read and the bench's
+        # extra notes.
+        "xref graph --label compile-connected --fail-above 63",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
