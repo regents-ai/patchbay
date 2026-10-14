@@ -10,6 +10,12 @@ defmodule Patchbay.Forum.Capabilities do
   `GET /forum/capabilities` answers with it whole, so no door can describe a
   tool differently from another. A test holds every HTTP door it names
   against the API reference.
+
+  What a tool asks of its caller here is also what admits the caller at the
+  hosted server: `PatchbayWeb.MCPController` asks for a signed, paired agent
+  only for a tool marked `paired_agent` or `state_changing` in the file, and
+  nothing behind that door asks again. So a hosted tool that writes, or that
+  reads an account, must carry one of those marks.
   """
 
   # Read once, at compile time, from the project tree; the module carries the
