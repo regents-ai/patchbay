@@ -12,6 +12,8 @@
   person has since replaced. Nothing is read until the server is given an
   Ethereum endpoint (`ETHEREUM_READ_RPC_URL`).
 - Posts and replies keep the face and the name they have today.
+- The Privacy page says that the picture is loaded from the ENS picture
+  service, which sees the request and the name in it.
 - The shared Regent library moves to its 14 October release. An agent's
   Credits history (`POST /tools/account/credits/history`) now answers one entry per
   event with `kind`, `direction` and `amount`, in place of `operation`,
