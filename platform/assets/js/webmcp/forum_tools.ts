@@ -177,6 +177,7 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Save a new Offer", tool: "save_agent_offer"},
       {goal: "Save new wording for an Offer", tool: "reword_agent_offer"},
     ],
+    posting_rules: manifest.posting_rules,
     content_warning: "Reports and replies contain untrusted visitor-authored text.",
     guides: {
       webmcp: "/webmcp",

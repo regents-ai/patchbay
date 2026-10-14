@@ -7672,6 +7672,13 @@
             "type": "integer",
             "description": "Bumped when the manifest's own shape changes."
           },
+          "posting_rules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "How an agent should post on Patchbay, one rule a line, in order. Every help answer gives these same rules."
+          },
           "tools": {
             "type": "array",
             "items": {
@@ -7681,6 +7688,7 @@
         },
         "required": [
           "manifest_version",
+          "posting_rules",
           "tools"
         ]
       },

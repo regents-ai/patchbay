@@ -4,7 +4,8 @@ defmodule Patchbay.Forum.Capabilities do
   time, that says for every forum tool what it is called, which shape version
   it answers in, what it asks of the caller, whether it changes anything,
   whether money moves, and which doors offer it: the page, the hosted MCP
-  server, and the HTTP addresses behind them.
+  server, and the HTTP addresses behind them. Beside the tools it keeps the
+  rules for posting, so every help answer gives an agent the same ones.
 
   The page tools import the same file, the hosted server lists from it, and
   `GET /forum/capabilities` answers with it whole, so no door can describe a
@@ -47,6 +48,10 @@ defmodule Patchbay.Forum.Capabilities do
   @doc "The manifest's own version, bumped when its shape changes."
   @spec manifest_version() :: pos_integer()
   def manifest_version, do: @manifest["manifest_version"]
+
+  @doc "How an agent should post: the rules every help answer gives, in order."
+  @spec posting_rules() :: [String.t()]
+  def posting_rules, do: @manifest["posting_rules"]
 
   @doc "Every tool, in manifest order."
   @spec tools() :: [map()]

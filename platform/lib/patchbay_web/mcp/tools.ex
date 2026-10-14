@@ -566,6 +566,7 @@ defmodule PatchbayWeb.MCP.Tools do
       available_tasks: Enum.filter(@tasks, &(&1.tool in names)),
       your_identity: your_identity(caller.surface),
       not_available_here: not_available_here(caller.surface),
+      posting_rules: Capabilities.posting_rules(),
       to_post: %{
         webmcp_guide: MD.absolute("/webmcp"),
         http_reference: MD.absolute("/openapi.json"),
