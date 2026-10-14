@@ -85,74 +85,35 @@
   .pb-find-answers { padding: var(--space-3); }
 }
 
-/* WebMCP Sites, between the form and the questions: four screenshots across
-   and two down. Pointed at or reached, a tile darkens, the brand's logo comes
-   up in its lower left and its tool count in its upper right; a screen that
-   cannot point always shows the count. */
+/* Eight real homepage screenshots; phones scroll the same cards sideways. */
 .pb-showcase { margin: 0 0 var(--space-4); }
-.pb-showcase-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+.pb-showcase-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: .5rem; }
 .pb-showcase-head h2 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-xl); font-weight: 400; font-synthesis: none; letter-spacing: -.02em; }
-.pb-showcase-head a { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); text-decoration: none; }
+.pb-showcase-head a { min-height: 44px; display: inline-flex; align-items: center; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); text-decoration: none; }
 .pb-showcase-head a:hover { color: var(--pb-accent-deep); text-decoration: underline; }
-.pb-showcase-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
-.pb-showcase-tile {
-  position: relative;
-  display: block;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border: 1px solid var(--pb-line);
-  border-radius: var(--radius);
-  background: var(--support-figure-surface);
-  color: var(--pb-text);
-  text-decoration: none;
-  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), border-color 160ms var(--ease-out);
-}
-.pb-showcase-tile::after { content: ""; position: absolute; inset: 0; background: rgb(10 10 10 / 0); transition: background 180ms var(--ease-out); }
-.pb-showcase-shot { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.pb-showcase-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); height: clamp(8rem, calc(50svh - 15rem), 18rem); gap: var(--space-2); }
+.pb-showcase-tile { position: relative; display: block; min-height: 0; overflow: hidden; border: 1px solid var(--pb-line); border-radius: var(--radius); background: var(--support-figure-surface); color: var(--pb-text); text-decoration: none; }
+.pb-showcase-tile:hover { border-color: var(--pb-text); }
+.pb-showcase-tile:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
+.pb-showcase-shot { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
 .pb-showcase-shot.is-empty { display: grid; place-items: center; font-family: var(--font-family-mono); font-size: .75rem; color: var(--pb-text-muted); }
-.pb-showcase-logo {
-  position: absolute;
-  left: var(--space-2);
-  bottom: var(--space-2);
-  z-index: 1;
-  width: auto;
-  height: auto;
-  max-width: 45%;
-  max-height: 22%;
-  object-fit: contain;
-  object-position: left bottom;
-  filter: grayscale(1);
-  opacity: 0;
-  transition: opacity 180ms var(--ease-out);
+.pb-showcase-name { position: absolute; left: 0; right: 0; bottom: 0; padding: .4rem .65rem; background: rgb(10 10 10 / .82); color: #fff; font-size: .8125rem; font-weight: 600; }
+.pb-feed-tabs { overflow-x: auto; }
+.pb-feed-tabs a { flex-shrink: 0; min-height: 44px; display: inline-flex; align-items: center; }
+@media (min-width: 761px) {
+  .pb-home-hero { margin-bottom: 1rem; }
+  .pb-home-hero h1 { font-size: clamp(1.5rem, 2.8vw, 2rem); }
+  .pb-home-crowd img { height: 2.25rem; }
 }
-.pb-showcase-tools {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  z-index: 1;
-  color: #fff;
-  font-size: .8125rem;
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 180ms var(--ease-out);
-}
-.pb-showcase-tile:hover,
-.pb-showcase-tile:focus-visible { border-color: var(--pb-text); box-shadow: 4px 4px 0 var(--pb-hard-shadow); transform: translate(-2px, -2px); outline: none; }
-.pb-showcase-tile:focus-visible { border-color: var(--pb-accent-deep); }
-.pb-showcase-tile:hover::after,
-.pb-showcase-tile:focus-visible::after { background: rgb(10 10 10 / .72); }
-.pb-showcase-tile:hover :is(.pb-showcase-logo, .pb-showcase-tools),
-.pb-showcase-tile:focus-visible :is(.pb-showcase-logo, .pb-showcase-tools) { opacity: 1; }
-/* A screen that cannot point always shows the tool count, on its own dark
-   ground since the screenshot stays undarkened. */
-@media (hover: none) {
-  .pb-showcase-tools { opacity: 1; padding: 2px 8px; border-radius: var(--radius); background: rgb(10 10 10 / .72); }
-}
+#pb-hero-preview:not(:has(*)) { display: none; }
 @media (max-width: 760px) {
-  .pb-showcase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pb-showcase-tile, .pb-showcase-tile::after, .pb-showcase-logo, .pb-showcase-tools { transition: none; }
-  .pb-showcase-tile:hover, .pb-showcase-tile:focus-visible { transform: none; }
+  .pb-home-hero { margin-bottom: 1rem; }
+  .pb-home-hero h1 { font-size: 1.5rem; }
+  .pb-home-hero .pb-fix-form { gap: .5rem; padding-top: 1rem; }
+  .pb-home-hero .pb-hero-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pb-home-hero .pb-hero-actions .rg-button { min-width: 0; padding: .5rem; font-size: 1rem; line-height: 1.15; }
+  .pb-home-hero .pb-hero-actions .pb-action-label { white-space: normal; text-wrap: balance; }
+  .pb-showcase { margin-bottom: 1rem; }
+  .pb-showcase-grid { height: clamp(6rem, 13svh, 8rem); grid-template-columns: none; grid-template-rows: minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: min(72vw, 20rem); overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: .35rem; }
+  .pb-showcase-tile { scroll-snap-align: start; }
 }

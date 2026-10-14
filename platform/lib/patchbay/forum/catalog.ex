@@ -38,17 +38,17 @@ defmodule Patchbay.Forum.Catalog do
     sites
   end
 
-  # A catalog entry may carry the tool list its owner publishes. Each row
+  # A catalog entry carries a cited owner publication or directory inventory. Each row
   # cites that publication as its source and as the address it was seen at;
   # nothing is inferred from support.
-  # The catalog holds the owner's documentation of the tool, not its
+  # The catalog holds the cited documentation or directory observation, not its
   # declaration, so the row carries no raw definition, and it was last seen
   # when the publication was last checked — not when this import ran.
   defp publish_entry_tool!(site, entry, tool) do
     definition = %{
       name: tool["name"],
       description: tool["description"],
-      source_url: entry.support_evidence_url
+      source_url: tool["source_url"] || entry.support_evidence_url
     }
 
     Forum.publish_catalog_tool!(%{
@@ -59,12 +59,13 @@ defmodule Patchbay.Forum.Catalog do
       stable_key: definition.name,
       published_name: definition.name,
       display_name: definition.name,
-      source_kind: :official,
+      source_kind:
+        if(entry.tool_inventory_status in [:observed, :partial], do: :observed, else: :official),
       source_url: definition.source_url,
       status: :active,
       first_seen_at: entry.last_verified_at,
       last_seen_at: entry.last_verified_at,
-      address: definition.source_url
+      address: tool["address"] || definition.source_url
     })
   end
 
@@ -103,6 +104,9 @@ defmodule Patchbay.Forum.Catalog do
       })
     end)
   end
+
+  @doc "The eight homepage surfaces, each linked to its canonical domain board."
+  def featured_surfaces, do: document()["featured_surfaces"] || []
 
   @spec entries() :: [map()]
   def entries do

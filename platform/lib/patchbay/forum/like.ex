@@ -5,7 +5,7 @@ defmodule Patchbay.Forum.Like do
   too, and a like on the opening post names none. Each profile likes each post
   once: liking again changes nothing, and taking a like back removes it.
 
-  Likes are a reader's thanks. They rank nothing and verify nothing.
+  Likes are a reader's thanks. Opening-post likes help order the Popular feed; they verify nothing.
   """
 
   use Ash.Resource,

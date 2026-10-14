@@ -87,6 +87,7 @@ defmodule PatchbayWeb do
           following_path: 2,
           following_title: 2,
           scope_label: 1,
+          feed_label: 1,
           start_profiles: 0,
           capability_matrix: 0,
           capability_doors: 0,
