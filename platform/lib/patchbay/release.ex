@@ -28,7 +28,30 @@ defmodule Patchbay.Release do
   @doc "Read-only shared prerequisites; this release never applies shared migrations."
   def require_signed_access_schema!(repo) do
     :ok = RegentAgents.Migrator.require_pairing_history!(repo)
-    RegentCredits.Migrator.require_pairing_grants!(repo)
+    :ok = RegentCredits.Migrator.require_pairing_grants!(repo)
+    require_shared_migrations!(repo)
+  end
+
+  # The Credits and Points code this release carries reads tables and indexes
+  # from every migration its pinned library ships, so each must already be in
+  # that schema's own ledger. Every missing version is named at once.
+  defp require_shared_migrations!(repo) do
+    unapplied =
+      for {app, schema} <- [regent_credits: "regent_credits", regent_points: "regent_points"],
+          {:down, version, _name} <-
+            Ecto.Migrator.migrations(repo, [Application.app_dir(app, "priv/repo/migrations")],
+              prefix: schema,
+              skip_table_creation: true,
+              migration_lock: false
+            ),
+          do: "#{schema} #{version}"
+
+    if unapplied != [] do
+      raise "These separately approved shared migrations must be applied before deployment: " <>
+              Enum.join(unapplied, ", ")
+    end
+
+    :ok
   end
 
   def rollback(repo, version) do

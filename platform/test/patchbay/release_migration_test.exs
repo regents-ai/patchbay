@@ -25,11 +25,7 @@ defmodule Patchbay.ReleaseMigrationTest do
   test "a fresh migration command uses the release connection, reruns harmlessly and restores runtime config" do
     {config, database, name} = disposable_database()
 
-    # Regents migrates the shared agent pairings and Credits ledger before any
-    # site release runs; the release only checks that they are there.
-    Application.put_env(:patchbay, Repo, database)
-    RegentAgents.Migrator.up(Repo)
-    RegentCredits.Migrator.up(Repo)
+    migrate_shared(database)
 
     # If the release falls back to runtime configuration, this user/database cannot connect.
     runtime = Keyword.merge(config, username: "unusable_runtime", database: "unusable_runtime")
@@ -58,6 +54,22 @@ defmodule Patchbay.ReleaseMigrationTest do
     after
       GenServer.stop(connection)
     end
+  end
+
+  test "a shared change not yet applied stops the release, which names it" do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    assert :ok = Release.require_signed_access_schema!(Repo)
+
+    %{rows: [[version]]} =
+      Repo.query!("""
+      DELETE FROM regent_credits.schema_migrations
+      WHERE version = (SELECT max(version) FROM regent_credits.schema_migrations)
+      RETURNING version
+      """)
+
+    assert_raise RuntimeError,
+                 ~r/must be applied before deployment: regent_credits #{version}$/,
+                 fn -> Release.require_signed_access_schema!(Repo) end
   end
 
   test "incomplete imported history stops before changing either ledger" do
@@ -105,6 +117,26 @@ defmodule Patchbay.ReleaseMigrationTest do
     after
       GenServer.stop(connection)
     end
+  end
+
+  # Regents migrates the shared agent pairings, Credits and Points before any
+  # site release runs; the release only checks that they are there. Points
+  # refers to the shared account table, which Regents owns too.
+  defp migrate_shared(database) do
+    Application.put_env(:patchbay, Repo, database)
+    RegentAgents.Migrator.up(Repo)
+    RegentCredits.Migrator.up(Repo)
+
+    {:ok, connection} = Postgrex.start_link(database)
+
+    try do
+      for statement <- Patchbay.SharedAccountTable.statements(),
+          do: Postgrex.query!(connection, statement, [])
+    after
+      GenServer.stop(connection)
+    end
+
+    RegentPoints.Migrator.up(Repo)
   end
 
   defp disposable_database do
