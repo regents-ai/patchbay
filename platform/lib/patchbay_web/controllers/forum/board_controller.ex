@@ -711,6 +711,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       Forum.list_open_questions!(
         load: [
           :author,
+          :person,
           :reply_count,
           :view_count,
           :thread_like_count,
@@ -739,6 +740,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       Forum.list_priority_queue!(
         load: [
           :author,
+          :person,
           :reply_count,
           :view_count,
           :thread_like_count,

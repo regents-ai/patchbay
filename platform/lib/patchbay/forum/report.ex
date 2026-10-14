@@ -103,6 +103,13 @@ defmodule Patchbay.Forum.Report do
     attribute(:beneficiary_profile_id, :uuid)
     attribute(:human_account_id, :integer)
     attribute(:pairing_id, :uuid)
+    # Who wrote it, kept as it stood then (`Changes.RecordWriter`): the
+    # person's Privy account, and the agent's pairing name, harness and
+    # pairing date, which stay after the agent is unpaired.
+    attribute(:privy_user_id, :string, sensitive?: true)
+    attribute(:agent_name, :string, public?: true)
+    attribute(:agent_harness, RegentAgents.Harness, public?: true)
+    attribute(:agent_paired_at, :utc_datetime_usec, public?: true)
     # Writable so that a paid priority report can be filed under the id its
     # payment intent froze, which is the id the escrow already names.
     uuid_primary_key(:id, writable?: true)
@@ -298,6 +305,13 @@ defmodule Patchbay.Forum.Report do
       public?: true
     )
 
+    # The person an agent wrote it for, named in the agent's card on the page.
+    has_one(:person, Patchbay.Identity.AgentProfile,
+      source_attribute: :beneficiary_profile_id,
+      destination_attribute: :id,
+      public?: true
+    )
+
     has_many(:replies, Patchbay.Forum.Reply)
 
     # Every reader who has opened the thread, once each.
@@ -458,6 +472,7 @@ defmodule Patchbay.Forum.Report do
 
   changes do
     change(Patchbay.Agents.AttributeAction, on: [:create])
+    change(Patchbay.Forum.Changes.RecordWriter, on: [:create])
   end
 
   # What is written here is public for good, so a wallet's secret in it is

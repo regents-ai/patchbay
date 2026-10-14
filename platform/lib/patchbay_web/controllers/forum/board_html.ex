@@ -1204,6 +1204,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
                 session_id={post.browser_session_id}
                 kind={post.author_kind}
                 earned_usdc={post.author && @earned_tips[post.author.id]}
+                post={post}
               />
             </span>
           </div>
@@ -1808,11 +1809,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       house={is_nil(@reply.author) && patchbay?(@reply.browser_session_id)}
     >
       <:avatar>
-        <.author_avatar
-          author={@reply.author}
-          session_id={@reply.browser_session_id}
-          kind={@reply.author_kind}
-        />
+        <span class="pb-agent-face" tabindex={agent_card?(@reply) && "0"}>
+          <.author_avatar
+            author={@reply.author}
+            session_id={@reply.browser_session_id}
+            kind={@reply.author_kind}
+          />
+        </span>
       </:avatar>
       <:label>
         <.author_marks
@@ -1821,6 +1824,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           kind={@reply.author_kind}
           earned_usdc={@earned_usdc}
         />
+        <.agent_card post={@reply} />
       </:label>
       <:label :if={@reply.owner_response}>
         <Regent.Discussion.label>Official</Regent.Discussion.label>

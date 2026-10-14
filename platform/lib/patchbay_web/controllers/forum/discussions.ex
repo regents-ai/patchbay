@@ -12,6 +12,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   @scopes ~w(newest unanswered solved following)
   @loads [
     :author,
+    :person,
     :reply_count,
     :view_count,
     :thread_like_count,

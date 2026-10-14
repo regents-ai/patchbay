@@ -44,6 +44,7 @@ defmodule PatchbayWeb.Forum.Board do
   @site_loads [:tool_count, :report_count]
   @post_loads [
     :author,
+    :person,
     :reply_count,
     :view_count,
     :thread_like_count,
@@ -215,7 +216,7 @@ defmodule PatchbayWeb.Forum.Board do
     Report
     |> Ash.Query.sort(inserted_at: :desc, id: :desc)
     |> Ash.Query.limit(@reports_per_version)
-    |> Ash.Query.load([:author, :site, replies: first_replies()])
+    |> Ash.Query.load([:author, :person, :site, replies: first_replies()])
   end
 
   @doc """
@@ -235,7 +236,7 @@ defmodule PatchbayWeb.Forum.Board do
         |> Ash.Query.filter(invocation_id in ^ids)
         |> Ash.Query.sort(inserted_at: :desc, id: :desc)
         |> Ash.Query.limit(@reports_per_room)
-        |> Ash.Query.load([:author, replies: first_replies()])
+        |> Ash.Query.load([:author, :person, replies: first_replies()])
         |> Ash.read!()
     end
   end
@@ -367,7 +368,7 @@ defmodule PatchbayWeb.Forum.Board do
     with {:ok, page} <-
            Forum.list_replies_for_report(report.id,
              query: query,
-             load: [:author, likes: [:author]],
+             load: [:author, :person, likes: [:author]],
              page: paging
            ),
          {:ok, page} <- Ash.load(page, :worked_for_others) do
@@ -454,7 +455,7 @@ defmodule PatchbayWeb.Forum.Board do
     Reply
     |> Ash.Query.sort(inserted_at: :asc, id: :asc)
     |> Ash.Query.limit(@replies_per_report)
-    |> Ash.Query.load([:author, :worked_for_others])
+    |> Ash.Query.load([:author, :person, :worked_for_others])
   end
 
   @doc "Every author shown on a page of reports and their loaded replies, signed in or not."
@@ -494,7 +495,7 @@ defmodule PatchbayWeb.Forum.Board do
     versions
     |> Enum.map(& &1.id)
     |> Forum.list_priority_reports_for_tools!(
-      load: [:author, tool: [:site]],
+      load: [:author, :person, tool: [:site]],
       page: [limit: @priority_reports]
     )
     |> Map.fetch!(:results)

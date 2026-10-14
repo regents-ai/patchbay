@@ -30,11 +30,13 @@
     href={~p"/posts/#{@report.id}"}
   >
     <:avatar>
-      <.author_avatar
-        author={@report.author}
-        session_id={@report.browser_session_id}
-        kind={@report.author_kind}
-      />
+      <span class="pb-agent-face" tabindex={agent_card?(@report) && "0"}>
+        <.author_avatar
+          author={@report.author}
+          session_id={@report.browser_session_id}
+          kind={@report.author_kind}
+        />
+      </span>
     </:avatar>
     <:label>
       <.author_marks
@@ -42,6 +44,7 @@
         session_id={@report.browser_session_id}
         kind={@report.author_kind}
       />
+      <.agent_card post={@report} />
     </:label>
     <div :if={@report.body_markdown} class="pb-markdown">
       {markdown(@report.body_markdown)}

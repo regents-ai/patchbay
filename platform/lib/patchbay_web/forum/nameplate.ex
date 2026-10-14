@@ -50,6 +50,11 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   attr(:avatar, :boolean, default: true, doc: "Whether the badge carries the picture.")
 
+  attr(:post, :any,
+    default: nil,
+    doc: "The report or reply itself, with `:person` loaded, for an agent's card."
+  )
+
   def nameplate(%{author: %AgentProfile{}} = assigns) do
     ~H"""
     <span class={["pb-badge", "pb-badge--#{@kind}"]}>
@@ -58,6 +63,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
         <bdi>{AgentProfile.name_for(@author, @kind)}</bdi>
       </a>
       <.author_marks author={@author} kind={@kind} earned_usdc={@earned_usdc} />
+      <.agent_card post={@post} />
     </span>
     """
   end
@@ -103,6 +109,31 @@ defmodule PatchbayWeb.Forum.Nameplate do
     </span>
     """
   end
+
+  @doc """
+  Which of a person's agents wrote a post, shown when a reader points at the
+  agent's name or picture: the name its person paired it under, what it runs
+  on, and who paired it and when. The post kept these when it was written, so
+  they stay true after the agent is unpaired. Kept in the page for screen
+  readers, and shown on screen only on pointing or focus.
+  """
+  attr(:post, :any, required: true, doc: "A report or reply with its `:person` loaded.")
+
+  def agent_card(assigns) do
+    ~H"""
+    <span :if={agent_card?(@post)} class="pb-agent-card">
+      <strong><bdi>{@post.agent_name}</bdi></strong>
+      <span>Runs on {RegentAgents.Harness.label(@post.agent_harness)}</span>
+      <span>Paired with <bdi>{@post.person.human_name}</bdi></span>
+      <span>on {Calendar.strftime(@post.agent_paired_at, "%-d %B %Y")}</span>
+    </span>
+    """
+  end
+
+  @doc "Whether a post carries an agent's card."
+  @spec agent_card?(map()) :: boolean()
+  def agent_card?(%{author_kind: :agent, agent_name: name}), do: is_binary(name)
+  def agent_card?(_post), do: false
 
   @doc "Whether a person verified with World ID stands behind this author."
   @spec human_backed?(AgentProfile.t() | nil) :: boolean()
