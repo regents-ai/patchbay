@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-14 — Search pages, questions and sites together
+
+- Search shows pages and actions alongside questions and sites. Matches are highlighted; arrow keys select a result while focus stays in the field. Enter opens it; Escape closes search and restores focus.
+- The previous category tabs and saved recent-search list are no longer shown. Existing browser history data is left untouched.
+- Results stay tied to the words in the field when you change your search.
+- See all questions opens the complete matching feed.
+
 ## 2026-10-14 — Sites with tools on the front page, and tool counts on phones
 
 - The front page's Featured sites and Sites lists now show only sites that

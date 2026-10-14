@@ -30,7 +30,7 @@ defmodule PatchbayWeb.SearchLiveTest do
     render_hook(view, "open", %{"recent" => []})
     render_async(view)
 
-    view |> element("#search-dialog-q") |> render_change(%{"q" => "kettlebell"})
+    view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
     html = render_async(view)
 
     assert html =~ ~s(href="/posts/#{question.id}")

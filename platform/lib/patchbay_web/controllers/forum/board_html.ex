@@ -346,15 +346,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     </a>
     <button
       type="button"
-      id="pb-search"
-      class="pb-header-search"
-      data-open-search
+      id="shell-search-button"
+      class="pb-header-search shell-search-button"
       aria-haspopup="dialog"
-      aria-controls="search-dialog"
+      aria-controls="shell-search"
+      aria-keyshortcuts="Meta+K Control+K"
     >
       <.icon name={:search} class="pb-header-search__icon" />
-      <span class="pb-header-search__prompt">Search questions and sites</span>
-      <kbd class="pb-header-search__shortcut" aria-hidden="true">⌘ K</kbd>
+      <span class="pb-header-search__prompt">Search</span>
+      <kbd
+        id="shell-search-keys"
+        class="pb-header-search__shortcut"
+        aria-hidden="true"
+        data-shell-search-keys
+      >Ctrl K</kbd>
     </button>
     <nav class="pb-site-nav" aria-label="Patchbay">
       <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>

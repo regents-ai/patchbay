@@ -1,134 +1,116 @@
-
 type SearchDialogHook = {
   el: HTMLDialogElement
   pushEvent(event: string, payload: object): void
   cleanup?: () => void
-  pick?: () => void
+  sync?: () => void
 }
 
-// The reader's recent searches stay in this browser only.
-const RECENT_KEY = "patchbay:recent-searches"
-const RECENT_LIMIT = 5
-
-function readRecent(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
-  } catch {
-    return []
-  }
-}
-
-function writeRecent(recent: string[]): void {
-  try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)) } catch { /* searching still works */ }
-}
-
-const collapse = (value: string) => value.split(/\s+/).filter(Boolean).join(" ")
-
-// The search window: the header's search bar and ⌘ K open it, and the page
-// changes only when a result is picked, by click or by Enter.
+// ash-template d5fe886 shell_panels.ts search behavior, attached to this
+// isolated LiveView rather than the template's full application shell.
 export const SearchDialog = {
   mounted(this: SearchDialogHook) {
     const dialog = this.el
-    const input = () => dialog.querySelector<HTMLInputElement>("#search-dialog-q")!
-    const items = () => [...dialog.querySelectorAll<HTMLAnchorElement>("a[data-search-result], a[data-search-all]")]
-    const shown = () => dialog.dataset.query === collapse(input().value)
+    const searchInput = () => dialog.querySelector<HTMLInputElement>("#shell-search-input")
+    const results = () => [...dialog.querySelectorAll<HTMLAnchorElement>("[data-search-result]")]
+    const highlighted = () => results().find(result => result.getAttribute("aria-selected") === "true")
+    const drawnQuery = () => dialog.querySelector<HTMLElement>("#shell-search-results")?.dataset.query
+    let highlightedQuery: string | undefined
     let opener: Element | null = null
-    // Enter pressed before the results for what was typed arrived: the first of them opens when they do.
-    let waiting = false
-
-    for (const key of document.querySelectorAll("[data-open-search] kbd")) {
-      key.textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘ K" : "Ctrl K"
+    const highlight = (result: HTMLAnchorElement | undefined) => {
+      results().forEach(other => other.setAttribute("aria-selected", String(other === result)))
+      if (result) {
+        searchInput()?.setAttribute("aria-activedescendant", result.id)
+        result.scrollIntoView({block: "nearest"})
+      } else {
+        searchInput()?.removeAttribute("aria-activedescendant")
+      }
     }
-
-    const open = () => {
+    const syncSearch = () => {
+      if (!dialog.open) return
+      const query = drawnQuery()
+      if (query !== highlightedQuery || !highlighted()) highlight(results()[0])
+      highlightedQuery = query
+    }
+    const moveHighlight = (step: number) => {
+      const all = results()
+      if (all.length === 0) return
+      const at = all.indexOf(highlighted() as HTMLAnchorElement)
+      const next = at < 0 ? (step > 0 ? 0 : all.length - 1) : (at + step + all.length) % all.length
+      highlight(all[next])
+    }
+    const openSearch = () => {
       if (dialog.open) return
       opener = document.activeElement
       dialog.showModal()
-      input().focus()
-      input().select()
-      this.pushEvent("open", {recent: readRecent()})
+      searchInput()?.select()
+      highlightedQuery = undefined
+      syncSearch()
+      this.pushEvent("open", {})
     }
-    const remember = () => {
-      const term = collapse(input().value)
-      if (term === "") return
-      writeRecent([term, ...readRecent().filter(other => other !== term)].slice(0, RECENT_LIMIT))
-    }
-    const pick = () => {
-      waiting = false
-      items()[0]?.click()
-    }
+    const closeSearch = () => dialog.close()
     const onDocumentClick = (event: MouseEvent) => {
-      if (event.target instanceof Element && event.target.closest("[data-open-search]")) open()
-    }
-    const onDocumentKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
-        event.preventDefault()
-        open()
-      }
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest("#shell-search-button")) openSearch()
     }
     const onClick = (event: MouseEvent) => {
-      const target = event.target
-      if (!(target instanceof Element)) return
-      if (target.closest("[data-close-search]")) {
-        dialog.close()
-      } else if (target.closest("[data-clear-recent]")) {
-        writeRecent([])
-        this.pushEvent("recent", {recent: []})
-      } else if (target.closest("a[data-search-result], a[data-search-all]")) {
-        remember()
-        dialog.close()
-      } else if (target === dialog) {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target) return
+      if (target.closest("[data-search-close], [data-search-result]")) return closeSearch()
+      if (target === dialog) {
         const box = dialog.getBoundingClientRect()
         if (event.clientX < box.left || event.clientX > box.right ||
-            event.clientY < box.top || event.clientY > box.bottom) dialog.close()
+            event.clientY < box.top || event.clientY > box.bottom) closeSearch()
       }
     }
-    // Up and Down move between the search field and the results.
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return
-      const list = items()
-      const at = list.indexOf(document.activeElement as HTMLAnchorElement)
-      event.preventDefault()
-      if (event.key === "ArrowDown") list[Math.min(at + 1, list.length - 1)]?.focus()
-      else if (at <= 0) input().focus()
-      else list[at - 1].focus()
-    }
-    const onSubmit = (event: SubmitEvent) => {
-      event.preventDefault()
-      if (collapse(input().value) === "") return
-      if (shown()) {
-        pick()
-      } else {
-        // Enter drops the field's pending search, so it is sent here.
-        waiting = true
-        this.pushEvent("search", {q: input().value})
+    const onKeydown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        openSearch()
+        return
+      }
+      if (dialog.open && event.target === searchInput()) {
+        if (event.key === "Escape") {
+          event.preventDefault()
+          closeSearch()
+          return
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault()
+          moveHighlight(event.key === "ArrowDown" ? 1 : -1)
+          return
+        }
+        const current = drawnQuery() === searchInput()?.value.trim()
+        if (event.key === "Enter" && !event.isComposing && current && highlighted()) {
+          event.preventDefault()
+          highlighted()?.click()
+        }
       }
     }
-    const onInput = () => { waiting = false }
+    const onPointerMove = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      const result = target?.closest<HTMLAnchorElement>("[data-search-result]")
+      if (result && result !== highlighted()) highlight(result)
+    }
     const onClose = () => {
-      waiting = false
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus({preventScroll: true})
     }
-
+    const keys = document.querySelector<HTMLElement>("[data-shell-search-keys]")
+    if (keys && /Mac|iPhone|iPad/.test(navigator.platform)) keys.textContent = "⌘K"
     document.addEventListener("click", onDocumentClick)
-    document.addEventListener("keydown", onDocumentKey)
+    document.addEventListener("keydown", onKeydown)
     dialog.addEventListener("click", onClick)
-    dialog.addEventListener("keydown", onKey)
-    dialog.addEventListener("submit", onSubmit)
-    dialog.addEventListener("input", onInput)
+    dialog.addEventListener("pointermove", onPointerMove)
     dialog.addEventListener("close", onClose)
-    this.pick = () => { if (waiting && shown()) pick() }
+    this.sync = syncSearch
     this.cleanup = () => {
       document.removeEventListener("click", onDocumentClick)
-      document.removeEventListener("keydown", onDocumentKey)
+      document.removeEventListener("keydown", onKeydown)
       dialog.removeEventListener("click", onClick)
-      dialog.removeEventListener("keydown", onKey)
-      dialog.removeEventListener("submit", onSubmit)
-      dialog.removeEventListener("input", onInput)
+      dialog.removeEventListener("pointermove", onPointerMove)
       dialog.removeEventListener("close", onClose)
-      if (dialog.open) dialog.close()
+      if (dialog.open) closeSearch()
     }
   },
-  updated(this: SearchDialogHook) { this.pick?.() },
+  updated(this: SearchDialogHook) { this.sync?.() },
   destroyed(this: SearchDialogHook) { this.cleanup?.() },
 }

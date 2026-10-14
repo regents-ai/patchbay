@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.SearchLive do
   @moduledoc """
-  The search window every page shares, as on Autolaunch. Pressing the
-  header's search bar or ⌘ K opens it; typing lists matching questions and
-  sites inside it, and the page changes only when the reader picks one.
+  ash-template's shell search, with Patchbay's public pages, actions, questions
+  and sites. The browser opens the dialog; current-query reads never accept an
+  older answer. No private records, payments or provider calls are searched.
   """
   use Phoenix.LiveView, layout: false
 
@@ -14,229 +14,250 @@ defmodule PatchbayWeb.SearchLive do
   import PatchbayWeb.Forum.BoardHTML,
     only: [post_title: 1, site_name: 1, site_domain: 1, site_path: 1, count_label: 3]
 
+  import PatchbayWeb.Forum.Icon
   alias Patchbay.Forum
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Read
   alias Phoenix.LiveView.JS
 
-  @categories [{"all", "All"}, {"questions", "Questions"}, {"sites", "Sites"}]
-  @recent_limit 5
-  @most_chars 200
+  def mount(_params, _session, socket),
+    do: {:ok, assign(socket, q: "", opened?: false, search_read: %Read{})}
 
-  def mount(_params, _session, socket) do
-    {:ok,
-     assign(socket,
-       q: "",
-       category: "all",
-       recent: [],
-       opened?: false,
-       results: nil,
-       results_q: "",
-       failed?: false
-     )}
-  end
-
-  # Nothing is read until the window first opens; the browser keeps the
-  # reader's recent searches and hands them over each time it opens.
-  def handle_event("open", %{"recent" => recent}, socket) do
-    socket = assign(socket, recent: recent_searches(recent))
-
+  def handle_event("open", _params, socket) do
     if socket.assigns.opened?,
       do: {:noreply, socket},
-      else: {:noreply, socket |> assign(opened?: true) |> search()}
+      else: {:noreply, socket |> assign(:opened?, true) |> search()}
   end
-
-  def handle_event("recent", %{"recent" => recent}, socket),
-    do: {:noreply, assign(socket, recent: recent_searches(recent))}
 
   def handle_event("search", %{"q" => q}, socket),
-    do: {:noreply, socket |> assign(q: normalize(q)) |> search()}
+    do: {:noreply, socket |> assign(:q, normalize(q)) |> search()}
 
-  def handle_event("category", %{"category" => category}, socket)
-      when category in ["all", "questions", "sites"],
-      do: {:noreply, socket |> assign(category: category) |> search()}
-
-  def handle_async(:search, {:ok, {q, {:ok, results}}}, socket),
-    do: {:noreply, assign(socket, results: results, results_q: q, failed?: false)}
-
-  def handle_async(:search, _failure, socket), do: {:noreply, assign(socket, failed?: true)}
+  def handle_async({Read, _, _} = name, result, socket),
+    do: {:noreply, Read.settle(socket, name, result)}
 
   defp search(socket) do
-    %{q: q, category: category} = socket.assigns
-    start_async(socket, :search, fn -> {q, read(q, category)} end)
+    q = socket.assigns.q
+    Read.start(socket, :search_read, q, fn -> read(q) end)
   end
 
-  # "All" shows a few of each; a single kind shows more of it. With nothing
-  # typed, the newest questions and the sites with WebMCP tools.
-  defp read(q, category) do
-    limit = if category == "all", do: 4, else: 12
-
-    with {:ok, questions} <- records("questions", category, q, limit),
-         {:ok, sites} <- records("sites", category, q, limit) do
-      {:ok, %{questions: questions, sites: sites}}
-    end
+  defp read("") do
+    with {:ok, page} <- Forum.list_recent_reports(page: [limit: 4], load: [:site]),
+         {:ok, sites, _more?} <- Board.list_showcase(4),
+         do: {:ok, %{questions: page.results, sites: sites}}
   end
 
-  defp records("questions", category, "", limit) when category in ["all", "questions"] do
-    with {:ok, page} <- Forum.list_recent_reports(page: [limit: limit], load: [:site]),
-         do: {:ok, page.results}
+  defp read(q) do
+    with {:ok, page} <- Forum.search_threads(q, page: [limit: 12], load: [:site]),
+         {:ok, sites} <- matching_sites(q),
+         do: {:ok, %{questions: page.results, sites: sites}}
   end
 
-  defp records("questions", category, q, limit) when category in ["all", "questions"] do
-    with {:ok, page} <- Forum.search_threads(q, page: [limit: limit], load: [:site]),
-         do: {:ok, page.results}
-  end
-
-  defp records("sites", category, "", limit) when category in ["all", "sites"] do
-    with {:ok, sites, _more?} <- Board.list_showcase(limit), do: {:ok, sites}
-  end
-
-  defp records("sites", category, q, _limit) when category in ["all", "sites"] do
+  defp matching_sites(q) do
     if String.length(q) < 2,
       do: {:ok, []},
-      else: Forum.find_sites(q, load: [:tool_count])
+      else: Forum.find_sites(q, query: [limit: 12], load: [:tool_count])
   end
 
-  defp records(_view, _category, _q, _limit), do: {:ok, []}
+  defp normalize(q) when is_binary(q), do: q |> String.trim() |> String.slice(0, 100)
+  defp normalize(_), do: ""
 
-  defp normalize(q) when is_binary(q) do
-    q |> String.split() |> Enum.join(" ") |> String.slice(0, @most_chars)
+  defp named(q) do
+    needle = String.downcase(q)
+
+    [
+      {"Pages",
+       [
+         %{kind: :page, label: "Questions", path: ~p"/questions"},
+         %{kind: :page, label: "Sites", path: ~p"/sites"},
+         %{kind: :page, label: "Agent Offers", path: ~p"/offers"},
+         %{kind: :page, label: "Account", path: ~p"/account"},
+         %{kind: :page, label: "Agent guide", path: ~p"/agents.md"},
+         %{kind: :page, label: "Help", path: ~p"/help"}
+       ]},
+      {"Actions",
+       [
+         %{kind: :action, label: "Ask a question", path: ~p"/" <> "#pb-fix-goal"},
+         %{kind: :action, label: "Create Offer", path: ~p"/offers/create"}
+       ]}
+    ]
+    |> Enum.map(fn {group, items} ->
+      {group, Enum.filter(items, &String.contains?(String.downcase(&1.label), needle))}
+    end)
   end
 
-  defp normalize(_q), do: ""
+  defp groups(q, value) do
+    found =
+      case value do
+        %{questions: questions, sites: sites} ->
+          [
+            {"Questions",
+             Enum.map(
+               questions,
+               &%{
+                 kind: :question,
+                 label: post_title(&1),
+                 path: ~p"/posts/#{&1.id}",
+                 detail: site_name(&1.site)
+               }
+             )},
+            {"Sites",
+             Enum.map(
+               sites,
+               &%{
+                 kind: :site,
+                 label: site_name(&1),
+                 path: site_path(&1),
+                 detail:
+                   site_domain(&1) <>
+                     " · " <> count_label(&1.tool_count, "WebMCP tool", "WebMCP tools")
+               }
+             )}
+          ]
 
-  defp recent_searches(recent) do
-    recent
-    |> List.wrap()
-    |> Enum.map(&normalize/1)
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.uniq()
-    |> Enum.take(@recent_limit)
+        _ ->
+          []
+      end
+
+    Enum.reject(named(q) ++ found, fn {_group, items} -> items == [] end)
   end
 
   def render(assigns) do
+    read = assigns.search_read
+    search = %{query: assigns.q, results: groups(assigns.q, read.value), state: read.state}
+
     assigns =
       assign(assigns,
-        categories: @categories,
-        empty?: match?(%{questions: [], sites: []}, assigns.results) and not assigns.failed?
+        search: search,
+        read_state: read.state,
+        drawn_query: if(read.state in [:idle, :ready, :empty], do: assigns.q)
       )
 
     ~H"""
-    <%!-- The browser, not the server, opens the window: each new list of
-         results leaves it open. --%>
     <dialog
-      id="search-dialog"
-      class="search-dialog"
+      id="shell-search"
+      class="shell-search"
       phx-hook="SearchDialog"
-      phx-mounted={JS.ignore_attributes(["open"])}
       aria-label="Search"
-      data-query={@results_q}
+      phx-mounted={JS.ignore_attributes(["open"])}
     >
-      <%!-- The field, not the form, sends the typing: with a change binding on
-           the form, LiveView would send the whole form on Enter. Enter opens
-           the first result instead (SearchDialog hook). --%>
-      <form id="search-dialog-form" class="search-dialog__field" role="search">
-        <svg
-          viewBox="0 0 24 24"
-          width="20"
-          height="20"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          aria-hidden="true"
-        ><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg>
-        <label for="search-dialog-q" class="visually-hidden">Search questions and sites</label>
+      <form id="shell-search-form" role="search" phx-change="search" phx-submit="search">
+        <.icon name={:search} class="pb-icon shell-search__glass" />
         <input
-          id="search-dialog-q"
-          type="search"
+          id="shell-search-input"
           name="q"
-          value={@q}
-          maxlength="200"
-          placeholder="Search questions and sites…"
+          type="search"
+          value={@search.query}
+          role="combobox"
+          aria-label="Search"
+          aria-expanded="true"
+          aria-controls="shell-search-results"
+          aria-autocomplete="list"
           autocomplete="off"
-          phx-change="search"
-          phx-debounce="200"
+          spellcheck="false"
+          maxlength="100"
+          phx-debounce="150"
+          phx-mounted={JS.ignore_attributes(["aria-activedescendant"])}
+          placeholder="Search pages, actions, questions and sites"
         />
-        <button type="button" class="search-dialog__close" data-close-search aria-label="Close search">
-          <kbd>Esc</kbd><span>Close</span>
+        <button type="button" class="shell-search__close" data-search-close>
+          <kbd class="shell-search__esc">Esc</kbd>
+          <span class="shell-search__close-word">Close</span>
         </button>
       </form>
-
-      <div class="search-dialog__body">
-        <div class="search-dialog__categories" role="group" aria-label="Show">
-          <button
-            :for={{value, label} <- @categories}
-            type="button"
-            phx-click="category"
-            phx-value-category={value}
-            aria-pressed={to_string(@category == value)}
-          >
-            {label}
-          </button>
+      <div
+        id="shell-search-results"
+        role="listbox"
+        aria-label="Results"
+        data-query={@drawn_query}
+      >
+        <p :if={@read_state == :loading} class="shell-search__empty" role="status">Searching…</p>
+        <p :if={@read_state in [:error, :stale]} class="shell-search__empty" role="alert">
+          {if @read_state == :stale,
+            do: "Search could not refresh. Previous results are shown.",
+            else: "Search is unavailable right now. Try again in a moment."}
+        </p>
+        <div
+          :if={
+            @read_state not in [:loading, :error, :stale] and @search.query != "" and
+              @search.results == []
+          }
+          class="shell-search__empty"
+        >
+          <.icon name={:search} />
+          <p><strong>No results for “{@search.query}”</strong></p>
+          <p>Try a page name, a site or words from a question.</p>
         </div>
-
-        <div class="search-dialog__results">
-          <section :if={@q == "" and @recent != []} class="search-dialog__section">
-            <header>
-              <h2>Recent searches</h2>
-              <button type="button" class="search-dialog__clear" data-clear-recent>Clear</button>
-            </header>
-            <div class="search-dialog__recent">
-              <button :for={term <- @recent} type="button" phx-click="search" phx-value-q={term}>
-                {term}
-              </button>
-            </div>
-          </section>
-
-          <p :if={is_nil(@results) and not @failed?} class="search-dialog__note">Searching…</p>
-          <p :if={@failed?} class="search-dialog__note" role="alert">
-            Search is unavailable right now. Try again in a moment.
-          </p>
-          <p :if={@empty?} class="search-dialog__note">
-            {if @results_q == "", do: "Nothing here yet.", else: "Nothing matches “#{@results_q}”."}
-          </p>
-
-          <section
-            :if={@results && @results.questions != [] && !@failed?}
-            class="search-dialog__section"
+        <section
+          :for={{{group, items}, g} <- Enum.with_index(@search.results)}
+          role="group"
+          aria-labelledby={"shell-search-group-#{g}"}
+        >
+          <h3 id={"shell-search-group-#{g}"}>
+            {group} <span class="shell-search__count">{length(items)}</span>
+          </h3>
+          <.link
+            :for={{item, i} <- Enum.with_index(items)}
+            id={"shell-search-result-#{g}-#{i}"}
+            href={item.path}
+            role="option"
+            aria-selected="false"
+            data-search-result
+            phx-mounted={JS.ignore_attributes(["aria-selected"])}
           >
-            <h2>{if @results_q == "", do: "Newest questions", else: "Questions"}</h2>
-            <a
-              :for={question <- @results.questions}
-              href={~p"/posts/#{question.id}"}
-              class="search-result"
-              data-search-result
-            >
-              <span class="search-result__title">{post_title(question)}</span>
-              <small>{site_name(question.site)}</small>
-            </a>
-          </section>
-
-          <section
-            :if={@results && @results.sites != [] && !@failed?}
-            class="search-dialog__section"
-          >
-            <h2>{if @results_q == "", do: "Sites with WebMCP tools", else: "Sites"}</h2>
-            <a
-              :for={site <- @results.sites}
-              href={site_path(site)}
-              class="search-result"
-              data-search-result
-            >
-              <span class="search-result__title">
-                {site_name(site)} <small>{site_domain(site)}</small>
+            <span class="shell-search__kind" data-kind={item.kind}>
+              <.icon name={if item.kind == :question, do: :reply, else: :link} />
+            </span>
+            <span class="shell-search__text">
+              <span class="shell-search__label">{marked(item.label, @search.query)}</span>
+              <span :if={item[:detail]} class="shell-search__detail">
+                {marked(item.detail, @search.query)}
               </span>
-              <small :if={site.tool_count > 0}>
-                {count_label(site.tool_count, "WebMCP tool", "WebMCP tools")}
-              </small>
-            </a>
-          </section>
-
-          <a :if={@q != ""} href={~p"/?#{[q: @q]}"} class="search-dialog__all" data-search-all>
-            See all questions for “{@q}”
-          </a>
-        </div>
+            </span>
+            <kbd class="shell-search__enter" aria-hidden="true">↵</kbd>
+          </.link>
+        </section>
       </div>
+      <div :if={@search.query != ""} class="shell-search__browse">
+        <.link href={~p"/?#{[q: @search.query]}"}>
+          See all questions for “{@search.query}” →
+        </.link>
+      </div>
+      <p id="shell-search-status" class="visually-hidden" aria-live="polite">
+        {result_count(@search)}
+      </p>
+      <footer class="shell-search__footer" aria-hidden="true">
+        <span><kbd>↑</kbd><kbd>↓</kbd> Move</span>
+        <span><kbd>↵</kbd> Open</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </footer>
     </dialog>
     """
   end
+
+  defp result_count(%{state: :loading}), do: "Searching…"
+  defp result_count(%{state: state}) when state in [:error, :stale], do: "Search unavailable"
+  defp result_count(%{query: ""}), do: ""
+
+  defp result_count(%{results: results}) do
+    case Enum.sum(Enum.map(results, fn {_group, items} -> length(items) end)) do
+      0 -> "No results"
+      1 -> "1 result"
+      count -> "#{count} results"
+    end
+  end
+
+  # The template's escaped first-match highlight, including literal punctuation.
+  defp marked(text, ""), do: text
+
+  defp marked(text, query) do
+    case Regex.split(~r/#{Regex.escape(query)}/iu, text, parts: 2, include_captures: true) do
+      [before, match, rest] ->
+        {:safe, [escape(before), "<mark>", escape(match), "</mark>", escape(rest)]}
+
+      [_unmatched] ->
+        text
+    end
+  end
+
+  defp escape(text), do: Phoenix.HTML.Engine.html_escape(text)
 end
