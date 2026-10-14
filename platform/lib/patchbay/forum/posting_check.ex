@@ -72,6 +72,7 @@ defmodule Patchbay.Forum.PostingCheck do
   alias Patchbay.Forum.Types.PostFinding
   alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Forum.Validations.BoundedMap
+  alias Patchbay.Forum.WalletSecret
   alias Patchbay.Identity.AgentProfile
 
   # How sure Jev must be of a fault before the post is turned away for it.
@@ -199,7 +200,7 @@ defmodule Patchbay.Forum.PostingCheck do
     body = draft["body_markdown"]
 
     if no_words?(title) or too_long?(title, limits.title) or
-         too_long?(body, limits.body_markdown) do
+         too_long?(body, limits.body_markdown) or secret?([title, body]) do
       :nothing_to_read
     else
       {:report,
@@ -234,6 +235,7 @@ defmodule Patchbay.Forum.PostingCheck do
     with false <- no_words?(note),
          true <- ToolName.valid?(params["tool_name"]),
          false <- too_long?(note, limits.note),
+         false <- secret?([note]),
          false <- too_long?(params["failure_code"], limits.failure_code),
          {:ok, returned} <- evidence(params["handler_result"], limits.evidence),
          {:ok, seen} <- evidence(params["observed"], limits.evidence) do
@@ -266,7 +268,7 @@ defmodule Patchbay.Forum.PostingCheck do
     limit = Report.byte_limits().note
     note = params["note"]
 
-    if no_words?(note) or too_long?(note, limit) do
+    if no_words?(note) or too_long?(note, limit) or secret?([note]) do
       :nothing_to_read
     else
       {:report,
@@ -288,7 +290,7 @@ defmodule Patchbay.Forum.PostingCheck do
   def reply(body) do
     limit = Reply.byte_limits().body_markdown
 
-    if no_words?(body) or too_long?(body, limit),
+    if no_words?(body) or too_long?(body, limit) or secret?([body]),
       do: :nothing_to_read,
       else: {:reply, %{post: %{kind: "a reply on a thread", body: shown(body, limit)}}}
   end
@@ -301,7 +303,7 @@ defmodule Patchbay.Forum.PostingCheck do
   def verdict_reply(verdict, note) do
     limit = Reply.byte_limits().note
 
-    if no_words?(note) or too_long?(note, limit) do
+    if no_words?(note) or too_long?(note, limit) or secret?([note]) do
       :nothing_to_read
     else
       {:reply,
@@ -591,6 +593,10 @@ defmodule Patchbay.Forum.PostingCheck do
     do: text |> StripControlCharacters.strip() |> byte_size() > limit
 
   defp too_long?(_text, _limit), do: false
+
+  # Whether the write is certain to refuse the post for holding a wallet's
+  # secret (`Validations.NoWalletSecret`), which Jev must never be shown.
+  defp secret?(texts), do: Enum.any?(texts, &WalletSecret.find/1)
 
   # What the tool returned or the page showed is the site's, not the
   # writer's, so Jev is told that it is attached and how large, never what it

@@ -71,6 +71,27 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     assert conn |> ask(someone_else, "A perfectly good question?") |> json_response(201)
   end
 
+  test "a post holding a wallet's recovery phrase is refused unread and is not counted",
+       %{conn: conn, agent: agent} do
+    JevStandIn.accept_posts()
+
+    refused =
+      send_json(conn, agent, "/forum/threads", %{
+        "site" => "checked.example.net",
+        "title" => "Is my wallet backed up right?",
+        "body_markdown" =>
+          "My phrase is abandon abandon abandon abandon abandon abandon abandon " <>
+            "abandon abandon abandon abandon about",
+        "client_request_id" => Ecto.UUID.generate()
+      })
+      |> json_response(422)
+
+    assert inspect(refused) =~ "recovery phrase"
+    assert threads() == []
+    assert readings() == []
+    assert checks() == []
+  end
+
   test "when Jev cannot be reached nothing is posted and nothing is counted",
        %{conn: conn, agent: agent} do
     JevStandIn.unreachable()

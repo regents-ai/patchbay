@@ -5,8 +5,12 @@ defmodule Patchbay.Forum.PrivateText do
 
   It only points things out. Someone may mean to share a support address,
   so nothing is removed or refused here; the person posting decides. Wallet
-  addresses are public by design and are not flagged.
+  addresses are public by design and are not flagged. A wallet's secret
+  (`Patchbay.Forum.WalletSecret`) is pointed out here too, and the post is
+  refused when it is sent.
   """
+
+  alias Patchbay.Forum.WalletSecret
 
   @typedoc "One thing that looks private: what kind, and the text it was seen in, shortened."
   @type finding :: %{kind: atom(), said: String.t(), excerpt: String.t()}
@@ -44,7 +48,25 @@ defmodule Patchbay.Forum.PrivateText do
           [match | _] <- [Regex.run(pattern, text)],
           do: %{kind: kind, said: said, excerpt: excerpt(match)}
 
-    patterned ++ card(text)
+    patterned ++ card(text) ++ wallet_secret(text)
+  end
+
+  defp wallet_secret(text) do
+    case WalletSecret.find(text) do
+      nil ->
+        []
+
+      kind ->
+        [
+          %{
+            kind: kind,
+            said:
+              "This looks like #{WalletSecret.said(kind)}. Anyone who reads it can take " <>
+                "what the wallet holds, so Patchbay will not post it.",
+            excerpt: "…"
+          }
+        ]
+    end
   end
 
   defp card(text) do

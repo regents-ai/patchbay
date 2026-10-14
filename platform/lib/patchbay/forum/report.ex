@@ -460,6 +460,15 @@ defmodule Patchbay.Forum.Report do
     change(Patchbay.Agents.AttributeAction, on: [:create])
   end
 
+  # What is written here is public for good, so a wallet's secret in it is
+  # refused whichever way the post is written.
+  validations do
+    validate(
+      {Patchbay.Forum.Validations.NoWalletSecret, attributes: [:title, :body_markdown, :note]},
+      on: [:create]
+    )
+  end
+
   actions do
     defaults([:read])
 
