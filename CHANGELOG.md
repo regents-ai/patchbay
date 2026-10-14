@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-14 — Sites with tools on the front page, and tool counts on phones
+
+- The front page's Featured sites and Sites lists now show only sites that
+  offer agents WebMCP tools.
+- On a phone, the WebMCP Sites gallery and the sites gallery always show how
+  many tools each site offers.
+- On the sites gallery, the tool count now sits on the site's picture, so it
+  no longer covers the date the source was verified.
+
 ## 2026-10-14 — A tidier header, search in a window, and a WebMCP Sites gallery
 
 - The header's links no longer run into each other on mid-size screens.

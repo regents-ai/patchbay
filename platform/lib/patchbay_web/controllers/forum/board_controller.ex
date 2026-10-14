@@ -185,8 +185,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         |> redirect(to: ~p"/?#{filters}")
 
       {reports, next_page} ->
-        {sites, more_sites?} = directory()
-        {showcase, _more?} = showcase(Board.list_showcase(8))
+        sites = directory()
+        # Eight for the gallery, then the sidebar's three featured and eight more.
+        {showcase, more_showcase?} = showcase(Board.list_showcase(11))
 
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
@@ -199,8 +200,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           next_page: next_page,
           current_page: params["after"],
           sites: sites,
-          more_sites?: more_sites?,
           showcase: showcase,
+          more_showcase?: more_showcase?,
           matches: section(Board.matches(filters.q), "Search matches"),
           following: followed_site_ids(following),
           payments_enabled?: Board.payments_enabled?(),
@@ -226,8 +227,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp directory do
     case Board.list_directory() do
-      {:ok, sites, more?} -> {sites, more?}
-      {:error, failure} -> {section({:error, failure}, "Site directory"), false}
+      {:ok, sites, _more?} -> sites
+      {:error, failure} -> section({:error, failure}, "Site directory")
     end
   end
 

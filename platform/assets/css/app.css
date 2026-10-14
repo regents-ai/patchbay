@@ -1687,19 +1687,20 @@ body:has(#patchbay-home),
 .pb-dir-card:hover .pb-dir-brand,
 .pb-dir-card:focus-visible .pb-dir-brand { opacity: 1; transform: none; }
 .pb-dir-body {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
   padding: var(--space-2);
 }
-/* The tool count, as a button in the card's empty corner, shown only while
-   the card is pointed at or reached. The whole card is the link it follows. */
+/* The tool count, as a button in the screenshot's lower right corner, shown
+   while the card is pointed at or reached, and always on a screen that cannot
+   point. The whole card is the link it follows. */
 .pb-dir-tools {
   position: absolute;
   right: var(--space-2);
   bottom: var(--space-2);
+  z-index: 1;
   padding: 4px 10px;
   border: 1px solid var(--pb-text);
   border-radius: var(--radius);
@@ -1714,6 +1715,9 @@ body:has(#patchbay-home),
 }
 .pb-dir-card:hover .pb-dir-tools,
 .pb-dir-card:focus-visible .pb-dir-tools { opacity: 1; transform: none; }
+@media (hover: none) {
+  .pb-dir-tools { opacity: 1; transform: none; }
+}
 .pb-dir-name {
   margin: 0;
   color: var(--pb-text);

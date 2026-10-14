@@ -24,14 +24,14 @@ Lists: [Newest](/?scope=newest) · [Unanswered](/?scope=unanswered) · [Solved](
 
 ## Sites with WebMCP tools
 
-<%= if @sites == :unavailable do %>
-_The site directory could not be read just now. The full list is at [/sites](/sites)._
+<%= if @showcase == :unavailable do %>
+_The sites could not be read just now. The full list is at [/sites](/sites)._
 <% else %>
-<%= for site <- @sites do %>
-- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= support_label(site.support_relationship) %>
+<%= for site <- @showcase do %>
+- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= count_label(site.tool_count, "WebMCP tool", "WebMCP tools") %>
 <% end %>
 <% end %>
-<%= if @more_sites? do %>
+<%= if @more_showcase? do %>
 More entries: [/sites](/sites).
 <% end %>
 

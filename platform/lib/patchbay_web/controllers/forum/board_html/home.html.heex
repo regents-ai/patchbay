@@ -85,16 +85,16 @@
         <a href={discussion_path(@filters)}>Try again</a>
       </Regent.Primitives.notice>
       <Regent.Primitives.notice
-        :if={@sites == :unavailable}
+        :if={@showcase == :unavailable}
         tone="warning"
         class="pb-section-unavailable"
       >
         Sites could not be loaded just now. <a href={discussion_path(@filters)}>Try again</a>
         · <a href={~p"/sites"}>Full site directory</a>
       </Regent.Primitives.notice>
-      <section :if={@sites != :unavailable} aria-labelledby="pb-featured-sites-title">
+      <section :if={@showcase != :unavailable} aria-labelledby="pb-featured-sites-title">
         <h2 id="pb-featured-sites-title" class="pb-sidebar-label">Featured sites</h2>
-        <div :for={site <- Enum.take(@sites, 3)} class="pb-featured-site">
+        <div :for={site <- Enum.take(@showcase, 3)} class="pb-featured-site">
           <a
             href={site_path(site)}
             aria-current={if @filters.site == site.origin, do: "page"}
@@ -130,9 +130,9 @@
           </form>
         </div>
       </section>
-      <section :if={@sites != :unavailable} aria-labelledby="pb-home-sites-title">
+      <section :if={@showcase != :unavailable} aria-labelledby="pb-home-sites-title">
         <h2 id="pb-home-sites-title" class="pb-sidebar-label">Sites</h2>
-        <div :for={site <- Enum.slice(@sites, 3, 8)} class="pb-sidebar-site">
+        <div :for={site <- Enum.slice(@showcase, 3, 8)} class="pb-sidebar-site">
           <a
             href={site_path(site)}
             aria-current={if @filters.site == site.origin, do: "page"}

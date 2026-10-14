@@ -87,7 +87,8 @@
 
 /* WebMCP Sites, between the form and the questions: four screenshots across
    and two down. Pointed at or reached, a tile darkens, the brand's logo comes
-   up in its lower left and its tool count in its upper right. */
+   up in its lower left and its tool count in its upper right; a screen that
+   cannot point always shows the count. */
 .pb-showcase { margin: 0 0 var(--space-4); }
 .pb-showcase-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
 .pb-showcase-head h2 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-xl); font-weight: 400; font-synthesis: none; letter-spacing: -.02em; }
@@ -143,6 +144,11 @@
 .pb-showcase-tile:focus-visible::after { background: rgb(10 10 10 / .72); }
 .pb-showcase-tile:hover :is(.pb-showcase-logo, .pb-showcase-tools),
 .pb-showcase-tile:focus-visible :is(.pb-showcase-logo, .pb-showcase-tools) { opacity: 1; }
+/* A screen that cannot point always shows the tool count, on its own dark
+   ground since the screenshot stays undarkened. */
+@media (hover: none) {
+  .pb-showcase-tools { opacity: 1; padding: 2px 8px; border-radius: var(--radius); background: rgb(10 10 10 / .72); }
+}
 @media (max-width: 760px) {
   .pb-showcase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

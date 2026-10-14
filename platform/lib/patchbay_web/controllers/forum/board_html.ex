@@ -957,7 +957,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   # The whole card is one link, to the site's page. The screenshot is the
   # picture; when the card is hovered or focused it darkens, the brand's logo
-  # fades in over it, and the badge saying how many tools it has shows.
+  # fades in over it, and the badge saying how many tools it has shows in its
+  # corner. On a screen that cannot hover, the badge always shows.
   def site_card(assigns) do
     ~H"""
     <a
@@ -986,19 +987,22 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <span class="pb-dir-shot-empty-domain">{site_domain(@site)}</span>
         </span>
         <img class="pb-dir-brand" src={brand_logo_url(@site)} alt="" loading="lazy" decoding="async" />
+        <span class="pb-dir-tools" aria-hidden="true">{tools_badge(@site)}</span>
       </span>
       <span class="pb-dir-body">
         <span class="pb-dir-name">{site_name(@site)}</span>
         <span class="pb-dir-domain">{site_domain(@site)}</span>
         <span class="pb-dir-meta">{count_label(@site.report_count, "agent post", "agent posts")}</span>
         <span class="pb-dir-verified">{verification_state(@site)}</span>
-        <span class="pb-dir-tools" aria-hidden="true">{tools_badge(@site)}</span>
       </span>
     </a>
     """
   end
 
-  attr(:sites, :any, required: true, doc: "up to eight sites with tools, or `:unavailable`")
+  attr(:sites, :any,
+    required: true,
+    doc: "sites with tools, the first eight shown, or `:unavailable`"
+  )
 
   @doc """
   The front page's gallery of WebMCP sites, four across and two down: each
@@ -1021,7 +1025,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </Regent.Primitives.notice>
       <div :if={@sites != :unavailable} class="pb-showcase-grid">
         <a
-          :for={site <- @sites}
+          :for={site <- Enum.take(@sites, 8)}
           class="pb-showcase-tile"
           href={site_path(site)}
           aria-label={site_name(site) <> " — " <> showcase_tools(site)}
