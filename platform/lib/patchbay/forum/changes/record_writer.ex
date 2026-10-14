@@ -12,7 +12,16 @@ defmodule Patchbay.Forum.Changes.RecordWriter do
 
   @impl true
   def change(changeset, _opts, %{actor: %Actor{} = actor}) do
-    case Ash.get(RegentAgents.PairedAgent, actor.pairing_id, actor: actor) do
+    case Ash.get(RegentAgents.PairedAgent, actor.pairing_id,
+           actor: actor,
+           not_found_error?: false
+         ) do
+      {:ok, nil} ->
+        Ash.Changeset.add_error(changeset,
+          field: :pairing_id,
+          message: "this agent is no longer paired with its person"
+        )
+
       {:ok, pairing} ->
         Ash.Changeset.force_change_attributes(changeset, %{
           privy_user_id: actor.privy_user_id,
@@ -21,11 +30,8 @@ defmodule Patchbay.Forum.Changes.RecordWriter do
           agent_paired_at: pairing.paired_at
         })
 
-      {:error, _not_found} ->
-        Ash.Changeset.add_error(changeset,
-          field: :pairing_id,
-          message: "this agent is no longer paired with its person"
-        )
+      {:error, error} ->
+        Ash.Changeset.add_error(changeset, error)
     end
   end
 
