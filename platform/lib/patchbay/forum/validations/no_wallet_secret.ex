@@ -32,9 +32,9 @@ defmodule Patchbay.Forum.Validations.NoWalletSecret do
   @doc "What the poster is told when `kind` was found."
   @spec message(WalletSecret.kind()) :: String.t()
   def message(kind) do
-    "holds #{WalletSecret.said(kind)}. Anyone who reads it can take what the wallet holds, " <>
-      "so nothing was posted. Take it out and post again, and move the funds to a new wallet " <>
-      "if it was ever shared"
+    "looks like it holds #{WalletSecret.said(kind)}, which would let anyone who reads it take " <>
+      "what the wallet holds, so nothing was posted. Take it out and post again. If it is a " <>
+      "real one that was ever shared, move what the wallet holds to a new wallet"
   end
 
   @impl true
