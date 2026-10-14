@@ -2,18 +2,26 @@ defmodule Patchbay.Forum.WalletSecret do
   @moduledoc """
   Finds a wallet's secret in words about to be made public: a recovery phrase
   (the BIP-39 words Ethereum, Bitcoin and Solana wallets all use), a Bitcoin
-  private key or extended private key, or a Solana secret key. Whoever reads
-  one can take what the wallet holds, so a post carrying one is refused, not
-  flagged.
+  private key or extended private key, a Solana secret key, or an Ethereum
+  private key. Whoever reads one can take what the wallet holds, so a post
+  carrying one is refused, not flagged.
 
-  Each is recognised by something only a real secret has, never by its shape
-  alone: a recovery phrase's and a Bitcoin key's own checksum, and a Solana
-  key whose second half is the public key of its first. A transaction hash,
-  a signature or a run of ordinary words does not match.
+  A recovery phrase, a Bitcoin key and a Solana key are recognised by
+  something only a real secret has: a recovery phrase's and a Bitcoin key's
+  own checksum, and a Solana key whose second half is the public key of its
+  first. A recovery phrase is read as words written apart, the way wallets
+  show it, so words joined by code's punctuation are not taken for one. An
+  Ethereum private key has nothing of the kind and looks exactly like a
+  transaction hash, so every 64-character hex code is refused unless it is
+  written as a transaction link (`tx_link/0`). A signature or a run of
+  ordinary words does not match. Invisible characters are dropped first, as
+  the post's own fields drop them, so one inside a secret does not hide it.
   """
 
+  alias Patchbay.Forum.Changes.StripControlCharacters
+
   @typedoc "Which kind of secret the text holds."
-  @type kind :: :recovery_phrase | :bitcoin_key | :solana_key
+  @type kind :: :recovery_phrase | :bitcoin_key | :solana_key | :evm_key
 
   @words "priv/bip39/english.txt"
          |> File.read!()
@@ -27,6 +35,11 @@ defmodule Patchbay.Forum.WalletSecret do
   # whole phrase is the one found.
   @phrase_lengths [24, 21, 18, 15, 12]
 
+  # A list number ("3." or "3)") between words keeps the phrase going, and a
+  # word may end in one comma, full stop or semicolon.
+  @list_number ~r/^\d+[.)]$/
+  @trailing_mark ~r/[,.;]$/
+
   @base58 ~c"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
   @base58_value @base58 |> Enum.with_index() |> Map.new()
 
@@ -35,19 +48,27 @@ defmodule Patchbay.Forum.WalletSecret do
   @solana_text ~r/(?<![1-9A-HJ-NP-Za-km-z])[1-9A-HJ-NP-Za-km-z]{85,90}(?![1-9A-HJ-NP-Za-km-z])/
   @solana_bytes ~r/\[\s*(?:\d{1,3}\s*,\s*){63}\d{1,3}\s*\]/
 
+  # A transaction hash is written as a block explorer's link, on any chain.
+  @explorer_link ~r|https?://\S+?/tx/(?:0x)?[0-9a-fA-F]{64}(?![0-9A-Za-z])|
+  @hex_64 ~r/(?<![0-9A-Za-z])(?:0x)?[0-9a-fA-F]{64}(?![0-9A-Za-z])/
+
   @said %{
     recovery_phrase: "a wallet's recovery phrase",
     bitcoin_key: "a Bitcoin private key",
-    solana_key: "a Solana secret key"
+    solana_key: "a Solana secret key",
+    evm_key: "an Ethereum private key, or a transaction hash not written as a link"
   }
 
   @doc "The kind of wallet secret `text` holds, or `nil`."
   @spec find(term()) :: kind() | nil
   def find(text) when is_binary(text) do
+    text = StripControlCharacters.strip(text)
+
     cond do
       recovery_phrase?(text) -> :recovery_phrase
       bitcoin_key?(text) -> :bitcoin_key
       solana_key?(text) -> :solana_key
+      evm_key?(text) -> :evm_key
       true -> nil
     end
   end
@@ -58,14 +79,27 @@ defmodule Patchbay.Forum.WalletSecret do
   @spec said(kind()) :: String.t()
   def said(kind), do: Map.fetch!(@said, kind)
 
+  @doc "How to write a transaction so it is not taken for a private key."
+  @spec tx_link() :: String.t()
+  def tx_link,
+    do:
+      "Write a transaction as its link: https://basescan.org/tx/<0xtxhash> or " <>
+        "https://etherscan.io/tx/<0xtxhash> or similar for other chains."
+
   # Every run of consecutive list words, each window of a phrase's length
   # checked against the checksum its last word carries.
   defp recovery_phrase?(text) do
-    ~r/[a-z]+/
-    |> Regex.scan(String.downcase(text))
-    |> Enum.map(fn [word] -> Map.get(@index, word) end)
+    text
+    |> String.split()
+    |> Enum.reject(&Regex.match?(@list_number, &1))
+    |> Enum.map(&list_index/1)
     |> Enum.chunk_by(&is_nil/1)
     |> Enum.any?(fn run -> is_integer(hd(run)) and phrase_in?(run) end)
+  end
+
+  defp list_index(token) do
+    word = @trailing_mark |> Regex.replace(token, "") |> String.downcase()
+    Map.get(@index, word)
   end
 
   defp phrase_in?(run) do
@@ -126,6 +160,8 @@ defmodule Patchbay.Forum.WalletSecret do
   end
 
   defp keypair?(_bytes), do: false
+
+  defp evm_key?(text), do: Regex.match?(@hex_64, Regex.replace(@explorer_link, text, ""))
 
   defp byte_list(candidate) do
     numbers = ~r/\d+/ |> Regex.scan(candidate) |> Enum.map(fn [n] -> String.to_integer(n) end)

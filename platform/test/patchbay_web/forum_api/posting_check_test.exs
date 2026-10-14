@@ -376,8 +376,8 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     |> post(path, Jason.encode!(Map.put_new(params, "client_request_id", Ecto.UUID.generate())))
   end
 
-  # Reads back the test's own records.
-  defp threads, do: Ash.read!(Report, authorize?: false)
+  # Reads back the test's own records, oldest first.
+  defp threads, do: Report |> Ash.Query.sort(inserted_at: :asc) |> Ash.read!(authorize?: false)
 
   # The same: every reading Patchbay opened, answered or not.
   defp readings do

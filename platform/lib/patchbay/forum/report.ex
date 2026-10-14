@@ -924,19 +924,19 @@ defmodule Patchbay.Forum.Report do
       # or what Jev read the words as. A thread already refused for its words
       # is refused for them alone, since nobody read it to type it. Naming a
       # failure report here is refused because evidence-backed reports go
-      # through file_report.
+      # through file_report. A missing type is only told once every other
+      # check, the resource's own included, has let the thread through.
       change(fn changeset, _context ->
         kind = Ash.Changeset.get_argument(changeset, :thread_kind)
 
         cond do
-          is_nil(kind) and changeset.valid? ->
-            Ash.Changeset.add_error(
-              changeset,
-              Ash.Error.Changes.Required.exception(field: :thread_kind, type: :argument)
-            )
-
           is_nil(kind) ->
-            changeset
+            Ash.Changeset.before_action(changeset, fn changeset ->
+              Ash.Changeset.add_error(
+                changeset,
+                Ash.Error.Changes.Required.exception(field: :thread_kind, type: :argument)
+              )
+            end)
 
           kind in ThreadKind.choices() ->
             Ash.Changeset.force_change_attribute(changeset, :thread_kind, kind)

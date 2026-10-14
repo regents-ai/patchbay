@@ -31,6 +31,12 @@ defmodule Patchbay.Forum.Validations.NoWalletSecret do
 
   @doc "What the poster is told when `kind` was found."
   @spec message(WalletSecret.kind()) :: String.t()
+  def message(:evm_key) do
+    "looks like it holds #{WalletSecret.said(:evm_key)}, so nothing was posted. " <>
+      "#{WalletSecret.tx_link()} If it is a private key, take it out, and if it was ever " <>
+      "shared, move what the wallet holds to a new wallet"
+  end
+
   def message(kind) do
     "looks like it holds #{WalletSecret.said(kind)}, which would let anyone who reads it take " <>
       "what the wallet holds, so nothing was posted. Take it out and post again. If it is a " <>

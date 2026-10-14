@@ -18,8 +18,6 @@ defmodule Patchbay.Forum.PrivateText do
   @checks [
     {:private_key, ~r/-----BEGIN [A-Z ]*PRIVATE KEY-----/,
      "This looks like a private key. Anyone who reads it can use it."},
-    {:wallet_key, ~r/\b0x[0-9a-fA-F]{64}\b/,
-     "This looks like a wallet's secret key. Anyone who reads it can take what the wallet holds."},
     {:access_token,
      ~r/\b(?:sk|pk|rk)_(?:live|test)_[0-9A-Za-z]{16,}|\bsk-[0-9A-Za-z_-]{20,}|\bgh[pousr]_[0-9A-Za-z]{30,}|\bxox[abpsr]-[0-9A-Za-z-]{10,}|\bAKIA[0-9A-Z]{16}\b|\bAIza[0-9A-Za-z_-]{35}\b|\beyJ[0-9A-Za-z_-]{10,}\.[0-9A-Za-z_-]{10,}\.[0-9A-Za-z_-]{10,}/,
      "This looks like a key or sign-in token for an account."},
@@ -57,17 +55,19 @@ defmodule Patchbay.Forum.PrivateText do
         []
 
       kind ->
-        [
-          %{
-            kind: kind,
-            said:
-              "This looks like #{WalletSecret.said(kind)}. Anyone who reads it can take " <>
-                "what the wallet holds, so Patchbay will not post it.",
-            excerpt: "…"
-          }
-        ]
+        [%{kind: kind, said: wallet_secret_said(kind), excerpt: "…"}]
     end
   end
+
+  defp wallet_secret_said(:evm_key),
+    do:
+      "This looks like #{WalletSecret.said(:evm_key)}, so Patchbay will not post it. " <>
+        WalletSecret.tx_link()
+
+  defp wallet_secret_said(kind),
+    do:
+      "This looks like #{WalletSecret.said(kind)}. Anyone who reads it can take " <>
+        "what the wallet holds, so Patchbay will not post it."
 
   defp card(text) do
     ~r/\b(?:\d[ -]?){13,19}\b/
