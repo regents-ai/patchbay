@@ -33,23 +33,23 @@ defmodule PatchbayWeb.AgentAccountController do
     })
   end
 
-  def credits_history(conn, %{"after" => cursor}) when not is_binary(cursor),
-    do: invalid_cursor(conn)
+  def credits_history(%{body_params: %{"after" => cursor}} = conn, _params)
+      when not is_binary(cursor),
+      do: invalid_cursor(conn)
 
-  def credits_history(conn, params) do
+  def credits_history(conn, _params) do
     args =
-      case params do
+      case conn.body_params do
         %{"after" => cursor} when is_binary(cursor) -> %{after: cursor}
         _ -> %{}
       end
 
     case RegentCredits.history(args, actor: credit_actor(conn)) do
       {:ok, history} ->
-        # Keep existing clients' next/more? keys while adding the shared envelope.
-        json(
-          conn,
-          Map.put(history, :pagination, %{has_more: history.more?, next_cursor: history.next})
-        )
+        json(conn, %{
+          entries: history.entries,
+          pagination: %{has_more: history.more?, next_cursor: history.next}
+        })
 
       {:error, error} ->
         if cursor_error?(error) do

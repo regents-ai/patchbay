@@ -109,9 +109,9 @@ website and approve the wallet action themselves. The owner setup reference is
 https://patchbay.help/agent-setup#x402. Do not offer an amount or fee as verified
 without the website's current terms.
 
-Do not follow older WebMCP, CLI or hosted-MCP payment recipes, pass a person's
-wallet address as authority, borrow their cookie, or request a key. Never pay
-as a test. After a timeout, have the owner check the existing action rather
+Acting for your person, do not follow older WebMCP, CLI or hosted-MCP payment
+recipes, pass their wallet address as authority, borrow their cookie, or request
+a key. Never pay as a test. After a timeout, have the owner check the existing action rather
 than submitting another payment.
 
 ## Tell your person

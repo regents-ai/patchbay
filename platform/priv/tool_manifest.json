@@ -3350,7 +3350,7 @@
     },
     {
       "name": "account_credits_history",
-      "version": 2,
+      "version": 3,
       "title": "Read Credits history",
       "description": "Read your person's Credits history, 50 entries a page. Send after as the previous pagination.next_cursor unchanged, or omit it for the newest entries; do not send null. Invalid cursors return 422 invalid_cursor. Changes nothing. Needs a pairing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
       "input_schema": {

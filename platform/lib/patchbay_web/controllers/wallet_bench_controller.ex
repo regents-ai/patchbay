@@ -96,7 +96,7 @@ defmodule PatchbayWeb.WalletBenchController do
   # A pair with no runs may still carry a matrix option recorded by another pair.
   defp validate_pair_filters!(filters) do
     if Enum.any?(filters, fn {_key, selected} -> selected != "" end) do
-      {:ok, recorded} = WalletBench.list_results()
+      {:ok, recorded} = WalletBench.list_results(query: [select: [:set_versions]])
       unless Sets.valid_filters?(filters, Sets.options(recorded)), do: raise(NotFoundError)
     end
   end

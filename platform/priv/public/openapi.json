@@ -5591,19 +5591,6 @@
                           "description": "Pass unchanged as after for the next page. Null when no further page exists."
                         }
                       }
-                    },
-                    "next": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "deprecated": true,
-                      "description": "Compatibility alias for pagination.next_cursor."
-                    },
-                    "more?": {
-                      "type": "boolean",
-                      "deprecated": true,
-                      "description": "Compatibility alias for pagination.has_more."
                     }
                   }
                 }
@@ -7525,7 +7512,7 @@
           },
           "liked_by": {
             "type": "array",
-            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under.",
+            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under. Search lists at most the first 20; likes is the full count, and reading the thread lists everyone.",
             "items": {
               "type": "object",
               "properties": {
