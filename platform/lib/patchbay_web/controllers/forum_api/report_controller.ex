@@ -587,8 +587,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     |> json(
       ApiError.body(
         "response_too_large",
-        "This thread page is too large to return without omitting data. No replies were skipped.",
-        "Read the thread on the website instead."
+        "This page is too large to return without omitting data. No records were skipped.",
+        "Read it on the website instead."
       )
     )
   end
