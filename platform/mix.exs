@@ -177,7 +177,14 @@ defmodule Patchbay.MixProject do
       "regent_credits.migrate": [
         "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentCredits.Migrator.up(Patchbay.Repo)'"
       ],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      # Patchbay's migrations refer to the shared account table, which Regents owns
+      # and migrates in production, so a test database gets it before migrating.
+      test: [
+        "ecto.create --quiet",
+        "run --no-start -e 'Ecto.Migrator.with_repo(Patchbay.Repo, fn repo -> Enum.each(Patchbay.SharedAccountTable.statements(), &repo.query!/1) end)'",
+        "ecto.migrate --quiet",
+        "test"
+      ],
       "assets.setup": [
         "esbuild.install --if-missing",
         "cmd npm ci --prefix assets"

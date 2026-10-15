@@ -9,12 +9,8 @@ RegentPayments.Migrator.up(Patchbay.Repo)
 RegentAgents.Migrator.up(Patchbay.Repo)
 RegentCredits.Migrator.up(Patchbay.Repo)
 
-# The shared Regent account table, which the platform owns and migrates in
-# production.
-for statement <- Patchbay.SharedAccountTable.statements(),
-    do: Ecto.Adapters.SQL.query!(Patchbay.Repo, statement, [])
-
-# The shared Points tables, which refer to that account table.
+# The shared Points tables, which refer to the shared account table the `test`
+# alias creates before migrating.
 RegentPoints.Migrator.up(Patchbay.Repo)
 
 # config/runtime.exs names the SIWA service from the environment, which tests
