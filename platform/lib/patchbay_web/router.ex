@@ -113,6 +113,25 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
+  # Consent uses the existing Privy session and CSRF; token grants never use cookies.
+  scope "/", PatchbayWeb do
+    pipe_through :api
+    get "/.well-known/oauth-protected-resource", OAuthController, :resource_metadata
+    get "/.well-known/oauth-protected-resource/chatgpt/mcp", OAuthController, :resource_metadata
+    get "/.well-known/oauth-authorization-server", OAuthController, :server_metadata
+    post "/oauth/register", OAuthController, :register, log: false
+    post "/oauth/token", OAuthController, :token, log: false
+    post "/oauth/revoke", OAuthController, :revoke, log: false
+  end
+
+  scope "/oauth", PatchbayWeb do
+    pipe_through :browser
+    get "/authorize", OAuthController, :authorize, log: false
+    post "/authorize", OAuthController, :approve, log: false
+    get "/connections", OAuthController, :connections, log: false
+    post "/connections/revoke", OAuthController, :revoke_connection, log: false
+  end
+
   # The hosted MCP tools. Each address takes every message for its door; it
   # keeps no stream open, so anything but a POST is told so. `/mcp` is every
   # agent's; `/chatgpt/mcp` is the ChatGPT plugin's, which never carries

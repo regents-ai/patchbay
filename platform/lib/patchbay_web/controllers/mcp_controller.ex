@@ -13,7 +13,9 @@ defmodule PatchbayWeb.MCPController do
   header (`PatchbayWeb.MCP.Session`); the client returns it on every later
   message. The tools are the ones in `PatchbayWeb.MCP.Tools`, all of them
   free: public reads need no agent proof; protected operations require
-  exact-request SIWA and current pairing. The session supplies no authority.
+  exact-request SIWA and current pairing on the native interface. ChatGPT
+  event subscriptions require consent through OAuth; its public tools stay
+  anonymous. The session supplies no authority.
 
   The `Origin` header is not checked, on purpose: nothing on this path reads
   the browser cookie or a signed-in profile, and the session header is not
@@ -55,7 +57,7 @@ defmodule PatchbayWeb.MCPController do
       when is_binary(method) do
     conn =
       if protected?(request, conn.assigns.mcp_surface),
-        do: PatchbayWeb.Plugs.PairedAgent.call(conn, []),
+        do: authenticate(conn),
         else: conn
 
     if conn.halted, do: conn, else: dispatch_message(conn, method, request)
@@ -63,13 +65,18 @@ defmodule PatchbayWeb.MCPController do
 
   def message(conn, _not_a_request), do: invalid_request(conn)
 
+  defp authenticate(%{assigns: %{mcp_surface: :chatgpt_plugin}} = conn),
+    do: PatchbayWeb.Plugs.EventReader.call(conn, [])
+
+  defp authenticate(conn), do: PatchbayWeb.Plugs.PairedAgent.call(conn, [])
+
   defp dispatch_message(conn, method, request) do
     case session(conn) do
       {:ok, session_id} ->
         answer(conn, method, request, %{
           session_id:
             if(conn.assigns[:agent_actor], do: conn.assigns.forum_session_id, else: session_id),
-          actor: conn.assigns[:agent_actor],
+          actor: conn.assigns[:event_actor] || conn.assigns[:agent_actor],
           visitor_key: ClientAddress.visitor_key(conn),
           surface: conn.assigns.mcp_surface
         })
@@ -176,10 +183,23 @@ defmodule PatchbayWeb.MCPController do
   end
 
   # The 2026-07-28 handshake, which is what offers events.
+  defp handle("server/discover", _params, %{surface: :chatgpt_plugin}) do
+    capabilities = %{"tools" => %{}, "resources" => %{}}
+
+    if RegentOAuth.enabled?(),
+      do: {:ok, Regent.MCPEvents.discover(capabilities)},
+      else:
+        {:ok, Regent.MCPEvents.discover(capabilities) |> Map.put("capabilities", capabilities)}
+  end
+
   defp handle("server/discover", _params, _caller),
     do: {:ok, Regent.MCPEvents.discover(%{"tools" => %{}, "resources" => %{}})}
 
   defp handle("ping", _params, _caller), do: {:ok, %{}}
+
+  defp handle("events/list", _params, %{surface: :chatgpt_plugin}) do
+    if RegentOAuth.enabled?(), do: Events.list(), else: {:ok, %{"events" => []}}
+  end
 
   defp handle("events/list", _params, _caller), do: Events.list()
 
@@ -189,10 +209,14 @@ defmodule PatchbayWeb.MCPController do
   defp handle("events/unsubscribe", params, caller),
     do: Events.unsubscribe(params, caller.actor)
 
-  defp handle("resources/list", _params, _caller),
-    do: {:ok, %{resources: [RepairCard.resource()]}}
+  defp handle("resources/list", _params, caller),
+    do: {:ok, %{resources: [RepairCard.resource(caller.surface)]}}
 
-  defp handle("resources/read", %{"uri" => uri}, _caller), do: RepairCard.read(uri)
+  defp handle("resources/read", %{"uri" => uri}, caller) do
+    if uri == RepairCard.uri(caller.surface),
+      do: RepairCard.read(uri),
+      else: {:error, -32_002, "Resource not found. Call resources/list."}
+  end
 
   defp handle("resources/read", _params, _caller),
     do: {:error, -32_602, "Name the resource to read by its uri."}

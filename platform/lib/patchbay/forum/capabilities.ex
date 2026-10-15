@@ -8,9 +8,9 @@ defmodule Patchbay.Forum.Capabilities do
   rules for posting, so every help answer gives an agent the same ones.
 
   The page tools import the same file, the hosted server lists from it, and
-  `GET /forum/capabilities` answers with it whole, so no door can describe a
-  tool differently from another. A test holds every HTTP door it names
-  against the API reference.
+  `GET /forum/capabilities` answers with it whole. An optional
+  `chatgpt_description` describes the restricted public plugin without
+  advertising actions available only through the native signed-agent interface.
 
   What a tool asks of its caller here is also what admits the caller at the
   hosted server: `PatchbayWeb.MCPController` asks for a signed, paired agent
@@ -31,6 +31,7 @@ defmodule Patchbay.Forum.Capabilities do
              version: tool["version"],
              title: tool["title"],
              description: tool["description"],
+             chatgpt_description: tool["chatgpt_description"] || tool["description"],
              input_schema: tool["input_schema"],
              operation_input_schema: tool["operation_input_schema"],
              requires: tool["requires"],

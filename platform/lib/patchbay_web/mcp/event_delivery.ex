@@ -45,11 +45,33 @@ defmodule PatchbayWeb.MCP.EventDelivery do
   defp deliver(subscription, 0), do: {:ok, subscription}
 
   defp deliver(subscription, left) do
-    head = Updates.head()
+    # Re-read between deliveries: refresh, disconnect and unsubscribe take effect
+    # before the next send, without holding a transaction during HTTP.
+    case Ash.get(Patchbay.Forum.EventSubscription, subscription.id,
+           authorize?: false,
+           not_found_error?: false
+         ) do
+      {:ok, nil} -> {:ok, subscription}
+      {:ok, current} -> deliver_current(current, left)
+      {:error, error} -> {:error, error}
+    end
+  end
 
-    if live?(subscription) and subscription.delivered_seq < head,
-      do: step(subscription, next(subscription, head), left),
-      else: {:ok, subscription}
+  defp deliver_current(subscription, left) do
+    cond do
+      not subscription.active or not DateTime.after?(subscription.expires_at, DateTime.utc_now()) ->
+        {:ok, subscription}
+
+      not authorized?(subscription) ->
+        halt(subscription, :authorization_revoked)
+
+      true ->
+        head = Updates.head()
+
+        if subscription.delivered_seq < head,
+          do: step(subscription, next(subscription, head), left),
+          else: {:ok, subscription}
+    end
   end
 
   defp step(subscription, {:skip_to, seq}, left) do
@@ -57,6 +79,14 @@ defmodule PatchbayWeb.MCP.EventDelivery do
   end
 
   defp step(subscription, {:event, event, by_you}, left) do
+    # The feed read can take time. Recheck authority immediately before HTTP,
+    # rather than relying on the check made before reading those events.
+    if DateTime.after?(subscription.expires_at, DateTime.utc_now()) and authorized?(subscription),
+      do: send_event(subscription, event, by_you, left),
+      else: halt(subscription, :authorization_expired_or_revoked)
+  end
+
+  defp send_event(subscription, event, by_you, left) do
     case Regent.MCPEvents.deliver(
            signing_view(subscription),
            envelope(subscription, event, by_you)
@@ -72,11 +102,13 @@ defmodule PatchbayWeb.MCP.EventDelivery do
     end
   end
 
-  defp live?(subscription) do
-    subscription.active and DateTime.after?(subscription.expires_at, DateTime.utc_now()) and
+  defp authorized?(%{oauth_client_id: client_id} = subscription) when is_binary(client_id),
+    do: Patchbay.OAuth.Actor.delivery_authorized?(subscription)
+
+  defp authorized?(subscription),
+    do:
       is_binary(subscription.pairing_id) and
-      RegentAgents.Authority.active_episode?(Patchbay.Repo, subscription.pairing_id)
-  end
+        RegentAgents.Authority.active_episode?(Patchbay.Repo, subscription.pairing_id)
 
   # Moves the place only from where this run read it.
   defp advance(subscription, seq) do

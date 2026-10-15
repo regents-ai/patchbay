@@ -50,6 +50,7 @@ defmodule Patchbay.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      oauth_dependency(),
       {:regent_ui, git: @design_system, ref: @design_system_ref, sparse: "regent_ui"},
       {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
       # regent_payments pins its own elixir-utils commit; this pin replaces it.
@@ -124,6 +125,21 @@ defmodule Patchbay.MixProject do
        only: [:dev, :test],
        runtime: false}
     ]
+  end
+
+  # Keep OAuth verification independent of unrelated shared-library edits.
+  defp oauth_dependency do
+    case {Mix.env(), System.get_env("REGENT_OAUTH_PATH")} do
+      {:prod, path} when not is_nil(path) ->
+        raise "local OAuth is forbidden in production"
+
+      {_, nil} ->
+        {:regent_oauth,
+         git: @elixir_utils, ref: "c648155ca4e11805f47672609da1817a21fca120", sparse: "oauth"}
+
+      {_, path} ->
+        {:regent_oauth, path: path}
+    end
   end
 
   # Aliases are shortcuts or tasks specific to the current project.

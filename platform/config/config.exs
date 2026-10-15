@@ -259,7 +259,17 @@ config :phoenix, :json_library, Jason
 # Every page also answers `Accept: text/markdown` with a markdown document.
 # The only `.eex` templates in this application are those markdown ones.
 config :phoenix_template, :template_engines, eex: PatchbayWeb.MarkdownEngine
-config :phoenix, :filter_parameters, ["password", "payment_signature"]
+
+config :phoenix, :filter_parameters, [
+  "password",
+  "payment_signature",
+  "code",
+  "code_verifier",
+  "access_token",
+  "refresh_token",
+  "client_secret",
+  "id_token"
+]
 
 # Brandfetch's logo service identifies the site by this public client ID;
 # it is part of every logo address on the page.
@@ -284,3 +294,12 @@ config :domainatrex, fetch_latest: false
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
+
+# Local implementation only; a future authorized release opts in after migrations.
+config :patchbay, Patchbay.OAuth,
+  enabled?: false,
+  issuer: "https://patchbay.help",
+  resource: "https://patchbay.help/chatgpt/mcp",
+  scope: "patchbay.events.read",
+  permission_description:
+    "watch replies and asker-selected solutions on threads you choose or follow"

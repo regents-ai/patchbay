@@ -5,10 +5,10 @@ defmodule PatchbayWeb.MCP.Events do
 
   Two events are offered, `reply_created` and `solution_marked`, each over
   the threads named in `thread_ids` or, with none named, over everything the
-  signed agent's paired owner's account follows (`follow_scope`). A
-  subscription belongs to that account: its owner is derived on the server
-  from the signed request and is part of the subscription's id, so no other
-  account can refresh or end it.
+  authorized account follows (`follow_scope`). The native interface uses
+  current SIWA pairing; the ChatGPT interface uses account consent and a live
+  OAuth token. Its identity includes the OAuth client, so another connected
+  app cannot refresh or end that subscription. No bearer token is stored.
 
   Subscribing sends the callback a signed challenge first and stores nothing
   unless it is echoed. Subscribing again with the same event, filter and
@@ -38,7 +38,7 @@ defmodule PatchbayWeb.MCP.Events do
       "thread_ids" => %{
         "type" => "array",
         "description" =>
-          "The threads to watch, by id. Leave it out to watch everything your paired owner's account follows.",
+          "The threads to watch, by id. Leave it out to watch everything your authorized account follows.",
         "items" => %{"type" => "string", "format" => "uuid"},
         "minItems" => 1,
         "maxItems" => 50,
@@ -91,14 +91,15 @@ defmodule PatchbayWeb.MCP.Events do
   def list, do: {:ok, %{"events" => @definitions}}
 
   @spec subscribe(map(), struct()) :: result()
-  def subscribe(params, %Patchbay.Agents.Actor{} = actor) do
+  def subscribe(params, %module{} = actor)
+      when module in [Patchbay.Agents.Actor, Patchbay.OAuth.Actor] do
     owner_id = Principal.for_profile(actor.beneficiary_profile_id)
 
     with {:ok, name, arguments} <- event(params),
          {:ok, url, secret} <- webhook(params, true),
          {:ok, ttl_ms} <- ttl(params),
          {:ok, cursor} <- cursor(params),
-         {:ok, id} <- identity(owner_id, name, arguments, url),
+         {:ok, id} <- identity(identity_owner(actor), name, arguments, url),
          :ok <- secret(secret),
          :ok <- challenge(id, url, secret) do
       now = DateTime.utc_now()
@@ -110,7 +111,7 @@ defmodule PatchbayWeb.MCP.Events do
         arguments: arguments,
         url: url,
         secret_ciphertext: EventSecret.seal(secret),
-        expires_at: DateTime.add(now, min(ttl_ms, @lifetime_ms), :millisecond),
+        expires_at: expiry(actor, now, ttl_ms),
         verified_at: now
       }
 
@@ -120,11 +121,12 @@ defmodule PatchbayWeb.MCP.Events do
   end
 
   @spec unsubscribe(map(), struct()) :: result()
-  def unsubscribe(params, %Patchbay.Agents.Actor{} = actor) do
+  def unsubscribe(params, %module{} = actor)
+      when module in [Patchbay.Agents.Actor, Patchbay.OAuth.Actor] do
     with {:ok, name, arguments} <- event(params),
          {:ok, url, nil} <- webhook(params, false),
          {:ok, id} <-
-           identity(Principal.for_profile(actor.beneficiary_profile_id), name, arguments, url) do
+           identity(identity_owner(actor), name, arguments, url) do
       {:ok, _} =
         Ash.transact(EventSubscription, fn ->
           remove_owned_subscription(id, actor)
@@ -133,6 +135,18 @@ defmodule PatchbayWeb.MCP.Events do
       {:ok, %{}}
     end
   end
+
+  defp identity_owner(%Patchbay.OAuth.Actor{} = actor),
+    do: Patchbay.OAuth.Actor.identity_owner(actor)
+
+  defp identity_owner(actor), do: Principal.for_profile(actor.beneficiary_profile_id)
+
+  defp expiry(%Patchbay.OAuth.Actor{expires_at: expires_at}, now, ttl_ms) do
+    requested = DateTime.add(now, min(ttl_ms, @lifetime_ms), :millisecond)
+    if DateTime.before?(expires_at, requested), do: expires_at, else: requested
+  end
+
+  defp expiry(_actor, now, ttl_ms), do: DateTime.add(now, min(ttl_ms, @lifetime_ms), :millisecond)
 
   defp remove_owned_subscription(id, actor) do
     # This derived id names only this verified actor's beneficiary principal.

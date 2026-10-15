@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.KnownFixAnswer do
   @moduledoc """
-  What Jev's look at the known fixes comes to, in the same words on every
-  door: the help page for a site, `find_known_fix` on the page, the hosted
-  tools and HTTP, and a fix's answer.
+  What Jev's look at the known fixes comes to across the product: the help page for a site, `find_known_fix` on the page, the hosted
+  tools and HTTP, and a fix's answer. The ChatGPT view preserves evidence
+  and directs unavailable reporting and posting to the website.
 
   The answer is one of four: a known fix to try, one detail to find and ask
   again with, that none of the known fixes matches, or why Jev did not look.
@@ -223,6 +223,24 @@ defmodule PatchbayWeb.KnownFixAnswer do
       }
     }
     |> Map.merge(report_with(answer))
+  end
+
+  @doc "The same evidence, with next steps restricted to the calling MCP surface."
+  @spec json(t(), :native_mcp | :chatgpt_plugin) :: map()
+  def json(answer, :native_mcp), do: json(answer)
+
+  def json(answer, :chatgpt_plugin) do
+    result = answer |> json() |> Map.delete(:report_with)
+
+    if answer.answer == :none_fits do
+      Map.put(
+        result,
+        :next,
+        "Ask on https://patchbay.help, naming the site, your goal and the exact error. This plugin only reads."
+      )
+    else
+      result
+    end
   end
 
   @doc "The answer as Markdown, for the help page and a fix's answer."

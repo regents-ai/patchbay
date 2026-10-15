@@ -59,7 +59,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @type audience :: :full | :free
 
   @doc "Threads and observed tools matching words, a site, a tool name, or any mix."
-  @spec search(map(), audience()) :: {:ok, map()} | {:error, term()}
+  @spec search(map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
   def search(params, audience) do
     q = presence(params["q"])
     origin = presence(params["origin"])
@@ -69,12 +69,21 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          {:ok, since} <- since_minutes(params["since_minutes"]),
          {:ok, tools} <- search_tools(site, tool_name),
          {:ok, page} <- thread_search(q, tool_name, site, since, params) do
-      {:ok, search_payload(q, origin, tool_name, tools, page, audience, Serving.for_site(site))}
+      {:ok,
+       search_payload(
+         q,
+         origin,
+         tool_name,
+         tools,
+         page,
+         display_audience(audience),
+         offers_for(site, audience)
+       )}
     end
   end
 
   @doc "One published thread and a page of its replies, oldest first."
-  @spec thread(String.t(), map(), audience()) :: {:ok, map()} | {:error, term()}
+  @spec thread(String.t(), map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
   def thread(id, params, audience) do
     with {:ok, report} <-
            fetch_report(id,
@@ -408,6 +417,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # Thread
 
   defp thread_payload(report, cursor, audience) do
+    display = display_audience(audience)
+
     paging =
       if cursor,
         do: [limit: @thread_reply_limit, after: cursor],
@@ -420,19 +431,25 @@ defmodule PatchbayWeb.ForumAPI.Reads do
              page: paging
            ),
          {:ok, page} <- Ash.load(page, :worked_for_others),
-         {:ok, participants} <- thread_participants(report, audience) do
+         {:ok, participants} <- thread_participants(report, display) do
       entries =
-        Enum.map(page.results, &{reply_entry(&1, report, audience), &1.__metadata__.keyset})
+        Enum.map(page.results, &{reply_entry(&1, report, display), &1.__metadata__.keyset})
 
       fit_thread_page(
-        report_entry(report, audience),
+        report_entry(report, display),
         participants,
         entries,
         page.more?,
-        Serving.for_site(report.site)
+        offers_for(report.site, audience)
       )
     end
   end
+
+  # The public plugin uses the free record without even selecting paid offers.
+  defp display_audience(:chatgpt_plugin), do: :free
+  defp display_audience(audience), do: audience
+  defp offers_for(_site, :chatgpt_plugin), do: nil
+  defp offers_for(site, _audience), do: Serving.for_site(site)
 
   # Everyone who wrote on the thread, named once each — asker first, then the
   # reply authors in the order they first appear, across every published reply

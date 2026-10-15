@@ -1,24 +1,53 @@
 # Patchbay plugin
 
-One free, read-only ChatGPT/Codex plugin. Its remote MCP server is `https://patchbay.help/chatgpt/mcp`, the plugin's own address;
-the Phoenix/Ash application owns all problem, reply, outcome and solution records.
-That address lists and runs only the reads that need no agent: help, known fixes,
-the WebMCP guide, sites, tool history, thread search, threads and the repair card.
-Asking, replying, following and marking an answer need an agent that signs each
-request, which ChatGPT cannot do, so they happen on https://patchbay.help instead.
+One free ChatGPT/Codex plugin for reading repair information. The canonical MCP
+endpoint is `https://patchbay.help/chatgpt/mcp`. Phoenix/Ash owns all records;
+the Site prototype is a local preview of those same read contracts.
 
-Package only this directory, with `plugin.json`, `mcp.json` and `assets/` at the ZIP
-root. It carries no Skills: Patchbay's post, reply and update Skills all write, and
-this plugin only reads. Do not include paid Skills or credentials.
-The card source is `platform/priv/mcp/repair-card.html`, served as
-`ui://patchbay/repair-card-v1.html` with `text/html;profile=mcp-app`.
+Eight public tools need no sign-in: help, known fixes, the WebMCP guide, sites,
+tool history, thread search, thread reading and the repair card. Descriptions
+exclude unavailable reporting, posting and paid offers. Asking, replying and
+selecting a solution happen at https://patchbay.help. The plugin carries no
+money tools, paid Skills, offers, tips, advertisements or Points activation.
 
-The package contains four positive and three negative review cases. It does not
-contain a demo recording URL or fabricated review credentials. Public submission
-still requires a working deployed free endpoint, verified publishing identity,
-domain verification, a reviewer-accessible demo recording, and completed live checks.
-Uploading a ZIP creates a draft; directory approval and publication are separate.
+Where the host supports MCP Events, connect the existing Patchbay account to
+watch `reply_created` and `solution_marked`. `mcp.json` declares mixed public/OAuth
+access with DCR and the single `patchbay.events.read` scope. The consent page
+uses the website's verified Privy session. It grants update access only.
+Disconnect at `/oauth/connections`; expiry or revocation ends delivery authority.
+A refresh rebinds the token while preserving owed events. No bearer is stored
+in a subscription. Public thread reads remain a fallback where events are absent;
+this plugin does not offer the native signed-agent `get_updates` tool.
 
-Verify in ChatGPT: connect, search, read a thread, look up a known fix, read the
-WebMCP guide, list sites and a tool's history, show a repair card, and check that
-a request to ask or reply is declined with a pointer to patchbay.help.
+An event is a notice to fetch current evidence. A reply, an asker-selected
+solution, a self-report and a matched original invocation are different evidence.
+Never post or retry a failed external action merely because an event arrived.
+Ordinary conversations are not promised to resume automatically; host support
+and an authorized automation are required.
+
+The package carries no Skills: native Patchbay Skills assume signed-agent
+capabilities absent from this public interface. Do not bundle them here.
+The read-only card source is `platform/priv/mcp/repair-card-readonly.html`, served
+as `ui://patchbay/repair-card-v2.html` with `text/html;profile=mcp-app`. It refreshes,
+reads more replies and opens the thread's website. It has no write controls.
+
+Build from the repository root:
+
+```sh
+uv run scripts/package-plugin.py --output /absolute/path/patchbay-plugin-0.1.1.zip
+```
+
+The ZIP contains `plugin.json`, `mcp.json`, `README.md` and `assets/icon.svg` at its
+root, with deterministic bytes and a SHA-256 sidecar. The packager validates the
+portable schemas and separately checks the exact OpenAI OAuth extension documented
+at https://developers.openai.com/plugins/build/plugins; the portable MCP schema
+currently excludes that extension. It checks five positive and three negative
+review cases, anonymous read tools and the absence of embedded credentials.
+
+This is a local candidate. OAuth defaults off in the application. Before any future
+release, publish the reviewed shared dependency, integrate its pin, apply additive
+migrations through the normal release path, and explicitly set `PATCHBAY_OAUTH_ENABLED=true`. No local
+check grants release or publication authority. Then exercise real Privy sign-in,
+ChatGPT consent, callback delivery, refresh, disconnect and the repair card in the
+host. Submission also needs the verified publishing account/domain and a
+reviewer-accessible demonstration. Upload, approval and publication are separate.

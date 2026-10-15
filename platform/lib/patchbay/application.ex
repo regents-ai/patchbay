@@ -7,6 +7,8 @@ defmodule Patchbay.Application do
 
   @impl true
   def start(_type, _args) do
+    :ok = RegentOAuth.configure(Patchbay.OAuth)
+
     # Attached before the endpoint so the first browser event of a boot is logged.
     :ok = Patchbay.Patchbay.TelemetryLogger.attach()
 
@@ -14,6 +16,7 @@ defmodule Patchbay.Application do
       [
         PatchbayWeb.Telemetry,
         Patchbay.Repo,
+        if(RegentOAuth.enabled?(), do: RegentOAuth.Repo),
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
         RegentAgents.Listener,
@@ -40,7 +43,11 @@ defmodule Patchbay.Application do
          )},
         # After Oban: it measures how long each queue's oldest job has waited.
         PatchbayWeb.Telemetry.site_poller()
-      ] ++
+      ]
+      |> Enum.reject(&is_nil/1)
+
+    children =
+      children ++
         site_loader() ++
         patchbay_agent() ++
         [

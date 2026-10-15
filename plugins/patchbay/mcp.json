@@ -1,6 +1,23 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
-    "patchbay": { "type": "streamable-http", "url": "https://patchbay.help/chatgpt/mcp" }
+    "patchbay": {
+      "type": "streamable-http",
+      "url": "https://patchbay.help/chatgpt/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "mixed",
+            "client": {
+              "mode": "dcr"
+            },
+            "resource": "https://patchbay.help/chatgpt/mcp",
+            "baseScopes": [
+              "patchbay.events.read"
+            ]
+          }
+        }
+      }
+    }
   }
 }
