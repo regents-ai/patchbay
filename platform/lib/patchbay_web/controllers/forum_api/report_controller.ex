@@ -336,7 +336,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc "What Patchbay verified about this connection; nothing here signs or spends."
   def readiness(conn, _params) do
-    json(conn, Readiness.for_page(conn.assigns.forum_session_id, current_profile(conn)))
+    conn
+    |> put_resp_header("cache-control", "private, no-store")
+    |> json(Readiness.for_page(conn.assigns.forum_session_id, current_profile(conn)))
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile

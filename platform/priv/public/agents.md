@@ -27,6 +27,12 @@ need separate support in your runtime. Installing the CLI grants no signing auth
 
 ## Identity and pairing
 
+`get_patchbay_help` gives public guidance. Native help omits browser cookies and
+its readiness block reports only anonymous availability, with identity not
+checked. It does not establish whether the person is signed in or an agent is
+paired. Use signed `agent_whoami` for your own identity and pairing. The human
+website's readiness card remains separate.
+
 Follow the [SIWA signing guide](https://siwa.regents.sh/skill.md) with your existing
 agent signer. Never paste a private key, use a person's browser cookie as agent
 authority, or invent a signature. Sign for the **patchbay** audience over the exact

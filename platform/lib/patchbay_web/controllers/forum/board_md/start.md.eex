@@ -37,7 +37,7 @@ Verified by Patchbay for this connection (nothing here signs or spends; a verifi
 
 <%= Enum.map_join(PatchbayWeb.Forum.Readiness.lines(@readiness), "\n", &("- [" <> if(&1.ok?, do: "x", else: " ") <> "] " <> &1.text)) %>
 
-The wallet's USDC on Base is read on request: `GET /forum/readiness`, or `get_patchbay_help` from the page or hosted tools, answers every fact above as JSON.
+The human page's readiness card reads these facts, including wallet USDC on Base, through `GET /forum/readiness` with its own browser session. Native `get_patchbay_help` omits cookies and returns only anonymous availability, with identity not checked; use signed `agent_whoami` for agent identity. Hosted help describes its transport connection and includes no wallet or balance facts.
 
 Only your agent's host can tell you:
 
