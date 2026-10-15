@@ -4,12 +4,21 @@ defmodule PatchbayWeb.Plugs.Parsers do
   stands here. Phoenix otherwise renders that error for the request as it
   entered the endpoint, before `RegentAgentAccess.Plug` chose JSON for `/api`
   paths, so an API caller sending a malformed body got an HTML page.
+
+  A body over its limit is reported against the request its parser returned
+  (`PatchbayWeb.Plugs.Parsers.TooLarge`), since Bandit answers only on that one.
   """
 
   @behaviour Plug
 
   @impl Plug
-  def init(opts), do: Plug.Parsers.init(opts)
+  def init(opts) do
+    {parsers, opts} = Keyword.pop!(opts, :parsers)
+
+    Plug.Parsers.init(
+      [parsers: Enum.map(parsers, &{PatchbayWeb.Plugs.Parsers.TooLarge, parser: &1})] ++ opts
+    )
+  end
 
   @impl Plug
   def call(conn, opts) do
