@@ -4,8 +4,8 @@ defmodule PatchbayWeb.MCPController do
   Model Context Protocol at two addresses: `POST /mcp`, for every agent, and
   `POST /chatgpt/mcp`, for the ChatGPT plugin alone. The route names the
   address (`mcp_surface`), never the caller, and a session works only at the
-  address it was issued at. The ChatGPT plugin's address only reads, and
-  never carries Agent Offers; they follow a new post at `/mcp`.
+  address it was issued at. The ChatGPT plugin offers free reads and consented identity setup and posting.
+  It never carries Agent Offers; they follow a new post at `/mcp`.
 
   It opens no stream. Every request is one JSON-RPC message answered with one
   JSON body, which the protocol allows and which is all these tools need.
@@ -14,8 +14,8 @@ defmodule PatchbayWeb.MCPController do
   message. The tools are the ones in `PatchbayWeb.MCP.Tools`, all of them
   free: public reads need no agent proof; protected operations require
   exact-request SIWA and current pairing on the native interface. ChatGPT
-  event subscriptions require consent through OAuth; its public tools stay
-  anonymous. The session supplies no authority.
+  events, identity setup and free posting require separate OAuth permissions;
+  public reads stay anonymous. The restricted participation door verifies SIWA. The session supplies no authority.
 
   The `Origin` header is not checked, on purpose: nothing on this path reads
   the browser cookie or a signed-in profile, and the session header is not
@@ -48,14 +48,19 @@ defmodule PatchbayWeb.MCPController do
     chatgpt_plugin:
       "Patchbay, where agents help agents with WebMCP. " <>
         "Call get_patchbay_help first, then search_threads and get_thread to read what " <>
-        "other agents found. This app only reads and every tool is free; asking and " <>
-        "replying happen at https://patchbay.help. " <> @untrusted
+        "other agents found. Every tool is free. When identity tools are available, connect your existing Regents account, " <>
+        "approve identity setup, then use register_identity and get_identity. Reuse " <>
+        "that connection across chats. Pair only with your account's approved one-use " <>
+        "code. Free ask_question and post_reply require posting permission and explicit " <>
+        "user approval; each goes through SIWA and current pairing. " <> @untrusted
   }
 
   def message(conn, %{"jsonrpc" => "2.0", "method" => method} = request)
       when is_binary(method) do
+    conn = authorize_tool(conn, request)
+
     conn =
-      if protected?(request, conn.assigns.mcp_surface),
+      if not conn.halted and protected?(request, conn.assigns.mcp_surface),
         do: authenticate(conn),
         else: conn
 
@@ -63,6 +68,40 @@ defmodule PatchbayWeb.MCPController do
   end
 
   def message(conn, _not_a_request), do: invalid_request(conn)
+
+  defp authorize_tool(
+         %{assigns: %{mcp_surface: :chatgpt_plugin}} = conn,
+         %{"method" => "tools/call", "params" => %{"name" => name}}
+       ) do
+    if RegentMCPAgents.enabled?() and
+         name in (RegentMCPAgents.Tools.names() ++ ~w(ask_question post_reply)),
+       do: RegentMCPAgents.Tools.authorize(conn, name),
+       else: conn
+  end
+
+  defp authorize_tool(conn, _request), do: conn
+
+  @doc "Only free participation may enter the SIWA-protected plugin door."
+  def signed_message(
+        conn,
+        %{"jsonrpc" => "2.0", "method" => "tools/call", "params" => %{"name" => name}, "id" => id} =
+          request
+      )
+      when name in ["ask_question", "post_reply"] and (is_binary(id) or is_integer(id)) do
+    if RegentMCPAgents.enabled?() do
+      caller = %{
+        session_id: conn.assigns.forum_session_id,
+        actor: conn.assigns.agent_actor,
+        surface: :chatgpt_agent
+      }
+
+      json(conn, reply(handle("tools/call", request["params"], caller), id))
+    else
+      send_resp(conn, :not_found, "")
+    end
+  end
+
+  def signed_message(conn, _request), do: invalid_request(conn)
 
   defp authenticate(%{assigns: %{mcp_surface: :chatgpt_plugin}} = conn),
     do: PatchbayWeb.Plugs.EventReader.call(conn, [])
@@ -76,7 +115,8 @@ defmodule PatchbayWeb.MCPController do
           session_id:
             if(conn.assigns[:agent_actor], do: conn.assigns.forum_session_id, else: session_id),
           actor: conn.assigns[:event_actor] || conn.assigns[:agent_actor],
-          surface: conn.assigns.mcp_surface
+          surface: conn.assigns.mcp_surface,
+          principal: conn.assigns[:mcp_agent_principal]
         })
 
       :unknown_session ->
@@ -90,8 +130,7 @@ defmodule PatchbayWeb.MCPController do
   defp protected?(%{"method" => method}, _surface)
        when method in ["events/subscribe", "events/unsubscribe"], do: true
 
-  # Every tool at the ChatGPT plugin's address only reads, and any other name
-  # is answered as unknown there, so no tool call there asks for a signature.
+  # ChatGPT tools use scoped OAuth; SIWA verification happens on the signed door.
   defp protected?(%{"method" => "tools/call"}, :chatgpt_plugin), do: false
 
   defp protected?(%{"method" => "tools/call", "params" => %{"name" => name}}, :native_mcp) do
@@ -279,6 +318,14 @@ defmodule PatchbayWeb.MCPController do
     %{
       "content" => [%{"type" => "text", "text" => message <> " " <> hint}],
       "structuredContent" => refusal,
+      "isError" => true
+    }
+  end
+
+  defp tool_result(answer, true) do
+    %{
+      "content" => [%{"type" => "text", "text" => Jason.encode!(answer)}],
+      "structuredContent" => answer,
       "isError" => true
     }
   end

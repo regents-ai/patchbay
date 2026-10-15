@@ -16,7 +16,9 @@ from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / "plugins" / "patchbay"
-FILES = ("README.md", "assets/icon.svg", "mcp.json", "plugin.json")
+FILES = ("README.md", "assets/icon.svg", "mcp.json", "plugin.json",
+         "skills/patchbay-post/SKILL.md", "skills/patchbay-reply/SKILL.md",
+         "skills/patchbay-check-updates/SKILL.md")
 
 
 def check(condition: bool, message: str) -> None:
@@ -54,7 +56,7 @@ def package(output: Path) -> str:
         Draft202012Validator(schema).validate(document)
 
     settings = plugin["extensions"]["com.openai"]
-    check(settings["interface"]["capabilities"] == ["Read"], "The public plugin must only read.")
+    check(settings["interface"]["capabilities"] == ["Read", "Write"], "Only free reading and authorized participation are supported.")
     check(settings["review"]["commerce"] is False, "Commerce must stay off.")
     cases = settings["review"]["test_cases"]
     check(len(cases["positive"]) == 5 and len(cases["negative"]) == 3,
@@ -66,11 +68,12 @@ def package(output: Path) -> str:
              if tool["requires"] == "none" and not tool["state_changing"]
              and tool["payment"] == "none" and tool["annotations"].get("readOnlyHint")
              and tool["doors"].get("hosted")
-             and tool["name"] not in {"get_agent_profile", "list_offer_slots"}}
-    check(len(reads) == 8, "Expected exactly eight public read tools.")
+             and tool["name"] not in {"get_agent_profile", "list_offer_slots", "find_known_fix"}}
+    check(len(reads) == 7, "Expected exactly seven public read tools.")
+    available = reads | {"register_identity", "get_identity", "pair_identity", "ask_question", "post_reply"}
     for case in cases["positive"]:
         names = {name.strip() for name in case["tools_triggered"].split(",")}
-        check(names and names <= reads, "A positive case names an unavailable public tool.")
+        check(names and names <= available, "A positive case names an unavailable public tool.")
     for key in ("composerIcon", "logo"):
         check(settings["interface"][key].removeprefix("./") in contents,
               f"The {key} asset is not in the package.")

@@ -3,6 +3,14 @@ import Config
 # Remains off unless a separately authorized release opts in after migrations.
 config :patchbay, Patchbay.OAuth, enabled?: System.get_env("PATCHBAY_OAUTH_ENABLED") == "true"
 
+config :regent_mcp_agents, :config,
+  enabled?: System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true",
+  audience: "patchbay",
+  keyring: [
+    base_url: System.get_env("SIWA_HOSTED_URL", "https://siwa.regents.sh"),
+    secret: System.get_env("SIWA_HOSTED_SECRET")
+  ]
+
 # Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
 config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
 config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]

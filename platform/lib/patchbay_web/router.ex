@@ -159,6 +159,13 @@ defmodule PatchbayWeb.Router do
     delete "/chatgpt/mcp", MCPController, :not_allowed
   end
 
+  # Restricted participation door: exact SIWA proof and current pairing, no OAuth
+  # bearer or MCP session confers authority here. Never log signed requests.
+  scope "/chatgpt/agent", PatchbayWeb do
+    pipe_through [:api, :paired_agent]
+    post "/mcp", MCPController, :signed_message, log: false
+  end
+
   # The free fix's look for a site's WebMCP tools, asked as an address is typed.
   scope "/", PatchbayWeb.Forum do
     pipe_through :api

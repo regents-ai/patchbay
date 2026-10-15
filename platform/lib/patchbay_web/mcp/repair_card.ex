@@ -10,6 +10,23 @@ defmodule PatchbayWeb.MCP.RepairCard do
   @uri "ui://patchbay/repair-card-v1.html"
   @readonly_uri "ui://patchbay/repair-card-v2.html"
   @mime_type "text/html;profile=mcp-app"
+  # Inline only canonical palette roles. Cards keep their own typography and
+  # need no external assets or broader resource CSP.
+  @palette_path Path.join(Mix.Project.deps_paths()[:regent_ui], "assets/css/tokens.json")
+  @external_resource @palette_path
+  @tokens @palette_path |> File.read!() |> Jason.decode!() |> Map.fetch!("selectors")
+  @themes Map.new(~w(dark light), fn mode ->
+            roles = Map.fetch!(@tokens, ~s(:root[data-brand="patchbay"][data-theme="#{mode}"]))
+
+            css =
+              Enum.map_join(~w(bg fg fg-muted border accent fg-on-accent), ";", fn role ->
+                key = "--color-" <> role
+                key <> ":" <> Map.fetch!(roles, key)
+              end)
+
+            {mode, ":root{color-scheme:#{mode};#{css}}"}
+          end)
+  @palette @themes["dark"] <> "@media(prefers-color-scheme:light){" <> @themes["light"] <> "}"
 
   @spec uri() :: String.t()
   def uri, do: @uri
@@ -38,7 +55,11 @@ defmodule PatchbayWeb.MCP.RepairCard do
   # sobelow_skip ["Traversal.FileModule"]
   def read(requested) when requested in [@uri, @readonly_uri] do
     file = if requested == @uri, do: "repair-card.html", else: "repair-card-readonly.html"
-    html = File.read!(Application.app_dir(:patchbay, "priv/mcp/" <> file))
+
+    html =
+      Application.app_dir(:patchbay, "priv/mcp/" <> file)
+      |> File.read!()
+      |> String.replace("<!-- regent-ui palette -->", "<style>" <> @palette <> "</style>")
 
     {:ok,
      %{

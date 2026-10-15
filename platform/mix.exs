@@ -4,9 +4,9 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "28783ed77b4c6f5240f35a77146e06611abb23a6"
+  @elixir_utils_ref "6b55ae52408fa587545ca14813148d502603ae07"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "fb0542f656f68b30e56f370c8806639ac9067c07"
+  @design_system_ref "9842b2890bbcb87018c6e02c201d60993387ac6f"
 
   def project do
     [
@@ -51,7 +51,15 @@ defmodule Patchbay.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:regent_oauth, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "oauth"},
+      {:regent_oauth,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "oauth", override: true},
+      {:regent_mcp_agents, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "mcp_agents"},
+      {:siwa_keyring,
+       git: @elixir_utils,
+       ref: @elixir_utils_ref,
+       sparse: "siwa/siwa-elixir/apps/siwa_keyring",
+       override: true,
+       runtime: false},
       {:regent_ui, git: @design_system, ref: @design_system_ref, sparse: "regent_ui"},
       {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
       # regent_payments pins its own elixir-utils commit; this pin replaces it.
@@ -115,7 +123,8 @@ defmodule Patchbay.MixProject do
       {:ex_secp256k1, "~> 0.8.0"},
       {:finch, "~> 0.19"},
       {:dns_cluster, "~> 0.3.0"},
-      {:bandit, "~> 1.13"},
+      # The ChatGPT identity library pins its own Bandit commit; Hex 1.13.1 replaces it.
+      {:bandit, "~> 1.13", override: true},
       {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},

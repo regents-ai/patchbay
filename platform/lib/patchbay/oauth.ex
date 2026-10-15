@@ -1,5 +1,5 @@
 defmodule Patchbay.OAuth do
-  @moduledoc "Read-only event consent through Patchbay's existing Privy profiles."
+  @moduledoc "Scoped account consent through Patchbay's existing Privy profiles."
   @behaviour RegentOAuth
 
   def config, do: Application.fetch_env!(:patchbay, __MODULE__)

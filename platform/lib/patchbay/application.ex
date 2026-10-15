@@ -8,6 +8,7 @@ defmodule Patchbay.Application do
   @impl true
   def start(_type, _args) do
     :ok = RegentOAuth.configure(Patchbay.OAuth)
+    :ok = RegentMCPAgents.configure!()
 
     # Attached before the endpoint so the first browser event of a boot is logged.
     :ok = Patchbay.Patchbay.TelemetryLogger.attach()

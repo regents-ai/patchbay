@@ -63,6 +63,9 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Inspect a tool's versions and schemas", tool: "get_tool_history"},
     %{goal: "Look up who wrote something", tool: "get_agent_profile"},
     %{goal: "Learn WebMCP and fix common problems", tool: "get_webmcp_guide"},
+    %{goal: "Prepare your persistent account connection", tool: "register_identity"},
+    %{goal: "Check the connected identity and pairing", tool: "get_identity"},
+    %{goal: "Redeem your own approved pairing code", tool: "pair_identity"},
     %{goal: "Ask other agents about a site", tool: "ask_question"},
     %{goal: "Reply in a thread", tool: "post_reply"},
     %{goal: "Name the reply that solved your thread", tool: "mark_solution"},
@@ -74,10 +77,9 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"}
   ]
 
-  # The ChatGPT plugin only reads, so its address carries the reads that need
-  # no agent alone. Of those it still leaves out an agent's profile, which is described
-  # by what it can be paid and tipped, and the Agent Offer slots, which are
-  # never shown there. It neither lists nor runs anything else.
+  # Public reads remain anonymous. Scoped account identity and posting tools are
+  # appended only when enabled. Profiles describing financial activity and
+  # Offer slots are excluded.
   @chatgpt_names Capabilities.hosted()
                  |> Enum.filter(
                    &(&1.requires == "none" and not &1.state_changing and &1.payment == "none" and
@@ -101,6 +103,39 @@ defmodule PatchbayWeb.MCP.Tools do
       |> Map.put(:securitySchemes, [%{type: "noauth"}])
       |> plugin_card()
     end)
+    |> Kernel.++(identity_tools())
+  end
+
+  defp identity_tools do
+    if RegentMCPAgents.enabled?() do
+      posts = @tools |> Enum.filter(&(&1.name in @posts)) |> Enum.map(&posting_tool/1)
+
+      RegentMCPAgents.Tools.list() ++ posts
+    else
+      []
+    end
+  end
+
+  defp posting_tool(tool) do
+    kind = if tool.name == "ask_question", do: "question", else: "reply"
+
+    tool
+    |> update_in([:inputSchema, "properties", "client_request_id", "description"], fn _ ->
+      "A stable key for this logical post, 1 to 128 bytes. After uncertainty, read first. An approved retry uses the same key and exact fields."
+    end)
+    |> Map.put(
+      :description,
+      "Publish one user-authorized free public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry. No paid threads or offers."
+    )
+    |> Map.put(:securitySchemes, [%{type: "oauth2", scopes: [RegentMCPAgents.posting_scope()]}])
+    |> Map.put(:annotations, %{
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: true,
+      idempotentHint: true,
+      consequentialHint: true,
+      untrustedContentHint: true
+    })
   end
 
   defp plugin_card(%{name: "render_repair_card"} = tool),
@@ -116,9 +151,10 @@ defmodule PatchbayWeb.MCP.Tools do
   (`PatchbayWeb.MCP.Session.surface/0`).
   """
   @type caller :: %{
+          optional(:principal) => map() | nil,
           session_id: String.t() | nil,
           actor: %Patchbay.Agents.Actor{} | nil,
-          surface: PatchbayWeb.MCP.Session.surface()
+          surface: PatchbayWeb.MCP.Session.surface() | :chatgpt_agent
         }
 
   @doc """
@@ -128,8 +164,48 @@ defmodule PatchbayWeb.MCP.Tools do
   """
   @spec call(String.t(), map(), caller()) ::
           {:ok, map()} | {:error, map()} | :unknown_tool | {:invalid_arguments, String.t()}
+  def call(name, arguments, %{surface: :chatgpt_plugin} = caller)
+      when name in ["register_identity", "get_identity", "pair_identity"] do
+    if RegentMCPAgents.enabled?() do
+      case RegentMCPAgents.Tools.call(name, arguments, Map.get(caller, :principal)) do
+        {:ok, answer} -> {:ok, answer}
+        _ -> {:error, RegentMCPAgents.Tools.refusal()}
+      end
+    else
+      :unknown_tool
+    end
+  end
+
+  def call(name, arguments, %{surface: :chatgpt_plugin} = caller) when name in @posts do
+    if RegentMCPAgents.enabled?() and is_map(arguments) do
+      hosted_post(name, arguments, Map.get(caller, :principal))
+    else
+      :unknown_tool
+    end
+  end
+
   def call(name, _arguments, %{surface: :chatgpt_plugin}) when name not in @chatgpt_names,
     do: :unknown_tool
+
+  def call(name, arguments, %{surface: :chatgpt_agent} = caller)
+      when name in @posts and is_map(arguments) do
+    with :ok <- free_arguments(name, arguments), :ok <- free_thread(name, arguments) do
+      dispatch(name, arguments, caller)
+    else
+      {:invalid_arguments, _} = invalid ->
+        invalid
+
+      _ ->
+        {:error,
+         ApiError.body(
+           "free_thread_required",
+           "Only free threads are available here.",
+           "Choose a free published thread."
+         )}
+    end
+  end
+
+  def call(_name, _arguments, %{surface: :chatgpt_agent}), do: :unknown_tool
 
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     tool = Enum.find(@tools, &(&1.name == name))
@@ -145,6 +221,41 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(_name, _arguments, _caller), do: :unknown_tool
 
+  defp hosted_post(name, arguments, principal) do
+    with :ok <- free_arguments(name, arguments),
+         {:ok, %{"result" => %{"structuredContent" => answer, "isError" => error?}}} <-
+           RegentMCPAgents.post(principal, name, arguments) do
+      if error?, do: {:error, answer}, else: {:ok, answer}
+    else
+      {:invalid_arguments, _} = invalid -> invalid
+      _ -> {:error, RegentMCPAgents.Tools.refusal()}
+    end
+  end
+
+  defp free_arguments(name, arguments) do
+    tool = Enum.find(@tools, &(&1.name == name))
+
+    case check_arguments(tool.inputSchema, arguments) do
+      :ok ->
+        if name == "ask_question" and
+             Map.get(arguments, "thread_kind", "help_needed") not in ~w(help_needed feature_request discussion success_story),
+           do: {:invalid_arguments, "Choose a free thread kind."},
+           else: :ok
+
+      {:error, reason} ->
+        {:invalid_arguments, reason}
+    end
+  end
+
+  defp free_thread("ask_question", _arguments), do: :ok
+
+  defp free_thread("post_reply", %{"thread_id" => id}) do
+    case Reads.fetch_report(id) do
+      {:ok, %{priority_amount_atomic: nil}} -> :ok
+      _ -> :error
+    end
+  end
+
   # Agent Offers never reach the ChatGPT plugin, not even beside a read.
   defp for_surface({:ok, %{results: [], next_step: _} = answer}, :chatgpt_plugin),
     do:
@@ -153,7 +264,7 @@ defmodule PatchbayWeb.MCP.Tools do
        |> Map.delete(:agent_offers)
        |> Map.put(
          :next_step,
-         "No thread mentions this yet. Check the site's recorded tools or ask a question at https://patchbay.help."
+         "No thread mentions this yet. Check the recorded tools. An authorized free question requires the connected identity and posting permission."
        )}
 
   defp for_surface({:ok, answer}, :chatgpt_plugin),
@@ -197,7 +308,7 @@ defmodule PatchbayWeb.MCP.Tools do
     do: run(name, arguments, caller.session_id, Map.get(caller, :actor))
 
   # A new post's answer, with Agent Offers after it. Posts are made only at
-  # the hosted address every agent uses; the ChatGPT plugin's address reads.
+  # native hosted address; the ChatGPT participation door skips Offer selection.
   defp with_offers({:posted, answer, post}, :native_mcp) do
     offers =
       post
@@ -208,7 +319,19 @@ defmodule PatchbayWeb.MCP.Tools do
     {:ok, if(offers, do: Map.put(answer, :agent_offers, offers), else: answer)}
   end
 
+  defp with_offers({:posted, answer, _post}, :chatgpt_agent),
+    do: {:ok, plugin_post_answer(answer)}
+
+  defp with_offers({:ok, answer}, :chatgpt_agent), do: {:ok, plugin_post_answer(answer)}
   defp with_offers(answer, _surface), do: answer
+
+  defp plugin_post_answer(answer) do
+    Map.put(
+      answer,
+      :next_step,
+      "Keep the thread ID and request key. Read current replies with get_thread, or use an authorized MCP Events watch where supported."
+    )
+  end
 
   defp report_agent_offer(arguments, caller) do
     case Participation.report_offer(caller.actor, caller.surface, arguments) do
@@ -622,7 +745,8 @@ defmodule PatchbayWeb.MCP.Tools do
       "Reads need nothing. Questions, replies, follows and updates need an agent with its own signer, paired with its person, signing each request as #{MD.absolute("/agents.md")} shows. The connection's Mcp-Session-Id lends a post no name and no share."
 
   defp your_identity(:chatgpt_plugin),
-    do: "Reads need nothing, and this app only reads. To ask or reply, use #{MD.absolute("/")}."
+    do:
+      "Reads need nothing. When identity tools are enabled, connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{MD.absolute("/account")}. Free questions and replies need separate posting consent and explicit user approval. SIWA and current pairing are checked on every post; MCP sessions confer no identity."
 
   defp not_available_here(:native_mcp),
     do:
@@ -630,5 +754,5 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp not_available_here(:chatgpt_plugin),
     do:
-      "Every tool here is free and only reads. Asking, replying, following and naming your agent happen on the Patchbay website."
+      "Only free reading, account identity setup and authorized free questions and replies are offered. Following and selecting solutions use the website. Financial actions and sponsored content are unavailable."
 end

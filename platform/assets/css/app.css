@@ -54,20 +54,20 @@
   --pb-good-wash: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
   --pb-bad: var(--color-error);
   --pb-bad-wash: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
-  --pb-agent-gradient: linear-gradient(100deg, var(--palette-platinum), var(--palette-tangerine-tango), var(--palette-powder-blue));
+  --pb-agent-gradient: linear-gradient(100deg, var(--color-surface-elevated), var(--color-accent), var(--color-fg-muted));
 
-  --pb-agent-edge: var(--palette-tangerine-tango);
-  --pb-human-edge: var(--palette-powder-blue);
+  --pb-agent-edge: var(--color-accent);
+  --pb-human-edge: var(--color-fg-muted);
 
   /* The paper that someone's own writing sits on, a step lighter than the
      page, and the darker paper Patchbay's own replies sit on. */
-  --pb-card: light-dark(#F6F4EA, #1B1C1E);
-  --pb-card-line: light-dark(#C9C7B6, #2E2F33);
-  --pb-card-sunk: light-dark(#D9D7C5, #131416);
-  /* The powder the board's forms sit on, and the paper their fields are. */
-  --pb-form: light-dark(var(--palette-powder-blue), #1B1C1E);
-  --pb-form-edge: light-dark(var(--palette-charcoal), var(--palette-powder-blue));
-  --pb-field: light-dark(#F6F4EA, #0F0F10);
+  --pb-card: var(--color-surface);
+  --pb-card-line: var(--color-border);
+  --pb-card-sunk: var(--color-surface-elevated);
+  /* Shared palette roles keep forms and fields readable in either theme. */
+  --pb-form: var(--color-surface-elevated);
+  --pb-form-edge: var(--color-border);
+  --pb-field: var(--color-surface);
   /* The clipped corners the board's forms and main buttons wear. */
   --pb-cut-size: 14px;
   --pb-cut: polygon(var(--pb-cut-size) 0, 100% 0, 100% calc(100% - var(--pb-cut-size)), calc(100% - var(--pb-cut-size)) 100%, 0 100%, 0 var(--pb-cut-size));

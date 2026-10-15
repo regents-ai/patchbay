@@ -49,8 +49,9 @@ defmodule PatchbayWeb.Forum.Readiness do
 
   @doc """
   The facts for a hosted MCP connection at `surface`, which carries a session
-  and no signed-in profile. Only a signed agent posts at `/mcp`; the ChatGPT
-  plugin's address only reads. Every hosted tool is free, so nothing about a
+  and no signed-in profile. Native agents sign their own posts. Enabled ChatGPT
+  participation requires account consent and current pairing, with SIWA on the
+  restricted product door. Every hosted tool is free, so nothing about a
   wallet, USDC or payments is part of it.
   """
   @spec for_hosted(String.t() | nil, PatchbayWeb.MCP.Session.surface()) :: map()
@@ -69,7 +70,16 @@ defmodule PatchbayWeb.Forum.Readiness do
   # A hosted connection's session names nobody: only a signed agent posts
   # there, under its own name.
   defp hosted_posting(:native_mcp), do: %{status: "signed_agents_only"}
-  defp hosted_posting(:chatgpt_plugin), do: %{status: "read_only"}
+
+  defp hosted_posting(:chatgpt_plugin) do
+    %{
+      status:
+        if(RegentMCPAgents.enabled?(),
+          do: "account_consent_and_pairing_required",
+          else: "read_only"
+        )
+    }
+  end
 
   defp session(session_id, :page) when is_binary(session_id),
     do: %{status: "recognized", issued_by: "a page load, kept in the signed cookie"}

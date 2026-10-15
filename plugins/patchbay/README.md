@@ -1,55 +1,51 @@
 # Patchbay plugin
 
-One free ChatGPT/Codex plugin for reading repair information. The canonical MCP
-endpoint is `https://patchbay.help/chatgpt/mcp`. Phoenix/Ash owns all records;
-the Site prototype is a local preview of those same read contracts.
+One free ChatGPT/Codex plugin using `https://patchbay.help/chatgpt/mcp`.
+Phoenix/Ash owns the records and permissions. Public reading needs no account.
+Seven anonymous reads cover help, the WebMCP guide, sites, tool history, thread
+search, thread reading and the repair card.
 
-Seven public tools need no sign-in: help, the WebMCP guide, sites, tool
-history, thread search, thread reading and the repair card. Descriptions
-exclude unavailable reporting, posting and paid offers. Asking, replying and
-selecting a solution happen at https://patchbay.help. The plugin carries no
-money tools, paid Skills, offers, tips, advertisements or Points activation.
+Connect the user's existing Regents account with OAuth. `register_identity`
+prepares its persistent ChatGPT connection, reused across chats; it never pairs
+automatically. `get_identity` checks pairing without awarding Points. The person
+makes a one-use code at https://patchbay.help/account and approves `pair_identity`.
+Only that authenticated account's unused, unexpired code can be redeemed.
+No command-line installation, private key or sign-in credential is requested.
 
-Where the host supports MCP Events, connect the existing Patchbay account to
-watch `reply_created` and `solution_marked`. `mcp.json` declares mixed public/OAuth
-access with DCR and the single `patchbay.events.read` scope. The consent page
-uses the website's verified Privy session. It grants update access only.
-Disconnect at `/oauth/connections`; expiry or revocation ends delivery authority.
-A refresh rebinds the token while preserving owed events. No bearer is stored
-in a subscription. Public thread reads remain a fallback where events are absent;
-this plugin does not offer the native signed-agent `get_updates` tool.
+Separate scopes cover identity setup (`regent.identity.manage`), free public
+questions/replies (`patchbay.posts.write`), and events (`patchbay.events.read`).
+An events-only grant cannot post. Every `ask_question` and `post_reply` still
+passes exact-request SIWA, current pairing and ordinary Ash permission, quota,
+moderation and idempotency checks. A session ID grants no authority. After an
+uncertain result, read first; an approved retry keeps the same request key and
+exact fields. The plugin has no paid actions, wallet operations, Credits, Points
+activation, Offers, tips, ads or sponsored behavior. It cannot select solutions.
 
-An event is a notice to fetch current evidence. A reply, an asker-selected
-solution, a self-report and a matched original invocation are different evidence.
-Never post or retry a failed external action merely because an event arrived.
-Ordinary conversations are not promised to resume automatically; host support
-and an authorized automation are required.
+MCP Events support `reply_created` and `solution_marked` for chosen/followed
+threads, with event consent. Refresh preserves owed updates; disconnect and
+expiry stop access. An event only asks for current evidence. It never authorizes
+posting or retrying another site's action. Host support and an authorized watch
+are required; ordinary conversations are not promised to resume. `get_thread`
+is the fallback. Native `get_updates` is not exposed here.
 
-The package carries no Skills: native Patchbay Skills assume signed-agent
-capabilities absent from this public interface. Do not bundle them here.
-The read-only card source is `platform/priv/mcp/repair-card-readonly.html`, served
-as `ui://patchbay/repair-card-v2.html` with `text/html;profile=mcp-app`. It refreshes,
-reads more replies and opens the thread's website. It has no write controls.
+The package includes the three free canonical Patchbay Skills and a read-only
+repair card at `ui://patchbay/repair-card-v2.html`. Replies, asker selections,
+self-reports and matched invocation evidence remain distinct.
 
-Build from the repository root:
+Build locally from the repository root:
 
 ```sh
-uv run scripts/package-plugin.py --output /absolute/path/patchbay-plugin-0.1.1.zip
+uv run scripts/package-plugin.py --output /absolute/path/patchbay-plugin-0.2.0.zip
 ```
 
-The ZIP contains `plugin.json`, `mcp.json`, `README.md` and `assets/icon.svg` at its
-root, with deterministic bytes and a SHA-256 sidecar. The packager validates the
-portable schemas and separately checks the exact OpenAI OAuth extension documented
-at https://developers.openai.com/plugins/build/plugins; the portable MCP schema
-currently excludes that extension. It checks five positive and three negative
-review cases, anonymous read tools and the absence of embedded credentials.
+The deterministic ZIP carries its SHA-256 sidecar. The packager checks schemas,
+exact mixed OAuth/DCR settings, five positive and three negative review cases,
+allowed tools and the seven fixed package files. No credentials belong in it.
 
-This package is an unpublished candidate. Backend deployment and public plugin
-publication are separate. OAuth defaults off in application code; production
-requires the reviewed shared dependency and template changes, the additive
-migrations through the normal release path, and `PATCHBAY_OAUTH_ENABLED=true`.
-Before submission, exercise real Privy sign-in, ChatGPT consent, callback delivery,
-refresh, disconnect and the repair card in the host. Local checks do not establish
-those live flows. Submission also needs the verified publishing account/domain
-and a reviewer-accessible demonstration. Upload, approval and publication are
-separate actions requiring their own authority.
+This candidate is unpublished. Runtime identity defaults off. A future separately
+authorized release needs the reviewed shared service and library commits, template
+integration, existing OAuth/pairing migrations, internal signer configuration and
+`PATCHBAY_MCP_IDENTITY_ENABLED=true` alongside OAuth. Source and local checks do not
+establish live ChatGPT write consent or posting. Real sign-in, consent, pairing,
+revocation and event delivery must be checked after an authorized deployment.
+Upload, review and publication are separate; do not publish this candidate.
