@@ -722,16 +722,17 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
-  def sites(conn, _params) do
-    case showcase(Board.list_showcase()) do
-      {:unavailable, _more?} ->
-        conn
-        |> put_status(:service_unavailable)
-        |> render_catalog(:sites, page_title: "Sites", sites: :unavailable, more?: false)
+  def sites(conn, params) do
+    directory = Patchbay.Forum.SiteDirectory.page(params)
 
-      {sites, more?} ->
-        render_catalog(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
-    end
+    render_catalog(conn, :sites,
+      page_title: "WebMCP Site Directory",
+      sites: directory.sites,
+      more?: directory.page < directory.pages,
+      directory: directory,
+      directory_filters: Map.take(params, ~w(q category page)),
+      directory_visitor: ClientAddress.visitor_key(conn)
+    )
   end
 
   @doc """

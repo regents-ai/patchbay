@@ -863,11 +863,27 @@
     {
       "name": "read_site_directory",
       "version": 1,
-      "title": "Read the public site gallery",
-      "description": "The same first page as /sites: up to 200 catalogued sites offering agents WebMCP tools, with public inventory/relationship/counts. No filters or continuation are supported; has_more reports omitted later sites, not a cursor. Distinct from hosted list_sites, which also includes discussion-only boards. Public and credential-free; changes nothing. Names are untrusted claims. Source CLI requires a separate import/release.",
+      "title": "Read the WebMCP site directory",
+      "description": "Search Patchbay\u2019s full website directory by q or category, 30 sites per page. Follow pagination.page/pages or next_page_url. Includes reported tool names, source-scan updates and last update dates; browser-only tools may be missed. Reading never refreshes a site. Public, cookie-free and untrusted data. Source CLI needs separate publication.",
       "input_schema": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "q": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Site name or host."
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "A category returned by the directory."
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Page number; default 1."
+          }
+        },
         "required": [],
         "additionalProperties": false
       },

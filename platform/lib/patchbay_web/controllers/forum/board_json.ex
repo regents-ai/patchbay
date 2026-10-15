@@ -17,6 +17,45 @@ defmodule PatchbayWeb.Forum.BoardJSON do
     :last_seen_at
   ]
 
+  def sites(%{directory: directory}) do
+    %{
+      data_only: @data_only,
+      sites:
+        Enum.map(directory.sites, fn site ->
+          %{
+            origin: site.domain,
+            host: site.host,
+            name: site.name,
+            url: "/" <> site.domain,
+            website_url: site.page_url,
+            category: site.category,
+            tools: length(site.tools),
+            tool_inventory: site.tools,
+            discussions: nil,
+            relationship: nil,
+            inventory: if(site.source == "Source scan", do: "partial", else: nil),
+            verified_at: site.checked_at,
+            source: site.source,
+            updating: site.pending?,
+            update_available: directory.cache_available? and site.due?,
+            next_update_at: site.retry_at
+          }
+        end),
+      first_page_only: false,
+      has_more: directory.page < directory.pages,
+      continuation_available: true,
+      pagination: %{
+        page: directory.page,
+        pages: directory.pages,
+        total: directory.total,
+        next_page_url:
+          if(directory.page < directory.pages,
+            do: Patchbay.Forum.SiteDirectory.page_url(directory, directory.page + 1)
+          )
+      }
+    }
+  end
+
   def sites(%{sites: :unavailable}) do
     ApiError.body(
       "unavailable",

@@ -34,6 +34,7 @@ defmodule Patchbay.Forum.SiteScan do
   alias Patchbay.Assist.PageTools
   alias Patchbay.Assist.Target
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.SiteDirectory
 
   @file_bytes 256 * 1024
   @redirects 3
@@ -114,6 +115,48 @@ defmodule Patchbay.Forum.SiteScan do
           do: Atom.to_string(source)
         )
     }
+  end
+
+  @doc "Read the directory's exact public pages without calling any discovered tool."
+  def directory_findings(domain, previous, opts) do
+    earlier = (previous || %{})["directory"] || %{}
+    now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+    domain
+    |> SiteDirectory.pages()
+    |> Task.async_stream(
+      fn url ->
+        snapshot =
+          case PageTools.page(url, opts) do
+            {:ok, page_url, html} ->
+              %{
+                "checked_at" => now,
+                "page_url" => page_url,
+                "failed" => false,
+                "tools" =>
+                  Enum.map(PageTools.tools(page_url, html, opts), fn tool ->
+                    %{"name" => tool.name, "address" => page_url}
+                  end)
+              }
+
+            {:error, _unavailable} ->
+              Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})
+          end
+
+        {url, snapshot}
+      end,
+      max_concurrency: 3,
+      timeout: @all_timeout_ms,
+      on_timeout: :kill_task
+    )
+    |> Enum.zip(SiteDirectory.pages(domain))
+    |> Map.new(fn
+      {{:ok, {url, snapshot}}, _requested} ->
+        {url, snapshot}
+
+      {{:exit, _timeout}, url} ->
+        {url, Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})}
+    end)
   end
 
   defp timed_out(:page), do: {nil, [], []}

@@ -22,7 +22,7 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   `:again`) and the visitor has share left. Answers the check as it now
   stands, and whether this visitor's share was used up.
   """
-  @spec ask(String.t(), Ash.Resource.record() | nil, String.t(), :open | :again) ::
+  @spec ask(String.t(), Ash.Resource.record() | nil, String.t(), :open | :again | :directory) ::
           {:ok | :limited, Ash.Resource.record() | nil}
   def ask(domain, check, visitor, reason) do
     with true <- SiteCheck.due?(check, reason),
@@ -41,7 +41,7 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   def state(check) do
     cond do
       SiteCheck.pending?(check) -> :checking
-      is_nil(check.findings) -> :failed
+      is_nil(check.findings) or check.findings["failed"] == true -> :failed
       true -> :done
     end
   end

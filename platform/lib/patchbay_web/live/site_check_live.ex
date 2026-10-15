@@ -4,7 +4,7 @@ defmodule PatchbayWeb.SiteCheckLive do
   tools its page signs up, its MCP servers, the files agents read, and its
   code and packages. The page asks for the check when it opens; this box
   shows it as it stands, hears the finished check, and offers "Check again"
-  once the last check is ten minutes old.
+  once the last check is 24 hours old.
 
   It is drawn with the page, so it is there without JavaScript; a live
   connection only adds the finished check and the button.
@@ -82,7 +82,7 @@ defmodule PatchbayWeb.SiteCheckLive do
         You've checked a lot of sites just now. Try again in a few minutes.
       </p>
 
-      <.findings :if={@check && @check.findings} domain={@domain} findings={@check.findings} />
+      <.findings :if={@check && @check.findings && @check.findings["code"]} domain={@domain} findings={@check.findings} />
     </section>
     """
   end

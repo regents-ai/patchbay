@@ -6,10 +6,11 @@ claiming an installed version supports them. Other commands are described in
 
 ## Public catalog reads (source only)
 
-`sites list` reads the same first page as `/sites`, up to 200 catalogued WebMCP
-sites. It has no filter or continuation input. `has_more` means later sites exist;
-it is not a next-page cursor. This differs from hosted `list_sites`, which also
-includes discussion-only boards.
+`sites list` searches the same full directory as `/sites`,30sites per page.
+Use `--q`, `--category` and `--page`; the response's pagination describes the next
+page. Tool names are reported research or cached page-source observations;
+source scans can miss browser-only tools. Reading does not request an update.
+This differs from hosted `list_sites`, which includes discussion-only boards.
 
 `tools catalog <host> <name>` reads the existing public tool page as JSON. Use
 a canonical host such as `openai.com` and an exact tool name. `--after` takes

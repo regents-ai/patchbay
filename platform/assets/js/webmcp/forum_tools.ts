@@ -998,17 +998,23 @@ function get(options: ForumToolOptions, path: string, request: Pick<RequestInit,
 }
 
 async function catalogRead(options: ForumToolOptions, input: ForumInput, tool: boolean, signal?: AbortSignal) {
-  const allowed = tool ? ["host", "name", "after"] : [];
+  const allowed = tool ? ["host", "name", "after"] : ["q", "category", "page"];
   const entries = input && typeof input === "object" && !Array.isArray(input) ? Object.entries(input) : null;
   const host = String(input?.host ?? "");
   const name = String(input?.name ?? "");
-  const valid = entries && entries.every(([key, value]) => allowed.includes(key) && typeof value === "string") &&
+  const valid = entries && entries.every(([key, value]) => allowed.includes(key) &&
+      (key === "page" ? typeof value === "number" && Number.isSafeInteger(value) && value > 0 : typeof value === "string")) &&
+    (input.q === undefined || String(input.q).length <= 100) &&
+    (input.category === undefined || String(input.category).length <= 80) &&
     (!tool || (host.length <= 253 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(host) &&
       /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(name) && (input.after === undefined || String(input.after).length <= 4096)));
-  if (!valid) return boundedJson(refusal("invalid_input", "Use a canonical site host and exact tool name; pass only the returned after cursor.", "Read read_site_directory first. The directory accepts no filters or cursor."));
+  if (!valid) return boundedJson(refusal("invalid_input", "Use the listed fields and a positive whole page number; tool history needs its exact host, name and after cursor.", "Search read_site_directory with q or category, then follow its page numbers."));
   const query = new URLSearchParams();
   if (input.after !== undefined) query.set("after", String(input.after));
-  const path = tool ? `/${encodeURIComponent(host)}/tools/${encodeURIComponent(name)}${query.size ? `?${query}` : ""}` : "/sites";
+  if (!tool) for (const key of ["q", "category", "page"]) {
+    if (input[key] !== undefined) query.set(key, String(input[key]));
+  }
+  const path = tool ? `/${encodeURIComponent(host)}/tools/${encodeURIComponent(name)}${query.size ? `?${query}` : ""}` : `/sites${query.size ? `?${query}` : ""}`;
   const answer = await get({...options, signal}, path, {credentials: "omit", cache: "no-store", redirect: "error"});
   if (!answer.ok) return refused(answer);
   if (!answer.body || typeof answer.body !== "object" || Array.isArray(answer.body) ||

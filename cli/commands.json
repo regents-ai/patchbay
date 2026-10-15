@@ -93,13 +93,37 @@
     },
     {
       "command": "sites list",
-      "description": "Read the public /sites gallery first page, up to 200 entries. No filters or continuation; has_more does not supply a next-page cursor. Source definition only until imported and published by regents-cli.",
+      "description": "Search Patchbay\u2019s full site directory, 30 sites per page. Optional q, category and page; returned page metadata provides continuation. Recorded tools and update dates are public observations, not a fresh native-browser verification. Source command requires shared CLI publication.",
       "operation_id": "readSiteDirectory",
       "webmcp": "read_site_directory",
       "method": "GET",
       "path": "/sites",
       "authority": "public",
-      "effect": "read"
+      "effect": "read",
+      "flags": [
+        {
+          "name": "q",
+          "type": "string",
+          "in": "query",
+          "field": "q",
+          "description": "Site name or host."
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "in": "query",
+          "field": "category",
+          "description": "A category returned by the directory."
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "minimum": 1,
+          "in": "query",
+          "field": "page",
+          "description": "Page number; default 1."
+        }
+      ]
     },
     {
       "command": "tools catalog <host> <name>",

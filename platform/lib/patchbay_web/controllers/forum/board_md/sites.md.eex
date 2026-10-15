@@ -1,19 +1,20 @@
-# Sites
+# WebMCP Site Directory
 
-<%= if @sites == :unavailable do %>
-_The site directory could not be read just now. Read this page again in a moment._
+<%= @directory.total %> matching sites · page <%= @directory.page %> of <%= @directory.pages %>.
+Search: `/sites?q=example&category=Commerce&page=1`.
 
-<% else %>
-<%= count_label(length(@sites), "site that offers", "sites that offer") %> agents WebMCP tools.
-
-| Site | Relationship | Inventory | Tools | Discussions | Verified |
-| --- | --- | --- | --- | --- | --- |
-<%= for site <- @sites do %>
-<%= row(["[" <> site_name(site) <> "](" <> site_path(site) <> ")", support_label(site.support_relationship), inventory_label(site.tool_inventory_status), site.tool_count || 0, site.report_count || 0, stamp(site.last_verified_at)]) %>
+| Website | Tools | Source | Last update | Discussion |
+| --- | --- | --- | --- | --- |
+<%= for site <- @directory.sites do %>
+<%= row(["[" <> site.name <> "](" <> site.page_url <> ")", length(site.tools), site.source, site.checked_at || "Not checked by Patchbay", "[Forum](/" <> site.domain <> ")"]) %>
 <% end %>
 
-<%= if @more?, do: "Only the first page is shown here.\n" %>
+<%= if @directory.page < @directory.pages do %>
+[Next page](<%= Patchbay.Forum.SiteDirectory.page_url(@directory, @directory.page + 1) %>)
 <% end %>
-Ask about any site: `POST /forum/threads` or the form at the top of [the home page](/).
+
+Anyone can request an update on [the directory](/sites) after its 24-hour cache expires.
+Updates read public page source without signing in or calling tools. Browser-only registrations may be missed.
+Imported tool names remain reported research until checked; failed checks keep previous information.
 
 <%= trailer() %>

@@ -1,0 +1,44 @@
+.pb-site-directory { padding-block: var(--space-3) var(--space-5); }
+.pb-directory-intro { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 2rem; }
+.pb-directory-intro h1 { margin: .4rem 0 .75rem; font-family: var(--font-family-title); font-weight: 400; font-size: clamp(1.8rem, 3.4vw, 3rem); line-height: 1.15; overflow-wrap: anywhere; }
+.pb-directory-intro p { margin-bottom: 0; }
+.pb-directory-policy, .pb-directory-date, .pb-directory-next, .pb-directory-category, .pb-directory-source { font-size: .75rem; color: var(--pb-text-muted); }
+.pb-directory-search { display: flex; align-items: end; gap: .75rem; padding: 1rem; background: var(--support-panel-surface); color: var(--support-panel-ink); border: 1px solid var(--pb-line); }
+.pb-directory-search label { display: grid; gap: .4rem; min-width: 0; }
+.pb-directory-search-field { flex: 1; }
+.pb-directory-search input, .pb-directory-search select { min-height: 44px; width: 100%; }
+.pb-directory-results-heading { display: flex; justify-content: space-between; gap: 1rem; margin: 1.25rem 0; font-size: .875rem; }
+.pb-directory-results-heading p { margin: 0; }
+.pb-directory-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.pb-directory-card { min-width: 0; padding: 1.25rem; display: flex; flex-direction: column; border: 1px solid var(--pb-line); background: var(--support-panel-surface); color: var(--support-panel-ink); }
+.pb-directory-card h2 { margin: .25rem 0 .35rem; font-family: var(--font-family-title); font-weight: 400; font-size: 1.35rem; overflow-wrap: anywhere; }
+.pb-directory-category { margin: 0; }
+.pb-directory-domain { font-size: .8125rem; overflow-wrap: anywhere; }
+.pb-directory-inventory { display: flex; align-items: baseline; flex-wrap: wrap; gap: .4rem; margin: 1.4rem 0 .5rem; font-size: .8125rem; }
+.pb-directory-inventory strong { font-family: var(--font-family-title); font-size: 1.9rem; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }
+.pb-directory-source { margin-left: auto; }
+.pb-directory-date { margin: .5rem 0 1rem; }
+.pb-directory-date time, .pb-directory-date > span { display: block; color: var(--pb-text); margin-top: .2rem; }
+.pb-directory-card footer { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: auto; padding-top: 1.2rem; font-size: .8125rem; }
+.pb-directory-card footer .rg-button { min-height: 44px; }
+.pb-directory-next { margin: .6rem 0 0; }
+.pb-directory-tool-list { border-top: 1px solid var(--pb-line); font-size: .8125rem; margin-bottom: .75rem; }
+.pb-directory-tool-list summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.pb-directory-tool-list ul { margin: 0; padding: 0; list-style: none; max-height: 18rem; overflow: auto; }
+.pb-directory-tool-list li { padding: .5rem 0; border-top: 1px solid var(--pb-line); overflow-wrap: anywhere; }
+.pb-directory-tool-list li span { display: block; color: var(--pb-text-muted); font-size: .7rem; }
+.pb-directory-empty, .pb-directory-notice { font-size: .8125rem; line-height: 1.5; }
+.pb-directory-notice { border-left: 2px solid var(--pb-accent); padding-left: .65rem; }
+.pb-directory-pagination { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin: 2rem 0; }
+.pb-directory-method { border-top: 1px solid var(--pb-line); margin-top: 2rem; padding-block: 1rem; font-size: .8125rem; line-height: 1.6; }
+.pb-directory-method summary { cursor: pointer; min-height: 44px; }
+@media (max-width: 1000px) { .pb-directory-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .pb-directory-intro { display: block; }
+  .pb-directory-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .pb-directory-search-field { grid-column: 1 / -1; }
+  .pb-directory-cards { grid-template-columns: minmax(0, 1fr); }
+  .pb-directory-pagination { gap: .75rem; font-size: .8125rem; }
+}
+
+.pb-directory-tool-list[open] summary span { transform: rotate(45deg); }

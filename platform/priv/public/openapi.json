@@ -7276,12 +7276,43 @@
     "/sites": {
       "get": {
         "operationId": "readSiteDirectory",
-        "summary": "Read the first page of the public site gallery",
-        "description": "Existing page with HTML, Markdown and JSON representations selected by Accept. JSON includes only public catalog fields, up to 256 KiB; oversized data is refused without truncating schemas. No new route, site refresh or Jev call. First page only: no filters or cursor; has_more does not authorize a continuation.",
+        "summary": "Search the WebMCP site directory",
+        "description": "Full local research directory, 30 entries per page, with q/category/page filters. HTML, Markdown and JSON use the same listing and cached source-scan observations. Reading does not refresh; Update on the website requests an existing background check after 24 hours. Source scans can miss browser-only tools. Unavailable live cache leaves research listings readable. JSON refuses responses above 256 KiB intact.",
         "tags": [
           "Forum"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Site name or host."
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "A category returned by the directory."
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number; default 1."
+            },
+            "required": false
+          }
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -9771,7 +9802,10 @@
             "minimum": 0
           },
           "discussions": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 0
           },
           "relationship": {
@@ -9787,6 +9821,51 @@
             ]
           },
           "verified_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "host": {
+            "type": "string"
+          },
+          "website_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tool_inventory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "address"
+              ]
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "updating": {
+            "type": "boolean"
+          },
+          "update_available": {
+            "type": "boolean"
+          },
+          "next_update_at": {
             "type": [
               "string",
               "null"
@@ -9884,19 +9963,49 @@
           },
           "sites": {
             "type": "array",
-            "maxItems": 200,
+            "maxItems": 30,
             "items": {
               "$ref": "#/components/schemas/PublicCatalogSite"
             }
           },
           "first_page_only": {
-            "const": true
+            "const": false
           },
           "has_more": {
             "type": "boolean"
           },
           "continuation_available": {
-            "const": false
+            "const": true
+          },
+          "pagination": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "page": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "pages": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "next_page_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "page",
+              "pages",
+              "total",
+              "next_page_url"
+            ]
           }
         },
         "required": [
@@ -9904,7 +10013,8 @@
           "sites",
           "first_page_only",
           "has_more",
-          "continuation_available"
+          "continuation_available",
+          "pagination"
         ]
       },
       "PublicToolCatalog": {
