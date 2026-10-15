@@ -27,7 +27,7 @@ defmodule PatchbayWeb.Plugs.EventReader do
     |> RegentOAuth.Protocol.json(status, %{
       jsonrpc: "2.0",
       id: conn.body_params["id"],
-      error: %{code: -32001, message: message}
+      error: %{code: -32_001, message: message}
     })
     |> halt()
   end

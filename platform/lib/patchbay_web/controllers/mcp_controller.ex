@@ -124,7 +124,11 @@ defmodule PatchbayWeb.MCPController do
       {:ok, id} when is_binary(id) or is_integer(id) ->
         conn
         |> issue_session(method)
-        |> json(handle(method, Map.get(request, "params", %{}), caller) |> reply(id))
+        |> json(
+          handle(method, Map.get(request, "params", %{}), caller)
+          |> protocol_result(method, modern_request?(conn, request))
+          |> reply(id)
+        )
 
       {:ok, _other} ->
         invalid_request(conn)
@@ -134,6 +138,32 @@ defmodule PatchbayWeb.MCPController do
         send_resp(conn, :accepted, "")
     end
   end
+
+  # Discovery selects MCP 2.0; later requests identify it in the HTTP header
+  # or per-request metadata. Legacy initialize responses keep their own shape.
+  defp modern_request?(_conn, %{
+         "params" => %{"_meta" => %{"io.modelcontextprotocol/protocolVersion" => "2026-07-28"}}
+       }),
+       do: true
+
+  defp modern_request?(conn, _request),
+    do: get_req_header(conn, "mcp-protocol-version") == ["2026-07-28"]
+
+  defp protocol_result({:ok, result}, method, modern?)
+       when method != "initialize" and (modern? or method == "server/discover") do
+    result = Map.put(result, "resultType", "complete")
+
+    # These definitions and the fixed repair card contain no account data.
+    # A zero TTL makes a deployment's changed definitions immediately stale.
+    result =
+      if method in ["server/discover", "tools/list", "resources/list", "resources/read"],
+        do: Map.merge(result, %{"cacheScope" => "public", "ttlMs" => 0}),
+        else: result
+
+    {:ok, result}
+  end
+
+  defp protocol_result(result, _method, _modern?), do: result
 
   # Every initialize starts a new session, as the protocol says. A new one
   # changes nothing about who posts: posts, follows and request keys belong
