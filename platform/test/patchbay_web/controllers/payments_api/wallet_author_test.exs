@@ -223,9 +223,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
       ExUnit.CaptureLog.capture_log(fn ->
         assert {:ok, conn} = WalletAuthor.accept(conn, data, nil)
         assert %{wallet_address: @address, human_id: nil} = conn.assigns.current_profile
+        send(self(), {:profile, conn.assigns.current_profile})
       end)
 
-    assert log =~ "Saving the World ID person of wallet author #{@address} failed"
+    assert_received {:profile, profile}
+    assert log =~ "Saving the World ID person of agent #{profile.public_id} failed"
+    refute log =~ @address
     refute log =~ "0xnot-a-person"
   end
 end

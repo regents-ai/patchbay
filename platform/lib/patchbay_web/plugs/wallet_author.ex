@@ -208,10 +208,11 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     end
   end
 
-  # Logged by the kind of failure alone: its words can hold the person's number.
+  # Logged by the agent's public id and the kind of failure alone: the failure's
+  # words can hold the person's number.
   defp backing_not_saved(profile, error) do
     Logger.warning(
-      "Saving the World ID person of wallet author #{profile.wallet_address} failed: #{inspect(failure_kinds(error))}"
+      "Saving the World ID person of agent #{profile.public_id} failed: #{inspect(failure_kinds(error))}"
     )
 
     profile
