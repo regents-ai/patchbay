@@ -4056,7 +4056,7 @@
       "authentication": "siwa_per_request",
       "availability": "available",
       "pairing_required": true,
-      "state_changing": false,
+      "state_changing": true,
       "annotations": {
         "untrustedContentHint": true
       },
