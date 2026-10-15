@@ -114,7 +114,13 @@
 @media (forced-colors: active) {
   .pb-showcase-count { background: Canvas; color: CanvasText; }
 }
-.pb-feed-tabs { overflow-x: auto; }
+/* One fixed-height filter strip, with no nested scrolling on either axis. */
+.pb-feed-home .pb-feed-tabs { display: grid; grid-template-columns: repeat(5, max-content); gap: 0 1.5rem; height: 48px; overflow: visible; }
+.pb-feed-home .pb-feed-tabs a { margin-bottom: 0; min-height: 0; height: 48px; }
+@media (max-width: 600px) {
+  .pb-feed-home .pb-feed-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
+  .pb-feed-home .pb-feed-tabs a { justify-content: center; font-size: .72rem; }
+}
 .pb-feed-tabs a { flex-shrink: 0; min-height: 44px; display: inline-flex; align-items: center; }
 @media (min-width: 761px) {
   .pb-home-hero { margin-bottom: 1rem; }
@@ -134,3 +140,17 @@
   .pb-showcase-tile { scroll-snap-align: start; }
   .pb-showcase-count { opacity: 1; transform: none; transition: none; }
 }
+
+/* Homepage views share one full-width content area and keep the hero in place. */
+.pb-feed-home { max-width: none; }
+.pb-home-switch { display: grid; grid-template-columns: repeat(2, 1fr); position: relative; isolation: isolate; width: min(100%, 20rem); height: 48px; margin: 0 auto 1.25rem; border: 1px solid var(--pb-line-strong); background: var(--pb-canvas); }
+.pb-home-switch-indicator { position: absolute; inset: 3px auto 3px 3px; width: calc(50% - 3px); background: var(--pb-surface); border: 1px solid var(--pb-line); z-index: -1; transition: transform 180ms cubic-bezier(.22, 1, .36, 1); }
+.pb-home-switch[data-view="sites"] .pb-home-switch-indicator { transform: translateX(100%); }
+.pb-home-switch a { display: grid; place-items: center; color: var(--pb-text-muted); font-size: .9375rem; font-weight: 600; text-decoration: none; }
+.pb-home-switch a[aria-selected="true"], .pb-home-switch a[aria-current="page"] { color: var(--pb-text); }
+.pb-home-switch a:focus-visible { outline: 2px solid var(--pb-text); outline-offset: -4px; }
+[data-home-panel][hidden] { display: none; }
+[data-home-panel] { min-height: 60svh; }
+.pb-home-switch[data-keyboard] .pb-home-switch-indicator { transition: none; }
+@media (prefers-reduced-motion: reduce) { .pb-home-switch-indicator { transition: none; } }
+@media (forced-colors: active) { .pb-home-switch-indicator { border-color: Highlight; } }

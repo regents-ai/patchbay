@@ -8,15 +8,43 @@ defmodule PatchbayWeb.SiteDirectoryLive do
   def mount(_params, session, socket) do
     page = SiteDirectory.page(session["filters"])
 
-    if connected?(socket) do
-      page.sites
-      |> Enum.map(& &1.domain)
-      |> Enum.uniq()
-      |> Enum.each(&Phoenix.PubSub.subscribe(Patchbay.PubSub, "site_check:" <> &1))
-    end
+    socket =
+      socket
+      |> assign(
+        page: page,
+        visitor: session["visitor"],
+        problem: nil,
+        expanded: MapSet.new(),
+        subscribed: MapSet.new()
+      )
+      |> stream_configure(:sites, dom_id: &"directory-#{&1.host}")
+      |> stream(:sites, page.sites)
+      |> subscribe_sites(page.sites)
 
-    {:ok,
-     assign(socket, page: page, visitor: session["visitor"], problem: nil, expanded: MapSet.new())}
+    {:ok, socket}
+  end
+
+  def handle_event("load-more", _params, socket) do
+    page = socket.assigns.page
+
+    if page.page < page.pages do
+      next =
+        SiteDirectory.page(%{
+          "q" => page.q,
+          "category" => page.category,
+          "page" => to_string(page.page + 1)
+        })
+
+      merged = %{next | sites: page.sites ++ next.sites}
+
+      {:noreply,
+       socket
+       |> assign(page: merged)
+       |> stream(:sites, next.sites)
+       |> subscribe_sites(next.sites)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("toggle", %{"host" => host}, socket) do
@@ -29,7 +57,9 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         true -> expanded
       end
 
-    {:noreply, assign(socket, expanded: expanded)}
+    socket = assign(socket, expanded: expanded)
+    site = Enum.find(socket.assigns.page.sites, &(&1.host == host))
+    {:noreply, if(site, do: stream_insert(socket, :sites, site), else: socket)}
   end
 
   def handle_event("update", %{"host" => host}, socket) do
@@ -54,12 +84,15 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         problem =
           if status == :limited, do: "You've updated several sites. Try again in a few minutes."
 
-        {:noreply, assign(socket, page: page, problem: problem)}
+        socket = assign(socket, page: page, problem: problem)
+        {:noreply, stream(socket, :sites, Enum.filter(page.sites, &(&1.domain == site.domain)))}
     end
   end
 
   def handle_info(%Ash.Notifier.Notification{data: check}, socket) do
-    {:noreply, assign(socket, page: SiteDirectory.replace_check(socket.assigns.page, check))}
+    page = SiteDirectory.replace_check(socket.assigns.page, check)
+    socket = assign(socket, page: page)
+    {:noreply, stream(socket, :sites, Enum.filter(page.sites, &(&1.domain == check.domain)))}
   end
 
   def render(assigns) do
@@ -67,22 +100,28 @@ defmodule PatchbayWeb.SiteDirectoryLive do
     <section id="site-directory" class="pb-site-directory" aria-labelledby="directory-heading">
       <header class="pb-directory-intro">
         <div>
-          <p class="patchbay-kicker">PATCHBAY / DIRECTORY</p>
-          <h1 id="directory-heading">WebMCP Sites</h1>
+          <h2 id="directory-heading">WebMCP Sites</h2>
         </div>
         <span class="pb-directory-total">
           {metric(@page.total)} {if @page.total == 1, do: "site", else: "sites"}
         </span>
       </header>
 
-      <form action="/sites" method="get" class="pb-directory-search" role="search">
+      <form action="/" method="get" class="pb-directory-search" role="search">
+        <input type="hidden" name="view" value="sites" />
         <label class="pb-directory-search-field">
           <span class="visually-hidden">Search sites</span>
-          <input type="search" name="q" value={@page.q} maxlength="100" placeholder="Search websites" />
+          <input
+            type="search"
+            name="site_q"
+            value={@page.q}
+            maxlength="100"
+            placeholder="Search websites"
+          />
         </label>
         <label>
           <span class="visually-hidden">Category</span>
-          <select name="category">
+          <select name="site_category">
             <option value="">All categories</option>
             <option
               :for={category <- SiteDirectory.categories()}
@@ -100,7 +139,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <span :if={@page.q != ""}>Results for “{@page.q}”</span>
           <span :if={@page.q == ""}>Explore websites and their agent tools</span>
         </p>
-        <p>Page {@page.page} / {@page.pages}</p>
+        <p>{length(@page.sites)} / {metric(@page.total)}</p>
       </div>
       <p :if={@problem} role="alert" class="pb-directory-notice">{@problem}</p>
       <p :if={!@page.cache_available?} role="status" class="pb-directory-notice">
@@ -108,19 +147,23 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       </p>
 
       <div class="pb-directory-scroll" role="region" aria-label="Website listings" tabindex="0">
-        <table class="pb-directory-table">
-          <caption class="visually-hidden">
+        <table id="directory-table" class="pb-directory-table">
+          <caption id="directory-caption" class="visually-hidden">
             WebMCP websites, tool counts and public forum posts
           </caption>
-          <thead>
+          <thead id="directory-columns">
             <tr>
               <th scope="col">Website</th>
               <th scope="col" class="pb-directory-numeric">WebMCP tools</th>
               <th scope="col" class="pb-directory-numeric">Forum posts</th>
             </tr>
           </thead>
-          <tbody :for={site <- @page.sites} id={"directory-" <> site.host}>
-            <tr class="pb-directory-row">
+          <tbody
+            id="directory-rows"
+            phx-update="stream"
+            phx-viewport-bottom={if @page.page < @page.pages, do: "load-more"}
+          >
+            <tr :for={{dom_id, site} <- @streams.sites} id={dom_id} class="pb-directory-row">
               <th scope="row">
                 <div class="pb-directory-identity">
                   <button
@@ -173,38 +216,11 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                     >Check incomplete</span>
                   </div>
                 </div>
-              </th>
-              <td class="pb-directory-numeric">
-                <button
-                  type="button"
-                  class="pb-directory-count"
-                  phx-click="toggle"
-                  phx-value-host={site.host}
-                  aria-label={"View tools for " <> site.name}
-                  aria-expanded={to_string(MapSet.member?(@expanded, site.host))}
-                  aria-controls={"tools-" <> site.host}
+                <div
+                  id={"tools-" <> site.host}
+                  class="pb-directory-detail-inner"
+                  hidden={!MapSet.member?(@expanded, site.host)}
                 >
-                  <strong>{metric(site.tool_count)}</strong>
-                  <span>{if site.source == "Source scan", do: "Detected", else: "Reported"}</span>
-                </button>
-              </td>
-              <td class="pb-directory-numeric">
-                <a
-                  href={"/" <> site.domain}
-                  class="pb-directory-posts"
-                  aria-label={"Public posts for " <> site.domain}
-                >
-                  {metric(site.forum_posts)}
-                </a>
-              </td>
-            </tr>
-            <tr
-              id={"tools-" <> site.host}
-              class="pb-directory-detail"
-              hidden={!MapSet.member?(@expanded, site.host)}
-            >
-              <td colspan="3">
-                <div class="pb-directory-detail-inner">
                   <div class="pb-directory-detail-heading">
                     <span><strong>{site.name}</strong> · {site.category}</span>
                     <a href={"/" <> site.domain}>Open forum →</a>
@@ -236,6 +252,29 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                       else: "Tool names have not been recorded for this listing."}
                   </p>
                 </div>
+              </th>
+              <td class="pb-directory-numeric">
+                <button
+                  type="button"
+                  class="pb-directory-count"
+                  phx-click="toggle"
+                  phx-value-host={site.host}
+                  aria-label={"View tools for " <> site.name}
+                  aria-expanded={to_string(MapSet.member?(@expanded, site.host))}
+                  aria-controls={"tools-" <> site.host}
+                >
+                  <strong>{metric(site.tool_count)}</strong>
+                  <span>{if site.source == "Source scan", do: "Detected", else: "Reported"}</span>
+                </button>
+              </td>
+              <td class="pb-directory-numeric">
+                <a
+                  href={"/" <> site.domain}
+                  class="pb-directory-posts"
+                  aria-label={"Public posts for " <> site.domain}
+                >
+                  {metric(site.forum_posts)}
+                </a>
               </td>
             </tr>
           </tbody>
@@ -247,19 +286,21 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       <p class="pb-directory-key">
         — Not reported. Forum posts count public threads across the domain, including subdomains.
       </p>
-      <nav :if={@page.pages > 1} class="pb-directory-pagination" aria-label="Directory pages">
-        <a
-          :if={@page.page > 1}
-          class="rg-button rg-button--secondary"
-          href={SiteDirectory.page_url(@page, @page.page - 1)}
-        >← Previous</a>
-        <span>{@page.page} / {@page.pages}</span>
-        <a
+      <div class="pb-directory-pagination">
+        <button
           :if={@page.page < @page.pages}
+          type="button"
+          phx-click="load-more"
+          phx-disable-with="Loading…"
           class="rg-button rg-button--secondary"
-          href={SiteDirectory.page_url(@page, @page.page + 1)}
-        >Next →</a>
-      </nav>
+        >Load more sites</button>
+        <p :if={@page.page == @page.pages and @page.total > 0} role="status">
+          End of results
+        </p>
+        <noscript :if={@page.page < @page.pages}>
+          <a href={SiteDirectory.page_url(@page, @page.page + 1)}>Next sites →</a>
+        </noscript>
+      </div>
       <details class="pb-directory-method">
         <summary>About the data</summary>
         <p>
@@ -274,6 +315,18 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       </details>
     </section>
     """
+  end
+
+  defp subscribe_sites(socket, sites) do
+    domains = MapSet.new(sites, & &1.domain)
+
+    if connected?(socket) do
+      domains
+      |> MapSet.difference(socket.assigns.subscribed)
+      |> Enum.each(&Phoenix.PubSub.subscribe(Patchbay.PubSub, "site_check:" <> &1))
+    end
+
+    assign(socket, subscribed: MapSet.union(socket.assigns.subscribed, domains))
   end
 
   defp refresh_icon(assigns) do

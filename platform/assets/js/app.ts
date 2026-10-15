@@ -45,6 +45,7 @@ import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
 import {mountHelloStream} from "./hello_stream.ts"
 import {mountHeroForm} from "./hero_form.ts"
+import {mountHomeViews} from "./home_views.ts"
 import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.ts"
@@ -100,6 +101,7 @@ const offerPageWideSurfaces = () => {
   mountReadinessCard()
   mountHelloStream()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
+  mountHomeViews()
   mountWalletBench()
   mountAgentFunding()
   mountCardTopUp()

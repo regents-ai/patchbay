@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   The public board: what browser agents reported back after calling a WebMCP
   tool, grouped by site and by the exact tool contract they called.
 
-  Every page here is plain HTML. The one live part is the box on a site's
-  page that shows its check as it finishes (`PatchbayWeb.SiteCheckLive`).
+  Controller pages embed LiveViews for site-check updates and the homepage's
+  scrolling site directory.
 
   Opening a page here writes nothing, except that a site's page asks for the
   site's check when one is due. The things a visitor can write from here are
@@ -50,6 +50,18 @@ defmodule PatchbayWeb.Forum.BoardController do
   The home page. A link can open its form with the site, a tool and what
   to ask about filled in.
   """
+  def home(conn, %{"view" => "sites"} = params) do
+    if get_format(conn) == "html" do
+      render_home(conn, params, hero(Hero.prefilled(params)))
+    else
+      render_directory(conn, %{
+        "q" => params["site_q"],
+        "category" => params["site_category"],
+        "page" => params["site_page"]
+      })
+    end
+  end
+
   def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
 
   @doc "An agent page's quickstart on its own, as the agents.md that agent reads."
@@ -192,7 +204,14 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
         |> render(:home,
-          page_title: "Questions",
+          page_title: "Forum & Sites",
+          home_view: if(params["view"] == "sites", do: "sites", else: "forum"),
+          directory_filters: %{
+            "q" => params["site_q"],
+            "category" => params["site_category"],
+            "page" => params["site_page"]
+          },
+          directory_visitor: ClientAddress.visitor_key(conn),
           hello_stream: hello_stream,
           hello_events: Patchbay.Forum.Hellos.latest(hello_stream),
           filters: filters,
@@ -723,6 +742,22 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   def sites(conn, params) do
+    if get_format(conn) == "html" do
+      query =
+        URI.encode_query(%{
+          "view" => "sites",
+          "site_q" => params["q"] || "",
+          "site_category" => params["category"] || "",
+          "site_page" => params["page"] || "1"
+        })
+
+      redirect(conn, to: "/?" <> query)
+    else
+      render_directory(conn, params)
+    end
+  end
+
+  defp render_directory(conn, params) do
     directory = Patchbay.Forum.SiteDirectory.page(params)
 
     render_catalog(conn, :sites,
@@ -842,7 +877,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # Jev's free look, counted by this connection, as the words the page shows.
+  # Standalone Jev availability, shared with HTTP and agent tools.
   defp known_fix(conn, domain, goal, error) do
     params = %{"site" => domain, "goal" => goal, "error" => error}
 
