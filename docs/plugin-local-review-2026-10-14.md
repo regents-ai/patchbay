@@ -1,5 +1,9 @@
 # Patchbay plugin: local implementation and review
 
+Follow-up: [shared integration and server security review](plugin-integration-review-2026-10-14.md)
+records the later local integration, corrected pins and server fix. This document
+preserves the first pass's dated evidence and limitations.
+
 14 October 2026. This completion pass was implemented and self-reviewed by Codex. No Claude or Opus session was used in this pass.
 
 ## Result and done checklist

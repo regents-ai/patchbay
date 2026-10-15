@@ -32,8 +32,8 @@ config :regent_points,
 # lives in the shared `regent_credits` schema, which Regents migrates; Patchbay
 # reads and writes it through its own Repo, so an Offer bid and its Credits
 # commit together. Admins come from REGENT_CREDITS_ADMINS at runtime. Balance
-# changes from every site reach Patchbay's PubSub, and a purchase Patchbay
-# credits is told to `Patchbay.Credits.Credited`.
+# changes from every site reach Patchbay's PubSub. Credits signals reach
+# `Patchbay.Points.Award`; while Points is off, nothing is queued.
 config :ex_money,
   custom_currencies: [{:XRC, name: "Credits", digits: 6}],
   auto_start_exchange_rate_service: false
@@ -44,7 +44,6 @@ config :regent_credits,
   ash_domains: [RegentCredits],
   admins: [],
   chain_client: Patchbay.ChainClient,
-  on_credited: Patchbay.Credits.Credited,
   chains: %{
     base: %{chain_id: 8453, name: "Base", rpc_url: "https://mainnet.base.org"},
     ethereum: %{chain_id: 1, name: "Ethereum", rpc_url: "https://ethereum-rpc.publicnode.com"}
@@ -146,6 +145,7 @@ config :patchbay,
     Patchbay.Forum,
     Patchbay.Offers,
     Patchbay.CreditsHelp,
+    Patchbay.Points,
     Patchbay.Patchbay,
     Patchbay.WalletBench,
     Patchbay.Accounts

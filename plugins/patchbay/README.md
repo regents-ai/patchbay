@@ -45,8 +45,10 @@ currently excludes that extension. It checks five positive and three negative
 review cases, anonymous read tools and the absence of embedded credentials.
 
 This is a local candidate. OAuth defaults off in the application. Before any future
-release, publish the reviewed shared dependency, integrate its pin, apply additive
-migrations through the normal release path, and explicitly set `PATCHBAY_OAUTH_ENABLED=true`. No local
+release, publish the reviewed shared dependency and template changes, apply the
+additive migrations through the normal release path, and explicitly set
+`PATCHBAY_OAUTH_ENABLED=true`. The shared integration and server fix are verified
+locally; they are not deployed. No local
 check grants release or publication authority. Then exercise real Privy sign-in,
 ChatGPT consent, callback delivery, refresh, disconnect and the repair card in the
 host. Submission also needs the verified publishing account/domain and a

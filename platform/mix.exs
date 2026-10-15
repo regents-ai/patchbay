@@ -4,7 +4,7 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "a844a8363d76420410f1dece69e2c7b0ebec895a"
+  @elixir_utils_ref "edb97f1c1bb7cc9ce1aa02f4646eea18f7f8923d"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "3bfa26412b173e71a4212560d50c06064528b475"
 
@@ -17,7 +17,7 @@ defmodule Patchbay.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      compilers: [:ash_signals, :phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       usage_rules: usage_rules()
     ]
@@ -50,7 +50,7 @@ defmodule Patchbay.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      oauth_dependency(),
+      {:regent_oauth, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "oauth"},
       {:regent_ui, git: @design_system, ref: @design_system_ref, sparse: "regent_ui"},
       {:regent_blog, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "blog"},
       # regent_payments pins its own elixir-utils commit; this pin replaces it.
@@ -72,11 +72,11 @@ defmodule Patchbay.MixProject do
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2"},
-      {:ash, "~> 3.34 and >= 3.34.3"},
+      {:ash, "~> 3.36"},
       {:ash_postgres, "== 2.13.0"},
       {:ash_phoenix, "~> 2.3"},
       {:oban, "~> 2.24"},
-      {:ash_oban, "~> 0.9"},
+      {:ash_oban, "~> 0.10.0"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:simple_sat, "~> 0.1"},
       {:lazy_html, ">= 0.1.0", only: :test},
@@ -112,7 +112,11 @@ defmodule Patchbay.MixProject do
       {:ex_secp256k1, "~> 0.8.0"},
       {:finch, "~> 0.19"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"},
+      # CVE-2026-105659: upstream fix is not in a Hex release yet.
+      {:bandit,
+       git: "https://github.com/mtrudel/bandit.git",
+       ref: "d88b21953c65061f21136ea76a89a4f95a2ac7a1",
+       override: true},
       {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
@@ -125,21 +129,6 @@ defmodule Patchbay.MixProject do
        only: [:dev, :test],
        runtime: false}
     ]
-  end
-
-  # Keep OAuth verification independent of unrelated shared-library edits.
-  defp oauth_dependency do
-    case {Mix.env(), System.get_env("REGENT_OAUTH_PATH")} do
-      {:prod, path} when not is_nil(path) ->
-        raise "local OAuth is forbidden in production"
-
-      {_, nil} ->
-        {:regent_oauth,
-         git: @elixir_utils, ref: "c648155ca4e11805f47672609da1817a21fca120", sparse: "oauth"}
-
-      {_, path} ->
-        {:regent_oauth, path: path}
-    end
   end
 
   # Aliases are shortcuts or tasks specific to the current project.
