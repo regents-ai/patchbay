@@ -7,7 +7,7 @@
  * the same deliberate screen-space breathing room through pointer motion and resize.
  */
 
-import {perspectiveCamera, type SceneCamera} from "vgpu/scene"
+import {orbitRig, perspective, rigPose, viewMatrices, type CameraMatrices} from "vgpu/scene"
 
 import {
   CROWN_AABB_CORNERS,
@@ -24,7 +24,7 @@ export const CROWN_FRAME_MARGIN = 0.22
 const CAMERA_FIT_SAFETY = 1.005
 
 export interface CameraView {
-  readonly camera: SceneCamera
+  readonly camera: CameraMatrices
   /** Projection shifted in clip space without changing the physical view ray. */
   readonly viewProjection: Float32Array
   readonly position: Vec3
@@ -68,16 +68,22 @@ export function cameraView(aspect: number, orbitX = 0, orbitY = 0): CameraView {
   ]
   const forward = normalize([-position[0], -position[1], -position[2]])
   const right = normalize(cross(forward, [0, 1, 0]))
-  const camera = perspectiveCamera({
+  const projection = perspective({
     fov: CAMERA_FOV_DEGREES,
-    aspect,
     // The whole scene sits between the wall at z = 0 and the glass in front of it,
     // so the depth range only has to bracket a couple of units.
     near: 0.05,
     far: 4 * distance,
-    position,
-    target: [0, 0, 0],
+  }, aspect, new Float32Array(16))
+  const pose = rigPose(orbitRig({yaw, pitch, distance}), {
+    position: new Float32Array(3),
+    quaternion: new Float32Array(4),
   })
+  const camera: CameraMatrices = {
+    view: new Float32Array(16),
+    viewProjection: new Float32Array(16),
+  }
+  viewMatrices(pose, projection, camera)
   return {
     camera,
     viewProjection: shiftedViewProjection(

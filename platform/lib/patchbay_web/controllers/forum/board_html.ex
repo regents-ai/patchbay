@@ -350,6 +350,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       class="pb-header-search shell-search-button"
       aria-haspopup="dialog"
       aria-controls="shell-search"
+      aria-label="Search"
       aria-keyshortcuts="Meta+K Control+K"
     >
       <.icon name={:search} class="pb-header-search__icon" />

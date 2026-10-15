@@ -32,6 +32,9 @@ kill_timeout = "60s"
   # opens it, then "public".
   PATCHBAY_SHOWCASE = "off"
 
+  # Privy-backed OAuth grants only read access to ChatGPT event subscriptions.
+  PATCHBAY_OAUTH_ENABLED = "true"
+
 # Read by Fly's own scraper over the private network; never routed publicly.
 [metrics]
   port = 9091

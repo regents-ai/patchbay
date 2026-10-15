@@ -6,7 +6,7 @@ defmodule Patchbay.MixProject do
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
   @elixir_utils_ref "edb97f1c1bb7cc9ce1aa02f4646eea18f7f8923d"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "3bfa26412b173e71a4212560d50c06064528b475"
+  @design_system_ref "58539470bfe7ecac088f163a2b283e328d5c2b65"
 
   def project do
     [

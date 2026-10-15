@@ -9,6 +9,7 @@
  */
 
 import {draw, effect, frame, sampler, target} from "vgpu"
+import {prepareShader} from "@vgpu/wgsl/prepare"
 import type {Draw, Effect, Geometry, Gpu, Surface, Target} from "vgpu"
 
 import {cameraView, rotationMatrix, type CameraView} from "./camera"
@@ -26,14 +27,23 @@ import {
   type CrownVariant,
   type Vec2,
 } from "./crown-types"
-import bloomUpsampleWgsl from "./shaders/bloom-upsample"
-import bloomWgsl from "./shaders/bloom"
-import copyLinearWgsl from "./shaders/copy-linear"
-import crownGlassBackWgsl from "./shaders/crown-glass-back"
-import crownGlassFrontWgsl from "./shaders/crown-glass-front"
-import crownLightWgsl from "./shaders/crown-light"
-import presentWgsl from "./shaders/present"
-import {backgroundWgsl} from "../background/shader"
+import bloomUpsampleSource from "./shaders/bloom-upsample"
+import bloomSource from "./shaders/bloom"
+import copyLinearSource from "./shaders/copy-linear"
+import crownGlassBackSource from "./shaders/crown-glass-back"
+import crownGlassFrontSource from "./shaders/crown-glass-front"
+import crownLightSource from "./shaders/crown-light"
+import presentSource from "./shaders/present"
+import {backgroundWgsl as backgroundSource} from "../background/shader"
+
+const bloomUpsampleWgsl = prepareShader(bloomUpsampleSource, "bloom-upsample.wgsl")
+const bloomWgsl = prepareShader(bloomSource, "bloom.wgsl")
+const copyLinearWgsl = prepareShader(copyLinearSource, "copy-linear.wgsl")
+const crownGlassBackWgsl = prepareShader(crownGlassBackSource, "crown-glass-back.wgsl")
+const crownGlassFrontWgsl = prepareShader(crownGlassFrontSource, "crown-glass-front.wgsl")
+const crownLightWgsl = prepareShader(crownLightSource, "crown-light.wgsl")
+const presentWgsl = prepareShader(presentSource, "present.wgsl")
+const backgroundWgsl = prepareShader(backgroundSource, "background.wgsl")
 
 const BLOOM_LEVELS = 4
 type BloomTargets = readonly [Target, Target, Target, Target]
