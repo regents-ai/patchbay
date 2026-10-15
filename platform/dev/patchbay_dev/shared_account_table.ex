@@ -1,8 +1,9 @@
-defmodule Patchbay.SharedAccountTable do
+defmodule PatchbayDev.SharedAccountTable do
   @moduledoc """
   The shared Regent account table, which Regents owns and migrates in
   production, in the shape the Regent template's local fixture gives it. A
-  test database gets it from these statements.
+  database on this machine gets it from these statements
+  (`mix shared_account_table.create`).
   """
 
   def statements do

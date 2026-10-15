@@ -40,7 +40,8 @@ defmodule Patchbay.MixProject do
   end
 
   # Specifies which paths to compile per environment.
-  # `dev/` holds the payments lab, which only a machine of ours ever runs.
+  # `dev/` holds the payments lab, which only a machine of ours ever runs, and
+  # the shared account table a database on this machine gets.
   defp elixirc_paths(:test), do: ["lib", "dev", "test/support"]
   defp elixirc_paths(:dev), do: ["lib", "dev"]
   defp elixirc_paths(_), do: ["lib"]
@@ -159,15 +160,21 @@ defmodule Patchbay.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": [
         "ecto.create",
+        "shared_account_table.create",
         "ecto.migrate",
         "regent_payments.migrate",
         "regent_agents.migrate",
-        "regent_credits.migrate"
+        "regent_credits.migrate",
+        "regent_points.migrate"
       ],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      # The shared payment records', agent pairings' and Credits' own schemas, for a
-      # database on this machine. Production's are migrated by Regents, never
-      # from here.
+      # The shared account table, which Patchbay's migrations refer to, and the
+      # shared payment records', agent pairings', Credits' and Points' own schemas,
+      # for a database on this machine. Production's are migrated by Regents,
+      # never from here.
+      "shared_account_table.create": [
+        "run --no-start -e 'Ecto.Migrator.with_repo(Patchbay.Repo, fn repo -> Enum.each(PatchbayDev.SharedAccountTable.statements(), &repo.query!/1) end)'"
+      ],
       "regent_payments.migrate": [
         "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPayments.Migrator.up(Patchbay.Repo)'"
       ],
@@ -177,11 +184,12 @@ defmodule Patchbay.MixProject do
       "regent_credits.migrate": [
         "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentCredits.Migrator.up(Patchbay.Repo)'"
       ],
-      # Patchbay's migrations refer to the shared account table, which Regents owns
-      # and migrates in production, so a test database gets it before migrating.
+      "regent_points.migrate": [
+        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPoints.Migrator.up(Patchbay.Repo)'"
+      ],
       test: [
         "ecto.create --quiet",
-        "run --no-start -e 'Ecto.Migrator.with_repo(Patchbay.Repo, fn repo -> Enum.each(Patchbay.SharedAccountTable.statements(), &repo.query!/1) end)'",
+        "shared_account_table.create",
         "ecto.migrate --quiet",
         "test"
       ],

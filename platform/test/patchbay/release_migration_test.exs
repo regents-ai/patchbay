@@ -130,7 +130,7 @@ defmodule Patchbay.ReleaseMigrationTest do
     {:ok, connection} = Postgrex.start_link(database)
 
     try do
-      for statement <- Patchbay.SharedAccountTable.statements(),
+      for statement <- PatchbayDev.SharedAccountTable.statements(),
           do: Postgrex.query!(connection, statement, [])
     after
       GenServer.stop(connection)
