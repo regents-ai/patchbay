@@ -147,18 +147,19 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site directory catalog" do
-    test "/sites shows every site with WebMCP tools and the homepage links to it", %{conn: conn} do
-      Rooms.create_seeded_room!("room-one")
+    test "/sites opens the listed sites, each linking to its forum, and the homepage links to it",
+         %{conn: conn} do
       home = conn |> get(~p"/") |> html_response(200)
       html = conn |> get(~p"/sites") |> html_response(200)
 
       hrefs =
         html
         |> LazyHTML.from_document()
-        |> LazyHTML.query("a.pb-dir-card")
+        |> LazyHTML.query("a.pb-directory-posts")
         |> LazyHTML.attribute("href")
 
-      assert Enum.sort(hrefs) == ["/nested.deals", "/patchbay.help", "/shopify.com"]
+      assert length(hrefs) == 30
+      assert "/target.com" in hrefs
       assert home =~ ~s(<a class="pb-directory-link" href="/sites">)
     end
   end

@@ -29,11 +29,17 @@ export function mountHomeViews(): void {
     }
   }
 
+  // Each view keeps its own address, filters included, so switching back restores it.
+  const addresses: Record<string, string> = {}
+
   for (const tab of tabs) {
     tab.addEventListener("click", event => {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
       event.preventDefault()
-      if (new URL(tab.href).pathname !== window.location.pathname) window.history.pushState(null, "", tab.href)
+      const here = window.location.pathname + window.location.search
+      addresses[selector.dataset.view!] = here
+      const target = addresses[tab.dataset.homeView!] ?? new URL(tab.href).pathname
+      if (target !== here) window.history.pushState(null, "", target)
       select(tab.dataset.homeView!, event.detail === 0)
     })
     tab.addEventListener("keydown", event => {

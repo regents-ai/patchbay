@@ -194,7 +194,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         {showcase, more_showcase?} = showcase(Board.list_showcase(11))
 
         conn
-        |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
+        |> put_status(
+          if reports == :unavailable and view == "forum", do: :service_unavailable, else: :ok
+        )
         |> render(:home,
           page_title: if(view == "sites", do: "Sites", else: "Forum"),
           home_view: view,

@@ -10,8 +10,9 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert html =~ ~s(aria-label="Question lists")
 
-    assert html =~ ~s(id="pb-search" class="pb-header-search" data-open-search)
-    assert html =~ ~s(id="search-dialog")
+    assert html =~ ~s(id="shell-search-button")
+    assert html =~ ~s(aria-controls="shell-search")
+    assert html =~ ~s(id="shell-search")
 
     assert html =~ ~s(id="patchbay-home")
     refute html =~ ~s(id="patchbay-crown")

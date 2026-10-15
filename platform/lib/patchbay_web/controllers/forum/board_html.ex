@@ -347,7 +347,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <button
       type="button"
       id="shell-search-button"
-      aria-label="Search"
       class="pb-header-search shell-search-button"
       aria-haspopup="dialog"
       aria-controls="shell-search"

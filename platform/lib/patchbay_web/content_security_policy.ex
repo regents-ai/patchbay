@@ -69,7 +69,6 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
       "https://explorer-api.walletconnect.com",
       "https://www.google.com",
       "https://*.gstatic.com",
-      "https://cdn.brandfetch.io",
       "https://regents.sh",
       "https://*.stripe.com",
       "https://*.link.com"

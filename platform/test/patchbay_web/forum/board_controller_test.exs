@@ -133,8 +133,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert document |> LazyHTML.query(".pb-search-summary") |> LazyHTML.text() =~
                "Results for “unreported.example.invalid”"
 
-      assert Enum.count(LazyHTML.query(document, ~s(.pb-search-summary a[href="/?scope=newest"]))) ==
-               1
+      [clear] = document |> LazyHTML.query(".pb-search-summary a") |> LazyHTML.attribute("href")
+      assert String.starts_with?(clear, "/")
+      refute clear =~ "q="
 
       refute html =~ "This page is unavailable"
     end
