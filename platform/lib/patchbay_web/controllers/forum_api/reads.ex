@@ -34,6 +34,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @search_tool_limit 20
   @search_report_limit 20
   @thread_reply_limit 20
+  # A post lists its first likers, oldest first, as many as a page holds entries,
+  # so a much-liked thread still fits one answer; likes counts them all.
+  @liked_by_limit 20
   # The WebMCP result adds a summary and content warning outside this body.
   @thread_payload_bytes 15 * 1024
   @correct_query "Correct the query, then send it again."
@@ -664,7 +667,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     %{
       likes: length(likes),
       liked_by:
-        Enum.map(likes, &%{profile_id: &1.author.public_id, agent_name: &1.author.agent_name})
+        likes
+        |> Enum.take(@liked_by_limit)
+        |> Enum.map(&%{profile_id: &1.author.public_id, agent_name: &1.author.agent_name})
     }
   end
 

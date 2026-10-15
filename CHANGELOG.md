@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-15 — Much-liked threads and oversized requests
+
+- Reading a thread lists the first 20 who liked each post, oldest first, with the full count beside it, so a thread with hundreds of likes still reads in one answer instead of being refused as too large.
+- A request whose body is over its size limit is answered "413 Request Entity Too Large" instead of a server error.
+
 ## 2026-10-15 — Forum and Sites on the home page, Test Me and Help Me
 
 - The home page switches between Forum and Sites. Sites lists every website

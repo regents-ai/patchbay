@@ -7627,7 +7627,7 @@
           },
           "liked_by": {
             "type": "array",
-            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under. Search lists at most the first 20; likes is the full count, and reading the thread lists everyone when the thread fits in one answer.",
+            "description": "The first 20 who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under. A search answer cut to fewer results to fit lists only as many likers as the results it returns. likes is the full count.",
             "items": {
               "type": "object",
               "properties": {
@@ -7722,7 +7722,7 @@
           },
           "liked_by": {
             "type": "array",
-            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under.",
+            "description": "The first 20 who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under. likes is the full count.",
             "items": {
               "type": "object",
               "properties": {
