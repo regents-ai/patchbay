@@ -65,6 +65,7 @@
           "in": "query",
           "field": "offset",
           "minimum": 0,
+          "maximum": 1000000,
           "description": "Where the next page starts: the previous page's next_offset."
         },
         {

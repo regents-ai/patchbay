@@ -218,10 +218,11 @@
             "name": "offset",
             "in": "query",
             "required": false,
-            "description": "Continue from pagination.next_offset.",
+            "description": "Continue from pagination.next_offset. A whole number from 0 to 1000000; any other offset is refused with 422.",
             "schema": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 1000000
             }
           },
           {

@@ -33,6 +33,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   @search_tool_limit 20
   @search_report_limit 20
+  @max_search_offset 1_000_000
   @thread_reply_limit 20
   # A post lists its first likers, oldest first, as many as a page holds entries,
   # so a much-liked thread still fits one answer; likes counts them all.
@@ -85,8 +86,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
          {:ok, site} <- search_site(origin),
          {:ok, since} <- since_minutes(params["since_minutes"]),
+         {:ok, offset} <- search_offset(params["offset"]),
          {:ok, tools} <- search_tools(site, tool_name),
-         {:ok, page} <- thread_search(q, tool_name, site, since, params) do
+         {:ok, page} <- thread_search(q, tool_name, site, since, params["sort"], offset) do
       search_payload(
         q,
         origin,
@@ -341,11 +343,11 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   # Explicit ordering reads the same feed as the website, including without a filter.
   # Omitting sort retains the existing full-text search contract.
-  defp thread_search(_q, _tool, :empty, _since, %{"sort" => sort})
+  defp thread_search(_q, _tool, :empty, _since, sort, _offset)
        when sort in ["recent", "popular"],
        do: {:ok, %{results: [], more?: false, offset: 0}}
 
-  defp thread_search(q, tool, site, since, %{"sort" => sort} = params)
+  defp thread_search(q, tool, site, since, sort, offset)
        when sort in ["recent", "popular"] do
     filters = %{
       q: q || "",
@@ -361,22 +363,20 @@ defmodule PatchbayWeb.ForumAPI.Reads do
            Forum.list_feed_reports(
              query: Patchbay.Forum.Feed.query(filters),
              load: @thread_search_loads,
-             page: [limit: @search_report_limit, offset: search_offset(params)]
+             page: [limit: @search_report_limit, offset: offset]
            ),
-         do: {:ok, Map.put(page, :offset, search_offset(params))}
+         do: {:ok, Map.put(page, :offset, offset)}
   end
 
-  defp thread_search(nil, nil, nil, _since, _params) do
+  defp thread_search(nil, nil, nil, _since, _sort, _offset) do
     {:error,
      {:invalid, ["Name a site, a tool, or words to look for, so there is something to look for."]}}
   end
 
-  defp thread_search(_q, _tool_name, :empty, _since, _params),
+  defp thread_search(_q, _tool_name, :empty, _since, _sort, _offset),
     do: {:ok, %{results: [], more?: false, offset: 0}}
 
-  defp thread_search(nil, nil, site, since, params) do
-    offset = search_offset(params)
-
+  defp thread_search(nil, nil, site, since, _sort, offset) do
     {:ok,
      site.id
      |> Forum.list_threads_for_site!(
@@ -390,9 +390,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # A term searches the words threads and their replies actually carry. A tool
   # name narrows to threads about that name — observed or only reported — on
   # top of whatever else the term matched.
-  defp thread_search(q, tool_name, site, since, params) do
+  defp thread_search(q, tool_name, site, since, _sort, offset) do
     term = q || tool_name
-    offset = search_offset(params)
 
     {:ok,
      Forum.search_threads!(
@@ -425,11 +424,24 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp since_filter(%DateTime{} = since),
     do: [filter: expr(last_activity_at >= ^since)]
 
-  defp search_offset(params) do
-    case Integer.parse(params["offset"] || "") do
-      {n, ""} when n >= 0 -> n
-      _ -> 0
+  # An offset is where pagination.next_offset left off; none is the start.
+  defp search_offset(nil), do: {:ok, 0}
+
+  defp search_offset(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {offset, ""} when offset in 0..@max_search_offset -> {:ok, offset}
+      _unreadable -> offset_refused()
     end
+  end
+
+  defp search_offset(_value), do: offset_refused()
+
+  defp offset_refused do
+    {:error,
+     {:invalid,
+      [
+        "offset: give a whole number from 0 to #{@max_search_offset}, as pagination.next_offset gives it."
+      ]}}
   end
 
   defp search_payload(q, origin, tool_name, tools, page, audience, offers) do

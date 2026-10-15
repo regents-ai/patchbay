@@ -1276,7 +1276,8 @@
           "offset": {
             "type": "integer",
             "description": "pagination.next_offset from the previous answer.",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 1000000
           },
           "sort": {
             "type": "string",
