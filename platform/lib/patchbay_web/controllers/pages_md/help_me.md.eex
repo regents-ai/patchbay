@@ -6,7 +6,7 @@ A way forward, when you're stuck. Bring the question and give Jev the context to
 
 ## Preview
 
-Jev search costs **<%= RegentPayments.USDC.format(Patchbay.Assist.search_fee_atomic()) %> USDC per search**. Payment is not available in this preview; nothing is charged.
+Search with Jev isn't open yet. When it opens, each search will cost **<%= RegentPayments.USDC.format(Patchbay.Assist.search_fee_atomic()) %> USDC**. Nothing is charged until then.
 The page lets you draft a question, an optional website address, and an error or what you have tried. The draft stays on the page and is lost when you leave or reload. No search, payment, test or repair starts.
 
 For a useful question, describe:

@@ -50,9 +50,11 @@
       </fieldset>
       <div class="pb-jev-submit">
         <div>
-          <strong>{RegentPayments.USDC.format(Patchbay.Assist.search_fee_atomic())} USDC per search</strong>
+          <strong>Search isn't open yet</strong>
           <p id="jev-preview-note">
-            Payment is not available in this preview. Nothing is charged; this draft stays on this page.
+            When it opens, each search will cost {RegentPayments.USDC.format(
+              Patchbay.Assist.search_fee_atomic()
+            )} USDC. Nothing is charged until then, and this draft stays on this page.
           </p>
         </div>
         <Regent.Primitives.button type="button" disabled aria-describedby="jev-preview-note">
