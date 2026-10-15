@@ -3,10 +3,10 @@
 <%= @directory.total %> matching sites · page <%= @directory.page %> of <%= @directory.pages %>.
 Search: `/sites?q=example&category=Commerce&page=1`.
 
-| Website | Tools | Source | Last update | Discussion |
+| Website | WebMCP tools | Forum posts | Source | Last scan |
 | --- | --- | --- | --- | --- |
 <%= for site <- @directory.sites do %>
-<%= row(["[" <> site.name <> "](" <> site.page_url <> ")", length(site.tools), site.source, site.checked_at || "Not checked by Patchbay", "[Forum](/" <> site.domain <> ")"]) %>
+<%= row(["[" <> site.name <> "](" <> site.page_url <> ")", site.tool_count || "Unknown", "[" <> to_string(site.forum_posts || "Unknown") <> "](/" <> site.domain <> ")", site.source, site.checked_at || "Not checked by Patchbay"]) %>
 <% end %>
 
 <%= if @directory.page < @directory.pages do %>
@@ -15,6 +15,7 @@ Search: `/sites?q=example&category=Commerce&page=1`.
 
 Anyone can request an update on [the directory](/sites) after its 24-hour cache expires.
 Updates read public page source without signing in or calling tools. Browser-only registrations may be missed.
-Imported tool names remain reported research until checked; failed checks keep previous information.
+Imported tool counts remain reported research until checked; counts may exceed the recorded tool names.
+Failed checks keep previous information. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
 
 <%= trailer() %>

@@ -6,7 +6,7 @@ claiming an installed version supports them. Other commands are described in
 
 ## Public catalog reads (source only)
 
-`sites list` searches the same full directory as `/sites`,30sites per page.
+`sites list` searches the same full directory as `/sites`,30sites per page. Tool counts may be reported totals with fewer recorded names. Forum totals count public threads across the domain.
 Use `--q`, `--category` and `--page`; the response's pagination describes the next
 page. Tool names are reported research or cached page-source observations;
 source scans can miss browser-only tools. Reading does not request an update.

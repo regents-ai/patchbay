@@ -3,10 +3,13 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   require Ash.Query
 
-  alias Patchbay.Forum.{Origin, SiteCheck}
+  alias Patchbay.Forum.{Origin, Site, SiteCheck}
 
   @external_resource "priv/data/site_directory.json"
   @document Jason.decode!(File.read!(@external_resource))
+  @external_resource "priv/data/webmcp_sites.json"
+  @logos Jason.decode!(File.read!("priv/data/webmcp_sites.json"))["entries"]
+         |> Map.new(&{&1["origin"], &1["logo_path"]})
   @entries for entry <- @document["sites"],
                {:ok, domain} <- [Origin.normalize(entry["host"])],
                do: Map.put(entry, "domain", domain)
@@ -27,11 +30,37 @@ defmodule Patchbay.Forum.SiteDirectory do
     selected = select(params)
     domains = selected.sites |> Enum.map(&domain/1) |> Enum.uniq()
 
-    case SiteCheck |> Ash.Query.filter(domain in ^domains) |> Ash.read() do
-      {:ok, checks} -> decorate(selected, Map.new(checks, &{&1.domain, &1}), true)
-      {:error, _failure} -> decorate(selected, %{}, false)
-    end
+    page =
+      case SiteCheck |> Ash.Query.filter(domain in ^domains) |> Ash.read() do
+        {:ok, checks} -> decorate(selected, Map.new(checks, &{&1.domain, &1}), true)
+        {:error, _failure} -> decorate(selected, %{}, false)
+      end
+
+    # One public aggregate read for the visible domains. Hidden posts never count.
+    result =
+      Site
+      |> Ash.Query.filter(origin in ^domains)
+      |> Ash.Query.select([:origin, :logo_path])
+      |> Ash.Query.load(:report_count)
+      |> Ash.read()
+
+    with_forum(page, result)
   end
+
+  def with_forum(page, {:error, _failure}), do: page
+
+  def with_forum(page, {:ok, sites}) do
+    sites = Map.new(sites, &{&1.origin, &1})
+
+    Map.update!(page, :sites, fn entries ->
+      Enum.map(entries, &attach_forum(&1, Map.get(sites, &1.domain)))
+    end)
+  end
+
+  defp attach_forum(entry, nil), do: %{entry | forum_posts: 0}
+
+  defp attach_forum(entry, site),
+    do: %{entry | forum_posts: site.report_count, logo_path: site.logo_path || entry.logo_path}
 
   @doc "Filter and paginate the saved public listing without a database read."
   def select(params) do
@@ -73,13 +102,14 @@ defmodule Patchbay.Forum.SiteDirectory do
   end
 
   defp replace_entry(%{domain: domain} = site, %{domain: domain} = check),
-    do: entry(site.seed, check)
+    do: Map.merge(entry(site.seed, check), Map.take(site, [:forum_posts, :logo_path]))
 
   defp replace_entry(site, _check), do: site
 
   def entry(seed, check) do
     snapshot = snapshot(seed, (check && check.findings) || %{})
     observed = snapshot && snapshot["tools"]
+    tools = Enum.uniq_by(observed || seed["tools"], & &1["name"])
 
     %{
       seed: seed,
@@ -88,7 +118,11 @@ defmodule Patchbay.Forum.SiteDirectory do
       name: seed["name"],
       category: seed["category"],
       page_url: seed["url"],
-      tools: Enum.uniq_by(observed || seed["tools"], & &1["name"]),
+      tools: tools,
+      tool_count: if(observed, do: length(tools), else: reported_count(seed, tools)),
+      reported_observation: seed["reported_observation"],
+      forum_posts: nil,
+      logo_path: Map.get(@logos, domain(seed)),
       checked_at: snapshot && snapshot["checked_at"],
       failed?: failed?(snapshot, check),
       pending?: pending?(check),
@@ -98,7 +132,16 @@ defmodule Patchbay.Forum.SiteDirectory do
     }
   end
 
-  defp entry_pages(seed), do: Enum.uniq([seed["url"] | Enum.map(seed["tools"], & &1["address"])])
+  defp reported_count(%{"reported_tool_count" => count}, _tools), do: count
+  defp reported_count(_seed, []), do: nil
+  defp reported_count(_seed, tools), do: length(tools)
+
+  defp entry_pages(seed),
+    do:
+      Enum.uniq(
+        [seed["url"] | Enum.map(seed["tools"], & &1["address"])] ++
+          Map.get(seed, "additional_urls", [])
+      )
 
   defp snapshot(seed, findings) do
     snapshots = Enum.map(entry_pages(seed), &get_in(findings, ["directory", &1]))

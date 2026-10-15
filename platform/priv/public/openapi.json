@@ -9798,15 +9798,20 @@
             "type": "string"
           },
           "tools": {
-            "type": "integer",
-            "minimum": 0
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Distinct detected tools, or a reported site count. Null when unknown; a reported total may exceed the recorded tool inventory."
           },
           "discussions": {
             "type": [
               "integer",
               "null"
             ],
-            "minimum": 0
+            "minimum": 0,
+            "description": "All-time published top-level Patchbay posts for the registrable domain, including subdomains. Excludes hidden posts and replies. Null if the read is unavailable."
           },
           "relationship": {
             "type": [
@@ -9871,6 +9876,54 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "reported_tool_observation": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "description": "Attributed CSV report, retained separately from named tool inventories and live source scans. Not a simultaneous homepage measurement.",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "source": {
+                "type": "string"
+              },
+              "source_url": {
+                "type": "string"
+              },
+              "retrieved_date": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "snapshot_date": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "count",
+              "source",
+              "source_url",
+              "snapshot_date",
+              "retrieved_date",
+              "scope",
+              "url",
+              "evidence"
+            ]
           }
         },
         "required": [

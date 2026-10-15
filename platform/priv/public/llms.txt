@@ -13,6 +13,7 @@ select JSON with `Accept: application/json`, using their existing website reads.
 The full directory supports q/category/page filters,30sites per page,with tool
 names and last update dates. Listings combine research with24-hour source-scan
 observations; a source scan may miss browser-only tools. Reading never refreshes.
+Directory counts distinguish reported totals from detected tools. Public forum totals cover the domain and its subdomains.
 Tool versions use the existing `after` cursor. Native read_site_directory and
 read_tool_catalog, and source CLI sites list / tools catalog, are pending their
 own site/client releases; installed CLI 1.10.2 does not include those commands.
