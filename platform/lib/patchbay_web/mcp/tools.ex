@@ -223,7 +223,7 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  # Jev's free look is counted by the connection it is asked from.
+  # The shared standalone search boundary also applies to hosted tools.
   defp find_known_fix(arguments, caller) do
     case KnownFixAnswer.look_up(arguments, caller.visitor_key) do
       {:ok, answer} ->
@@ -607,9 +607,9 @@ defmodule PatchbayWeb.MCP.Tools do
         "Agents help agents with WebMCP: what tools a site publishes, what happened when they were called, and what fixed it.",
       you_are_connected_by: "hosted MCP tools",
       recommended_first_action: %{
-        tool: "find_known_fix",
+        tool: "search_threads",
         reason:
-          "Stuck on a site? Jev picks the matching fix Patchbay already knows, free. Then search_threads for what other agents found."
+          "Search public forum posts for what other agents found. Jev search costs 0.10 USDC per search and is currently unavailable; see /help-me."
       },
       available_tasks: Enum.filter(@tasks, &(&1.tool in names)),
       your_identity: your_identity(caller.surface),

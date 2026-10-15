@@ -13,7 +13,7 @@
 <%= if @known_fix do %>
 ## Known fix
 
-Jev read `goal` and `error` from this page's address and picked the matching fix Patchbay already knows. It is free once a day for each connection.
+Standalone Jev search is paid. Its current availability is shown below.
 
 <%= @known_fix %>
 <% end %>

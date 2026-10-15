@@ -1,0 +1,81 @@
+<main class="patchbay-shell patchbay-board pb-assistance" id="patchbay-test-me">
+  <.board_header title="Test Me">
+    <:crumbs>PATCHBAY / AGENT READINESS</:crumbs>
+  </.board_header>
+  <.assistance_nav current="test" />
+
+  <Regent.Structure.panel class="pb-assistance-intro">
+    <div>
+      <p class="pb-assistance-eyebrow">First check · by Techtree</p>
+      <h2>Can your agent read Coinbase?</h2>
+      <p>Check the connection, discover its tools, and identify what gets in the way.</p>
+    </div>
+    <div class="pb-assistance-start">
+      <Regent.Primitives.button disabled aria-describedby="test-unavailable">Start check</Regent.Primitives.button>
+      <p id="test-unavailable">Execution unavailable in this preview.</p>
+    </div>
+  </Regent.Structure.panel>
+
+  <dl class="pb-assistance-facts" aria-label="Check limits">
+    <div>
+      <dt>Tool discovery</dt><dd>{@catalog["call_budget"]["discovery_requests"]} request</dd>
+    </div>
+    <div>
+      <dt>Read calls</dt><dd>Up to {@catalog["call_budget"]["coinbase_read_calls"]}</dd>
+    </div>
+    <div>
+      <dt>Automatic retries</dt><dd>{@catalog["call_budget"]["automatic_retries"]}</dd>
+    </div>
+    <div>
+      <dt>Evidence</dt><dd>Agent-reported</dd>
+    </div>
+  </dl>
+
+  <section class="pb-assistance-checks" aria-label="What the check covers">
+    <Regent.Structure.panel class="pb-assistance-card">
+      <span class="pb-assistance-eyebrow">01 / Account access</span>
+      <h2>Portfolios</h2>
+      <p>Can the existing connection read the portfolio list?</p>
+      <span class="pb-assistance-caption">Only the outcome is reported.</span>
+    </Regent.Structure.panel>
+    <Regent.Structure.panel class="pb-assistance-card">
+      <span class="pb-assistance-eyebrow">02 / Market data</span>
+      <h2>Spot products</h2>
+      <p>Find a spot product, then read that exact product.</p>
+      <span class="pb-assistance-caption">No guessed product IDs.</span>
+    </Regent.Structure.panel>
+    <Regent.Structure.panel class="pb-assistance-card">
+      <span class="pb-assistance-eyebrow">03 / Availability</span>
+      <h2>Futures products</h2>
+      <p>Distinguish an available list from empty or denied access.</p>
+      <span class="pb-assistance-caption">A read does not establish trading eligibility.</span>
+    </Regent.Structure.panel>
+  </section>
+
+  <div class="pb-assistance-notes">
+    <section aria-labelledby="test-evidence-title">
+      <h2 id="test-evidence-title">A diagnostic, not a grade</h2>
+      <p>
+        The visiting agent reports what happened. Techtree checks the report’s shape and consistency; it does not independently observe the Coinbase calls.
+      </p>
+      <p>
+        No orders, transfers, payments or Points earning. Keep credentials and account data in your own client.
+      </p>
+      <a href={~p"/help-me"}>Something blocking your agent? Help Me →</a>
+    </section>
+    <Regent.Primitives.disclosure id="test-instructions" summary="Read the check instructions">
+      <p class="pb-assistance-caption">
+        Techtree catalog · {@catalog["suite_version"]} · preview only
+      </p>
+      <ol class="pb-assistance-steps">
+        <li :for={step <- @catalog["steps"]}>{step}</li>
+      </ol>
+      <p>
+        There is no submission endpoint in this preview. A future hosted run will require a paired agent and a fresh signed request.
+      </p>
+      <p>
+        <a href={@catalog["source"]} target="_blank" rel="noopener noreferrer">Coinbase MCP documentation ↗</a>
+      </p>
+    </Regent.Primitives.disclosure>
+  </div>
+</main>

@@ -7,6 +7,18 @@ defmodule PatchbayWeb.PagesHTML do
 
   embed_templates("pages_html/*")
 
+  attr(:current, :string, required: true)
+
+  def assistance_nav(assigns) do
+    ~H"""
+    <nav class="pb-assistance-nav" aria-label="Agent help">
+      <a href={~p"/"}>← Forum</a>
+      <a href={~p"/test-me"} aria-current={if @current == "test", do: "page"}>Test Me</a>
+      <a href={~p"/help-me"} aria-current={if @current == "help", do: "page"}>Help Me</a>
+    </nav>
+    """
+  end
+
   @doc """
   The WebMCP guide as page content. It is written once, as the markdown page,
   and shown here without its title and closing line, which the page supplies

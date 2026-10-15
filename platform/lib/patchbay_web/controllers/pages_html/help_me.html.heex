@@ -1,0 +1,126 @@
+<main class="patchbay-shell patchbay-board pb-assistance pb-jev" id="patchbay-help-me">
+  <.board_header title="Help Me">
+    <:crumbs>PATCHBAY / JEV</:crumbs>
+  </.board_header>
+  <.assistance_nav current="help" />
+
+  <div class="pb-jev-heading">
+    <div>
+      <p class="pb-assistance-eyebrow">Jev · Paid search</p>
+      <h2>A way forward, when you're stuck.</h2>
+      <p>Bring the question. Give Jev the context to look for an answer.</p>
+    </div>
+    <span class="pb-jev-preview">Preview</span>
+  </div>
+
+  <div class="pb-jev-workspace">
+    <Regent.Structure.panel class="pb-jev-composer">
+      <fieldset aria-describedby="jev-preview-note">
+        <legend>What are you trying to do?</legend>
+        <label class="pb-jev-label" for="jev-question">Your question</label>
+        <textarea
+          id="jev-question"
+          name="question"
+          rows="5"
+          maxlength="4000"
+          placeholder="I'm trying to connect my agent to a website, but its tools aren't appearing…"
+        ></textarea>
+        <label class="pb-jev-label" for="jev-site">Website <span>Optional</span></label>
+        <input
+          id="jev-site"
+          name="site"
+          type="url"
+          placeholder="https://example.com"
+          maxlength="2048"
+        />
+        <details class="pb-jev-context">
+          <summary>Add an error or what you've tried</summary>
+          <label class="pb-jev-label" for="jev-context">Extra context</label>
+          <textarea
+            id="jev-context"
+            name="context"
+            rows="3"
+            maxlength="4000"
+            placeholder="The tool name, exact error, and anything you've already tried."
+          ></textarea>
+        </details>
+        <p class="pb-assistance-caption">
+          Leave out passwords, API keys and private account details.
+        </p>
+      </fieldset>
+      <div class="pb-jev-submit">
+        <div>
+          <strong>{RegentPayments.USDC.format(Patchbay.Assist.search_fee_atomic())} USDC per search</strong>
+          <p id="jev-preview-note">
+            Payment is not available in this preview. Nothing is charged; this draft stays on this page.
+          </p>
+        </div>
+        <Regent.Primitives.button type="button" disabled aria-describedby="jev-preview-note">
+          Search with Jev →
+        </Regent.Primitives.button>
+      </div>
+    </Regent.Structure.panel>
+
+    <aside class="pb-jev-guide" aria-labelledby="jev-guide-title">
+      <p class="pb-assistance-eyebrow">A little context goes a long way</p>
+      <h2 id="jev-guide-title">Start with the goal.</h2>
+      <ol>
+        <li>
+          <span>01</span><div>
+            <strong>The outcome</strong><p>What should your agent be able to do?</p>
+          </div>
+        </li>
+        <li>
+          <span>02</span><div>
+            <strong>The sticking point</strong><p>Which site or tool is getting in the way?</p>
+          </div>
+        </li>
+        <li>
+          <span>03</span><div>
+            <strong>What happened</strong><p>
+              An exact error is more useful than “it doesn't work.”
+            </p>
+          </div>
+        </li>
+      </ol>
+      <p class="pb-assistance-caption">No search or payment starts in this preview.</p>
+    </aside>
+  </div>
+
+  <section class="pb-jev-examples" aria-labelledby="jev-examples-title">
+    <div class="pb-jev-examples-heading">
+      <div>
+        <p class="pb-assistance-eyebrow">20 decision trials · 5 candidates</p>
+        <h2 id="jev-examples-title">See the next step Jev picked.</h2>
+      </div>
+      <p class="pb-assistance-caption">
+        Constructed problems using real tool definitions. Jev selected these suggestions; outcomes on the websites are not yet verified.
+      </p>
+    </div>
+    <div class="pb-jev-example-grid">
+      <Regent.Structure.panel :for={example <- @examples} class="pb-jev-example">
+        <p class="pb-assistance-eyebrow">{example["category"]} · {example["site"]}</p>
+        <h3>{example["title"]}</h3>
+        <p>{example["prompt"]}</p>
+        <div class="pb-jev-example-answer">
+          <span class="pb-assistance-eyebrow">Jev's selection</span>
+          <p>{example["next_step"]}</p>
+        </div>
+        <details>
+          <summary>Tools &amp; evidence</summary>
+          <p><code>{Enum.join(example["tools"], ", ")}</code></p>
+          <p class="pb-assistance-caption">
+            Based on published tool captures. Real Jev decision call; no website tool execution. This is not a customer success story.
+          </p>
+        </details>
+      </Regent.Structure.panel>
+    </div>
+  </section>
+
+  <section class="pb-jev-alternatives" aria-label="Other ways to get help">
+    <span>Explore on your own</span>
+    <a href="/?view=forum#pb-discussions">Search the forum ↗</a>
+    <a href="/?view=sites">Browse sites ↗</a>
+    <a href={~p"/test-me"}>Test Me ↗</a>
+  </section>
+</main>

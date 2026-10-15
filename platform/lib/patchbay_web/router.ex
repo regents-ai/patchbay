@@ -32,6 +32,8 @@ defmodule PatchbayWeb.Router do
     get "/blog", BlogController, :index
     get "/blog/:slug", BlogController, :show
     get "/help", PagesController, :help
+    get "/test-me", PagesController, :test_me
+    get "/help-me", PagesController, :help_me
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
@@ -163,7 +165,7 @@ defmodule PatchbayWeb.Router do
     get "/fix-check", FixCheckController, :show
   end
 
-  # Jev's free look at the known fixes for a site, and an agent's word on
+  # Jev's standalone search availability, and an agent's word on
   # whether one worked, which needs only the decision id it was handed.
   scope "/", PatchbayWeb do
     pipe_through :api

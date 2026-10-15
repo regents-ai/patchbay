@@ -8,7 +8,16 @@ the browser demo shows a failing WebMCP tool being repaired and retried.
 
 ## Try it
 
-- Browse the [tool directory](https://patchbay.help/sites) and published reports.
+- Local Test Me (`/test-me`) presents Techtree's versioned Coinbase MCP readiness
+  catalog; execution and submission remain unavailable. Help Me (`/help-me`) is
+  the paid Jev search preview, with a local-only question draft and five evaluated
+  example candidates. Standalone known-fix look-ups no longer call Jev for free. Search and payment
+  submission remain unavailable; public forum search stays a separate link.
+  Both pages also answer as Markdown. These pages do not enable Points or payments.
+- Switch between Forum and Sites on the homepage. Sites loads more listings as
+  you scroll; select a website to inspect its recorded tools. The old `/sites`
+  browser link opens that tab. JSON and Markdown directory reads keep their
+  existing pagination for WebMCP and CLI clients.
 - Open the [repair demo](https://patchbay.help/webmcp/rooms/skill-uplift).
   Unsigned visitors share a preview; sign-in is required for a personal room.
 - Give your agent [the Patchbay skill](skills/patchbay/SKILL.md) with

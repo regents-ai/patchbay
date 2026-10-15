@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "site": "target.com",
+    "category": "Shopping",
+    "title": "Keep the filters",
+    "prompt": "My agent sorted coffee makers by price and lost the brand and pickup filters. How should it preserve them?",
+    "next_step": "Send the full desired filter set, including brand, pickup availability and PriceLow.",
+    "tools": [
+      "filter_products"
+    ],
+    "source": "https://webmcp.com/sites/target.com",
+    "model": "typesafe/jev-1.14-20261014",
+    "response_id": "gen-dec-1792085862-wgU8iqcZGiAkfqVTzw0u",
+    "recorded_at": "2026-10-15T17:37:43.049987Z",
+    "status": "Decision evaluated; site outcome unverified"
+  },
+  {
+    "id": 4,
+    "site": "omio.com",
+    "category": "Travel",
+    "title": "Resolve cities first",
+    "prompt": "My train search used Berlin and Munich as fromId and toId and failed. What step did I miss?",
+    "next_step": "Resolve city names and use the returned IDs in results.",
+    "tools": [
+      "resolve_positions",
+      "results"
+    ],
+    "source": "https://webmcp.com/sites/omio.com",
+    "model": "typesafe/jev-1.14-20261014",
+    "response_id": "gen-dec-1792085864-TW9SaHbKQgszcZKsJnWh",
+    "recorded_at": "2026-10-15T17:37:44.221307Z",
+    "status": "Decision evaluated; site outcome unverified"
+  },
+  {
+    "id": 7,
+    "site": "developers.openai.com",
+    "category": "Developer docs",
+    "title": "Read beyond the snippet",
+    "prompt": "search_openai_docs found the right documentation, but my agent only has a short search result. How can it read the full source?",
+    "next_step": "Pass the result path to lookup_page.",
+    "tools": [
+      "search_openai_docs",
+      "lookup_page"
+    ],
+    "source": "https://webmcp.com/sites/developers.openai.com",
+    "model": "typesafe/jev-1.14-20261014",
+    "response_id": "gen-dec-1792085864-v81BE1CXIN5JowReyTm1",
+    "recorded_at": "2026-10-15T17:37:44.524998Z",
+    "status": "Decision evaluated; site outcome unverified"
+  },
+  {
+    "id": 10,
+    "site": "feverup.com",
+    "category": "Events",
+    "title": "Find the correct city",
+    "prompt": "My agent is getting events from the wrong city. It does not know the city slug. What should it do first?",
+    "next_step": "List cities, choose the returned slug, navigate there, then search.",
+    "tools": [
+      "home_list_cities",
+      "home_navigate_to_city",
+      "search_plans"
+    ],
+    "source": "https://webmcp.com/sites/feverup.com",
+    "model": "typesafe/jev-1.14-20261014",
+    "response_id": "gen-dec-1792085864-74fSWdURJJCr7wc94J7N",
+    "recorded_at": "2026-10-15T17:37:44.837413Z",
+    "status": "Decision evaluated; site outcome unverified"
+  },
+  {
+    "id": 16,
+    "site": "radar.cloudflare.com",
+    "category": "Internet analytics",
+    "title": "Check the actual view",
+    "prompt": "After navigation, my agent is unsure whether the selected country and date window are still active. How should it check?",
+    "next_step": "Read get-current-view.",
+    "tools": [
+      "get-current-view"
+    ],
+    "source": "https://webmcp.com/sites/radar.cloudflare.com",
+    "model": "typesafe/jev-1.14-20261014",
+    "response_id": "gen-dec-1792085866-06jp2xOg1xr6GGPUEJan",
+    "recorded_at": "2026-10-15T17:37:46.393323Z",
+    "status": "Decision evaluated; site outcome unverified"
+  }
+]

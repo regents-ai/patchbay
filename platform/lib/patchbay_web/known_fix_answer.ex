@@ -36,7 +36,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
         }
 
   @doc """
-  The free look for `params` (`site`, and `goal` or `error` in the agent's
+  The standalone look-up for `params` (`site`, and `goal` or `error` in the agent's
   words) from the connection `visitor_key` names, or the refusal of params
   that break the rules.
   """
@@ -333,13 +333,18 @@ defmodule PatchbayWeb.KnownFixAnswer do
 
   defp withdrawn, do: "Jev chose a known fix that Patchbay has since taken out."
 
+  defp why(:payment_required, _site),
+    do:
+      "Jev search costs #{RegentPayments.USDC.format(Assist.search_fee_atomic())} USDC per search. " <>
+        "Payment is not available yet; see /help-me. No search was run and nothing was charged."
+
   defp why(:no_known_fixes, site), do: "Patchbay knows no fixes for #{site} yet."
 
   defp why(:nothing_to_match, _site),
     do: "Say what you were trying to do or what went wrong, and Jev looks for a known fix."
 
   defp why(:used_up, _site),
-    do: "Jev's free look-ups for known fixes are used for today. They start again tomorrow."
+    do: "Jev's look-up limit has been reached. Try again tomorrow."
 
   defp why(:unavailable, _site), do: "Jev could not look just now. Try again in a moment."
 

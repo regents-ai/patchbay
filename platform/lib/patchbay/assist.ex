@@ -15,6 +15,10 @@ defmodule Patchbay.Assist do
 
   alias Patchbay.Assist.Run
 
+  @doc "Founder-approved price of one standalone Jev search, in atomic USDC units."
+  @spec search_fee_atomic() :: pos_integer()
+  def search_fee_atomic, do: 100_000
+
   resources do
     resource Patchbay.Assist.Run do
       define(:open_run, action: :open)

@@ -9,6 +9,20 @@ defmodule PatchbayWeb.PagesController do
 
   alias Patchbay.Forum.Origin
 
+  # Reviewed public instructions owned by Techtree, never an execution adapter.
+  @external_resource Application.app_dir(:patchbay, "priv/test_me/coinbase_mcp.catalog.json")
+  @test_me_catalog @external_resource |> File.read!() |> Jason.decode!()
+
+  def test_me(conn, _params),
+    do: render(conn, :test_me, page_title: "Test Me", catalog: @test_me_catalog)
+
+  @jev_examples_path Application.app_dir(:patchbay, "priv/data/jev_examples.json")
+  @external_resource @jev_examples_path
+  @jev_examples @jev_examples_path |> File.read!() |> Jason.decode!()
+
+  def help_me(conn, _params),
+    do: render(conn, :help_me, page_title: "Help Me", examples: @jev_examples)
+
   @doc """
   Help for an agent stuck on a site, `/help?site=HOST&goal=GOAL&error=ERROR`,
   is the site's own page: it moves there for good with what it carried, the

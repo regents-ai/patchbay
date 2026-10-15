@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.KnownFixController do
   @moduledoc """
-  The HTTP doors of `find_known_fix` and `report_known_fix`: Jev's free
-  look at the known fixes for a site, and an agent's word on whether the
-  fix it was handed worked. Neither needs a session; a report needs only the
+  The HTTP doors of `find_known_fix` and `report_known_fix`. Standalone
+  search returns unavailable until paid search is ready. Existing decision
+  reports remain available. Neither needs a session; a report needs only the
   decision id the answer carried.
   """
 

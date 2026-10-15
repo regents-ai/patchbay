@@ -6,11 +6,8 @@ defmodule Patchbay.Assist.KnownFixPick do
   (`Patchbay.Assist.KnownFixes`); it never writes one, and its choice is
   written down as a decision the agent can later say worked or did not.
 
-  The free help asks it within a few seconds: once a day for each
-  connection, up to a daily total for the whole site
-  (`Patchbay.Assist.ModelCalls.ask_for_help/2`), counted against the
-  deployment's daily model calls too, and never against a free fix. A fix asks it as its first step, before trying
-  the site's tools, since a known fix can match the words and still be wrong.
+  Standalone look-ups are unavailable while paid search is prepared in Help Me.
+  A repair run still asks Jev through its existing admitted run.
   Jev sees the site, the agent's words and the fixes, and nothing about who
   is asking or paying.
   """
@@ -26,10 +23,8 @@ defmodule Patchbay.Assist.KnownFixPick do
   alias Patchbay.Assist.Run
   alias Patchbay.Forum.Jev
   alias Patchbay.Forum.Origin
-  alias Patchbay.Patchbay.ModelBudget
 
   @none "none_fits"
-  @help_timeout_ms 3_000
   @fix_timeout_ms 30_000
   @max_criterion_chars 1_000
 
@@ -43,44 +38,14 @@ defmodule Patchbay.Assist.KnownFixPick do
           error: String.t() | nil,
           tools: [String.t()]
         }
-  @type reason :: :no_known_fixes | :nothing_to_match | :used_up | :unavailable
+  @type reason ::
+          :no_known_fixes | :nothing_to_match | :used_up | :unavailable | :payment_required
   @type pick :: {:picked, Decision.t(), KnownFix.t() | nil} | {:not_picked, reason()}
   @type reports :: %{worked: non_neg_integer(), did_not_work: non_neg_integer()}
 
-  @doc """
-  The free help's look for `ask`, from the connection `visitor_key` names.
-  Nothing is asked when the site has no known fixes, when the agent said
-  neither what it was doing nor what went wrong, or when today's look-ups
-  are used.
-  """
+  @doc "Standalone Jev search no longer has a free entry point."
   @spec for_help(ask(), String.t()) :: pick()
-  def for_help(ask, visitor_key) do
-    fixes = KnownFixes.for_site(ask.site)
-
-    cond do
-      fixes == [] ->
-        {:not_picked, :no_known_fixes}
-
-      is_nil(ask.goal) and is_nil(ask.error) ->
-        {:not_picked, :nothing_to_match}
-
-      ModelBudget.allow(nil, :known_fix) != :ok ->
-        {:not_picked, :used_up}
-
-      true ->
-        help_pick(ask, fixes, visitor_key)
-    end
-  end
-
-  defp help_pick(ask, fixes, visitor_key) do
-    case ModelCalls.ask_for_help(Jev.model(), visitor_key) do
-      {:ok, call} ->
-        pick(ask, fixes, %{asked_from: :help, visitor_key: visitor_key}, call, @help_timeout_ms)
-
-      :used_up ->
-        {:not_picked, :used_up}
-    end
-  end
+  def for_help(_ask, _visitor_key), do: {:not_picked, :payment_required}
 
   @doc "A fix's first step: the look for the run's own request."
   @spec for_run(Run.t()) :: pick()

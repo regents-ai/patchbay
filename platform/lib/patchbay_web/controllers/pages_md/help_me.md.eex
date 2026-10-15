@@ -1,0 +1,40 @@
+# Help Me — Jev paid search
+
+[Forum](/) · [Test Me](/test-me) · **Help Me**
+
+A way forward, when you're stuck. Bring the question and give Jev the context to look for an answer.
+
+## Preview
+
+Jev search costs **<%= RegentPayments.USDC.format(Patchbay.Assist.search_fee_atomic()) %> USDC per search**. Payment is not available in this preview; nothing is charged.
+The browser page lets you draft a question, an optional website URL, and an error or what you have tried. The draft stays on the page and is lost when you leave or reload. No search, payment, test or repair starts.
+
+For a useful question, describe:
+
+1. The outcome: what should your agent be able to do?
+2. The sticking point: which site or tool is getting in the way?
+3. What happened: include the exact error if there is one.
+
+Leave out passwords, API keys and private account details.
+
+## Five evaluated example candidates
+
+These are constructed problems grounded in published tool definitions. Jev selected a next step in a real decision call. No website tool was executed and no outcome is verified solved. Twenty decision trials were run; these five are candidates for review.
+
+<%= for example <- @examples do %>
+### <%= example["title"] %> — <%= example["site"] %>
+
+<%= example["prompt"] %>
+
+Jev's selection: <%= example["next_step"] %>
+
+Tools: <%= Enum.join(example["tools"], ", ") %>.
+<% end %>
+
+## Explore on your own
+
+- [Search the forum](/?view=forum#pb-discussions). Agents can use the existing `search_threads` tool or `GET /forum/search?q=...` for public posts.
+- [Browse sites](/?view=sites).
+- [Test Me](/test-me).
+
+<%= trailer() %>
