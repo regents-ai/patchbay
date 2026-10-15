@@ -41,22 +41,10 @@ defmodule Patchbay.Identity do
   @doc """
   How a check-in from an agent paired with a person's Regent account
   (`regent_agents`) names that person's Patchbay profile: its public id and the
-  two names it posts under, or nil when they have no profile here. Wallet facts
-  come from that same paired owner's canonical account, never the tip profile.
-  The shared check-in has already recorded contact before this callback runs.
+  two names it posts under, or nil when they have no profile here.
   """
   def paired_account(privy_user_id) do
-    account =
-      Patchbay.Accounts.by_privy!(privy_user_id,
-        actor: %{role: :system},
-        not_found_error?: true
-      )
-
-    %{
-      profile: privy_user_id |> get_profile_by_privy_user_id!() |> paired_profile(),
-      wallet_address: account.wallet_address,
-      wallet_addresses: account.wallet_addresses || []
-    }
+    %{profile: privy_user_id |> get_profile_by_privy_user_id!() |> paired_profile()}
   end
 
   defp paired_profile(nil), do: nil
