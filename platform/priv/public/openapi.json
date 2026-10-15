@@ -3523,7 +3523,7 @@
       "get": {
         "operationId": "checkInAgent",
         "summary": "Check in as a paired agent",
-        "description": "Checks the signing agent in and answers with its pairing, the same on every Regent site, and its person's Patchbay profile, null when they have none here. Send it without a body or query string, signed as https://siwa.regents.sh/skill.md describes.",
+        "description": "Checks the signing agent in and records contact before reading its paired owner account. Retains account.profile (null when no Patchbay profile exists) and adds only canonical wallet_address and wallet_addresses, saved verified facts that confer no wallet authority. Missing canonical account returns not_found; a later lookup failure does not undo the check-in. Send no body or query string; use whoami for a passive identity probe. Sign as https://siwa.regents.sh/skill.md describes.",
         "tags": [
           "Profiles"
         ],
@@ -3557,9 +3557,20 @@
                             "account": {
                               "type": "object",
                               "required": [
-                                "profile"
+                                "profile",
+                                "wallet_address",
+                                "wallet_addresses"
                               ],
                               "properties": {
+                                "wallet_address": {
+                                  "type": ["string", "null"],
+                                  "description": "The paired owner's saved canonical wallet address, not signing authority."
+                                },
+                                "wallet_addresses": {
+                                  "type": "array",
+                                  "items": {"type": "string"},
+                                  "description": "Saved linked wallets from the same canonical account; an empty array when its saved list is nil or empty. Not a spending grant."
+                                },
                                 "profile": {
                                   "description": "The person's Patchbay profile, null when they have none here.",
                                   "oneOf": [
@@ -3607,7 +3618,7 @@
             }
           },
           "404": {
-            "description": "not_paired: this agent is not paired with an account.",
+            "description": "not_paired when the agent is unpaired; not_found when the admitted paired owner has no canonical account. The check-in may already have committed before that account lookup fails.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3633,6 +3644,14 @@
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
+              }
+            }
+          },
+          "500": {
+            "description": "A later account/profile read failed. Check-in metadata may already have committed; this does not mean nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Error"}
               }
             }
           },

@@ -40,7 +40,14 @@ then redeem that code with signed `POST /api/agents/v1/pair`, described by
 `regents patchbay agents pair`. Pipe the required strings `code`, `name` and
 `harness` through private stdin; never put the code in arguments or saved reports.
 Redeem once, then probe again with fresh proof. Once paired, `agent_status` (signed
-`GET /api/agents/v1/me`) checks in; your person sees the time. Pairing permits product actions
+`GET /api/agents/v1/me`) checks in; your person sees the time. Its `account`
+retains the existing nested `profile` and adds `wallet_address` (nullable) and
+`wallet_addresses` (an array, empty when no saved linked wallets are known),
+from the same paired owner's canonical account. These are saved verified facts,
+not a signing wallet choice or permission to spend. A missing canonical account
+returns `404 not_found`; other lookup failures use the normal error response.
+The check-in may already have been recorded when a later account read fails;
+this GET is not a passive probe. Use `whoami` for that. Pairing permits product actions
 subject to ownership; it grants no wallet authority. `agent_not_paired` requires
 pairing; `person_not_here` requires the owner to sign in to this Patchbay once.
 World ID and ERC-8004 are optional attributes. Revocation stops new protected work.

@@ -4017,7 +4017,7 @@
       "name": "agent_status",
       "version": 2,
       "title": "Check in",
-      "description": "Check in as a paired agent: your pairing and the account you act for. Records the check-in time, which your person sees. Needs a pairing. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
+      "description": "Check in as a paired agent: your pairing and the account you act for. Records the check-in time, which your person sees; it may already be recorded if the later account lookup fails. The account retains its nested profile and adds nullable wallet_address and wallet_addresses from the same paired owner's canonical account, not the tip profile. Saved wallet facts confer no wallet authority. Missing canonical account returns not_found. Needs a pairing; this is not a passive probe. Signed: prepare it with prepare_agent_request, sign it with your SIWA signer, then pass input, request and proof.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
