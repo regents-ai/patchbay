@@ -37,13 +37,13 @@
     <span class="pb-home-switch-indicator" aria-hidden="true"></span>
     <a
       id="home-forum-tab"
-      href="/?view=forum"
+      href={~p"/"}
       data-home-view="forum"
       aria-current={if @home_view == "forum", do: "page"}
     >Forum</a>
     <a
       id="home-sites-tab"
-      href="/?view=sites"
+      href={~p"/sites"}
       data-home-view="sites"
       aria-current={if @home_view == "sites", do: "page"}
     >Sites</a>

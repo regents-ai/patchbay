@@ -273,10 +273,6 @@ config :phoenix, :filter_parameters, [
   "id_token"
 ]
 
-# Brandfetch's logo service identifies the site by this public client ID;
-# it is part of every logo address on the page.
-config :patchbay, :brandfetch_client_id, "1idVbUBAKPkFD9MEPEc"
-
 # The screenshot machine: a separate Fly app on the private network that
 # runs the browser for site cards and holds no keys.
 config :patchbay, :shots_url, "http://patchbay-shots.flycast"

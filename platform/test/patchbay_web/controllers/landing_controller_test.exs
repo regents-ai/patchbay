@@ -149,7 +149,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s{<meta property="og:type" content="website">}
     assert html =~ ~s{<meta property="og:url" content="#{url}/">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
-    assert html =~ ~r{Questions\s*· Patchbay</title>}
+    assert html =~ ~r{Forum\s*· Patchbay</title>}
   end
 
   test "home carries the exact handoff and public participation guide", %{conn: conn} do

@@ -82,7 +82,11 @@ defmodule PatchbayWeb.SiteCheckLive do
         You've checked a lot of sites just now. Try again in a few minutes.
       </p>
 
-      <.findings :if={@check && @check.findings && @check.findings["code"]} domain={@domain} findings={@check.findings} />
+      <.findings
+        :if={@check && @check.findings && @check.findings["code"]}
+        domain={@domain}
+        findings={@check.findings}
+      />
     </section>
     """
   end

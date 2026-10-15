@@ -107,21 +107,14 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         </span>
       </header>
 
-      <form action="/" method="get" class="pb-directory-search" role="search">
-        <input type="hidden" name="view" value="sites" />
+      <form action="/sites" method="get" class="pb-directory-search" role="search">
         <label class="pb-directory-search-field">
           <span class="visually-hidden">Search sites</span>
-          <input
-            type="search"
-            name="site_q"
-            value={@page.q}
-            maxlength="100"
-            placeholder="Search websites"
-          />
+          <input type="search" name="q" value={@page.q} maxlength="100" placeholder="Search websites" />
         </label>
         <label>
           <span class="visually-hidden">Category</span>
-          <select name="site_category">
+          <select name="category">
             <option value="">All categories</option>
             <option
               :for={category <- SiteDirectory.categories()}
@@ -226,7 +219,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                     <a href={"/" <> site.domain}>Open forum →</a>
                   </div>
                   <p :if={site.reported_observation} class="pb-directory-evidence">
-                    CSV report: {site.reported_observation["count"]} tools · {site.reported_observation[
+                    Reported: {site.reported_observation["count"]} tools · {site.reported_observation[
                       "source"
                     ]}
                     <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation["snapshot_date"]}</span>.
@@ -248,7 +241,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   <p :if={site.tools == []} class="pb-directory-empty">
                     {if site.source == "Source scan",
                       do:
-                        "No tools detected in the page source. Browser-only tools may still be available.",
+                        "No tools found on the site's public pages. Tools that appear only in a browser may still be there.",
                       else: "Tool names have not been recorded for this listing."}
                   </p>
                 </div>
@@ -304,10 +297,10 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       <details class="pb-directory-method">
         <summary>About the data</summary>
         <p>
-          Reported tool counts come from the supplied research, CSV and public directory snapshots. They can differ from the number of recorded tool names. Older CSV counts do not replace newer inventories.
+          Reported tool counts come from research and public directory snapshots. They can differ from the number of recorded tool names. An older count never replaces a newer list.
         </p>
         <p>
-          Refresh is available every 24 hours. It reads public pages and scripts without signing in or calling tools. It can miss browser-only tools. Sites sharing a domain share a check; failed checks keep previous information.
+          Each site can be refreshed once a day. A refresh reads the site's public pages without signing in or using its tools, so it can miss tools that appear only in a browser. Sites on the same domain share a check, and a check that fails keeps the information from before.
         </p>
         <p>
           Forum posts are all-time published threads, excluding replies and hidden posts; a dash means the count could not be read.

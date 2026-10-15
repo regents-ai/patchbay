@@ -1583,20 +1583,16 @@ a.patchbay-button { text-decoration: none; }
 
 body:has(#patchbay-home),
 
-#patchbay-home,
-#patchbay-sites {
+#patchbay-home {
   position: relative;
   z-index: 1;
   background: transparent;
 }
 #patchbay-home.patchbay-shell,
-#patchbay-home.patchbay-board,
-#patchbay-sites.patchbay-shell,
-#patchbay-sites.patchbay-board {
+#patchbay-home.patchbay-board {
   background: transparent;
 }
 
-.pb-dir { width: 100%; margin: var(--space-2) auto var(--space-4); }
 .pb-dir-lede {
   width: 100%;
   max-width: 48rem;
@@ -1605,145 +1601,12 @@ body:has(#patchbay-home),
   font-size: .875rem;
   line-height: 1.5;
 }
-/* Four uniform cards a row on wide screens, then three, two and one. */
-.pb-dir-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-  width: 100%;
-}
-.pb-dir-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border: 1px solid var(--pb-line);
-  border-radius: var(--radius);
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  text-decoration: none;
-  overflow: hidden;
-  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), border-color 160ms var(--ease-out);
-}
-/* A card lifts onto a hard shadow when it is pointed at or reached. */
-.pb-dir-card:hover,
-.pb-dir-card:focus-visible {
-  border-color: var(--pb-text);
-  box-shadow: 4px 4px 0 var(--pb-hard-shadow);
-  transform: translate(-2px, -2px);
-  outline: none;
-}
-.pb-dir-card:focus-visible { border-color: var(--pb-accent-deep); }
-.pb-dir-card.is-ours { border-color: color-mix(in srgb, var(--pb-accent) 55%, var(--pb-line)); }
-.pb-dir-shot-wrap {
-  position: relative;
-  display: block;
-  aspect-ratio: 16 / 10;
-  border-bottom: 1px solid var(--pb-line);
-  background: var(--support-figure-surface);
-}
-.pb-dir-shot {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-.pb-dir-shot-empty {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  background: var(--support-figure-surface);
-}
-.pb-dir-shot-empty-domain {
-  color: color-mix(in srgb, var(--support-figure-ink) 80%, var(--support-figure-surface));
-  font-family: var(--font-family-mono);
-  font-size: .75rem;
-}
-/* Pointed at or reached, the screenshot darkens and the brand's logo comes
-   up over it, in grey and white. */
-.pb-dir-shot-wrap::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgb(10 10 10 / 0);
-  transition: background 180ms var(--ease-out);
-}
-.pb-dir-brand {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: auto;
-  height: auto;
-  max-width: 56%;
-  max-height: 28%;
-  margin: auto;
-  object-fit: contain;
-  filter: grayscale(1);
-  opacity: 0;
-  transform: scale(.94);
-  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
-}
-.pb-dir-card:hover .pb-dir-shot-wrap::after,
-.pb-dir-card:focus-visible .pb-dir-shot-wrap::after { background: rgb(10 10 10 / .78); }
-.pb-dir-card:hover .pb-dir-brand,
-.pb-dir-card:focus-visible .pb-dir-brand { opacity: 1; transform: none; }
-.pb-dir-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding: var(--space-2);
-}
-/* The tool count, as a button in the screenshot's lower right corner, shown
-   while the card is pointed at or reached, and always on a screen that cannot
-   point. The whole card is the link it follows. */
-.pb-dir-tools {
-  position: absolute;
-  right: var(--space-2);
-  bottom: var(--space-2);
-  z-index: 1;
-  padding: 4px 10px;
-  border: 1px solid var(--pb-text);
-  border-radius: var(--radius);
-  background: var(--pb-text);
-  color: var(--pb-surface);
-  font-size: .75rem;
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
-}
-.pb-dir-card:hover .pb-dir-tools,
-.pb-dir-card:focus-visible .pb-dir-tools { opacity: 1; transform: none; }
-@media (hover: none) {
-  .pb-dir-tools { opacity: 1; transform: none; }
-}
-.pb-dir-name {
-  margin: 0;
-  color: var(--pb-text);
-  font-family: var(--font-family-title);
-  font-size: .95rem;
-  font-weight: 400;
-  font-synthesis: none;
-  letter-spacing: -.02em;
-  overflow-wrap: anywhere;
-}
-/* A host name is machine text; what a site offers and how many posts it has
-   are words, so only the domain keeps the mono face. */
-.pb-dir-domain,
-.pb-dir-support,
-.pb-dir-meta,
-.pb-dir-verified {
+.pb-dir-support {
   margin: 0;
   color: var(--pb-text-muted);
   font-size: .75rem;
   line-height: 1.4;
 }
-.pb-dir-domain { font-family: var(--font-family-mono); overflow-wrap: anywhere; }
-.pb-dir-meta { display: flex; flex-wrap: wrap; gap: 0 var(--space-1); margin-top: var(--space-1); color: var(--pb-text); }
-.pb-dir-verified { margin-top: 2px; }
 
 /* One entry's header: mark, facts and a subordinate screenshot. */
 .pb-entry-head {
@@ -1867,26 +1730,9 @@ body:has(#patchbay-home),
   gap: var(--space-1);
 }
 
-@media (max-width: 1100px) {
-  .pb-dir-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 @media (max-width: 820px) {
-  .pb-dir-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pb-entry-head { grid-template-columns: 3rem minmax(0, 1fr); }
   .pb-entry-shot { grid-column: 2; }
-}
-@media (max-width: 520px) {
-  .pb-dir-grid { grid-template-columns: 1fr; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pb-dir-card,
-  .pb-dir-shot-wrap::after,
-  .pb-dir-brand,
-  .pb-dir-tools { transition: none; }
-  .pb-dir-card:hover,
-  .pb-dir-card:focus-visible,
-  .pb-dir-card:hover .pb-dir-brand,
-  .pb-dir-card:focus-visible .pb-dir-brand { transform: none; }
 }
 
 @media (max-width: 760px) {
@@ -2010,12 +1856,6 @@ h1, h2, h3, h4, h5, h6 {
 .product-links { margin: 0; padding: var(--rg-panel-padding); }
 .product-links > .rg-disclosure { flex: 1 1 15rem; }
 .product-links .rg-disclosure > summary { min-height: 2.75rem; }
-@media (max-width: 1023px) {
-  .pb-dir-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 767px) {
-  .pb-dir-grid { grid-template-columns: minmax(0, 1fr); }
-}
 /* The places to go and the Ask button share one line down to the narrowest
    phones; the button says only "Ask" there. */
 @media (max-width: 429px) {

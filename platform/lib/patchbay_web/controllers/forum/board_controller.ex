@@ -40,7 +40,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.ForumAPI.Participation
-  alias PatchbayWeb.KnownFixAnswer
 
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
@@ -50,19 +49,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   The home page. A link can open its form with the site, a tool and what
   to ask about filled in.
   """
-  def home(conn, %{"view" => "sites"} = params) do
-    if get_format(conn) == "html" do
-      render_home(conn, params, hero(Hero.prefilled(params)))
-    else
-      render_directory(conn, %{
-        "q" => params["site_q"],
-        "category" => params["site_category"],
-        "page" => params["site_page"]
-      })
-    end
-  end
-
-  def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
+  def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)), "forum")
 
   @doc "An agent page's quickstart on its own, as the agents.md that agent reads."
   def agent_guide(%{private: %{home_page: id}} = conn, _params) do
@@ -97,10 +84,10 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: ~p"/fixes/#{run.id}")
 
       {:error, %{said: _said} = problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem}))
+        render_home(conn, %{}, hero(draft, %{problem: problem}), "forum")
 
       {:error, failure} ->
-        render_home(conn, %{}, hero(draft, %{problem: Fix.refused(failure, conn)}))
+        render_home(conn, %{}, hero(draft, %{problem: Fix.refused(failure, conn)}), "forum")
     end
   end
 
@@ -154,7 +141,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # An agent's own page carries its quickstart, the form and the newest posts,
   # in that agent's look.
-  defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
+  defp render_home(%{private: %{home_page: id}} = conn, _params, hero, "forum") do
     agent = AgentPages.fetch!(id)
 
     reports =
@@ -177,9 +164,14 @@ defmodule PatchbayWeb.Forum.BoardController do
   # read is `:unavailable` and says so where it would have been; the rest of
   # the page, the navigation and the form with what was typed still show.
   # Only the discussions are the page itself, so only their failure is a 503.
-  defp render_home(conn, params, hero) do
-    hello_stream = if params["hellos"] == "siwa", do: "siwa", else: "all"
-    filters = Discussions.filters(params)
+  # `/` opens on the forum and `/sites` on the site directory; each reads its
+  # own filters from the address and the other view starts unfiltered.
+  defp render_home(conn, params, hero, view) do
+    {forum_params, directory_filters} =
+      if view == "sites", do: {%{}, Map.take(params, ~w(q category page))}, else: {params, %{}}
+
+    hello_stream = if forum_params["hellos"] == "siwa", do: "siwa", else: "all"
+    filters = Discussions.filters(forum_params)
 
     principals =
       Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
@@ -190,7 +182,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       |> Forum.list_subscriptions_for_principals(actor: %{principals: principals})
       |> section("Follow list")
 
-    case discussions(filters, following, params["after"]) do
+    case discussions(filters, following, forum_params["after"]) do
       {:error, :invalid_cursor} ->
         conn
         |> put_flash(:error, "That discussion page has expired or does not match these filters.")
@@ -204,20 +196,16 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
         |> render(:home,
-          page_title: "Forum & Sites",
-          home_view: if(params["view"] == "sites", do: "sites", else: "forum"),
-          directory_filters: %{
-            "q" => params["site_q"],
-            "category" => params["site_category"],
-            "page" => params["site_page"]
-          },
+          page_title: if(view == "sites", do: "Sites", else: "Forum"),
+          home_view: view,
+          directory_filters: directory_filters,
           directory_visitor: ClientAddress.visitor_key(conn),
           hello_stream: hello_stream,
           hello_events: Patchbay.Forum.Hellos.latest(hello_stream),
           filters: filters,
           reports: reports,
           next_page: next_page,
-          current_page: params["after"],
+          current_page: forum_params["after"],
           sites: sites,
           showcase: showcase,
           home_showcase: Board.home_showcase(sites),
@@ -448,10 +436,10 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:ok, thread} ->
         if params["step"] == "post" and params["previewed"] == PostPreview.digest(thread),
           do: publish_thread(conn, draft, thread, params["ask"]),
-          else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}))
+          else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}), "forum")
 
       {:error, problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem}))
+        render_home(conn, %{}, hero(draft, %{problem: problem}), "forum")
     end
   end
 
@@ -462,7 +450,12 @@ defmodule PatchbayWeb.Forum.BoardController do
       redirect(conn, to: ~p"/posts/#{posted.id}")
     else
       {:error, problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem, preview: preview(thread)}))
+        render_home(
+          conn,
+          %{},
+          hero(draft, %{problem: problem, preview: preview(thread)}),
+          "forum"
+        )
     end
   end
 
@@ -741,42 +734,26 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
+  @doc "The site directory: the home page's Sites view, or the listing itself as Markdown or JSON."
   def sites(conn, params) do
     if get_format(conn) == "html" do
-      query =
-        URI.encode_query(%{
-          "view" => "sites",
-          "site_q" => params["q"] || "",
-          "site_category" => params["category"] || "",
-          "site_page" => params["page"] || "1"
-        })
-
-      redirect(conn, to: "/?" <> query)
+      render_home(conn, params, hero(Hero.prefilled(%{})), "sites")
     else
-      render_directory(conn, params)
+      directory = Patchbay.Forum.SiteDirectory.page(params)
+
+      render_catalog(conn, :sites,
+        page_title: "WebMCP Site Directory",
+        directory: directory
+      )
     end
-  end
-
-  defp render_directory(conn, params) do
-    directory = Patchbay.Forum.SiteDirectory.page(params)
-
-    render_catalog(conn, :sites,
-      page_title: "WebMCP Site Directory",
-      sites: directory.sites,
-      more?: directory.page < directory.pages,
-      directory: directory,
-      directory_filters: Map.take(params, ~w(q category page)),
-      directory_visitor: ClientAddress.visitor_key(conn)
-    )
   end
 
   @doc """
   The one page for a site, `/<domain>`, whether or not the board knows it
   yet. Any other way of writing the site (a host under it, capitals) moves
   for good to its domain; anything that is not a public domain with a real
-  ending is a missing page. `goal` and `error` in the address bring Jev's
-  known fix for them and fill in the post form, and `page` names the exact
-  page the visitor was on.
+  ending is a missing page. `goal` and `error` in the address fill in the
+  post form, and `page` names the exact page the visitor was on.
 
   Opening the page asks for the site's check when one is due, within the
   visitor's share (`PatchbayWeb.Forum.SiteChecks`). A site without a board
@@ -835,7 +812,6 @@ defmodule PatchbayWeb.Forum.BoardController do
               "visitor" => visitor,
               "limited" => asked == :limited
             },
-            known_fix: (goal || error) && known_fix(conn, domain, goal, error),
             agent_offers: Patchbay.Offers.Serving.for_site(board.site),
             tools_cursor: params["tools_after"],
             posts_cursor: params["posts_after"],
@@ -874,16 +850,6 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       :error ->
         {:ok, %{site: nil, tools: [], next_tools: nil, posts: [], next_posts: nil}}
-    end
-  end
-
-  # Standalone Jev availability, shared with HTTP and agent tools.
-  defp known_fix(conn, domain, goal, error) do
-    params = %{"site" => domain, "goal" => goal, "error" => error}
-
-    case KnownFixAnswer.look_up(params, ClientAddress.visitor_key(conn)) do
-      {:ok, answer} -> KnownFixAnswer.markdown(answer)
-      {:error, %{error: %{message: message}}} -> message
     end
   end
 
@@ -1258,8 +1224,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp render_catalog(conn, template, assigns) do
-    conn = prepend_resp_headers(conn, [{"vary", "accept"}])
-
     if get_format(conn) == "json" do
       payload = apply(PatchbayWeb.Forum.BoardJSON, template, [Map.new(assigns)])
 

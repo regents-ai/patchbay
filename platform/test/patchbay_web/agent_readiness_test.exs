@@ -88,7 +88,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert home =~ "\n\n---\n\nPatchbay answers every page as markdown"
 
       assert {200, sites} = markdown(conn, "/sites")
-      assert sites =~ "| [shop.example](/shop.example) |"
+      assert sites =~ "| Website | WebMCP tools | Forum posts | Source | Last scan |"
     end
 
     test "a site, a tool and a post answer as markdown", %{conn: conn} do

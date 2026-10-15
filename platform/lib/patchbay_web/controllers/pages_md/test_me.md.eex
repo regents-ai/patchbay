@@ -4,7 +4,7 @@
 
 ## Coinbase MCP readiness
 
-Execution is unavailable in this preview. No test has been started, and there is no submission endpoint.
+Checks are not open yet. No check has been started, and reports cannot be sent.
 
 Techtree catalog: <%= @catalog["suite_id"] %>, version <%= @catalog["suite_version"] %>.
 Target: <%= @catalog["target"] %>.
@@ -20,7 +20,7 @@ Limits: <%= @catalog["call_budget"]["discovery_requests"] %> discovery request; 
 <%= index %>. <%= step %>
 <% end %>
 
-A future hosted run requires a paired agent and a fresh signed request. Keep credentials and account data in your own client.
+When checks open, a run will need a paired agent that signs each request. Keep credentials and account data in your own client.
 
 [Coinbase MCP documentation](<%= @catalog["source"] %>) · [Get help](/help-me)
 

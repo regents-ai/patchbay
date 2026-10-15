@@ -56,7 +56,7 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     assert %{"directory" => true} = ask.("https://docs.example.com/b") |> json_response(200)
 
     html = conn |> from(address) |> get(~p"/") |> html_response(200)
-    assert html =~ ~s(href="https://webmcp.com/")
+    assert html =~ ~s(href="/sites")
     refute html =~ ~r/id="pb-fix-directory"[^>]*hidden/
 
     assert %{"status" => "none"} = ask.("https://docs.example.com/c") |> json_response(200)

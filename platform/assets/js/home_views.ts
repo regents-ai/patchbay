@@ -1,4 +1,7 @@
-/** Homepage-only view selection; the existing forum and LiveView keep their own state. */
+/**
+ * The home page's Forum and Sites views: `/` opens on the forum and `/sites` on the
+ * directory. The forum and the directory's LiveView keep their own state.
+ */
 export function mountHomeViews(): void {
   const selector = document.querySelector<HTMLElement>("[data-home-switch]")
   if (!selector || selector.dataset.mounted) return
@@ -10,8 +13,10 @@ export function mountHomeViews(): void {
   const select = (view: string, keyboard = false) => {
     selector.toggleAttribute("data-keyboard", keyboard)
     selector.dataset.view = view
+    const suffix = document.querySelector<HTMLElement>("title")?.dataset.suffix ?? ""
     for (const tab of tabs) {
       const active = tab.dataset.homeView === view
+      if (active) document.title = `${tab.textContent?.trim()}${suffix}`
       tab.setAttribute("role", "tab")
       tab.setAttribute("aria-controls", `home-${tab.dataset.homeView}`)
       tab.setAttribute("aria-selected", String(active))
@@ -28,13 +33,8 @@ export function mountHomeViews(): void {
     tab.addEventListener("click", event => {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
       event.preventDefault()
-      const view = tab.dataset.homeView!
-      const url = new URL(window.location.href)
-      if (url.searchParams.get("view") !== view) {
-        url.searchParams.set("view", view)
-        window.history.pushState(null, "", url)
-      }
-      select(view, event.detail === 0)
+      if (new URL(tab.href).pathname !== window.location.pathname) window.history.pushState(null, "", tab.href)
+      select(tab.dataset.homeView!, event.detail === 0)
     })
     tab.addEventListener("keydown", event => {
       const index = tabs.indexOf(tab)
@@ -53,7 +53,7 @@ export function mountHomeViews(): void {
   }
   window.addEventListener("popstate", () => {
     if (selector.isConnected) {
-      select(new URL(window.location.href).searchParams.get("view") === "sites" ? "sites" : "forum", true)
+      select(window.location.pathname === "/sites" ? "sites" : "forum", true)
     }
   })
   select(selector.dataset.view || "forum", true)

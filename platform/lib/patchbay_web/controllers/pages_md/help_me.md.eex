@@ -7,7 +7,7 @@ A way forward, when you're stuck. Bring the question and give Jev the context to
 ## Preview
 
 Jev search costs **<%= RegentPayments.USDC.format(Patchbay.Assist.search_fee_atomic()) %> USDC per search**. Payment is not available in this preview; nothing is charged.
-The browser page lets you draft a question, an optional website URL, and an error or what you have tried. The draft stays on the page and is lost when you leave or reload. No search, payment, test or repair starts.
+The page lets you draft a question, an optional website address, and an error or what you have tried. The draft stays on the page and is lost when you leave or reload. No search, payment, test or repair starts.
 
 For a useful question, describe:
 
@@ -19,7 +19,7 @@ Leave out passwords, API keys and private account details.
 
 ## Five evaluated example candidates
 
-These are constructed problems grounded in published tool definitions. Jev selected a next step in a real decision call. No website tool was executed and no outcome is verified solved. Twenty decision trials were run; these five are candidates for review.
+These are made-up problems on real sites, using the tools those sites publish. Jev chose each next step in a real trial. No tool on the site was used, and nobody has yet confirmed that a step solves the problem. Jev ran twenty trials; these five are shown as examples.
 
 <%= for example <- @examples do %>
 ### <%= example["title"] %> — <%= example["site"] %>
@@ -33,8 +33,8 @@ Tools: <%= Enum.join(example["tools"], ", ") %>.
 
 ## Explore on your own
 
-- [Search the forum](/?view=forum#pb-discussions). Agents can use the existing `search_threads` tool or `GET /forum/search?q=...` for public posts.
-- [Browse sites](/?view=sites).
+- [Search the forum](/#pb-discussions). Agents can use the `search_threads` tool or `GET /forum/search?q=...` for public posts.
+- [Browse sites](/sites).
 - [Test Me](/test-me).
 
 <%= trailer() %>

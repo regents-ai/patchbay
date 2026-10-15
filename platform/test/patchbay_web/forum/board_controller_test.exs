@@ -173,23 +173,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       :ok
     end
 
-    test "shows the researched sites that offer tools, not an empty board", %{conn: conn} do
-      body = conn |> get(~p"/sites") |> html_response(200)
+    test "opens the home page on the site directory", %{conn: conn} do
+      document = conn |> get(~p"/sites") |> html_response(200) |> LazyHTML.from_document()
 
-      assert body =~ ~s(class="pb-dir-grid")
-      assert body =~ ~s(href="/shopify.com")
-      assert body =~ ~s(href="/patchbay.help")
-      refute body =~ "Nothing has been reported yet"
-    end
+      assert Enum.count(LazyHTML.query(document, ~s(#home-sites-tab[aria-current="page"]))) == 1
 
-    test "carries Patchbay's own tool as soon as a repair room offers it", %{conn: conn} do
-      Rooms.create_seeded_room!("room-one")
+      assert Enum.count(LazyHTML.query(document, "#home-sites:not([hidden]) #site-directory")) ==
+               1
 
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert body =~ ~s(href="/patchbay.help")
-      assert body =~ "View #{length(Patchbay.Forum.Capabilities.names()) + 1} WebMCP tools"
-      assert body =~ "0 agent posts"
+      assert Enum.count(LazyHTML.query(document, "#home-forum[hidden]")) == 1
     end
 
     test "carries the contract a repair room is currently offering", %{conn: conn} do
@@ -208,12 +200,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       })
       |> Rooms.create_tool_revision!()
 
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert body =~ "patchbay.help"
-      assert body =~ "View #{length(Patchbay.Forum.Capabilities.names()) + 2} WebMCP tools"
-      assert body =~ "0 agent posts"
-
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
       assert first_page =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
 
@@ -230,14 +216,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert tool_page =~ "1 version shown, newest first"
       assert tool_page =~ "Improve the Skill and say what changed."
-    end
-
-    test "marks Patchbay's own card on the directory grid", %{conn: conn} do
-      Rooms.create_seeded_room!("room-one")
-
-      body = conn |> get(~p"/sites") |> html_response(200)
-
-      assert body =~ ~s(class="pb-dir-card is-ours")
     end
   end
 
@@ -1389,12 +1367,21 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert build_conn() |> get(~p"/help") |> html_response(200) =~ ~s(href="/start")
     end
 
-    test "never leaks the vocabulary of the code behind it", %{bodies: bodies} do
+    test "never leaks the vocabulary of the code behind it", %{bodies: [sites | pages]} do
       # The board is written for people, so the words the code uses for itself
-      # must never reach the page. Link and image addresses, and the live
-      # box's own markup, are not read.
-      for body <- bodies,
-          copy = Regex.replace(~r/\s(?:src|href|(?:data-)?phx-[a-z]+)="[^"]*"/, body, ""),
+      # must never reach the page. Link and image addresses, the live box's
+      # own markup and the tool names sites publish are not read. Of /sites,
+      # the home page's Sites view, the directory is read.
+      directory =
+        sites |> LazyHTML.from_document() |> LazyHTML.query("#home-sites") |> LazyHTML.to_html()
+
+      for body <- [directory | pages],
+          copy =
+            Regex.replace(
+              ~r/\s(?:src|href|(?:data-)?phx-[a-z]+)="[^"]*"|<code>[^<]*<\/code>/,
+              body,
+              ""
+            ),
           word <- ~w(LiveView fallback upsert keyset cookie slug session hook server) do
         refute String.contains?(String.downcase(copy), String.downcase(word)),
                "#{word} appears in board copy"

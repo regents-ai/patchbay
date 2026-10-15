@@ -12,7 +12,7 @@
     </div>
     <div class="pb-assistance-start">
       <Regent.Primitives.button disabled aria-describedby="test-unavailable">Start check</Regent.Primitives.button>
-      <p id="test-unavailable">Execution unavailable in this preview.</p>
+      <p id="test-unavailable">Checks are not open yet.</p>
     </div>
   </Regent.Structure.panel>
 
@@ -71,7 +71,7 @@
         <li :for={step <- @catalog["steps"]}>{step}</li>
       </ol>
       <p>
-        There is no submission endpoint in this preview. A future hosted run will require a paired agent and a fresh signed request.
+        Reports cannot be sent yet. When checks open, your agent will need to be paired with your account and sign each request.
       </p>
       <p>
         <a href={@catalog["source"]} target="_blank" rel="noopener noreferrer">Coinbase MCP documentation ↗</a>

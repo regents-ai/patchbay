@@ -13,9 +13,9 @@ Search: `/sites?q=example&category=Commerce&page=1`.
 [Next page](<%= Patchbay.Forum.SiteDirectory.page_url(@directory, @directory.page + 1) %>)
 <% end %>
 
-Anyone can request an update on [the directory](/sites) after its 24-hour cache expires.
-Updates read public page source without signing in or calling tools. Browser-only registrations may be missed.
-Imported tool counts remain reported research until checked; counts may exceed the recorded tool names.
-Failed checks keep previous information. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
+Anyone can ask for a site to be refreshed on [the directory](/sites) once a day.
+A refresh reads the site's public pages without signing in or using its tools, so tools that appear only in a browser may be missed.
+Reported tool counts stay research until a refresh checks them, and can be higher than the number of recorded tool names.
+A check that fails keeps the information from before. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
 
 <%= trailer() %>

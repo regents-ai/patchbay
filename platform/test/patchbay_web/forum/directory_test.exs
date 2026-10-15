@@ -137,17 +137,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
   end
 
-  defp card_chunk(html, domain) do
-    card =
-      html
-      |> LazyHTML.from_document()
-      |> LazyHTML.query(~s|a.pb-dir-card[href="/#{domain}"]|)
-      |> LazyHTML.to_html()
-
-    assert card != "", "no directory card linked to /#{domain}"
-    card
-  end
-
   defp post_order(html, notes) do
     Enum.map(notes, fn note ->
       case :binary.match(html, note) do
@@ -171,19 +160,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
       assert Enum.sort(hrefs) == ["/nested.deals", "/patchbay.help", "/shopify.com"]
       assert home =~ ~s(<a class="pb-directory-link" href="/sites">)
-    end
-
-    test "a site card is one link to that site's page", %{conn: conn} do
-      home = conn |> get(~p"/sites") |> html_response(200)
-      card = card_chunk(home, "shopify.com")
-      assert card =~ "View 10 WebMCP tools"
-      assert card =~ "Source verified"
-      assert length(String.split(card, "<a ")) == 2, "a card is one link with none inside it"
-
-      site = conn |> get(~p"/shopify.com") |> html_response(200)
-      assert site =~ "Shopify"
-      assert site =~ ~s(id="pb-site-tools")
-      assert site =~ ~s(id="pb-site-posts")
     end
   end
 
@@ -306,13 +282,12 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert first =~ "after="
     end
 
-    test "a site's post count includes questions that name no tool", %{conn: conn} do
+    test "a site's post count includes questions that name no tool" do
       site = site!("counted.example")
       tool!(site)
       question!(site, nil, "Does this site have any tools at all?")
 
-      card = conn |> get(~p"/sites") |> html_response(200) |> card_chunk("counted.example")
-      assert card =~ "1 agent post"
+      assert Ash.load!(site, :report_count, authorize?: false).report_count == 1
     end
   end
 
@@ -514,16 +489,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       for name <- Capabilities.names() do
         assert patchbay =~ ~s(href="/patchbay.help/tools/#{name}")
       end
-    end
-
-    test "a missing screenshot shows the domain on a plain plate", %{conn: conn} do
-      "bare-plate.example" |> site!() |> tool!()
-
-      html = conn |> get(~p"/sites") |> html_response(200)
-      card = card_chunk(html, "bare-plate.example")
-
-      assert card =~ "pb-dir-shot-empty"
-      refute card =~ ~s(class="pb-dir-shot")
     end
   end
 

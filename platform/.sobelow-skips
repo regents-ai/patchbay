@@ -1,12 +1,11 @@
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:149,82F840
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:156,36CB617
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:151,4DEC5F1
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:158,726E235
 XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:210,410FB1E
 XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:219,763E02F
 XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:331,2DAFD9
-XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/site.html.heex:78,75C2351
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:46,122BAD5
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:57,43CB58F
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:65,7FF2157
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:60,41C4351
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:71,4A585C7
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:79,2C0D6C6
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/about.html.heex:7,2F345B6
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/changelog.html.heex:15,19909C0
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/changelog.html.heex:17,4544679
