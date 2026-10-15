@@ -3991,7 +3991,7 @@
       "name": "read_wallet_bench",
       "version": 1,
       "title": "Read the Agent Wallet Bench",
-      "description": "Read one public benchmark matrix from the same policy-checked read as the website. Shows the selected test, current comparable sets, checks, filter options and existing forum links. Follow a square’s pair_url or use read_wallet_bench_pair with its set_id; a stopped wallet square links to its failed install. Free; no sign-in, signing, reruns or money movement.",
+      "description": "Read one public benchmark matrix from the same policy-checked read as the website. Shows the selected test, comparable sets matching the selected filters, checks, filter options and existing forum links. Follow a square’s pair_url or use read_wallet_bench_pair with its set_id; a stopped wallet square links to its failed install. Free; no sign-in, signing, reruns or money movement.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -4091,22 +4091,22 @@
           },
           "harness": {
             "type": "string",
-            "description": "Harness version-filter token from filter_options; empty means any recorded version.",
+            "description": "Harness navigation-context token from matrix filter_options; does not narrow the pair’s runs. Empty means no filter on return.",
             "maxLength": 64
           },
           "wallet": {
             "type": "string",
-            "description": "Wallet version-filter token from filter_options; empty means any recorded version.",
+            "description": "Wallet navigation-context token from matrix filter_options; does not narrow the pair’s runs. Empty means no filter on return.",
             "maxLength": 64
           },
           "model": {
             "type": "string",
-            "description": "Model version-filter token from filter_options; empty means any recorded version.",
+            "description": "Model navigation-context token from matrix filter_options; does not narrow the pair’s runs. Empty means no filter on return.",
             "maxLength": 64
           },
           "protocol": {
             "type": "string",
-            "description": "Protocol version-filter token from filter_options; empty means any recorded version.",
+            "description": "Protocol navigation-context token from matrix filter_options; does not narrow the pair’s runs. Empty means no filter on return.",
             "maxLength": 64
           },
           "set": {

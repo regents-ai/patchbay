@@ -11,7 +11,7 @@ defmodule PatchbayWeb.WalletBenchJSON do
       data_only: @data_only,
       test: test.grid,
       selection:
-        "Each square shows its current comparable set; follow its pair_url for that set.",
+        "Current set when it matches the filters, otherwise newest matching set. Follow pair_url for that set.",
       filters: matrix.filters,
       filter_options: matrix.options,
       harnesses: Enum.map(test.harnesses, &entry/1),

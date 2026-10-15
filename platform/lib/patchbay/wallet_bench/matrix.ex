@@ -3,8 +3,8 @@ defmodule Patchbay.WalletBench.Matrix do
   The bench's grids, one for each test, agents by wallets, built from what
   Techtree publishes.
 
-  Each square holds the outcomes of the pair's current set, the one Techtree
-  marks, counted separately (two passes and an inconclusive run stay two and
+  Each square holds the outcomes of the pair's current set when it matches
+  the filters, otherwise its newest matching set, counted separately (two passes and an inconclusive run stay two and
   one, never one verdict), the
   fixed outcome Techtree gives a square that never runs, and one dot for each
   of the grid's checks: in how many of the pair's runs that reached the test

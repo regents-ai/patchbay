@@ -43,7 +43,7 @@ the returned page. Omitting sort retains the existing keyword-search behavior.
 ## regents patchbay bench matrix / bench pair <harness-id> <wallet-id>
 
 Public, free reads of the same benchmark controller as the website and Markdown.
-`bench matrix --test wallet` shows current comparable sets and filter options.
+`bench matrix --test wallet` shows comparable sets matching the selected filters and filter options.
 Use each square’s roster IDs and exact set with `bench pair H16 W13 --test wallet
 --set <set-id>` to read its checks and provenance. Omitting `--set` reads that
 test’s recorded history. Add `--baseline <id> --compare <id>` for the website’s

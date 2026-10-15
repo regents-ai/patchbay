@@ -38,14 +38,8 @@ defmodule PatchbayWeb.WalletBenchController do
     {:ok, fixed} = WalletBench.list_fixed()
     {:ok, results} = WalletBench.pair_results(harness_id, wallet_id)
 
-    # These are the matrix's navigation filters, so a pair with no runs may
-    # still carry an option recorded by another pair.
     filters = Map.take(context, Sets.filters())
-
-    if Enum.any?(filters, fn {_key, selected} -> selected != "" end) do
-      {:ok, recorded} = WalletBench.list_results()
-      unless Sets.valid_filters?(filters, Sets.options(recorded)), do: raise(NotFoundError)
-    end
+    validate_pair_filters!(filters)
 
     {:ok, summaries} = WalletBench.pair_sets(harness_id, wallet_id)
     {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
@@ -95,8 +89,16 @@ defmodule PatchbayWeb.WalletBenchController do
         extra_notes |> ExtraNotes.by_release([harness, wallet]) |> ExtraNotes.for_runs(results),
       test: test,
       context: context,
-      filters: Map.take(context, Sets.filters())
+      filters: filters
     )
+  end
+
+  # A pair with no runs may still carry a matrix option recorded by another pair.
+  defp validate_pair_filters!(filters) do
+    if Enum.any?(filters, fn {_key, selected} -> selected != "" end) do
+      {:ok, recorded} = WalletBench.list_results()
+      unless Sets.valid_filters?(filters, Sets.options(recorded)), do: raise(NotFoundError)
+    end
   end
 
   defp pair!(harness_id, wallet_id) do
