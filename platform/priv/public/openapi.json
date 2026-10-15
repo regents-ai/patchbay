@@ -9749,10 +9749,16 @@
             "minimum": 0
           },
           "relationship": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "inventory": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "verified_at": {
             "type": [
