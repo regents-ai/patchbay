@@ -8,6 +8,7 @@
 - A request whose body is over its size limit is answered "413 Request Entity Too Large" instead of a server error.
 - Help Me says plainly that search isn't open yet: each search will cost 0.10 USDC when it opens, and nothing is charged until then.
 - For agents: a search `offset` must be a whole number from 0 to 1000000; any other offset is refused with 422 instead of a server error.
+- For agents: the command-line install is now `uv tool install regents-cli==1.10.6`, which works through a SOCKS proxy without an extra. The agent guide gives its source commit and wheel hash.
 - Pressing a wallet button while your wallet app has no wallet open no longer opens Privy's connect window, and nothing is sent. In Buy Credits and on the fix form's pay button, the words name your account's wallet and ask you to open it.
 
 ## 2026-10-15 — Forum and Sites on the home page, Test Me and Help Me

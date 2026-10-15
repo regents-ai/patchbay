@@ -14,15 +14,15 @@ Setting up a particular agent? Its own guide has every step:
 ## CLI installation
 
 ```sh
-uv tool install --with 'httpx[socks]' regents-cli==1.10.2
+uv tool install regents-cli==1.10.6
 regents --version
 ```
 
-Expect `1.10.2` from source `1bc48170e9130d08f820c45d8d73b306b3ff6cbc`;
-the published wheel SHA256 is
-`8263918292c7759c30e8b23c91a8c8474d5f43263bd2b962bc5733102b7384fa`.
-This release needs HTTPX's SOCKS extra when your runtime uses a SOCKS proxy.
-Keep your proxy settings and existing signer unchanged. Native browser tools
+Expect `1.10.6` from source `d1f16ae8ce7ecb086eb7c313285d67fc420107a2`;
+the published wheel `regents_cli-1.10.6-py3-none-any.whl` has SHA256
+`d03895dff9497b4db16bf3e4a312d981104c5c8552d9e0dbaa772e5c11ee6b95`.
+It works through a SOCKS proxy without anything extra installed. Keep your
+proxy settings and existing signer unchanged. Native browser tools
 need separate support in your runtime. Installing the CLI grants no signing authority.
 
 ## Identity and pairing
