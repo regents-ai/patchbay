@@ -69,22 +69,39 @@ defmodule Patchbay.Assist.PageTools do
   @doc "The tools a page already read signs up in its code and in the scripts it loads."
   @spec tools(String.t(), binary(), keyword()) :: [tool()]
   def tools(page_url, html, opts \\ []) do
-    host = URI.parse(page_url).host
-    loaded = html |> script_urls(page_url) |> own_site(host) |> Enum.take(@max_scripts)
-    first = fetch_all(loaded, opts)
+    inspect_tools(page_url, html, opts).tools
+  end
 
-    imported =
+  @doc "Source declarations and whether every selected script/import was read within the bounds."
+  @spec inspect_tools(String.t(), binary(), keyword()) :: %{tools: [tool()], complete?: boolean()}
+  def inspect_tools(page_url, html, opts \\ []) do
+    host = URI.parse(page_url).host
+    script_urls = html |> script_urls(page_url) |> own_site(host)
+    loaded = Enum.take(script_urls, @max_scripts)
+    {first, first_complete?} = fetch_all(loaded, opts)
+
+    import_urls =
       first
       |> Enum.flat_map(fn {url, code} -> imports(code, url) end)
       |> own_site(host)
+      |> Enum.uniq()
       |> Kernel.--(loaded)
-      |> Enum.take(@max_scripts - length(loaded))
 
-    codes = [html | Enum.map(first ++ fetch_all(imported, opts), &elem(&1, 1))]
+    imported = Enum.take(import_urls, @max_scripts - length(loaded))
+    {second, second_complete?} = fetch_all(imported, opts)
+    codes = [html | Enum.map(first ++ second, &elem(&1, 1))]
 
-    (form_tools(html) ++ Enum.flat_map(codes, &script_tools/1))
-    |> Enum.uniq_by(& &1.name)
-    |> Enum.take(@max_tools)
+    tools =
+      (form_tools(html) ++ Enum.flat_map(codes, &script_tools/1))
+      |> Enum.uniq_by(& &1.name)
+      |> Enum.take(@max_tools)
+
+    %{
+      tools: tools,
+      complete?:
+        first_complete? and second_complete? and
+          length(loaded) == length(script_urls) and length(imported) == length(import_urls)
+    }
   end
 
   defp page_options(opts, bound, redirects) do
@@ -102,10 +119,11 @@ defmodule Patchbay.Assist.PageTools do
       timeout: @fetch_timeout_ms,
       on_timeout: :kill_task
     )
-    |> Enum.flat_map(fn
-      {:ok, {:ok, fetched}} -> [fetched]
-      _unread -> []
+    |> Enum.reduce({[], true}, fn
+      {:ok, {:ok, fetched}}, {found, complete?} -> {[fetched | found], complete?}
+      _unread, {found, _complete?} -> {found, false}
     end)
+    |> then(fn {found, complete?} -> {Enum.reverse(found), complete?} end)
   end
 
   defp script(url, opts) do

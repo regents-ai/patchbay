@@ -117,7 +117,20 @@ defmodule Patchbay.Forum.SiteCheck do
       end)
 
       change(set_attribute(:requested_at, &DateTime.utc_now/0))
-      change(run_oban_trigger(:run))
+
+      change(fn changeset, context ->
+        Ash.Changeset.after_action(changeset, fn _changeset, check ->
+          if pending?(check) do
+            AshOban.run_trigger(
+              check,
+              :run,
+              context |> Ash.Context.to_opts() |> Keyword.take([:actor, :tenant])
+            )
+          end
+
+          {:ok, check}
+        end)
+      end)
     end
 
     update :run do

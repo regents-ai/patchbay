@@ -88,7 +88,7 @@ defmodule Patchbay.Forum.SiteDirectory do
       name: seed["name"],
       category: seed["category"],
       page_url: seed["url"],
-      tools: observed || seed["tools"],
+      tools: Enum.uniq_by(observed || seed["tools"], & &1["name"]),
       checked_at: snapshot && snapshot["checked_at"],
       failed?: failed?(snapshot, check),
       pending?: pending?(check),

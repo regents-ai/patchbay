@@ -84,7 +84,10 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       </form>
 
       <div class="pb-directory-results-heading">
-        <p role="status">{@page.total} sites <span :if={@page.q != ""}>matching “{@page.q}”</span></p>
+        <p role="status">
+          {@page.total} {if @page.total == 1, do: "site", else: "sites"}
+          <span :if={@page.q != ""}>matching “{@page.q}”</span>
+        </p>
         <p>Page {@page.page} of {@page.pages}</p>
       </div>
       <p :if={@problem} role="alert" class="pb-directory-notice">{@problem}</p>
@@ -113,10 +116,10 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <p class="pb-directory-date">
             Last updated
             <time :if={site.checked_at} datetime={site.checked_at}>{stamp(site.checked_at)}</time>
-            <span :if={!site.checked_at}>Not checked by Patchbay</span>
+            <span :if={!site.checked_at}>No successful scan yet</span>
           </p>
           <p :if={site.failed?} class="pb-directory-notice" role="status">
-            The last check couldn't reach this page. Previous information is kept.
+            The last check was incomplete. Previous information is kept.
           </p>
           <details :if={site.tools != []} class="pb-directory-tool-list">
             <summary>View tools <span aria-hidden="true">＋</span></summary>

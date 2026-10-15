@@ -127,19 +127,16 @@ defmodule Patchbay.Forum.SiteScan do
     |> Task.async_stream(
       fn url ->
         snapshot =
-          case PageTools.page(url, opts) do
-            {:ok, page_url, html} ->
-              %{
-                "checked_at" => now,
-                "page_url" => page_url,
-                "failed" => false,
-                "tools" =>
-                  Enum.map(PageTools.tools(page_url, html, opts), fn tool ->
-                    %{"name" => tool.name, "address" => page_url}
-                  end)
-              }
-
-            {:error, _unavailable} ->
+          with {:ok, page_url, html} <- PageTools.page(url, opts),
+               %{complete?: true, tools: tools} <- PageTools.inspect_tools(page_url, html, opts) do
+            %{
+              "checked_at" => now,
+              "page_url" => page_url,
+              "failed" => false,
+              "tools" => Enum.map(tools, &%{"name" => &1.name, "address" => page_url})
+            }
+          else
+            _incomplete ->
               Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})
           end
 
