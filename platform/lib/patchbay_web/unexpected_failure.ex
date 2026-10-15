@@ -1,21 +1,37 @@
 defmodule PatchbayWeb.UnexpectedFailure do
-  @moduledoc """
-  Logs a failure the site answers only with "try again", with the request it
-  ended, so a fault the caller sees as a plain 503 still leaves a trace.
-  """
+  @moduledoc "Logs failure classes without request content or exception values."
 
   require Logger
 
-  @doc "Logs `error` against `conn`'s request and returns `conn`."
+  @doc "Logs bounded error classes and a hashed request correlation; returns `conn`."
   def log(conn, error) do
-    Logger.error("#{conn.method} #{conn.request_path} answered try again: #{describe(error)}")
+    Logger.error(
+      "Request answered try again: class=#{class(error)} causes=#{causes(error)} correlation=#{correlation()}",
+      request_id: nil,
+      error_type: nil
+    )
+
     conn
   end
 
-  # One line: the log feed keeps only an error's first line, and an Ash error
-  # names its cause on a later one.
-  defp describe(error), do: error |> text() |> String.replace(~r/\s*\n\s*/, " ") |> String.trim()
+  defp class(%{__struct__: module}) when is_atom(module),
+    do: module |> Atom.to_string() |> String.slice(0, 128)
 
-  defp text(error) when is_exception(error), do: Exception.message(error)
-  defp text(error), do: inspect(error)
+  defp class(_error), do: "unclassified"
+
+  # Only immediate classes, with no recursive inspection of wrapped errors.
+  defp causes(%{errors: errors}) when is_list(errors),
+    do: errors |> Enum.take(4) |> Enum.map_join(",", &class/1)
+
+  defp causes(_error), do: "none"
+
+  defp correlation do
+    case Logger.metadata()[:request_id] do
+      id when is_binary(id) and byte_size(id) <= 128 ->
+        :crypto.hash(:sha256, id) |> Base.encode16(case: :lower)
+
+      _ ->
+        "unavailable"
+    end
+  end
 end
