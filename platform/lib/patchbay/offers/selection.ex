@@ -5,19 +5,22 @@ defmodule Patchbay.Offers.Selection do
 
   @positions [1, 2, 3]
 
+  @doc "What is showing for a site at `at`, or why it could not be read."
   def for_site(site_id, at) do
     # Selection is Patchbay's own read. Only the explicit disclosure fields
     # leave the boundary; owner details and review records never do.
-    showing =
-      Placement
-      |> Ash.Query.for_read(:showing, %{site_id: site_id, at: at})
-      |> Ash.read!(authorize?: false)
-      |> Map.new(&{{&1.slot.market.scope, &1.slot.number}, &1})
+    with {:ok, placements} <-
+           Placement
+           |> Ash.Query.for_read(:showing, %{site_id: site_id, at: at})
+           |> Ash.read(authorize?: false) do
+      showing = Map.new(placements, &{{&1.slot.market.scope, &1.slot.number}, &1})
 
-    %{
-      global_opportunities: Enum.reject(@positions, &Map.has_key?(showing, {:site, &1})),
-      items: choose(showing)
-    }
+      {:ok,
+       %{
+         global_opportunities: Enum.reject(@positions, &Map.has_key?(showing, {:site, &1})),
+         items: choose(showing)
+       }}
+    end
   end
 
   def choose(showing) do

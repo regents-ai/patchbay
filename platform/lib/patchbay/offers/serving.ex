@@ -22,9 +22,11 @@ defmodule Patchbay.Offers.Serving do
   @doc "Public Offers for a site's read. No delivery, Credits or worker writes."
   def for_site(%Site{} = site) do
     at = DateTime.utc_now()
-    Disclosure.read_section(site, at, Selection.for_site(site.id, at).items)
-  rescue
-    _error -> read_failed()
+
+    case Selection.for_site(site.id, at) do
+      {:ok, selection} -> Disclosure.read_section(site, at, selection.items)
+      {:error, error} -> read_failed(error)
+    end
   end
 
   def for_site(missing) when missing in [nil, :empty], do: nil
@@ -32,17 +34,18 @@ defmodule Patchbay.Offers.Serving do
   @doc "Resolves a URL to its registered board before selecting its public Offers."
   def for_domain(value) do
     with {:ok, domain} <- Origin.normalize(value),
-         {:ok, site} <- Forum.get_site_by_origin(domain, not_found_error?: false) do
+         {:ok, %Site{} = site} <- Forum.get_site_by_origin(domain, not_found_error?: false) do
       for_site(site)
     else
-      _missing -> nil
+      # Not a site address, or no board for it yet: no Offers to show.
+      {:error, reason} when is_binary(reason) -> nil
+      {:ok, nil} -> nil
+      {:error, error} -> read_failed(error)
     end
-  rescue
-    _error -> read_failed()
   end
 
-  defp read_failed do
-    Logger.warning("Agent Offers unavailable for a read response")
+  defp read_failed(error) do
+    Logger.warning("Agent Offers unavailable for a read response", error_type: class(error))
     nil
   end
 
@@ -71,8 +74,6 @@ defmodule Patchbay.Offers.Serving do
       {:error, error} ->
         failed(post, error)
     end
-  rescue
-    error -> failed(post, error)
   end
 
   defp failed(post, error) do
@@ -81,10 +82,14 @@ defmodule Patchbay.Offers.Serving do
       operation: post.operation
     })
 
-    Logger.error(
-      "Agent Offers left out of a #{post.operation} response: " <> Exception.message(error)
+    Logger.error("Agent Offers left out of a #{post.operation} response",
+      error_type: class(error)
     )
 
     nil
   end
+
+  # The kind of failure only: its text can carry what the database returned.
+  defp class(%{__struct__: module}), do: inspect(module)
+  defp class(_error), do: "unclassified"
 end
