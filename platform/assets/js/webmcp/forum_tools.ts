@@ -255,7 +255,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         for (const key of ["site", "goal", "error"]) {
           if (input[key] !== undefined) query.set(key, String(input[key]));
         }
-        const answer = await get({...options, signal}, `${KNOWN_FIXES_PATH}?${query}`);
+        const answer = await get({...options, signal}, `${KNOWN_FIXES_PATH}?${query}`, {credentials: "omit", cache: "no-store", redirect: "error"});
         if (!answer.ok) return refused(answer);
         return boundedJson(answer.body, RESULT_LIMIT);
       },
@@ -341,7 +341,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         for (const key of ["origin", "tool_name", "after", "limit"]) {
           if (input[key] !== undefined) query.set(key, String(input[key]));
         }
-        const answer = await get({...options, signal}, `/forum/tool-history?${query}`);
+        const answer = await get({...options, signal}, `/forum/tool-history?${query}`, {credentials: "omit", cache: "no-store", redirect: "error"});
         if (!answer.ok) return refused(answer);
         // Cardinality is bounded by the Ash action. Never truncate schema values or cursors.
         return JSON.stringify({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body});
@@ -398,7 +398,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.sort) query.set("sort", String(input.sort));
         if (input.offset) query.set("offset", String(input.offset));
 
-        const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`);
+        const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`, {credentials: "omit", cache: "no-store", redirect: "error"});
 
         if (!answer.ok) return refused(answer);
         return boundedJson(
@@ -413,7 +413,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const path = `${THREADS_PATH}/${encodeURIComponent(input.thread_id ?? "")}`;
         const query = new URLSearchParams();
         if (input.after !== undefined) query.set("after", String(input.after));
-        const answer = await get({...options, signal}, input.after === undefined ? path : `${path}?${query}`);
+        const answer = await get({...options, signal}, input.after === undefined ? path : `${path}?${query}`, {credentials: "omit", cache: "no-store", redirect: "error"});
 
         if (!answer.ok) return refused(answer);
         const result = JSON.stringify({
@@ -510,7 +510,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         const query = new URLSearchParams();
         if (input.origin) query.set("origin", String(input.origin));
         const path = query.size ? `/forum/offer-slots?${query}` : "/forum/offer-slots";
-        const answer = await get({...options, signal}, path);
+        const answer = await get({...options, signal}, path, {credentials: "omit", cache: "no-store", redirect: "error"});
 
         if (!answer.ok) return refused(answer);
         return boundedJson(
@@ -593,7 +593,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           ));
         }
 
-        const answer = await get({...options, signal}, `${AGENTS_PATH}/${encodeURIComponent(profileId)}`);
+        const answer = await get({...options, signal}, `${AGENTS_PATH}/${encodeURIComponent(profileId)}`, {credentials: "omit", cache: "no-store", redirect: "error"});
 
         if (!answer.ok) return refused(answer);
         // The display name came from whatever the agent signed in with, so it
@@ -982,7 +982,7 @@ async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair:
   const path = pair
     ? `/api/wallet-bench/${encodeURIComponent(String(input.harness_id))}/${encodeURIComponent(String(input.wallet_id))}`
     : "/api/wallet-bench";
-  const answer = await get({...options, signal}, `${path}?${query}`, {credentials: "omit", redirect: "error"});
+  const answer = await get({...options, signal}, `${path}?${query}`, {credentials: "omit", cache: "no-store", redirect: "error"});
   if (!answer.ok) return refused(answer);
   if (!answer.body) {
     return boundedJson(refusal("invalid_result", "The benchmark returned no JSON result.", "Read /wallet-bench on the website."));
@@ -1009,7 +1009,7 @@ async function catalogRead(options: ForumToolOptions, input: ForumInput, tool: b
   const query = new URLSearchParams();
   if (input.after !== undefined) query.set("after", String(input.after));
   const path = tool ? `/${encodeURIComponent(host)}/tools/${encodeURIComponent(name)}${query.size ? `?${query}` : ""}` : "/sites";
-  const answer = await get({...options, signal}, path, {credentials: "omit", redirect: "error"});
+  const answer = await get({...options, signal}, path, {credentials: "omit", cache: "no-store", redirect: "error"});
   if (!answer.ok) return refused(answer);
   if (!answer.body || typeof answer.body !== "object" || Array.isArray(answer.body) ||
       (tool ? !answer.body.tool || !Array.isArray(answer.body.versions) : !Array.isArray(answer.body.sites))) {
