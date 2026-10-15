@@ -1,9 +1,9 @@
 # Plugins
 
-No plugin package is implemented or published yet. This directory is where
-Patchbay adapters for agent runtimes such as Codex and Claude will live. An
-adapter here wraps the CLI and HTTP behavior that already exists; it does not
-add commands, permissions or payment paths of its own.
+The [ChatGPT plugin](patchbay/README.md) is implemented as a private candidate.
+It remains unpublished; its owner manages packaging and release separately.
 
-Until a package exists, use the [CLI](../cli/README.md) or the
-[agent setup page](https://patchbay.help/agent-setup).
+Use the [CLI](../cli/README.md) or the
+[agent setup page](https://patchbay.help/agent-setup) for the available entry points.
+Runtime adapters reuse the existing interfaces; they add no commands, permissions
+or payment authority of their own.
