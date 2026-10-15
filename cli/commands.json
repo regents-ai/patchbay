@@ -94,7 +94,7 @@
     },
     {
       "command": "sites list",
-      "description": "Search Patchbay\u2019s full site directory, 30 sites per page. Optional q, category and page; returned page metadata provides continuation. Recorded tools and update dates are public observations, not a fresh native-browser verification. Source command requires shared CLI publication.",
+      "description": "Search Patchbay\u2019s full site directory, 30 sites per page. Optional q, category and page; returned page metadata provides continuation. Recorded tools and update dates are public observations, not a fresh native-browser verification.",
       "operation_id": "readSiteDirectory",
       "webmcp": "read_site_directory",
       "method": "GET",
@@ -128,7 +128,7 @@
     },
     {
       "command": "tools catalog <host> <name>",
-      "description": "Read the public tool declaration and recorded version page. Use a canonical host and exact name; redirects are refused. Follow pagination.next_cursor with --after for older versions. Source definition only until imported and published by regents-cli.",
+      "description": "Read the public tool declaration and recorded version page. Use a canonical host and exact name; redirects are refused. Follow pagination.next_cursor with --after for older versions.",
       "operation_id": "readToolCatalog",
       "webmcp": "read_tool_catalog",
       "method": "GET",

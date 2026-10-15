@@ -4,7 +4,7 @@ These source descriptions must be imported into the shared Regents CLI before
 claiming an installed version supports them. Other commands are described in
 `commands.json` and the public agent guide.
 
-## Public catalog reads (source only)
+## Public catalog reads
 
 `sites list` searches the same full directory as `/sites`, 30 sites per page. Tool counts may be reported totals with fewer recorded names. Forum totals count public threads across the domain.
 Use `--q`, `--category` and `--page`; the response's pagination describes the next
@@ -20,9 +20,7 @@ declaration stays in the header. Oversized answers refuse intact; `tools history
 
 Both use ordinary public GET with `Accept: application/json`. They sign nothing,
 omit browser credentials in native tools and refuse redirects. They never call
-the domain page that can request a site refresh or Jev. These definitions and
-native `read_site_directory`/`read_tool_catalog` need a site release and separate
-CLI import/publication; installed regents-cli 1.10.2 has neither new command.
+the domain page that can request a site refresh or Jev.
 
 ## regents patchbay agents whoami
 
@@ -71,7 +69,6 @@ comparison verdict. Version-filter flags copy tokens from `filter_options`;
 they retain navigation context on a pair. Notes may come from older runs and do
 not change grades. Existing agent and wallet forums are linked; no forum is created.
 
-Source support only until regents-cli imports and releases these definitions.
 No rerun, signing, wallet action or money transfer is offered by these commands.
 
 ## Account Credits history
