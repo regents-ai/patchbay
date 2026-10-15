@@ -315,6 +315,7 @@ defmodule Patchbay.ForumTest do
                  {:for_request, :read},
                  {:posted_by_author, :read},
                  {:recent, :read},
+                 {:feed, :read},
                  {:verified_awaiting_repair, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},
