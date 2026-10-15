@@ -29,6 +29,14 @@ defmodule Patchbay.WalletBench.Sets do
     end)
   end
 
+  @doc "Whether every navigation filter is empty or names an actual recorded option."
+  def valid_filters?(filters, options) do
+    Enum.all?(filters, fn {key, selected} ->
+      key in @filters and is_binary(selected) and
+        (selected == "" or Enum.any?(Map.get(options, key, []), &(&1.id == selected)))
+    end)
+  end
+
   def filter(runs, filters) do
     Enum.filter(runs, fn run ->
       Enum.all?(@filters, fn key ->

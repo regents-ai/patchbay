@@ -15,15 +15,12 @@ defmodule PatchbayWeb.WalletBenchController do
   alias PatchbayWeb.Forum.NotFoundError
 
   def index(conn, params) do
-    test = Map.get(params, "test", hd(Matrix.grids()))
-    unless test in Matrix.grids(), do: raise(NotFoundError)
-    filters = Map.take(params, Sets.filters())
+    context = bench_context(params)
+    test = context["test"]
+    filters = Map.take(context, Sets.filters())
     {:ok, matrix} = Matrix.read(filters)
 
-    Enum.each(filters, fn {key, id} ->
-      unless id == "" or Enum.any?(matrix.options[key], &(&1.id == id)),
-        do: raise(NotFoundError)
-    end)
+    unless Sets.valid_filters?(filters, matrix.options), do: raise(NotFoundError)
 
     render(conn, :index,
       page_title: "Agent Wallet Bench",
@@ -40,6 +37,16 @@ defmodule PatchbayWeb.WalletBenchController do
     {:ok, notes} = WalletBench.list_notes()
     {:ok, fixed} = WalletBench.list_fixed()
     {:ok, results} = WalletBench.pair_results(harness_id, wallet_id)
+
+    # These are the matrix's navigation filters, so a pair with no runs may
+    # still carry an option recorded by another pair.
+    filters = Map.take(context, Sets.filters())
+
+    if Enum.any?(filters, fn {_key, selected} -> selected != "" end) do
+      {:ok, recorded} = WalletBench.list_results()
+      unless Sets.valid_filters?(filters, Sets.options(recorded)), do: raise(NotFoundError)
+    end
+
     {:ok, summaries} = WalletBench.pair_sets(harness_id, wallet_id)
     {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
     {:ok, extra_notes} = WalletBench.list_extra_notes()
@@ -109,6 +116,10 @@ defmodule PatchbayWeb.WalletBenchController do
   defp bench_context(params) do
     test = Map.get(params, "test", hd(Matrix.grids()))
     unless test in Matrix.grids(), do: raise(NotFoundError)
+
+    unless Enum.all?(Map.take(params, Sets.filters()), fn {_key, value} -> is_binary(value) end),
+      do: raise(NotFoundError)
+
     Map.take(params, ["test" | Sets.filters()]) |> Map.put("test", test)
   end
 end
