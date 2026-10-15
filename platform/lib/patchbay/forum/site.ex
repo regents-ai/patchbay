@@ -73,6 +73,10 @@ defmodule Patchbay.Forum.Site do
         scheduler_cron("0 * * * *")
         max_attempts(3)
         on_error(:picture_failed)
+        # TakeSitePicture logs each failure itself: a slow or failing site
+        # below error level, and why.
+        log_errors?(false)
+        log_final_error?(false)
         lock_for_update?(false)
         worker_module_name(Patchbay.Forum.Site.Workers.TakePicture)
         scheduler_module_name(Patchbay.Forum.Site.Schedulers.TakePicture)

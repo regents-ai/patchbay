@@ -7,7 +7,11 @@ defmodule Patchbay.Forum.Shots do
 
   @max_bytes 3 * 1024 * 1024
 
-  @doc "A WebP picture of the page at `page_url`, or why none came back."
+  @doc """
+  A WebP picture of the page at `page_url`, or why none came back: the
+  machine's status, `:not_a_picture`, why the call ended (`:timeout`), or the
+  exception Req raised.
+  """
   @spec take(String.t()) :: {:ok, binary()} | {:error, term()}
   def take(page_url) do
     options =
@@ -36,8 +40,12 @@ defmodule Patchbay.Forum.Shots do
       {:ok, %Req.Response{status: status}} ->
         {:error, {:status, status}}
 
-      {:error, reason} ->
+      # Why the call ended, such as :timeout.
+      {:error, %Req.TransportError{reason: reason}} ->
         {:error, reason}
+
+      {:error, exception} ->
+        {:error, exception}
     end
   end
 end

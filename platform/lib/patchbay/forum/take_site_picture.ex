@@ -3,12 +3,16 @@ defmodule Patchbay.Forum.TakeSitePicture do
   The `:take_picture` action of `Patchbay.Forum.Site`: has the screenshot
   machine take a picture of the site's page (`screenshot_source_url`: its
   front page, or the page its catalog entry names), keeps it, and points the
-  site's card at it. A picture that does not come back is an error, so its
-  job tries again with Oban's backoff.
+  site's card at it. A picture that does not come back is an error
+  (`Patchbay.Forum.PictureNotTaken`), so its job tries again with Oban's
+  backoff.
   """
 
   use Ash.Resource.ManualUpdate
 
+  require Logger
+
+  alias Patchbay.Forum.PictureNotTaken
   alias Patchbay.Forum.Shots
   alias Patchbay.Forum.SiteScreenshot
 
@@ -17,8 +21,8 @@ defmodule Patchbay.Forum.TakeSitePicture do
     site = changeset.data
     now = DateTime.utc_now()
 
-    # Patchbay's own job: there is no actor for policies to check.
-    with {:ok, image} <- Shots.take(site.screenshot_source_url),
+    with {:ok, image} <- picture(site),
+         # Patchbay's own job: there is no actor for policies to check.
          {:ok, _picture} <-
            SiteScreenshot
            |> Ash.Changeset.for_create(:store, %{site_id: site.id, image: image, captured_at: now})
@@ -30,5 +34,31 @@ defmodule Patchbay.Forum.TakeSitePicture do
       })
       |> Ash.update(authorize?: false)
     end
+    |> logged()
   end
+
+  # A site that is slow or failing leaves no picture; that is a site's doing,
+  # not Patchbay's, so it is a warning that carries why.
+  defp picture(site) do
+    case Shots.take(site.screenshot_source_url) do
+      {:ok, image} ->
+        {:ok, image}
+
+      {:error, reason} ->
+        error = PictureNotTaken.exception(reason: reason)
+        Logger.warning("#{site.origin}: " <> Exception.message(error))
+        {:error, error}
+    end
+  end
+
+  # The trigger leaves logging here, so a failure of Patchbay's own is still an
+  # error, named by its kind.
+  defp logged({:error, %PictureNotTaken{}} = refused), do: refused
+
+  defp logged({:error, error} = failed) do
+    Logger.error("A site's picture could not be kept", error_type: inspect(error.__struct__))
+    failed
+  end
+
+  defp logged(updated), do: updated
 end
