@@ -37,6 +37,21 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # A post lists its first likers, oldest first, as many as a page holds entries,
   # so a much-liked thread still fits one answer; likes counts them all.
   @liked_by_limit 20
+  # A thread lists its first writers by name, with the count of them all.
+  @participant_limit 20
+  # Whole text, and whole lists, first. A thread too long for one answer even
+  # with a single reply has its text shortened the way search shortens it, then
+  # lists fewer likers and writers, so every thread reads.
+  @thread_steps [{:whole, 20}, {500, 20}, {120, 20}, {40, 3}]
+  @quoted_fields [
+    :title,
+    :body_markdown,
+    :quoted_note,
+    :problem_summary,
+    :applicability,
+    :proposed_steps,
+    :caveats
+  ]
   # The WebMCP result adds a summary and content warning outside this body.
   @thread_payload_bytes 15 * 1024
   @correct_query "Correct the query, then send it again."
@@ -503,8 +518,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     named =
       [report.author | Enum.map(replies, & &1.author)]
       |> Enum.reject(&is_nil/1)
-      |> Enum.map(&AuthorJSON.author(&1, audience))
-      |> Enum.uniq_by(& &1.profile_id)
+      |> Enum.uniq_by(& &1.id)
 
     unnamed =
       replies
@@ -513,12 +527,29 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       |> Enum.frequencies()
       |> Enum.map(fn {kind, count} -> %{written_by: kind, count: count} end)
 
-    %{named: named, unnamed: unnamed}
+    %{
+      named: named |> Enum.take(@participant_limit) |> Enum.map(&AuthorJSON.author(&1, audience)),
+      named_count: length(named),
+      unnamed: unnamed
+    }
   end
 
-  # Keep complete entries. A cursor must follow the last returned row, including
-  # when the byte budget leaves some of the fetched page for the next request.
   defp fit_thread_page(report, participants, entries, more?, offers) do
+    Enum.find_value(@thread_steps, {:error, :response_too_large}, fn {length, limit} ->
+      fit_replies(
+        shortened(report, length, limit),
+        %{participants | named: Enum.take(participants.named, limit)},
+        Enum.map(entries, fn {entry, keyset} -> {shortened(entry, length, limit), keyset} end),
+        more?,
+        offers
+      )
+    end)
+  end
+
+  # Keep the entries this step leaves. A cursor must follow the last returned
+  # row, including when the byte budget leaves some of the fetched page for the
+  # next request.
+  defp fit_replies(report, participants, entries, more?, offers) do
     payload = %{
       report: report,
       participants: participants,
@@ -534,11 +565,27 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         {:ok, attach_within_size(payload, offers, @thread_payload_bytes)}
 
       match?([_first, _second | _rest], entries) ->
-        fit_thread_page(report, participants, Enum.drop(entries, -1), true, offers)
+        fit_replies(report, participants, Enum.drop(entries, -1), true, offers)
 
       true ->
-        {:error, :response_too_large}
+        nil
     end
+  end
+
+  defp shortened(entry, length, limit) do
+    entry
+    |> shorten_fields(length)
+    |> Map.update!(:liked_by, &Enum.take(&1, limit))
+    |> Map.replace_lazy(:solution_cards, fn cards ->
+      Enum.map(cards, &shorten_fields(&1, length))
+    end)
+  end
+
+  defp shorten_fields(entry, length) do
+    Map.new(entry, fn
+      {key, text} when key in @quoted_fields -> {key, shorten(text, length)}
+      pair -> pair
+    end)
   end
 
   defp sign_thread_cursor(report_id, entries) do
@@ -735,6 +782,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   end
 
   defp shorten(nil, _length), do: nil
+  defp shorten(text, :whole), do: text
   defp shorten(text, length) when byte_size(text) <= length, do: text
   defp shorten(text, length), do: String.slice(text, 0, length) <> "…"
 

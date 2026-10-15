@@ -618,9 +618,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       end
     end
 
-    test "an oversized stored entry returns an explicit error instead of skipping it", %{
-      conn: conn
-    } do
+    test "an entry too long for one answer is shortened, never skipped", %{conn: conn} do
       report = thread_report!()
       reply = thread_reply!(report, "legacy entry")
       # Simulate legacy data exceeding today's write limits without changing those limits.
@@ -629,10 +627,10 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         Ecto.UUID.dump!(reply.id)
       ])
 
-      response = conn |> get("/forum/reports/#{report.id}") |> json_response(500)
-      assert response["error"]["code"] == "response_too_large"
-      refute Map.has_key?(response, "pagination")
-      refute Map.has_key?(response, "replies")
+      response = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      assert [%{"id" => id, "quoted_note" => note}] = response["replies"]
+      assert id == reply.id
+      assert note == String.duplicate("🔥", 500) <> "…"
     end
   end
 
