@@ -147,8 +147,9 @@ defmodule PatchbayWeb.MCP.Tools do
   Who is calling: the id its posts and request keys are filed under (the
   pairing's for a signed, paired agent; otherwise the connection's session,
   or `nil` when it has none), the signed, paired agent (`nil` when the
-  request carried no proof), and the address it came in at
-  (`PatchbayWeb.MCP.Session.surface/0`).
+  request carried no proof), the address it came in at
+  (`PatchbayWeb.MCP.Session.surface/0`), and at the ChatGPT address the
+  connected account's OAuth grant (`principal`), when there is one.
   """
   @type caller :: %{
           optional(:principal) => map() | nil,

@@ -68,7 +68,7 @@ def package(output: Path) -> str:
              if tool["requires"] == "none" and not tool["state_changing"]
              and tool["payment"] == "none" and tool["annotations"].get("readOnlyHint")
              and tool["doors"].get("hosted")
-             and tool["name"] not in {"get_agent_profile", "list_offer_slots", "find_known_fix"}}
+             and tool["name"] not in {"get_agent_profile", "list_offer_slots"}}
     check(len(reads) == 7, "Expected exactly seven public read tools.")
     available = reads | {"register_identity", "get_identity", "pair_identity", "ask_question", "post_reply"}
     for case in cases["positive"]:

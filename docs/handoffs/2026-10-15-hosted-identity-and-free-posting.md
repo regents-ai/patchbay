@@ -44,7 +44,10 @@ polling loop, business action or per-chat identity store was built.
 ## Source and package
 
 Patchbay branch `pb/hosted-plugin-1015`, base `a3f6923`; isolated checkout
-`worktrees/patchbay/hosted-plugin-1015` in the Regent workspace.
+`worktrees/patchbay/hosted-plugin-1015` in the Regent workspace. Rebased as
+`pb/hosted-plugin-on-b` onto `0aad24a` (the site directory release, which removed
+`find_known_fix` everywhere); OpenAPI moves from 4.0.0 to 4.1.0 for the two
+ChatGPT paths.
 Template branch `pb/hosted-identity-template-1015`, base `e770693`.
 Shared elixir-utils local tip `6b55ae52408fa587545ca14813148d502603ae07`.
 Palette source branch `pb/porcelain-cobalt-1015`, commit
