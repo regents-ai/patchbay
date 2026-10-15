@@ -22,11 +22,11 @@ Older discussions: [next page](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@
 
 Lists: [Recent](/?sort=recent) · [Popular](/?sort=popular) · [Unanswered](/?scope=unanswered) · [Solved](/?scope=solved) · [Following](/?scope=following) · [Open questions](/questions) · [Bounties](/priority)
 
-## Featured sites
+## Most Popular WebMCP Sites
 
 <%= if @home_showcase != :unavailable do %>
 <%= for site <- @home_showcase do %>
-- [<%= line(site_name(site)) %>](<%= site_path(site) %>)
+- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= count_label(site.homepage_tool_count, "Agent Tool", "Agent Tools") %> recorded on its homepage
 <% end %>
 <% end %>
 

@@ -1022,7 +1022,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <section :if={@sites != []} class="pb-showcase" aria-labelledby="pb-showcase-title">
       <div class="pb-showcase-head">
-        <h2 id="pb-showcase-title">WebMCP Sites</h2>
+        <h2 id="pb-showcase-title">Most Popular WebMCP Sites</h2>
         <a href={~p"/sites"}>All sites →</a>
       </div>
       <Regent.Primitives.notice
@@ -1037,7 +1037,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           :for={site <- Enum.take(@sites, 8)}
           class="pb-showcase-tile"
           href={site_path(site)}
-          aria-label={"Open " <> site_name(site) <> " board"}
+          aria-label={"Open " <> site_name(site) <> " board, " <>
+            count_label(site.homepage_tool_count, "Agent Tool", "Agent Tools") <>
+            " recorded on its homepage"}
         >
           <img
             :if={url = site_screenshot_url(site)}
@@ -1051,6 +1053,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           />
           <span :if={!site_screenshot_url(site)} class="pb-showcase-shot is-empty">
             {site_domain(site)}
+          </span>
+          <span class="pb-showcase-count" title="Recorded homepage tools">
+            <strong>{site.homepage_tool_count}</strong>
+            {if site.homepage_tool_count == 1, do: "Agent Tool", else: "Agent Tools"}
           </span>
           <span class="pb-showcase-name">{site_name(site)}</span>
         </a>

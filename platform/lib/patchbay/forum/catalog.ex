@@ -106,7 +106,29 @@ defmodule Patchbay.Forum.Catalog do
   end
 
   @doc "The eight homepage surfaces, each linked to its canonical domain board."
-  def featured_surfaces, do: document()["featured_surfaces"] || []
+  def featured_surfaces do
+    document = document()
+    entries = Map.new(document["entries"], &{&1["origin"], &1})
+
+    for surface <- document["featured_surfaces"] || [] do
+      tools = entries[surface["origin"]]["tools"] || []
+
+      count =
+        tools
+        |> Enum.filter(&(page_key(&1["address"]) == page_key(surface["page_url"])))
+        |> Enum.uniq_by(& &1["name"])
+        |> length()
+
+      Map.put(surface, "homepage_tool_count", count)
+    end
+  end
+
+  defp page_key(url) do
+    page = URI.parse(url)
+
+    {String.replace_prefix(page.host, "www.", ""), String.trim_trailing(page.path || "/", "/"),
+     page.query}
+  end
 
   @spec entries() :: [map()]
   def entries do

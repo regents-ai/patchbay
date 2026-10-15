@@ -1866,7 +1866,7 @@
     {
       "origin": "feverup.com",
       "display_name": "Fever",
-      "page_url": "https://feverup.com/",
+      "page_url": "https://feverup.com/en",
       "screenshot_path": "/images/home-sites/feverup.jpg",
       "screenshot_captured_at": "2026-10-14T23:11:33.551520+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."

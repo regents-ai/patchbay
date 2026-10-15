@@ -119,6 +119,7 @@ defmodule PatchbayWeb.Forum.Board do
       site
       |> Map.put(:display_name, surface["display_name"])
       |> Map.put(:screenshot_path, surface["screenshot_path"])
+      |> Map.put(:homepage_tool_count, surface["homepage_tool_count"])
     end
   end
 
