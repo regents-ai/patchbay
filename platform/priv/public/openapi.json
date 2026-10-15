@@ -7204,16 +7204,6 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid or expired cursor.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
           "404": {
             "description": "No public site/tool at this address.",
             "content": {
