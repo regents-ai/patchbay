@@ -44,12 +44,12 @@ at https://developers.openai.com/plugins/build/plugins; the portable MCP schema
 currently excludes that extension. It checks five positive and three negative
 review cases, anonymous read tools and the absence of embedded credentials.
 
-This is a local candidate. OAuth defaults off in the application. Before any future
-release, publish the reviewed shared dependency and template changes, apply the
-additive migrations through the normal release path, and explicitly set
-`PATCHBAY_OAUTH_ENABLED=true`. The shared integration and server fix are verified
-locally; they are not deployed. No local
-check grants release or publication authority. Then exercise real Privy sign-in,
-ChatGPT consent, callback delivery, refresh, disconnect and the repair card in the
-host. Submission also needs the verified publishing account/domain and a
-reviewer-accessible demonstration. Upload, approval and publication are separate.
+This package is an unpublished candidate. Backend deployment and public plugin
+publication are separate. OAuth defaults off in application code; production
+requires the reviewed shared dependency and template changes, the additive
+migrations through the normal release path, and `PATCHBAY_OAUTH_ENABLED=true`.
+Before submission, exercise real Privy sign-in, ChatGPT consent, callback delivery,
+refresh, disconnect and the repair card in the host. Local checks do not establish
+those live flows. Submission also needs the verified publishing account/domain
+and a reviewer-accessible demonstration. Upload, approval and publication are
+separate actions requiring their own authority.
