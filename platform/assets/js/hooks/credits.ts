@@ -32,8 +32,8 @@ export type Push = (event: string, payload: unknown) => void
 /**
  * Privy's active wallet for this press, or why there is none: Privy could not
  * be reached (`wallet_unreachable`), holds no sign-in in this browser
- * (`privy_signed_out`), or has no wallet open (`wallet_unavailable`, and its
- * connect step is now open).
+ * (`privy_signed_out`), or has no wallet open (`wallet_unavailable`; nothing
+ * opens, and the server's note asks the person to open one of their wallets).
  */
 export type PressWallet =
   | {ok: true; wallet: SelectedWallet}

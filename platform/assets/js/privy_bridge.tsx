@@ -1,7 +1,7 @@
 import {createElement, useEffect} from "react"
 import type {ComponentProps} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useActiveWallet, useConnectWallet, useFiatOnramp, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
@@ -34,7 +34,6 @@ type BridgeState = {
   wallets: ConnectedWallet[]
   walletsReady: boolean
   activeWallet: ReturnType<typeof useActiveWallet>["wallet"]
-  connectWallet: ReturnType<typeof useConnectWallet>["connectWallet"]
   fund: ReturnType<typeof useFiatOnramp>["fund"]
 }
 
@@ -78,7 +77,6 @@ function Bridge() {
   const {identityToken} = useIdentityToken()
   const {wallets, ready: walletsReady} = useWallets()
   const {wallet: activeWallet} = useActiveWallet()
-  const {connectWallet} = useConnectWallet()
   const {fund} = useFiatOnramp()
   const {login} = useLogin({
     onComplete: () => finishLogin({ok: true}),
@@ -113,7 +111,6 @@ function Bridge() {
       wallets,
       walletsReady,
       activeWallet,
-      connectWallet,
       fund,
     })
   })
@@ -259,8 +256,8 @@ export async function signOut(appId: string): Promise<void> {
 /**
  * Privy's active wallet, when it is an Ethereum wallet still connected in this
  * browser: its address and the provider a payment is signed through. With none,
- * Privy's connect step opens and nothing is signed; the person presses again.
- * The server decides whether this wallet may pay for the account.
+ * nothing opens and nothing is signed; the page asks the person to open one of
+ * their wallets. The server decides whether this wallet may pay for the account.
  */
 export async function activeWallet(appId: string): Promise<{ok: true, wallet: SelectedWallet} | Refusal> {
   start(appId)
@@ -275,10 +272,7 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
   if (!state.authenticated) return {ok: false, reason: "signed_out"}
 
   const active = sendingWallet(state)
-  if (!active) {
-    state.connectWallet()
-    return {ok: false, reason: "wallet_unavailable"}
-  }
+  if (!active) return {ok: false, reason: "wallet_unavailable"}
 
   try {
     const provider = await active.getEthereumProvider()

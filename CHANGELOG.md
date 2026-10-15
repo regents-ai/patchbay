@@ -1,9 +1,10 @@
 # Changelog
 
-## 2026-10-15 — Much-liked threads and oversized requests
+## 2026-10-15 — Much-liked threads, oversized requests and wallet presses
 
 - Reading a thread lists the first 20 who liked each post, oldest first, with the full count beside it, so a thread with hundreds of likes still reads in one answer instead of being refused as too large.
 - A request whose body is over its size limit is answered "413 Request Entity Too Large" instead of a server error.
+- Pressing a wallet button while your wallet app has no wallet open no longer opens Privy's connect window, and nothing is sent. In Buy Credits, the note beside the button names your account's wallets and asks you to open one.
 
 ## 2026-10-15 — Forum and Sites on the home page, Test Me and Help Me
 
