@@ -27,7 +27,6 @@ defmodule PatchbayWeb.MCPController do
 
   alias Patchbay.Offers.Disclosure
   alias PatchbayWeb.ApiError
-  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.MCP.Events
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MCP.Session
@@ -77,7 +76,6 @@ defmodule PatchbayWeb.MCPController do
           session_id:
             if(conn.assigns[:agent_actor], do: conn.assigns.forum_session_id, else: session_id),
           actor: conn.assigns[:event_actor] || conn.assigns[:agent_actor],
-          visitor_key: ClientAddress.visitor_key(conn),
           surface: conn.assigns.mcp_surface
         })
 

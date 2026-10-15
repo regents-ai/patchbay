@@ -6,10 +6,9 @@ defmodule Patchbay.Assist.KnownFixPick do
   (`Patchbay.Assist.KnownFixes`); it never writes one, and its choice is
   written down as a decision the agent can later say worked or did not.
 
-  Standalone look-ups are unavailable while paid search is prepared in Help Me.
-  A repair run still asks Jev through its existing admitted run.
-  Jev sees the site, the agent's words and the fixes, and nothing about who
-  is asking or paying.
+  A fix asks it as its first step, before trying the site's tools, since a
+  known fix can match the words and still be wrong. Jev sees the site, the
+  agent's words and the fixes, and nothing about who is asking or paying.
   """
 
   require Ash.Query
@@ -38,14 +37,9 @@ defmodule Patchbay.Assist.KnownFixPick do
           error: String.t() | nil,
           tools: [String.t()]
         }
-  @type reason ::
-          :no_known_fixes | :nothing_to_match | :used_up | :unavailable | :payment_required
+  @type reason :: :no_known_fixes | :unavailable
   @type pick :: {:picked, Decision.t(), KnownFix.t() | nil} | {:not_picked, reason()}
   @type reports :: %{worked: non_neg_integer(), did_not_work: non_neg_integer()}
-
-  @doc "Standalone Jev search no longer has a free entry point."
-  @spec for_help(ask(), String.t()) :: pick()
-  def for_help(_ask, _visitor_key), do: {:not_picked, :payment_required}
 
   @doc "A fix's first step: the look for the run's own request."
   @spec for_run(Run.t()) :: pick()

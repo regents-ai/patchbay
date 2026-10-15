@@ -30,7 +30,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
 
   @window_seconds 24 * 60 * 60
 
-  @type call_kind :: :candidate | :repair | :assist | :known_fix
+  @type call_kind :: :candidate | :repair | :assist
 
   @doc """
   Decides whether a live model call may start for a room right now.
@@ -41,7 +41,7 @@ defmodule Patchbay.Patchbay.ModelBudget do
   @spec allow(binary() | nil, call_kind()) :: :ok | {:error, String.t()}
   def allow(room_id, kind)
       when (is_binary(room_id) or is_nil(room_id)) and
-             kind in [:candidate, :repair, :assist, :known_fix] do
+             kind in [:candidate, :repair, :assist] do
     now = DateTime.utc_now()
     since = DateTime.add(now, -@window_seconds, :second)
 

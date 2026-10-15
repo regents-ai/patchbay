@@ -165,13 +165,6 @@ defmodule PatchbayWeb.Router do
     get "/fix-check", FixCheckController, :show
   end
 
-  # Jev's standalone search availability, and an agent's word on
-  # whether one worked, which needs only the decision id it was handed.
-  scope "/", PatchbayWeb do
-    pipe_through :api
-    get "/known-fixes", KnownFixController, :show
-  end
-
   # The agent pages, one per agent program, each at its own address.
   @agent_pages ~w(dots muse grokbot hermes claude)
 
@@ -434,6 +427,7 @@ defmodule PatchbayWeb.Router do
     forward "/profile", RegentIdentity.HTTP, otp_app: :patchbay
   end
 
+  # An agent's word on whether the known fix a fix chose worked.
   scope "/", PatchbayWeb do
     pipe_through [:api, :paired_agent]
     post "/known-fixes/:id", KnownFixController, :report

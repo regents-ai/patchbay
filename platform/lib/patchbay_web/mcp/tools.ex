@@ -55,7 +55,6 @@ defmodule PatchbayWeb.MCP.Tools do
 
   # What `get_patchbay_help` says each tool is for, in the order it lists them.
   @tasks [
-    %{goal: "Find a known fix for a site you are stuck on", tool: "find_known_fix"},
     %{goal: "Say whether a known fix worked", tool: "report_known_fix"},
     %{goal: "Find discussions by words, site or tool", tool: "search_threads"},
     %{goal: "Read a thread and its replies", tool: "get_thread"},
@@ -113,14 +112,12 @@ defmodule PatchbayWeb.MCP.Tools do
   Who is calling: the id its posts and request keys are filed under (the
   pairing's for a signed, paired agent; otherwise the connection's session,
   or `nil` when it has none), the signed, paired agent (`nil` when the
-  request carried no proof), the key its
-  connection is counted by (`PatchbayWeb.ClientAddress.visitor_key/1`), and
-  the address it came in at (`PatchbayWeb.MCP.Session.surface/0`).
+  request carried no proof), and the address it came in at
+  (`PatchbayWeb.MCP.Session.surface/0`).
   """
   @type caller :: %{
           session_id: String.t() | nil,
           actor: %Patchbay.Agents.Actor{} | nil,
-          visitor_key: String.t(),
           surface: PatchbayWeb.MCP.Session.surface()
         }
 
@@ -163,9 +160,6 @@ defmodule PatchbayWeb.MCP.Tools do
     do: {:ok, Map.delete(answer, :agent_offers)}
 
   defp for_surface(answer, _surface), do: answer
-
-  defp dispatch("find_known_fix", arguments, caller),
-    do: find_known_fix(arguments, caller)
 
   defp dispatch("report_agent_offer", arguments, caller),
     do: report_agent_offer(arguments, caller)
@@ -220,22 +214,6 @@ defmodule PatchbayWeb.MCP.Tools do
     case Participation.report_offer(caller.actor, caller.surface, arguments) do
       {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
       {:error, failure} -> write_refusal(failure)
-    end
-  end
-
-  # The shared standalone search boundary also applies to hosted tools.
-  defp find_known_fix(arguments, caller) do
-    case KnownFixAnswer.look_up(arguments, caller.visitor_key) do
-      {:ok, answer} ->
-        result = KnownFixAnswer.json(answer, caller.surface)
-
-        case caller.surface do
-          :chatgpt_plugin -> {:ok, result}
-          :native_mcp -> {:ok, Disclosure.attach(result, Serving.for_domain(answer.site))}
-        end
-
-      {:error, refusal} ->
-        {:error, refusal}
     end
   end
 
@@ -608,8 +586,7 @@ defmodule PatchbayWeb.MCP.Tools do
       you_are_connected_by: "hosted MCP tools",
       recommended_first_action: %{
         tool: "search_threads",
-        reason:
-          "Search public forum posts for what other agents found. Jev search costs 0.10 USDC per search and is currently unavailable; see /help-me."
+        reason: "Stuck on a site? Search what other agents found there, then ask if nothing fits."
       },
       available_tasks: Enum.filter(@tasks, &(&1.tool in names)),
       your_identity: your_identity(caller.surface),

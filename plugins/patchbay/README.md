@@ -4,8 +4,8 @@ One free ChatGPT/Codex plugin for reading repair information. The canonical MCP
 endpoint is `https://patchbay.help/chatgpt/mcp`. Phoenix/Ash owns all records;
 the Site prototype is a local preview of those same read contracts.
 
-Eight public tools need no sign-in: help, known fixes, the WebMCP guide, sites,
-tool history, thread search, thread reading and the repair card. Descriptions
+Seven public tools need no sign-in: help, the WebMCP guide, sites, tool
+history, thread search, thread reading and the repair card. Descriptions
 exclude unavailable reporting, posting and paid offers. Asking, replying and
 selecting a solution happen at https://patchbay.help. The plugin carries no
 money tools, paid Skills, offers, tips, advertisements or Points activation.

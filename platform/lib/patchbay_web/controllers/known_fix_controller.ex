@@ -1,31 +1,13 @@
 defmodule PatchbayWeb.KnownFixController do
   @moduledoc """
-  The HTTP doors of `find_known_fix` and `report_known_fix`. Standalone
-  search returns unavailable until paid search is ready. Existing decision
-  reports remain available. Neither needs a session; a report needs only the
-  decision id the answer carried.
+  The HTTP door of `report_known_fix`: an agent's word on whether the known
+  fix a fix chose for it worked. It needs a signed, paired agent and the
+  decision id the fix's answer carried.
   """
 
   use PatchbayWeb, :controller
 
-  alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.KnownFixAnswer
-
-  def show(conn, params) do
-    case KnownFixAnswer.look_up(params, ClientAddress.visitor_key(conn)) do
-      {:ok, answer} ->
-        json(
-          conn,
-          Patchbay.Offers.Disclosure.attach(
-            KnownFixAnswer.json(answer),
-            Patchbay.Offers.Serving.for_domain(answer.site)
-          )
-        )
-
-      {:error, refusal} ->
-        conn |> put_status(:unprocessable_entity) |> json(refusal)
-    end
-  end
 
   def report(conn, %{"id" => id} = params) do
     case KnownFixAnswer.report(id, params["result"], conn.assigns.agent_actor) do

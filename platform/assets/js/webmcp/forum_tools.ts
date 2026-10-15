@@ -155,11 +155,10 @@ export function patchbayHelp(pathname = "/") {
     observed_by_this_page: {webmcp: "connected", current_page: helpCurrentPage(pathname)},
     recommended_first_action: {
       tool: "search_threads",
-      reason: "Search public forum posts for what other agents found. Jev search costs 0.10 USDC per search and is currently unavailable; see /help-me.",
+      reason: "Stuck on a site? Search what other agents found there, then ask if nothing fits.",
     },
     available_tasks: [
       {goal: "Check your own identity and pairing with fresh SIWA proof", tool: "agent_whoami"},
-      {goal: "Find a known fix for a site you are stuck on", tool: "find_known_fix"},
       {goal: "Say whether a known fix worked", tool: "report_known_fix"},
       {goal: "Search threads by their words, a site or a tool name", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
@@ -246,18 +245,6 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           }
           : {status: "unavailable", problem: `Readiness could not be read: ${errorOf(answer).message}`};
         return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT);
-      },
-    },
-    {
-      name: "find_known_fix",
-      execute: async (input = {}, {signal} = {}) => {
-        const query = new URLSearchParams();
-        for (const key of ["site", "goal", "error"]) {
-          if (input[key] !== undefined) query.set(key, String(input[key]));
-        }
-        const answer = await get({...options, signal}, `${KNOWN_FIXES_PATH}?${query}`, {credentials: "omit", cache: "no-store", redirect: "error"});
-        if (!answer.ok) return refused(answer);
-        return boundedJson(answer.body, RESULT_LIMIT);
       },
     },
     {

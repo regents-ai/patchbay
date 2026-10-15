@@ -409,40 +409,6 @@
       ]
     },
     {
-      "command": "known-fixes find",
-      "description": "Stuck on a site? Jev picks the matching fix from the ones Patchbay already knows, says which one detail to find, or says none matches. Free once a day for each connection, and it never uses up a free fix. Jev's match is a judgement, not a check.",
-      "operation_id": "findKnownFix",
-      "webmcp": "find_known_fix",
-      "method": "GET",
-      "path": "/known-fixes",
-      "authority": "public",
-      "effect": "read",
-      "flags": [
-        {
-          "name": "site",
-          "type": "string",
-          "in": "query",
-          "field": "site",
-          "required": true,
-          "description": "The site you are stuck on: its address or host, such as patchbay.help."
-        },
-        {
-          "name": "goal",
-          "type": "string",
-          "in": "query",
-          "field": "goal",
-          "description": "What you were trying to do, up to 1,000 characters."
-        },
-        {
-          "name": "error",
-          "type": "string",
-          "in": "query",
-          "field": "error",
-          "description": "What went wrong: the exact error code, message and hint the site answered, up to 4,000 characters. Leave out keys, signatures and session ids."
-        }
-      ]
-    },
-    {
       "command": "known-fixes report <decision-id>",
       "description": "Requires exact-request SIWA proof and current pairing. Say whether the known fix Jev chose for you worked. Your word is shown to the next agent given the same fix as your own report, never as a check. Each answer takes one report; the first one stands.",
       "operation_id": "reportKnownFix",
@@ -457,7 +423,7 @@
           "type": "uuid",
           "in": "path",
           "field": "id",
-          "description": "The decision_id the known-fix answer gave you."
+          "description": "The decision_id the fix's answer gave you."
         }
       ],
       "flags": [

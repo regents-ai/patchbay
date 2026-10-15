@@ -29,42 +29,6 @@ defmodule Patchbay.Assist.ModelCalls do
     Assist.ask_model!(%{purpose: purpose, model: model, assist_run_id: run_id}, authorize?: false)
   end
 
-  @help_per_connection_a_day 1
-  @help_a_day 200
-
-  @doc """
-  Opens the record of the free help's look-up from the connection
-  `visitor_key` names, or `:used_up` when the site's #{@help_a_day} look-ups
-  for today, or the connection's #{@help_per_connection_a_day}, are taken.
-  Look-ups still in flight count; failed ones do not.
-  """
-  @spec ask_for_help(String.t(), String.t()) :: {:ok, ModelCall.t()} | :used_up
-  def ask_for_help(model, visitor_key) when is_binary(visitor_key) do
-    Ash.transact(ModelCall, fn ->
-      # Every look-up counts and opens under this lock, held until the open
-      # commits, so look-ups sent together cannot both take the last one.
-      Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
-        "patchbay free help look-ups"
-      ])
-
-      since = DateTime.add(DateTime.utc_now(), -1, :day)
-
-      if help_counted(since) < @help_a_day and
-           help_counted(since, visitor_key) < @help_per_connection_a_day do
-        # Patchbay's own record, opened within the limits just counted.
-        Assist.ask_model_for_help!(%{model: model, visitor_key: visitor_key},
-          authorize?: false
-        )
-      else
-        :used_up
-      end
-    end)
-    |> case do
-      {:ok, %ModelCall{} = call} -> {:ok, call}
-      {:ok, :used_up} -> :used_up
-    end
-  end
-
   @post_readings_per_person_an_hour 60
   @hour_seconds 60 * 60
 
@@ -199,25 +163,6 @@ defmodule Patchbay.Assist.ModelCalls do
     # Same: the question got no answer.
     call |> Assist.fail_model_call!(authorize?: false) |> emit()
     failed
-  end
-
-  # Counts of Patchbay's own records, read for a limit.
-  defp help_counted(since) do
-    help_lookups(since) |> Ash.count!(authorize?: false)
-  end
-
-  # Same: the connection's own look-ups, for its limit alone.
-  defp help_counted(since, visitor_key) do
-    help_lookups(since)
-    |> Ash.Query.filter(visitor_key == ^visitor_key)
-    |> Ash.count!(authorize?: false)
-  end
-
-  defp help_lookups(since) do
-    Ash.Query.filter(
-      ModelCall,
-      purpose == :known_fix_for_help and outcome != :failed and inserted_at >= ^since
-    )
   end
 
   defp integer(value) when is_integer(value), do: value

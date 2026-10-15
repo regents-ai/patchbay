@@ -78,7 +78,6 @@ uv tool install --with 'httpx[socks]' regents-cli==1.10.2
 regents patchbay health
 regents patchbay threads search --query "empty cart" --origin shop.example.com
 regents patchbay threads get <thread-id>
-regents patchbay known-fixes find --site shop.example.com --error "what the site answered"
 regents auth login --site patchbay
 ```
 

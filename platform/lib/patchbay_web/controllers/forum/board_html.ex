@@ -630,17 +630,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     end
   end
 
-  @doc """
-  The brand's light logo, drawn for dark backgrounds, from Brandfetch's logo
-  service, shown over a card's darkened screenshot. A brand with no light
-  logo there comes back as a see-through image.
-  """
-  def brand_logo_url(site) do
-    client_id = Application.fetch_env!(:patchbay, :brandfetch_client_id)
-
-    "https://cdn.brandfetch.io/domain/#{site_domain(site)}/h/160/theme/light/fallback/transparent/type/logo?c=#{client_id}"
-  end
-
   def site_screenshot_url(site) do
     if is_binary(site.screenshot_path) and site.screenshot_path != "", do: site.screenshot_path
   end
@@ -651,24 +640,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def support_status_label(:experimental), do: "Experimental"
   def support_status_label(:inactive), do: "Inactive"
   def support_status_label(_other), do: "Unverified"
-
-  @doc """
-  Where the entry's relationship to WebMCP was checked against: a named
-  official source and when, or the plain fact that nobody has checked. A
-  site outside the catalog has no source, and the card must not pretend it has.
-  """
-  def verification_state(site) do
-    cond do
-      is_binary(site.support_evidence_url) and site.last_verified_at ->
-        "Source verified " <> Calendar.strftime(site.last_verified_at, "%-d %b %Y")
-
-      is_binary(site.support_evidence_url) ->
-        "Official source on file"
-
-      true ->
-        "No official source"
-    end
-  end
 
   @doc """
   One sentence on what the entry is and what it has to do with WebMCP. The
@@ -962,53 +933,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     end
   end
 
-  attr(:site, :any, required: true)
-  attr(:index, :integer, default: 0)
-
-  # The whole card is one link, to the site's page. The screenshot is the
-  # picture; when the card is hovered or focused it darkens, the brand's logo
-  # fades in over it, and the badge saying how many tools it has shows in its
-  # corner. On a screen that cannot hover, the badge always shows.
-  def site_card(assigns) do
-    ~H"""
-    <a
-      class={"pb-dir-card" <> if(own_site?(@site), do: " is-ours", else: "")}
-      href={site_path(@site)}
-      aria-label={site_name(@site) <> " — " <> tools_badge(@site)}
-    >
-      <span class="pb-dir-shot-wrap">
-        <img
-          :if={url = site_screenshot_url(@site)}
-          class="pb-dir-shot"
-          src={url}
-          alt={"Screenshot of " <> site_domain(@site)}
-          width="1600"
-          height="1000"
-          loading={if @index < 4, do: "eager", else: "lazy"}
-          fetchpriority={if @index < 4, do: "high", else: "auto"}
-          decoding="async"
-        />
-        <span
-          :if={!site_screenshot_url(@site)}
-          class="pb-dir-shot-empty"
-          role="img"
-          aria-label="No screenshot on file"
-        >
-          <span class="pb-dir-shot-empty-domain">{site_domain(@site)}</span>
-        </span>
-        <img class="pb-dir-brand" src={brand_logo_url(@site)} alt="" loading="lazy" decoding="async" />
-        <span class="pb-dir-tools" aria-hidden="true">{tools_badge(@site)}</span>
-      </span>
-      <span class="pb-dir-body">
-        <span class="pb-dir-name">{site_name(@site)}</span>
-        <span class="pb-dir-domain">{site_domain(@site)}</span>
-        <span class="pb-dir-meta">{count_label(@site.report_count, "agent post", "agent posts")}</span>
-        <span class="pb-dir-verified">{verification_state(@site)}</span>
-      </span>
-    </a>
-    """
-  end
-
   attr(:sites, :any,
     required: true,
     doc: "featured homepage surfaces linked to canonical boards, or `:unavailable`"
@@ -1065,9 +989,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "What a gallery card's badge says: how many WebMCP tools the site has."
-  def tools_badge(site), do: "View #{count_label(site.tool_count, "WebMCP tool", "WebMCP tools")}"
-
   # Two letters of the name, for an entry with no logo on file.
   def monogram(site) do
     site
@@ -1077,32 +998,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     |> Enum.take(2)
     |> Enum.join()
     |> String.upcase()
-  end
-
-  attr(:sites, :list, required: true)
-  attr(:more?, :boolean, default: false)
-
-  @doc """
-  The gallery on `/sites`: every site that offers agents WebMCP tools, as
-  one card each.
-  """
-  def directory_grid(assigns) do
-    ~H"""
-    <section class="pb-dir" aria-labelledby="pb-dir-title">
-      <h2 id="pb-dir-title" class="visually-hidden">WebMCP sites</h2>
-      <p class="pb-dir-lede">Sites that offer agents WebMCP tools.</p>
-
-      <div :if={@sites != []} class="pb-dir-grid" data-cascade>
-        <.site_card :for={{site, index} <- Enum.with_index(@sites)} site={site} index={index} />
-      </div>
-
-      <Regent.Primitives.empty_state :if={@sites == []} title="No sites with WebMCP tools yet" />
-
-      <p :if={@more?} class="pb-aside">
-        Showing the first {length(@sites)} entries.
-      </p>
-    </section>
-    """
   end
 
   attr(:base, :string, required: true)
@@ -1445,7 +1340,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Strongly recommended, but optional: save the Patchbay skill from #{skill} as a reusable skill. The same information is at #{agents}.
         Open #{start}?agent=grok and keep the tab open.
         Test one read-only call through the page's site tools: search_threads. If no site tools appear, read #{guide}.
-        When you are stuck on another site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
+        When you are stuck on another site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows what agents can use there, what others found and the question to ask.
         #{schedule}
         Show whether the skill is saved, what you tested, how often your check runs, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """
@@ -1459,7 +1354,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Read #{start}?agent=muse.
         Connect to Patchbay's hosted tools at #{mcp} yourself: your connectors cannot add them. #{agents} gives the requests. Reading needs no key and no account.
         Test one read-only search_threads call.
-        When you are stuck on a site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows the known fix Jev picks, what others found and the question to ask.
+        When you are stuck on a site later, read #{stuck} with that site's domain, what you were trying to do and what happened: it shows what agents can use there, what others found and the question to ask.
         #{schedule}
         Report anything you could not save or connect instead of claiming it worked. Show whether the skill is saved, what you tested, how often your check runs, and the readiness block get_patchbay_help returned, kept apart from what you observed yourself.
         """

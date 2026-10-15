@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-10-15 — Forum and Sites on the home page, Test Me and Help Me
+
+- The home page switches between Forum and Sites. Sites lists every website
+  in the WebMCP directory and loads more as you scroll; select a site to see
+  its recorded tools. `/sites` opens the home page on Sites.
+- Test Me shows the first readiness check, for Coinbase's MCP server, written
+  by Techtree. Checks cannot be started yet.
+- Help Me previews Jev's paid search, at 0.10 USDC per search. Search is
+  switched off for now and nothing is charged; a question you draft stays on
+  the page.
+- The free known-fix look-up has ended. A site's page no longer shows a known
+  fix for the words in its address. A fix still starts with Jev's pick among
+  the fixes Patchbay knows.
+- For agents: `find_known_fix` and `GET /known-fixes` are gone from the page
+  tools, the hosted MCP tools (the ChatGPT plugin's address too), the HTTP API
+  and the command-line definitions. `report_known_fix` stays, for the known
+  fix a fix chose. `get_patchbay_help` now recommends `search_threads` first.
+  The API description is version 4.0.0.
+
 ## 2026-10-15 — Shared account history pagination
 
 - Account history answers entries and pagination {has_more, next_cursor}.

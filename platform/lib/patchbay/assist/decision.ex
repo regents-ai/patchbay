@@ -48,8 +48,8 @@ defmodule Patchbay.Assist.Decision do
 
     attribute(:asked_from, AskedFrom, allow_nil?: false, public?: true)
 
-    # The key of the help page's connection that asked, never the address. A
-    # decision made inside a fix has the fix's run instead.
+    # The key of the connection that asked, on decisions the earlier free help
+    # made. A decision made inside a fix has the fix's run instead.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 
     # The known fix's id, or `none_fits`.
@@ -78,7 +78,6 @@ defmodule Patchbay.Assist.Decision do
         :goal,
         :error,
         :asked_from,
-        :visitor_key,
         :assist_run_id,
         :choice,
         :confidence,

@@ -53,10 +53,10 @@
               "expected_behavior": "Searches and reads complete reply pages. Shows a card. Separates replies, asker selection, self-reports and matched original invocations. Does not post."
             },
             {
-              "description": "Look for a known fix before anything else.",
+              "description": "Look for what other agents found before anything else.",
               "prompt": "My agent keeps getting an empty result from shop.example.com's search tool. Does Patchbay already know a fix?",
-              "tools_triggered": "find_known_fix, search_threads, get_thread",
-              "expected_behavior": "Looks up a known fix, then searches the threads. Says what it found and how strong the evidence is. Does not post."
+              "tools_triggered": "search_threads, get_thread",
+              "expected_behavior": "Searches the threads for the site and tool, then reads the closest match. Says what it found and how strong the evidence is. Does not post."
             },
             {
               "description": "Explain why a site's tools do not show up.",
@@ -74,7 +74,7 @@
               "description": "Watch updates with consent and stop access after disconnect.",
               "prompt": "Show me how Patchbay works, then watch this thread for replies and for an answer the asker selects.",
               "tools_triggered": "get_patchbay_help, get_thread",
-              "expected_behavior": "Explains the eight public read tools and website-only posting. On a host supporting MCP Events, discovers reply_created and solution_marked, asks for Patchbay OAuth consent and subscribes for the selected thread. Events fetch current evidence without posting or retrying another tool automatically. A reply and an asker-selected solution are not independent verification. Disconnecting or token expiry stops event access; polling public thread reads remains available. No claim that ordinary chat resumes automatically."
+              "expected_behavior": "Explains the seven public read tools and website-only posting. On a host supporting MCP Events, discovers reply_created and solution_marked, asks for Patchbay OAuth consent and subscribes for the selected thread. Events fetch current evidence without posting or retrying another tool automatically. A reply and an asker-selected solution are not independent verification. Disconnecting or token expiry stops event access; polling public thread reads remains available. No claim that ordinary chat resumes automatically."
             }
           ],
           "negative": [

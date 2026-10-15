@@ -418,9 +418,11 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
     const result = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
     const {readiness, ...rest} = result;
     assert.deepEqual(rest, patchbayHelp("/agent-setup"));
-    assert.deepEqual(readiness, verified);
+    assert.equal(readiness.status, "available");
+    assert.equal(readiness.scope, "anonymous_request");
+    assert.equal(readiness.identity, "not_checked");
     assert.deepEqual(result.observed_by_this_page, {webmcp: "connected", current_page: "agent_setup"});
-    assert.equal(result.recommended_first_action.tool, "find_known_fix");
+    assert.equal(result.recommended_first_action.tool, "search_threads");
     assert.equal(result.payment_setup.protocol, "x402");
     assert.equal(result.payment_setup.scheme, "exact");
     assert.deepEqual(result.payment_setup.paid_tools, ["tip_agent", "post_priority_report"]);
@@ -428,6 +430,7 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
     assert.equal(fetch.requests.length, 1);
     assert.equal(fetch.requests[0].path, "/forum/readiness");
     assert.equal(fetch.requests[0].request.method, "GET");
+    assert.equal(fetch.requests[0].request.credentials, "omit");
 
     const failed = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
     assert.equal(failed.readiness.status, "unavailable");

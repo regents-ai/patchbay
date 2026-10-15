@@ -1,12 +1,12 @@
 defmodule PatchbayWeb.KnownFixAnswer do
   @moduledoc """
-  What Jev's look at the known fixes comes to across the product: the help page for a site, `find_known_fix` on the page, the hosted
-  tools and HTTP, and a fix's answer. The ChatGPT view preserves evidence
-  and directs unavailable reporting and posting to the website.
+  What Jev's look at the known fixes came to as a fix's first step, as the
+  fix's page, its answer and the run's read show it, and an agent's word on
+  whether the fix worked (`report_known_fix`).
 
-  The answer is one of four: a known fix to try, one detail to find and ask
-  again with, that none of the known fixes matches, or why Jev did not look.
-  A fix's record can also name a fix Patchbay has since taken out.
+  The answer is one of three: a known fix to try, one detail to find and ask
+  again with, or that none of the known fixes matches. A fix's record can
+  also name a fix Patchbay has since taken out.
   How sure Jev was is shown as its judgement. What is known of a fix keeps
   three things apart: Patchbay tried it itself, agents said it worked or did
   not, or it is only suggested.
@@ -20,10 +20,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
   alias Patchbay.Forum.Origin
   alias PatchbayWeb.ApiError
 
-  @max_goal_chars 1_000
-  @max_error_chars 4_000
-
-  @type kind :: :known_fix | :needs_detail | :none_fits | :withdrawn | :not_looked_up
+  @type kind :: :known_fix | :needs_detail | :none_fits | :withdrawn
   @type t :: %{
           answer: kind(),
           site: String.t() | nil,
@@ -31,24 +28,8 @@ defmodule PatchbayWeb.KnownFixAnswer do
           jev_match: float() | nil,
           title: String.t() | nil,
           fix: KnownFix.t() | nil,
-          reports: KnownFixPick.reports() | nil,
-          why: String.t() | nil
+          reports: KnownFixPick.reports() | nil
         }
-
-  @doc """
-  The standalone look-up for `params` (`site`, and `goal` or `error` in the agent's
-  words) from the connection `visitor_key` names, or the refusal of params
-  that break the rules.
-  """
-  @spec look_up(map(), String.t()) :: {:ok, t()} | {:error, map()}
-  def look_up(params, visitor_key) do
-    with {:ok, site} <- site(params["site"]),
-         {:ok, goal} <- words("goal", params["goal"], @max_goal_chars),
-         {:ok, error} <- words("error", params["error"], @max_error_chars) do
-      ask = %{site: site, goal: goal, error: error, tools: []}
-      {:ok, from_pick(KnownFixPick.for_help(ask, visitor_key), site)}
-    end
-  end
 
   @doc """
   An agent's word on the decision `id`: `worked` or `did_not_work`, taken
@@ -75,7 +56,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
             ApiError.body(
               "already_reported",
               "You already reported on this fix; your first report stands.",
-              "Nothing more to do. A new answer from find_known_fix takes a new report."
+              "Nothing more to do."
             )}}
 
         {:error, _} ->
@@ -112,16 +93,6 @@ defmodule PatchbayWeb.KnownFixAnswer do
       {:ok, %{result: result}} when not is_nil(result) -> Atom.to_string(result)
       {:ok, _unreported} -> nil
     end
-  end
-
-  @doc "The answer for one pick for the site `site`."
-  @spec from_pick(KnownFixPick.pick(), String.t()) :: t()
-  def from_pick({:picked, decision, fix}, site) do
-    picked(site, decision.id, decision.choice, decision.confidence, fix)
-  end
-
-  def from_pick({:not_picked, reason}, site) do
-    %{empty(site) | answer: :not_looked_up, why: why(reason, site)}
   end
 
   @doc """
@@ -173,8 +144,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
       jev_match: nil,
       title: nil,
       fix: nil,
-      reports: nil,
-      why: nil
+      reports: nil
     }
   end
 
@@ -183,12 +153,8 @@ defmodule PatchbayWeb.KnownFixAnswer do
   defp kind(_id, %KnownFix{kind: :question}), do: :needs_detail
   defp kind(_id, _fix), do: :known_fix
 
-  @doc "The answer as JSON-ready fields, for the tools and HTTP."
+  @doc "The answer as JSON-ready fields, for the run's read."
   @spec json(t()) :: map()
-  def json(%{answer: :not_looked_up} = answer) do
-    %{answer: "not_looked_up", site: answer.site, why: answer.why}
-  end
-
   def json(%{answer: :withdrawn} = answer) do
     %{answer: "withdrawn", site: answer.site, decision_id: answer.decision_id, why: withdrawn()}
   end
@@ -225,27 +191,8 @@ defmodule PatchbayWeb.KnownFixAnswer do
     |> Map.merge(report_with(answer))
   end
 
-  @doc "The same evidence, with next steps restricted to the calling MCP surface."
-  @spec json(t(), :native_mcp | :chatgpt_plugin) :: map()
-  def json(answer, :native_mcp), do: json(answer)
-
-  def json(answer, :chatgpt_plugin) do
-    result = answer |> json() |> Map.delete(:report_with)
-
-    if answer.answer == :none_fits do
-      Map.put(
-        result,
-        :next,
-        "Ask on https://patchbay.help, naming the site, your goal and the exact error. This plugin only reads."
-      )
-    else
-      result
-    end
-  end
-
-  @doc "The answer as Markdown, for the help page and a fix's answer."
+  @doc "The answer as Markdown, for a fix's answer."
   @spec markdown(t()) :: String.t()
-  def markdown(%{answer: :not_looked_up} = answer), do: answer.why
   def markdown(%{answer: :withdrawn}), do: withdrawn()
 
   def markdown(%{answer: :none_fits} = answer) do
@@ -332,41 +279,4 @@ defmodule PatchbayWeb.KnownFixAnswer do
       "Ask other agents with ask_question, naming #{site}, what you were trying to do and the exact error."
 
   defp withdrawn, do: "Jev chose a known fix that Patchbay has since taken out."
-
-  defp why(:payment_required, _site),
-    do:
-      "Jev search costs #{RegentPayments.USDC.format(Assist.search_fee_atomic())} USDC per search. " <>
-        "Payment is not available yet; see /help-me. No search was run and nothing was charged."
-
-  defp why(:no_known_fixes, site), do: "Patchbay knows no fixes for #{site} yet."
-
-  defp why(:nothing_to_match, _site),
-    do: "Say what you were trying to do or what went wrong, and Jev looks for a known fix."
-
-  defp why(:used_up, _site),
-    do: "Jev's look-up limit has been reached. Try again tomorrow."
-
-  defp why(:unavailable, _site), do: "Jev could not look just now. Try again in a moment."
-
-  defp site(value) do
-    case Origin.normalize(value) do
-      {:ok, site} -> {:ok, site}
-      {:error, message} -> {:error, ApiError.invalid(["site: #{message}"])}
-    end
-  end
-
-  defp words(_field, nil, _max), do: {:ok, nil}
-
-  defp words(field, value, max) when is_binary(value) do
-    trimmed = String.trim(value)
-
-    cond do
-      trimmed == "" -> {:ok, nil}
-      String.valid?(trimmed) and String.length(trimmed) <= max -> {:ok, trimmed}
-      true -> {:error, ApiError.invalid(["#{field}: must be text of at most #{max} characters"])}
-    end
-  end
-
-  defp words(field, _value, max),
-    do: {:error, ApiError.invalid(["#{field}: must be text of at most #{max} characters"])}
 end

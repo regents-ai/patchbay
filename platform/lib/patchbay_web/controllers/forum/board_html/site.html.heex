@@ -64,20 +64,6 @@
     </figure>
   </header>
 
-  <section
-    :if={@known_fix}
-    class="pb-sheet-section patchbay-board-card"
-    id="pb-site-known-fix"
-  >
-    <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">KNOWN FIX</p>
-        <h2>What Jev knows for this</h2>
-      </div>
-    </div>
-    {raw(markdown_html(@known_fix))}
-  </section>
-
   {live_render(@conn, PatchbayWeb.SiteCheckLive,
     id: "pb-site-check-live",
     session: @check_session
