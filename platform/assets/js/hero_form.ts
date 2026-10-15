@@ -24,7 +24,6 @@ const WORDS: Record<string, string> = {
   unloadable: "The wallet window could not be loaded. Check your connection and try again.",
   unready: "The wallet did not answer in time. Try again.",
   signed_out: "Sign in with a wallet first, at the top of the page.",
-  wallet_unavailable: "Connect your wallet, then press again. Nothing was sent.",
   wallet_mismatch: "Switch your wallet app to the wallet you signed in with, then press again. Nothing was sent.",
   network_mismatch: "Your wallet is on a different network. Switch it to Base, then press again. Nothing was sent.",
   wallet_declined: "Your wallet declined this. Nothing was sent.",
@@ -198,7 +197,11 @@ async function pay(form: PageForm, doc: Document, options: HeroFormOptions) {
     {fetch: options.fetch, csrfToken: options.csrfToken, document: doc},
     {kind: "jev_assist", args: fixArguments(fieldsOf(form), picksOf(form))},
   )
-  const next = fixOutcome(outcome)
+  // With no wallet open, the form's own words name the account's wallet and
+  // ask for it to be opened there.
+  const next: NextStep = outcome.unsigned === "wallet_unavailable"
+    ? {problem: form.dataset.pbNoWalletNote!}
+    : fixOutcome(outcome)
   if (next.navigate) {
     say(form, WORDS.paid)
     ;(options.navigate ?? ((url: string) => globalThis.location.assign(url)))(next.navigate)

@@ -22,6 +22,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.VersionDiff
+  alias PatchbayWeb.OnchainSteps
 
   embed_templates("board_html/*")
 
@@ -790,6 +791,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   it came from.
   """
   def hero_form(assigns)
+
+  @doc """
+  What a pay press says when the wallet app has no wallet open: the account's
+  wallet, and to open it there. Nothing opens Privy's connect step.
+  """
+  def no_wallet_note(nil), do: OnchainSteps.failure_note("wallet_unavailable", nil, nil, "Base")
+
+  def no_wallet_note(profile),
+    do: OnchainSteps.failure_note("wallet_unavailable", [profile.wallet_address], nil, "Base")
 
   attr(:figure, :any, required: true, doc: "one figure of an agent page's crowd, and its spot")
 
