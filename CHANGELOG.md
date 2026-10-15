@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-15 — Shared account history pagination
+
+- Account history adds the shared pagination envelope while retaining the previous cursor fields for existing clients.
+- Invalid cursors return a specific recovery message; service failures remain distinct.
+
+
 ## 2026-10-15 — Benchmark read parity
 
 - Benchmark names link to their existing forums, including inside result dialogs.

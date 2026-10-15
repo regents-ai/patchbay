@@ -5410,7 +5410,7 @@
       "post": {
         "operationId": "listCreditsHistory",
         "summary": "Read shared Credits history",
-        "description": "Read your person's Credits history, 50 entries a page; send after (the previous page's next) for older ones. Changes nothing. Requires exact-request SIWA proof and current pairing.",
+        "description": "Read your person's Credits history, 50 entries a page. Send after as the previous pagination.next_cursor unchanged, or omit it for the newest entries; do not send null. Invalid cursors return 422 invalid_cursor. Changes nothing. Needs a pairing. Requires exact-request SIWA proof over this POST and its exact JSON body.",
         "security": [
           {
             "AgentSIWA": []
@@ -5418,13 +5418,238 @@
         ],
         "responses": {
           "200": {
-            "description": "Read result or committed operation result."
+            "description": "Authorized result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "entries",
+                    "pagination"
+                  ],
+                  "properties": {
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "kind",
+                          "at",
+                          "amount",
+                          "direction",
+                          "site",
+                          "purpose",
+                          "reason",
+                          "agent_address",
+                          "pairing_id",
+                          "key",
+                          "tool",
+                          "request",
+                          "note",
+                          "chain",
+                          "tx_hash",
+                          "refund_status",
+                          "refund_sent_at"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "bought",
+                              "gift",
+                              "refund",
+                              "set_aside",
+                              "returned",
+                              "spent",
+                              "received"
+                            ]
+                          },
+                          "at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "amount": {
+                            "type": "string",
+                            "description": "Positive decimal Credits amount, summed for this event."
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "in",
+                              "out",
+                              "none"
+                            ]
+                          },
+                          "site": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "purpose": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "agent_address": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pairing_id": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "key": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tool": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "request": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "Present only when allowed for this reader; an agent receives request text only for its own hold."
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "chain": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tx_hash": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "refund_status": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "locked",
+                              "sent",
+                              null
+                            ]
+                          },
+                          "refund_sent_at": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          }
+                        },
+                        "description": "Grouped history event. Inapplicable facts are null; received payments do not identify the payer."
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "required": [
+                        "has_more",
+                        "next_cursor"
+                      ],
+                      "properties": {
+                        "has_more": {
+                          "type": "boolean"
+                        },
+                        "next_cursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "description": "Pass unchanged as after for the next page. Null when no further page exists."
+                        }
+                      }
+                    },
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "deprecated": true,
+                      "description": "Compatibility alias for pagination.next_cursor."
+                    },
+                    "more?": {
+                      "type": "boolean",
+                      "deprecated": true,
+                      "description": "Compatibility alias for pagination.has_more."
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Invalid or missing exact-request proof."
           },
           "403": {
             "description": "Current pairing or product rights required."
+          },
+          "422": {
+            "description": "Invalid after cursor (invalid_cursor). Use the previous pagination.next_cursor unchanged, or omit after for the newest entries; do not send null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "hint"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "const": "invalid_cursor"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "hint": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "parameters": [],
@@ -5436,7 +5661,9 @@
                 "type": "object",
                 "properties": {
                   "after": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048,
+                    "description": "Previous pagination.next_cursor unchanged, at most 2048 characters. Omit for the newest entries; do not send null."
                   }
                 },
                 "required": [],

@@ -2,6 +2,7 @@ defmodule PatchbayWeb.AgentAccountController do
   @moduledoc "Shared account reads for a signed, currently paired agent; no grant or wallet writes."
   use PatchbayWeb, :controller
 
+  alias PatchbayWeb.UnexpectedFailure
   alias RegentPoints.{Amount, Rules}
 
   @points_off "Earning Points is off on this site."
@@ -32,11 +33,51 @@ defmodule PatchbayWeb.AgentAccountController do
     })
   end
 
+  def credits_history(conn, %{"after" => cursor}) when not is_binary(cursor),
+    do: invalid_cursor(conn)
+
   def credits_history(conn, params) do
-    case RegentCredits.history(Map.take(params, ["after"]), actor: credit_actor(conn)) do
-      {:ok, history} -> json(conn, history)
-      {:error, _} -> unavailable(conn)
+    args =
+      case params do
+        %{"after" => cursor} when is_binary(cursor) -> %{after: cursor}
+        _ -> %{}
+      end
+
+    case RegentCredits.history(args, actor: credit_actor(conn)) do
+      {:ok, history} ->
+        # Keep existing clients' next/more? keys while adding the shared envelope.
+        json(
+          conn,
+          Map.put(history, :pagination, %{has_more: history.more?, next_cursor: history.next})
+        )
+
+      {:error, error} ->
+        if cursor_error?(error) do
+          invalid_cursor(conn)
+        else
+          conn |> UnexpectedFailure.log(error) |> unavailable()
+        end
     end
+  end
+
+  defp cursor_error?(%Ash.Error.Action.InvalidArgument{field: :after}), do: true
+  defp cursor_error?(%Ash.Error.Page.InvalidKeyset{}), do: true
+
+  defp cursor_error?(%Ash.Error.Invalid{errors: [_ | _] = errors}),
+    do: Enum.all?(errors, &cursor_error?/1)
+
+  defp cursor_error?(_error), do: false
+
+  defp invalid_cursor(conn) do
+    conn
+    |> put_status(422)
+    |> json(
+      PatchbayWeb.ApiError.body(
+        "invalid_cursor",
+        "That history cursor is invalid.",
+        "Send after as the previous page's pagination.next_cursor, unchanged, or omit it for the newest entries."
+      )
+    )
   end
 
   # Points as decimal text, as the Points page shows them. While earning is

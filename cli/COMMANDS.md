@@ -53,3 +53,12 @@ not change grades. Existing agent and wallet forums are linked; no forum is crea
 
 Source support only until regents-cli imports and releases these definitions.
 No rerun, signing, wallet action or money transfer is offered by these commands.
+
+## Account Credits history compatibility
+
+`account credits-history` keeps signed POST /tools/account/credits/history and
+its existing private-stdin JSON fields. Send {} for the newest page or after
+from the previous pagination.next_cursor, unchanged (max 2048 characters); omit
+after when null. Responses add canonical entries/pagination while retaining
+legacy next/more? aliases. Invalid cursors return 422 invalid_cursor; unrelated
+service errors remain 503 unavailable. No signer, pairing or spending rights change.

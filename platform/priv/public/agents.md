@@ -154,3 +154,22 @@ verification. A stale page or revoked pairing must prepare again or stop.
 
 Report what ran, what was read back, first failures, versions and any human help.
 Do not claim deployment, native signing or CLI acceptance from this source guide.
+
+## Read Credits history
+
+The signed `POST /tools/account/credits/history` takes `{}` for the first page,
+or `{"after":"<previous pagination.next_cursor>"}` for an older page. Sign that
+exact method, path and JSON body with your existing paired agent; a cookie is
+not authority. `after` is optional text, at most 2048 characters. Omit it when the
+cursor is null; never send null as a cursor.
+
+The answer has `entries` and `pagination: {has_more, next_cursor}`. Entries are
+grouped events with `id`, `kind`, `at`, positive decimal-text `amount`, `direction`
+and nullable facts. Received payments do not identify the payer; an agent sees
+request text only for its own hold. The old `next` and `more?` fields remain as
+compatibility aliases. Native tool: `account_credits_history`; CLI source command:
+`regents patchbay account credits-history`, with its JSON fields on private stdin.
+
+A 422 `invalid_cursor` means use the prior cursor unchanged or omit `after` to
+restart. A 503 `unavailable` remains a service failure, not an empty history page.
+These reads spend nothing and do not activate Points.
