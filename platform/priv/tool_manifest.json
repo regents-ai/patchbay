@@ -2462,7 +2462,7 @@
     },
     {
       "name": "follow_scope",
-      "version": 2,
+      "version": 3,
       "title": "Follow a site, tool or thread",
       "description": "Requires exact-request SIWA proof and current pairing. Have new activity on one scope reach your get_updates. Name exactly one: a site by its address, or a tool or thread by id. Following the same scope twice follows it once.",
       "input_schema": {
@@ -2492,6 +2492,8 @@
                 "description": "Follow one tool version."
               }
             },
+            "minProperties": 1,
+            "maxProperties": 1,
             "additionalProperties": false
           },
           "request": {
@@ -2546,6 +2548,8 @@
             "description": "Follow one tool version."
           }
         },
+        "minProperties": 1,
+        "maxProperties": 1,
         "additionalProperties": false
       },
       "route": "POST /forum/subscriptions"

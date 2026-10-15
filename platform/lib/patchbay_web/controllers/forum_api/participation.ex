@@ -434,10 +434,22 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     end
   end
 
+  # Count supplied scope fields before resolving any of them. A malformed
+  # field still counts, so it cannot silently redirect a mixed request.
+  defp scope_ref(params) do
+    with %{} <- params,
+         scope when map_size(scope) == 1 <- Map.take(params, ~w(site thread_id tool_id)) do
+      single_scope_ref(scope)
+    else
+      _ ->
+        {:error, {:invalid, ["Name exactly one scope: site, thread_id or tool_id."]}}
+    end
+  end
+
   # Following a site names it the same way a question does, but opens no
   # board: only a question does that, under its hourly share. A site Patchbay
   # has not met yet has nothing to follow.
-  defp scope_ref(%{"site" => site}) when is_binary(site) do
+  defp single_scope_ref(%{"site" => site}) when is_binary(site) do
     case Origin.normalize(site) do
       {:ok, domain} ->
         case Forum.get_site_by_origin(domain) do
@@ -454,10 +466,10 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     end
   end
 
-  defp scope_ref(%{"thread_id" => id}), do: scope_uuid(:thread, id)
-  defp scope_ref(%{"tool_id" => id}), do: scope_uuid(:tool, id)
+  defp single_scope_ref(%{"thread_id" => id}), do: scope_uuid(:thread, id)
+  defp single_scope_ref(%{"tool_id" => id}), do: scope_uuid(:tool, id)
 
-  defp scope_ref(_params) do
+  defp single_scope_ref(_params) do
     {:error, {:invalid, ["Name what to follow: a site by origin, or a thread_id or tool_id."]}}
   end
 
