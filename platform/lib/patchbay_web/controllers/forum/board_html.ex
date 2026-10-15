@@ -347,6 +347,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <button
       type="button"
       id="shell-search-button"
+      aria-label="Search"
       class="pb-header-search shell-search-button"
       aria-haspopup="dialog"
       aria-controls="shell-search"
@@ -426,7 +427,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def scope_label("unanswered"), do: "Unanswered"
   def scope_label("solved"), do: "Solved"
   def scope_label("following"), do: "Following"
-  def scope_label(_), do: "Newest"
+  def scope_label(_), do: "Recent"
+
+  def feed_label(%{scope: "newest", sort: "popular"}), do: "Popular"
+  def feed_label(filters), do: scope_label(filters.scope)
 
   @doc "Patchbay's own markdown, such as a known fix, as page content."
   @spec markdown_html(String.t()) :: String.t()
@@ -1007,13 +1011,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   attr(:sites, :any,
     required: true,
-    doc: "sites with tools, the first eight shown, or `:unavailable`"
+    doc: "featured homepage surfaces linked to canonical boards, or `:unavailable`"
   )
 
   @doc """
-  The front page's gallery of WebMCP sites, four across and two down: each
-  site's screenshot, and while it is pointed at or reached, its logo in the
-  lower left and how many tools it has in the upper right.
+  Eight real homepage screenshots with persistent names and domain board links.
+  Phones scroll the same gallery sideways; the posting form expands separately.
   """
   def showcase_gallery(assigns) do
     ~H"""
@@ -1034,7 +1037,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           :for={site <- Enum.take(@sites, 8)}
           class="pb-showcase-tile"
           href={site_path(site)}
-          aria-label={site_name(site) <> " — " <> showcase_tools(site)}
+          aria-label={"Open " <> site_name(site) <> " board"}
         >
           <img
             :if={url = site_screenshot_url(site)}
@@ -1049,21 +1052,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <span :if={!site_screenshot_url(site)} class="pb-showcase-shot is-empty">
             {site_domain(site)}
           </span>
-          <img
-            class="pb-showcase-logo"
-            src={brand_logo_url(site)}
-            alt=""
-            loading="lazy"
-            decoding="async"
-          />
-          <span class="pb-showcase-tools" aria-hidden="true">{showcase_tools(site)}</span>
+          <span class="pb-showcase-name">{site_name(site)}</span>
         </a>
       </div>
     </section>
     """
   end
-
-  defp showcase_tools(site), do: count_label(site.tool_count, "WebMCP Tool", "WebMCP Tools")
 
   @doc "What a gallery card's badge says: how many WebMCP tools the site has."
   def tools_badge(site), do: "View #{count_label(site.tool_count, "WebMCP tool", "WebMCP tools")}"
@@ -1192,6 +1186,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp schema_type(_spec), do: "any"
 
+  # The homepage exposes opening-post likes, matching the Popular score and API.
+  # Other lists retain their existing whole-thread tally.
+  defp list_likes(%{post_like_count: count}) when is_integer(count), do: count
+  defp list_likes(post), do: post.thread_like_count
+
   attr(:posts, :list, required: true)
   attr(:earned_tips, :map, required: true)
   attr(:empty, :string, required: true)
@@ -1215,7 +1214,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <span :if={post.solution_reply_id} class="visually-hidden">, solved</span>
           </span>
           <span><strong>{post.view_count}</strong> {if post.view_count == 1, do: "view", else: "views"}</span>
-          <span><strong>{post.thread_like_count}</strong> {if post.thread_like_count == 1,
+          <span><strong>{list_likes(post)}</strong> {if list_likes(post) == 1,
             do: "like",
             else: "likes"}</span>
         </p>

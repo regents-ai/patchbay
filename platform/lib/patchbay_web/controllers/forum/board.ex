@@ -107,6 +107,21 @@ defmodule PatchbayWeb.Forum.Board do
          do: {:ok, page.results, page.more?}
   end
 
+  @doc "Featured screenshot surfaces use the same canonical site records as other reads."
+  def home_showcase(:unavailable), do: :unavailable
+
+  def home_showcase(sites) do
+    by_origin = Map.new(sites, &{&1.origin, &1})
+
+    for surface <- Patchbay.Forum.Catalog.featured_surfaces(),
+        site = by_origin[surface["origin"]],
+        site do
+      site
+      |> Map.put(:display_name, surface["display_name"])
+      |> Map.put(:screenshot_path, surface["screenshot_path"])
+    end
+  end
+
   @doc """
   The sites that offer agents WebMCP tools, at most `limit` of them: the
   gallery on `/sites` and on the front page, and the search window's sites

@@ -15,7 +15,7 @@ defmodule PatchbayWeb.Forum.Discussions do
     :person,
     :reply_count,
     :view_count,
-    :thread_like_count,
+    :post_like_count,
     :bounty_open,
     :verified_paid_usdc_atomic,
     :post_kind,
@@ -28,7 +28,8 @@ defmodule PatchbayWeb.Forum.Discussions do
       site: params["site"] |> text(255) |> site_domain(),
       tool: text(params["tool"], 64),
       tag: text(params["tag"], 64),
-      scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest")
+      scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest"),
+      sort: if(params["sort"] == "popular", do: "popular", else: "recent")
     }
   end
 
@@ -75,95 +76,14 @@ defmodule PatchbayWeb.Forum.Discussions do
 
     with {:ok, keyset} <- verify(token, context),
          {:ok, page} <-
-           Forum.list_recent_reports(
-             query: query(filters, subscriptions),
-             load: @loads,
+           Forum.list_feed_reports(
+             query: Patchbay.Forum.Feed.query(filters, subscriptions),
              page: if(keyset, do: [limit: 20, after: keyset], else: [limit: 20])
-           ) do
+           ),
+         {:ok, page} <- Ash.load(page, @loads) do
       {:ok, page.results, continuation(page, context)}
     end
   end
-
-  # Search the report text as well as its site/tool. Filtering happens before
-  # keyset pagination, not against an arbitrary handful of tool versions.
-  # Techtree Result discussions are opened automatically, so they stay on
-  # techtree.sh's own board and out of this feed of what people and agents asked.
-  defp query(filters, following) do
-    Report
-    |> Ash.Query.filter(visibility == :published and is_nil(techtree_digest))
-    |> search(filters.q)
-    |> site(filters.site)
-    |> tool(filters.tool)
-    |> tag(filters.tag)
-    |> scope(filters.scope, following)
-  end
-
-  defp search(query, ""), do: query
-
-  defp search(query, term) do
-    Ash.Query.filter(
-      query,
-      fragment(
-        "(coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) ILIKE ('%' || lower(?) || '%')",
-        title,
-        body_markdown,
-        note,
-        tool_names,
-        site.origin,
-        site.display_name,
-        ^term
-      ) or
-        exists(
-          replies,
-          visibility == :published and
-            fragment(
-              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-              body_markdown,
-              note,
-              ^term
-            )
-        ) or
-        exists(
-          solution_cards,
-          status == :published and
-            fragment(
-              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-              problem_summary,
-              proposed_steps,
-              ^term
-            )
-        )
-    )
-  end
-
-  defp site(query, ""), do: query
-  defp site(query, ref), do: Ash.Query.filter(query, site.origin == ^ref)
-
-  defp tool(query, ""), do: query
-  defp tool(query, name), do: Ash.Query.filter(query, ^name in tool_names)
-
-  defp tag(query, ""), do: query
-  defp tag(query, name), do: Ash.Query.filter(query, ^name in topic_tags)
-
-  # Unanswered waits for anyone but the asker: their own follow-ups are not help.
-  defp scope(query, "unanswered", _following),
-    do: Ash.Query.filter(query, discussion_state == :awaiting_help)
-
-  # Solved is the asker's own word: they marked a reply as the answer.
-  defp scope(query, "solved", _following),
-    do: Ash.Query.filter(query, not is_nil(solution_reply_id))
-
-  # Following is the caller's own subscriptions: followed sites, tools and
-  # threads all surface here.
-  defp scope(query, "following", subscriptions) do
-    sites = for %{scope_kind: :site, scope_id: id} <- subscriptions, do: id
-    tools = for %{scope_kind: :tool, scope_id: id} <- subscriptions, do: id
-    threads = for %{scope_kind: :thread, scope_id: id} <- subscriptions, do: id
-
-    Ash.Query.filter(query, site_id in ^sites or tool_id in ^tools or id in ^threads)
-  end
-
-  defp scope(query, _scope, _following), do: query
 
   defp continuation(%{more?: true, results: results}, context) do
     Phoenix.Token.sign(Endpoint, @salt, {context, List.last(results).__metadata__.keyset})

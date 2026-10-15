@@ -201,6 +201,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           current_page: params["after"],
           sites: sites,
           showcase: showcase,
+          home_showcase: Board.home_showcase(sites),
           more_showcase?: more_showcase?,
           matches: section(Board.matches(filters.q), "Search matches"),
           following: followed_site_ids(following),

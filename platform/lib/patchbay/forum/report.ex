@@ -364,9 +364,12 @@ defmodule Patchbay.Forum.Report do
 
     # Every like on the thread, across all its pages of replies.
     count(:thread_like_count, :likes)
+    count(:post_like_count, :post_likes)
   end
 
   calculations do
+    calculate(:feed_engagement, :integer, expr(post_like_count + reply_count))
+
     # What makes a report one of the board's paid ones: money was put behind it
     # and it is still there to be won. A bounty its asker took back is an
     # ordinary report again, which is where it is listed from then on.
@@ -502,6 +505,12 @@ defmodule Patchbay.Forum.Report do
       argument(:since, :utc_datetime_usec, allow_nil?: false)
       filter(expr(author_profile_id == ^arg(:author_profile_id) and inserted_at > ^arg(:since)))
       prepare(build(sort: [inserted_at: :asc, id: :asc], select: [:id, :inserted_at]))
+    end
+
+    read :feed do
+      description("Public discussions with shared recent or popular ordering.")
+      filter(expr(visibility == :published))
+      pagination(keyset?: true, offset?: true, default_limit: 20, max_page_size: 50)
     end
 
     read :recent do

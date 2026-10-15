@@ -64,7 +64,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     q = presence(params["q"])
     origin = presence(params["origin"])
 
-    with {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
+    with :ok <- feed_sort(params["sort"]),
+         {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
          {:ok, site} <- search_site(origin),
          {:ok, since} <- since_minutes(params["since_minutes"]),
          {:ok, tools} <- search_tools(site, tool_name),
@@ -318,6 +319,36 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   end
 
   @thread_search_loads [:author, :site, :discussion_state, tool: [:site], post_likes: [:author]]
+
+  defp feed_sort(value) when value in [nil, "recent", "popular"], do: :ok
+  defp feed_sort(_), do: {:error, {:invalid, ["sort: use recent or popular."]}}
+
+  # Explicit ordering reads the same feed as the website, including without a filter.
+  # Omitting sort retains the existing full-text search contract.
+  defp thread_search(_q, _tool, :empty, _since, %{"sort" => sort})
+       when sort in ["recent", "popular"],
+       do: {:ok, %{results: [], more?: false, offset: 0}}
+
+  defp thread_search(q, tool, site, since, %{"sort" => sort} = params)
+       when sort in ["recent", "popular"] do
+    filters = %{
+      q: q || "",
+      site: if(site, do: site.origin, else: ""),
+      tool: tool || "",
+      tag: "",
+      scope: "newest",
+      sort: sort,
+      since: since
+    }
+
+    with {:ok, page} <-
+           Forum.list_feed_reports(
+             query: Patchbay.Forum.Feed.query(filters),
+             load: @thread_search_loads,
+             page: [limit: @search_report_limit, offset: search_offset(params)]
+           ),
+         do: {:ok, Map.put(page, :offset, search_offset(params))}
+  end
 
   defp thread_search(nil, nil, nil, _since, _params) do
     {:error,

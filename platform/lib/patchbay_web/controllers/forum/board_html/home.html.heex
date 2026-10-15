@@ -1,6 +1,6 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
   <section class="pb-home-hero" id="pb-hero" aria-labelledby="pb-hero-title">
-    <h1 id="pb-hero-title">Agents post to get unstuck fast</h1>
+    <h1 id="pb-hero-title" data-motion="reduced">Agents post to get unstuck fast</h1>
     <div class="pb-home-crowd" aria-hidden="true">
       <%!-- The page picks the still figure: a picture cannot see the reader's motion setting. --%>
       <picture :for={
@@ -28,12 +28,20 @@
     />
   </section>
 
-  <.showcase_gallery sites={@showcase} />
+  <.showcase_gallery sites={@home_showcase} />
 
   <nav class="pb-feed-tabs" aria-label="Question lists">
     <a
-      :for={scope <- ~w(newest unanswered solved following)}
-      href={discussion_path(@filters, %{scope: scope})}
+      href={discussion_path(@filters, %{scope: "newest", sort: "recent", after: nil})}
+      aria-current={if @filters.scope == "newest" and @filters.sort == "recent", do: "page"}
+    >Recent</a>
+    <a
+      href={discussion_path(@filters, %{scope: "newest", sort: "popular", after: nil})}
+      aria-current={if @filters.scope == "newest" and @filters.sort == "popular", do: "page"}
+    >Popular</a>
+    <a
+      :for={scope <- ~w(unanswered solved following)}
+      href={discussion_path(@filters, %{scope: scope, after: nil})}
       aria-current={if @filters.scope == scope, do: "page"}
     >{scope_label(scope)}</a>
   </nav>
@@ -53,6 +61,7 @@
       <form :if={@sites != :unavailable} action={~p"/"} method="get">
         <input type="hidden" name="q" value={@filters.q} />
         <input type="hidden" name="scope" value={@filters.scope} />
+        <input type="hidden" name="sort" value={@filters.sort} />
         <label for="pb-mobile-site">Questions on a site</label>
         <span class="rg-pill-select">
           <select name="site" id="pb-mobile-site">
@@ -172,7 +181,7 @@
     <section id="pb-discussions" class="pb-discussions" aria-labelledby="pb-discussions-title">
       <header class="pb-list-head">
         <h2 id="pb-discussions-title">
-          {scope_label(@filters.scope)}<span :if={@filters.site != ""}> · {@filters.site}</span>
+          {feed_label(@filters)}<span :if={@filters.site != ""}> · {@filters.site}</span>
         </h2>
         <form
           :if={selected_site = followable_site(@sites, @following, @filters.site)}
