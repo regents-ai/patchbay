@@ -223,7 +223,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                       "source"
                     ]}
                     <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation["snapshot_date"]}</span>.
-                    Site-wide report; not a simultaneous homepage count.
+                    Counted across the whole site, not only its home page.
                   </p>
                   <p :if={site.failed?} class="pb-directory-notice">
                     The check was incomplete. Previous information is kept.
