@@ -35,10 +35,13 @@
 @media (max-width: 1000px) { .pb-directory-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .pb-directory-intro { display: block; }
-  .pb-directory-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-  .pb-directory-search-field { grid-column: 1 / -1; }
+  .pb-directory-search { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .pb-directory-search-field { grid-column: auto; }
   .pb-directory-cards { grid-template-columns: minmax(0, 1fr); }
   .pb-directory-pagination { gap: .75rem; font-size: .8125rem; }
 }
 
 .pb-directory-tool-list[open] summary span { transform: rotate(45deg); }
+/* A card's supporting text follows its own surface, including in light mode. */
+.pb-directory-card :is(.pb-directory-category, .pb-directory-source, .pb-directory-date, .pb-directory-next, .pb-directory-tool-list li span) { color: color-mix(in srgb, var(--support-panel-ink) 75%, transparent); }
+.pb-directory-card .pb-directory-date :is(time, span) { color: var(--support-panel-ink); }
