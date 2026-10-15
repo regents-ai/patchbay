@@ -9,6 +9,7 @@ config :patchbay, PatchbayWeb.Endpoint, cache_static_manifest: "priv/static/cach
 
 # Every request reaches production through Fly's proxy, which sets Fly-Client-IP.
 config :patchbay, :behind_fly_proxy, true
+config :patchbay, :secure_session_cookie, true
 
 # The port `fly.toml` names under `[metrics]`. Fly sends no public traffic to it.
 config :patchbay, :metrics_listener, ip: {0, 0, 0, 0, 0, 0, 0, 0}, port: 9091

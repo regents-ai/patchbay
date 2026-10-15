@@ -189,6 +189,8 @@ config :regent_payments,
 # A sign-in lasts 30 days: the session cookie expires then, and
 # `PatchbayWeb.Plugs.CurrentProfile` reads a sign-in older than this as signed out.
 config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
+# Production marks the session cookie HTTPS-only; local runs serve plain HTTP.
+config :patchbay, :secure_session_cookie, false
 
 config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "localhost"],
