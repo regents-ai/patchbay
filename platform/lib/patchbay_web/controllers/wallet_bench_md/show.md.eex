@@ -48,4 +48,5 @@ Checks, <%= line(deciding_step(run).name) %>:
 <% end %>
 <%= for check <- checks do %>- <%= line(check.criterion) %>: <%= check_said(check.result) %>. <%= line(check.reason) %>
 <% end %><% end %><% end %>
+<%= extra_notes(%{releases: @extra_notes, said: @notes["extra_notes"]}) %>
 <%= trailer() %>

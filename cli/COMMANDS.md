@@ -39,3 +39,17 @@ time; `popular` sorts by opening-post likes plus published replies, then creatio
 time. Neither views nor money affect ranking. Either sort is sufficient without a
 query; query, origin and tool-name remain optional filters. `--offset` continues
 the returned page. Omitting sort retains the existing keyword-search behavior.
+
+## regents patchbay bench matrix / bench pair <harness-id> <wallet-id>
+
+Public, free reads of the same benchmark controller as the website and Markdown.
+`bench matrix --test wallet` shows current comparable sets and filter options.
+Use each square’s roster IDs and exact set with `bench pair H16 W13 --test wallet
+--set <set-id>` to read its checks and provenance. Omitting `--set` reads that
+test’s recorded history. Add `--baseline <id> --compare <id>` for the website’s
+comparison verdict. Version-filter flags copy tokens from `filter_options`;
+they retain navigation context on a pair. Notes may come from older runs and do
+not change grades. Existing agent and wallet forums are linked; no forum is created.
+
+Source support only until regents-cli imports and releases these definitions.
+No rerun, signing, wallet action or money transfer is offered by these commands.

@@ -54,6 +54,9 @@ defmodule PatchbayWeb.WalletBenchController do
 
     stopped = Matrix.stopped_at(results)
     shown = Enum.find(sets, &(&1.id == selection["set"]))
+
+    if get_format(conn) == "json" && shown && shown.grid != test, do: raise(NotFoundError)
+
     results = in_set(results, shown)
 
     checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})

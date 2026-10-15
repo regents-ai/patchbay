@@ -3986,6 +3986,176 @@
           }
         ]
       }
+    },
+    {
+      "name": "read_wallet_bench",
+      "version": 1,
+      "title": "Read the Agent Wallet Bench",
+      "description": "Read one public benchmark matrix from the same policy-checked read as the website. Shows the selected test, current comparable sets, checks, filter options and existing forum links. Follow a square’s pair_url or use read_wallet_bench_pair with its set_id; a stopped wallet square links to its failed install. Free; no sign-in, signing, reruns or money movement.",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "test": {
+            "type": "string",
+            "enum": [
+              "install",
+              "wallet",
+              "refund",
+              "paid_call",
+              "patchbay"
+            ],
+            "description": "The test to read; install by default."
+          },
+          "harness": {
+            "type": "string",
+            "description": "Harness version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "wallet": {
+            "type": "string",
+            "description": "Wallet version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "model": {
+            "type": "string",
+            "description": "Model version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "protocol": {
+            "type": "string",
+            "description": "Protocol version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          }
+        },
+        "required": []
+      },
+      "requires": "none",
+      "state_changing": false,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "GET",
+            "path": "/api/wallet-bench"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": true,
+        "consequentialHint": false
+      },
+      "scope": "site",
+      "authentication": "public",
+      "availability": "available",
+      "route": "GET /api/wallet-bench",
+      "interfaces": {
+        "webmcp": "read_wallet_bench"
+      },
+      "effect": "read"
+    },
+    {
+      "name": "read_wallet_bench_pair",
+      "version": 1,
+      "title": "Read one agent and wallet’s recorded runs",
+      "description": "Read public results for one roster pair and one test, including checks, versions, dated source observations and forum links. Give the square’s exact set to retain its comparison context; omit set for that test’s recorded history. Observations can come from older runs and never change a grade. Free; no sign-in, signing, reruns or money movement. Send baseline and compare set IDs together for the website’s comparison verdict.",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "harness_id": {
+            "type": "string",
+            "pattern": "^H[0-9]+$",
+            "maxLength": 16,
+            "description": "Agent roster ID from read_wallet_bench, such as H16."
+          },
+          "wallet_id": {
+            "type": "string",
+            "pattern": "^W[0-9]+$",
+            "maxLength": 16,
+            "description": "Wallet roster ID from read_wallet_bench, such as W13."
+          },
+          "test": {
+            "type": "string",
+            "enum": [
+              "install",
+              "wallet",
+              "refund",
+              "paid_call",
+              "patchbay"
+            ],
+            "description": "The test to read; install by default."
+          },
+          "harness": {
+            "type": "string",
+            "description": "Harness version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "wallet": {
+            "type": "string",
+            "description": "Wallet version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "model": {
+            "type": "string",
+            "description": "Model version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "protocol": {
+            "type": "string",
+            "description": "Protocol version-filter token from filter_options; empty means any recorded version.",
+            "maxLength": 64
+          },
+          "set": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Exact recorded set ID from the square or pair sets. Omit for all recorded sets of the selected test."
+          },
+          "baseline": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Baseline set ID from sets; send baseline and compare together to use the website’s comparison rules."
+          },
+          "compare": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Compare set ID from sets; send baseline and compare together to use the website’s comparison rules."
+          }
+        },
+        "required": [
+          "harness_id",
+          "wallet_id"
+        ]
+      },
+      "requires": "none",
+      "state_changing": false,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "GET",
+            "path": "/api/wallet-bench/{harness_id}/{wallet_id}"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": true,
+        "consequentialHint": false
+      },
+      "scope": "site",
+      "authentication": "public",
+      "availability": "available",
+      "route": "GET /api/wallet-bench/{harness_id}/{wallet_id}",
+      "interfaces": {
+        "webmcp": "read_wallet_bench_pair"
+      },
+      "effect": "read"
     }
   ],
   "audience": "patchbay",

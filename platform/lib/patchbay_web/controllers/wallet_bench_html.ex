@@ -372,7 +372,11 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:never_run, :string, default: nil)
 
   def entry(assigns) do
-    assigns = assign(assigns, :logo, Map.get(@logos, assigns.entry.id))
+    assigns =
+      assign(assigns,
+        logo: Map.get(@logos, assigns.entry.id),
+        forum: ProgramSites.domain(assigns.entry)
+      )
 
     ~H"""
     <span class="pb-wb-entry">
@@ -381,11 +385,28 @@ defmodule PatchbayWeb.WalletBenchHTML do
         <span :if={!@logo}>{initials(@entry.name)}</span>
       </span>
       <span class="pb-wb-entry-name">
-        {@entry.name}
+        <a :if={@forum} href={~p"/#{@forum}"} aria-label={@entry.name <> " forum"}>
+          {@entry.name}
+        </a>
+        <span :if={!@forum}>{@entry.name}</span>
         <span :if={@never_run} class="pb-wb-entry-note">{word(@notes, @never_run)}</span>
       </span>
     </span>
     """
+  end
+
+  @doc "The pair's selected test and set, shared by the website and Markdown links."
+  def square_path(square, harness, wallet, grid, filters) do
+    {grid, set_id} =
+      case square do
+        %{stopped: %{set_id: set_id}} -> {"install", set_id}
+        square -> {grid, square.set_id}
+      end
+
+    params = Map.put(filters, "test", grid)
+    params = if set_id, do: Map.put(params, "set", set_id), else: params
+
+    ~p"/wallet-bench/#{harness.id}/#{wallet.id}?#{params}" <> "#" <> grid
   end
 
   @doc """
@@ -403,20 +424,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:filters, :map, default: %{})
 
   def square(assigns) do
-    {grid, set_id} =
-      case assigns.square do
-        %{stopped: %{set_id: set_id}} -> {"install", set_id}
-        square -> {assigns.grid, square.set_id}
-      end
-
-    params = Map.put(assigns.filters, "test", grid)
-    params = if set_id, do: Map.put(params, "set", set_id), else: params
-
-    assigns = assign(assigns, params: params, anchor: grid)
-
     ~H"""
     <a
-      href={~p"/wallet-bench/#{@harness.id}/#{@wallet.id}?#{@params}" <> "#" <> @anchor}
+      href={square_path(@square, @harness, @wallet, @grid, @filters)}
       class={["pb-wb-square", @square.runs == 0 && "is-empty"]}
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
       data-wb-pair={@harness.name <> " with " <> @wallet.name}
@@ -473,13 +483,16 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def extra_notes(assigns) do
     ~H"""
     <section class="pb-sheet-section" id={@id} aria-labelledby={@id <> "-title"}>
-      <h2 id={@id <> "-title"}>Extra notes</h2>
+      <h2 id={@id <> "-title"}>Release observations</h2>
       <p class="patchbay-muted">{@said}</p>
       <dl class="pb-wb-extra-notes">
         <div :for={release <- @releases}>
           <dt>{release.name} <code>{release.version}</code></dt>
           <dd :for={note <- release.notes}>
             {note.note}
+            <span class="patchbay-muted">
+              Noted <time datetime={DateTime.to_iso8601(note.noted_at)}>{moment(note.noted_at)}</time>
+            </span>
             <a :if={note.run_url} href={note.run_url} rel="noopener" target="_blank">
               The run on techtree.sh
             </a>
@@ -510,6 +523,11 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def pair_detail(assigns) do
     ~H"""
     <div id="pb-wb-pair" class="pb-wb-pair">
+      <nav aria-label="Pair forums" class="pb-wb-detail-links">
+        <a :for={{name, domain} <- forums(@harness, @wallet)} href={~p"/#{domain}"}>
+          {name} forum
+        </a>
+      </nav>
       <section :if={@sets != []} class="pb-sheet-section" id="versions">
         <h2>Sets &amp; comparisons</h2>
         <p class="patchbay-muted">
@@ -686,7 +704,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
               </div>
             </Regent.Primitives.disclosure>
             <a :if={ExtraNotes.for_runs(@extra_notes, [run]) != []} href="#pair-extra-notes">
-              Extra notes on this release
+              Release observations
             </a>
             <a href={run.run_url} rel="noopener" target="_blank">This run on techtree.sh</a>
           </li>

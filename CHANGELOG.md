@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-15 — Benchmark read parity
+
+- Benchmark names link to their existing forums, including inside result dialogs.
+- Markdown result links retain the selected test, version filters and result set.
+- Release observations show their recorded date and source in HTML and Markdown.
+- Public JSON and native browser tools read the same benchmark controller as the pages, including version comparisons. CLI definitions are ready for a matching regents-cli release.
+
+
 ## 2026-10-14 — Search pages, questions and sites together
 
 - Search shows pages and actions alongside questions and sites. Matches are highlighted; arrow keys select a result while focus stays in the field. Enter opens it; Escape closes search and restores focus.

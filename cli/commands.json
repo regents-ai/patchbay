@@ -937,6 +937,151 @@
           "description": "A key you make for this wording, such as a fresh UUID: 8 to 100 characters. Send it again only to retry this same save."
         }
       ]
+    },
+    {
+      "command": "bench matrix",
+      "description": "Read one public benchmark matrix from the same policy-checked read as the website. Shows the selected test, current comparable sets, checks, filter options and existing forum links. Follow a square’s pair_url or use read_wallet_bench_pair with its set_id; a stopped wallet square links to its failed install. Free; no sign-in, signing, reruns or money movement.",
+      "operation_id": "readWalletBench",
+      "webmcp": "read_wallet_bench",
+      "method": "GET",
+      "path": "/api/wallet-bench",
+      "authority": "public",
+      "effect": "read",
+      "flags": [
+        {
+          "name": "test",
+          "type": "string",
+          "in": "query",
+          "field": "test",
+          "description": "The test to read; install by default.",
+          "enum": [
+            "install",
+            "wallet",
+            "refund",
+            "paid_call",
+            "patchbay"
+          ]
+        },
+        {
+          "name": "harness",
+          "type": "string",
+          "in": "query",
+          "field": "harness",
+          "description": "Harness version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "wallet",
+          "type": "string",
+          "in": "query",
+          "field": "wallet",
+          "description": "Wallet version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "in": "query",
+          "field": "model",
+          "description": "Model version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "protocol",
+          "type": "string",
+          "in": "query",
+          "field": "protocol",
+          "description": "Protocol version-filter token from filter_options; empty means any recorded version."
+        }
+      ]
+    },
+    {
+      "command": "bench pair <harness-id> <wallet-id>",
+      "description": "Read public results for one roster pair and one test, including checks, versions, dated source observations and forum links. Give the square’s exact set to retain its comparison context; omit set for that test’s recorded history. Observations can come from older runs and never change a grade. Free; no sign-in, signing, reruns or money movement.",
+      "operation_id": "readWalletBenchPair",
+      "webmcp": "read_wallet_bench_pair",
+      "method": "GET",
+      "path": "/api/wallet-bench/{harness_id}/{wallet_id}",
+      "authority": "public",
+      "effect": "read",
+      "flags": [
+        {
+          "name": "test",
+          "type": "string",
+          "in": "query",
+          "field": "test",
+          "description": "The test to read; install by default.",
+          "enum": [
+            "install",
+            "wallet",
+            "refund",
+            "paid_call",
+            "patchbay"
+          ]
+        },
+        {
+          "name": "harness",
+          "type": "string",
+          "in": "query",
+          "field": "harness",
+          "description": "Harness version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "wallet",
+          "type": "string",
+          "in": "query",
+          "field": "wallet",
+          "description": "Wallet version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "in": "query",
+          "field": "model",
+          "description": "Model version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "protocol",
+          "type": "string",
+          "in": "query",
+          "field": "protocol",
+          "description": "Protocol version-filter token from filter_options; empty means any recorded version."
+        },
+        {
+          "name": "set",
+          "type": "string",
+          "in": "query",
+          "field": "set",
+          "description": "Exact recorded set ID from the square or pair sets. Omit for all recorded sets of the selected test."
+        },
+        {
+          "name": "baseline",
+          "type": "string",
+          "in": "query",
+          "field": "baseline",
+          "description": "Baseline set ID from sets; send baseline and compare together to use the website’s comparison rules."
+        },
+        {
+          "name": "compare",
+          "type": "string",
+          "in": "query",
+          "field": "compare",
+          "description": "Compare set ID from sets; send baseline and compare together to use the website’s comparison rules."
+        }
+      ],
+      "arguments": [
+        {
+          "name": "harness-id",
+          "type": "string",
+          "in": "path",
+          "field": "harness_id",
+          "description": "Agent roster ID from read_wallet_bench, such as H16."
+        },
+        {
+          "name": "wallet-id",
+          "type": "string",
+          "in": "path",
+          "field": "wallet_id",
+          "description": "Wallet roster ID from read_wallet_bench, such as W13."
+        }
+      ]
     }
   ]
 }

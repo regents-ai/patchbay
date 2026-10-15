@@ -27,5 +27,6 @@ The checks, in order:
 
 <%= grid_table(@matrix, grid) %>
 <% end %>
+<%= extra_notes(%{releases: @matrix.extra_notes, said: @matrix.notes["extra_notes"]}) %>
 Results come from Techtree as each run finishes.
 <%= trailer() %>

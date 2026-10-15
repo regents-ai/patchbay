@@ -6,9 +6,6 @@
       <h2>{@harness.name} with {@wallet.name}</h2>
       <nav aria-label="Pair details" class="pb-wb-detail-links">
         <a href={"#" <> @test}>Run history</a>
-        <a :for={{name, domain} <- forums(@harness, @wallet)} href={~p"/#{domain}"}>
-          {name} forum
-        </a>
       </nav>
     </div>
     <.pair_detail

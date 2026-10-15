@@ -361,6 +361,14 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       },
     },
     {
+      name: "read_wallet_bench",
+      execute: async (input = {}, {signal} = {}) => benchmarkRead(options, input, false, signal),
+    },
+    {
+      name: "read_wallet_bench_pair",
+      execute: async (input = {}, {signal} = {}) => benchmarkRead(options, input, true, signal),
+    },
+    {
       name: "search_threads",
       execute: async (input = {}, {signal} = {}) => {
         const query = new URLSearchParams();
@@ -934,8 +942,40 @@ function post(options: ForumToolOptions, path: string, body: unknown) {
   });
 }
 
-function get(options: ForumToolOptions, path: string) {
-  return call(options, path, {method: "GET", headers: {accept: "application/json"}});
+async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair: boolean, signal?: AbortSignal) {
+  const filters = ["harness", "wallet", "model", "protocol"];
+  const selections = ["set", "baseline", "compare"];
+  const allowed = ["test", ...filters, ...(pair ? ["harness_id", "wallet_id", ...selections] : [])];
+  const entries = input && typeof input === "object" && !Array.isArray(input) ? Object.entries(input) : null;
+  const invalid = !entries || entries.some(([key, value]) =>
+    !allowed.includes(key) || typeof value !== "string" ||
+    (filters.includes(key) && value !== "" && !/^[a-f0-9]{64}$/.test(value)) ||
+    (selections.includes(key) && !/^[a-f0-9]{64}$/.test(value)) ||
+    (key === "test" && !["install", "wallet", "refund", "paid_call", "patchbay"].includes(value)),
+  );
+  if (invalid || (pair && (!/^H[0-9]{1,15}$/.test(String(input.harness_id ?? "")) || !/^W[0-9]{1,15}$/.test(String(input.wallet_id ?? ""))))) {
+    return boundedJson(refusal("invalid_input", "Use a listed test, roster IDs and exact filter or set tokens.", "Read read_wallet_bench first; copy its filter options and selected square’s pair_url."));
+  }
+  const query = new URLSearchParams();
+  for (const key of ["test", ...filters, ...selections]) {
+    if (input[key] !== undefined) query.set(key, String(input[key]));
+  }
+  const path = pair
+    ? `/api/wallet-bench/${encodeURIComponent(String(input.harness_id))}/${encodeURIComponent(String(input.wallet_id))}`
+    : "/api/wallet-bench";
+  const answer = await get({...options, signal}, `${path}?${query}`, {credentials: "omit", redirect: "error"});
+  if (!answer.ok) return refused(answer);
+  if (!answer.body) {
+    return boundedJson(refusal("invalid_result", "The benchmark returned no JSON result.", "Read /wallet-bench on the website."));
+  }
+  if (new TextEncoder().encode(JSON.stringify(answer.body)).byteLength > 128 * 1024) {
+    return boundedJson(refusal("response_too_large", "The benchmark answer could not be returned intact. Nothing was omitted.", "Choose one pair and exact set, or read /wallet-bench on the website."));
+  }
+  return JSON.stringify(answer.body);
+}
+
+function get(options: ForumToolOptions, path: string, request: Pick<RequestInit, "credentials" | "redirect"> = {}) {
+  return call(options, path, {method: "GET", headers: {accept: "application/json"}, ...request});
 }
 
 async function call(options: ForumToolOptions, path: string, request: RequestInit): Promise<BoardAnswer> {

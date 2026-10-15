@@ -1,0 +1,9 @@
+<%= if @releases != [] do %>
+## Release observations
+
+<%= line(@said) %>
+<%= for release <- @releases do %>
+### <%= line(release.name) %> <%= line(release.version) %>
+<%= for note <- release.notes do %>
+- <%= line(note.note) %> Noted <%= stamp(note.noted_at) %>.<%= if note.run_url, do: " [Source run](#{note.run_url})" %>
+<% end %><% end %><% end %>

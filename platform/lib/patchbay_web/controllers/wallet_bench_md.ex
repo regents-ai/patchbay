@@ -3,6 +3,7 @@ defmodule PatchbayWeb.WalletBenchMD do
 
   use PatchbayWeb, :md
 
+  alias Patchbay.Forum.ProgramSites
   alias Patchbay.WalletBench.Sets
 
   import PatchbayWeb.WalletBenchHTML,
@@ -14,6 +15,7 @@ defmodule PatchbayWeb.WalletBenchMD do
       check_said: 1,
       versions: 1,
       forums: 2,
+      square_path: 5,
       set_facts: 1,
       steps?: 1,
       deciding_step: 1,
@@ -24,15 +26,17 @@ defmodule PatchbayWeb.WalletBenchMD do
 
   @doc "A grid as a markdown table, each cell what the square shows."
   def grid_table(matrix, grid) do
-    head = row(["" | Enum.map(matrix.wallets, & &1.name)])
+    head = row(["" | Enum.map(matrix.wallets, &entry_link/1)])
     rule = row(Enum.map(0..length(matrix.wallets), fn _ -> "---" end))
 
     body =
       for h <- grid.harnesses do
         row([
-          h.name
+          entry_link(h)
           | Enum.map(matrix.wallets, fn w ->
-              cell(matrix.notes, grid.squares[{h.id, w.id}], h, w)
+              square = grid.squares[{h.id, w.id}]
+              path = square_path(square, h, w, grid.grid, matrix.filters)
+              cell(matrix.notes, square) <> " ([runs](#{path}))"
             end)
         ])
       end
@@ -40,19 +44,24 @@ defmodule PatchbayWeb.WalletBenchMD do
     Enum.join([head, rule | body], "\n")
   end
 
-  defp cell(_notes, %{runs: 0, fixed: [], stopped: %{set_id: id}}, h, w),
-    do:
-      "stopped at install ([runs](/wallet-bench/#{h.id}/#{w.id}?test=install&set=#{id}#install))"
+  defp entry_link(entry) do
+    case ProgramSites.domain(entry) do
+      nil -> line(entry.name)
+      domain -> "[#{line(entry.name)}](/#{domain})"
+    end
+  end
 
-  defp cell(_notes, %{runs: 0, fixed: []}, _h, _w), do: "not tested yet"
+  defp cell(_notes, %{runs: 0, fixed: [], stopped: %{}}), do: "stopped at install"
 
-  defp cell(notes, square, h, w) do
+  defp cell(_notes, %{runs: 0, fixed: []}), do: "not tested yet"
+
+  defp cell(notes, square) do
     outcomes =
       Enum.map(square.tally, fn {outcome, n} ->
         "#{word(notes, outcome)} #{n} of #{square.runs}"
       end) ++
         (square.fixed |> Enum.map(&word(notes, &1.fixed_outcome)) |> Enum.uniq())
 
-    Enum.join(outcomes, "; ") <> " ([runs](/wallet-bench/#{h.id}/#{w.id}))"
+    Enum.join(outcomes, "; ")
   end
 end

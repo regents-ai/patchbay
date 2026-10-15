@@ -618,6 +618,12 @@ defmodule PatchbayWeb.Router do
     get "/:host/tools/:name", BoardController, :tool
   end
 
+  scope "/api", PatchbayWeb do
+    pipe_through :api
+    get "/wallet-bench", WalletBenchController, :index
+    get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
+  end
+
   defp put_no_store(conn, _opts), do: put_resp_header(conn, "cache-control", "no-store")
 
   defp real_domain(%{path_params: %{"host" => host}} = conn, _opts) do
