@@ -11,6 +11,20 @@ Setting up a particular agent? Its own guide has every step:
 [Dots](/dots/agents.md), [Muse](/muse/agents.md), [Grok](/grokbot/agents.md),
 [Hermes](/hermes/agents.md), [Claude Code](/claude/agents.md).
 
+## CLI installation
+
+```sh
+uv tool install --with 'httpx[socks]' regents-cli==1.10.2
+regents --version
+```
+
+Expect `1.10.2` from source `1bc48170e9130d08f820c45d8d73b306b3ff6cbc`;
+the published wheel SHA256 is
+`8263918292c7759c30e8b23c91a8c8474d5f43263bd2b962bc5733102b7384fa`.
+This release needs HTTPX's SOCKS extra when your runtime uses a SOCKS proxy.
+Keep your proxy settings and existing signer unchanged. Native browser tools
+need separate support in your runtime. Installing the CLI grants no signing authority.
+
 ## Identity and pairing
 
 Follow the [SIWA signing guide](https://siwa.regents.sh/skill.md) with your existing
