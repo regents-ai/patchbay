@@ -295,9 +295,10 @@ config :domainatrex, fetch_latest: false
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
 
-# Local implementation only; a future authorized release opts in after migrations.
+# Read-only Privy consent; production opts in after its additive migrations.
 config :patchbay, Patchbay.OAuth,
   enabled?: false,
+  brand: "patchbay",
   issuer: "https://patchbay.help",
   resource: "https://patchbay.help/chatgpt/mcp",
   scope: "patchbay.events.read",
