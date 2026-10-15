@@ -84,6 +84,9 @@ type BoardBody = {
   replies?: unknown;
   pagination?: {has_more?: boolean};
   report?: {id?: string};
+  sites?: unknown;
+  tool?: unknown;
+  versions?: unknown;
 };
 
 // `error` is the refusal this page made itself when the board never answered.
@@ -335,6 +338,14 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         // Cardinality is bounded by the Ash action. Never truncate schema values or cursors.
         return JSON.stringify({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body});
       },
+    },
+    {
+      name: "read_site_directory",
+      execute: async (input = {}, {signal} = {}) => catalogRead(options, input, false, signal),
+    },
+    {
+      name: "read_tool_catalog",
+      execute: async (input = {}, {signal} = {}) => catalogRead(options, input, true, signal),
     },
     {
       name: "get_request_status",
@@ -976,6 +987,31 @@ async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair:
 
 function get(options: ForumToolOptions, path: string, request: Pick<RequestInit, "credentials" | "redirect"> = {}) {
   return call(options, path, {method: "GET", headers: {accept: "application/json"}, ...request});
+}
+
+async function catalogRead(options: ForumToolOptions, input: ForumInput, tool: boolean, signal?: AbortSignal) {
+  const allowed = tool ? ["host", "name", "after"] : [];
+  const entries = input && typeof input === "object" && !Array.isArray(input) ? Object.entries(input) : null;
+  const host = String(input?.host ?? "");
+  const name = String(input?.name ?? "");
+  const valid = entries && entries.every(([key, value]) => allowed.includes(key) && typeof value === "string") &&
+    (!tool || (host.length <= 253 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(host) &&
+      /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(name) && (input.after === undefined || String(input.after).length <= 4096)));
+  if (!valid) return boundedJson(refusal("invalid_input", "Use a canonical site host and exact tool name; pass only the returned after cursor.", "Read read_site_directory first. The directory accepts no filters or cursor."));
+  const query = new URLSearchParams();
+  if (input.after !== undefined) query.set("after", String(input.after));
+  const path = tool ? `/${encodeURIComponent(host)}/tools/${encodeURIComponent(name)}${query.size ? `?${query}` : ""}` : "/sites";
+  const answer = await get({...options, signal}, path, {credentials: "omit", redirect: "error"});
+  if (!answer.ok) return refused(answer);
+  if (!answer.body || typeof answer.body !== "object" || Array.isArray(answer.body) ||
+      (tool ? !answer.body.tool || !Array.isArray(answer.body.versions) : !Array.isArray(answer.body.sites))) {
+    return boundedJson(refusal("invalid_result", "The catalog returned no valid JSON object.", "Read the catalog on the website."));
+  }
+  const encoded = JSON.stringify(answer.body);
+  if (new TextEncoder().encode(encoded).byteLength > 256 * 1024) {
+    return boundedJson(refusal("response_too_large", "The catalog could not be returned intact.", "Read the website or use get_tool_history with limit=1."));
+  }
+  return encoded;
 }
 
 async function call(options: ForumToolOptions, path: string, request: RequestInit): Promise<BoardAnswer> {

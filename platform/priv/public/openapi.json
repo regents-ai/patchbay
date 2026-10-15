@@ -7246,6 +7246,185 @@
           }
         }
       }
+    },
+    "/sites": {
+      "get": {
+        "operationId": "readSiteDirectory",
+        "summary": "Read the first page of the public site gallery",
+        "description": "Existing page with HTML, Markdown and JSON representations selected by Accept. JSON includes only public catalog fields, up to 256 KiB; oversized data is refused without truncating schemas. No new route, site refresh or Jev call. First page only: no filters or cursor; has_more does not authorize a continuation.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Public catalog data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSiteDirectory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired cursor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No public site/tool at this address.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The catalog cannot be returned intact within 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Catalog temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{host}/tools/{name}": {
+      "get": {
+        "operationId": "readToolCatalog",
+        "summary": "Read the public tool catalog page",
+        "description": "Existing page with HTML, Markdown and JSON representations selected by Accept. JSON includes only public catalog fields, up to 256 KiB; oversized data is refused without truncating schemas. No new route, site refresh or Jev call. Canonical host only; preserve the same host/name when continuing with after.",
+        "tags": [
+          "Forum"
+        ],
+        "parameters": [
+          {
+            "name": "host",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 253,
+              "description": "Canonical main-domain host from the directory, such as openai.com. No URL, subdomain alias, path or query; redirects are refused."
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
+              "description": "Exact public tool name from a site or tool-history read."
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4096,
+              "description": "Previous pagination.next_cursor unchanged, for older versions of this same tool."
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Public catalog data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicToolCatalog"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired cursor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No public site/tool at this address.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The catalog cannot be returned intact within 256 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Catalog temporarily unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any other refusal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9546,6 +9725,203 @@
           "site_id",
           "selected_at",
           "items"
+        ]
+      },
+      "PublicCatalogSite": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "origin": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "discussions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "relationship": {
+            "type": "string"
+          },
+          "inventory": {
+            "type": "string"
+          },
+          "verified_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "origin",
+          "name",
+          "url",
+          "tools",
+          "discussions",
+          "relationship",
+          "inventory",
+          "verified_at"
+        ]
+      },
+      "PublicCatalogTool": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contract_sha256": {
+            "type": "string"
+          },
+          "protocol_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "input_schema": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "output_schema": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "first_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "name",
+          "title",
+          "description",
+          "contract_sha256",
+          "protocol_version",
+          "input_schema",
+          "output_schema",
+          "address",
+          "first_seen_at",
+          "last_seen_at"
+        ]
+      },
+      "PublicSiteDirectory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data_only": {
+            "type": "string"
+          },
+          "sites": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/PublicCatalogSite"
+            }
+          },
+          "first_page_only": {
+            "const": true
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "continuation_available": {
+            "const": false
+          }
+        },
+        "required": [
+          "data_only",
+          "sites",
+          "first_page_only",
+          "has_more",
+          "continuation_available"
+        ]
+      },
+      "PublicToolCatalog": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data_only": {
+            "type": "string"
+          },
+          "site": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "origin": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "origin",
+              "name",
+              "url"
+            ]
+          },
+          "tool": {
+            "$ref": "#/components/schemas/PublicCatalogTool"
+          },
+          "versions": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/PublicCatalogTool"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/CursorPagination"
+          }
+        },
+        "required": [
+          "data_only",
+          "site",
+          "tool",
+          "versions",
+          "pagination"
         ]
       }
     },

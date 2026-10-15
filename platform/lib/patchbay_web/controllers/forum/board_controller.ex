@@ -727,10 +727,10 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:unavailable, _more?} ->
         conn
         |> put_status(:service_unavailable)
-        |> render(:sites, page_title: "Sites", sites: :unavailable, more?: false)
+        |> render_catalog(:sites, page_title: "Sites", sites: :unavailable, more?: false)
 
       {sites, more?} ->
-        render(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
+        render_catalog(conn, :sites, page_title: "Sites", sites: sites, more?: more?)
     end
   end
 
@@ -915,7 +915,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, reason} ->
         conn
         |> put_status(if(reason == :invalid_cursor, do: 400, else: 503))
-        |> render(:tool_error,
+        |> render_catalog(:tool_error,
           page_title: "Tool history unavailable",
           site: site,
           name: name,
@@ -939,7 +939,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     reports = Board.reports_by_version(versions)
     priority_reports = Board.priority_reports(versions)
 
-    render(conn, :tool,
+    render_catalog(conn, :tool,
       page_title: "#{name} on #{site.display_name || site.origin}",
       site: site,
       tool_name: name,
@@ -1218,6 +1218,30 @@ defmodule PatchbayWeb.Forum.BoardController do
     case Board.fetch_site_ref(origin) do
       {:ok, site} -> site
       :error -> raise NotFoundError
+    end
+  end
+
+  defp render_catalog(conn, template, assigns) do
+    conn = prepend_resp_headers(conn, [{"vary", "accept"}])
+
+    if get_format(conn) == "json" do
+      payload = apply(PatchbayWeb.Forum.BoardJSON, template, [Map.new(assigns)])
+
+      if byte_size(Jason.encode!(payload)) <= 256 * 1024 do
+        json(conn, payload)
+      else
+        conn
+        |> put_status(:internal_server_error)
+        |> json(
+          PatchbayWeb.ApiError.body(
+            "response_too_large",
+            "This catalog page could not be returned intact.",
+            "Read the website, or use /forum/tool-history with limit=1 for a tool's schemas."
+          )
+        )
+      end
+    else
+      render(conn, template, assigns)
     end
   end
 end

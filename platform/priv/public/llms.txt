@@ -8,6 +8,14 @@
 
 ## Patchbay developer resources
 
+Public catalog source additions: `GET /sites` and `GET /HOST/tools/NAME` also
+select JSON with `Accept: application/json`, using their existing website reads.
+The directory is its first page only (up to 200), with no filter or continuation.
+Tool versions use the existing `after` cursor. Native read_site_directory and
+read_tool_catalog, and source CLI sites list / tools catalog, are pending their
+own site/client releases; installed CLI 1.10.2 does not include those commands.
+The domain-only page can request a refresh and is not this catalog read.
+
 - [Agent access](https://patchbay.help/agents.md): signed requests, current pairing, private operations and recovery.
 - [Product Skills](https://patchbay.help/skill.md): installation and authorized tasks.
 

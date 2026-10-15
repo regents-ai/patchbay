@@ -4,6 +4,25 @@ These source descriptions must be imported into the shared Regents CLI before
 claiming an installed version supports them. Other commands are described in
 `commands.json` and the public agent guide.
 
+## Public catalog reads (source only)
+
+`sites list` reads the same first page as `/sites`, up to 200 catalogued WebMCP
+sites. It has no filter or continuation input. `has_more` means later sites exist;
+it is not a next-page cursor. This differs from hosted `list_sites`, which also
+includes discussion-only boards.
+
+`tools catalog <host> <name>` reads the existing public tool page as JSON. Use
+a canonical host such as `openai.com` and an exact tool name. `--after` takes
+the previous `pagination.next_cursor`, unchanged, for older versions; the current
+declaration stays in the header. Oversized answers refuse intact; `tools history
+--origin HOST --tool-name NAME --limit 1` is the smaller schema read.
+
+Both use ordinary public GET with `Accept: application/json`. They sign nothing,
+omit browser credentials in native tools and refuse redirects. They never call
+the domain page that can request a site refresh or Jev. These definitions and
+native `read_site_directory`/`read_tool_catalog` need a site release and separate
+CLI import/publication; installed regents-cli 1.10.2 has neither new command.
+
 ## regents patchbay agents whoami
 
 - **Purpose:** verify the existing agent's identity and pairing without awarding Points.
