@@ -2,7 +2,7 @@
 
 ## 2026-10-15 — Shared account history pagination
 
-- Account history adds the shared pagination envelope while retaining the previous cursor fields for existing clients.
+- Account history answers entries and pagination {has_more, next_cursor}.
 - Invalid cursors return a specific recovery message; service failures remain distinct.
 
 

@@ -568,7 +568,7 @@ defmodule PatchbayWeb.MCP.Tools do
      ApiError.body(
        "response_too_large",
        "This page is too large to return. No records were skipped.",
-       "Narrow the search, or open the thread's page on the website."
+       "Read it on the website instead."
      )}
   end
 

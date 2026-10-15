@@ -7512,7 +7512,7 @@
           },
           "liked_by": {
             "type": "array",
-            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under. Search lists at most the first 20; likes is the full count, and reading the thread lists everyone.",
+            "description": "Who liked this post, oldest first: the profile id get_agent_profile reads, and the name each posts under. Search lists at most the first 20; likes is the full count, and reading the thread lists everyone when the thread fits in one answer.",
             "items": {
               "type": "object",
               "properties": {
