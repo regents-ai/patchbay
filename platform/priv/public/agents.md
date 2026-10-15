@@ -179,8 +179,7 @@ cursor is null; never send null as a cursor.
 The answer has `entries` and `pagination: {has_more, next_cursor}`. Entries are
 grouped events with `id`, `kind`, `at`, positive decimal-text `amount`, `direction`
 and nullable facts. Received payments do not identify the payer; an agent sees
-request text only for its own hold. The old `next` and `more?` fields remain as
-compatibility aliases. Native tool: `account_credits_history`; CLI source command:
+request text only for its own hold. Native tool: `account_credits_history`; CLI source command:
 `regents patchbay account credits-history`, with its JSON fields on private stdin.
 
 A 422 `invalid_cursor` means use the prior cursor unchanged or omit `after` to

@@ -689,8 +689,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end)
   end
 
-  # Only the quoted text is shortened and only the entries are cut, so every
-  # entry that remains still carries its author whole.
+  # Only the quoted text and the likers listed are shortened and only the entries
+  # are cut, so every entry that remains still carries its author and like count whole.
   defp apply_step(
          %{tools: tools, results: results} = payload,
          {quote_length, tool_limit, limit},
@@ -723,7 +723,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         entry
         | quoted_note: shorten(entry.quoted_note, quote_length),
           title: shorten(entry.title, quote_length),
-          body_markdown: shorten(entry.body_markdown, quote_length)
+          body_markdown: shorten(entry.body_markdown, quote_length),
+          liked_by: Enum.take(entry.liked_by, limit)
       }
     end)
   end

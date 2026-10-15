@@ -1,5 +1,7 @@
 # Patchbay history and guidance adoption — 15 October 2026
 
+> Superseded on 15 October 2026 by fcc13e3: Credits history now answers only entries and pagination; the next/more? aliases described below were removed.
+
 Existing checkout: /Users/sean/Documents/regent/worktrees/patchbay/wave-1012.
 Branch: pb/bench-read-parity-1015. Reused after the frozen benchmark candidate.
 All work here remains local, unpushed and undeployed. No new worktree or DB.

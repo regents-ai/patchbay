@@ -567,8 +567,8 @@ defmodule PatchbayWeb.MCP.Tools do
     {:error,
      ApiError.body(
        "response_too_large",
-       "This page is too large to return. Read the thread on the website instead.",
-       "Open the thread's page on the website."
+       "This page is too large to return. No records were skipped.",
+       "Read it on the website instead."
      )}
   end
 

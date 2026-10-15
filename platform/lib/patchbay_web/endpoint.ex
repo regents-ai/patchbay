@@ -9,6 +9,7 @@ defmodule PatchbayWeb.Endpoint do
     key: "_patchbay_key",
     signing_salt: "8IPnb8sh",
     same_site: "Lax",
+    secure: Application.compile_env!(:patchbay, :secure_session_cookie),
     max_age: Application.compile_env!(:patchbay, :sign_in_lifetime_seconds)
   ]
 
