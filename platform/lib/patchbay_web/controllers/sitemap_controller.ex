@@ -16,6 +16,8 @@ defmodule PatchbayWeb.SitemapController do
   # each last changed.
   @released_at DateTime.utc_now() |> DateTime.truncate(:second)
 
+  # XML locations pass through escape/1; lastmod accepts only a DateTime.
+  # sobelow_skip ["XSS.SendResp"]
   def index(conn, _params) do
     conn
     |> put_resp_content_type("application/xml")

@@ -4,9 +4,9 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "4f98592813abe4d28c5d1c5b7f597b7d232f3f43"
+  @elixir_utils_ref "b5824049d55012f2e8b1e4d7e3e2fcc549d93360"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "58539470bfe7ecac088f163a2b283e328d5c2b65"
+  @design_system_ref "fb0542f656f68b30e56f370c8806639ac9067c07"
 
   def project do
     [
@@ -65,33 +65,35 @@ defmodule Patchbay.MixProject do
       {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
       {:regent_mcp_events, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "mcp_events"},
       {:ens_elixir, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ens"},
-      {:phoenix, "~> 1.8"},
+      {:phoenix, "~> 1.8.9"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.2"},
+      {:phoenix_live_view, "~> 1.2.6", override: true},
       {:ash, "~> 3.36"},
       {:ash_postgres, "== 2.13.0"},
-      {:ash_phoenix, "~> 2.3"},
+      {:ash_phoenix, "~> 2.3.25"},
       {:oban, "~> 2.24"},
       {:ash_oban, "~> 0.10.0"},
-      {:igniter, "~> 0.6", only: [:dev, :test]},
+      {:igniter, "== 0.8.4", only: [:dev, :test], runtime: false},
       {:simple_sat, "~> 0.1"},
+      # Shared baseline: compatible with Cachex 4.1.1 and Nebulex Distributed.
+      {:ex_hash_ring, "== 6.0.4"},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
-      {:req, "~> 0.5"},
+      {:req, "== 0.7.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_metrics_prometheus_core, "~> 1.2"},
-      {:telemetry_poller, "~> 1.0"},
+      {:telemetry_poller, "~> 1.3"},
       # 3.1.1 has the EEF-CVE-2026-97853 advisory in Decimal.round/3.
-      {:decimal, "== 3.1.2"},
+      {:decimal, "== 3.2.0"},
       {:jason, "~> 1.2"},
       {:error_tracker, "~> 0.9"},
-      {:mdex, "~> 0.13"},
+      {:mdex, "== 0.14.2"},
       {:domainatrex, "~> 3.2"},
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
@@ -111,7 +113,7 @@ defmodule Patchbay.MixProject do
       {:ethers, "0.8.0"},
       {:ex_secp256k1, "~> 0.8.0"},
       {:finch, "~> 0.19"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3.0"},
       # CVE-2026-105659: upstream fix is not in a Hex release yet.
       {:bandit,
        git: "https://github.com/mtrudel/bandit.git",
@@ -120,7 +122,7 @@ defmodule Patchbay.MixProject do
       {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.14", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.16", only: [:dev, :test], runtime: false},
       {:usage_rules, "~> 1.2.8", only: [:dev, :test], runtime: false},
       {:credo_ash,
        git: @elixir_utils,
