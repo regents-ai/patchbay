@@ -965,11 +965,7 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .patchbay-board .patchbay-topbar,
 .patchbay-board .patchbay-card,
 .patchbay-board .pb-lede,
-.pb-home-helps,
-.pb-home-sites,
-.pb-home-feed,
 .pb-board-head,
-.pb-home-search,
 .pb-feed,
 .pb-setup-page,
 .pb-log,
@@ -1365,8 +1361,7 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   gap: var(--space-2);
   margin: 0;
 }
-.pb-section-head h1,
-.pb-home-feed h2 {
+.pb-section-head h1 {
   margin: 0;
   font-family: var(--font-family-title);
   font-size: var(--pb-fs-xl);
@@ -1380,14 +1375,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   text-decoration: none;
 }
 .pb-section-head a:hover { color: var(--pb-accent-deep); text-decoration: underline; }
-.pb-home-sites { margin-top: var(--space-1); }
-.pb-home-helps {
-  display: grid;
-  gap: var(--space-1);
-  margin: var(--space-2) auto 0;
-}
-.pb-home-feed { margin-top: var(--space-3); }
-.pb-home-feed .pb-home-search { margin-top: var(--space-1); width: 100%; }
 
 
 .pb-setup-line {
@@ -1493,19 +1480,6 @@ a.patchbay-button { text-decoration: none; }
   transition: transform 160ms var(--ease-out), background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
-.pb-home-search {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin: var(--space-2) auto 0;
-}
-.pb-home-search input {
-  flex: 1 1 14rem;
-  min-width: 0;
-  min-height: 2.75rem;
-
-
-}
 
 .pb-feed { margin-top: var(--space-1); }
 .pb-feed-row {
@@ -1804,7 +1778,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-sheet-section .patchbay-card-heading { flex-wrap: wrap; }
 .pb-section-head { flex-wrap: wrap; }
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
-.pb-home-search { align-items: end; }
 .pb-account { flex-wrap: wrap; }
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
 .pb-error-inner .pb-kicker { margin: 0; }

@@ -1,6 +1,5 @@
 /* Patchbay composition; colors, typography and controls stay Regent-owned. */
 .pb-workbench { width: calc(100% - 3rem); max-width: 100rem; margin: 0 auto 3rem; color: var(--pb-text); }
-.pb-workbench-panes { display: grid; grid-template-columns: 12rem 22rem minmax(0, 1fr); border: 1px solid var(--pb-line); background: var(--pb-surface); min-height: 42rem; }
 .pb-sidebar-label { font-family: var(--font-family-title); font-weight: 400; font-size: .6875rem; text-transform: uppercase; letter-spacing: .08em; margin: .75rem .4rem .45rem; color: var(--pb-text-muted); }
 .pb-discussions { min-width: 0; border-right: 1px solid var(--pb-line); }
 .pb-list-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 1.1rem 1rem; border-bottom: 1px solid var(--pb-line); }
@@ -22,12 +21,6 @@
 .pb-discussion-row > span { color: var(--pb-text-muted); font-size: .6875rem; line-height: 1.4; overflow-wrap: anywhere; }
 .pb-workbench[data-density="compact"] .pb-discussion-row { min-height: 4rem; padding-block: .5rem; }
 .pb-list-pagination, .pb-thread-pagination { display: flex; flex-wrap: wrap; gap: .75rem; padding: 1rem; font-size: .8125rem; }
-.pb-reader { min-width: 0; background: var(--pb-surface); }
-.pb-reader-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1.5rem; min-height: 3.25rem; border-bottom: 1px solid var(--pb-line); font-size: .75rem; }
-.pb-reader-empty { max-width: 32rem; padding: 4rem 2.5rem; }
-.pb-reader-empty .pb-crown-mark { width: 3rem; }
-.pb-reader-empty h2 { font-family: var(--font-family-title); font-weight: 400; font-size: 1.5rem; margin: 1.5rem 0 1rem; }
-.pb-reader-empty p { color: var(--pb-text-muted); line-height: 1.65; }
 .pb-thread h2 { font-family: var(--font-family-title); font-weight: 400; font-size: 1.0625rem; line-height: 1.4; }
 .pb-thread h3 { font-family: var(--font-family-title); font-weight: 400; font-size: .875rem; margin-top: 1.5rem; }
 .pb-thread-jev { margin: .75rem 0 0; padding: .625rem .875rem; border-left: 2px solid var(--pb-accent); background: var(--pb-surface); font-size: .8125rem; line-height: 1.6; }
@@ -144,17 +137,8 @@
 .pb-start-steps .pb-onboarding-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); column-gap: 2rem; padding: 0 2rem .5rem; }
 .pb-start-steps .pb-onboarding-steps li { border-bottom: 0; }
 .pb-workbench :focus-visible, .pb-thread-page :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
-@media (min-width: 900px) {
-  .pb-workbench-panes { min-height: 0; }
-  .pb-discussions, .pb-reader { height: max(28rem, calc(100dvh - 23rem)); overflow-y: auto; scrollbar-width: thin; }
-}
-@media (max-width: 1199px) {
-  .pb-workbench-panes { grid-template-columns: 21rem minmax(0, 1fr); }
-}
 @media (max-width: 899px) {
   .pb-workbench { width: calc(100% - 2rem); }
-  .pb-workbench-panes { display: block; min-height: 0; }
-  .pb-reader { display: none; }
   .pb-discussions { border-right: 0; }
   .pb-discussion-row[aria-current="true"] { background: transparent; box-shadow: none; }
   .pb-discussion-row { min-height: 5.25rem; }

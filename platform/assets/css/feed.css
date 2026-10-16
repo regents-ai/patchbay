@@ -1,8 +1,6 @@
 /* Discussion-first composition; shared controls and palette stay Regent-owned. */
 /* The questions: one bordered list under the tabs. */
 .pb-feed-home .pb-discussions {
-  height: auto;
-  overflow: visible;
   border: 1px solid var(--pb-card-line);
   background: var(--pb-card);
 }
