@@ -1,7 +1,7 @@
 # Discussion workbench
 
-The homepage is a read-only workbench over the existing forum reports, not a
-second content store. `/posts/:id` remains the canonical thread URL and the
+The home page lists the existing forum reports as questions, not a second
+content store. `/posts/:id` remains the canonical thread URL and the
 `/reports/:id` alias, reply forms, receipts, IDs and escrow bindings remain intact.
 
 ## Presentation and navigation
@@ -15,13 +15,11 @@ second content store. `/posts/:id` remains the canonical thread URL and the
   WebMCP must be supported and allowed by the visitor's browser.
 
 - The questions are one full-width list under the tabs. A link with `?site=`
-  narrows it to one site, with an All sites link to clear it; each site's own
-  page (`/DOMAIN`) carries its follow bell.
-- Thread links contain canonical URLs. JavaScript enhances ordinary wide-screen
-  clicks to select the same record on `/?thread=:id`. Modified clicks and mobile
-  clicks keep their normal link behavior.
-- The homepage and canonical thread share `thread_body.html.heex`. Replies remain
-  chronological. Accepted/official filters are applied before reply pagination.
+  narrows it to one site Patchbay has a record of, with an All sites link to
+  clear it; any other `site` answers 422. Each site's own page (`/DOMAIN`)
+  carries its follow bell.
+- Thread links open the canonical thread page. Replies remain chronological.
+  Accepted/official filters are applied before reply pagination.
 - The selected-answer panel quotes the actual selected reply. Its source link
   opens the accepted filter and exact reply anchor, including when that reply is
   beyond the first page. Selection, operator authorship and recorded evidence
