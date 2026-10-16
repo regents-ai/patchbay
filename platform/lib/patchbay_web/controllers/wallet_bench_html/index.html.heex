@@ -1,48 +1,48 @@
 <main class="patchbay-shell" id="patchbay-wallet-bench">
   <section class="pb-wb-sheet" aria-labelledby="pb-wb-title">
     <.bench_header test={@test.grid} filters={@matrix.filters} />
-    <p class="pb-wb-lede">
-      Each square is one agent with one wallet; its dots are the test's checks.
-      <a href="#how-it-works">How the bench works</a>
-    </p>
-
-    <form
-      method="get"
-      action={~p"/wallet-bench"}
-      class="pb-wb-version-form"
-      aria-label="Filter recorded versions"
-    >
-      <input type="hidden" name="test" value={@test.grid} />
-      <label :for={
-        {key, title} <- [
-          {"harness", "Agent version"},
-          {"wallet", "Wallet version"},
-          {"model", "Model"},
-          {"protocol", "Protocol"}
-        ]
-      }>
-        {title}
-        <select name={key} aria-label={title}>
-          <option value="">Any recorded version</option>
-          <option
-            :for={option <- @matrix.options[key]}
-            value={option.id}
-            selected={@matrix.filters[key] == option.id}
-          >
-            {option.label}
-          </option>
-        </select>
-      </label>
-      <button class="rg-button rg-button--secondary" type="submit"><span class="rg-button__label">Filter</span></button>
-      <a href={~p"/wallet-bench?test=#{@test.grid}"}>Reset</a>
-    </form>
-    <p class="patchbay-muted">
-      Current set, or newest matching your filters. Open a square for history and comparisons.
-    </p>
 
     <div class="pb-wb-board-head">
-      <h2>{grid_title(@test.grid)}</h2>
-      <p>{@test.tested} of {@test.total} squares have results · {@test.never_run} never run</p>
+      <div>
+        <h2>{grid_title(@test.grid)}</h2>
+        <p>{@test.tested} of {@test.total} squares have results · {@test.never_run} never run</p>
+      </div>
+      <details class="rg-pill-select pb-wb-filter" id="pb-wb-filter">
+        <summary>{filter_label(@matrix.filters)}</summary>
+        <form method="get" action={~p"/wallet-bench"} aria-label="Filter recorded versions">
+          <input type="hidden" name="test" value={@test.grid} />
+          <div
+            :for={
+              {key, title} <- [
+                {"harness", "Agent version"},
+                {"wallet", "Wallet version"},
+                {"model", "Model"},
+                {"protocol", "Protocol"}
+              ]
+            }
+            class="rg-field"
+          >
+            <label for={"pb-wb-filter-" <> key}>{title}</label>
+            <select id={"pb-wb-filter-" <> key} name={key}>
+              <option value="">Any recorded version</option>
+              <option
+                :for={option <- @matrix.options[key]}
+                value={option.id}
+                selected={@matrix.filters[key] == option.id}
+              >
+                {option.label}
+              </option>
+            </select>
+          </div>
+          <p>Each square shows its current set, or the newest one matching these choices.</p>
+          <div class="pb-wb-filter-actions">
+            <button class="rg-button rg-button--secondary" type="submit">
+              <span class="rg-button__label">Show</span>
+            </button>
+            <a href={~p"/wallet-bench?test=#{@test.grid}"}>Reset</a>
+          </div>
+        </form>
+      </details>
     </div>
 
     <div
@@ -96,51 +96,14 @@
     </div>
     <p :if={@test.total == 0}>No results to show yet.</p>
 
-    <div class="pb-wb-cards">
-      <article class="pb-wb-card" aria-labelledby="pb-wb-checks-title">
-        <h2 id="pb-wb-checks-title">The checks</h2>
-        <.check_key :if={@test.criteria != []} criteria={@test.criteria} />
-        <p :if={@test.criteria == []} class="patchbay-muted">Listed once this test has run.</p>
-      </article>
-      <article class="pb-wb-card" aria-labelledby="pb-wb-key-title">
-        <h2 id="pb-wb-key-title">Reading a dot</h2>
-        <p>
-          A dot shows how often the check held within the set shown. Different releases and settings are kept apart.
-        </p>
-        <ul class="pb-wb-legend">
-          <li :for={{tone, label} <- dot_key()}>
-            <span class={["pb-wb-dot", tone]} aria-hidden="true"></span>{label}
-          </li>
-          <li>
-            <span class="pb-wb-dot is-empty" aria-hidden="true"></span>Never run: the reason is shown beside it
-          </li>
-        </ul>
-        <Regent.Primitives.disclosure id="pb-wb-meanings" summary="What each result means">
-          <dl class="pb-wb-meanings">
-            <div :for={outcome <- outcomes()} :if={Map.has_key?(@matrix.notes, outcome)}>
-              <dt><.chip notes={@matrix.notes} outcome={outcome} /></dt>
-              <dd>{@matrix.notes[outcome]}</dd>
-            </div>
-          </dl>
-        </Regent.Primitives.disclosure>
-      </article>
-    </div>
-  </section>
-
-  <.extra_notes
-    :if={@matrix.extra_notes != []}
-    id="extra-notes"
-    releases={@matrix.extra_notes}
-    said={@matrix.notes["extra_notes"]}
-  />
-
-  <.method />
-
-  <section class="pb-sheet-section">
-    <p class="patchbay-muted">
-      Results come from
-      <.out href="https://techtree.sh">Techtree</.out>
-      as each run finishes. The first survey is on <a href={~p"/blog/agent-wallet-bench-v7"}>the blog</a>.
+    <p class="pb-wb-legend">
+      <span>Each dot is a check, held in</span>
+      <span :for={{tone, label} <- dot_key()}>
+        <span class={["pb-wb-dot", tone]} aria-hidden="true"></span>{label}
+      </span>
+    </p>
+    <p class="pb-wb-more">
+      <a href={~p"/wallet-bench/how-it-works"}>How the bench works</a>
     </p>
   </section>
 

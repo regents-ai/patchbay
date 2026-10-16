@@ -44,6 +44,7 @@ defmodule PatchbayWeb.Router do
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
     get "/wallet-bench", WalletBenchController, :index
+    get "/wallet-bench/how-it-works", WalletBenchController, :method
     get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
   end
 

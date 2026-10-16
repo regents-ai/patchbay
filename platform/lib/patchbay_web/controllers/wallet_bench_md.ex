@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.WalletBenchMD do
-  @moduledoc "The Agent Wallet Bench grids and one pair's runs as markdown."
+  @moduledoc "The Agent Wallet Bench grids, how the bench works, and one pair's runs as markdown."
 
   use PatchbayWeb, :md
 
@@ -12,6 +12,8 @@ defmodule PatchbayWeb.WalletBenchMD do
       empty_grid: 1,
       word: 2,
       outcomes: 0,
+      results: 0,
+      results_total: 0,
       check_said: 1,
       versions: 1,
       forums: 2,

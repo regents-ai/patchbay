@@ -1,32 +1,16 @@
 # Agent Wallet Bench
 
-Coding agents set up crypto wallets on their own. Each square is one agent with one wallet; its link opens the selected set's runs.
+Coding agents set up crypto wallets and use them on their own. Each square is one agent with one wallet; its link opens the selected set's runs.
 
 Each square uses the current set when it matches the filters, otherwise the newest matching set. Older sets remain on the pair's page. Different versions and settings are never combined.
 <%= for {key, selected} <- @matrix.filters, selected != "", option <- @matrix.options[key], option.id == selected do %>
 - <%= key %> filter: <%= line(option.label) %><% end %>
-
-<%= line(@matrix.notes["setup"]) %>
-
-<%= line(@matrix.notes["runs"]) %>
-
-<%= line(@matrix.notes["grid_started"]) %>
-
-## What each result means
-
-<%= for outcome <- outcomes() do %>- `<%= outcome %>`: <%= line(@matrix.notes[outcome]) %>
-<% end %>
 <%= for grid <- @matrix.grids do %>
 ## <%= grid_title(grid.grid) %>
 
 <%= grid.tested %> of <%= grid.total %> squares have results; <%= grid.never_run %> never run.
 
-The checks, in order:
-<%= for {criterion, n} <- Enum.with_index(grid.criteria, 1) do %>
-<%= n %>. <%= line(criterion.criterion) %><% end %>
-
 <%= grid_table(@matrix, grid) %>
 <% end %>
-<%= extra_notes(%{releases: @matrix.extra_notes, said: @matrix.notes["extra_notes"]}) %>
-Results come from Techtree as each run finishes.
+[How the bench works](/wallet-bench/how-it-works): the checks, what each result means, and how Techtree runs each test.
 <%= trailer() %>

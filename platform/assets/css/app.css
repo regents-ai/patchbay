@@ -2078,7 +2078,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Agent Wallet Bench: a board of agents by wallets for one test, and one pair's runs. */
-#patchbay-wallet-bench, #patchbay-wallet-bench-pair {
+#patchbay-wallet-bench, #patchbay-wallet-bench-pair, #patchbay-wallet-bench-method {
   --pb-wb-warning: var(--color-warning);
   --pb-wb-info: var(--color-info);
   --pb-wb-unclear: color-mix(in srgb, var(--palette-tangerine-tango) 70%, var(--pb-text));
@@ -2101,8 +2101,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .pb-wb-method a { color: inherit; text-decoration: underline; text-decoration-color: var(--pb-line-strong); text-underline-offset: .2em; }
 
-/* How the bench works: cards under the grids, two across on a wide screen. */
-.pb-wb-method { scroll-margin-top: var(--space-4); }
+/* How the bench works: the write-up's cards, two across on a wide screen. */
 .pb-wb-method > h2 { margin: 0 0 var(--space-2); }
 .pb-wb-method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 .pb-wb-method-card { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
@@ -2181,7 +2180,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-kicker a:hover { text-decoration: underline; }
 .pb-wb-head h1 { min-width: 0; margin: 0; padding-block: .08em; font: 400 clamp(2rem, 5vw, 3.25rem)/1.2 var(--font-family-title); letter-spacing: -.035em; overflow-wrap: anywhere; }
 .pb-wb-lede { max-width: 46rem; margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-md); line-height: 1.5; }
-.pb-wb-lede a, .pb-wb-sheet .rg-disclosure a { color: inherit; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: .2em; white-space: nowrap; }
+.pb-wb-sheet .rg-disclosure a { color: inherit; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: .2em; white-space: nowrap; }
 .pb-wb-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); border-bottom: 1px solid var(--pb-wb-rule); }
 .pb-wb-tabs a {
   padding: .5rem 0 .55rem; border-top: 3px solid transparent; color: var(--pb-wb-ink-soft);
@@ -2189,9 +2188,24 @@ h1, h2, h3, h4, h5, h6 {
 }
 .pb-wb-tabs a:hover { color: var(--pb-wb-ink); }
 .pb-wb-tabs a[aria-current="page"], .pb-wb-tabs a[aria-current="location"] { border-top-color: var(--pb-wb-violet); color: var(--pb-wb-ink); }
-.pb-wb-board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.pb-wb-board-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.pb-wb-board-head > div { display: grid; flex: 1; gap: var(--space-1); min-width: 0; }
 .pb-wb-board-head h2 { margin: 0; font: 400 var(--pb-fs-xl)/1.1 var(--font-family-title); letter-spacing: -.02em; }
-.pb-wb-board-head p { margin: 0; color: var(--pb-wb-ink-soft); font: 500 .75rem/1.3 var(--font-family-mono); letter-spacing: .04em; }
+.pb-wb-board-head > div > p { margin: 0; color: var(--pb-wb-ink-soft); font: 500 .75rem/1.3 var(--font-family-mono); letter-spacing: .04em; }
+
+/* The Filter pill opens the four version choices in a panel under it, over the board. */
+.rg-pill-select.pb-wb-filter { position: static; flex: none; }
+.pb-wb-filter > form {
+  position: absolute; top: calc(100% + var(--space-1)); right: 0; z-index: 3;
+  display: grid; gap: var(--space-2); width: min(24rem, 100%); box-sizing: border-box; padding: var(--space-3);
+  border: 1px solid var(--pb-wb-rule); border-radius: .9rem; background: #FFFFFF;
+  box-shadow: 0 1px 2px rgb(20 30 70 / .06), 0 8px 24px rgb(20 30 70 / .12);
+}
+.pb-wb-filter label { font-size: .875rem; }
+.pb-wb-filter select { font-size: 1rem; }
+.pb-wb-filter p { margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-sm); }
+.pb-wb-filter-actions { display: flex; align-items: center; gap: var(--space-3); }
+.pb-wb-filter-actions a { color: var(--pb-wb-ink); text-decoration: underline; text-underline-offset: .2em; }
 
 /* The board: wallets across the top, agents down the side, a square per pair. */
 .pb-wb-scroll { overflow-x: auto; max-width: 100%; }
@@ -2236,7 +2250,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-dot.is-none { background: transparent; box-shadow: inset 0 0 0 1px var(--pb-wb-none); }
 .pb-wb-dot.is-empty { border-radius: 2px; background-image: repeating-linear-gradient(135deg, transparent 0 2px, var(--pb-wb-ink-soft) 2px 3px); }
 
-/* Under the board: the nine checks and how to read a dot, on white cards. */
+/* How the bench works: the checks and what each result means, on white cards. */
 .pb-wb-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .pb-wb-card {
   display: grid; align-content: start; gap: var(--space-2); min-width: 0; padding: var(--space-3);
@@ -2253,12 +2267,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 .pb-wb-check-list { display: grid; gap: .3rem; margin: 0; padding-left: 1.4rem; font-size: var(--pb-fs-sm); line-height: 1.4; list-style: decimal; }
 .pb-wb-check-list li::marker { color: var(--pb-wb-ink-soft); font: 500 .75rem var(--font-family-mono); }
-.pb-wb-legend { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; font-size: var(--pb-fs-sm); }
-.pb-wb-legend li { display: flex; align-items: center; gap: .6rem; }
+.pb-wb-check-test { display: grid; gap: var(--space-1); }
+.pb-wb-check-test h3 { margin: 0; font: 600 var(--pb-fs-sm)/1.3 var(--font-family-ui); }
+/* Under the board: one line saying what a dot's colour means, then the link to how it works. */
+.pb-wb-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-sm); }
+.pb-wb-legend > span { display: inline-flex; align-items: center; gap: var(--space-1); }
 .pb-wb-legend .pb-wb-dot { --pb-wb-dot: .75rem; flex: none; }
 .pb-wb-meanings { display: grid; gap: var(--space-1); margin: 0; }
 .pb-wb-meanings > div { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: var(--space-2); align-items: baseline; }
 .pb-wb-meanings dd { margin: 0; font-size: var(--pb-fs-sm); }
+.pb-wb-more { margin: 0; font-size: var(--pb-fs-sm); }
+.pb-wb-more a { color: var(--pb-wb-ink); text-decoration: underline; text-underline-offset: .2em; }
 /* Techtree's extra notes: a release, then what the bench saw about it. */
 .pb-wb-extra-notes { display: grid; gap: var(--space-2); margin: 0; }
 .pb-wb-extra-notes > div { display: grid; gap: .3rem; }
@@ -2271,6 +2290,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 @media (max-width: 479px) {
   .pb-wb-check-key { flex-direction: column; }
+  .pb-wb-meanings > div { grid-template-columns: 1fr; gap: var(--space-1); }
+  .pb-wb-meanings dt { justify-self: start; }
 }
 
 .pb-wb-chip {

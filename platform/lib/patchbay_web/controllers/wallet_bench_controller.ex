@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.WalletBenchController do
   @moduledoc """
   The Agent Wallet Bench board, `/wallet-bench`, one test at a time
-  (`?test=wallet`; the first test when none is named), and one pair's runs,
-  `/wallet-bench/<agent>/<wallet>`. Both read Techtree's published results
-  when they are opened, so a finished run shows on the next visit.
+  (`?test=wallet`; the first test when none is named), how the bench works,
+  `/wallet-bench/how-it-works`, and one pair's runs,
+  `/wallet-bench/<agent>/<wallet>`. Each reads Techtree's published results
+  when it is opened, so a finished run shows on the next visit.
   """
 
   use PatchbayWeb, :controller
@@ -27,6 +28,11 @@ defmodule PatchbayWeb.WalletBenchController do
       matrix: matrix,
       test: Enum.find(matrix.grids, &(&1.grid == test))
     )
+  end
+
+  def method(conn, _params) do
+    {:ok, matrix} = Matrix.read()
+    render(conn, :method, page_title: "How the Agent Wallet Bench works", matrix: matrix)
   end
 
   def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do

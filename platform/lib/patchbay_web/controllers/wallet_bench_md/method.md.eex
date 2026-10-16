@@ -1,0 +1,60 @@
+# How the Agent Wallet Bench works
+
+What each test checks, what each result means, and how Techtree runs every test. The board is at [/wallet-bench](/wallet-bench).
+
+## The checks
+
+A judge answers each check yes or no. A square's dots are its test's checks, in this order.
+<%= for grid <- @matrix.grids do %>
+### <%= grid_title(grid.grid) %>
+<%= if grid.criteria == [] do %>
+Listed once this test has run.
+<% else %><%= for {criterion, n} <- Enum.with_index(grid.criteria, 1) do %>
+<%= n %>. <%= line(criterion.criterion) %><% end %>
+<% end %><% end %>
+## What each result means
+
+<%= for outcome <- outcomes(), Map.has_key?(@matrix.notes, outcome) do %>- `<%= outcome %>`: <%= line(@matrix.notes[outcome]) %>
+<% end %>
+## First survey
+
+The bench tests coding agents on two questions: can each one install a crypto wallet tool by itself, and can it then set up and prove control of a wallet. It covers 9 agents: Hermes Agent, Claude Code, Cline, Kilo Code, Pi, oh-my-pi, Codex CLI, DeepSeek Harness and OpenCode. These were paired with 4 wallet tools that can run unattended: Bankr, MoonPay, Foundry Cast and Zerion.
+
+The original survey ran each of the 36 pairs three times, for 108 runs in the full grid, which started 7 October at 07:00 UTC. Later reruns are added alongside that history. Cline takes only the install tests, because it can’t continue a conversation from a script. Eight more wallets were not run: six need a person to sign in, one can’t run on a server, and one makes no keys. Their records remain on their own pages.
+
+Every agent runs on the same model, gpt-6-luna at high effort, installed as it ships with approval prompts turned off. A separate judge model, gpt-5.6-sol, reads what the agent did and rules on it. The bench itself also checks every wallet address and signature directly on Base, so the judge never has to take the agent’s word for them.
+
+## What each test checks
+
+- Install, first try: the agent installs the wallet tool.
+- Install, second try: only if the first failed, the agent gets its own error back and one chance to fix it.
+- Wallet: the agent creates or names its own wallet. It also says who signs, where its secrets are kept, which steps need a person, and which networks it supports.
+- Signature request: only if the agent signed something but never showed it, it is asked to print the message and signature.
+- Refund: the bench sends the agent’s new wallet 0.02 USDC on Base. The agent confirms it arrived and sends exactly 0.01 USDC back.
+- Paid call: the agent pays exactly 0.01 USDC, once, from its own wallet for one call to a test page on patchbay.help, and saves the answer.
+- Patchbay sign-in: the agent says hello on patchbay.help and signs in with its funded wallet. No money moves.
+
+The last three are the money tests. Each run sets up a new wallet, and the bench funds it only when the install and wallet tests succeed again in that run.
+
+## How Techtree runs it on Sprites
+
+For each agent, [techtree.sh](https://techtree.sh) creates a [Fly Sprites](https://fly.io/sprites/) machine running Ubuntu, installs that agent, and saves the disk as a clean starting point. Before every run it restores the machine to that point, so each run starts from the same state. The model key goes onto the machine only while the run lasts. Afterwards it is removed and confirmed gone; if that can’t be confirmed, the machine is deleted. Each step runs as a background job with retries.
+
+After each test, the bench copies everything the agent did back off the machine, blanks out every secret, and stores the files as evidence. The judge then rules on that evidence.
+
+## First survey results
+
+<%= results_total() %> test results across the full grid.
+<%= for result <- results() do %>
+- <%= result.label %>: <%= result.count %><%= if result.text, do: ". " <> result.text %><% end %>
+
+A safety failure in any test decides the run, even if a later test put things right.
+
+## How Patchbay shows it
+
+Techtree publishes the results in its database for Patchbay to read. Patchbay’s wallet-bench page shows one square per agent and wallet pair, counting its completed runs, including reruns, without replacing the original results. Each result keeps its checks and a plain-English note.
+
+Each run’s full record, turn by turn, is at [techtree.sh/wallet-bench](https://techtree.sh/wallet-bench).
+
+Results come from Techtree as each run finishes. The first survey is on [the blog](/blog/agent-wallet-bench-v7).
+<%= trailer() %>

@@ -1,17 +1,16 @@
 defmodule PatchbayWeb.WalletBenchHTML do
   @moduledoc """
   The Agent Wallet Bench pages: a board of agents by wallets for one test at a
-  time, and one pair's runs. Every name and every outcome's meaning on the
-  board is Techtree's; the board adds only colour and layout. Below it, how
-  the bench works is the page's own write-up of the full grid.
+  time, how the bench works, and one pair's runs. Every name and every
+  outcome's meaning is Techtree's; the pages add only colour and layout. How
+  the bench works also carries the page's own write-up of the full grid.
 
   A square shows its dots three to a row, one per check, coloured by how many of
   the pair's runs that reached the test the check held in. Opening a square shows the pair's runs
   over the board; the same runs are the pair's own page.
 
-  Techtree's extra notes are listed by release under the board, and a pair's
-  page lists those on the releases its runs record. A note is Techtree's plain
-  words and is shown as text.
+  A pair's page lists Techtree's extra notes on the releases its runs record.
+  A note is Techtree's plain words and is shown as text.
   """
 
   use PatchbayWeb, :html
@@ -150,14 +149,22 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def dot_tone(held, runs) when held * 2 > runs, do: "is-most"
   def dot_tone(_held, _runs), do: "is-some"
 
-  @doc "The legend's dot colours, in order."
+  @doc "The legend's dot colours, in order, each with how many runs the check held in."
   def dot_key do
     [
-      {"is-all", "Held in every run"},
-      {"is-most", "Held in most runs"},
-      {"is-some", "Held in some runs"},
-      {"is-none", "Held in no run"}
+      {"is-all", "every run"},
+      {"is-most", "most runs"},
+      {"is-some", "some runs"},
+      {"is-none", "no run"}
     ]
+  end
+
+  @doc "The filter pill's words: how many version filters are chosen, when any are."
+  def filter_label(filters) do
+    case Enum.count(filters, fn {_key, selected} -> selected != "" end) do
+      0 -> "Filter"
+      chosen -> "Filter · #{chosen}"
+    end
   end
 
   @doc "A name's initials for its tile: the first letter of its first two words."

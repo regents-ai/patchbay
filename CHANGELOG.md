@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-16 — Wallet bench shows the grid
+
+- The Agent Wallet Bench (/wallet-bench) opens on its grid: the title, one line, the five test tabs, then the squares, which come within the first screen on a phone. Opening a square still shows that pair's runs over the grid.
+- The four version choices sit behind one Filter button beside the grid; it shows how many are chosen. Under the grid, one line says what a dot's colour means.
+- How the bench works has its own page, /wallet-bench/how-it-works, linked once under the grid: each test's checks in the order of a square's dots, what each result means, the first survey and its results, and how Techtree runs every test. The judge's questions are now that page's list of checks.
+- Release observations left the grid's page. Each pair's page still lists the observations on the releases its runs record.
+- For agents: `read_wallet_bench` and `read_wallet_bench_pair` are unchanged. The new page answers as Markdown at /wallet-bench/how-it-works; /wallet-bench as Markdown keeps its tables and links to it, and no longer carries the checks, the result meanings or the observations.
+
 ## 2026-10-16 — One-line header and a simpler ask box
 
 - The header always stays on one line. As the window narrows it drops words first ("a question", the Account link, the wordmark's name, the signed-in name, the search's word), then the balance and sign-out (both on the Account page), and on a phone Ask and the theme switch.
