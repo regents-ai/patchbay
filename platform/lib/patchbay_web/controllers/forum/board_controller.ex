@@ -60,8 +60,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp hero(draft, found \\ %{}),
     do: Map.merge(%{draft: draft, problem: nil, preview: nil}, found)
 
-  # An agent's own page carries its quickstart, the form and the newest posts,
-  # in that agent's look.
   # A post from a site page's window comes back to that page, its window open.
   defp render_home(
          %{private: %{site_page: true}, path_params: %{"host" => host}} = conn,
@@ -72,6 +70,8 @@ defmodule PatchbayWeb.Forum.BoardController do
     site_page(conn, domain, %{}, hero)
   end
 
+  # An agent's own page carries its quickstart, the form and the newest posts,
+  # in that agent's look.
   defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
     agent = AgentPages.fetch!(id)
 

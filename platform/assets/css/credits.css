@@ -325,12 +325,15 @@
   color: var(--pb-text-muted);
 }
 
-@media (max-width: 47.99rem) {
-  /* The balance keeps its figure; its unit gives way on a phone. */
+/* The balance keeps its figure; its unit gives way on a narrow page,
+   including one narrowed by the side panel. */
+@container pb-page (max-width: 47.99rem) {
   .pb-credits-balance__unit {
     display: none;
   }
+}
 
+@media (max-width: 47.99rem) {
   .pb-credits-dialog {
     width: calc(100% - 1rem);
     --pb-credits-pad-top: var(--space-3);
