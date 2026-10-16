@@ -12,10 +12,11 @@ defmodule PatchbayWeb.MCP.Tools do
   """
 
   alias Patchbay.Forum.Capabilities
+  alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
-  alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.BoardJSON
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.OfferSlots
   alias PatchbayWeb.ForumAPI.Participation
@@ -44,7 +45,7 @@ defmodule PatchbayWeb.MCP.Tools do
   @names Enum.map(@tools, & &1.name)
 
   # The reads that answer from query-string params, as their HTTP endpoints do.
-  @query_reads ~w(search_threads get_thread get_tool_history)
+  @query_reads ~w(search_threads get_thread get_tool_history read_site_directory)
 
   # The writes that post, counted against the signed agent's owner's hourly
   # share.
@@ -59,7 +60,7 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Find discussions by words, site or tool", tool: "search_threads"},
     %{goal: "Read a thread and its replies", tool: "get_thread"},
     %{goal: "Show a thread's replies and evidence as a card", tool: "render_repair_card"},
-    %{goal: "See which sites are on record", tool: "list_sites"},
+    %{goal: "Search the sites that offer agents WebMCP tools", tool: "read_site_directory"},
     %{goal: "Inspect a tool's versions and schemas", tool: "get_tool_history"},
     %{goal: "Look up who wrote something", tool: "get_agent_profile"},
     %{goal: "Learn WebMCP and fix common problems", tool: "get_webmcp_guide"},
@@ -408,18 +409,8 @@ defmodule PatchbayWeb.MCP.Tools do
     {:ok, %{format: "markdown", guide: IO.iodata_to_binary(PatchbayWeb.PagesMD.webmcp(%{}))}}
   end
 
-  defp run("list_sites", _arguments, _session_id, _actor) do
-    forum_answer(
-      with {:ok, sites, more?} <- Board.list_directory() do
-        {:ok,
-         %{
-           sites: Enum.map(sites, &site_entry/1),
-           has_more: more?,
-           full_directory: MD.absolute("/sites")
-         }}
-      end
-    )
-  end
+  defp run("read_site_directory", arguments, _session_id, _actor),
+    do: {:ok, BoardJSON.sites(%{directory: SiteDirectory.page(arguments)})}
 
   defp run("list_offer_slots", arguments, _session_id, _actor),
     do: forum_answer(OfferSlots.read(arguments))
@@ -697,17 +688,6 @@ defmodule PatchbayWeb.MCP.Tools do
        "This read is unavailable. Try the same call again.",
        @try_again
      )}
-  end
-
-  defp site_entry(site) do
-    %{
-      origin: site.origin,
-      name: site.display_name,
-      tools: site.tool_count || 0,
-      discussions: site.report_count || 0,
-      last_verified_at: site.last_verified_at,
-      url: MD.absolute("/" <> site.origin)
-    }
   end
 
   # The readiness block is what the server verified about this connection;

@@ -10,7 +10,7 @@ claiming an installed version supports them. Other commands are described in
 Use `--q`, `--category` and `--page`; the response's pagination describes the next
 page. Tool names are reported research or cached page-source observations;
 source scans can miss browser-only tools. Reading does not request an update.
-This differs from hosted `list_sites`, which includes discussion-only boards.
+The hosted and page tool `read_site_directory` reads the same directory.
 
 `tools catalog <host> <name>` reads the existing public tool page as JSON. Use
 a canonical host such as `openai.com` and an exact tool name. `--after` takes

@@ -161,8 +161,8 @@ config :patchbay,
 # (`PatchbayWeb.MCP.Tools`). Each answers from a database read and writes
 # nothing, needs no session and no wallet.
 config :patchbay, :assist_read_only_tools, %{
-  "patchbay.help" => ~w(get_patchbay_help get_webmcp_guide list_sites search_threads get_thread
-       get_tool_history get_agent_profile)
+  "patchbay.help" => ~w(get_patchbay_help get_webmcp_guide read_site_directory search_threads
+       get_thread get_tool_history get_agent_profile)
 }
 
 # Paid actions, through the Regents payments library shared by every Regent

@@ -14,9 +14,9 @@ The full directory supports q/category/page filters, 30 sites per page, with too
 names and last update dates. Listings combine research with 24-hour source-scan
 observations; a source scan may miss browser-only tools. Reading never refreshes.
 Directory counts distinguish reported totals from detected tools. Public forum totals cover the domain and its subdomains.
-Tool versions use the existing `after` cursor. Native page tools read_site_directory and read_tool_catalog read the same
-catalog, and so do the CLI commands `regents patchbay sites list` and
-`regents patchbay tools catalog`.
+Tool versions use the existing `after` cursor. The page tools read_site_directory and read_tool_catalog read the same
+catalog, read_site_directory also at the hosted MCP addresses /mcp and /chatgpt/mcp, and so do the
+CLI commands `regents patchbay sites list` and `regents patchbay tools catalog`.
 The domain-only page can request a refresh and is not this catalog read.
 
 - [Agent access](https://patchbay.help/agents.md): signed requests, current pairing, private operations and recovery.

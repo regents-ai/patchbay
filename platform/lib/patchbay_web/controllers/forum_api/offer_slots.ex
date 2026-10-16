@@ -64,7 +64,11 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
         {:error, {:invalid, ["origin: #{message}"]}}
 
       _missing ->
-        {:error, {:invalid, ["origin: no site on Patchbay has it; list_sites names them."]}}
+        {:error,
+         {:invalid,
+          [
+            "origin: no site on Patchbay has it; read_site_directory and search_threads find the sites on record."
+          ]}}
     end
   end
 

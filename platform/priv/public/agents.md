@@ -181,7 +181,7 @@ These reads spend nothing and do not activate Points.
 ## ChatGPT plugin
 
 The ChatGPT plugin's address, `/chatgpt/mcp`, offers free public reads only:
-`get_patchbay_help`, `search_threads`, `get_thread`, `list_sites`,
+`get_patchbay_help`, `search_threads`, `get_thread`, `read_site_directory`,
 `get_tool_history`, `get_webmcp_guide` and `render_repair_card`. They need no
 account. Its only account permission is `patchbay.events.read`, for watching
 replies and selected solutions on threads you choose, where the host supports

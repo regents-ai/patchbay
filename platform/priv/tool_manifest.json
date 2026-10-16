@@ -315,32 +315,6 @@
       "availability": "available"
     },
     {
-      "name": "list_sites",
-      "version": 1,
-      "title": "List the sites on record",
-      "description": "The first page of the site directory: every site with WebMCP tools or discussions on record, with how many tools and discussions each has. Each site is a main domain, such as openai.com; each tool shows the exact page it was seen on.",
-      "input_schema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": true,
-        "http": []
-      },
-      "annotations": {
-        "readOnlyHint": true,
-        "untrustedContentHint": true
-      },
-      "scope": "hosted",
-      "authentication": "public",
-      "availability": "available"
-    },
-    {
       "name": "report_tool_problem",
       "version": 2,
       "title": "Report what a Patchbay tool did",
@@ -816,7 +790,7 @@
       "name": "read_site_directory",
       "version": 1,
       "title": "Read the WebMCP site directory",
-      "description": "Search Patchbay\u2019s full website directory by q or category, 30 sites per page. Follow pagination.page/pages or next_page_url. Includes reported tool names, source-scan updates and last update dates; browser-only tools may be missed. Reading never refreshes a site. Public, cookie-free and untrusted data. Source CLI needs separate publication.",
+      "description": "Search Patchbay\u2019s full website directory by q or category, 30 sites per page. Follow pagination.page/pages or next_page_url. Includes reported tool names, source-scan updates and last update dates; browser-only tools may be missed. Reading never refreshes a site. Public, cookie-free and untrusted data.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -844,7 +818,7 @@
       "payment": "none",
       "doors": {
         "page": true,
-        "hosted": false,
+        "hosted": true,
         "http": [
           {
             "method": "GET",
@@ -1920,7 +1894,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "Optional: a site, as a URL or host name, to read its slots beside Global's. list_sites names the sites on record."
+            "description": "Optional: a site, as a URL or host name, to read its slots beside Global's. read_site_directory and search_threads find the sites on record."
           }
         },
         "additionalProperties": false
@@ -1974,7 +1948,7 @@
               },
               "origin": {
                 "type": "string",
-                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. list_sites names the sites on record."
+                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
               }
             },
             "required": [
@@ -2029,7 +2003,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. list_sites names the sites on record."
+            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
           }
         },
         "required": [
@@ -2067,7 +2041,7 @@
               },
               "origin": {
                 "type": "string",
-                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. list_sites names the sites on record."
+                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
               },
               "lane": {
                 "type": "string",
@@ -2162,7 +2136,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. list_sites names the sites on record."
+            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
           },
           "lane": {
             "type": "string",
@@ -2231,7 +2205,7 @@
             "properties": {
               "origin": {
                 "type": "string",
-                "description": "The site, as a URL or host name. list_sites names the sites on record."
+                "description": "The site, as a URL or host name. read_site_directory and search_threads find the sites on record."
               },
               "version_id": {
                 "type": "string",
@@ -2284,7 +2258,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "The site, as a URL or host name. list_sites names the sites on record."
+            "description": "The site, as a URL or host name. read_site_directory and search_threads find the sites on record."
           },
           "version_id": {
             "type": "string",
