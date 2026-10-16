@@ -10322,6 +10322,10 @@
           },
           "next_action": {
             "type": "string"
+          },
+          "agent_offers": {
+            "$ref": "#/components/schemas/AgentOffersRead",
+            "description": "Only on a closed assist (finished, failed or assessment_pending), and only when Agent Offers show for its site."
           }
         },
         "required": [
