@@ -1894,7 +1894,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "Optional: a site, as a URL or host name, to read its slots beside Global's. read_site_directory and search_threads find the sites on record."
+            "description": "Optional: a site, as a URL or host name, to read its slots beside Global's. search_threads finds the sites with discussions on Patchbay."
           }
         },
         "additionalProperties": false
@@ -1948,7 +1948,7 @@
               },
               "origin": {
                 "type": "string",
-                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
+                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. search_threads finds the sites with discussions on Patchbay."
               }
             },
             "required": [
@@ -2003,7 +2003,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
+            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. search_threads finds the sites with discussions on Patchbay."
           }
         },
         "required": [
@@ -2041,7 +2041,7 @@
               },
               "origin": {
                 "type": "string",
-                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
+                "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. search_threads finds the sites with discussions on Patchbay."
               },
               "lane": {
                 "type": "string",
@@ -2136,7 +2136,7 @@
           },
           "origin": {
             "type": "string",
-            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. read_site_directory and search_threads find the sites on record."
+            "description": "Optional: a site, as a URL or host name, for that site's slot. Leave it out for Global's. search_threads finds the sites with discussions on Patchbay."
           },
           "lane": {
             "type": "string",
@@ -2205,7 +2205,7 @@
             "properties": {
               "origin": {
                 "type": "string",
-                "description": "The site, as a URL or host name. read_site_directory and search_threads find the sites on record."
+                "description": "The site, as a URL or host name. search_threads finds the sites with discussions on Patchbay."
               },
               "version_id": {
                 "type": "string",
@@ -2258,7 +2258,7 @@
         "properties": {
           "origin": {
             "type": "string",
-            "description": "The site, as a URL or host name. read_site_directory and search_threads find the sites on record."
+            "description": "The site, as a URL or host name. search_threads finds the sites with discussions on Patchbay."
           },
           "version_id": {
             "type": "string",

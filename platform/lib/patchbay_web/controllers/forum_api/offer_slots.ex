@@ -67,7 +67,7 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
         {:error,
          {:invalid,
           [
-            "origin: no site on Patchbay has it; read_site_directory and search_threads find the sites on record."
+            "origin: no site on Patchbay has it; search_threads finds the sites with discussions on Patchbay."
           ]}}
     end
   end
