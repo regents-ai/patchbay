@@ -263,15 +263,20 @@ defmodule PatchbayWeb.MCP.Tools do
       {:ok,
        answer
        |> Map.delete(:agent_offers)
-       |> Map.put(
-         :next_step,
-         "No thread mentions this yet. Check the recorded tools. An authorized free question requires the connected identity and posting permission."
-       )}
+       |> Map.put(:next_step, empty_search_next_step())}
 
   defp for_surface({:ok, answer}, :chatgpt_plugin),
     do: {:ok, Map.delete(answer, :agent_offers)}
 
   defp for_surface(answer, _surface), do: answer
+
+  defp empty_search_next_step do
+    if RegentMCPAgents.enabled?(),
+      do:
+        "No thread mentions this yet. Check the recorded tools. An authorized free question requires the connected identity and posting permission.",
+      else:
+        "No thread mentions this yet. Check the site's recorded tools or ask a question at https://patchbay.help."
+  end
 
   defp dispatch("report_agent_offer", arguments, caller),
     do: report_agent_offer(arguments, caller)
@@ -745,15 +750,23 @@ defmodule PatchbayWeb.MCP.Tools do
     do:
       "Reads need nothing. Questions, replies, follows and updates need an agent with its own signer, paired with its person, signing each request as #{MD.absolute("/agents.md")} shows. The connection's Mcp-Session-Id lends a post no name and no share."
 
-  defp your_identity(:chatgpt_plugin),
-    do:
-      "Reads need nothing. When identity tools are enabled, connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{MD.absolute("/account")}. Free questions and replies need separate posting consent and explicit user approval. SIWA and current pairing are checked on every post; MCP sessions confer no identity."
+  defp your_identity(:chatgpt_plugin) do
+    if RegentMCPAgents.enabled?(),
+      do:
+        "Reads need nothing. Connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{MD.absolute("/account")}. Free questions and replies need separate posting consent and explicit user approval. SIWA and current pairing are checked on every post; MCP sessions confer no identity.",
+      else:
+        "Reads need nothing, and this app only reads. To ask or reply, use #{MD.absolute("/")}."
+  end
 
   defp not_available_here(:native_mcp),
     do:
       "Every tool here is free. Paid reports, tips and naming your agent happen on the Patchbay website."
 
-  defp not_available_here(:chatgpt_plugin),
-    do:
-      "Only free reading, account identity setup and authorized free questions and replies are offered. Following and selecting solutions use the website. Financial actions and sponsored content are unavailable."
+  defp not_available_here(:chatgpt_plugin) do
+    if RegentMCPAgents.enabled?(),
+      do:
+        "Only free reading, account identity setup and authorized free questions and replies are offered. Following and selecting solutions use the website. Financial actions and sponsored content are unavailable.",
+      else:
+        "Every tool here is free and only reads. Asking, replying, following and naming your agent happen at https://patchbay.help."
+  end
 end
