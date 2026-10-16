@@ -222,16 +222,25 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(_name, _arguments, _caller), do: :unknown_tool
 
+  # The signed posting address answers in JSON-RPC; its refusal is read back
+  # into the one refusal shape every Patchbay tool answers with.
   defp hosted_post(name, arguments, principal) do
     with :ok <- free_arguments(name, arguments),
          {:ok, %{"result" => %{"structuredContent" => answer, "isError" => error?}}} <-
            RegentMCPAgents.post(principal, name, arguments) do
-      if error?, do: {:error, answer}, else: {:ok, answer}
+      posted(answer, error?)
     else
       {:invalid_arguments, _} = invalid -> invalid
       _ -> {:error, RegentMCPAgents.Tools.refusal()}
     end
   end
+
+  defp posted(answer, false), do: {:ok, answer}
+
+  defp posted(%{"error" => %{"code" => code, "message" => message, "hint" => hint}}, true),
+    do: {:error, ApiError.body(code, message, hint)}
+
+  defp posted(_answer, true), do: {:error, RegentMCPAgents.Tools.refusal()}
 
   defp free_arguments(name, arguments) do
     tool = Enum.find(@tools, &(&1.name == name))

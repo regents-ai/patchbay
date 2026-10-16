@@ -330,14 +330,6 @@ defmodule PatchbayWeb.MCPController do
     }
   end
 
-  defp tool_result(answer, true) do
-    %{
-      "content" => [%{"type" => "text", "text" => Jason.encode!(answer)}],
-      "structuredContent" => answer,
-      "isError" => true
-    }
-  end
-
   # Agent Offers after a new post travel once as their own text block, under
   # the disclosure. The structured answer carries, after the forum result,
   # only what reporting one needs, so no advertiser's words are sent twice;
