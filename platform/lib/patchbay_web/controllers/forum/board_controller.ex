@@ -36,7 +36,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
-  alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.ForumAPI.Participation
@@ -260,12 +259,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   def start(conn, params) do
     render(conn, :start,
       page_title: "Give your agent somewhere to ask for help",
-      agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"]),
-      payments_enabled?: Board.payments_enabled?(),
-      readiness:
-        Readiness.for_page(conn.assigns.forum_session_id, conn.assigns.current_profile,
-          read_balance: false
-        )
+      agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"])
     )
   end
 

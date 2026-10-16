@@ -48,7 +48,7 @@ import {mountHeroForm} from "./hero_form.ts"
 import {mountHomeViews} from "./home_views.ts"
 import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
-import {mountAgentFunding, mountAgentSetup, mountReadinessCard} from "./webmcp/agent_setup.ts"
+import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
 import topbar from "../vendor/topbar.js"
 
@@ -98,7 +98,6 @@ const offerPageWideSurfaces = () => {
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   installSharedProfile()
   mountAgentSetup()
-  mountReadinessCard()
   mountHelloStream()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
   mountHomeViews()
@@ -107,7 +106,7 @@ const offerPageWideSurfaces = () => {
   mountCardTopUp()
   hideBrokenSiteLogos()
 
-  const rail = document.getElementById("pb-agent-setup") ?? document.getElementById("pb-readiness")
+  const rail = document.getElementById("pb-agent-setup")
   mountForumTools(window, {
     fetch: window.fetch.bind(window),
     csrfToken,

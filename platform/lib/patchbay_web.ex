@@ -89,9 +89,7 @@ defmodule PatchbayWeb do
           scope_label: 1,
           feed_label: 1,
           start_profiles: 0,
-          capability_matrix: 0,
-          capability_doors: 0,
-          capability_cell: 1
+          start_steps: 0
         ]
 
       unquote(verified_routes())

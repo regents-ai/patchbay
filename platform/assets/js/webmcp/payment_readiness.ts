@@ -105,7 +105,7 @@ export function resolvePaymentsEnabled(options: ReadinessOptions = {}): boolean 
   if (typeof options.paymentsEnabled === "boolean") return options.paymentsEnabled;
 
   const doc = options.document ?? globalThis.document;
-  const rail = doc?.getElementById?.("pb-agent-setup") ?? doc?.getElementById?.("pb-readiness");
+  const rail = doc?.getElementById?.("pb-agent-setup");
   if (rail) return rail.getAttribute("data-payments-enabled") === "true";
 
   const funding = doc?.getElementById?.("pb-agent-funding");

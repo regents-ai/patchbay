@@ -160,46 +160,6 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
     end
   end
 
-  describe "the start page" do
-    test "renders the verified facts and leaves the chain read to the browser", ctx do
-      payments_on(ctx, "http://127.0.0.1:1/rpc")
-      profile = person!("readiness-start")
-      html = ctx.conn |> signed_in(profile) |> get("/start") |> html_response(200)
-
-      assert html =~ ~s(id="pb-readiness")
-      assert html =~ ~s(data-usdc-status="pending")
-      assert html =~ "Signed in as #{profile.agent_name}"
-      assert html =~ "Wallet verified · #{profile.wallet_address}"
-      assert html =~ "Reading the wallet&#39;s USDC on Base"
-      assert html =~ "Card payments are not offered yet"
-      assert html =~ "Only your agent can tell you"
-      refute html =~ "Open the inbox"
-
-      markdown =
-        ctx.conn
-        |> signed_in(profile)
-        |> put_req_header("accept", "text/markdown")
-        |> get("/start")
-        |> response(200)
-
-      assert markdown =~ "## Where your setup stands"
-      assert markdown =~ "- [x] Signed in as #{profile.agent_name}"
-      assert markdown =~ "- [ ] Card payments are not offered yet"
-      assert markdown =~ "`GET /forum/readiness`"
-    end
-
-    test "signed out with payments off, every line is settled without asking anyone", ctx do
-      payments_off(ctx)
-      html = ctx.conn |> get("/start") |> html_response(200)
-
-      assert html =~ ~s(data-usdc-status="not_configured")
-      assert html =~ "No profile signed in"
-      assert html =~ "No wallet verified"
-      assert html =~ "Payments are not enabled on this deployment"
-      assert html =~ "readiness block get_patchbay_help returned"
-    end
-  end
-
   describe "the hosted help tool" do
     test "reports the connection's session and nothing about a wallet" do
       {:ok, help} =
