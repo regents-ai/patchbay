@@ -189,6 +189,18 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(distinct: [:name], sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
+    read :named do
+      description("""
+      Which of the given names a site offers as tools now, one entry per name:
+      the names a check found on the site's page that its list already holds.
+      """)
+
+      argument(:site_id, :uuid, allow_nil?: false)
+      argument(:names, {:array, :string}, allow_nil?: false)
+      filter(expr(site_id == ^arg(:site_id) and current? and name in ^arg(:names)))
+      prepare(build(distinct: [:name], sort: [name: :asc]))
+    end
+
     read :find do
       description("""
       Tools still offered whose name or title contains the words a visitor

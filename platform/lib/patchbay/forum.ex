@@ -51,6 +51,7 @@ defmodule Patchbay.Forum do
       define(:list_tools_for_site, action: :for_site, args: [:site_id])
       define(:find_tools, action: :find, args: [:text])
       define(:site_inventory, action: :inventory, args: [:site_id])
+      define(:list_site_tools_named, action: :named, args: [:site_id, :names])
       define(:list_tools_for_sitemap, action: :for_sitemap)
     end
 

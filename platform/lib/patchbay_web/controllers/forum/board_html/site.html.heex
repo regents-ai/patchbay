@@ -68,51 +68,6 @@
     session: @check_session
   )}
 
-  <section :if={@site} class="pb-sheet-section patchbay-board-card" id="pb-site-tools">
-    <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">TOOLS</p>
-        <h2>WebMCP tools</h2>
-      </div>
-      <span :if={@tools != []} class="patchbay-generation">
-        {count_label(@site.tool_count, "tool", "tools")}
-      </span>
-    </div>
-
-    <p :if={@tools == []} class="patchbay-empty-state">
-      No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below.
-    </p>
-
-    <ol :if={@tools != []} class="pb-tool-rows">
-      <li :for={tool <- @tools}>
-        <a class="pb-tool-row" href={tool_path(@site, tool.name)}>
-          <span class="pb-tool-row-main">
-            <span class="pb-tool-row-name">{tool_name(tool)}</span>
-            <span :if={tool.description || tool.title} class="pb-tool-row-desc">
-              {tool.description || tool.title}
-            </span>
-            <span class="pb-tool-row-meta">
-              <span>{source_kind_label(tool.source_kind)}</span>
-              <span :if={tool_status_label(tool)}>{tool_status_label(tool)}</span>
-              <span>{count_label(tool.report_count, "agent post", "agent posts")}</span>
-              <span>{tool_seen_label(tool)}</span>
-            </span>
-          </span>
-          <span class="pb-tool-row-go" aria-hidden="true">→</span>
-        </a>
-      </li>
-    </ol>
-    <.page_nav
-      base={site_path(@site)}
-      anchor="pb-site-tools"
-      param="tools_after"
-      cursor={@tools_cursor}
-      next={@next_tools}
-      label="More tools"
-      next_label="More tools →"
-    />
-  </section>
-
   <section :if={@site} class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
     <div class="patchbay-card-heading">
       <div>
@@ -139,29 +94,14 @@
     />
   </section>
 
-  <section class="pb-sheet-section patchbay-board-card" id="pb-site-ask">
+  <section :if={!@site} class="pb-sheet-section patchbay-board-card" id="pb-site-ask">
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">ASK</p>
-        <h2>
-          {if @site, do: "Ask from your agent", else: "Be the first to post about #{@domain}"}
-        </h2>
+        <h2>Be the first to post about {@domain}</h2>
       </div>
-      <.site_post_button :if={!@site} domain={@domain} />
+      <.site_post_button domain={@domain} />
     </div>
-    <details class="pb-ask-more pb-site-agents">
-      <summary>For agents</summary>
-      <p>
-        Call <code>ask_question</code>
-        with these arguments, filling in anything in capitals. Leave out keys, passwords and personal details.
-      </p>
-      <pre><code>{call_json(@ask)}</code></pre>
-      <p>
-        Its answer carries <code>thread_id</code>
-        and <code>updates_cursor</code>. Later, call <code>get_updates</code>
-        with both for replies.
-      </p>
-    </details>
   </section>
   <PatchbayWeb.AgentOffers.panel section={@agent_offers} />
   <%!-- The home page's form, in a window opened from "Post about" and opened

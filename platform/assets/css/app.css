@@ -1667,6 +1667,28 @@ body:has(#patchbay-home),
   color: var(--pb-text-muted);
   font-size: .75rem;
 }
+/* A site page's "For agents" panel: closed, it is one row (the heading, the
+   tool count, View more and the copy button); opened, it holds the list. The
+   copy button floats beside the row, outside the summary that opens it. */
+.pb-site-agent-panel { display: flow-root; margin: var(--space-2) 0; border-block: 1px solid var(--pb-line); }
+.pb-site-agent-copy { float: right; margin: 1rem 0 0 var(--space-2); }
+.pb-site-agent-copy .rg-copy { min-height: 2rem; padding: .25rem .75rem; font-size: .75rem; --rg-cut-control: .5rem; }
+.pb-site-agent-panel summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); min-height: 4rem; padding: .5rem 0; cursor: pointer; list-style: none; }
+.pb-site-agent-panel summary::-webkit-details-marker { display: none; }
+.pb-site-agent-panel summary:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
+.pb-site-agent-heading { display: grid; gap: .125rem; }
+.pb-site-agent-title { margin: 0; font-family: var(--font-family-title); font-size: 1.125rem; font-weight: 400; }
+.pb-site-agent-count { color: var(--pb-text-muted); font-size: .75rem; }
+.pb-site-agent-toggle { color: var(--pb-text-muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: .2em; }
+.pb-site-view-less,
+.pb-site-agent-panel details[open] .pb-site-view-more { display: none; }
+.pb-site-agent-panel details[open] .pb-site-view-less { display: inline; }
+.pb-site-agent-content { clear: both; padding-bottom: var(--space-3); overflow-wrap: anywhere; }
+.pb-site-agent-content pre { max-width: 100%; overflow-x: auto; font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (pointer: coarse), (hover: none) {
+  .pb-site-agent-copy { margin-top: .625rem; }
+  .pb-site-agent-copy .rg-copy { min-height: 2.75rem; }
+}
 .pb-site-check-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-site-check-group { margin-top: var(--space-3); }
 .pb-site-check-group h3 { margin: 0 0 var(--space-1); font-size: .875rem; font-weight: 600; }
@@ -1675,14 +1697,12 @@ body:has(#patchbay-home),
 .pb-site-check-list a,
 .pb-site-check-list code { font-size: .8125rem; }
 .pb-site-check-note { color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-site-check-list .pb-site-check-desc { flex-basis: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-site-check-list .pb-site-check-desc { flex-basis: 100%; min-width: 0; }
 .pb-site-check-group > .pb-site-check-note { margin: 0 0 var(--space-1); }
-.pb-site-check > .pb-site-check-note { margin: var(--space-2) 0 0; }
-.pb-site-check-more { margin-top: var(--space-1); }
-.pb-site-check-more summary { display: flex; align-items: center; min-height: 2.75rem; cursor: pointer; color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-site-agent-content > .pb-site-check-note { margin: var(--space-2) 0 0; }
+.pb-site-agent-content > .pb-site-agent-intro { margin: 0 0 var(--space-1); }
 .pb-site-check-source { color: var(--pb-text-muted); font-size: .75rem; }
 .pb-site-check-tools { display: flex; flex-wrap: wrap; gap: 2px var(--space-1); flex-basis: 100%; }
-.pb-site-agents { margin-top: var(--space-3); }
 /* A site page's post window: the home page's form in a dialog, centred, with
    its close button in the corner. */
 .pb-site-post-button { flex: none; }
@@ -1713,7 +1733,6 @@ html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 @media (max-width: 479px) {
   .pb-site-post-dialog { width: 100%; max-width: 100%; max-height: 100dvh; height: 100dvh; padding: var(--space-2); }
 }
-.pb-site-agents pre { max-width: 100%; overflow-x: auto; font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-posts-nav { display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-2); font-size: .8125rem; }
 .pb-posts-nav a:only-child { margin-left: auto; }
 .pb-schema { margin-top: var(--space-2); }
@@ -1743,7 +1762,7 @@ html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 
 @media (max-width: 820px) {
   .pb-entry-head { grid-template-columns: 3rem minmax(0, 1fr); }
-  .pb-entry-shot { grid-column: 2; }
+  .pb-entry-shot { grid-column: 2; max-width: 8rem; }
 }
 
 /* Compact reports and setup keep long evidence within the reading column. */

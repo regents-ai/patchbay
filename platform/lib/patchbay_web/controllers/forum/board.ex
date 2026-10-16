@@ -218,6 +218,16 @@ defmodule PatchbayWeb.Forum.Board do
     {page.results, if(page.more?, do: List.last(page.results).name)}
   end
 
+  @doc """
+  Which of these tool names the site's list holds now. The names are the ones
+  a check found on the site's page, so the read is as small as that list.
+  """
+  @spec listed(Site.t(), [String.t()]) :: MapSet.t(String.t())
+  def listed(%Site{}, []), do: MapSet.new()
+
+  def listed(%Site{} = site, names),
+    do: site.id |> Forum.list_site_tools_named!(names) |> MapSet.new(& &1.name)
+
   @doc "Whether an address segment could name a tool at all; anything else is not on the board."
   @spec tool_name?(term()) :: boolean()
   def tool_name?(name), do: Patchbay.Forum.ToolName.valid?(name)

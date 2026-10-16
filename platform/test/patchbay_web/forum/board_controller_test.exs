@@ -173,7 +173,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       |> Rooms.create_tool_revision!()
 
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
-      assert first_page =~ "#{length(Patchbay.Forum.Capabilities.names()) + 2} tools"
+
+      assert first_page =~
+               "#{length(Patchbay.Forum.Capabilities.names()) + 2} WebMCP tools available"
 
       # Every later page leads on, and the last leads back to the first.
       pages = tool_pages(conn, first_page)
@@ -252,8 +254,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/quiet.example") |> html_response(200)
 
-      assert body =~
-               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below."
+      assert body =~ "No WebMCP tools found on quiet.example yet."
 
       assert body =~ "Nothing has been asked or reported about this site yet."
     end

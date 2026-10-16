@@ -471,8 +471,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert site =~ "Official supporter"
       assert site =~ "No public tool inventory"
 
-      assert site =~
-               "No public WebMCP tool inventory has been verified for this entry. Discussions about the company appear below."
+      assert site =~ "No WebMCP tools found on netlify.com yet."
     end
 
     test "published inventories come from the owner's own publication", %{conn: conn} do

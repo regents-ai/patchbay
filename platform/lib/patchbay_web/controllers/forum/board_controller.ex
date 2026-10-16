@@ -765,6 +765,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     goal = presence(params["goal"])
     error = presence(params["error"])
     page = Origin.inner_page(params["page"])
+    ask = ask_call(domain, page, goal, error)
 
     case board_for(domain, params) do
       {:ok, board} ->
@@ -779,13 +780,14 @@ defmodule PatchbayWeb.Forum.BoardController do
             check_session: %{
               "domain" => domain,
               "visitor" => visitor,
-              "limited" => asked == :limited
+              "limited" => asked == :limited,
+              "tools_after" => params["tools_after"],
+              "ask" => ask
             },
             agent_offers: Patchbay.Offers.Serving.for_site(board.site),
-            tools_cursor: params["tools_after"],
             posts_cursor: params["posts_after"],
             earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
-            ask: ask_call(domain, page, goal, error),
+            ask: ask,
             directory: FixCheck.directory?(conn),
             hero: hero
           })
