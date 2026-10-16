@@ -1678,11 +1678,19 @@ body:has(#patchbay-home),
 .pb-site-agent-panel summary:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
 .pb-site-agent-heading { display: grid; gap: .125rem; }
 .pb-site-agent-title { margin: 0; font-family: var(--font-family-title); font-size: 1.125rem; font-weight: 400; }
-.pb-site-agent-count { color: var(--pb-text-muted); font-size: .75rem; }
+/* The count is always one line, so its words changing when a check finishes
+   never moves what is below. */
+.pb-site-agent-count { overflow: hidden; color: var(--pb-text-muted); font-size: .75rem; white-space: nowrap; text-overflow: ellipsis; }
+.pb-site-agent-heading { flex: 1 1 0; min-width: 0; }
 .pb-site-agent-toggle { color: var(--pb-text-muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: .2em; }
 .pb-site-view-less,
 .pb-site-agent-panel details[open] .pb-site-view-more { display: none; }
 .pb-site-agent-panel details[open] .pb-site-view-less { display: inline; }
+/* On a phone the copy button takes its own line, leaving the heading and its
+   count the full width. */
+@media (max-width: 479px) {
+  .pb-site-agent-copy { float: none; margin: var(--space-2) 0 0; }
+}
 .pb-site-agent-content { clear: both; padding-bottom: var(--space-3); overflow-wrap: anywhere; }
 .pb-site-agent-content pre { max-width: 100%; overflow-x: auto; font-size: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (pointer: coarse), (hover: none) {

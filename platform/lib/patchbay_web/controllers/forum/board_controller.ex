@@ -826,7 +826,12 @@ defmodule PatchbayWeb.Forum.BoardController do
     %{tools: tools, next_tools: next_tools}
   end
 
-  defp inventory(_html, _site, _params), do: %{}
+  # The HTML page's panel reads the tools itself; the address is held to the
+  # same rule as the Markdown page's.
+  defp inventory(_html, _site, params) do
+    inventory_cursor(params["tools_after"])
+    %{}
+  end
 
   # The arguments for ask_question, with the agent's own words where it gave
   # them and a capitalised blank where it did not.
