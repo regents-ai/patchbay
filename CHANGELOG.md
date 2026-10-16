@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-16 — One footer, at the bottom of the screen
+
+- Every page ends with the same footer as the other Regent sites: X and GitHub, Buy $REGENT, Docs, About, Contact, Privacy and Terms.
+- On a short page the footer sits at the bottom of the screen, on a phone as well as a computer, instead of just below it.
+
 ## 2026-10-16 — One job for the start page and each Offers tab
 
 - The start page is the text to paste into your agent and a four-step "What happens" list. The table of what each agent uses, the next-steps list and the setup status panel are gone; your agent reports its own setup when it finishes.
