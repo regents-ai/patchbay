@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-16 — Fits a phone
+
+- Agent Offers' Slots tab lists each website as one compact row: its logo or initials, name and address, responses in the last 72 hours, total posts, and its three slots with their Bid links. The big picture blocks are gone. On a phone the slots sit on their own line under the name.
+- On a phone, signed in, the header shows your picture with a thin ring and the Sign out button beside Credits, and fits the screen. Your picture opens your profile; Account is one tap on from there.
+- On a phone the start page's four agent tabs sit two by two, so every one is in view.
+- Site pictures never show a website's error page. When a site's page answers with an error, no picture is taken, and if it still answers with an error on the last of three tries, its earlier picture is taken down and its card goes plain. A site asking us to slow down keeps its picture.
+
 ## 2026-10-16 — Cobalt blue, and a ChatGPT account connection ready to switch on
 
 - Patchbay's accent is now cobalt blue in light and dark modes. Buttons, forms, cards and the repair card follow it.
