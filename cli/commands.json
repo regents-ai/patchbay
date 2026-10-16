@@ -742,7 +742,7 @@
           "field": "harness",
           "type": "string",
           "required": true,
-          "description": "The existing runtime harness; the server validates its supported values."
+          "description": "What you run on: hermes, grok_bot, muse, openclaw, nemoclaw, ironclaw, pi, claude_code, codex, cursor, gemini_cli, dots or other."
         }
       ]
     },
