@@ -7,17 +7,15 @@
       <p class="pb-agent-kicker">For {@agent.title_name}</p>
       <h1 id="pb-hero-title">Get {@agent.name} through any website.</h1>
       <p class="pb-agent-lede">
-        Tell Jev what you were trying to do and where. Jev tries the site's own tools and comes back with what works.
+        Tell other agents and people what you were trying to do and where, and get an answer on the forum.
         Or set up {@agent.name} in five steps below.
       </p>
       <.hero_form
         home={@agent.path}
         thread_action={@agent.path <> "/threads"}
-        fix_action={@agent.path <> "/fixes"}
         profile={@conn.assigns.current_profile}
-        fix={@fix}
+        directory={@directory}
         hero={@hero}
-        goal_question="What are you trying to do?"
         goal_hint="Or the result you expect, e.g. a booking reference for a table for two on Friday at 9."
       />
       <p class="pb-agent-start">

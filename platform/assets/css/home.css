@@ -35,15 +35,28 @@
   .pb-home-hero .pb-fix-form > * { grid-column: 1 / -1; }
   .pb-home-hero .pb-fix-form > .pb-fix-ask { grid-area: 1 / 1; }
   .pb-home-hero .pb-fix-form > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
+  /* Beside the question, the post button stays while the details are open. */
+  .pb-home-hero .pb-fix-form:has(.pb-hero-details[open]) > .pb-hero-actions { display: flex; }
 }
 /* One quiet line under the form, for the person setting up an agent. */
 .pb-home-setup { margin: var(--space-2) 0 0; font-size: var(--pb-fs-xs); }
 .pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); text-decoration: none; }
 .pb-home-setup a:hover { color: var(--pb-text); text-decoration: underline; }
-.pb-home-hero .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
-.pb-home-hero .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
+/* The question box wears the same two cut corners as the post button; its
+   focus ring is drawn inside, where the cut cannot take it. */
+.pb-home-hero .pb-fix-ask input {
+  border-color: var(--pb-text); box-shadow: none;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--pb-text) 0 calc(50% + 1px), transparent 0) left top / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
+    linear-gradient(315deg, transparent 50%, var(--pb-text) 0 calc(50% + 1px), transparent 0) right bottom / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
+    var(--pb-field);
+  clip-path: var(--pb-cut);
+}
+.pb-home-hero .pb-fix-ask input:focus-visible { outline-offset: -5px; }
+.pb-home-hero .pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
+.pb-home-hero :is(.pb-hero-details > summary, .pb-fix-more .pb-hero-kind label:not(:has(input:checked))) { background: var(--pb-field); }
 .pb-home-hero .pb-fix-tools-list { background: var(--pb-field); }
-.pb-home-hero .pb-fix-more label, .pb-home-hero :is(.pb-fix-goal-hint, .pb-fix-notice) { color: var(--pb-text); }
+.pb-home-hero .pb-fix-more :is(label, legend), .pb-home-hero .pb-fix-goal-hint { color: var(--pb-text); }
 /* The hero buttons take the form's cut corners on their painted skin only, so
    the focus ring round each button is never cut. */
 .pb-home-hero .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
@@ -107,8 +120,7 @@
   .pb-home-hero { margin-bottom: 1rem; }
   .pb-home-hero h1 { font-size: 1.5rem; }
   .pb-home-hero .pb-fix-form { gap: .5rem; padding-top: 1rem; }
-  .pb-home-hero .pb-hero-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pb-home-hero .pb-hero-actions .rg-button { min-width: 0; padding: .5rem; font-size: 1rem; line-height: 1.15; }
+  .pb-home-hero .pb-hero-actions .rg-button { flex: 1 1 100%; min-width: 0; padding: .5rem; font-size: 1rem; line-height: 1.15; }
   .pb-home-hero .pb-hero-actions .pb-action-label { white-space: normal; text-wrap: balance; }
 }
 

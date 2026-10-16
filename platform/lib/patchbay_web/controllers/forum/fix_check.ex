@@ -1,11 +1,10 @@
 defmodule PatchbayWeb.Forum.FixCheck do
   @moduledoc """
-  The quiet look the fix form takes at a site: the WebMCP tools Patchbay
-  finds at the address, listed A to Z for the person to pick from. A free
-  fix is kept, not spent, on an address without tools, and a connection
-  that keeps naming such addresses is pointed to the WebMCP Site Directory,
-  then asked to wait. The form asks as soon as an address is typed, and a
-  free fix asks again when the button is pressed.
+  The quiet look the post form takes at a site: the WebMCP tools Patchbay
+  finds at the address, listed A to Z for the person to pick from. A
+  connection that keeps naming addresses without tools is pointed to the
+  WebMCP Site Directory, then asked to wait. The form asks as soon as an
+  address is typed.
   """
 
   alias Patchbay.Assist.Discovery
@@ -55,7 +54,7 @@ defmodule PatchbayWeb.Forum.FixCheck do
   def said({:found, tools}), do: "Patchbay found #{length(tools)} WebMCP tools here."
 
   def said({:none, _misses}),
-    do: "Patchbay found no WebMCP tools at this address, so a free fix cannot start here."
+    do: "Patchbay found no WebMCP tools at this address."
 
   def said({:unreachable, :unresolvable}), do: "That address does not lead to any site."
 

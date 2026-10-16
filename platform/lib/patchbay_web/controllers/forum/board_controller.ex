@@ -8,8 +8,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   Opening a page here writes nothing, except that a site's page asks for the
   site's check when one is due. The things a visitor can write from here are
-  a reply, only while signed in, and, from the post form on the home page or
-  a site's page, a fix request or a forum post. Patchbay's own entry is
+  a reply, only while signed in, and, from the post form on the home page, a
+  site's page or an agent page, a forum post. Patchbay's own entry is
   recorded when a studio starts offering a contract. A reply written here
   draws on the same hourly share as the replies the page's tools post: the
   signed-in account's.
@@ -20,7 +20,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   require Ash.Query
   require Logger
 
-  alias Patchbay.Assist
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostingCheck
@@ -31,7 +30,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.AgentPages
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
-  alias PatchbayWeb.Forum.Fix
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.Forum.NotFoundError
@@ -62,83 +60,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp hero(draft, found \\ %{}),
     do: Map.merge(%{draft: draft, problem: nil, preview: nil}, found)
 
-  @doc """
-  A fix asked for from the top of the home page. A free one opens under the
-  fix this connection or this person has left, at an address where Patchbay
-  finds WebMCP tools, and the page goes to it; a
-  fix already being worked on for this browser is shown instead of a second
-  one being started. Everything else comes back to the form with the words
-  for it and what was typed.
-  """
-  def fix(conn, params) do
-    draft = Hero.draft(params["ask"])
-
-    with :none <- running_for(conn),
-         {:ok, request} <- Fix.request(draft),
-         {:ok, grant} <- Fix.grant(conn),
-         :ok <- tools_found(conn, request),
-         {:ok, run} <- open_free_run(conn, request, grant) do
-      redirect(conn, to: ~p"/fixes/#{run.id}")
-    else
-      {:running, run} ->
-        redirect(conn, to: ~p"/fixes/#{run.id}")
-
-      {:error, %{said: _said} = problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem}))
-
-      {:error, failure} ->
-        render_home(conn, %{}, hero(draft, %{problem: Fix.refused(failure, conn)}))
-    end
-  end
-
-  # A free fix starts only where Patchbay finds WebMCP tools; anywhere else
-  # it is kept for another address.
-  defp tools_found(conn, %{"site_url" => site_url}) do
-    case FixCheck.check(conn, site_url) do
-      {:found, _names} -> :ok
-      answer -> {:error, %{said: FixCheck.said(answer)}}
-    end
-  end
-
-  # The run the browser asked for that is still being worked on, if any:
-  # the page's cookie names the browser, and a signed-in person is also
-  # known by their profile. A look-up that fails is not an answer of "none":
-  # no second run starts when Patchbay cannot tell whether one is under way.
-  defp running_for(conn) do
-    # Patchbay's own look-up for the page's browser, by the identity in its
-    # signed cookie; the run is shown to that browser and nobody else.
-    case Assist.get_open_run_for_browser(conn.assigns.forum_session_id, authorize?: false) do
-      {:ok, %{} = run} -> {:running, run}
-      {:ok, nil} -> running_for_profile(conn.assigns.current_profile)
-      {:error, failure} -> open_run_unknown(failure)
-    end
-  end
-
-  defp running_for_profile(nil), do: :none
-
-  defp running_for_profile(profile) do
-    case Assist.get_open_run_for_payer(profile.id, actor: profile) do
-      {:ok, %{} = run} -> {:running, run}
-      {:ok, nil} -> :none
-      {:error, failure} -> open_run_unknown(failure)
-    end
-  end
-
-  defp open_run_unknown(failure) do
-    Logger.warning("Open fix look-up failed", error_type: inspect(error_type(failure)))
-    {:error, :open_run_unknown}
-  end
-
-  defp open_free_run(conn, request, grant) do
-    Assist.request_free_run(
-      request,
-      grant,
-      ClientAddress.visitor_key(conn),
-      conn.assigns.forum_session_id,
-      conn.assigns.current_profile
-    )
-  end
-
   # An agent's own page carries its quickstart, the form and the newest posts,
   # in that agent's look.
   defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
@@ -155,7 +76,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       theme: agent.theme,
       agent: agent,
       reports: reports,
-      fix: Fix.offer(conn),
+      directory: FixCheck.directory?(conn),
       hero: hero
     )
   end
@@ -216,7 +137,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           next_page: next_page,
           current_page: forum_params["after"],
           matches: section(Board.matches(filters.q), "Search matches"),
-          fix: Fix.offer(conn),
+          directory: FixCheck.directory?(conn),
           hero: hero
         )
     end
@@ -842,7 +763,7 @@ defmodule PatchbayWeb.Forum.BoardController do
             posts_cursor: params["posts_after"],
             earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
             ask: ask_call(domain, page, goal, error),
-            fix: Fix.offer(conn),
+            directory: FixCheck.directory?(conn),
             hero:
               hero(
                 Hero.draft(%{"goal" => goal, "site_url" => page || domain, "details" => error})

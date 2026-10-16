@@ -101,7 +101,9 @@
                   kind={:human}
                   class="pb-account-picture"
                 />
-                {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
+                <span class="pb-account-name__text">
+                  {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
+                </span>
               </a>
               <a class="pb-account-link" href={~p"/account"}>Account</a>
               <button

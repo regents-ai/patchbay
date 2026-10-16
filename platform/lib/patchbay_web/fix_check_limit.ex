@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.FixCheckLimit do
   @moduledoc """
-  Counts, for each connection, the different addresses the free fix was
+  Counts, for each connection, the different addresses the post form was
   pointed at where Patchbay found no WebMCP tools in the last hour. The one
   that makes it more than three starts a wait of a full hour from that
   moment, during which the connection is not checked for. Every check a

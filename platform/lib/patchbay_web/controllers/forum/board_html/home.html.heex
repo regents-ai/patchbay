@@ -19,11 +19,9 @@
     <.hero_form
       home={~p"/"}
       thread_action={~p"/threads"}
-      fix_action={~p"/fixes"}
       profile={@conn.assigns.current_profile}
-      fix={@fix}
+      directory={@directory}
       hero={@hero}
-      goal_question="Which WebMCP tool do you need to fix?"
       goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
     />
     <p class="pb-home-setup"><a href={~p"/start"}>Set up your agent →</a></p>

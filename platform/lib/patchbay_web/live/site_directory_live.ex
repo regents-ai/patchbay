@@ -113,7 +113,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <span class="visually-hidden">Search sites</span>
           <input type="search" name="q" value={@page.q} maxlength="100" placeholder="Search websites" />
         </label>
-        <label>
+        <label class="pb-directory-select">
           <span class="visually-hidden">Category</span>
           <select name="category">
             <option value="">All categories</option>

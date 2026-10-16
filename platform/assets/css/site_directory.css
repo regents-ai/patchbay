@@ -48,6 +48,25 @@
 .pb-directory-search-field { flex: 1; max-width: 30rem; }
 .pb-directory-search input, .pb-directory-search select { min-height: 44px; width: 100%; font-size: max(1rem, 16px); }
 .pb-directory-search input, .pb-directory-search select { border: 1px solid var(--pb-line); background-color: var(--pb-surface); padding-left: .75rem; }
+/* Search is as tall as the box and the list beside it. */
+.pb-directory-search .rg-button { min-height: 44px; padding-block: 0; }
+/* The list draws its own arrow, inset from the edge, which dips on hover and
+   turns over while the list is open. */
+.pb-directory-select { position: relative; display: block; }
+.pb-directory-search select { appearance: none; -webkit-appearance: none; padding-right: 3rem; color: var(--pb-text); cursor: pointer; }
+.pb-directory-select::after {
+  content: ""; position: absolute; top: 50%; right: 1.125rem; width: 12px; height: 8px; margin-top: -4px;
+  background: var(--pb-text); pointer-events: none;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%23000' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  transition: transform 180ms ease;
+}
+.pb-directory-select:hover::after { transform: translateY(2px); }
+.pb-directory-select:has(select:open)::after { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .pb-directory-select::after { transition: none; } }
+@media (forced-colors: active) {
+  .pb-directory-search select { appearance: auto; padding-right: .75rem; }
+  .pb-directory-select::after { display: none; }
+}
 .pb-directory-results-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0 .6rem; }
 .pb-directory-results-heading p { margin: 0; }
 .pb-directory-scroll { position: relative; max-width: 100%; overflow-x: auto; overflow-y: hidden; container-type: inline-size; border-block: 1px solid var(--pb-line); scrollbar-width: thin; }

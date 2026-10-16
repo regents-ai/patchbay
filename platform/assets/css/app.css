@@ -136,18 +136,15 @@ body {
 #pb-content:focus { outline: none; }
 
 /* Site header: the wordmark, the search, the places to go, asking, then the
-   account, on one line. Narrower windows wrap it into fixed rows, and nothing
-   typed into the search changes them. */
+   account, always on one line. Narrower windows shrink the parts instead of
+   wrapping them, and nothing typed into the search changes them. */
 .pb-masthead {
   position: relative;
   z-index: 20;
-  display: grid;
-  /* The places to go keep their own width; the space left over sits before
-     the Ask button, so the links never run under it. */
-  grid-template-columns: auto minmax(10rem, 22rem) max-content minmax(0, 1fr) auto auto;
-  grid-template-areas: "brand search nav . ask account";
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2);
   /* Header and content use the same responsive panel inset. */
   width: 100%;
   min-height: var(--pb-header-height);
@@ -159,10 +156,12 @@ body {
 }
 .pb-account {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-1);
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   color: var(--pb-text);
   font: var(--font-weight-semibold) var(--pb-fs-sm)/1.2 var(--font-family-ui);
 }
@@ -171,6 +170,7 @@ body {
 .pb-account-chip {
   display: inline-flex;
   align-items: stretch;
+  min-width: 0;
   min-height: 2.75rem;
   border: 1px solid var(--pb-line-strong);
   border-radius: var(--radius);
@@ -179,19 +179,18 @@ body {
 .pb-account-name {
   display: flex;
   align-items: center;
-  min-width: 0;
-  max-width: 18rem;
+  min-width: 4.5rem;
+  max-width: 14rem;
   padding-inline: var(--space-2);
 
   color: inherit;
   font-size: var(--pb-fs-lg);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-decoration: underline;
   text-decoration-color: var(--pb-accent);
   text-underline-offset: .3em;
 }
+.pb-account-name__text { min-width: 0; padding-block: .4em; overflow: hidden; text-overflow: ellipsis; }
 /* Their wallet's ENS picture, else the face their posts carry. */
 .pb-account-picture {
   flex: none;
@@ -200,6 +199,7 @@ body {
   margin-right: var(--space-1);
 }
 .pb-account-sign-out {
+  flex: none;
   display: grid;
   place-items: center;
   width: 2.75rem;
@@ -1283,7 +1283,7 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 }
 
 .pb-wordmark {
-  grid-area: brand;
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -1299,11 +1299,12 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 
 /* Looks like a search box; pressing it opens the search window. */
 .pb-header-search {
-  grid-area: search;
+  flex: 1 1 auto;
+  max-width: 22rem;
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-width: 0;
+  min-width: 2.75rem;
   height: 2.75rem;
   margin: 0;
   padding: 0 .75rem;
@@ -1320,6 +1321,10 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-header-search:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
 .pb-header-search__icon { flex: none; width: 1rem; height: 1rem; }
 .pb-header-search__prompt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Squeezed, the box drops its shortcut hint, then its word, keeping the icon. */
+.pb-header-search { container-type: inline-size; }
+@container (max-width: 10rem) { .pb-header-search__shortcut { display: none; } }
+@container (max-width: 6.5rem) { .pb-header-search__prompt { display: none; } }
 .pb-header-search__shortcut {
   flex: none;
   padding: 1px 6px;
@@ -1329,7 +1334,7 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   font-size: .75rem;
 }
 
-.pb-site-nav { grid-area: nav; display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.pb-site-nav { flex: none; display: flex; align-items: center; gap: var(--space-1); }
 .pb-site-nav a {
   display: inline-flex;
   align-items: center;
@@ -1345,17 +1350,48 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-site-nav a:hover { color: var(--pb-text); }
 .pb-site-nav a[aria-current="page"] { color: var(--pb-text); border-block-end-color: currentColor; }
 /* The Ask button is as tall as the other header controls, so the header is
-   the same height on every page, home included, where it is left out. */
-.pb-masthead .pb-ask-button { grid-area: ask; min-height: 2.75rem; padding-block: 0; white-space: nowrap; }
-/* Wide windows place the search, the places and Ask straight in the header's
-   grid; a phone lays them out together below. */
-.pb-header-tools { display: contents; }
-.pb-account { grid-area: account; }
+   the same height on every page, home included, where it is left out. The
+   space left over sits before it, so the places to go never run under it. */
+.pb-masthead .pb-ask-button { flex: none; min-height: 2.75rem; margin-inline-start: auto; padding-block: 0; white-space: nowrap; }
+.pb-header-tools { display: flex; flex: 1 1 auto; align-items: center; gap: var(--space-2); }
+/* As the window narrows, the header gives up words before it gives up a line:
+   first the Account link and "a question"; then the wordmark's name and the
+   signed-in name; then the search's word, the balance and sign-out (both on
+   the Account page); on a phone Ask and the theme switch (Ask lives on the
+   questions page). */
+@media (max-width: 1439px) {
+  .pb-account-link { display: none; }
+  .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pb-account-name { max-width: 10rem; }
+}
 @media (max-width: 1099px) {
-  .pb-masthead {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "brand search account" "nav nav ask";
-  }
+  .pb-wordmark > span:not(.patchbay-mark) { display: none; }
+  /* The picture opens the profile and keeps the name as its link text for
+     screen readers; Account is one tap on from the profile. */
+  .pb-account-name { flex: none; min-width: 0; font-size: 0; padding-inline: .5rem; }
+  .pb-account-picture { margin-right: 0; border-radius: 50%; box-shadow: 0 0 0 1px var(--pb-line-strong); }
+}
+@media (max-width: 899px) {
+  .pb-masthead, .pb-header-tools { gap: var(--space-1); }
+  .pb-header-search { flex: none; width: 2.75rem; justify-content: center; padding: 0; }
+  .pb-header-search__prompt { display: none; }
+  .pb-credits, .pb-account-sign-out { display: none; }
+  .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }
+  .pb-masthead .pb-ask-button.rg-button::after, .pb-account-button.rg-button::after { display: none; }
+}
+@media (max-width: 599px) {
+  .pb-masthead, .pb-header-tools { gap: 4px; }
+  .pb-masthead { padding-inline: 12px; }
+  .pb-site-nav { gap: 0; }
+  .pb-site-nav a { padding-inline: 6px; font-size: .8125rem; }
+}
+@media (max-width: 519px) {
+  .pb-masthead .pb-ask-button, .pb-theme-toggle { display: none; }
+}
+@media (max-width: 374px) {
+  .pb-masthead { padding-inline: 8px; }
+  .pb-site-nav a { padding-inline: 2px; font-size: .75rem; }
+  .pb-account-button.rg-button { padding-inline: 8px; }
 }
 
 .pb-section-head {
@@ -1680,30 +1716,6 @@ body:has(#patchbay-home),
   .pb-entry-shot { grid-column: 2; }
 }
 
-@media (max-width: 760px) {
-  /* The account goes beside the wordmark, and to a line of its own when a
-     signed-in name does not fit there. */
-  .pb-masthead {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
-    min-height: 0;
-    padding-block: var(--space-1);
-  }
-  .pb-account { order: 1; margin-inline-start: auto; }
-  /* Ask sits beside the search, which gives up the room, and the places to
-     go have the next line to themselves, so the header is as tall without
-     Ask (on home) as with it. */
-  .pb-header-tools {
-    order: 2;
-    flex: 1 1 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "search ask" "nav nav";
-    gap: var(--space-1) var(--space-2);
-  }
-}
-
 /* Compact reports and setup keep long evidence within the reading column. */
 .pb-report-next { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); font-size: var(--pb-fs-xs); }
 #report-evidence .patchbay-facts > div { min-width: 0; }
@@ -1792,7 +1804,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-sheet-section .patchbay-card-heading { flex-wrap: wrap; }
 .pb-section-head { flex-wrap: wrap; }
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
-.pb-account { flex-wrap: wrap; }
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
 .pb-error-inner .pb-kicker { margin: 0; }
 .patchbay-notice.rg-panel { background: transparent; border: 0; }
@@ -1814,26 +1825,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-name-form-row input { flex-basis: 10rem; }
 .pb-reclaim > .patchbay-board-facts { flex: 1 1 16rem; }
 .pb-reclaim .rg-button__label { flex: initial; }
-/* On the narrowest phones the header tightens, the Ask button says only
-   "Ask" and the search drops its shortcut hint. */
-@media (max-width: 480px) {
-  .pb-masthead { column-gap: var(--space-1); padding-inline: 12px; }
-  .pb-account { gap: 4px; }
-  .pb-site-nav { gap: 4px; }
-  .pb-site-nav a { padding-inline: 4px; }
-  .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  /* Beside Ask the search keeps its word; a phone has no shortcut to show. */
-  .pb-masthead .pb-ask-button { padding-inline: 12px; }
-  .pb-header-search__shortcut { display: none; }
-}
-/* Signed in on a phone, the account chip is the picture and sign-out. The
-   picture opens the profile and keeps the name as its link text for screen
-   readers; Account is one tap on from the profile. */
-@media (max-width: 479px) {
-  .pb-account-name { font-size: 0; padding-inline: .5rem; }
-  .pb-account-picture { margin-right: 0; border-radius: 50%; box-shadow: 0 0 0 1px var(--pb-line-strong); }
-  .pb-account-link { display: none; }
-}
 @media (forced-colors: active) {
   .patchbay-button-danger.rg-button { color: ButtonText; border-color: ButtonText; }
   .patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: CanvasText; }

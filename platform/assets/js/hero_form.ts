@@ -1,5 +1,3 @@
-import {errorIn} from "./api_error.ts"
-import {payForIntent} from "./webmcp/paid_actions.ts"
 import {requestAccountAction} from "./privy/account.ts"
 import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./form_draft.ts"
 import {mountSiteCheck} from "./site_check.ts"
@@ -18,22 +16,6 @@ const PICTURE_BYTES = 3 * 1024 * 1024
 const PICTURE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
 
 const WORDS: Record<string, string> = {
-  paying: "Asking your wallet to approve the fee.",
-  paid: "Paid. Opening your fix.",
-  unconfigured: "Paying is not set up on this Patchbay.",
-  unloadable: "The wallet window could not be loaded. Check your connection and try again.",
-  unready: "The wallet did not answer in time. Try again.",
-  signed_out: "Sign in with a wallet first, at the top of the page.",
-  wallet_mismatch: "Switch your wallet app to the wallet you signed in with, then press again. Nothing was sent.",
-  wallet_changed: "Your wallet changed during the press, so nothing was sent. Press again.",
-  wallet_unanswered: "Your wallet app did not answer, so nothing was sent. Check it is open and unlocked, then press again.",
-  network_mismatch: "Your wallet is on a different network. Switch it to Base, then press again. Nothing was sent.",
-  wallet_declined: "Your wallet declined this. Nothing was sent.",
-  sign_unconfirmed: "Your wallet didn't finish approving the fee. Nothing was paid.",
-  canceled: "That was canceled before it finished.",
-  payment_refused: "The payment was not accepted, so nothing was charged. Check that your wallet holds enough USDC on Base, then press again.",
-  unopened: "Paid, and you will not be charged again. The fix could not be opened just now; " +
-    "a person at Patchbay will open it for you.",
   unpreviewed: "Your post could not be shown just now. Try again in a moment.",
   too_many_pictures: `Add up to ${MOST_PICTURES} pictures.`,
   picture_too_big: "Each picture can be up to 3 MB.",
@@ -48,41 +30,19 @@ type HeroFormOptions = {
   navigate?: (url: string) => void
 }
 
-type FixRequest = {
-  goal: string
-  site_url: string
-  error: string
-  sign_in: "unknown"
-  believed_calls: {tool: string}[]
-}
-
-// Patchbay's last word on a paid fix, as `payForIntent` answers it.
-type PaidFix = {
-  status: number
-  body: Record<string, unknown> | null
-  intent?: Record<string, unknown>
-  unsigned?: string
-}
-
-type NextStep =
-  | {navigate: string; problem?: undefined; note?: undefined}
-  | {problem: string; note?: string; navigate?: undefined}
-
 // A chosen picture, as far as the page can check it before sending.
 type Picture = {size: number; type: string}
 
 /**
  * The form at the top of the home page. What the person is trying to do,
- * the site and the tools they pick either go to Jev, with the button that
- * says what a fix costs right now, or become a forum post. It folds its
- * extra fields away until the person starts typing, keeps what they typed
- * and the tools they picked across a sign-in, and lists the WebMCP tools
- * found at the site to pick from.
+ * the site and the tools they pick become a forum post. It folds its extra
+ * fields away until the person starts typing, keeps what they typed and the
+ * tools they picked across a sign-in, and lists the WebMCP tools found at
+ * the site to pick from.
  *
- * Jev, once the free fixes are used, pays the fee with the wallet the page
- * is signed in with before opening the fix. Post to the forum shows the post
- * as it will appear, in place so the pictures chosen stay chosen, and its
- * Publish button sends the form, or opens sign-in first.
+ * Either post button shows the post as it will appear, in place so the
+ * pictures chosen stay chosen, and its Publish button sends the form, or
+ * opens sign-in first.
  */
 export function mountHeroForm(options: HeroFormOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -96,13 +56,14 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   foldUntilFocus(form)
   const picker = mountToolPicker(form)
   mountSiteCheck(form, {...options, onTools: picker?.show})
+  mountKindChoice(form)
 
   const keep = () => {
     keepDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
     keepPicks(form, storage)
   }
 
-  // A fix or post that was turned down comes back at the address the form
+  // A post that was turned down comes back at the address the form
   // was sent to, which only takes a form. The address of the page the form
   // is on goes back in its place, with what was typed kept, so signing in or
   // reloading returns to this form rather than to a page that is not there.
@@ -125,63 +86,13 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
     const submitter = event.submitter
     if (submitter?.hasAttribute("data-pb-preview")) {
       event.preventDefault()
-      void preview(form, options)
-    } else if (submitter?.hasAttribute("data-pb-post")) {
-      if (form.dataset.pbSignedIn !== "true") {
-        event.preventDefault()
-        keep()
-        void requestAccountAction("sign-in", doc, options)
-      }
-    } else if (form.dataset.pbFixMode === "pay") {
-      event.preventDefault()
-      void pay(form, doc, options)
-    } else if (form.dataset.pbFixMode === "sign_in") {
+      void preview(form, submitter, options)
+    } else if (submitter?.hasAttribute("data-pb-post") && form.dataset.pbSignedIn !== "true") {
       event.preventDefault()
       keep()
       void requestAccountAction("sign-in", doc, options)
     }
   })
-}
-
-/**
- * The request the form's texts and the picked tools make, in the shape
- * Patchbay takes. The page never asks about signing in: Patchbay acts on no
- * one's account, and the form says so.
- */
-export function fixArguments(fields: Record<string, string>, tools: string[]): FixRequest {
-  const text = (name: string) => (fields[name] ?? "").trim()
-  return {
-    goal: text("goal"),
-    site_url: text("site_url"),
-    error: text("details"),
-    sign_in: "unknown",
-    believed_calls: tools.map(tool => ({tool})),
-  }
-}
-
-/**
- * What to do with Patchbay's last word on a paid fix: go to the fix once
- * the payment was applied, or to the fix already under way, which nothing
- * was charged for; otherwise say what stood in the way.
- */
-export function fixOutcome(outcome: PaidFix): NextStep {
-  const refused = errorIn(outcome.body)
-  if (outcome.unsigned) {
-    const note = refused?.wallet_note
-    return {problem: WORDS[outcome.unsigned], note: typeof note === "string" ? note : undefined}
-  }
-  if (outcome.status === 200 && outcome.body?.status === "applied" && outcome.intent?.run_id) {
-    return {navigate: fixPath(outcome.intent.run_id as string)}
-  }
-  if (outcome.status === 409 && refused?.code === "assist_running" && typeof refused.run_id === "string") {
-    return {navigate: fixPath(refused.run_id)}
-  }
-  if (outcome.status === 202 && outcome.intent?.run_id) {
-    return {problem: WORDS.unopened}
-  }
-  if (refused?.code === "payment_refused") return {problem: WORDS.payment_refused}
-  const said = refused?.message
-  return {problem: typeof said === "string" && said !== "" ? said : "That fix could not be paid for. Nothing was charged unless a wallet approval went through."}
 }
 
 /** Why the chosen pictures cannot go with the post, or nothing when they can. */
@@ -192,36 +103,15 @@ export function picturesProblem(pictures: Picture[]): string | null {
   return null
 }
 
-async function pay(form: PageForm, doc: Document, options: HeroFormOptions) {
-  say(form, WORDS.paying)
-  note(form, null)
-  const outcome = await payForIntent(
-    {fetch: options.fetch, csrfToken: options.csrfToken, document: doc},
-    {kind: "jev_assist", args: fixArguments(fieldsOf(form), picksOf(form))},
-  )
-  // With no wallet open in the wallet app, the form's own words name the
-  // account's wallet and ask for it to be opened there.
-  const next: NextStep = outcome.unsigned === "wallet_unavailable"
-    ? {problem: form.dataset.pbNoWalletNote!}
-    : fixOutcome(outcome)
-  if (next.navigate) {
-    say(form, WORDS.paid)
-    ;(options.navigate ?? ((url: string) => globalThis.location.assign(url)))(next.navigate)
-  } else {
-    note(form, next.note)
-    refuse(form, "#pb-fix-submit", next.problem!)
-  }
-}
-
 // The post as it will appear, asked for without sending the pictures, which
 // the page shows itself from the files chosen.
-async function preview(form: PageForm, options: HeroFormOptions) {
+async function preview(form: PageForm, button: HTMLElement, options: HeroFormOptions) {
   const slot = form.querySelector<HTMLElement>("#pb-hero-preview")
   if (!slot || !form.reportValidity()) return
 
   const pictures = picturesOf(form)
   const problem = picturesProblem(pictures)
-  if (problem) return refuse(form, "[data-pb-preview]", problem)
+  if (problem) return refuse(form, button, problem)
 
   const body = new FormData(form)
   body.delete(PICTURES)
@@ -232,12 +122,12 @@ async function preview(form: PageForm, options: HeroFormOptions) {
       credentials: "same-origin",
       headers: {accept: "text/html"},
     })
-    if (!response.ok) return refuse(form, "[data-pb-preview]", WORDS.unpreviewed)
+    if (!response.ok) return refuse(form, button, WORDS.unpreviewed)
     clearPreview(form)
     // Patchbay's own page part for this form, words escaped where they were written.
     slot.innerHTML = await response.text()
   } catch {
-    return refuse(form, "[data-pb-preview]", WORDS.unpreviewed)
+    return refuse(form, button, WORDS.unpreviewed)
   }
   say(form, "")
   showPictures(slot, pictures)
@@ -271,10 +161,6 @@ function picturesOf(form: PageForm) {
   return Array.from(field?.files ?? [])
 }
 
-function fixPath(runId: string) {
-  return `/fixes/${encodeURIComponent(runId)}`
-}
-
 // The page arrives folded to one line. A draft put back from this tab
 // opens it at once; otherwise it opens for good on the first focus.
 function foldUntilFocus(form: PageForm) {
@@ -283,14 +169,25 @@ function foldUntilFocus(form: PageForm) {
   form.addEventListener("focusin", unfold, {once: true})
 }
 
+// The type of post is one pick at a time, and pressing the picked one again
+// unpicks it, so Patchbay chooses, as when none is picked.
+function mountKindChoice(form: PageForm) {
+  for (const input of form.querySelectorAll<HTMLInputElement>("input[name='ask[thread_kind]']")) {
+    let was = false
+    input.addEventListener("pointerdown", () => { was = input.checked })
+    input.addEventListener("click", () => {
+      if (!was) return
+      input.checked = false
+      was = false
+      input.dispatchEvent(new Event("change", {bubbles: true}))
+    })
+  }
+}
+
 // Details put back after a sign-in are shown, not folded away.
 function openFilledDetails(form: PageForm) {
   const details = form.querySelector<HTMLDetailsElement>("#pb-hero-details")
   if (details && DETAILS.some(name => (form.elements[name]?.value ?? "") !== "")) details.open = true
-}
-
-function fieldsOf(form: PageForm) {
-  return Object.fromEntries(FIELDS.map(name => [name, form.elements[`ask[${name}]`]?.value ?? ""]))
 }
 
 function picksOf(form: PageForm) {
@@ -323,17 +220,8 @@ function say(form: PageForm, words: string) {
   if (status) status.textContent = words
 }
 
-// The wallet the account does not know, named beside the button. The line is
-// always in the page and only shown or hidden, so nothing moves the button.
-function note(form: PageForm, words: string | null | undefined) {
-  const line = form.querySelector<HTMLElement>("#pb-fix-wallet-note")
-  if (!line) return
-  line.textContent = words ?? ""
-  line.hidden = !words
-}
-
 // The reason is said under the buttons, and the button pressed shakes its head.
-function refuse(form: PageForm, button: string, words: string) {
+function refuse(form: PageForm, button: HTMLElement, words: string) {
   say(form, words)
-  deny(form.querySelector(button)!)
+  deny(button)
 }

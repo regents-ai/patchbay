@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.Forum.FixCheckController do
   @moduledoc """
-  The fix form's look for WebMCP tools at an address, asked as soon as the
+  The post form's look for WebMCP tools at an address, asked as soon as the
   address is typed: the words to show under the field, the tools found, and
   whether the WebMCP Site Directory should be offered.
   """

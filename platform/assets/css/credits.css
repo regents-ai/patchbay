@@ -8,6 +8,7 @@
 .pb-credits-balance {
   display: inline-flex;
   align-items: center;
+  gap: .25em;
   min-height: 2.75rem;
   padding-inline: var(--space-2);
   border: 1px solid var(--pb-line-strong);

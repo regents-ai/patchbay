@@ -240,7 +240,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 }
 .pb-agent .pb-fix-ask input::placeholder { color: var(--agent-muted); }
 .pb-agent .pb-fix-ask input:focus-visible { outline: 2px solid var(--agent-focus); outline-offset: 3px; }
-.pb-agent .pb-fix-more :is(input:not([type=checkbox]), textarea, select) {
+.pb-agent .pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) {
   border-color: var(--agent-line);
   border-radius: .875rem;
   background: var(--agent-field);
@@ -249,12 +249,13 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 .pb-agent .pb-fix-tools-list li[data-pb-picked] { background: var(--agent-accent); }
 .pb-agent .pb-fix-tools-list li[data-pb-picked] :is(label, span) { color: var(--agent-on-accent); }
 .pb-agent .pb-ask-more > summary { border-radius: 999px; }
-.pb-agent #pb-fix-submit { border-color: var(--agent-button); background: var(--agent-button); color: var(--agent-on-button); }
-.pb-agent #pb-fix-submit:hover { background: var(--agent-button-hover); }
-.pb-agent #pb-fix-submit:disabled { border-color: var(--agent-line); background: var(--agent-raised); color: var(--agent-muted); }
 .pb-agent .rg-button--secondary { border-color: var(--agent-muted); background: transparent; color: var(--agent-fg); }
 .pb-agent .rg-button--secondary:hover { border-color: var(--agent-fg); }
-.pb-agent :is(.pb-fix-topup, .pb-fix-status) { color: var(--agent-muted); }
+.pb-agent .pb-fix-status { color: var(--agent-muted); }
+.pb-agent .pb-hero-kind label { border-color: var(--agent-line); border-radius: 999px; background: var(--agent-field); }
+.pb-agent .pb-hero-kind label:has(input:checked) { border-color: var(--agent-accent); background: var(--agent-accent); color: var(--agent-on-accent); }
+.pb-agent .pb-hero-details[open] { border-color: var(--agent-line); border-radius: var(--agent-radius); }
+.pb-agent .pb-hero-details > summary { border-color: var(--agent-line); background: var(--agent-field); }
 .pb-agent .pb-ask-preview { border-radius: var(--agent-radius); }
 
 /* The quickstart: five numbered steps, each with why it matters and what to do. */

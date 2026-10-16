@@ -1,28 +1,18 @@
 defmodule PatchbayWeb.Forum.FixCheckTest do
   @moduledoc """
-  The quiet look for WebMCP tools the fix form takes: the form asks as an
-  address is typed and lists the tools found, and a free fix asks again
-  when it is pressed. A free fix is
-  kept, not spent, on an address without tools; after two such addresses the
-  WebMCP Site Directory is offered; after more than three in an hour the
-  connection waits a full hour. An address that cannot be a site, or cannot be reached, is not
-  counted against anyone.
+  The quiet look for WebMCP tools the post form takes: the form asks as an
+  address is typed and lists the tools found. After two addresses without
+  tools the WebMCP Site Directory is offered; after more than three in an
+  hour the connection waits a full hour. An address that cannot be a site,
+  or cannot be reached, is not counted against anyone. A connection is
+  known by its network.
   """
 
   use PatchbayWeb.ConnCase, async: false
 
-  alias Patchbay.Assist
   alias Patchbay.PageSite
 
-  @form %{
-    "goal" => "Search the docs for the Responses API and get a link to the right page"
-  }
-
   setup do
-    old_assist = Application.get_env(:patchbay, :assist)
-    Application.put_env(:patchbay, :assist, pay_to_address: "0x" <> String.duplicate("d", 40))
-    on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
-
     PageSite.serve(%{
       "/" => PageSite.with_tool("search_docs"),
       "/a" => PageSite.without_tools(),
@@ -66,15 +56,8 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
     assert limited["said"] =~ "Too many addresses without WebMCP tools"
     assert limited["said"] =~ "Try again in 60 minutes."
 
-    # Waiting means waiting, even for an address with tools, and even for the fix itself.
+    # Waiting means waiting, even for an address with tools.
     assert %{"status" => "limited"} = ask.("https://docs.example.com/") |> json_response(429)
-
-    refused =
-      build_conn()
-      |> from(address)
-      |> post(~p"/fixes", %{"ask" => fix("https://docs.example.com/")})
-
-    assert html_response(refused, 200) =~ "Too many addresses without WebMCP tools"
 
     # Another connection is not held back by this one.
     assert %{"status" => "found"} =
@@ -119,30 +102,6 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
              |> json_response(200)
   end
 
-  test "a free fix at an address without tools is kept, and one with tools starts", %{conn: conn} do
-    address = address()
-
-    refused =
-      conn |> from(address) |> post(~p"/fixes", %{"ask" => fix("https://docs.example.com/a")})
-
-    html = html_response(refused, 200)
-
-    assert html =~
-             "Patchbay found no WebMCP tools at this address, so a free fix cannot start here."
-
-    assert html =~ ~s(value="https://docs.example.com/a")
-    assert html =~ ~s(data-pb-fix-mode="free")
-
-    started =
-      build_conn()
-      |> from(address)
-      |> post(~p"/fixes", %{"ask" => fix("https://docs.example.com/")})
-
-    assert "/fixes/" <> id = redirected_to(started)
-    # Read as Patchbay itself, to check what was written.
-    assert {:ok, %{site_url: "https://docs.example.com/"}} = Assist.get_run(id, authorize?: false)
-  end
-
   test "the page offers the look and a place for the tools", %{conn: conn} do
     html = conn |> from(address()) |> get(~p"/") |> html_response(200)
     assert html =~ ~s(id="pb-fix-site-check")
@@ -153,7 +112,14 @@ defmodule PatchbayWeb.Forum.FixCheckTest do
 
   defp check(conn, site_url), do: get(conn, ~p"/fix-check", %{"site_url" => site_url})
 
-  defp fix(site_url), do: Map.put(@form, "site_url", site_url)
+  test "an IPv6 connection is counted by its network" do
+    assert key("2001:db8:1:2::1") == key("2001:db8:1:2:ffff:ffff:ffff:fffe")
+    refute key("2001:db8:1:2::1") == key("2001:db8:1:3::1")
+    assert key("::ffff:203.0.113.9") == key("203.0.113.9")
+    refute key("203.0.113.9") == key("203.0.113.10")
+  end
+
+  defp key(address), do: PatchbayWeb.ClientAddress.visitor_key(from(build_conn(), address))
 
   defp from(conn, address) do
     {:ok, ip} = :inet.parse_address(String.to_charlist(address))

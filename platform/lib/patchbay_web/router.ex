@@ -171,7 +171,7 @@ defmodule PatchbayWeb.Router do
     post "/mcp", MCPController, :signed_message, log: false
   end
 
-  # The free fix's look for a site's WebMCP tools, asked as an address is typed.
+  # The post form's look for a site's WebMCP tools, asked as an address is typed.
   scope "/", PatchbayWeb.Forum do
     pipe_through :api
     get "/fix-check", FixCheckController, :show
@@ -582,13 +582,11 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     get "/", BoardController, :home
-    post "/fixes", BoardController, :fix
     post "/threads", BoardController, :create_thread
     # Each agent's own page: its quickstart, the same form and the newest posts,
-    # in that agent's look. A turned-down fix or post comes back to that page.
+    # in that agent's look. A turned-down post comes back to that page.
     for agent <- @agent_pages do
       get "/#{agent}", BoardController, :home, private: %{home_page: agent}
-      post "/#{agent}/fixes", BoardController, :fix, private: %{home_page: agent}
       post "/#{agent}/threads", BoardController, :create_thread, private: %{home_page: agent}
     end
 

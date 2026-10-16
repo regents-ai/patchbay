@@ -5,10 +5,7 @@
   action={@thread_action}
   data-pb-home={@home}
   enctype="multipart/form-data"
-  data-pb-fix-mode={@fix.mode}
-  data-pb-fix-fee={@fix.fee}
   data-pb-signed-in={to_string(!is_nil(@profile))}
-  data-pb-no-wallet-note={no_wallet_note(@profile)}
   data-pb-collapsed={@hero.draft["site_url"] in [nil, ""] and !(@hero.problem && !@hero.preview)}
 >
   <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
@@ -16,7 +13,7 @@
     {@hero.problem.said}
   </p>
   <div class="pb-fix-ask">
-    <label class="visually-hidden" for="pb-fix-goal">{@goal_question}</label>
+    <label class="visually-hidden" for="pb-fix-goal">Describe your WebMCP issue</label>
     <input
       id="pb-fix-goal"
       name="ask[goal]"
@@ -24,7 +21,7 @@
       required
       maxlength="1000"
       value={@hero.draft["goal"]}
-      placeholder={@goal_question}
+      placeholder="Describe your WebMCP issue"
       autocomplete="off"
       aria-describedby="pb-fix-goal-hint"
     />
@@ -58,7 +55,7 @@
         id="pb-fix-directory"
         class="rg-button rg-button--secondary pb-fix-directory"
         href={~p"/sites"}
-        hidden={!@fix.directory}
+        hidden={!@directory}
       >
         WebMCP Site Directory
       </a>
@@ -70,17 +67,22 @@
       hidden
     >
       <legend>
-        The site's tools, if one fits
+        Site WebMCP Tool List
         <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
       </legend>
       <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
     </fieldset>
     <details
       id="pb-hero-details"
-      class="pb-ask-more"
+      class="pb-ask-more pb-hero-details"
       open={PatchbayWeb.Forum.Hero.details?(@hero.draft)}
     >
-      <summary>Add details (optional)</summary>
+      <summary>
+        <span>Details help find a solution</span>
+        <svg class="pb-ask-more-chevron" aria-hidden="true" viewBox="0 0 12 8" focusable="false">
+          <path d="M1.5 1.75 6 6.25l4.5-4.5" />
+        </svg>
+      </summary>
       <div class="pb-ask-more-fields">
         <Regent.Primitives.field id="pb-hero-body" label="What happened?">
           <textarea
@@ -105,24 +107,26 @@
             aria-describedby="pb-hero-pictures-hint"
           />
           <:hint>
-            Up to 3 PNG, JPEG or WebP pictures, 3 MB each. They go with a forum post.
+            Up to 3 PNG, JPEG or WebP pictures, 3 MB each.
           </:hint>
         </Regent.Primitives.field>
         <p :if={!@profile} class="pb-hero-pictures-note">
           Sign in to add pictures to a forum post.
         </p>
-        <Regent.Primitives.field id="pb-hero-kind" label="Type of post">
-          <select id="pb-hero-kind" name="ask[thread_kind]">
-            <option value="" selected={@hero.draft["thread_kind"] == ""}>Choose for me</option>
-            <option
-              :for={{value, label} <- thread_types()}
+        <%!-- One type at a time; pressing the picked one again leaves the
+        choice to Patchbay, as nothing picked does. --%>
+        <fieldset id="pb-hero-kind" class="pb-hero-kind">
+          <legend>Type of post</legend>
+          <label :for={{value, label} <- thread_types()}>
+            <input
+              type="radio"
+              name="ask[thread_kind]"
               value={value}
-              selected={@hero.draft["thread_kind"] == value}
-            >
-              {label}
-            </option>
-          </select>
-        </Regent.Primitives.field>
+              checked={@hero.draft["thread_kind"] == value}
+            />
+            <span>{label}</span>
+          </label>
+        </fieldset>
         <Regent.Primitives.field id="pb-hero-tags" label="Tags, separated by commas">
           <input
             id="pb-hero-tags"
@@ -133,24 +137,21 @@
             placeholder="booking, refunds"
           />
         </Regent.Primitives.field>
+        <div class="pb-hero-actions pb-hero-details-post">
+          <Regent.Primitives.button
+            variant="secondary"
+            type="submit"
+            name="step"
+            value="preview"
+            data-pb-preview
+          >
+            <span class="pb-action-label" data-press-label>Post to agent forum</span>
+          </Regent.Primitives.button>
+        </div>
       </div>
     </details>
-    <p class="pb-fix-notice">
-      Jev never signs in or acts on anyone's account, so it only uses what works signed out.
-    </p>
   </div>
   <div class="pb-hero-actions">
-    <%!-- Jev is sent to its own address, without the pictures a post carries. --%>
-    <button
-      id="pb-fix-submit"
-      class="rg-button rg-button--primary"
-      type="submit"
-      formaction={@fix_action}
-      formenctype="application/x-www-form-urlencoded"
-      disabled={@fix.mode == :closed}
-    >
-      <span class="rg-button__label">{PatchbayWeb.Forum.Fix.button(@fix)}</span>
-    </button>
     <Regent.Primitives.button
       variant="secondary"
       type="submit"
@@ -161,14 +162,7 @@
       <span class="pb-action-label" data-press-label>Post to the forum</span>
     </Regent.Primitives.button>
   </div>
-  <p :if={@fix.mode == :pay} class="pb-fix-topup">
-    USDC Balance too low?
-    <button type="button" class="pb-fix-topup-button" data-pb-card-topup="pb-fix-status">
-      Add USDC with a card
-    </button>
-  </p>
   <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
-  <p id="pb-fix-wallet-note" class="pb-fix-status" hidden></p>
   <div id="pb-hero-preview" aria-live="polite">
     <.hero_preview
       :if={@hero.preview}

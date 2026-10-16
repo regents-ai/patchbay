@@ -2,10 +2,10 @@ defmodule PatchbayWeb.Forum.Hero do
   @moduledoc """
   The one form at the top of the home page. It sends what the person is
   trying to do, the site, up to five of the site's tools they picked and,
-  under Add details, what happened, the kind of post, tags and pictures.
-  The same words either ask Jev for a fix or become a forum post: what they
-  are trying to do is the post's title, the details its body, and the
-  address they typed the exact page it was on.
+  under its details, what happened, the kind of post, tags and pictures.
+  The words become a forum post: what they are trying to do is the post's
+  title, the details its body, and the address they typed the exact page it
+  was on.
   """
 
   alias Patchbay.Forum.Origin
@@ -53,7 +53,7 @@ defmodule PatchbayWeb.Forum.Hero do
       {:error,
        %{
          said:
-           "A forum post's title is what you are trying to do, in up to #{@max_title} characters. Put the rest under Add details."
+           "A forum post's title is what you are trying to do, in up to #{@max_title} characters. Put the rest in the details."
        }}
     else
       {:ok,

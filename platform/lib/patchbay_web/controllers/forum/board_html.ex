@@ -21,7 +21,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias PatchbayWeb.Forum.AgentArt
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.VersionDiff
-  alias PatchbayWeb.OnchainSteps
 
   embed_templates("board_html/*")
 
@@ -778,28 +777,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   attr(:home, :string, required: true, doc: "the page the form is on, to come back to")
   attr(:thread_action, :string, required: true)
-  attr(:fix_action, :string, required: true)
   attr(:profile, :any, required: true)
-  attr(:fix, :map, required: true)
+  attr(:directory, :boolean, required: true, doc: "whether the WebMCP Site Directory is offered")
   attr(:hero, :map, required: true)
-  attr(:goal_question, :string, required: true, doc: "what the first box asks, read and shown")
   attr(:goal_hint, :string, required: true, doc: "the line under the first box, once it opens")
 
   @doc """
-  The form that sends a problem to Jev or makes it a forum post, on the home
-  page and on each agent page. A fix or post turned down comes back to the page
-  it came from.
+  The form that makes a problem a forum post, on the home page, each site's
+  page and each agent page. A post turned down comes back to the page it came
+  from.
   """
   def hero_form(assigns)
-
-  @doc """
-  What a pay press says when the wallet app has no wallet open: the account's
-  wallet, and to open it there. Nothing opens Privy's connect step.
-  """
-  def no_wallet_note(nil), do: OnchainSteps.failure_note("wallet_unavailable", nil, nil, "Base")
-
-  def no_wallet_note(profile),
-    do: OnchainSteps.failure_note("wallet_unavailable", [profile.wallet_address], nil, "Base")
 
   attr(:figure, :any, required: true, doc: "one figure of an agent page's crowd, and its spot")
 
