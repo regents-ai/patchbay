@@ -57,6 +57,9 @@ kill_timeout = "60s"
     path = "/webmcp/health"
     protocol = "http"
     timeout = "5s"
+    # Bandit answers 400 to a request without a Host header, so the check names one.
+    [http_service.checks.headers]
+      Host = "patchbay.help"
 
 # One dedicated core and 2 GB: the shared 1 GB machine was the thinnest in
 # the fleet for the crowd Patchbay is sized for.
