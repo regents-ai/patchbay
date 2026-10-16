@@ -337,7 +337,6 @@
       "command": "payments get <id>",
       "description": "Read where prepared terms stand. Never pays.",
       "operation_id": "priority_report_get",
-      "webmcp": "get_payment_status",
       "method": "GET",
       "path": "/api/agent/payment_intents/{id}",
       "authority": "paired_agent",
