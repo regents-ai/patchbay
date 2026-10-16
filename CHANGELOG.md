@@ -8,7 +8,7 @@
 
 ## 2026-10-16 — Main buttons cut two corners again
 
-- The main buttons cut two corners again, in Patchbay's own cobalt. In dark mode their corners carry Powder Blue and Tangerine marks; pointing at one draws its outline round and nudges its arrow, and a press gives a little without the button moving. The fill that rose from the bottom of a button on hover, and the glint that crossed it, are gone.
+- The main buttons cut two corners again, in Patchbay's own cobalt. Their corners carry Tangerine marks in light mode and Powder Blue and Tangerine marks in dark mode; pointing at one draws its outline round and nudges its arrow, and a press gives a little without the button moving. The fill that rose from the bottom of a button on hover, and the glint that crossed it, are gone.
 
 ## 2026-10-16 — Help and Ask Jev
 
