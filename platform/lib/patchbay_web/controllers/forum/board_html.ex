@@ -335,7 +335,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   The site header: the crown wordmark, the search every page starts from,
   the places a visitor can go, and an Ask button on every page but home.
   The search is a button that opens the search window
-  (`PatchbayWeb.SearchLive`), as ⌘ K does.
+  (`PatchbayWeb.SearchLive`), as ⌘ K does. The search, the places and Ask
+  are held together so a phone can set Ask beside the search, and the header
+  is the same height with or without it.
   """
   attr(:conn, :any, default: nil)
 
@@ -345,32 +347,34 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <.crown_mark />
       <span>Patchbay</span>
     </a>
-    <button
-      type="button"
-      id="shell-search-button"
-      class="pb-header-search shell-search-button"
-      aria-haspopup="dialog"
-      aria-controls="shell-search"
-      aria-label="Search"
-      aria-keyshortcuts="Meta+K Control+K"
-    >
-      <.icon name={:search} class="pb-header-search__icon" />
-      <span class="pb-header-search__prompt">Search</span>
-      <kbd
-        id="shell-search-keys"
-        class="pb-header-search__shortcut"
-        aria-hidden="true"
-        data-shell-search-keys
-      >Ctrl K</kbd>
-    </button>
-    <nav class="pb-site-nav" aria-label="Patchbay">
-      <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
-      <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-      <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
-    </nav>
-    <a :if={not home?(@conn)} class="rg-button rg-button--secondary pb-ask-button" href={ask_path()}>
-      <span class="pb-action-label" data-press-label><span>Ask<span class="pb-ask-button__more"> a question</span></span></span>
-    </a>
+    <div class="pb-header-tools">
+      <button
+        type="button"
+        id="shell-search-button"
+        class="pb-header-search shell-search-button"
+        aria-haspopup="dialog"
+        aria-controls="shell-search"
+        aria-label="Search"
+        aria-keyshortcuts="Meta+K Control+K"
+      >
+        <.icon name={:search} class="pb-header-search__icon" />
+        <span class="pb-header-search__prompt">Search</span>
+        <kbd
+          id="shell-search-keys"
+          class="pb-header-search__shortcut"
+          aria-hidden="true"
+          data-shell-search-keys
+        >Ctrl K</kbd>
+      </button>
+      <nav class="pb-site-nav" aria-label="Patchbay">
+        <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
+        <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+        <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
+      </nav>
+      <a :if={not home?(@conn)} class="rg-button rg-button--secondary pb-ask-button" href={ask_path()}>
+        <span class="pb-action-label" data-press-label><span>Ask<span class="pb-ask-button__more"> a question</span></span></span>
+      </a>
+    </div>
     """
   end
 

@@ -1345,7 +1345,12 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 }
 .pb-site-nav a:hover { color: var(--pb-text); }
 .pb-site-nav a[aria-current="page"] { color: var(--pb-text); border-block-end-color: currentColor; }
-.pb-ask-button { grid-area: ask; white-space: nowrap; }
+/* The Ask button is as tall as the other header controls, so the header is
+   the same height on every page, home included, where it is left out. */
+.pb-masthead .pb-ask-button { grid-area: ask; min-height: 2.75rem; padding-block: 0; white-space: nowrap; }
+/* Wide windows place the search, the places and Ask straight in the header's
+   grid; a phone lays them out together below. */
+.pb-header-tools { display: contents; }
 .pb-account { grid-area: account; }
 @media (max-width: 1099px) {
   .pb-masthead {
@@ -1685,9 +1690,17 @@ body:has(#patchbay-home),
     padding-block: var(--space-1);
   }
   .pb-account { order: 1; margin-inline-start: auto; }
-  .pb-header-search { order: 2; flex: 1 1 100%; }
-  .pb-site-nav { order: 3; }
-  .pb-ask-button { order: 4; margin-inline-start: auto; }
+  /* Ask sits beside the search, which gives up the room, and the places to
+     go have the next line to themselves, so the header is as tall without
+     Ask (on home) as with it. */
+  .pb-header-tools {
+    order: 2;
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "search ask" "nav nav";
+    gap: var(--space-1) var(--space-2);
+  }
 }
 
 /* Compact reports and setup keep long evidence within the reading column. */
@@ -1800,14 +1813,17 @@ h1, h2, h3, h4, h5, h6 {
 .pb-name-form-row input { flex-basis: 10rem; }
 .pb-reclaim > .patchbay-board-facts { flex: 1 1 16rem; }
 .pb-reclaim .rg-button__label { flex: initial; }
-/* The places to go and the Ask button share one line down to the narrowest
-   phones; the button says only "Ask" there. */
+/* On the narrowest phones the header tightens, the Ask button says only
+   "Ask" and the search drops its shortcut hint. */
 @media (max-width: 429px) {
   .pb-masthead { column-gap: var(--space-1); padding-inline: 12px; }
   .pb-account { gap: 4px; }
   .pb-site-nav { gap: 4px; }
   .pb-site-nav a { padding-inline: 4px; }
   .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* Beside Ask the search keeps its word; a phone has no shortcut to show. */
+  .pb-masthead .pb-ask-button { padding-inline: 12px; }
+  .pb-header-search__shortcut { display: none; }
 }
 /* Signed in on a phone, the account chip is the picture and sign-out. The
    picture opens the profile and keeps the name as its link text for screen
