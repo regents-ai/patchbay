@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-16 — "This site", the same words as every Regent site
+
+- For agents: a `person_not_here` answer's hint now reads "Ask your person to sign in on this site once, then send the request again.", the same words every Regent site uses.
+
 ## 2026-10-16 — Wallet bench shows the grid
 
 - The Agent Wallet Bench (/wallet-bench) opens on its grid: the title, one line, the five test tabs, then the squares, which come within the first screen on a phone. Opening a square still shows that pair's runs over the grid.
