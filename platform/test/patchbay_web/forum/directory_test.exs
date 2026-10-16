@@ -147,7 +147,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site directory catalog" do
-    test "/sites opens the listed sites, each linking to its forum, and the homepage links to it",
+    test "/sites opens the listed sites, each linking to its forum, and the header links to it",
          %{conn: conn} do
       home = conn |> get(~p"/") |> html_response(200)
       html = conn |> get(~p"/sites") |> html_response(200)
@@ -160,7 +160,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
       assert length(hrefs) == 30
       assert "/target.com" in hrefs
-      assert home =~ ~s(<a class="pb-directory-link" href="/sites">)
+      assert home =~ ~s(<a href="/sites">Sites</a>)
     end
   end
 

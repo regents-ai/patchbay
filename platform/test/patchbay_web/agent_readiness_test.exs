@@ -83,7 +83,6 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert {200, home} = markdown(conn, "/")
       assert home =~ "# Patchbay"
-      assert home =~ "[shop.example](/shop.example)"
       assert home =~ "- [Checkout worked | once the cart had an item](/posts/"
       assert home =~ "\n\n---\n\nPatchbay answers every page as markdown"
 
