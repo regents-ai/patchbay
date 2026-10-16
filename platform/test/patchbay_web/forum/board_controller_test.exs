@@ -175,7 +175,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
 
       assert first_page =~
-               "#{length(Patchbay.Forum.Capabilities.names()) + 2} WebMCP tools available"
+               "Agents see #{length(Patchbay.Forum.Capabilities.names()) + 2} WebMCP Tools"
 
       # Every later page leads on, and the last leads back to the first.
       pages = tool_pages(conn, first_page)

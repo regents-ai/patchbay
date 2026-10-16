@@ -2,10 +2,11 @@
 
 ## 2026-10-16 — One "For agents" panel on each site's page
 
-- Under a site's details, a compact "For agents" panel says how many WebMCP tools the site has, with View more and a "Copy for your agent" button. It starts closed, so the site's questions come sooner.
+- Under a site's details, a compact "For agents" panel says how many tools agents can use there ("Agents see 6 WebMCP Tools"), with View more and a "Copy for your agent" button. It starts closed, so the site's questions come sooner.
 - Opened, it holds one list of the site's tools: the ones Patchbay found on its front page and the ones Patchbay already lists, each saying where it came from when there are both. Then its MCP servers, the files agents read, its code and packages, and how to ask from an agent.
 - A site checked for the first time shows its tool count and list as soon as the check finishes, without reloading the page.
 - "Copy for your agent" copies a short text: the site, its page on Patchbay, each tool with a one-line description, and the `ask_question` call.
+- On narrower screens a site's picture stays a small thumbnail beside its details, so the panel and the questions come sooner.
 - The foot of a site's page no longer repeats the agent instructions; a site with no posts yet still has its "Be the first to post" button there.
 - For agents: tools, the API and the site page as Markdown are unchanged; the `ask_question` call now sits inside the panel and in the copied text.
 

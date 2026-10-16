@@ -117,7 +117,9 @@ defmodule PatchbayWeb.SiteCheckLive do
       {:none, 0} -> "Not checked yet"
       {:checking, 0} -> "Looking for WebMCP tools…"
       {:failed, 0} -> "Couldn't look for WebMCP tools just now"
-      _known -> count_label(count, "WebMCP tool available", "WebMCP tools available")
+      # The owner's own words for the count.
+      {_state, 1} -> "Agents see 1 WebMCP Tool"
+      _known -> "Agents see #{count} WebMCP Tools"
     end
   end
 

@@ -767,7 +767,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     page = Origin.inner_page(params["page"])
     ask = ask_call(domain, page, goal, error)
 
-    case board_for(domain, params) do
+    case board_for(conn, domain, params) do
       {:ok, board} ->
         conn
         |> then(&if(board.site, do: &1, else: put_resp_header(&1, "x-robots-tag", "noindex")))
@@ -798,28 +798,35 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # The board's tools and posts for the site; a site without a board has
-  # neither.
-  defp board_for(domain, params) do
+  # The board's posts for the site, and its tools for the Markdown page; the
+  # HTML page's tools live in its For agents panel (SiteCheckLive). A site
+  # without a board has neither.
+  defp board_for(conn, domain, params) do
+    format = get_format(conn)
+
     case Board.fetch_site(domain) do
       {:ok, site} ->
-        {tools, next_tools} = Board.inventory(site, inventory_cursor(params["tools_after"]))
-
         with {:ok, posts, next_posts} <- Board.site_threads(site, params["posts_after"]) do
           {:ok,
-           %{
-             site: site,
-             tools: tools,
-             next_tools: next_tools,
-             posts: posts,
-             next_posts: next_posts
-           }}
+           Map.merge(
+             %{site: site, posts: posts, next_posts: next_posts},
+             inventory(format, site, params)
+           )}
         end
 
       :error ->
-        {:ok, %{site: nil, tools: [], next_tools: nil, posts: [], next_posts: nil}}
+        {:ok, Map.merge(%{site: nil, posts: [], next_posts: nil}, inventory(format, nil, params))}
     end
   end
+
+  defp inventory("md", nil, _params), do: %{tools: [], next_tools: nil}
+
+  defp inventory("md", site, params) do
+    {tools, next_tools} = Board.inventory(site, inventory_cursor(params["tools_after"]))
+    %{tools: tools, next_tools: next_tools}
+  end
+
+  defp inventory(_html, _site, _params), do: %{}
 
   # The arguments for ask_question, with the agent's own words where it gave
   # them and a capitalised blank where it did not.
