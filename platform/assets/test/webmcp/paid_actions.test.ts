@@ -172,7 +172,7 @@ test("a wallet whose account is not the review's signer is asked nothing to sign
 
   const outcome = await payForIntent({fetch, wallet}, ACTION);
 
-  assert.equal(outcome.unsigned, "wallet_unavailable");
+  assert.equal(outcome.unsigned, "wallet_changed");
   assert.equal(asked.some(one => one.method === "eth_signTypedData_v4"), false);
 });
 

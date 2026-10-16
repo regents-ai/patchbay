@@ -255,9 +255,11 @@ export async function signOut(appId: string): Promise<void> {
 
 /**
  * Privy's active wallet, when it is an Ethereum wallet still connected in this
- * browser: its address and the provider a payment is signed through. With none,
- * nothing opens and nothing is signed; the page asks the person to open one of
- * their wallets. The server decides whether this wallet may pay for the account.
+ * browser: its address and the provider a payment is signed through. With none
+ * open (`wallet_unavailable`), nothing opens and nothing is signed; the page
+ * asks the person to open one of their wallets. One whose provider does not
+ * answer is `wallet_unanswered`. The server decides whether this wallet may pay
+ * for the account.
  */
 export async function activeWallet(appId: string): Promise<{ok: true, wallet: SelectedWallet} | Refusal> {
   start(appId)
@@ -278,7 +280,7 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
     const provider = await active.getEthereumProvider()
     return {ok: true, wallet: {address: active.address.toLowerCase(), provider}}
   } catch {
-    return {ok: false, reason: "wallet_unavailable"}
+    return {ok: false, reason: "wallet_unanswered"}
   }
 }
 

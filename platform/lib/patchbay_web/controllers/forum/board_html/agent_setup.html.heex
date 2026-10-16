@@ -248,8 +248,17 @@ Tell me when the transfer is complete.</code></pre>
                 <code>wallet_reason: "wallet_unavailable"</code> or <code>"wallet_mismatch"</code>
               </td>
               <td>
-                Ask the human to connect the wallet they signed in with, or switch to it in their wallet app,
+                Ask the human to open the wallet they signed in with, or switch to it in their wallet app,
                 then call again. <code>wallet_note</code> names both wallets when they differ.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <code>wallet_reason: "wallet_changed"</code> or <code>"wallet_unanswered"</code>
+              </td>
+              <td>
+                Nothing was paid: the wallet app switched account during the call, or did not answer.
+                Ask the human to check it is open and unlocked, then call again.
               </td>
             </tr>
             <tr>

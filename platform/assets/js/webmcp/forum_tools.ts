@@ -120,7 +120,9 @@ const NAME_ONLY =
 const UNSIGNED: Record<string, string> = {
   unloadable: "the wallet could not be reached from this page",
   unready: "the wallet did not answer in time",
-  wallet_unavailable: "the wallet you signed in with is not connected in this browser; connect it and call again",
+  wallet_unavailable: "the wallet app has no wallet open in this browser; open the wallet you signed in with and call again",
+  wallet_changed: "the wallet app switched to another account during the call; call again",
+  wallet_unanswered: "the wallet app did not answer; check it is open and unlocked, then call again",
   wallet_mismatch: "the wallet open in the wallet app is not the one you signed in with",
   network_mismatch: "the wallet would not switch to Base",
   wallet_declined: "the wallet declined to sign",

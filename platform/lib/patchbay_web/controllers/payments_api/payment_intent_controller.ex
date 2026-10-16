@@ -111,7 +111,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
           conn,
           "wallet_unavailable",
           "The wallet you signed in with is not open on this page.",
-          "Connect that wallet in this browser, then pay again.",
+          "Open that wallet in your wallet app, then pay again.",
           %{payment_intent_id: intent_id}
         )
 

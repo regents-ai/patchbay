@@ -1,7 +1,7 @@
 import {errorIn, refusal} from "../api_error.ts";
 import {loadPrivyBridge, privyAppId} from "../privy/account.ts";
 import type {MetaDocument} from "../privy/account.ts";
-import {failure, signStep} from "../wallet_actions/send_step.ts";
+import {NothingSent, failure, signStep} from "../wallet_actions/send_step.ts";
 import type {SelectedWallet, SignatureStep, StepChain} from "../wallet_actions/send_step.ts";
 
 const INTENTS_PATH = "/api/payment_intents";
@@ -107,7 +107,7 @@ export async function payForIntent(options: PayOptions, {kind, args}: {kind: str
       signature = await signStep(review.chain, review.signer, step, wallet, () => { signing = true; });
     } catch (error) {
       if (signal?.aborted) return canceled();
-      return answer(offered, intent, failure(signing, error));
+      return answer(offered, intent, signing ? failure(true, error) : beforeSigning(error));
     }
     if (signal?.aborted) return canceled();
 
@@ -170,6 +170,14 @@ export function paymentCancellation(
       },
     ),
   };
+}
+
+// Why nothing reached the wallet's prompt once it had been found: its open
+// account is no longer the one this payment was prepared for (it changed
+// during the call), it would not switch network, or it did not answer.
+function beforeSigning(error: unknown): string {
+  if (!(error instanceof NothingSent)) return "wallet_unanswered";
+  return error.reason === "wallet_unavailable" ? "wallet_changed" : error.reason;
 }
 
 function answer({status, body}: HttpAnswer, intent?: PaymentIntent, unsigned?: string): PayOutcome {
