@@ -287,8 +287,8 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       {:ok, view, _html} = live(conn, "/offers?q=#{origin}")
 
-      site_card = text_of(view, "#pb-offers-markets .pb-offers-site-card", origin)
-      assert site_card =~ ~r/Responses · 72h\s*1Total posts/
+      site_row = text_of(view, "#pb-offers-markets .pb-offers-market", origin)
+      assert site_row =~ ~r/Responses · 72h\s*1Total posts/
 
       assert text_of(view, ~s(a[href="/offers/bid?site=#{site.site_id}&slot=1"])) =~
                ~r/Slot 1\s*▸\s*Live\s*From 11\.02 Credits/

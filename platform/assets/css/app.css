@@ -1873,6 +1873,14 @@ h1, h2, h3, h4, h5, h6 {
   .pb-site-nav a { padding-inline: 4px; }
   .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
+/* Signed in on a phone, the account chip is the picture and sign-out. The
+   picture opens the profile and keeps the name as its link text for screen
+   readers; Account is one tap on from the profile. */
+@media (max-width: 479px) {
+  .pb-account-name { font-size: 0; padding-inline: .5rem; }
+  .pb-account-picture { margin-right: 0; }
+  .pb-account-link { display: none; }
+}
 @media (forced-colors: active) {
   .patchbay-button-danger.rg-button { color: ButtonText; border-color: ButtonText; }
   .patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: CanvasText; }
@@ -2428,22 +2436,30 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-gallery-toolbar h2 { margin: 0; font-size: 1.375rem; }
 .pb-offers-gallery-toolbar p { margin: .5rem 0 0; }
 .pb-offers-intro { margin-block: var(--space-3); font-size: 1rem; color: var(--pb-text-muted); }
-.pb-offers-site-activity dt { color: var(--pb-text-muted); font-size: .75rem; }
 .pb-offers-gallery-toolbar form { width: min(100%, 22rem); }
-.pb-offers-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); padding: 0; margin: 0 0 var(--space-3); list-style: none; }
-.pb-offers-gallery > li { min-width: 0; display: flex; }
-.pb-offers .pb-offers-site-card { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; padding: var(--space-2); }
-/* The pictures are 16:10, so the box matches them and shows each one whole. */
-.pb-offers-site-visual { display: grid; place-items: center; aspect-ratio: 16 / 10; overflow: hidden; background: var(--pb-surface-sunk); color: var(--pb-text); }
-.pb-offers-site-shot { display: block; width: 100%; height: 100%; object-fit: contain; }
-.pb-offers-site-monogram { font: 400 3rem/1 var(--font-family-title); opacity: .5; }
-.pb-offers-site-heading { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
-.pb-offers-site-heading > img { flex: none; width: 2.5rem; height: 2.5rem; object-fit: contain; padding: .25rem; background: #e9e8d5; }
-.pb-offers-site-heading > div { min-width: 0; overflow-wrap: anywhere; }
-.pb-offers-site-heading h3 { font-size: 1.125rem; margin: 0 0 .25rem; }
-.pb-offers-site-activity { display: flex; justify-content: space-between; gap: var(--space-1); margin: auto 0 0; padding-block: var(--space-1); border-block: 1px solid var(--pb-line); }
-.pb-offers-site-activity dd { margin: .25rem 0 0; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
-.pb-offers-site-visual:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
+/* The websites read as one list, like an exchange's asset list: logo, name,
+   the two activity figures and the slot rail in one row. Below 64rem the rail
+   takes a line of its own; on a phone the figures sit under the name. */
+.pb-offers-markets { margin: 0 0 var(--space-3); padding: 0; list-style: none; border: 1px solid var(--pb-line-strong); background: var(--pb-surface); }
+.pb-offers-market {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto minmax(0, 26rem);
+  grid-template-areas: "logo name activity slots";
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-height: 4.5rem;
+  padding: .75rem var(--space-2);
+}
+.pb-offers-market + .pb-offers-market { border-top: 1px solid var(--pb-line); }
+.pb-offers-market-logo { grid-area: logo; display: grid; place-items: center; width: 3rem; height: 3rem; object-fit: contain; padding: .25rem; background: var(--pb-surface-sunk); color: var(--pb-text-muted); font: 400 1.125rem/1 var(--font-family-title); }
+img.pb-offers-market-logo { background: #e9e8d5; }
+.pb-offers-market-name { grid-area: name; min-width: 0; }
+.pb-offers-market-name h3 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-offers-market-name span { display: block; overflow: hidden; color: var(--pb-text-muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.pb-offers-market-activity { grid-area: activity; display: flex; gap: var(--space-3); margin: 0; text-align: end; }
+.pb-offers-market-activity dt { color: var(--pb-text-muted); font-size: .75rem; }
+.pb-offers-market-activity dd { margin: .125rem 0 0; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.pb-offers-market .pb-slots { grid-area: slots; max-width: 26rem; }
 
 /* Offer slots, read like a game menu: cut-corner tiles with a 1px edge drawn
    by the tile's own background showing round an inset fill. A slot with an
@@ -2509,6 +2525,15 @@ a.pb-slot:focus-visible::before { box-shadow: inset 0 0 0 1px var(--pb-text); }
 .pb-offers-global-card .pb-slots { --slot-number: 1.75rem; --slot-small: .75rem; --slot-locked: 2.5rem; gap: .5rem; }
 .pb-offers-global-card .pb-slot:not(.pb-slot--locked) { padding: .75rem .875rem; }
 
+/* In a website's row each tile is a two-line chip: number, state and prompt,
+   then the price. */
+.pb-offers-market .pb-slot:not(.pb-slot--locked) { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: .5rem; padding: .375rem .625rem; }
+.pb-offers-market .pb-slot-top { display: contents; }
+.pb-offers-market .pb-slot-number { grid-area: 1 / 1; }
+.pb-offers-market .pb-slot-tag { grid-area: 1 / 2; }
+.pb-offers-market .pb-slot-go { grid-area: 1 / 3; }
+.pb-offers-market .pb-slot-price { grid-area: 2 / 1 / 3 / -1; }
+
 /* A narrow tile drops the word from its prompt and keeps the arrow. */
 @container (max-width: 6.5rem) { .pb-slot-go-word { display: none; } }
 
@@ -2527,8 +2552,16 @@ a.pb-slot:focus-visible::before { box-shadow: inset 0 0 0 1px var(--pb-text); }
 .pb-offers-guide-head h2 { margin: var(--space-1) 0; font-size: 1.5rem; }
 .pb-offers-guide > section { padding-top: var(--space-2); border-top: 1px solid var(--pb-line); }
 
-@media (max-width: 64rem) { .pb-offers-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 42rem) { .pb-offers-gallery { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 64rem) {
+  .pb-offers-market { grid-template-columns: 3rem minmax(0, 1fr) auto; grid-template-areas: "logo name activity" "slots slots slots"; }
+}
+@media (max-width: 30rem) {
+  .pb-offers-market { grid-template-columns: 3rem minmax(0, 1fr); grid-template-areas: "logo name" "logo activity" "slots slots"; row-gap: .25rem; padding-inline: .75rem; }
+  .pb-offers-market-activity { gap: var(--space-2); text-align: start; }
+  .pb-offers-market-activity > div { display: flex; gap: .375rem; align-items: baseline; }
+  .pb-offers-market-activity dd { margin: 0; font-size: .75rem; }
+  .pb-offers-market .pb-slots { margin-top: .5rem; }
+}
 
 @media (max-width: 42rem) {
   .pb-offers-gallery-toolbar > div > p { margin-top: 0; }

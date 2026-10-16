@@ -31,59 +31,40 @@
         </Regent.Primitives.field>
       </form>
     </header>
-    <ol id="pb-offers-markets" class="pb-offers-gallery" phx-update="stream">
-      <li :for={{dom_id, entry} <- @streams.sites} id={dom_id}>
-        <Regent.Structure.panel class="pb-offers-card pb-offers-site-card">
-          <.link
-            navigate={site_path(entry.site)}
-            class="pb-offers-site-visual"
-            aria-label={"Visit #{site_name(entry.site)}'s board"}
-          >
-            <img
-              :if={url = site_screenshot_url(entry.site)}
-              class="pb-offers-site-shot"
-              src={url}
-              alt=""
-              loading="lazy"
-              width="1600"
-              height="1000"
-            />
-            <span
-              :if={!site_screenshot_url(entry.site)}
-              class="pb-offers-site-monogram"
-              aria-hidden="true"
-            >{monogram(entry.site)}</span>
-          </.link>
-          <header class="pb-offers-site-heading">
-            <img
-              :if={url = site_logo_url(entry.site)}
-              src={url}
-              alt=""
-              loading="lazy"
-              width="48"
-              height="48"
-            />
-            <div>
-              <h3><.link navigate={site_path(entry.site)}>{site_name(entry.site)}</.link></h3><span class="pb-offers-eyebrow">{site_domain(
-                entry.site
-              )}</span>
-            </div>
-          </header>
-          <dl class="pb-offers-site-activity">
-            <div>
-              <dt>Responses · 72h</dt><dd>{entry.site.aggregates.recent_responses}</dd>
-            </div><div>
-              <dt>Total posts</dt><dd>{entry.site.report_count}</dd>
-            </div>
-          </dl>
-          <.slots
-            id={"pb-slots-#{entry.site.id}"}
-            label={"#{site_name(entry.site)} slots"}
-            market={entry.market}
-            site_id={entry.site.id}
-            as_of={@as_of}
-          />
-        </Regent.Structure.panel>
+    <ol id="pb-offers-markets" class="pb-offers-markets" phx-update="stream">
+      <li :for={{dom_id, entry} <- @streams.sites} id={dom_id} class="pb-offers-market">
+        <img
+          :if={url = site_logo_url(entry.site)}
+          class="pb-offers-market-logo"
+          src={url}
+          alt=""
+          loading="lazy"
+          width="48"
+          height="48"
+        />
+        <span
+          :if={!site_logo_url(entry.site)}
+          class="pb-offers-market-logo"
+          aria-hidden="true"
+        >{monogram(entry.site)}</span>
+        <div class="pb-offers-market-name">
+          <h3><.link navigate={site_path(entry.site)}>{site_name(entry.site)}</.link></h3>
+          <span>{site_domain(entry.site)}</span>
+        </div>
+        <dl class="pb-offers-market-activity">
+          <div>
+            <dt>Responses · 72h</dt><dd>{entry.site.aggregates.recent_responses}</dd>
+          </div><div>
+            <dt>Total posts</dt><dd>{entry.site.report_count}</dd>
+          </div>
+        </dl>
+        <.slots
+          id={"pb-slots-#{entry.site.id}"}
+          label={"#{site_name(entry.site)} slots"}
+          market={entry.market}
+          site_id={entry.site.id}
+          as_of={@as_of}
+        />
       </li>
     </ol>
     <p :if={@found == 0} class="pb-placement-empty">

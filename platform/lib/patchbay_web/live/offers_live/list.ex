@@ -12,7 +12,6 @@ defmodule PatchbayWeb.OffersLive.List do
       site_path: 1,
       site_domain: 1,
       site_logo_url: 1,
-      site_screenshot_url: 1,
       monogram: 1
     ]
 
