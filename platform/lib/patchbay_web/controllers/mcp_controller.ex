@@ -15,7 +15,7 @@ defmodule PatchbayWeb.MCPController do
   free: public reads need no agent proof; protected operations require
   exact-request SIWA and current pairing on the native interface. ChatGPT
   events, identity setup and free posting require separate OAuth permissions;
-  public reads stay anonymous. The restricted participation door verifies SIWA. The session supplies no authority.
+  public reads stay anonymous. The signed posting address verifies SIWA. The session supplies no authority.
 
   The `Origin` header is not checked, on purpose: nothing on this path reads
   the browser cookie or a signed-in profile, and the session header is not
@@ -92,17 +92,13 @@ defmodule PatchbayWeb.MCPController do
           request
       )
       when name in ["ask_question", "post_reply"] and (is_binary(id) or is_integer(id)) do
-    if RegentMCPAgents.enabled?() do
-      caller = %{
-        session_id: conn.assigns.forum_session_id,
-        actor: conn.assigns.agent_actor,
-        surface: :chatgpt_agent
-      }
+    caller = %{
+      session_id: conn.assigns.forum_session_id,
+      actor: conn.assigns.agent_actor,
+      surface: :chatgpt_agent
+    }
 
-      json(conn, reply(handle("tools/call", request["params"], caller), id))
-    else
-      send_resp(conn, :not_found, "")
-    end
+    json(conn, reply(handle("tools/call", request["params"], caller), id))
   end
 
   def signed_message(conn, _request), do: invalid_request(conn)
