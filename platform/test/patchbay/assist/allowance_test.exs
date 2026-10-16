@@ -43,11 +43,19 @@ defmodule Patchbay.Assist.AllowanceTest do
 
   test "once the site has given its free fixes for the day, nobody gets one" do
     old = Application.get_env(:patchbay, :daily_free_fixes)
-    Application.put_env(:patchbay, :daily_free_fixes, 2)
+    Application.put_env(:patchbay, :daily_free_fixes, 3)
     on_exit(fn -> restore(:daily_free_fixes, old) end)
 
-    # A free fix the page gave out today counts toward the site's number.
+    # Free fixes the page gave out today, to a connection and to a signed-in
+    # person, count toward the site's number.
     browser_run(%{status: :finished, outcome: :not_possible})
+
+    browser_run(%{
+      grant: :member,
+      payer_profile_id: person().id,
+      status: :finished,
+      outcome: :not_possible
+    })
 
     agent = paired_agent()
     {:ok, first} = Assist.request_agent_free_run(request(), agent)
@@ -61,7 +69,7 @@ defmodule Patchbay.Assist.AllowanceTest do
              Assist.request_agent_free_run(request(), agent)
 
     # The site's number is read on every ask: raised, there is one to give.
-    Application.put_env(:patchbay, :daily_free_fixes, 3)
+    Application.put_env(:patchbay, :daily_free_fixes, 4)
     assert Allowance.agent_grant(agent) == {:ok, :agent}
   end
 
