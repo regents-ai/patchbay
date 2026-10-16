@@ -48,7 +48,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       for marker <- [
             ~s(id="pb-hero-title"),
             ~s(aria-label="Question lists"),
-            ~s(id="pb-discussions-title")
+            ~s(id="pb-discussions")
           ] do
         {at, _length} = :binary.match(html, marker)
         at

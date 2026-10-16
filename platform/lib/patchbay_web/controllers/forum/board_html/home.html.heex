@@ -45,9 +45,9 @@
     >{scope_label(scope)}</a>
   </nav>
 
-  <section id="pb-discussions" class="pb-discussions" aria-labelledby="pb-discussions-title">
-    <header class="pb-list-head">
-      <h2 id="pb-discussions-title">
+  <section id="pb-discussions" class="pb-discussions" aria-label="Questions">
+    <header :if={@filters.site != "" or @filters.tool != ""} class="pb-list-head">
+      <h2>
         {feed_label(@filters)}<span :if={@filters.site != ""}> · {@filters.site}</span>
       </h2>
     </header>
