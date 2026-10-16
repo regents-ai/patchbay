@@ -62,6 +62,16 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # An agent's own page carries its quickstart, the form and the newest posts,
   # in that agent's look.
+  # A post from a site page's window comes back to that page, its window open.
+  defp render_home(
+         %{private: %{site_page: true}, path_params: %{"host" => host}} = conn,
+         _params,
+         hero
+       ) do
+    {:ok, domain} = Origin.normalize(host)
+    site_page(conn, domain, %{}, hero)
+  end
+
   defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
     agent = AgentPages.fetch!(id)
 
@@ -710,7 +720,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     {:ok, domain} = Origin.normalize(host)
 
     if conn.request_path == "/" <> domain,
-      do: site_page(conn, domain, params),
+      do: site_page(conn, domain, params, site_hero(domain, params)),
       else: moved(conn, "/" <> domain, params)
   end
 
@@ -736,7 +746,20 @@ defmodule PatchbayWeb.Forum.BoardController do
     conn |> put_status(:moved_permanently) |> redirect(to: to)
   end
 
-  defp site_page(conn, domain, params) do
+  # The site page's form, filled in from the link that opened the page.
+  defp site_hero(domain, params) do
+    page = Origin.inner_page(params["page"])
+
+    hero(
+      Hero.draft(%{
+        "goal" => presence(params["goal"]),
+        "site_url" => page || domain,
+        "details" => presence(params["error"])
+      })
+    )
+  end
+
+  defp site_page(conn, domain, params, hero) do
     visitor = ClientAddress.visitor_key(conn)
     {asked, check} = SiteChecks.ask(domain, SiteChecks.current(domain), visitor, :open)
     goal = presence(params["goal"])
@@ -764,10 +787,7 @@ defmodule PatchbayWeb.Forum.BoardController do
             earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
             ask: ask_call(domain, page, goal, error),
             directory: FixCheck.directory?(conn),
-            hero:
-              hero(
-                Hero.draft(%{"goal" => goal, "site_url" => page || domain, "details" => error})
-              )
+            hero: hero
           })
         )
 

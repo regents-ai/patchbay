@@ -624,6 +624,9 @@ defmodule PatchbayWeb.Router do
     pipe_through [:site_address, :browser]
 
     get "/:host", BoardController, :site
+    # A site page's post window sends here, so a post turned down comes back to
+    # that site's page with the window open.
+    post "/:host/threads", BoardController, :create_thread, private: %{site_page: true}
     get "/:host/tools/:name", BoardController, :tool, private: %{public_catalog_json: true}
   end
 

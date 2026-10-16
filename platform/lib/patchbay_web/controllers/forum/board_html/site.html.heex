@@ -2,7 +2,6 @@
   <.board_header title={if @site, do: site_name(@site), else: @domain}>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
-      <a class="patchbay-board-facts" href="#pb-site-post">Post about this site →</a>
       <span class="patchbay-generation">{@domain}</span>
     </:meta>
   </.board_header>
@@ -181,7 +180,7 @@
     <h2 id="pb-site-post-title">Post about {@domain}</h2>
     <.hero_form
       home={"/" <> @domain}
-      thread_action={~p"/threads"}
+      thread_action={"/" <> @domain <> "/threads"}
       profile={@current_profile}
       directory={@directory}
       hero={@hero}
