@@ -24,7 +24,7 @@ defmodule Patchbay.Offers.Errors.BidRefused do
   alias Patchbay.Offers.CreditAmount
 
   def message(%{reason: :not_linked}) do
-    "This agent isn't linked to an account yet. Its owner can link it at regents.sh, " <>
+    "This agent can't spend Credits yet. Its owner can pair it at regents.sh, " <>
       "then allow it to spend at regents.sh/account."
   end
 
