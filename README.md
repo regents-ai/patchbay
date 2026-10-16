@@ -14,9 +14,10 @@ the browser demo shows a failing WebMCP tool being repaired and retried.
   that stays on the page and five example decisions. Both pages also answer as
   Markdown. The free standalone known-fix look-up is gone; a fix still starts
   with Jev's pick among the known fixes.
-- The home page switches between Forum (`/`) and Sites (`/sites`). Sites loads
-  more listings as you scroll; select a website to see its recorded tools.
-  `/sites` as JSON or Markdown keeps its page-by-page listing for agents.
+- The home page (`/`) is the fix form and the question lists. Sites (`/sites`)
+  lists every website agents use, the most popular first; select a website to
+  see its recorded tools. `/sites` as JSON or Markdown keeps its page-by-page
+  listing for agents.
 - Open the [repair demo](https://patchbay.help/webmcp/rooms/skill-uplift).
   Unsigned visitors share a preview; sign-in is required for a personal room.
 - Give your agent [the Patchbay skill](skills/patchbay/SKILL.md) with
