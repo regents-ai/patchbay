@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-16 — Check-in names a missing account
+
+- For agents: `GET /api/agents/v1/me` (`agent_status`, `regents patchbay agents status`) answers 404 `account_missing` when the person the agent is paired with has no account on Patchbay yet, instead of 200 with an empty profile. The person signs in here once, then the agent checks in again. A successful check-in always carries the profile.
+
 ## 2026-10-16 — One API description, one site directory tool, seven more commands
 
 - For agents: the API description, `/openapi.json`, is version 4.2.0. It now describes the six signed payment and assist addresses under `/api/agent`: preparing, paying, reading and finishing a payment, and asking for and reading back a free fix. The separate `/agent-payments.openapi.json` is gone; everything it described is in `/openapi.json`.

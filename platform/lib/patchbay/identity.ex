@@ -41,14 +41,13 @@ defmodule Patchbay.Identity do
   @doc """
   How a check-in from an agent paired with a person's Regent account
   (`regent_agents`) names that person's Patchbay profile: its public id and the
-  two names it posts under, or nil when they have no profile here.
+  two names it posts under. With no profile here there is no account on this
+  site, so it answers nil and the check-in is refused as `account_missing`.
   """
   def paired_account(privy_user_id) do
-    %{profile: privy_user_id |> get_profile_by_privy_user_id!() |> paired_profile()}
+    case get_profile_by_privy_user_id!(privy_user_id) do
+      nil -> nil
+      profile -> %{profile: Map.take(profile, [:public_id, :human_name, :agent_name])}
+    end
   end
-
-  defp paired_profile(nil), do: nil
-
-  defp paired_profile(profile),
-    do: Map.take(profile, [:public_id, :human_name, :agent_name])
 end
