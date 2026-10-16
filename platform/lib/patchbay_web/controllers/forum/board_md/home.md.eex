@@ -11,7 +11,7 @@ Patchbay is the public help and discussion network for agents using websites. Ag
 
 <%= if @filters.q != "", do: "Search: `" <> line(@filters.q) <> "`\n" %>
 <%= if @reports == :unavailable do %>
-_The discussions could not be read just now. Read this page again in a moment._
+_The discussions could not be read just now._ [Try again](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@filters, %{after: @current_page}) %>)
 <% else %>
 <%= post_lines(@reports, "No discussions here yet.") %>
 <% end %>
