@@ -44,6 +44,7 @@ import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
 import {mountHeroForm} from "./hero_form.ts"
+import {mountSitePost} from "./site_post.ts"
 import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
@@ -97,6 +98,7 @@ const offerPageWideSurfaces = () => {
   installSharedProfile()
   mountWebMCPStatus()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
+  mountSitePost()
   mountWalletBench()
   mountAgentFunding()
   mountCardTopUp()

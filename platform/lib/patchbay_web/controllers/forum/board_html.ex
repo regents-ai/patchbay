@@ -774,6 +774,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
+  attr(:domain, :string, required: true)
+
+  @doc """
+  The button that opens a site page's post window. Without the page's script
+  it is a link to the window's place on the page.
+  """
+  def site_post_button(assigns) do
+    ~H"""
+    <a class="rg-button rg-button--secondary pb-site-post-button" href="#pb-site-post">
+      <span class="pb-action-label" data-press-label>Post about {@domain}</span>
+    </a>
+    """
+  end
+
   attr(:home, :string, required: true, doc: "the page the form is on, to come back to")
   attr(:thread_action, :string, required: true)
   attr(:profile, :any, required: true)

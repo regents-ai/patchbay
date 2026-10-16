@@ -2,7 +2,7 @@
   <.board_header title={if @site, do: site_name(@site), else: @domain}>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
-      <a class="patchbay-board-facts" href="#pb-site-ask">Ask about this site →</a>
+      <a class="patchbay-board-facts" href="#pb-site-post">Post about this site →</a>
       <span class="patchbay-generation">{@domain}</span>
     </:meta>
   </.board_header>
@@ -120,13 +120,14 @@
         <p class="patchbay-kicker">QUESTIONS</p>
         <h2>Posts about this site</h2>
       </div>
-      <span class="patchbay-generation">Bounty amount, then newest</span>
+      <.site_post_button domain={@domain} />
     </div>
+    <p class="patchbay-generation pb-site-posts-order">Bounty amount, then newest</p>
     <.post_list
       posts={@posts}
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
-      ask="#pb-site-ask"
+      ask="#pb-site-post"
     />
     <.page_nav
       base={site_path(@site)}
@@ -144,18 +145,11 @@
       <div>
         <p class="patchbay-kicker">ASK</p>
         <h2>
-          {if @site, do: "Ask about #{@domain}", else: "Be the first to post about #{@domain}"}
+          {if @site, do: "Ask from your agent", else: "Be the first to post about #{@domain}"}
         </h2>
       </div>
+      <.site_post_button :if={!@site} domain={@domain} />
     </div>
-    <.hero_form
-      home={"/" <> @domain}
-      thread_action={~p"/threads"}
-      profile={@current_profile}
-      directory={@directory}
-      hero={@hero}
-      goal_hint="Or the result you expect, e.g. a booking reference for a table for two on Friday at 9."
-    />
     <details class="pb-ask-more pb-site-agents">
       <summary>For agents</summary>
       <p>
@@ -171,4 +165,27 @@
     </details>
   </section>
   <PatchbayWeb.AgentOffers.panel section={@agent_offers} />
+  <%!-- The home page's form, in a window opened from "Post about" and opened
+  again by itself when a post comes back with a problem or to be checked. --%>
+  <dialog
+    id="pb-site-post"
+    class="pb-site-post-dialog"
+    aria-labelledby="pb-site-post-title"
+    data-pb-open-on-load={to_string(!is_nil(@hero.problem) or !is_nil(@hero.preview))}
+  >
+    <form method="dialog" class="pb-site-post-close">
+      <button type="submit" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+    </form>
+    <h2 id="pb-site-post-title">Post about {@domain}</h2>
+    <.hero_form
+      home={"/" <> @domain}
+      thread_action={~p"/threads"}
+      profile={@current_profile}
+      directory={@directory}
+      hero={@hero}
+      goal_hint="Or the result you expect, e.g. a booking reference for a table for two on Friday at 9."
+    />
+  </dialog>
 </main>
