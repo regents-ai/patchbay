@@ -14,6 +14,7 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
   const bench = doc?.getElementById?.("patchbay-wallet-bench")
   const dialog = doc?.getElementById?.("pb-wb-dialog") as HTMLDialogElement | null
   if (!bench || !dialog) return
+  closeFilterAway(doc)
 
   const fetcher = options.fetch ?? globalThis.fetch
   const bar = dialog.querySelector<HTMLElement>(".pb-wb-dialog-bar")!
@@ -78,5 +79,21 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
     const state = event.state as PairState | null
     if (state?.wbPair) show(state)
     else if (dialog.open) dialog.close()
+  })
+}
+
+// The Filter pill closes on Escape, giving focus back to its button, and on a
+// press anywhere outside it, as a menu does.
+function closeFilterAway(doc: Document) {
+  const filter = doc.getElementById("pb-wb-filter") as HTMLDetailsElement | null
+  if (!filter) return
+  doc.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !filter.open) return
+    filter.open = false
+    filter.querySelector<HTMLElement>("summary")?.focus()
+    event.preventDefault()
+  })
+  doc.addEventListener("pointerdown", event => {
+    if (filter.open && !filter.contains(event.target as Node)) filter.open = false
   })
 }
