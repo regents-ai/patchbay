@@ -10,6 +10,7 @@ defmodule PatchbayWeb.Router do
     plug :fetch_session
     plug :fetch_live_flash
     plug PatchbayWeb.Plugs.Theme
+    plug PatchbayWeb.Plugs.Panels
     plug :put_root_layout, html: {PatchbayWeb.Layouts, :root}
     plug :protect_from_forgery
 

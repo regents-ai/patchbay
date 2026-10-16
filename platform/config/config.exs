@@ -75,6 +75,12 @@ config :regent_agents,
   account: {Patchbay.Identity, :paired_account},
   ash_domains: [RegentAgents]
 
+# Each paired agent's reading from the sign-in service, kept five minutes. Older
+# readings leave with the generation the collector drops every ten minutes.
+config :patchbay, Patchbay.Agents.ActivityReading,
+  gc_interval: :timer.minutes(10),
+  max_size: 10_000
+
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Each
 # queue is added here with the jobs it runs: a run of an assist, four at once
 # (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee

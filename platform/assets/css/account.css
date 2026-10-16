@@ -96,16 +96,6 @@
   text-underline-offset: 0.2em;
 }
 
-.pb-account-agents__code {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.pb-account-agents__code pre {
-  margin: 0;
-  overflow-x: auto;
-}
-
 /* Points: figures, recent activity and the tables of what earns. */
 
 .pb-points-figures {

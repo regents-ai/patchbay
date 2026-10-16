@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-16 — A side panel for your agents, on every page
+
+- Signed in, your picture and name at the right of the header open a side panel, on every page. On a wide screen it stands beside the page, which makes room for it, header included; on a narrower screen it drops down under the header over the page's right side, and on a phone over the whole page. It stays open from page to page until you close it with the same button or Escape; on a phone it opens only when you open it there.
+- The panel starts with Sign out, Manage Account (your Regents account, in a new tab) and Patchbay account. The Account link and the sign-out icon have left the header.
+- "Your agents" lists every agent paired with your account, each with the Regent site it was last active on and how long ago. The list takes at most a quarter of the panel and scrolls.
+- "Pair New Agent" shows the message to paste to your agent, with its code, in a short box with a copy icon and a new-code icon, then when the code stops working, then ten agents to choose from in two rows of five, each named when you point at it: any agent, OpenAI Codex, Grok Bot, Muse, Hermes, Dots, NemoClaw, OpenClaw, Claude Code and Pi. Once your agent pairs, the box names it.
+- The Account page's agents list keeps Unpair; its Pair New Agent button opens the side panel, which now makes the codes.
+- The Agent Wallet Bench's Filter still closes on Escape and on a tap outside it, now through the shared pill close every Regent site uses.
+- For agents: tools, the API description and the manifest are unchanged. The message a person pastes to pair you names Patchbay and its code, points to the pairing steps in /llms.txt, says the code works once, for ten minutes, and adds one line for Codex, Grok Bot, Hermes and Muse.
+
 ## 2026-10-17 — Refresh a site's picture and tools from its page
 
 - Each site's page has a "Refresh this site" button under the site's picture. Anyone can press it, signed in or not. It takes a new picture of the site and looks for its WebMCP tools again; the picture and the "For agents" panel change by themselves when each comes back.

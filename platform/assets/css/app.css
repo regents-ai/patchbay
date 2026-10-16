@@ -3,6 +3,7 @@
 @import "../vendor/regent_ui/primitives.css";
 @import "./components/motion.css";
 @import "./components/search_dialog.css";
+@import "./components/side_panel.css";
 @import "./faces.css";
 @import "./workbench.css";
 @import "./feed.css";
@@ -165,32 +166,34 @@ body {
   color: var(--pb-text);
   font: var(--font-weight-semibold) var(--pb-fs-sm)/1.2 var(--font-family-ui);
 }
-/* The signed-in name, the Account link and the sign-out icon are one control,
-   joined edge to edge. */
+/* The signed-in picture and name are one button, which opens the side panel
+   (Sign out, Manage Account, the Patchbay account and the agents). */
 .pb-account-chip {
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
   min-width: 0;
+  max-width: 17rem;
   min-height: 2.75rem;
+  margin: 0;
+  padding: 0 0 0 var(--space-2);
   border: 1px solid var(--pb-line-strong);
   border-radius: var(--radius);
   background: var(--pb-surface);
+  color: inherit;
+  font: inherit;
+  font-size: var(--pb-fs-lg);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .pb-account-name {
-  display: flex;
-  align-items: center;
-  min-width: 4.5rem;
-  max-width: 14rem;
-  padding-inline: var(--space-2);
-
-  color: inherit;
-  font-size: var(--pb-fs-lg);
+  min-width: 0;
+  padding-block: .4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  text-decoration: underline;
-  text-decoration-color: var(--pb-accent);
-  text-underline-offset: .3em;
 }
-.pb-account-name__text { min-width: 0; padding-block: .4em; overflow: hidden; text-overflow: ellipsis; }
 /* Their wallet's ENS picture, else the face their posts carry. */
 .pb-account-picture {
   flex: none;
@@ -198,32 +201,21 @@ body {
   height: 1.75rem;
   margin-right: var(--space-1);
 }
-.pb-account-sign-out {
+.pb-account-chip__panel {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 2.75rem;
-  padding: 0;
-  border: 0;
+  box-sizing: content-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-inline-start: var(--space-2);
+  padding-inline: calc((2.75rem - 1.125rem) / 2);
+  padding-block: calc((2.75rem - 2px - 1.125rem) / 2);
   border-left: 1px solid var(--pb-line-strong);
-  background: transparent;
-  color: var(--pb-text);
-  cursor: pointer;
 }
-.pb-account-link {
-  display: flex;
-  align-items: center;
-  padding-inline: var(--space-2);
-  border-left: 1px solid var(--pb-line-strong);
-  color: inherit;
-  text-decoration: none;
-  white-space: nowrap;
+.pb-account-chip:focus-visible,
+.pb-account-chip[aria-expanded="true"] { color: var(--pb-accent); }
+@media (hover: hover) and (pointer: fine) {
+  .pb-account-chip:hover { color: var(--pb-accent); }
 }
-.pb-account-sign-out svg { width: 1.125rem; height: 1.125rem; }
-.pb-account-link:hover,
-.pb-account-link:focus-visible,
-.pb-account-sign-out:hover:not(:disabled),
-.pb-account-sign-out:focus-visible { color: var(--pb-accent); }
 
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
@@ -1355,43 +1347,45 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-masthead .pb-ask-button { flex: none; min-height: 2.75rem; margin-inline-start: auto; padding-block: 0; white-space: nowrap; }
 .pb-header-tools { display: flex; flex: 1 1 auto; align-items: center; gap: var(--space-2); }
 /* As the window narrows, the header gives up words before it gives up a line:
-   first the Account link and "a question"; then the wordmark's name and the
-   signed-in name; then the search's word, the balance and sign-out (both on
-   the Account page); on a phone Ask and the theme switch (Ask lives on the
-   questions page). */
-@media (max-width: 1439px) {
-  .pb-account-link { display: none; }
+   first "a question"; then the wordmark's name and the signed-in name; then the
+   search's word, the balance (on the Account page) and the side panel's mark,
+   leaving the picture that opens it; on a phone Ask and the theme switch (Ask
+   lives on the questions page). The steps follow the room beside the side panel,
+   so an open panel moves them on as a narrower window would. */
+body { container: pb-page / inline-size; }
+@container pb-page (max-width: 1439px) {
   .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .pb-account-name { max-width: 10rem; }
+  .pb-account-chip { max-width: 13.5rem; }
 }
-@media (max-width: 1099px) {
+@container pb-page (max-width: 1099px) {
   .pb-wordmark > span:not(.patchbay-mark) { display: none; }
-  /* The picture opens the profile and keeps the name as its link text for
-     screen readers; Account is one tap on from the profile. */
-  .pb-account-name { flex: none; min-width: 0; font-size: 0; padding-inline: .5rem; }
+  /* The picture opens the panel and keeps the name for screen readers. */
+  .pb-account-chip { padding-inline-start: .5rem; }
+  .pb-account-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .pb-account-picture { margin-right: 0; border-radius: 50%; box-shadow: 0 0 0 1px var(--pb-line-strong); }
 }
-@media (max-width: 899px) {
+@container pb-page (max-width: 899px) {
   .pb-masthead, .pb-header-tools { gap: var(--space-1); }
   /* Squeezed to its icon, the search reads as a button, not an empty box. */
   .pb-header-search { flex: none; width: 2.75rem; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--pb-text); }
   .pb-header-search:hover { border-color: var(--pb-line-strong); }
   .pb-header-search__icon { width: 1.25rem; height: 1.25rem; }
   .pb-header-search__prompt { display: none; }
-  .pb-credits-balance, .pb-account-sign-out { display: none; }
+  .pb-credits-balance, .pb-account-chip__panel { display: none; }
+  .pb-account-chip { padding-inline-end: .5rem; }
   .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }
   .pb-masthead .pb-ask-button.rg-button::after, .pb-account-button.rg-button::after { display: none; }
 }
-@media (max-width: 599px) {
+@container pb-page (max-width: 599px) {
   .pb-masthead, .pb-header-tools { gap: 4px; }
   .pb-masthead { padding-inline: 12px; }
   .pb-site-nav { gap: 0; }
   .pb-site-nav a { padding-inline: 6px; font-size: .8125rem; }
 }
-@media (max-width: 519px) {
+@container pb-page (max-width: 519px) {
   .pb-masthead .pb-ask-button, .pb-theme-toggle { display: none; }
 }
-@media (max-width: 374px) {
+@container pb-page (max-width: 374px) {
   .pb-masthead { padding-inline: 8px; }
   .pb-site-nav a { padding-inline: 2px; font-size: .75rem; }
   .pb-account-button.rg-button { padding-inline: 8px; }

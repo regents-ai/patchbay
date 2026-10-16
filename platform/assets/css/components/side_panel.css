@@ -1,0 +1,107 @@
+/* The side panel the signed-in name opens, on every page (PatchbayWeb.SidePanelLive),
+   as in the Regent template. Whether it is open is the visitor's, on
+   <html data-aside>. On a wide screen it stands at the right edge and the page,
+   header included, gives way. Narrower, where the pages' own layouts need the
+   whole window, it drops down under the header over the page's right side, and on
+   a phone over the whole page. */
+
+:root { --pb-aside-width: 20rem; }
+
+/* A size container, so the agents list can take a quarter of its height. */
+#shell-aside {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 30;
+  container-type: size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  inline-size: var(--pb-aside-width);
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  border-inline-start: 1px solid var(--pb-line);
+  background: var(--pb-canvas);
+  color: var(--pb-text);
+  font-family: var(--font-family-ui);
+  line-height: 1.55;
+  /* Hidden only once it has slid shut. */
+  transition: transform var(--duration-slow) var(--ease-out), visibility var(--duration-slow);
+}
+#shell-aside:focus { outline: none; }
+
+/* Shown at once on opening, so focus can move into it. */
+:root[data-aside="open"] #shell-aside { transition: transform var(--duration-slow) var(--ease-out); }
+
+:root:not([data-aside="open"]) #shell-aside { visibility: hidden; transform: translateX(100%); }
+
+@media (min-width: 64rem) {
+  :root[data-aside="open"]:has(#shell-aside) body { padding-inline-end: var(--pb-aside-width); }
+}
+
+/* Sign out, Manage Account and the Patchbay account share short rows; the name in
+   the header closes the panel. */
+.shell-aside__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.5rem 1rem;
+  border-block-end: 1px solid var(--pb-line);
+}
+.shell-aside__head .rg-button {
+  min-height: 2rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+#shell-aside section {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-block-end: 1px solid var(--pb-line);
+}
+#shell-aside h2 {
+  margin: 0;
+  font-family: var(--font-family-ui);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+#shell-aside p { margin: 0; }
+
+@media (max-width: 63.99rem) {
+  /* Under the header, which keeps the name that closes it, out to the screen's
+     right edge past the page's margin. It is wiped in from that edge rather than
+     slid, so the closed panel never sits beside the screen and the page never
+     scrolls sideways. */
+  #shell-aside {
+    position: absolute;
+    inset-block: 100% auto;
+    inset-inline-end: calc(-1 * (var(--rg-page-gutter) + var(--rg-rule-width)));
+    block-size: calc(100dvh - 100% - var(--rg-page-gutter));
+    border-block-start: 1px solid var(--pb-line);
+    clip-path: inset(0);
+    transform: none;
+    transition: clip-path var(--duration-slow) var(--ease-out), visibility var(--duration-slow);
+  }
+  :root[data-aside="open"] #shell-aside { transition: clip-path var(--duration-slow) var(--ease-out); }
+  :root:not([data-aside="open"]) #shell-aside { visibility: hidden; transform: none; clip-path: inset(0 0 0 100%); }
+}
+
+@media (max-width: 47.99rem) {
+  /* A phone is too narrow for both: the panel covers the whole page, and opens
+     only when opened on this page, never on arrival. */
+  #shell-aside {
+    inset-inline-start: calc(-1 * (var(--rg-page-gutter) + var(--rg-rule-width)));
+    inline-size: auto;
+    border-inline-start: 0;
+  }
+  :root:not([data-aside-here]) #shell-aside { visibility: hidden; transform: none; clip-path: inset(0 0 0 100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #shell-aside,
+  :root[data-aside="open"] #shell-aside { transition: none; }
+}

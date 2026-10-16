@@ -488,6 +488,21 @@ secret belongs in Patchbay. HTTPS is required outside loopback fixtures.
 SIWA is pinned in `mix.exs` with the other elixir-utils libraries, at the same
 commit.
 
+## The side panel
+
+Signed in, the name at the right of the header opens a side panel on every
+page (`PatchbayWeb.SidePanelLive`, as in ash-template): Sign out, Manage Account on
+regents.sh and the Patchbay account, then the person's paired agents with where
+each was last active, then Pair New Agent. Whether it was left open is kept in the
+browser's `patchbay_aside` cookie.
+
+Where each agent was last active is read from the sign-in service with this
+site's own reader key:
+
+| Setting | Required | What it does |
+| --- | --- | --- |
+| `SIWA_ACTIVITY_READ_TOKEN` | No | The reader key for the sign-in service's agent activity, which gives the side panel each agent's last active site and time. `Patchbay.Agents.ActivityReading` keeps each agent's reading for five minutes. Unset, or without an https `PATCHBAY_SIWA_URL`, the panel lists the agents with no activity line. |
+
 The additive wallet-author migration keeps historical Privy rows intact. A rollback
 with autonomous authors or sessionless reports deliberately fails instead of dropping
 those records. Reconcile retained data before any separately approved reversal.

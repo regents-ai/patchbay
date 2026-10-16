@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.AgentsPanel do
   @moduledoc """
-  The agents a person has paired with their account (`RegentAgents`), a code to
-  pair another, and Unpair for each, as in the Regent template.
+  The agents a person has paired with their account (`RegentAgents`), on the
+  Account page, with Unpair for each and Pair New Agent opening the side panel's
+  pairing box (`PatchbayWeb.PairingBox`), as in the Regent template.
 
   Pairing lets an agent act for the person on Patchbay, each thing it does
   marked as its own. It never touches their wallet. Pairing is shared by every
@@ -15,7 +16,7 @@ defmodule PatchbayWeb.AgentsPanel do
 
   alias PatchbayWeb.CurrentProfile
   alias Regent.Primitives, as: P
-  alias RegentAgents.{Harness, PairingCode, Person}
+  alias RegentAgents.{Harness, Person}
 
   @impl true
   def mount(socket),
@@ -23,7 +24,7 @@ defmodule PatchbayWeb.AgentsPanel do
       {:ok,
        socket
        |> CurrentProfile.check_component_lease(&take_profile/2)
-       |> assign(pairing: nil, notice: nil)}
+       |> assign(notice: nil)}
 
   @impl true
   def update(%{agents_changed: true}, socket), do: {:ok, read_agents(socket)}
@@ -42,9 +43,6 @@ defmodule PatchbayWeb.AgentsPanel do
     do: assign(socket, person: %Person{privy_user_id: profile.privy_user_id})
 
   @impl true
-  def handle_event("issue_pairing_code", _params, socket),
-    do: {:noreply, assign(socket, pairing: issue(socket), notice: nil)}
-
   def handle_event("unpair_agent", %{"id" => id}, socket) do
     actor = socket.assigns.person
 
@@ -84,17 +82,7 @@ defmodule PatchbayWeb.AgentsPanel do
           </P.button>
         </:actions>
         <:footer>
-          <P.button
-            id={"#{@id}-pair"}
-            type="button"
-            variant="secondary"
-            phx-click="issue_pairing_code"
-            phx-target={@myself}
-            phx-disable-with="Making a code…"
-          >
-            {if match?(%PairingCode.Issued{}, @pairing), do: "Make a new code", else: "Pair an agent"}
-          </P.button>
-          <.pairing id={@id} pairing={@pairing} />
+          <P.button type="button" variant="secondary" data-aside-open>Pair New Agent</P.button>
         </:footer>
       </Regent.Account.agents>
     </div>
@@ -120,51 +108,6 @@ defmodule PatchbayWeb.AgentsPanel do
     )
   end
 
-  attr :id, :string, required: true
-  attr :pairing, :any, required: true
-
-  defp pairing(%{pairing: nil} = assigns), do: ~H""
-
-  defp pairing(%{pairing: %PairingCode.Issued{}} = assigns) do
-    assigns =
-      assign(assigns,
-        expires_iso: DateTime.to_iso8601(assigns.pairing.expires_at),
-        expires: Calendar.strftime(assigns.pairing.expires_at, "%H:%M UTC")
-      )
-
-    ~H"""
-    <div id={"#{@id}-code"} class="pb-account-agents__code" role="status">
-      <p>
-        Enter this code when your agent asks for it, never in a chat.
-        Works once, until <time datetime={@expires_iso}>{@expires}</time>.
-        <a href="/agents.md">How to pair</a>
-      </p>
-      <pre><code>{@pairing.code}</code></pre>
-      <P.copy_button id={"#{@id}-copy"} text={@pairing.code} variant="primary">Copy</P.copy_button>
-    </div>
-    """
-  end
-
-  defp pairing(%{pairing: {:paired, agent}} = assigns) do
-    assigns = assign(assigns, :agent, agent)
-
-    ~H"""
-    <p id={"#{@id}-code"} role="status">{@agent.name} paired with your account.</p>
-    """
-  end
-
-  defp pairing(%{pairing: :wait} = assigns) do
-    ~H"""
-    <p id={"#{@id}-code"} role="status">A new code can be made once a minute. Try again shortly.</p>
-    """
-  end
-
-  defp pairing(assigns) do
-    ~H"""
-    <p id={"#{@id}-code"} role="status">A code couldn’t be made right now. Try again.</p>
-    """
-  end
-
   defp read_agents(socket) do
     agents =
       case RegentAgents.list_my_agents(actor: socket.assigns.person) do
@@ -172,35 +115,6 @@ defmodule PatchbayWeb.AgentsPanel do
         {:error, _error} -> :unavailable
       end
 
-    assign(socket, agents: agents, pairing: after_pairing(socket.assigns.pairing, agents))
-  end
-
-  # A code on screen gives way to the agent that used it, so a spent code is
-  # never left there to send again.
-  defp after_pairing(%PairingCode.Issued{issued_at: issued_at} = shown, agents)
-       when is_list(agents) do
-    case Enum.find(agents, &(DateTime.compare(&1.paired_at, issued_at) != :lt)) do
-      nil -> shown
-      agent -> {:paired, agent}
-    end
-  end
-
-  defp after_pairing(shown, _agents), do: shown
-
-  # A code already on screen stays there while a new one can't be made yet.
-  defp issue(socket) do
-    case RegentAgents.issue_pairing_code(actor: socket.assigns.person) do
-      {:ok, issued} ->
-        issued
-
-      {:error,
-       %Ash.Error.Invalid{errors: [%Ash.Error.Invalid.Unavailable{reason: :issued_recently}]}} ->
-        if match?(%PairingCode.Issued{}, socket.assigns.pairing),
-          do: socket.assigns.pairing,
-          else: :wait
-
-      {:error, _error} ->
-        :unavailable
-    end
+    assign(socket, agents: agents)
   end
 end

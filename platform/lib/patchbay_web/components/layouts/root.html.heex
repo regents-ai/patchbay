@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-brand="patchbay" data-theme={@theme}>
+<html lang="en" data-brand="patchbay" data-theme={@theme} data-aside={@aside}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -94,38 +94,37 @@
             />
             {if @current_profile && @current_profile.authentication_origin == :privy,
               do: live_render(@conn, PatchbayWeb.CreditsLive)}
-            <div :if={@current_profile} class="pb-account-chip">
-              <a class="pb-account-name" href={~p"/account/profile"}>
-                <PatchbayWeb.Forum.Nameplate.author_avatar
-                  author={@current_profile}
-                  kind={:human}
-                  class="pb-account-picture"
-                />
-                <span class="pb-account-name__text">
-                  {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
-                </span>
-              </a>
-              <a class="pb-account-link" href={~p"/account"}>Account</a>
-              <button
-                type="button"
-                class="pb-account-sign-out"
-                data-pb-account="sign-out"
-                aria-label="Sign out"
-                title="Sign out"
+            <%!-- The name opens the side panel (`PatchbayWeb.SidePanelLive`), which
+            holds Sign out, Manage Account, the Patchbay account and the agents. --%>
+            <button
+              :if={@current_profile}
+              id="pb-account-chip"
+              type="button"
+              class="pb-account-chip"
+              aria-controls="shell-aside"
+              aria-expanded="false"
+              data-aside-toggle
+            >
+              <PatchbayWeb.Forum.Nameplate.author_avatar
+                author={@current_profile}
+                kind={:human}
+                class="pb-account-picture"
+              />
+              <span class="pb-account-name">
+                {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
+              </span>
+              <svg
+                class="pb-account-chip__panel"
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="square"
               >
-                <svg
-                  data-press-label
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="square"
-                >
-                  <path d="M10 4H4v16h6M15 8l4 4-4 4M19 12H9" />
-                </svg>
-              </button>
-            </div>
+                <path d="M3 4h18v16H3zM15 4v16" />
+              </svg>
+            </button>
             <Regent.Primitives.button
               :if={is_nil(@current_profile)}
               variant="primary"
@@ -136,6 +135,7 @@
               <span class="pb-action-label" data-press-label>Sign in</span>
             </Regent.Primitives.button>
           </div>
+          {if @current_profile, do: live_render(@conn, PatchbayWeb.SidePanelLive)}
         </header>
         {live_render(@conn, PatchbayWeb.SearchLive, id: "pb-search-live")}
       </Regent.Structure.row>
