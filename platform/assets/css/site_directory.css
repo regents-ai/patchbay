@@ -50,7 +50,7 @@
 .pb-directory-search input, .pb-directory-search select { border: 1px solid var(--pb-line); background-color: var(--pb-surface); padding-left: .75rem; }
 .pb-directory-results-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0 .6rem; }
 .pb-directory-results-heading p { margin: 0; }
-.pb-directory-scroll { max-width: 100%; overflow-x: auto; overflow-y: hidden; container-type: inline-size; border-block: 1px solid var(--pb-line); scrollbar-width: thin; }
+.pb-directory-scroll { position: relative; max-width: 100%; overflow-x: auto; overflow-y: hidden; container-type: inline-size; border-block: 1px solid var(--pb-line); scrollbar-width: thin; }
 .pb-directory-table { width: 100%; min-width: 660px; table-layout: fixed; border-collapse: collapse; font-size: .8125rem; }
 .pb-directory-table th, .pb-directory-table td { padding: .2rem .75rem; vertical-align: middle; }
 .pb-directory-table thead { background: var(--pb-surface); }
