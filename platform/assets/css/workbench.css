@@ -146,18 +146,6 @@
 .pb-onboarding-note { margin-top: 1.5rem; padding-left: 1rem; border-left: 2px solid var(--pb-accent); font-size: .75rem; line-height: 1.6; }
 .pb-onboarding-note strong { font-weight: 600; }
 .pb-onboarding-note p { margin: .5rem 0 0; color: var(--pb-text-muted); }
-.pb-onboarding .pb-agent-setup { padding: 1.5rem 2rem; border: 0; border-left: 1px solid var(--pb-line); background: var(--pb-canvas); min-width: 0; }
-.pb-onboarding .pb-agent-setup > summary { font-family: var(--font-family-title); font-size: 1.125rem; padding: 0 2rem 1rem 0; }
-.pb-onboarding .pb-help-body { padding-top: 0; }
-.pb-onboarding .pb-agent-setup-status { gap: .75rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--pb-line); }
-.pb-onboarding .pb-setup-line { margin: 0; font-size: .8125rem; line-height: 1.5; }
-.pb-onboarding .rg-field label { font-size: .75rem; font-weight: 600; }
-.pb-onboarding .pb-starter-prompt { margin-top: .5rem; min-height: 13rem; field-sizing: content; padding: 1rem; font-size: .8125rem; line-height: 1.65; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); resize: vertical; }
-.pb-onboarding .patchbay-copy { margin-top: .75rem; font-size: .8125rem; }
-.pb-onboarding .pb-setup-unsupported { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--pb-line); }
-.pb-onboarding .pb-setup-unsupported .rg-disclosure { border: 0; background: transparent; }
-.pb-onboarding .pb-setup-unsupported summary { padding: .5rem 2rem .5rem 0; font-size: .8125rem; }
-.pb-onboarding .pb-setup-unsupported p { font-size: .8125rem; line-height: 1.6; }
 .pb-start-page { max-width: 76rem; }
 .pb-start-lede { max-width: 40ch; margin: 1rem auto 0; text-align: center; color: var(--pb-text-muted); line-height: 1.6; text-wrap: balance; }
 .pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
@@ -200,7 +188,6 @@
   .pb-onboarding-head { padding: 1.5rem; }
   .pb-onboarding-instructions { padding: 0 1.5rem 1.5rem; }
   .pb-start-steps .pb-onboarding-steps { padding-inline: 1.5rem; }
-  .pb-onboarding .pb-agent-setup { border-left: 0; border-top: 1px solid var(--pb-line); padding: 1.5rem; }
   .pb-thread-page { margin: 1rem; }
   .pb-inbox-head, .pb-inbox-section { padding-inline: 1.25rem; }
   .pb-inbox-section .pb-post-row { grid-template-columns: minmax(0, 1fr); }
@@ -216,7 +203,6 @@
   .pb-onboarding-head h2 { font-size: 1.5rem; }
   .pb-onboarding-instructions { padding: 0 1.25rem 1.25rem; }
   .pb-start-steps .pb-onboarding-steps { padding-inline: 1.25rem; }
-  .pb-onboarding .pb-agent-setup { padding: 1.25rem; }
   .pb-onboarding-steps li { grid-template-columns: 1.25rem minmax(0, 1fr); gap: .75rem; }
 }
 @media (prefers-reduced-motion: reduce) {

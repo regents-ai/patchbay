@@ -970,7 +970,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-home-sites,
 .pb-home-feed,
 .pb-board-head,
-.pb-agent-setup,
 .pb-home-search,
 .pb-feed,
 .pb-setup-page,
@@ -1392,22 +1391,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-home-feed .pb-home-search { margin-top: var(--space-1); width: 100%; }
 
 
-.pb-help {
-  margin: 0;
-  border-block-end: 1px solid var(--pb-line);
-  border-radius: var(--radius);
-  padding: 0;
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  font-size: var(--pb-fs-xs);
-}
-.pb-help > .pb-help-body { padding-top: var(--space-2); }
-.pb-help-body p { margin: 0 0 var(--space-1); color: var(--pb-text-muted); line-height: 1.5; }
-.pb-help-body p:last-child { margin-bottom: 0; }
-.pb-help-more { margin: var(--space-1) 0 0; }
-.pb-help-more a { font-weight: var(--font-weight-semibold); }
-
-.pb-agent-setup-status { display: grid; gap: var(--space-1); }
 .pb-setup-line {
   display: flex;
   align-items: flex-start;
@@ -1430,35 +1413,20 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   border-color: var(--pb-good);
   background: var(--pb-good);
 }
-.pb-setup-unsupported { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
-.pb-setup-unsupported p { margin: 0 0 var(--space-1); }
-.pb-setup-experimental { margin: var(--space-1) 0 0; }
-.pb-setup-experimental summary { cursor: pointer; font-weight: var(--font-weight-semibold); color: var(--pb-text); }
-.pb-setup-experimental p { margin: var(--space-1) 0 0; }
-.pb-starter-prompt {
-  display: block;
-  width: 100%;
-  margin: var(--space-1) 0;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--pb-line);
-  border-radius: var(--radius);
-  background: var(--pb-surface-sunk);
-  color: var(--pb-text);
-  font: var(--pb-fs-xs)/1.5 var(--font-family-ui);
-  resize: none;
-}
-.pb-fund-cta {
+/* The WebMCP guide's first line: whether this browser has WebMCP. */
+.pb-webmcp-status {
   display: grid;
-  justify-items: start;
   gap: var(--space-1);
-  margin: var(--space-1) 0;
+  margin: var(--space-2) 0;
+  padding: var(--space-2);
+  border: 1px solid var(--pb-line);
+  background: var(--pb-surface);
 }
-.pb-fund-cta p {
-  margin: 0;
-  color: var(--pb-text);
-  font-size: var(--pb-fs-xs);
-  line-height: 1.45;
-}
+.pb-webmcp-status p { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
+.pb-webmcp-status .rg-disclosure { border: 0; }
+.pb-webmcp-status .rg-disclosure > summary { min-height: 2.75rem; padding-block: 0; font-size: var(--pb-fs-xs); }
+.pb-webmcp-status .rg-disclosure-body { padding-block: 0; }
+.pb-webmcp-status .rg-disclosure-body p + p { margin-top: var(--space-1); }
 a.patchbay-button { text-decoration: none; }
 
 .pb-fund-card {
@@ -1754,7 +1722,6 @@ body:has(#patchbay-home),
 #report-evidence .patchbay-facts > div { min-width: 0; }
 #report-evidence code, #report-evidence time { overflow-wrap: anywhere; }
 .pb-full-evidence { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
-#patchbay-agent-setup .pb-agent-setup { margin-bottom: var(--space-2); }
 .pb-setup-payment-note { margin-bottom: var(--space-2); font-size: var(--pb-fs-xs); }
 .pb-setup-page, .pb-setup-page .rg-disclosure, .pb-setup-page .rg-disclosure-body { min-width: 0; }
 .pb-setup-page pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1776,10 +1743,7 @@ body:has(#patchbay-home),
 #patchbay-replies .rg-empty { padding: var(--space-2) 0; text-align: left; font-size: var(--pb-fs-xs); }
 .pb-full-evidence:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
 
-#patchbay-agent-setup .pb-agent-setup,
 #patchbay-agent-setup .pb-setup-payment-note { width: 100%; margin-inline: auto; }
-/* The shared disclosure draws its own chevron. */
-.pb-agent-setup summary::after { content: none; }
 #report-evidence .patchbay-facts a { font-size: var(--pb-fs-xs); }
 
 /* The footer of every page (`Layouts.product_links/1`). It is the frame's last

@@ -203,7 +203,6 @@ defmodule PatchbayWeb.Forum.BoardController do
           more_showcase?: more_showcase?,
           matches: section(Board.matches(filters.q), "Search matches"),
           following: followed_site_ids(following),
-          payments_enabled?: Board.payments_enabled?(),
           fix: Fix.offer(conn),
           hero: hero
         )

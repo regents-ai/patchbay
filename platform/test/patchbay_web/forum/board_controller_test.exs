@@ -139,33 +139,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       refute html =~ "This page is unavailable"
     end
-
-    test "payments rail follows Privy and Base RPC, not a hardcoded off switch", %{conn: conn} do
-      html = conn |> get(~p"/") |> html_response(200)
-      assert html =~ ~s(data-payments-enabled="false")
-      assert html =~ "Payments are not enabled on this deployment"
-
-      previous_privy = Application.get_env(:patchbay, :privy, [])
-      previous_rpc = Application.get_env(:regent_payments, :base_rpc_url)
-
-      Application.put_env(
-        :patchbay,
-        :privy,
-        Keyword.put(List.wrap(previous_privy), :app_id, "did:privy:test")
-      )
-
-      Application.put_env(:regent_payments, :base_rpc_url, "https://example.com/rpc")
-
-      try do
-        enabled = conn |> get(~p"/") |> html_response(200)
-        assert enabled =~ ~s(data-payments-enabled="true")
-        assert enabled =~ "Wallet not connected — Ask your human to sign in"
-        refute enabled =~ "Payments are not enabled on this deployment"
-      after
-        Application.put_env(:patchbay, :privy, previous_privy)
-        Application.put_env(:regent_payments, :base_rpc_url, previous_rpc)
-      end
-    end
   end
 
   describe "GET /sites" do

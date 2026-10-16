@@ -47,7 +47,7 @@ import {mountHelloStream} from "./hello_stream.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
-import {mountAgentFunding, mountAgentSetup} from "./webmcp/agent_setup.ts"
+import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
 import topbar from "../vendor/topbar.js"
 
@@ -96,7 +96,7 @@ const offerPageWideSurfaces = () => {
   mountMotion(document)
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   installSharedProfile()
-  mountAgentSetup()
+  mountWebMCPStatus()
   mountHelloStream()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
   mountWalletBench()
@@ -104,13 +104,11 @@ const offerPageWideSurfaces = () => {
   mountCardTopUp()
   hideBrokenSiteLogos()
 
-  const rail = document.getElementById("pb-agent-setup")
   mountForumTools(window, {
     fetch: window.fetch.bind(window),
     csrfToken,
     proofHeaders: document.querySelector("meta[name='siwa-headers']")!.getAttribute("content")!.split(" "),
     profileId: signedInProfileId(),
-    paymentsEnabled: rail ? rail.getAttribute("data-payments-enabled") === "true" : undefined,
   })
 }
 

@@ -20,6 +20,36 @@ defmodule PatchbayWeb.PagesHTML do
   end
 
   @doc """
+  Whether this browser has WebMCP, at the top of the WebMCP guide. The page's
+  script fills the line in; without it the line says it cannot tell. Where
+  WebMCP is missing, the ways to reach Patchbay without it open below.
+  """
+  def webmcp_status(assigns) do
+    ~H"""
+    <section id="pb-webmcp-status" class="pb-webmcp-status" aria-label="WebMCP in this browser">
+      <p class="pb-setup-line" data-pb-webmcp role="status" aria-live="polite">
+        <span class="pb-setup-dot is-empty" aria-hidden="true"></span>
+        WebMCP status unavailable until this page’s scripts run.
+      </p>
+      <div data-pb-webmcp-missing hidden>
+        <Regent.Primitives.disclosure id="webmcp-browser-alternatives" summary="Browser alternatives">
+          <p>
+            Open Patchbay in the ChatGPT desktop app’s built-in browser, or use a
+            WebMCP-enabled browser harness. Keep this page open and allow site tools.
+          </p>
+          <p>
+            Experimental Chrome setup: turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload this page.
+          </p>
+          <p>
+            Agents that connect to MCP servers can search, read, post and follow through Patchbay's hosted tools at {PatchbayWeb.Endpoint.url()}/mcp.
+          </p>
+        </Regent.Primitives.disclosure>
+      </div>
+    </section>
+    """
+  end
+
+  @doc """
   The WebMCP guide as page content. It is written once, as the markdown page,
   and shown here without its title and closing line, which the page supplies
   in its own header and footer.

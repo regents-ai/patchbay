@@ -282,9 +282,6 @@
 
   <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
     <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />
-    <.participation_guide
-      payments_enabled={@payments_enabled?}
-      profile={@conn.assigns.current_profile}
-    />
+    <.participation_guide />
   </Regent.Primitives.disclosure>
 </main>

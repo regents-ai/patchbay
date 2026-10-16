@@ -1,8 +1,6 @@
 defmodule PatchbayWeb.Forum.HomeControllerTest do
   use PatchbayWeb.ConnCase, async: true
 
-  alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
   test "GET / is the report board", %{conn: conn} do
@@ -20,16 +18,10 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="patchbay-mark")
     assert html =~ ~s(viewBox="0 0 1024 1024")
     refute html =~ ~s(src="/favicon-192.png")
-    assert html =~ ~s(id="pb-agent-setup")
-    assert html =~ ~s(data-payments-enabled=")
-    assert html =~ "Payments are not enabled on this deployment"
-    refute html =~ "Go to Profile"
     refute html =~ ~s(id="pb-agent-funding")
     refute html =~ "Your USDC Balance"
     refute html =~ "Copy funding request"
     refute html =~ "Check again"
-    assert html =~ "Copy starter prompt"
-    assert html =~ "Use the site tools exposed by this open Patchbay page."
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/sites")
     assert html =~ ~s(href="/start")
@@ -40,7 +32,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Patchbay V0.2"
     assert html =~ ~s(href="/docs">Developer docs</a>)
     assert html =~ ~s(data-pb-account="sign-in")
-    assert html =~ "Agent setup"
     assert html =~ "Ways to participate"
     assert html =~ ~s(href="/webmcp")
     refute html =~ "A website catches its own broken agent tool"
@@ -163,7 +154,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
              "Read patchbay.help/start and follow the setup instruction for your kind of agent. Setup never posts or pays. Optional: with WebMCP on, say hello with the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
 
     assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
-    assert Enum.count(LazyHTML.query(document, "#pb-agent-setup[open]")) == 1
 
     assert Enum.count(
              LazyHTML.query(document, "button[data-copy-target='pb-agent-handoff-text']")
@@ -176,7 +166,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert html =~ "Agent payments"
     document = LazyHTML.from_document(html)
-    assert Enum.empty?(LazyHTML.query(document, "#pb-agent-setup"))
     assert Enum.empty?(LazyHTML.query(document, ".pb-setup-page details[open]"))
     refute html =~ ~s(id="webmcp")
     assert html =~ ~s(id="x402")
@@ -239,24 +228,5 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert conn.status == 200
     assert response(conn, 200) =~ "User-agent: *"
     assert response(conn, 200) =~ "Allow: /"
-  end
-
-  test "GET / does not suggest funding when payments are disabled", %{conn: conn} do
-    profile =
-      Identity.upsert_from_privy!(%{
-        privy_user_id: "did:privy:home-fund",
-        wallet_address: "0x" <> String.duplicate("a", 40)
-      })
-
-    html =
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id)
-      |> get(~p"/")
-      |> html_response(200)
-
-    assert html =~ "Payments are not enabled on this deployment"
-    refute html =~ "Go to Profile"
-    refute html =~ ~s(id="pb-agent-funding")
   end
 end

@@ -75,7 +75,7 @@ test("a positive balance maps to ready", () => {
   assert.equal("found" in readiness, false);
 });
 
-test("BalanceController not_configured and a disabled rail map to not_configured", async () => {
+test("BalanceController not_configured and payments switched off map to not_configured", async () => {
   const fromHttp = mapBalanceHttp({
     ok: false,
     status: 503,
@@ -91,14 +91,14 @@ test("BalanceController not_configured and a disabled rail map to not_configured
   assert.equal(fromHttp.status, "not_configured");
   assert.match(fromHttp.message, /not set up/);
 
-  const fromRail = await readPaymentReadiness({
+  const switchedOff = await readPaymentReadiness({
     signedIn: true,
     paymentsEnabled: false,
     fetch: () => {
       throw new Error("disabled payments must not hit the balance door");
     },
   });
-  assert.deepEqual(fromRail, notConfigured());
+  assert.deepEqual(switchedOff, notConfigured());
 });
 
 test("pageSignedIn reads the pb-profile meta and never invents a session", () => {
