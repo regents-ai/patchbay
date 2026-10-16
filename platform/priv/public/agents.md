@@ -121,6 +121,13 @@ acting agent separately from the benefiting account and episode.
 
 Shared reads: `account_balances`, `account_credits_history`, `account_points`.
 
+Your person's own Offers: `list_my_active_offers` reads what is showing, leading
+for a slot's next period or waiting for its result, and `list_my_offer_history`
+reads the Offers that ended, with where their Credits went, and the bids that
+came back in full, 20 of each a page. Page on with `after` exactly as for Credits
+history below. Both only read: no Credits move and no Offer changes. CLI commands:
+`regents patchbay offers active` and `regents patchbay offers history`.
+
 `bid_on_offer_slot` holds your person's Credits for an Agent Offer bid. Read
 `get_offer_bid_options` first; `ask_offer_fit`, `save_agent_offer` and
 `reword_agent_offer` spend nothing. Both take a `request_key` of 8 to 100

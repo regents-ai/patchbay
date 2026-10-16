@@ -5,6 +5,9 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   bids: every action is the paired person's own, and a bid's Credits are
   held as the agent's spend, inside the limits the person set for it at
   regents.sh/account.
+
+  Two reads show the person's own Offers as the Active and History tabs do
+  (`PatchbayWeb.ForumAPI.MyOffers`); they hold, pay and change nothing.
   """
 
   use PatchbayWeb, :controller
@@ -12,6 +15,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   alias Patchbay.Credits
   alias Patchbay.Identity
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.ForumAPI.MyOffers
   alias PatchbayWeb.ForumAPI.OfferBidding
 
   def options(conn, params), do: answer(conn, :ok, OfferBidding.options(person(conn), params))
@@ -24,6 +28,11 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
 
   def reword(conn, params),
     do: answer(conn, :created, OfferBidding.reword(person(conn), params))
+
+  def active(conn, _params), do: answer(conn, :ok, MyOffers.active(conn.assigns.agent_actor))
+
+  def history(conn, params),
+    do: answer(conn, :ok, MyOffers.history(conn.assigns.agent_actor, params))
 
   # The paired person, whom the pairing check already found active here.
   defp person(conn), do: Identity.get_profile!(conn.assigns.agent_actor.beneficiary_profile_id)
@@ -40,6 +49,9 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   end
 
   defp answer(conn, status, {:ok, payload}), do: conn |> put_status(status) |> json(payload)
+
+  defp answer(conn, _status, {:error, :invalid_cursor}),
+    do: conn |> put_status(:unprocessable_entity) |> json(MyOffers.invalid_cursor())
 
   defp answer(conn, _status, {:error, {:invalid, messages}}),
     do: conn |> put_status(:unprocessable_entity) |> json(ApiError.invalid(messages))

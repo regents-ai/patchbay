@@ -5,8 +5,10 @@ defmodule PatchbayWeb.OffersLive.Expired do
   forfeited, and what it cost in the end), newest first; and every bid that
   did not win, which came back in full, with why.
 
-  Both lists come from the placement and bid records, read as their owner,
-  a page at a time.
+  Both lists come from `Patchbay.Offers.my_history/3`, read as their owner a
+  page at a time: the read a paired agent's `list_my_offer_history` gives
+  (`PatchbayWeb.ForumAPI.MyOffers`), which words each ending with the
+  functions here.
   """
 
   use PatchbayWeb, :live_view
@@ -18,12 +20,7 @@ defmodule PatchbayWeb.OffersLive.Expired do
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, duration: 1, offer_copy: 1, slot_name: 1]
 
-  require Ash.Query
-
-  alias Patchbay.Offers.Bid
-  alias Patchbay.Offers.Placement
-
-  @page 20
+  alias Patchbay.Offers
 
   @impl true
   def mount(_params, _session, socket) do
@@ -34,47 +31,29 @@ defmodule PatchbayWeb.OffersLive.Expired do
         signed_in?: not is_nil(socket.assigns.current_profile)
       )
       |> stream(:ended, [])
-      |> stream(:returned, [])
+      |> stream(:lost_bids, [])
 
     if socket.assigns.signed_in? do
-      {:ok, socket |> read(:ended, nil) |> read(:returned, nil)}
+      {:ok, socket |> read(:ended, nil) |> read(:lost_bids, nil)}
     else
       {:ok, socket}
     end
   end
 
   @impl true
-  def handle_event("more", %{"list" => list}, socket) when list in ["ended", "returned"] do
+  def handle_event("more", %{"list" => list}, socket) when list in ["ended", "lost_bids"] do
     list = String.to_existing_atom(list)
     {:noreply, read(socket, list, socket.assigns[cursor(list)])}
   end
 
   defp read(socket, list, after_cursor) do
-    page = [limit: @page] ++ if(after_cursor, do: [after: after_cursor], else: [])
-
     %{results: records, more?: more?} =
-      list
-      |> query(socket.assigns.current_profile)
-      |> Ash.read!(page: page)
+      Offers.my_history(socket.assigns.current_profile, list, after_cursor)
 
     socket
     |> stream(list, records)
     |> assign([{more(list), more?}])
     |> assign_cursor(list, List.last(records))
-  end
-
-  defp query(:ended, profile) do
-    Placement
-    |> Ash.Query.for_read(:mine, %{}, actor: profile)
-    |> Ash.Query.filter(status != :active)
-    |> Ash.Query.load(version: [:blocked_at], slot: [market: :site])
-  end
-
-  defp query(:returned, profile) do
-    Bid
-    |> Ash.Query.for_read(:mine, %{}, actor: profile)
-    |> Ash.Query.filter(status == :returned)
-    |> Ash.Query.load(version: [:blocked_at], slot: [market: :site])
   end
 
   defp assign_cursor(socket, _list, nil), do: socket
@@ -83,25 +62,29 @@ defmodule PatchbayWeb.OffersLive.Expired do
     do: assign(socket, [{cursor(list), last.__metadata__.keyset}])
 
   defp cursor(:ended), do: :ended_cursor
-  defp cursor(:returned), do: :returned_cursor
+  defp cursor(:lost_bids), do: :lost_bids_cursor
 
   defp more(:ended), do: :ended_more?
-  defp more(:returned), do: :returned_more?
+  defp more(:lost_bids), do: :lost_bids_more?
 
-  defp ended(:expired), do: "Ran its full time"
-  defp ended(:bought_out), do: "Replaced by a higher bid"
-  defp ended(:removed_for_policy), do: "Removed by a moderator"
+  @doc "Why a placement ended, in words."
+  def why_ended(:expired), do: "Ran its full time"
+  def why_ended(:bought_out), do: "Replaced by a higher bid"
+  def why_ended(:removed_for_policy), do: "Removed by a moderator"
 
-  defp returned(:outbid), do: "A higher bid won the slot."
-  defp returned(:stale), do: "The slot changed before the bids were compared."
-  defp returned(:ineligible), do: "Its wording could not be shown when its turn came."
-  defp returned(:next_leader_replaced), do: "A higher bid took the next period."
+  @doc "Why a bid did not win and came back, in words."
+  def why_returned(:outbid), do: "A higher bid won the slot."
+  def why_returned(:stale), do: "The slot changed before the bids were compared."
+  def why_returned(:ineligible), do: "Its wording could not be shown when its turn came."
+  def why_returned(:next_leader_replaced), do: "A higher bid took the next period."
 
-  defp returned(:cancelled_by_buyout),
+  def why_returned(:cancelled_by_buyout),
     do: "The Offer it was waiting behind was replaced by a higher bid."
 
-  defp returned(:placement_removed), do: "A moderator removed the Offer it was bidding against."
+  def why_returned(:placement_removed),
+    do: "A moderator removed the Offer it was bidding against."
 
-  defp ran_for(placement),
+  @doc "How long an ended placement ran, in words."
+  def ran_for(placement),
     do: duration(DateTime.diff(placement.ended_at, placement.starts_at, :second))
 end

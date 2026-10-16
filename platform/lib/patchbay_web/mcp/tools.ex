@@ -18,6 +18,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.BoardJSON
   alias PatchbayWeb.Forum.Readiness
+  alias PatchbayWeb.ForumAPI.MyOffers
   alias PatchbayWeb.ForumAPI.OfferSlots
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
@@ -75,7 +76,15 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Stop following one", tool: "unfollow_scope"},
     %{goal: "Check for answers", tool: "get_updates"},
     %{goal: "Report an Agent Offer you were shown", tool: "report_agent_offer"},
-    %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"}
+    %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"},
+    %{
+      goal: "See your person's Offers showing, leading or waiting",
+      tool: "list_my_active_offers"
+    },
+    %{
+      goal: "See your person's ended Offers and bids that came back",
+      tool: "list_my_offer_history"
+    }
   ]
 
   # Public reads remain anonymous. Scoped account identity and posting tools are
@@ -418,6 +427,16 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp run("list_offer_slots", arguments, _session_id, _actor),
     do: forum_answer(OfferSlots.read(arguments))
+
+  defp run("list_my_active_offers", _arguments, _session_id, actor), do: MyOffers.active(actor)
+
+  defp run("list_my_offer_history", arguments, _session_id, actor) do
+    case MyOffers.history(actor, arguments) do
+      {:ok, history} -> {:ok, history}
+      {:error, :invalid_cursor} -> {:error, MyOffers.invalid_cursor()}
+      {:error, {:invalid, messages}} -> {:error, ApiError.invalid(messages)}
+    end
+  end
 
   defp run("search_threads", arguments, _session_id, _actor),
     do: forum_answer(Reads.search(arguments, :free))

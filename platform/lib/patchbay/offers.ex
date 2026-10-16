@@ -17,6 +17,12 @@ defmodule Patchbay.Offers do
 
   use Ash.Domain, otp_app: :patchbay
 
+  import Ash.Expr, only: [expr: 1]
+
+  @active_page 50
+  @history_page 20
+  @offer [version: [:creative, :blocked_at], slot: [market: :site]]
+
   @doc "Whether automatic screening is paused for this local preview."
   def screening_paused? do
     :patchbay |> Application.get_env(Oban, []) |> Keyword.get(:testing) == :manual
@@ -54,6 +60,80 @@ defmodule Patchbay.Offers do
   def opening_minimum_minor(%{minimum_override_minor: minor}) when is_integer(minor), do: minor
   def opening_minimum_minor(_market), do: default_minimum_minor()
 
+  @doc """
+  `profile`'s own Offers in progress at `as_of`, as the Active tab shows
+  them: the placements `showing` now, the bids `leading` for a slot's next
+  period (each slot with its running placement, which says when that period
+  starts), and the bids `waiting` in an open window for their result. At
+  most #{@active_page} of each, newest first.
+
+  Every list is read through its record's `:mine` read with `profile` as the
+  actor, so it holds only `profile`'s own.
+  """
+  @spec my_active(Patchbay.Identity.AgentProfile.t(), DateTime.t()) :: %{
+          showing: [Patchbay.Offers.Placement.t()],
+          leading: [Patchbay.Offers.Bid.t()],
+          waiting: [Patchbay.Offers.Bid.t()]
+        }
+  def my_active(profile, as_of) do
+    page = [limit: @active_page]
+
+    %{
+      showing:
+        my_placements!(
+          actor: profile,
+          query: [filter: expr(status == :active and expires_at > ^as_of), load: @offer],
+          page: page
+        ).results,
+      leading:
+        my_bids!(
+          actor: profile,
+          query: [
+            filter: expr(status == :leading),
+            load: [version: [:creative, :blocked_at], slot: [:active_placement, market: :site]]
+          ],
+          page: page
+        ).results,
+      waiting:
+        my_bids!(
+          actor: profile,
+          query: [filter: expr(status == :held), load: @offer],
+          page: page
+        ).results
+    }
+  end
+
+  @doc """
+  One page of `profile`'s own past Offers, newest first, as the History tab
+  lists them: `:ended`, the placements that have ended, or `:lost_bids`, the
+  bids that did not win and came back in full. `after` is the keyset the
+  previous page of the same list ended on, or nil for the newest. At most
+  #{@history_page} a page.
+
+  Read through the record's `:mine` read with `profile` as the actor, so it
+  holds only `profile`'s own.
+  """
+  @spec my_history(Patchbay.Identity.AgentProfile.t(), :ended | :lost_bids, String.t() | nil) ::
+          Ash.Page.Keyset.t()
+  def my_history(profile, :ended, after_keyset) do
+    my_placements!(
+      actor: profile,
+      query: [filter: expr(status != :active), load: @offer],
+      page: history_page(after_keyset)
+    )
+  end
+
+  def my_history(profile, :lost_bids, after_keyset) do
+    my_bids!(
+      actor: profile,
+      query: [filter: expr(status == :returned), load: @offer],
+      page: history_page(after_keyset)
+    )
+  end
+
+  defp history_page(nil), do: [limit: @history_page]
+  defp history_page(keyset), do: [limit: @history_page, after: keyset]
+
   resources do
     resource Patchbay.Offers.Market do
       define(:get_market, action: :read, get_by: [:id])
@@ -90,9 +170,12 @@ defmodule Patchbay.Offers do
 
     resource Patchbay.Offers.Bid do
       define(:submit_bid, action: :submit)
+      define(:my_bids, action: :mine)
     end
 
-    resource(Patchbay.Offers.Placement)
+    resource Patchbay.Offers.Placement do
+      define(:my_placements, action: :mine)
+    end
 
     resource Patchbay.Offers.ModerationAction do
       define(:remove_placement, action: :remove_placement)

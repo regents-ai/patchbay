@@ -2,6 +2,10 @@ defmodule PatchbayWeb.OffersLive.Active do
   @moduledoc """
   The signed-in advertiser's active and upcoming placements, with titles,
   duration progress and read-only bid and return figures.
+
+  It reads `Patchbay.Offers.my_active/2`, the read a paired agent's
+  `list_my_active_offers` gives (`PatchbayWeb.ForumAPI.MyOffers`), and both
+  work out the figures with the functions here.
   """
 
   use PatchbayWeb, :live_view
@@ -13,16 +17,8 @@ defmodule PatchbayWeb.OffersLive.Active do
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, slot_label: 1]
 
-  require Ash.Query
-
-  import Ash.Expr, only: [expr: 1]
-
   alias Patchbay.Offers
-  alias Patchbay.Offers.Bid
-  alias Patchbay.Offers.Placement
   alias Patchbay.Offers.Terms
-
-  @mine 50
 
   @impl true
   def mount(_params, _session, socket) do
@@ -33,45 +29,27 @@ defmodule PatchbayWeb.OffersLive.Active do
      assign(socket,
        page_title: "Active Offers",
        as_of: as_of,
-       mine: if(profile, do: mine(profile, as_of))
+       mine: if(profile, do: Offers.my_active(profile, as_of))
      )}
   end
 
-  defp mine(profile, as_of) do
-    %{
-      showing:
-        read(Placement, profile, expr(status == :active and expires_at > ^as_of),
-          version: :creative,
-          slot: [market: :site]
-        ),
-      leading:
-        read(Bid, profile, expr(status == :leading),
-          version: :creative,
-          slot: [:active_placement, market: :site]
-        ),
-      waiting:
-        read(Bid, profile, expr(status == :held), version: :creative, slot: [market: :site])
-    }
-  end
+  @doc "What a showing placement's owner would get back if it were bought out at `now`."
+  def unused(placement, now), do: Terms.unused(placement.amount_minor, placement.expires_at, now)
 
-  defp read(resource, profile, filter, load) do
-    resource
-    |> Ash.Query.for_read(:mine, %{}, actor: profile)
-    |> Ash.Query.filter(^filter)
-    |> Ash.Query.load(load)
-    |> Ash.read!(page: [limit: @mine])
-    |> Map.fetch!(:results)
-  end
+  @doc "The least a bid must be to buy out a placement, or to outbid a leading bid."
+  def buyout(record),
+    do:
+      Terms.replacement_minimum(
+        record.amount_minor,
+        Offers.opening_minimum_minor(record.slot.market)
+      )
 
-  defp opening(market), do: Offers.opening_minimum_minor(market)
-
-  defp unused(placement, now), do: Terms.unused(placement.amount_minor, placement.expires_at, now)
-
-  defp buyout(record),
-    do: Terms.replacement_minimum(record.amount_minor, opening(record.slot.market))
-
-  defp upcoming_start(%{slot: %{active_placement: nil}}), do: nil
-  defp upcoming_start(%{slot: %{active_placement: placement}}), do: placement.expires_at
+  @doc """
+  When a leading bid's period starts: when its slot's running placement
+  ends, or nil while the slot is free.
+  """
+  def upcoming_start(%{slot: %{active_placement: nil}}), do: nil
+  def upcoming_start(%{slot: %{active_placement: placement}}), do: placement.expires_at
 
   attr(:starts_at, :any, default: nil)
   attr(:ends_at, :any, default: nil)

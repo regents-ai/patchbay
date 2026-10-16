@@ -16,7 +16,7 @@
         <li :for={{dom_id, placement} <- @streams.ended} id={dom_id} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong><.slot_name slot={placement.slot} id={"pb-offers-tip-#{placement.id}"} /></strong>
-            <span>{ended(placement.status)}</span>
+            <span>{why_ended(placement.status)}</span>
           </header>
           <.offer_copy version={placement.version} />
           <p class="patchbay-muted">
@@ -57,13 +57,13 @@
       <h2 id="pb-offers-returned">Bids that did not win</h2>
       <p class="patchbay-muted">Each of these came back in full.</p>
       <ol id="pb-offers-returned-list" class="pb-offmod-list" phx-update="stream">
-        <li :for={{dom_id, bid} <- @streams.returned} id={dom_id} class="pb-offmod-item">
+        <li :for={{dom_id, bid} <- @streams.lost_bids} id={dom_id} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong><.slot_name slot={bid.slot} id={"pb-offers-tip-#{bid.id}"} /></strong>
             <span>{credits(bid.amount_minor)} returned</span>
           </header>
           <.offer_copy version={bid.version} />
-          <p>{returned(bid.return_reason)}</p>
+          <p>{why_returned(bid.return_reason)}</p>
           <p class="patchbay-muted">
             Bid {moment(bid.accepted_at)} · returned {moment(bid.resolved_at)}
           </p>
@@ -73,10 +73,10 @@
         </li>
       </ol>
       <Regent.Primitives.button
-        :if={@returned_more?}
+        :if={@lost_bids_more?}
         variant="secondary"
         phx-click="more"
-        phx-value-list="returned"
+        phx-value-list="lost_bids"
       >
         <span class="pb-action-label" data-press-label>Show more</span>
       </Regent.Primitives.button>

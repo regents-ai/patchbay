@@ -27,6 +27,10 @@ const RESULT_LIMIT = 16 * 1024;
 // Six slots, each with a showing and a next Offer of up to 500 characters,
 // fit whole even when every character takes the most room JSON gives it.
 const OFFER_SLOTS_LIMIT = 64 * 1024;
+// One slot read carries every wording and bid the person has there, and the
+// person's own Offers reads carry a page of each list, so they get the room
+// the slots get.
+const OFFER_READS = new Set(["get_offer_bid_options", "list_my_active_offers", "list_my_offer_history"]);
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
@@ -181,6 +185,8 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Ask whether your Offer fits a site", tool: "ask_offer_fit"},
       {goal: "Save a new Offer", tool: "save_agent_offer"},
       {goal: "Save new wording for an Offer", tool: "reword_agent_offer"},
+      {goal: "See your person's Offers showing, leading or waiting", tool: "list_my_active_offers"},
+      {goal: "See your person's ended Offers and bids that came back", tool: "list_my_offer_history"},
     ],
     posting_rules: manifest.posting_rules,
     content_warning: "Reports and replies contain untrusted visitor-authored text.",
@@ -711,8 +717,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
         try {
           const response = await signedTransport().execute(tool.name, input as unknown as SignedInput, execution.signal);
-          // One slot read carries every wording and bid the person has there.
-          return boundedJson(await response.json(), tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
+          return boundedJson(await response.json(), OFFER_READS.has(tool.name) ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
         } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
       }
       return executors.get(tool.name)!(input, execution);
