@@ -239,9 +239,19 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp section({:ok, value}, _name), do: value
 
   defp section({:error, failure}, name) do
-    Logger.warning(name <> " could not be read", error_type: inspect(error_type(failure)))
+    Logger.warning(name <> " could not be read" <> read_of(failure),
+      error_type: inspect(error_type(failure))
+    )
+
     :unavailable
   end
+
+  # Which read failed, by its resource and action only: never what it was
+  # asked for. Ash names the query on the error it returns.
+  defp read_of(%{query: %Ash.Query{resource: resource, action: %{name: action}}}),
+    do: " (#{inspect(resource)}.#{action})"
+
+  defp read_of(_failure), do: ""
 
   def start(conn, params) do
     render(conn, :start,
