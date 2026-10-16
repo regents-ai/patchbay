@@ -39,8 +39,7 @@ defmodule PatchbayWeb.OffersLive.Create do
   def handle_params(params, uri, socket),
     do: {:noreply, editor_params(socket, params, uri)}
 
-  @doc "Initialize the shared Offer editor on its hosting page's socket."
-  def initialize_editor(socket) do
+  defp initialize_editor(socket) do
     profile = socket.assigns.current_profile
 
     if profile && connected?(socket),
@@ -57,23 +56,21 @@ defmodule PatchbayWeb.OffersLive.Create do
     |> assign(saved: if(profile, do: saved(profile), else: []))
   end
 
-  @doc """
-  Takes the editor's state from the page address, so a reload or a
-  reconnect shows the same form and the browser restores what was typed in
-  it. `"reword"` names the saved Offer being reworded and `"delete"` the one
-  whose deletion is being confirmed; only the signed-in account's own saved
-  Offers open either, and only one never bid with can be deleted, so any
-  other id shows nothing.
-  """
-  def editor_params(socket, params, uri) do
+  # Takes the editor's state from the page address, so a reload or a
+  # reconnect shows the same form and the browser restores what was typed in
+  # it. `"reword"` names the saved Offer being reworded and `"delete"` the one
+  # whose deletion is being confirmed; only the signed-in account's own saved
+  # Offers open either, and only one never bid with can be deleted, so any
+  # other id shows nothing.
+  defp editor_params(socket, params, uri) do
     socket
     |> assign(editor_uri: uri)
     |> choose(params["reword"])
     |> choose_deletion(params["delete"])
   end
 
-  @doc "Moves to the same page with `changes` made to its address; a `nil` value drops that key."
-  def patch_editor(socket, changes) do
+  # Moves to the same page with `changes` made to its address; a `nil` value drops that key.
+  defp patch_editor(socket, changes) do
     uri = URI.parse(socket.assigns.editor_uri)
 
     query =

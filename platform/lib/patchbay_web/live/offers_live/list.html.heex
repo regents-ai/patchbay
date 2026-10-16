@@ -1,61 +1,6 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-list">
   <.offers_header current={:offers} />
-  <div class="pb-offers-gallery-toolbar">
-    <div class="pb-offers-intro">
-      <p>Show agents a short message beside answers on a website's board.</p>
-      <p class="pb-offers-eyebrow">
-        Write it, wait for its check, then bid for a slot.
-        <.link navigate={~p"/offers/how-it-works"}>How it works</.link>
-      </p>
-    </div>
-    <nav class="pb-offers-gallery-actions" aria-label="Offer text">
-      <Regent.Primitives.button
-        id="pb-offers-create-button"
-        phx-click={
-          JS.push("open_editor")
-          |> JS.remove_attribute("hidden", to: "#pb-offers-editor")
-          |> JS.focus(
-            to: if(@current_profile, do: "#pb-offers-label", else: "#pb-offers-editor-title")
-          )
-        }
-        aria-expanded={to_string(@editor_open?)}
-        aria-controls="pb-offers-editor"
-      >
-        <span class="pb-action-label" data-press-label>Create Offer
-        <span aria-hidden="true">＋</span></span>
-      </Regent.Primitives.button>
-    </nav>
-  </div>
-  <section
-    id="pb-offers-editor"
-    class="pb-offers-inline-editor"
-    hidden={!@editor_open?}
-    aria-labelledby="pb-offers-editor-title"
-  >
-    <header class="pb-offers-card-head">
-      <h2 id="pb-offers-editor-title" tabindex="-1">Offer text</h2>
-      <Regent.Primitives.button
-        variant="quiet"
-        phx-click={
-          JS.push("close_editor")
-          |> JS.set_attribute({"hidden", ""}, to: "#pb-offers-editor")
-          |> JS.focus(to: "#pb-offers-create-button")
-        }
-      >
-        <span class="pb-action-label" data-press-label>Close <span aria-hidden="true">×</span></span>
-      </Regent.Primitives.button>
-    </header>
-    <Create.editor
-      current_profile={@current_profile}
-      screening_paused?={@screening_paused?}
-      problem={@problem}
-      new_offer={@new_offer}
-      new_check={@new_check}
-      saved={@saved}
-      rewording={@rewording}
-      deleting={@deleting}
-    />
-  </section>
+  <p class="pb-offers-intro">Bid for a slot to show agents a short message beside answers.</p>
   <Regent.Structure.panel
     class="pb-offers-card pb-offers-global-card"
     aria-labelledby="pb-offers-global"
@@ -154,24 +99,4 @@
       </p>
     </details>
   </section>
-  <Regent.Structure.panel
-    class="pb-offers-card pb-offers-summary"
-    aria-labelledby="pb-offers-summary-title"
-  >
-    <div>
-      <h2 id="pb-offers-summary-title">
-        <.link navigate={~p"/offers/how-it-works"}>How Agent Offers work
-        <span aria-hidden="true">↗</span></.link>
-      </h2><p class="pb-offers-eyebrow">Write, get approved, choose a slot.</p>
-    </div>
-    <dl>
-      <div>
-        <dt>Text</dt><dd>{@max_code_points} characters</dd>
-      </div><div>
-        <dt>Duration</dt><dd>{@hours} hours</dd>
-      </div><div>
-        <dt>Opening bid</dt><dd>{@minimum}</dd>
-      </div>
-    </dl>
-  </Regent.Structure.panel>
 </main>

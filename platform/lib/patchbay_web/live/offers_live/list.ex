@@ -25,7 +25,6 @@ defmodule PatchbayWeb.OffersLive.List do
   alias Patchbay.Offers
   alias Patchbay.Offers.Returns
   alias PatchbayWeb.OffersLive.BidDesk
-  alias PatchbayWeb.OffersLive.Create
   alias PatchbayWeb.OffersLive.Markets
 
   @page 12
@@ -34,54 +33,24 @@ defmodule PatchbayWeb.OffersLive.List do
   def mount(_params, _session, socket),
     do:
       {:ok,
-       socket
-       |> Create.initialize_editor()
-       |> assign(
-         editor_open?: false,
+       assign(socket,
          page_title: "Agent Offers",
          max_code_points: Patchbay.Offers.CreativeText.max_code_points(),
-         hours: div(Patchbay.Offers.Terms.duration_us(), 3_600_000_000),
-         minimum: credits(Offers.default_minimum_minor())
+         hours: div(Patchbay.Offers.Terms.duration_us(), 3_600_000_000)
        )}
 
-  # The address holds the search and the editor: whether it is open and the
-  # saved Offer being reworded, so a reload or a reconnect shows the same page.
+  # The address holds the search, so a reload or a reconnect shows the same page.
   @impl true
-  def handle_params(params, uri, socket) do
-    editor_open? = params["editor"] == "create"
-
-    {:noreply,
-     socket
-     |> assign(editor_open?: editor_open?)
-     |> Create.editor_params(if(editor_open?, do: params, else: %{}), uri)
-     |> search(params |> Map.get("q", "") |> String.trim())}
-  end
+  def handle_params(params, _uri, socket),
+    do: {:noreply, search(socket, params |> Map.get("q", "") |> String.trim())}
 
   @impl true
   def handle_event("search", %{"q" => text}, socket) do
-    q = if String.trim(text) == "", do: nil, else: text
-    {:noreply, Create.patch_editor(socket, %{"q" => q})}
+    query = if String.trim(text) == "", do: [], else: [q: text]
+    {:noreply, push_patch(socket, to: ~p"/offers?#{query}")}
   end
 
   def handle_event("more", _params, socket), do: {:noreply, read_sites(socket)}
-
-  def handle_event("open_editor", _params, socket),
-    do: {:noreply, Create.patch_editor(socket, %{"editor" => "create"})}
-
-  def handle_event("close_editor", _params, socket),
-    do:
-      {:noreply,
-       Create.patch_editor(socket, %{"editor" => nil, "reword" => nil, "delete" => nil})}
-
-  # Events stay on the hosting LiveView, so its session check runs before
-  # the shared editor reads or saves anything for the current account.
-  def handle_event(event, params, socket)
-      when event in ~w(check save reword check_reword cancel_reword save_reword ask_delete cancel_delete delete),
-      do: Create.handle_event(event, params, socket)
-
-  @impl true
-  def handle_info(:offer_reviews_changed, socket),
-    do: Create.handle_info(:offer_reviews_changed, socket)
 
   # The same search keeps the sites already shown. Every new search reads the
   # whole page again as of one moment, so the times, prices and figures on it
