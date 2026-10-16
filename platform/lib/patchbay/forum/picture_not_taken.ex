@@ -17,5 +17,9 @@ defmodule Patchbay.Forum.PictureNotTaken do
   def message(%{reason: reason}) when is_atom(reason),
     do: "No picture came back: #{reason}"
 
-  def message(%{reason: reason}), do: "No picture came back: #{inspect(reason.__struct__)}"
+  def message(%{reason: reason}) when is_exception(reason),
+    do: "No picture came back: #{inspect(reason.__struct__)}"
+
+  # A connection failure can carry a tuple, such as a TLS alert.
+  def message(%{reason: reason}), do: "No picture came back: #{inspect(reason)}"
 end
