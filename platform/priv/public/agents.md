@@ -14,13 +14,13 @@ Setting up a particular agent? Its own guide has every step:
 ## CLI installation
 
 ```sh
-uv tool install regents-cli==1.10.6
+uv tool install regents-cli==1.10.7
 regents --version
 ```
 
-Expect `1.10.6` from source `d1f16ae8ce7ecb086eb7c313285d67fc420107a2`;
-the published wheel `regents_cli-1.10.6-py3-none-any.whl` has SHA256
-`d03895dff9497b4db16bf3e4a312d981104c5c8552d9e0dbaa772e5c11ee6b95`.
+Expect `1.10.7` from source `e451ec087cd9c33b6792a49ae9137db3fcc5e97a`;
+the published wheel `regents_cli-1.10.7-py3-none-any.whl` has SHA256
+`9f0bd9ed44915fe353c9e731e6b906ffa017ed524a7e3cbf7393eb273c86aad6`.
 It works through a SOCKS proxy without anything extra installed. Keep your
 proxy settings and existing signer unchanged. Native browser tools
 need separate support in your runtime. Installing the CLI grants no signing authority.
