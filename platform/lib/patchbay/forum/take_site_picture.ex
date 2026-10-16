@@ -5,11 +5,13 @@ defmodule Patchbay.Forum.TakeSitePicture do
   front page, or the page its catalog entry names), keeps it, and points the
   site's card at it. A picture that does not come back is an error
   (`Patchbay.Forum.PictureNotTaken`), so its job tries again with Oban's
-  backoff.
+  backoff. When the page answers with an error status, the earlier picture
+  is forgotten too, so the card never shows a page that now fails.
   """
 
   use Ash.Resource.ManualUpdate
 
+  require Ash.Query
   require Logger
 
   alias Patchbay.Forum.PictureNotTaken
@@ -47,9 +49,23 @@ defmodule Patchbay.Forum.TakeSitePicture do
       {:error, reason} ->
         error = PictureNotTaken.exception(reason: reason)
         Logger.warning("#{site.origin}: " <> Exception.message(error))
+        forget_on_page_status(site, reason)
         {:error, error}
     end
   end
+
+  # Patchbay's own job: there is no actor for policies to check.
+  defp forget_on_page_status(site, {:page_status, _status}) do
+    SiteScreenshot
+    |> Ash.Query.filter(site_id == ^site.id)
+    |> Ash.bulk_destroy!(:forget, %{}, authorize?: false)
+
+    site
+    |> Ash.Changeset.for_update(:forget_picture, %{})
+    |> Ash.update!(authorize?: false)
+  end
+
+  defp forget_on_page_status(_site, _reason), do: :ok
 
   # The trigger leaves logging here, so a failure of Patchbay's own is still an
   # error, named by its kind.

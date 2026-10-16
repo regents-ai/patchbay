@@ -262,6 +262,13 @@ defmodule Patchbay.Forum.Site do
       accept([:screenshot_path, :screenshot_captured_at])
     end
 
+    update :forget_picture do
+      description("The site's page answered with an error status, so its card shows no picture.")
+      accept([])
+      change(set_attribute(:screenshot_path, nil))
+      change(set_attribute(:screenshot_captured_at, nil))
+    end
+
     update :picture_failed do
       description("Three tries at a picture failed: the next try waits a day.")
       accept([])

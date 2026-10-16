@@ -11,8 +11,10 @@ public websites only, never Fly's private network or the machine itself.
 ## How Patchbay calls it
 
 `POST /shot` with `{"url": "https://..."}` answers `200` with a 1600×1000
-WebP picture, `400` for anything but an https address, or `502` when the
-page could not be pictured. Pictures are taken one at a time.
+WebP picture, `400` for anything but an https address, `422` with
+`{"page_status": 403}` when the page itself answered with an error status
+(4xx or 5xx), so no picture of an error page is ever returned, or `502` when
+the page could not be pictured. Pictures are taken one at a time.
 
 ## Run it locally
 
@@ -76,6 +78,12 @@ Run on Fly on 2026-09-24, after `fly apps create` and the first deploy:
 - Patchbay reaches it at `http://patchbay-shots.flycast`: a request from the
   live app answered 200 with a WebP picture. That address is IPv6 only, so
   Patchbay looks it up as IPv6.
+
+Run locally on 2026-10-16 (server.js with a local Chromium, no address rules):
+`https://httpbin.org/status/403` and `/status/503` answer 422 with their
+`page_status`, a redirect ending on a 404 answers 422 with 404,
+`https://www.bestprice.gr/` answers 422 with 403, and `https://example.com/`
+is pictured (200).
 
 After Patchbay's next deploy, this prints `:ok`:
 `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'IO.inspect(elem(Patchbay.Forum.Shots.take(\"https://example.com/\"), 0))'"`

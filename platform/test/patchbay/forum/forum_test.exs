@@ -168,6 +168,7 @@ defmodule Patchbay.ForumTest do
                  {:record_refresh, :update},
                  {:take_picture, :update},
                  {:record_screenshot, :update},
+                 {:forget_picture, :update},
                  {:picture_failed, :update}
                ]
                |> Enum.sort()

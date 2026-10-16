@@ -39,11 +39,15 @@ defmodule Patchbay.Forum.SiteScreenshot do
       upsert_identity(:one_per_site)
       upsert_fields([:image, :captured_at])
     end
+
+    destroy :forget do
+      description("Forgets the picture once the site's page answers with an error status.")
+    end
   end
 
   policies do
-    # The picture is shown on a public card. Storing one is Patchbay's own
-    # work and is never reached from outside.
+    # The picture is shown on a public card. Storing and forgetting one is
+    # Patchbay's own work and is never reached from outside.
     policy action_type(:read) do
       authorize_if(always())
     end

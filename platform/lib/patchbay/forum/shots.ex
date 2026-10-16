@@ -9,6 +9,7 @@ defmodule Patchbay.Forum.Shots do
 
   @doc """
   A WebP picture of the page at `page_url`, or why none came back: the
+  error status the page itself answered with (`{:page_status, 403}`), the
   machine's status, `:not_a_picture`, why the call ended (`:timeout`), or the
   exception Req raised.
   """
@@ -36,6 +37,11 @@ defmodule Patchbay.Forum.Shots do
 
       {:ok, %Req.Response{status: 200}} ->
         {:error, :not_a_picture}
+
+      # The page answered with an error status, so the machine took no picture of it.
+      {:ok, %Req.Response{status: 422, body: body}} ->
+        %{"page_status" => status} = Jason.decode!(body)
+        {:error, {:page_status, status}}
 
       {:ok, %Req.Response{status: status}} ->
         {:error, {:status, status}}

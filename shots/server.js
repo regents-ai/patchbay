@@ -1,7 +1,9 @@
 // Takes a picture of a public web page for Patchbay's gallery cards.
 //
 // POST /shot with {"url": "https://..."} answers with a WebP picture of the
-// page at 1600×1000, or an error status. Pictures are taken one at a time.
+// page at 1600×1000, or an error status. A page that answers with an error
+// status of its own (4xx or 5xx) is not pictured: the answer is 422 with
+// {"page_status": N}. Pictures are taken one at a time.
 // This machine holds no keys, and start.sh stops the browser from reaching
 // anything but public addresses.
 
@@ -22,6 +24,14 @@ const browser = await puppeteer.launch({
   args: ["--disable-dev-shm-usage", "--hide-scrollbars", "--mute-audio"],
 });
 
+// The page answered with an error status, so a picture would show its error page.
+class PageRefused extends Error {
+  constructor(status) {
+    super(`the page answered ${status}`);
+    this.status = status;
+  }
+}
+
 // A browser that has gone away takes no more pictures; the machine restarts.
 browser.on("disconnected", () => process.exit(1));
 
@@ -40,7 +50,9 @@ async function shoot(url) {
   try {
     const page = await context.newPage();
     await page.setViewport({ width: WIDTH, height: HEIGHT });
-    await page.goto(url, { waitUntil: "load", timeout: LOAD_TIMEOUT_MS });
+    // The answer to the last address in any chain of redirects.
+    const response = await page.goto(url, { waitUntil: "load", timeout: LOAD_TIMEOUT_MS });
+    if (response.status() >= 400) throw new PageRefused(response.status());
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
     return await page.screenshot({ type: "webp", quality: 80 });
   } finally {
@@ -88,7 +100,12 @@ const server = http.createServer(async (req, res) => {
     res.end(image);
   } catch (error) {
     console.error(`no picture of ${url}: ${error.message}`);
-    res.writeHead(502).end();
+
+    if (error instanceof PageRefused) {
+      res.writeHead(422, { "content-type": "application/json" }).end(JSON.stringify({ page_status: error.status }));
+    } else {
+      res.writeHead(502).end();
+    }
   }
 });
 

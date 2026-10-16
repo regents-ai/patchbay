@@ -1,12 +1,16 @@
 defmodule Patchbay.Forum.PictureNotTaken do
   @moduledoc """
-  Why the screenshot machine gave back no picture of a site's page: the status
-  it answered (a 502 when the site itself failed), what came back when it was
+  Why the screenshot machine gave back no picture of a site's page: the error
+  status the page itself answered with, the status the machine answered (a 502
+  when the site could not be loaded), what came back when it was
   not a picture, or why the call ended (`:timeout`, `:econnrefused`). A slow or
   failing outside site is routine, so it is logged as a warning, not an error.
   """
 
   use Splode.Error, fields: [:reason], class: :unknown
+
+  def message(%{reason: {:page_status, status}}),
+    do: "No picture came back: the page answered #{status}"
 
   def message(%{reason: {:status, status}}),
     do: "No picture came back: the screenshot machine answered #{status}"
