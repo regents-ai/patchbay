@@ -5,7 +5,7 @@ defmodule PatchbayWeb.OffersLive.Active do
 
   It reads `Patchbay.Offers.my_active/2`, the read a paired agent's
   `list_my_active_offers` gives (`PatchbayWeb.ForumAPI.MyOffers`), and both
-  work out the figures with the functions here.
+  work out the figures with `PatchbayWeb.OffersLive.Mine`.
   """
 
   use PatchbayWeb, :live_view
@@ -17,8 +17,10 @@ defmodule PatchbayWeb.OffersLive.Active do
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, slot_label: 1]
 
+  import PatchbayWeb.OffersLive.Mine,
+    only: [buyout: 1, unused: 2, upcoming_start: 1, upcoming_end: 1]
+
   alias Patchbay.Offers
-  alias Patchbay.Offers.Terms
 
   @impl true
   def mount(_params, _session, socket) do
@@ -32,24 +34,6 @@ defmodule PatchbayWeb.OffersLive.Active do
        mine: if(profile, do: Offers.my_active(profile, as_of))
      )}
   end
-
-  @doc "What a showing placement's owner would get back if it were bought out at `now`."
-  def unused(placement, now), do: Terms.unused(placement.amount_minor, placement.expires_at, now)
-
-  @doc "The least a bid must be to buy out a placement, or to outbid a leading bid."
-  def buyout(record),
-    do:
-      Terms.replacement_minimum(
-        record.amount_minor,
-        Offers.opening_minimum_minor(record.slot.market)
-      )
-
-  @doc """
-  When a leading bid's period starts: when its slot's running placement
-  ends, or nil while the slot is free.
-  """
-  def upcoming_start(%{slot: %{active_placement: nil}}), do: nil
-  def upcoming_start(%{slot: %{active_placement: placement}}), do: placement.expires_at
 
   attr(:starts_at, :any, default: nil)
   attr(:ends_at, :any, default: nil)

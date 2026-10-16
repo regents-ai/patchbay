@@ -60,7 +60,7 @@
           </dl>
           <.duration_timeline
             starts_at={upcoming_start(bid)}
-            ends_at={if upcoming_start(bid), do: Terms.expires_at(upcoming_start(bid))}
+            ends_at={upcoming_end(bid)}
             now={@as_of}
             planned
           />

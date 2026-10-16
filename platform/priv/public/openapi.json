@@ -8747,6 +8747,16 @@
           },
           "403": {
             "description": "Current pairing or product rights required."
+          },
+          "422": {
+            "description": "A query field was given (invalid); this read takes none.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }

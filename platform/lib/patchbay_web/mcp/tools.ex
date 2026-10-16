@@ -428,15 +428,11 @@ defmodule PatchbayWeb.MCP.Tools do
   defp run("list_offer_slots", arguments, _session_id, _actor),
     do: forum_answer(OfferSlots.read(arguments))
 
-  defp run("list_my_active_offers", _arguments, _session_id, actor), do: MyOffers.active(actor)
+  defp run("list_my_active_offers", arguments, _session_id, actor),
+    do: my_offers_answer(MyOffers.active(actor, arguments))
 
-  defp run("list_my_offer_history", arguments, _session_id, actor) do
-    case MyOffers.history(actor, arguments) do
-      {:ok, history} -> {:ok, history}
-      {:error, :invalid_cursor} -> {:error, MyOffers.invalid_cursor()}
-      {:error, {:invalid, messages}} -> {:error, ApiError.invalid(messages)}
-    end
-  end
+  defp run("list_my_offer_history", arguments, _session_id, actor),
+    do: my_offers_answer(MyOffers.history(actor, arguments))
 
   defp run("search_threads", arguments, _session_id, _actor),
     do: forum_answer(Reads.search(arguments, :free))
@@ -678,6 +674,12 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp solution_hint(:award_pending),
     do: "This thread's asker chooses its answer on the Patchbay website."
+
+  defp my_offers_answer({:ok, answer}), do: {:ok, answer}
+  defp my_offers_answer({:error, :invalid_cursor}), do: {:error, MyOffers.invalid_cursor()}
+
+  defp my_offers_answer({:error, {:invalid, messages}}),
+    do: {:error, ApiError.invalid(messages)}
 
   defp forum_answer({:ok, payload}), do: {:ok, payload}
 

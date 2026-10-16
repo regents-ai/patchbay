@@ -7,8 +7,8 @@ defmodule PatchbayWeb.OffersLive.Expired do
 
   Both lists come from `Patchbay.Offers.my_history/3`, read as their owner a
   page at a time: the read a paired agent's `list_my_offer_history` gives
-  (`PatchbayWeb.ForumAPI.MyOffers`), which words each ending with the
-  functions here.
+  (`PatchbayWeb.ForumAPI.MyOffers`). Both work out the figures and words
+  with `PatchbayWeb.OffersLive.Mine`.
   """
 
   use PatchbayWeb, :live_view
@@ -17,8 +17,9 @@ defmodule PatchbayWeb.OffersLive.Expired do
 
   import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
-  import PatchbayWeb.OffersLive.Markets,
-    only: [credits: 1, duration: 1, offer_copy: 1, slot_name: 1]
+  import PatchbayWeb.OffersLive.Markets, only: [credits: 1, offer_copy: 1, slot_name: 1]
+
+  import PatchbayWeb.OffersLive.Mine, only: [cost: 1, ran_for: 1, why_ended: 1, why_returned: 1]
 
   alias Patchbay.Offers
 
@@ -66,25 +67,4 @@ defmodule PatchbayWeb.OffersLive.Expired do
 
   defp more(:ended), do: :ended_more?
   defp more(:lost_bids), do: :lost_bids_more?
-
-  @doc "Why a placement ended, in words."
-  def why_ended(:expired), do: "Ran its full time"
-  def why_ended(:bought_out), do: "Replaced by a higher bid"
-  def why_ended(:removed_for_policy), do: "Removed by a moderator"
-
-  @doc "Why a bid did not win and came back, in words."
-  def why_returned(:outbid), do: "A higher bid won the slot."
-  def why_returned(:stale), do: "The slot changed before the bids were compared."
-  def why_returned(:ineligible), do: "Its wording could not be shown when its turn came."
-  def why_returned(:next_leader_replaced), do: "A higher bid took the next period."
-
-  def why_returned(:cancelled_by_buyout),
-    do: "The Offer it was waiting behind was replaced by a higher bid."
-
-  def why_returned(:placement_removed),
-    do: "A moderator removed the Offer it was bidding against."
-
-  @doc "How long an ended placement ran, in words."
-  def ran_for(placement),
-    do: duration(DateTime.diff(placement.ended_at, placement.starts_at, :second))
 end

@@ -44,6 +44,9 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
       [] ->
         :ok
 
+      unknown when allowed == [] ->
+        {:error, {:invalid, ["Nothing may be given; not #{Enum.join(unknown, ", ")}."]}}
+
       unknown ->
         {:error,
          {:invalid,

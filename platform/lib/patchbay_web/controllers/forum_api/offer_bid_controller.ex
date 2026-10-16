@@ -29,7 +29,8 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   def reword(conn, params),
     do: answer(conn, :created, OfferBidding.reword(person(conn), params))
 
-  def active(conn, _params), do: answer(conn, :ok, MyOffers.active(conn.assigns.agent_actor))
+  def active(conn, params),
+    do: answer(conn, :ok, MyOffers.active(conn.assigns.agent_actor, params))
 
   def history(conn, params),
     do: answer(conn, :ok, MyOffers.history(conn.assigns.agent_actor, params))

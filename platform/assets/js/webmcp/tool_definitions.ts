@@ -295,7 +295,12 @@ export function isPatchbayToolName(name: string) {
   return PERMANENT_TOOL_NAMES.includes(name) || /^uplift_current_skill_v\d+$/.test(name);
 }
 
-export function boundedJson(value: unknown, limit = 1100): string {
+/**
+ * `value` as JSON within `limit` bytes, or a refusal saying it could not be
+ * returned intact. A read passes `readHint`, what to do instead: it changed
+ * nothing, so its refusal says so and claims no unknown outcome.
+ */
+export function boundedJson(value: unknown, limit = 1100, readHint?: string): string {
   let code = "response_too_large";
   try {
     const exact = JSON.stringify(value);
@@ -304,12 +309,9 @@ export function boundedJson(value: unknown, limit = 1100): string {
   } catch {
     code = "invalid_result";
   }
-  const error = JSON.stringify(refusal(
-    code,
-    "The result could not be returned intact.",
-    "Check a write's status before retrying.",
-    {outcome: "unknown"},
-  ));
+  const error = JSON.stringify(readHint === undefined
+    ? refusal(code, "The result could not be returned intact.", "Check a write's status before retrying.", {outcome: "unknown"})
+    : refusal(code, "The result could not be returned intact. This read changed nothing.", readHint));
   if (new TextEncoder().encode(error).byteLength > limit) {
     throw new RangeError("The result limit must accommodate an error response.");
   }

@@ -23,7 +23,31 @@ defmodule Patchbay.Forum.Capabilities do
   # manifest with it from then on.
   @manifest_path "priv/tool_manifest.json"
   @external_resource @manifest_path
-  @manifest Jason.decode!(File.read!(@manifest_path))
+  @file_manifest Jason.decode!(File.read!(@manifest_path))
+
+  # `prepare_agent_request` prepares every signed operation in the file, so
+  # its list of operations is read from them and can never leave one out.
+  # The page's own registration reads the same list the same way
+  # (`assets/js/webmcp/agent_transport.ts`).
+  @signed_operations for tool <- @file_manifest["tools"],
+                         tool["operation_input_schema"],
+                         tool["authentication"] == "siwa_per_request",
+                         tool["availability"] == "available",
+                         do: tool["name"]
+
+  @manifest Map.update!(@file_manifest, "tools", fn tools ->
+              Enum.map(tools, fn
+                %{"name" => "prepare_agent_request"} = tool ->
+                  put_in(
+                    tool,
+                    ["input_schema", "properties", "operation", "enum"],
+                    @signed_operations
+                  )
+
+                tool ->
+                  tool
+              end)
+            end)
 
   @tools Enum.map(@manifest["tools"], fn tool ->
            %{

@@ -1,5 +1,5 @@
 import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts";
-import {signedTransport} from "./agent_transport.ts";
+import {PREPARABLE_OPERATIONS, signedTransport} from "./agent_transport.ts";
 import {errorIn, refusal} from "../api_error.ts";
 import type {ErrorBody, Refusal} from "../api_error.ts";
 import {sentence} from "./invocation_bridge.ts";
@@ -27,10 +27,25 @@ const RESULT_LIMIT = 16 * 1024;
 // Six slots, each with a showing and a next Offer of up to 500 characters,
 // fit whole even when every character takes the most room JSON gives it.
 const OFFER_SLOTS_LIMIT = 64 * 1024;
-// One slot read carries every wording and bid the person has there, and the
-// person's own Offers reads carry a page of each list, so they get the room
-// the slots get.
-const OFFER_READS = new Set(["get_offer_bid_options", "list_my_active_offers", "list_my_offer_history"]);
+// The person's own Offers reads, each with room for its largest possible
+// answer: every Offer at its longest (160 four-byte characters, an 80-character
+// label of escaped characters), on a 253-character site, with the largest
+// amounts. Active is 50 each of showing, leading and waiting, at most 1,941
+// bytes each: 281,800 bytes in all. History is 20 ended (2,160 bytes each)
+// and 20 lost bids (1,878 each) with a 2,048-byte cursor: 83,046 bytes.
+const MY_OFFERS_LIMITS: Record<string, number> = {
+  list_my_active_offers: 276 * 1024,
+  list_my_offer_history: 82 * 1024,
+};
+const MY_OFFERS_HINT = "Read the same Offers on the Active and History tabs at /offers/active and /offers/history.";
+
+// What prepare_agent_request may prepare is every signed operation, read from
+// the manifest's signed tools rather than kept as a second list.
+function preparableSchema<Schema>(schema: Schema): Schema {
+  const shaped = schema as {properties: {operation: Record<string, unknown>}};
+  return {...shaped, properties: {...shaped.properties, operation: {...shaped.properties.operation, enum: PREPARABLE_OPERATIONS}}} as Schema;
+}
+
 const SIGNING_TOOLS = new Set(["tip_agent", "post_priority_report"]);
 const REQUESTS_PATH = "/forum/requests";
 const UPDATES_PATH = "/forum/updates";
@@ -703,7 +718,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
     name: tool.name,
     title: tool.title,
     description: tool.description,
-    inputSchema: tool.input_schema,
+    inputSchema: tool.name === "prepare_agent_request" ? preparableSchema(tool.input_schema) : tool.input_schema,
     annotations: tool.annotations,
     execute: async (input: ForumInput = {}, execution: ToolExecution = {}) => {
       if (tool.name === "prepare_agent_request") {
@@ -717,7 +732,10 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
         try {
           const response = await signedTransport().execute(tool.name, input as unknown as SignedInput, execution.signal);
-          return boundedJson(await response.json(), OFFER_READS.has(tool.name) ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
+          const body = await response.json();
+          if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return boundedJson(body, MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
+          // One slot read carries every wording and bid the person has there.
+          return boundedJson(body, tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
         } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
       }
       return executors.get(tool.name)!(input, execution);

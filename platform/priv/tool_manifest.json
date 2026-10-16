@@ -25,33 +25,7 @@
         "properties": {
           "operation": {
             "type": "string",
-            "enum": [
-              "report_known_fix",
-              "report_tool_problem",
-              "report_tool_on_another_site",
-              "reply_to_report",
-              "ask_question",
-              "post_reply",
-              "get_request_status",
-              "mark_solution",
-              "like_post",
-              "unlike_post",
-              "record_answer_use",
-              "report_agent_offer",
-              "follow_scope",
-              "unfollow_scope",
-              "get_updates",
-              "get_subscriptions",
-              "account_balances",
-              "account_credits_history",
-              "account_points",
-              "invoke_patchbay_room",
-              "finish_patchbay_room_call",
-              "cancel_patchbay_room_call",
-              "request_patchbay_repair",
-              "agent_whoami",
-              "agent_status"
-            ]
+            "description": "The signed operation to prepare: any tool here that takes input, request and proof."
           },
           "input": {
             "type": "object",
