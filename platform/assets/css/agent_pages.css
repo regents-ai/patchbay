@@ -226,6 +226,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 }
 .pb-agent-start { margin: var(--space-3) 0 0; color: var(--agent-muted); font-size: .8125rem; }
 .pb-agent-start a { color: var(--agent-fg); }
+.pb-agent-start + .pb-agent-start { margin-top: .35rem; }
 
 /* The form: soft fields and round buttons. */
 .pb-agent .pb-fix-form { max-width: 40rem; }

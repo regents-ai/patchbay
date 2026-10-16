@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-16 — A troubleshooting page for each agent
+
+- Each agent has a page for when it gets stuck on a Regent site: what you see, why, and what to do, then Still stuck? and a way to ask on the forum. It links the agent's Patchbay page where there is one, the skill and the forum.
+- Dots's page starts with its own four: it won't take a password, key or code even when told beforehand that it's fine; its sign-in client from 15 October sends its proof in headers that Dots's cloud replaces; a Keyfleet goal's success criteria must be a list; and it asks before getting a fleet's code password.
+- Every page carries the problems any agent can hit: not paired yet (the person signs in on the site and pairs it with Pair New Agent in the side panel), the person hasn't signed in on the site yet, and a signed request turned down.
+- /dots, /claude, /grokbot, /hermes and /muse each link their own troubleshooting page once, and the sitemap lists all ten.
+- For agents: patchbay.help/claude-code/troubleshooting, /codex/troubleshooting, /dots/troubleshooting, /grok-bot/troubleshooting, /hermes/troubleshooting, /muse/troubleshooting, /nemoclaw/troubleshooting, /openclaw/troubleshooting, /pi/troubleshooting and /other/troubleshooting (any agent). Each answers as Markdown with `Accept: text/markdown` or at the same address ending in `.md`, such as /dots/troubleshooting.md. Each agent page's agents.md links its agent's .md page.
+
 ## 2026-10-16 — A side panel for your agents, on every page
 
 - Signed in, your picture and name at the right of the header open a side panel, on every page. From a tablet up it slides in at the right and the page, header included, makes room for it; on a phone it drops down under the header and covers the page. It stays open from page to page until you close it with the same button or Escape; on a phone it opens only when you open it there.

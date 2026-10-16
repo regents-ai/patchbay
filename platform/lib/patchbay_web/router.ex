@@ -182,10 +182,18 @@ defmodule PatchbayWeb.Router do
   # The agent pages, one per agent program, each at its own address.
   @agent_pages ~w(dots muse grokbot hermes claude)
 
-  # Each agent page's steps on their own, as the agents.md that agent reads.
+  # Each agent page's steps on their own, as the agents.md that agent reads, and
+  # each troubleshooting page as Markdown.
   scope "/", PatchbayWeb.Forum do
     for agent <- @agent_pages do
       get "/#{agent}/agents.md", BoardController, :agent_guide, private: %{home_page: agent}
+    end
+
+    for harness <- PatchbayWeb.Forum.Troubleshooting.harnesses() do
+      get PatchbayWeb.Forum.Troubleshooting.path(harness) <> ".md",
+          BoardController,
+          :troubleshooting_md,
+          private: %{harness: harness}
     end
   end
 
@@ -590,6 +598,14 @@ defmodule PatchbayWeb.Router do
     for agent <- @agent_pages do
       get "/#{agent}", BoardController, :home, private: %{home_page: agent}
       post "/#{agent}/threads", BoardController, :create_thread, private: %{home_page: agent}
+    end
+
+    # Each agent program's troubleshooting page, by its harness id.
+    for harness <- PatchbayWeb.Forum.Troubleshooting.harnesses() do
+      get PatchbayWeb.Forum.Troubleshooting.path(harness),
+          BoardController,
+          :troubleshooting,
+          private: %{harness: harness}
     end
 
     post "/threads/preview", BoardController, :preview_thread

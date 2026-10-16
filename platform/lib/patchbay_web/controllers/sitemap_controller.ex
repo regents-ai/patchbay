@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.SitemapController do
   @moduledoc """
   Every indexable page with the time it last changed: the fixed pages (with the
-  motion lab while the showcase is public), each site, each tool, and the
+  troubleshooting pages, and the motion lab while the showcase is public), each site, each tool, and the
   published threads. Bounded, so a crawler never
   waits on the whole board at once.
   """
@@ -9,6 +9,7 @@ defmodule PatchbayWeb.SitemapController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
+  alias PatchbayWeb.Forum.Troubleshooting
 
   @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agent-setup /help /webmcp /docs /about /contact /privacy /terms /blog /changelog /offers /offers/how-it-works /test-me /jev /wallet-bench/how-it-works)
   @threads 2_000
@@ -36,8 +37,10 @@ defmodule PatchbayWeb.SitemapController do
   end
 
   # The motion lab is listed only while the showcase is public.
-  defp static,
-    do: if(PatchbayWeb.Showcase.public?(), do: @static ++ ["/animations"], else: @static)
+  defp static do
+    pages = @static ++ Enum.map(Troubleshooting.harnesses(), &Troubleshooting.path/1)
+    if PatchbayWeb.Showcase.public?(), do: pages ++ ["/animations"], else: pages
+  end
 
   defp site_path(site), do: PatchbayWeb.Forum.BoardHTML.site_path(site)
 

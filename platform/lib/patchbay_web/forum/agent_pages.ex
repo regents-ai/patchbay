@@ -4,7 +4,8 @@ defmodule PatchbayWeb.Forum.AgentPages do
   /hermes and /claude. Each carries the same five steps in that program's own
   words: use Patchbay with no wallet, sign in as an agent, keep USDC in a
   wallet of its own, buy Regents Credits, and spend them. The page and its
-  agents.md read the same steps.
+  agents.md read the same steps, and both link the agent's troubleshooting page
+  (`PatchbayWeb.Forum.Troubleshooting`).
 
   A step is a title, why it matters, and what to do. Each thing to do is
   `{:say, parts}`, a sentence, or `{:run, text}`, a command to run. A part is
@@ -31,6 +32,7 @@ defmodule PatchbayWeb.Forum.AgentPages do
       id: id,
       path: "/" <> id,
       page_title: "Patchbay for " <> agent.title_name,
+      troubleshooting: PatchbayWeb.Forum.Troubleshooting.path(agent.harness),
       crowd: Enum.zip(agent.crowd, @spots),
       steps: [
         Map.put(agent.connect, :title, "Use Patchbay, no wallet needed"),

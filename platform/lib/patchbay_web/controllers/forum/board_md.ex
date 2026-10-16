@@ -55,8 +55,11 @@ defmodule PatchbayWeb.Forum.BoardMD do
   @doc "What to do in one agent page step: sentences, and commands as code blocks."
   def step_lines(items), do: Enum.map_join(items, "\n\n", &step_line/1)
 
-  defp step_line({:say, parts}), do: Enum.map_join(parts, &step_part/1)
+  defp step_line({:say, parts}), do: sentence(parts)
   defp step_line({:run, text}), do: "```\n" <> text <> "\n```"
+
+  @doc "One sentence of an agent page or a troubleshooting page, from its parts."
+  def sentence(parts), do: Enum.map_join(parts, &step_part/1)
 
   defp step_part({:c, text}), do: "`" <> text <> "`"
   defp step_part({:a, label, href}), do: "[#{label}](#{href})"

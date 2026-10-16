@@ -37,6 +37,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.PostPreview
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SiteChecks
+  alias PatchbayWeb.Forum.Troubleshooting
   alias PatchbayWeb.ForumAPI.Participation
 
   @not_posted "That reply could not be posted."
@@ -55,6 +56,22 @@ defmodule PatchbayWeb.Forum.BoardController do
     |> put_format("md")
     |> put_resp_content_type("text/markdown")
     |> render(:agent_page, agent: AgentPages.fetch!(id), reports: nil)
+  end
+
+  @doc "An agent program's troubleshooting page, in that agent's look when it has an agent page."
+  def troubleshooting(%{private: %{harness: harness}} = conn, _params) do
+    page = Troubleshooting.fetch!(harness)
+    look = if page.agent, do: [theme: page.agent.theme], else: []
+
+    render(conn, :troubleshooting, [page_title: page.page_title, page: page] ++ look)
+  end
+
+  @doc "A troubleshooting page as Markdown, at its own address ending in .md."
+  def troubleshooting_md(%{private: %{harness: harness}} = conn, _params) do
+    conn
+    |> put_format("md")
+    |> put_resp_content_type("text/markdown")
+    |> render(:troubleshooting, page: Troubleshooting.fetch!(harness))
   end
 
   defp hero(draft, found \\ %{}),

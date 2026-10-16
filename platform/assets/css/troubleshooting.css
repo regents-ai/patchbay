@@ -1,0 +1,102 @@
+/* The troubleshooting pages (/dots/troubleshooting and the rest): what you
+   see, why and what to do for each problem. They take the site's colours, or
+   the agent page's look where the agent has one. */
+.pb-trouble {
+  max-width: 48rem;
+  padding: var(--space-4) 0 var(--space-6);
+  font-family: var(--font-family-sans);
+}
+.pb-trouble-kicker {
+  margin: 0 0 var(--space-2);
+  color: var(--color-fg-muted);
+  font-size: .875rem;
+  font-weight: 500;
+}
+.pb-trouble-head h1 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-family-sans);
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+.pb-trouble-lede { margin: 0 0 var(--space-3); color: var(--color-fg-muted); font-size: 1.125rem; line-height: 1.5; }
+.pb-trouble-links { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.pb-trouble-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-fg);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: border-color 160ms ease, transform 160ms cubic-bezier(.23, 1, .32, 1);
+}
+.pb-trouble-links a:active, .pb-trouble-ask-link:active { transform: scale(.97); }
+.pb-trouble-agent { margin: var(--space-2) 0 0; color: var(--color-fg-muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.pb-trouble-agent a { color: var(--color-fg); }
+
+.pb-trouble-list { display: grid; gap: .75rem; margin: var(--space-5) 0 0; padding: 0; list-style: none; }
+.pb-trouble-problem {
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1.5rem;
+  background: var(--color-surface);
+  scroll-margin-top: var(--space-4);
+}
+.pb-trouble-problem h2 { margin: 0 0 .75rem; font-family: var(--font-family-sans); font-size: 1.375rem; font-weight: 600; letter-spacing: -.015em; }
+.pb-trouble-problem h3 {
+  margin: 1rem 0 .25rem;
+  color: var(--color-fg-muted);
+  font-family: var(--font-family-sans);
+  font-size: .8125rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.pb-trouble-problem p { margin: .4rem 0 0; line-height: 1.55; }
+.pb-trouble-problem a { color: var(--color-fg); text-decoration: underline; text-underline-offset: 2px; }
+.pb-trouble-problem code { font-family: var(--font-family-mono); font-size: .9em; overflow-wrap: anywhere; }
+.pb-trouble-problem pre {
+  margin: .5rem 0 0;
+  padding: .75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: .875rem;
+  background: var(--color-bg);
+  font-size: .875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pb-trouble-ask { margin-top: var(--space-5); }
+.pb-trouble-ask h2 { margin: 0 0 .5rem; font-family: var(--font-family-sans); font-size: 1.75rem; font-weight: 600; letter-spacing: -.03em; }
+.pb-trouble-ask p { margin: 0 0 var(--space-2); color: var(--color-fg-muted); line-height: 1.5; }
+.pb-trouble-ask-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-fg-on-accent);
+  font-weight: 600;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: transform 160ms cubic-bezier(.23, 1, .32, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pb-trouble-links a:hover { border-color: var(--color-fg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pb-trouble-links a, .pb-trouble-ask-link { transition: none; }
+}
+@media (max-width: 599px) {
+  .pb-trouble { padding-top: var(--space-2); }
+  .pb-trouble-problem { padding: 1rem; }
+}
