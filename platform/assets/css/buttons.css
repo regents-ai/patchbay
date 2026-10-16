@@ -1,10 +1,9 @@
 /* The main action fills from its base on hover or keyboard focus and its label
-   turns to the page colour. On hover only, and only when motion is welcome, a
-   trailing arrow leans the way it points: nothing moves on keyboard focus.
-   A press squishes, from motion.js like every other button. Regent still owns the shape, the outline
-   that draws round it and the warm sweep, which now crosses the fill. The
-   fill is a second paint layer under that sweep, so both states carry the
-   same two layers and only the fill's height moves. */
+   turns to the page colour. A press squishes, from motion.js like every other
+   button. Regent still owns the shape, the outline that draws round it and
+   the trailing chevron; the accent sweep crosses the fill. The fill is a
+   second paint layer under that sweep, so both states carry the same two
+   layers and only the fill's height moves. */
 @keyframes pb-button-sweep {
   from { background-position: 160% 0, left bottom; }
   to { background-position: -60% 0, left bottom; }
@@ -19,10 +18,6 @@
     background-position: 160% 0, left bottom;
     background-size: 300% 100%, 100% 0;
     transition: background-size var(--duration-base) var(--ease-out);
-  }
-  .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)) > span[aria-hidden="true"] {
-    display: inline-block;
-    transition: transform var(--duration-base) var(--ease-out);
   }
   .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):focus-visible { color: var(--pb-canvas); }
   .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):focus-visible::before {
@@ -42,9 +37,6 @@
 @media (prefers-reduced-motion: no-preference) {
   .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)) {
     --pb-button-sweep: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--pb-accent) 45%, transparent) 50%, transparent 70%);
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .rg-button:where(:not(.rg-button--secondary):not(.rg-button--quiet)):not(:disabled):not([disabled]):not([aria-disabled="true"]):hover > span[aria-hidden="true"] { transform: translate(2px, -2px); }
   }
 }
 @media (prefers-reduced-motion: reduce) {

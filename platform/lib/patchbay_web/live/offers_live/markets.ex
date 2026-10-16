@@ -279,7 +279,7 @@ defmodule PatchbayWeb.OffersLive.Markets do
       </p>
 
       <.link :if={@bid_path} navigate={@bid_path} class="rg-button rg-button--secondary">
-        <span data-press-label>View slot <span aria-hidden="true">→</span></span>
+        <span data-press-label>View slot</span>
       </.link>
     </li>
     """

@@ -2491,9 +2491,9 @@ a.pb-slot:focus-visible::before { box-shadow: inset 0 0 0 1px var(--pb-text); }
 .pb-slot--live .pb-slot-tag::before { content: ""; display: inline-block; width: .375rem; height: .375rem; margin-inline-end: .375rem; vertical-align: .0625rem; background: var(--pb-text); }
 .pb-slot--live .pb-slot-go { color: var(--pb-text-muted); }
 
-/* For sale: the lit tile, in the tangerine of the buttons' corners: a bar
-   down its left side and a glow that fades across it. */
-.pb-slot--open { --slot-signal: var(--palette-tangerine-tango); background: var(--pb-text); }
+/* For sale: the lit tile, in Patchbay's accent: a bar down its left side and
+   a glow that fades across it. */
+.pb-slot--open { --slot-signal: var(--pb-accent); background: var(--pb-text); }
 .pb-slot--open::before { background: linear-gradient(90deg, color-mix(in srgb, var(--slot-signal) 18%, var(--pb-surface)), var(--pb-surface) 75%); box-shadow: inset 3px 0 0 var(--slot-signal); }
 .pb-slot--open .pb-slot-go { padding: .25rem .375rem; color: var(--pb-accent-ink); background: var(--pb-accent); clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px); }
 .pb-slot-scan { position: absolute; inset: 0 auto 0 0; width: 40%; pointer-events: none; opacity: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--slot-signal) 30%, transparent), transparent); }

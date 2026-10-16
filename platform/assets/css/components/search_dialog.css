@@ -207,7 +207,7 @@
 }
 
 #shell-search-results mark {
-  background: color-mix(in oklch, var(--palette-tangerine-tango) 22%, transparent);
+  background: color-mix(in oklch, var(--pb-accent) 22%, transparent);
   color: inherit;
 }
 
