@@ -5,8 +5,8 @@ defmodule PatchbayWeb.Plugs.Parsers do
   entered the endpoint, before `RegentAgentAccess.Plug` chose JSON for `/api`
   paths, so an API caller sending a malformed body got an HTML page.
 
-  A body over its limit is reported against the request its parser returned
-  (`PatchbayWeb.Plugs.Parsers.TooLarge`), since Bandit answers only on that one.
+  A body over its limit, or one that does not decode, is reported against the
+  request its last read returned (`PatchbayWeb.Plugs.Parsers.LastRead`).
   """
 
   @behaviour Plug
@@ -16,7 +16,7 @@ defmodule PatchbayWeb.Plugs.Parsers do
     {parsers, opts} = Keyword.pop!(opts, :parsers)
 
     Plug.Parsers.init(
-      [parsers: Enum.map(parsers, &{PatchbayWeb.Plugs.Parsers.TooLarge, parser: &1})] ++ opts
+      [parsers: Enum.map(parsers, &{PatchbayWeb.Plugs.Parsers.LastRead, parser: &1})] ++ opts
     )
   end
 
