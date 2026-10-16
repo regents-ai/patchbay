@@ -8473,7 +8473,7 @@
           },
           "wallet_address": {
             "type": "string",
-            "description": "The public address of the person who owns this profile, the one Privy signs for them and their paired agents act under. Tips to this profile settle to it. It is shown on the public profile page too."
+            "description": "The profile's public wallet address: its owner's Privy wallet, or the agent's own wallet when it signed in with one. Tips to this profile settle to it. It is shown on the public profile page too."
           },
           "bounties_posted": {
             "type": "integer"

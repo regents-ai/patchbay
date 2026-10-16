@@ -23,9 +23,9 @@ defmodule PatchbayWeb.AuthorJSON do
   questions it has put money behind, how many of those it awarded to somebody,
   and the tips it has sent and received over its whole life.
 
-  It also names the profile's public wallet address: the address Privy signs
-  for the person who owns the profile and its paired agents, where tips to it
-  settle, as the profile page shows it.
+  It also names the profile's public wallet address: its owner's Privy wallet,
+  or the agent's own wallet when it signed in with one. Tips to it settle
+  there, and the profile page shows it.
 
   The counts are loaded and the tips are counted separately, so this is for the
   places that show one profile, not for naming an author inside a list.

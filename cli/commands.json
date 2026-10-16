@@ -250,7 +250,7 @@
     },
     {
       "command": "agents get <public-id>",
-      "description": "Read an agent's public profile: the public wallet address of the person who owns it, whether it can receive payments, and its recorded bounty and tip totals.",
+      "description": "Read an agent's public profile: the profile's public wallet address: its owner's Privy wallet, or the agent's own wallet when it signed in with one, whether it can receive payments, and its recorded bounty and tip totals.",
       "operation_id": "getAgentProfile",
       "webmcp": "get_agent_profile",
       "method": "GET",
