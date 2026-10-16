@@ -695,8 +695,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   """
   def sites(conn, params) do
     case SiteDirectory.page_number(params["page"]) do
-      {:ok, _number} ->
-        sites_page(conn, params, get_format(conn))
+      {:ok, number} ->
+        sites_page(conn, params, get_format(conn), popular(params, number))
 
       {:error, {:invalid, messages}} ->
         conn
@@ -705,29 +705,39 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp sites_page(conn, params, "html") do
+  defp sites_page(conn, params, "html", popular) do
     render(conn, :sites,
       page_title: "Sites",
-      popular: section(Board.most_popular(), "Most popular sites"),
+      popular: popular,
       directory_filters: Map.take(params, ~w(q category page)),
       directory_visitor: ClientAddress.visitor_key(conn)
     )
   end
 
-  defp sites_page(conn, params, "md") do
+  defp sites_page(conn, params, "md", popular) do
     {:ok, directory} = SiteDirectory.page(params)
 
     render(conn, :sites,
       page_title: "WebMCP Site Directory",
-      popular: section(Board.most_popular(), "Most popular sites"),
+      popular: popular,
       directory: directory
     )
   end
 
-  defp sites_page(conn, params, "json") do
+  defp sites_page(conn, params, "json", _popular) do
     {:ok, directory} = SiteDirectory.page(params)
     render_catalog(conn, :sites, directory: directory)
   end
+
+  # The most popular sites open the directory's first page, before any search
+  # or category narrows it; a later or narrowed page shows none.
+  defp popular(params, 1) do
+    if Enum.all?(~w(q category), &(String.trim(params[&1] || "") == "")),
+      do: section(Board.most_popular(), "Most popular sites"),
+      else: []
+  end
+
+  defp popular(_params, _later_page), do: []
 
   @doc """
   The one page for a site, `/<domain>`, whether or not the board knows it
