@@ -5032,7 +5032,7 @@
             }
           },
           "401": {
-            "description": "The signed request could not be verified for audience patchbay. A refusal from the sign-in server itself comes back with that server's own status and code.",
+            "description": "The signed request could not be verified for audience patchbay, or its body is not one this route takes (code unsupported_action; a body that is not JSON is code missing_signed_body). Nothing was done. A refusal from the sign-in server itself comes back with that server's own status and code.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5291,18 +5291,8 @@
               }
             }
           },
-          "400": {
-            "description": "The request body is not one this route takes.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
           "401": {
-            "description": "The signed request could not be verified for audience patchbay. A refusal from the sign-in server itself comes back with that server's own status and code.",
+            "description": "The signed request could not be verified for audience patchbay, or its body is not one this route takes (code unsupported_action; a body that is not JSON is code missing_signed_body). Nothing was done. A refusal from the sign-in server itself comes back with that server's own status and code.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5507,18 +5497,8 @@
               }
             }
           },
-          "400": {
-            "description": "The body is not an empty JSON object; no payment is accepted here.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
           "401": {
-            "description": "The signed request could not be verified for audience patchbay. A refusal from the sign-in server itself comes back with that server's own status and code.",
+            "description": "The signed request could not be verified for audience patchbay, or its body is not one this route takes (code unsupported_action; a body that is not JSON is code missing_signed_body). Nothing was done. A refusal from the sign-in server itself comes back with that server's own status and code.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5686,7 +5666,7 @@
             }
           },
           "401": {
-            "description": "The signed request could not be verified for audience patchbay. A refusal from the sign-in server itself comes back with that server's own status and code.",
+            "description": "The signed request could not be verified for audience patchbay, or its body is not one this route takes (code unsupported_action; a body that is not JSON is code missing_signed_body). Nothing was done. A refusal from the sign-in server itself comes back with that server's own status and code.",
             "content": {
               "application/json": {
                 "schema": {
@@ -10332,9 +10312,6 @@
           },
           "next_action": {
             "type": "string"
-          },
-          "agent_offers": {
-            "$ref": "#/components/schemas/AgentOffersRead"
           }
         },
         "required": [
