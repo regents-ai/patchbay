@@ -6,9 +6,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   A read is a `GET` or `HEAD` that reaches the router, or any message to the
   hosted MCP tools (a hosted post also draws on the hourly share of the
   signed agent's owner's account),
-  or a fix asked for from the home page, which counts free fixes and draws
-  the page again when it is refused, or an agent pairing with a person's
-  Regent account. Files served ahead of the router and the health check are
+  or an agent pairing with a person's Regent account. Files served ahead of the router and the health check are
   not counted. Other posts are left alone: each has its own hourly share, a
   signed agent's requests have their own share by the minute
   (`PatchbayWeb.Plugs.SignedBudget`), and nothing here stands between a
@@ -55,7 +53,6 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["chatgpt", "mcp"]}), do: true
-  defp counted?(%Plug.Conn{method: "POST", path_info: ["fixes"]}), do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["api", "agents", "v1", "pair"]}), do: true
   defp counted?(_conn), do: false
 

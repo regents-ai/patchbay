@@ -411,8 +411,7 @@ defmodule PatchbayWeb.AccountLive do
         </div>
 
         <p :if={@jev_runs == []} class="patchbay-muted">
-          Nothing yet. What you ask Jev from the <a href={~p"/"}>home page</a>
-          is kept here with its answer.
+          Nothing yet. What you ask Jev is kept here with its answer.
         </p>
 
         <ol :if={@jev_runs != []} class="pb-past-jev">

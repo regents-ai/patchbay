@@ -256,6 +256,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 .pb-agent .pb-hero-kind label:has(input:checked) { border-color: var(--agent-accent); background: var(--agent-accent); color: var(--agent-on-accent); }
 .pb-agent .pb-hero-details[open] { border-color: var(--agent-line); border-radius: var(--agent-radius); }
 .pb-agent .pb-hero-details > summary { border-color: var(--agent-line); background: var(--agent-field); }
+.pb-agent .pb-hero-details > summary:hover { background: var(--agent-raised); }
 .pb-agent .pb-ask-preview { border-radius: var(--agent-radius); }
 
 /* The quickstart: five numbered steps, each with why it matters and what to do. */

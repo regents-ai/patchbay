@@ -334,9 +334,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   The site header: the crown wordmark, the search every page starts from,
   the places a visitor can go, and an Ask button on every page but home.
   The search is a button that opens the search window
-  (`PatchbayWeb.SearchLive`), as ⌘ K does. The search, the places and Ask
-  are held together so a phone can set Ask beside the search, and the header
-  is the same height with or without it.
+  (`PatchbayWeb.SearchLive`), as ⌘ K does. The header keeps to one line at
+  every width and is the same height with or without Ask.
   """
   attr(:conn, :any, default: nil)
 

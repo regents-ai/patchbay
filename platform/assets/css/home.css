@@ -43,7 +43,7 @@
 .pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); text-decoration: none; }
 .pb-home-setup a:hover { color: var(--pb-text); text-decoration: underline; }
 /* The question box wears the same two cut corners as the post button; its
-   focus ring is drawn inside, where the cut cannot take it. */
+   focus ring is drawn inside, along the cut too. */
 .pb-home-hero .pb-fix-ask input {
   border-color: var(--pb-text); box-shadow: none;
   background:
@@ -52,14 +52,13 @@
     var(--pb-field);
   clip-path: var(--pb-cut);
 }
-.pb-home-hero .pb-fix-ask input:focus-visible { outline-offset: -5px; }
+.pb-home-hero .pb-fix-ask input:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--pb-accent-deep); }
 .pb-home-hero .pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
-.pb-home-hero :is(.pb-hero-details > summary, .pb-fix-more .pb-hero-kind label:not(:has(input:checked))) { background: var(--pb-field); }
+.pb-home-hero :where(.pb-hero-details > summary, .pb-fix-more .pb-hero-kind label:not(:has(input:checked))) { background: var(--pb-field); }
 .pb-home-hero .pb-fix-tools-list { background: var(--pb-field); }
 .pb-home-hero .pb-fix-more :is(label, legend), .pb-home-hero .pb-fix-goal-hint { color: var(--pb-text); }
 /* The hero buttons take the form's cut corners on their painted skin only, so
    the focus ring round each button is never cut. */
-.pb-home-hero .pb-hero-actions .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
 .pb-home-hero .pb-hero-actions .rg-button--secondary { border-color: transparent; background: transparent; color: var(--color-bg); }
 .pb-home-hero .pb-hero-actions .rg-button--secondary::before {
   content: ""; position: absolute; inset: -1px; z-index: -1; pointer-events: none;

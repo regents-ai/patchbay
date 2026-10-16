@@ -8,7 +8,7 @@ const DRAFT_KEY = "pb-hero-draft"
 const PICKS_KEY = "pb-hero-draft-tools"
 const FIELDS = ["goal", "site_url", "details", "thread_kind", "topic_tags"]
 const FIELD_NAMES = FIELDS.map(name => `ask[${name}]`)
-const DETAILS = ["ask[details]", "ask[topic_tags]"]
+const DETAILS = ["ask[details]", "ask[thread_kind]", "ask[topic_tags]"]
 const PREVIEW_PATH = "/threads/preview"
 const PICTURES = "ask[pictures][]"
 const MOST_PICTURES = 3
@@ -172,14 +172,23 @@ function foldUntilFocus(form: PageForm) {
 // The type of post is one pick at a time, and pressing the picked one again
 // unpicks it, so Patchbay chooses, as when none is picked.
 function mountKindChoice(form: PageForm) {
-  for (const input of form.querySelectorAll<HTMLInputElement>("input[name='ask[thread_kind]']")) {
-    let was = false
-    input.addEventListener("pointerdown", () => { was = input.checked })
+  const selector = "input[name='ask[thread_kind]']"
+  let picked = form.querySelector<HTMLInputElement>(`${selector}:checked`)
+  const unpick = (input: HTMLInputElement) => {
+    input.checked = false
+    picked = null
+    input.dispatchEvent(new Event("change", {bubbles: true}))
+  }
+  for (const input of form.querySelectorAll<HTMLInputElement>(selector)) {
     input.addEventListener("click", () => {
-      if (!was) return
-      input.checked = false
-      was = false
-      input.dispatchEvent(new Event("change", {bubbles: true}))
+      if (input === picked) unpick(input)
+      else picked = input
+    })
+    // Space on the picked one sends no click, so it is heard here.
+    input.addEventListener("keydown", event => {
+      if (event.key !== " " || input !== picked) return
+      event.preventDefault()
+      unpick(input)
     })
   }
 }

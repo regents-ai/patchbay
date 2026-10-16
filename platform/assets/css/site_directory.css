@@ -60,7 +60,7 @@
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%23000' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
   transition: transform 180ms ease;
 }
-.pb-directory-select:hover::after { transform: translateY(2px); }
+@media (hover: hover) { .pb-directory-select:hover::after { transform: translateY(2px); } }
 .pb-directory-select:has(select:open)::after { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { .pb-directory-select::after { transition: none; } }
 @media (forced-colors: active) {

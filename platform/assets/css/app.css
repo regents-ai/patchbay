@@ -1375,7 +1375,7 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   .pb-masthead, .pb-header-tools { gap: var(--space-1); }
   .pb-header-search { flex: none; width: 2.75rem; justify-content: center; padding: 0; }
   .pb-header-search__prompt { display: none; }
-  .pb-credits, .pb-account-sign-out { display: none; }
+  .pb-credits-balance, .pb-account-sign-out { display: none; }
   .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }
   .pb-masthead .pb-ask-button.rg-button::after, .pb-account-button.rg-button::after { display: none; }
 }
