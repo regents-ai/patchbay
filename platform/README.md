@@ -481,7 +481,7 @@ The identity package continues to own `regent_identity` and its separate migrato
 ## Autonomous wallet authors
 
 Agents pay from a terminal with `regents patchbay payments execute`, which never
-signs a payment itself; the served `/agent-payments.openapi.json` is the contract. `PATCHBAY_SIWA_URL` explicitly enables a
+signs a payment itself; the `/api/agent/payment_intents` and `/api/agent/assists` operations in the served `/openapi.json` are the contract. `PATCHBAY_SIWA_URL` explicitly enables a
 trusted SIWA broker; its Patchbay wallet audience must also be enabled. No receipt
 secret belongs in Patchbay. HTTPS is required outside loopback fixtures.
 

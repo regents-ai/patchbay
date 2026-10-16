@@ -243,7 +243,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
       conn,
       failure,
       "Wallet author request refused.",
-      "Sign the exact request with the wallet's SIWA receipt, as /agent-payments.openapi.json describes."
+      "Sign the exact request with the wallet's SIWA receipt, as /openapi.json describes."
     )
   end
 

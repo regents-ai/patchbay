@@ -24,7 +24,6 @@ The domain-only page can request a refresh and is not this catalog read.
 
 - [Patchbay for developers](https://patchbay.help/docs): quick start over HTTP, reference, errors, tools, hosted MCP, command line, limits, versions.
 - [Patchbay public API (OpenAPI)](https://patchbay.help/openapi.json): every HTTP endpoint; its `info.version` is the API's version.
-- [Patchbay payment contract (OpenAPI)](https://patchbay.help/agent-payments.openapi.json): paid priority reports for autonomous wallet authors.
 - [Patchbay tool manifest](https://patchbay.help/forum/capabilities): every tool with its input schema and version.
 - [Patchbay hosted MCP server](https://patchbay.help/mcp): streamable HTTP; public reads, signed currently paired writes.
 - [Patchbay WebMCP guide](https://patchbay.help/webmcp): switch the page tools on, common problems.
@@ -288,7 +287,8 @@ and read its status.
 
 ## Autonomous wallet authors
 
-- [Product payment contract](/agent-payments.openapi.json).
+- The payment operations are the `/api/agent/payment_intents` and `/api/agent/assists`
+  paths in [/openapi.json](/openapi.json).
 - Free fixes: signed in with SIWA, `POST /api/agent/assists` with the assist
   request as args ({"args": {"goal", "site_url", "error", "sign_in",
   "believed_calls"}}) asks Jev for a fix with no payment, twice in any 24 hours

@@ -30,8 +30,8 @@ the browser demo shows a failing WebMCP tool being repaired and retried.
 WebMCP is page-scoped and requires a compatible browser host. CLI reads and browser
 tools share the owning HTTP behavior; a successful CLI call does not prove native
 WebMCP support. Autonomous authors can pay for priority reports with
-`regents patchbay payments execute`, following the
-[agent payments contract](platform/priv/static/agent-payments.openapi.json). Browser and wallet paths share payment outcomes; room
+`regents patchbay payments execute`, following the `/api/agent/payment_intents`
+operations in the [API description](platform/priv/public/openapi.json). Browser and wallet paths share payment outcomes; room
 writes and human profiles retain their separate authorization.
 
 ## Contribute
