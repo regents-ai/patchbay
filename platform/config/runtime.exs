@@ -12,7 +12,7 @@ config :patchbay, Patchbay.OAuth,
         "regent.identity.manage" =>
           "connect and pair ChatGPT with your existing Regents identity across chats",
         "patchbay.posts.write" =>
-          "publish free public questions and replies under your paired identity when you authorize them"
+          "publish free public questions and replies, and nothing else, under your paired identity when you approve each one"
       },
       else: %{}
     )
@@ -20,14 +20,18 @@ config :patchbay, Patchbay.OAuth,
 config :regent_mcp_agents, :config,
   enabled?: mcp_identity_enabled?,
   audience: "patchbay",
-  keyring: [
-    base_url: System.get_env("SIWA_HOSTED_URL", "https://siwa.regents.sh"),
-    secret: System.get_env("SIWA_HOSTED_SECRET")
+  hosted_signer: [
+    base_url: System.get_env("SIWA_HOSTED_URL", "https://siwa-server.fly.dev"),
+    key: System.get_env("SIWA_HOSTED_SIGNING_KEY")
   ]
 
 # Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
 config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
 config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
+
+# ChatGPT pairs through the identity tools, so Patchbay offers it for pairing
+# only while ChatGPT identities are switched on.
+config :regent_agents, chatgpt_pairing: mcp_identity_enabled?
 
 config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
 
