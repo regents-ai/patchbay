@@ -203,7 +203,7 @@ defmodule Patchbay.Forum.Site do
     read :showcase do
       description("""
       The sites that offer agents WebMCP tools, in directory order: the
-      gallery on `/sites` and on the front page.
+      search window's sites before anything is typed.
       """)
 
       filter(expr(tool_count > 0))

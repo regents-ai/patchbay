@@ -1,0 +1,13 @@
+<main class="pb-workbench pb-sites-page" id="patchbay-sites">
+  <header class="pb-sites-head">
+    <h1>WebMCP Sites</h1>
+    <p>Search every website agents use, and see how many agent tools each one has.</p>
+  </header>
+
+  <.showcase_gallery sites={@popular} />
+
+  {live_render(@conn, PatchbayWeb.SiteDirectoryLive,
+    id: "site-directory-live",
+    session: %{"filters" => @directory_filters, "visitor" => @directory_visitor}
+  )}
+</main>

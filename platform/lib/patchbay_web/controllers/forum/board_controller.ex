@@ -49,7 +49,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   The home page. A link can open its form with the site, a tool and what
   to ask about filled in.
   """
-  def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)), "forum")
+  def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
 
   @doc "An agent page's quickstart on its own, as the agents.md that agent reads."
   def agent_guide(%{private: %{home_page: id}} = conn, _params) do
@@ -84,10 +84,10 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: ~p"/fixes/#{run.id}")
 
       {:error, %{said: _said} = problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem}), "forum")
+        render_home(conn, %{}, hero(draft, %{problem: problem}))
 
       {:error, failure} ->
-        render_home(conn, %{}, hero(draft, %{problem: Fix.refused(failure, conn)}), "forum")
+        render_home(conn, %{}, hero(draft, %{problem: Fix.refused(failure, conn)}))
     end
   end
 
@@ -141,7 +141,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # An agent's own page carries its quickstart, the form and the newest posts,
   # in that agent's look.
-  defp render_home(%{private: %{home_page: id}} = conn, _params, hero, "forum") do
+  defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
     agent = AgentPages.fetch!(id)
 
     reports =
@@ -164,12 +164,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   # read is `:unavailable` and says so where it would have been; the rest of
   # the page, the navigation and the form with what was typed still show.
   # Only the discussions are the page itself, so only their failure is a 503.
-  # `/` opens on the forum and `/sites` on the site directory; each reads its
-  # own filters from the address and the other view starts unfiltered.
-  defp render_home(conn, params, hero, view) do
-    {forum_params, directory_filters} =
-      if view == "sites", do: {%{}, Map.take(params, ~w(q category page))}, else: {params, %{}}
-
+  defp render_home(conn, forum_params, hero) do
     hello_stream = if forum_params["hellos"] == "siwa", do: "siwa", else: "all"
     filters = Discussions.filters(forum_params)
 
@@ -190,18 +185,13 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       {reports, next_page} ->
         sites = directory()
-        # Eight for the gallery, then the sidebar's three featured and eight more.
+        # The sidebar's three featured sites and eight more.
         {showcase, more_showcase?} = showcase(Board.list_showcase(11))
 
         conn
-        |> put_status(
-          if reports == :unavailable and view == "forum", do: :service_unavailable, else: :ok
-        )
+        |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
         |> render(:home,
-          page_title: if(view == "sites", do: "Sites", else: "Forum"),
-          home_view: view,
-          directory_filters: directory_filters,
-          directory_visitor: ClientAddress.visitor_key(conn),
+          page_title: "Forum",
           hello_stream: hello_stream,
           hello_events: Patchbay.Forum.Hellos.latest(hello_stream),
           filters: filters,
@@ -210,7 +200,6 @@ defmodule PatchbayWeb.Forum.BoardController do
           current_page: forum_params["after"],
           sites: sites,
           showcase: showcase,
-          home_showcase: Board.home_showcase(sites),
           more_showcase?: more_showcase?,
           matches: section(Board.matches(filters.q), "Search matches"),
           following: followed_site_ids(following),
@@ -433,10 +422,10 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:ok, thread} ->
         if params["step"] == "post" and params["previewed"] == PostPreview.digest(thread),
           do: publish_thread(conn, draft, thread, params["ask"]),
-          else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}), "forum")
+          else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}))
 
       {:error, problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem}), "forum")
+        render_home(conn, %{}, hero(draft, %{problem: problem}))
     end
   end
 
@@ -447,12 +436,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       redirect(conn, to: ~p"/posts/#{posted.id}")
     else
       {:error, problem} ->
-        render_home(
-          conn,
-          %{},
-          hero(draft, %{problem: problem, preview: preview(thread)}),
-          "forum"
-        )
+        render_home(conn, %{}, hero(draft, %{problem: problem, preview: preview(thread)}))
     end
   end
 
@@ -731,7 +715,11 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
-  @doc "The site directory: the home page's Sites view, or the listing itself as Markdown or JSON."
+  @doc """
+  The site directory: the most popular sites, then every site with its
+  search. The page reads the directory live; its Markdown and JSON are the
+  listing itself.
+  """
   def sites(conn, params) do
     case SiteDirectory.page_number(params["page"]) do
       {:ok, _number} ->
@@ -744,16 +732,28 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp sites_page(conn, params, "html"),
-    do: render_home(conn, params, hero(Hero.prefilled(%{})), "sites")
+  defp sites_page(conn, params, "html") do
+    render(conn, :sites,
+      page_title: "Sites",
+      popular: section(Board.most_popular(), "Most popular sites"),
+      directory_filters: Map.take(params, ~w(q category page)),
+      directory_visitor: ClientAddress.visitor_key(conn)
+    )
+  end
 
-  defp sites_page(conn, params, _format) do
+  defp sites_page(conn, params, "md") do
     {:ok, directory} = SiteDirectory.page(params)
 
-    render_catalog(conn, :sites,
+    render(conn, :sites,
       page_title: "WebMCP Site Directory",
+      popular: section(Board.most_popular(), "Most popular sites"),
       directory: directory
     )
+  end
+
+  defp sites_page(conn, params, "json") do
+    {:ok, directory} = SiteDirectory.page(params)
+    render_catalog(conn, :sites, directory: directory)
   end
 
   @doc """

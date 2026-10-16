@@ -18,4 +18,14 @@ A refresh reads the site's public pages without signing in or using its tools, s
 Reported tool counts stay research until a refresh checks them, and can be higher than the number of recorded tool names.
 A check that fails keeps the information from before. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
 
+## Most popular
+
+<%= if @popular == :unavailable do %>
+_The most popular sites could not be read just now. Every site is in the table above._
+<% else %>
+<%= for site <- @popular do %>
+- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= count_label(site.homepage_tool_count, "Agent Tool", "Agent Tools") %> recorded on its homepage
+<% end %>
+<% end %>
+
 <%= trailer() %>

@@ -101,7 +101,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
     <section id="site-directory" class="pb-site-directory" aria-labelledby="directory-heading">
       <header class="pb-directory-intro">
         <div>
-          <h2 id="directory-heading">WebMCP Sites</h2>
+          <h2 id="directory-heading">All sites</h2>
         </div>
         <span class="pb-directory-total">
           {metric(@page.total)} {if @page.total == 1, do: "site", else: "sites"}

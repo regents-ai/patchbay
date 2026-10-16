@@ -107,26 +107,30 @@ defmodule PatchbayWeb.Forum.Board do
          do: {:ok, page.results, page.more?}
   end
 
-  @doc "Featured screenshot surfaces use the same canonical site records as other reads."
-  def home_showcase(:unavailable), do: :unavailable
+  @doc """
+  The most popular sites, at the top of `/sites`: the catalog's featured
+  surfaces, each read as the same site record as everywhere else.
+  """
+  @spec most_popular() :: {:ok, [Site.t()]} | {:error, term()}
+  def most_popular do
+    with {:ok, sites, _more?} <- list_directory() do
+      by_origin = Map.new(sites, &{&1.origin, &1})
 
-  def home_showcase(sites) do
-    by_origin = Map.new(sites, &{&1.origin, &1})
-
-    for surface <- Patchbay.Forum.Catalog.featured_surfaces(),
-        site = by_origin[surface["origin"]],
-        site do
-      site
-      |> Map.put(:display_name, surface["display_name"])
-      |> Map.put(:screenshot_path, surface["screenshot_path"])
-      |> Map.put(:homepage_tool_count, surface["homepage_tool_count"])
+      {:ok,
+       for surface <- Patchbay.Forum.Catalog.featured_surfaces(),
+           site = by_origin[surface["origin"]],
+           site do
+         site
+         |> Map.put(:display_name, surface["display_name"])
+         |> Map.put(:screenshot_path, surface["screenshot_path"])
+         |> Map.put(:homepage_tool_count, surface["homepage_tool_count"])
+       end}
     end
   end
 
   @doc """
   The sites that offer agents WebMCP tools, at most `limit` of them: the
-  gallery on `/sites` and on the front page, and the search window's sites
-  before anything is typed.
+  search window's sites before anything is typed.
   """
   @spec list_showcase(pos_integer()) :: {:ok, [Site.t()], boolean()} | {:error, term()}
   def list_showcase(limit \\ @sites) do

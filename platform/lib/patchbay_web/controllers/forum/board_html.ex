@@ -943,26 +943,26 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   attr(:sites, :any,
     required: true,
-    doc: "featured homepage surfaces linked to canonical boards, or `:unavailable`"
+    doc: "the catalog's featured sites, each linked to its own page, or `:unavailable`"
   )
 
   @doc """
-  Eight real homepage screenshots with persistent names and domain board links.
-  Phones scroll the same gallery sideways; the posting form expands separately.
+  The most popular sites at the top of `/sites`: eight real screenshots of
+  their front pages, each opening the site's own page. Phones scroll the same
+  gallery sideways.
   """
   def showcase_gallery(assigns) do
     ~H"""
     <section :if={@sites != []} class="pb-showcase" aria-labelledby="pb-showcase-title">
       <div class="pb-showcase-head">
-        <h2 id="pb-showcase-title">Most Popular WebMCP Sites</h2>
-        <a href={~p"/sites"}>All sites →</a>
+        <h2 id="pb-showcase-title">Most popular</h2>
       </div>
       <Regent.Primitives.notice
         :if={@sites == :unavailable}
         tone="warning"
         class="pb-section-unavailable"
       >
-        The sites could not be loaded just now. <a href={~p"/sites"}>See all sites</a>
+        The most popular sites could not be loaded just now. Every site is listed below.
       </Regent.Primitives.notice>
       <div :if={@sites != :unavailable} class="pb-showcase-grid">
         <a
