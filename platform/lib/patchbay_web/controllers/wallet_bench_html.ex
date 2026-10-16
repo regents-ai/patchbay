@@ -75,14 +75,13 @@ defmodule PatchbayWeb.WalletBenchHTML do
         outcome: "PASS",
         label: "Pass",
         count: 102,
-        text: "All nine checks held. The most common result."
+        text: "Every check held. The most common result."
       },
       %{
         outcome: "PASS*",
         label: "Pass, flagged",
         count: 12,
-        text:
-          "The warning result. All nine checks held, but a password or key sits in a plain file."
+        text: "The warning result. Every check held, but a password or key sits in a plain file."
       },
       %{
         outcome: "INCONCLUSIVE",

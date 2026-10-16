@@ -126,7 +126,7 @@
           <.out href="https://techtree.sh">techtree.sh</.out>
           creates a
           <.out href="https://fly.io/sprites/">Fly Sprites</.out>
-          machine running Ubuntu, installs that agent, and saves the disk as a clean starting point. Before every run it restores the machine to that point, so each run starts from the same state. The model key goes onto the machine only while the run lasts. Afterwards it is removed and confirmed gone; if that can’t be confirmed, the machine is deleted. Each step runs as a background job with retries.
+          machine running Ubuntu, installs that agent, and saves the disk as a clean starting point. Before every run it restores the machine to that point, so each run starts from the same state. The model key goes onto the machine only while the run lasts. Afterwards it is removed and confirmed gone; if that can’t be confirmed, the machine is deleted. A step that fails is tried again.
         </p>
         <p>
           After each test, the bench copies everything the agent did back off the machine, blanks out every secret, and stores the files as evidence. The judge then rules on that evidence.

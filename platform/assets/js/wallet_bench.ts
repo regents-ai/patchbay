@@ -83,10 +83,19 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
 }
 
 // The Filter pill closes on Escape, giving focus back to its button, and on a
-// press anywhere outside it, as a menu does.
+// press anywhere outside it, as a menu does. A choice left at "Any recorded
+// version" stays out of the address it sends.
 function closeFilterAway(doc: Document) {
   const filter = doc.getElementById("pb-wb-filter") as HTMLDetailsElement | null
   if (!filter) return
+  const selects = Array.from(filter.querySelectorAll<HTMLSelectElement>("select"))
+  filter.querySelector("form")?.addEventListener("submit", () => {
+    for (const select of selects) if (select.value === "") select.disabled = true
+  })
+  // Back to this page from the browser's memory, every choice is usable again.
+  doc.defaultView?.addEventListener("pageshow", () => {
+    for (const select of selects) select.disabled = false
+  })
   doc.addEventListener("keydown", event => {
     if (event.key !== "Escape" || !filter.open) return
     filter.open = false

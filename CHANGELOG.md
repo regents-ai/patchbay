@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Wallet bench: plainer words and a shorter address
+
+- How the bench works says "A step that fails is tried again" and "Every check held" in place of wording meant for builders.
+- Filtering the grid leaves the choices still at "Any recorded version" out of the page address, so a shared link carries only what was picked.
+- For agents: nothing changes; tools and the API description are as before.
+
 ## 2026-10-16 — "This site", the same words as every Regent site
 
 - For agents: a `person_not_here` answer's hint now reads "Ask your person to sign in on this site once, then send the request again.", the same words every Regent site uses.

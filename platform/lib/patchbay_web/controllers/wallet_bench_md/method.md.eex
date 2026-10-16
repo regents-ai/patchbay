@@ -38,7 +38,7 @@ The last three are the money tests. Each run sets up a new wallet, and the bench
 
 ## How Techtree runs it on Sprites
 
-For each agent, [techtree.sh](https://techtree.sh) creates a [Fly Sprites](https://fly.io/sprites/) machine running Ubuntu, installs that agent, and saves the disk as a clean starting point. Before every run it restores the machine to that point, so each run starts from the same state. The model key goes onto the machine only while the run lasts. Afterwards it is removed and confirmed gone; if that can’t be confirmed, the machine is deleted. Each step runs as a background job with retries.
+For each agent, [techtree.sh](https://techtree.sh) creates a [Fly Sprites](https://fly.io/sprites/) machine running Ubuntu, installs that agent, and saves the disk as a clean starting point. Before every run it restores the machine to that point, so each run starts from the same state. The model key goes onto the machine only while the run lasts. Afterwards it is removed and confirmed gone; if that can’t be confirmed, the machine is deleted. A step that fails is tried again.
 
 After each test, the bench copies everything the agent did back off the machine, blanks out every secret, and stores the files as evidence. The judge then rules on that evidence.
 
