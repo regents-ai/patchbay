@@ -159,7 +159,6 @@ body {
   color: var(--pb-text);
   background: var(--pb-canvas);
 }
-.pb-masthead + #pb-content .patchbay-shell { min-height: calc(100vh - var(--pb-header-height)); }
 .pb-account {
   display: flex;
   align-items: center;
@@ -231,7 +230,6 @@ body {
 /* Patchbay's room is intentionally compact: the evidence should stay in view
    while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
-  min-height: 65vh;
   color: var(--pb-text);
   background: transparent;
   padding: var(--rg-panel-padding);
@@ -1784,25 +1782,24 @@ body:has(#patchbay-home),
 .pb-agent-setup summary::after { content: none; }
 #report-evidence .patchbay-facts a { font-size: var(--pb-fs-xs); }
 
-/* Source discovery and maker credit. */
-.product-links {
+/* The footer of every page (`Layouts.product_links/1`). It is the frame's last
+   row, and the frame is a column at least a screen tall whose content row grows,
+   so the footer sits at the foot of the screen however short the page is. The
+   rule above it is the row's own. */
+.regent-footer {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-  padding: var(--rg-panel-padding);
-  margin: var(--space-2) auto;
-  max-width: none;
-  font-size: 0.875rem;
-}
-.product-links__credit {
-  display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  margin-inline-start: auto;
-  min-height: 2.75rem;
-  white-space: nowrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--rg-panel-padding);
+  font-size: 0.8125rem;
 }
+.regent-footer p { margin: 0; }
+.regent-footer__social { display: flex; align-items: center; gap: var(--space-2); }
+.regent-footer__social > a, .regent-footer__social > a svg { display: inline-flex; width: 1.5rem; height: 1.5rem; }
+.regent-footer__links { display: flex; flex-wrap: wrap; column-gap: var(--space-3); }
+.regent-footer__links a { display: inline-flex; align-items: center; min-height: 2.75rem; color: inherit; }
 
 /* Complete public schemas stay contained on narrow tool pages. */
 .pb-complete-schema { max-width: 100%; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1853,9 +1850,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-name-form-row input { flex-basis: 10rem; }
 .pb-reclaim > .patchbay-board-facts { flex: 1 1 16rem; }
 .pb-reclaim .rg-button__label { flex: initial; }
-.product-links { margin: 0; padding: var(--rg-panel-padding); }
-.product-links > .rg-disclosure { flex: 1 1 15rem; }
-.product-links .rg-disclosure > summary { min-height: 2.75rem; }
 /* The places to go and the Ask button share one line down to the narrowest
    phones; the button says only "Ask" there. */
 @media (max-width: 429px) {

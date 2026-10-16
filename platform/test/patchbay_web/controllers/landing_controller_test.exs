@@ -34,11 +34,11 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(href="/sites")
     assert html =~ ~s(href="/start")
 
-    assert html =~ ~s(href="https://github.com/regents-ai/patchbay" rel="noopener noreferrer")
+    assert html =~ ~s(aria-label="Patchbay on GitHub")
 
     refute html =~ "latest.patchbay.help"
     refute html =~ "Patchbay V0.2"
-    assert html =~ "Help &amp; docs"
+    assert html =~ ~s(href="/help">Docs</a>)
     assert html =~ ~s(data-pb-account="sign-in")
     assert html =~ "Agent setup"
     assert html =~ "Ways to participate"
