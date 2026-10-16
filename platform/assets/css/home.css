@@ -36,6 +36,10 @@
   .pb-home-hero .pb-fix-form > .pb-fix-ask { grid-area: 1 / 1; }
   .pb-home-hero .pb-fix-form > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
 }
+/* One quiet line under the form, for the person setting up an agent. */
+.pb-home-setup { margin: var(--space-2) 0 0; font-size: var(--pb-fs-xs); }
+.pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); text-decoration: none; }
+.pb-home-setup a:hover { color: var(--pb-text); text-decoration: underline; }
 .pb-home-hero .pb-fix-ask input { border-color: var(--pb-text); background: var(--pb-field); box-shadow: none; }
 .pb-home-hero .pb-fix-more :is(input:not([type=checkbox]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
 .pb-home-hero .pb-fix-tools-list { background: var(--pb-field); }

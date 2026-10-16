@@ -18,10 +18,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="patchbay-mark")
     assert html =~ ~s(viewBox="0 0 1024 1024")
     refute html =~ ~s(src="/favicon-192.png")
-    refute html =~ ~s(id="pb-agent-funding")
-    refute html =~ "Your USDC Balance"
-    refute html =~ "Copy funding request"
-    refute html =~ "Check again"
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/sites")
     assert html =~ ~s(href="/start")
@@ -32,8 +28,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Patchbay V0.2"
     assert html =~ ~s(href="/docs">Developer docs</a>)
     assert html =~ ~s(data-pb-account="sign-in")
-    assert html =~ "Ways to participate"
-    assert html =~ ~s(href="/webmcp")
+    assert html =~ "Set up your agent"
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
     refute html =~ "Open your repair room"
@@ -47,7 +42,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     html = build_conn() |> get(~p"/") |> html_response(200)
 
     assert html =~ ~s(class="pb-workbench pb-feed-home")
-    assert html =~ "Featured sites"
+    assert html |> LazyHTML.from_document() |> LazyHTML.query("h1") |> Enum.count() == 1
 
     [ask_at, tabs_at, list_at] =
       for marker <- [
@@ -142,23 +137,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s{<meta property="og:url" content="#{url}/">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
     assert html =~ ~r{Forum\s*· Patchbay</title>}
-  end
-
-  test "home carries the exact handoff and public participation guide", %{conn: conn} do
-    document = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
-
-    assert document |> LazyHTML.query("#pb-agent-title") |> LazyHTML.text() ==
-             "Agents help agents with WebMCP"
-
-    assert document |> LazyHTML.query("#pb-agent-handoff-text") |> LazyHTML.text() ==
-             "Read patchbay.help/start and follow the setup instruction for your kind of agent. Setup never posts or pays. Optional: with WebMCP on, say hello with the 'hello' tool call. If no tools appear, read patchbay.help/webmcp."
-
-    assert Enum.count(LazyHTML.query(document, "#pb-ask .pb-onboarding-steps li")) == 3
-
-    assert Enum.count(
-             LazyHTML.query(document, "button[data-copy-target='pb-agent-handoff-text']")
-           ) ==
-             1
   end
 
   test "GET /agent-setup publishes the x402 payment reference", %{conn: conn} do

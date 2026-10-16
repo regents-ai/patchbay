@@ -1,20 +1,7 @@
 /* Patchbay composition; colors, typography and controls stay Regent-owned. */
 .pb-workbench { width: calc(100% - 3rem); max-width: 100rem; margin: 0 auto 3rem; color: var(--pb-text); }
 .pb-workbench-panes { display: grid; grid-template-columns: 12rem 22rem minmax(0, 1fr); border: 1px solid var(--pb-line); background: var(--pb-surface); min-height: 42rem; }
-.pb-scopes { background: var(--pb-canvas); padding: .75rem; border-right: 1px solid var(--pb-line); min-width: 0; }
-.pb-scopes a[aria-current="page"] { color: var(--pb-text); background: var(--pb-accent-wash); box-shadow: inset 2px 0 var(--pb-accent); }
 .pb-sidebar-label { font-family: var(--font-family-title); font-weight: 400; font-size: .6875rem; text-transform: uppercase; letter-spacing: .08em; margin: .75rem .4rem .45rem; color: var(--pb-text-muted); }
-.pb-featured-site { display: flex; align-items: center; min-width: 0; border: 1px solid var(--pb-line); margin: .4rem 0; }
-.pb-featured-site a { display: grid; min-width: 0; flex: 1; padding: .6rem .4rem; color: var(--pb-text); text-decoration: none; }
-.pb-featured-site strong { font-size: .8125rem; font-weight: 600; overflow-wrap: anywhere; }
-.pb-featured-site a > span { font-size: .625rem; margin-top: .2rem; color: var(--pb-text-muted); }
-.pb-sidebar-site { display: flex; min-width: 0; min-height: 2rem; align-items: center; border-bottom: 1px solid var(--pb-line); }
-.pb-sidebar-site a { flex: 1; min-width: 0; padding: .4rem; font-size: .75rem; color: var(--pb-text); text-decoration: none; overflow-wrap: anywhere; }
-.pb-workbench button[data-pb-follow] { border: 1px solid transparent; background: transparent; color: var(--pb-text-muted); cursor: pointer; min-width: 1.75rem; min-height: 1.75rem; padding: .25rem; font: inherit; font-size: .8125rem; }
-.pb-workbench button[data-pb-follow][aria-pressed="true"] { color: var(--pb-text); background: var(--pb-accent-wash); }
-.pb-workbench button[data-pb-follow]:hover { border-color: var(--pb-line-strong); }
-.pb-directory-link, .pb-sidebar-help { display: block; margin: .9rem .4rem; font-size: .75rem; }
-.pb-sidebar-help { padding-top: .8rem; border-top: 1px solid var(--pb-line); }
 .pb-discussions { min-width: 0; border-right: 1px solid var(--pb-line); }
 .pb-list-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 1.1rem 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-list-head h2 { font-family: var(--font-family-title); font-size: .9375rem; font-weight: 400; margin: 0; }
@@ -134,8 +121,6 @@
 .pb-onboarding-head .patchbay-kicker { margin: 0 0 .5rem; font-size: .625rem; letter-spacing: .1em; color: var(--pb-text-muted); }
 .pb-onboarding-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1.75rem; line-height: 1.2; }
 .pb-onboarding-head > a { flex: 0 0 auto; font-size: .8125rem; }
-.pb-onboarding-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.pb-onboarding-instructions { padding: 0 2rem 2rem; }
 .pb-onboarding-steps { margin: 0; padding: 0; list-style: none; }
 .pb-onboarding-steps li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 1rem; padding: 1.5rem 0; border-bottom: 1px solid var(--pb-line); }
 .pb-onboarding-steps li > span { padding-top: .25rem; font-family: var(--font-family-mono); font-size: .6875rem; color: var(--pb-text-muted); }
@@ -143,9 +128,6 @@
 .pb-onboarding-steps p { margin: 0; font-size: .875rem; line-height: 1.65; color: var(--pb-text-muted); max-width: 60ch; }
 .pb-onboarding-steps a { display: inline-block; margin-top: .5rem; font-size: .8125rem; }
 .pb-onboarding-steps code { color: var(--pb-text); background: var(--pb-accent-wash); padding: .125rem .3rem; }
-.pb-onboarding-note { margin-top: 1.5rem; padding-left: 1rem; border-left: 2px solid var(--pb-accent); font-size: .75rem; line-height: 1.6; }
-.pb-onboarding-note strong { font-weight: 600; }
-.pb-onboarding-note p { margin: .5rem 0 0; color: var(--pb-text-muted); }
 .pb-start-page { max-width: 76rem; }
 .pb-start-lede { max-width: 40ch; margin: 1rem auto 0; text-align: center; color: var(--pb-text-muted); line-height: 1.6; text-wrap: balance; }
 .pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
@@ -158,20 +140,13 @@
 .pb-start-page .pb-onboarding { margin-top: 1.5rem; }
 .pb-start-steps .pb-onboarding-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); column-gap: 2rem; padding: 0 2rem .5rem; }
 .pb-start-steps .pb-onboarding-steps li { border-bottom: 0; }
-.pb-workbench-mobile-scopes { display: none; }
 .pb-workbench :focus-visible, .pb-thread-page :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 @media (min-width: 900px) {
   .pb-workbench-panes { min-height: 0; }
-  .pb-scopes, .pb-discussions, .pb-reader { height: max(28rem, calc(100dvh - 23rem)); overflow-y: auto; scrollbar-width: thin; }
+  .pb-discussions, .pb-reader { height: max(28rem, calc(100dvh - 23rem)); overflow-y: auto; scrollbar-width: thin; }
 }
 @media (max-width: 1199px) {
   .pb-workbench-panes { grid-template-columns: 21rem minmax(0, 1fr); }
-  .pb-scopes { display: none; }
-  .pb-workbench-mobile-scopes { display: block; margin: 0 0 .75rem; font-size: .8125rem; }
-  .pb-workbench-mobile-scopes summary { cursor: pointer; padding-block: .5rem; }
-  .pb-workbench-mobile-scopes details > a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-  .pb-workbench-mobile-scopes form { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding-bottom: 1rem; }
-  .pb-workbench-mobile-scopes .rg-pill-select, .pb-workbench-mobile-scopes select { max-width: 100%; }
 }
 @media (max-width: 899px) {
   .pb-workbench { width: calc(100% - 2rem); }
@@ -184,9 +159,7 @@
   .pb-agent-intro h1 { font-size: 2rem; }
   .pb-agent-handoff { padding: 1rem; }
   .pb-agent-handoff textarea { min-height: 4.5rem; }
-  .pb-onboarding-grid { grid-template-columns: minmax(0, 1fr); }
   .pb-onboarding-head { padding: 1.5rem; }
-  .pb-onboarding-instructions { padding: 0 1.5rem 1.5rem; }
   .pb-start-steps .pb-onboarding-steps { padding-inline: 1.5rem; }
   .pb-thread-page { margin: 1rem; }
   .pb-inbox-head, .pb-inbox-section { padding-inline: 1.25rem; }
@@ -201,7 +174,6 @@
   .pb-agent-handoff textarea { min-height: 4.5rem; }
   .pb-onboarding-head { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.25rem; }
   .pb-onboarding-head h2 { font-size: 1.5rem; }
-  .pb-onboarding-instructions { padding: 0 1.25rem 1.25rem; }
   .pb-start-steps .pb-onboarding-steps { padding-inline: 1.25rem; }
   .pb-onboarding-steps li { grid-template-columns: 1.25rem minmax(0, 1fr); gap: .75rem; }
 }

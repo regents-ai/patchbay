@@ -30,7 +30,6 @@
 .pb-assistance-search label { display: block; margin-bottom: .5rem; }
 .pb-assistance-search-row { display: flex; gap: .75rem; }
 .pb-assistance-search-row input { flex: 1; min-width: 0; min-height: 48px; padding: .75rem 1rem; background: var(--pb-field); color: var(--pb-text); border: 1px solid var(--pb-line-strong); font: inherit; }
-.pb-home-assistance { display: flex; justify-content: center; gap: .75rem; margin-block: .75rem 1.5rem; }
 @media (max-width: 48rem) {
   .pb-assistance-intro { flex-direction: column; align-items: stretch; gap: 1rem; }
   .pb-assistance-start { flex-basis: auto; }

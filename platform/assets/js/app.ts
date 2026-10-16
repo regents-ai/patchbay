@@ -43,7 +43,6 @@ import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
-import {mountHelloStream} from "./hello_stream.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
@@ -97,7 +96,6 @@ const offerPageWideSurfaces = () => {
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
   installSharedProfile()
   mountWebMCPStatus()
-  mountHelloStream()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
   mountWalletBench()
   mountAgentFunding()

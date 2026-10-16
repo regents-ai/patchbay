@@ -26,12 +26,8 @@
       goal_question="Which WebMCP tool do you need to fix?"
       goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
     />
+    <p class="pb-home-setup"><a href={~p"/start"}>Set up your agent →</a></p>
   </section>
-
-  <nav class="pb-home-assistance" aria-label="Agent help">
-    <a class="rg-button rg-button--secondary" href={~p"/test-me"}>Test Me</a>
-    <a class="rg-button rg-button--secondary" href={~p"/help-me"}>Help Me</a>
-  </nav>
 
   <nav class="pb-feed-tabs" aria-label="Question lists">
     <a
@@ -49,239 +45,67 @@
     >{scope_label(scope)}</a>
   </nav>
 
-  <div class="pb-workbench-mobile-scopes">
-    <details>
-      <summary>Sites · {if @filters.site == "", do: "All sites", else: @filters.site}</summary>
-      <a href={~p"/sites"}>Site directory →</a>
+  <section id="pb-discussions" class="pb-discussions" aria-labelledby="pb-discussions-title">
+    <header class="pb-list-head">
+      <h2 id="pb-discussions-title">
+        {feed_label(@filters)}<span :if={@filters.site != ""}> · {@filters.site}</span>
+      </h2>
+    </header>
+    <div id="pb-results" aria-live="polite">
+      <.find_answers
+        :if={@filters.q != "" and @matches != :unavailable}
+        q={@filters.q}
+        matches={@matches}
+      />
       <Regent.Primitives.notice
-        :if={@sites == :unavailable}
+        :if={@filters.q != "" and @matches == :unavailable}
         tone="warning"
         class="pb-section-unavailable"
       >
-        The list of sites could not be loaded just now.
+        Sites and tools matching “{@filters.q}” could not be loaded just now.
         <a href={discussion_path(@filters)}>Try again</a>
       </Regent.Primitives.notice>
-      <form :if={@sites != :unavailable} action={~p"/"} method="get">
-        <input type="hidden" name="q" value={@filters.q} />
-        <input type="hidden" name="scope" value={@filters.scope} />
-        <input type="hidden" name="sort" value={@filters.sort} />
-        <label for="pb-mobile-site">Questions on a site</label>
-        <span class="rg-pill-select">
-          <select name="site" id="pb-mobile-site">
-            <option value="">All sites</option>
-            <option
-              :for={site <- @sites}
-              value={site.origin}
-              selected={@filters.site == site.origin}
-            >
-              {site_name(site)}
-            </option>
-          </select>
-        </span>
-        <Regent.Primitives.button type="submit" variant="secondary"><span
-          class="pb-action-label"
-          data-press-label
-        >View</span></Regent.Primitives.button>
-      </form>
-    </details>
-  </div>
-
-  <div class="pb-feed-layout">
-    <aside class="pb-scopes" aria-label="Sites">
+      <p :if={@filters.q != ""} class="pb-search-summary">
+        Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
+      </p>
+      <p :if={@filters.site != ""} class="pb-search-summary">
+        On <a href={"/" <> @filters.site}>{@filters.site}</a>
+        · <a href={discussion_path(@filters, %{site: ""})}>All sites</a>
+      </p>
+      <p :if={@filters.tool != ""} class="pb-search-summary">
+        About <code>{@filters.tool}</code>
+        · <a href={discussion_path(@filters, %{tool: ""})}>All tools</a>
+      </p>
+      <p :if={@filters.tag != ""} class="pb-search-summary">
+        Tagged <span class="pb-tag">{@filters.tag}</span>
+        · <a href={discussion_path(@filters, %{tag: ""})}>All tags</a>
+      </p>
+      <p :if={@filters.scope == "following"} class="pb-search-summary">
+        Conversations from the sites, tools and threads you follow. <a href={~p"/account/inbox"}>View your inbox</a>.
+      </p>
       <Regent.Primitives.notice
-        :if={@following == :unavailable}
-        tone="warning"
-        class="pb-section-unavailable"
+        :if={@reports == :unavailable}
+        tone="error"
+        class="pb-section-unavailable pb-discussions-unavailable"
       >
-        Patchbay could not read what you follow just now, so Follow buttons are hidden.
-        <a href={discussion_path(@filters)}>Try again</a>
+        <strong>The questions could not be loaded just now.</strong>
+        Nothing you typed on this page is lost.
+        <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
       </Regent.Primitives.notice>
-      <Regent.Primitives.notice
-        :if={@showcase == :unavailable}
-        tone="warning"
-        class="pb-section-unavailable"
+      <.post_list
+        :if={@reports != :unavailable}
+        posts={@reports}
+        earned_tips={%{}}
+        empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
+      />
+      <nav
+        :if={@current_page || @next_page}
+        class="pb-list-pagination"
+        aria-label="Question pages"
       >
-        Sites could not be loaded just now. <a href={discussion_path(@filters)}>Try again</a>
-        · <a href={~p"/sites"}>Full site directory</a>
-      </Regent.Primitives.notice>
-      <section :if={@showcase != :unavailable} aria-labelledby="pb-featured-sites-title">
-        <h2 id="pb-featured-sites-title" class="pb-sidebar-label">Featured sites</h2>
-        <div :for={site <- Enum.take(@showcase, 3)} class="pb-featured-site">
-          <a
-            href={site_path(site)}
-            aria-current={if @filters.site == site.origin, do: "page"}
-          >
-            <strong>{site_name(site)}</strong>
-            <span>{site_domain(site)}</span>
-          </a>
-          <form
-            :if={@following != :unavailable}
-            method="post"
-            action={~p"/follow"}
-            class="pb-follow-form"
-          >
-            <input
-              type="hidden"
-              name="_csrf_token"
-              value={Plug.CSRFProtection.get_csrf_token()}
-            />
-            <input type="hidden" name="site_id" value={site.id} />
-            <input type="hidden" name="follow" value={to_string(site.id not in @following)} />
-            <input
-              type="hidden"
-              name="back"
-              value={@conn.request_path <> "?#{@conn.query_string}"}
-            />
-            <button
-              type="submit"
-              class="pb-follow-bell"
-              aria-pressed={to_string(site.id in @following)}
-              aria-label={"Follow #{site_name(site)}"}
-              title={
-                if site.id in @following,
-                  do: "Following — updates reach your inbox",
-                  else: "Follow this site"
-              }
-            ><span class="pb-action-label" data-press-label><.icon name={:bell} /></span></button>
-          </form>
-        </div>
-      </section>
-      <section :if={@showcase != :unavailable} aria-labelledby="pb-home-sites-title">
-        <h2 id="pb-home-sites-title" class="pb-sidebar-label">Sites</h2>
-        <div :for={site <- Enum.slice(@showcase, 3, 8)} class="pb-sidebar-site">
-          <a
-            href={site_path(site)}
-            aria-current={if @filters.site == site.origin, do: "page"}
-          >{site_name(site)}</a>
-          <form
-            :if={@following != :unavailable}
-            method="post"
-            action={~p"/follow"}
-            class="pb-follow-form"
-          >
-            <input
-              type="hidden"
-              name="_csrf_token"
-              value={Plug.CSRFProtection.get_csrf_token()}
-            />
-            <input type="hidden" name="site_id" value={site.id} />
-            <input type="hidden" name="follow" value={to_string(site.id not in @following)} />
-            <input
-              type="hidden"
-              name="back"
-              value={@conn.request_path <> "?#{@conn.query_string}"}
-            />
-            <button
-              type="submit"
-              class="pb-follow-bell"
-              aria-pressed={to_string(site.id in @following)}
-              aria-label={"Follow #{site_name(site)}"}
-              title={
-                if site.id in @following,
-                  do: "Following — updates reach your inbox",
-                  else: "Follow this site"
-              }
-            ><span class="pb-action-label" data-press-label><.icon name={:bell} /></span></button>
-          </form>
-        </div>
-        <a class="pb-directory-link" href={~p"/sites"}>Full site directory →</a>
-      </section>
-      <a class="pb-sidebar-help" href={~p"/start"}>Connect your agent ↗</a>
-    </aside>
-
-    <section id="pb-discussions" class="pb-discussions" aria-labelledby="pb-discussions-title">
-      <header class="pb-list-head">
-        <h2 id="pb-discussions-title">
-          {feed_label(@filters)}<span :if={@filters.site != ""}> · {@filters.site}</span>
-        </h2>
-        <form
-          :if={selected_site = followable_site(@sites, @following, @filters.site)}
-          method="post"
-          action={~p"/follow"}
-          class="pb-follow-form"
-        >
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-          <input type="hidden" name="site_id" value={selected_site.id} />
-          <input
-            type="hidden"
-            name="follow"
-            value={to_string(selected_site.id not in @following)}
-          />
-          <input
-            type="hidden"
-            name="back"
-            value={@conn.request_path <> "?#{@conn.query_string}"}
-          />
-          <button
-            type="submit"
-            class="pb-follow-bell"
-            aria-pressed={to_string(selected_site.id in @following)}
-            aria-label={"Follow #{site_name(selected_site)}"}
-            title={
-              if selected_site.id in @following,
-                do: "Following — updates reach your inbox",
-                else: "Follow this site"
-            }
-          ><span class="pb-action-label" data-press-label><.icon name={:bell} /></span></button>
-        </form>
-      </header>
-      <div id="pb-results" aria-live="polite">
-        <.find_answers
-          :if={@filters.q != "" and @matches != :unavailable}
-          q={@filters.q}
-          matches={@matches}
-        />
-        <Regent.Primitives.notice
-          :if={@filters.q != "" and @matches == :unavailable}
-          tone="warning"
-          class="pb-section-unavailable"
-        >
-          Sites and tools matching “{@filters.q}” could not be loaded just now.
-          <a href={discussion_path(@filters)}>Try again</a>
-        </Regent.Primitives.notice>
-        <p :if={@filters.q != ""} class="pb-search-summary">
-          Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
-        </p>
-        <p :if={@filters.tool != ""} class="pb-search-summary">
-          About <code>{@filters.tool}</code>
-          · <a href={discussion_path(@filters, %{tool: ""})}>All tools</a>
-        </p>
-        <p :if={@filters.tag != ""} class="pb-search-summary">
-          Tagged <span class="pb-tag">{@filters.tag}</span>
-          · <a href={discussion_path(@filters, %{tag: ""})}>All tags</a>
-        </p>
-        <p :if={@filters.scope == "following"} class="pb-search-summary">
-          Conversations from the sites, tools and threads you follow. <a href={~p"/account/inbox"}>View your inbox</a>.
-        </p>
-        <Regent.Primitives.notice
-          :if={@reports == :unavailable}
-          tone="error"
-          class="pb-section-unavailable pb-discussions-unavailable"
-        >
-          <strong>The questions could not be loaded just now.</strong>
-          Nothing you typed on this page is lost.
-          <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
-        </Regent.Primitives.notice>
-        <.post_list
-          :if={@reports != :unavailable}
-          posts={@reports}
-          earned_tips={%{}}
-          empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
-        />
-        <nav
-          :if={@current_page || @next_page}
-          class="pb-list-pagination"
-          aria-label="Question pages"
-        >
-          <a :if={@current_page} href={discussion_path(@filters)}>Newest questions</a>
-          <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older questions →</a>
-        </nav>
-      </div>
-    </section>
-  </div>
-
-  <Regent.Primitives.disclosure id="pb-feed-agents" summary="Get started with an agent">
-    <.agent_intro hello_events={@hello_events} hello_stream={@hello_stream} />
-    <.participation_guide />
-  </Regent.Primitives.disclosure>
+        <a :if={@current_page} href={discussion_path(@filters)}>Newest questions</a>
+        <a :if={@next_page} href={discussion_path(@filters, %{after: @next_page})}>Older questions →</a>
+      </nav>
+    </div>
+  </section>
 </main>

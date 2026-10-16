@@ -3,8 +3,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   The public board: what browser agents reported back after calling a WebMCP
   tool, grouped by site and by the exact tool contract they called.
 
-  Controller pages embed LiveViews for site-check updates and the homepage's
-  scrolling site directory.
+  Controller pages embed LiveViews for site-check updates and the site
+  directory on `/sites`.
 
   Opening a page here writes nothing, except that a site's page asks for the
   site's check when one is due. The things a visitor can write from here are
@@ -160,18 +160,17 @@ defmodule PatchbayWeb.Forum.BoardController do
     )
   end
 
-  # Each part of the home page is read on its own. A part that could not be
-  # read is `:unavailable` and says so where it would have been; the rest of
-  # the page, the navigation and the form with what was typed still show.
-  # Only the discussions are the page itself, so only their failure is a 503.
+  # The form and the questions. A list that could not be read says so where
+  # it would have been; the navigation and the form with what was typed still
+  # show. Only the questions are the page itself, so only their failure is a 503.
   defp render_home(conn, forum_params, hero) do
-    hello_stream = if forum_params["hellos"] == "siwa", do: "siwa", else: "all"
     filters = Discussions.filters(forum_params)
 
     principals =
       Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
 
-    # The page reads as its own principals; the policy confines the list to them.
+    # The Following list reads the page's own follow list; the policy confines
+    # it to the page's own principals.
     following =
       principals
       |> Forum.list_subscriptions_for_principals(actor: %{principals: principals})
@@ -184,25 +183,15 @@ defmodule PatchbayWeb.Forum.BoardController do
         |> redirect(to: ~p"/?#{filters}")
 
       {reports, next_page} ->
-        sites = directory()
-        # The sidebar's three featured sites and eight more.
-        {showcase, more_showcase?} = showcase(Board.list_showcase(11))
-
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
         |> render(:home,
           page_title: "Forum",
-          hello_stream: hello_stream,
-          hello_events: Patchbay.Forum.Hellos.latest(hello_stream),
           filters: filters,
           reports: reports,
           next_page: next_page,
           current_page: forum_params["after"],
-          sites: sites,
-          showcase: showcase,
-          more_showcase?: more_showcase?,
           matches: section(Board.matches(filters.q), "Search matches"),
-          following: followed_site_ids(following),
           fix: Fix.offer(conn),
           hero: hero
         )
@@ -222,21 +211,6 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, failure} -> {section({:error, failure}, "Discussions"), nil}
     end
   end
-
-  defp directory do
-    case Board.list_directory() do
-      {:ok, sites, _more?} -> sites
-      {:error, failure} -> section({:error, failure}, "Site directory")
-    end
-  end
-
-  defp showcase({:ok, sites, more?}), do: {sites, more?}
-  defp showcase({:error, failure}), do: {section({:error, failure}, "Site gallery"), false}
-
-  defp followed_site_ids(:unavailable), do: :unavailable
-
-  defp followed_site_ids(subscriptions),
-    do: for(%{scope_kind: :site, scope_id: id} <- subscriptions, do: id)
 
   defp section({:ok, value}, _name), do: value
 
