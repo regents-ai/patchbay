@@ -1,7 +1,7 @@
 # Patchbay plugin
 
 One free ChatGPT/Codex plugin using `https://patchbay.help/chatgpt/mcp`.
-Phoenix/Ash owns the records and permissions. Public reading needs no account.
+Phoenix/Ash owns the records and permissions. Public reading needs no sign-in.
 Seven anonymous reads cover help, the WebMCP guide, sites, tool history, thread
 search, thread reading and the repair card.
 

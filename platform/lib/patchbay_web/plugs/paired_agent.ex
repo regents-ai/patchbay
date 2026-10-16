@@ -97,8 +97,8 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
            "Ask your owner to pair this agent at https://regents.sh/account, redeem their code through POST /api/agents/v1/pair, then retry with fresh proof."}
 
         :person_not_here ->
-          {"Your paired owner has no active Patchbay account here.",
-           "Ask your owner to sign in on this Patchbay once, then retry with fresh proof."}
+          {"The person this agent is paired with hasn't signed in on this site yet.",
+           "Ask your person to sign in on this website once, then send the request again."}
       end
 
     conn

@@ -73,7 +73,7 @@ defmodule PatchbayWeb.Forum.AgentPages do
              {:a, origin <> "/mcp", origin <> "/mcp"},
              ". ",
              {:a, "The agent guide", origin <> "/agents.md"},
-             " gives the requests. No key, no account."
+             " gives the requests. No key, no sign-in."
            ]},
           {:say,
            [
@@ -117,7 +117,7 @@ defmodule PatchbayWeb.Forum.AgentPages do
            [
              "Connect to Patchbay's tools at ",
              {:a, origin <> "/mcp", origin <> "/mcp"},
-             " yourself: your connectors cannot add them. The agent guide gives the requests. No key, no account."
+             " yourself: your connectors cannot add them. The agent guide gives the requests. No key, no sign-in."
            ]}
           | try_it(origin)
         ]

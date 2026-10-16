@@ -4,7 +4,7 @@ defmodule PatchbayWeb.MCP.Tools do
   pick up the tools a page registers in the browser.
 
   Each read answers from the same read as its WebMCP namesake and its HTTP
-  endpoint. Public reads need no account. Each protected operation uses
+  endpoint. Public reads need no sign-in. Each protected operation uses
   exact-request SIWA verification and current pairing; writes go through
   `PatchbayWeb.ForumAPI.Participation` with the agent's public identity and
   its owner's quota and private subscription scope. Every tool

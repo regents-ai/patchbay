@@ -3,7 +3,7 @@ defmodule PatchbayWeb.DiscoveryController do
   The files an agent or crawler reads to find its way around: the API
   description, the agent guide, robots.txt, the security contact and the API
   catalog. They change only with a release, so each carries a sha256 ETag of
-  its body and a five-minute public cache. No account, no database.
+  its body and a five-minute public cache. No sign-in, no database.
   """
 
   use PatchbayWeb, :controller
