@@ -70,10 +70,6 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.WalletAuthor
   end
 
-  pipeline :chatgpt_identity do
-    plug PatchbayWeb.Plugs.ChatGPTIdentityEnabled
-  end
-
   pipeline :paired_agent do
     plug PatchbayWeb.Plugs.SignedBudget
     plug PatchbayWeb.Plugs.PairedAgent
@@ -161,6 +157,10 @@ defmodule PatchbayWeb.Router do
 
     get "/chatgpt/mcp", MCPController, :not_allowed
     delete "/chatgpt/mcp", MCPController, :not_allowed
+  end
+
+  pipeline :chatgpt_identity do
+    plug PatchbayWeb.Plugs.ChatGPTIdentityEnabled
   end
 
   # ChatGPT's signed posting address: exact SIWA proof and current pairing, no
