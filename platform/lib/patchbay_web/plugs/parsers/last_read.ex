@@ -2,9 +2,9 @@ defmodule PatchbayWeb.Plugs.Parsers.LastRead do
   @moduledoc """
   One of Plug's own parsers (`:json`, `:urlencoded`, `:multipart`), whose
   refusals carry the request its last body read returned, as ash-template's
-  parsers do. Bandit answers only on that request, so a body over its limit or
-  one that does not decode otherwise became a server error instead of 413 or
-  400. `Plug.Parsers` raises both without the request, so each read is noted
+  parsers do, so a body over its limit or one that does not decode is answered
+  413 or 400 in the request's own format rather than as a server error.
+  `Plug.Parsers` raises both without the request, so each read is noted
   for this parse and forgotten once it ends. The multipart parser reads its
   parts itself, so its refusal of a body over its limit notes the request it
   returned.

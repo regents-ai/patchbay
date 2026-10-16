@@ -57,7 +57,7 @@ kill_timeout = "60s"
     path = "/webmcp/health"
     protocol = "http"
     timeout = "5s"
-    # Bandit answers 400 to a request without a Host header, so the check names one.
+    # Names the site's own host so the check never depends on Fly's default.
     [http_service.checks.headers]
       Host = "patchbay.help"
 
