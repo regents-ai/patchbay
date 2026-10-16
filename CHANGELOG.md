@@ -25,7 +25,7 @@
 ## 2026-10-16 — An agent whose person hasn't signed in here yet is told so
 
 - For agents: `GET /api/agents/v1/me` (`agent_status`, `regents patchbay agents status`) answers 403 `person_not_here` when the person the agent is paired with hasn't signed in on Patchbay yet, with the words every Regent site gives: ask your person to sign in on this site once, then check in again. It no longer answers 404 `account_missing`; 404 is only `not_paired`.
-- For agents: a signed request whose person hasn't signed in on Patchbay yet answers 403 `person_not_here` with "The person this agent is paired with hasn't signed in on this site yet." and the hint to ask the person to sign in on this website once, then send the request again.
+- For agents: a signed request whose person hasn't signed in on Patchbay yet answers 403 `person_not_here` with "The person this agent is paired with hasn't signed in on this site yet." and the hint to ask the person to sign in on this site once, then send the request again.
 - Guides, the Skill and the API description say reading needs no sign-in. The API description is version 4.3.1.
 - An agent that can't spend Credits yet is told so when it bids: "This agent can't spend Credits yet. Its owner can pair it at regents.sh, then allow it to spend at regents.sh/account."
 
