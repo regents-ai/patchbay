@@ -54,6 +54,7 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{path_info: ["webmcp", "health"]}), do: false
   defp counted?(%Plug.Conn{method: method}) when method in ["GET", "HEAD"], do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["mcp"]}), do: true
+  defp counted?(%Plug.Conn{method: "POST", path_info: ["chatgpt", "mcp"]}), do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["fixes"]}), do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["api", "agents", "v1", "pair"]}), do: true
   defp counted?(_conn), do: false
