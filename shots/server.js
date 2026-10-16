@@ -73,7 +73,10 @@ function readBody(req) {
     req.setEncoding("utf8");
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > MAX_BODY_BYTES) reject(new Error("too large"));
+      if (body.length > MAX_BODY_BYTES) {
+        reject(new Error("too large"));
+        req.destroy();
+      }
     });
     req.on("end", () => resolve(body));
     req.on("error", reject);

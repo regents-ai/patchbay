@@ -11,7 +11,8 @@ public websites only, never Fly's private network or the machine itself.
 ## How Patchbay calls it
 
 `POST /shot` with `{"url": "https://..."}` answers `200` with a 1600×1000
-WebP picture, `400` for anything but an https address, `422` with
+WebP picture, `400` for anything but an https address (a request body over
+4 KB is cut off), `422` with
 `{"page_status": 403}` when the page itself answered with an error status
 (4xx or 5xx), so no picture of an error page is ever returned, or `502` when
 the page could not be pictured. Pictures are taken one at a time.
