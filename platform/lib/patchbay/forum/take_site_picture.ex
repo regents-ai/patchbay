@@ -5,8 +5,10 @@ defmodule Patchbay.Forum.TakeSitePicture do
   front page, or the page its catalog entry names), keeps it, and points the
   site's card at it. A picture that does not come back is an error
   (`Patchbay.Forum.PictureNotTaken`), so its job tries again with Oban's
-  backoff. When the page answers with an error status, the earlier picture
-  is forgotten too, so the card never shows a page that now fails.
+  backoff. When the job's last try still finds the page answering with an
+  error status, the earlier picture is forgotten too, so the card never shows
+  a page that now fails. A 429 is the site asking us to slow down, not a
+  failing page, so it never forgets one.
   """
 
   use Ash.Resource.ManualUpdate
@@ -23,7 +25,7 @@ defmodule Patchbay.Forum.TakeSitePicture do
     site = changeset.data
     now = DateTime.utc_now()
 
-    with {:ok, image} <- picture(site),
+    with {:ok, image} <- picture(site, changeset.context),
          # Patchbay's own job: there is no actor for policies to check.
          {:ok, _picture} <-
            SiteScreenshot
@@ -41,7 +43,7 @@ defmodule Patchbay.Forum.TakeSitePicture do
 
   # A site that is slow or failing leaves no picture; that is a site's doing,
   # not Patchbay's, so it is a warning that carries why.
-  defp picture(site) do
+  defp picture(site, context) do
     case Shots.take(site.screenshot_source_url) do
       {:ok, image} ->
         {:ok, image}
@@ -49,13 +51,22 @@ defmodule Patchbay.Forum.TakeSitePicture do
       {:error, reason} ->
         error = PictureNotTaken.exception(reason: reason)
         Logger.warning("#{site.origin}: " <> Exception.message(error))
-        forget_on_page_status(site, reason)
+        if final_page_error?(context, reason), do: forget(site)
         {:error, error}
     end
   end
 
+  # The trigger's job, on its last try, found the page answering 4xx or 5xx.
+  defp final_page_error?(
+         %{ash_oban: %{job: %Oban.Job{attempt: last, max_attempts: last}}},
+         {:page_status, status}
+       ),
+       do: status != 429
+
+  defp final_page_error?(_context, _reason), do: false
+
   # Patchbay's own job: there is no actor for policies to check.
-  defp forget_on_page_status(site, {:page_status, _status}) do
+  defp forget(site) do
     SiteScreenshot
     |> Ash.Query.filter(site_id == ^site.id)
     |> Ash.bulk_destroy!(:forget, %{}, authorize?: false)
@@ -64,8 +75,6 @@ defmodule Patchbay.Forum.TakeSitePicture do
     |> Ash.Changeset.for_update(:forget_picture, %{})
     |> Ash.update!(authorize?: false)
   end
-
-  defp forget_on_page_status(_site, _reason), do: :ok
 
   # The trigger leaves logging here, so a failure of Patchbay's own is still an
   # error, named by its kind.

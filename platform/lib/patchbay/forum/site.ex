@@ -263,7 +263,10 @@ defmodule Patchbay.Forum.Site do
     end
 
     update :forget_picture do
-      description("The site's page answered with an error status, so its card shows no picture.")
+      description(
+        "A job's last try found the site's page answering with an error status, so its card shows no picture."
+      )
+
       accept([])
       change(set_attribute(:screenshot_path, nil))
       change(set_attribute(:screenshot_captured_at, nil))

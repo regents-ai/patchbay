@@ -41,7 +41,9 @@ defmodule Patchbay.Forum.SiteScreenshot do
     end
 
     destroy :forget do
-      description("Forgets the picture once the site's page answers with an error status.")
+      description(
+        "Forgets the picture when a job's last try finds the site's page answering with an error status."
+      )
     end
   end
 
