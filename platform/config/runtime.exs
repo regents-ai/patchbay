@@ -1,10 +1,24 @@
 import Config
 
+mcp_identity_enabled? = System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true"
+
 # Remains off unless a separately authorized release opts in after migrations.
-config :patchbay, Patchbay.OAuth, enabled?: System.get_env("PATCHBAY_OAUTH_ENABLED") == "true"
+# Only patchbay.events.read exists until ChatGPT identities are switched on.
+config :patchbay, Patchbay.OAuth,
+  enabled?: System.get_env("PATCHBAY_OAUTH_ENABLED") == "true",
+  additional_scopes:
+    if(mcp_identity_enabled?,
+      do: %{
+        "regent.identity.manage" =>
+          "connect and pair ChatGPT with your existing Regents identity across chats",
+        "patchbay.posts.write" =>
+          "publish free public questions and replies under your paired identity when you authorize them"
+      },
+      else: %{}
+    )
 
 config :regent_mcp_agents, :config,
-  enabled?: System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true",
+  enabled?: mcp_identity_enabled?,
   audience: "patchbay",
   keyring: [
     base_url: System.get_env("SIWA_HOSTED_URL", "https://siwa.regents.sh"),

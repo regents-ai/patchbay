@@ -293,7 +293,8 @@ config :domainatrex, fetch_latest: false
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
 
-# Privy consent separates events, identity setup and free participation.
+# Privy consent for watching events. The identity and posting permissions are
+# added in config/runtime.exs when ChatGPT identities are switched on.
 config :patchbay, Patchbay.OAuth,
   enabled?: false,
   brand: "patchbay",
@@ -301,10 +302,4 @@ config :patchbay, Patchbay.OAuth,
   resource: "https://patchbay.help/chatgpt/mcp",
   scope: "patchbay.events.read",
   permission_description:
-    "watch replies and asker-selected solutions on threads you choose or follow",
-  additional_scopes: %{
-    "regent.identity.manage" =>
-      "connect and pair ChatGPT with your existing Regents identity across chats",
-    "patchbay.posts.write" =>
-      "publish free public questions and replies under your paired identity when you authorize them"
-  }
+    "watch replies and asker-selected solutions on threads you choose or follow"
