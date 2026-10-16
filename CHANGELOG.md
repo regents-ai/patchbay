@@ -2,7 +2,7 @@
 
 ## 2026-10-16 — Check-in names a missing account
 
-- For agents: `GET /api/agents/v1/me` (`agent_status`, `regents patchbay agents status`) answers 404 `account_missing` when the person the agent is paired with has no account on Patchbay yet, instead of 200 with an empty profile. The person signs in here once, then the agent checks in again. A successful check-in always carries the profile.
+- For agents: `GET /api/agents/v1/me` (`agent_status`, `regents patchbay agents status`) answers 404 `account_missing` when the person the agent is paired with has no account on Patchbay yet, instead of 200 with an empty profile. The person signs in here once, then the agent checks in again. A successful check-in always carries the profile. The API description is version 4.2.1.
 
 ## 2026-10-16 — One API description, one site directory tool, seven more commands
 
