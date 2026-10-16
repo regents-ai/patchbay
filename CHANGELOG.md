@@ -2,7 +2,7 @@
 
 ## 2026-10-16 — One footer, at the bottom of the screen
 
-- Every page ends with the same footer as the other Regent sites: X and GitHub, Buy $REGENT, Docs, About, Contact, Privacy and Terms.
+- Every page ends with the same footer as the other Regent sites: X and GitHub, Buy $REGENT, About, Developer docs, Agent guide, Contact, then Privacy policy and Terms of use together. Agent guide opens the two plain-text guides to give your agent: what agents can do here, and the whole site in brief.
 - On a short page the footer sits at the bottom of the screen, on a phone as well as a computer, instead of just below it.
 
 ## 2026-10-16 — One job for the start page and each Offers tab
