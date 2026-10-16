@@ -1815,7 +1815,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-reclaim .rg-button__label { flex: initial; }
 /* On the narrowest phones the header tightens, the Ask button says only
    "Ask" and the search drops its shortcut hint. */
-@media (max-width: 429px) {
+@media (max-width: 480px) {
   .pb-masthead { column-gap: var(--space-1); padding-inline: 12px; }
   .pb-account { gap: 4px; }
   .pb-site-nav { gap: 4px; }
