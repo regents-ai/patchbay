@@ -2447,7 +2447,6 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 }
 .pb-offers-market + .pb-offers-market { border-top: 1px solid var(--pb-line); }
 .pb-offers-market-logo { grid-area: logo; display: grid; place-items: center; width: 3rem; height: 3rem; object-fit: contain; padding: .25rem; background: var(--pb-surface-sunk); color: var(--pb-text-muted); font: 400 1.125rem/1 var(--font-family-title); }
-img.pb-offers-market-logo { background: #e9e8d5; }
 .pb-offers-market-name { grid-area: name; min-width: 0; }
 .pb-offers-market-name h3 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-offers-market-name span { display: block; overflow: hidden; color: var(--pb-text-muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
