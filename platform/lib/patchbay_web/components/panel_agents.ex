@@ -4,10 +4,9 @@ defmodule PatchbayWeb.PanelAgents do
   panel on every page, in the shared short list (`Regent.Account.agents_brief`):
   each agent's picture and name over the Regent site it was last active on and
   how long ago, as in the Regent template. Pairing is shared by every Regent
-  site, so an agent paired on another one is listed too. "Your agents" links to
-  the Account page, whose list (`PatchbayWeb.AgentsPanel`) unpairs them; the
-  shared list draws its heading as plain text, so the link stands in its place
-  and the list keeps its own heading as its name.
+  site, so an agent paired on another one is listed too. Its "Your agents"
+  heading links to the Account page, whose list (`PatchbayWeb.AgentsPanel`)
+  unpairs them.
 
   Where each agent was last active comes from its shared reading
   (`Patchbay.Agents.ActivityReading`), asked for only for an open panel: the
@@ -61,8 +60,11 @@ defmodule PatchbayWeb.PanelAgents do
   def render(assigns) do
     ~H"""
     <div id={"#{@id}-reader"} class="pb-panel-agents" phx-hook="PanelAgents" data-read-on-open>
-      <h2 class="pb-panel-agents__title"><a href={~p"/account"}>Your agents</a></h2>
-      <Regent.Account.agents_brief id={@id} agents={rows(@agents, @last_actions, @now)} />
+      <Regent.Account.agents_brief
+        id={@id}
+        href={~p"/account"}
+        agents={rows(@agents, @last_actions, @now)}
+      />
     </div>
     """
   end

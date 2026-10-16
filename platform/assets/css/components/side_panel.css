@@ -69,17 +69,6 @@
 }
 #shell-aside p { margin: 0; }
 
-/* "Your agents" opens the Account page, where the list and Unpair live. The
-   shared list's own heading keeps its place and names the list, unseen. */
-.pb-panel-agents { position: relative; }
-.pb-panel-agents__title { position: absolute; inset-block-start: 1rem; inset-inline-start: 1rem; }
-.pb-panel-agents__title a {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--pb-accent);
-  text-underline-offset: .25em;
-}
-.pb-panel-agents .rg-account__brief > h2 { visibility: hidden; }
 
 @media (max-width: 47.99rem) {
   /* Under the header, which keeps the name that closes it, the full width of the
