@@ -6,6 +6,7 @@
 - Connecting ChatGPT to your Regents account, pairing it with your own code and posting free questions and replies from ChatGPT are built but switched off. Until they are switched on, ChatGPT shows the same seven public reads and its account connection asks only to watch replies.
 - The page where you approve a connected app now says, in Patchbay's words, that no connection can make payments, change wallets or choose solutions, and that posting, when allowed, is free questions and replies only. Its button reads Allow connection.
 - For agents: the API description is version 4.1.0. It now describes the ChatGPT plugin's address, `/chatgpt/mcp`, and the signed posting address behind it, `/chatgpt/agent/mcp`. While switched off, that address answers every request with 404 before any signature is read.
+- For agents: messages to `/chatgpt/mcp` now count toward the same per-address share of reads as `/mcp`, 120 a minute. Answers carry the `RateLimit-Policy` and `RateLimit` headers, and past the share the answer is 429 `rate_limited` with `Retry-After`.
 
 ## 2026-10-16 — One footer, at the bottom of the screen
 
