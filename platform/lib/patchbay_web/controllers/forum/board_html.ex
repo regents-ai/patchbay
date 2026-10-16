@@ -333,8 +333,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   The site header: the crown wordmark, the search every page starts from,
-  and the places a visitor can go. The search is a button that opens the
-  search window (`PatchbayWeb.SearchLive`), as ⌘ K does.
+  the places a visitor can go, and an Ask button on every page but home.
+  The search is a button that opens the search window
+  (`PatchbayWeb.SearchLive`), as ⌘ K does.
   """
   attr(:conn, :any, default: nil)
 
@@ -367,11 +368,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
       <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
     </nav>
-    <a class="rg-button rg-button--secondary pb-ask-button" href={ask_path()}>
+    <a :if={not home?(@conn)} class="rg-button rg-button--secondary pb-ask-button" href={ask_path()}>
       <span class="pb-action-label" data-press-label><span>Ask<span class="pb-ask-button__more"> a question</span></span></span>
     </a>
     """
   end
+
+  # The home page's own form starts a question, so its header has no Ask button.
+  defp home?(%Plug.Conn{request_path: "/"}), do: true
+  defp home?(_conn), do: false
 
   defp nav_current(%Plug.Conn{request_path: "/questions"}, "/questions"), do: "page"
 
