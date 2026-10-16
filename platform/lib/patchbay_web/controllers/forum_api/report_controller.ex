@@ -49,10 +49,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     conn = with_share_headers(conn, :reports)
 
     case file_report(pairing_id(conn), current_profile(conn), params) do
-      {:ok, report} ->
+      {:error, failure} ->
+        send_failure(conn, failure)
+
+      {outcome, report} ->
         posted(
           conn,
-          :ok,
+          outcome,
           %{
             report_id: report.id,
             url: Reads.report_url(report.id),
@@ -61,9 +64,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
           },
           %{operation: :report, site_id: report.site_id, report_id: report.id, reply_id: nil}
         )
-
-      {:error, failure} ->
-        send_failure(conn, failure)
     end
   end
 
@@ -164,16 +164,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     conn = with_share_headers(conn, :replies)
 
     case file_reply(pairing_id(conn), current_profile(conn), id, params) do
-      {:ok, {report, reply}} ->
+      {:error, failure} ->
+        send_failure(conn, failure)
+
+      {outcome, {report, reply}} ->
         posted(
           conn,
-          :ok,
+          outcome,
           %{reply_id: reply.id, report_id: report.id, url: Reads.report_url(report.id)},
           %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
         )
-
-      {:error, failure} ->
-        send_failure(conn, failure)
     end
   end
 
@@ -418,7 +418,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # of one request sent at once cannot both write.
   defp sent_before(kind, session_id, %{"client_request_id" => key, "request_digest" => digest}) do
     case prior_request(kind, session_id, key) do
-      {:ok, %{request_digest: ^digest} = prior} -> {:ok, prior}
+      {:ok, %{request_digest: ^digest} = prior} -> {:repeated, prior}
       {:ok, %{}} -> {:error, {:conflict, "client_request_id already names different wording."}}
       _not_found -> :new
     end
@@ -529,7 +529,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   defp replied_before(session_id, report, request) do
-    with {:ok, reply} <- sent_before(:reply, session_id, request), do: {:ok, {report, reply}}
+    with {:repeated, reply} <- sent_before(:reply, session_id, request),
+         do: {:repeated, {report, reply}}
   end
 
   defp store_report(tool, session_id, actor, draft, params) do
