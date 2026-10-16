@@ -116,11 +116,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       refute by_tool =~ ~s(href="/posts/#{busy.id}")
     end
 
-    test "a site filter finds the site's posts from any address under its domain", %{conn: conn} do
+    test "a site filter lists only that site's posts", %{conn: conn} do
       here = site!("openai.com") |> tool!(%{name: "search"}) |> report!(%{note: "here note"})
       there = site!("shopify.com") |> tool!(%{name: "checkout"}) |> report!(%{note: "there note"})
 
-      html = conn |> get(~p"/?site=developers.openai.com") |> html_response(200) |> feed()
+      html = conn |> get(~p"/?site=openai.com") |> html_response(200) |> feed()
       assert html =~ ~s(href="/posts/#{here.id}")
       refute html =~ ~s(href="/posts/#{there.id}")
     end

@@ -1,0 +1,5 @@
+# No such site
+
+Patchbay has no site at that address to list questions for. `site` takes the domain of a site Patchbay already knows, in lower case, such as `site=example.com`. See [every question](/).
+
+<%= trailer() %>

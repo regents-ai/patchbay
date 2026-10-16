@@ -145,7 +145,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     agent = AgentPages.fetch!(id)
 
     reports =
-      case Discussions.page(Discussions.filters(%{}), [], nil) do
+      case Discussions.page(newest(), [], nil) do
         {:ok, reports, _next_page} -> Enum.take(reports, @agent_page_posts)
         {:error, failure} -> section({:error, failure}, "Discussions")
       end
@@ -162,10 +162,26 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   # The form and the questions. A list that could not be read says so where
   # it would have been; the navigation and the form with what was typed still
-  # show. Only the questions are the page itself, so only their failure is a 503.
+  # show. Only the questions are the page itself, so only their failure is a
+  # 503. A list narrowed to a site Patchbay has no record of is refused.
   defp render_home(conn, forum_params, hero) do
-    filters = Discussions.filters(forum_params)
+    case Discussions.filters(forum_params) do
+      {:ok, filters} ->
+        render_questions(conn, forum_params, filters, hero)
 
+      {:error, :unknown_site} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render(:unknown_site, page_title: "No such site")
+    end
+  end
+
+  defp newest do
+    {:ok, filters} = Discussions.filters(%{})
+    filters
+  end
+
+  defp render_questions(conn, forum_params, filters, hero) do
     principals =
       Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
 

@@ -22,16 +22,39 @@ defmodule PatchbayWeb.Forum.Discussions do
     :site
   ]
 
+  @doc """
+  The filters a question list is read with. `site` narrows the list to one
+  site, named exactly by the domain Patchbay files it under and only when
+  Patchbay has a record of that site; any other value is refused as
+  `{:error, :unknown_site}`.
+  """
+  @spec filters(map()) :: {:ok, map()} | {:error, :unknown_site}
   def filters(params) do
-    %{
-      q: text(params["q"], 200),
-      site: params["site"] |> text(255) |> site_domain(),
-      tool: text(params["tool"], 64),
-      tag: text(params["tag"], 64),
-      scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest"),
-      sort: if(params["sort"] == "popular", do: "popular", else: "recent")
-    }
+    with {:ok, site} <- site(params["site"]) do
+      {:ok,
+       %{
+         q: text(params["q"], 200),
+         site: site,
+         tool: text(params["tool"], 64),
+         tag: text(params["tag"], 64),
+         scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest"),
+         sort: if(params["sort"] == "popular", do: "popular", else: "recent")
+       }}
+    end
   end
+
+  defp site(absent) when absent in [nil, ""], do: {:ok, ""}
+
+  defp site(domain) when is_binary(domain) do
+    with {:ok, ^domain} <- Origin.normalize(domain),
+         %{} <- Forum.get_site_by_origin!(domain, not_found_error?: false) do
+      {:ok, domain}
+    else
+      _unknown -> {:error, :unknown_site}
+    end
+  end
+
+  defp site(_not_text), do: {:error, :unknown_site}
 
   @doc """
   The same follow list with what each subscription follows: the site, the
@@ -101,16 +124,6 @@ defmodule PatchbayWeb.Forum.Discussions do
   end
 
   defp verify(_token, _context), do: {:error, :invalid_cursor}
-
-  # A site is filed under its domain, so `?site=developers.openai.com` shows
-  # the posts on openai.com. Text that names no site is kept as typed and
-  # matches no post.
-  defp site_domain(text) do
-    case Origin.normalize(text) do
-      {:ok, domain} -> domain
-      {:error, _not_a_site} -> text
-    end
-  end
 
   defp text(value, limit) when is_binary(value),
     do: value |> String.trim() |> String.slice(0, limit)

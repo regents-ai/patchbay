@@ -69,7 +69,7 @@
         Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>
       </p>
       <p :if={@filters.site != ""} class="pb-search-summary">
-        On <a href={"/" <> @filters.site}>{@filters.site}</a>
+        On <a href={~p"/#{@filters.site}"}>{@filters.site}</a>
         · <a href={discussion_path(@filters, %{site: ""})}>All sites</a>
       </p>
       <p :if={@filters.tool != ""} class="pb-search-summary">
