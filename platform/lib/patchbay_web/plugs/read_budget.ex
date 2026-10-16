@@ -5,8 +5,8 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
 
   A read is a `GET` or `HEAD` that reaches the router, or any message to the
   hosted MCP tools (a hosted post also draws on the hourly share of the
-  signed agent's owner's account),
-  or an agent pairing with a person's Regent account. Files served ahead of the router and the health check are
+  signed agent's owner's account), or an agent pairing with a person's
+  Regent account. Files served ahead of the router and the health check are
   not counted. Other posts are left alone: each has its own hourly share, a
   signed agent's requests have their own share by the minute
   (`PatchbayWeb.Plugs.SignedBudget`), and nothing here stands between a

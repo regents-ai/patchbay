@@ -48,9 +48,9 @@ defmodule PatchbayWeb.ClientAddress do
   @salt "patchbay visitor key"
 
   @doc """
-  The key a connection's free fixes are counted by (Patchbay only): the
-  limiter key's address, run one way through the application's secret, so
-  runs can store it and nothing can turn it back into the address.
+  The key a connection is counted by (Patchbay only): the limiter key's
+  address, run one way through the application's secret, so records can
+  store it and nothing can turn it back into the address.
   """
   @spec visitor_key(Plug.Conn.t()) :: String.t()
   def visitor_key(conn) do

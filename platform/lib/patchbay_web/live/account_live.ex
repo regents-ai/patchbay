@@ -402,7 +402,11 @@ defmodule PatchbayWeb.AccountLive do
         <.funding_card wallet={@profile.wallet_address || ""} payments_enabled={@payments_enabled?} />
       </div>
 
-      <section class="pb-sheet-section patchbay-board-card" id="patchbay-past-jev">
+      <section
+        :if={@jev_runs != []}
+        class="pb-sheet-section patchbay-board-card"
+        id="patchbay-past-jev"
+      >
         <div class="patchbay-card-heading">
           <div>
             <p class="patchbay-kicker">ONLY YOU SEE THIS</p>
@@ -410,11 +414,7 @@ defmodule PatchbayWeb.AccountLive do
           </div>
         </div>
 
-        <p :if={@jev_runs == []} class="patchbay-muted">
-          Nothing yet. What you ask Jev is kept here with its answer.
-        </p>
-
-        <ol :if={@jev_runs != []} class="pb-past-jev">
+        <ol class="pb-past-jev">
           <li :for={run <- @jev_runs}>
             <a href={~p"/fixes/#{run.id}"}>{run.goal}</a>
             <span class="patchbay-board-facts">

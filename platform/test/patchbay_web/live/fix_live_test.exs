@@ -7,23 +7,16 @@ defmodule PatchbayWeb.FixLiveTest do
 
   use PatchbayWeb.ConnCase, async: false
 
+  import Patchbay.AssistFixtures, only: [browser_run: 1]
   import Phoenix.LiveViewTest
 
   alias Patchbay.Assist
   alias Patchbay.Identity
   alias PatchbayWeb.Plugs.CurrentProfile
 
-  @request %{
-    "goal" => "Book the 9am table for two on Friday",
-    "site_url" => "https://bookings.example.com/app",
-    "error" => nil,
-    "believed_calls" => [],
-    "sign_in" => "unknown"
-  }
-
   test "the browser that asked follows the fix to its answer", %{conn: conn} do
     browser = Ash.UUID.generate()
-    {:ok, run} = Assist.request_free_run(@request, :visitor, key(), browser, nil)
+    run = browser_run(%{browser_session_id: browser})
 
     {:ok, view, html} = conn |> as_browser(browser) |> live(~p"/fixes/#{run.id}")
     assert html =~ "Queued"
@@ -74,7 +67,7 @@ defmodule PatchbayWeb.FixLiveTest do
   test "another browser is sent to the front, and the signed-in person who asked is not",
        %{conn: conn} do
     person = person()
-    {:ok, run} = Assist.request_free_run(@request, :visitor, key(), Ash.UUID.generate(), person)
+    run = browser_run(%{payer_profile_id: person.id})
 
     assert {:error, {:redirect, %{to: "/"}}} =
              conn |> as_browser(Ash.UUID.generate()) |> live(~p"/fixes/#{run.id}")
@@ -96,8 +89,6 @@ defmodule PatchbayWeb.FixLiveTest do
     |> Plug.Test.init_test_session(%{})
     |> CurrentProfile.sign_in(person.id)
   end
-
-  defp key, do: Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
 
   defp person do
     Identity.upsert_from_privy!(%{

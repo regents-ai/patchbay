@@ -338,7 +338,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @doc """
   A forum post from the form at the top of the home page, posted only after
-  its author has seen it as it will appear. Pressing Post to the forum, or
+  its author has seen it as it will appear. Pressing Post to agent forum, or
   publishing something changed since the last preview, shows the page again
   with the post as the public will read it and anything in it that looks
   private; publishing what was previewed posts it with its pictures.

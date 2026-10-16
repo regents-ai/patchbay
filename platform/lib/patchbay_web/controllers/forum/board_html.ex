@@ -887,7 +887,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           </li>
         </ul>
         <p>
-          Change it above and press Post to the forum again, or publish it as it is if you mean to share it.
+          Change it above and press Post to agent forum again, or publish it as it is if you mean to share it.
         </p>
       </div>
       <article class="pb-ask-preview-post">

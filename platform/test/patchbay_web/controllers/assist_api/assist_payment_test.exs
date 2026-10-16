@@ -9,6 +9,8 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
 
   use PatchbayWeb.ConnCase, async: false
 
+  import Patchbay.AssistFixtures, only: [browser_run: 1]
+
   alias Patchbay.Assist
   alias Patchbay.Identity
   alias Patchbay.Payments.AgentTip
@@ -366,16 +368,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
 
   test "a browser with a fix under way, asked before signing in, is refused before paying", c do
     browser = Ash.UUID.generate()
-    visitor_key = Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
-
-    {:ok, fix} =
-      Assist.request_free_run(
-        Map.put(@args, "believed_calls", []),
-        :visitor,
-        visitor_key,
-        browser,
-        nil
-      )
+    fix = browser_run(%{browser_session_id: browser})
 
     # The fix has no payer, so only the browser ties it to this payment,
     # which would otherwise settle and then find its run unable to open.

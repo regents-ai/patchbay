@@ -5,8 +5,9 @@ defmodule Patchbay.Assist do
 
   An agent pays a fixed fee for one in USDC, like every other paid action,
   to the one wallet this Patchbay is set up to take it at. Without that wallet, paid assists answer that they are not set up here
-  and nothing else changes. A person at the page gets a few free ones a day,
-  counted by `Patchbay.Assist.Allowance`, and pays the same fee after that.
+  and nothing else changes. An agent signed in with SIWA gets a few free
+  ones a day, counted by `Patchbay.Assist.Allowance`, and pays the same fee
+  after that.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -47,7 +48,6 @@ defmodule Patchbay.Assist do
 
       define(:list_runs_asked_by, action: :asked_by, args: [:payer_profile_id])
 
-      define(:open_free_run, action: :open_free)
       define(:open_agent_free_run, action: :open_agent_free)
 
       define(:start_run, action: :start)
@@ -75,51 +75,23 @@ defmodule Patchbay.Assist do
   end
 
   @doc """
-  Opens a free run from the page, its work queued with it: `request` as
-  `Patchbay.Assist.Request.draft/1` returned it, under `grant`, for the
-  connection `visitor_key` names and the browser `browser_session_id`
-  names, asked by the signed-in `actor` if any.
-  """
-  @spec request_free_run(map(), :visitor | :member, String.t(), Ash.UUID.t(), struct() | nil) ::
-          {:ok, Run.t()} | {:error, term()}
-  def request_free_run(request, grant, visitor_key, browser_session_id, actor) do
-    open_held(fn ->
-      open_free_run(
-        %{
-          request: request,
-          grant: grant,
-          visitor_key: visitor_key,
-          browser_session_id: browser_session_id
-        },
-        actor: actor
-      )
-    end)
-  end
-
-  @doc """
   Opens a free run for the SIWA-signed `agent`, its work queued with it:
   `request` as `Patchbay.Assist.Request.draft/1` returned it, under one of
   the free fixes its wallet has left today.
   """
   @spec request_agent_free_run(map(), struct()) :: {:ok, Run.t()} | {:error, term()}
   def request_agent_free_run(request, agent) do
-    open_held(fn ->
-      open_agent_free_run(%{request: request, grant: :agent}, actor: agent)
-    end)
-  end
-
-  defp open_held(open) do
     Ash.transact(Run, fn ->
       hold_free_fixes()
 
-      with {:ok, run} <- open.(), do: run
+      with {:ok, run} <- open_agent_free_run(%{request: request, grant: :agent}, actor: agent),
+           do: run
     end)
   end
 
   # Free fixes are counted and the run opened under one lock every free fix
   # takes, held until the opening commits, so requests that arrive together
-  # cannot both take the last one, whether it is the connection's, the
-  # person's or the site's.
+  # cannot both take the last one, whether it is the agent's or the site's.
   defp hold_free_fixes do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
       "patchbay free fixes"

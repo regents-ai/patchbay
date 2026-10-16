@@ -5,9 +5,9 @@ defmodule Patchbay.Assist.Run do
 
   A paid run is opened from the frozen terms of a settled payment and from
   nothing else, so what Patchbay works on is exactly what the payer was
-  shown and paid for. A free run is opened from the page, under the free
-  fix its connection or its signed-in person had left. A run is read back
-  by its payer, or by the browser it was asked from. The status and the
+  shown and paid for. A free run is opened for an agent signed in with
+  SIWA, under the free fixes its wallet had left. A run is read back by its
+  payer, or by the browser it was asked from. The status and the
   outcome are the only things that move after it is opened, and every move
   is announced on the run's own channel, so a page watching it follows along.
 
@@ -110,7 +110,8 @@ defmodule Patchbay.Assist.Run do
 
     # The profile the run was asked by. It names a row in the identity
     # domain rather than pointing at one, so a run outlives the profile it
-    # was bought by. A free run asked without signing in has none.
+    # was bought by. A run the page once asked for without signing in has
+    # none.
     attribute(:payer_profile_id, :uuid, allow_nil?: true, public?: true)
 
     # The browser's forum identity the run was asked under; a wallet author
@@ -119,8 +120,8 @@ defmodule Patchbay.Assist.Run do
 
     attribute(:grant, Grant, allow_nil?: false, public?: true, default: :paid)
 
-    # The key the page door derives for the connection a free run was asked
-    # from, which its one free fix a day is counted by. Never the address.
+    # The key the page door derived for the connection a free run from the
+    # page was once asked from. Never the address.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 
     # The payment that bought a paid run, in the shared payment records; a
@@ -249,28 +250,6 @@ defmodule Patchbay.Assist.Run do
       change(run_oban_trigger(:work))
     end
 
-    create :open_free do
-      description("""
-      Opens a free run from the page, from a request the door already checked,
-      under the free fix the connection or the signed-in person has left.
-      """)
-
-      accept([])
-
-      argument(:request, :map,
-        allow_nil?: false,
-        description: "The request as `Patchbay.Assist.Request.draft/1` returned it."
-      )
-
-      argument(:grant, Grant, allow_nil?: false)
-      argument(:visitor_key, :string, allow_nil?: false)
-      argument(:browser_session_id, :uuid, allow_nil?: false)
-
-      validate(one_of(:grant, [:visitor, :member]), message: "must be visitor or member")
-      change(Patchbay.Assist.Changes.OpenFree)
-      change(run_oban_trigger(:work))
-    end
-
     create :open_agent_free do
       description("""
       Opens a free run for an agent signed in with SIWA, from a request the
@@ -287,6 +266,7 @@ defmodule Patchbay.Assist.Run do
       argument(:grant, Grant, allow_nil?: false)
 
       validate(one_of(:grant, [:agent]), message: "must be agent")
+      change(set_attribute(:payer_profile_id, actor(:id)))
       change(Patchbay.Assist.Changes.OpenFree)
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       change(Patchbay.Agents.AttributeAction)
@@ -449,12 +429,11 @@ defmodule Patchbay.Assist.Run do
 
     # Only the settled payment's own payer opens its run, and only the
     # purchase process holds a settled intent to open one from. A free run
-    # opens for anyone at the page, under the grant the allowance gives
-    # right now and no other, and for a SIWA-signed agent under its own. The
-    # actions that move a run along (`work`, `start`, `record_step`, `finish`,
-    # `interrupt`, the fee's `forward_fee`, `take_fee`, `release_fee`,
-    # `record_deposited`, `record_fee_failed` and `fee_not_forwarded`, and
-    # `reopen`) and
+    # opens for a SIWA-signed agent under the free fixes its wallet has left
+    # right now and no other. The actions that move a run along (`work`,
+    # `start`, `record_step`, `finish`, `interrupt`, the fee's `forward_fee`,
+    # `take_fee`, `release_fee`, `record_deposited`, `record_fee_failed` and
+    # `fee_not_forwarded`, and `reopen`) and
     # `save_to_payer` are named by no policy, so nothing that arrives over
     # HTTP can reach them; Patchbay's own jobs, sign-in, and a person at its
     # console are their only callers and say so by skipping authorization
@@ -466,10 +445,6 @@ defmodule Patchbay.Assist.Run do
 
     policy action(:open) do
       authorize_if(actor_present())
-    end
-
-    policy action(:open_free) do
-      authorize_if(Patchbay.Assist.Checks.WithinAllowance)
     end
 
     policy action(:open_agent_free) do
