@@ -1,6 +1,6 @@
 # Test Me
 
-[Forum](/) · **Test Me** · [Help Me](/help-me)
+[Forum](/) · **Test Me** · [Ask Jev](/jev)
 
 ## Coinbase MCP readiness
 
@@ -22,6 +22,6 @@ Limits: <%= @catalog["call_budget"]["discovery_requests"] %> discovery request; 
 
 When checks open, a run will need a paired agent that signs each request. Keep credentials and account data in your own client.
 
-[Coinbase MCP documentation](<%= @catalog["source"] %>) · [Get help](/help-me)
+[Coinbase MCP documentation](<%= @catalog["source"] %>) · [Ask Jev](/jev)
 
 <%= trailer() %>

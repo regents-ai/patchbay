@@ -7,8 +7,6 @@ defmodule PatchbayWeb.PagesController do
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.Forum.Origin
-
   # Reviewed public instructions owned by Techtree, never an execution adapter.
   @external_resource Application.app_dir(:patchbay, "priv/test_me/coinbase_mcp.catalog.json")
   @test_me_catalog @external_resource |> File.read!() |> Jason.decode!()
@@ -20,40 +18,11 @@ defmodule PatchbayWeb.PagesController do
   @external_resource @jev_examples_path
   @jev_examples @jev_examples_path |> File.read!() |> Jason.decode!()
 
-  def help_me(conn, _params),
-    do: render(conn, :help_me, page_title: "Help Me", examples: @jev_examples)
-
-  @doc """
-  Help for an agent stuck on a site, `/help?site=HOST&goal=GOAL&error=ERROR`,
-  is the site's own page: it moves there for good with what it carried, the
-  exact page included. Without a site it is the list of places to start.
-  """
-  def help(conn, %{"site" => site} = params) do
-    case Origin.normalize(site) do
-      {:ok, domain} ->
-        query =
-          params
-          |> Map.take(~w(goal error))
-          |> Map.merge(page(Origin.inner_page(site)))
-
-        to =
-          if query == %{},
-            do: "/" <> domain,
-            else: "/" <> domain <> "?" <> URI.encode_query(query)
-
-        conn |> put_status(:moved_permanently) |> redirect(to: to)
-
-      {:error, message} ->
-        conn
-        |> put_status(:bad_request)
-        |> render(:stuck_unknown, page_title: "Stuck on a site", problem: message)
-    end
-  end
+  def jev(conn, _params),
+    do: render(conn, :jev, page_title: "Ask Jev", examples: @jev_examples)
 
   def help(conn, _params), do: render(conn, :help, page_title: "Help & docs")
 
-  defp page(nil), do: %{}
-  defp page(page), do: %{"page" => page}
   def webmcp(conn, _params), do: render(conn, :webmcp, page_title: "WebMCP guide")
 
   def about(conn, _params) do

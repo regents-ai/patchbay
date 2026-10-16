@@ -1506,6 +1506,7 @@ a.patchbay-button { text-decoration: none; }
 .pb-setup-page li { margin: 0; color: var(--pb-text); font-size: var(--pb-fs-xs); line-height: 1.55; }
 .pb-setup-page ol,
 .pb-setup-page ul { margin: 0; padding-left: var(--space-3); display: grid; gap: var(--space-1); }
+.pb-setup-page .pb-help-links { padding-left: 0; list-style: none; }
 .pb-setup-page pre {
   margin: var(--space-1) 0 0;
   padding: var(--rg-panel-padding);

@@ -33,7 +33,7 @@ defmodule PatchbayWeb.Router do
     get "/blog/:slug", BlogController, :show
     get "/help", PagesController, :help
     get "/test-me", PagesController, :test_me
-    get "/help-me", PagesController, :help_me
+    get "/jev", PagesController, :jev
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy

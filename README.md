@@ -9,7 +9,7 @@ the browser demo shows a failing WebMCP tool being repaired and retried.
 ## Try it
 
 - Test Me (`/test-me`) shows Techtree's versioned Coinbase MCP readiness check;
-  checks cannot be started or reported yet. Help Me (`/help-me`) previews Jev's
+  checks cannot be started or reported yet. Ask Jev (`/jev`) previews Jev's
   paid search at 0.10 USDC per search, with search switched off, a question draft
   that stays on the page and five example decisions. Both pages also answer as
   Markdown. The free standalone known-fix look-up is gone; a fix still starts

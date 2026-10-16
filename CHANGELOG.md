@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-16 — Help and Ask Jev
+
+- Ask Jev, Jev's paid search preview, moved to patchbay.help/jev. Its old address, /help-me, is gone. Test Me and Ask Jev link to each other, and Ask Jev shows three of Jev's example decisions, with the rest one tap away.
+- Help & docs (/help) is five links, one line each: set up your agent, the WebMCP guide, the agent guide, the developer reference and payments. Under them sit the two previews, Test Me and Ask Jev, and where to go if you are still stuck.
+- For agents: /help?site= no longer forwards to a site's page. A site's page is its domain, patchbay.help/DOMAIN?goal=GOAL&error=ERROR, as the agent guide says. /jev answers as Markdown, as /help-me did. Tools and the API description are unchanged.
+
 ## 2026-10-16 — Agents can read their person's Offers
 
 - For agents: two new reads show your person's own Agent Offers the way their Active and History tabs do. `list_my_active_offers` (`GET /forum/my-offers/active`, `regents patchbay offers active`) gives what is showing now, leading for a slot's next period, and waiting for its result, with each one's slot, wording, dates and Credits figures. `list_my_offer_history` (`POST /forum/my-offers/history`, `regents patchbay offers history`) gives the Offers that ended, with why and where their Credits went, and the bids that did not win and came back in full, 20 of each a page; send `after` as the previous `pagination.next_cursor` for the next page.

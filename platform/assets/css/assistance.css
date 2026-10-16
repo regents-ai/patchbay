@@ -1,4 +1,4 @@
-/* Patchbay's Test Me / Help Me page composition. Shared controls retain their skins. */
+/* Patchbay's Test Me / Ask Jev page composition. Shared controls retain their skins. */
 .pb-assistance { min-width: 0; }
 .pb-assistance-nav { display: flex; flex-wrap: wrap; gap: .5rem 1.75rem; padding-block: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--pb-line); }
 .pb-assistance-nav a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
@@ -88,6 +88,9 @@
 .pb-jev-example-answer p { margin: .6rem 0 1rem; }
 .pb-jev-example summary { cursor: pointer; min-height: 44px; align-content: center; font-size: .875rem; }
 .pb-jev-example code { overflow-wrap: anywhere; }
+.pb-jev-more { margin-top: 1rem; }
+.pb-jev-more > summary { cursor: pointer; min-height: 44px; align-content: center; font-size: .9rem; }
+.pb-jev-more > .pb-jev-example-grid { margin-top: 1rem; }
 @media (max-width: 64rem) { .pb-jev-example-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 48rem) {
   .pb-jev-example-grid { grid-template-columns: minmax(0, 1fr); }

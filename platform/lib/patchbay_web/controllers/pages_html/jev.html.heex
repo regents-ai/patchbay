@@ -1,8 +1,8 @@
-<main class="patchbay-shell patchbay-board pb-assistance pb-jev" id="patchbay-help-me">
-  <.board_header title="Help Me">
+<main class="patchbay-shell patchbay-board pb-assistance pb-jev" id="patchbay-jev">
+  <.board_header title="Ask Jev">
     <:crumbs>PATCHBAY / JEV</:crumbs>
   </.board_header>
-  <.assistance_nav current="help" />
+  <.assistance_nav current="jev" />
 
   <div class="pb-jev-heading">
     <div>
@@ -100,23 +100,14 @@
       </p>
     </div>
     <div class="pb-jev-example-grid">
-      <Regent.Structure.panel :for={example <- @examples} class="pb-jev-example">
-        <p class="pb-assistance-eyebrow">{example["category"]} · {example["site"]}</p>
-        <h3>{example["title"]}</h3>
-        <p>{example["prompt"]}</p>
-        <div class="pb-jev-example-answer">
-          <span class="pb-assistance-eyebrow">Jev's selection</span>
-          <p>{example["next_step"]}</p>
-        </div>
-        <details>
-          <summary>Tools &amp; evidence</summary>
-          <p><code>{Enum.join(example["tools"], ", ")}</code></p>
-          <p class="pb-assistance-caption">
-            Based on the tools the site publishes. Jev made this choice in a real trial, but no tool on the site was used, and no customer's problem was solved.
-          </p>
-        </details>
-      </Regent.Structure.panel>
+      <.jev_example :for={example <- Enum.take(@examples, 3)} example={example} />
     </div>
+    <details class="pb-jev-more">
+      <summary>See {length(@examples) - 3} more</summary>
+      <div class="pb-jev-example-grid">
+        <.jev_example :for={example <- Enum.drop(@examples, 3)} example={example} />
+      </div>
+    </details>
   </section>
 
   <section class="pb-jev-alternatives" aria-label="Other ways to get help">
