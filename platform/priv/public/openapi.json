@@ -8151,7 +8151,7 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "Page number; default 1."
+              "description": "A whole number from 1; default 1. Any other value is refused with 422."
             },
             "required": false
           }
@@ -8170,6 +8170,16 @@
           },
           "404": {
             "description": "No public site/tool at this address.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The page is not a whole number from 1 (code invalid). Nothing was read.",
             "content": {
               "application/json": {
                 "schema": {

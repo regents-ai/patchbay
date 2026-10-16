@@ -807,7 +807,7 @@
           "page": {
             "type": "integer",
             "minimum": 1,
-            "description": "Page number; default 1."
+            "description": "A whole number from 1; default 1. Any other page is refused."
           }
         },
         "required": [],

@@ -409,8 +409,12 @@ defmodule PatchbayWeb.MCP.Tools do
     {:ok, %{format: "markdown", guide: IO.iodata_to_binary(PatchbayWeb.PagesMD.webmcp(%{}))}}
   end
 
-  defp run("read_site_directory", arguments, _session_id, _actor),
-    do: {:ok, BoardJSON.sites(%{directory: SiteDirectory.page(arguments)})}
+  defp run("read_site_directory", arguments, _session_id, _actor) do
+    forum_answer(
+      with {:ok, directory} <- SiteDirectory.page(arguments),
+           do: {:ok, BoardJSON.sites(%{directory: directory})}
+    )
+  end
 
   defp run("list_offer_slots", arguments, _session_id, _actor),
     do: forum_answer(OfferSlots.read(arguments))

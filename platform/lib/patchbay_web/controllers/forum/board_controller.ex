@@ -26,6 +26,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
+  alias Patchbay.Forum.SiteDirectory
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
   alias PatchbayWeb.Forum.Board
@@ -732,16 +733,27 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @doc "The site directory: the home page's Sites view, or the listing itself as Markdown or JSON."
   def sites(conn, params) do
-    if get_format(conn) == "html" do
-      render_home(conn, params, hero(Hero.prefilled(%{})), "sites")
-    else
-      directory = Patchbay.Forum.SiteDirectory.page(params)
+    case SiteDirectory.page_number(params["page"]) do
+      {:ok, _number} ->
+        sites_page(conn, params, get_format(conn))
 
-      render_catalog(conn, :sites,
-        page_title: "WebMCP Site Directory",
-        directory: directory
-      )
+      {:error, {:invalid, messages}} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> render_catalog(:sites_error, page_title: "No such page of sites", messages: messages)
     end
+  end
+
+  defp sites_page(conn, params, "html"),
+    do: render_home(conn, params, hero(Hero.prefilled(%{})), "sites")
+
+  defp sites_page(conn, params, _format) do
+    {:ok, directory} = SiteDirectory.page(params)
+
+    render_catalog(conn, :sites,
+      page_title: "WebMCP Site Directory",
+      directory: directory
+    )
   end
 
   @doc """

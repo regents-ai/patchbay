@@ -6,7 +6,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
   alias PatchbayWeb.Forum.SiteChecks
 
   def mount(_params, session, socket) do
-    page = SiteDirectory.page(session["filters"])
+    # The page asked for was checked before this page was rendered.
+    {:ok, page} = SiteDirectory.page(session["filters"])
 
     socket =
       socket
@@ -28,7 +29,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
     page = socket.assigns.page
 
     if page.page < page.pages do
-      next =
+      {:ok, next} =
         SiteDirectory.page(%{
           "q" => page.q,
           "category" => page.category,

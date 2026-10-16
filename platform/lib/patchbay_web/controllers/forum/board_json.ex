@@ -72,6 +72,8 @@ defmodule PatchbayWeb.Forum.BoardJSON do
     }
   end
 
+  def sites_error(%{messages: messages}), do: ApiError.invalid(messages)
+
   def tool_error(%{invalid_cursor?: true}) do
     ApiError.body(
       "invalid_cursor",

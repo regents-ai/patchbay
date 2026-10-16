@@ -26,8 +26,13 @@ defmodule Patchbay.Forum.SiteDirectory do
     |> Enum.uniq()
   end
 
+  @doc "One page of the listing with its checks and forum counts, or why `params` names no page."
+  @spec page(map()) :: {:ok, map()} | {:error, {:invalid, [String.t()]}}
   def page(params) do
-    selected = select(params)
+    with {:ok, selected} <- select(params), do: {:ok, read(selected)}
+  end
+
+  defp read(selected) do
     domains = selected.sites |> Enum.map(&domain/1) |> Enum.uniq()
 
     page =
@@ -64,6 +69,10 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   @doc "Filter and paginate the saved public listing without a database read."
   def select(params) do
+    with {:ok, number} <- page_number(params["page"]), do: {:ok, select(params, number)}
+  end
+
+  defp select(params, number) do
     q = text(params["q"], 100)
     category = text(params["category"], 80)
     words = q |> String.downcase() |> String.split()
@@ -78,7 +87,7 @@ defmodule Patchbay.Forum.SiteDirectory do
 
     total = length(entries)
     pages = max(1, ceil(total / @page_size))
-    page = min(number(params["page"]), pages)
+    page = min(number, pages)
 
     %{
       sites: Enum.slice(entries, (page - 1) * @page_size, @page_size),
@@ -183,12 +192,18 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp text(_value, _limit), do: ""
 
-  defp number(value) when is_binary(value) do
+  @doc "The page an address asks for: 1 when it names none, refused unless a whole number from 1."
+  @spec page_number(term()) :: {:ok, pos_integer()} | {:error, {:invalid, [String.t()]}}
+  def page_number(nil), do: {:ok, 1}
+
+  def page_number(value) when is_binary(value) do
     case Integer.parse(value) do
-      {page, ""} when page > 0 -> page
-      _other -> 1
+      {page, ""} when page >= 1 -> {:ok, page}
+      _other -> page_refused()
     end
   end
 
-  defp number(_value), do: 1
+  def page_number(_value), do: page_refused()
+
+  defp page_refused, do: {:error, {:invalid, ["page: must be a whole number from 1."]}}
 end
