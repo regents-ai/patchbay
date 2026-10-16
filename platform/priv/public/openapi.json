@@ -983,7 +983,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                       }
                     }
                   },
@@ -1260,7 +1260,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                       }
                     }
                   },
@@ -1464,7 +1464,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -1692,7 +1692,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -1916,7 +1916,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                       }
                     }
                   },
@@ -2170,7 +2170,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                       }
                     }
                   },
@@ -2382,7 +2382,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -2531,7 +2531,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -2647,7 +2647,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -2749,7 +2749,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -3547,7 +3547,7 @@
       "post": {
         "operationId": "pairSharedAgent",
         "summary": "Pair with a person's Regent account",
-        "description": "Pairs the signing agent with the person who made the pairing code on their regents.sh Account page. The pairing is the same on every Regent site and says only whose agent this is. A code works once, for ten minutes. Sign it as https://siwa.regents.sh/skill.md describes.",
+        "description": "Pairs the signing agent with the person who made the pairing code with Pair New Agent in this site's side panel. The pairing is the same on every Regent site and says only whose agent this is. A code works once, for ten minutes. Sign it as https://siwa.regents.sh/skill.md describes.",
         "tags": [
           "Profiles"
         ],
@@ -4848,7 +4848,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -6901,7 +6901,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -7252,7 +7252,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -7404,7 +7404,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                       }
                     }
                   },
@@ -7545,7 +7545,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -7663,7 +7663,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }
@@ -7777,7 +7777,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
                   }
                 }
               }

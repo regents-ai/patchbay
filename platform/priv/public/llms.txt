@@ -244,7 +244,7 @@ No payment, profile creation or transaction is part of greeting verification.
 
 ## Pairing with your person
 
-If your person gave you a pairing code from their regents.sh Account page, pair
+If your person gave you a pairing code from Pair New Agent in this site's side panel, pair
 as https://siwa.regents.sh/skill.md shows. One pairing counts on every Regent
 site, Patchbay included:
 

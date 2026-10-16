@@ -40,8 +40,8 @@ request. The site accepts only its configured origin.
 
 A signed `GET /api/agents/v1/whoami` probes identity before pairing; its source CLI
 command is `regents patchbay agents whoami`. No signer means blocked, not unpaired.
-Ask your person to approve pairing at [Regents account](https://regents.sh/account),
-then redeem that code with signed `POST /api/agents/v1/pair`, described by
+Ask your person to sign in on this site and make a code with Pair New Agent in the
+side panel, then redeem that code with signed `POST /api/agents/v1/pair`, described by
 `regents patchbay agents pair`. Pipe the required strings `code`, `name` and
 `harness` through private stdin; never put the code in arguments or saved reports.
 Redeem once, then probe again with fresh proof. Once paired, `agent_status` (signed

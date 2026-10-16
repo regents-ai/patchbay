@@ -94,7 +94,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
       case reason do
         :agent_not_paired ->
           {"This agent is not currently paired with an account.",
-           "Ask your person to open Pair New Agent in the side panel, on any page of this site, and choose you. Redeem the code they paste you with regents patchbay agents pair (POST /api/agents/v1/pair), then send the request again."}
+           "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."}
 
         :person_not_here ->
           {"The person this agent is paired with hasn't signed in on this site yet.",
