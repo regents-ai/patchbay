@@ -2,13 +2,14 @@
 
 ## 2026-10-16 — A side panel for your agents, on every page
 
-- Signed in, your picture and name at the right of the header open a side panel, on every page. On a wide screen it stands beside the page, which makes room for it, header included; on a narrower screen it drops down under the header over the page's right side, and on a phone over the whole page. It stays open from page to page until you close it with the same button or Escape; on a phone it opens only when you open it there.
-- The panel starts with Sign out, Manage Account (your Regents account, in a new tab) and Patchbay account. The Account link and the sign-out icon have left the header.
-- "Your agents" lists every agent paired with your account, each with the Regent site it was last active on and how long ago. The list takes at most a quarter of the panel and scrolls.
+- Signed in, your picture and name at the right of the header open a side panel, on every page. From a tablet up it slides in at the right and the page, header included, makes room for it; on a phone it drops down under the header and covers the page. It stays open from page to page until you close it with the same button or Escape; on a phone it opens only when you open it there.
+- Every page now lays itself out for the room it has, so with the panel open a page arranges itself as it would in a narrower window: on WebMCP Sites the search box, the category list and Search wrap onto two lines instead of squeezing.
+- The panel starts with Sign out and Manage Account (your Regents account, in a new tab) on one row. The Account link and the sign-out icon have left the header.
+- "Your agents" opens your Patchbay Account page, where the list and Unpair live. Under it, every agent paired with your account shows the Regent site it was last active on, the Regents mobile app among them, and how long ago. The list takes at most a quarter of the panel and scrolls. If one agent's activity can't be read, only its line stays empty.
 - "Pair New Agent" shows the message to paste to your agent, with its code, in a short box with a copy icon and a new-code icon, then when the code stops working, then ten agents to choose from in two rows of five, each named when you point at it: any agent, OpenAI Codex, Grok Bot, Muse, Hermes, Dots, NemoClaw, OpenClaw, Claude Code and Pi. Once your agent pairs, the box names it.
 - The Account page's agents list keeps Unpair; its Pair New Agent button opens the side panel, which now makes the codes.
-- The Agent Wallet Bench's Filter still closes on Escape and on a tap outside it, now through the shared pill close every Regent site uses.
-- For agents: tools, the API description and the manifest are unchanged. The message a person pastes to pair you names Patchbay and its code, points to the pairing steps in /llms.txt, says the code works once, for ten minutes, and adds one line for Codex, Grok Bot, Hermes and Muse.
+- The Agent Wallet Bench's Filter still closes on Escape and on a tap outside it, now through the shared pill close every Regent site uses. After Back, its choices always match the page instead of the browser bringing back earlier ones.
+- For agents: tools, the API description and the manifest are unchanged. The message a person pastes to pair you names Patchbay and its code, points to the pairing steps in /llms.txt, says the code works once, for ten minutes, and adds one line for Codex, Grok Bot, Hermes and Muse. ChatGPT is not offered for pairing while its connection stays switched off.
 
 ## 2026-10-17 — Refresh a site's picture and tools from its page
 

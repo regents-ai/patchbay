@@ -37,7 +37,7 @@
   color: var(--pb-text-muted);
   font-variant-numeric: tabular-nums;
 }
-@media (max-width: 640px) {
+@container pb-page (max-width: 640px) {
   .pb-deck-arrow { width: 2.5rem; height: 2.5rem; font-size: 1.2rem; }
   .pb-deck-arrow--back { left: var(--space-2); }
   .pb-deck-arrow--next { right: var(--space-2); }

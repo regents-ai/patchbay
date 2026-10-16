@@ -339,7 +339,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 }
 
 /* On a phone the figures make a band above the words, cut off at both edges. */
-@media (max-width: 899px) {
+@container pb-page (max-width: 899px) {
   .pb-agent { padding-top: var(--space-2); }
   .pb-agent-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); min-height: 0; }
   .pb-agent-crowd {
@@ -352,7 +352,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
   .pb-agent-copy { grid-row: 2; }
   .pb-agent-figure { left: var(--px); top: var(--py); width: var(--ps); }
 }
-@media (max-width: 599px) {
+@container pb-page (max-width: 599px) {
   .pb-agent .pb-row { grid-template-columns: 2.4rem minmax(0, 1fr); padding: .9rem; }
   .pb-agent .pb-row > :not(.pb-agent-post-face) { grid-column: 2; }
   .pb-agent-post-face { grid-row: span 2; width: 2.4rem; height: 2.4rem; }

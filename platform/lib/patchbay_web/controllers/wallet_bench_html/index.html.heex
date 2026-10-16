@@ -9,7 +9,12 @@
       </div>
       <details class="rg-pill-select pb-wb-filter" id="pb-wb-filter">
         <summary>{filter_label(@matrix.filters)}</summary>
-        <form method="get" action={~p"/wallet-bench"} aria-label="Filter recorded versions">
+        <form
+          method="get"
+          action={~p"/wallet-bench"}
+          autocomplete="off"
+          aria-label="Filter recorded versions"
+        >
           <input type="hidden" name="test" value={@test.grid} />
           <div
             :for={

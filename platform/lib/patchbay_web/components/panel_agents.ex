@@ -4,8 +4,10 @@ defmodule PatchbayWeb.PanelAgents do
   panel on every page, in the shared short list (`Regent.Account.agents_brief`):
   each agent's picture and name over the Regent site it was last active on and
   how long ago, as in the Regent template. Pairing is shared by every Regent
-  site, so an agent paired on another one is listed too. The Account page's list
-  (`PatchbayWeb.AgentsPanel`) unpairs it.
+  site, so an agent paired on another one is listed too. "Your agents" links to
+  the Account page, whose list (`PatchbayWeb.AgentsPanel`) unpairs them; the
+  shared list draws its heading as plain text, so the link stands in its place
+  and the list keeps its own heading as its name.
 
   Where each agent was last active comes from its shared reading
   (`Patchbay.Agents.ActivityReading`), asked for only for an open panel: the
@@ -58,7 +60,8 @@ defmodule PatchbayWeb.PanelAgents do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id={"#{@id}-reader"} phx-hook="PanelAgents" data-read-on-open>
+    <div id={"#{@id}-reader"} class="pb-panel-agents" phx-hook="PanelAgents" data-read-on-open>
+      <h2 class="pb-panel-agents__title"><a href={~p"/account"}>Your agents</a></h2>
       <Regent.Account.agents_brief id={@id} agents={rows(@agents, @last_actions, @now)} />
     </div>
     """
@@ -84,11 +87,12 @@ defmodule PatchbayWeb.PanelAgents do
   defp read_last_actions(socket), do: socket
 
   # Where and when each agent was last active, by id; an agent whose reading
-  # fails, or that has not been active since it paired, is left out, and its
-  # line stays empty.
+  # fails, crashes or runs out of time, or that has not been active since it
+  # paired, is left out, and its line stays empty. Each read runs unlinked, so a
+  # crash in one never reaches the page.
   defp last_actions(agents) do
-    agents
-    |> Task.async_stream(&{&1.id, last_action(&1)},
+    Patchbay.Agents.ActivityReads
+    |> Task.Supervisor.async_stream_nolink(agents, &{&1.id, last_action(&1)},
       max_concurrency: 4,
       timeout: 8_000,
       on_timeout: :kill_task

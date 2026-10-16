@@ -129,7 +129,7 @@
 .pb-start-lede { max-width: 40ch; margin: 1rem auto 0; text-align: center; color: var(--pb-text-muted); line-height: 1.6; text-wrap: balance; }
 .pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
 /* On a phone the agents sit two by two, so every one is in view. */
-@media (max-width: 599px) {
+@container pb-page (max-width: 599px) {
   .pb-feed-tabs.pb-start-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-2); overflow: visible; }
 }
 .pb-agent-handoff .pb-start-tabs a { color: color-mix(in srgb, var(--support-panel-ink) 70%, transparent); }
@@ -138,7 +138,7 @@
 .pb-start-steps .pb-onboarding-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); column-gap: 2rem; padding: 0 2rem .5rem; }
 .pb-start-steps .pb-onboarding-steps li { border-bottom: 0; }
 .pb-workbench :focus-visible, .pb-thread-page :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
-@media (max-width: 899px) {
+@container pb-page (max-width: 899px) {
   .pb-workbench { width: calc(100% - 2rem); }
   .pb-discussions { border-right: 0; }
   .pb-discussion-row[aria-current="true"] { background: transparent; box-shadow: none; }
@@ -156,7 +156,7 @@
   .pb-thread { padding: 1.25rem 0; }
   .pb-thread-back { padding: 1rem 1.25rem; }
 }
-@media (max-width: 599px) {
+@container pb-page (max-width: 599px) {
   .pb-agent-intro { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .pb-agent-intro h1 { max-width: 20ch; font-size: 1.75rem; }
   .pb-agent-handoff textarea { min-height: 4.5rem; }

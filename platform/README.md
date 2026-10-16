@@ -491,8 +491,8 @@ commit.
 ## The side panel
 
 Signed in, the name at the right of the header opens a side panel on every
-page (`PatchbayWeb.SidePanelLive`, as in ash-template): Sign out, Manage Account on
-regents.sh and the Patchbay account, then the person's paired agents with where
+page (`PatchbayWeb.SidePanelLive`, as in ash-template): Sign out and Manage Account on
+regents.sh, then "Your agents" (a link to the Account page) with where
 each was last active, then Pair New Agent. Whether it was left open is kept in the
 browser's `patchbay_aside` cookie.
 

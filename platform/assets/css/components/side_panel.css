@@ -1,9 +1,8 @@
 /* The side panel the signed-in name opens, on every page (PatchbayWeb.SidePanelLive),
    as in the Regent template. Whether it is open is the visitor's, on
-   <html data-aside>. On a wide screen it stands at the right edge and the page,
-   header included, gives way. Narrower, where the pages' own layouts need the
-   whole window, it drops down under the header over the page's right side, and on
-   a phone over the whole page. */
+   <html data-aside>. It slides in at the right edge and the page, header
+   included, gives way; only on a phone, too narrow for both, does it drop down
+   under the header and cover the page. */
 
 :root { --pb-aside-width: 20rem; }
 
@@ -35,19 +34,18 @@
 
 :root:not([data-aside="open"]) #shell-aside { visibility: hidden; transform: translateX(100%); }
 
-@media (min-width: 64rem) {
+@media (min-width: 48rem) {
   :root[data-aside="open"]:has(#shell-aside) body { padding-inline-end: var(--pb-aside-width); }
 }
 
-/* Sign out, Manage Account and the Patchbay account share short rows; the name in
-   the header closes the panel. */
+/* Sign out and Manage Account share one short row; the name in the header closes
+   the panel. */
 .shell-aside__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   min-height: 3rem;
-  padding: 0.5rem 1rem;
+  padding-inline: 1rem;
   border-block-end: 1px solid var(--pb-line);
 }
 .shell-aside__head .rg-button {
@@ -71,33 +69,37 @@
 }
 #shell-aside p { margin: 0; }
 
-@media (max-width: 63.99rem) {
-  /* Under the header, which keeps the name that closes it, out to the screen's
-     right edge past the page's margin. It is wiped in from that edge rather than
-     slid, so the closed panel never sits beside the screen and the page never
-     scrolls sideways. */
+/* "Your agents" opens the Account page, where the list and Unpair live. The
+   shared list's own heading keeps its place and names the list, unseen. */
+.pb-panel-agents { position: relative; }
+.pb-panel-agents__title { position: absolute; inset-block-start: 1rem; inset-inline-start: 1rem; }
+.pb-panel-agents__title a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--pb-accent);
+  text-underline-offset: .25em;
+}
+.pb-panel-agents .rg-account__brief > h2 { visibility: hidden; }
+
+@media (max-width: 47.99rem) {
+  /* Under the header, which keeps the name that closes it, the full width of the
+     screen past the page's margins, and opened only on this page, never on
+     arrival. It is wiped in from the right edge rather than slid, so the closed
+     panel never sits beside the screen and the page never scrolls sideways. */
   #shell-aside {
     position: absolute;
     inset-block: 100% auto;
-    inset-inline-end: calc(-1 * (var(--rg-page-gutter) + var(--rg-rule-width)));
+    inset-inline: calc(-1 * (var(--rg-page-gutter) + var(--rg-rule-width)));
+    inline-size: auto;
     block-size: calc(100dvh - 100% - var(--rg-page-gutter));
+    border-inline-start: 0;
     border-block-start: 1px solid var(--pb-line);
     clip-path: inset(0);
     transform: none;
     transition: clip-path var(--duration-slow) var(--ease-out), visibility var(--duration-slow);
   }
   :root[data-aside="open"] #shell-aside { transition: clip-path var(--duration-slow) var(--ease-out); }
-  :root:not([data-aside="open"]) #shell-aside { visibility: hidden; transform: none; clip-path: inset(0 0 0 100%); }
-}
-
-@media (max-width: 47.99rem) {
-  /* A phone is too narrow for both: the panel covers the whole page, and opens
-     only when opened on this page, never on arrival. */
-  #shell-aside {
-    inset-inline-start: calc(-1 * (var(--rg-page-gutter) + var(--rg-rule-width)));
-    inline-size: auto;
-    border-inline-start: 0;
-  }
+  :root:not([data-aside="open"]) #shell-aside,
   :root:not([data-aside-here]) #shell-aside { visibility: hidden; transform: none; clip-path: inset(0 0 0 100%); }
 }
 

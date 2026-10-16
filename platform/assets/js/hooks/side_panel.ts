@@ -14,8 +14,6 @@ type SidePanelHook = {
 const yearInSeconds = 60 * 60 * 24 * 365
 const root = () => document.documentElement
 const covering = window.matchMedia("(max-width: 47.99rem)")
-// Below a wide screen the panel hangs under the header rather than beside the page.
-const hanging = window.matchMedia("(max-width: 63.99rem)")
 
 export const asideOpen = () =>
   root().dataset.aside === "open" && (!covering.matches || root().dataset.asideHere !== undefined)
@@ -45,9 +43,8 @@ export const SidePanel = {
       // Opened, focus moves into it, so Escape closes it and returns focus to the
       // name, and what it shows is read again.
       if (!open) return
-      // Below a wide screen it hangs under the header, which keeps the name that
-      // closes it.
-      if (hanging.matches) window.scrollTo({top: 0})
+      // On a phone it hangs under the header, which keeps the name that closes it.
+      if (covering.matches) window.scrollTo({top: 0})
       aside.focus({preventScroll: true})
       aside
         .querySelectorAll("[data-read-on-open]")

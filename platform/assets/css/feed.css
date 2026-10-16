@@ -138,10 +138,10 @@ a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-s
 .pb-row-foot .pb-feed-bounty { color: var(--pb-text); }
 .pb-row-asked { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 .3rem; margin-inline-start: auto; }
 .pb-feed-list :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
-@media (max-width: 1199px) {
+@container pb-page (max-width: 1199px) {
   .pb-feed-layout { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 599px) {
+@container pb-page (max-width: 599px) {
   .pb-feed-heading { padding-right: .75rem; padding-left: 3.75rem; }
   .pb-feed-body { margin-inline: .75rem; padding: .75rem; }
   .pb-feed-title { font-size: 1rem; }

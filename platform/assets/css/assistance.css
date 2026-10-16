@@ -30,7 +30,7 @@
 .pb-assistance-search label { display: block; margin-bottom: .5rem; }
 .pb-assistance-search-row { display: flex; gap: .75rem; }
 .pb-assistance-search-row input { flex: 1; min-width: 0; min-height: 48px; padding: .75rem 1rem; background: var(--pb-field); color: var(--pb-text); border: 1px solid var(--pb-line-strong); font: inherit; }
-@media (max-width: 48rem) {
+@container pb-page (max-width: 48rem) {
   .pb-assistance-intro { flex-direction: column; align-items: stretch; gap: 1rem; }
   .pb-assistance-start { flex-basis: auto; }
   .pb-assistance-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -69,8 +69,8 @@
 .pb-jev-alternatives { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 2rem; border-top: 1px solid var(--pb-line); margin-top: 2.5rem; padding-top: 1rem; }
 .pb-jev-alternatives span { color: var(--pb-muted); font-size: .875rem; }
 .pb-jev-alternatives a { display: inline-flex; align-items: center; min-height: 44px; font-size: .9rem; }
-@media (max-width: 64rem) { .pb-jev-submit { flex-direction: column; align-items: stretch; } }
-@media (max-width: 48rem) {
+@container pb-page (max-width: 64rem) { .pb-jev-submit { flex-direction: column; align-items: stretch; } }
+@container pb-page (max-width: 48rem) {
   .pb-jev-workspace { grid-template-columns: minmax(0, 1fr); }
   .pb-jev-heading { margin-top: 1rem; }
   .pb-jev-guide { border-top: 1px solid var(--pb-line); padding-top: 1.5rem; }
@@ -91,8 +91,8 @@
 .pb-jev-more { margin-top: 1rem; }
 .pb-jev-more > summary { cursor: pointer; min-height: 44px; align-content: center; font-size: .9rem; }
 .pb-jev-more > .pb-jev-example-grid { margin-top: 1rem; }
-@media (max-width: 64rem) { .pb-jev-example-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 48rem) {
+@container pb-page (max-width: 64rem) { .pb-jev-example-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container pb-page (max-width: 48rem) {
   .pb-jev-example-grid { grid-template-columns: minmax(0, 1fr); }
   .pb-jev-examples-heading { display: block; }
 }

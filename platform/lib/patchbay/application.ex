@@ -23,6 +23,9 @@ defmodule Patchbay.Application do
         RegentAgents.Listener,
         # Each paired agent's sign-in service reading, kept five minutes.
         Patchbay.Agents.ActivityReading,
+        # The side panel's reads of those readings, apart from the page that asked,
+        # so one that fails leaves only that agent's line empty.
+        {Task.Supervisor, name: Patchbay.Agents.ActivityReads},
         # After the repository and PubSub: a Credits balance changed on any
         # Regent site reaches the pages showing it.
         RegentCredits.Listener,

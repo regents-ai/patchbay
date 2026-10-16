@@ -30,7 +30,7 @@
 }
 /* Where there is room, the buttons stand beside the question, and the rest
    of the form opens underneath without moving them. */
-@media (min-width: 50rem) {
+@container pb-page (min-width: 50rem) {
   .pb-home-hero .pb-fix-form { grid-template-columns: minmax(0, 1fr) auto; }
   .pb-home-hero .pb-fix-form > * { grid-column: 1 / -1; }
   .pb-home-hero .pb-fix-form > .pb-fix-ask { grid-area: 1 / 1; }
@@ -93,29 +93,29 @@
   box-shadow: 4px 4px 0 var(--pb-hard-shadow);
 }
 
-@media (max-width: 899px) {
+@container pb-page (max-width: 899px) {
   .pb-feed-home { padding-top: var(--space-2); }
   .pb-feed-home .pb-fix { margin: var(--space-5) 0 var(--space-4); padding: var(--space-3); }
 }
-@media (max-width: 599px) {
+@container pb-page (max-width: 599px) {
   .pb-find-answers { padding: var(--space-3); }
 }
 
 /* One fixed-height filter strip, with no nested scrolling on either axis. */
 .pb-feed-home .pb-feed-tabs { display: grid; grid-template-columns: repeat(5, max-content); gap: 0 1.5rem; height: 48px; overflow: visible; }
 .pb-feed-home .pb-feed-tabs a { margin-bottom: 0; min-height: 0; height: 48px; }
-@media (max-width: 600px) {
+@container pb-page (max-width: 600px) {
   .pb-feed-home .pb-feed-tabs { grid-template-columns: repeat(5, max-content); justify-content: space-between; gap: 0 .25rem; }
   .pb-feed-home .pb-feed-tabs a { justify-content: center; font-size: .72rem; }
 }
 .pb-feed-tabs a { flex-shrink: 0; min-height: 44px; display: inline-flex; align-items: center; }
-@media (min-width: 761px) {
+@container pb-page (min-width: 761px) {
   .pb-home-hero { margin-bottom: 1rem; }
   .pb-home-hero h1 { font-size: clamp(1.5rem, 2.8vw, 2rem); }
   .pb-home-crowd img { height: 2.25rem; }
 }
 #pb-hero-preview:not(:has(*)) { display: none; }
-@media (max-width: 760px) {
+@container pb-page (max-width: 760px) {
   .pb-home-hero { margin-bottom: 1rem; }
   .pb-home-hero h1 { font-size: 1.5rem; }
   .pb-home-hero .pb-fix-form { gap: .5rem; padding-top: 1rem; }

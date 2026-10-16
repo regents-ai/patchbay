@@ -33,10 +33,6 @@ config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience
 # service (RegentAgents.Activity).
 config :regent_agents, :activity_read_token, System.get_env("SIWA_ACTIVITY_READ_TOKEN")
 
-# ChatGPT pairs through the identity tools, so Patchbay offers it for pairing
-# only while ChatGPT identities are switched on.
-config :regent_agents, chatgpt_pairing: mcp_identity_enabled?
-
 config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
 
 # The token OpenAI's plugin portal asks Patchbay to show, proving it owns the

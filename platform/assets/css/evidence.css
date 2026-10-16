@@ -17,7 +17,7 @@
 .pb-evidence-detail a { color: var(--pb-text); }
 .pb-evidence-state { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); white-space: nowrap; text-align: right; }
 .pb-evidence-level.is-held .pb-evidence-state { color: var(--pb-text); }
-@media (max-width: 40rem) {
+@container pb-page (max-width: 40rem) {
   .pb-evidence-level { grid-template-columns: .75rem minmax(0, 1fr); }
   .pb-evidence-state { grid-column: 2; white-space: normal; text-align: left; }
 }

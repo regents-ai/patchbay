@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.SidePanelLive do
   @moduledoc """
   The side panel on every page for a signed-in person, as in the Regent
-  template, opened by their name in the header: Sign out, Manage Account on
-  regents.sh and the Patchbay account, then the agents paired with the account
-  (`PatchbayWeb.PanelAgents`) with where each was last active, and Pair New Agent
+  template, opened by their name in the header: Sign out and Manage Account on
+  regents.sh, then the agents paired with the account
+  (`PatchbayWeb.PanelAgents`), headed by a link to the Account page, with where
+  each was last active, and Pair New Agent
   (`PatchbayWeb.PairingBox`). The root layout renders it in the header, beside
   the page's own view. Whether it is open is the browser's (`assets/js/hooks/side_panel.ts` and
   the `patchbay_aside` cookie, read into `<html data-aside>` by
@@ -53,7 +54,6 @@ defmodule PatchbayWeb.SidePanelLive do
         >
           Manage Account
         </a>
-        <a href={~p"/account"} class="rg-button rg-button--secondary">Patchbay account</a>
       </div>
 
       <.live_component

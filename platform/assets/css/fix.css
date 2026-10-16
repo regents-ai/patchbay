@@ -98,7 +98,7 @@
   .pb-fix-directory[data-pb-arrived] { animation: pb-fix-directory-in 420ms cubic-bezier(.2, .8, .2, 1) both; }
 }
 @keyframes pb-fix-directory-in { from { opacity: 0; transform: translateY(.4rem) scale(.96); } to { opacity: 1; transform: none; } }
-@media (max-width: 30rem) {
+@container pb-page (max-width: 30rem) {
   .pb-hero-actions .rg-button { flex: 1 1 100%; }
 }
 
@@ -116,7 +116,7 @@
 .pb-fix-line { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-fix-at { color: var(--pb-text-on-ink-muted); }
 /* On a phone the time column is as wide as "+10.3s" and no wider. */
-@media (max-width: 40rem) {
+@container pb-page (max-width: 40rem) {
   .pb-fix-log { padding: .6rem .75rem .8rem; }
   .pb-fix-line { grid-template-columns: 3.25rem minmax(0, 1fr); }
 }
