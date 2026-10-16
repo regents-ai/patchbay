@@ -24,9 +24,9 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   @doc """
   The filters a question list is read with. `site` narrows the list to one
-  site, named exactly by the domain Patchbay files it under and only when
-  Patchbay has a record of that site; any other value is refused as
-  `{:error, :unknown_site}`.
+  site, named exactly by the domain Patchbay files it under; any other value
+  is refused as `{:error, :unknown_site}`. Whether Patchbay has a record of
+  that site is read with the list itself (`page/3`).
   """
   @spec filters(map()) :: {:ok, map()} | {:error, :unknown_site}
   def filters(params) do
@@ -46,11 +46,9 @@ defmodule PatchbayWeb.Forum.Discussions do
   defp site(absent) when absent in [nil, ""], do: {:ok, ""}
 
   defp site(domain) when is_binary(domain) do
-    with {:ok, ^domain} <- Origin.normalize(domain),
-         %{} <- Forum.get_site_by_origin!(domain, not_found_error?: false) do
-      {:ok, domain}
-    else
-      _unknown -> {:error, :unknown_site}
+    case Origin.normalize(domain) do
+      {:ok, ^domain} -> {:ok, domain}
+      _not_a_domain -> {:error, :unknown_site}
     end
   end
 
@@ -89,6 +87,11 @@ defmodule PatchbayWeb.Forum.Discussions do
 
   defp by_id(resource, ids), do: by_id(resource, ids, [])
 
+  @doc """
+  One page of the question list. A list narrowed to a site Patchbay has no
+  record of is `{:error, :unknown_site}`; a list that could not be read is
+  the read's own error.
+  """
   def page(filters, subscriptions, token) do
     context =
       {filters,
@@ -97,7 +100,8 @@ defmodule PatchbayWeb.Forum.Discussions do
          else: []
        )}
 
-    with {:ok, keyset} <- verify(token, context),
+    with :ok <- on_record(filters.site),
+         {:ok, keyset} <- verify(token, context),
          {:ok, page} <-
            Forum.list_feed_reports(
              query: Patchbay.Forum.Feed.query(filters, subscriptions),
@@ -105,6 +109,16 @@ defmodule PatchbayWeb.Forum.Discussions do
            ),
          {:ok, page} <- Ash.load(page, @loads) do
       {:ok, page.results, continuation(page, context)}
+    end
+  end
+
+  defp on_record(""), do: :ok
+
+  defp on_record(domain) do
+    case Forum.get_site_by_origin(domain, not_found_error?: false) do
+      {:ok, nil} -> {:error, :unknown_site}
+      {:ok, _site} -> :ok
+      {:error, failure} -> {:error, failure}
     end
   end
 

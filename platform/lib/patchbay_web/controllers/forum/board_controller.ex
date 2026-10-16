@@ -163,17 +163,22 @@ defmodule PatchbayWeb.Forum.BoardController do
   # The form and the questions. A list that could not be read says so where
   # it would have been; the navigation and the form with what was typed still
   # show. Only the questions are the page itself, so only their failure is a
-  # 503. A list narrowed to a site Patchbay has no record of is refused.
+  # 503, and that includes failing to read whether a named site is on record.
+  # A list narrowed to a site Patchbay has no record of is refused.
   defp render_home(conn, forum_params, hero) do
     case Discussions.filters(forum_params) do
       {:ok, filters} ->
         render_questions(conn, forum_params, filters, hero)
 
       {:error, :unknown_site} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> render(:unknown_site, page_title: "No such site")
+        unknown_site(conn)
     end
+  end
+
+  defp unknown_site(conn) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> render(:unknown_site, page_title: "No such site")
   end
 
   defp newest do
@@ -197,6 +202,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn
         |> put_flash(:error, "That discussion page has expired or does not match these filters.")
         |> redirect(to: ~p"/?#{filters}")
+
+      {:error, :unknown_site} ->
+        unknown_site(conn)
 
       {reports, next_page} ->
         conn
@@ -223,7 +231,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case Discussions.page(filters, subscriptions, after_token) do
       {:ok, reports, next_page} -> {reports, next_page}
-      {:error, :invalid_cursor} -> {:error, :invalid_cursor}
+      {:error, refused} when refused in [:invalid_cursor, :unknown_site] -> {:error, refused}
       {:error, failure} -> {section({:error, failure}, "Discussions"), nil}
     end
   end
