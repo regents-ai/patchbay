@@ -35,6 +35,9 @@
 .pb-flash { margin: 0 0 .75rem; padding: .625rem .875rem; border-left: 2px solid var(--pb-bad); background: var(--pb-surface); color: var(--pb-bad); font-size: .875rem; font-weight: var(--font-weight-semibold); }
 .pb-section-unavailable { margin: .75rem 0; font-size: .875rem; }
 .pb-section-unavailable a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* A refused page's way on reads as a link, not as more of the refusal. */
+.pb-refusal a { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); text-decoration: underline; text-underline-offset: .2em; }
+.pb-refusal a:hover { text-decoration-thickness: 2px; }
 .pb-thread-jev span { color: var(--pb-text-muted); }
 .pb-thread-caption { font-size: .8125rem; color: var(--pb-text-muted); line-height: 1.6; }
 .pb-kind-pill { display: inline-flex; align-items: center; padding: .15rem .55rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); }
