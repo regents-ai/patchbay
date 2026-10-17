@@ -13,6 +13,13 @@ defmodule Patchbay.WalletBench.Matrix do
   install run did not pass; any other square with no runs and no fixed
   outcome has not been tested yet.
 
+  The zoomable board also has a separate presentation of the latest matching
+  attempt, across all of the pair's sets. Its nine positions never combine
+  checks from different attempts. Money grids publish five checks, so their
+  last four positions are explicitly not applicable. A newer failed install
+  takes precedence over an older wallet result, while the recorded set counts
+  and history stay intact.
+
   The last three grids are the money tests. Techtree gives every finished
   money run a result in each of them, so a money square with no runs has
   simply not been tested yet. A run that never reached a money test is ruled
@@ -25,6 +32,7 @@ defmodule Patchbay.WalletBench.Matrix do
   alias Patchbay.WalletBench.Sets
 
   @grids ["install", "wallet", "refund", "paid_call", "patchbay"]
+  @display_criteria ~w(C1 C2 C3 C4 C5 C6 C7 C8 C9)
 
   # Every outcome Techtree rules, in the order the page lists them.
   @outcomes ~w(PASS PASS* FAILED_TECHNICAL FAILED_SAFETY BLOCKED_AUTH BLOCKED_POLICY
@@ -32,13 +40,22 @@ defmodule Patchbay.WalletBench.Matrix do
 
   @type criterion :: %{id: String.t(), criterion: String.t()}
   @type dot :: %{criterion: criterion(), held: non_neg_integer()}
+  @type display_dot :: %{
+          criterion: criterion(),
+          result: String.t(),
+          reason: String.t() | nil
+        }
   @type square :: %{
           runs: non_neg_integer(),
           judged: non_neg_integer(),
           tally: [{String.t(), pos_integer()}],
           fixed: [struct()],
           dots: [dot()],
-          stopped: %{set_id: String.t()} | nil
+          stopped: %{set_id: String.t()} | nil,
+          display_run: struct() | nil,
+          display_set_id: String.t() | nil,
+          display_dots: [display_dot()],
+          newer_install_failure: struct() | nil
         }
 
   @passed ~w(PASS PASS*)
@@ -95,6 +112,7 @@ defmodule Patchbay.WalletBench.Matrix do
       |> Enum.group_by(&{&1.grid, &1.summary.harness_id, &1.summary.wallet_id})
 
     found = Map.new(checks, &{{&1.grid, &1.attempt_id, &1.criterion_id}, &1.result})
+    published = Map.new(checks, &{{&1.grid, &1.attempt_id, &1.criterion_id}, &1})
 
     grids =
       Enum.map(@grids, fn grid ->
@@ -110,6 +128,7 @@ defmodule Patchbay.WalletBench.Matrix do
               sets
               |> shown_square(fixed, criteria, found)
               |> Map.put(:stopped, stopped(grid, sets, fixed, runs))
+              |> Map.merge(presentation(grid, sets, fixed, runs, published))
 
             {{h.id, w.id}, square}
           end
@@ -155,16 +174,19 @@ defmodule Patchbay.WalletBench.Matrix do
 
   @doc """
   The install run a pair's wallet test stopped at: its latest install run,
-  when that did not pass and no wallet run came from it. Techtree runs the
-  wallet test only after the install test passes.
+  when that did not pass, no wallet run came from it, and no newer wallet
+  result supersedes it. Techtree runs the wallet test only after the install
+  test passes. Callers apply any cohort filters before passing the runs.
   """
   @spec stopped_at([struct()]) :: struct() | nil
   def stopped_at(runs) do
-    {installs, wallets} = Enum.split_with(runs, &(&1.grid == "install"))
-    latest = installs != [] && Enum.max_by(installs, & &1.finished_at, DateTime)
+    installs = Enum.filter(runs, &(&1.grid == "install"))
+    wallets = Enum.filter(runs, &(&1.grid == "wallet"))
+    latest = latest_run(installs)
 
     if latest && latest.outcome not in @passed &&
-         not Enum.any?(wallets, &(&1.attempt_id == latest.attempt_id)),
+         not Enum.any?(wallets, &(&1.attempt_id == latest.attempt_id)) &&
+         newer_than?(latest, latest_run(wallets)),
        do: latest
   end
 
@@ -235,6 +257,90 @@ defmodule Patchbay.WalletBench.Matrix do
       dots: dots
     }
   end
+
+  # Aggregates keep Techtree's selected set. Presentation chooses one latest
+  # matching attempt, so a current-but-older set cannot hide a newer result.
+  defp presentation(grid, sets, fixed, runs, published) do
+    display_run = sets |> Enum.flat_map(& &1.runs) |> latest_run()
+    failure = if grid == "wallet", do: stopped_at(runs)
+    dot_run = if failure, do: nil, else: display_run
+    not_run_reason = not_run_reason(display_run, failure, fixed)
+
+    %{
+      display_run: display_run,
+      display_set_id: display_run && display_run.set_id,
+      newer_install_failure: failure,
+      display_dots:
+        Enum.map(@display_criteria, &display_dot(grid, &1, dot_run, published, not_run_reason))
+    }
+  end
+
+  # Techtree's money-test rubrics have five criteria. Keep the visual 3x3
+  # shape without presenting unused positions as absent or failed evidence.
+  defp display_dot(grid, id, _run, _published, _not_run_reason)
+       when grid in ~w(refund paid_call patchbay) and id in ~w(C6 C7 C8 C9) do
+    %{
+      criterion: %{id: id, criterion: "Outside this five-check rubric"},
+      result: "not_applicable",
+      reason: "This test publishes five checks; this position is display padding."
+    }
+  end
+
+  defp display_dot(grid, id, run, published, not_run_reason) do
+    check = run && published[{grid, run.attempt_id, id}]
+
+    %{
+      criterion: %{
+        id: id,
+        criterion: (check && check.criterion) || "Criterion not recorded"
+      },
+      result: display_result(check, not_run_reason),
+      reason: display_reason(check, run, not_run_reason)
+    }
+  end
+
+  defp not_run_reason(_run, failure, _fixed) when not is_nil(failure) do
+    "Wallet test did not run after the latest install attempt (#{failure.outcome})."
+  end
+
+  defp not_run_reason(%{outcome: "NOT_RUN"} = run, _failure, _fixed),
+    do: Map.get(run, :outcome_detail) || "Techtree recorded this test as not run."
+
+  defp not_run_reason(nil, _failure, fixed) do
+    if reason = Enum.find(fixed, &(&1.fixed_outcome == "NOT_RUN")), do: reason.fixed_reason
+  end
+
+  defp not_run_reason(_run, _failure, _fixed), do: nil
+
+  defp display_result(_check, reason) when not is_nil(reason), do: "not_run"
+
+  defp display_result(%{result: result}, _reason)
+       when result in ["true", "false", "open", "not_run"],
+       do: result
+
+  defp display_result(_check, _reason), do: "missing"
+
+  defp display_reason(_check, _run, reason) when not is_nil(reason), do: reason
+
+  defp display_reason(%{reason: reason}, _run, _not_run_reason) when not is_nil(reason),
+    do: reason
+
+  defp display_reason(nil, nil, _reason), do: "No matching run has been published for this pair."
+
+  defp display_reason(check, _run, _reason) do
+    if display_result(check, nil) == "missing",
+      do: "No check result was published for this attempt."
+  end
+
+  defp latest_run([]), do: nil
+  defp latest_run(runs), do: Enum.max_by(runs, &chronology/1)
+
+  defp newer_than?(_run, nil), do: true
+  defp newer_than?(run, prior), do: chronology(run) > chronology(prior)
+
+  # Techtree orders attempts by timestamp then UUID. Run numbers are local to
+  # each grid, so comparing those across install and wallet would be wrong.
+  defp chronology(run), do: {DateTime.to_unix(run.finished_at, :microsecond), run.attempt_id}
 
   defp placeholder?(square) do
     square.runs == 0 and square.fixed != [] and

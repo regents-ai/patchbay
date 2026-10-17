@@ -41,7 +41,7 @@
               </option>
             </select>
           </div>
-          <p>Each square shows its current set, or the newest one matching these choices.</p>
+          <p>Each square shows the newest run matching these choices.</p>
           <div class="pb-wb-filter-actions">
             <button class="rg-button rg-button--secondary" type="submit">
               <span class="rg-button__label">Show</span>
@@ -52,9 +52,35 @@
       </details>
     </div>
 
+    <div :if={@test.total > 0} class="pb-wb-toolbar">
+      <p>
+        {if @test.grid in ["install", "wallet"],
+          do: "Nine checks in each square",
+          else: "Five checks in each square"}
+      </p>
+      <div class="pb-wb-zoom-controls" role="group" aria-label="Zoom">
+        <button
+          class="rg-button rg-button--secondary"
+          type="button"
+          data-wb-zoom-out
+          aria-label="Zoom out"
+        >−</button>
+        <label class="visually-hidden" for="pb-wb-zoom">Zoom</label>
+        <input id="pb-wb-zoom" type="range" min="50" max="250" step="1" value="100" data-wb-zoom />
+        <output for="pb-wb-zoom" data-wb-zoom-value>100%</output>
+        <button
+          class="rg-button rg-button--secondary"
+          type="button"
+          data-wb-zoom-in
+          aria-label="Zoom in"
+        >+</button>
+        <button class="rg-button rg-button--secondary" type="button" data-wb-fit>Fit</button>
+      </div>
+    </div>
     <div
       :if={@test.total > 0}
       class="pb-wb-scroll"
+      data-wb-viewport
       role="region"
       tabindex="0"
       aria-label={grid_title(@test.grid) <> " board, scrolls sideways"}
@@ -63,7 +89,7 @@
         <thead>
           <tr>
             <th scope="col" class="pb-wb-corner">
-              <span class="visually-hidden">Agent, then each wallet</span>
+              <span>Agent ↓ / Wallet →</span>
             </th>
             <th :for={wallet <- @matrix.wallets} scope="col">
               <.entry
@@ -123,12 +149,25 @@
       </:action>
     </Regent.Primitives.empty_state>
 
-    <p :if={@test.total > 0} class="pb-wb-legend">
-      <span>Each dot is a check, held in</span>
-      <span :for={{tone, label} <- dot_key()}>
-        <span class={["pb-wb-dot", tone]} aria-hidden="true"></span>{label}
-      </span>
+    <p :if={@test.total > 0} class="pb-wb-hover" data-wb-hover aria-live="polite">
+      Select a square to see its run.
     </p>
+    <p :if={@test.total > 0} class="pb-wb-legend">
+      <span :for={{result, label} <- latest_dot_key()}>
+        <span class={["pb-wb-dot", "is-" <> result]} aria-hidden="true">{dot_mark(result)}</span>{label}
+      </span>
+      <span><span class="pb-wb-warning-mark" aria-hidden="true">!</span>Finding</span>
+    </p>
+    <Regent.Primitives.disclosure
+      :if={@test.total > 0}
+      id="pb-wb-nine-checks"
+      summary="What the dots mean"
+    >
+      <p>
+        Each dot is one check, read left to right. Payment tests have five checks, so their last four dots stay empty. “Yes” is the judge’s answer to that check. A “Yes” on how a wallet stores its key does not prove the key is safe.
+      </p>
+      <.check_key criteria={@test.criteria} />
+    </Regent.Primitives.disclosure>
     <p :if={@test.total > 0} class="pb-wb-more">
       <a href={~p"/wallet-bench/how-it-works"}>How the bench works</a>
     </p>
@@ -141,15 +180,19 @@
   >
     <div class="pb-wb-dialog-bar">
       <h2 id="pb-wb-dialog-title"></h2>
+      <a data-wb-page href="" target="_blank" rel="noopener">Open page ↗</a>
       <form method="dialog">
         <button class="rg-button rg-button--secondary" type="submit">
           <span class="rg-button__label">Close</span>
         </button>
       </form>
     </div>
+    <p class="pb-wb-dialog-loading" data-wb-loading role="status" hidden>
+      Loading the run…
+    </p>
     <div class="pb-wb-dialog-body" data-wb-body></div>
     <p class="pb-wb-dialog-error" data-wb-error hidden>
-      These runs did not load. <a data-wb-page href="">Open them on their own page</a>
+      This run did not load. Use “Open page” above to read it on its own page.
     </p>
   </Regent.Structure.dialog>
 </main>

@@ -18,6 +18,8 @@ defmodule PatchbayWeb.WalletBenchMD do
       versions: 1,
       forums: 2,
       square_path: 5,
+      square_summary: 2,
+      dot_answer: 1,
       set_facts: 1,
       steps?: 1,
       deciding_step: 1,
@@ -38,7 +40,7 @@ defmodule PatchbayWeb.WalletBenchMD do
           | Enum.map(matrix.wallets, fn w ->
               square = grid.squares[{h.id, w.id}]
               path = square_path(square, h, w, grid.grid, matrix.filters)
-              cell(matrix.notes, square) <> " ([runs](#{path}))"
+              cell(matrix.notes, square) <> " ([inspect run](#{path}))"
             end)
         ])
       end
@@ -53,17 +55,10 @@ defmodule PatchbayWeb.WalletBenchMD do
     end
   end
 
-  defp cell(_notes, %{runs: 0, fixed: [], stopped: %{}}), do: "stopped at install"
-
-  defp cell(_notes, %{runs: 0, fixed: []}), do: "not tested yet"
-
   defp cell(notes, square) do
-    outcomes =
-      Enum.map(square.tally, fn {outcome, n} ->
-        "#{word(notes, outcome)} #{n} of #{square.runs}"
-      end) ++
-        (square.fixed |> Enum.map(&word(notes, &1.fixed_outcome)) |> Enum.uniq())
+    checks =
+      Enum.map_join(square.display_dots, "; ", &"#{&1.criterion.id} #{dot_answer(&1.result)}")
 
-    Enum.join(outcomes, "; ")
+    line(square_summary(notes, square)) <> ". " <> checks
   end
 end
