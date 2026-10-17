@@ -36,6 +36,7 @@
         <div>
           <h3>{step.title}</h3>
           <p>{step.text}</p>
+          <.link :if={step.pair?} href={"#{~p"/account"}#shell-pairing"}>Pair New Agent</.link>
         </div>
       </li>
     </ol>

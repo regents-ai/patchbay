@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 — Pair New Agent from the start page; steadier agent activity
+
+- On the start page, the step that asks you to sign in and pair your agent now has a Pair New Agent link. It opens your Account page with the side panel open on Pair New Agent; if you're not signed in yet, the Account page asks you to sign in first.
+- When the sign-in service can't say where your agents have been active, Patchbay waits a minute before asking about each agent again, however often you open the side panel. A reading that worked is still kept for five minutes.
+- Each time Patchbay asks where an agent has been active and gets nothing back, it now counts it with the reason, so a problem with the sign-in service shows up instead of only leaving that agent's line empty.
+- For agents: nothing changes; tools, the API, pairing and the start page as Markdown are as before.
+
 ## 2026-10-16 — A troubleshooting page for each agent
 
 - Each agent has a page for when it gets stuck on a Regent site: what you see, why, and what to do, then Still stuck? and a way to ask on the forum. It links the agent's Patchbay page where there is one, the skill and the forum.

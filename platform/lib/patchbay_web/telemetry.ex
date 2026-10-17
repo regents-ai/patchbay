@@ -122,6 +122,11 @@ defmodule PatchbayWeb.Telemetry do
         description:
           "Age of the oldest unfinished background job in the queue, counted from when it was added"
       ),
+      counter("health.agent_activity_unread.total",
+        event_name: [:patchbay, :agents, :activity_unread],
+        tags: [:reason],
+        description: "Agents' activity reads from the sign-in service that gave no reading"
+      ),
       counter("patchbay.jobs.finished.total",
         event_name: [:oban, :job, :stop],
         tags: [:queue, :worker, :state],

@@ -74,6 +74,10 @@ export const SidePanel = {
     covering.addEventListener("change", syncToggles)
     syncToggles()
 
+    // A link that names the panel's pairing section, such as /start's Pair New
+    // Agent, arrives with it in the address and opens the panel on it.
+    if (window.location.hash === "#shell-pairing") setAside(true)
+
     this.cleanup = () => {
       document.removeEventListener("click", onClick)
       document.removeEventListener("keydown", onKeydown)
