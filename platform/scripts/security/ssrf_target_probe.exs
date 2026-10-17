@@ -77,8 +77,22 @@ end
 
 IO.puts("\n== scheme / port / userinfo gate ==")
 # non-https, non-443, and userinfo are refused regardless of address
-Probe.check("http:// refused", :refused, Target.connect("http://redteam.example", resolve: fn _ -> [{1, 1, 1, 1}] end))
-Probe.check("https :8080 refused", :refused, Target.connect("https://redteam.example:8080", resolve: fn _ -> [{1, 1, 1, 1}] end))
-Probe.check("userinfo refused", :refused, Target.connect("https://u:p@redteam.example", resolve: fn _ -> [{1, 1, 1, 1}] end))
+Probe.check(
+  "http:// refused",
+  :refused,
+  Target.connect("http://redteam.example", resolve: fn _ -> [{1, 1, 1, 1}] end)
+)
+
+Probe.check(
+  "https :8080 refused",
+  :refused,
+  Target.connect("https://redteam.example:8080", resolve: fn _ -> [{1, 1, 1, 1}] end)
+)
+
+Probe.check(
+  "userinfo refused",
+  :refused,
+  Target.connect("https://u:p@redteam.example", resolve: fn _ -> [{1, 1, 1, 1}] end)
+)
 
 if Process.get(:failed), do: System.halt(1), else: IO.puts("\nALL PASS")
