@@ -5,9 +5,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
   outcome's meaning is Techtree's; the pages add only colour and layout. How
   the bench works also carries the page's own write-up of the full grid.
 
-  A square shows its dots three to a row, one per check, coloured by how many of
-  the pair's runs that reached the test the check held in. Opening a square shows the pair's runs
-  over the board; the same runs are the pair's own page.
+  Each square shows the nine recorded criterion states from one latest matching
+  attempt. Unknown and unrun checks stay distinct from failed checks. Opening a
+  square shows its full report over the board; the same report has its own URL.
 
   A pair's page lists Techtree's extra notes on the releases its runs record.
   A note is Techtree's plain words and is shown as text.
@@ -139,25 +139,6 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def tone("INCONCLUSIVE"), do: "is-inconclusive"
   def tone("NOT_RUN"), do: "is-not-run"
 
-  @doc """
-  The colour of a check's dot: held in every run, in most, in some, or in
-  none. A check left open counts as not held.
-  """
-  def dot_tone(held, runs) when held == runs, do: "is-all"
-  def dot_tone(0, _runs), do: "is-none"
-  def dot_tone(held, runs) when held * 2 > runs, do: "is-most"
-  def dot_tone(_held, _runs), do: "is-some"
-
-  @doc "The legend's dot colours, in order, each with how many runs the check held in."
-  def dot_key do
-    [
-      {"is-all", "every run"},
-      {"is-most", "most runs"},
-      {"is-some", "some runs"},
-      {"is-none", "no run"}
-    ]
-  end
-
   @doc "The filter pill's words: how many version filters are chosen, when any are."
   def filter_label(filters) do
     case Enum.count(filters, fn {_key, selected} -> selected != "" end) do
@@ -184,32 +165,67 @@ defmodule PatchbayWeb.WalletBenchHTML do
   @doc "Techtree's short word for an outcome."
   def word(notes, outcome), do: Matrix.word(notes, outcome)
 
-  @doc "The square as sentences, for a screen reader."
+  @doc "A latest-attempt dot's state, in text as well as colour."
+  def dot_mark("true"), do: "✓"
+  def dot_mark("false"), do: "×"
+  def dot_mark("open"), do: "?"
+  def dot_mark("not_run"), do: "−"
+  def dot_mark("not_applicable"), do: "/"
+  def dot_mark(_result), do: "·"
+
+  def dot_answer("true"), do: "Yes"
+  def dot_answer("false"), do: "No"
+  def dot_answer("open"), do: "Unclear"
+  def dot_answer("not_run"), do: "Not run"
+  def dot_answer("not_applicable"), do: "Not applicable"
+  def dot_answer(_result), do: "Not recorded"
+
+  def latest_dot_key do
+    [
+      {"true", "Yes"},
+      {"false", "No"},
+      {"open", "Unclear"},
+      {"not_run", "Not run"},
+      {"missing", "Not recorded"},
+      {"not_applicable", "Not applicable"}
+    ]
+  end
+
+  def latest_result(square), do: square.newer_install_failure || square.display_run
+
+  def square_summary(notes, square) do
+    cond do
+      square.newer_install_failure ->
+        "Stopped at a newer install — " <> word(notes, square.newer_install_failure.outcome)
+
+      square.display_run ->
+        word(notes, square.display_run.outcome) <> " · " <> moment(square.display_run.finished_at)
+
+      square.fixed != [] ->
+        Enum.map_join(square.fixed, "; ", &word(notes, &1.fixed_outcome))
+
+      true ->
+        "No recorded attempt"
+    end
+  end
+
+  def square_finding?(square) do
+    run = latest_result(square)
+
+    square.newer_install_failure != nil or
+      (run != nil and
+         (run.outcome in ~w(PASS* FAILED_SAFETY) or plain_file(Map.get(run, :plain_file)) != nil))
+  end
+
+  @doc "The square's exact nine states, for a screen reader."
   def square_label(notes, square, harness, wallet, grid) do
-    said =
-      case square do
-        %{runs: 0, fixed: [], stopped: %{}} ->
-          ["Stopped at install."]
+    checks =
+      Enum.map_join(square.display_dots, " ", fn dot ->
+        "#{dot.criterion.id}, #{dot.criterion.criterion}: #{dot_answer(dot.result)}."
+      end)
 
-        %{runs: 0, fixed: []} ->
-          ["Not tested yet."]
-
-        %{runs: 0, fixed: fixed} ->
-          Enum.map(fixed, &(word(notes, &1.fixed_outcome) <> ": " <> &1.fixed_reason))
-
-        %{tally: tally, runs: runs, judged: judged, dots: dots} ->
-          outcomes =
-            Enum.map(tally, fn {outcome, n} -> word(notes, outcome) <> ", #{n} of #{runs}." end)
-
-          checks =
-            for {dot, n} <- Enum.with_index(dots, 1), judged > 0 do
-              "Check #{n}: held in #{dot.held} of #{judged}."
-            end
-
-          outcomes ++ checks
-      end
-
-    Enum.join(["#{harness.name} with #{wallet.name}, #{grid_title(grid)}." | said], " ")
+    "#{harness.name} with #{wallet.name}, #{grid_title(grid)}. " <>
+      square_summary(notes, square) <> ". " <> checks
   end
 
   @doc "A square's fixed outcomes, each once: a square two fixed rows cover shows it once."
@@ -219,11 +235,13 @@ defmodule PatchbayWeb.WalletBenchHTML do
   def check_mark("true"), do: "✓"
   def check_mark("false"), do: "✗"
   def check_mark("open"), do: "?"
+  def check_mark(_result), do: "·"
 
   @doc "A check's result in words, for a screen reader."
   def check_said("true"), do: "held"
   def check_said("false"), do: "did not hold"
   def check_said("open"), do: "left open"
+  def check_said(_result), do: "not recorded"
 
   @doc "Whether a run took more than one step, so each step is listed."
   def steps?(run), do: match?([_, _ | _], run.turns)
@@ -401,62 +419,67 @@ defmodule PatchbayWeb.WalletBenchHTML do
     """
   end
 
-  @doc "The pair's selected test and set, shared by the website and Markdown links."
+  @doc "The exact displayed attempt, shared by HTML, Markdown and agent reads."
   def square_path(square, harness, wallet, grid, filters) do
-    {grid, set_id} =
-      case square do
-        %{stopped: %{set_id: set_id}} -> {"install", set_id}
-        square -> {grid, square.set_id}
-      end
+    run = latest_result(square)
+    selected_grid = if square.newer_install_failure, do: "install", else: grid
+    params = Map.put(filters, "test", selected_grid)
 
-    params = Map.put(filters, "test", grid)
-    params = if set_id, do: Map.put(params, "set", set_id), else: params
+    params =
+      if run, do: Map.merge(params, %{"set" => run.set_id, "run" => run.attempt_id}), else: params
 
-    ~p"/wallet-bench/#{harness.id}/#{wallet.id}?#{params}" <> "#" <> grid
+    ~p"/wallet-bench/#{harness.id}/#{wallet.id}?#{params}" <> "#recorded-run"
   end
 
-  @doc """
-  One square of the board: a link to the pair. A tested square shows a dot for
-  each check; a square that never runs is hatched, its outcome said beside its
-  row's or column's name, or in the square when they differ.
-  """
+  def run_path(run, harness, wallet, context) do
+    params =
+      context
+      |> Map.put("test", run.grid)
+      |> Map.put("set", run.set_id)
+      |> Map.put("run", run.attempt_id)
+
+    ~p"/wallet-bench/#{harness.id}/#{wallet.id}?#{params}" <> "#recorded-run"
+  end
+
+  @doc "One genuinely square cell with nine fixed criterion positions."
   attr(:notes, :map, required: true)
   attr(:square, :map, required: true)
   attr(:harness, :map, required: true)
   attr(:wallet, :map, required: true)
   attr(:grid, :string, required: true)
-  attr(:said, :list, default: [], doc: "outcomes already named by its row or column")
-
+  attr(:said, :list, default: [])
   attr(:filters, :map, default: %{})
 
   def square(assigns) do
     ~H"""
     <a
       href={square_path(@square, @harness, @wallet, @grid, @filters)}
-      class={["pb-wb-square", @square.runs == 0 && "is-empty"]}
+      class={[
+        "pb-wb-square",
+        !latest_result(@square) && "is-empty",
+        square_finding?(@square) && "has-finding"
+      ]}
       aria-label={square_label(@notes, @square, @harness, @wallet, @grid)}
-      data-wb-pair={@harness.name <> " with " <> @wallet.name}
+      data-wb-pair={@harness.name <> " × " <> @wallet.name}
+      data-wb-summary={@harness.name <> " × " <> @wallet.name <> " · " <> square_summary(@notes, @square)}
     >
-      <span :if={@square.judged > 0} class="pb-wb-dots" aria-hidden="true">
-        <span :for={dot <- @square.dots} class={["pb-wb-dot", dot_tone(dot.held, @square.judged)]}></span>
+      <span :if={square_finding?(@square)} class="pb-wb-warning-mark" aria-hidden="true">!</span>
+      <span class="pb-wb-dots" aria-hidden="true">
+        <span
+          :for={dot <- @square.display_dots}
+          class={["pb-wb-dot", "is-" <> dot.result]}
+          data-wb-criterion={
+            dot.result != "not_applicable" && !@square.newer_install_failure && dot.criterion.id
+          }
+          data-wb-dot-label={dot.criterion.id <> " · " <> dot.criterion.criterion <> " — " <> dot_answer(dot.result)}
+        >{dot_mark(dot.result)}</span>
       </span>
-      <span :if={@square.runs > 0 and @square.judged == 0} class="pb-wb-empty" aria-hidden="true">
-        {word(@notes, "NOT_RUN")}
-      </span>
-      <span :if={@square.runs > 0} class="pb-wb-set-count">{count(@square.runs, "run")} · {count(
-        @square.set_count,
-        "set"
-      )}</span>
-      <span
-        :for={outcome <- fixed_outcomes(@square)}
-        :if={@square.runs == 0 and outcome not in @said}
-        class="pb-wb-empty"
-        aria-hidden="true"
-      >
-        {word(@notes, outcome)}
-      </span>
-      <span :if={@square.runs == 0 and @square.fixed == []} class="pb-wb-empty" aria-hidden="true">
-        {if @square.stopped, do: "Stopped at install", else: "Not tested yet"}
+      <span class="pb-wb-cell-caption" aria-hidden="true">
+        {cond do
+          @square.newer_install_failure -> "Install stopped"
+          @square.display_run -> "Run #{@square.display_run.run}"
+          true -> "Unrecorded"
+        end}
       </span>
     </a>
     """
@@ -525,10 +548,42 @@ defmodule PatchbayWeb.WalletBenchHTML do
   attr(:comparison, :map, default: nil)
   attr(:context, :map, default: %{})
   attr(:extra_notes, :list, default: [])
+  attr(:report, :map, default: nil)
+  attr(:report_error, :boolean, default: false)
+  attr(:selected_run, :map, default: nil)
+  attr(:selected_check, :string, default: nil)
+  attr(:focus, :string, default: "recorded-run")
+  attr(:test, :string, default: "install")
 
   def pair_detail(assigns) do
     ~H"""
-    <div id="pb-wb-pair" class="pb-wb-pair">
+    <div id="pb-wb-pair" class="pb-wb-pair" data-wb-focus={@focus}>
+      <p :if={@selected_run} class="pb-wb-selected-result">
+        <strong>{grid_title(@test)} · {word(@notes, @selected_run.outcome)}</strong>
+        <span>{moment(@selected_run.finished_at)}</span>
+      </p>
+      <p :if={@selected_run && @selected_run.outcome == "NOT_RUN"} class="pb-wb-report-note">
+        {@selected_run.outcome_detail}
+      </p>
+      <PatchbayWeb.WalletBenchRunHTML.report
+        :if={@report}
+        report={@report}
+        selected_check={@selected_check}
+      />
+      <section :if={@report_error && @selected_run} id="recorded-run" class="pb-wb-report">
+        <h2>Full evidence unavailable</h2>
+        <p class="pb-wb-report-note">
+          Techtree’s full run export could not be read. The recorded outcomes below remain available.
+          This is a read error, not a failed benchmark result.
+        </p>
+        <p>
+          <a
+            href={Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id)}
+            target="_blank"
+            rel="noopener"
+          >Open this run on Techtree ↗</a>
+        </p>
+      </section>
       <nav aria-label="Pair forums" class="pb-wb-detail-links">
         <a :for={{name, domain} <- forums(@harness, @wallet)} href={~p"/#{domain}"}>
           {name} forum
@@ -549,7 +604,12 @@ defmodule PatchbayWeb.WalletBenchHTML do
             Set
             <select name="set" aria-label="Set">
               <option value="">All runs</option>
-              <option :for={set <- @sets} value={set.id} selected={@selection["set"] == set.id}>
+              <option
+                :for={set <- @sets}
+                :if={set.grid == @test}
+                value={set.id}
+                selected={@selection["set"] == set.id}
+              >
                 {Sets.label(set)}
               </option>
             </select>
@@ -661,7 +721,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
         </p>
 
         <ol :if={grid.runs != []} class="pb-wb-runs">
-          <li :for={%{result: run, checks: checks} <- grid.runs} class="pb-wb-run">
+          <li :for={%{result: run, checks: checks} <- Enum.reverse(grid.runs)} class="pb-wb-run">
             <div class="pb-wb-run-head">
               <h3>Run {run.run}</h3>
               <.chip notes={@notes} outcome={run.outcome} />
@@ -688,7 +748,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
             <h4 :if={steps?(run)} class="pb-wb-checks-title">Checks, {deciding_step(run).name}</h4>
             <ul class="pb-wb-checks">
               <li :for={check <- checks}>
-                <span class={["pb-wb-check", "is-" <> check.result]} aria-hidden="true">
+                <span class={["pb-wb-check", "is-" <> (check.result || "missing")]} aria-hidden="true">
                   {check_mark(check.result)}
                 </span>
                 <span class="visually-hidden">{check_said(check.result)}:</span>
@@ -712,7 +772,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
             <a :if={ExtraNotes.for_runs(@extra_notes, [run]) != []} href="#pair-extra-notes">
               Release observations
             </a>
-            <a href={run.run_url} rel="noopener" target="_blank">This run on techtree.sh</a>
+            <a href={run_path(run, @harness, @wallet, @context)} data-wb-open-run>Inspect full run →</a>
           </li>
         </ol>
       </section>

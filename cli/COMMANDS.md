@@ -81,13 +81,28 @@ the returned page. Omitting sort retains the existing keyword-search behavior.
 ## regents patchbay bench matrix / bench pair <harness-id> <wallet-id>
 
 Public, free reads of the same benchmark controller as the website and Markdown.
-`bench matrix --test wallet` shows comparable sets matching the selected filters and filter options.
-Use each square’s roster IDs and exact set with `bench pair H16 W13 --test wallet
---set <set-id>` to read its checks and provenance. Omitting `--set` reads that
-test’s recorded history. Add `--baseline <id> --compare <id>` for the website’s
-comparison verdict. Version-filter flags copy tokens from `filter_options`;
-they retain navigation context on a pair. Notes may come from older runs and do
-not change grades. Existing agent and wallet forums are linked; no forum is created.
+`bench matrix --test wallet` shows the latest matching attempt across all sets for
+each roster pair. A newer unsuccessful install supersedes an older wallet attempt.
+The square’s nine positions show explicit check states: a stopped wallet test is
+`not_run`, and unused money-test positions are `not_applicable`. Repeated-set totals
+remain separately in `repeated_set`.
+
+Copy a square’s `read_input`: its roster IDs, `test`, filters, exact `set` and `run`
+identify the same selection as the website. For example, `bench pair H16 W13
+--test wallet --set <set-id> --run <run-uuid> --check C1` reads one recorded attempt
+and focuses an optional criterion (`C1` through `C9`). `run` is a canonical UUID;
+set, baseline and compare IDs are 64 lowercase hexadecimal characters. A stopped
+wallet square’s `read_input` selects its unsuccessful install test and run.
+
+Omitting `--run` selects the latest matching attempt of the requested test; omitting
+`--set` includes all matching sets of that test in its history. Harness, wallet,
+model and protocol flags copy version tokens from `filter_options` and narrow the
+pair’s runs before set selection. Add `--baseline <id> --compare <id>` together for
+the website’s comparison verdict. The response includes `selected_run`,
+`selected_check`, `report_status` and the public evidence report when available.
+Missing evidence is stated; a native tool answer over 128 KiB refuses intact.
+Notes may come from older runs and do not change grades. Existing agent and wallet
+forums are linked; no forum is created.
 
 No rerun, signing, wallet action or money transfer is offered by these commands.
 

@@ -5,7 +5,9 @@
     <div class="pb-wb-board-head">
       <div>
         <h2>{grid_title(@test.grid)}</h2>
-        <p>{@test.tested} of {@test.total} squares have results · {@test.never_run} never run</p>
+        <p>
+          {length(@test.harnesses)} agents × {length(@matrix.wallets)} wallets · latest matching attempt
+        </p>
       </div>
       <details class="rg-pill-select pb-wb-filter" id="pb-wb-filter">
         <summary>{filter_label(@matrix.filters)}</summary>
@@ -34,7 +36,9 @@
               </option>
             </select>
           </div>
-          <p>Each square shows its current set, or the newest one matching these choices.</p>
+          <p>
+            Each square shows one latest matching attempt. Recorded versions stay attached to every run.
+          </p>
           <div class="pb-wb-filter-actions">
             <button class="rg-button rg-button--secondary" type="submit">
               <span class="rg-button__label">Show</span>
@@ -45,18 +49,44 @@
       </details>
     </div>
 
+    <div class="pb-wb-toolbar" aria-label="Matrix controls">
+      <p>
+        {if @test.grid in ["install", "wallet"],
+          do: "Nine judge checks per square",
+          else: "Five judge checks · four positions not applicable"}
+      </p>
+      <div class="pb-wb-zoom-controls" role="group" aria-label="Matrix zoom">
+        <button
+          class="rg-button rg-button--secondary"
+          type="button"
+          data-wb-zoom-out
+          aria-label="Zoom out"
+        >−</button>
+        <label class="visually-hidden" for="pb-wb-zoom">Matrix zoom</label>
+        <input id="pb-wb-zoom" type="range" min="50" max="250" step="1" value="100" data-wb-zoom />
+        <output for="pb-wb-zoom" data-wb-zoom-value>100%</output>
+        <button
+          class="rg-button rg-button--secondary"
+          type="button"
+          data-wb-zoom-in
+          aria-label="Zoom in"
+        >+</button>
+        <button class="rg-button rg-button--secondary" type="button" data-wb-fit>Fit</button>
+      </div>
+    </div>
     <div
       :if={@test.total > 0}
       class="pb-wb-scroll"
+      data-wb-viewport
       role="region"
       tabindex="0"
-      aria-label={grid_title(@test.grid) <> " board, scrolls sideways"}
+      aria-label={grid_title(@test.grid) <> " matrix; scroll to pan, Control or Command plus wheel to zoom"}
     >
       <table class="pb-wb-board">
         <thead>
           <tr>
             <th scope="col" class="pb-wb-corner">
-              <span class="visually-hidden">Agent, then each wallet</span>
+              <span>Agent ↓ / Wallet →</span>
             </th>
             <th :for={wallet <- @matrix.wallets} scope="col">
               <.entry
@@ -96,12 +126,21 @@
     </div>
     <p :if={@test.total == 0}>No results to show yet.</p>
 
-    <p class="pb-wb-legend">
-      <span>Each dot is a check, held in</span>
-      <span :for={{tone, label} <- dot_key()}>
-        <span class={["pb-wb-dot", tone]} aria-hidden="true"></span>{label}
-      </span>
+    <p class="pb-wb-hover" data-wb-hover aria-live="polite">
+      Select a square to inspect its recorded run.
     </p>
+    <p class="pb-wb-legend">
+      <span :for={{result, label} <- latest_dot_key()}>
+        <span class={["pb-wb-dot", "is-" <> result]} aria-hidden="true">{dot_mark(result)}</span>{label}
+      </span>
+      <span><span class="pb-wb-warning-mark" aria-hidden="true">!</span>Finding</span>
+    </p>
+    <Regent.Primitives.disclosure id="pb-wb-nine-checks" summary="What the nine dots mean">
+      <p>
+        Positions are C1–C9, read left to right. Money tests define C1–C5; the other four positions are not applicable. A “Yes” is the judge’s answer to that criterion. Disclosure checks do not prove secure storage, restart recovery or untested transactions.
+      </p>
+      <.check_key criteria={@test.criteria} />
+    </Regent.Primitives.disclosure>
     <p class="pb-wb-more">
       <a href={~p"/wallet-bench/how-it-works"}>How the bench works</a>
     </p>
@@ -110,15 +149,19 @@
   <dialog id="pb-wb-dialog" class="pb-wb-dialog" aria-labelledby="pb-wb-dialog-title">
     <div class="pb-wb-dialog-bar">
       <h2 id="pb-wb-dialog-title"></h2>
+      <a data-wb-page href="" target="_blank" rel="noopener">Open page ↗</a>
       <form method="dialog">
         <button class="rg-button rg-button--secondary" type="submit">
           <span class="rg-button__label">Close</span>
         </button>
       </form>
     </div>
+    <p class="pb-wb-dialog-loading" data-wb-loading role="status" hidden>
+      Loading the recorded run…
+    </p>
     <div class="pb-wb-dialog-body" data-wb-body></div>
     <p class="pb-wb-dialog-error" data-wb-error hidden>
-      These runs did not load. <a data-wb-page href="">Open them on their own page</a>
+      These runs did not load. Use “Open page” above to read them directly.
     </p>
   </dialog>
 </main>

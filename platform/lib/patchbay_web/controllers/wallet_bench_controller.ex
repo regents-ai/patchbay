@@ -12,6 +12,7 @@ defmodule PatchbayWeb.WalletBenchController do
   alias Patchbay.WalletBench
   alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.PublicRun
   alias Patchbay.WalletBench.Sets
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -50,6 +51,7 @@ defmodule PatchbayWeb.WalletBenchController do
     {:ok, summaries} = WalletBench.pair_sets(harness_id, wallet_id)
     {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
     {:ok, extra_notes} = WalletBench.list_extra_notes()
+    results = Sets.filter(results, filters)
     sets = Sets.build(results, summaries)
     selection = Map.take(params, ~w(set baseline compare))
 
@@ -62,9 +64,31 @@ defmodule PatchbayWeb.WalletBenchController do
     stopped = Matrix.stopped_at(results)
     shown = Enum.find(sets, &(&1.id == selection["set"]))
 
-    if get_format(conn) == "json" && shown && shown.grid != test, do: raise(NotFoundError)
+    if shown && shown.grid != test, do: raise(NotFoundError)
 
     results = in_set(results, shown)
+
+    selected_run = selected_run!(results, test, params["run"])
+    check = params["check"]
+    defined_checks = if test in ["install", "wallet"], do: 9, else: 5
+
+    unless is_nil(check) or check in Enum.map(1..defined_checks, &"C#{&1}"),
+      do: raise(NotFoundError)
+
+    {report, report_error} =
+      if selected_run do
+        case PublicRun.fetch(selected_run) do
+          {:ok, report} -> {report, false}
+          {:error, _reason} -> {nil, true}
+        end
+      else
+        {nil, false}
+      end
+
+    focus =
+      if check && selected_run && selected_run.decided_by,
+        do: "wb-check-#{selected_run.decided_by}-#{check}",
+        else: "recorded-run"
 
     checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
 
@@ -95,9 +119,27 @@ defmodule PatchbayWeb.WalletBenchController do
         extra_notes |> ExtraNotes.by_release([harness, wallet]) |> ExtraNotes.for_runs(results),
       test: test,
       context: context,
-      filters: filters
+      filters: filters,
+      selected_run: selected_run,
+      report: report,
+      report_error: report_error,
+      selected_check: check,
+      focus: focus
     )
   end
+
+  defp selected_run!(results, test, nil) do
+    results
+    |> Enum.filter(&(&1.grid == test))
+    |> Enum.max_by(&{DateTime.to_unix(&1.finished_at, :microsecond), &1.attempt_id}, fn -> nil end)
+  end
+
+  defp selected_run!(results, test, id) when is_binary(id) do
+    run = Enum.find(results, &(&1.grid == test and &1.attempt_id == id))
+    run || raise(NotFoundError)
+  end
+
+  defp selected_run!(_results, _test, _id), do: raise(NotFoundError)
 
   # A pair with no runs may still carry a matrix option recorded by another pair.
   defp validate_pair_filters!(filters) do

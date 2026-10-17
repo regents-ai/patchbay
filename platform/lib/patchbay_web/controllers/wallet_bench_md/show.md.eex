@@ -2,6 +2,30 @@
 
 Roster versions are last seen; each run records the versions actually tested. Unknown means not recorded.
 
+<%= if @selected_run do %>
+## Selected run
+
+Run ID: `<%= @selected_run.attempt_id %>`; test: `<%= @test %>`; outcome: `<%= @selected_run.outcome %>`.
+
+<%= if @report do %>
+The full recorded report is available in this page's HTML and JSON representations. It includes the exact public prompts, stage durations, recorded costs, judge reasoning, verifier observations and artifact fingerprints. [Source run](<%= Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id) %>).
+
+<%= for stage <- @report["stages"] do %>
+### <%= line(stage["name"]) %> — <%= line(stage["outcome_label"]) %>
+
+<%= line(stage["summary"] || "No summary recorded.") %>
+<%= if stage["plain_file"], do: "Storage finding: " <> line(stage["plain_file"]) <> "\n" %>
+- Observed duration: <%= stage["timing"]["duration_seconds"] || "not recorded" %> seconds
+- Model cost, USD: <%= stage["costs"]["model"] || "not recorded" %>
+- Judge cost, USD: <%= stage["costs"]["judge"] || "not recorded" %>
+- Defined checks: <%= stage["criterion_count"] %>; question wording from the current published rubric
+<%= for check <- stage["criteria"] do %>
+- <%= check["id"] %>: <%= line(check["criterion"]) %> — <%= dot_answer(check["result"]) %>. <%= line(check["reason"] || "No reason recorded.") %><% end %>
+<% end %>
+<% else %>
+Full evidence unavailable: the public run export could not be read. This read error does not change the published outcome. [Read the source run](<%= Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id) %>).
+<% end %><% end %>
+
 <%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %><%= for {name, domain} <- forums(@harness, @wallet) do %>- [<%= line(name) %> forum](/<%= domain %>)
 <% end %><%= if @shown do %>
 Selected set: <%= line(Sets.label(@shown)) %>
