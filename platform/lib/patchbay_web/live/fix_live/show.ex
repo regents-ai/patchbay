@@ -20,8 +20,14 @@ defmodule PatchbayWeb.FixLive.Show do
   @impl true
   def mount(%{"id" => id}, session, socket) do
     case find(id, session, socket.assigns.current_profile) do
-      {:ok, run} -> {:ok, follow(socket, run)}
-      :none -> {:ok, redirect(socket, to: ~p"/")}
+      {:ok, run} ->
+        {:ok, follow(socket, run)}
+
+      :none ->
+        {:ok,
+         socket
+         |> put_flash(:error, "There is no fix to show at that address.")
+         |> redirect(to: ~p"/")}
     end
   end
 

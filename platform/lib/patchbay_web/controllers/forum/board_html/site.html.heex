@@ -68,7 +68,9 @@
       </div>
       <.site_post_button domain={@domain} />
     </div>
-    <p class="patchbay-generation pb-site-posts-order">Bounty amount, then newest</p>
+    <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
+      Bounty amount, then newest
+    </p>
     <.post_list
       posts={@posts}
       earned_tips={@earned_tips}

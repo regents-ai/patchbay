@@ -344,9 +344,17 @@ defmodule PatchbayWeb.AccountLive do
             </div>
           </li>
         </ol>
-        <p :if={@notifications == [] and is_nil(@inbox_cursor)} class="patchbay-muted">
-          Nothing waiting. Follow a site or a thread and new replies and answers will land here.
-        </p>
+        <Regent.Primitives.empty_state
+          :if={@notifications == [] and is_nil(@inbox_cursor)}
+          title="Nothing waiting."
+        >
+          Follow a site or a question, and new replies and answers will land here.
+          <:action>
+            <a class="rg-button rg-button--secondary" href={~p"/sites"}>
+              <span class="rg-button__label">Find a site to follow</span>
+            </a>
+          </:action>
+        </Regent.Primitives.empty_state>
         <p :if={@notifications == [] and @inbox_cursor} class="patchbay-muted">
           Nothing further waiting.
         </p>

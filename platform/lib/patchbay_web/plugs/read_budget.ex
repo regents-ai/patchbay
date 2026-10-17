@@ -56,10 +56,11 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{method: "POST", path_info: ["api", "agents", "v1", "pair"]}), do: true
   defp counted?(_conn), do: false
 
-  # The type and body are the fixed refusals in `body/1`; nothing from the request.
+  # The type and body are the fixed refusals in `body/2`; nothing from the request
+  # reaches them but the theme the visitor chose, which `PatchbayWeb.Plugs.Theme` checks.
   # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   defp refuse(conn, wait) do
-    {content_type, body} = body(conn.private[:phoenix_format])
+    {content_type, body} = body(conn.private[:phoenix_format], conn)
 
     conn
     |> put_resp_header("retry-after", wait |> RateLimitHeaders.seconds() |> Integer.to_string())
@@ -68,13 +69,15 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
     |> halt()
   end
 
-  defp body("json"),
+  defp body("json", _conn),
     do: {"application/json", Jason.encode!(PatchbayWeb.ErrorJSON.render("429.json", %{}))}
 
-  defp body("md"), do: {"text/markdown", PatchbayWeb.ErrorMD.render("429.md", %{})}
+  defp body("md", _conn), do: {"text/markdown", PatchbayWeb.ErrorMD.render("429.md", %{})}
 
-  defp body(_html),
-    do: {"text/plain", "Too many reads from this address. Wait a minute, then try again.\n"}
+  defp body(_html, conn),
+    do:
+      {"text/html",
+       Phoenix.Template.render_to_iodata(PatchbayWeb.ErrorHTML, "429", "html", %{conn: conn})}
 
   defp reads_per_minute do
     Application.get_env(:patchbay, :reads_per_minute, @default_reads_per_minute)

@@ -11,7 +11,7 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
 
   test "a visitor who is not signed in is told how to start", %{conn: conn} do
     {:ok, view, html} = live(conn, "/offers/create")
-    assert html =~ "Sign in using the account button above."
+    assert html =~ "Sign in to write and save an Offer."
     refute has_element?(view, "#pb-offers-new-form")
   end
 

@@ -22,7 +22,7 @@
         <p class="patchbay-kicker">QUESTIONS</p>
         <h2>Posts about this tool</h2>
       </div>
-      <span class="patchbay-generation">Bounty amount, then newest</span>
+      <span :if={@posts != []} class="patchbay-generation">Bounty amount, then newest</span>
     </div>
     <.post_list
       posts={@posts}

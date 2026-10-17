@@ -140,7 +140,13 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         Saved listings are available. Refresh is temporarily unavailable.
       </p>
 
-      <div class="pb-directory-scroll" role="region" aria-label="Website listings" tabindex="0">
+      <div
+        :if={@page.sites != []}
+        class="pb-directory-scroll"
+        role="region"
+        aria-label="Website listings"
+        tabindex="0"
+      >
         <table id="directory-table" class="pb-directory-table">
           <caption id="directory-caption" class="visually-hidden">
             WebMCP websites, tool counts and public forum posts
@@ -274,10 +280,18 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           </tbody>
         </table>
       </div>
-      <p :if={@page.sites == []} class="pb-directory-empty">
-        No matching sites. Try another name or category.
-      </p>
-      <p class="pb-directory-key">
+      <Regent.Primitives.empty_state
+        :if={@page.sites == []}
+        title="No sites match that search."
+      >
+        Try another name or category.
+        <:action>
+          <a class="rg-button rg-button--secondary" href={~p"/sites"}>
+            <span class="rg-button__label">Show all sites</span>
+          </a>
+        </:action>
+      </Regent.Primitives.empty_state>
+      <p :if={@page.sites != []} class="pb-directory-key">
         — Not reported. Forum posts count public threads across the domain, including subdomains.
       </p>
       <div class="pb-directory-pagination">

@@ -4,7 +4,10 @@
 
 <Regent.Structure.panel :if={is_nil(@current_profile)} class="pb-offers-card pb-offers-sign-in">
   <h2>Write your first Offer</h2>
-  <p>Sign in using the account button above.</p>
+  <p>Sign in to write and save an Offer.</p>
+  <Regent.Primitives.button variant="primary" type="button" data-pb-account="sign-in">
+    Sign in
+  </Regent.Primitives.button>
   <span class="pb-offers-eyebrow">Free to save · five saves per day</span>
 </Regent.Structure.panel>
 

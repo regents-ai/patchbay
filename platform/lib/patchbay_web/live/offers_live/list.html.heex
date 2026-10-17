@@ -67,9 +67,26 @@
         />
       </li>
     </ol>
-    <p :if={@found == 0} class="pb-placement-empty">
-      {if @text == "", do: "No websites yet.", else: "No website matches “#{@text}”."}
-    </p>
+    <Regent.Primitives.empty_state
+      :if={@found == 0 and @text != ""}
+      title={"No website matches “#{@text}”."}
+    >
+      <:action>
+        <.link class="rg-button rg-button--secondary" patch={~p"/offers"}>
+          <span class="rg-button__label">Show all websites</span>
+        </.link>
+      </:action>
+    </Regent.Primitives.empty_state>
+    <Regent.Primitives.empty_state
+      :if={@found == 0 and @text == ""}
+      title="No websites yet. A website joins this list when someone asks about it."
+    >
+      <:action>
+        <a class="rg-button rg-button--secondary" href={~p"/"}>
+          <span class="rg-button__label">Ask a question</span>
+        </a>
+      </:action>
+    </Regent.Primitives.empty_state>
     <Regent.Primitives.button :if={@more?} variant="secondary" phx-click="more"><span
       class="pb-action-label"
       data-press-label

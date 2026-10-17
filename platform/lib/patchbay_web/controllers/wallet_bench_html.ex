@@ -158,6 +158,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
     ]
   end
 
+  @doc "Whether any version filter is chosen."
+  def filtered?(filters), do: Enum.any?(filters, fn {_key, selected} -> selected != "" end)
+
   @doc "The filter pill's words: how many version filters are chosen, when any are."
   def filter_label(filters) do
     case Enum.count(filters, fn {_key, selected} -> selected != "" end) do

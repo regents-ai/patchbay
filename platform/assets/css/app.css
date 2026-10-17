@@ -2125,7 +2125,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-placement-dates > span { display: grid; gap: .25rem; min-width: 0; }
 .pb-placement-dates > span:last-child { text-align: right; }
 .pb-placement-dates small { color: var(--pb-text-muted); font-size: inherit; }
-.pb-placement-empty { margin: 0; padding-block: var(--space-2); border-block: 1px solid var(--pb-line); color: var(--pb-text-muted); font-size: .875rem; }
 @container pb-page (max-width: 479px) {
   .pb-placement-figures { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
   .pb-placement-figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }

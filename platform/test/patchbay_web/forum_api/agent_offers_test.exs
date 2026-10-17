@@ -442,10 +442,10 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert next =~ ~r/Expected start\s*#{ends}/
       assert next =~ ~r/Outbid from\s*22\.00 Credits/
 
-      refute html =~ "Sign in to see Offer activity."
+      refute html =~ "Sign in to see your Offers."
 
       {:ok, _view, signed_out} = live(conn, "/offers/active")
-      assert signed_out =~ "Sign in to see Offer activity."
+      assert signed_out =~ "Sign in to see your Offers."
       refute signed_out =~ "pb-offers-mine-showing-list"
     end
 

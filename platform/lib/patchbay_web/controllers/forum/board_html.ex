@@ -1164,7 +1164,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </li>
     </ol>
     <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
-      <:action><a href={@ask || ask_path()}>Ask a question</a></:action>
+      <:action>
+        <a class="rg-button rg-button--secondary" href={@ask || ask_path()}>
+          <span class="rg-button__label">Ask a question</span>
+        </a>
+      </:action>
     </Regent.Primitives.empty_state>
     """
   end

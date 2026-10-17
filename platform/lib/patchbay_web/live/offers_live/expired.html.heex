@@ -1,9 +1,13 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-expired">
   <.offers_header current={:history} />
 
-  <p :if={!@signed_in?} class="patchbay-muted">
-    Sign in at the top of the page to see your past Offers.
-  </p>
+  <Regent.Primitives.empty_state :if={!@signed_in?} title="Sign in to see your past Offers.">
+    <:action>
+      <Regent.Primitives.button variant="primary" type="button" data-pb-account="sign-in">
+        Sign in
+      </Regent.Primitives.button>
+    </:action>
+  </Regent.Primitives.empty_state>
 
   <%= if @signed_in? do %>
     <Regent.Structure.panel
@@ -34,8 +38,14 @@
             Cost in the end: <strong>{credits(cost(placement))}</strong>
           </p>
         </li>
-        <li id="pb-offers-ended-empty" class="pb-offers-empty patchbay-muted">
-          None of your Offers has ended yet.
+        <li id="pb-offers-ended-empty" class="pb-offers-empty">
+          <Regent.Primitives.empty_state title="None of your Offers has ended yet.">
+            <:action>
+              <a class="rg-button rg-button--secondary" href={~p"/offers"}>
+                <span class="rg-button__label">Bid for a slot</span>
+              </a>
+            </:action>
+          </Regent.Primitives.empty_state>
         </li>
       </ol>
       <Regent.Primitives.button

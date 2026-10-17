@@ -5,7 +5,9 @@
     <div class="pb-wb-board-head">
       <div>
         <h2>{grid_title(@test.grid)}</h2>
-        <p>{@test.tested} of {@test.total} squares have results · {@test.never_run} never run</p>
+        <p :if={@test.total > 0}>
+          {@test.tested} of {@test.total} squares have results · {@test.never_run} never run
+        </p>
       </div>
       <details class="rg-pill-select pb-wb-filter" id="pb-wb-filter">
         <summary>{filter_label(@matrix.filters)}</summary>
@@ -99,15 +101,35 @@
         </tbody>
       </table>
     </div>
-    <p :if={@test.total == 0}>No results to show yet.</p>
+    <Regent.Primitives.empty_state
+      :if={@test.total == 0 and filtered?(@matrix.filters)}
+      title="Nothing matches this filter."
+    >
+      <:action>
+        <a class="rg-button rg-button--secondary" href={~p"/wallet-bench?test=#{@test.grid}"}>
+          <span class="rg-button__label">Clear the filter</span>
+        </a>
+      </:action>
+    </Regent.Primitives.empty_state>
+    <Regent.Primitives.empty_state
+      :if={@test.total == 0 and !filtered?(@matrix.filters)}
+      title="No results to show yet."
+    >
+      Results appear here once the bench's first runs finish.
+      <:action>
+        <a class="rg-button rg-button--secondary" href={~p"/wallet-bench/how-it-works"}>
+          <span class="rg-button__label">How the bench works</span>
+        </a>
+      </:action>
+    </Regent.Primitives.empty_state>
 
-    <p class="pb-wb-legend">
+    <p :if={@test.total > 0} class="pb-wb-legend">
       <span>Each dot is a check, held in</span>
       <span :for={{tone, label} <- dot_key()}>
         <span class={["pb-wb-dot", tone]} aria-hidden="true"></span>{label}
       </span>
     </p>
-    <p class="pb-wb-more">
+    <p :if={@test.total > 0} class="pb-wb-more">
       <a href={~p"/wallet-bench/how-it-works"}>How the bench works</a>
     </p>
   </section>
