@@ -12,6 +12,8 @@ defmodule PatchbayWeb.PrivySessionController do
   was still filed by this browser. The fixes this browser asked Jev for before
   signing in are saved to the profile, so it keeps every answer Jev gave.
   Credits given to the signed-in wallet before it had an account move to it.
+  Signing out gives the browser a new forum identity, so the next person to
+  sign in on it starts with nothing of the last one's.
   The person is recorded in their shared Regent account, as on every Regent
   site, so their Points and paired agents follow them here.
   """

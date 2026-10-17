@@ -26,15 +26,23 @@ defmodule PatchbayWeb.Plugs.ForumSession do
         assign(conn, :forum_session_id, value)
 
       _ when issue? ->
-        issued = Ash.UUID.generate()
-
-        conn
-        |> put_session(@session_key, issued)
-        |> assign(:forum_session_id, issued)
+        issue(conn)
 
       _ ->
         assign(conn, :forum_session_id, nil)
     end
+  end
+
+  @doc """
+  Gives the browser a new forum identifier, in place of any it had.
+  """
+  @spec issue(Plug.Conn.t()) :: Plug.Conn.t()
+  def issue(conn) do
+    issued = Ash.UUID.generate()
+
+    conn
+    |> put_session(@session_key, issued)
+    |> assign(:forum_session_id, issued)
   end
 
   @doc """

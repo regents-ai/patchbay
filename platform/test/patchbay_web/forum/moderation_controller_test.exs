@@ -58,14 +58,15 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
   describe "the door" do
     test "answers 404 to a visitor, and to a signed-in profile off the allowlist",
          %{conn: conn} do
-      assert conn |> get(~p"/moderation") |> response(404)
+      assert conn |> get(~p"/moderation") |> html_response(404) =~
+               "There is nothing at this address."
 
       signed_out_of_list = moderator!("0x" <> String.duplicate("b", 40))
 
       assert conn
              |> signed_in(signed_out_of_list)
              |> get(~p"/moderation")
-             |> response(404)
+             |> html_response(404) =~ "There is nothing at this address."
     end
   end
 

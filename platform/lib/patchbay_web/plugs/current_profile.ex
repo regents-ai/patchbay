@@ -12,6 +12,11 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   Each sign-in names the live pages it opens. Signing out, or signing in again,
   disconnects those pages, so an open tab never keeps acting for a sign-in that
   has ended; it reconnects reading the session as it is now.
+
+  Signing out starts the browser over: the session is renewed and emptied, and
+  the browser gets a new forum identity. Whoever signs in next on the same
+  browser inherits nothing from the last person: not the threads they asked,
+  the sites they followed, or the Jev answers they got.
   """
 
   @behaviour Plug
@@ -19,6 +24,7 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   import Plug.Conn
 
   alias Patchbay.Identity
+  alias PatchbayWeb.Plugs.ForumSession
 
   @profile_key "agent_profile_id"
   @signed_in_at_key "signed_in_at"
@@ -54,15 +60,17 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   end
 
   @doc """
-  Signs the session out.
+  Signs the session out and gives the browser a new forum identity.
   """
   @spec sign_out(Plug.Conn.t()) :: Plug.Conn.t()
   def sign_out(conn) do
+    Plug.CSRFProtection.delete_csrf_token()
+
     conn
     |> disconnect_live_pages()
-    |> delete_session(@profile_key)
-    |> delete_session(@signed_in_at_key)
-    |> delete_session(@live_key)
+    |> configure_session(renew: true)
+    |> clear_session()
+    |> ForumSession.issue()
   end
 
   defp disconnect_live_pages(conn) do

@@ -288,12 +288,6 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       )
     end
 
-    # Held for the owner: the fix is in sign-in and sign-out. Signing out
-    # keeps the browser's forum identity, which a's threads also carry, so the
-    # next person to sign in on that browser is taken for their asker.
-    # Held for the owner (sign-in boundary, H1): the browser keeps its forum
-    # identity across sign-out. Remove this skip when the fix lands.
-    @tag skip: "held: H1 shared-browser identity"
     test "after a signs out, b signing in on the same browser is not a's asker", %{a: a, b: b} do
       shared = Ash.UUID.generate()
       thread = thread!(a, %{browser_session_id: shared})
