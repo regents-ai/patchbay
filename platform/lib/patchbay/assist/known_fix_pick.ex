@@ -120,7 +120,8 @@ defmodule Patchbay.Assist.KnownFixPick do
          %{"model" => model, "answers" => %{"fix" => %{"choice" => choice, "confidence" => c}}},
          criteria
        )
-       when is_binary(model) and is_map_key(criteria, choice) and is_number(c),
+       when is_binary(model) and is_map_key(criteria, choice) and is_number(c) and c >= 0 and
+              c <= 1,
        do: {:ok, choice, c / 1, model}
 
   defp answer(_body, _criteria), do: {:error, :unexpected_answers}

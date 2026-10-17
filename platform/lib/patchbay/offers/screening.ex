@@ -188,7 +188,8 @@ defmodule Patchbay.Offers.Screening do
          },
          criteria
        )
-       when is_binary(model) and is_map_key(criteria, choice) and is_number(confidence),
+       when is_binary(model) and is_map_key(criteria, choice) and is_number(confidence) and
+              confidence >= 0 and confidence <= 1,
        do: {:ok, %{model: model, choice: choice, confidence: confidence / 1}}
 
   defp answer(_body, _criteria), do: {:error, :unexpected_answers}

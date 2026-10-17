@@ -78,7 +78,8 @@ defmodule Patchbay.Assist.Judge do
            Jev.decide(state, questions, call, receive_timeout: @receive_timeout_ms) do
       case body do
         %{"answers" => %{"tool" => %{"choice" => name, "confidence" => confidence}}}
-        when is_map_key(criteria, name) and is_number(confidence) ->
+        when is_map_key(criteria, name) and is_number(confidence) and confidence >= 0 and
+               confidence <= 1 ->
           {:ok, %{name: name, confidence: confidence / 1}}
 
         _other ->
@@ -114,7 +115,8 @@ defmodule Patchbay.Assist.Judge do
            Jev.decide(state, questions, call, receive_timeout: @receive_timeout_ms) do
       case body do
         %{"answers" => %{"verdict" => %{"choice" => verdict, "confidence" => confidence}}}
-        when is_map_key(@verdicts, verdict) and is_number(confidence) ->
+        when is_map_key(@verdicts, verdict) and is_number(confidence) and confidence >= 0 and
+               confidence <= 1 ->
           {:ok, %{verdict: String.to_existing_atom(verdict), confidence: confidence / 1}}
 
         _other ->
