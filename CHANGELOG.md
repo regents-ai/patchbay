@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — 2026-10-17 wallet bench matrix
+
+- The board is an M×N agent-by-wallet matrix of square 3×3 dot grids, with 50%–250% zoom, Fit, scrolling and sticky axis labels. Clicking a square opens the exact run in a full-screen dialog; clicking an applicable dot focuses its criterion. Back/Forward, normal links and modified clicks retain their browser behavior.
+- Every square shows one latest matching attempt across matching sets. A newer unsuccessful install remains visible even if an older wallet result passed. Yes, no, unclear, missing, not run and not applicable stay distinct. Five-check money tests use four explicit not-applicable positions.
+- Full reports include recorded setup, stage outcomes, storage findings, criterion reasons, prompts, judge text, verifier observations, costs, timing, artifacts and event history. Missing measurements remain unknown; current rubric wording and limits are labelled. Failed evidence reads remain visibly separate from benchmark failures.
+- For agents: JSON schema 2 separates the latest attempt from `repeated_set` aggregate counts. HTML, Markdown, JSON, WebMCP version 2 and CLI descriptors share exact `run` selection and narrowing cohort filters; optional `check` focuses a defined criterion. The 128 KiB WebMCP response limit remains an explicit intact refusal.
+- This source handoff depends on Techtree's new public schema-1 run export and the regents-cli descriptor refresh. The Mac session must complete application/browser gates and Sentinel review before main and production are updated.
+
 ## 2026-10-16 — One "For agents" panel on each site's page
 
 - Under a site's details, a compact "For agents" panel says how many tools agents can use there ("Agents see 6 WebMCP Tools"), with View more and a "Copy for your agent" button. It starts closed, so the site's questions come sooner.

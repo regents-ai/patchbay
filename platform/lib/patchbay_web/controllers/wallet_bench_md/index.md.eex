@@ -1,8 +1,8 @@
 # Agent Wallet Bench
 
-Coding agents set up crypto wallets and use them on their own. Each square is one agent with one wallet; its link opens the selected set's runs.
+Coding agents set up crypto wallets and use them on their own. Each square is one agent with one wallet; its link opens the exact recorded run shown in that square.
 
-Each square uses the current set when it matches the filters, otherwise the newest matching set. Older sets remain on the pair's page. Different versions and settings are never combined.
+Each square shows one latest matching attempt across all sets, keeping its nine criterion positions in order. A newer failed install stays visible even when an older wallet attempt passed. Unclear, not recorded, not run and not applicable are distinct from a failed check. Money tests use five checks and four not-applicable positions. Previous runs and repeated-set comparisons remain on the pair's page. Model, agent, wallet and protocol filters narrow the same records in every representation.
 <%= for {key, selected} <- @matrix.filters, selected != "", option <- @matrix.options[key], option.id == selected do %>
 - <%= key %> filter: <%= line(option.label) %><% end %>
 <%= for grid <- @matrix.grids do %>

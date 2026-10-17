@@ -975,19 +975,22 @@ function post(options: ForumToolOptions, path: string, body: unknown) {
 async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair: boolean, signal?: AbortSignal) {
   const filters = ["harness", "wallet", "model", "protocol"];
   const selections = ["set", "baseline", "compare"];
-  const allowed = ["test", ...filters, ...(pair ? ["harness_id", "wallet_id", ...selections] : [])];
+  const detail = ["run", "check"];
+  const allowed = ["test", ...filters, ...(pair ? ["harness_id", "wallet_id", ...selections, ...detail] : [])];
   const entries = input && typeof input === "object" && !Array.isArray(input) ? Object.entries(input) : null;
   const invalid = !entries || entries.some(([key, value]) =>
     !allowed.includes(key) || typeof value !== "string" ||
     (filters.includes(key) && value !== "" && !/^[a-f0-9]{64}$/.test(value)) ||
     (selections.includes(key) && !/^[a-f0-9]{64}$/.test(value)) ||
+    (key === "run" && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value)) ||
+    (key === "check" && !/^C[1-9]$/.test(value)) ||
     (key === "test" && !["install", "wallet", "refund", "paid_call", "patchbay"].includes(value)),
   );
   if (invalid || (pair && (!/^H[0-9]{1,15}$/.test(String(input.harness_id ?? "")) || !/^W[0-9]{1,15}$/.test(String(input.wallet_id ?? ""))))) {
-    return boundedJson(refusal("invalid_input", "Use a listed test, roster IDs and exact filter or set tokens.", "Read read_wallet_bench first; copy its filter options and selected square’s pair_url."));
+    return boundedJson(refusal("invalid_input", "Use a listed test, roster IDs, 64-hex filter or set tokens, a run UUID and an optional C1–C9 check.", "Read read_wallet_bench first; copy the selected square’s read_input into read_wallet_bench_pair."));
   }
   const query = new URLSearchParams();
-  for (const key of ["test", ...filters, ...selections]) {
+  for (const key of ["test", ...filters, ...selections, ...detail]) {
     if (input[key] !== undefined) query.set(key, String(input[key]));
   }
   const path = pair
@@ -999,7 +1002,7 @@ async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair:
     return boundedJson(refusal("invalid_result", "The benchmark returned no JSON result.", "Read /wallet-bench on the website."));
   }
   if (new TextEncoder().encode(JSON.stringify(answer.body)).byteLength > 128 * 1024) {
-    return boundedJson(refusal("response_too_large", "The benchmark answer could not be returned intact. Nothing was omitted.", "Choose one pair and exact set, or read /wallet-bench on the website."));
+    return boundedJson(refusal("response_too_large", "The benchmark answer exceeds the 128 KiB tool limit and could not be returned intact. Nothing was omitted.", "Choose one pair and exact set and run, or read the full results at /wallet-bench on the website."));
   }
   return JSON.stringify(answer.body);
 }

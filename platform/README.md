@@ -42,6 +42,46 @@ Known intent IDs and their status URLs remain in cancellation results. An issued
 wallet prompt may remain open until the provider answers; cancellation does not
 dismiss it or reverse a payment.
 
+## Wallet bench matrix and full reports
+
+`/wallet-bench` shows agents by wallets. Each square has a 3×3 arrangement of
+criterion dots from one latest matching attempt, with 50%–250% zoom, fit-to-width,
+scrolling and sticky axis labels. Click a square for a full-screen report, or an
+applicable dot for that criterion. Native links provide the same page without
+JavaScript; the dialog supports Back/Forward and restores focus to the square.
+
+Yes, no, unclear, not recorded, not run and not applicable are distinct states.
+Install/wallet tests define nine checks. Money tests define five; C6–C9 are display
+padding. A newer unsuccessful install remains visible over an older passing wallet
+attempt. Model, harness, wallet and protocol filters narrow results before selection.
+Versions from different attempts never contribute dots to one displayed result.
+
+Pair pages use `?test=wallet&set=<64-hex-id>&run=<uuid>&check=C1`. The selected set
+must belong to that test; the run must belong to the filtered set. An optional
+check must be defined for the test. Set comparisons and historical runs remain
+available. JSON routes `/api/wallet-bench` and
+`/api/wallet-bench/:harness_id/:wallet_id` use schema 2: `latest_attempt` and nine
+explicit `checks` describe the matrix; `repeated_set` contains the independent
+current/newest matching set's aggregate counts. Pair JSON returns `selected_run`,
+`selected_check`, `report_status` and nullable `report`.
+
+The full report requires Techtree's `GET /api/wallet-bench/:id` schema-1 export.
+`Patchbay.WalletBench.PublicRun` makes a fixed-origin anonymous GET with no redirects
+or retries, finite timeouts and a 2 MB response limit. It verifies the run, pair and
+report shape before rendering. An unavailable export is shown as a read error while
+published outcomes remain visible. The export contains public prompts, judge
+reasoning, verifier observations, recorded measurements and artifact fingerprints.
+Question wording and configured limits are labelled as current catalog definitions;
+unknown historical readings stay unknown. Evidence links use the canonical producer
+origin; prompts and other recorded text are escaped by HEEx.
+
+The WebMCP contract remains a public read and refuses responses above 128 KiB intact.
+Its version-2 manifest and CLI descriptors must ship with this schema cutover.
+Deploy the Techtree producer before the Patchbay consumer; no database migration,
+new benchmark, signing or funding operation is part of this change. See
+[`docs/handoffs/2026-10-17-wallet-bench-matrix.md`](../docs/handoffs/2026-10-17-wallet-bench-matrix.md)
+for source revisions, verification boundaries and release checks.
+
 ## Shared dependencies
 
 The shared Regent libraries (`regent_ui`, `regent_identity`, `regent_privy`,
