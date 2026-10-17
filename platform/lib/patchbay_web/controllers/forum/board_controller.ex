@@ -779,11 +779,11 @@ defmodule PatchbayWeb.Forum.BoardController do
             check: check,
             check_session: %{
               "domain" => domain,
-              "visitor" => visitor,
               "limited" => asked == :limited,
               "tools_after" => params["tools_after"],
               "ask" => ask
             },
+            refresh_session: board.site && %{"origin" => board.site.origin, "visitor" => visitor},
             agent_offers: Patchbay.Offers.Serving.for_site(board.site),
             posts_cursor: params["posts_after"],
             earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),

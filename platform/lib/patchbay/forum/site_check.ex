@@ -4,8 +4,9 @@ defmodule Patchbay.Forum.SiteCheck do
   registrable domain, whether or not the site has a board.
 
   Opening a site's page asks for a check when there is none or the last is a
-  day old; "Update" and "Check again" use the same 24-hour cache
-  (`due?/2`). Asking (`:request`) only marks the row; the check itself
+  day old, and so does the directory's "Update" (`due?/2`); "Refresh this
+  site" asks for one however recent the last is (`:refresh`), at most once a
+  day for the site's picture. Asking only marks the row; the check itself
   (`:run`, `Patchbay.Forum.SiteScan`) is a job on its own queue, so a slow
   site never holds up a page. Asking again while a check is on its way adds
   nothing: the job is one per row. A check that fails is tried three times,
@@ -105,32 +106,25 @@ defmodule Patchbay.Forum.SiteCheck do
       )
 
       return_skipped_upsert?(true)
+      change(Patchbay.Forum.Changes.AskForCheck)
+    end
 
-      change(fn changeset, _context ->
-        case Origin.normalize(Ash.Changeset.get_argument(changeset, :domain)) do
-          {:ok, domain} ->
-            Ash.Changeset.force_change_attribute(changeset, :domain, domain)
+    create :refresh do
+      description("""
+      Asks for a new check of a site however recent the last one is: "Refresh
+      this site", which the site's page allows once a day. A site with a
+      check on its way keeps that one.
+      """)
 
-          {:error, message} ->
-            Ash.Changeset.add_error(changeset, field: :domain, message: message)
-        end
-      end)
+      accept([])
+      argument(:domain, :string, allow_nil?: false)
 
-      change(set_attribute(:requested_at, &DateTime.utc_now/0))
-
-      change(fn changeset, context ->
-        Ash.Changeset.after_action(changeset, fn _changeset, check ->
-          if pending?(check) do
-            AshOban.run_trigger(
-              check,
-              :run,
-              context |> Ash.Context.to_opts() |> Keyword.take([:actor, :tenant])
-            )
-          end
-
-          {:ok, check}
-        end)
-      end)
+      upsert?(true)
+      upsert_identity(:unique_domain)
+      upsert_fields([:requested_at])
+      upsert_condition(expr(not is_nil(checked_at) and requested_at <= checked_at))
+      return_skipped_upsert?(true)
+      change(Patchbay.Forum.Changes.AskForCheck)
     end
 
     update :run do
@@ -182,17 +176,18 @@ defmodule Patchbay.Forum.SiteCheck do
       authorize_if(always())
     end
 
-    policy action(:request) do
+    policy action([:request, :refresh]) do
       authorize_if(always())
     end
   end
 
   @doc """
-  Whether opening the page (`:open`) or pressing "Check again" (`:again`)
-  should ask for a check: there is none yet, or none on its way and the last
-  is at least 24 hours old. The upsert condition enforces this again at the write.
+  Whether opening the page (`:open`) or the directory's "Update"
+  (`:directory`) should ask for a check: there is none yet, or none on its
+  way and the last is at least 24 hours old. The upsert condition enforces
+  this again at the write.
   """
-  @spec due?(Ash.Resource.record() | nil, :open | :again | :directory) :: boolean()
+  @spec due?(Ash.Resource.record() | nil, :open | :directory) :: boolean()
   def due?(nil, _reason), do: true
 
   def due?(check, reason) do

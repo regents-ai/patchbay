@@ -35,6 +35,7 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.SiteCheck do
       define(:request_site_check, action: :request, args: [:domain])
+      define(:refresh_site_check, action: :refresh, args: [:domain])
       define(:get_site_check, action: :read, get_by: [:domain])
       define(:record_site_check, action: :record)
     end

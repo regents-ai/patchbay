@@ -8,11 +8,11 @@ defmodule PatchbayWeb.SiteCheckLive do
   and the `ask_question` call. It opens closed, or open on a later page of
   tools.
 
-  The page asks for the check when it opens; this panel shows it as it
-  stands, hears the finished check (count, list and copied text with it), and
-  offers "Check again" once the last check is 24 hours old. It is drawn with
-  the page, so it is there without JavaScript; a live connection only adds
-  the finished check and the button.
+  The page asks for the check when it opens, and "Refresh this site"
+  (`PatchbayWeb.SiteRefreshLive`) asks for a new one; this panel shows it as
+  it stands and hears the finished check (count, list and copied text with
+  it). It is drawn with the page, so it is there without JavaScript; a live
+  connection only adds the finished check.
   """
 
   use PatchbayWeb, :live_view
@@ -31,7 +31,6 @@ defmodule PatchbayWeb.SiteCheckLive do
       tool_status_label: 1
     ]
 
-  alias Patchbay.Forum.SiteCheck
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.SiteChecks
 
@@ -39,7 +38,7 @@ defmodule PatchbayWeb.SiteCheckLive do
   @copy_description 160
 
   @impl true
-  def mount(_params, %{"domain" => domain, "visitor" => visitor} = session, socket) do
+  def mount(_params, %{"domain" => domain} = session, socket) do
     if connected?(socket),
       do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, "site_check:" <> domain)
 
@@ -47,7 +46,6 @@ defmodule PatchbayWeb.SiteCheckLive do
      socket
      |> assign(
        domain: domain,
-       visitor: visitor,
        cursor: session["tools_after"],
        ask: session["ask"],
        limited?: session["limited"] == true
@@ -60,14 +58,6 @@ defmodule PatchbayWeb.SiteCheckLive do
   @impl true
   def handle_info(%Ash.Notifier.Notification{data: check}, socket),
     do: {:noreply, assign_tools(socket, check)}
-
-  @impl true
-  def handle_event("again", _params, socket) do
-    %{domain: domain, check: check, visitor: visitor} = socket.assigns
-    {answer, check} = SiteChecks.ask(domain, check, visitor, :again)
-
-    {:noreply, socket |> assign(check: check, limited?: answer == :limited) |> assign_copy_text()}
-  end
 
   # The one list of tools: Patchbay's list a page at a time and, before its
   # first page, the tools the check found on the front page that the list
@@ -217,14 +207,6 @@ defmodule PatchbayWeb.SiteCheckLive do
                 {RegentFormat.relative_time(@check.checked_at, DateTime.utc_now())}
               </time>
             </span>
-            <button
-              :if={SiteCheck.due?(@check, :again)}
-              type="button"
-              class="pb-quiet-button"
-              phx-click="again"
-            >
-              {if @check, do: "Check again", else: "Check now"}
-            </button>
           </p>
           <p :if={@limited?} class="pb-site-check-status" role="alert">
             You've checked a lot of sites just now. Try again in a few minutes.

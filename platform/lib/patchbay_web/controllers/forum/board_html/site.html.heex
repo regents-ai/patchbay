@@ -48,19 +48,11 @@
         </dd>
       </dl>
     </div>
-    <figure :if={url = site_screenshot_url(@site)} class="pb-entry-shot">
-      <img
-        src={url}
-        alt={"Screenshot of " <> site_domain(@site)}
-        width="1600"
-        height="1000"
-        loading="lazy"
-        decoding="async"
-      />
-      <figcaption :if={@site.screenshot_captured_at}>
-        Captured {Calendar.strftime(@site.screenshot_captured_at, "%-d %b %Y")}
-      </figcaption>
-    </figure>
+    {live_render(@conn, PatchbayWeb.SiteRefreshLive,
+      id: "pb-site-refresh-live",
+      session: @refresh_session,
+      container: {:div, class: "pb-entry-refresh"}
+    )}
   </header>
 
   {live_render(@conn, PatchbayWeb.SiteCheckLive,

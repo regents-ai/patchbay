@@ -1,12 +1,15 @@
 defmodule PatchbayWeb.Forum.SiteChecks do
   @moduledoc """
   How a site's page asks for its check (`Patchbay.Forum.SiteCheck`): opening
-  the page asks when the check is due, and so does "Check again". Every
-  check asked for counts against the visitor's share, twenty in ten minutes,
-  so one visitor cannot keep Patchbay reading sites for them.
+  the page asks when the check is due, and so does the directory's "Update".
+  "Refresh this site" asks for a new picture of the site and a new check
+  together, once its last picture is a day old (`refresh/3`). Every ask
+  counts against the visitor's share, twenty in ten minutes, so one visitor
+  cannot keep Patchbay reading sites for them.
   """
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Site
   alias Patchbay.Forum.SiteCheck
   alias PatchbayWeb.ReadLimit
 
@@ -19,10 +22,10 @@ defmodule PatchbayWeb.Forum.SiteChecks do
 
   @doc """
   Asks for a check of `domain` when one is due for `reason` (`:open` or
-  `:again`) and the visitor has share left. Answers the check as it now
+  `:directory`) and the visitor has share left. Answers the check as it now
   stands, and whether this visitor's share was used up.
   """
-  @spec ask(String.t(), Ash.Resource.record() | nil, String.t(), :open | :again | :directory) ::
+  @spec ask(String.t(), Ash.Resource.record() | nil, String.t(), :open | :directory) ::
           {:ok | :limited, Ash.Resource.record() | nil}
   def ask(domain, check, visitor, reason) do
     with true <- SiteCheck.due?(check, reason),
@@ -32,6 +35,47 @@ defmodule PatchbayWeb.Forum.SiteChecks do
       false -> {:ok, check}
       {:deny, _wait_ms} -> {:limited, check}
     end
+  end
+
+  @doc """
+  "Refresh this site": a new picture of `site` and a new check of its tools,
+  when the refresh is `:ready` and the visitor has share left. `site` is
+  read just before, with `:refresh_due?`. Answers the check as it now
+  stands, and whether the visitor's share was used up or the site was not
+  ready to refresh.
+  """
+  @spec refresh(Ash.Resource.record(), Ash.Resource.record() | nil, String.t()) ::
+          {:ok | :limited | :not_ready, Ash.Resource.record() | nil}
+  def refresh(site, check, visitor) do
+    with :ready <- refresh_state(site, check),
+         {:allow, _count} <- ReadLimit.hit("site-check:" <> visitor, @window, @share) do
+      AshOban.run_trigger(site, :refresh_picture)
+      {:ok, Forum.refresh_site_check!(site.origin)}
+    else
+      {:deny, _wait_ms} -> {:limited, check}
+      _not_ready -> {:not_ready, check}
+    end
+  end
+
+  @doc """
+  Where a site's refresh stands: on its way (its check or its picture is),
+  ready, or done within the day, with when.
+  """
+  @spec refresh_state(Ash.Resource.record(), Ash.Resource.record() | nil) ::
+          :refreshing | :ready | {:fresh, DateTime.t()}
+  def refresh_state(site, check) do
+    cond do
+      (check && SiteCheck.pending?(check)) || Site.picture_pending?(site) -> :refreshing
+      site.refresh_due? -> :ready
+      true -> {:fresh, last_picture_at(site)}
+    end
+  end
+
+  # The last picture, or the last failed try at one: whichever is later.
+  defp last_picture_at(site) do
+    [site.screenshot_captured_at, site.picture_failed_at]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.max(DateTime)
   end
 
   @doc "Where a site's check stands, for the words beside it."

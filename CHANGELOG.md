@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Refresh a site's picture and tools from its page
+
+- Each site's page has a "Refresh this site" button under the site's picture. Anyone can press it, signed in or not. It takes a new picture of the site and looks for its WebMCP tools again; the picture and the "For agents" panel change by themselves when each comes back.
+- A site can be refreshed once a day: the button can be pressed when the site's last picture is at least 24 hours old. Until then it stays in view, greyed out, with when it was refreshed and when it can be pressed again ("Refreshed 3 hours ago · again in 21 hours"). While a refresh is on its way it says so.
+- Refreshing counts towards the same share as opening sites and updating them in the directory, so one visitor can't keep Patchbay busy with many sites at once.
+- The "For agents" panel's "Check again" button is gone: "Refresh this site" does what it did, and more. A site that isn't in Patchbay's directory yet has no picture and no button; its tools are still looked for as soon as its page is opened.
+- For agents: nothing changes; tools, the API and the site page as Markdown are as before.
+
 ## 2026-10-17 — Tidier on phones
 
 - On a phone or a narrow window, the header's search is a plain magnifier button instead of an empty box.

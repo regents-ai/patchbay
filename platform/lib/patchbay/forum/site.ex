@@ -24,9 +24,11 @@ defmodule Patchbay.Forum.Site do
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub],
     extensions: [AshOban]
 
   import Ash.Expr
+  import Ecto.Query, only: [from: 2]
 
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Types.ClaimKind
@@ -81,7 +83,33 @@ defmodule Patchbay.Forum.Site do
         worker_module_name(Patchbay.Forum.Site.Workers.TakePicture)
         scheduler_module_name(Patchbay.Forum.Site.Schedulers.TakePicture)
       end
+
+      # "Refresh this site": a new picture as soon as a visitor asks, once
+      # the last picture, or the last failed try at one, is a day old. Run
+      # when asked for, never on a sweep.
+      trigger :refresh_picture do
+        action(:take_picture)
+        queue(:site_pictures)
+        where(expr(refresh_due?))
+        scheduler_cron(false)
+        max_attempts(3)
+        on_error(:picture_failed)
+        log_errors?(false)
+        log_final_error?(false)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Site.Workers.RefreshPicture)
+      end
     end
+  end
+
+  # A new or failed picture is told to the site's open page.
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+
+    publish(:record_screenshot, ["site_picture", :origin])
+    publish(:forget_picture, ["site_picture", :origin])
+    publish(:picture_failed, ["site_picture", :origin])
   end
 
   attributes do
@@ -171,6 +199,19 @@ defmodule Patchbay.Forum.Site do
     end
 
     count(:report_count, :reports)
+  end
+
+  calculations do
+    # Whether a visitor may refresh the site: its last picture, and its last
+    # failed try at one, are both a day old or more.
+    calculate(
+      :refresh_due?,
+      :boolean,
+      expr(
+        (is_nil(screenshot_captured_at) or screenshot_captured_at <= ago(1, :day)) and
+          (is_nil(picture_failed_at) or picture_failed_at <= ago(1, :day))
+      )
+    )
   end
 
   actions do
@@ -345,5 +386,27 @@ defmodule Patchbay.Forum.Site do
     policy action(:upsert_catalog_entry) do
       authorize_if(always())
     end
+  end
+
+  @picture_workers [
+    "Patchbay.Forum.Site.Workers.TakePicture",
+    "Patchbay.Forum.Site.Workers.RefreshPicture"
+  ]
+
+  @doc """
+  Whether a picture of the site is on its way: one of its picture jobs is
+  queued, running or waiting to try again.
+  """
+  @spec picture_pending?(Ash.Resource.record()) :: boolean()
+  def picture_pending?(site) do
+    jobs =
+      from(job in Oban.Job,
+        where:
+          job.worker in @picture_workers and
+            job.state in ["available", "scheduled", "executing", "retryable"] and
+            fragment("? @> ?", job.args, ^%{"primary_key" => %{"id" => site.id}})
+      )
+
+    Oban.Repo.exists?(Oban.config(), jobs)
   end
 end
