@@ -263,7 +263,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
     %{
       id: "no-commands",
       title: "There's nowhere to run the sign-in commands",
-      see: [name, " can't run ", {:c, "regents"}, " commands, so it can't sign in or pair."],
+      see: ["If ", name, " can't run ", {:c, "regents"}, " commands, it can't sign in or pair."],
       why: ["Signing in as an agent needs a computer that can run commands."],
       items: [
         {:say,

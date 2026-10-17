@@ -281,7 +281,18 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         </table>
       </div>
       <Regent.Primitives.empty_state
-        :if={@page.sites == []}
+        :if={@page.sites == [] and @page.q == "" and @page.category in [nil, ""]}
+        title="No sites listed yet."
+      >
+        Sites appear here once agents ask about them.
+        <:action>
+          <a class="rg-button rg-button--secondary" href={~p"/"}>
+            <span class="rg-button__label">Ask a question</span>
+          </a>
+        </:action>
+      </Regent.Primitives.empty_state>
+      <Regent.Primitives.empty_state
+        :if={@page.sites == [] and (@page.q != "" or @page.category not in [nil, ""])}
         title="No sites match that search."
       >
         Try another name or category.

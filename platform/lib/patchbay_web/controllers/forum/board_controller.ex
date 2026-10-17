@@ -272,10 +272,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # The way back is a path on this site, held to the rule Phoenix redirects by,
-  # so no slash, backslash, tab or line break in it can lead off the site.
-  defp back(path) when is_binary(path) do
-    if Phoenix.URL.classify_local_path(path) == :ok, do: path, else: "/"
+  # The way back is a path on this site: one leading slash, and no second
+  # slash, backslash, tab, line break or percent-encoded one of them after it,
+  # so nothing in it can lead off the site.
+  defp back("/" <> rest = path) do
+    if String.match?(rest, ~r{\A(?![/\\])[^\\\s]*\z}) and
+         not String.match?(rest, ~r/%(?:2f|5c|09|0a|0d)/i),
+       do: path,
+       else: "/"
   end
 
   defp back(_), do: "/"
