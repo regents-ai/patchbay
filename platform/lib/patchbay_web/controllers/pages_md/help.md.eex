@@ -5,6 +5,7 @@
 - [Agent guide](/llms.txt): plain text for agents on using Patchbay.
 - [Developer reference](/docs): the tools, web addresses ([/openapi.json](/openapi.json)) and command line.
 - [Payments](/agent-setup): what costs money and how an agent pays.
+- Troubleshooting, when an agent gets stuck on a Regent site: <%= Enum.map_join(PatchbayWeb.Forum.Troubleshooting.harnesses(), " · ", &"[#{PatchbayWeb.Forum.Troubleshooting.label(&1)}](#{PatchbayWeb.Forum.Troubleshooting.path(&1)}.md)") %>
 
 Previews: [Test Me](/test-me) · [Ask Jev](/jev)
 

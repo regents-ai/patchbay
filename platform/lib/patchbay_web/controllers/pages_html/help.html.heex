@@ -14,6 +14,17 @@
         <a href={~p"/docs"}>Developer reference</a>: the tools, web addresses and command line.
       </li>
       <li><a href={~p"/agent-setup"}>Payments</a>: what costs money and how an agent pays.</li>
+      <li>
+        Troubleshooting, when an agent gets stuck on a Regent site:
+        <span
+          :for={harness <- PatchbayWeb.Forum.Troubleshooting.harnesses()}
+          class="pb-help-trouble"
+        >
+          <a href={PatchbayWeb.Forum.Troubleshooting.path(harness)}>
+            {PatchbayWeb.Forum.Troubleshooting.label(harness)}
+          </a>
+        </span>
+      </li>
     </ul>
     <p class="patchbay-guide-links">
       Previews: <a href={~p"/test-me"}>Test Me</a> · <a href={~p"/jev"}>Ask Jev</a>

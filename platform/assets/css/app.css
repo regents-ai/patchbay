@@ -46,6 +46,10 @@
   --pb-line: var(--color-border);
   --pb-line-strong: color-mix(in srgb, var(--color-fg) 35%, var(--color-border));
 
+  /* Patchbay's light page colour, for logos that need a light ground in
+     either theme. */
+  --pb-porcelain: #F6F7FA;
+
   --pb-accent: var(--color-accent);
   --pb-accent-deep: var(--color-link);
   --pb-accent-wash: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
@@ -1541,6 +1545,7 @@ a.patchbay-button { text-decoration: none; }
 .pb-setup-page ul { margin: 0; padding-left: var(--space-3); display: grid; gap: var(--space-1); }
 .pb-setup-page .pb-help-links { padding-left: 0; list-style: none; }
 .pb-help-links a { display: inline-block; min-height: 24px; padding-block: 3px; }
+.pb-help-trouble + .pb-help-trouble::before { content: "· "; color: var(--pb-text-muted); }
 .pb-setup-page pre {
   margin: var(--space-1) 0 0;
   padding: var(--rg-panel-padding);

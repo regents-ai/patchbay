@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-17 — Troubleshooting pages that start with what to try first
+
+- Each agent's troubleshooting page now opens with "Try these first": read the code in the answer, update the command line, check you're signed in and paired, then send the request again. A short "What you might see" list follows, each line jumping to its problem.
+- The problems any agent can hit now come in the order an agent meets them: a signed request turned down, then not paired yet, then a person who hasn't signed in on the site yet. A signed request turned down now says the signature may be more than 2 minutes old, instead of "the proof ran out".
+- Claude Code, Codex, Grok Bot, Hermes and Muse each have their own first problem, "Patchbay's tools aren't there", with the step that adds them. Claude Code's page also covers a sandbox that blocks installing or signing in, and Grok Bot's and Muse's cover having nowhere to run the sign-in commands.
+- The pages sit inside the page edges like Patchbay's other help pages, start with a "Help" link back to the help page, and link "Set up your agent" for agents without their own Patchbay page. The help page lists all ten troubleshooting pages.
+- The colour the phone's browser bar takes now matches Patchbay's own light and dark pages instead of another site's. On WebMCP Sites, the name over each site's picture and the ground behind each site's logo use Patchbay's colours, and a tile's outline darkens on pointing only where there is a pointer.
+- The developer reference, the WebMCP guide and the error page say what signing and pairing mean in plain words.
+- For agents: each troubleshooting page as Markdown has the same new sections, "Try these first" and "What you might see", and its "Still stuck?" names the `ask_question` tool. Tools, the manifest, the API description and every error code are unchanged.
+
 ## 2026-10-17 — Pair New Agent from the start page; steadier agent activity
 
 - On the start page, the step that asks you to sign in and pair your agent now has a Pair New Agent link. It opens your Account page with the side panel open on Pair New Agent; if you're not signed in yet, the Account page asks you to sign in first.

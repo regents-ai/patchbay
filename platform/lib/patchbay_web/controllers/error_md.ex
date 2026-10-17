@@ -39,7 +39,7 @@ defmodule PatchbayWeb.ErrorMD do
     """
     # Patchbay could not answer that request.
 
-    Something went wrong on our side. Reload in a moment; nothing you sent was lost on purpose.
+    Something went wrong on our side. Try again in a moment.
 
     #{@map}
     """

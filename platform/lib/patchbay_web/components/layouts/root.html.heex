@@ -7,15 +7,15 @@
     <meta
       :if={@theme}
       name="theme-color"
-      content={if @theme == "dark", do: "#0F0F10", else: "#F6F4EA"}
+      content={if @theme == "dark", do: "#111726", else: "#F6F7FA"}
     />
     <meta
       :if={!@theme}
       name="theme-color"
       media="(prefers-color-scheme: light)"
-      content="#F6F4EA"
+      content="#F6F7FA"
     />
-    <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#0F0F10" />
+    <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#111726" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <meta name="siwa-headers" content={Enum.join(Siwa.forwarded_headers(), " ")} />
     <%!-- Who the page is being read by, and which Privy application it signs

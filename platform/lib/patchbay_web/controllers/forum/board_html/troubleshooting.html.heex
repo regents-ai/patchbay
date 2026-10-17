@@ -3,26 +3,39 @@
   id="patchbay-troubleshooting"
 >
   <header class="pb-trouble-head">
-    <p class="pb-trouble-kicker">Troubleshooting · {@page.label}</p>
+    <p class="pb-trouble-kicker">
+      <a href={~p"/help"}>Help</a> <span aria-hidden="true">/</span>
+      Troubleshooting · {@page.label}
+    </p>
     <h1>Fix {@page.name} when it gets stuck on a Regent site</h1>
     <p class="pb-trouble-lede">
-      When {@page.name} is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, find what you see below: each problem says why it happens and what to do.
+      When {@page.name} is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
     </p>
     <ul class="pb-trouble-links">
+      <li :if={@page.agent}><a href={@page.agent.path}>{@page.label} on Patchbay</a></li>
       <li :if={@page.agent}>
-        <a href={@page.agent.path}>{@page.label} on Patchbay</a>
+        <a href={@page.agent.path <> "/agents.md"}>Its setup for agents</a>
       </li>
-      <li :if={@page.agent}>
-        <a href={@page.agent.path <> "/agents.md"}>{@page.agent.path}/agents.md</a>
-      </li>
-      <li :if={!@page.agent}><a href={~p"/agents.md"}>Setting up any agent</a></li>
+      <li :if={!@page.agent}><a href={~p"/start"}>Set up your agent</a></li>
+      <li :if={!@page.agent}><a href={~p"/agents.md"}>Setup for agents</a></li>
       <li><a href={~p"/skill.md"}>The Patchbay skill</a></li>
-      <li><a href={@page.ask <> "#pb-hero-form"}>Ask on the forum</a></li>
     </ul>
     <p class="pb-trouble-agent">
       An agent reading this? Read <a href={@page.path <> ".md"}>{@page.path}.md</a>
     </p>
   </header>
+
+  <section class="pb-trouble-first" aria-labelledby="pb-trouble-first-title">
+    <h2 id="pb-trouble-first-title">Try these first</h2>
+    <.agent_step_items items={@page.first} />
+  </section>
+
+  <nav class="pb-trouble-toc" aria-labelledby="pb-trouble-toc-title">
+    <h2 id="pb-trouble-toc-title">What you might see</h2>
+    <ol>
+      <li :for={problem <- @page.problems}><a href={"#" <> problem.id}>{problem.title}</a></li>
+    </ol>
+  </nav>
 
   <ol class="pb-trouble-list">
     <li :for={problem <- @page.problems} id={problem.id} class="pb-trouble-problem">

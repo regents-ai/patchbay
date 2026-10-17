@@ -2,8 +2,8 @@
    see, why and what to do for each problem. They take the site's colours, or
    the agent page's look where the agent has one. */
 .pb-trouble {
-  max-width: 48rem;
-  padding: var(--space-4) 0 var(--space-6);
+  max-width: calc(48rem + 2 * var(--rg-panel-padding));
+  padding: var(--space-4) var(--rg-panel-padding) var(--space-6);
   font-family: var(--font-family-sans);
 }
 .pb-trouble-kicker {
@@ -12,6 +12,7 @@
   font-size: .875rem;
   font-weight: 500;
 }
+.pb-trouble-kicker a { color: inherit; text-underline-offset: 2px; }
 .pb-trouble-head h1 {
   margin: 0 0 var(--space-2);
   font-family: var(--font-family-sans);
@@ -40,8 +41,16 @@
 .pb-trouble-agent { margin: var(--space-2) 0 0; color: var(--color-fg-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 .pb-trouble-agent a { color: var(--color-fg); }
 
+.pb-trouble-first, .pb-trouble-toc { margin-top: var(--space-5); }
+.pb-trouble-first h2, .pb-trouble-toc h2 { margin: 0 0 .5rem; font-family: var(--font-family-sans); font-size: 1.375rem; font-weight: 600; letter-spacing: -.015em; }
+.pb-trouble-first p { margin: .4rem 0 0; line-height: 1.55; }
+.pb-trouble-toc ol { display: grid; gap: .25rem; margin: 0; padding-left: 1.5rem; list-style: decimal; }
+.pb-trouble-toc li::marker { color: var(--color-fg-muted); }
+.pb-trouble-toc a { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--color-border); text-underline-offset: 3px; line-height: 1.8; }
+
 .pb-trouble-list { display: grid; gap: .75rem; margin: var(--space-5) 0 0; padding: 0; list-style: none; }
 .pb-trouble-problem {
+  min-width: 0;
   padding: 1.25rem;
   border: 1px solid var(--color-border);
   border-radius: 1.5rem;
@@ -60,8 +69,8 @@
 }
 .pb-trouble-problem p { margin: .4rem 0 0; line-height: 1.55; }
 .pb-trouble-problem a { color: var(--color-fg); text-decoration: underline; text-underline-offset: 2px; }
-.pb-trouble-problem code { font-family: var(--font-family-mono); font-size: .9em; overflow-wrap: anywhere; }
-.pb-trouble-problem pre {
+.pb-trouble-problem code, .pb-trouble-first code { font-family: var(--font-family-mono); font-size: .9em; overflow-wrap: anywhere; }
+.pb-trouble-problem pre, .pb-trouble-first pre {
   margin: .5rem 0 0;
   padding: .75rem 1rem;
   border: 1px solid var(--color-border);
@@ -92,6 +101,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .pb-trouble-links a:hover { border-color: var(--color-fg); }
+  .pb-trouble-toc a:hover { text-decoration-color: currentColor; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pb-trouble-links a, .pb-trouble-ask-link { transition: none; }
