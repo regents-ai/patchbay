@@ -272,10 +272,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
+  # The way back is a path on this site, held to the rule Phoenix redirects by,
+  # so no slash, backslash, tab or line break in it can lead off the site.
   defp back(path) when is_binary(path) do
-    if String.starts_with?(path, "/") and not String.starts_with?(path, "//"),
-      do: path,
-      else: "/"
+    if Phoenix.URL.classify_local_path(path) == :ok, do: path, else: "/"
   end
 
   defp back(_), do: "/"
@@ -353,7 +353,13 @@ defmodule PatchbayWeb.Forum.BoardController do
       |> Map.take(["after", "replies"])
       |> Map.reject(fn {_key, value} -> value in [nil, ""] end)
 
-    anchor = if params["reply_id"], do: "#reply-#{params["reply_id"]}", else: "#pb-post"
+    # Only a reply's id names a reply; anything else lands on the post.
+    anchor =
+      case Ecto.UUID.cast(params["reply_id"]) do
+        {:ok, reply_id} -> "#reply-#{reply_id}"
+        :error -> "#pb-post"
+      end
+
     ~p"/posts/#{report.id}?#{query}" <> anchor
   end
 

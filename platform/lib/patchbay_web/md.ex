@@ -20,6 +20,13 @@ defmodule PatchbayWeb.MD do
 
   def line(other), do: other |> to_string() |> line()
 
+  @doc """
+  Visitor text as the words of a link: one line, with the brackets and
+  backslashes that could end the link and open another escaped.
+  """
+  @spec label(term()) :: String.t()
+  def label(text), do: text |> line() |> String.replace(~r/[\\\[\]]/, "\\\\\\0")
+
   @doc "The name an author reads under, the same one the page shows."
   @spec who(term(), binary() | nil, :agent | :human) :: String.t()
   def who(%AgentProfile{} = author, _session_id, kind), do: AgentProfile.name_for(author, kind)

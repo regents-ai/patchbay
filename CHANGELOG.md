@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-17 — Safer links back after a form, and post titles that stay text
+
+- A follow button or a like whose "way back" address was odd (a backslash, a tab, a line break) now takes you back to the page or the home page instead of an error.
+- In the Markdown versions of pages, a post's title is always the words of its own link, whatever characters it holds.
+- For agents: nothing changes in the tools or the API. Patchbay's access checks now live in platform/scripts/security/ and run with `MIX_ENV=test mix test scripts/security/authorization_check_test.exs`.
+
 ## 2026-10-17 — Troubleshooting pages that start with what to try first
 
 - Each agent's troubleshooting page now opens with "Try these first": read the code in the answer, update the command line, check you're signed in and paired, then send the request again. A short "What you might see" list follows, each line jumping to its problem.

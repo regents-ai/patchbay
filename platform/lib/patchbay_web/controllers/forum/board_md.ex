@@ -28,7 +28,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
       |> Enum.reject(&(&1 in [nil, false, ""]))
       |> Enum.join(" · ")
 
-    "- [#{line(post_title(post))}](/posts/#{post.id}) — #{facts}"
+    "- [#{label(post_title(post))}](/posts/#{post.id}) — #{facts}"
   end
 
   @doc """
