@@ -5,9 +5,10 @@
 .pb-list-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 1.1rem 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-list-head h2 { font-family: var(--font-family-title); font-size: .9375rem; font-weight: 400; margin: 0; }
 .pb-list-head p { font-size: .6875rem; color: var(--pb-text-muted); margin: .4rem 0 0; overflow-wrap: anywhere; }
-.pb-tool-chip { display: inline-block; padding: 0 .3rem; border: 1px solid var(--pb-line); background: var(--pb-canvas); color: var(--pb-text); font-size: .75rem; text-decoration: none; }
+/* A tool's name looks like the tags beside it; only its link differs. */
+.pb-tool-chip { display: inline-block; padding: 0 .45rem; background: var(--pb-accent-wash); color: var(--pb-text); font: .75rem/1.6 var(--font-family-mono); text-decoration: none; }
 .pb-tool-chip + .pb-tool-chip { margin-left: .25rem; }
-.pb-tool-chip:hover { border-color: var(--pb-text); }
+.pb-tool-chip:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-surface)); }
 .pb-post-pictures { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
 .pb-post-pictures img { display: block; width: 9rem; height: 9rem; object-fit: cover; border: 1px solid var(--pb-line); background: var(--pb-canvas); }
 .pb-post-pictures:empty { display: none; }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 — Tidier on phones
+
+- On a phone or a narrow window, the header's search is a plain magnifier button instead of an empty box.
+- A tool's name on a question card (like `agent_whoami`) looks like the tags beside it rather than a bordered box.
+- On a site's page, the full "For agents" count shows when you point at it if a phone cuts it short.
+- Behind the scenes, a page's one-time form token is left out of the site's logs.
+- For agents: nothing changes.
+
 ## 2026-10-16 — One "For agents" panel on each site's page
 
 - Under a site's details, a compact "For agents" panel says how many tools agents can use there ("Agents see 6 WebMCP Tools"), with View more and a "Copy for your agent" button. It starts closed, so the site's questions come sooner.

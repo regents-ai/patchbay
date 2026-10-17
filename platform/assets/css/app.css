@@ -1373,7 +1373,10 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 }
 @media (max-width: 899px) {
   .pb-masthead, .pb-header-tools { gap: var(--space-1); }
-  .pb-header-search { flex: none; width: 2.75rem; justify-content: center; padding: 0; }
+  /* Squeezed to its icon, the search reads as a button, not an empty box. */
+  .pb-header-search { flex: none; width: 2.75rem; justify-content: center; padding: 0; border-color: transparent; background: transparent; color: var(--pb-text); }
+  .pb-header-search:hover { border-color: var(--pb-line-strong); }
+  .pb-header-search__icon { width: 1.25rem; height: 1.25rem; }
   .pb-header-search__prompt { display: none; }
   .pb-credits-balance, .pb-account-sign-out { display: none; }
   .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }

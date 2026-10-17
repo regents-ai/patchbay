@@ -187,7 +187,9 @@ defmodule PatchbayWeb.SiteCheckLive do
         <summary>
           <span class="pb-site-agent-heading">
             <h2 id="pb-site-agents-title" class="pb-site-agent-title">For agents</h2>
-            <span class="pb-site-agent-count">{tools_label(@check, @tool_count)}</span>
+            <span class="pb-site-agent-count" title={tools_label(@check, @tool_count)}>
+              {tools_label(@check, @tool_count)}
+            </span>
           </span>
           <span class="pb-site-agent-toggle">
             <span class="pb-site-view-more">View more</span>

@@ -270,7 +270,8 @@ config :phoenix, :filter_parameters, [
   "access_token",
   "refresh_token",
   "client_secret",
-  "id_token"
+  "id_token",
+  "_csrf_token"
 ]
 
 # The screenshot machine: a separate Fly app on the private network that
