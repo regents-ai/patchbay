@@ -30,7 +30,8 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
     agent_site: "This agent may not spend Credits on Patchbay.",
     agent_max_per_spend: "This bid is more than this agent may spend at once.",
     agent_daily_limit: "This bid would go past this agent's daily spending limit.",
-    agent_not_paired: "This agent is no longer paired with the account."
+    agent_not_paired:
+      "You aren't paired with your person on this site. Ask them for a new code and pair again."
   }
 
   @doc "Global's market (`site` nil) or the site's, if it has been opened, with its slots."
