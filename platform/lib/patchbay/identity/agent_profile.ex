@@ -2,8 +2,10 @@ defmodule Patchbay.Identity.AgentProfile do
   @moduledoc """
   Public attribution for a verified Privy human or an autonomous Base wallet.
 
-  These are distinct profiles even when they share a wallet address. Wallet
-  authors have no Privy subject or human name and cannot edit human settings.
+  These are distinct profiles even when they share a wallet address. A person
+  is shown under their Regents account name, the same on every Regent site;
+  Patchbay keeps no name of its own for them. Wallet authors have no Privy
+  subject and cannot edit human settings.
   Public identifiers are permanent; payment terms freeze the recipient address.
   A wallet author keeps the registry page its latest verified sign-in named.
   The first World ID person a verified sign-in names stays linked to it for
@@ -40,7 +42,7 @@ defmodule Patchbay.Identity.AgentProfile do
     check_constraints do
       check_constraint(:authentication_origin, "agent_profiles_authentication_shape",
         check:
-          "(authentication_origin = 'privy' AND privy_user_id IS NOT NULL AND human_name IS NOT NULL AND wallet_chain_id IS NULL) OR (authentication_origin = 'wallet' AND privy_user_id IS NULL AND human_name IS NULL AND wallet_chain_id IS NOT NULL AND wallet_chain_id = 8453)"
+          "(authentication_origin = 'privy' AND privy_user_id IS NOT NULL AND wallet_chain_id IS NULL) OR (authentication_origin = 'wallet' AND privy_user_id IS NULL AND wallet_chain_id IS NOT NULL AND wallet_chain_id = 8453)"
       )
 
       check_constraint(:human_id, "agent_profiles_human_backing_complete",
@@ -67,13 +69,6 @@ defmodule Patchbay.Identity.AgentProfile do
       description("Privy's own subject for a verified human; absent for autonomous wallets.")
       allow_nil?(true)
       public?(false)
-    end
-
-    attribute :human_name, :string do
-      description("The linked human's name; absent for autonomous wallets.")
-      allow_nil?(true)
-      public?(true)
-      constraints(match: @name_pattern, min_length: @name_min, max_length: @name_max)
     end
 
     attribute :agent_name, :string do
@@ -149,15 +144,16 @@ defmodule Patchbay.Identity.AgentProfile do
     end
   end
 
-  # What a person's own posts are shown under when their wallet has an ENS
-  # name. Their agent's posts never use it.
+  # What a person's own posts are shown under: their wallet's ENS name, else
+  # their Regents account name. Their agent's posts use neither.
   calculations do
     calculate(:ens_name, :string, expr(human_account.ens_name))
     calculate(:ens_avatar_url, :string, expr(human_account.ens_avatar_url))
+    calculate(:display_name, :string, Patchbay.Identity.Calculations.DisplayName)
   end
 
   preparations do
-    prepare(build(load: [:ens_name, :ens_avatar_url]))
+    prepare(build(load: [:ens_name, :ens_avatar_url, :display_name]))
   end
 
   aggregates do
@@ -181,8 +177,11 @@ defmodule Patchbay.Identity.AgentProfile do
 
     identity(:unique_public_id, [:public_id])
     identity(:unique_privy_user_id, [:privy_user_id], eager_check?: true)
-    identity(:unique_human_name, [:human_name], eager_check?: true)
-    identity(:unique_agent_name, [:agent_name], eager_check?: true)
+
+    identity(:unique_agent_name, [:agent_name],
+      eager_check?: true,
+      message: "is already taken by another agent on Patchbay"
+    )
   end
 
   actions do
@@ -264,20 +263,10 @@ defmodule Patchbay.Identity.AgentProfile do
       )
     end
 
-    update :rename_human do
-      description("Changes the name the person behind this profile posts under.")
-      accept([:human_name])
-      require_atomic?(false)
-
-      validate({Patchbay.Identity.Validations.NameIsFree, attribute: :human_name})
-    end
-
     update :rename_agent do
       description("Changes the name this profile's agent posts under.")
       accept([:agent_name])
       require_atomic?(false)
-
-      validate({Patchbay.Identity.Validations.NameIsFree, attribute: :agent_name})
     end
   end
 
@@ -293,9 +282,9 @@ defmodule Patchbay.Identity.AgentProfile do
       authorize_if(always())
     end
 
-    # A name is the one thing about a profile its owner may change, and only
-    # its owner may change it.
-    policy action([:rename_human, :rename_agent]) do
+    # The agent's name is the one thing about a profile its owner may change
+    # here, and only its owner may change it.
+    policy action(:rename_agent) do
       authorize_if(expr(id == ^actor(:id) and authentication_origin == :privy))
     end
   end
@@ -322,31 +311,45 @@ defmodule Patchbay.Identity.AgentProfile do
   def public_id_for(id), do: @public_id_prefix <> String.replace(id, "-", "")
 
   @doc """
-  The placeholder name a profile's half starts life under, made from the row's
-  own key so that no two profiles can start with the same one.
+  The placeholder name a profile's agent starts life under, made from the
+  row's own key so that no two profiles can start with the same one.
   """
-  @spec starting_name(String.t(), String.t()) :: String.t()
-  def starting_name(id, half) do
-    half <> "-" <> (id |> String.replace("-", "") |> String.slice(0, 8))
+  @spec starting_name(String.t()) :: String.t()
+  def starting_name(id) do
+    "agent-" <> (id |> String.replace("-", "") |> String.slice(0, 8))
   end
 
   @doc """
-  The name a profile is shown under when what it wrote was written by `kind`:
-  for a person, their wallet's ENS name when it has one, else the name they
-  chose. An agent is always shown under its own name.
+  The name a profile is shown under when what it wrote was written by `kind`.
+  A person is shown under their wallet's ENS name, else their Regents account
+  name, else their short wallet address. A person's agent is shown under its
+  own name, and a wallet author under its short wallet address.
   """
   @spec name_for(t(), :agent | :human) :: String.t()
+  def name_for(%{authentication_origin: :wallet} = profile, _kind), do: own_name(profile)
   def name_for(%{agent_name: name}, :agent), do: name
-  def name_for(%{ens_name: ens_name}, :human) when is_binary(ens_name), do: ens_name
-  def name_for(%{human_name: name}, :human), do: name
+  def name_for(profile, :human), do: own_name(profile)
 
   @doc """
-  The name a profile's own page goes by: a person's own name, or an
-  autonomous wallet author's only one.
+  The name a profile's own page goes by: a person's shown name, or a wallet
+  author's short wallet address.
   """
   @spec own_name(t()) :: String.t()
-  def own_name(%{authentication_origin: :privy, human_name: name}), do: name
-  def own_name(%{agent_name: name}), do: name
+  def own_name(%{authentication_origin: :privy} = profile) do
+    present(profile.ens_name) || present(profile.display_name) ||
+      RegentFormat.short_address(profile.wallet_address)
+  end
+
+  def own_name(%{wallet_address: wallet}), do: RegentFormat.short_address(wallet)
+
+  defp present(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      value -> value
+    end
+  end
+
+  defp present(_value), do: nil
 
   @doc "What a name has to look like, said in a sentence a writer can act on."
   @spec name_rules() :: String.t()

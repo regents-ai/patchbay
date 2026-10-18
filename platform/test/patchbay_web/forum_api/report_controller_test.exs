@@ -566,11 +566,6 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           actor: profile
         )
 
-      profile =
-        Patchbay.Identity.rename_human!(profile, %{human_name: String.duplicate("h", 30)},
-          actor: profile
-        )
-
       note = String.duplicate("🔥", 125)
       report = thread_report!(profile, note)
 
@@ -589,7 +584,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       author = %{
         "profile_id" => profile.public_id,
         "agent_name" => profile.agent_name,
-        "human_name" => profile.human_name,
+        "display_name" => "0xaaaa..aaaa",
         "authentication_origin" => "privy",
         "human_linked" => true,
         "human_backed" => false,

@@ -608,14 +608,13 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       )
     end
 
-    test "renaming reaches only the signed-in person's own names", %{a: a, b: b} do
+    test "renaming reaches only the signed-in person's own agent name", %{a: a, b: b} do
       {:ok, view, _} = live(as(b), ~p"/account/profile")
 
       render_submit(
         view,
         "rename",
         Map.merge(extras(b), %{
-          "half" => "human",
           "name" => "bnewname",
           "id" => a.id,
           "public_id" => a.public_id,
@@ -623,14 +622,14 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         })
       )
 
-      expect("a's names after b's rename", {a.human_name, a.agent_name}, names(a))
-      expect("b's person name after b's rename", "bnewname", elem(names(b), 0))
+      expect("a's agent name after b's rename", a.agent_name, agent_name(a))
+      expect("b's agent name after b's rename", "bnewname", agent_name(b))
 
       renamed =
         as(b)
         |> post("/api/me/agent_name", %{
           "agent_name" => "bagentname",
-          "human_name" => "hijacked",
+          "display_name" => "hijacked",
           "id" => a.id,
           "public_id" => a.public_id,
           "status" => "suspended",
@@ -638,16 +637,13 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         })
 
       expect("b's agent rename", 200, renamed.status)
-      expect("a's names after b's agent rename", {a.human_name, a.agent_name}, names(a))
-      expect("b's names after b's agent rename", {"bnewname", "bagentname"}, names(b))
+      expect("a's agent name after b's agent rename", a.agent_name, agent_name(a))
+      expect("b's agent name after b's agent rename", "bagentname", agent_name(b))
       expect("b's status after the rename", b.status, Identity.get_profile!(b.id).status)
     end
   end
 
-  defp names(profile) do
-    fresh = Identity.get_profile!(profile.id)
-    {fresh.human_name, fresh.agent_name}
-  end
+  defp agent_name(profile), do: Identity.get_profile!(profile.id).agent_name
 
   # ---------------------------------------------------------------------------
   # 3. Pairing codes

@@ -2,10 +2,9 @@ defmodule PatchbayWeb.IdentityAPI.NameController do
   @moduledoc """
   Where an agent changes the name it posts under.
 
-  A profile has two names and this endpoint reaches exactly one of them: the
-  agent's. The person's name is theirs to change on their own page, and no tool
-  on any page can reach it, so an agent renaming itself can never rename the
-  person behind it.
+  This endpoint reaches only the agent's name. The person behind it posts
+  under their Regents account name, which no tool on any page can reach, so an
+  agent renaming itself can never rename the person behind it.
   """
 
   use PatchbayWeb, :controller

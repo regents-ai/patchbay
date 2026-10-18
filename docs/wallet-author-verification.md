@@ -17,7 +17,7 @@ Verified locally:
   ownership denial. Facilitator and chain RPC were loopback fixtures with synthetic
   keys. This does not establish real settlement or chain confirmation.
 - Same-address human and autonomous profiles remain separate. Wallet authors have
-  no Privy subject/human name, cannot become browser profiles or send tips, and
+  no Privy subject, cannot become browser profiles or send tips, and
   remain refused after suspension. Cookies confer no signed-agent authority.
 - Changed, missing, chunked and oversized bodies were exercised through HTTP.
   Payment signatures are covered by the body digest and filtered from parameter

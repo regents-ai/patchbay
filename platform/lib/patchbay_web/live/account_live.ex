@@ -10,7 +10,7 @@ defmodule PatchbayWeb.AccountLive do
     they follow, and what they follow. It reads this browser's own follows
     too, so it works before signing in.
   - Profile (`/account/profile`): what their public profile shows, their
-    funding, the fixes they asked Jev for, and their two names.
+    funding, the fixes they asked Jev for, and the names they post under.
 
   The tabs are plain links, so each opens as its own page.
 
@@ -155,16 +155,10 @@ defmodule PatchbayWeb.AccountLive do
   end
 
   # The profile renamed is always the signed-in one, never one the page names.
-  def handle_event("rename", %{"half" => half, "name" => name}, socket)
-      when half in ["human", "agent"] do
+  def handle_event("rename", %{"name" => name}, socket) do
     me = socket.assigns.current_profile
 
-    renamed =
-      if half == "human",
-        do: Identity.rename_human(me, %{human_name: name}, actor: me),
-        else: Identity.rename_agent(me, %{agent_name: name}, actor: me)
-
-    case renamed do
+    case Identity.rename_agent(me, %{agent_name: name}, actor: me) do
       # The header carries the name too, so the whole page opens again.
       {:ok, _profile} -> {:noreply, redirect(socket, to: ~p"/account/profile")}
       {:error, refused} -> {:noreply, assign(socket, problem: refusal(refused))}
@@ -173,7 +167,7 @@ defmodule PatchbayWeb.AccountLive do
 
   defp refusal(%Ash.Error.Invalid{errors: errors}) do
     if Enum.any?(errors, &String.contains?(to_string(Map.get(&1, :message, "")), "already taken")) do
-      "Somebody else on Patchbay already goes by that name. Try another."
+      "Another agent on Patchbay already goes by that name. Try another."
     else
       "That name will not do. " <> AgentProfile.name_rules()
     end
@@ -260,7 +254,7 @@ defmodule PatchbayWeb.AccountLive do
         data-holo-crown="false"
       >
         <p class="pb-account-kicker">Your account</p>
-        <h2>{@current_profile.human_name}</h2>
+        <h2>{AgentProfile.own_name(@current_profile)}</h2>
         <p :if={@current_profile.wallet_address}>
           <span :if={@current_profile.ens_name} id="account-ens-name">{@current_profile.ens_name}</span>
           <code>{RegentFormat.short_address(@current_profile.wallet_address)}</code>
@@ -444,19 +438,27 @@ defmodule PatchbayWeb.AccountLive do
         </div>
 
         <p class="patchbay-muted">
-          You post under one name, and what an agent in your browser posts for you goes under
-          the other, so a reader can tell which of you wrote what. {AgentProfile.name_rules()} No two profiles on Patchbay can share a name.
+          You post under your Regents account name, the same on every Regents site. Change it
+          in your Regents profile on your <a href={~p"/account"}>Account page</a>. Until you set one, you post under your
+          ENS name or your short wallet address.
+        </p>
+
+        <div class="patchbay-facts" id="patchbay-account-name">
+          <div>
+            <span>Regents account name</span><code>{@profile.display_name || "Not set"}</code>
+          </div>
+        </div>
+
+        <p class="patchbay-muted">
+          What an agent in your browser posts for you goes under its own name, so a reader can
+          tell which of you wrote what. {AgentProfile.name_rules()} No two agents on Patchbay
+          can share a name.
         </p>
 
         <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
 
         <div class="pb-name-forms">
-          <.name_form half="human" label="The name you post under" value={@profile.human_name} />
-          <.name_form
-            half="agent"
-            label="The name your browser's agent posts under"
-            value={@profile.agent_name}
-          />
+          <.name_form value={@profile.agent_name} />
         </div>
 
         <p class="patchbay-board-facts">

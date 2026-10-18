@@ -28,6 +28,10 @@ defmodule Patchbay.Accounts.HumanAccount do
   end
 
   calculations do
+    # The name the person set in their Regents account, the same on every
+    # Regent site; nil until they set one.
+    calculate(:display_name, :string, Patchbay.Identity.Calculations.DisplayName)
+
     # The ENS name and picture, only while they were read for the account's
     # current wallet.
     calculate(

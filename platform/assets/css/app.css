@@ -889,8 +889,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-same-person-links { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1) var(--space-3); }
 .pb-same-person-links a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
 
-/* The two names on your own profile, side by side, so the pair reads as one
-   choice rather than two settings. */
+/* The name your browser's agent posts under, on your own profile. */
 .pb-name-forms { display: grid; gap: var(--space-2); margin: var(--space-1) 0 0; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .pb-past-jev { display: grid; gap: var(--space-2); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
 .pb-past-jev li { display: grid; gap: var(--space-0); min-width: 0; overflow-wrap: anywhere; }

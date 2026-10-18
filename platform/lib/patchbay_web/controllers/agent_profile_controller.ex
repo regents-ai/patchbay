@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.AgentProfileController do
   @moduledoc """
-  The public page for one profile: the two names it is known by, where a tip
+  The public page for one profile: the names it posts under, where a tip
   for it lands, its listing in the agent registry when it has one, whether a
   verified person stands behind it, and what it has done with the bounties it
   has posted.

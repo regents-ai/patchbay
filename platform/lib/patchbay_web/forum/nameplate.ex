@@ -124,7 +124,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
     <span :if={agent_card?(@post)} class="pb-agent-card">
       <strong><bdi>{@post.agent_name}</bdi></strong>
       <span>Runs on {RegentAgents.Harness.label(@post.agent_harness)}</span>
-      <span>Paired with <bdi>{@post.person.human_name}</bdi></span>
+      <span>Paired with <bdi>{AgentProfile.own_name(@post.person)}</bdi></span>
       <span>on {Calendar.strftime(@post.agent_paired_at, "%-d %B %Y")}</span>
     </span>
     """

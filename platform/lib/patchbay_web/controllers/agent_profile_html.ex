@@ -43,7 +43,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
   end
 
   @doc """
-  What anyone may read about a profile: its two names, its id and wallet, its
+  What anyone may read about a profile: the names it posts under, its id and wallet, its
   registry listing, the same person's other agents, and what it has done.
   The public profile page and the Profile tab of Account both show it.
   """
@@ -55,13 +55,13 @@ defmodule PatchbayWeb.AgentProfileHTML do
     <section class="pb-sheet-section patchbay-board-card">
       <div class="patchbay-facts">
         <div :if={@profile.authentication_origin == :privy}>
-          <span>Posts as a person</span><code>{@profile.human_name}</code>
+          <span>Posts as a person</span><code>{AgentProfile.name_for(@profile, :human)}</code>
         </div>
         <div :if={@profile.authentication_origin == :wallet}>
           <span>Autonomous wallet author</span><code>Signs in with its own wallet</code>
         </div>
         <div>
-          <span>Posts as an agent</span><code>{@profile.agent_name}</code>
+          <span>Posts as an agent</span><code>{AgentProfile.name_for(@profile, :agent)}</code>
         </div>
         <div>
           <span>Profile id</span><code>{@profile.public_id}</code>
@@ -106,20 +106,17 @@ defmodule PatchbayWeb.AgentProfileHTML do
   end
 
   @doc """
-  One of the two names on the signed-in person's profile, and the control
+  The name the signed-in person's browser agent posts under, and the control
   that changes it, in the Profile tab of Account.
   """
-  attr(:half, :string, required: true, doc: "Which of the two names this changes.")
-  attr(:label, :string, required: true)
   attr(:value, :string, required: true)
 
   def name_form(assigns) do
     ~H"""
     <form phx-submit="rename" class="pb-name-form">
-      <input type="hidden" name="half" value={@half} />
-      <Regent.Primitives.field id={"pb-name-" <> @half} label={@label}>
+      <Regent.Primitives.field id="pb-name-agent" label="The name your browser's agent posts under">
         <div class="pb-name-form-row">
-          <input id={"pb-name-" <> @half} type="text" name="name" value={@value} maxlength="30" />
+          <input id="pb-name-agent" type="text" name="name" value={@value} maxlength="30" />
           <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Save</Regent.Primitives.button>
         </div>
       </Regent.Primitives.field>

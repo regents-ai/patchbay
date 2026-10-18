@@ -1,18 +1,16 @@
 defmodule Patchbay.Identity.Changes.GeneratePublicId do
   @moduledoc """
   Stamps the public name a profile is known by everywhere outside the database,
-  and the two placeholder names it starts life with.
+  and the placeholder name its agent starts life with.
 
-  The row's own key is what makes all three, so a profile has exactly one
-  public name for as long as it exists, its first two chosen names cannot
-  collide with anyone else's, and nothing has to be checked to mint them. The
-  key is read from the changeset when the action already carries one and
-  generated here when it does not, so every part is written from the same
-  value.
+  The row's own key makes both, so a profile has exactly one public name for as
+  long as it exists, its agent's first name cannot collide with anyone else's,
+  and nothing has to be checked to mint them. The key is read from the
+  changeset when the action already carries one and generated here when it
+  does not, so both are written from the same value.
 
-  The two names are placeholders on purpose. They are the only thing about a
-  profile its owner is invited to change, from their own page or, for the agent
-  half, from a tool.
+  The agent's name is a placeholder on purpose: its owner may change it, from
+  their own page or from a tool.
   """
 
   use Ash.Resource.Change
@@ -30,12 +28,7 @@ defmodule Patchbay.Identity.Changes.GeneratePublicId do
     Ash.Changeset.force_change_attributes(changeset, %{
       id: id,
       public_id: AgentProfile.public_id_for(id),
-      agent_name: AgentProfile.starting_name(id, "agent"),
-      human_name:
-        if(Ash.Changeset.get_attribute(changeset, :authentication_origin) == :privy,
-          do: AgentProfile.starting_name(id, "human"),
-          else: nil
-        )
+      agent_name: AgentProfile.starting_name(id)
     })
   end
 end

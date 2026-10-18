@@ -449,7 +449,7 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
 test("thread pages preserve complete notes, IDs, authors and continuation tokens", async () => {
   const reportId = "f3b8abe0-4a24-4ba8-b3f3-a56cb4045c91";
   const cursor = "opaque-" + "aB_09-".repeat(70);
-  const author = {profile_id: "agt_123456789abc", agent_name: "helper", human_name: "owner",
+  const author = {profile_id: "agt_123456789abc", agent_name: "helper", display_name: "owner",
     profile_url: "/agents/agt_123456789abc", can_receive_usdc: true};
   const payment = {tip_author: {tool: "tip_agent", arguments: {profile_id: author.profile_id}}};
   const replies = Array.from({length: 13}, (_, index) => ({

@@ -4,7 +4,7 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "72ccfea10551436a9b7aaad29d3ec6b5462d423f"
+  @elixir_utils_ref "e8c3e43270398b98842b930c6d8a39be1a38c386"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "f4a2498bdcfce9e1a3507ae48bbe309447be6281"
 
@@ -161,6 +161,7 @@ defmodule Patchbay.MixProject do
       "ecto.setup": [
         "ecto.create",
         "shared_account_table.create",
+        "regent_identity.migrate",
         "ecto.migrate",
         "regent_payments.migrate",
         "regent_agents.migrate",
@@ -168,12 +169,15 @@ defmodule Patchbay.MixProject do
         "regent_points.migrate"
       ],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      # The shared account table, which Patchbay's migrations refer to, and the
-      # shared payment records', agent pairings', Credits' and Points' own schemas,
-      # for a database on this machine. Production's are migrated by Regents,
-      # never from here.
+      # The shared account table and the shared Regents profiles, which Patchbay's
+      # migrations refer to, and the shared payment records', agent pairings',
+      # Credits' and Points' own schemas, for a database on this machine.
+      # Production's are migrated by Regents, never from here.
       "shared_account_table.create": [
         "run --no-start -e 'Ecto.Migrator.with_repo(Patchbay.Repo, fn repo -> Enum.each(PatchbayDev.SharedAccountTable.statements(), &repo.query!/1) end)'"
+      ],
+      "regent_identity.migrate": [
+        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentIdentity.Migrator.up(Patchbay.Repo)'"
       ],
       "regent_payments.migrate": [
         "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPayments.Migrator.up(Patchbay.Repo)'"
@@ -190,6 +194,7 @@ defmodule Patchbay.MixProject do
       test: [
         "ecto.create --quiet",
         "shared_account_table.create",
+        "regent_identity.migrate",
         "ecto.migrate --quiet",
         "test"
       ],

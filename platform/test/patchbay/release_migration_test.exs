@@ -124,6 +124,7 @@ defmodule Patchbay.ReleaseMigrationTest do
   # refers to the shared account table, which Regents owns too.
   defp migrate_shared(database) do
     Application.put_env(:patchbay, Repo, database)
+    RegentIdentity.Migrator.up(Repo)
     RegentAgents.Migrator.up(Repo)
     RegentCredits.Migrator.up(Repo)
 

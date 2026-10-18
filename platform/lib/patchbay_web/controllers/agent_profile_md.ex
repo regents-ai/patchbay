@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.AgentProfileMD do
-  @moduledoc "A public profile as markdown: the two names, the wallet, and the record."
+  @moduledoc "A public profile as markdown: the names it posts under, the wallet, and the record."
 
   use PatchbayWeb, :md
 

@@ -208,7 +208,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert report.browser_session_id == nil
     profile = Identity.get_profile!(report.author_profile_id)
     assert profile.authentication_origin == :wallet
-    assert profile.human_name == nil
     assert profile.privy_user_id == nil
     # Payment received and bounty confirmed are two facts: the credit was
     # handed to Base, and nothing is confirmed until the contract says so.

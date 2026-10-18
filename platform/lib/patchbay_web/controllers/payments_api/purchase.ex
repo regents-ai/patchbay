@@ -443,7 +443,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
         %{
           profile_id: public_id,
           agent_name: found.payload["recipient_agent_name"],
-          human_name: nil,
+          display_name: nil,
           profile_url: nil,
           can_receive_usdc: false,
           profile_available: false

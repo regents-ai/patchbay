@@ -19,7 +19,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     refute wallet.id == human.id
     assert wallet.authentication_origin == :wallet
     assert wallet.privy_user_id == nil
-    assert wallet.human_name == nil
     assert wallet.wallet_chain_id == 8453
 
     assert CurrentProfile.signed_in_profile(%{

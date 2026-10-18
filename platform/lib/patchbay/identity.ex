@@ -33,21 +33,32 @@ defmodule Patchbay.Identity do
         not_found_error?: true
       )
 
-      define(:rename_human, action: :rename_human, args: [])
       define(:rename_agent, action: :rename_agent, args: [])
     end
   end
 
   @doc """
   How a check-in from an agent paired with a person's Regent account
-  (`regent_agents`) names that person's Patchbay profile: its public id and the
-  two names it posts under. Until the person first signs in on Patchbay there is
-  no profile, so it answers nil and the check-in answers `person_not_here`.
+  (`regent_agents`) names that person, as every Regent site does: their Regents
+  account name, ENS name and wallets, and their Patchbay profile's public id and
+  the name their agent posts under. Until the person first signs in on Patchbay
+  there is no profile, so it answers nil and the check-in answers
+  `person_not_here`.
   """
   def paired_account(privy_user_id) do
-    case get_profile_by_privy_user_id!(privy_user_id) do
-      nil -> nil
-      profile -> %{profile: Map.take(profile, [:public_id, :human_name, :agent_name])}
+    with %{} = profile <- get_profile_by_privy_user_id!(privy_user_id),
+         %{} = account <-
+           Patchbay.Accounts.by_privy!(privy_user_id,
+             load: [:display_name, :ens_name],
+             actor: %{role: :system}
+           ) do
+      %{
+        display_name: account.display_name,
+        ens_name: account.ens_name,
+        wallet_address: account.wallet_address,
+        wallet_addresses: account.wallet_addresses,
+        profile: Map.take(profile, [:public_id, :agent_name])
+      }
     end
   end
 end

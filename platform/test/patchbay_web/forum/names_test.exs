@@ -1,7 +1,7 @@
-defmodule PatchbayWeb.Forum.TwoNamesTest do
+defmodule PatchbayWeb.Forum.NamesTest do
   @moduledoc """
-  What a profile is called, who may change it, and how a reader tells a
-  person's reply from an agent's.
+  What a person and their agent are called, who may change the agent's name,
+  and how a reader tells a person's reply from an agent's.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -10,12 +10,18 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
   alias Patchbay.Forum
   alias Patchbay.Identity
+  alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("c", 64)
   @arguments String.duplicate("d", 64)
+  @app "names-test-app"
 
   setup do
+    previous_privy = Application.get_env(:patchbay, :privy, [])
+    Application.put_env(:patchbay, :privy, Keyword.put(List.wrap(previous_privy), :app_id, @app))
+    on_exit(fn -> Application.put_env(:patchbay, :privy, previous_privy) end)
+
     site = Forum.register_site!("shop.example.com")
 
     tool =
@@ -49,29 +55,62 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     })
   end
 
+  # The person's Regents account name, as Regents keeps it for this site's app.
+  defp regents_name(profile, name) do
+    Patchbay.Repo.query!(
+      """
+      INSERT INTO regent_identity.profiles
+        (id, app_id, privy_user_id, display_name, wallet_addresses, proof_issued_at, inserted_at, updated_at)
+      VALUES ($1, $2, $3, $4, '{}', 1, now(), now())
+      """,
+      [Ecto.UUID.bingenerate(), @app, profile.privy_user_id, name]
+    )
+
+    Identity.get_profile!(profile.id)
+  end
+
   defp signed_in(conn, profile) do
     conn
     |> Plug.Test.init_test_session(%{})
     |> CurrentProfile.sign_in(profile.id)
   end
 
-  test "a profile starts with two different names, neither of them anybody else's" do
+  test "a person is shown under their Regents account name, else their short wallet" do
+    one = profile("aaa")
+    assert AgentProfile.name_for(one, :human) == "0xaaaa..aaaa"
+
+    one = regents_name(one, "Morgan Lee")
+    assert AgentProfile.name_for(one, :human) == "Morgan Lee"
+    assert AgentProfile.own_name(one) == "Morgan Lee"
+    assert AgentProfile.name_for(one, :agent) == one.agent_name
+
+    # Two people may show the same name, as on every Regent site.
+    two = "bbb" |> profile() |> regents_name("Morgan Lee")
+    assert AgentProfile.name_for(two, :human) == "Morgan Lee"
+  end
+
+  test "a wallet author is shown under its short wallet address" do
+    wallet =
+      Identity.upsert_from_wallet!(%{wallet_address: "0x" <> String.duplicate("c", 40)})
+
+    assert AgentProfile.name_for(wallet, :agent) == "0xcccc..cccc"
+    assert AgentProfile.own_name(wallet) == "0xcccc..cccc"
+  end
+
+  test "an agent's name starts different from every other agent's" do
     one = profile("aaa")
     two = profile("bbb")
 
-    assert one.human_name != one.agent_name
     assert one.agent_name != two.agent_name
-    assert one.human_name != two.human_name
   end
 
-  test "the names a profile chose survive its next sign-in" do
+  test "the agent name a profile chose survives its next sign-in" do
     one = profile("aaa")
     {:ok, _} = Identity.rename_agent(one, %{agent_name: "kettle"}, actor: one)
-    {:ok, _} = Identity.rename_human(one, %{human_name: "morgan"}, actor: one)
 
     # Signing in again is the same upsert with the same Privy subject and a
     # wallet Privy may have changed. It must find the same profile and leave
-    # both chosen names alone, or a rename would last only until the next visit.
+    # the chosen name alone, or a rename would last only until the next visit.
     again =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:aaa",
@@ -81,11 +120,10 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert again.id == one.id
     assert again.public_id == one.public_id
     assert again.agent_name == "kettle"
-    assert again.human_name == "morgan"
     assert again.wallet_address == "0x" <> String.duplicate("f", 40)
   end
 
-  test "a name one profile holds in either half cannot be taken by another" do
+  test "an agent name one profile holds cannot be taken by another" do
     one = profile("aaa")
     two = profile("bbb")
 
@@ -94,11 +132,6 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
     assert {:error, %Ash.Error.Invalid{}} =
              Identity.rename_agent(two, %{agent_name: "kettle"}, actor: two)
-
-    # The clash is across halves, not only within one: the person behind the
-    # other profile cannot take the name that profile's agent posts under.
-    assert {:error, %Ash.Error.Invalid{}} =
-             Identity.rename_human(two, %{human_name: "kettle"}, actor: two)
   end
 
   test "a name that is not shaped like one is refused" do
@@ -118,11 +151,11 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
              Identity.rename_agent(one, %{agent_name: "kettle"}, actor: two)
 
     assert {:error, %Ash.Error.Forbidden{}} =
-             Identity.rename_human(one, %{human_name: "kettle"}, actor: nil)
+             Identity.rename_agent(one, %{agent_name: "kettle"}, actor: nil)
   end
 
-  test "the tool renames the agent half and cannot reach the person's", %{conn: conn} do
-    one = profile("aaa")
+  test "the tool renames the agent and cannot reach the person's name", %{conn: conn} do
+    one = "aaa" |> profile() |> regents_name("Morgan Lee")
 
     answer =
       conn
@@ -133,9 +166,11 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     assert answer["renamed"] == true
     assert answer["author"]["agent_name"] == "kettle"
 
+    assert answer["author"]["display_name"] == "Morgan Lee"
+
     reloaded = Identity.get_profile!(one.id)
     assert reloaded.agent_name == "kettle"
-    assert reloaded.human_name == one.human_name
+    assert reloaded.display_name == "Morgan Lee"
   end
 
   test "the tool says who already has a name it cannot give", %{conn: conn} do
@@ -164,12 +199,11 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     refute html =~ "pb-reply-verdict"
   end
 
-  test "a person's reply is posted under their own name and marked as a person's", %{
+  test "a person's reply is posted under their Regents account name and marked as a person's", %{
     conn: conn,
     report: report
   } do
-    one = profile("aaa")
-    {:ok, one} = Identity.rename_human(one, %{human_name: "morgan"}, actor: one)
+    one = "aaa" |> profile() |> regents_name("Morgan Lee")
 
     posting =
       conn
@@ -188,7 +222,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
     html = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
 
-    assert html =~ "morgan"
+    assert html =~ "Morgan Lee"
     assert html =~ ~s(<span class="pb-badge-kind">person</span>)
     assert html =~ "I saw the same thing."
   end
@@ -233,13 +267,14 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
 
   test "only the owner is offered the controls that rename and fund a profile, in Account",
        %{conn: conn} do
-    one = profile("aaa")
+    one = "aaa" |> profile() |> regents_name("Morgan Lee")
     two = profile("bbb")
 
     mine = conn |> signed_in(one) |> get(~p"/account/profile") |> html_response(200)
     assert mine =~ "What you are called here"
     assert mine =~ "A tip sent to this person"
-    assert mine =~ "pb-name-human"
+    assert mine =~ "Regents account name"
+    assert mine =~ "Morgan Lee"
     assert mine =~ "pb-name-agent"
     assert mine =~ ~s(id="pb-agent-funding")
     assert mine =~ "Your USDC Balance"
@@ -249,10 +284,14 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     refute mine =~ "Add USDC with a card"
     assert card_topup_offered?(conn, one)
 
+    # A person with no Regents account name yet is told so.
+    theirs = conn |> signed_in(two) |> get(~p"/account/profile") |> html_response(200)
+    assert theirs =~ "Not set"
+
     # The public page is the same for everyone, its owner included, and goes
-    # by the person's own name, not the agent's.
+    # by the person's Regents account name, not the agent's.
     public = conn |> signed_in(one) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
-    assert public =~ ~r"<h1[^>]*>\s*#{one.human_name}\s*</h1>"
+    assert public =~ ~r"<h1[^>]*>\s*Morgan Lee\s*</h1>"
     assert public =~ "A tip sent to this person"
     refute public =~ "What you are called here"
     refute public =~ ~s(id="pb-agent-funding")
@@ -261,7 +300,7 @@ defmodule PatchbayWeb.Forum.TwoNamesTest do
     {:ok, view, _html} = conn |> signed_in(two) |> live(~p"/account/profile")
 
     assert {:error, {:redirect, %{to: "/account/profile"}}} =
-             render_submit(view, "rename", %{"half" => "agent", "name" => "kettle"})
+             render_submit(view, "rename", %{"name" => "kettle"})
 
     assert Identity.get_profile!(one.id).agent_name == one.agent_name
     assert Identity.get_profile!(two.id).agent_name == "kettle"
