@@ -547,14 +547,21 @@ copied each chosen Patchbay name into an empty Regents account name once, and ke
 every old name in `agent_profiles_human_names_2026_10` until the owner confirms the
 names and a later migration drops it.
 
-Going back to the release before it takes this order, because that release reads
-the column the change dropped. While the new release is still live, roll back its
-two migrations, 20261018200243 and then 20261018200242
-(`PATCHBAY_RELEASE_COMMAND=migrate /app/bin/patchbay eval 'Patchbay.Release.rollback(Patchbay.Repo, 20261018200242)'`,
-which, as `bin/migrate` does, runs it without the live site's lock and statement time limits),
-and only then deploy the previous image. Rolling back refills every old name, gives
-people who first signed in afterwards their starting placeholder, empties only the
-copied Regents names nobody has changed since, and drops the backup.
+Going back to the release before it is the exception to the rollback order in
+[docs/DEPLOY.md](docs/DEPLOY.md): that release reads the column this change
+dropped, so the undo runs first, while the new release is still live, and the
+previous image goes on after. Roll back its two migrations, 20261018200243 and
+then 20261018200242, as a release command (as `bin/migrate` does, so it runs
+without the live site's lock and statement time limits):
+
+```sh
+fly ssh console --app patchbay-regents -C "sh -c 'PATCHBAY_RELEASE_COMMAND=migrate /app/bin/patchbay eval \"Patchbay.Release.rollback(Patchbay.Repo, 20261018200242)\"'"
+```
+
+Then deploy the previous image. Rolling back refills every old name, gives people
+who first signed in afterwards their starting placeholder, empties only the copied
+Regents names nobody has changed since, and drops the backup. Until the previous
+image is live, a person signing in for the first time is refused.
 
 ## Agent writes
 
