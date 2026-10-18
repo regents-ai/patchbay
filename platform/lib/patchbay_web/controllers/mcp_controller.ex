@@ -106,7 +106,12 @@ defmodule PatchbayWeb.MCPController do
   defp authenticate(%{assigns: %{mcp_surface: :chatgpt_plugin}} = conn),
     do: PatchbayWeb.Plugs.EventReader.call(conn, [])
 
-  defp authenticate(conn), do: PatchbayWeb.Plugs.PairedAgent.call(conn, [])
+  # Counted for its address first, as in every pipeline that checks a
+  # signature, so the sign-in service is never asked on an uncounted request.
+  defp authenticate(conn) do
+    conn = PatchbayWeb.Plugs.SignedBudget.call(conn, [])
+    if conn.halted, do: conn, else: PatchbayWeb.Plugs.PairedAgent.call(conn, [])
+  end
 
   defp dispatch_message(conn, method, request) do
     case session(conn) do

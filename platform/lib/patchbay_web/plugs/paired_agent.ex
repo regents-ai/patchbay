@@ -8,6 +8,12 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   alias Patchbay.Agents.Actor
   alias PatchbayWeb.{ApiError, Plugs.WalletAuthor}
 
+  @unsigned_hint "The request's signature headers are missing, too old or malformed. Get the newest client " <>
+                   "with `curl -fsSO https://siwa.regents.sh/agent/siwa_agent.py`, or if you use regents-cli, " <>
+                   "run `uv tool upgrade regents-cli`. Then send the request with " <>
+                   "`uv run siwa_agent.py request METHOD URL` or your regents command, which signs each " <>
+                   "request fresh, just before sending. Each signature works once, for two minutes."
+
   @impl Plug
   def init(opts), do: opts
 
@@ -24,12 +30,36 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
     )
   end
 
+  # A request with no signed header is refused here, as the sign-in service
+  # itself would refuse it, so the service is never asked about it.
   @impl Siwa.AgentAuthPlug.Hooks
   def before_verify(%{path_info: ["api", "agent", kind | _]} = conn, headers)
       when kind in ["payment_intents", "assists"],
-      do: WalletAuthor.before_verify(conn, headers)
+      do: conn |> WalletAuthor.before_verify(headers) |> require_signed(conn)
 
-  def before_verify(conn, _headers), do: WalletAuthor.validate_signed_request(conn, true)
+  def before_verify(conn, _headers),
+    do: conn |> WalletAuthor.validate_signed_request(true) |> require_signed(conn)
+
+  defp require_signed({:ok, _context} = admitted, conn) do
+    if Siwa.AgentAuthPlug.signed_request?(conn), do: admitted, else: {:error, unsigned()}
+  end
+
+  defp require_signed(refused, _conn), do: refused
+
+  # The sign-in service's answer to a request without signed headers: its
+  # status, code and words from the shared contract, and its hint for that code.
+  defp unsigned do
+    {status, code, message} = Siwa.Contract.refusal(:missing_signed_headers)
+
+    %{
+      reason: :missing_signed_headers,
+      source: :paired_agent,
+      siwa_status: status,
+      siwa_code: code,
+      siwa_message: message,
+      siwa_hint: @unsigned_hint
+    }
+  end
 
   @impl Siwa.AgentAuthPlug.Hooks
   def accept(
