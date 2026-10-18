@@ -8,7 +8,16 @@
   <span class="pb-offers-eyebrow">Free to save · five saves per day</span>
 </Regent.Structure.panel>
 
-<p :if={@problem} class="pb-offmod-problem" role="alert">{@problem}</p>
+<p
+  :if={@problem}
+  id="pb-offers-create-problem"
+  class="pb-offmod-problem"
+  role="alert"
+  phx-hook="MotionRefusal"
+  data-refused
+>
+  {@problem}
+</p>
 
 <%= if @current_profile do %>
   <div class="pb-offers-workspace">
@@ -80,20 +89,30 @@
       aria-labelledby="pb-offers-saved"
     >
       <header class="pb-offers-card-head">
-        <h2 id="pb-offers-saved" tabindex="-1">Saved Offers</h2><span class="pb-offers-eyebrow">{length(
-          @saved
-        )} saved <span aria-hidden="true">↔</span></span>
+        <h2 id="pb-offers-saved" tabindex="-1">Saved Offers</h2><span
+          id="pb-offers-saved-count"
+          class="pb-offers-eyebrow"
+          phx-hook="MotionCount"
+          data-variant={PatchbayWeb.Motion.standard("count")}
+        ><span data-count>{length(@saved)}</span> saved <span aria-hidden="true">↔</span></span>
       </header>
 
       <ol
+        id="pb-offers-saved-rail"
         class="pb-offers-saved-rail"
         tabindex="0"
         aria-label="Saved Offers, scroll horizontally"
+        phx-hook="MotionList"
+        data-layout-id="pb-offers-saved-rail"
+        data-children="[data-saved]"
+        data-variant={PatchbayWeb.Motion.standard("list")}
       >
         <li
           :for={creative <- @saved}
           id={"pb-offers-saved-#{creative.id}"}
           class="pb-offers-saved-card"
+          data-saved
+          data-layout-id={"pb-offers-saved-#{creative.id}"}
         >
           <header class="pb-offmod-head">
             <strong>{creative.label}</strong>

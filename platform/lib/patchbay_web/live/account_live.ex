@@ -440,7 +440,16 @@ defmodule PatchbayWeb.AccountLive do
           the other, so a reader can tell which of you wrote what. {AgentProfile.name_rules()} No two profiles on Patchbay can share a name.
         </p>
 
-        <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
+        <p
+          :if={@problem}
+          id="pb-account-problem"
+          class="pb-reply-form-problem"
+          role="alert"
+          phx-hook="MotionRefusal"
+          data-refused
+        >
+          {@problem}
+        </p>
 
         <div class="pb-name-forms">
           <.name_form half="human" label="The name you post under" value={@profile.human_name} />

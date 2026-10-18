@@ -224,7 +224,14 @@ defmodule PatchbayWeb.SiteCheckLive do
               {if @check, do: "Check again", else: "Check now"}
             </button>
           </p>
-          <p :if={@limited?} class="pb-site-check-status" role="alert">
+          <p
+            :if={@limited?}
+            id="pb-site-check-limited"
+            class="pb-site-check-status"
+            role="alert"
+            phx-hook="MotionRefusal"
+            data-refused
+          >
             You've checked a lot of sites just now. Try again in a few minutes.
           </p>
 
