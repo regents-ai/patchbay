@@ -3,6 +3,8 @@ import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./fo
 import {mountSiteCheck} from "./site_check.ts"
 import {mountToolPicker} from "./tool_picker.ts"
 import {deny} from "./hooks/motion/press.ts"
+import {GRIDS} from "./hooks/motion/reveals.ts"
+import {lastInputByPointer, still} from "./hooks/motion/shared.ts"
 
 const DRAFT_KEY = "pb-hero-draft"
 const PICKS_KEY = "pb-hero-draft-tools"
@@ -131,7 +133,16 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
   }
   say(form, "")
   showPictures(slot, pictures)
+  arrive(slot)
   slot.querySelector("#pb-hero-post, [role=alert]")?.scrollIntoView({block: "nearest"})
+}
+
+// The preview settles in under the form when it was asked for by hand. A
+// refusal never fades in: it is there at once and shakes, however it was asked for.
+function arrive(slot: HTMLElement) {
+  const reasons = slot.querySelectorAll("[role=alert]")
+  if (reasons.length > 0) reasons.forEach(deny)
+  else if (lastInputByPointer() && !still(slot)) GRIDS.cascade([...slot.children])
 }
 
 function showPictures(slot: HTMLElement, pictures: File[]) {

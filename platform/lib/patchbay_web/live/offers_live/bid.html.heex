@@ -61,7 +61,14 @@
             <% end %>
 
             <div class="pb-bid-feedback" aria-live="polite">
-              <p :if={@problem} class="pb-offmod-problem" role="alert" id="pb-offers-bid-problem">
+              <p
+                :if={@problem}
+                class="pb-offmod-problem"
+                role="alert"
+                id="pb-offers-bid-problem"
+                phx-hook="MotionRefusal"
+                data-refused
+              >
                 {@problem} <.buy_credits :if={@short?} />
               </p>
             </div>

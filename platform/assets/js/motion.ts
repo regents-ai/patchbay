@@ -33,6 +33,11 @@ export function mountMotion(doc: Document) {
   doc.addEventListener("click", press)
   doc.addEventListener("toggle", toggle, true)
 
+  // A refusal that sent the reader back to a page arrives above the page,
+  // live or not, and shakes once as it is shown.
+  const flash = doc.querySelector("#pb-content > [role='alert']")
+  if (flash !== null) deny(flash)
+
   const main = doc.querySelector("main")
   if (main === null || live(main) || still(main)) return
 

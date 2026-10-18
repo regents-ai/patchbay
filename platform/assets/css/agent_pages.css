@@ -188,9 +188,11 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
   top: var(--y);
   width: var(--size);
   height: auto;
-  transition: transform .5s cubic-bezier(.2, .8, .2, 1);
+  transition: transform var(--duration-slow) var(--ease-out);
 }
-.pb-agent-figure:hover { transform: rotate(-10deg) scale(1.03); }
+@media (hover: hover) and (pointer: fine) {
+  .pb-agent-figure:hover { transform: rotate(-10deg) scale(1.03); }
+}
 .pb-agent-kicker {
   display: inline-flex;
   align-items: center;

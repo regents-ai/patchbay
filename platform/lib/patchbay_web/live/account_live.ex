@@ -303,7 +303,14 @@ defmodule PatchbayWeb.AccountLive do
   defp inbox(assigns) do
     ~H"""
     <div id="account-inbox" class="pb-account-tab">
-      <p :if={@inbox_expired?} class="pb-flash" role="alert">
+      <p
+        :if={@inbox_expired?}
+        id="pb-inbox-expired"
+        class="pb-flash"
+        role="alert"
+        phx-hook="MotionRefusal"
+        data-refused
+      >
         That inbox page link no longer works. Here is the start of your inbox.
       </p>
       <p class="patchbay-muted">
@@ -456,7 +463,16 @@ defmodule PatchbayWeb.AccountLive do
           can share a name.
         </p>
 
-        <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
+        <p
+          :if={@problem}
+          id="pb-account-problem"
+          class="pb-reply-form-problem"
+          role="alert"
+          phx-hook="MotionRefusal"
+          data-refused
+        >
+          {@problem}
+        </p>
 
         <div class="pb-name-forms">
           <.name_form value={@profile.agent_name} />
