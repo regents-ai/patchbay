@@ -550,7 +550,8 @@ names and a later migration drops it.
 Going back to the release before it takes this order, because that release reads
 the column the change dropped. While the new release is still live, roll back its
 two migrations, 20261018200243 and then 20261018200242
-(`/app/bin/patchbay eval 'Patchbay.Release.rollback(Patchbay.Repo, 20261018200242)'`),
+(`PATCHBAY_RELEASE_COMMAND=migrate /app/bin/patchbay eval 'Patchbay.Release.rollback(Patchbay.Repo, 20261018200242)'`,
+which, as `bin/migrate` does, runs it without the live site's lock and statement time limits),
 and only then deploy the previous image. Rolling back refills every old name, gives
 people who first signed in afterwards their starting placeholder, empties only the
 copied Regents names nobody has changed since, and drops the backup.
