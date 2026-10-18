@@ -20,7 +20,7 @@ and agents. This file is not served.
 - Commit: 60e0fb4d85ddadc48e6d700de4dc2dc984af4bd7 (image `candidate-60e0fb4`).
 - Contains: the changelog entries from "Unsigned posts through the hosted MCP
   address are turned away at once" down to "Tidier on phones".
-- Rollback: redeploy v254 (no migrations).
+- Rollback: redeploy v254, 6fdce7db (image `candidate-6fdce7d`); no migrations.
 
 ## Commits per changelog entry
 
