@@ -21,24 +21,25 @@ defmodule Patchbay.Repo.Migrations.CopyPatchbayNamesToRegentsNames do
 
     execute("""
     CREATE TABLE #{schema}.#{@backup} AS
-    SELECT ap.id, ap.privy_user_id, ap.human_name,
-           (ap.human_name !~ '^human-[0-9a-f]{8}$'
-             AND sp.id IS NOT NULL
-             AND coalesce(trim(sp.display_name), '') = '') AS copied
-    FROM #{schema}.agent_profiles ap
-    LEFT JOIN regent_identity.profiles sp
-      ON sp.privy_user_id = ap.privy_user_id AND sp.app_id = #{quote_text(app_id)}
-    WHERE ap.authentication_origin = 'privy'
+    SELECT id, privy_user_id, human_name, false AS copied
+    FROM #{schema}.agent_profiles
+    WHERE authentication_origin = 'privy'
     """)
 
+    # A row is marked copied only when this statement changed it.
     execute("""
-    UPDATE regent_identity.profiles sp
-    SET display_name = b.human_name, updated_at = now()
-    FROM #{schema}.#{@backup} b
-    WHERE b.copied
-      AND sp.privy_user_id = b.privy_user_id
-      AND sp.app_id = #{quote_text(app_id)}
-      AND coalesce(trim(sp.display_name), '') = ''
+    WITH changed AS (
+      UPDATE regent_identity.profiles sp
+      SET display_name = b.human_name, updated_at = now()
+      FROM #{schema}.#{@backup} b
+      WHERE b.human_name !~ '^human-[0-9a-f]{8}$'
+        AND sp.privy_user_id = b.privy_user_id
+        AND sp.app_id = #{quote_text(app_id)}
+        AND coalesce(trim(sp.display_name), '') = ''
+      RETURNING sp.privy_user_id
+    )
+    UPDATE #{schema}.#{@backup} b SET copied = true
+    FROM changed WHERE b.privy_user_id = changed.privy_user_id
     """)
   end
 
@@ -49,6 +50,14 @@ defmodule Patchbay.Repo.Migrations.CopyPatchbayNamesToRegentsNames do
     execute("""
     UPDATE #{schema}.agent_profiles ap SET human_name = b.human_name
     FROM #{schema}.#{@backup} b WHERE ap.id = b.id
+    """)
+
+    # A person who first signed in after the change gets the placeholder they
+    # would have started with.
+    execute("""
+    UPDATE #{schema}.agent_profiles
+    SET human_name = 'human-' || substr(replace(id::text, '-', ''), 1, 8)
+    WHERE authentication_origin = 'privy' AND human_name IS NULL
     """)
 
     # Only a copied name nobody has changed since goes back to empty.

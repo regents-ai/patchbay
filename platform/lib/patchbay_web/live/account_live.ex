@@ -439,8 +439,9 @@ defmodule PatchbayWeb.AccountLive do
 
         <p class="patchbay-muted">
           You post under your Regents account name, the same on every Regents site. Change it
-          in your Regents profile on your <a href={~p"/account"}>Account page</a>. Until you set one, you post under your
-          ENS name or your short wallet address.
+          in your Regents profile on your <a href={~p"/account"}>Account page</a>. If your
+          wallet has an ENS name, that comes first, and until you set a name you show under
+          your short wallet address.
         </p>
 
         <div class="patchbay-facts" id="patchbay-account-name">

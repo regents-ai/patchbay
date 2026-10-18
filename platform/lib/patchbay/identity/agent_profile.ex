@@ -34,6 +34,11 @@ defmodule Patchbay.Identity.AgentProfile do
   @name_min 3
   @name_max 30
 
+  @name_fields (case Application.compile_env!(:patchbay, :name_first) do
+                  :chosen -> [:display_name, :ens_name]
+                  :ens -> [:ens_name, :display_name]
+                end)
+
   postgres do
     table("agent_profiles")
     repo(Patchbay.Repo)
@@ -321,8 +326,9 @@ defmodule Patchbay.Identity.AgentProfile do
 
   @doc """
   The name a profile is shown under when what it wrote was written by `kind`.
-  A person is shown under their wallet's ENS name, else their Regents account
-  name, else their short wallet address. A person's agent is shown under its
+  A person is shown under their Regents account name or their wallet's ENS
+  name, whichever the site's `:name_first` setting puts first, else the other,
+  else their short wallet address. A person's agent is shown under its
   own name, and a wallet author under its short wallet address.
   """
   @spec name_for(t(), :agent | :human) :: String.t()
@@ -336,7 +342,7 @@ defmodule Patchbay.Identity.AgentProfile do
   """
   @spec own_name(t()) :: String.t()
   def own_name(%{authentication_origin: :privy} = profile) do
-    present(profile.ens_name) || present(profile.display_name) ||
+    Enum.find_value(@name_fields, &present(Map.get(profile, &1))) ||
       RegentFormat.short_address(profile.wallet_address)
   end
 
