@@ -279,6 +279,14 @@ defmodule PatchbayWeb.AccountLive do
         held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
         state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
       >
+        <%!-- The header's balance opens Buy Credits from 900px wide; on a phone, here. --%>
+        <Regent.Primitives.button
+          type="button"
+          variant="secondary"
+          phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
+        >
+          Buy Credits
+        </Regent.Primitives.button>
         <p class="pb-account-credits">
           <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
           <a href={~p"/points"}>Your Points</a>

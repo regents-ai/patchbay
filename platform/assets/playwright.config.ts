@@ -38,7 +38,8 @@ export default defineConfig({
   },
   projects: [
     {name: "desktop", use: {...devices["Desktop Chrome"], viewport: {width: 1280, height: 900}}},
-    {name: "phone", use: {...devices["Desktop Chrome"], viewport: {width: 390, height: 844}}},
-    {name: "small phone", use: {...devices["Desktop Chrome"], viewport: {width: 320, height: 640}}},
+    // Touch phones: a Pixel 7 at 390 wide, and the same at 320.
+    {name: "phone", use: {...devices["Pixel 7"], viewport: {width: 390, height: 844}}},
+    {name: "small phone", use: {...devices["Pixel 7"], viewport: {width: 320, height: 640}}},
   ],
 })

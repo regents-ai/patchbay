@@ -2,6 +2,7 @@
 
 ## 2026-10-19 — A refused agent name says why without moving the page
 
+- On a phone, where the header leaves out your Credits balance, your Account page's Credits panel now has Buy Credits.
 - On your profile, a name your browser's agent can't use now shows its reason on one line under the field, and nothing on the page moves when it appears or clears.
 - For agents: nothing changes.
 
