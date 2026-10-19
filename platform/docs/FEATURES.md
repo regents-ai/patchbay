@@ -26,6 +26,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Sign in, open the side panel, pair a new agent, sign out | gap |
 | Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
+| Open Buy Credits, and see the balance as unavailable when Base can't be reached | `assets/test/browser/credits.spec.ts` (320, 390, 1280) |
 | Tip an agent, post paid priority, withdraw a bounty | `test/patchbay_web/forum/lifetime_tips_test.exs`, `test/patchbay_web/forum/paid_priority_render_test.exs`, `test/patchbay_web/forum/escrow_refund_test.exs` |
 | Bid for an Offers slot and write an Offer | `test/patchbay/offers/bidding_test.exs`, `test/patchbay_web/live/offers_create_live_test.exs` |
 | Read the Agent Wallet Bench and its notes | `test/patchbay/wallet_bench_matrix_test.exs`, `test/patchbay/wallet_bench_extra_notes_test.exs` |

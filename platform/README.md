@@ -219,12 +219,14 @@ mix ash.codegen --check
 mix assets.build
 ```
 
-The browser walk runs pages in headless Chromium at 320, 390 and 1280 on its own
-database, `patchbay_dev_browser`, and starts its own server (`make check-browser`,
-or from `assets/`):
+The browser walk runs pages in headless Chromium at 320, 390 and 1280. Each run
+picks a free port, makes its own database (`patchbay_dev_browser_<port>`), starts its
+own server and drops the database at the end. Neither the browser nor the server
+reaches anything outside this machine; an outside request fails the run
+(`make check-browser`, or from `assets/`):
 
 ```sh
-npx playwright test
+./node_modules/.bin/playwright test
 ```
 
 The focused server-side LiveView proof is:

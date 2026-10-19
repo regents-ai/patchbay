@@ -7,7 +7,7 @@ alias Patchbay.Identity
 repo = Patchbay.Repo.config()
 
 unless to_string(repo[:hostname]) in ["127.0.0.1", "localhost", "::1"] and
-         repo[:database] == "patchbay_dev_browser",
+         Regex.match?(~r/\Apatchbay_dev_browser_\d+\z/, to_string(repo[:database])),
        do: raise("the browser walk signs in only on its own local database")
 
 person =

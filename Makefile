@@ -10,9 +10,9 @@ check: check-platform check-browser check-required-fixes check-cli check-contrac
 check-platform:
 	cd platform && mix deps.get && npm ci --prefix assets && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets && mix precommit
 # The browser walk (platform/assets/test/browser): pages at 320, 390 and 1280 in
-# headless Chromium. It starts its own server on its own database, patchbay_dev_browser.
+# headless Chromium. Each run starts its own server on its own port and database, and refuses every request outside this machine.
 check-browser:
-	cd platform/assets && npx playwright test
+	cd platform/assets && ./node_modules/.bin/playwright test
 # Every site runs the same check against ash-template's current main branch, so a
 # newly published required fix reaches every site's next gate. Needs `gh auth login`.
 TEMPLATE := repos/regents-ai/ash-template

@@ -5,8 +5,8 @@ config :patchbay, Patchbay.Repo,
   username: System.get_env("PATCHBAY_DB_USERNAME", System.get_env("USER", "postgres")),
   password: System.get_env("PATCHBAY_DB_PASSWORD"),
   hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
-  # The browser walk (assets/playwright.config.ts) runs on its own database,
-  # patchbay_dev_browser, with a small pool.
+  # Each browser walk run (assets/playwright.config.ts) has its own database,
+  # patchbay_dev_browser_<port>, with a small pool.
   database: "patchbay_dev#{System.get_env("PATCHBAY_DEV_PARTITION")}",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
@@ -18,6 +18,21 @@ config :patchbay, Patchbay.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+# The browser walk's server (assets/playwright.config.ts) never leaves the machine.
+# Its chain nodes and sign-in service are a closed port here, so their reads fail at
+# once, and any other request outside it is refused and fails the walk
+# (PatchbayDev.WalkOffline).
+walk? = System.get_env("PATCHBAY_WALK") == "true"
+
+if walk? do
+  closed = "http://127.0.0.1:9"
+
+  config :patchbay, :chain_nodes, %{8453 => closed, 1 => closed}
+  config :regent_agents, :siwa, url: closed, audience: "patchbay"
+  config :req, default_options: [adapter: &PatchbayDev.WalkOffline.run/1]
+  config :patchbay, :walk_outside_file, Path.expand("../tmp/walk-outside.txt", __DIR__)
+end
+
 config :patchbay, PatchbayWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
@@ -28,13 +43,21 @@ config :patchbay, PatchbayWeb.Endpoint,
   # scripts/readiness.sh sets this to off, so error pages answer as they do in a release.
   debug_errors: System.get_env("PATCHBAY_DEBUG_ERRORS", "on") == "on",
   secret_key_base: "AEzU7cDlq6ghPh8aabbqv24S3vr7M3tdTmNYtKMF16hvq7mgI6XQrhr6dxM0uNC/",
-  watchers: [
-    esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
-    crown_island: {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
-    privy_bridge: {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
-    payments_lab:
-      {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
-  ]
+  # The browser walk builds the pages' scripts and styles before its server starts,
+  # so nothing rebuilds them and reloads a page while a check is on it.
+  watchers:
+    if(walk?,
+      do: [],
+      else: [
+        esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
+        crown_island:
+          {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
+        privy_bridge:
+          {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
+        payments_lab:
+          {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
+      ]
+    )
 
 # ## SSL Support
 #
