@@ -1087,6 +1087,11 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     refute has_element?(view, "#patchbay-agent-steps")
     refute has_element?(view, "#patchbay-agent-stopped")
+
+    # The sweep and the reset each tell the page the room changed. Stop the page
+    # once it has handled what it is on, so it never reads the database after this
+    # test, and the connection it shares, have ended.
+    GenServer.stop(view.pid)
   end
 
   test "reset invalidates a stale repair callback", %{conn: conn, room: room, agent: agent} do
