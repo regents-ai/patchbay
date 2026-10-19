@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.OffersLive.BidTest do
-  # The bid page for one site slot: a signed-in advertiser sees their
-  # Credits, bids with an approved wording,
+  # The bid page for one site slot: a visitor is asked to sign in; a
+  # signed-in advertiser sees their Credits, bids with an approved wording,
   # holds the full amount, hears when they are outbid, and can bid again
   # once the slot has moved on.
   #
@@ -30,6 +30,12 @@ defmodule PatchbayWeb.OffersLive.BidTest do
       version: version,
       path: "/offers/bid?site=#{site.id}&slot=1"
     }
+  end
+
+  test "a visitor who is not signed in is asked to sign in", %{conn: conn, path: path} do
+    {:ok, view, html} = live(conn, path)
+    assert html =~ "Sign in to bid"
+    refute has_element?(view, "#pb-offers-bid-form")
   end
 
   test "a bid holds its Credits; outbid, it comes back, and Bid again is a new bid",
