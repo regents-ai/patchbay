@@ -225,9 +225,12 @@ mouse and at 390 as a phone with touch, and checks how they move: what settles
 in, what shakes, what stays still from the keyboard or with less motion, and
 that everything ends with nothing left written on it. It builds and starts its
 own server on a free port over a test database of its own, named after the
-checkout, keeps the whole run in one transaction that is never committed, and neither the browser nor the
-server reaches anything outside this machine. On a
-new machine, run `npx playwright install chromium` in `assets/` once first.
+checkout, and keeps the whole run in one transaction that is never committed.
+The server takes nothing from your shell but the tools on the PATH, the home
+folder and the local database login, so a chain node or key set there never
+reaches it, and neither the browser nor the server reaches anything outside
+this machine. On a new machine, run `npx playwright install chromium` in
+`assets/` once first.
 `mix precommit` runs it last.
 
 The focused server-side LiveView proof is:

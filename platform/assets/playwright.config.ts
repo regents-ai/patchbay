@@ -21,7 +21,8 @@ const partition = `${process.env.MIX_TEST_PARTITION ?? ""}_browser_${checkout}`
 // The pages as a person sees them, in Chromium, at 1280 with a mouse and at
 // 390 as a phone with touch. WebKit is not run on the Mac. The server is this
 // checkout's, built here, over its own test database, and it keeps nothing it
-// writes (PatchbayDev.BrowserDatabase). Neither the browser nor the server
+// writes (PatchbayDev.BrowserDatabase). It gets nothing from the shell beyond
+// what it needs to run (test/browser/support/server.ts). Neither the browser nor the server
 // leaves this machine: the browser's outside requests fail the check that made
 // them (test/browser/support/walk.ts), and the server's are refused and fail the
 // run at its end (PatchbayDev.BrowserOffline, test/browser/support/outside.ts).
@@ -39,12 +40,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: [
-      "mkdir -p tmp && rm -f tmp/browser-outside.txt",
-      "mix do ecto.setup + assets.build",
-      "PATCHBAY_BROWSER_TEST=1 mix phx.server",
-    ].join(" && "),
-    cwd: "..",
+    command: "node test/browser/support/server.ts",
     env: {MIX_ENV: "test", MIX_TEST_PARTITION: partition, PORT: port},
     url: `${baseURL}/`,
     reuseExistingServer: false,

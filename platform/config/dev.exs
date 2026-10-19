@@ -77,16 +77,6 @@ config :patchbay, dev_routes: true
 # service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
 config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
 
-# The lab page's script: the stand-in wallet app bundled with the page's own
-# payment code. Only `mix phx.server` in dev builds it; a release never does.
-config :esbuild,
-  patchbay_payments_lab: [
-    args:
-      ~w(../dev/assets/payments_lab.ts --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
-    cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
-  ]
-
 # /webmcp/health reports this where a production release reports its commit.
 config :patchbay, :release_commit, "development"
 
