@@ -61,7 +61,7 @@ config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
 
 # Every request a test sends through Req without a stub that leaves this machine is
 # recorded and refused, and fails the run (PatchbayTest.Offline).
-config :req, default_options: [adapter: &PatchbayTest.Offline.run/1]
+config :req, default_options: [adapter: PatchbayTest.Offline]
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false

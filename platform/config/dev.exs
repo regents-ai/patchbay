@@ -29,7 +29,7 @@ if walk? do
 
   config :patchbay, :chain_nodes, %{8453 => closed, 1 => closed}
   config :regent_agents, :siwa, url: closed, audience: "patchbay"
-  config :req, default_options: [adapter: &PatchbayDev.WalkOffline.run/1]
+  config :req, default_options: [adapter: PatchbayDev.WalkOffline]
   config :patchbay, :walk_outside_file, Path.expand("../tmp/walk-outside.txt", __DIR__)
 end
 

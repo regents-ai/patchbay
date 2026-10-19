@@ -346,7 +346,7 @@ defmodule PatchbayWeb.Forum.AgentPages do
       items: [
         {:say,
          [
-           "Your person signs in and opens Buy Credits at the top of any Patchbay page or on their Patchbay Account page, or the Credits section at ",
+           "Your person signs in and opens Buy Credits on their Patchbay Account page, or the Credits section at ",
            {:a, "regents.sh/account", "https://regents.sh/account"},
            "."
          ]},

@@ -219,11 +219,14 @@ mix ash.codegen --check
 mix assets.build
 ```
 
-The browser walk runs pages in headless Chromium at 320, 390 and 1280. Each run
-picks a free port, makes its own database (`patchbay_dev_browser_<port>`), starts its
-own server and drops the database at the end. Neither the browser nor the server
-reaches anything outside this machine; an outside request fails the run
-(`make check-browser`, or from `assets/`):
+`mix test` never reaches outside this machine: every Req request without a stub that
+leaves it is refused and fails the run (`PatchbayTest.Offline`).
+
+The browser walk runs pages in headless Chromium on a desktop at 1280 and on touch
+phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own database
+(`patchbay_dev_browser_<port>`), starts its own server and drops the database at the
+end. Neither the browser nor the server reaches anything outside this machine; an
+outside request fails the run (`make check-browser`, or from `assets/`):
 
 ```sh
 ./node_modules/.bin/playwright test

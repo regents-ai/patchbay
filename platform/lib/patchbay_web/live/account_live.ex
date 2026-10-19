@@ -279,7 +279,8 @@ defmodule PatchbayWeb.AccountLive do
         held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
         state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
       >
-        <%!-- The header's balance opens Buy Credits from 900px wide; on a phone, here. --%>
+        <%!-- Buy Credits at every width; the header's balance opens it too from 900px
+             wide, and a phone's header leaves the balance out. --%>
         <Regent.Primitives.button
           type="button"
           variant="secondary"
