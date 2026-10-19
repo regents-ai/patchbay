@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v260, 19 Oct 2026
+
+- Commit: 161305f03816ebe7677a27f6ff632bbc9480d4ca (image `candidate-161305f`).
+- Contains: the Wallet Bench paid-call test pays Techtree's Bench funder
+  0x786C67651BcB148f5A383A150E78bD4Ed9f64f7b. PROTECTED (money), on Sean's 39a
+  (20:02:35Z). First release under SENTINEL.md.
+- Migrations: none. Rollback: redeploy v259 (483f8d06, image `candidate-483f8d0`).
+- Evidence and release log: sentinel/runs/161305f0.md.
+
 ## v259, 19 Oct 2026
 
 - Commit: 483f8d06fc7b593ed4fed92d95d1984a5aff05de (image `candidate-483f8d0`).
