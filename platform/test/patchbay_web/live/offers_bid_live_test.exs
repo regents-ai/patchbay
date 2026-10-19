@@ -6,16 +6,12 @@ defmodule PatchbayWeb.OffersLive.BidTest do
   #
   # Not async: settling a window runs the same job every Offers test uses.
   use PatchbayWeb.ConnCase, async: false
-  use Oban.Testing, repo: Patchbay.Repo
 
   import Patchbay.OffersFixtures
   import Phoenix.LiveViewTest
 
-  require Ash.Query
-
   alias Patchbay.Forum
   alias Patchbay.Offers
-  alias Patchbay.Offers.BidWindow
 
   setup do
     {:ok, site} =
@@ -79,21 +75,6 @@ defmodule PatchbayWeb.OffersLive.BidTest do
       bid: %{lane: "immediate", version_id: version.id, amount: amount}
     )
     |> render_submit()
-  end
-
-  # Two seconds pass and this slot's window job runs, as it would on its own.
-  defp settle(market, number) do
-    age(market, number, 2)
-    slot_id = slot(market, number).id
-
-    # A test reads what it set up, so it skips policies deliberately.
-    BidWindow
-    |> Ash.Query.filter(slot_id == ^slot_id and state == :open)
-    |> Ash.read!(authorize?: false)
-    |> Enum.each(fn window ->
-      assert {:ok, _window} =
-               perform_job(BidWindow.Workers.Settle, %{"primary_key" => %{"id" => window.id}})
-    end)
   end
 
   defp signed_in(conn, profile) do

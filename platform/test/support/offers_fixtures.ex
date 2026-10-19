@@ -71,6 +71,28 @@ defmodule Patchbay.OffersFixtures do
   end
 
   @doc """
+  Two seconds pass in `market`'s slot `number` and each of its open windows'
+  jobs runs, as it would on its own.
+  """
+  def settle(market, number) do
+    age(market, number, 2)
+    slot_id = slot(market, number).id
+
+    # A fixture reads back what it set up, so it skips policies deliberately.
+    Offers.BidWindow
+    |> Ash.Query.filter(slot_id == ^slot_id and state == :open)
+    |> Ash.read!(authorize?: false)
+    |> Enum.each(fn window ->
+      {:ok, _window} =
+        Oban.Testing.perform_job(
+          Offers.BidWindow.Workers.Settle,
+          %{"primary_key" => %{"id" => window.id}},
+          repo: Repo
+        )
+    end)
+  end
+
+  @doc """
   Moves every window and placement in `market`'s slot `number` back by
   `seconds`, as if that much time had passed.
   """

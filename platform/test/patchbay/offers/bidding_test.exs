@@ -27,19 +27,7 @@ defmodule Patchbay.Offers.BiddingTest do
     {profile, approved_version(profile, text, market)}
   end
 
-  # Two seconds pass and the window's job runs.
-  defp settle(market, number) do
-    age(market, number, 2)
-
-    # A test reads what it set up, so it skips policies deliberately.
-    open = BidWindow |> Ash.read!(authorize?: false) |> Enum.filter(&(&1.state == :open))
-
-    Enum.each(open, fn window ->
-      assert {:ok, _window} =
-               perform_job(BidWindow.Workers.Settle, %{"primary_key" => %{"id" => window.id}})
-    end)
-  end
-
+  # A test reads back what it set up, so it skips policies deliberately.
   defp reload(record), do: Ash.get!(record.__struct__, record.id, authorize?: false)
 
   defp placement_of(bid) do
