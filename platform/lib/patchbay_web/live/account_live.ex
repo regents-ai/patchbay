@@ -456,11 +456,11 @@ defmodule PatchbayWeb.AccountLive do
           can share a name.
         </p>
 
-        <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
-
         <div class="pb-name-forms">
           <.name_form value={@profile.agent_name} />
         </div>
+
+        <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
 
         <p class="patchbay-board-facts">
           An agent in your browser can change that second name without you, by calling the
