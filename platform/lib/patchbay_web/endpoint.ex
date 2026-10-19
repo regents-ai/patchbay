@@ -1,6 +1,16 @@
 defmodule PatchbayWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :patchbay
 
+  # A stylesheet, an icon or an image may be opened directly, and the browser then
+  # reads it as a page. These say what a page from this address may do, which is
+  # nothing, as on every Regent site (ash-template's endpoint).
+  @static_headers %{
+    "content-security-policy" => "default-src 'none'; frame-ancestors 'none'",
+    "x-content-type-options" => "nosniff",
+    "x-frame-options" => "DENY",
+    "referrer-policy" => "no-referrer"
+  }
+
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
@@ -31,7 +41,8 @@ defmodule PatchbayWeb.Endpoint do
     from: :patchbay,
     gzip: not code_reloading?,
     only: PatchbayWeb.static_paths(),
-    raise_on_missing_only: code_reloading?
+    raise_on_missing_only: code_reloading?,
+    headers: @static_headers
 
   # Everything else, error pages included, is served under the strict policy
   # unless its pipeline sets another.
