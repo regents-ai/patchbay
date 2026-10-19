@@ -1,9 +1,6 @@
 import Config
 browser_port = String.to_integer(System.get_env("PORT", "4002"))
 
-# The browser tests start this server themselves (assets/playwright.config.ts).
-browser_test? = System.get_env("PATCHBAY_BROWSER_TEST") == "1"
-
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -15,30 +12,17 @@ config :patchbay, Patchbay.Repo,
   hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
   database: "patchbay_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  # Keep parallel worktrees within the local PostgreSQL connection budget. The
-  # browser tests' server answers every page over one connection.
-  pool_size: if(browser_test?, do: 2, else: 8)
+  # Keep parallel worktrees within the local PostgreSQL connection budget.
+  pool_size: 8
 
-# Only the browser tests run a server.
+# We don't run a server during test. If one is required,
+# you can enable the server option below.
 config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "127.0.0.1", port: browser_port],
   http: [ip: {127, 0, 0, 1}, port: browser_port],
   check_origin: ["http://127.0.0.1:#{browser_port}"],
   secret_key_base: "veQzbAXuIb79+jLk5QWx2Jq4Gy/5WzZbQRfCk77MHXxP2IUiKWLI5vDOixz/wQlP",
-  server: browser_test?
-
-# Its run is one transaction that is never committed (PatchbayDev.BrowserDatabase),
-# and it refuses every request outside this machine (PatchbayDev.BrowserOffline).
-config :patchbay, :browser_test, browser_test?
-
-if browser_test? do
-  config :req, default_options: [adapter: &PatchbayDev.BrowserOffline.run/1]
-  config :patchbay, :assist_target, resolve: &PatchbayDev.BrowserOffline.resolve/1
-
-  config :patchbay,
-         :browser_outside_file,
-         Path.expand("../tmp/browser-outside-#{browser_port}.txt", __DIR__)
-end
+  server: false
 
 # In test we don't send emails
 config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
@@ -75,9 +59,9 @@ config :patchbay, :payments_per_minute, 1_000_000
 # service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
 config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
 
-# Chain reads a test does not answer itself are refused here, never sent to a
-# public node.
-config :patchbay, :chain_nodes, %{8453 => "http://127.0.0.1:1", 1 => "http://127.0.0.1:1"}
+# Every request a test sends through Req without a stub that leaves this machine is
+# recorded and refused, and fails the run (PatchbayTest.Offline).
+config :req, default_options: [adapter: PatchbayTest.Offline]
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
@@ -103,6 +87,7 @@ config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 # The SIWA service answers signed agent requests from each test's own stub
 # (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
 config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}
+config :regent_agents, siwa: [url: "https://siwa.test", audience: "patchbay"]
 
 # Jev answers from each test's own stand-in (`Patchbay.JevStandIn`), never
 # the internet.

@@ -213,25 +213,27 @@ database cannot collide with the current migrations:
 MIX_TEST_PARTITION=patchbay_zde5_full mix test
 npm test --prefix assets
 npm run typecheck --prefix assets
-npm run test:browser --prefix assets
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix ash.codegen --check
 mix assets.build
 ```
 
-`npm run test:browser` opens the pages in headless Chromium, at 1280 with a
-mouse and at 390 as a phone with touch, and checks how they move: what settles
-in, what shakes, what stays still from the keyboard or with less motion, and
-that everything ends with nothing left written on it. It builds and starts its
-own server on a free port over a test database of its own, named after the
-checkout, and keeps the whole run in one transaction that is never committed.
-The server takes nothing from your shell but the tools on the PATH, the home
-folder and the local database login, so a chain node or key set there never
-reaches it, and neither the browser nor the server reaches anything outside
-this machine. On a new machine, run `npx playwright install chromium` in
-`assets/` once first.
-`mix precommit` runs it last.
+`mix test` never reaches outside this machine: every Req request without a stub that
+leaves it is refused and fails the run (`PatchbayTest.Offline`).
+
+The browser walk runs pages in headless Chromium on a desktop at 1280 and on touch
+phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own database
+(`patchbay_dev_browser_<port>`), starts its own server and drops the database at the
+end. Besides what each page shows, it checks how pages move: what settles in, what
+shakes, what stays still from the keyboard or with less motion, and that everything
+ends with nothing left written on it. Neither the browser nor the server reaches
+anything outside this machine; an outside request fails the run (`make
+check-browser`, or from `assets/`):
+
+```sh
+./node_modules/.bin/playwright test
+```
 
 The focused server-side LiveView proof is:
 
@@ -422,7 +424,7 @@ every route, every tool, and what each kind of visitor can do.
 - Credo, in strict mode
 - Elixir formatter
 - `mix precommit`
-- Script tests through `npm test`, browser tests through `npm run test:browser` and type checks through `npm run typecheck`
+- Browser tests through `npm test` and type checks through `npm run typecheck`
 - Custom deterministic Bash end-to-end test script
 - The deterministic end-to-end proof is run ten times as a release gate
 

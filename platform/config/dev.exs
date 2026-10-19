@@ -5,10 +5,12 @@ config :patchbay, Patchbay.Repo,
   username: System.get_env("PATCHBAY_DB_USERNAME", System.get_env("USER", "postgres")),
   password: System.get_env("PATCHBAY_DB_PASSWORD"),
   hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
-  database: "patchbay_dev",
+  # Each browser walk run (assets/playwright.config.ts) has its own database,
+  # patchbay_dev_browser_<port>, with a small pool.
+  database: "patchbay_dev#{System.get_env("PATCHBAY_DEV_PARTITION")}",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: String.to_integer(System.get_env("POOL_SIZE", "10"))
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -16,6 +18,24 @@ config :patchbay, Patchbay.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
+# The browser walk's server (assets/playwright.config.ts) never leaves the machine.
+# Its chain nodes, sign-in service and the outside lists a site's check searches are
+# a closed port here, so their reads fail at once (PatchbayDev.WalkClosed for the
+# lists), no site's name resolves, and any other request outside it is refused and
+# fails the walk (PatchbayDev.WalkOffline).
+walk? = System.get_env("PATCHBAY_WALK") == "true"
+
+if walk? do
+  closed = "http://127.0.0.1:9"
+
+  config :patchbay, :chain_nodes, %{8453 => closed, 1 => closed}
+  config :regent_agents, :siwa, url: closed, audience: "patchbay"
+  config :req, default_options: [adapter: PatchbayDev.WalkOffline]
+  config :patchbay, :assist_target, resolve: &PatchbayDev.WalkOffline.resolve/1
+  config :patchbay, :site_scan_req_options, adapter: PatchbayDev.WalkClosed
+  config :patchbay, :walk_outside_file, Path.expand("../tmp/walk-outside.txt", __DIR__)
+end
+
 config :patchbay, PatchbayWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
@@ -26,13 +46,21 @@ config :patchbay, PatchbayWeb.Endpoint,
   # scripts/readiness.sh sets this to off, so error pages answer as they do in a release.
   debug_errors: System.get_env("PATCHBAY_DEBUG_ERRORS", "on") == "on",
   secret_key_base: "AEzU7cDlq6ghPh8aabbqv24S3vr7M3tdTmNYtKMF16hvq7mgI6XQrhr6dxM0uNC/",
-  watchers: [
-    esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
-    crown_island: {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
-    privy_bridge: {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
-    payments_lab:
-      {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
-  ]
+  # The browser walk builds the pages' scripts and styles before its server starts,
+  # so nothing rebuilds them and reloads a page while a check is on it.
+  watchers:
+    if(walk?,
+      do: [],
+      else: [
+        esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
+        crown_island:
+          {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
+        privy_bridge:
+          {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
+        payments_lab:
+          {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
+      ]
+    )
 
 # ## SSL Support
 #
@@ -59,16 +87,21 @@ config :patchbay, PatchbayWeb.Endpoint,
 
 # Reload browser tabs when matching files change.
 config :patchbay, PatchbayWeb.Endpoint,
-  live_reload: [
-    web_console_logger: true,
-    patterns: [
-      # Static assets, except user uploads
-      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
-      # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/patchbay_web/router\.ex$"E,
-      ~r"lib/patchbay_web/(controllers|live|components)/.*\.(ex|heex)$"E
-    ]
-  ]
+  # Nothing changes under the browser walk, so its pages carry no live reload frame.
+  live_reload:
+    if(walk?,
+      do: [],
+      else: [
+        web_console_logger: true,
+        patterns: [
+          # Static assets, except user uploads
+          ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
+          # Router, Controllers, LiveViews and LiveComponents
+          ~r"lib/patchbay_web/router\.ex$"E,
+          ~r"lib/patchbay_web/(controllers|live|components)/.*\.(ex|heex)$"E
+        ]
+      ]
+    )
 
 # Enable dev routes for dashboard and mailbox
 config :patchbay, dev_routes: true
@@ -76,6 +109,16 @@ config :patchbay, dev_routes: true
 # The payments lab at /dev/lab/payments: a stand-in wallet app and payment
 # service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
 config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
+
+# The lab page's script: the stand-in wallet app bundled with the page's own
+# payment code. Only `mix phx.server` in dev builds it; a release never does.
+config :esbuild,
+  patchbay_payments_lab: [
+    args:
+      ~w(../dev/assets/payments_lab.ts --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
+  ]
 
 # /webmcp/health reports this where a production release reports its commit.
 config :patchbay, :release_commit, "development"

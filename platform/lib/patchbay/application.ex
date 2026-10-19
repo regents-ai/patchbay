@@ -17,7 +17,6 @@ defmodule Patchbay.Application do
       [
         PatchbayWeb.Telemetry,
         Patchbay.Repo,
-        browser_database(:owner),
         if(RegentOAuth.enabled?(), do: RegentOAuth.Repo),
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
@@ -56,7 +55,6 @@ defmodule Patchbay.Application do
       children ++
         site_loader() ++
         patchbay_agent() ++
-        List.wrap(browser_database(:sites)) ++
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
@@ -88,13 +86,6 @@ defmodule Patchbay.Application do
     else
       []
     end
-  end
-
-  # The browser tests' server keeps the run in one transaction it never
-  # commits, and makes its sites before it serves (PatchbayDev.BrowserDatabase).
-  defp browser_database(part) do
-    if Application.get_env(:patchbay, :browser_test, false),
-      do: {PatchbayDev.BrowserDatabase, part}
   end
 
   # The worker that repairs a reported tool runs beside the room it repairs.

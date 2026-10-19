@@ -1,44 +1,39 @@
-import {expect, test as base, type Locator, type Page} from "@playwright/test"
+import {type Locator, type Page} from "@playwright/test"
+import {expect, test as walk} from "./test"
 
-// Every page in these checks records each move written onto any element, and
-// reaches nothing but this machine's server. A page error, an error the page
-// logs, a part of the page that fails to load, or any try to reach outside
-// this machine, from the page or a window it opens, fails the check it
-// happened in.
-export const test = base.extend<{errors: string[]}>({
-  errors: [
+// The motion checks. Every page in them records each move written onto any
+// element, and an error the page logs, a part of the page that fails to load,
+// or a socket that reaches outside this machine fails the check it happened in
+// (outside requests already fail it, support/test.ts).
+export const test = walk.extend<{faults: void}>({
+  faults: [
     async ({context, page, baseURL}, use) => {
-      const errors: string[] = []
+      const faults: string[] = []
       const here = new URL(baseURL!).host
-      const outside = (url: URL) => url.host !== here
-      await context.route(outside, route => {
-        errors.push(`outside request ${route.request().url()}`)
-        return route.abort()
-      })
-      await context.routeWebSocket(outside, socket => {
-        errors.push(`outside socket ${socket.url()}`)
-        return socket.close()
-      })
-      page.on("pageerror", error => errors.push(error.message))
+      await context.routeWebSocket(
+        url => url.host !== here,
+        socket => {
+          faults.push(`outside socket ${socket.url()}`)
+          return socket.close()
+        },
+      )
       // A page that did not load is the response its check reads; anything
       // else that fails to load, and anything else logged as an error, is a fault.
       page.on("console", message => {
         if (message.type() === "error" && !message.text().startsWith("Failed to load resource"))
-          errors.push(message.text())
+          faults.push(message.text())
       })
       page.on("response", response => {
         if (response.status() >= 400 && response.request().resourceType() !== "document")
-          errors.push(`${response.status()} ${response.url()}`)
+          faults.push(`${response.status()} ${response.url()}`)
       })
       await page.addInitScript(recordMoves)
-      await use(errors)
-      expect(errors, "page errors").toEqual([])
+      await use()
+      expect(faults, "page faults").toEqual([])
     },
     {auto: true},
   ],
 })
-
-export {expect}
 
 type Recorded = Element & {pbMoves?: string[]; pbInside?: string[]}
 
@@ -96,19 +91,10 @@ export const inlineStyle = (locator: Locator) => locator.evaluate(el => (el.getA
 /** Waits until the element has no inline style: its motion has handed it back to the stylesheet. */
 export const toRest = (locator: Locator) => expect.poll(() => inlineStyle(locator), {timeout: 5_000}).toBe("")
 
-/** Whether the page scrolls sideways. */
-export const sideways = (page: Page) =>
-  page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
-
 /** Waits for the live page to connect. */
 export const connected = (page: Page) => page.locator("[data-phx-main].phx-connected").waitFor()
 
-/** Signs in as the payments lab's account, the one account this machine signs in without a wallet. */
-export async function signIn(page: Page) {
-  await page.goto("/dev/lab/payments")
-  await page.getByRole("button", {name: "Sign in as the lab account"}).click()
-  await expect(page.getByText("Signed in with A.")).toBeVisible()
-}
-
 /** Presses a control the way this project's reader does: a tap on the phone, a click with a mouse. */
 export const press = (locator: Locator, isMobile: boolean) => (isMobile ? locator.tap() : locator.click())
+
+export {expect}

@@ -1,3 +1,4 @@
+import type {Page} from "@playwright/test"
 import {
   connected,
   expect,
@@ -6,13 +7,11 @@ import {
   movesInside,
   movesOf,
   press,
-  signIn,
-  sideways,
   test,
   toRest,
   watchInside,
-} from "./support/walk.ts"
-import type {Page} from "@playwright/test"
+} from "./support/motion"
+import {signedIn, watch} from "./support/test"
 
 const MISSING_FIX = "/fixes/00000000-0000-0000-0000-000000000000"
 
@@ -43,6 +42,19 @@ test.describe("the home page's preview", () => {
     await expect(preview).toBeVisible()
     await toRest(preview)
     expect((await movesOf(preview)).some(move => move.includes("translateY"))).toBe(true)
+  })
+
+  test("the buttons stay put while the address is looked at and answered", async ({page}) => {
+    const ask = await askForPreview(page)
+    const before = await ask.boundingBox()
+    // Leaving the field asks at once, as a tap on the button does; what is
+    // found is said under it, as the field's description.
+    const site = page.getByRole("textbox", {name: "The site"})
+    await site.blur()
+    await expect(site).toHaveAccessibleDescription("Looking for WebMCP tools at this address…")
+    expect(await ask.boundingBox()).toEqual(before)
+    await expect(site).toHaveAccessibleDescription("That address does not lead to any site.")
+    expect(await ask.boundingBox()).toEqual(before)
   })
 
   test("asked for from the keyboard, it stays still", async ({page, isMobile}) => {
@@ -121,20 +133,20 @@ test.describe("a note above the page", () => {
 })
 
 test.describe("the inbox's note about an old page link", () => {
+  test.use(signedIn)
   const note = (page: Page) => page.getByRole("alert").filter({hasText: "That inbox page link no longer works."})
 
   test("shakes, then rests, after a full page load", async ({page}) => {
-    await signIn(page)
+    const problems = watch(page)
     await page.goto("/account/inbox?after=not-a-page")
     await connected(page)
     await expect(note(page)).toBeVisible()
     await toRest(note(page))
     expect(shakes(await movesOf(note(page)))).toBe(true)
-    expect(await sideways(page)).toBe(false)
+    await problems.expect()
   })
 
   test("shakes, then rests, after a live change of page", async ({page}) => {
-    await signIn(page)
     await page.goto("/account/inbox")
     await connected(page)
     // A link a live page follows without loading the page again.
@@ -153,75 +165,86 @@ test.describe("the inbox's note about an old page link", () => {
   })
 })
 
-test("a refused agent name shakes its reason, then rests", async ({page}) => {
-  await signIn(page)
-  await page.goto("/account/profile")
-  await connected(page)
-  await page.getByRole("textbox", {name: "The name your browser's agent posts under"}).fill("Not A Name!")
-  await page.getByRole("button", {name: "Save", exact: true}).click()
-  const reason = page.getByRole("alert").filter({hasText: "That name will not do."})
-  await expect(reason).toBeVisible()
-  await toRest(reason)
-  expect(shakes(await movesOf(reason))).toBe(true)
-  expect(await sideways(page)).toBe(false)
+test.describe("the agent name form", () => {
+  test.use(signedIn)
+
+  test("a refused name shakes its reason, then rests", async ({page}) => {
+    const problems = watch(page)
+    await page.goto("/account/profile")
+    await connected(page)
+    await page.getByRole("textbox", {name: "The name your browser's agent posts under"}).fill("Not A Name!")
+    await page.getByRole("button", {name: "Save", exact: true}).click()
+    const reason = page.getByRole("alert").filter({hasText: "That name doesn't fit the rules."})
+    await expect(reason).toBeVisible()
+    await toRest(reason)
+    expect(shakes(await movesOf(reason))).toBe(true)
+    await problems.expect()
+  })
 })
 
-// The lab account saves five wordings a day, and this check saves two, so the
-// run makes it once at each width. Each run's day starts empty.
-test("a saved Offer fades in where it can be seen, the row makes room, the count rolls, and every card ends with nothing written on it", async ({
-  page,
-}) => {
-  await signIn(page)
-  await page.goto("/offers/create")
-  await connected(page)
-  const saved = page.getByRole("region", {name: "Saved Offers"})
-  const count = saved.getByText(/^\d+ saved/)
-  const row = saved.getByRole("list", {name: "Saved Offers, scroll horizontally"})
-  const cards = row.getByRole("listitem")
+test.describe("saving an Offer", () => {
+  // Each width saves as its own person: an account saves five wordings a day,
+  // and the widths run at once (support/sign_in.exs).
+  test.use({
+    storageState: async ({}, use, info) =>
+      use(`test/browser/.auth/offers-${info.project.name.replace(/\W+/g, "-")}.json`),
+  })
 
-  const save = async (label: string) => {
-    const before = await count.textContent()
-    await page.getByRole("textbox", {name: "Private name"}).fill(label)
-    await page.getByRole("textbox", {name: "Offer text"}).fill(`Try Patchbay to fix the tools on your site. ${label}`)
-    await page.getByRole("button", {name: "Save Offer"}).click()
-    await expect(cards.filter({hasText: label})).toBeVisible()
-    await expect(count).not.toHaveText(before!)
-  }
+  test("a saved Offer fades in where it can be seen, the row makes room, the count rolls, and every card ends with nothing written on it", async ({
+    page,
+  }) => {
+    const problems = watch(page)
+    await page.goto("/offers/create")
+    await connected(page)
+    const saved = page.getByRole("region", {name: "Saved Offers"})
+    const count = saved.getByText(/^\d+ saved/)
+    const row = saved.getByRole("list", {name: "Saved Offers, scroll horizontally"})
+    const cards = row.getByRole("listitem")
 
-  const rested = async () => {
-    for (const card of await cards.all()) {
-      await toRest(card)
-      expect(
-        await card.evaluate(el => {
-          const style = getComputedStyle(el)
-          return [style.translate, style.transform, style.opacity]
-        }),
-      ).toEqual(["none", "none", "1"])
+    const save = async (label: string) => {
+      const before = await count.textContent()
+      await page.getByRole("textbox", {name: "Private name"}).fill(label)
+      await page.getByRole("textbox", {name: "Offer text"}).fill(`Try Patchbay to fix the tools on your site. ${label}`)
+      await page.getByRole("button", {name: "Save Offer"}).click()
+      await expect(cards.filter({hasText: label})).toBeVisible()
+      await expect(count).not.toHaveText(before!)
     }
-    // The count is the plain figure again, not the pieces it rolled in.
-    await expect(count).toHaveText(/^\d+ saved/)
-    expect(await count.evaluate(el => el.firstElementChild?.childElementCount)).toBe(0)
-  }
 
-  const first = `First ${Date.now().toString(36)}`
-  await save(first)
-  await rested()
-  await forgetMoves(page)
+    const rested = async () => {
+      for (const card of await cards.all()) {
+        await toRest(card)
+        expect(
+          await card.evaluate(el => {
+            const style = getComputedStyle(el)
+            return [style.translate, style.transform, style.opacity]
+          }),
+        ).toEqual(["none", "none", "1"])
+      }
+      // The count is the plain figure again, not the pieces it rolled in.
+      await expect(count).toHaveText(/^\d+ saved/)
+      expect(await count.evaluate(el => el.firstElementChild?.childElementCount)).toBe(0)
+    }
 
-  const second = `Second ${Date.now().toString(36)}`
-  await watchInside(count)
-  await save(second)
-  await rested()
-  const arrived = await movesOf(cards.filter({hasText: second}))
-  expect(fades(arrived)).toBe(true)
-  // The new card is in the row's view, whole, not scrolled past.
-  const [seen, card] = [await row.boundingBox(), await cards.filter({hasText: second}).boundingBox()]
-  expect(card!.x).toBeGreaterThanOrEqual(seen!.x)
-  expect(card!.x + card!.width).toBeLessThanOrEqual(seen!.x + seen!.width)
-  expect((await movesInside(count)).some(move => move.includes("translateY"))).toBe(true)
-  expect(slides(arrived)).toBe(false)
-  expect(slides(await movesOf(cards.filter({hasText: first})))).toBe(true)
-  expect(await sideways(page)).toBe(false)
+    const first = `First ${Date.now().toString(36)}`
+    await save(first)
+    await rested()
+    await forgetMoves(page)
+
+    const second = `Second ${Date.now().toString(36)}`
+    await watchInside(count)
+    await save(second)
+    await rested()
+    const arrived = await movesOf(cards.filter({hasText: second}))
+    expect(fades(arrived)).toBe(true)
+    // The new card is in the row's view, whole, not scrolled past.
+    const [seen, card] = [await row.boundingBox(), await cards.filter({hasText: second}).boundingBox()]
+    expect(card!.x).toBeGreaterThanOrEqual(seen!.x)
+    expect(card!.x + card!.width).toBeLessThanOrEqual(seen!.x + seen!.width)
+    expect((await movesInside(count)).some(move => move.includes("translateY"))).toBe(true)
+    expect(slides(arrived)).toBe(false)
+    expect(slides(await movesOf(cards.filter({hasText: first})))).toBe(true)
+    await problems.expect()
+  })
 })
 
 test("Claude's picture tilts under a mouse and stays put after a tap", async ({page, isMobile}) => {

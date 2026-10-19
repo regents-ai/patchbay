@@ -26,8 +26,12 @@ config :regent_mcp_agents, :config,
   ]
 
 # Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
-config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
-config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
+# Tests answer the sign-in service themselves (config/test.exs), so a shell's
+# address never reaches them.
+if config_env() != :test do
+  config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
+  config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
+end
 
 # This site's own key for reading what paired agents have done from the sign-in
 # service (RegentAgents.Activity).
@@ -160,28 +164,32 @@ config :regent_payments, RegentPayments.Facilitator,
 # call per reading. Nothing else needs it: a machine started without it serves
 # everything but the balance reading, which answers that it is not set up
 # here. The address may carry the provider's own key, so it is kept a secret.
-config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
+# Tests never read a chain node from the shell: their requests stay on this
+# machine (PatchbayTest.Offline).
+if config_env() != :test do
+  config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
 
-# Credits purchases are checked through the same Base node when it is set, and
-# through PATCHBAY_ETHEREUM_NODE_URL on Ethereum; otherwise through the public
-# addresses in config/config.exs.
-node_overrides =
-  for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}, {1, "PATCHBAY_ETHEREUM_NODE_URL"}],
-      node_url = System.get_env(setting),
-      into: %{} do
-    case URI.new(node_url) do
-      {:ok, %URI{scheme: scheme, host: host}}
-      when scheme in ["http", "https"] and host not in [nil, ""] ->
-        {chain_id, node_url}
+  # Credits purchases are checked through the same Base node when it is set, and
+  # through PATCHBAY_ETHEREUM_NODE_URL on Ethereum; otherwise through the public
+  # addresses in config/config.exs.
+  node_overrides =
+    for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}, {1, "PATCHBAY_ETHEREUM_NODE_URL"}],
+        node_url = System.get_env(setting),
+        into: %{} do
+      case URI.new(node_url) do
+        {:ok, %URI{scheme: scheme, host: host}}
+        when scheme in ["http", "https"] and host not in [nil, ""] ->
+          {chain_id, node_url}
 
-      _invalid ->
-        raise "#{setting} must be an http or https address"
+        _invalid ->
+          raise "#{setting} must be an http or https address"
+      end
     end
-  end
 
-config :patchbay,
-       :chain_nodes,
-       Map.merge(Application.fetch_env!(:patchbay, :chain_nodes), node_overrides)
+  config :patchbay,
+         :chain_nodes,
+         Map.merge(Application.fetch_env!(:patchbay, :chain_nodes), node_overrides)
+end
 
 # Each sign-in reads the wallet's ENS name and picture from Ethereum mainnet
 # while this endpoint is set (Patchbay.Accounts.EnsIdentity). Tests never read
@@ -214,7 +222,7 @@ end
 config :patchbay, :escrow,
   contract_address: System.get_env("ESCROW_CONTRACT_ADDRESS"),
   operator_private_key: System.get_env("OPERATOR_PRIVATE_KEY"),
-  rpc_url: System.get_env("BASE_RPC_URL")
+  rpc_url: if(config_env() != :test, do: System.get_env("BASE_RPC_URL"))
 
 # Paid assists. ASSIST_WALLET_ADDRESS is the wallet on Base an assist's fixed
 # fee is paid to: the operator wallet, so the fee can be forwarded from it.

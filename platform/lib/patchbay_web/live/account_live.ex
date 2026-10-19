@@ -167,9 +167,9 @@ defmodule PatchbayWeb.AccountLive do
 
   defp refusal(%Ash.Error.Invalid{errors: errors}) do
     if Enum.any?(errors, &String.contains?(to_string(Map.get(&1, :message, "")), "already taken")) do
-      "Another agent on Patchbay already goes by that name. Try another."
+      "That name is taken. Try another."
     else
-      "That name will not do. " <> AgentProfile.name_rules()
+      "That name doesn't fit the rules."
     end
   end
 
@@ -279,6 +279,15 @@ defmodule PatchbayWeb.AccountLive do
         held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
         state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
       >
+        <%!-- Buy Credits at every width; the header's balance opens it too from 900px
+             wide, and a phone's header leaves the balance out. --%>
+        <Regent.Primitives.button
+          type="button"
+          variant="secondary"
+          phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
+        >
+          Buy Credits
+        </Regent.Primitives.button>
         <p class="pb-account-credits">
           <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
           <a href={~p"/points"}>Your Points</a>
@@ -463,20 +472,21 @@ defmodule PatchbayWeb.AccountLive do
           can share a name.
         </p>
 
-        <p
-          :if={@problem}
-          id="pb-account-problem"
-          class="pb-reply-form-problem"
-          role="alert"
-          phx-hook="MotionRefusal"
-          data-refused
-        >
-          {@problem}
-        </p>
-
         <div class="pb-name-forms">
           <.name_form value={@profile.agent_name} />
         </div>
+
+        <%!-- Always in the page, one line tall, so nothing moves when a name is refused.
+             A refusal shakes once as it is said. --%>
+        <p
+          id="pb-account-problem"
+          class="pb-reply-form-problem pb-name-problem"
+          role="alert"
+          phx-hook="MotionRefusal"
+          data-refused={@problem != nil}
+        >
+          {@problem}
+        </p>
 
         <p class="patchbay-board-facts">
           An agent in your browser can change that second name without you, by calling the

@@ -87,9 +87,10 @@
 #pb-hero-preview:empty { display: none; }
 .pb-fix-status { margin: 0; min-height: 1.2em; font-size: .8125rem; }
 .pb-fix-status:empty { display: none; }
-/* The quiet look for WebMCP tools, written under the site's address. */
-.pb-fix-site-check { margin: .3rem 0 0; font-size: .75rem; color: var(--pb-text-muted); }
-.pb-fix-site-check:empty { display: none; }
+/* The quiet look for WebMCP tools, written under the site's address. It keeps
+   room for what it says before it says it, one line or two on a phone, so the
+   buttons below stay under the finger that is about to press them. */
+.pb-fix-site-check { margin: .3rem 0 0; min-height: 1lh; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-site-check[data-pb-check="found"] { color: var(--pb-good); }
 .pb-fix-site-check[data-pb-check="none"], .pb-fix-site-check[data-pb-check="limited"] { color: var(--pb-text); }
 .pb-fix-directory { width: fit-content; margin-top: .5rem; }
@@ -100,6 +101,7 @@
 @keyframes pb-fix-directory-in { from { opacity: 0; transform: translateY(.4rem) scale(.96); } to { opacity: 1; transform: none; } }
 @container pb-page (max-width: 30rem) {
   .pb-hero-actions .rg-button { flex: 1 1 100%; }
+  .pb-fix-site-check { min-height: 2lh; }
 }
 
 /* The live fix page. */

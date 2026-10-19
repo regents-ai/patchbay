@@ -1,0 +1,3 @@
+test/browser/.auth/
+test-results/
+playwright-report/
