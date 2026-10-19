@@ -1,14 +1,10 @@
 # The browser walk's people, on the walk's own local database: the person the walk
 # signs in as, and a second person whose agent already goes by "taken-name". Writes
 # the signed cookie the walk sends. Run by playwright.config.ts before the server
-# starts; it refuses any database but the walk's local one.
+# starts; PatchbayDev.WalkDatabase refuses any database but the walk's local one.
 alias Patchbay.Identity
 
-repo = Patchbay.Repo.config()
-
-unless to_string(repo[:hostname]) in ["127.0.0.1", "localhost", "::1"] and
-         Regex.match?(~r/\Apatchbay_dev_browser_\d+\z/, to_string(repo[:database])),
-       do: raise("the browser walk signs in only on its own local database")
+PatchbayDev.WalkDatabase.own!(Patchbay.Repo.config())
 
 person =
   Identity.upsert_from_privy!(%{

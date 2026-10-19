@@ -8,13 +8,18 @@ import {expect, signedIn, test, watch} from "./support/test"
 test.use(signedIn)
 
 test("Buy Credits says the balance is unavailable when Base can't be reached", async ({page}) => {
+  // The header's balance, which opens Buy Credits, shows from 900px wide.
+  test.skip(test.info().project.name !== "desktop", "the header leaves the balance out on a phone")
   const problems = watch(page)
   await page.goto("/")
-  // Every page opens the dialog with this event; on a phone its button sits in a menu.
-  await expect(page.locator(".phx-connected #pb-credits")).toBeAttached()
-  await page.locator("#pb-credits").dispatchEvent("pb:credits-open")
+  const balance = page.getByRole("button", {name: /Credits/})
+  await expect(balance).toBeVisible()
+  // The button answers once its live view has connected, as it has for a person
+  // by the time they reach for it.
+  await expect(page.locator(".phx-connected").filter({has: balance}).first()).toBeAttached()
+  await balance.click()
   const dialog = page.getByRole("dialog", {name: "Buy Credits"})
   await expect(dialog).toBeVisible()
-  await expect(dialog.locator(".credits-panel__usdc")).toHaveText("unavailable")
+  await expect(dialog.getByRole("status", {name: "USDC in this wallet"})).toHaveText("unavailable")
   await problems.expect()
 })

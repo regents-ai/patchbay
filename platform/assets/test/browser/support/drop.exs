@@ -1,11 +1,7 @@
 # The end of a browser walk: drop the database made for this run
 # (assets/playwright.config.ts), even while the walk's server is still connected to
-# it. It refuses any database but a walk's own local one.
-repo = Patchbay.Repo.config()
-
-unless to_string(repo[:hostname]) in ["127.0.0.1", "localhost", "::1"] and
-         Regex.match?(~r/\Apatchbay_dev_browser_\d+\z/, to_string(repo[:database])),
-       do: raise("the browser walk drops only its own local database")
+# it. PatchbayDev.WalkDatabase refuses any database but a walk's own local one.
+repo = PatchbayDev.WalkDatabase.own!(Patchbay.Repo.config())
 
 case Ecto.Adapters.Postgres.storage_down(Keyword.put(repo, :force_drop, true)) do
   :ok -> :ok

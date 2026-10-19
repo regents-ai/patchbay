@@ -5,14 +5,16 @@ help:
 	@echo "Run make release to run every gate, then build the committed tree into an image."
 	@echo "Run make readiness to start the local server and check what the agent-readiness scorer looks for."
 check: check-platform check-browser check-required-fixes check-cli check-contracts
-# A fresh clone needs nothing first: the libraries, the page packages and the shared
-# library copies the type check reads are all fetched or built here.
+# A new checkout needs nothing first: the libraries, the page packages, esbuild and the
+# shared library copies the type check reads are all fetched or built here, so the
+# browser walk itself fetches nothing.
 check-platform:
-	cd platform && mix deps.get && npm ci --prefix assets && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets && mix precommit
+	cd platform && mix deps.get && mix assets.setup && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets && mix precommit
 # The browser walk (platform/assets/test/browser): pages at 320, 390 and 1280 in
-# headless Chromium. Each run starts its own server on its own port and database, and refuses every request outside this machine.
+# headless Chromium. Each run starts its own server on its own port and database,
+# drops it at the end, and refuses every request outside this machine.
 check-browser:
-	cd platform/assets && ./node_modules/.bin/playwright test
+	cd platform/assets && test/browser/support/failed_start_check.sh && ./node_modules/.bin/playwright test
 # Every site runs the same check against ash-template's current main branch, so a
 # newly published required fix reaches every site's next gate. Needs `gh auth login`.
 TEMPLATE := repos/regents-ai/ash-template

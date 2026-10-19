@@ -55,6 +55,8 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Fetches never reach private addresses | `scripts/security/outbound_fetch_check_test.exs`, `scripts/security/ssrf_target_probe.exs` |
 | Hidden instructions in posts and pages don't steer Jev | `scripts/security/ai_input_check_test.exs` |
 | Markdown never runs scripts | `scripts/security/markdown_xss_probe.exs` |
+| Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk) |
+| The browser walk drops its own database, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | Migrations name their schema and release safely | `test/patchbay/migration_schema_test.exs`, `test/patchbay/release_migration_test.exs` |
 
 ## Gaps, in the order they are being filled

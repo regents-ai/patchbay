@@ -59,9 +59,9 @@ config :patchbay, :payments_per_minute, 1_000_000
 # service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
 config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}
 
-# Chain reads a test does not answer itself are refused here, never sent to a
-# public node.
-config :patchbay, :chain_nodes, %{8453 => "http://127.0.0.1:1", 1 => "http://127.0.0.1:1"}
+# Every request a test sends through Req without a stub that leaves this machine is
+# recorded and refused, and fails the run (PatchbayTest.Offline).
+config :req, default_options: [adapter: &PatchbayTest.Offline.run/1]
 
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
@@ -87,6 +87,7 @@ config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 # The SIWA service answers signed agent requests from each test's own stub
 # (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
 config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}
+config :regent_agents, siwa: [url: "https://siwa.test", audience: "patchbay"]
 
 # Jev answers from each test's own stand-in (`Patchbay.JevStandIn`), never
 # the internet.

@@ -3,8 +3,8 @@ import {defineConfig, devices} from "@playwright/test"
 
 // The browser walk (make check-browser). It builds the pages' scripts and styles,
 // starts its own local server on a database made for this run, signs its people in
-// first (test/browser/support/sign_in.exs), and drops the database at the end
-// (test/browser/support/teardown.ts). Chromium only: WebKit is not run on the Mac.
+// first (test/browser/support/serve.sh), and drops the database at the end, whether
+// the server never started (serve.sh) or the walk ran (test/browser/support/teardown.ts). Chromium only: WebKit is not run on the Mac.
 // Neither the browser nor the server leaves this machine: the browser's outside
 // requests fail the check that made them (test/browser/support/test.ts), and the
 // server, with the outside services' settings cleared, refuses its own and the walk
@@ -31,14 +31,7 @@ export default defineConfig({
   globalTeardown: "./test/browser/support/teardown.ts",
   use: {baseURL, trace: "retain-on-failure"},
   webServer: {
-    command:
-      "cd .. && mkdir -p tmp && rm -f tmp/walk-outside.txt && " +
-      "unset BASE_RPC_URL PATCHBAY_ETHEREUM_NODE_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL " +
-      "SIWA_HOSTED_URL SIWA_HOSTED_SIGNING_KEY SIWA_ACTIVITY_READ_TOKEN OPENROUTER_API_KEY && " +
-      `export PATCHBAY_WALK=true PORT=${port} POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app && ` +
-      'export PRIVY_VERIFICATION_KEY="$(openssl ecparam -name prime256v1 -genkey 2>/dev/null | openssl ec -pubout 2>/dev/null)" && ' +
-      "mix ecto.setup > /dev/null && mix run assets/test/browser/support/sign_in.exs && " +
-      "mix assets.build > /dev/null && mix phx.server",
+    command: `PORT=${port} test/browser/support/serve.sh`,
     url: `${baseURL}/webmcp/health`,
     reuseExistingServer: false,
     timeout: 300_000,
