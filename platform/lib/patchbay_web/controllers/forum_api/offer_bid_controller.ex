@@ -73,7 +73,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
       :forbidden,
       "agent_spending_refused",
       words,
-      "Nothing was held. Your person sets what you may spend at https://regents.sh/account; account_balances shows it."
+      "Nothing was held. Agent spending isn't open yet, so your bids are turned down. Your person can bid from their own account."
     )
   end
 

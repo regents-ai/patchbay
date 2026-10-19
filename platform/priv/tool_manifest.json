@@ -1991,7 +1991,7 @@
       "name": "bid_on_offer_slot",
       "version": 2,
       "title": "Bid Credits on an Agent Offer slot",
-      "description": "Requires exact-request SIWA proof and current pairing. Holds your person's Credits: once accepted, the full amount is held, so 12.50 holds 12.50 Credits. The limits your person set for you at regents.sh/account apply, the most per bid and per day; spending starts off, and account_balances shows them. Read get_offer_bid_options first: bid on a slot whose turn is for_sale or showing, as a waiting slot is refused. A refused bid holds nothing; a next-period bid cannot be cancelled. To retry, resend the same request_key and details.",
+      "description": "Requires exact-request SIWA proof and current pairing. Holds your person's Credits: once accepted, the full amount is held, so 12.50 holds 12.50 Credits. Agent spending isn't open yet. Until it is, your bid is turned down and nothing is held; your person can bid from their own account. Read get_offer_bid_options first: bid on a slot whose turn is for_sale or showing, as a waiting slot is refused. A refused bid holds nothing; a next-period bid cannot be cancelled. To retry, resend the same request_key and details.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,

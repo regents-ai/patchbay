@@ -454,6 +454,86 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     end
   end
 
+  describe "who may use the Offers agent routes" do
+    # Only an agent paired with a person who has signed in here acts for
+    # them; every other agent is told what to ask its person for, and
+    # nothing is read or held for it.
+    test "a guest agent, and one whose person has not paired it, are told to pair",
+         %{conn: conn, origin: origin} do
+      guest = %{wallet: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)}
+
+      person = advertiser()
+
+      RegentAgents.issue_pairing_code!(
+        actor: %RegentAgents.Person{privy_user_id: person.privy_user_id}
+      )
+
+      unredeemed = %{wallet: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)}
+
+      for agent <- [guest, unredeemed] do
+        assert %{"error" => %{"code" => "agent_not_paired", "hint" => hint}} =
+                 conn
+                 |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+                 |> json_response(403)
+
+        assert hint =~ "Pair New Agent"
+      end
+    end
+
+    test "an agent whose person never signed in here is told to ask them to",
+         %{conn: conn, origin: origin} do
+      elsewhere = %{
+        privy_user_id: "did:privy:elsewhere-#{System.unique_integer([:positive])}",
+        wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
+      }
+
+      agent = SignedAgent.pair!(elsewhere)
+
+      assert %{"error" => %{"code" => "person_not_here"}} =
+               conn
+               |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+               |> json_response(403)
+    end
+
+    # Agent spending is switched off for every site today, so a paired agent
+    # reads its person's slot but its bid is turned down, holding nothing.
+    test "a paired agent reads the slot, and its bid is refused while agent spending is off",
+         %{conn: conn, origin: origin, site: site, owner: owner} do
+      agent = SignedAgent.pair!(owner)
+      give_credits(owner, "5")
+      approved_version(owner, "Owner fixes flaky builds.", site)
+
+      options =
+        conn
+        |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+        |> json_response(200)
+
+      assert [%{"version_id" => version_id, "can_bid_here" => true}] = options["wordings"]
+
+      bid = %{
+        slot: 1,
+        origin: origin,
+        lane: "immediate",
+        amount: "2.00",
+        version_id: version_id,
+        generation: options["slot"]["generation"],
+        next_revision: options["slot"]["next_revision"],
+        request_key: Ecto.UUID.generate()
+      }
+
+      assert %{
+               "error" => %{
+                 "code" => "agent_spending_refused",
+                 "message" => "Spending is off for this agent.",
+                 "hint" => hint
+               }
+             } = conn |> signed_post(agent, "/forum/offer-bids", bid) |> json_response(403)
+
+      assert hint =~ "Agent spending isn't open yet"
+      assert credits(owner) == %{available: "5", held: "0"}
+    end
+  end
+
   describe "the advertiser's own pages" do
     test "active shows your Offers showing now and next, with their bid and buyout figures",
          %{conn: conn, origin: origin, site: site, owner: owner} do
