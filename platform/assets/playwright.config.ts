@@ -12,8 +12,12 @@ const port = process.env.PATCHBAY_BROWSER_PORT
 const baseURL = `http://127.0.0.1:${port}`
 
 // The pages as a person sees them, in Chromium, at 1280 with a mouse and at
-// 390 as a phone with touch. The server is this checkout's, built here, over
-// the test database, and it keeps nothing it writes (PatchbayDev.BrowserDatabase).
+// 390 as a phone with touch. WebKit is not run on the Mac. The server is this
+// checkout's, built here, over its own test database, and it keeps nothing it
+// writes (PatchbayDev.BrowserDatabase). Neither the browser nor the server
+// leaves this machine: the browser's outside requests fail the check that made
+// them (test/browser/support/walk.ts), and the server's are refused and fail the
+// run at its end (PatchbayDev.BrowserOffline, test/browser/support/outside.ts).
 export default defineConfig({
   testDir: "./test/browser",
   fullyParallel: false,
@@ -21,6 +25,7 @@ export default defineConfig({
   forbidOnly: true,
   retries: 0,
   reporter: "line",
+  globalTeardown: "./test/browser/support/outside.ts",
   use: {
     baseURL,
     trace: "retain-on-failure",
@@ -28,11 +33,12 @@ export default defineConfig({
   },
   webServer: {
     command: [
-      "mix do ecto.create --quiet + shared_account_table.create + regent_identity.migrate + ecto.migrate --quiet + assets.build",
+      "mkdir -p tmp && rm -f tmp/browser-outside.txt",
+      "mix do ecto.setup + assets.build",
       "PATCHBAY_BROWSER_TEST=1 mix phx.server",
     ].join(" && "),
     cwd: "..",
-    env: {MIX_ENV: "test", PORT: port},
+    env: {MIX_ENV: "test", MIX_TEST_PARTITION: `${process.env.MIX_TEST_PARTITION ?? ""}_browser`, PORT: port},
     url: `${baseURL}/`,
     reuseExistingServer: false,
     timeout: 300_000,

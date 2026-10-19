@@ -27,8 +27,15 @@ config :patchbay, PatchbayWeb.Endpoint,
   secret_key_base: "veQzbAXuIb79+jLk5QWx2Jq4Gy/5WzZbQRfCk77MHXxP2IUiKWLI5vDOixz/wQlP",
   server: browser_test?
 
-# Its run is one transaction that is never committed (PatchbayDev.BrowserDatabase).
+# Its run is one transaction that is never committed (PatchbayDev.BrowserDatabase),
+# and it refuses every request outside this machine (PatchbayDev.BrowserOffline).
 config :patchbay, :browser_test, browser_test?
+
+if browser_test? do
+  config :req, default_options: [adapter: &PatchbayDev.BrowserOffline.run/1]
+  config :patchbay, :assist_target, resolve: &PatchbayDev.BrowserOffline.resolve/1
+  config :patchbay, :browser_outside_file, Path.expand("../tmp/browser-outside.txt", __DIR__)
+end
 
 # In test we don't send emails
 config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test

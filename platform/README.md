@@ -224,8 +224,9 @@ mix assets.build
 mouse and at 390 as a phone with touch, and checks how they move: what settles
 in, what shakes, what stays still from the keyboard or with less motion, and
 that everything ends with nothing left written on it. It builds and starts its
-own server on a free port over the test database, keeps the whole run in one
-transaction that is never committed, and reaches nothing but that server. On a
+own server on a free port over its own test database, keeps the whole run in
+one transaction that is never committed, and neither the browser nor the
+server reaches anything outside this machine. On a
 new machine, run `npx playwright install chromium` in `assets/` once first.
 `mix precommit` runs it last.
 
@@ -418,7 +419,7 @@ every route, every tool, and what each kind of visitor can do.
 - Credo, in strict mode
 - Elixir formatter
 - `mix precommit`
-- Browser tests through `npm test` and type checks through `npm run typecheck`
+- Script tests through `npm test`, browser tests through `npm run test:browser` and type checks through `npm run typecheck`
 - Custom deterministic Bash end-to-end test script
 - The deterministic end-to-end proof is run ten times as a release gate
 

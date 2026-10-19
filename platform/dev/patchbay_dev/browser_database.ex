@@ -7,7 +7,8 @@ defmodule PatchbayDev.BrowserDatabase do
 
   `:owner` starts right after the repository, before anything reads it.
   `:sites` starts just before the endpoint and makes the catalog's sites from
-  priv, as a real boot does, before the first page is served.
+  priv before the first page is served. The program's own sites, which a real
+  boot also makes, need Techtree's tables, which the test database does not have.
   """
 
   alias Ecto.Adapters.SQL.Sandbox

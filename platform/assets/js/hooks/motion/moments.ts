@@ -22,7 +22,8 @@ import type {Hook} from "../../hook_composition.ts"
 // How a list moves when the server adds, reorders or drops its items: `bounce`
 // for lists and `pop` for notes that come and go. A new item in a list only
 // fades in where it lands, so nothing is left written on it when it settles.
-// Each is built fresh per change because a stagger remembers the items it measured.
+// Each is built fresh per change because a stagger remembers the items it
+// measured.
 export const LAYOUTS: Record<string, () => LayoutAnimationParams> = {
   bounce: () => ({
     ease: spring({bounce: 0.35, duration: 420}),

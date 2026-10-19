@@ -102,13 +102,13 @@ test.describe("a note above the page", () => {
     await page.goto("/offers")
     await connected(page)
     // A link a live page follows by sending the reader to another page.
-    await page.evaluate(missing => {
+    await page.getByRole("main").evaluate((main, missing) => {
       const link = document.createElement("a")
       link.textContent = "A fix that is not there"
       link.href = missing
       link.dataset.phxLink = "redirect"
       link.dataset.phxLinkState = "push"
-      document.querySelector("[data-phx-main]")!.prepend(link)
+      main.prepend(link)
     }, MISSING_FIX)
     await page.getByRole("link", {name: "A fix that is not there"}).click()
     await expect(page).toHaveURL("/")
@@ -136,13 +136,13 @@ test.describe("the inbox's note about an old page link", () => {
     await page.goto("/account/inbox")
     await connected(page)
     // A link a live page follows without loading the page again.
-    await page.evaluate(() => {
+    await page.getByRole("main").evaluate(main => {
       const link = document.createElement("a")
       link.textContent = "An old inbox page"
       link.href = "/account/inbox?after=not-a-page"
       link.dataset.phxLink = "patch"
       link.dataset.phxLinkState = "push"
-      document.querySelector("[data-phx-main]")!.prepend(link)
+      main.prepend(link)
     })
     await page.getByRole("link", {name: "An old inbox page"}).click()
     await expect(note(page)).toBeVisible()
@@ -217,11 +217,19 @@ test("Claude's picture tilts under a mouse and stays put after a tap", async ({p
   await page.goto("/claude")
   // The crowd is decoration, hidden from assistive technology; its first figure.
   const hero = page.getByRole("region", {name: "Get Claude Code through any website."})
-  const figure = hero.locator("svg").first()
+  const figure = hero.getByRole("img", {includeHidden: true}).first()
   if (isMobile) {
     await figure.tap({force: true})
-    await page.waitForTimeout(400)
-    expect(await figure.evaluate(el => getComputedStyle(el).transform)).toBe("none")
+    // Two frames drawn after the tap: a tilt it set off would be under way by now.
+    const after = await figure.evaluate(
+      el =>
+        new Promise<[number, string]>(done =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => done([el.getAnimations().length, getComputedStyle(el).transform])),
+          ),
+        ),
+    )
+    expect(after).toEqual([0, "none"])
   } else {
     expect(await figure.evaluate(el => getComputedStyle(el).transitionDuration)).toBe("0.28s")
     await figure.hover({force: true})

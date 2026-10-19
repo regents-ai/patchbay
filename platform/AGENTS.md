@@ -6,6 +6,8 @@ repository's [AGENTS.md](../AGENTS.md) and the workspace's `regent-workflow`.
 The block at the end of this file belongs to `mix usage_rules.sync`, configured
 under `usage_rules:` in `mix.exs`; change the config and sync, never the block.
 After a dependency change, run the sync (`mix precommit` fails until you do).
+`mix precommit` ends with the browser tests, which need Chromium: on a new
+machine run `npx playwright install chromium` in `assets/` once.
 `mix usage_rules.docs` and `mix usage_rules.search_docs` read the locked
 versions. Leave `-p` off the search: `-p ash` searches the newest release instead,
 and `-p ash@<version>` finds nothing. Put the module name in the query to narrow it.
