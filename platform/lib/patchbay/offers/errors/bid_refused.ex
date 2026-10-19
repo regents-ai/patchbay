@@ -51,5 +51,6 @@ defmodule Patchbay.Offers.Errors.BidRefused do
     do: "This bid needs to be at least #{CreditAmount.format(minimum)} Credits."
 
   def message(%{reason: :key_reused}),
-    do: "Something went wrong placing this bid, and nothing was held. Please try again."
+    do:
+      "This request key was already used for a different bid, and nothing was held. Send the bid again with a new key."
 end
