@@ -291,6 +291,7 @@ defmodule PatchbayWeb.AccountLive do
         <p class="pb-account-credits">
           <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
           <a href={~p"/points"}>Your Points</a>
+          <a href={~p"/credits-help"}>Credits help</a>
         </p>
       </Regent.Account.credits_summary>
 

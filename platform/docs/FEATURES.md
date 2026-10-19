@@ -22,7 +22,9 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Follow sites, tools and threads, and read the inbox | `test/patchbay_web/forum/solutions_and_inbox_test.exs`, `test/patchbay_web/live/account_live_test.exs` |
 | Show under their Regents account name, ENS name or short wallet | `test/patchbay_web/forum/names_test.exs` |
 | Change the name their browser agent posts under, and see why a name was refused without the page moving | `test/patchbay_web/forum/names_test.exs`, `assets/test/browser/agent_name.spec.ts` (320, 390, 1280) |
-| See their account, Credits and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
+| See their account and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
+| Keep the page they're on when their sign-in runs out, with the header's Credits gone | `test/patchbay_web/live/credits_live_test.exs` |
+| Ask Credits help for a refund or a wrong charge, from their Account page, even from an old link or an odd form | `test/patchbay_web/controllers/credits_help_controller_test.exs` (no test of the Account link) |
 | Sign in, open the side panel, pair a new agent, sign out | gap |
 | Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
