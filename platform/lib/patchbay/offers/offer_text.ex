@@ -64,9 +64,9 @@ defmodule Patchbay.Offers.OfferText do
 
     update :block do
       description("""
-      Blocks these words everywhere, at once: every Offer that has them stops
-      showing, and they can never be saved again. Records who did, why, and
-      the wording that was pressed.
+      Blocks these words everywhere, at once: every placement showing them
+      ends as a removal ends it, and they can never be saved again. Records
+      who did, why, and the wording that was pressed.
       """)
 
       accept([])
@@ -81,6 +81,7 @@ defmodule Patchbay.Offers.OfferText do
       change(set_attribute(:block_reason, arg(:reason)))
       change({Patchbay.Offers.Changes.RecordModeration, kind: :block_version})
       change(Patchbay.Offers.Changes.LogTurnDown)
+      change(Patchbay.Offers.Changes.RemoveBlockedPlacements)
     end
   end
 

@@ -7,6 +7,8 @@ defmodule Patchbay.Offers.BiddingTest do
   use Patchbay.DataCase, async: false
   use Oban.Testing, repo: Patchbay.Repo
 
+  require Ash.Query
+
   import Patchbay.OffersFixtures
 
   alias Patchbay.Offers
@@ -158,6 +160,45 @@ defmodule Patchbay.Offers.BiddingTest do
     assert {:ok, again} = Offers.remove_placement(request, actor: moderator)
     assert again.id == decision.id
     assert %Placement{status: :active} = reload(successor)
+  end
+
+  test "a block ends a showing placement and settles it exactly as a removal does",
+       %{market: market} do
+    {alice, alice_version} = advertiser_with("40", market, "Alice fixes flaky builds.")
+    {carol, carol_version} = advertiser_with("10", market, "Carol tunes slow queries.")
+    {dave, dave_version} = advertiser_with("40", market, "Dave writes clear docs.")
+    moderator = moderator()
+
+    {:ok, alice_bid} = bid(alice, market, 1, alice_version, "30.00")
+    settle(market, 1)
+    {:ok, carol_bid} = bid(carol, market, 1, carol_version, "5.00", lane: :next_period)
+    settle(market, 1)
+    age(market, 1, 86_400)
+    {:ok, dave_bid} = bid(dave, market, 1, dave_version, "35.00")
+    assert credits(dave) == %{available: "5", held: "35"}
+
+    showing = placement_of(alice_bid)
+    block(alice_version, moderator, "Misleading claims")
+
+    assert %Placement{status: :removed_for_policy, returned_minor: 0} = reload(showing)
+    assert credits(alice) == %{available: "10", held: "0"}
+
+    assert [%{kind: :remove_placement, outcome: :removed} = decision] =
+             Offers.ModerationAction
+             |> Ash.Query.filter(kind == :remove_placement)
+             |> Ash.read!(authorize?: false)
+
+    assert decision.placement_id == showing.id
+    assert decision.consumed_minor + decision.forfeited_minor == 3000
+    assert decision.forfeited_minor in 1999..2000
+
+    successor = placement_of(carol_bid)
+    assert %Placement{status: :active} = successor
+    assert decision.promoted_placement_id == successor.id
+    assert credits(carol) == %{available: "5", held: "5"}
+
+    assert %Bid{status: :returned, return_reason: :placement_removed} = reload(dave_bid)
+    assert credits(dave) == %{available: "40", held: "0"}
   end
 
   test "a bid the bidder can't cover leaves no bid and nothing held", %{market: market} do

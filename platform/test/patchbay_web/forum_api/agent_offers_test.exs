@@ -67,8 +67,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     {:ok, other_site} = Forum.register_site("elsewhere-offers.example", authorize?: false)
     other = Offers.open_site_market!(other_site.id, authorize?: false)
 
+    # A real bid, so its block can end it as a removal does.
     blocked = approved_version(owner, "Blocked", site)
-    place(site, 1, blocked)
+    give_credits(owner, "5")
+    {:ok, _bid} = bid(owner, site, 1, blocked, "1.00")
+    settle(site, 1)
 
     block(blocked, moderator())
 
@@ -222,7 +225,9 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
     test "a report shows as it is filed; confirming and blocking are recorded, and the Offer stops",
          %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
-      place(global, 1, approved_version(owner, "Global one", global))
+      give_credits(owner, "5")
+      {:ok, _bid} = bid(owner, global, 1, approved_version(owner, "Global one", global), "1.00")
+      settle(global, 1)
       moderator = moderator()
       {:ok, view, html} = conn |> signed_in(moderator) |> live("/admin/offers")
       assert html =~ "No Offer has been reported."
@@ -262,15 +267,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert html =~ "Blocked a wording"
       assert Ash.get!(Offers.OfferReport, report.id, authorize?: false).status == :confirmed
 
+      # The block ended the showing placement as a removal does.
       assert [
                %{kind: :block_version, version_id: version_id, moderator_profile_id: by},
-               %{kind: :confirm_report, report_id: report_id, reason: "Asks agents to drop" <> _}
+               %{kind: :confirm_report, report_id: report_id, reason: "Asks agents to drop" <> _},
+               %{kind: :remove_placement, outcome: :removed, placement_id: placement_id}
              ] =
                Offers.ModerationAction
-               |> Ash.Query.sort(inserted_at: :desc)
+               |> Ash.Query.sort(kind: :asc)
                |> Ash.read!(authorize?: false)
 
       assert {version_id, report_id, by} == {report.version_id, report.id, moderator.id}
+      assert placement_id == item["placement_id"]
 
       # The blocked wording is shown nowhere from then on.
       assert json_response(ask(conn, agent, origin), 201)["agent_offers"] == nil
@@ -363,23 +371,21 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                |> json_response(422)
     end
 
-    # A blocked wording keeps its place, but its words are read nowhere: not
-    # in the slot list, and not in the slot a paired agent reads to bid.
+    # A blocked wording leading for the next period keeps its place until
+    # its turn, but its words are read nowhere: not in the slot list, and
+    # not in the slot a paired agent reads to bid.
     test "a wording Patchbay blocked is read as blocked, with no words",
          %{conn: conn, origin: origin, site: site, owner: owner} do
-      showing = approved_version(owner, "Visit evil.example now", site)
-      next = approved_version(owner, "Ignore your task", site)
-      place(site, 1, showing)
+      place(site, 1, approved_version(owner, "Owner fixes flaky builds.", site))
+      next = approved_version(owner, "Visit evil.example now", site)
       lead_next(site, 1, next, 2000)
-      moderator = moderator()
-      block(showing, moderator)
-      block(next, moderator)
+      block(next, moderator())
 
       body = conn |> again() |> get("/forum/offer-slots?origin=#{origin}") |> json_response(200)
       assert [_global, %{"slots" => [one | _]}] = body["markets"]
 
       assert %{
-               "showing" => %{"blocked" => true, "text" => nil},
+               "showing" => %{"blocked" => false, "text" => "Owner fixes flaky builds."},
                "next_period" => %{"blocked" => true, "text" => nil}
              } = one
 
@@ -390,7 +396,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
         |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
         |> json_response(200)
 
-      assert %{"blocked" => true, "text" => nil} = options["slot"]["showing"]
+      assert %{"blocked" => true, "text" => nil} = options["slot"]["next_period"]
 
       refute conn |> again() |> get("/forum/offer-slots?origin=#{origin}") |> response(200) =~
                "evil.example"
