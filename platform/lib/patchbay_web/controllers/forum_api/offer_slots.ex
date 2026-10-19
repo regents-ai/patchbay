@@ -138,12 +138,14 @@ defmodule PatchbayWeb.ForumAPI.OfferSlots do
     }
   end
 
+  # The Offer and its wording, which no one reads once Patchbay blocks it.
   defp offer(record) do
     %{
       amount: amount(record.amount_minor),
       owner: AuthorJSON.author(record.owner, :free),
       creative_version_id: record.version_id,
-      text: record.version.text
+      blocked: not is_nil(record.version.blocked_at),
+      text: if(is_nil(record.version.blocked_at), do: record.version.text)
     }
   end
 
