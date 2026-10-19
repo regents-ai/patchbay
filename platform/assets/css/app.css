@@ -2057,9 +2057,10 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-composer textarea, .pb-offers-saved-card textarea { min-height: 9rem; resize: vertical; }
 .pb-offers-composer .pb-offers-form > .rg-button { width: 100%; }
 .pb-offers-hold { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-2); border: 1px dashed var(--pb-line-strong); font-size: .8125rem; line-height: 1.5; }
-.pb-offers-saved-rail { display: flex; align-items: stretch; gap: var(--space-2); list-style: none; min-width: 0; margin: 0; padding: 5px 5px var(--space-2); overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scrollbar-width: thin; }
+/* It does not snap: a new Offer arrives at the start, and snapping would keep the old first card in view instead. */
+.pb-offers-saved-rail { display: flex; align-items: stretch; gap: var(--space-2); list-style: none; min-width: 0; margin: 0; padding: 5px 5px var(--space-2); overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .pb-offers-saved-rail:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 2px; }
-.pb-offers-saved-card { display: flex; flex-direction: column; flex: 0 0 min(86%, 23rem); min-width: 0; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--pb-line-strong); scroll-snap-align: start; }
+.pb-offers-saved-card { display: flex; flex-direction: column; flex: 0 0 min(86%, 23rem); min-width: 0; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--pb-line-strong); }
 .pb-offers-saved-card:only-child { flex-basis: 100%; }
 .pb-offers-saved-card > .pb-offmod-offer { min-height: 10rem; padding: var(--space-2); border: 0; background: var(--pb-surface-sunk); font-size: 1rem; line-height: 1.6; }
 .pb-offers-saved-card .pb-offmod-head { justify-content: space-between; }

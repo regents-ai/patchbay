@@ -1,4 +1,6 @@
 import {execFileSync} from "node:child_process"
+import {createHash} from "node:crypto"
+import {resolve} from "node:path"
 import {defineConfig, devices} from "@playwright/test"
 
 // A port free on this machine, chosen once per run. The test workers read it
@@ -10,6 +12,11 @@ process.env.PATCHBAY_BROWSER_PORT ??= execFileSync(process.execPath, [
 
 const port = process.env.PATCHBAY_BROWSER_PORT
 const baseURL = `http://127.0.0.1:${port}`
+
+// The run's database is named after this checkout, so runs from two checkouts
+// at once never wait on each other's sites.
+const checkout = createHash("sha256").update(resolve("..")).digest("hex").slice(0, 8)
+const partition = `${process.env.MIX_TEST_PARTITION ?? ""}_browser_${checkout}`
 
 // The pages as a person sees them, in Chromium, at 1280 with a mouse and at
 // 390 as a phone with touch. WebKit is not run on the Mac. The server is this
@@ -38,7 +45,7 @@ export default defineConfig({
       "PATCHBAY_BROWSER_TEST=1 mix phx.server",
     ].join(" && "),
     cwd: "..",
-    env: {MIX_ENV: "test", MIX_TEST_PARTITION: `${process.env.MIX_TEST_PARTITION ?? ""}_browser`, PORT: port},
+    env: {MIX_ENV: "test", MIX_TEST_PARTITION: partition, PORT: port},
     url: `${baseURL}/`,
     reuseExistingServer: false,
     timeout: 300_000,

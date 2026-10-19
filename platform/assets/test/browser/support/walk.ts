@@ -1,14 +1,35 @@
 import {expect, test as base, type Locator, type Page} from "@playwright/test"
 
 // Every page in these checks records each move written onto any element, and
-// reaches nothing but this machine's server. A page error fails the check it
+// reaches nothing but this machine's server. A page error, an error the page
+// logs, a part of the page that fails to load, or any try to reach outside
+// this machine, from the page or a window it opens, fails the check it
 // happened in.
 export const test = base.extend<{errors: string[]}>({
   errors: [
-    async ({page, baseURL}, use) => {
+    async ({context, page, baseURL}, use) => {
       const errors: string[] = []
+      const here = new URL(baseURL!).host
+      const outside = (url: URL) => url.host !== here
+      await context.route(outside, route => {
+        errors.push(`outside request ${route.request().url()}`)
+        return route.abort()
+      })
+      await context.routeWebSocket(outside, socket => {
+        errors.push(`outside socket ${socket.url()}`)
+        return socket.close()
+      })
       page.on("pageerror", error => errors.push(error.message))
-      await page.route(url => !url.href.startsWith(baseURL!), route => route.abort())
+      // A page that did not load is the response its check reads; anything
+      // else that fails to load, and anything else logged as an error, is a fault.
+      page.on("console", message => {
+        if (message.type() === "error" && !message.text().startsWith("Failed to load resource"))
+          errors.push(message.text())
+      })
+      page.on("response", response => {
+        if (response.status() >= 400 && response.request().resourceType() !== "document")
+          errors.push(`${response.status()} ${response.url()}`)
+      })
       await page.addInitScript(recordMoves)
       await use(errors)
       expect(errors, "page errors").toEqual([])
@@ -19,7 +40,7 @@ export const test = base.extend<{errors: string[]}>({
 
 export {expect}
 
-type Recorded = Element & {pbMoves?: string[]}
+type Recorded = Element & {pbMoves?: string[]; pbInside?: string[]}
 
 // Installed before any page script runs: each inline transform, translate or
 // opacity written onto an element is kept on the element, in order.
@@ -42,6 +63,25 @@ function recordMoves() {
     }
   }).observe(document, {subtree: true, childList: true, attributes: true, attributeFilter: ["style"]})
 }
+
+/**
+ * Starts keeping, on this element, the moves written onto anything inside it,
+ * including pieces that are gone again by the time the check reads them.
+ */
+export const watchInside = (locator: Locator) =>
+  locator.evaluate(root => {
+    const kept: string[] = ((root as Recorded).pbInside = [])
+    new MutationObserver(changes => {
+      for (const change of changes) {
+        const {transform, translate, opacity} = (change.target as HTMLElement).style
+        if (change.target !== root && (transform || (translate && translate !== "none") || opacity))
+          kept.push(`${transform} ${translate} ${opacity}`.trim())
+      }
+    }).observe(root, {subtree: true, attributes: true, attributeFilter: ["style"]})
+  })
+
+/** The moves written inside this element since `watchInside`. */
+export const movesInside = (locator: Locator) => locator.evaluate(el => (el as Recorded).pbInside ?? [])
 
 /** The moves written onto this element since the page loaded. */
 export const movesOf = (locator: Locator) => locator.evaluate(el => (el as Recorded).pbMoves ?? [])

@@ -3,12 +3,14 @@ import {
   expect,
   forgetMoves,
   inlineStyle,
+  movesInside,
   movesOf,
   press,
   signIn,
   sideways,
   test,
   toRest,
+  watchInside,
 } from "./support/walk.ts"
 import type {Page} from "@playwright/test"
 
@@ -164,7 +166,9 @@ test("a refused agent name shakes its reason, then rests", async ({page}) => {
   expect(await sideways(page)).toBe(false)
 })
 
-test("a saved Offer fades in, the row makes room, the count rolls, and every card ends with nothing written on it", async ({
+// The lab account saves five wordings a day, and this check saves two, so the
+// run makes it once at each width. Each run's day starts empty.
+test("a saved Offer fades in where it can be seen, the row makes room, the count rolls, and every card ends with nothing written on it", async ({
   page,
 }) => {
   await signIn(page)
@@ -172,7 +176,8 @@ test("a saved Offer fades in, the row makes room, the count rolls, and every car
   await connected(page)
   const saved = page.getByRole("region", {name: "Saved Offers"})
   const count = saved.getByText(/^\d+ saved/)
-  const cards = saved.getByRole("list", {name: "Saved Offers, scroll horizontally"}).getByRole("listitem")
+  const row = saved.getByRole("list", {name: "Saved Offers, scroll horizontally"})
+  const cards = row.getByRole("listitem")
 
   const save = async (label: string) => {
     const before = await count.textContent()
@@ -204,10 +209,16 @@ test("a saved Offer fades in, the row makes room, the count rolls, and every car
   await forgetMoves(page)
 
   const second = `Second ${Date.now().toString(36)}`
+  await watchInside(count)
   await save(second)
   await rested()
   const arrived = await movesOf(cards.filter({hasText: second}))
   expect(fades(arrived)).toBe(true)
+  // The new card is in the row's view, whole, not scrolled past.
+  const [seen, card] = [await row.boundingBox(), await cards.filter({hasText: second}).boundingBox()]
+  expect(card!.x).toBeGreaterThanOrEqual(seen!.x)
+  expect(card!.x + card!.width).toBeLessThanOrEqual(seen!.x + seen!.width)
+  expect((await movesInside(count)).some(move => move.includes("translateY"))).toBe(true)
   expect(slides(arrived)).toBe(false)
   expect(slides(await movesOf(cards.filter({hasText: first})))).toBe(true)
   expect(await sideways(page)).toBe(false)
