@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v259, 19 Oct 2026
+
+- Commit: 483f8d06fc7b593ed4fed92d95d1984a5aff05de (image `candidate-483f8d0`).
+- Contains: the design lane's motion pass (dm/pb-motion-v257-1019, 4e2b4d38) applied
+  onto v258 as bc6f195b, and the room test race fix 483f8d06.
+- Migrations: none. Rollback: redeploy v258 (ebdd899b, image `candidate-ebdd899`).
+- Release log: control/coordination/evidence/patchbay-release-v259.txt.
+
 ## v258, 19 Oct 2026
 
 - Commit: ebdd899b1d4eea4f34688b22609607ab98d18575 (image `candidate-ebdd899`).
