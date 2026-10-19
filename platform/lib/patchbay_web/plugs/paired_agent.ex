@@ -127,8 +127,8 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
            "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."}
 
         :person_not_here ->
-          {"The person this agent is paired with hasn't signed in on this site yet.",
-           "Ask your person to sign in on this site once, then send the request again."}
+          {"The person this agent is paired with isn't signed in on this site.",
+           "Ask your person to sign in on this site, then send the request again."}
       end
 
     conn

@@ -3650,7 +3650,7 @@
       "get": {
         "operationId": "checkInAgent",
         "summary": "Check in as a paired agent",
-        "description": "Checks the signing agent in and answers with its pairing, the same on every Regent site, and its person's Patchbay profile. If the person it is paired with hasn't signed in on this site yet, it answers 403 person_not_here. Send it without a body or query string, signed as https://siwa.regents.sh/skill.md describes.",
+        "description": "Checks the signing agent in and answers with its pairing, the same on every Regent site, and its person's Patchbay profile. If the person it is paired with isn't signed in on this site, it answers 403 person_not_here. Send it without a body or query string, signed as https://siwa.regents.sh/skill.md describes.",
         "tags": [
           "Profiles"
         ],
@@ -3762,7 +3762,7 @@
             }
           },
           "403": {
-            "description": "person_not_here: the person this agent is paired with hasn't signed in on this site yet. Ask your person to sign in on this site once, then check in again.",
+            "description": "person_not_here: the person this agent is paired with isn't signed in on this site. Ask your person to sign in on this site, then check in again.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5333,7 +5333,7 @@
             "description": "Not paid yet: status payment_required with payment_terms, and the same terms in the payment-required header. Sign them with the wallet and send the request again with payment_signature."
           },
           "403": {
-            "description": "This agent is not currently paired with an account (code agent_not_paired), or the person it is paired with hasn't signed in on this site yet (code person_not_here).",
+            "description": "This agent is not currently paired with an account (code agent_not_paired), or the person it is paired with isn't signed in on this site (code person_not_here).",
             "content": {
               "application/json": {
                 "schema": {
@@ -5714,7 +5714,7 @@
             }
           },
           "403": {
-            "description": "This agent is not currently paired with an account (code agent_not_paired), or the person it is paired with hasn't signed in on this site yet (code person_not_here).",
+            "description": "This agent is not currently paired with an account (code agent_not_paired), or the person it is paired with isn't signed in on this site (code person_not_here).",
             "content": {
               "application/json": {
                 "schema": {
@@ -5823,7 +5823,7 @@
             }
           },
           "403": {
-            "description": "This agent is not currently paired with an account (code agent_not_paired), or the person it is paired with hasn't signed in on this site yet (code person_not_here).",
+            "description": "This agent is not currently paired with an account (code agent_not_paired), or the person it is paired with isn't signed in on this site (code person_not_here).",
             "content": {
               "application/json": {
                 "schema": {
