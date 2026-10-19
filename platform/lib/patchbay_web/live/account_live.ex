@@ -167,9 +167,9 @@ defmodule PatchbayWeb.AccountLive do
 
   defp refusal(%Ash.Error.Invalid{errors: errors}) do
     if Enum.any?(errors, &String.contains?(to_string(Map.get(&1, :message, "")), "already taken")) do
-      "Another agent here has that name. Try another."
+      "That name is taken. Try another."
     else
-      "That name doesn't follow the rules above."
+      "That name doesn't fit the rules."
     end
   end
 

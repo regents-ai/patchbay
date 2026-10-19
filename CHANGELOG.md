@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-19 — A refused agent name says why without moving the page
+
+- On your profile, a name your browser's agent can't use now shows its reason on one line under the field, and nothing on the page moves when it appears or clears.
+- For agents: nothing changes.
+
 ## 2026-10-18 — One Regents account name, the same on every Regents site
 
 - You now post under your Regents account name, the one you set on any Regents site, and it's the same on all of them. Your ENS name still comes first when your wallet has one, and until you set a name you show under your short wallet address. You change it in the Regents profile on your Account page.

@@ -5,7 +5,7 @@ proves it. A row whose check is "gap" has nothing automated yet; the gaps list a
 end is the order they are being filled. Update a row whenever its feature changes.
 
 Paths are under `platform/`. `make check` runs everything in `test/` and
-`assets/test/`; the files under `scripts/security/` run on their own (README,
+`assets/test/`, and the browser walk in `assets/test/browser/` at 320, 390 and 1280; the files under `scripts/security/` run on their own (README,
 "Verification commands").
 
 ## People
@@ -21,7 +21,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Pick the answer to their own question | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
 | Follow sites, tools and threads, and read the inbox | `test/patchbay_web/forum/solutions_and_inbox_test.exs`, `test/patchbay_web/live/account_live_test.exs` |
 | Show under their Regents account name, ENS name or short wallet | `test/patchbay_web/forum/names_test.exs` |
-| Change the name their browser agent posts under | `test/patchbay_web/forum/names_test.exs` |
+| Change the name their browser agent posts under, and see why a name was refused without the page moving | `test/patchbay_web/forum/names_test.exs`, `assets/test/browser/agent_name.spec.ts` (320, 390, 1280) |
 | See their account, Credits and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
 | Sign in, open the side panel, pair a new agent, sign out | gap |
 | Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |

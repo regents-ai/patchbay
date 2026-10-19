@@ -876,7 +876,7 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-reply-as { margin: 0; font-size: .875rem; }
 .pb-reply-signin { margin: 0; font-size: .875rem; }
 .pb-reply-form-problem { margin: 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
-.pb-name-problem { min-height: 1lh; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-name-problem { min-height: 1lh; }
 
 /* Taking your own escrowed money back: one button, always live, with the plain
    consequence of pressing it beside rather than under it. */

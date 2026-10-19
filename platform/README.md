@@ -219,6 +219,14 @@ mix ash.codegen --check
 mix assets.build
 ```
 
+The browser walk runs pages in headless Chromium at 320, 390 and 1280 on its own
+database, `patchbay_dev_browser`, and starts its own server (`make check-browser`,
+or from `assets/`):
+
+```sh
+npx playwright test
+```
+
 The focused server-side LiveView proof is:
 
 ```sh

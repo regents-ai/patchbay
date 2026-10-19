@@ -5,10 +5,12 @@ config :patchbay, Patchbay.Repo,
   username: System.get_env("PATCHBAY_DB_USERNAME", System.get_env("USER", "postgres")),
   password: System.get_env("PATCHBAY_DB_PASSWORD"),
   hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
-  database: "patchbay_dev",
+  # The browser walk (assets/playwright.config.ts) runs on its own database,
+  # patchbay_dev_browser, with a small pool.
+  database: "patchbay_dev#{System.get_env("PATCHBAY_DEV_PARTITION")}",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
-  pool_size: 10
+  pool_size: String.to_integer(System.get_env("POOL_SIZE", "10"))
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
