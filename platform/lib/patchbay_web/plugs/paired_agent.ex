@@ -118,18 +118,21 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
     end
   end
 
+  @doc "What an agent is told, and what to do, when it is refused for `reason`."
+  @spec words(:agent_not_paired | :person_not_here) :: {String.t(), String.t()}
+  def words(:agent_not_paired),
+    do:
+      {"This agent is not currently paired with an account.",
+       "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."}
+
+  def words(:person_not_here),
+    do:
+      {"The person this agent is paired with isn't signed in on this site.",
+       "Ask your person to sign in on this site, then send the request again."}
+
   @impl Siwa.AgentAuthPlug.Hooks
   def deny(conn, %{reason: reason}) when reason in [:agent_not_paired, :person_not_here] do
-    {message, hint} =
-      case reason do
-        :agent_not_paired ->
-          {"This agent is not currently paired with an account.",
-           "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."}
-
-        :person_not_here ->
-          {"The person this agent is paired with isn't signed in on this site.",
-           "Ask your person to sign in on this site, then send the request again."}
-      end
+    {message, hint} = words(reason)
 
     conn
     |> put_resp_content_type("application/json")

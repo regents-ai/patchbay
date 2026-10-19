@@ -495,6 +495,45 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                |> json_response(403)
     end
 
+    # The pairing is checked again inside the hold, so one that ended after
+    # the agent's request was let in is refused as not paired, not as a
+    # spending limit.
+    test "a pairing that ended before the hold is refused as not paired, holding nothing",
+         %{site: site, owner: owner} do
+      agent = SignedAgent.pair!(owner)
+      give_credits(owner, "5")
+      version = approved_version(owner, "Owner fixes flaky builds.", site)
+
+      ended =
+        RegentCredits.Actor.agent(
+          owner.privy_user_id,
+          agent.wallet,
+          "patchbay",
+          Ecto.UUID.generate()
+        )
+
+      assert {:error, error} =
+               PatchbayWeb.OffersLive.BidDesk.place(
+                 owner,
+                 Forum.get_site!(site.site_id, authorize?: false),
+                 1,
+                 %{
+                   lane: :immediate,
+                   amount: "2.00",
+                   version_id: version.id,
+                   generation: 0,
+                   next_revision: 0,
+                   key: Ecto.UUID.generate()
+                 },
+                 spender: ended
+               )
+
+      assert {:agent_not_paired, "This agent is not currently paired with an account."} =
+               PatchbayWeb.OffersLive.BidDesk.refusal(error)
+
+      assert credits(owner) == %{available: "5", held: "0"}
+    end
+
     # Agent spending is switched off for every site today, so a paired agent
     # reads its person's slot but its bid is turned down, holding nothing.
     test "a paired agent reads the slot, and its bid is refused while agent spending is off",
