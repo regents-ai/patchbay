@@ -9,9 +9,9 @@ defmodule PatchbayWeb.OffersLive.Bid do
   the lane's minimum. Every bid carries the slot's generation (and, for the
   next period, its leader's revision) as the page read them, so a slot that
   moved on refuses the bid and the page reads it again; the page never
-  raises an amount or changes a lane on its own. Until a detail changes,
-  every press sends the same request key, so a repeat answers with the
-  first bid and never holds twice.
+  raises an amount or changes a lane on its own. Until a detail changes or
+  the slot moves on, every press sends the same request key, so a repeat
+  answers with the first bid and never holds twice.
 
   A site's market is opened when it is first needed: a bid, or asking
   whether a wording fits the site. Open pages hear `Patchbay.Offers.Slot`'s
@@ -29,7 +29,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, offer_copy: 1, hours_until: 2, time_left: 2]
 
-  alias Patchbay.Credits
   alias Patchbay.Forum.Site
   alias Patchbay.Offers
   alias Patchbay.Offers.Bid
@@ -147,16 +146,11 @@ defmodule PatchbayWeb.OffersLive.Bid do
   end
 
   # The balance shown is current whichever Regent site moved the Credits.
-  defp follow_credits(profile) do
-    case profile && Credits.spender(profile) do
-      {:ok, _spender} ->
-        :ok =
-          Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
+  defp follow_credits(nil), do: :ok
 
-      _not_linked ->
-        :ok
-    end
-  end
+  defp follow_credits(profile),
+    do:
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
 
   defp place(socket) do
     %{site: site, number: number, slot: slot} = socket.assigns
@@ -190,6 +184,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
       end)
 
     socket
+    |> renew_key_if_moved(socket.assigns[:slot], slot)
     |> assign(now: now, market: market, slot: slot, opening: Offers.opening_minimum_minor(market))
     |> assign(turn: BidDesk.turn(market, number, now))
     |> assign(duration_returns: Returns.placement_returns(showing, now))
@@ -225,6 +220,16 @@ defmodule PatchbayWeb.OffersLive.Bid do
   end
 
   defp new_key(socket), do: assign(socket, key: Ecto.UUID.generate())
+
+  # A bid names the slot's counters as the page read them, so once the slot
+  # moves on (a bid of theirs or someone else's takes it), the next press is a
+  # new request.
+  defp renew_key_if_moved(socket, before, latest) do
+    if counters(before) == counters(latest), do: socket, else: new_key(socket)
+  end
+
+  defp counters(nil), do: nil
+  defp counters(slot), do: {slot.active_generation, slot.next_revision}
 
   defp first_eligible(wordings) do
     case Enum.find(wordings, & &1.eligible?) do
@@ -403,9 +408,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
       _other -> Exception.message(BidRefused.exception(reason: :invalid_amount))
     end
   end
-
-  @doc false
-  def not_linked_words, do: Exception.message(BidRefused.exception(reason: :not_linked))
 
   # The bid page for another slot of the same market.
   defp bid_path(nil, number), do: ~p"/offers/bid?#{[slot: number]}"

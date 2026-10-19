@@ -9,7 +9,6 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
 
   require Ash.Query
 
-  alias Patchbay.Credits
   alias Patchbay.Offers
   alias Patchbay.Offers.Bid
   alias Patchbay.Offers.CreativeVersion
@@ -20,6 +19,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
   alias Patchbay.Offers.SlotOrder
   alias Patchbay.Offers.Terms
   alias PatchbayWeb.OffersLive.Markets
+  alias PatchbayWeb.Plugs.PairedAgent
   alias RegentCredits.Errors.NotEnoughCredits
   alias RegentCredits.Errors.Refused
 
@@ -29,9 +29,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
     agent_off: "Spending is off for this agent.",
     agent_site: "This agent may not spend Credits on Patchbay.",
     agent_max_per_spend: "This bid is more than this agent may spend at once.",
-    agent_daily_limit: "This bid would go past this agent's daily spending limit.",
-    agent_not_paired:
-      "You aren't paired with your person on this site. Ask them for a new code and pair again."
+    agent_daily_limit: "This bid would go past this agent's daily spending limit."
   }
 
   @doc "Global's market (`site` nil) or the site's, if it has been opened, with its slots."
@@ -98,7 +96,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
           else: "If yours wins, it shows for up to 72 hours."
         ),
         "A higher bid can replace yours at any time; you then get back your unused share. " <>
-          "If a moderator removes your Offer for breaking the rules, nothing comes back."
+          "If a moderator removes your Offer or blocks its words for breaking the rules, nothing comes back."
       ],
       next_period:
         showing &&
@@ -116,7 +114,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
 
   def mine(profile, market, slot, now) do
     %{
-      balance: balance(profile),
+      balance: RegentCredits.balance(profile.privy_user_id),
       wordings: wordings(profile, market, now),
       bids: if(slot, do: bids(profile, slot), else: [])
     }
@@ -149,15 +147,20 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
   @doc """
   Why a bid was not placed, in the words the page and agents both show:
   short of Credits (more Credits would cover it), outside what the person
-  lets their agent spend, refused by the market, or not placed for a reason a
+  lets their agent spend, an agent no longer paired, refused by the market, or not placed for a reason a
   retry may clear. Nothing is held in any case.
   """
   @spec refusal(term()) ::
-          {:not_enough_credits | :agent_spending | :refused | :unavailable, String.t()}
+          {:not_enough_credits | :agent_spending | :agent_not_paired | :refused | :unavailable,
+           String.t()}
   def refusal(%Ash.Error.Invalid{errors: [%NotEnoughCredits{shortfall: shortfall} | _]}),
     do:
       {:not_enough_credits,
        "You need #{CreditAmount.format(CreditAmount.from_credits(shortfall))} more Credits."}
+
+  # A pairing ended between the agent's check and the hold.
+  def refusal(%Ash.Error.Invalid{errors: [%Refused{reason: :agent_not_paired} | _]}),
+    do: {:agent_not_paired, elem(PairedAgent.words(:agent_not_paired), 0)}
 
   def refusal(%Ash.Error.Invalid{errors: [%Refused{reason: reason} | _]})
       when is_map_key(@agent_spending, reason),
@@ -197,13 +200,6 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
     |> Ash.Query.filter(market_id == ^market.id and number == ^number)
     |> Ash.read_one!()
     |> Map.fetch!(:id)
-  end
-
-  defp balance(profile) do
-    case Credits.spender(profile) do
-      {:ok, _spender} -> RegentCredits.balance(profile.privy_user_id)
-      :not_linked -> :not_linked
-    end
   end
 
   # Each current wording with whether it may be bid here now, and if not,

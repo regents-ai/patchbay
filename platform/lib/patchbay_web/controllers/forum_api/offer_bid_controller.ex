@@ -17,6 +17,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.ForumAPI.MyOffers
   alias PatchbayWeb.ForumAPI.OfferBidding
+  alias PatchbayWeb.Plugs.PairedAgent
 
   def options(conn, params), do: answer(conn, :ok, OfferBidding.options(person(conn), params))
 
@@ -73,8 +74,13 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
       :forbidden,
       "agent_spending_refused",
       words,
-      "Nothing was held. Your person sets what you may spend at https://regents.sh/account; account_balances shows it."
+      "Nothing was held. Agent spending isn't open yet, so your bids are turned down. Your person can bid from their own account."
     )
+  end
+
+  defp answer(conn, _status, {:error, {:agent_not_paired, words}}) do
+    {_words, hint} = PairedAgent.words(:agent_not_paired)
+    refuse(conn, :forbidden, "agent_not_paired", words, hint)
   end
 
   defp answer(conn, _status, {:error, {:refused, words}}) do

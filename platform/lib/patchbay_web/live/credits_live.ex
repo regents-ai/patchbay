@@ -17,9 +17,14 @@ defmodule PatchbayWeb.CreditsLive do
   alias PatchbayWeb.Read
   alias RegentCredits.Amount
 
-  on_mount {PatchbayWeb.CurrentProfile, :default}
+  # When the sign-in runs out on an open page, the balance drops away and the page
+  # around it stays where it is, with anything half written in it.
+  on_mount {PatchbayWeb.CurrentProfile, :account}
 
   @impl true
+  def mount(_params, _session, %{assigns: %{current_profile: nil}} = socket),
+    do: {:ok, assign(socket, opened: false, credits: %Read{})}
+
   def mount(_params, _session, socket) do
     %{privy_user_id: did} = socket.assigns.current_profile
 
@@ -30,6 +35,9 @@ defmodule PatchbayWeb.CreditsLive do
   end
 
   @impl true
+  def handle_info(:credits_changed, %{assigns: %{current_profile: nil}} = socket),
+    do: {:noreply, socket}
+
   def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
 
   @impl true
@@ -45,6 +53,12 @@ defmodule PatchbayWeb.CreditsLive do
   end
 
   @impl true
+  def render(%{current_profile: nil} = assigns) do
+    ~H"""
+    <div class="pb-credits"></div>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <div class="pb-credits">
@@ -92,19 +106,19 @@ defmodule PatchbayWeb.CreditsLive do
 
   attr :credits, Read, required: true
 
-  # "12.40 Credits", whose unit a phone's header leaves out for room.
+  # "12.40 Credits". Below 900px the header leaves the whole balance out.
   defp amount(%{credits: %{state: :ready, value: balance}} = assigns) do
     [number, unit] = String.split(Amount.format(balance.available), " ", parts: 2)
     assigns = assign(assigns, number: number, unit: unit)
 
     ~H"""
-    <span data-count>{@number}</span> <span class="pb-credits-balance__unit">{@unit}</span>
+    <span data-count>{@number}</span> {@unit}
     """
   end
 
   defp amount(assigns) do
     ~H"""
-    <span data-count>—</span> <span class="pb-credits-balance__unit">Credits</span>
+    <span data-count>—</span> Credits
     """
   end
 end

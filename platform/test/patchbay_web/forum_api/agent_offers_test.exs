@@ -67,8 +67,11 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
     {:ok, other_site} = Forum.register_site("elsewhere-offers.example", authorize?: false)
     other = Offers.open_site_market!(other_site.id, authorize?: false)
 
+    # A real bid, so its block can end it as a removal does.
     blocked = approved_version(owner, "Blocked", site)
-    place(site, 1, blocked)
+    give_credits(owner, "5")
+    {:ok, _bid} = bid(owner, site, 1, blocked, "1.00")
+    settle(site, 1)
 
     block(blocked, moderator())
 
@@ -222,7 +225,9 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
     test "a report shows as it is filed; confirming and blocking are recorded, and the Offer stops",
          %{conn: conn, origin: origin, global: global, owner: owner, agent: agent} do
-      place(global, 1, approved_version(owner, "Global one", global))
+      give_credits(owner, "5")
+      {:ok, _bid} = bid(owner, global, 1, approved_version(owner, "Global one", global), "1.00")
+      settle(global, 1)
       moderator = moderator()
       {:ok, view, html} = conn |> signed_in(moderator) |> live("/admin/offers")
       assert html =~ "No Offer has been reported."
@@ -262,15 +267,18 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert html =~ "Blocked a wording"
       assert Ash.get!(Offers.OfferReport, report.id, authorize?: false).status == :confirmed
 
+      # The block ended the showing placement as a removal does.
       assert [
                %{kind: :block_version, version_id: version_id, moderator_profile_id: by},
-               %{kind: :confirm_report, report_id: report_id, reason: "Asks agents to drop" <> _}
+               %{kind: :confirm_report, report_id: report_id, reason: "Asks agents to drop" <> _},
+               %{kind: :remove_placement, outcome: :removed, placement_id: placement_id}
              ] =
                Offers.ModerationAction
-               |> Ash.Query.sort(inserted_at: :desc)
+               |> Ash.Query.sort(kind: :asc)
                |> Ash.read!(authorize?: false)
 
       assert {version_id, report_id, by} == {report.version_id, report.id, moderator.id}
+      assert placement_id == item["placement_id"]
 
       # The blocked wording is shown nowhere from then on.
       assert json_response(ask(conn, agent, origin), 201)["agent_offers"] == nil
@@ -362,6 +370,37 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                |> get("/forum/offer-slots?origin=no-such-site.example")
                |> json_response(422)
     end
+
+    # A blocked wording leading for the next period keeps its place until
+    # its turn, but its words are read nowhere: not in the slot list, and
+    # not in the slot a paired agent reads to bid.
+    test "a wording Patchbay blocked is read as blocked, with no words",
+         %{conn: conn, origin: origin, site: site, owner: owner} do
+      place(site, 1, approved_version(owner, "Owner fixes flaky builds.", site))
+      next = approved_version(owner, "Visit evil.example now", site)
+      lead_next(site, 1, next, 2000)
+      block(next, moderator())
+
+      body = conn |> again() |> get("/forum/offer-slots?origin=#{origin}") |> json_response(200)
+      assert [_global, %{"slots" => [one | _]}] = body["markets"]
+
+      assert %{
+               "showing" => %{"blocked" => false, "text" => "Owner fixes flaky builds."},
+               "next_period" => %{"blocked" => true, "text" => nil}
+             } = one
+
+      agent = SignedAgent.pair!(owner)
+
+      options =
+        conn
+        |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+        |> json_response(200)
+
+      assert %{"blocked" => true, "text" => nil} = options["slot"]["next_period"]
+
+      refute conn |> again() |> get("/forum/offer-slots?origin=#{origin}") |> response(200) =~
+               "evil.example"
+    end
   end
 
   describe "a paired agent bidding for its person" do
@@ -418,6 +457,125 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
 
       assert message == "You need 0.50 more Credits."
       assert credits(owner) == %{available: "3", held: "2"}
+    end
+  end
+
+  describe "who may use the Offers agent routes" do
+    # Only an agent paired with a person who has signed in here acts for
+    # them; every other agent is told what to ask its person for, and
+    # nothing is read or held for it.
+    test "a guest agent, and one whose person has not paired it, are told to pair",
+         %{conn: conn, origin: origin} do
+      guest = %{wallet: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)}
+
+      person = advertiser()
+
+      RegentAgents.issue_pairing_code!(
+        actor: %RegentAgents.Person{privy_user_id: person.privy_user_id}
+      )
+
+      unredeemed = %{wallet: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)}
+
+      for agent <- [guest, unredeemed] do
+        assert %{"error" => %{"code" => "agent_not_paired", "hint" => hint}} =
+                 conn
+                 |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+                 |> json_response(403)
+
+        assert hint =~ "Pair New Agent"
+      end
+    end
+
+    test "an agent whose person never signed in here is told to ask them to",
+         %{conn: conn, origin: origin} do
+      elsewhere = %{
+        privy_user_id: "did:privy:elsewhere-#{System.unique_integer([:positive])}",
+        wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
+      }
+
+      agent = SignedAgent.pair!(elsewhere)
+
+      assert %{"error" => %{"code" => "person_not_here"}} =
+               conn
+               |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+               |> json_response(403)
+    end
+
+    # The pairing is checked again inside the hold, so one that ended after
+    # the agent's request was let in is refused as not paired, not as a
+    # spending limit.
+    test "a pairing that ended before the hold is refused as not paired, holding nothing",
+         %{site: site, owner: owner} do
+      agent = SignedAgent.pair!(owner)
+      give_credits(owner, "5")
+      version = approved_version(owner, "Owner fixes flaky builds.", site)
+
+      ended =
+        RegentCredits.Actor.agent(
+          owner.privy_user_id,
+          agent.wallet,
+          "patchbay",
+          Ecto.UUID.generate()
+        )
+
+      assert {:error, error} =
+               PatchbayWeb.OffersLive.BidDesk.place(
+                 owner,
+                 Forum.get_site!(site.site_id, authorize?: false),
+                 1,
+                 %{
+                   lane: :immediate,
+                   amount: "2.00",
+                   version_id: version.id,
+                   generation: 0,
+                   next_revision: 0,
+                   key: Ecto.UUID.generate()
+                 },
+                 spender: ended
+               )
+
+      assert {:agent_not_paired, "This agent is not currently paired with an account."} =
+               PatchbayWeb.OffersLive.BidDesk.refusal(error)
+
+      assert credits(owner) == %{available: "5", held: "0"}
+    end
+
+    # Agent spending is switched off for every site today, so a paired agent
+    # reads its person's slot but its bid is turned down, holding nothing.
+    test "a paired agent reads the slot, and its bid is refused while agent spending is off",
+         %{conn: conn, origin: origin, site: site, owner: owner} do
+      agent = SignedAgent.pair!(owner)
+      give_credits(owner, "5")
+      approved_version(owner, "Owner fixes flaky builds.", site)
+
+      options =
+        conn
+        |> signed_post(agent, "/forum/offer-bid-options", %{slot: 1, origin: origin})
+        |> json_response(200)
+
+      assert [%{"version_id" => version_id, "can_bid_here" => true}] = options["wordings"]
+
+      bid = %{
+        slot: 1,
+        origin: origin,
+        lane: "immediate",
+        amount: "2.00",
+        version_id: version_id,
+        generation: options["slot"]["generation"],
+        next_revision: options["slot"]["next_revision"],
+        request_key: Ecto.UUID.generate()
+      }
+
+      assert %{
+               "error" => %{
+                 "code" => "agent_spending_refused",
+                 "message" => "Spending is off for this agent.",
+                 "hint" => hint
+               }
+             } = conn |> signed_post(agent, "/forum/offer-bids", bid) |> json_response(403)
+
+      assert hint =~ "Agent spending isn't open yet"
+      assert credits(owner) == %{available: "5", held: "0"}
     end
   end
 

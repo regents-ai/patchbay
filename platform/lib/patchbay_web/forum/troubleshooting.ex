@@ -320,10 +320,10 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
   defp person_not_here do
     %{
       id: "person-not-signed-in",
-      title: "Your person hasn't signed in on the site yet",
+      title: "Your person isn't signed in on the site",
       see: ["A signed request answers 403 with the code ", {:c, "person_not_here"}, "."],
       why: [
-        "Pairing works on every Regent site, but each site needs your person to have signed in there once."
+        "Pairing works on every Regent site, but each site needs your person signed in there."
       ],
       items: [
         {:say,

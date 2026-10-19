@@ -23,14 +23,6 @@ defmodule Patchbay.OffersFixtures do
     })
   end
 
-  @doc "An autonomous agent signed in with its own wallet."
-  def wallet_agent do
-    Identity.upsert_from_wallet!(%{
-      wallet_address:
-        "0x" <> (Ecto.UUID.generate() |> String.replace("-", "") |> String.pad_trailing(40, "0"))
-    })
-  end
-
   @doc "Gives `profile` `credits` (a decimal string) as a Regent gift."
   def give_credits(profile, credits) do
     # A test's own gift, so it skips the admin rule deliberately.
@@ -76,6 +68,28 @@ defmodule Patchbay.OffersFixtures do
       },
       actor: profile
     )
+  end
+
+  @doc """
+  Two seconds pass in `market`'s slot `number` and each of its open windows'
+  jobs runs, as it would on its own.
+  """
+  def settle(market, number) do
+    age(market, number, 2)
+    slot_id = slot(market, number).id
+
+    # A fixture reads back what it set up, so it skips policies deliberately.
+    Offers.BidWindow
+    |> Ash.Query.filter(slot_id == ^slot_id and state == :open)
+    |> Ash.read!(authorize?: false)
+    |> Enum.each(fn window ->
+      {:ok, _window} =
+        Oban.Testing.perform_job(
+          Offers.BidWindow.Workers.Settle,
+          %{"primary_key" => %{"id" => window.id}},
+          repo: Repo
+        )
+    end)
   end
 
   @doc """

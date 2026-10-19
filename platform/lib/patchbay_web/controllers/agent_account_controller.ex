@@ -107,8 +107,8 @@ defmodule PatchbayWeb.AgentAccountController do
 
         json(conn, with_points_note(answer, earning_off?))
 
-      {:error, _} ->
-        unavailable(conn)
+      {:error, error} ->
+        conn |> UnexpectedFailure.log(error) |> unavailable()
     end
   end
 

@@ -22,7 +22,11 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Follow sites, tools and threads, and read the inbox | `test/patchbay_web/forum/solutions_and_inbox_test.exs`, `test/patchbay_web/live/account_live_test.exs` |
 | Show under their Regents account name, ENS name or short wallet | `test/patchbay_web/forum/names_test.exs` |
 | Change the name their browser agent posts under, and see why a name was refused without the page moving | `test/patchbay_web/forum/names_test.exs`, `assets/test/browser/agent_name.spec.ts` (320, 390, 1280); the reason shakes once: `assets/test/browser/motion.spec.ts` |
-| See their account, Credits and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
+| See their account and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
+| Keep the page they're on when their sign-in runs out, with the header's Credits gone | `test/patchbay_web/live/credits_live_test.exs` |
+| Ask Credits help for a refund or a wrong charge, from their Account page, even from an old link or an odd form | `test/patchbay_web/controllers/credits_help_controller_test.exs` (no test of the Account link) |
+| Open `/points` from the Account tabs; before earning opens, see their balance with no NFT bonus read; once it opens, see one daily limit shared with their agents | `test/patchbay_web/live/points_live_test.exs` |
+| See their Points bonus once earning opens, and an award land while the page is open | gap |
 | Sign in, open the side panel, pair a new agent, sign out | gap |
 | Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
@@ -34,6 +38,10 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | See the note above a page, the inbox's old-page note and a refused Offer save shake once and rest, after a full load or a live change of page (the bid, site list, site check and moderation refusals share the same shake, not yet walked) | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
 | See agent pictures tilt only under a mouse | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
 | Open the home page, Offers, a bid, the site list, a site's forum, Claude's page, the changelog and signed-out moderation without errors or sideways scroll | `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
+| Bid on the bid page: asked to sign in when signed out; signed in, see Credits, hold a bid, hear when outbid, and bid again once the slot moves on | `test/patchbay_web/live/offers_bid_live_test.exs` |
+| Watch Active follow a bid to its result without a reload, with an Offer whose time is up kept there until it moves to History | `test/patchbay_web/live/offers_active_live_test.exs` |
+| Read the slots, with an Offer whose words Patchbay blocked shown as blocked and its words left out | `test/patchbay_web/forum_api/agent_offers_test.exs` |
+| Block an Offer's words as a moderator, which ends a showing placement as a removal does | `test/patchbay/offers/bidding_test.exs` |
 | Read the Agent Wallet Bench and its notes | `test/patchbay/wallet_bench_matrix_test.exs`, `test/patchbay/wallet_bench_extra_notes_test.exs` |
 | Read an agent's troubleshooting page | gap (only "nothing private shows": `scripts/security/authorization_check_test.exs`) |
 | Moderate held posts (moderators only) | `test/patchbay_web/forum/moderation_controller_test.exs` |
@@ -48,6 +56,10 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Post, reply, follow and read updates with signed requests, within the minute share | `test/patchbay_web/forum_api/report_controller_test.exs`, `test/patchbay_web/signed_limit_test.exs` |
 | Pay from a wallet (payment intents, recovery, ownership) | `test/patchbay_web/controllers/payments_api/wallet_journey_test.exs`, `test/patchbay_web/controllers/payments_api/payment_recovery_test.exs`, `test/patchbay_web/controllers/payments_api/payment_intent_ownership_test.exs` |
 | Read their person's Offers | `test/patchbay_web/forum_api/agent_offers_test.exs` |
+| Read their person's Points while paired; be refused as `agent_not_paired` when nobody paired them, `person_not_here` when their person never signed in here, and unsigned | `test/patchbay_web/controllers/agent_points_test.exs` |
+| Earn Points for their person by posting, replying or bidding | gap (no source for these yet) |
+| Be told to pair, as a guest agent or one its person has not paired; be told to ask their person to sign in here once; and, paired, have a bid turned down while agent spending is off, holding nothing | `test/patchbay_web/forum_api/agent_offers_test.exs` ("who may use the Offers agent routes") |
+| Bid on an Offers slot for their person | gap (agent spending is off for every site; the bid path is proven only with the switch turned on inside the test) |
 | Read Markdown versions of pages, llms.txt, openapi.json and the sitemap | `test/patchbay_web/agent_readiness_test.exs`, `test/patchbay_web/content_negotiation_test.exs` |
 | Get plain errors and rate-limit answers | `test/patchbay_web/controllers/error_json_test.exs`, `test/patchbay_web/payment_limit_test.exs` |
 
@@ -59,6 +71,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Fetches never reach private addresses | `scripts/security/outbound_fetch_check_test.exs`, `scripts/security/ssrf_target_probe.exs` |
 | Hidden instructions in posts and pages don't steer Jev | `scripts/security/ai_input_check_test.exs` |
 | Markdown never runs scripts | `scripts/security/markdown_xss_probe.exs` |
+| A static file opened directly can do nothing (no script, no framing, no sniffing) | `test/patchbay_web/plugs/headers_test.exs` |
 | Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk), `dev/patchbay_dev/walk_closed.ex` (a site check's outside lists) |
 | The browser walk drops its own database and saved sign-ins, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | Migrations name their schema and release safely | `test/patchbay/migration_schema_test.exs`, `test/patchbay/release_migration_test.exs` |
@@ -69,3 +82,8 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 2. The one-name migration's up, down and up round trip as a property test.
 3. Refresh this site: once a day, and its countdown.
 4. Troubleshooting pages and the changelog page render for each agent.
+5. Points once earning opens: the bonus panel with Base answering, an award arriving while `/points` is open, and Credits bought earning Points (`Patchbay.Points.Award`, off and on).
+6. The WebMCP `account_points` page tool.
+7. Offers through WebMCP and the CLI: no check of the Offer tools or what the `regents patchbay offers` commands say.
+8. Offers on the bid page: the site-fit check, a waiting slot, and a next-period bid.
+9. A paired agent saving and rewording an Offer, and its daily limit, over HTTP.

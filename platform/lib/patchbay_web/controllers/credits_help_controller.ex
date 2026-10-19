@@ -22,8 +22,8 @@ defmodule PatchbayWeb.CreditsHelpController do
     render_index(conn, params, %{}, nil)
   end
 
-  def create(conn, %{"post" => fields}) do
-    draft = Map.take(fields, ["title", "body"])
+  def create(conn, params) do
+    draft = draft(params, "post", ["title", "body"])
 
     case conn.assigns.current_profile do
       nil ->
@@ -41,9 +41,9 @@ defmodule PatchbayWeb.CreditsHelpController do
     render_post(conn, fetch_post!(conn, id), %{}, nil)
   end
 
-  def answer(conn, %{"id" => id, "answer" => fields}) do
+  def answer(conn, %{"id" => id} = params) do
     post = fetch_post!(conn, id)
-    draft = Map.take(fields, ["body"])
+    draft = draft(params, "answer", ["body"])
     profile = conn.assigns.current_profile
 
     unless Moderator.moderator?(profile), do: raise(NotFoundError)
@@ -54,22 +54,24 @@ defmodule PatchbayWeb.CreditsHelpController do
     end
   end
 
+  # A form's own fields, whatever shape the post arrived in; a missing or odd
+  # form reads as empty, and the action says what's missing.
+  defp draft(params, form, fields) do
+    case params[form] do
+      %{} = given -> Map.take(given, fields)
+      _missing -> %{}
+    end
+  end
+
   defp render_index(conn, params, draft, problem) do
     profile = conn.assigns.current_profile
-
-    page =
-      profile &&
-        CreditsHelp.list_posts!(
-          actor: profile,
-          load: [:author, :answer_count],
-          page: page(params)
-        )
+    {page, cursor} = list_posts(profile, params["after"])
 
     render(conn, :index,
       page_title: "Credits help",
       admin?: Moderator.moderator?(profile),
       posts: (page && page.results) || [],
-      cursor: params["after"],
+      cursor: cursor,
       next: page && page.more? && page.after,
       draft: draft,
       problem: problem
@@ -101,8 +103,29 @@ defmodule PatchbayWeb.CreditsHelpController do
     end
   end
 
-  defp page(%{"after" => cursor}) when is_binary(cursor), do: [limit: 20, after: cursor]
-  defp page(_params), do: [limit: 20]
+  # A page of the person's posts after `cursor`. A cursor that no longer reads, such
+  # as one from an old link, starts again from the newest.
+  defp list_posts(nil, _cursor), do: {nil, nil}
+
+  defp list_posts(profile, cursor) do
+    read = &CreditsHelp.list_posts(actor: profile, load: [:author, :answer_count], page: &1)
+
+    case read.(page(cursor)) do
+      {:ok, page} ->
+        {page, cursor}
+
+      {:error, %Ash.Error.Invalid{errors: errors} = invalid} ->
+        unless Enum.any?(errors, &match?(%Ash.Error.Page.InvalidKeyset{}, &1)), do: raise(invalid)
+        {:ok, first} = read.(page(nil))
+        {first, nil}
+
+      {:error, failure} ->
+        raise failure
+    end
+  end
+
+  defp page(cursor) when is_binary(cursor), do: [limit: 20, after: cursor]
+  defp page(_cursor), do: [limit: 20]
 
   defp problem(:post, %Ash.Error.Invalid{}),
     do:

@@ -36,6 +36,9 @@ if walk? do
 
   outside = "../tmp/walk-outside#{System.get_env("PATCHBAY_DEV_PARTITION")}.txt"
   config :patchbay, :walk_outside_file, Path.expand(outside, __DIR__)
+  # No background work runs during a walk: its scheduled site scans, pictures and
+  # source refreshes reach outside the machine, and no walk check waits on one.
+  config :patchbay, Oban, testing: :manual
 end
 
 config :patchbay, PatchbayWeb.Endpoint,

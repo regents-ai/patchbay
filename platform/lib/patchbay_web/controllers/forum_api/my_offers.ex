@@ -5,7 +5,7 @@ defmodule PatchbayWeb.ForumAPI.MyOffers do
   waiting for its result; and which Offers ended, why, and where their
   Credits went, with the bids that did not win and came back in full.
 
-  Both read `Patchbay.Offers.my_active/2` and `Patchbay.Offers.my_history/3`
+  Both read `Patchbay.Offers.my_active/1` and `Patchbay.Offers.my_history/3`
   with the paired person as the actor, the reads the two tabs use, and work
   out the same figures and words with `PatchbayWeb.OffersLive.Mine`. The same read answers
   the web address, the hosted tool and the page's tool. It only reads: no
@@ -36,7 +36,7 @@ defmodule PatchbayWeb.ForumAPI.MyOffers do
   def active(%Actor{} = agent, params) do
     with :ok <- OfferSlots.known_keys(params, []) do
       as_of = DateTime.utc_now()
-      mine = agent |> person() |> Offers.my_active(as_of)
+      mine = agent |> person() |> Offers.my_active()
 
       {:ok,
        %{

@@ -3,7 +3,6 @@ defmodule Patchbay.Offers.Errors.BidRefused do
   A bid refused before anything was held, with the reason and, where it
   helps, the figure to act on:
 
-    * `:not_linked` - the signed-in profile has no Credits account to spend;
     * `:invalid_amount` - not an amount of Credits to the hundredth;
     * `:stale` - the slot moved on since its price was read;
     * `:waiting` - an open slot whose turn has not come: slot `for_sale` is
@@ -22,11 +21,6 @@ defmodule Patchbay.Offers.Errors.BidRefused do
     class: :invalid
 
   alias Patchbay.Offers.CreditAmount
-
-  def message(%{reason: :not_linked}) do
-    "This agent can't spend Credits yet. Its owner can pair it at regents.sh, " <>
-      "then allow it to spend at regents.sh/account."
-  end
 
   def message(%{reason: :invalid_amount}), do: "Enter an amount in Credits, like 12.50."
 
@@ -51,5 +45,6 @@ defmodule Patchbay.Offers.Errors.BidRefused do
     do: "This bid needs to be at least #{CreditAmount.format(minimum)} Credits."
 
   def message(%{reason: :key_reused}),
-    do: "Something went wrong placing this bid, and nothing was held. Please try again."
+    do:
+      "This request key was already used for a different bid, and nothing was held. Send the bid again with a new key."
 end

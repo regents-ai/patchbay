@@ -44,21 +44,16 @@
           </div>
         <% _turn -> %>
           <%= if @current_profile do %>
-            <%= case @balance do %>
-              <% :not_linked -> %>
-                <p class="pb-offmod-problem">{not_linked_words()}</p>
-              <% balance -> %>
-                <div class="pb-bid-wallet" id="pb-offers-bid-balance">
-                  <.bid_icon kind={:wallet} />
-                  <div>
-                    <strong>{RegentCredits.Amount.format(balance.available)}</strong><span>available</span>
-                  </div>
-                  <span :if={Decimal.gt?(balance.held, 0)} class="pb-bid-held">
-                    {RegentCredits.Amount.format(balance.held)} held
-                  </span>
-                  <.buy_credits />
-                </div>
-            <% end %>
+            <div class="pb-bid-wallet" id="pb-offers-bid-balance">
+              <.bid_icon kind={:wallet} />
+              <div>
+                <strong>{RegentCredits.Amount.format(@balance.available)}</strong><span>available</span>
+              </div>
+              <span :if={Decimal.gt?(@balance.held, 0)} class="pb-bid-held">
+                {RegentCredits.Amount.format(@balance.held)} held
+              </span>
+              <.buy_credits />
+            </div>
 
             <div class="pb-bid-feedback" aria-live="polite">
               <p
@@ -73,7 +68,7 @@
               </p>
             </div>
 
-            <%= if @balance != :not_linked and Enum.any?(@wordings, & &1.eligible?) do %>
+            <%= if Enum.any?(@wordings, & &1.eligible?) do %>
               <.form
                 for={%{}}
                 as={:bid}
@@ -181,7 +176,7 @@
               </.form>
             <% end %>
 
-            <%= if @balance != :not_linked and !Enum.any?(@wordings, & &1.eligible?) do %>
+            <%= if !Enum.any?(@wordings, & &1.eligible?) do %>
               <div class="pb-bid-empty">
                 <.bid_icon kind={:edit} />
                 <p id="pb-offers-bid-none">

@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.AccountLive do
   @moduledoc """
-  The signed-in person's Account page, as in the Regent template, in three
+  The signed-in person's Account page, as in the Regent template, in four
   tabs:
 
   - Account (`/account`): who Patchbay knows them as, their wallet with its
@@ -11,6 +11,7 @@ defmodule PatchbayWeb.AccountLive do
     too, so it works before signing in.
   - Profile (`/account/profile`): what their public profile shows, their
     funding, the fixes they asked Jev for, and the names they post under.
+  - Points (`/points`): `PatchbayWeb.PointsLive`, which shows the same tabs.
 
   The tabs are plain links, so each opens as its own page.
 
@@ -202,15 +203,7 @@ defmodule PatchbayWeb.AccountLive do
         <h1 tabindex="-1">{@page_title}</h1>
       </header>
 
-      <nav class="pb-feed-tabs pb-account-tabs" aria-label="Account">
-        <a
-          :for={{action, label, path} <- tabs()}
-          href={path}
-          aria-current={if @live_action == action, do: "page"}
-        >
-          {label}
-        </a>
-      </nav>
+      <.tabs current={@live_action} />
 
       <Regent.Account.signed_out
         :if={is_nil(@current_profile) and @live_action != :inbox}
@@ -231,12 +224,28 @@ defmodule PatchbayWeb.AccountLive do
     """
   end
 
-  defp tabs do
-    [
-      {:show, "Account", ~p"/account"},
-      {:inbox, "Inbox", ~p"/account/inbox"},
-      {:profile, "Profile", ~p"/account/profile"}
-    ]
+  attr :current, :atom, required: true, doc: "the open tab: :show, :inbox, :profile or :points"
+
+  @doc "The Account tabs, shown on each Account page and on Points."
+  def tabs(assigns) do
+    ~H"""
+    <nav class="pb-feed-tabs pb-account-tabs" aria-label="Account">
+      <a
+        :for={
+          {tab, label, path} <- [
+            {:show, "Account", ~p"/account"},
+            {:inbox, "Inbox", ~p"/account/inbox"},
+            {:profile, "Profile", ~p"/account/profile"},
+            {:points, "Points", ~p"/points"}
+          ]
+        }
+        href={path}
+        aria-current={if @current == tab, do: "page"}
+      >
+        {label}
+      </a>
+    </nav>
+    """
   end
 
   defp overview(assigns) do
@@ -290,7 +299,7 @@ defmodule PatchbayWeb.AccountLive do
         </Regent.Primitives.button>
         <p class="pb-account-credits">
           <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
-          <a href={~p"/points"}>Your Points</a>
+          <a href={~p"/credits-help"}>Credits help</a>
         </p>
       </Regent.Account.credits_summary>
 

@@ -8,6 +8,21 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     %{room: room}
   end
 
+  # An SVG opened directly runs as a page, so a static file says it may do nothing.
+  test "a static image is served with the policy that lets it do nothing", %{conn: conn} do
+    conn = get(conn, "/favicon.svg")
+
+    assert conn.status == 200
+
+    assert get_resp_header(conn, "content-security-policy") == [
+             "default-src 'none'; frame-ancestors 'none'"
+           ]
+
+    assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
+    assert get_resp_header(conn, "x-frame-options") == ["DENY"]
+    assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
+  end
+
   test "the room route sets the WebMCP permissions policy", %{conn: conn, room: room} do
     conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
 
