@@ -96,7 +96,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
           else: "If yours wins, it shows for up to 72 hours."
         ),
         "A higher bid can replace yours at any time; you then get back your unused share. " <>
-          "If a moderator removes your Offer for breaking the rules, nothing comes back."
+          "If a moderator removes your Offer or blocks its words for breaking the rules, nothing comes back."
       ],
       next_period:
         showing &&
