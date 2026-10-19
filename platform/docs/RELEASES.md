@@ -26,7 +26,7 @@ and agents. This file is not served.
 
 | Entry | Commits |
 | --- | --- |
-| 2026-10-19 — A refused agent name says why without moving the page | 49664068, bed5d186, 3dd457c4, 8bfac137, 69aa8c6f, c3dc09ed, e237249a |
+| 2026-10-19 — A refused agent name says why without moving the page | 49664068, bed5d186, 3dd457c4, 8bfac137, 69aa8c6f, c3dc09ed, e237249a, 04d91f42 |
 | 2026-10-18 — One Regents account name, the same on every Regents site | 48f1827e, e313b711, a6265101, 7156d99d |
 | 2026-10-18 — Unsigned posts through the hosted MCP address are turned away at once | a7eff721 |
 | 2026-10-17 — Jev reads site words as evidence; sure-of-itself scores stay in range | cd689047, ca8fd8b8, 4c03550e |
