@@ -29,7 +29,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
   import PatchbayWeb.OffersLive.Markets,
     only: [credits: 1, offer_copy: 1, hours_until: 2, time_left: 2]
 
-  alias Patchbay.Credits
   alias Patchbay.Forum.Site
   alias Patchbay.Offers
   alias Patchbay.Offers.Bid
@@ -147,16 +146,11 @@ defmodule PatchbayWeb.OffersLive.Bid do
   end
 
   # The balance shown is current whichever Regent site moved the Credits.
-  defp follow_credits(profile) do
-    case profile && Credits.spender(profile) do
-      {:ok, _spender} ->
-        :ok =
-          Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
+  defp follow_credits(nil), do: :ok
 
-      _not_linked ->
-        :ok
-    end
-  end
+  defp follow_credits(profile),
+    do:
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
 
   defp place(socket) do
     %{site: site, number: number, slot: slot} = socket.assigns
@@ -414,9 +408,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
       _other -> Exception.message(BidRefused.exception(reason: :invalid_amount))
     end
   end
-
-  @doc false
-  def not_linked_words, do: Exception.message(BidRefused.exception(reason: :not_linked))
 
   # The bid page for another slot of the same market.
   defp bid_path(nil, number), do: ~p"/offers/bid?#{[slot: number]}"

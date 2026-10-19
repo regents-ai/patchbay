@@ -9,7 +9,6 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
 
   require Ash.Query
 
-  alias Patchbay.Credits
   alias Patchbay.Offers
   alias Patchbay.Offers.Bid
   alias Patchbay.Offers.CreativeVersion
@@ -116,7 +115,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
 
   def mine(profile, market, slot, now) do
     %{
-      balance: balance(profile),
+      balance: RegentCredits.balance(profile.privy_user_id),
       wordings: wordings(profile, market, now),
       bids: if(slot, do: bids(profile, slot), else: [])
     }
@@ -197,13 +196,6 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
     |> Ash.Query.filter(market_id == ^market.id and number == ^number)
     |> Ash.read_one!()
     |> Map.fetch!(:id)
-  end
-
-  defp balance(profile) do
-    case Credits.spender(profile) do
-      {:ok, _spender} -> RegentCredits.balance(profile.privy_user_id)
-      :not_linked -> :not_linked
-    end
   end
 
   # Each current wording with whether it may be bid here now, and if not,

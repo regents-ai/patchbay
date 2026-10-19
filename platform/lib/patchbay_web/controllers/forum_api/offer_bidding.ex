@@ -165,11 +165,8 @@ defmodule PatchbayWeb.ForumAPI.OfferBidding do
     }
   end
 
-  defp credits(:not_linked), do: %{linked: false, words: Bid.not_linked_words()}
-
   defp credits(%{available: available, held: held}) do
     %{
-      linked: true,
       available: OfferSlots.amount(CreditAmount.spendable(available)),
       held: OfferSlots.amount(CreditAmount.from_credits(held))
     }

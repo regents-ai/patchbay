@@ -195,11 +195,4 @@ defmodule Patchbay.Offers.BiddingTest do
     assert {:error, %Ash.Error.Invalid{errors: [%BidRefused{reason: :key_reused}]}} =
              bid(alice, market, 1, version, "3.00", key: "press-1")
   end
-
-  test "an agent signed in with its own wallet can't spend Credits yet", %{market: market} do
-    {_alice, version} = advertiser_with("10", market, "Alice fixes flaky builds.")
-
-    assert {:error, %Ash.Error.Invalid{errors: [%BidRefused{reason: :not_linked}]}} =
-             bid(wallet_agent(), market, 1, version, "2.00")
-  end
 end

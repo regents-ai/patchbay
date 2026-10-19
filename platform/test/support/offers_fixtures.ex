@@ -23,14 +23,6 @@ defmodule Patchbay.OffersFixtures do
     })
   end
 
-  @doc "An autonomous agent signed in with its own wallet."
-  def wallet_agent do
-    Identity.upsert_from_wallet!(%{
-      wallet_address:
-        "0x" <> (Ecto.UUID.generate() |> String.replace("-", "") |> String.pad_trailing(40, "0"))
-    })
-  end
-
   @doc "Gives `profile` `credits` (a decimal string) as a Regent gift."
   def give_credits(profile, credits) do
     # A test's own gift, so it skips the admin rule deliberately.

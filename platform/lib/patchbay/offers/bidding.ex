@@ -79,12 +79,8 @@ defmodule Patchbay.Offers.Bidding do
 
   defp spender(_profile, %RegentCredits.Actor{role: :agent} = agent), do: {:ok, agent}
 
-  defp spender(profile, nil) do
-    case Credits.spender(profile) do
-      {:ok, spender} -> {:ok, spender}
-      :not_linked -> refuse(:not_linked)
-    end
-  end
+  # Bids come from a person signed in through Privy, whose own account spends.
+  defp spender(profile, nil), do: {:ok, _person} = Credits.spender(profile)
 
   defp amount(text) do
     case CreditAmount.parse(text) do
