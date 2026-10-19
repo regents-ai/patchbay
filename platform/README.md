@@ -213,11 +213,21 @@ database cannot collide with the current migrations:
 MIX_TEST_PARTITION=patchbay_zde5_full mix test
 npm test --prefix assets
 npm run typecheck --prefix assets
+npm run test:browser --prefix assets
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix ash.codegen --check
 mix assets.build
 ```
+
+`npm run test:browser` opens the pages in headless Chromium, at 1280 with a
+mouse and at 390 as a phone with touch, and checks how they move: what settles
+in, what shakes, what stays still from the keyboard or with less motion, and
+that everything ends with nothing left written on it. It builds and starts its
+own server on a free port over the test database, keeps the whole run in one
+transaction that is never committed, and reaches nothing but that server. On a
+new machine, run `npx playwright install chromium` in `assets/` once first.
+`mix precommit` runs it last.
 
 The focused server-side LiveView proof is:
 

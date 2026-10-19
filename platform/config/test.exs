@@ -1,6 +1,9 @@
 import Config
 browser_port = String.to_integer(System.get_env("PORT", "4002"))
 
+# The browser tests start this server themselves (assets/playwright.config.ts).
+browser_test? = System.get_env("PATCHBAY_BROWSER_TEST") == "1"
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -12,17 +15,20 @@ config :patchbay, Patchbay.Repo,
   hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
   database: "patchbay_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  # Keep parallel worktrees within the local PostgreSQL connection budget.
-  pool_size: 8
+  # Keep parallel worktrees within the local PostgreSQL connection budget. The
+  # browser tests' server answers every page over one connection.
+  pool_size: if(browser_test?, do: 2, else: 8)
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
+# Only the browser tests run a server.
 config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "127.0.0.1", port: browser_port],
   http: [ip: {127, 0, 0, 1}, port: browser_port],
   check_origin: ["http://127.0.0.1:#{browser_port}"],
   secret_key_base: "veQzbAXuIb79+jLk5QWx2Jq4Gy/5WzZbQRfCk77MHXxP2IUiKWLI5vDOixz/wQlP",
-  server: false
+  server: browser_test?
+
+# Its run is one transaction that is never committed (PatchbayDev.BrowserDatabase).
+config :patchbay, :browser_test, browser_test?
 
 # In test we don't send emails
 config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test

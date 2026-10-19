@@ -108,6 +108,9 @@ export function picturesProblem(pictures: Picture[]): string | null {
 // The post as it will appear, asked for without sending the pictures, which
 // the page shows itself from the files chosen.
 async function preview(form: PageForm, button: HTMLElement, options: HeroFormOptions) {
+  // How it was asked for, read before the wait: a mouse moved while the
+  // preview loads does not make a keyboard request move.
+  const byPointer = lastInputByPointer()
   const slot = form.querySelector<HTMLElement>("#pb-hero-preview")
   if (!slot || !form.reportValidity()) return
 
@@ -133,16 +136,16 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
   }
   say(form, "")
   showPictures(slot, pictures)
-  arrive(slot)
+  arrive(slot, byPointer)
   slot.querySelector("#pb-hero-post, [role=alert]")?.scrollIntoView({block: "nearest"})
 }
 
 // The preview settles in under the form when it was asked for by hand. A
 // refusal never fades in: it is there at once and shakes, however it was asked for.
-function arrive(slot: HTMLElement) {
+function arrive(slot: HTMLElement, byPointer: boolean) {
   const reasons = slot.querySelectorAll("[role=alert]")
   if (reasons.length > 0) reasons.forEach(deny)
-  else if (lastInputByPointer() && !still(slot)) GRIDS.cascade([...slot.children])
+  else if (byPointer && !still(slot)) GRIDS.cascade([...slot.children])
 }
 
 function showPictures(slot: HTMLElement, pictures: File[]) {

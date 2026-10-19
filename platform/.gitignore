@@ -35,6 +35,9 @@ patchbay-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# What a failed browser check leaves behind (assets/test/browser).
+/assets/test-results/
+
 # Local environment files. Only the example is tracked.
 .env
 .env.*

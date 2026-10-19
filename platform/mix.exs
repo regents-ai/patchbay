@@ -241,7 +241,9 @@ defmodule Patchbay.MixProject do
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
-        "test --warnings-as-errors"
+        "test --warnings-as-errors",
+        # The pages in a real browser at 1280 and 390 (assets/test/browser).
+        "cmd npm run test:browser --prefix assets"
       ]
     ]
   end
