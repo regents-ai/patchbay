@@ -61,8 +61,9 @@ defmodule Patchbay.Offers do
   def opening_minimum_minor(_market), do: default_minimum_minor()
 
   @doc """
-  `profile`'s own Offers in progress at `as_of`, as the Active tab shows
-  them: the placements `showing` now, the bids `leading` for a slot's next
+  `profile`'s own Offers in progress, as the Active tab shows them: the
+  placements `showing` (one whose time is up stays here until its job ends
+  it and it moves to History), the bids `leading` for a slot's next
   period (each slot with its running placement, which says when that period
   starts), and the bids `waiting` in an open window for their result. At
   most #{@active_page} of each, newest first.
@@ -70,19 +71,19 @@ defmodule Patchbay.Offers do
   Every list is read through its record's `:mine` read with `profile` as the
   actor, so it holds only `profile`'s own.
   """
-  @spec my_active(Patchbay.Identity.AgentProfile.t(), DateTime.t()) :: %{
+  @spec my_active(Patchbay.Identity.AgentProfile.t()) :: %{
           showing: [Patchbay.Offers.Placement.t()],
           leading: [Patchbay.Offers.Bid.t()],
           waiting: [Patchbay.Offers.Bid.t()]
         }
-  def my_active(profile, as_of) do
+  def my_active(profile) do
     page = [limit: @active_page]
 
     %{
       showing:
         my_placements!(
           actor: profile,
-          query: [filter: expr(status == :active and expires_at > ^as_of), load: @offer],
+          query: [filter: expr(status == :active), load: @offer],
           page: page
         ).results,
       leading:

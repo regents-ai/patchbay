@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.OffersLive.Active do
   @moduledoc """
   The signed-in advertiser's active and upcoming placements, with titles,
-  duration progress and read-only bid and return figures.
+  duration progress and read-only bid and return figures. An open tab reads
+  them again whenever a slot moves on or the advertiser's Credits move.
 
-  It reads `Patchbay.Offers.my_active/2`, the read a paired agent's
+  It reads `Patchbay.Offers.my_active/1`, the read a paired agent's
   `list_my_active_offers` gives (`PatchbayWeb.ForumAPI.MyOffers`), and both
   work out the figures with `PatchbayWeb.OffersLive.Mine`.
   """
@@ -21,18 +22,30 @@ defmodule PatchbayWeb.OffersLive.Active do
     only: [buyout: 1, unused: 2, upcoming_start: 1, upcoming_end: 1]
 
   alias Patchbay.Offers
+  alias Patchbay.Offers.Slot
 
   @impl true
   def mount(_params, _session, socket) do
-    as_of = DateTime.utc_now()
     profile = socket.assigns.current_profile
 
-    {:ok,
-     assign(socket,
-       page_title: "Active Offers",
-       as_of: as_of,
-       mine: if(profile, do: Offers.my_active(profile, as_of))
-     )}
+    if connected?(socket) and profile do
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Slot.topic())
+      :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
+    end
+
+    {:ok, socket |> assign(page_title: "Active Offers") |> read()}
+  end
+
+  # A slot that moved on, or the advertiser's Credits moving (a new bid held,
+  # or one given back), changes what this tab shows.
+  @impl true
+  def handle_info(:offer_markets_changed, socket), do: {:noreply, read(socket)}
+  def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
+
+  defp read(socket) do
+    as_of = DateTime.utc_now()
+    profile = socket.assigns.current_profile
+    assign(socket, as_of: as_of, mine: if(profile, do: Offers.my_active(profile)))
   end
 
   attr(:starts_at, :any, default: nil)
