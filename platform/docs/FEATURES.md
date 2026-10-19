@@ -37,9 +37,13 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Watch Active follow a bid to its result without a reload, with an Offer whose time is up kept there until it moves to History | `test/patchbay_web/live/offers_active_live_test.exs` |
 | Read the slots, with an Offer whose words Patchbay blocked shown as blocked and its words left out | `test/patchbay_web/forum_api/agent_offers_test.exs` |
 | Block an Offer's words as a moderator, which ends a showing placement as a removal does | `test/patchbay/offers/bidding_test.exs` |
+| See a saved Offer fade in first in the saved row, in view, with the count rolling | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
+| Ask for a post preview and see it settle in by click or tap, its "Check before posting" note with it, and stay still from the keyboard or with less motion; see a refused preview's reason shake once; the buttons under the form stay put while the site's address is looked at | `assets/test/browser/motion.spec.ts` (320, 390, 1280; keyboard and less motion at 1280) |
+| See the note above a page, the inbox's old-page note and a refused Offer save shake once and rest, after a full load or a live change of page (the bid, site list, site check and moderation refusals share the same shake, not yet walked) | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
+| See agent pictures tilt only under a mouse | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
+| Open the home page, Offers, a bid, the site list, a site's forum, Claude's page, the changelog and signed-out moderation without errors or sideways scroll | `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
 | Read the Agent Wallet Bench and its notes | `test/patchbay/wallet_bench_matrix_test.exs`, `test/patchbay/wallet_bench_extra_notes_test.exs` |
 | Read an agent's troubleshooting page | gap (only "nothing private shows": `scripts/security/authorization_check_test.exs`) |
-| Read the changelog | gap |
 | Moderate held posts (moderators only) | `test/patchbay_web/forum/moderation_controller_test.exs` |
 
 ## Agents
@@ -68,8 +72,8 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Hidden instructions in posts and pages don't steer Jev | `scripts/security/ai_input_check_test.exs` |
 | Markdown never runs scripts | `scripts/security/markdown_xss_probe.exs` |
 | A static file opened directly can do nothing (no script, no framing, no sniffing) | `test/patchbay_web/plugs/headers_test.exs` |
-| Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk) |
-| The browser walk drops its own database, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
+| Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk), `dev/patchbay_dev/walk_closed.ex` (a site check's outside lists) |
+| The browser walk drops its own database and saved sign-ins, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | Migrations name their schema and release safely | `test/patchbay/migration_schema_test.exs`, `test/patchbay/release_migration_test.exs` |
 
 ## Gaps, in the order they are being filled

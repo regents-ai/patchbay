@@ -1177,35 +1177,14 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   transition: background-color .22s ease, border-color .22s ease, color .22s ease;
 }
 
-/* Ledger entries land rather than appear. */
-.patchbay-timeline-entry { animation: pb-timeline-in 260ms var(--ease-out) both; }
-.patchbay-timeline-entry:nth-child(2) { animation-delay: 40ms; }
-.patchbay-timeline-entry:nth-child(3) { animation-delay: 80ms; }
-.patchbay-timeline-entry:nth-child(4) { animation-delay: 120ms; }
-.patchbay-timeline-entry:nth-child(5) { animation-delay: 160ms; }
-.patchbay-timeline-entry:nth-child(6) { animation-delay: 200ms; }
-.patchbay-timeline-entry:nth-child(n+7) { animation-delay: 240ms; }
-
-@keyframes pb-timeline-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
-}
-
 /* Verified is a border and a chip. No sweep, glow, or spark. */
 .patchbay-candidate-card.is-verified .patchbay-well::after { content: none; }
 
 /* Reduced motion, answered in one place. Colour is not motion, so state
    changes still fade between tones. */
 @media (prefers-reduced-motion: reduce) {
-  .patchbay-button:hover,
-
-  .patchbay-timeline-entry { animation: none; }
   .patchbay-agent-step.is-working .patchbay-agent-dot { animation: none; }
 }
-
-@keyframes pb-fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pb-fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes pb-fade-pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
 
 /* ==========================================================================
    FINGERPRINT CHIPS AND THE RECEIPT STUB — regent-sgj
@@ -1519,7 +1498,7 @@ a.patchbay-button { text-decoration: none; }
   display: none;
 }
 .pb-fund-card button {
-  transition: transform 160ms var(--ease-out), background-color .15s ease, border-color .15s ease, color .15s ease;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
 
@@ -2073,9 +2052,10 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-composer textarea, .pb-offers-saved-card textarea { min-height: 9rem; resize: vertical; }
 .pb-offers-composer .pb-offers-form > .rg-button { width: 100%; }
 .pb-offers-hold { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) var(--space-2); margin: 0 0 var(--space-2); border: 1px dashed var(--pb-line-strong); font-size: .8125rem; line-height: 1.5; }
-.pb-offers-saved-rail { display: flex; align-items: stretch; gap: var(--space-2); list-style: none; min-width: 0; margin: 0; padding: 5px 5px var(--space-2); overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: x proximity; scrollbar-width: thin; }
+/* It does not snap: a new Offer arrives at the start, and snapping would keep the old first card in view instead. */
+.pb-offers-saved-rail { display: flex; align-items: stretch; gap: var(--space-2); list-style: none; min-width: 0; margin: 0; padding: 5px 5px var(--space-2); overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .pb-offers-saved-rail:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 2px; }
-.pb-offers-saved-card { display: flex; flex-direction: column; flex: 0 0 min(86%, 23rem); min-width: 0; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--pb-line-strong); scroll-snap-align: start; }
+.pb-offers-saved-card { display: flex; flex-direction: column; flex: 0 0 min(86%, 23rem); min-width: 0; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--pb-line-strong); }
 .pb-offers-saved-card:only-child { flex-basis: 100%; }
 .pb-offers-saved-card > .pb-offmod-offer { min-height: 10rem; padding: var(--space-2); border: 0; background: var(--pb-surface-sunk); font-size: 1rem; line-height: 1.6; }
 .pb-offers-saved-card .pb-offmod-head { justify-content: space-between; }

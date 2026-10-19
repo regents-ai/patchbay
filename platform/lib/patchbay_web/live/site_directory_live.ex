@@ -135,7 +135,16 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         </p>
         <p>{length(@page.sites)} / {metric(@page.total)}</p>
       </div>
-      <p :if={@problem} role="alert" class="pb-directory-notice">{@problem}</p>
+      <p
+        :if={@problem}
+        id="pb-directory-problem"
+        role="alert"
+        class="pb-directory-notice"
+        phx-hook="MotionRefusal"
+        data-refused
+      >
+        {@problem}
+      </p>
       <p :if={!@page.cache_available?} role="status" class="pb-directory-notice">
         Saved listings are available. Refresh is temporarily unavailable.
       </p>

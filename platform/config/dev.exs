@@ -19,18 +19,23 @@ config :patchbay, Patchbay.Repo,
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
 # The browser walk's server (assets/playwright.config.ts) never leaves the machine.
-# Its chain nodes and sign-in service are a closed port here, so their reads fail at
-# once, and any other request outside it is refused and fails the walk
-# (PatchbayDev.WalkOffline).
+# Its chain nodes and the outside lists a site's check searches are a closed port
+# here, so their reads fail at once (PatchbayDev.WalkClosed for the lists), its
+# sign-in service has no address (assets/test/browser/support/serve.sh clears
+# it), no site's name resolves, and any other request outside it is refused and
+# fails the walk (PatchbayDev.WalkOffline), in that run's own file.
 walk? = System.get_env("PATCHBAY_WALK") == "true"
 
 if walk? do
   closed = "http://127.0.0.1:9"
 
   config :patchbay, :chain_nodes, %{8453 => closed, 1 => closed}
-  config :regent_agents, :siwa, url: closed, audience: "patchbay"
   config :req, default_options: [adapter: PatchbayDev.WalkOffline]
-  config :patchbay, :walk_outside_file, Path.expand("../tmp/walk-outside.txt", __DIR__)
+  config :patchbay, :assist_target, resolve: &PatchbayDev.WalkOffline.resolve/1
+  config :patchbay, :site_scan_req_options, adapter: PatchbayDev.WalkClosed
+
+  outside = "../tmp/walk-outside#{System.get_env("PATCHBAY_DEV_PARTITION")}.txt"
+  config :patchbay, :walk_outside_file, Path.expand(outside, __DIR__)
   # No background work runs during a walk: its scheduled site scans, pictures and
   # source refreshes reach outside the machine, and no walk check waits on one.
   config :patchbay, Oban, testing: :manual
@@ -87,16 +92,21 @@ config :patchbay, PatchbayWeb.Endpoint,
 
 # Reload browser tabs when matching files change.
 config :patchbay, PatchbayWeb.Endpoint,
-  live_reload: [
-    web_console_logger: true,
-    patterns: [
-      # Static assets, except user uploads
-      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
-      # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/patchbay_web/router\.ex$"E,
-      ~r"lib/patchbay_web/(controllers|live|components)/.*\.(ex|heex)$"E
-    ]
-  ]
+  # Nothing changes under the browser walk, so its pages carry no live reload frame.
+  live_reload:
+    if(walk?,
+      do: [],
+      else: [
+        web_console_logger: true,
+        patterns: [
+          # Static assets, except user uploads
+          ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
+          # Router, Controllers, LiveViews and LiveComponents
+          ~r"lib/patchbay_web/router\.ex$"E,
+          ~r"lib/patchbay_web/(controllers|live|components)/.*\.(ex|heex)$"E
+        ]
+      ]
+    )
 
 # Enable dev routes for dashboard and mailbox
 config :patchbay, dev_routes: true

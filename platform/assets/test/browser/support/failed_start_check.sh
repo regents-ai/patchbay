@@ -1,7 +1,8 @@
 #!/bin/sh
-# A walk whose server can't start must leave no database behind. The port the
-# server asks for is already taken, so `mix phx.server` fails after serve.sh has
-# made the database; serve.sh must then exit with an error and drop it.
+# A walk whose server can't start must leave no database and no saved sign-ins
+# behind. The port the server asks for is already taken, so `mix phx.server` fails
+# after serve.sh has made the database and signed the walk's people in; serve.sh
+# must then exit with an error and drop both.
 set -u
 cd "$(dirname "$0")/../../.."
 
@@ -27,9 +28,11 @@ status=$?
 left=$(psql -h 127.0.0.1 -U "${PATCHBAY_DB_USERNAME:-${USER:-postgres}}" -d postgres -Atc \
   "select count(*) from pg_database where datname = 'patchbay_dev_browser_$port'")
 
+signins=$([ -e "test/browser/.auth/_browser_$port" ] && echo left || echo none)
+
 # It must have got as far as starting the server, which fails on the taken port.
 reached=$(grep -c -i "eaddrinuse" "$log")
 rm -f "$log"
 
-echo "failed start check: serve.sh exit $status, port refused $reached time(s), databases left for port $port: $left"
-[ "$status" -ne 0 ] && [ "$reached" -gt 0 ] && [ "$left" = "0" ]
+echo "failed start check: serve.sh exit $status, port refused $reached time(s), databases left for port $port: $left, sign-ins: $signins"
+[ "$status" -ne 0 ] && [ "$reached" -gt 0 ] && [ "$left" = "0" ] && [ "$signins" = "none" ]

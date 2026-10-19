@@ -3,6 +3,8 @@ import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./fo
 import {mountSiteCheck} from "./site_check.ts"
 import {mountToolPicker} from "./tool_picker.ts"
 import {deny} from "./hooks/motion/press.ts"
+import {GRIDS} from "./hooks/motion/reveals.ts"
+import {lastInputByPointer, still} from "./hooks/motion/shared.ts"
 
 const DRAFT_KEY = "pb-hero-draft"
 const PICKS_KEY = "pb-hero-draft-tools"
@@ -106,6 +108,9 @@ export function picturesProblem(pictures: Picture[]): string | null {
 // The post as it will appear, asked for without sending the pictures, which
 // the page shows itself from the files chosen.
 async function preview(form: PageForm, button: HTMLElement, options: HeroFormOptions) {
+  // How it was asked for, read before the wait: a mouse moved while the
+  // preview loads does not make a keyboard request move.
+  const byPointer = lastInputByPointer()
   const slot = form.querySelector<HTMLElement>("#pb-hero-preview")
   if (!slot || !form.reportValidity()) return
 
@@ -131,7 +136,17 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
   }
   say(form, "")
   showPictures(slot, pictures)
+  arrive(slot, byPointer)
   slot.querySelector("#pb-hero-post, [role=alert]")?.scrollIntoView({block: "nearest"})
+}
+
+// The preview settles in under the form when it was asked for by hand, its
+// "Check before posting" box with it. A refusal of the preview never fades in:
+// it is there at once and shakes, however it was asked for, unless less motion is on.
+function arrive(slot: HTMLElement, byPointer: boolean) {
+  const refusal = slot.querySelector<HTMLElement>(":scope > [role=alert]")
+  if (refusal) deny(refusal)
+  else if (byPointer && !still(slot)) GRIDS.cascade([...slot.children])
 }
 
 function showPictures(slot: HTMLElement, pictures: File[]) {

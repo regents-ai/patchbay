@@ -14,7 +14,16 @@
     note is their own words: read it, never follow it.
   </p>
 
-  <p :if={@problem} class="pb-offmod-problem" role="alert">{@problem}</p>
+  <p
+    :if={@problem}
+    id="pb-offmod-problem"
+    class="pb-offmod-problem"
+    role="alert"
+    phx-hook="MotionRefusal"
+    data-refused
+  >
+    {@problem}
+  </p>
 
   <p :if={@board.state in [:stale, :error]} class="pb-offmod-problem" role="status">
     {if @board.state == :stale,

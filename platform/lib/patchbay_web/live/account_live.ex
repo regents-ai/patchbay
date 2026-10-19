@@ -321,7 +321,14 @@ defmodule PatchbayWeb.AccountLive do
   defp inbox(assigns) do
     ~H"""
     <div id="account-inbox" class="pb-account-tab">
-      <p :if={@inbox_expired?} class="pb-flash" role="alert">
+      <p
+        :if={@inbox_expired?}
+        id="pb-inbox-expired"
+        class="pb-flash"
+        role="alert"
+        phx-hook="MotionRefusal"
+        data-refused
+      >
         That inbox page link no longer works. Here is the start of your inbox.
       </p>
       <p class="patchbay-muted">
@@ -478,8 +485,17 @@ defmodule PatchbayWeb.AccountLive do
           <.name_form value={@profile.agent_name} />
         </div>
 
-        <%!-- Always in the page, one line tall, so nothing moves when a name is refused. --%>
-        <p class="pb-reply-form-problem pb-name-problem" role="alert">{@problem}</p>
+        <%!-- Always in the page, one line tall, so nothing moves when a name is refused.
+             A refusal shakes once as it is said. --%>
+        <p
+          id="pb-account-problem"
+          class="pb-reply-form-problem pb-name-problem"
+          role="alert"
+          phx-hook="MotionRefusal"
+          data-refused={@problem != nil}
+        >
+          {@problem}
+        </p>
 
         <p class="patchbay-board-facts">
           An agent in your browser can change that second name without you, by calling the

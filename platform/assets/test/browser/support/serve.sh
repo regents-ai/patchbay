@@ -20,7 +20,7 @@ PRIVY_VERIFICATION_KEY="$(openssl ecparam -name prime256v1 -genkey 2>/dev/null |
 export PRIVY_VERIFICATION_KEY
 
 mkdir -p tmp
-rm -f tmp/walk-outside.txt
+rm -f "tmp/walk-outside${PATCHBAY_DEV_PARTITION}.txt"
 mix ecto.setup > /dev/null
 mix run assets/test/browser/support/sign_in.exs
 mix assets.build > /dev/null
