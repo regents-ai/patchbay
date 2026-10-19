@@ -57,8 +57,9 @@ defmodule PatchbayWeb.AgentRoomController do
   def cancel(conn, params),
     do:
       operation(conn, params, fn actor, room, session ->
+        # Ash.transact sends the cancel's notifications once the transaction commits.
         {:ok, invocation} =
-          Patchbay.Repo.transaction(fn ->
+          Ash.transact(Invocation, fn ->
             invocation = owned_invocation!(params["id"], actor, room, session)
             locked_room = Domain.get_room_for_update!(room.id)
             invocation = Domain.get_invocation_for_update!(invocation.id)
