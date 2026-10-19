@@ -1,4 +1,4 @@
-import type {Page} from "@playwright/test"
+import type {Locator, Page} from "@playwright/test"
 import {
   connected,
   expect,
@@ -6,12 +6,13 @@ import {
   inlineStyle,
   movesInside,
   movesOf,
+  movesWithin,
   press,
   test,
   toRest,
   watchInside,
 } from "./support/motion"
-import {signedIn, watch} from "./support/test"
+import {signInFile, signedIn, watch} from "./support/test"
 
 const MISSING_FIX = "/fixes/00000000-0000-0000-0000-000000000000"
 
@@ -26,14 +27,24 @@ const fades = (moves: string[]) =>
   moves.some(move => move.split("; ").some(part => part.startsWith("opacity ") && Number(part.slice(8)) < 1))
 
 // The home page's form, filled in, and its button that asks for a preview.
-async function askForPreview(page: Page) {
+async function askForPreview(page: Page, title = "Book a table for two on Friday") {
   await page.goto("/")
-  await page.getByRole("textbox", {name: "Describe your WebMCP issue"}).fill("Book a table for two on Friday")
+  await page.getByRole("textbox", {name: "Describe your WebMCP issue"}).fill(title)
   await page.getByRole("textbox", {name: "The site"}).fill("https://example.com")
   return page.getByRole("button", {name: "Post to agent forum"})
 }
 
 const previewOf = (page: Page) => page.getByRole("region", {name: "Your post, exactly as everyone will see it"})
+
+// Read once the next frame is drawn, when a motion started with the preview has
+// written its first step: nothing moved on it or inside it, from a script or the
+// stylesheet, and nothing is moving.
+async function staysStill(preview: Locator) {
+  await preview.page().evaluate(() => new Promise(drawn => requestAnimationFrame(drawn)))
+  expect(await movesWithin(preview)).toEqual([])
+  expect(await preview.evaluate(el => el.getAnimations({subtree: true}).length)).toBe(0)
+  expect(await inlineStyle(preview)).toBe("")
+}
 
 test.describe("the home page's preview", () => {
   test("asked for by hand, it settles in and ends at rest", async ({page, isMobile}) => {
@@ -44,17 +55,43 @@ test.describe("the home page's preview", () => {
     expect((await movesOf(preview)).some(move => move.includes("translateY"))).toBe(true)
   })
 
+  test("with a box asking to check something private, it settles in whole, and the box does not shake", async ({
+    page,
+    isMobile,
+  }) => {
+    await press(await askForPreview(page, "Book a table for two, then mail me at diner@example.com"), isMobile)
+    const preview = previewOf(page)
+    const check = preview.getByRole("alert").filter({hasText: "Check before posting."})
+    await expect(check).toBeVisible()
+    await toRest(preview)
+    expect((await movesOf(preview)).some(move => move.includes("translateY"))).toBe(true)
+    expect(shakes(await movesWithin(check))).toBe(false)
+  })
+
+  test("a refused preview shakes its reason, then rests", async ({page, isMobile}) => {
+    await press(await askForPreview(page, `Book a table for two on Friday ${"and again ".repeat(15)}`), isMobile)
+    const reason = page.getByRole("alert").filter({hasText: "A forum post's title is what you are trying to do"})
+    await expect(reason).toBeVisible()
+    await toRest(reason)
+    expect(shakes(await movesOf(reason))).toBe(true)
+    await expect(previewOf(page)).toHaveCount(0)
+  })
+
   test("the buttons stay put while the address is looked at and answered", async ({page}) => {
-    const ask = await askForPreview(page)
-    const before = await ask.boundingBox()
+    // The post button and the details toggle. On a phone both are under the
+    // address; on a desktop the post button stands beside the question and the
+    // toggle is under the address.
+    const controls = [await askForPreview(page), page.getByRole("group").getByText("Details help find a solution")]
+    const places = () => Promise.all(controls.map(control => control.boundingBox()))
+    const before = await places()
     // Leaving the field asks at once, as a tap on the button does; what is
     // found is said under it, as the field's description.
     const site = page.getByRole("textbox", {name: "The site"})
     await site.blur()
     await expect(site).toHaveAccessibleDescription("Looking for WebMCP tools at this address…")
-    expect(await ask.boundingBox()).toEqual(before)
+    expect(await places()).toEqual(before)
     await expect(site).toHaveAccessibleDescription("That address does not lead to any site.")
-    expect(await ask.boundingBox()).toEqual(before)
+    expect(await places()).toEqual(before)
   })
 
   test("asked for from the keyboard, it stays still", async ({page, isMobile}) => {
@@ -64,8 +101,7 @@ test.describe("the home page's preview", () => {
     await page.keyboard.press("Enter")
     const preview = previewOf(page)
     await expect(preview).toBeVisible()
-    expect(await movesOf(preview)).toEqual([])
-    expect(await inlineStyle(preview)).toBe("")
+    await staysStill(preview)
   })
 
   test("asked for from the keyboard, it stays still when the mouse moves during the wait", async ({page, isMobile}) => {
@@ -84,8 +120,7 @@ test.describe("the home page's preview", () => {
     answered()
     const preview = previewOf(page)
     await expect(preview).toBeVisible()
-    expect(await movesOf(preview)).toEqual([])
-    expect(await inlineStyle(preview)).toBe("")
+    await staysStill(preview)
   })
 
   test.describe("with less motion", () => {
@@ -96,8 +131,7 @@ test.describe("the home page's preview", () => {
       await (await askForPreview(page)).click()
       const preview = previewOf(page)
       await expect(preview).toBeVisible()
-      expect(await movesOf(preview)).toEqual([])
-      expect(await inlineStyle(preview)).toBe("")
+      await staysStill(preview)
     })
   })
 })
@@ -187,7 +221,21 @@ test.describe("saving an Offer", () => {
   // and the widths run at once (support/sign_in.exs).
   test.use({
     storageState: async ({}, use, info) =>
-      use(`test/browser/.auth/offers-${info.project.name.replace(/\W+/g, "-")}.json`),
+      use(signInFile(`offers-${info.project.name.replace(/\W+/g, "-")}`)),
+  })
+
+  test("a refused save shakes its reason, then rests", async ({page}) => {
+    const problems = watch(page)
+    await page.goto("/offers/create")
+    await connected(page)
+    await page.getByRole("textbox", {name: "Private name"}).fill("Two lines")
+    await page.getByRole("textbox", {name: "Offer text"}).fill("Try Patchbay.\nOn two lines.")
+    await page.getByRole("button", {name: "Save Offer"}).click()
+    const reason = page.getByRole("alert").filter({hasText: "The wording must be a single line."})
+    await expect(reason).toBeVisible()
+    await toRest(reason)
+    expect(shakes(await movesOf(reason))).toBe(true)
+    await problems.expect()
   })
 
   test("a saved Offer fades in where it can be seen, the row makes room, the count rolls, and every card ends with nothing written on it", async ({
@@ -211,6 +259,7 @@ test.describe("saving an Offer", () => {
     }
 
     const rested = async () => {
+      await toRest(row)
       for (const card of await cards.all()) {
         await toRest(card)
         expect(
@@ -236,12 +285,15 @@ test.describe("saving an Offer", () => {
     await rested()
     const arrived = await movesOf(cards.filter({hasText: second}))
     expect(fades(arrived)).toBe(true)
-    // The new card is in the row's view, whole, not scrolled past.
+    // The new card comes first, in the row's view, whole, not scrolled past.
+    await expect(cards.first()).toContainText(second)
     const [seen, card] = [await row.boundingBox(), await cards.filter({hasText: second}).boundingBox()]
     expect(card!.x).toBeGreaterThanOrEqual(seen!.x)
     expect(card!.x + card!.width).toBeLessThanOrEqual(seen!.x + seen!.width)
     expect((await movesInside(count)).some(move => move.includes("translateY"))).toBe(true)
     expect(slides(arrived)).toBe(false)
+    // Nor does the stylesheet move it on its way in.
+    expect(arrived.filter(move => /^(animation|transition) /.test(move))).toEqual([])
     expect(slides(await movesOf(cards.filter({hasText: first})))).toBe(true)
     await problems.expect()
   })
@@ -254,16 +306,10 @@ test("Claude's picture tilts under a mouse and stays put after a tap", async ({p
   const figure = hero.getByRole("img", {includeHidden: true}).first()
   if (isMobile) {
     await figure.tap({force: true})
-    // Two frames drawn after the tap: a tilt it set off would be under way by now.
-    const after = await figure.evaluate(
-      el =>
-        new Promise<[number, string]>(done =>
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => done([el.getAnimations().length, getComputedStyle(el).transform])),
-          ),
-        ),
-    )
-    expect(after).toEqual([0, "none"])
+    // The tap leaves the picture hovered, as a phone does; asking for its
+    // animations brings its style up to date, so a tilt it set off is there.
+    expect(await figure.evaluate(el => el.matches(":hover"))).toBe(true)
+    expect(await figure.evaluate(el => [el.getAnimations().length, getComputedStyle(el).transform])).toEqual([0, "none"])
   } else {
     expect(await figure.evaluate(el => getComputedStyle(el).transitionDuration)).toBe("0.28s")
     await figure.hover({force: true})

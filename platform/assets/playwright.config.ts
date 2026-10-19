@@ -9,10 +9,11 @@ import {defineConfig, devices} from "@playwright/test"
 // requests fail the check that made them (test/browser/support/test.ts), and the
 // server, with the outside services' settings cleared, refuses its own and the walk
 // fails at the end (config/dev.exs, test/browser/support/teardown.ts).
-// Each run takes a port nothing on this machine is using and names its database
-// after it, patchbay_dev_browser_<port>, so two walks at once never reach each
-// other's server or data. The workers read this file again and keep the run's port
-// from the environment they inherit.
+// Each run takes a port nothing on this machine is using and names its database,
+// saved sign-ins, outside-request list and failed checks' traces after it
+// (patchbay_dev_browser_<port>, test-results/_browser_<port>), so two walks at once,
+// even in one checkout, never reach each other's server, data or files. The workers
+// read this file again and keep the run's port from the environment they inherit.
 process.env.PATCHBAY_WALK_PORT ??= execFileSync(process.execPath, [
   "-e",
   "const s = require('node:net').createServer().listen(0, '127.0.0.1', () => { console.log(s.address().port); s.close() })",
@@ -29,6 +30,7 @@ export default defineConfig({
   retries: 0,
   reporter: "line",
   globalTeardown: "./test/browser/support/teardown.ts",
+  outputDir: `test-results/${process.env.PATCHBAY_DEV_PARTITION}`,
   use: {baseURL, trace: "retain-on-failure"},
   webServer: {
     command: `PORT=${port} test/browser/support/serve.sh`,

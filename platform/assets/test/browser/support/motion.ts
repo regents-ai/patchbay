@@ -38,7 +38,9 @@ export const test = walk.extend<{faults: void}>({
 type Recorded = Element & {pbMoves?: string[]; pbInside?: string[]}
 
 // Installed before any page script runs: each inline transform, translate or
-// opacity written onto an element is kept on the element, in order.
+// opacity written onto an element is kept on the element, in order, and so is each
+// animation or transition the stylesheet starts on it ("animation <name>",
+// "transition <property>").
 function recordMoves() {
   const note = (el: Node) => {
     if (!(el instanceof HTMLElement || el instanceof SVGElement)) return
@@ -57,6 +59,11 @@ function recordMoves() {
       change.addedNodes.forEach(note)
     }
   }).observe(document, {subtree: true, childList: true, attributes: true, attributeFilter: ["style"]})
+
+  const started = (move: string) => (event: Event) =>
+    ((event.target as Recorded).pbMoves ??= []).push(`${move} ${(event as AnimationEvent & TransitionEvent)[move === "animation" ? "animationName" : "propertyName"]}`)
+  document.addEventListener("animationstart", started("animation"), true)
+  document.addEventListener("transitionstart", started("transition"), true)
 }
 
 /**
@@ -81,6 +88,12 @@ export const movesInside = (locator: Locator) => locator.evaluate(el => (el as R
 /** The moves written onto this element since the page loaded. */
 export const movesOf = (locator: Locator) => locator.evaluate(el => (el as Recorded).pbMoves ?? [])
 
+/** The moves recorded on this element and on everything inside it. */
+export const movesWithin = (locator: Locator) =>
+  locator.evaluate(root =>
+    [root, ...root.querySelectorAll("*")].flatMap(el => (el as Recorded).pbMoves ?? []),
+  )
+
 /** Forgets the moves recorded so far on every element of the page. */
 export const forgetMoves = (page: Page) =>
   page.evaluate(() => document.querySelectorAll("*").forEach(el => delete (el as Recorded).pbMoves))
@@ -88,8 +101,16 @@ export const forgetMoves = (page: Page) =>
 /** The element's inline style, "" when it has none. */
 export const inlineStyle = (locator: Locator) => locator.evaluate(el => (el.getAttribute("style") ?? "").trim())
 
-/** Waits until the element has no inline style: its motion has handed it back to the stylesheet. */
-export const toRest = (locator: Locator) => expect.poll(() => inlineStyle(locator), {timeout: 5_000}).toBe("")
+/**
+ * Waits until the element has no inline style and nothing animates on it: its
+ * motion has handed it back to the stylesheet, and the stylesheet is still.
+ */
+export const toRest = (locator: Locator) =>
+  expect
+    .poll(async () => [await inlineStyle(locator), await locator.evaluate(el => el.getAnimations().length)], {
+      timeout: 5_000,
+    })
+    .toEqual(["", 0])
 
 /** Waits for the live page to connect. */
 export const connected = (page: Page) => page.locator("[data-phx-main].phx-connected").waitFor()

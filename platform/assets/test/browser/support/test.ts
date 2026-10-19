@@ -36,8 +36,12 @@ export const test = base.extend<{onThisMachine: void}>({
   }, {auto: true}],
 })
 
-// The walk's person, signed in by sign_in.exs before the server starts.
-export const signedIn = {storageState: "test/browser/.auth/person.json"}
+// A person's saved sign-in, written by sign_in.exs into this run's own folder
+// before the server starts.
+export const signInFile = (person: string) => `test/browser/.auth/${process.env.PATCHBAY_DEV_PARTITION}/${person}.json`
+
+// The walk's person.
+export const signedIn = {storageState: signInFile("person")}
 
 // What a broken page shows: an uncaught error, or content wider than the screen.
 export function watch(page: Page) {

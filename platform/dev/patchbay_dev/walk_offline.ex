@@ -2,11 +2,12 @@ defmodule PatchbayDev.WalkOffline do
   @moduledoc """
   The browser walk's server never leaves the machine. With `PATCHBAY_WALK` set
   (assets/playwright.config.ts), every request the server makes through Req comes
-  here first: one to this machine goes ahead, and any other is written to the walk's
+  here first: one to this machine goes ahead, and any other is written to this run's
   list of outside requests and refused by raising, so the walk fails at its end
   (assets/test/browser/support/teardown.ts), whichever page caused it.
-  A site's name never resolves, so checking a site's tools finds it unreachable
-  without asking the outside resolver.
+  No name outside this machine resolves (`:assist_target`), so looking at a
+  site's tools, a site's check and refresh, Offers screening and Jev's work
+  find the site unreachable without asking the outside resolver.
   """
 
   @this_machine ["127.0.0.1", "localhost", "::1"]

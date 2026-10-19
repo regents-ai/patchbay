@@ -140,11 +140,12 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
   slot.querySelector("#pb-hero-post, [role=alert]")?.scrollIntoView({block: "nearest"})
 }
 
-// The preview settles in under the form when it was asked for by hand. A
-// refusal never fades in: it is there at once and shakes, however it was asked for.
+// The preview settles in under the form when it was asked for by hand, its
+// "Check before posting" box with it. A refusal of the preview never fades in:
+// it is there at once and shakes, however it was asked for, unless less motion is on.
 function arrive(slot: HTMLElement, byPointer: boolean) {
-  const reasons = slot.querySelectorAll("[role=alert]")
-  if (reasons.length > 0) reasons.forEach(deny)
+  const refusal = slot.querySelector<HTMLElement>(":scope > [role=alert]")
+  if (refusal) deny(refusal)
   else if (byPointer && !still(slot)) GRIDS.cascade([...slot.children])
 }
 

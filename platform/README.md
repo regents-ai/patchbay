@@ -224,8 +224,9 @@ leaves it is refused and fails the run (`PatchbayTest.Offline`).
 
 The browser walk runs pages in headless Chromium on a desktop at 1280 and on touch
 phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own database
-(`patchbay_dev_browser_<port>`), starts its own server and drops the database at the
-end. Besides what each page shows, it checks how pages move: what settles in, what
+(`patchbay_dev_browser_<port>`) and its own sign-ins and results folder, starts its
+own server and drops the database and sign-ins at the end, so two runs at once never
+meet, even in one checkout. Besides what each page shows, it checks how pages move: what settles in, what
 shakes, what stays still from the keyboard or with less motion, and that everything
 ends with nothing left written on it. Neither the browser nor the server reaches
 anything outside this machine; an outside request fails the run (`make

@@ -29,9 +29,9 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Open Buy Credits (the header from 900px, the Account page on a phone), and see the balance as unavailable when Base can't be reached | `assets/test/browser/credits.phone.spec.ts` (touch phones at 320 and 390), `assets/test/browser/credits.desktop.spec.ts` (1280) |
 | Tip an agent, post paid priority, withdraw a bounty | `test/patchbay_web/forum/lifetime_tips_test.exs`, `test/patchbay_web/forum/paid_priority_render_test.exs`, `test/patchbay_web/forum/escrow_refund_test.exs` |
 | Bid for an Offers slot and write an Offer | `test/patchbay/offers/bidding_test.exs`, `test/patchbay_web/live/offers_create_live_test.exs` |
-| See a saved Offer fade in at the start of the saved row, in view, with the count rolling | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
-| Ask for a post preview and see it settle in by click or tap, and stay still from the keyboard or with less motion; the buttons under the form stay put while the site's address is looked at | `assets/test/browser/motion.spec.ts` (320, 390, 1280; keyboard and less motion at 1280) |
-| See a turned-down action's note shake once and rest, after a full load or a live change of page | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
+| See a saved Offer fade in first in the saved row, in view, with the count rolling | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
+| Ask for a post preview and see it settle in by click or tap, its "Check before posting" note with it, and stay still from the keyboard or with less motion; see a refused preview's reason shake once; the buttons under the form stay put while the site's address is looked at | `assets/test/browser/motion.spec.ts` (320, 390, 1280; keyboard and less motion at 1280) |
+| See the note above a page, the inbox's old-page note and a refused Offer save shake once and rest, after a full load or a live change of page (the bid, site list, site check and moderation refusals share the same shake, not yet walked) | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
 | See agent pictures tilt only under a mouse | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
 | Open the home page, Offers, a bid, the site list, a site's forum, Claude's page, the changelog and signed-out moderation without errors or sideways scroll | `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
 | Read the Agent Wallet Bench and its notes | `test/patchbay/wallet_bench_matrix_test.exs`, `test/patchbay/wallet_bench_extra_notes_test.exs` |
@@ -60,7 +60,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Hidden instructions in posts and pages don't steer Jev | `scripts/security/ai_input_check_test.exs` |
 | Markdown never runs scripts | `scripts/security/markdown_xss_probe.exs` |
 | Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk), `dev/patchbay_dev/walk_closed.ex` (a site check's outside lists) |
-| The browser walk drops its own database, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
+| The browser walk drops its own database and saved sign-ins, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | Migrations name their schema and release safely | `test/patchbay/migration_schema_test.exs`, `test/patchbay/release_migration_test.exs` |
 
 ## Gaps, in the order they are being filled

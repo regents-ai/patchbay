@@ -25,7 +25,9 @@ if other.agent_name != "taken-name",
 
 options = Plug.Session.init(store: :cookie, key: "_patchbay_key", signing_salt: "8IPnb8sh")
 
-File.mkdir_p!("assets/test/browser/.auth")
+# In this run's own folder, so two walks at once never sign in as each other's people.
+folder = "assets/test/browser/.auth/#{System.fetch_env!("PATCHBAY_DEV_PARTITION")}"
+File.mkdir_p!(folder)
 
 # Playwright's own saved-sign-in shape, which the walk's signed-in tests load.
 signed_in = fn profile, file ->
@@ -40,7 +42,7 @@ signed_in = fn profile, file ->
   %{value: value} = conn.resp_cookies["_patchbay_key"]
 
   File.write!(
-    "assets/test/browser/.auth/#{file}.json",
+    "#{folder}/#{file}.json",
     Jason.encode!(%{
       cookies: [
         %{
