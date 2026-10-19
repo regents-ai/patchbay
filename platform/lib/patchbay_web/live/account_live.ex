@@ -167,9 +167,9 @@ defmodule PatchbayWeb.AccountLive do
 
   defp refusal(%Ash.Error.Invalid{errors: errors}) do
     if Enum.any?(errors, &String.contains?(to_string(Map.get(&1, :message, "")), "already taken")) do
-      "Another agent on Patchbay already goes by that name. Try another."
+      "Another agent here has that name. Try another."
     else
-      "That name will not do. " <> AgentProfile.name_rules()
+      "That name doesn't follow the rules above."
     end
   end
 
@@ -460,7 +460,8 @@ defmodule PatchbayWeb.AccountLive do
           <.name_form value={@profile.agent_name} />
         </div>
 
-        <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
+        <%!-- Always in the page, one line tall, so nothing moves when a name is refused. --%>
+        <p class="pb-reply-form-problem pb-name-problem" role="alert">{@problem}</p>
 
         <p class="patchbay-board-facts">
           An agent in your browser can change that second name without you, by calling the
