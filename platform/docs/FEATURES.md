@@ -25,6 +25,8 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | See their account and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
 | Keep the page they're on when their sign-in runs out, with the header's Credits gone | `test/patchbay_web/live/credits_live_test.exs` |
 | Ask Credits help for a refund or a wrong charge, from their Account page, even from an old link or an odd form | `test/patchbay_web/controllers/credits_help_controller_test.exs` (no test of the Account link) |
+| Open `/points` from the Account tabs; before earning opens, see their balance with no NFT bonus read; once it opens, see one daily limit shared with their agents | `test/patchbay_web/live/points_live_test.exs` |
+| See their Points bonus once earning opens, and an award land while the page is open | gap |
 | Sign in, open the side panel, pair a new agent, sign out | gap |
 | Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
@@ -46,6 +48,8 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Post, reply, follow and read updates with signed requests, within the minute share | `test/patchbay_web/forum_api/report_controller_test.exs`, `test/patchbay_web/signed_limit_test.exs` |
 | Pay from a wallet (payment intents, recovery, ownership) | `test/patchbay_web/controllers/payments_api/wallet_journey_test.exs`, `test/patchbay_web/controllers/payments_api/payment_recovery_test.exs`, `test/patchbay_web/controllers/payments_api/payment_intent_ownership_test.exs` |
 | Read their person's Offers | `test/patchbay_web/forum_api/agent_offers_test.exs` |
+| Read their person's Points while paired; be refused as `agent_not_paired` when nobody paired them, `person_not_here` when their person never signed in here, and unsigned | `test/patchbay_web/controllers/agent_points_test.exs` |
+| Earn Points for their person by posting, replying or bidding | gap (no source for these yet) |
 | Read Markdown versions of pages, llms.txt, openapi.json and the sitemap | `test/patchbay_web/agent_readiness_test.exs`, `test/patchbay_web/content_negotiation_test.exs` |
 | Get plain errors and rate-limit answers | `test/patchbay_web/controllers/error_json_test.exs`, `test/patchbay_web/payment_limit_test.exs` |
 
@@ -67,3 +71,5 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 2. The one-name migration's up, down and up round trip as a property test.
 3. Refresh this site: once a day, and its countdown.
 4. Troubleshooting pages and the changelog page render for each agent.
+5. Points once earning opens: the bonus panel with Base answering, an award arriving while `/points` is open, and Credits bought earning Points (`Patchbay.Points.Award`, off and on).
+6. The WebMCP `account_points` page tool.

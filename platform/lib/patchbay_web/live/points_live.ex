@@ -2,8 +2,9 @@ defmodule PatchbayWeb.PointsLive do
   @moduledoc """
   The signed-in person's Regent Points, as in the Regent template: what they
   and their paired agents have earned, counted in one account shared by every
-  Regent site, their NFT bonus, and what earns points. The NFT bonus is added at
-  the end of each 30-day period. Nothing earns until earning opens.
+  Regent site, their NFT bonus once earning opens, and what earns points. The
+  NFT bonus is added at the end of each 30-day period. Nothing earns until
+  earning opens.
 
   The page reads the person's shared Regent account
   (`Patchbay.Accounts.HumanAccount`), which their sign-in recorded. Like
@@ -31,8 +32,7 @@ defmodule PatchbayWeb.PointsLive do
         {:ok, socket}
 
       profile ->
-        {:ok,
-         socket |> assign(person: person(profile)) |> subscribe() |> read_points() |> read_bonus()}
+        {:ok, socket |> person(profile) |> subscribe() |> read_points() |> read_bonus()}
     end
   end
 
@@ -44,10 +44,12 @@ defmodule PatchbayWeb.PointsLive do
 
   defp subscribe(socket), do: socket
 
-  defp person(%{privy_user_id: did}) do
+  # A failed account lookup shows the page's "could not be read" notice.
+  defp person(socket, %{privy_user_id: did}) do
     case Patchbay.Accounts.by_privy(did, actor: %{role: :system}) do
-      {:ok, %{id: id}} -> %{role: :human, human_account_id: id}
-      {:ok, nil} -> nil
+      {:ok, %{id: id}} -> assign(socket, person: %{role: :human, human_account_id: id})
+      {:ok, nil} -> socket
+      {:error, error} -> assign(socket, points: %Read{state: :error, error: error})
     end
   end
 
@@ -67,7 +69,10 @@ defmodule PatchbayWeb.PointsLive do
   defp read_points(socket), do: socket
 
   # The NFT tier is read from Base once per page open, never on each award
-  # notice, against the same allowance as the Buy panel's reads.
+  # notice, against the same allowance as the Buy panel's reads. While earning
+  # is off there is no period to add a bonus to, so nothing is read.
+  defp read_bonus(%{assigns: %{earning: []}} = socket), do: socket
+
   defp read_bonus(%{assigns: %{person: %{human_account_id: id}}} = socket) do
     profile_id = socket.assigns.current_profile.id
 
@@ -93,6 +98,8 @@ defmodule PatchbayWeb.PointsLive do
         <p>What you and your paired agents earn on Regent sites, counted in one account.</p>
       </header>
 
+      <PatchbayWeb.AccountLive.tabs current={:points} />
+
       <Regent.Account.signed_out
         :if={is_nil(@current_profile)}
         id="points-signed-out"
@@ -105,7 +112,7 @@ defmodule PatchbayWeb.PointsLive do
         </:sign_in>
       </Regent.Account.signed_out>
 
-      <p :if={@current_profile && is_nil(@person)} role="status">
+      <p :if={@current_profile && is_nil(@person) && @points.state != :error} role="status">
         Your Points account opens the next time you sign in.
       </p>
       <p
@@ -141,7 +148,7 @@ defmodule PatchbayWeb.PointsLive do
             )
           }
         />
-        <section class="pb-account-panel">
+        <section :if={@earning != []} id="points-bonus" class="pb-account-panel">
           <h2>
             Your bonus
             <Regent.Primitives.tip id="points-bonus-about" label="About your points bonus">
@@ -151,7 +158,10 @@ defmodule PatchbayWeb.PointsLive do
             </Regent.Primitives.tip>
           </h2>
           <p :if={@bonus.state in [:idle, :loading]} role="status">Checking your NFTs…</p>
-          <p :if={@bonus.state in [:error, :stale]}>
+          <p :if={@bonus.state in [:error, :stale] and @bonus.error == :limited}>
+            Your NFTs could not be checked just now. Try again in a minute.
+          </p>
+          <p :if={@bonus.state in [:error, :stale] and @bonus.error != :limited}>
             Your NFTs could not be checked. Try refreshing this page.
           </p>
           <dl :if={@bonus.state == :ready} class="pb-points-figures">
@@ -242,15 +252,14 @@ defmodule PatchbayWeb.PointsLive do
           <h3>Daily limits</h3>
           <dl class="pb-points-figures">
             <div>
-              <dt>You</dt>
-              <dd>Up to {whole(Rules.daily_cap("activity:human"))} a day on {names(@apps)}</dd>
-            </div>
-            <div>
-              <dt>Your agents, together</dt>
-              <dd>Up to {whole(Rules.daily_cap("activity:agent"))} a day on {names(@apps)}</dd>
+              <dt>You and your agents</dt>
+              <dd>Up to {whole(Rules.daily_cap("activity:account"))} a day on {names(@apps)}</dd>
             </div>
           </dl>
         </div>
+        <p :if={@earning != []}>
+          Each day starts at midnight UTC, when Earned today and the daily limits start over.
+        </p>
         <h3>NFT bonus</h3>
         <p>
           Animata I, Animata II and Regents Club in your linked wallets, counted at the end of each 30-day period. That period’s points get the bonus.
@@ -342,6 +351,4 @@ defmodule PatchbayWeb.PointsLive do
 
   defp scope_name("activity:account"), do: "You and your agents"
   defp scope_name("credits"), do: "Credits purchases"
-  defp scope_name("activity:human"), do: "Your actions"
-  defp scope_name("activity:agent"), do: "Your agents’ actions"
 end
