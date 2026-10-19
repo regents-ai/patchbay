@@ -294,7 +294,7 @@ config :patchbay, :behind_fly_proxy, false
 # The wallet paid by the Wallet Bench's paid-call test page
 # (`PatchbayWeb.Plugs.X402Test`): the Bench's own funder wallet, which
 # Techtree holds and Patchbay does not. It is not where Patchbay is paid.
-config :patchbay, :x402_test_pay_to, "0x18E8692e3235Db15AdafD2c3AbE8fCFC554Bdef0"
+config :patchbay, :x402_test_pay_to, "0x786C67651BcB148f5A383A150E78bD4Ed9f64f7b"
 
 # Sites are registrable domains, read from the Public Suffix List bundled with
 # domainatrex. Builds use that copy and never fetch the list.

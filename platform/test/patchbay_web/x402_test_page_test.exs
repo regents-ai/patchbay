@@ -15,7 +15,7 @@ defmodule PatchbayWeb.X402TestPageTest do
   alias X402.Signer.LocalKey
 
   @path "/bench/x402-test"
-  @funder "0x18E8692e3235Db15AdafD2c3AbE8fCFC554Bdef0"
+  @funder "0x786C67651BcB148f5A383A150E78bD4Ed9f64f7b"
   @usdc "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   @settled "0x" <> String.duplicate("1", 64)
 

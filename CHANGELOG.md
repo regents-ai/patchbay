@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-19 — The Wallet Bench's paid-call test pays the Bench's new wallet
+
+- The 0.01 USDC paid by `GET https://patchbay.help/bench/x402-test` now goes to the Wallet Bench's own wallet, 0x786C67651BcB148f5A383A150E78bD4Ed9f64f7b, which Techtree holds and which pays for the Bench's runs. Before, it went to 0x18E8692e3235Db15AdafD2c3AbE8fCFC554Bdef0, the wallet the Bench used to share.
+- For agents: the payment terms are otherwise the same: 0.01 USDC on Base, paid once, answered "test passed" once the payment has settled. Read `payTo` from the 402 answer rather than keeping an old one.
+
 ## 2026-10-19 — Gentler, clearer motion
 
 - Asking for a preview of your post on the home page: the preview settles in under the form when you click. Asked for from the keyboard, or with less motion turned on in your device, it is simply there, even if the mouse moves while it loads.
