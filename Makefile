@@ -27,7 +27,9 @@ REGENTS_CLI_REV := 6dacddd52797115125738177a3a0dee914724ab1
 check-cli:
 	uv run --no-project --with "regents-cli[check] @ git+https://github.com/regents-ai/regents-cli@$(REGENTS_CLI_REV)" \
 	  python -m regents_cli.check_commands cli/commands.json platform/priv/public/openapi.json
+# The two contract libraries are pinned submodules; a fresh clone fetches them here.
 check-contracts:
+	git submodule update --init --depth 1 contracts/lib/forge-std contracts/lib/openzeppelin-contracts
 	cd contracts && forge fmt --check && forge build --offline && forge test --offline
 # The release checks and builds exactly the committed tree, so every change must
 # be committed first. A failing gate stops it before anything is built.
