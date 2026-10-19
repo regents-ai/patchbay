@@ -41,7 +41,11 @@ defmodule PatchbayWeb.OffersLive.Expired do
     end
   end
 
+  # Only a signed-in advertiser has more to read.
   @impl true
+  def handle_event("more", _params, %{assigns: %{signed_in?: false}} = socket),
+    do: {:noreply, socket}
+
   def handle_event("more", %{"list" => list}, socket) when list in ["ended", "lost_bids"] do
     list = String.to_existing_atom(list)
     {:noreply, read(socket, list, socket.assigns[cursor(list)])}
