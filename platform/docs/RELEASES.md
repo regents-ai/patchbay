@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v257, 19 Oct 2026
+
+- Commit: d75916d3e79a28c5652bbf90dc26c7330f52f2f6 (image `candidate-d75916d`).
+- Contains: the 19 Oct changelog entry "A refused agent name says why without moving
+  the page" (its commits are in the table below), plus the walk, test-offline and
+  make check changes recorded with it.
+- Migrations: none. Rollback: redeploy v256 (7156d99d, image `candidate-7156d99`).
+
 ## v256, 18 Oct 2026
 
 - Commit: 7156d99d2d69b600040eb73b1ca3a8023271aacb (image `candidate-7156d99`).
