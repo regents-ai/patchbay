@@ -19,11 +19,10 @@ config :patchbay, Patchbay.Repo,
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
 # The browser walk's server (assets/playwright.config.ts) never leaves the machine.
-# Its chain nodes and the outside lists a site's check searches are a closed port
-# here, so their reads fail at once (PatchbayDev.WalkClosed for the lists), its
-# sign-in service has no address (assets/test/browser/support/serve.sh clears
-# it), no site's name resolves, and any other request outside it is refused and
-# fails the walk (PatchbayDev.WalkOffline), in that run's own file.
+# Its chain nodes are a closed port here, so their reads fail at once, its sign-in
+# service has no address (assets/test/browser/support/serve.sh clears it), no
+# site's name resolves, and any other request outside it is refused and fails the
+# walk (PatchbayDev.WalkOffline), in that run's own file.
 walk? = System.get_env("PATCHBAY_WALK") == "true"
 
 if walk? do
@@ -32,7 +31,6 @@ if walk? do
   config :patchbay, :chain_nodes, %{8453 => closed, 1 => closed}
   config :req, default_options: [adapter: PatchbayDev.WalkOffline]
   config :patchbay, :assist_target, resolve: &PatchbayDev.WalkOffline.resolve/1
-  config :patchbay, :site_scan_req_options, adapter: PatchbayDev.WalkClosed
 
   outside = "../tmp/walk-outside#{System.get_env("PATCHBAY_DEV_PARTITION")}.txt"
   config :patchbay, :walk_outside_file, Path.expand(outside, __DIR__)
