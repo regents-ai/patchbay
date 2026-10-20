@@ -26,7 +26,7 @@ wait $server
 status=$?
 
 left=$(psql -h 127.0.0.1 -U "${PATCHBAY_DB_USERNAME:-${USER:-postgres}}" -d postgres -Atc \
-  "select count(*) from pg_database where datname = 'patchbay_dev_browser_$port'")
+  "select count(*) from pg_database where datname = 'patchbay_browser_${port}_dev'")
 
 signins=$([ -e "test/browser/.auth/_browser_$port" ] && echo left || echo none)
 

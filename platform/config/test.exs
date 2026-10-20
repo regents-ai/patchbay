@@ -9,8 +9,8 @@ browser_port = String.to_integer(System.get_env("PORT", "4002"))
 config :patchbay, Patchbay.Repo,
   username: System.get_env("PATCHBAY_DB_USERNAME", System.get_env("USER", "postgres")),
   password: System.get_env("PATCHBAY_DB_PASSWORD"),
-  hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
-  database: "patchbay_test#{System.get_env("MIX_TEST_PARTITION")}",
+  hostname: System.get_env("PATCHBAY_DB_HOST", "127.0.0.1"),
+  database: "patchbay#{System.get_env("MIX_TEST_PARTITION")}_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   # Keep parallel worktrees within the local PostgreSQL connection budget.
   pool_size: 8

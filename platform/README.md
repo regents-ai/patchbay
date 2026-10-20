@@ -82,8 +82,9 @@ running `mix setup`. Do not point this demo at a production database.
 `mix patchbay.setup_local_auth`, in production's order: the shared account table
 Patchbay reads but does not own (`priv/repo/shared_tables.sql`), every shared
 Identity, Agents, Credits, Points and Payments change Patchbay carries, then
-Patchbay's own migrations. It runs again harmlessly, and only on a `patchbay_dev`
-or `patchbay_test` database on this machine.
+Patchbay's own migrations. It runs again harmlessly, and only on a database
+whose name ends in `_dev` or `_test` at 127.0.0.1 on this machine, as on every
+Regent site.
 
 ## Walkthrough
 
@@ -231,7 +232,7 @@ leaves it is refused and fails the run (`PatchbayTest.Offline`).
 
 The browser walk runs pages in headless Chromium on a desktop at 1280 and on touch
 phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own database
-(`patchbay_dev_browser_<port>`) and its own sign-ins and results folder, starts its
+(`patchbay_browser_<port>_dev`) and its own sign-ins and results folder, starts its
 own server and drops the database and sign-ins at the end, so two runs at once never
 meet, even in one checkout. Besides what each page shows, it checks how pages move: what settles in, what
 shakes, what stays still from the keyboard or with less motion, and that everything

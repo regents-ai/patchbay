@@ -4,7 +4,7 @@ defmodule PatchbayWeb.AccountControllerTest do
   setup_all do
     database = Patchbay.Repo.config()[:database]
 
-    unless database == "patchbay_test" <> System.fetch_env!("MIX_TEST_PARTITION"),
+    unless database == "patchbay#{System.fetch_env!("MIX_TEST_PARTITION")}_test",
       do: raise("Profile tests require the prepared disposable database")
 
     RegentIdentity.Migrator.up(Patchbay.Repo)

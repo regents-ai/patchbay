@@ -5,6 +5,7 @@
 - Patchbay now has the same database upkeep tools as every other Regent site: one that lists what the live database still needs without changing anything, and one that sets up a fresh practice copy of the site's database.
 - A copy of Patchbay on a developer's computer is now set up in the same order as the live site, so what is tested matches what runs.
 - Every one of these tools is now tested on throwaway databases, along with Patchbay's existing safety checks.
+- Copies on a developer's computer now use the same database names and the same safety check as every other Regent site.
 - For people and agents using the site: nothing changes.
 
 ## 2026-10-20 — Shared database changes are applied the way every site applies them

@@ -10,15 +10,12 @@ defmodule Patchbay.LocalDatabaseFixture do
     Patchbay.Release.prepare_database!(Patchbay.Repo)
   end
 
-  # Patchbay's local databases are `patchbay_dev` and `patchbay_test`, each
-  # with its partition after the name (the browser walk's
-  # `patchbay_dev_browser_<port>`, `MIX_TEST_PARTITION`), on this machine.
   def validate_target!(env, repo) when is_list(repo) do
     host = to_string(repo[:hostname])
     database = to_string(repo[:database])
 
-    if env in [:dev, :test] and host in ["127.0.0.1", "localhost", "::1"] and
-         String.starts_with?(database, ["patchbay_dev", "patchbay_test"]) do
+    if env in [:dev, :test] and host in ["127.0.0.1", "::1"] and
+         String.ends_with?(database, ["_dev", "_test"]) do
       :ok
     else
       raise "local human-account fixture refused unsafe database target"

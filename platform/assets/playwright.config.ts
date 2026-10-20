@@ -11,7 +11,7 @@ import {defineConfig, devices} from "@playwright/test"
 // fails at the end (config/dev.exs, test/browser/support/teardown.ts).
 // Each run takes a port nothing on this machine is using and names its database,
 // saved sign-ins, outside-request list and failed checks' traces after it
-// (patchbay_dev_browser_<port>, test-results/_browser_<port>), so two walks at once,
+// (patchbay_browser_<port>_dev, test-results/_browser_<port>), so two walks at once,
 // even in one checkout, never reach each other's server, data or files. The workers
 // read this file again and keep the run's port from the environment they inherit.
 process.env.PATCHBAY_WALK_PORT ??= execFileSync(process.execPath, [

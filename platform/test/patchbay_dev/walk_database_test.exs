@@ -10,20 +10,20 @@ defmodule PatchbayDev.WalkDatabaseTest do
 
   test "a walk's own local database is used" do
     for host <- ["127.0.0.1", "localhost", "::1"] do
-      repo = [hostname: host, database: "patchbay_dev_browser_51634"]
+      repo = [hostname: host, database: "patchbay_browser_51634_dev"]
       assert WalkDatabase.own!(repo) == repo
     end
   end
 
   test "any other database is refused" do
     for repo <- [
-          [hostname: "127.0.0.1", database: "patchbay_dev_browser_9x"],
-          [hostname: "127.0.0.1", database: "patchbay_dev_browser"],
+          [hostname: "127.0.0.1", database: "patchbay_browser_9x_dev"],
+          [hostname: "127.0.0.1", database: "patchbay_browser_dev"],
           [hostname: "127.0.0.1", database: "patchbay_dev"],
           [hostname: "127.0.0.1", database: "patchbay_test"],
-          [hostname: "127.0.0.1", database: "patchbay_dev_browser_1; DROP"],
-          [hostname: "db.internal", database: "patchbay_dev_browser_51634"],
-          [database: "patchbay_dev_browser_51634"]
+          [hostname: "127.0.0.1", database: "patchbay_browser_1; DROP_dev"],
+          [hostname: "db.internal", database: "patchbay_browser_51634_dev"],
+          [database: "patchbay_browser_51634_dev"]
         ] do
       assert_raise ArgumentError, fn -> WalkDatabase.own!(repo) end
     end

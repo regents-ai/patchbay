@@ -6,7 +6,7 @@ defmodule Patchbay.DatabaseNamespaceTest do
   alias Patchbay.Repo
 
   setup_all do
-    unless Repo.config()[:database] == "patchbay_test" <> System.fetch_env!("MIX_TEST_PARTITION") do
+    unless Repo.config()[:database] == "patchbay#{System.fetch_env!("MIX_TEST_PARTITION")}_test" do
       raise "Namespace tests require the prepared disposable database"
     end
 

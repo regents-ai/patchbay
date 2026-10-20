@@ -171,22 +171,17 @@ defmodule Patchbay.ReleaseTest do
     assert LocalDatabaseFixture.validate_target!(:test, local) == :ok
 
     assert LocalDatabaseFixture.validate_target!(
-             :test,
-             Keyword.put(local, :hostname, "localhost")
-           ) ==
-             :ok
-
-    assert LocalDatabaseFixture.validate_target!(
              :dev,
              hostname: "::1",
-             database: "patchbay_dev_browser_51634"
+             database: "patchbay_browser_51634_dev"
            ) == :ok
 
     for {env, repo} <- [
           {:prod, local},
           {:test, Keyword.put(local, :hostname, "db.example.com")},
+          {:test, Keyword.put(local, :hostname, "localhost")},
           {:test, Keyword.put(local, :database, "patchbay")},
-          {:test, Keyword.put(local, :database, "regents_test")}
+          {:test, Keyword.put(local, :database, "patchbay_test_copy")}
         ] do
       assert_raise RuntimeError,
                    "local human-account fixture refused unsafe database target",
@@ -286,9 +281,9 @@ defmodule Patchbay.ReleaseTest do
   # first and puts it back exactly as it was.
   defp disposable_database do
     previous = Application.fetch_env!(:patchbay, Repo)
-    assert previous[:hostname] in ["127.0.0.1", "localhost"]
+    assert previous[:hostname] == "127.0.0.1"
     refute previous[:url]
-    assert String.starts_with?(previous[:database], "patchbay_test")
+    assert String.ends_with?(previous[:database], "_test")
 
     config =
       Keyword.merge(previous,

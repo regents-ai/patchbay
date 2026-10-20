@@ -4,10 +4,10 @@ import Config
 config :patchbay, Patchbay.Repo,
   username: System.get_env("PATCHBAY_DB_USERNAME", System.get_env("USER", "postgres")),
   password: System.get_env("PATCHBAY_DB_PASSWORD"),
-  hostname: System.get_env("PATCHBAY_DB_HOST", "localhost"),
+  hostname: System.get_env("PATCHBAY_DB_HOST", "127.0.0.1"),
   # Each browser walk run (assets/playwright.config.ts) has its own database,
-  # patchbay_dev_browser_<port>, with a small pool.
-  database: "patchbay_dev#{System.get_env("PATCHBAY_DEV_PARTITION")}",
+  # patchbay_browser_<port>_dev, with a small pool.
+  database: "patchbay#{System.get_env("PATCHBAY_DEV_PARTITION")}_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("POOL_SIZE", "10"))
