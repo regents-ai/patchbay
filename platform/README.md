@@ -506,15 +506,21 @@ shared tokens; `app.css` declares no fonts of its own.
 
 The image build fetches the pinned identity, Privy and blog libraries like any
 other dependency and copies this repository's `blog/` folder in directly; see
-[`../blog/README.md`](../blog/README.md). The Regents release owner alone runs `RegentIdentity.Migrator.up(Repo)` on the
-identified shared destination, before enabling profiles on consumers.
+[`../blog/README.md`](../blog/README.md).
+
+A deploy never applies a change to the shared Identity, Agents, Credits, Points or
+Payments database; it refuses to start while one its pinned libraries carry is
+missing. `/app/bin/migrate-shared` applies them and prints each one, or `none`. Every
+site carries this same command; the site whose release first carries a change runs it
+once from the new image, on a one-off machine, before that image's deploy, and only on
+the founder's own named go for each change.
 
 For the reviewed shared-database cutover, `PATCHBAY_DB_SCHEMA=patchbay` selects the
 preserved Patchbay namespace. The default remains `public` for separate development
 databases. Import the complete schema and its migration ledger first, then use
 `Patchbay.Release.migrate/0`; it refuses to replay pre-cutover history. Ordinary
 `mix ecto.*` commands without an explicit prefix must not target the shared database.
-The identity package continues to own `regent_identity` and its separate migrator.
+The identity package owns `regent_identity` and its separate ledger.
 
 ## Autonomous wallet authors
 

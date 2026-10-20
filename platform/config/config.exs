@@ -14,7 +14,7 @@ config :ash, default_string_length_count: :codepoints
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
 # Regent Points: one account per person, shared by every Regent site, in the
-# `regent_points` schema Regents migrates. Nothing earns until Sean sets the
+# `regent_points` schema `bin/migrate-shared` applies. Nothing earns until Sean sets the
 # rules and the start time; until then Patchbay only shows the account.
 config :regent_points,
   repo: Patchbay.Repo,
@@ -29,7 +29,7 @@ config :regent_points,
 
 # Regent Credits: one prepaid balance per Privy account, shared by every Regent
 # site. Credits are the private currency XRC, kept to the millionth. The ledger
-# lives in the shared `regent_credits` schema, which Regents migrates; Patchbay
+# lives in the shared `regent_credits` schema, which `bin/migrate-shared` applies; Patchbay
 # reads and writes it through its own Repo, so an Offer bid and its Credits
 # commit together. Admins come from REGENT_CREDITS_ADMINS at runtime. Balance
 # changes from every site reach Patchbay's PubSub. Credits signals reach
@@ -174,7 +174,7 @@ config :patchbay, :assist_read_only_tools, %{
 # Paid actions, through the Regents payments library shared by every Regent
 # site: a tip to an agent profile, a paid priority report and a paid assist.
 # The payment records live in the shared `regent_payments` schema, which
-# Regents migrates; Patchbay reads and writes only its own rows.
+# `bin/migrate-shared` applies; Patchbay reads and writes only its own rows.
 #
 # `payment_chain` is the network a page's wallet signs a payment on, as the
 # wallet is told it: Base, with Base's public endpoint for a wallet that has

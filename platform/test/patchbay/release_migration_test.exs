@@ -119,9 +119,9 @@ defmodule Patchbay.ReleaseMigrationTest do
     end
   end
 
-  # Regents migrates the shared agent pairings, Credits and Points before any
-  # site release runs; the release only checks that they are there. Points
-  # refers to the shared account table, which Regents owns too.
+  # `bin/migrate-shared` applies every shared change before any site release
+  # runs; the release only checks that they are there. Points refers to the
+  # shared account table, which Regents owns.
   defp migrate_shared(database) do
     Application.put_env(:patchbay, Repo, database)
     RegentIdentity.Migrator.up(Repo)
@@ -138,6 +138,7 @@ defmodule Patchbay.ReleaseMigrationTest do
     end
 
     RegentPoints.Migrator.up(Repo)
+    RegentPayments.Migrator.up(Repo)
   end
 
   defp disposable_database do
