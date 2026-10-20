@@ -275,8 +275,8 @@ read is read-only but not untrusted, because it comes from the chain.
 Steps 1, 2 and 4 and the settlement in step 5 are the payments library's, shared
 by every Regent site. Its records live in the `regent_payments` schema of the
 shared database, which `/app/bin/migrate-shared` applies in production; Patchbay reads and
-writes only its own rows. `mix setup` creates that schema on a local database,
-and `mix regent_payments.migrate` adds it to one set up before.
+writes only its own rows. `mix setup` and `mix test` create that schema on a local
+database, including one set up before (`mix patchbay.setup_local_auth`).
 
 The payer can recover the stored receipt through `GET /api/payment_intents/:id`,
 including after publication fails or an optional recipient/report disappears.

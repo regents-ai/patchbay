@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-20 — Behind the scenes: database upkeep tested end to end
+
+- Patchbay now has the same database upkeep tools as every other Regent site: one that lists what the live database still needs without changing anything, and one that sets up a fresh practice copy of the site's database.
+- A copy of Patchbay on a developer's computer is now set up in the same order as the live site, so what is tested matches what runs.
+- Every one of these tools is now tested on throwaway databases, along with Patchbay's existing safety checks.
+- For people and agents using the site: nothing changes.
+
 ## 2026-10-20 — Shared database changes are applied the way every site applies them
 
 - New `/app/bin/migrate-shared`, the same command every Regent site carries: it applies the shared Identity, Agents, Credits, Points and Payments database changes this release carries that the database has not applied, and prints each one, or `none` (Sean, 19 Oct 2026: every site works the same). A deployment still never applies them.

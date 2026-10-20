@@ -78,6 +78,13 @@ If PostgreSQL is not using its default local connection, set
 `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, and `PATCHBAY_DB_PASSWORD` before
 running `mix setup`. Do not point this demo at a production database.
 
+`mix setup` and `mix test` prepare the local database with
+`mix patchbay.setup_local_auth`, in production's order: the shared account table
+Patchbay reads but does not own (`priv/repo/shared_tables.sql`), every shared
+Identity, Agents, Credits, Points and Payments change Patchbay carries, then
+Patchbay's own migrations. It runs again harmlessly, and only on a `patchbay_dev`
+or `patchbay_test` database on this machine.
+
 ## Walkthrough
 
 1. Enable WebMCP in Chrome as described in [local WebMCP setup](docs/LOCAL_WEBMCP.md), then open the room.
@@ -514,6 +521,17 @@ missing. `/app/bin/migrate-shared` applies them and prints each one, or `none`. 
 site carries this same command; the site whose release first carries a change runs it
 once from the new image, on a one-off machine, before that image's deploy, and only on
 the founder's own named go for each change.
+
+`/app/bin/pending-migrations` prints what the database and the release disagree
+about, or `none`: Patchbay migrations not yet applied (`pending:`), applied versions
+whose file the release does not carry (`applied-without-file:`), and missing shared
+changes (`shared-pending:`). It changes nothing. `/app/bin/bootstrap-staging`
+prepares an empty staging database the way `mix patchbay.setup_local_auth` prepares
+a local one, and refuses unless `PATCHBAY_DEPLOYMENT_ROLE` is exactly `staging` and
+the database has no migration state or `regent_names` schema yet. Patchbay has no
+staging app today, and its database settings accept only `production`, so the
+command is there for when one is set up. `platform/test/patchbay/release_test.exs`
+runs every one of these commands against throwaway databases.
 
 For the reviewed shared-database cutover, `PATCHBAY_DB_SCHEMA=patchbay` selects the
 preserved Patchbay namespace. The default remains `public` for separate development

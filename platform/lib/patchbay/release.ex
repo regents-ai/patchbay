@@ -4,9 +4,36 @@ defmodule Patchbay.Release do
   """
 
   @app :patchbay
+  @platform_schema "regent_names"
   # Last migration already present in the preserved source. Its predecessors
   # contain public-qualified references and must never replay after relocation.
   @imported_through 20_260_904_074_137
+
+  # The release connection replaces every endpoint and login setting while the
+  # schema and transport settings stay.
+  @connection_keys [
+    :url,
+    :hostname,
+    :port,
+    :socket,
+    :socket_dir,
+    :endpoints,
+    :username,
+    :password,
+    :database,
+    :ssl,
+    :socket_options,
+    :prepare
+  ]
+
+  @table_exists """
+  SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class AS c
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind IN ('r', 'p')
+  )
+  """
+  @schema_exists "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = $1)"
 
   # Every shared library with its own schema and ledger, in the order their
   # changes apply: Credits' pairing grants build on Agents' pairing history.
@@ -20,19 +47,15 @@ defmodule Patchbay.Release do
 
   @doc """
   Runs every pending migration over the release connection
-  (`Patchbay.DatabaseConfig.release_config!/0`), or over `connection` when given.
+  (`Patchbay.DatabaseConfig.release_config!/1`). Its options are the
+  bootstrap's: `:config` names another connection.
   """
-  def migrate(connection \\ Patchbay.DatabaseConfig.release_config!()) do
-    load_app()
-
-    for repo <- repos() do
-      {:ok, _result, _apps} =
-        with_migration_repo(repo, connection, fn repo ->
-          require_imported_history!(repo)
-          require_signed_access_schema!(repo)
-          Ecto.Migrator.run(repo, :up, all: true, prefix: repo.default_prefix())
-        end)
-    end
+  def migrate(opts \\ []) when is_list(opts) do
+    with_release_repo(opts, fn repo ->
+      require_imported_history!(repo, migrations_path())
+      require_signed_access_schema!(repo)
+      run_migrations!(repo, migrations_path())
+    end)
   end
 
   @doc """
@@ -45,13 +68,11 @@ defmodule Patchbay.Release do
   the founder's own named go; the site whose release first carries it runs this
   from the new image before that deployment, because only that image carries
   the change's file. Each library's ledger takes a migration lock, so two sites
-  running it at once apply each change once.
+  running it at once apply each change once. Its options are the bootstrap's.
   """
-  def migrate_shared do
-    load_app()
-
-    {:ok, applied, _apps} =
-      with_migration_repo(Patchbay.Repo, Patchbay.DatabaseConfig.release_config!(), fn repo ->
+  def migrate_shared(opts \\ []) when is_list(opts) do
+    applied =
+      with_release_repo(opts, fn repo ->
         unapplied = unapplied_shared_migrations(repo)
         if unapplied != [], do: apply_shared(repo)
         unapplied
@@ -86,13 +107,124 @@ defmodule Patchbay.Release do
 
   defp unapplied_shared_migrations(repo) do
     for {app, schema, _migrator} <- carried_shared(),
-        {:down, version, _name} <-
-          Ecto.Migrator.migrations(repo, [Application.app_dir(app, "priv/repo/migrations")],
-            prefix: schema,
-            skip_table_creation: true,
-            migration_lock: false
-          ),
+        version <-
+          unapplied_versions(repo, schema, Application.app_dir(app, "priv/repo/migrations")),
         do: "#{schema} #{version}"
+  end
+
+  # A read only: with its table creation skipped and no migration lock the
+  # migrator just selects the schema's ledger. A library whose ledger does not
+  # exist yet has had none of its changes applied.
+  defp unapplied_versions(repo, schema, path) do
+    if table_exists?(repo, schema, "schema_migrations") do
+      for {:down, version, _name} <-
+            Ecto.Migrator.migrations(repo, [path],
+              prefix: schema,
+              skip_table_creation: true,
+              migration_lock: false
+            ),
+          do: version
+    else
+      Enum.sort(carried_versions(path))
+    end
+  end
+
+  @doc """
+  Prepares an empty staging database for the first deployment: creates a
+  staging-only copy of the tables this repository reads but does not own
+  (`regent_names.platform_human_users`), in the local fixture's shape, applies
+  every shared change this release carries, as `migrate_shared/1` does in
+  production, then runs every migration into the Repo's schema
+  (`prepare_database!/2`). It refuses a database that already carries migration
+  state or the regent_names schema and repairs nothing: recovery from a
+  half-finished bootstrap is to destroy and recreate the staging database.
+
+  The deployed launcher passes no options, so it reads only the database the
+  release configuration resolves. The options (`:getenv`, `:config`,
+  `:migrations_path`) aim it at a disposable database under test.
+  """
+  def bootstrap_staging(opts \\ []) when is_list(opts) do
+    getenv = Keyword.get(opts, :getenv, &System.get_env/1)
+
+    # Read before anything opens a connection, so no configuration mistake can
+    # point this command at a database outside staging.
+    if getenv.("PATCHBAY_DEPLOYMENT_ROLE") != "staging",
+      do: raise("bootstrap-staging requires PATCHBAY_DEPLOYMENT_ROLE to be exactly staging")
+
+    with_release_repo(opts, fn repo ->
+      refuse_existing_state!(repo)
+      prepare_database!(repo, migrations_directory(opts))
+    end)
+  end
+
+  @doc false
+  # Staging's first deployment and every local database
+  # (`Patchbay.LocalDatabaseFixture`) are prepared the same way, in production's
+  # order: the tables this repository reads but does not own (the fixture is the
+  # only definition of their shape), every shared change this release carries,
+  # then this site's own migrations. A relocated schema without the imported
+  # history is refused before anything changes.
+  def prepare_database!(repo, path \\ migrations_path()) do
+    require_imported_history!(repo, path)
+    Patchbay.LocalDatabaseFixture.create_shared_tables!()
+    apply_shared(repo)
+    run_migrations!(repo, path)
+  end
+
+  @doc """
+  Prints what a deployed database and the release disagree about: the migrations
+  the release carries that the database has not applied (`pending:`), the
+  versions the database has applied whose file the release does not carry
+  (`applied-without-file:`), and the shared changes the release carries that
+  their own ledgers do not hold (`shared-pending:`, each as schema and version;
+  a deployment is refused while one is listed, and `migrate_shared/1` applies
+  them), or `none`.
+  It applies nothing, creates nothing, and takes no migration lock. Its options
+  are the bootstrap's.
+  """
+  def pending_migrations(opts \\ []) when is_list(opts) do
+    {pending, applied_without_file, shared} =
+      with_release_repo(opts, fn repo ->
+        {pending, applied_without_file} = disagreements(repo, migrations_directory(opts))
+        {pending, applied_without_file, unapplied_shared_migrations(repo)}
+      end)
+
+    if pending == [] and applied_without_file == [] and shared == [], do: IO.puts("none")
+    if pending != [], do: IO.puts("pending: #{Enum.join(pending, " ")}")
+
+    if applied_without_file != [],
+      do: IO.puts("applied-without-file: #{Enum.join(applied_without_file, " ")}")
+
+    if shared != [], do: IO.puts("shared-pending: #{Enum.join(shared, ", ")}")
+  end
+
+  defp disagreements(repo, path) do
+    prefix = repo.default_prefix()
+
+    unless table_exists?(repo, prefix, migration_source(repo)),
+      do: raise("no schema_migrations table: run bootstrap-staging first")
+
+    migrations =
+      Ecto.Migrator.migrations(repo, [path],
+        prefix: prefix,
+        skip_table_creation: true,
+        migration_lock: false
+      )
+
+    carried = carried_versions(path)
+
+    {for({:down, version, _name} <- migrations, do: version),
+     for({:up, version, _name} <- migrations, version not in carried, do: version)}
+  end
+
+  # Ecto names an applied version with no file after a placeholder marker. The
+  # set of versions the release actually carries answers the same question
+  # without depending on that marker's text.
+  defp carried_versions(path) do
+    for file <- Path.wildcard(Path.join(path, "*.exs")),
+        {version, "_" <> _name} <- [file |> Path.basename() |> Integer.parse()],
+        into: MapSet.new(),
+        do: version
   end
 
   defp apply_shared(repo), do: Enum.each(carried_shared(), fn {_, _, m} -> m.up(repo) end)
@@ -104,23 +236,29 @@ defmodule Patchbay.Release do
   end
 
   def rollback(repo, version) do
-    load_app()
+    :ok = Application.ensure_loaded(@app)
 
     if repo.default_prefix() != "public" and version <= @imported_through do
       raise "Cannot roll back imported history in the shared database"
     end
 
-    {:ok, _result, _apps} =
-      with_migration_repo(repo, Patchbay.DatabaseConfig.release_config!(), fn repo ->
-        require_imported_history!(repo)
-        Ecto.Migrator.run(repo, :down, to: version, prefix: repo.default_prefix())
-      end)
+    with_release_repo([], fn repo ->
+      require_imported_history!(repo, migrations_path())
+
+      Ecto.Migrator.run(repo, [migrations_path()], :down,
+        to: version,
+        prefix: repo.default_prefix()
+      )
+    end)
   end
 
-  defp require_imported_history!(repo) do
+  defp run_migrations!(repo, path),
+    do: Ecto.Migrator.run(repo, [path], :up, all: true, prefix: repo.default_prefix())
+
+  defp require_imported_history!(repo, path) do
     if repo.default_prefix() != "public" do
       migrations =
-        Ecto.Migrator.migrations(repo, Ecto.Migrator.migrations_path(repo),
+        Ecto.Migrator.migrations(repo, [path],
           prefix: repo.default_prefix(),
           skip_table_creation: true
         )
@@ -136,50 +274,66 @@ defmodule Patchbay.Release do
     end
   end
 
-  # with_repo reuses a running Repo. Changing its configuration would not change
-  # those existing credentials, so migration commands require a fresh release eval.
-  # The release connection replaces every endpoint and login setting while the
-  # schema and transport settings stay; it never falls back to the serving one.
-  defp with_migration_repo(repo, connection, fun) do
-    if Process.whereis(repo) do
+  defp refuse_existing_state!(repo) do
+    prefix = repo.default_prefix()
+    source = migration_source(repo)
+
+    if table_exists?(repo, prefix, source) do
+      raise "#{prefix}.#{source} already exists: destroy and recreate the staging database"
+    end
+
+    if schema_exists?(repo, @platform_schema) do
+      raise "#{@platform_schema} schema already exists: destroy and recreate the staging database"
+    end
+  end
+
+  defp table_exists?(repo, prefix, table) do
+    %{rows: [[exists?]]} = Ecto.Adapters.SQL.query!(repo, @table_exists, [prefix, table])
+    exists?
+  end
+
+  defp schema_exists?(repo, schema) do
+    %{rows: [[exists?]]} = Ecto.Adapters.SQL.query!(repo, @schema_exists, [schema])
+    exists?
+  end
+
+  defp migration_source(repo), do: repo.config()[:migration_source] || "schema_migrations"
+
+  # Loads the app and starts only its database connection, on the release
+  # login unless `:config` names another, for as long as `fun` runs; returns
+  # what `fun` returns and puts the Repo's configuration back as it was.
+  # with_repo reuses a running Repo, whose existing credentials a changed
+  # configuration would not change, so every command needs a fresh release
+  # eval. The connection never falls back to the serving one.
+  defp with_release_repo(opts, fun) do
+    getenv = Keyword.get(opts, :getenv, &System.get_env/1)
+    :ok = Application.ensure_loaded(@app)
+
+    if Process.whereis(Patchbay.Repo) do
       raise "Migration requires a fresh release eval; the application Repo is already running"
     end
 
-    previous = Application.fetch_env!(@app, repo)
+    connection =
+      Keyword.get_lazy(opts, :config, fn -> Patchbay.DatabaseConfig.release_config!(getenv) end)
+
+    previous = Application.fetch_env!(@app, Patchbay.Repo)
 
     Application.put_env(
       @app,
-      repo,
-      previous
-      |> Keyword.drop([
-        :url,
-        :hostname,
-        :port,
-        :socket,
-        :socket_dir,
-        :endpoints,
-        :username,
-        :password,
-        :database,
-        :ssl,
-        :socket_options,
-        :prepare
-      ])
-      |> Keyword.merge(connection)
+      Patchbay.Repo,
+      previous |> Keyword.drop(@connection_keys) |> Keyword.merge(connection)
     )
 
     try do
-      Ecto.Migrator.with_repo(repo, fun)
+      {:ok, result, _started} = Ecto.Migrator.with_repo(Patchbay.Repo, fun)
+      result
     after
-      Application.put_env(@app, repo, previous)
+      Application.put_env(@app, Patchbay.Repo, previous)
     end
   end
 
-  defp repos do
-    Application.fetch_env!(@app, :ecto_repos)
-  end
+  defp migrations_directory(opts),
+    do: Keyword.get_lazy(opts, :migrations_path, &migrations_path/0)
 
-  defp load_app do
-    Application.ensure_loaded(@app)
-  end
+  defp migrations_path, do: Application.app_dir(@app, "priv/repo/migrations")
 end

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+PATCHBAY_RELEASE_COMMAND=migrate exec "$(dirname "$0")/patchbay" eval 'Patchbay.Release.bootstrap_staging()'

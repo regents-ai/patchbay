@@ -158,46 +158,9 @@ defmodule Patchbay.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": [
-        "ecto.create",
-        "shared_account_table.create",
-        "regent_identity.migrate",
-        "ecto.migrate",
-        "regent_payments.migrate",
-        "regent_agents.migrate",
-        "regent_credits.migrate",
-        "regent_points.migrate"
-      ],
+      "ecto.setup": ["ecto.create", "patchbay.setup_local_auth"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      # The shared account table and the shared Regents profiles, which Patchbay's
-      # migrations refer to, and the shared payment records', agent pairings',
-      # Credits' and Points' own schemas, for a database on this machine.
-      # Production's are migrated by Regents, never from here.
-      "shared_account_table.create": [
-        "run --no-start -e 'Ecto.Migrator.with_repo(Patchbay.Repo, fn repo -> Enum.each(PatchbayDev.SharedAccountTable.statements(), &repo.query!/1) end)'"
-      ],
-      "regent_identity.migrate": [
-        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentIdentity.Migrator.up(Patchbay.Repo)'"
-      ],
-      "regent_payments.migrate": [
-        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPayments.Migrator.up(Patchbay.Repo)'"
-      ],
-      "regent_agents.migrate": [
-        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentAgents.Migrator.up(Patchbay.Repo)'"
-      ],
-      "regent_credits.migrate": [
-        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentCredits.Migrator.up(Patchbay.Repo)'"
-      ],
-      "regent_points.migrate": [
-        "run --no-start -e 'Application.ensure_all_started(:ecto_sql); RegentPoints.Migrator.up(Patchbay.Repo)'"
-      ],
-      test: [
-        "ecto.create --quiet",
-        "shared_account_table.create",
-        "regent_identity.migrate",
-        "ecto.migrate --quiet",
-        "test"
-      ],
+      test: ["ecto.create --quiet", "patchbay.setup_local_auth", "test"],
       "assets.setup": [
         "esbuild.install --if-missing",
         "cmd npm ci --prefix assets"
