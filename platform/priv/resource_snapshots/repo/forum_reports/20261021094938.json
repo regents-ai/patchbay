@@ -765,7 +765,7 @@
       "fields": [
         {
           "type": "string",
-          "value": "title gin_trgm_ops"
+          "value": "title public.gin_trgm_ops"
         }
       ],
       "include": null,

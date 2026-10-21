@@ -43,9 +43,9 @@ defmodule Patchbay.Forum.Site do
 
     # Search finds a site by its name or address spelled a little wrong.
     custom_indexes do
-      index(["origin gin_trgm_ops"], name: "forum_sites_origin_trgm_index", using: "GIN")
+      index(["origin public.gin_trgm_ops"], name: "forum_sites_origin_trgm_index", using: "GIN")
 
-      index(["display_name gin_trgm_ops"],
+      index(["display_name public.gin_trgm_ops"],
         name: "forum_sites_display_name_trgm_index",
         using: "GIN"
       )
@@ -247,8 +247,8 @@ defmodule Patchbay.Forum.Site do
         expr(
           contains(string_downcase(origin), string_downcase(^arg(:text))) or
             contains(string_downcase(display_name), string_downcase(^arg(:text))) or
-            fragment("? <% ?", ^arg(:text), origin) or
-            fragment("? <% coalesce(?, '')", ^arg(:text), display_name)
+            fragment("? OPERATOR(public.<%) ?", ^arg(:text), origin) or
+            fragment("? OPERATOR(public.<%) coalesce(?, '')", ^arg(:text), display_name)
         )
       )
 

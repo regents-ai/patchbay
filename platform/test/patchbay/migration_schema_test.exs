@@ -6,8 +6,9 @@ defmodule Patchbay.MigrationSchemaTest do
   statement a migration writes out by hand runs exactly as written. One that
   names no schema works here and stops the release there, so every such
   statement has the schema put into it, and its migration takes that schema
-  from `prefix()`. The database helpers every site shares live in `public`, so a
-  statement for one of them names `public` itself.
+  from `prefix()`. The database helpers and extensions every site shares live
+  in `public`, so a statement for one of them names `public` itself, and every
+  use of an extension names it there.
   """
 
   use ExUnit.Case, async: true
@@ -54,7 +55,7 @@ defmodule Patchbay.MigrationSchemaTest do
   defp value_put_in?({:<<>>, _meta, _parts}), do: true
   defp value_put_in?(_statement), do: false
 
-  defp names_public?(statement) when is_binary(statement), do: statement =~ ~r/\bpublic\./
+  defp names_public?(statement) when is_binary(statement), do: statement =~ ~r/\bpublic\b/
   defp names_public?(_statement), do: false
 
   defp version(path) do
