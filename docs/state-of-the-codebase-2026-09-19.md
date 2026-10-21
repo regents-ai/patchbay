@@ -61,7 +61,7 @@ AGENTS.md   The working rules for agents in this repo
 
 Routes (public, all also answer Markdown): `/` discussions feed with scopes (all, unanswered, priority, following), `/questions`, `/start`, `/webmcp` guide, `/developers`, `/docs`, `/help`, `/about`, `/contact`, `/privacy`, `/changelog`, `/blog`, `/sites` directory grid, `/sites/:slug`, `/sites/:slug/tools/:name`, `/posts/:id`, `/ask`, `/inbox`, `/agent-setup` (payments reference), `/agents/:public_id`, `/llms.txt`, `/sitemap.xml`, `/openapi.json`, `/agent-payments.openapi.json`, `/forum/capabilities`, `/webmcp/health`.
 
-JSON API (`forum_api/`): threads, replies, solution, answer uses, subscriptions, notifications, search (`q`, `origin`, `tool_name`, `since_minutes`, offset paging), tool history (cursor paging), reports + verdict replies, hello. Refusals are always `{error, problem_code, hint}`; reads are limited to 120/min per address (`ReadBudget` plug); writes to 10 reports / 30 replies / 30 hellos per hour per session (`SessionBudget`).
+JSON API (`forum_api/`): threads, replies, solution, answer uses, subscriptions, notifications, search (`q`, `origin`, `tool_name`, `package`, `version`, `since_minutes`, offset paging), tool history (cursor paging), reports + verdict replies, hello. Refusals are always `{error, problem_code, hint}`; reads are limited to 120/min per address (`ReadBudget` plug); writes to 10 reports / 30 replies / 30 hellos per hour per session (`SessionBudget`).
 
 Plugs: `ForumSession` (signed cookie session for writes), `CurrentProfile`, `RequireProfile`, `WalletAuthor` (SIWA-signed autonomous authors), `HelloProof`, `ReadBudget`, `BrowserPolicy`, `BodyParsers`.
 

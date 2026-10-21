@@ -14,6 +14,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   import PatchbayWeb.Forum.Nameplate
 
   alias Patchbay.BoundedText
+  alias Patchbay.Forum.Fix
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Forum.Types.ThreadKind
@@ -1561,6 +1562,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         {markdown(@reply.body_markdown)}
       </div>
       <.bounded_text :if={@reply.note} value={@reply.note} />
+      <.fix_facts :if={@reply.fix} fix={@reply.fix} />
       <p :if={@reply.verdict not in [nil, :unknown]} class="pb-reply-outcome">
         Reported outcome: {verdict_label(@reply.verdict)}
       </p>
@@ -1661,26 +1663,28 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  The answer a thread leads with, above the question: its opening lines, how
-  many others say it worked and when the latest said so, and the way to the
-  whole reply.
+  The answer a thread leads with, above the question: the fix it gives when
+  its writer wrote one down (`Patchbay.Forum.Fix`), else its opening lines;
+  how many others say it worked and when the latest said so; and the way to
+  the whole reply.
   """
   attr(:answer, :any, required: true, doc: "`{:asker | :others, reply}` from `Board.answer/1`.")
   attr(:report, :any, required: true)
   attr(:replies, :list, required: true, doc: "The page of replies on screen.")
 
   def fix_card(%{answer: {pick, reply}} = assigns) do
-    assigns = assign(assigns, pick: pick, reply: reply)
+    assigns = assign(assigns, pick: pick, reply: reply, fix: reply.fix)
 
     ~H"""
     <section id="pb-fix" class="pb-fix-card" aria-labelledby="pb-fix-title">
       <header class="pb-fix-head">
         <h2 id="pb-fix-title">
-          <.icon name={:check} /> The answer
+          <.icon name={:check} /> {if @fix, do: "The fix", else: "The answer"}
         </h2>
         <p class="pb-fix-worked">{worked_line(@reply)}</p>
       </header>
-      <div class="pb-fix-excerpt">
+      <.fix_facts :if={@fix} fix={@fix} />
+      <div :if={!@fix} class="pb-fix-excerpt">
         <div :if={@reply.body_markdown} class="pb-markdown">{markdown(@reply.body_markdown)}</div>
         <p :if={!@reply.body_markdown} class="pb-thread-prose" phx-no-format>{@reply.note}</p>
       </div>
@@ -1695,6 +1699,43 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </a>
       </p>
     </section>
+    """
+  end
+
+  @doc """
+  A fix written down as fields: whether it is proven, what it is for and
+  which versions have the problem, the change, how to test it and what the
+  test shows, what it does not cover, its sources and its dated updates.
+  """
+  attr(:fix, :any, required: true)
+
+  def fix_facts(assigns) do
+    ~H"""
+    <div class="pb-fix-facts">
+      <p class={["pb-fix-standing", "is-#{@fix.status}"]}>{Fix.status_label(@fix.status)}</p>
+      <dl class="pb-card-facts">
+        <dt>For</dt><dd>{Enum.join(Enum.reject([@fix.software, @fix.version], &is_nil/1), " ")}</dd>
+        <dt :if={@fix.affected_versions}>Affected</dt><dd :if={@fix.affected_versions} phx-no-format>{@fix.affected_versions}</dd>
+        <dt>Change</dt><dd phx-no-format>{@fix.change}</dd>
+        <dt>How to test</dt><dd phx-no-format>{@fix.test}</dd>
+        <dt>Result</dt><dd phx-no-format>{@fix.result}</dd>
+        <dt :if={@fix.not_covered}>Does not cover</dt><dd :if={@fix.not_covered} phx-no-format>{@fix.not_covered}</dd>
+        <dt :if={@fix.sources != []}>Sources</dt><dd :if={@fix.sources != []} class="pb-fix-list">
+          <ul class="pb-fix-sources">
+            <li :for={link <- @fix.sources}>
+              <a href={link} rel="nofollow ugc noopener noreferrer" target="_blank">{URI.parse(link).host}</a>
+            </li>
+          </ul>
+        </dd>
+        <dt :if={@fix.updates != []}>Updates</dt><dd :if={@fix.updates != []} class="pb-fix-list">
+          <ol class="pb-fix-updates">
+            <li :for={update <- @fix.updates}>
+              <time datetime={DateTime.to_iso8601(update.at)}>{moment(update.at)}</time> {update.text}
+            </li>
+          </ol>
+        </dd>
+      </dl>
+    </div>
     """
   end
 

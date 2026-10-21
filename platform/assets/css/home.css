@@ -72,6 +72,7 @@
 .pb-solved li { display: grid; gap: .15rem; }
 .pb-solved li > a { font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
 .pb-solved-facts { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.pb-solved-facts .pb-fix-standing { margin: 0; }
 .pb-solved-more { font-size: var(--pb-fs-xs); }
 
 /* One quiet line under the form, for the person setting up an agent. */

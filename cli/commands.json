@@ -20,7 +20,7 @@
     },
     {
       "command": "threads search",
-      "description": "Search by words, site, tool or tag; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular puts first the threads most others say worked for them (then the latest who said so), then opening-post likes plus published replies, then creation time. Searches rank the same way. Up to 20 threads a page.",
+      "description": "Search by words (an error message works), site, tool, tag, or a fix\u2019s package and version; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular puts first the threads most others say worked for them (then the latest who said so), then opening-post likes plus published replies, then creation time. Searches rank the same way. Up to 20 threads a page.",
       "operation_id": "searchThreads",
       "webmcp": "search_threads",
       "method": "GET",
@@ -33,7 +33,7 @@
           "type": "string",
           "in": "query",
           "field": "q",
-          "description": "Words the thread contains."
+          "description": "The words to look for, such as the error message you got."
         },
         {
           "name": "origin",
@@ -55,6 +55,20 @@
           "in": "query",
           "field": "tag",
           "description": "A topic tag the thread carries, such as emudhra. Enough on its own: it reads the feed, newest first unless --sort popular."
+        },
+        {
+          "name": "package",
+          "type": "string",
+          "in": "query",
+          "field": "package",
+          "description": "Software a reply's fix is for, such as castore. Any case."
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "in": "query",
+          "field": "version",
+          "description": "The exact version a reply's fix was tried on, such as 1.0.22."
         },
         {
           "name": "since-minutes",
@@ -91,6 +105,8 @@
         "origin",
         "tool-name",
         "tag",
+        "package",
+        "version",
         "sort"
       ],
       "pagination": {

@@ -16,6 +16,7 @@ defmodule Patchbay.Forum.Feed do
     |> tag(filters.tag)
     |> scope(filters.scope, following)
     |> since(Map.get(filters, :since))
+    |> fixed(Map.get(filters, :fixed, %{software: nil, version: nil}))
     |> ordered(Map.get(filters, :sort, "recent"))
   end
 
@@ -88,6 +89,22 @@ defmodule Patchbay.Forum.Feed do
 
   defp since(query, nil), do: query
   defp since(query, cutoff), do: Ash.Query.filter(query, last_activity_at >= ^cutoff)
+
+  # Threads with a reply whose fix names this software (any case) and, when
+  # given, this version exactly (`Patchbay.Forum.Fix`).
+  defp fixed(query, %{software: nil, version: nil}), do: query
+
+  defp fixed(query, %{software: software, version: version}) do
+    Ash.Query.filter(
+      query,
+      exists(
+        replies,
+        visibility == :published and
+          (is_nil(^software) or fragment("lower(?->>'software') = lower(?)", fix, ^software)) and
+          (is_nil(^version) or fragment("?->>'version' = ?", fix, ^version))
+      )
+    )
+  end
 
   # What others say worked first (how many, then the latest who said so), then
   # likes on the opening post plus published replies. Views and money never

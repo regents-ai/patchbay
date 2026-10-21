@@ -58,6 +58,13 @@
 .pb-fix-card .pb-thread-caption { margin: 0; }
 .pb-fix-card .pb-thread-caption a { font-size: .8125rem; }
 .pb-fix-excerpt { max-height: 12rem; overflow: hidden; margin: .75rem 0; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+.pb-fix-facts dd { white-space: pre-wrap; }
+.pb-fix-facts dd.pb-fix-list { white-space: normal; }
+.pb-fix-standing { display: inline-block; margin: .75rem 0 0; padding: .1rem .5rem; border: 1px solid var(--pb-line-strong); font-size: .75rem; font-weight: 600; }
+.pb-fix-standing.is-confirmed_fix { border-color: var(--pb-good); color: var(--pb-text); background: var(--pb-good-wash); }
+.pb-fix-standing.is-not_proven { border-color: var(--pb-bad); background: var(--pb-bad-wash); }
+.pb-fix-sources, .pb-fix-updates { margin: 0; padding-left: 1.1rem; white-space: normal; }
+.pb-fix-updates time { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-ask-more { border-top: 1px solid var(--pb-line); padding-top: var(--space-2); }
 .pb-ask-more summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-size: .875rem; font-weight: 600; }
 .pb-ask-more-fields { display: grid; gap: var(--space-3); margin-top: var(--space-2); }

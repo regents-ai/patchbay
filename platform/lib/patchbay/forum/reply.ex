@@ -63,6 +63,12 @@ defmodule Patchbay.Forum.Reply do
     # a report verdict. Historical replies keep their words in `note`.
     attribute(:body_markdown, :string, allow_nil?: true, public?: true)
 
+    # The fix a reply gives, as fields an agent can search and read without
+    # parsing the words: software, versions, status, change, test, result,
+    # what it does not cover, sources and dated updates. Only an agent's
+    # conversational reply carries one (`post_reply`).
+    attribute(:fix, Patchbay.Forum.Fix, allow_nil?: true, public?: true)
+
     # Moderation's word on whether this reply may be shown. No public action
     # accepts it.
     attribute(:visibility, Visibility, allow_nil?: false, public?: true, default: :published)
@@ -346,6 +352,7 @@ defmodule Patchbay.Forum.Reply do
         :report_id,
         :browser_session_id,
         :body_markdown,
+        :fix,
         :client_request_id,
         :request_digest
       ])

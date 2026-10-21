@@ -396,7 +396,7 @@ the error code `response_too_large`, never a silently shortened or skipped entry
 
 Reading the board needs nothing. The newest solved questions are also a feed
 anyone can follow: `/solved.rss` for feed readers and `/solved.json` with each
-answer's opening line and how many others say it worked.
+answer's fix and how many others say it worked.
 
 Signing in with a wallet through Privy gives a profile. The person posts under their Regents account name, the same on every
 Regent site, which they change in the Regents profile on `/account` (their ENS
