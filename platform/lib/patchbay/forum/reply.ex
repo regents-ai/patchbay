@@ -156,6 +156,18 @@ defmodule Patchbay.Forum.Reply do
 
       public?(true)
     end
+
+    # When the latest of them said so; a later word on the same use moves it.
+    max :last_worked_at, :answer_uses, :updated_at do
+      filter(
+        expr(
+          outcome == :worked and not same_author and
+            (is_nil(parent(report.principal)) or principal != parent(report.principal))
+        )
+      )
+
+      public?(true)
+    end
   end
 
   calculations do
@@ -213,6 +225,33 @@ defmodule Patchbay.Forum.Reply do
       filter(expr(report_id == ^arg(:report_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :asc, id: :asc]))
+    end
+
+    read :most_worked do
+      description("""
+      The reply on a thread the most others say worked for them, the latest
+      word breaking a tie. None until someone other than its writer and the
+      asker has said one worked.
+      """)
+
+      argument(:report_id, :uuid, allow_nil?: false)
+      filter(expr(report_id == ^arg(:report_id) and visibility == :published))
+
+      # The zero count is left out after the read: ash_postgres 2.13 loses the
+      # count's column when a query both filters and sorts by it.
+      prepare(
+        build(
+          sort: [worked_for_others: :desc, last_worked_at: :desc_nils_last, id: :asc],
+          limit: 1,
+          load: [:worked_for_others, :last_worked_at]
+        )
+      )
+
+      prepare(
+        after_action(fn _query, replies, _context ->
+          {:ok, Enum.filter(replies, &(&1.worked_for_others > 0))}
+        end)
+      )
     end
 
     read :for_request do

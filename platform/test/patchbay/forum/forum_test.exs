@@ -351,6 +351,7 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:posted_by_author, :read},
                  {:for_report, :read},
+                 {:most_worked, :read},
                  {:for_request, :read},
                  {:add_reply, :create},
                  {:post_reply, :create},
