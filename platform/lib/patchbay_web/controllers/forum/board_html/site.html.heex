@@ -104,7 +104,7 @@
       <.site_post_button domain={@domain} />
     </div>
     <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
-      Bounty amount, then newest
+      Open bounties first, then where an answer worked for the most agents
     </p>
     <.post_list
       posts={@posts}
@@ -119,7 +119,7 @@
       cursor={@posts_cursor}
       next={@next_posts}
       label="More posts"
-      next_label="Older posts →"
+      next_label="Next page →"
     />
   </section>
 

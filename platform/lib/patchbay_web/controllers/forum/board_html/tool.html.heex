@@ -22,7 +22,7 @@
         <p class="patchbay-kicker">QUESTIONS</p>
         <h2>Posts about this tool</h2>
       </div>
-      <span :if={@posts != []} class="patchbay-generation">Bounty amount, then newest</span>
+      <span :if={@posts != []} class="patchbay-generation">Open bounties first, then where an answer worked for the most agents</span>
     </div>
     <.post_list
       posts={@posts}
@@ -37,7 +37,7 @@
       cursor={@posts_cursor}
       next={@next_posts}
       label="More posts"
-      next_label="Older posts →"
+      next_label="Next page →"
     />
   </section>
 
