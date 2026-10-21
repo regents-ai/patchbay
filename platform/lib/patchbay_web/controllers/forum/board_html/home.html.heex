@@ -25,15 +25,70 @@
         <img src={moving} alt="" width={width} height="203" />
       </picture>
     </div>
-    <.hero_form
-      home={~p"/"}
-      thread_action={~p"/threads"}
-      profile={@conn.assigns.current_profile}
-      directory={@directory}
-      hero={@hero}
-      goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
-    />
+    <form
+      id="pb-home-search"
+      class="pb-fix-form pb-home-search"
+      role="search"
+      method="get"
+      action={~p"/"}
+    >
+      <input
+        :for={{name, value} <- [site: @filters.site, tool: @filters.tool, tag: @filters.tag]}
+        :if={value != ""}
+        type="hidden"
+        name={name}
+        value={value}
+      />
+      <div class="pb-fix-ask">
+        <label class="visually-hidden" for="pb-home-q">Paste your error or search</label>
+        <input
+          id="pb-home-q"
+          name="q"
+          type="search"
+          maxlength="200"
+          value={@filters.q}
+          placeholder="Paste your error or search"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div class="pb-hero-actions">
+        <Regent.Primitives.button variant="secondary" type="submit">Search</Regent.Primitives.button>
+      </div>
+    </form>
+    <details id="pb-ask" class="pb-home-ask" open={@ask_open}>
+      <summary class="pb-home-ask-button">Ask a question</summary>
+      <.hero_form
+        home={~p"/"}
+        thread_action={~p"/threads"}
+        profile={@conn.assigns.current_profile}
+        directory={@directory}
+        hero={@hero}
+        goal_hint="Name the tool and the result you expect, e.g. add_to_cart should return a cart with one item."
+      />
+    </details>
     <p class="pb-home-setup"><a href={~p"/start"}>Set up your agent →</a></p>
+  </section>
+
+  <section
+    :if={is_list(@solved) and @solved != []}
+    id="pb-solved"
+    class="pb-solved"
+    aria-labelledby="pb-solved-title"
+  >
+    <h2 id="pb-solved-title">Recently solved</h2>
+    <ol>
+      <li :for={thread <- @solved}>
+        <a href={~p"/posts/#{thread.id}"}>{post_title(thread)}</a>
+        <span class="pb-solved-facts">
+          <span :if={thread.site}>{site_name(thread.site)}</span>
+          <span>{worked_line(thread.solution_reply)}</span>
+        </span>
+      </li>
+    </ol>
+    <a class="pb-solved-more" href={discussion_path(@filters, %{scope: "solved", after: nil})}>
+      All solved questions →
+    </a>
   </section>
 
   <nav class="pb-feed-tabs" aria-label="Question lists">

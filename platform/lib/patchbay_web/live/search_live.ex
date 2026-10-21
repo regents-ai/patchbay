@@ -76,7 +76,7 @@ defmodule PatchbayWeb.SearchLive do
        ]},
       {"Actions",
        [
-         %{kind: :action, label: "Ask a question", path: ~p"/" <> "#pb-fix-goal"},
+         %{kind: :action, label: "Ask a question", path: ~p"/?ask=1" <> "#pb-hero"},
          %{kind: :action, label: "Create Offer", path: ~p"/offers/create"}
        ]}
     ]
