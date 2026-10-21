@@ -324,7 +324,7 @@
       "fields": [
         {
           "type": "string",
-          "value": "origin gin_trgm_ops"
+          "value": "origin public.gin_trgm_ops"
         }
       ],
       "include": null,
@@ -345,7 +345,7 @@
       "fields": [
         {
           "type": "string",
-          "value": "display_name gin_trgm_ops"
+          "value": "display_name public.gin_trgm_ops"
         }
       ],
       "include": null,

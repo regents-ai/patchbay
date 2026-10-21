@@ -7,6 +7,10 @@ defmodule Patchbay.MigrationSchemaTest do
   names no schema works here and stops the release there, so every such
   statement has the schema put into it, and its migration takes that schema
   from `prefix()`.
+
+  An extension is the one exception: it belongs to the whole shared database,
+  not to Patchbay, so it is installed in `public` by name and every use names
+  it there.
   """
 
   use ExUnit.Case, async: true
@@ -26,6 +30,7 @@ defmodule Patchbay.MigrationSchemaTest do
           source = File.read!(path),
           {line, statement} <- hand_written(source),
           not (String.contains?(source, "prefix()") and value_put_in?(statement)),
+          not extension_in_public?(statement),
           do: "#{Path.basename(path)}:#{line}"
 
     assert names_no_schema == []
@@ -51,6 +56,11 @@ defmodule Patchbay.MigrationSchemaTest do
   # Text written out whole names none.
   defp value_put_in?({:<<>>, _meta, _parts}), do: true
   defp value_put_in?(_statement), do: false
+
+  defp extension_in_public?(statement) when is_binary(statement),
+    do: statement =~ ~r/\ACREATE EXTENSION IF NOT EXISTS \w+ WITH SCHEMA public\z/
+
+  defp extension_in_public?(_statement), do: false
 
   defp version(path) do
     {version, _name} = path |> Path.basename() |> Integer.parse()

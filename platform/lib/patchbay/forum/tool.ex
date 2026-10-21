@@ -29,7 +29,7 @@ defmodule Patchbay.Forum.Tool do
 
     # Search finds a tool by its name spelled a little wrong.
     custom_indexes do
-      index(["name gin_trgm_ops"], name: "forum_tools_name_trgm_index", using: "GIN")
+      index(["name public.gin_trgm_ops"], name: "forum_tools_name_trgm_index", using: "GIN")
     end
   end
 
@@ -220,7 +220,7 @@ defmodule Patchbay.Forum.Tool do
           current? and
             (contains(string_downcase(name), string_downcase(^arg(:text))) or
                contains(string_downcase(title), string_downcase(^arg(:text))) or
-               fragment("? <% ?", ^arg(:text), name))
+               fragment("? OPERATOR(public.<%) ?", ^arg(:text), name))
         )
       )
 

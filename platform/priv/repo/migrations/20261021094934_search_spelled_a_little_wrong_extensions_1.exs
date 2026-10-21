@@ -7,16 +7,15 @@ defmodule Patchbay.Repo.Migrations.SearchSpelledALittleWrongExtensions1 do
 
   use Ecto.Migration
 
-  # Search's word similarity and its trigram indexes, in the product's own
-  # schema like its tables.
+  # Search's word similarity and its trigram indexes. The extension lives in
+  # public whatever schema Patchbay's tables are in, and every use names it
+  # there (public.gin_trgm_ops, OPERATOR(public.<%)), so it works on any
+  # search path.
   def up do
-    schema = prefix() || "public"
-    execute("CREATE EXTENSION IF NOT EXISTS \"pg_trgm\" SCHEMA \"#{schema}\"")
+    execute("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
   end
 
-  def down do
-    # Uncomment this if you actually want to uninstall the extensions
-    # when this migration is rolled back:
-    # execute("DROP EXTENSION IF EXISTS \"pg_trgm\"")
-  end
+  # The database is shared with other sites, which may use the extension too,
+  # so it is never removed.
+  def down, do: :ok
 end

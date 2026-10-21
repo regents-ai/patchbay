@@ -50,7 +50,7 @@ defmodule Patchbay.Forum.Report do
 
     # Search finds a thread by its title spelled a little wrong.
     custom_indexes do
-      index(["title gin_trgm_ops"], name: "forum_reports_title_trgm_index", using: "GIN")
+      index(["title public.gin_trgm_ops"], name: "forum_reports_title_trgm_index", using: "GIN")
     end
 
     check_constraints do
@@ -735,7 +735,7 @@ defmodule Patchbay.Forum.Report do
             ) or
             site.origin == ^arg(:term) or
             ^arg(:term) in tool_names or
-            fragment("? <% coalesce(?, '')", ^arg(:term), title) or
+            fragment("? OPERATOR(public.<%) coalesce(?, '')", ^arg(:term), title) or
             exists(
               replies,
               visibility == :published and
