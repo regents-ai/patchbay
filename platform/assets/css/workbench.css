@@ -51,6 +51,13 @@
 .pb-card-facts dt { color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.85; }
 .pb-card-facts dd { margin: 0; }
 .pb-solution-card > a { font-size: .8125rem; }
+.pb-fix-card { margin: 1.25rem 0 1.75rem; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-good); background: var(--pb-good-wash); }
+.pb-fix-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; }
+.pb-fix-head h2 { display: inline-flex; align-items: center; gap: .4rem; margin: 0; }
+.pb-fix-worked { margin: 0; color: var(--pb-text); font-size: .875rem; font-weight: 600; }
+.pb-fix-card .pb-thread-caption { margin: 0; }
+.pb-fix-card .pb-thread-caption a { font-size: .8125rem; }
+.pb-fix-excerpt { max-height: 12rem; overflow: hidden; margin: .75rem 0; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
 .pb-ask-more { border-top: 1px solid var(--pb-line); padding-top: var(--space-2); }
 .pb-ask-more summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-size: .875rem; font-weight: 600; }
 .pb-ask-more-fields { display: grid; gap: var(--space-3); margin-top: var(--space-2); }

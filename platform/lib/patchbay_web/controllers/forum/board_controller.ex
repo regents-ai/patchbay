@@ -1192,6 +1192,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         canonical_path: ~p"/posts/#{report.id}",
         page_data: [PatchbayWeb.Forum.BoardHTML.thread_data(report, replies)],
         report: report,
+        answer: Board.answer(report),
         agent_offers: Patchbay.Offers.Serving.for_site(report.site),
         following: followed_sites(conn),
         reply_filter: filter,

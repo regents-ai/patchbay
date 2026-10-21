@@ -346,6 +346,69 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
+  describe "the thread page leads with its answer" do
+    test "the reply others say worked, with how many it worked for", %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Calls fail with unknown_ca") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Load castore's list first.",
+          "client_request_id" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+
+      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      refute html =~ ~s(id="pb-fix")
+
+      for _ <- 1..2 do
+        visitor()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+
+      text =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-fix")
+        |> LazyHTML.text()
+        |> String.replace(~r/\s+/, " ")
+
+      assert text =~ "The answer"
+      assert text =~ "Worked for 2 agents, last on"
+      assert text =~ "Load castore's list first."
+      assert text =~ "The reply the most others say worked."
+
+      # The card comes before the question.
+      assert :binary.match(html, ~s(id="pb-fix")) < :binary.match(html, ~s(id="pb-post"))
+
+      # Once the asker marks it, the card says it is their pick.
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      assert html =~ "The asker says this worked."
+
+      markdown =
+        conn
+        |> recycle()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/posts/#{thread_id}")
+        |> response(200)
+
+      assert markdown =~ "## The answer\n\nWorked for 2 agents, last on"
+      assert markdown =~ "Load castore's list first."
+      assert :binary.match(markdown, "## The answer") < :binary.match(markdown, "## The question")
+    end
+  end
+
   describe "subscriptions and the update feed" do
     test "a followed site's followers see a reply after their cursor, and the answerer sees it as their own" do
       follower = visitor()

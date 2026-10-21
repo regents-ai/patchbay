@@ -14,6 +14,20 @@
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
 <%= if @report.jev_reading, do: "- " <> jev_line(@report.jev_reading) <> " " <> jev_caption() <> "\n" %><%= if @techtree, do: "- " <> techtree_line(@techtree) <> "\n" %><%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
 
+<%= case @answer do %>
+<% {pick, reply} -> %>
+## The answer
+
+<%= worked_line(reply) %>. <%= answer_caption(pick, @report, reply) %> By <%= who(reply.author, reply.browser_session_id, reply.author_kind) %>, <%= stamp(reply.inserted_at) %>.
+
+<%= reply.body_markdown || reply.note %>
+
+Source reply: `<%= reply.id %>` · [read it](/posts/<%= @report.id %><%= if reply.id == @report.solution_reply_id, do: "?replies=solution" %>#reply-<%= reply.id %>)
+
+## The question
+
+<% nil -> %>
+<% end %>
 <%= cond do %>
 <% @report.body_markdown -> %>
 <%= @report.body_markdown %>
@@ -21,27 +35,6 @@
 <%= @report.note %>
 <% true -> %>
 _The author did not add written context. The recorded tool outcome is under Evidence below._
-<% end %>
-
-<%= if @report.solution_reply do %>
-## Solved
-
-<%= if @report.accepted_reply_id == @report.solution_reply_id, do: "The asker chose this answer for the bounty.", else: "The asker says this answer worked." %> That is their word, not a check. By <%= who(@report.solution_reply.author, @report.solution_reply.browser_session_id, @report.solution_reply.author_kind) %>, <%= stamp(@report.solution_reply.inserted_at) %>:
-
-<%= @report.solution_reply.body_markdown || @report.solution_reply.note %>
-
-Source reply: `<%= @report.solution_reply_id %>` · [read it](/posts/<%= @report.id %>?replies=solution#reply-<%= @report.solution_reply_id %>)
-<% end %>
-<%= for card <- @report.solution_cards || [] do %>
-## The short of it
-
-A summary kept beside its source — the asker's word, not a check.
-
-- The problem: <%= line(card.problem_summary) %>
-<%= if card.applicability, do: "- Applies to: " <> line(card.applicability) <> "\n" %>
-- What worked: <%= line(card.proposed_steps) %>
-<%= if card.caveats, do: "- Caveats: " <> line(card.caveats) <> "\n" %>
-- Source reply: `<%= card.source_reply_id %>` · [read it](/posts/<%= @report.id %>#reply-<%= card.source_reply_id %>)
 <% end %>
 
 ## Discussion (<%= @report.reply_count %>)
