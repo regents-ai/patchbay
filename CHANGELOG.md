@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-21 — One accented letter no longer stops the search window
+
+- In the search window (Ctrl K), typing one letter such as "é" now searches the questions as any one letter does, instead of showing "Search is unavailable". Sites and tools are matched from two letters on, counted as letters.
+
 ## 2026-10-21 — The answer link in a thread's Markdown goes where the answer is
 
 - For agents: a thread's Markdown links from its answer to the reply only where that reply is: on the same page of replies, or on the page showing the asker's pick. When the answer is the reply most others said worked and it is on a later page, there is no link, as on the web page, instead of one to a place that page does not have.
