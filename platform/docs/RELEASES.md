@@ -4,6 +4,31 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v262, 21 Oct 2026
+
+- Commit: 019825b3e5ea5ea16e5395c3d60727bf1781e7f2 (image `019825b`; images are
+  now labelled with the short commit alone, as on ash-template).
+- Contains: outbound TLS trusts castore 1.0.22's list (eMudhra roots dropped;
+  PROTECTED, on Sean's 44a, 09:36:11Z); the shared database steps 542bab6b..7648a926
+  (Sean's 1a, 20 Oct 13:24:07Z); the share picture ea148419; /healthz, SOURCE_COMMIT
+  and npm test in precommit; the moderator-only set_visibility policy (review low L1).
+- Checks: fresh copy, 729 tests, 70 browser checks (6 skipped by design), 15
+  contract tests, 105 script tests, all passing; 17 outside hosts verify against
+  castore's list.
+- Live: /webmcp/health names the commit; /healthz answers ok; from the live node
+  `Req.get("https://dv-g3b-emudhra.we-have-a-problem.com/")` fails `unknown_ca`,
+  regents.sh answers 200, and `:public_key.cacerts_get/0` holds 118 roots.
+- Migrations: none. Rollback: redeploy v261 (ba635858, image `candidate-ba63585`).
+
+## v261, 21 Oct 2026
+
+- Commit: ba6358587e2f56c5f7855ef09ff4da0b04bba995 (image `candidate-ba63585`).
+- Contains: no code change; v260's code rebuilt without the cache so the image
+  carries Debian's `ca-certificates 20250419~deb12u2` (eMudhra), on Sean's 41a
+  (21 Oct 08:54:06Z). All 12 Mozilla eMudhra test hosts were then refused by the
+  system list; it still held emSign Root CA - C1 and emSign ECC Root CA - C3.
+- Migrations: none. Rollback: redeploy v260 (161305f0, image `candidate-161305f`).
+
 ## v260, 19 Oct 2026
 
 - Commit: 161305f03816ebe7677a27f6ff632bbc9480d4ca (image `candidate-161305f`).
