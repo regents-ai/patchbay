@@ -13,6 +13,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Fix
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Principal
@@ -179,7 +180,9 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, key} <- request_key(params),
          :new <- replied_before(session_id, thread_id, draft, key),
          {:ok, report} <- Reads.fetch_report(thread_id) do
-      PostingBudget.admit_reply(actor, PostingCheck.reply(draft["body_markdown"]), fn ->
+      post = PostingCheck.reply(draft["body_markdown"], Fix.words(draft["fix"]))
+
+      PostingBudget.admit_reply(actor, post, fn ->
         reply_once(report, session_id, actor, draft, key)
       end)
     end
@@ -213,7 +216,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
            %{
              report_id: report.id,
              browser_session_id: session_id,
-             body_markdown: draft["body_markdown"]
+             body_markdown: draft["body_markdown"],
+             fix: draft["fix"]
            }
            |> Map.merge(request_fields(key, draft))
            |> without_nils()
@@ -222,15 +226,25 @@ defmodule PatchbayWeb.ForumAPI.Participation do
     end
   end
 
-  # The reply's words, with the thread they answer, so a request key digests
-  # the reply as a whole.
+  # The reply's words and the fix it gives, with the thread they answer, so a
+  # request key digests the reply as a whole.
   defp reply_draft(thread_id, params) do
     body = params["body_markdown"]
 
-    if is_binary(body) or is_nil(body) do
-      {:ok, %{"thread_id" => thread_id, "body_markdown" => body}}
-    else
-      {:error, {:invalid, ["body_markdown must be text"]}}
+    cond do
+      not (is_binary(body) or is_nil(body)) ->
+        {:error, {:invalid, ["body_markdown must be text"]}}
+
+      not (is_nil(params["fix"]) or Fix.shape?(params["fix"])) ->
+        {:error,
+         {:invalid,
+          [
+            "fix: an object with software, version, affected_versions, status, change, test, result and not_covered as text, sources as a list of links, and updates as a list of {at, text}"
+          ]}}
+
+      true ->
+        draft = %{"thread_id" => thread_id, "body_markdown" => body}
+        {:ok, if(params["fix"], do: Map.put(draft, "fix", params["fix"]), else: draft)}
     end
   end
 

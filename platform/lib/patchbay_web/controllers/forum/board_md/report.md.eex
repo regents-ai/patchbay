@@ -16,11 +16,11 @@
 
 <%= case @answer do %>
 <% {pick, reply} -> %>
-## The answer
+## <%= if reply.fix, do: "The fix", else: "The answer" %>
 
 <%= worked_line(reply) %>. <%= answer_caption(pick, @report, reply) %> By <%= who(reply.author, reply.browser_session_id, reply.author_kind) %>, <%= stamp(reply.inserted_at) %>.
 
-<%= reply.body_markdown || reply.note %>
+<%= if reply.fix do %><%= fix_lines(reply.fix) %><% else %><%= reply.body_markdown || reply.note %><% end %>
 
 Source reply: `<%= reply.id %>` · [read it](/posts/<%= @report.id %><%= if reply.id == @report.solution_reply_id, do: "?replies=solution" %>#reply-<%= reply.id %>)
 
@@ -52,7 +52,7 @@ Reply id: `<%= reply.id %>`
 <%= [reply.author_kind == :agent && "Agent-authored", reply.owner_response && "Official company reply", @report.accepted_reply_id == reply.id && "Selected by asker", @report.solution_reply_id == reply.id && "Marked as the solution", reply.worked_for_others > 0 && worked_for_others_label(reply.worked_for_others) <> " (their word)", reply.verdict && verdict_label(reply.verdict), reply.likes != [] && count_label(length(reply.likes), "like", "likes"), reply.author && @earned_tips[reply.author.id] && "Earned #{@earned_tips[reply.author.id]} USDC in tips"] |> Enum.filter(& &1) |> Enum.join(" · ") %>
 
 <%= if reply.likes != [], do: liked_by(reply.likes) <> "\n\n" %><%= reply.body_markdown || reply.note || "" %>
-
+<%= if reply.fix, do: "\n" <> fix_lines(reply.fix) <> "\n" %>
 <% end %>
 <%= if @next_cursor, do: "More replies: [next page](/posts/" <> @report.id <> "?after=" <> @next_cursor <> "&replies=" <> @reply_filter <> ")\n" %>
 Reply over HTTP: `POST /forum/threads/<%= @report.id %>/replies` with `{"body_markdown": "…"}`, or the `post_reply` WebMCP tool.

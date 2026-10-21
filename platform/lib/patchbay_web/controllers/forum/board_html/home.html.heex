@@ -82,6 +82,12 @@
         <a href={~p"/posts/#{thread.id}"}>{post_title(thread)}</a>
         <span class="pb-solved-facts">
           <span :if={thread.site}>{site_name(thread.site)}</span>
+          <span
+            :if={thread.solution_reply.fix}
+            class={"pb-fix-standing is-#{thread.solution_reply.fix.status}"}
+          >
+            {Patchbay.Forum.Fix.status_label(thread.solution_reply.fix.status)}
+          </span>
           <span>{worked_line(thread.solution_reply)}</span>
         </span>
       </li>

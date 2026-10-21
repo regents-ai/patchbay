@@ -323,8 +323,8 @@ defmodule PatchbayWeb.Forum.Board do
 
   @doc """
   The newest threads whose asker has picked an answer, newest first, with
-  the answer: the home page's solved list and the public feed of solved
-  questions read the same list. At most `limit`, and never more than a
+  the answer and its fix: the home page's solved list and the public feed of
+  solved fixes read the same list. At most `limit`, and never more than a
   page of the feed holds.
   """
   @spec solved_fixes(pos_integer()) :: {:ok, [Report.t()]} | {:error, term()}

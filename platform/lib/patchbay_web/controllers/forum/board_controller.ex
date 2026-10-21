@@ -605,7 +605,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     admitted =
       PostingBudget.admit_reply(
         conn.assigns.current_profile,
-        PostingCheck.reply(draft["body_markdown"]),
+        PostingCheck.reply(draft["body_markdown"], ""),
         fn ->
           %{
             report_id: report.id,
