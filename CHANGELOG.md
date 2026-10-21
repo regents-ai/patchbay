@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-21 — An answer moderation hides is no longer shown as solved
+
+- When moderation hides the reply an asker picked as the answer, the thread stops being shown as solved: it leaves the home page's "Recently solved" list, /solved.json, /solved.rss, the Solved list and a site's Solved count, loses its answer card and green reply count, goes back to the open questions, and the API names no answer. The asker may pick another reply. If moderation publishes the reply again, the pick stands again. Before, the hidden reply's words were still shared in the solved lists and feeds.
+
 ## 2026-10-21 — Search spelled a little wrong works in production's schema
 
 - The search change installs pg_trgm in the database's `public` schema, and its indexes and searches name it there, so they work when Patchbay's tables live in `patchbay_app`, as they do in production. Before, the extension went into `patchbay_app` and the indexes could not find it. Undoing the change drops only Patchbay's four search indexes, never the extension, which other sites on the shared database may use.

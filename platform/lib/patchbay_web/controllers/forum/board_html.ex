@@ -1122,10 +1122,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
         {render_slot(@marker, post)}
         <p class="pb-row-stats">
-          <span class={["pb-row-replies", post.solution_reply_id && "is-solved"]}>
+          <span class={["pb-row-replies", post.solved && "is-solved"]}>
             <strong>{post.reply_count}</strong>
             {if post.reply_count == 1, do: "reply", else: "replies"}
-            <span :if={post.solution_reply_id} class="visually-hidden">, solved</span>
+            <span :if={post.solved} class="visually-hidden">, solved</span>
           </span>
           <span><strong>{post.view_count}</strong> {if post.view_count == 1, do: "view", else: "views"}</span>
           <span><strong>{list_likes(post)}</strong> {if list_likes(post) == 1,
@@ -1538,7 +1538,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc "The reply filters, shown once the thread has a marked answer or a filter is on."
   @spec reply_filters(Patchbay.Forum.Report.t(), String.t()) :: [map()]
-  def reply_filters(%{solution_reply_id: nil}, "all"), do: []
+  def reply_filters(%{solution_reply: nil}, "all"), do: []
 
   def reply_filters(report, current) do
     for {value, label} <- [
