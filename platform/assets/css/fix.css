@@ -146,3 +146,6 @@
 .pb-fix-known-report p { margin: 0 0 .6rem; }
 .pb-fix-known-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
 .pb-fix-again { margin: 0; padding: .6rem 1rem .9rem; font-size: .8125rem; color: var(--pb-text-muted); }
+
+/* Signed out, the form says before anything is written that posting takes a sign-in. */
+.pb-hero-sign-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .75rem; margin: 0; font-size: .8125rem; }
