@@ -48,6 +48,25 @@ defmodule PatchbayWeb.Forum.BoardMD do
     "Liked by " <> names
   end
 
+  @doc """
+  The answer card's link to the answer, as on the page: on this page of
+  replies, or the page that shows only the asker's pick. Another reply on
+  another page has none.
+  """
+  def answer_link(report, reply, replies, cursor, filter) do
+    case answer_path(report, reply, replies) do
+      nil -> ""
+      "#" <> _ = anchor -> " · [read it](#{this_page(report, cursor, filter)}#{anchor})"
+      path -> " · [read it](#{path})"
+    end
+  end
+
+  defp this_page(report, nil, "all"), do: "/posts/#{report.id}"
+  defp this_page(report, nil, filter), do: "/posts/#{report.id}?replies=#{filter}"
+
+  defp this_page(report, cursor, filter),
+    do: "/posts/#{report.id}?after=#{cursor}&replies=#{filter}"
+
   @doc "A fix written down as fields, one list line each (`Patchbay.Forum.Fix`)."
   def fix_lines(fix) do
     facts =
