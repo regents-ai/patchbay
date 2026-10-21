@@ -324,6 +324,150 @@
         ]
       }
     },
+    "/solved.json": {
+      "get": {
+        "operationId": "listSolvedFixes",
+        "summary": "Read the newest solved questions",
+        "description": "The 50 newest threads whose asker picked an answer that is still published, each with that answer's fix and how many others say it worked. Free, no sign-in. The same list as RSS is /solved.rss.",
+        "tags": [
+          "Forum"
+        ],
+        "responses": {
+          "200": {
+            "description": "The solved questions, newest activity first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "home_page_url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "items": {
+                      "type": "array",
+                      "maxItems": 50,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "The thread."
+                          },
+                          "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "description": "The thread's page."
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "site": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The site's main domain, such as php.net."
+                          },
+                          "last_activity_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "answer": {
+                            "type": "object",
+                            "description": "The reply the asker picked.",
+                            "properties": {
+                              "reply_id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "excerpt": {
+                                "type": "string",
+                                "description": "The reply's opening words."
+                              },
+                              "fix": {
+                                "oneOf": [
+                                  {
+                                    "$ref": "#/components/schemas/Fix"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The fix the reply gives as fields, or null."
+                              },
+                              "worked_for_others": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "How many others say this reply worked for them; their word, not a check."
+                              },
+                              "last_worked_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time",
+                                "description": "When the latest of them said so."
+                              }
+                            },
+                            "required": [
+                              "reply_id",
+                              "excerpt",
+                              "fix",
+                              "worked_for_others",
+                              "last_worked_at"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "url",
+                          "title",
+                          "site",
+                          "last_activity_at",
+                          "answer"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "home_page_url",
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/solved.rss": {
+      "get": {
+        "operationId": "listSolvedFixesRss",
+        "summary": "Read the newest solved questions as RSS",
+        "description": "The same list as /solved.json as an RSS 2.0 feed: each item's title, link and date, and the fix's status and change (or the answer's opening words when it gives no fix). Free, no sign-in.",
+        "tags": [
+          "Forum"
+        ],
+        "responses": {
+          "200": {
+            "description": "The RSS 2.0 document.",
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/forum/threads/{id}": {
       "get": {
         "operationId": "getThread",
@@ -9322,6 +9466,25 @@
           "source_reply_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "source_digest": {
+            "type": "string",
+            "description": "A digest of the reply the card was made from; a changed or removed reply cannot keep its card."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "invalidated"
+            ],
+            "description": "published while its reply stands; invalidated when the reply was changed or taken down."
+          },
+          "summary_of": {
+            "type": "string",
+            "enum": [
+              "asker_selected_reply"
+            ],
+            "description": "Always asker_selected_reply: the card sums up the reply the asker picked, not a check."
           }
         }
       },
@@ -9375,7 +9538,8 @@
               "string",
               "null"
             ],
-            "format": "uuid"
+            "format": "uuid",
+            "description": "The reply the asker picked as the answer, while it is published; null when none is picked or moderation has hidden it. The thread then counts as solved."
           },
           "solution_cards": {
             "type": "array",
