@@ -177,6 +177,26 @@ defmodule Patchbay.Forum.Reply do
   end
 
   calculations do
+    # The words a search finds a reply by: what it says and the fix it gives.
+    # Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
+    # at the same fields.
+    calculate(
+      :searched_words,
+      :string,
+      expr(
+        fragment(
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'result')",
+          body_markdown,
+          note,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix
+        )
+      )
+    )
+
     # Who replied, in the form `Patchbay.Forum.Principal.for/1` gives: the
     # person an agent acts for, else the signed-in profile, else the session.
     calculate(
