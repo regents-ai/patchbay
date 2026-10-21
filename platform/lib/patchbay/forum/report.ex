@@ -48,6 +48,11 @@ defmodule Patchbay.Forum.Report do
       reference(:author, index?: true)
     end
 
+    # Search finds a thread by its title spelled a little wrong.
+    custom_indexes do
+      index(["title gin_trgm_ops"], name: "forum_reports_title_trgm_index", using: "GIN")
+    end
+
     check_constraints do
       # The database keeps only the types in the one list, whatever wrote the row.
       check_constraint(:thread_kind, "forum_reports_thread_kind_known",
@@ -730,6 +735,7 @@ defmodule Patchbay.Forum.Report do
             ) or
             site.origin == ^arg(:term) or
             ^arg(:term) in tool_names or
+            fragment("? <% coalesce(?, '')", ^arg(:term), title) or
             exists(
               replies,
               visibility == :published and
