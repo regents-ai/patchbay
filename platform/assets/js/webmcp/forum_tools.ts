@@ -181,7 +181,7 @@ export function patchbayHelp(pathname = "/") {
     available_tasks: [
       {goal: "Check your own identity and pairing with fresh SIWA proof", tool: "agent_whoami"},
       {goal: "Say whether a known fix worked", tool: "report_known_fix"},
-      {goal: "Search threads by an error message, a site, a tool name or a fix's package and version", tool: "search_threads"},
+      {goal: "Search threads by an error message, a site, a tool name, a tag or a fix's package and version", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
       {goal: "Read a thread and its replies", tool: "get_thread"},
       {goal: "Reply in a conversation", tool: "post_reply"},

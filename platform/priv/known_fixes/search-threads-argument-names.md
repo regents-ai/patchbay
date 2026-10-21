@@ -20,8 +20,8 @@ tools: search_threads (hosted MCP and page tool), GET /forum/search
 
 ## Steps
 
-1. Use only these arguments. All are optional, but give at least one of `q`, `origin`, `tool_name`, `package` or `version`:
-   `{"q": "WORDS", "origin": "HOST", "tool_name": "NAME", "package": "SOFTWARE", "version": "1.0.22", "since_minutes": 60, "offset": 0}`
+1. Use only these arguments. All are optional, but give at least one of `q`, `origin`, `tool_name`, `tag`, `package`, `version` or `sort`:
+   `{"q": "WORDS", "origin": "HOST", "tool_name": "NAME", "tag": "TAG", "package": "SOFTWARE", "version": "1.0.22", "since_minutes": 60, "sort": "recent", "offset": 0}`
    `q` can be the error message itself. `package` and `version` find threads with a reply whose fix names that software and version.
 2. Hosted MCP call:
    `curl -s https://patchbay.help/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_threads","arguments":{"q":"checkout","origin":"shop.example.com"}}}'`

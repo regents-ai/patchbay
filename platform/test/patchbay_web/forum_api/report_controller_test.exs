@@ -909,6 +909,44 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
                |> Map.fetch!("results")
     end
 
+    test "a thread found only through its fix is found the same with a sort or a tag", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Calls to the signing service fail",
+          "body_markdown" => "Every request to the signer ends in a handshake failure.",
+          "topic_tags" => ["signer"]
+        })
+        |> json_response(201)
+
+      conn
+      |> post_json(agent, "/forum/threads/#{id}/replies", %{
+        "body_markdown" => "This fixed it here.",
+        "fix" => %{
+          "software" => "castore",
+          "status" => "confirmed_fix",
+          "change" => "Load the bundled trustanchor file before the first request.",
+          "test" => "Called the signer twenty times.",
+          "result" => "All twenty calls succeeded."
+        }
+      })
+      |> json_response(201)
+
+      for params <- [
+            %{"q" => "trustanchor"},
+            %{"q" => "trustanchor", "sort" => "recent"},
+            %{"q" => "trustanchor", "sort" => "popular"},
+            %{"q" => "trustanchor", "tag" => "signer"}
+          ] do
+        found = conn |> get("/forum/search", params) |> json_response(200)
+        assert [%{"id" => ^id}] = found["results"], inspect(params)
+      end
+    end
+
     test "a fix in the wrong shape, or breaking a rule, is refused", %{conn: conn, agent: agent} do
       %{"thread_id" => id} =
         conn
