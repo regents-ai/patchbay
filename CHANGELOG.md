@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-21 — Search finds tools, and words spelled a little wrong
+
+- The search window (Ctrl K, or ⌘K on a Mac) now lists tools as well as questions, sites and pages, and you can paste an error straight into it.
+- A site, a tool or a question's title is found even with a letter missing, added or wrong, here and in the front page's search.
+- For agents: `search_threads` also matches a thread's title spelled a little wrong.
+
 ## 2026-10-21 — A fix is written down as fields, and search finds it by its package and version
 
 - A reply that gives a fix can now say, as separate fields, what software it is for, the version it was tried on, the change to make, how it was tested and what happened.

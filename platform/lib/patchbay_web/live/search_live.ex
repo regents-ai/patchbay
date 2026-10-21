@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.SearchLive do
   @moduledoc """
-  ash-template's shell search, with Patchbay's public pages, actions, questions
-  and sites. The browser opens the dialog; current-query reads never accept an
+  ash-template's shell search, with Patchbay's public pages, actions, questions,
+  sites and tools. Sites, tools and question titles are found spelled a
+  little wrong too. The browser opens the dialog; current-query reads never accept an
   older answer. No private records, payments or provider calls are searched.
   """
   use Phoenix.LiveView, layout: false
@@ -12,7 +13,14 @@ defmodule PatchbayWeb.SearchLive do
     statics: PatchbayWeb.static_paths()
 
   import PatchbayWeb.Forum.BoardHTML,
-    only: [post_title: 1, site_name: 1, site_domain: 1, site_path: 1, count_label: 3]
+    only: [
+      post_title: 1,
+      site_name: 1,
+      site_domain: 1,
+      site_path: 1,
+      tool_path: 2,
+      count_label: 3
+    ]
 
   import PatchbayWeb.Forum.Icon
   alias Patchbay.Forum
@@ -43,19 +51,13 @@ defmodule PatchbayWeb.SearchLive do
   defp read("") do
     with {:ok, page} <- Forum.list_recent_reports(page: [limit: 4], load: [:site]),
          {:ok, sites, _more?} <- Board.list_showcase(4),
-         do: {:ok, %{questions: page.results, sites: sites}}
+         do: {:ok, %{questions: page.results, sites: sites, tools: []}}
   end
 
   defp read(q) do
     with {:ok, page} <- Forum.search_threads(q, page: [limit: 12], load: [:site]),
-         {:ok, sites} <- matching_sites(q),
-         do: {:ok, %{questions: page.results, sites: sites}}
-  end
-
-  defp matching_sites(q) do
-    if String.length(q) < 2,
-      do: {:ok, []},
-      else: Forum.find_sites(q, query: [limit: 12], load: [:tool_count])
+         {:ok, %{sites: sites, tools: tools}} <- Board.matches(q),
+         do: {:ok, %{questions: page.results, sites: sites, tools: tools}}
   end
 
   defp normalize(q) when is_binary(q), do: q |> String.trim() |> String.slice(0, 100)
@@ -88,7 +90,7 @@ defmodule PatchbayWeb.SearchLive do
   defp groups(q, value) do
     found =
       case value do
-        %{questions: questions, sites: sites} ->
+        %{questions: questions, sites: sites, tools: tools} ->
           [
             {"Questions",
              Enum.map(
@@ -110,6 +112,16 @@ defmodule PatchbayWeb.SearchLive do
                  detail:
                    site_domain(&1) <>
                      " · " <> count_label(&1.tool_count, "WebMCP tool", "WebMCP tools")
+               }
+             )},
+            {"Tools",
+             Enum.map(
+               tools,
+               &%{
+                 kind: :tool,
+                 label: &1.name,
+                 path: tool_path(&1.site, &1.name),
+                 detail: "on " <> site_name(&1.site)
                }
              )}
           ]
@@ -157,7 +169,7 @@ defmodule PatchbayWeb.SearchLive do
           maxlength="100"
           phx-debounce="150"
           phx-mounted={JS.ignore_attributes(["aria-activedescendant"])}
-          placeholder="Search pages, actions, questions and sites"
+          placeholder="Paste an error, or search questions, sites and tools"
         />
         <button type="button" class="shell-search__close" data-search-close>
           <kbd class="shell-search__esc">Esc</kbd>
@@ -185,7 +197,7 @@ defmodule PatchbayWeb.SearchLive do
         >
           <.icon name={:search} />
           <p><strong>No results for “{@search.query}”</strong></p>
-          <p>Try a page name, a site or words from a question.</p>
+          <p>Try an error message, a site, a tool or words from a question.</p>
         </div>
         <section
           :for={{{group, items}, g} <- Enum.with_index(@search.results)}

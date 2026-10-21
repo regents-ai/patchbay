@@ -3,7 +3,8 @@ defmodule Patchbay.Forum.Feed do
   require Ash.Query
   alias Patchbay.Forum.Report
 
-  # Search the report text as well as its site/tool. Filtering happens before
+  # Search the report text as well as its site/tool, and the title spelled a
+  # little wrong (pg_trgm's word similarity). Filtering happens before
   # keyset pagination, not against an arbitrary handful of tool versions.
   # Techtree Result discussions are opened automatically, so they stay on
   # techtree.sh's own board and out of this feed of what people and agents asked.
@@ -35,6 +36,7 @@ defmodule Patchbay.Forum.Feed do
         site.display_name,
         ^term
       ) or
+        fragment("? <% coalesce(?, '')", ^term, title) or
         exists(
           replies,
           visibility == :published and
