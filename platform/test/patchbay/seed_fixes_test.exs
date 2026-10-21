@@ -19,7 +19,7 @@ defmodule Patchbay.SeedFixesTest do
            ]
 
     assert {:posted, emudhra, []} = posted["emudhra-castore"]
-    assert {:posted, php, ["2026-10-21T14:00:00Z"]} = posted["php-cve-2026-109618"]
+    assert {:posted, php, []} = posted["php-cve-2026-109618"]
     assert {:posted, _bankr, []} = posted["wallet-bench-bankr"]
 
     threads = all(Report)
@@ -37,8 +37,10 @@ defmodule Patchbay.SeedFixesTest do
              "From Mattias Geniar's post. Patchbay has not tested these steps."
            )
 
-    assert geniar.fix.status == :interim_mitigation
-    assert geniar.fix.updates == []
+    assert geniar.fix.status == :confirmed_fix
+    assert geniar.fix.version == "8.5.12, 8.4.27, 8.3.36 and 8.2.35"
+    assert [%{at: ~U[2026-10-21 14:00:00Z], text: released}] = geniar.fix.updates
+    assert released =~ "8.5.12, 8.4.27, 8.3.36 and 8.2.35"
     assert thread(php).solution_reply_id == nil
 
     assert Map.new(SeedFixes.post_all()) == posted
