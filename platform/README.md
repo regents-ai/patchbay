@@ -641,6 +641,14 @@ text. A new incident is one more file; closing one is setting `status: closed`, 
 keeps its page and takes it off the home page. The routes and the sitemap read the
 files.
 
+## What works and what breaks on a site
+
+A site's page opens, above its For agents panel, with what works and what breaks
+there (`PatchbayWeb.Forum.Board.site_standing/1`): how many tools it offers and when
+one was last seen (the `tools_seen_at` aggregate on `Patchbay.Forum.Site`), then its
+solved and still-open questions, the newest three of each with a count and a link to
+the full list. The Markdown page carries the same section.
+
 ## Refresh this site
 
 A site's page has a "Refresh this site" button (`PatchbayWeb.SiteRefreshLive`).

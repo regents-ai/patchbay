@@ -201,6 +201,60 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
+  describe "a site page" do
+    test "leads with what works and what breaks there, above the agent panel", %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => solved} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+      %{"thread_id" => open} = ask(asker, "Coupon box rejects codes") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(), solved, "Retry with a fresh cart.") |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{solved}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      page = conn |> get("/example.com") |> html_response(200)
+      {standing_at, _} = :binary.match(page, ~s(id="pb-site-standing"))
+      {panel_at, _} = :binary.match(page, ~s(id="pb-site-agents"))
+      assert standing_at < panel_at
+
+      standing =
+        page
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-site-standing")
+        |> LazyHTML.text()
+
+      assert standing =~ "What works and what breaks here"
+      assert standing =~ "0 tools"
+      assert standing =~ ~r/Solved\s+1/
+      assert standing =~ ~r/Still open\s+1/
+      assert page =~ ~s(href="/?scope=solved&amp;site=example.com")
+      assert page =~ ~s(href="/?scope=unanswered&amp;site=example.com")
+
+      [solved_list, open_list] =
+        page
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-site-standing ol")
+        |> Enum.map(&LazyHTML.text/1)
+
+      assert solved_list =~ "Checkout hangs on pay"
+      assert open_list =~ "Coupon box rejects codes"
+      refute open_list =~ "Checkout hangs on pay"
+
+      markdown =
+        build_conn()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/example.com")
+        |> response(200)
+
+      assert markdown =~ "## What works and what breaks here"
+      assert markdown =~ "### Solved: 1 ([all](/?site=example.com&scope=solved))"
+      assert markdown =~ "- [Checkout hangs on pay](/posts/#{solved})"
+      assert markdown =~ "- [Coupon box rejects codes](/posts/#{open})"
+    end
+  end
+
   describe "subscriptions and the update feed" do
     test "a followed site's followers see a reply after their cursor, and the answerer sees it as their own" do
       follower = visitor()

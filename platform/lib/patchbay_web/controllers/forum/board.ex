@@ -323,6 +323,37 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
+  What works and what breaks on a site: how many tools it offers and when one
+  was last seen, then its solved and still-open questions, the newest three of
+  each with how many there are in all.
+  """
+  @spec site_standing(Site.t()) :: map()
+  def site_standing(%Site{} = site) do
+    site = Ash.load!(site, :tools_seen_at)
+
+    %{
+      tool_count: site.tool_count,
+      tools_seen_at: site.tools_seen_at,
+      solved: site_questions(site, "solved"),
+      open: site_questions(site, "unanswered")
+    }
+  end
+
+  defp site_questions(site, scope) do
+    {:ok, filters} =
+      PatchbayWeb.Forum.Discussions.filters(%{"site" => site.origin, "scope" => scope})
+
+    page =
+      Forum.list_feed_reports!(
+        query: Patchbay.Forum.Feed.query(filters),
+        page: [limit: 3, count: true],
+        load: [:site]
+      )
+
+    %{count: page.count, threads: page.results}
+  end
+
+  @doc """
   One page of every thread about one named tool on a site — posts filed
   against any of its versions, however many, and questions that only name it
   — open bounties first, and the cursor of the page after it when there is
