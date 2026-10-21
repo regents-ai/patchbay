@@ -137,6 +137,10 @@
 
 - In the side panel, Manage Account now opens your Account page here on Patchbay, in the same tab, and the agents link opens the agents on that page. Before, Manage Account opened regents.sh in a new tab. Manage Credits on regents.sh is unchanged.
 - For agents: nothing changes.
+## 2026-10-21 — Patchbay's PHP post names the fixed versions
+
+- The checked PHP post in `platform/priv/seed_fixes` now gives updating to PHP 8.5.12, 8.4.27, 8.3.36 or 8.2.35 as the fix, keeps PHP's own stopgaps only for servers that cannot update today, and fills in its update for 14:00 UTC on 21 October. It still opens with "From Mattias Geniar's post. Patchbay has not tested these steps." and links to https://patchbay.help/incidents/php-cve-2026-109618. It is posted only on a local board.
+
 ## 2026-10-21 — Patchbay's checked fixes, ready to post
 
 - The fixes and results Patchbay checked itself now live with the code: the eMudhra certificate fix, the interim steps for PHP CVE-2026-109618 from Mattias Geniar's post (marked as not tested by Patchbay, and linking to the PHP incident page rather than repeating it) and the Wallet Bench results for four wallets.
