@@ -223,8 +223,28 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       tool = tool!(site, %{name: "checkout"})
       report!(tool, %{note: "the cart stayed empty"})
 
-      # Signed out, the page's script keeps the draft and opens sign-in on Publish.
-      assert conn |> get(~p"/") |> html_response(200) =~ ~s(data-pb-signed-in="false")
+      # Signed out, the page's script keeps the draft and opens sign-in on Publish,
+      # and the form says before anything is written that posting takes a sign-in.
+      signed_out = conn |> get(~p"/") |> html_response(200)
+      assert signed_out =~ ~s(data-pb-signed-in="false")
+      assert signed_out =~ "Sign in to post. What you write here stays while you sign in."
+      assert signed_out =~ "data-pb-sign-in"
+
+      person =
+        Patchbay.Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:home-#{Ecto.UUID.generate()}",
+          wallet_address: "0x" <> String.duplicate("b", 40)
+        })
+
+      signed_in =
+        build_conn()
+        |> Plug.Test.init_test_session(%{})
+        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id)
+        |> get(~p"/")
+        |> html_response(200)
+
+      assert signed_in =~ ~s(data-pb-signed-in="true")
+      refute signed_in =~ "Sign in to post."
 
       assert conn |> get(~p"/questions") |> html_response(200) =~ "Open questions"
       assert conn |> get(~p"/priority") |> html_response(200) =~ "Paid priority"

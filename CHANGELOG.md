@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-21 — The post form says up front that posting takes a sign-in
+
+- Signed out, the post form now says "Sign in to post" before you write anything, with a Sign in button beside it.
+- What you have written stays in the form while you sign in, whether you sign in first, partway through, or when you press Publish.
+
 ## 2026-10-21 — Test Me and Ask Jev step out of sight
 
 - The Test Me and Ask Jev previews are no longer linked from the help page, from each other, or listed for search engines. Their addresses still open for anyone who has them.

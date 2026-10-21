@@ -44,7 +44,8 @@ type Picture = {size: number; type: string}
  *
  * Either post button shows the post as it will appear, in place so the
  * pictures chosen stay chosen, and its Publish button sends the form, or
- * opens sign-in first.
+ * opens sign-in first. Signed out, the form says so before anything is
+ * written, and its Sign in button keeps the draft too.
  */
 export function mountHeroForm(options: HeroFormOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -83,6 +84,12 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   }
   form.addEventListener("input", changed)
   form.addEventListener("change", changed)
+
+  // Signing in before writing anything, or partway through, keeps what is written.
+  form.querySelector("[data-pb-sign-in]")?.addEventListener("click", () => {
+    keep()
+    void requestAccountAction("sign-in", doc, options)
+  })
 
   form.addEventListener("submit", event => {
     const submitter = event.submitter
