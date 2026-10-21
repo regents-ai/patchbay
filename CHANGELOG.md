@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-22 — Manage Account stays on Patchbay
+
+- In the side panel, Manage Account now opens your Account page here on Patchbay, in the same tab, and the agents link opens the agents on that page. Before, Manage Account opened regents.sh in a new tab. Manage Credits on regents.sh is unchanged.
+- For agents: nothing changes.
+
 ## 2026-10-21 — The PHP incident page names the fixed versions
 
 - https://patchbay.help/incidents/php-cve-2026-109618 now names the PHP releases that fix CVE-2026-109618 and CVE-2026-109619 (8.5.12, 8.4.27, 8.3.36 and 8.2.35), what to do on PHP 8.1 or older, and PHP's own stopgaps for anyone who cannot update today, with a check for each step.

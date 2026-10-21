@@ -62,7 +62,7 @@ defmodule PatchbayWeb.PanelAgents do
     <div id={"#{@id}-reader"} class="pb-panel-agents" phx-hook="PanelAgents" data-read-on-open>
       <Regent.Account.agents_brief
         id={@id}
-        href={~p"/account"}
+        href={~p"/account#account-agents"}
         agents={rows(@agents, @last_actions, @now)}
       />
     </div>

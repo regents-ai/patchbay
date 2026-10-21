@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.AccountLiveTest do
   @moduledoc """
   Account's tabs: the inbox lives inside Account, beside the overview and
-  the profile.
+  the profile. The side panel's Manage links lead here, on this site.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -55,5 +55,31 @@ defmodule PatchbayWeb.AccountLiveTest do
 
     refute render(view) =~ "Where does the basket go?"
     assert render(view) =~ "Nothing waiting."
+  end
+
+  test "the side panel's Manage links open this site's Account page and its agents", %{
+    conn: conn
+  } do
+    person =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:manage",
+        wallet_address: "0x" <> String.duplicate("f", 40)
+      })
+
+    conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
+    page = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
+
+    assert ["/account"] ==
+             page |> LazyHTML.query("#shell-aside a.rg-button") |> LazyHTML.attribute("href")
+
+    assert page |> LazyHTML.query("#shell-aside a[target]") |> Enum.empty?()
+
+    assert ["/account#account-agents"] ==
+             page
+             |> LazyHTML.query(~s(#shell-aside a[href^="/account#"]))
+             |> LazyHTML.attribute("href")
+
+    {:ok, view, _html} = live(conn, ~p"/account")
+    assert has_element?(view, "#account-agents")
   end
 end
