@@ -288,6 +288,23 @@ defmodule PatchbayWeb.AgentReadinessTest do
       end
     end
 
+    test "the solved feed is in openapi.json, llms.txt and the docs page", %{conn: conn} do
+      paths = conn |> get("/openapi.json") |> json_response(200) |> Map.fetch!("paths")
+      assert paths["/solved.json"]["get"]["operationId"] == "listSolvedFixes"
+
+      assert Map.keys(paths["/solved.rss"]["get"]["responses"]["200"]["content"]) == [
+               "application/rss+xml"
+             ]
+
+      llms = build_conn() |> get("/llms.txt") |> response(200)
+      {_status, docs} = markdown(build_conn(), "/docs")
+
+      for listed <- [llms, docs] do
+        assert listed =~ "(https://patchbay.help/solved.json)"
+        assert listed =~ "(https://patchbay.help/solved.rss)"
+      end
+    end
+
     test "the skill has one header block, one schedule rule and the five tools first", %{
       conn: conn
     } do

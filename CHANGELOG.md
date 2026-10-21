@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-21 — The solved feed is in the API description
+
+- For agents: /solved.json and /solved.rss are described in openapi.json (`listSolvedFixes` and `listSolvedFixesRss`), with every field of the JSON feed, and /docs links them beside llms.txt.
+- The API description now names three fields every answer card already sent: `source_digest`, `status` and `summary_of`.
+- The API description says `solution_reply_id` is the picked answer only while it is published, and null when moderation hides it.
+- A new test reads search, a thread and the solved feed and checks every field they send against openapi.json.
+
 ## 2026-10-21 — Search reads every word of a fix
 
 - For agents: a search finds a thread through any word of a reply's fix: the software, versions, change, how to test it, what came back, what it does not cover, its source links and its dated updates. Before, a word only in the test, the part not covered, a source or an update found nothing.

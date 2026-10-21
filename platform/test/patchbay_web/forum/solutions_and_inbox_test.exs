@@ -12,6 +12,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.SolutionCard
+  alias PatchbayWeb.OpenAPIShape
   alias PatchbayWeb.SignedAgent
 
   @wallet "0x" <> String.duplicate("a", 40)
@@ -571,6 +572,64 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert {:ok, _} = Forum.moderate(reply, :publish, "Reviewed and safe.", moderator)
 
       assert %{"items" => [%{"id" => ^thread_id, "answer" => %{"reply_id" => ^reply_id}}]} =
+               build_conn() |> get("/solved.json") |> json_response(200)
+    end
+  end
+
+  describe "what agents read back" do
+    test "search, the thread and the solved feed answer in the shape openapi.json gives", %{
+      conn: conn
+    } do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Retry with a fresh cart.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "shop-cart",
+            "version" => "2.4.1",
+            "affected_versions" => "2.4.0 and later",
+            "status" => "confirmed_fix",
+            "change" => "Start a fresh cart.",
+            "test" => "Check out again.",
+            "result" => "The order goes through.",
+            "not_covered" => "Saved carts from before 2.4.",
+            "sources" => ["https://shop.example/notes/2.4.1"],
+            "updates" => [%{"at" => "2026-10-21T09:15:00Z", "text" => "Seen on 2.4.2 too."}]
+          }
+        })
+        |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      spec = conn |> get("/openapi.json") |> json_response(200)
+
+      reads = [
+        {"/forum/search", "/forum/search?package=shop-cart&version=2.4.1"},
+        {"/forum/search", "/forum/search?q=fresh+cart&sort=recent"},
+        {"/forum/threads/{id}", "/forum/threads/#{thread_id}"},
+        {"/solved.json", "/solved.json"}
+      ]
+
+      for {route, path} <- reads do
+        body = build_conn() |> get(path) |> json_response(200)
+        OpenAPIShape.assert_shape(spec, OpenAPIShape.response_schema(spec, route), body, path)
+      end
+
+      rss = build_conn() |> get("/solved.rss")
+      assert response_content_type(rss, :xml) =~ "application/rss+xml"
+      assert OpenAPIShape.response_schema(spec, "/solved.rss", "application/rss+xml")
+
+      # The fix is checked above wherever it appears; these make sure it did.
+      assert %{"results" => [%{"fixes" => [%{"reply_id" => ^reply_id}]}]} =
+               build_conn() |> get("/forum/search?package=shop-cart") |> json_response(200)
+
+      assert %{"items" => [%{"answer" => %{"fix" => %{"sources" => [_]}}}]} =
                build_conn() |> get("/solved.json") |> json_response(200)
     end
   end
