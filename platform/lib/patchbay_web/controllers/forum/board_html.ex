@@ -739,7 +739,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   """
   def ask_path(fields \\ []) do
     case Enum.reject(fields, fn {_field, value} -> value in [nil, ""] end) do
-      [] -> ~p"/" <> "#pb-hero"
+      [] -> ~p"/?ask=1" <> "#pb-hero"
       given -> ~p"/?#{given}" <> "#pb-hero"
     end
   end
