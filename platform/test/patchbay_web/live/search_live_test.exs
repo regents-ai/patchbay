@@ -80,4 +80,18 @@ defmodule PatchbayWeb.SearchLiveTest do
     assert html =~ ~s(href="/#{site.origin}/tools/empty_basket")
     assert html =~ "Tools"
   end
+
+  test "one accented letter searches the questions and never says search is unavailable", %{
+    conn: conn
+  } do
+    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive)
+    render_hook(view, "open", %{})
+    render_async(view, 2_000)
+
+    view |> form("#shell-search-form", %{"q" => "é"}) |> render_change()
+    html = render_async(view, 2_000)
+
+    refute html =~ "Search unavailable"
+    refute html =~ "Search is unavailable"
+  end
 end

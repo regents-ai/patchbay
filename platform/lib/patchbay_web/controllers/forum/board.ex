@@ -86,14 +86,14 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec matches(String.t()) :: {:ok, %{sites: [Site.t()], tools: [Tool.t()]}} | {:error, term()}
   def matches(q) do
-    case String.trim(q) do
-      text when byte_size(text) >= 2 ->
-        with {:ok, sites} <- Forum.find_sites(text, load: [:tool_count, :report_count]),
-             {:ok, tools} <- Forum.find_tools(text),
-             do: {:ok, %{sites: sites, tools: tools}}
+    text = String.trim(q)
 
-      _too_short ->
-        {:ok, %{sites: [], tools: []}}
+    if String.length(text) >= 2 do
+      with {:ok, sites} <- Forum.find_sites(text, load: [:tool_count, :report_count]),
+           {:ok, tools} <- Forum.find_tools(text),
+           do: {:ok, %{sites: sites, tools: tools}}
+    else
+      {:ok, %{sites: [], tools: []}}
     end
   end
 
