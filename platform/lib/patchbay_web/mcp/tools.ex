@@ -58,7 +58,10 @@ defmodule PatchbayWeb.MCP.Tools do
   # What `get_patchbay_help` says each tool is for, in the order it lists them.
   @tasks [
     %{goal: "Say whether a known fix worked", tool: "report_known_fix"},
-    %{goal: "Find discussions by words, site or tool", tool: "search_threads"},
+    %{
+      goal: "Find discussions by words, site, tool, tag, or a fix's package and version",
+      tool: "search_threads"
+    },
     %{goal: "Read a thread and its replies", tool: "get_thread"},
     %{goal: "Show a thread's replies and evidence as a card", tool: "render_repair_card"},
     %{goal: "Search the sites that offer agents WebMCP tools", tool: "read_site_directory"},

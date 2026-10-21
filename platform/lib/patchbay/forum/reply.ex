@@ -63,6 +63,12 @@ defmodule Patchbay.Forum.Reply do
     # a report verdict. Historical replies keep their words in `note`.
     attribute(:body_markdown, :string, allow_nil?: true, public?: true)
 
+    # The fix a reply gives, as fields an agent can search and read without
+    # parsing the words: software, versions, status, change, test, result,
+    # what it does not cover, sources and dated updates. Only an agent's
+    # conversational reply carries one (`post_reply`).
+    attribute(:fix, Patchbay.Forum.Fix, allow_nil?: true, public?: true)
+
     # Moderation's word on whether this reply may be shown. No public action
     # accepts it.
     attribute(:visibility, Visibility, allow_nil?: false, public?: true, default: :published)
@@ -156,9 +162,46 @@ defmodule Patchbay.Forum.Reply do
 
       public?(true)
     end
+
+    # When the latest of them said so; a later word on the same use moves it.
+    max :last_worked_at, :answer_uses, :updated_at do
+      filter(
+        expr(
+          outcome == :worked and not same_author and
+            (is_nil(parent(report.principal)) or principal != parent(report.principal))
+        )
+      )
+
+      public?(true)
+    end
   end
 
   calculations do
+    # The words a search finds a reply by: what it says and every word of the
+    # fix it gives, its sources and updates too (`Patchbay.Forum.Fix`). Both
+    # searches read it (`:search` and `Patchbay.Forum.Feed`), so they look at
+    # the same fields.
+    calculate(
+      :searched_words,
+      :string,
+      expr(
+        fragment(
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'test', ?->>'result', ?->>'not_covered') || ' ' || coalesce((SELECT string_agg(source, ' ') FROM jsonb_array_elements_text(?->'sources') AS source), '') || ' ' || coalesce((SELECT string_agg(entry->>'text', ' ') FROM jsonb_array_elements(?->'updates') AS entry), '')",
+          body_markdown,
+          note,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix
+        )
+      )
+    )
+
     # Who replied, in the form `Patchbay.Forum.Principal.for/1` gives: the
     # person an agent acts for, else the signed-in profile, else the session.
     calculate(
@@ -213,6 +256,33 @@ defmodule Patchbay.Forum.Reply do
       filter(expr(report_id == ^arg(:report_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [inserted_at: :asc, id: :asc]))
+    end
+
+    read :most_worked do
+      description("""
+      The reply on a thread the most others say worked for them, the latest
+      word breaking a tie. None until someone other than its writer and the
+      asker has said one worked.
+      """)
+
+      argument(:report_id, :uuid, allow_nil?: false)
+      filter(expr(report_id == ^arg(:report_id) and visibility == :published))
+
+      # The zero count is left out after the read: ash_postgres 2.13 loses the
+      # count's column when a query both filters and sorts by it.
+      prepare(
+        build(
+          sort: [worked_for_others: :desc, last_worked_at: :desc_nils_last, id: :asc],
+          limit: 1,
+          load: [:worked_for_others, :last_worked_at]
+        )
+      )
+
+      prepare(
+        after_action(fn _query, replies, _context ->
+          {:ok, Enum.filter(replies, &(&1.worked_for_others > 0))}
+        end)
+      )
     end
 
     read :for_request do
@@ -307,6 +377,7 @@ defmodule Patchbay.Forum.Reply do
         :report_id,
         :browser_session_id,
         :body_markdown,
+        :fix,
         :client_request_id,
         :request_digest
       ])

@@ -37,6 +37,27 @@ defmodule PatchbayWeb.AgentReadinessTest do
     )
   end
 
+  # A schema without its descriptions: the names, types and limits only.
+  defp undescribed(%{} = schema),
+    do:
+      for({key, value} <- schema, key != "description", into: %{}, do: {key, undescribed(value)})
+
+  defp undescribed(list) when is_list(list), do: Enum.map(list, &undescribed/1)
+  defp undescribed(value), do: value
+
+  # "{a, b?, c}" as the docs write a body: each field, and whether it may be left out.
+  defp fields_listed(listed) do
+    for field <- String.split(listed, ", "), into: MapSet.new() do
+      {String.trim_trailing(field, "?"), String.ends_with?(field, "?")}
+    end
+  end
+
+  defp fields_of(schema) do
+    for field <- Map.keys(schema["properties"]), into: MapSet.new() do
+      {field, field not in schema["required"]}
+    end
+  end
+
   defp markdown(conn, path) do
     conn = conn |> put_req_header("accept", "text/markdown") |> get(path)
     assert response_content_type(conn, :md) =~ "text/markdown"
@@ -160,6 +181,27 @@ defmodule PatchbayWeb.AgentReadinessTest do
                ["code", "message", "hint"]
     end
 
+    test "a fix is sent as text fields only and read back with every field and its counts", %{
+      conn: conn
+    } do
+      schemas =
+        conn |> get("/openapi.json") |> json_response(200) |> get_in(["components", "schemas"])
+
+      sent = schemas["NewFix"]
+      read = schemas["Fix"]
+
+      assert get_in(schemas, ["NewReply", "properties", "fix", "$ref"]) ==
+               "#/components/schemas/NewFix"
+
+      assert sent["additionalProperties"] == false
+      refute Enum.any?(sent["properties"], fn {_field, field} -> is_list(field["type"]) end)
+
+      assert Map.keys(read["properties"]) --
+               Map.keys(sent["properties"]) == ["source_count", "update_count"]
+
+      assert read["required"] |> Enum.sort() == read["properties"] |> Map.keys() |> Enum.sort()
+    end
+
     test "sitemap.xml lists the fixed pages, sites, tools and posts with last-change times", %{
       conn: conn
     } do
@@ -180,6 +222,218 @@ defmodule PatchbayWeb.AgentReadinessTest do
                "<loc>#{url}/shop.example/tools/checkout</loc><lastmod>#{DateTime.to_iso8601(tool.last_seen_at)}</lastmod>"
 
       assert xml =~ "<loc>#{url}/posts/#{report.id}</loc><lastmod>"
+
+      # Test Me and Ask Jev are previews kept out of every listing.
+      refute xml =~ "<loc>#{url}/test-me</loc>"
+      refute xml =~ "<loc>#{url}/jev</loc>"
+    end
+
+    test "Test Me and Ask Jev are linked from nowhere a reader browses", %{conn: conn} do
+      for path <- ~w(/ /help /test-me /jev) do
+        html = conn |> get(path) |> html_response(200)
+        refute html =~ ~s(href="/test-me")
+        refute html =~ ~s(href="/jev")
+      end
+
+      pages = for path <- ~w(/help /test-me /jev), do: elem(markdown(conn, path), 1)
+
+      files =
+        for path <- ~w(/llms.txt /agents.md /skill.md), do: conn |> get(path) |> response(200)
+
+      for body <- pages ++ files do
+        refute body =~ "/test-me"
+        refute body =~ "(/jev)"
+      end
+    end
+
+    test "the five-tool core leads the manifest, llms.txt and the docs page", %{conn: conn} do
+      core = ~w(search_threads get_thread ask_question post_reply record_answer_use)
+
+      manifest = conn |> get("/forum/capabilities") |> json_response(200)
+      assert manifest["core_tools"] == core
+      assert manifest["tools"] |> Enum.take(5) |> Enum.map(& &1["name"]) == core
+
+      guide = response(get(build_conn(), "/llms.txt"), 200)
+      assert guide =~ "## Start with five tools"
+      assert length(String.split(guide)) < 1_500
+      for name <- core, do: assert(guide =~ "| " <> name <> " |")
+
+      html = build_conn() |> get("/docs") |> html_response(200)
+      {core_at, _} = :binary.match(html, ~s(id="core-tools"))
+      {more_at, _} = :binary.match(html, ~s(id="more-tools"))
+      {guide_at, _} = :binary.match(html, ~s(id="agents"))
+      assert core_at < more_at and more_at < guide_at
+      assert html =~ ~s(id="optional-siwa-verified-hello")
+
+      {_status, md} = markdown(build_conn(), "/docs")
+      assert md =~ "### Start with five tools"
+      assert md =~ "## More for agents"
+      assert md =~ "### Threads over HTTP"
+    end
+
+    test "every list of the search options names the same ones as the command list", %{
+      conn: conn
+    } do
+      %{"commands" => commands} =
+        "../../../cli/commands.json" |> Path.expand(__DIR__) |> File.read!() |> Jason.decode!()
+
+      %{"flags" => flags} = Enum.find(commands, &(&1["command"] == "threads search"))
+      names = flags |> Enum.map(& &1["name"]) |> MapSet.new()
+      fields = flags |> Enum.map(& &1["field"]) |> MapSet.new()
+
+      manifest = conn |> get("/forum/capabilities") |> json_response(200)
+      search = Enum.find(manifest["tools"], &(&1["name"] == "search_threads"))
+      assert search["input_schema"]["properties"] |> Map.keys() |> MapSet.new() == fields
+
+      openapi = build_conn() |> get("/openapi.json") |> json_response(200)
+      parameters = openapi["paths"]["/forum/search"]["get"]["parameters"]
+      assert parameters |> Enum.map(& &1["name"]) |> MapSet.new() == fields
+
+      {_status, docs} = markdown(build_conn(), "/docs")
+
+      [takes] =
+        Regex.run(~r/`regents patchbay threads search` takes (.+?);/s, docs,
+          capture: :all_but_first
+        )
+
+      [reads] =
+        Regex.run(~r/Command-line reads: regents patchbay threads search (.+?), and/s, docs,
+          capture: :all_but_first
+        )
+
+      for listed <- [takes, reads] do
+        flags_named =
+          ~r/--([a-z-]+)/ |> Regex.scan(listed, capture: :all_but_first) |> List.flatten()
+
+        assert MapSet.new(flags_named) == names, listed
+      end
+
+      llms = build_conn() |> get("/llms.txt") |> response(200)
+
+      [row] =
+        Regex.run(~r/\| search_threads \| GET \/forum\/search\?(\S+) \|/, llms,
+          capture: :all_but_first
+        )
+
+      [api] = Regex.run(~r/GET \/forum\/search\?(\S+) searches/, docs, capture: :all_but_first)
+
+      for query <- [row, api] do
+        named = query |> String.split("&") |> Enum.map(&(&1 |> String.split("=") |> hd()))
+        assert MapSet.new(named) == fields, query
+      end
+    end
+
+    test "a reply and its fix have the same fields in openapi.json, the tools, the command list and the docs",
+         %{conn: conn} do
+      schemas =
+        conn |> get("/openapi.json") |> json_response(200) |> get_in(["components", "schemas"])
+
+      reply = schemas["NewReply"]
+      fix = schemas["NewFix"]
+
+      manifest = build_conn() |> get("/forum/capabilities") |> json_response(200)
+      tool = Enum.find(manifest["tools"], &(&1["name"] == "post_reply"))
+      sent = tool["operation_input_schema"]
+
+      assert Map.keys(sent["properties"]) -- ["thread_id"] == Map.keys(reply["properties"])
+      assert Enum.sort(sent["required"] -- ["thread_id"]) == Enum.sort(reply["required"])
+      assert tool["input_schema"]["properties"]["input"] == sent
+      assert undescribed(sent["properties"]["fix"]) == undescribed(fix)
+
+      %{"commands" => commands} =
+        "../../../cli/commands.json" |> Path.expand(__DIR__) |> File.read!() |> Jason.decode!()
+
+      %{"stdin_fields" => stdin} = Enum.find(commands, &(&1["command"] == "threads reply <id>"))
+
+      assert stdin |> Enum.map(& &1["field"]) |> Enum.sort() ==
+               Enum.sort(Map.keys(reply["properties"]))
+
+      assert stdin |> Enum.filter(& &1["required"]) |> Enum.map(& &1["field"]) |> Enum.sort() ==
+               Enum.sort(reply["required"])
+
+      cli_fix = Enum.find(stdin, &(&1["field"] == "fix"))
+      assert cli_fix["type"] == "object"
+      for field <- Map.keys(fix["properties"]), do: assert(cli_fix["description"] =~ field, field)
+
+      {_status, docs} = markdown(build_conn(), "/docs")
+      llms = build_conn() |> get("/llms.txt") |> response(200)
+      skill = build_conn() |> get("/skill.md") |> response(200)
+
+      [docs_reply] =
+        Regex.run(~r/POST \/forum\/threads\/:id\/replies with \{([^}]+)\}/, docs,
+          capture: :all_but_first
+        )
+
+      [docs_fix] = Regex.run(~r/ fix is \{([^}]+)\}/, docs, capture: :all_but_first)
+
+      llms_row =
+        ~r/\| post_reply \| POST \/forum\/threads\/\{id\}\/replies \| Answer: \{([^}]+)\}/
+
+      [llms_reply] = Regex.run(llms_row, llms, capture: :all_but_first)
+
+      assert fields_listed(docs_reply) == fields_of(reply)
+      assert fields_listed(llms_reply) == fields_of(reply)
+      assert fields_listed(docs_fix) == fields_of(fix)
+
+      [_before, advice] = String.split(skill, "## Reply\n", parts: 2)
+      [advice | _later] = String.split(advice, "\n## ", parts: 2)
+      for field <- Map.keys(fix["properties"]), do: assert(advice =~ "`#{field}`", field)
+
+      [required] =
+        Regex.run(~r/((?:`\w+`(?:, | and ))+`\w+`) are required/, advice, capture: :all_but_first)
+
+      assert ~r/`(\w+)`/
+             |> Regex.scan(required, capture: :all_but_first)
+             |> List.flatten()
+             |> Enum.sort() ==
+               Enum.sort(fix["required"])
+
+      for described <- [
+            fix["description"],
+            sent["properties"]["fix"]["description"],
+            cli_fix["description"],
+            docs,
+            advice
+          ] do
+        assert described =~ "16,384 characters"
+      end
+    end
+
+    test "the solved feed is in openapi.json, llms.txt and the docs page", %{conn: conn} do
+      paths = conn |> get("/openapi.json") |> json_response(200) |> Map.fetch!("paths")
+      assert paths["/solved.json"]["get"]["operationId"] == "listSolvedFixes"
+
+      assert Map.keys(paths["/solved.rss"]["get"]["responses"]["200"]["content"]) == [
+               "application/rss+xml"
+             ]
+
+      llms = build_conn() |> get("/llms.txt") |> response(200)
+      {_status, docs} = markdown(build_conn(), "/docs")
+
+      for listed <- [llms, docs] do
+        assert listed =~ "(https://patchbay.help/solved.json)"
+        assert listed =~ "(https://patchbay.help/solved.rss)"
+      end
+    end
+
+    test "the skill has one header block, one schedule rule and the five tools first", %{
+      conn: conn
+    } do
+      skill = conn |> get("/skill.md") |> response(200)
+
+      assert ["", _header, _body] = String.split(skill, ~r/^---$/m, parts: 3)
+      assert length(Regex.scan(~r/^---$/m, skill)) == 2
+      assert length(Regex.scan(~r/^## .*schedule/im, skill)) == 1
+      refute skill =~ "signed POST"
+
+      [first_section | _] = String.split(skill, ~r/^## /m) |> Enum.drop(1)
+      assert first_section =~ "Start with five tools"
+
+      names =
+        Regex.scan(~r/^\| `([a-z_]+)` \|/m, first_section, capture: :all_but_first)
+        |> List.flatten()
+
+      assert names == ~w(search_threads get_thread ask_question post_reply record_answer_use)
     end
 
     test "robots.txt names the sitemap and llms.txt says when to use Patchbay", %{conn: conn} do

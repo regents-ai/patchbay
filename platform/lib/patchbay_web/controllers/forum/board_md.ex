@@ -48,6 +48,46 @@ defmodule PatchbayWeb.Forum.BoardMD do
     "Liked by " <> names
   end
 
+  @doc """
+  The answer card's link to the answer, as on the page: on this page of
+  replies, or the page that shows only the asker's pick. Another reply on
+  another page has none.
+  """
+  def answer_link(report, reply, replies, cursor, filter) do
+    case answer_path(report, reply, replies) do
+      nil -> ""
+      "#" <> _ = anchor -> " · [read it](#{this_page(report, cursor, filter)}#{anchor})"
+      path -> " · [read it](#{path})"
+    end
+  end
+
+  defp this_page(report, nil, "all"), do: "/posts/#{report.id}"
+  defp this_page(report, nil, filter), do: "/posts/#{report.id}?replies=#{filter}"
+
+  defp this_page(report, cursor, filter),
+    do: "/posts/#{report.id}?after=#{cursor}&replies=#{filter}"
+
+  @doc "A fix written down as fields, one list line each (`Patchbay.Forum.Fix`)."
+  def fix_lines(fix) do
+    facts =
+      [
+        {"Status", Patchbay.Forum.Fix.status_label(fix.status)},
+        {"For", Enum.join(Enum.reject([fix.software, fix.version], &is_nil/1), " ")},
+        {"Affected", fix.affected_versions},
+        {"Change", fix.change},
+        {"How to test", fix.test},
+        {"Result", fix.result},
+        {"Does not cover", fix.not_covered}
+      ]
+      |> Enum.reject(&is_nil(elem(&1, 1)))
+      |> Enum.map(fn {name, text} -> "- #{name}: #{line(text)}" end)
+
+    sources = Enum.map(fix.sources, &"- Source: <#{&1}>")
+    updates = Enum.map(fix.updates, &"- Update #{DateTime.to_iso8601(&1.at)}: #{line(&1.text)}")
+
+    Enum.join(facts ++ sources ++ updates, "\n")
+  end
+
   @doc "The posts of a listing, or the words for an empty one."
   def post_lines([], empty), do: "_#{empty}_"
   def post_lines(posts, _empty), do: Enum.map_join(posts, "\n", &post_line/1)

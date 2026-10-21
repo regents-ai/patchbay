@@ -48,6 +48,11 @@ defmodule Patchbay.Forum.Report do
       reference(:author, index?: true)
     end
 
+    # Search finds a thread by its title spelled a little wrong.
+    custom_indexes do
+      index(["title public.gin_trgm_ops"], name: "forum_reports_title_trgm_index", using: "GIN")
+    end
+
     check_constraints do
       # The database keeps only the types in the one list, whatever wrote the row.
       check_constraint(:thread_kind, "forum_reports_thread_kind_known",
@@ -337,8 +342,13 @@ defmodule Patchbay.Forum.Report do
 
     # The reply the asker of an ordinary thread picked as what worked. It is
     # the discussion answer only: no money follows it, and a paid award is
-    # decided by `accepted_reply` alone.
-    belongs_to(:solution_reply, Patchbay.Forum.Reply, allow_nil?: true, public?: true)
+    # decided by `accepted_reply` alone. A pick that moderation has hidden is
+    # no answer while it stays hidden.
+    belongs_to :solution_reply, Patchbay.Forum.Reply do
+      allow_nil?(true)
+      public?(true)
+      filter(expr(visibility == :published))
+    end
 
     # The reusable cards distilled from this thread's named solutions.
     has_many :solution_cards, Patchbay.Forum.SolutionCard do
@@ -365,10 +375,58 @@ defmodule Patchbay.Forum.Report do
     # Every like on the thread, across all its pages of replies.
     count(:thread_like_count, :likes)
     count(:post_like_count, :post_likes)
+
+    # How many others say a published reply here worked for them: never a
+    # reply's own writer, never the asker. Their word, not a check. With the
+    # latest such word, it ranks search results and thread lists.
+    count :worked_count, [:replies, :answer_uses] do
+      field(:principal)
+      uniq?(true)
+
+      filter(
+        expr(
+          outcome == :worked and not same_author and reply.visibility == :published and
+            (is_nil(parent(principal)) or principal != parent(principal))
+        )
+      )
+
+      public?(true)
+    end
+
+    max :last_worked_at, [:replies, :answer_uses], :updated_at do
+      filter(
+        expr(
+          outcome == :worked and not same_author and reply.visibility == :published and
+            (is_nil(parent(principal)) or principal != parent(principal))
+        )
+      )
+
+      public?(true)
+    end
   end
 
   calculations do
     calculate(:feed_engagement, :integer, expr(post_like_count + reply_count))
+
+    # The words a search finds a thread by: its own words, its tools and its
+    # site. Its replies and cards add theirs (`Reply`, `SolutionCard`).
+    # Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
+    # at the same fields.
+    calculate(
+      :searched_words,
+      :string,
+      expr(
+        fragment(
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')",
+          title,
+          body_markdown,
+          note,
+          tool_names,
+          site.origin,
+          site.display_name
+        )
+      )
+    )
 
     # What makes a report one of the board's paid ones: money was put behind it
     # and it is still there to be won. A bounty its asker took back is an
@@ -434,6 +492,9 @@ defmodule Patchbay.Forum.Report do
       )
     )
 
+    # Solved is the asker's pick, while it is still published.
+    calculate(:solved, :boolean, expr(exists(solution_reply, true)), public?: true)
+
     # Any reply can be an answer or discussion; only the asker's pick makes
     # one the answer. The asker's own replies are not help. A thread whose
     # asker is unknown counts every reply.
@@ -442,7 +503,7 @@ defmodule Patchbay.Forum.Report do
       DiscussionState,
       expr(
         cond do
-          not is_nil(solution_reply_id) ->
+          solved ->
             :solved
 
           exists(
@@ -540,8 +601,9 @@ defmodule Patchbay.Forum.Report do
       description("""
       Every published thread about one named tool on a site — posts filed
       against any version of it, and questions that only name it — open
-      bounties first: largest funded, unanswered bounty, then newest. The rest
-      follow, newest first.
+      bounties first: largest funded, unanswered bounty. The rest follow by
+      how many say a reply worked for them, then the latest who said so, then
+      newest.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
@@ -555,7 +617,18 @@ defmodule Patchbay.Forum.Report do
       )
 
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(sort: [open_bounty_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+
+      prepare(
+        build(
+          sort: [
+            open_bounty_usdc_atomic: :desc,
+            worked_count: :desc,
+            last_worked_at: :desc_nils_last,
+            inserted_at: :desc,
+            id: :desc
+          ]
+        )
+      )
     end
 
     read :for_site do
@@ -574,14 +647,26 @@ defmodule Patchbay.Forum.Report do
       description("""
       Every published thread on one site — site-wide questions and posts about
       any of its tools — open bounties first: largest funded, unanswered
-      bounty, then newest. The rest follow, newest first. Pending, failed,
-      refunded or paid-out escrow does not promote a thread.
+      bounty. The rest follow by how many say a reply worked for them, then
+      the latest who said so, then newest. Pending, failed, refunded or
+      paid-out escrow does not promote a thread.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       filter(expr(site_id == ^arg(:site_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(sort: [open_bounty_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+
+      prepare(
+        build(
+          sort: [
+            open_bounty_usdc_atomic: :desc,
+            worked_count: :desc,
+            last_worked_at: :desc_nils_last,
+            inserted_at: :desc,
+            id: :desc
+          ]
+        )
+      )
     end
 
     read :open_questions do
@@ -593,7 +678,7 @@ defmodule Patchbay.Forum.Report do
       filter(
         expr(
           thread_kind in [:help_needed, :feature_request] and
-            is_nil(solution_reply_id) and
+            not solved and
             visibility == :published
         )
       )
@@ -623,12 +708,15 @@ defmodule Patchbay.Forum.Report do
 
     read :search do
       description("""
-      Full-text search over thread titles, bodies, notes and their published
-      replies, matched directly against the site's records — not bounded by a
-      handful of observed tool versions.
+      Full-text search over the words a thread, its published replies and
+      their fixes, and its published cards carry (`searched_words`), matched
+      directly against the site's records — not bounded by a handful of
+      observed tool versions.
       """)
 
-      argument(:term, :string, allow_nil?: false)
+      # The words to look for: an error message, a site, a tool. A search by
+      # the software and version a fix names needs none.
+      argument(:term, :string, allow_nil?: true)
       argument(:site_id, :uuid, allow_nil?: true)
 
       # Narrow a search to threads about one tool name — the observed row or
@@ -638,32 +726,44 @@ defmodule Patchbay.Forum.Report do
       # Only threads touched at or after this moment — a recent-posts read.
       argument(:since, :utc_datetime, allow_nil?: true)
 
+      # Only threads with a reply whose fix names this software (any case)
+      # and, when given, this version exactly (`Patchbay.Forum.Fix`).
+      argument(:software, :string, allow_nil?: true)
+      argument(:version, :string, allow_nil?: true)
+
       filter(expr(visibility == :published))
       filter(expr(is_nil(^arg(:since)) or last_activity_at >= ^arg(:since)))
 
       filter(
         expr(
-          fragment(
-            "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-            title,
-            body_markdown,
-            note,
-            ^arg(:term)
-          ) or
+          (is_nil(^arg(:software)) and is_nil(^arg(:version))) or
+            exists(
+              replies,
+              visibility == :published and
+                (is_nil(^arg(:software)) or
+                   fragment("lower(?->>'software') = lower(?)", fix, ^arg(:software))) and
+                (is_nil(^arg(:version)) or fragment("?->>'version' = ?", fix, ^arg(:version)))
+            )
+        )
+      )
+
+      filter(
+        expr(
+          is_nil(^arg(:term)) or
             fragment(
-              "to_tsvector('english', array_to_string(?, ' ')) @@ plainto_tsquery('english', ?)",
-              tool_names,
+              "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+              searched_words,
               ^arg(:term)
             ) or
             site.origin == ^arg(:term) or
             ^arg(:term) in tool_names or
+            fragment("? OPERATOR(public.<%) coalesce(?, '')", ^arg(:term), title) or
             exists(
               replies,
               visibility == :published and
                 fragment(
-                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-                  body_markdown,
-                  note,
+                  "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+                  searched_words,
                   ^arg(:term)
                 )
             ) or
@@ -671,10 +771,8 @@ defmodule Patchbay.Forum.Report do
               solution_cards,
               status == :published and
                 fragment(
-                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-                  problem_summary,
-                  proposed_steps,
-                  caveats,
+                  "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+                  searched_words,
                   ^arg(:term)
                 )
             )
@@ -687,12 +785,15 @@ defmodule Patchbay.Forum.Report do
 
       pagination(offset?: true, default_limit: 10, max_page_size: 50)
 
-      # Relevance first — the thread's own words rank it — then what moved
+      # What others say worked first: how many, then the latest who said so.
+      # Then relevance — the thread's own words rank it — then what moved
       # last and a stable id, so two equally relevant threads never reorder.
       prepare(fn query, _context ->
         term = Ash.Query.get_argument(query, :term)
 
         Ash.Query.sort(query, [
+          {:worked_count, :desc},
+          {:last_worked_at, :desc_nils_last},
           {calc(
              fragment(
                "ts_rank(to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')), plainto_tsquery('english', ?))",

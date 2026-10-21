@@ -3,7 +3,9 @@ defmodule Patchbay.Forum.Feed do
   require Ash.Query
   alias Patchbay.Forum.Report
 
-  # Search the report text as well as its site/tool. Filtering happens before
+  # Search the same words the full-text search reads (`searched_words` on the
+  # thread, its published replies and its published cards), and the title
+  # spelled a little wrong (pg_trgm's word similarity). Filtering happens before
   # keyset pagination, not against an arbitrary handful of tool versions.
   # Techtree Result discussions are opened automatically, so they stay on
   # techtree.sh's own board and out of this feed of what people and agents asked.
@@ -16,6 +18,7 @@ defmodule Patchbay.Forum.Feed do
     |> tag(filters.tag)
     |> scope(filters.scope, following)
     |> since(Map.get(filters, :since))
+    |> fixed(Map.get(filters, :fixed, %{software: nil, version: nil}))
     |> ordered(Map.get(filters, :sort, "recent"))
   end
 
@@ -24,35 +27,17 @@ defmodule Patchbay.Forum.Feed do
   defp search(query, term) do
     Ash.Query.filter(
       query,
-      fragment(
-        "(coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) ILIKE ('%' || lower(?) || '%')",
-        title,
-        body_markdown,
-        note,
-        tool_names,
-        site.origin,
-        site.display_name,
-        ^term
-      ) or
+      fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term) or
+        fragment("? OPERATOR(public.<%) coalesce(?, '')", ^term, title) or
         exists(
           replies,
           visibility == :published and
-            fragment(
-              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-              body_markdown,
-              note,
-              ^term
-            )
+            fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
         ) or
         exists(
           solution_cards,
           status == :published and
-            fragment(
-              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-              problem_summary,
-              proposed_steps,
-              ^term
-            )
+            fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
         )
     )
   end
@@ -70,9 +55,9 @@ defmodule Patchbay.Forum.Feed do
   defp scope(query, "unanswered", _following),
     do: Ash.Query.filter(query, discussion_state == :awaiting_help)
 
-  # Solved is the asker's own word: they marked a reply as the answer.
-  defp scope(query, "solved", _following),
-    do: Ash.Query.filter(query, not is_nil(solution_reply_id))
+  # Solved is the asker's own word: they marked a reply as the answer, and
+  # it is still published.
+  defp scope(query, "solved", _following), do: Ash.Query.filter(query, solved)
 
   # Following is the caller's own subscriptions: followed sites, tools and
   # threads all surface here.
@@ -89,9 +74,34 @@ defmodule Patchbay.Forum.Feed do
   defp since(query, nil), do: query
   defp since(query, cutoff), do: Ash.Query.filter(query, last_activity_at >= ^cutoff)
 
-  # Likes on the opening post plus published replies. Views and money never rank posts.
+  # Threads with a reply whose fix names this software (any case) and, when
+  # given, this version exactly (`Patchbay.Forum.Fix`).
+  defp fixed(query, %{software: nil, version: nil}), do: query
+
+  defp fixed(query, %{software: software, version: version}) do
+    Ash.Query.filter(
+      query,
+      exists(
+        replies,
+        visibility == :published and
+          (is_nil(^software) or fragment("lower(?->>'software') = lower(?)", fix, ^software)) and
+          (is_nil(^version) or fragment("?->>'version' = ?", fix, ^version))
+      )
+    )
+  end
+
+  # What others say worked first (how many, then the latest who said so), then
+  # likes on the opening post plus published replies. Views and money never
+  # rank posts.
   defp ordered(query, "popular"),
-    do: Ash.Query.sort(query, feed_engagement: :desc, inserted_at: :desc, id: :desc)
+    do:
+      Ash.Query.sort(query,
+        worked_count: :desc,
+        last_worked_at: :desc_nils_last,
+        feed_engagement: :desc,
+        inserted_at: :desc,
+        id: :desc
+      )
 
   defp ordered(query, _), do: Ash.Query.sort(query, inserted_at: :desc, id: :desc)
 end

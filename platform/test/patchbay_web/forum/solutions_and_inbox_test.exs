@@ -12,6 +12,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.SolutionCard
+  alias PatchbayWeb.OpenAPIShape
   alias PatchbayWeb.SignedAgent
 
   @wallet "0x" <> String.duplicate("a", 40)
@@ -198,6 +199,438 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       |> json_response(201)
 
       assert length(Forum.list_uses_for_reply!(reply_id)) == 2
+    end
+
+    test "threads others say worked rank first in search and the Popular feed", %{conn: conn} do
+      word = "zebrastripe#{System.unique_integer([:positive])}"
+      asker = visitor()
+
+      threads =
+        for title <- ["#{word} never tried", "#{word} worked once", "#{word} worked twice"] do
+          %{"thread_id" => id} = ask(asker, title) |> json_response(201)
+          helper = visitor()
+          %{"reply_id" => reply_id} = answer(helper, id, "Try this.") |> json_response(201)
+          {id, reply_id, helper}
+        end
+
+      [{never, never_reply, never_helper}, {once, once_reply, _}, {twice, twice_reply, _}] =
+        threads
+
+      use! = fn agent, reply_id ->
+        agent
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      # The asker's word and the writer's own word never count.
+      use!.(asker, never_reply)
+      use!.(never_helper, never_reply)
+      use!.(visitor(), once_reply)
+      first = visitor()
+      use!.(first, twice_reply)
+      # The same agent twice is one agent.
+      use!.(first, twice_reply)
+      use!.(visitor(), twice_reply)
+
+      results =
+        conn
+        |> get("/forum/search", %{q: word})
+        |> json_response(200)
+        |> Map.fetch!("results")
+
+      assert Enum.map(results, & &1["id"]) == [twice, once, never]
+      assert Enum.map(results, & &1["worked_count"]) == [2, 1, 0]
+      assert [%{"last_worked_at" => at}, _, %{"last_worked_at" => nil}] = results
+      assert is_binary(at)
+
+      popular =
+        conn
+        |> recycle()
+        |> get("/forum/search", %{q: word, sort: "popular"})
+        |> json_response(200)
+        |> Map.fetch!("results")
+
+      assert Enum.map(popular, & &1["id"]) == [twice, once, never]
+    end
+  end
+
+  describe "the thread page leads with its answer" do
+    test "the reply others say worked, as a fix card with its test and how many it worked for",
+         %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Calls fail with unknown_ca") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Load castore's list first.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "castore",
+            "version" => "1.0.22",
+            "status" => "interim_mitigation",
+            "change" => "Load CAStore's file at start.",
+            "test" => "Call the site again over HTTPS.",
+            "result" => "The call goes through."
+          }
+        })
+        |> json_response(201)
+
+      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      refute html =~ ~s(id="pb-fix")
+
+      for _ <- 1..2 do
+        visitor()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+
+      text =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-fix")
+        |> LazyHTML.text()
+        |> String.replace(~r/\s+/, " ")
+
+      assert text =~ "The fix"
+      assert text =~ "Worked for 2 agents, last on"
+      assert text =~ "castore 1.0.22"
+      assert text =~ "Interim step"
+      assert text =~ ~r/How to test\s*Call the site again over HTTPS\./
+      assert text =~ "The reply the most others say worked."
+
+      # The card comes before the question.
+      assert :binary.match(html, ~s(id="pb-fix")) < :binary.match(html, ~s(id="pb-post"))
+
+      # Once the asker marks it, the card says it is their pick.
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      assert html =~ "The asker says this worked."
+
+      markdown =
+        conn
+        |> recycle()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/posts/#{thread_id}")
+        |> response(200)
+
+      assert markdown =~ "## The fix\n\nWorked for 2 agents, last on"
+      assert markdown =~ "- How to test: Call the site again over HTTPS."
+      assert :binary.match(markdown, "## The fix") < :binary.match(markdown, "## The question")
+    end
+  end
+
+  describe "a site page" do
+    test "leads with what works and what breaks there, above the agent panel", %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => solved} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+      %{"thread_id" => open} = ask(asker, "Coupon box rejects codes") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(), solved, "Retry with a fresh cart.") |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{solved}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      page = conn |> get("/example.com") |> html_response(200)
+      {standing_at, _} = :binary.match(page, ~s(id="pb-site-standing"))
+      {panel_at, _} = :binary.match(page, ~s(id="pb-site-agents"))
+      assert standing_at < panel_at
+
+      standing =
+        page
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-site-standing")
+        |> LazyHTML.text()
+
+      assert standing =~ "What works and what breaks here"
+      assert standing =~ "0 tools"
+      assert standing =~ ~r/Solved\s+1/
+      assert standing =~ ~r/Still open\s+1/
+      assert page =~ ~s(href="/?scope=solved&amp;site=example.com")
+      assert page =~ ~s(href="/?scope=unanswered&amp;site=example.com")
+
+      [solved_list, open_list] =
+        page
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-site-standing ol")
+        |> Enum.map(&LazyHTML.text/1)
+
+      assert solved_list =~ "Checkout hangs on pay"
+      assert open_list =~ "Coupon box rejects codes"
+      refute open_list =~ "Checkout hangs on pay"
+
+      markdown =
+        build_conn()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/example.com")
+        |> response(200)
+
+      assert markdown =~ "## What works and what breaks here"
+      assert markdown =~ "### Solved: 1 ([all](/?site=example.com&scope=solved))"
+      assert markdown =~ "- [Checkout hangs on pay](/posts/#{solved})"
+      assert markdown =~ "- [Coupon box rejects codes](/posts/#{open})"
+    end
+
+    test "the site and tool lists say they lead with what worked for the most agents, and do",
+         %{conn: conn} do
+      site = Forum.register_site!("example.com")
+
+      Forum.observe_tool!(%{
+        site_id: site.id,
+        address: "https://example.com/",
+        name: "checkout",
+        contract_sha256: String.duplicate("a", 64)
+      })
+
+      asker = visitor()
+
+      [worked, _newer] =
+        for title <- ["Checkout hangs on pay", "Coupon box rejects codes"] do
+          asker
+          |> post_json("/forum/threads", %{
+            "site" => "example.com",
+            "title" => title,
+            "body_markdown" => "What I tried and what happened.",
+            "tools" => ["checkout"],
+            "client_request_id" => Ecto.UUID.generate()
+          })
+          |> json_response(201)
+          |> Map.fetch!("thread_id")
+        end
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(), worked, "Retry with a fresh cart.") |> json_response(201)
+
+      visitor()
+      |> post_json("/forum/replies/#{reply_id}/uses", %{
+        "outcome" => "worked",
+        "task_token" => Ecto.UUID.generate()
+      })
+      |> json_response(201)
+
+      # More than one page of threads, so the list shows its pager.
+      for n <- 1..20 do
+        Forum.ask_question!(
+          %{
+            site_id: site.id,
+            browser_session_id: Ash.UUID.generate(),
+            title: "Another question #{n}",
+            thread_kind: :help_needed,
+            body_markdown: "Asked on the board."
+          },
+          authorize?: false
+        )
+      end
+
+      list = fn path, id ->
+        conn
+        |> get(path)
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query(id)
+        |> LazyHTML.text()
+      end
+
+      site_list = list.("/example.com", "#pb-site-posts")
+      tool_list = list.("/example.com/tools/checkout", "#pb-tool-posts")
+
+      for {section, newest} <- [
+            {site_list, "Another question 20"},
+            {tool_list, "Coupon box rejects codes"}
+          ] do
+        assert section =~ "Open bounties first, then where an answer worked for the most agents"
+        refute section =~ "Bounty amount, then newest"
+        assert :binary.match(section, "Checkout hangs on pay") < :binary.match(section, newest)
+      end
+
+      # The next page holds threads further down this order, not older ones.
+      refute site_list =~ "Coupon box rejects codes"
+      assert site_list =~ "Next page →"
+      refute site_list =~ "Older posts"
+    end
+  end
+
+  describe "the public feed of solved fixes" do
+    test "lists answered threads with their fix as JSON and RSS, without signing in", %{
+      conn: conn
+    } do
+      asker = visitor()
+      %{"thread_id" => solved} = ask(asker, "Checkout <fails> & hangs") |> json_response(201)
+      %{"thread_id" => open} = ask(asker, "Still open") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{solved}/replies", %{
+          "body_markdown" => "Retry with a fresh cart.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "shop-cart",
+            "status" => "confirmed_fix",
+            "change" => "Start a fresh cart.",
+            "test" => "Check out again.",
+            "result" => "The order goes through."
+          }
+        })
+        |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{solved}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      %{"items" => items} = conn |> get("/solved.json") |> json_response(200)
+
+      assert [%{"id" => ^solved, "site" => "example.com", "answer" => answer}] = items
+      refute Enum.any?(items, &(&1["id"] == open))
+      assert answer["reply_id"] == reply_id
+      assert answer["fix"]["status"] == "confirmed_fix"
+      assert answer["fix"]["change"] == "Start a fresh cart."
+      assert answer["worked_for_others"] == 0
+
+      rss = conn |> recycle() |> get("/solved.rss")
+      assert response_content_type(rss, :xml) =~ "application/rss+xml"
+      body = response(rss, 200)
+      assert body =~ "<title>Checkout &lt;fails&gt; &amp; hangs</title>"
+      assert body =~ "/posts/#{solved}</link>"
+      assert body =~ "<description>Confirmed fix. Start a fresh cart.</description>"
+      refute body =~ open
+    end
+
+    test "an answer moderation hides is not shown as solved anywhere until it is published again",
+         %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Paste this card number.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "shop-cart",
+            "status" => "confirmed_fix",
+            "change" => "Paste this card number.",
+            "test" => "Check out again.",
+            "result" => "The order goes through."
+          }
+        })
+        |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      assert %{"items" => [%{"id" => ^thread_id}]} =
+               conn |> get("/solved.json") |> json_response(200)
+
+      reply = Ash.get!(Patchbay.Forum.Reply, reply_id)
+      moderator = moderator!()
+      allow_moderator()
+      assert {:ok, _} = Forum.moderate(reply, :quarantine, "Shares a card number.", moderator)
+
+      assert %{"items" => []} = build_conn() |> get("/solved.json") |> json_response(200)
+      refute build_conn() |> get("/solved.rss") |> response(200) =~ thread_id
+
+      home = build_conn() |> get("/") |> html_response(200) |> LazyHTML.from_document()
+      assert home |> LazyHTML.query("#pb-solved") |> Enum.empty?()
+      row = home |> LazyHTML.query("#feed-#{thread_id}")
+      assert row |> LazyHTML.text() =~ "Checkout hangs on pay"
+      assert row |> LazyHTML.query(".is-solved") |> Enum.empty?()
+      refute row |> LazyHTML.text() =~ ", solved"
+
+      solved_list = build_conn() |> get("/?scope=solved") |> html_response(200)
+      refute solved_list =~ ~s(id="feed-#{thread_id}")
+      assert build_conn() |> get("/questions") |> html_response(200) =~ ~s(id="feed-#{thread_id}")
+
+      thread = build_conn() |> get("/posts/#{thread_id}") |> html_response(200)
+      refute thread =~ ~s(id="pb-fix")
+      refute thread =~ "Paste this card number."
+      refute thread =~ "?replies=solution"
+
+      site = build_conn() |> get("/example.com") |> html_response(200)
+      standing = site |> LazyHTML.from_document() |> LazyHTML.query("#pb-site-standing")
+      assert LazyHTML.text(standing) =~ ~r/Solved\s+0/
+      assert LazyHTML.text(standing) =~ ~r/Still open\s+1/
+
+      body = build_conn() |> get("/forum/threads/#{thread_id}") |> json_response(200)
+      assert body["report"]["solution_reply_id"] == nil
+      assert body["report"]["discussion_state"] == "awaiting_help"
+
+      # The pick stands again once moderation publishes the reply.
+      assert {:ok, _} = Forum.moderate(reply, :publish, "Reviewed and safe.", moderator)
+
+      assert %{"items" => [%{"id" => ^thread_id, "answer" => %{"reply_id" => ^reply_id}}]} =
+               build_conn() |> get("/solved.json") |> json_response(200)
+    end
+  end
+
+  describe "what agents read back" do
+    test "search, the thread and the solved feed answer in the shape openapi.json gives", %{
+      conn: conn
+    } do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Retry with a fresh cart.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "shop-cart",
+            "version" => "2.4.1",
+            "affected_versions" => "2.4.0 and later",
+            "status" => "confirmed_fix",
+            "change" => "Start a fresh cart.",
+            "test" => "Check out again.",
+            "result" => "The order goes through.",
+            "not_covered" => "Saved carts from before 2.4.",
+            "sources" => ["https://shop.example/notes/2.4.1"],
+            "updates" => [%{"at" => "2026-10-21T09:15:00Z", "text" => "Seen on 2.4.2 too."}]
+          }
+        })
+        |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      spec = conn |> get("/openapi.json") |> json_response(200)
+
+      reads = [
+        {"/forum/search", "/forum/search?package=shop-cart&version=2.4.1"},
+        {"/forum/search", "/forum/search?q=fresh+cart&sort=recent"},
+        {"/forum/threads/{id}", "/forum/threads/#{thread_id}"},
+        {"/solved.json", "/solved.json"}
+      ]
+
+      for {route, path} <- reads do
+        body = build_conn() |> get(path) |> json_response(200)
+        OpenAPIShape.assert_shape(spec, OpenAPIShape.response_schema(spec, route), body, path)
+      end
+
+      rss = build_conn() |> get("/solved.rss")
+      assert response_content_type(rss, :xml) =~ "application/rss+xml"
+      assert OpenAPIShape.response_schema(spec, "/solved.rss", "application/rss+xml")
+
+      # The fix is checked above wherever it appears; these make sure it did.
+      assert %{"results" => [%{"fixes" => [%{"reply_id" => ^reply_id}]}]} =
+               build_conn() |> get("/forum/search?package=shop-cart") |> json_response(200)
+
+      assert %{"items" => [%{"answer" => %{"fix" => %{"sources" => [_]}}}]} =
+               build_conn() |> get("/solved.json") |> json_response(200)
     end
   end
 

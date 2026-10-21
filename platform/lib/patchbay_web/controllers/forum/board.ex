@@ -46,6 +46,7 @@ defmodule PatchbayWeb.Forum.Board do
     :author,
     :person,
     :reply_count,
+    :solved,
     :view_count,
     :thread_like_count,
     :bounty_open,
@@ -86,14 +87,14 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec matches(String.t()) :: {:ok, %{sites: [Site.t()], tools: [Tool.t()]}} | {:error, term()}
   def matches(q) do
-    case String.trim(q) do
-      text when byte_size(text) >= 2 ->
-        with {:ok, sites} <- Forum.find_sites(text, load: [:tool_count, :report_count]),
-             {:ok, tools} <- Forum.find_tools(text),
-             do: {:ok, %{sites: sites, tools: tools}}
+    text = String.trim(q)
 
-      _too_short ->
-        {:ok, %{sites: [], tools: []}}
+    if String.length(text) >= 2 do
+      with {:ok, sites} <- Forum.find_sites(text, load: [:tool_count, :report_count]),
+           {:ok, tools} <- Forum.find_tools(text),
+           do: {:ok, %{sites: sites, tools: tools}}
+    else
+      {:ok, %{sites: [], tools: []}}
     end
   end
 
@@ -305,13 +306,12 @@ defmodule PatchbayWeb.Forum.Board do
              @post_loads ++
                [
                  :discussion_state,
-                 :solution_cards,
                  :jev_reading,
                  post_likes: [:author],
                  # The pictures' places only; each image is read when it is served.
                  pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
                  accepted_reply: [:author],
-                 solution_reply: [:author]
+                 solution_reply: [:author, :worked_for_others, :last_worked_at]
                ]
          ) do
       # An address that names no report, or names one held out of sight, is
@@ -319,6 +319,72 @@ defmodule PatchbayWeb.Forum.Board do
       {:ok, %{visibility: :published} = report} -> {:ok, report}
       {:ok, _held} -> :error
       {:error, _no_such_report} -> :error
+    end
+  end
+
+  @doc """
+  The newest threads whose asker has picked an answer, newest first, with
+  the answer and its fix: the home page's solved list and the public feed of
+  solved fixes read the same list. At most `limit`, and never more than a
+  page of the feed holds.
+  """
+  @spec solved_fixes(pos_integer()) :: {:ok, [Report.t()]} | {:error, term()}
+  def solved_fixes(limit) do
+    {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"scope" => "solved"})
+
+    with {:ok, page} <-
+           Forum.list_feed_reports(
+             query: Patchbay.Forum.Feed.query(filters),
+             page: [limit: limit],
+             load: [:site, solution_reply: [:author, :worked_for_others, :last_worked_at]]
+           ) do
+      {:ok, page.results}
+    end
+  end
+
+  @doc """
+  What works and what breaks on a site: how many tools it offers and when one
+  was last seen, then its solved and still-open questions, the newest three of
+  each with how many there are in all.
+  """
+  @spec site_standing(Site.t()) :: map()
+  def site_standing(%Site{} = site) do
+    site = Ash.load!(site, :tools_seen_at)
+
+    %{
+      tool_count: site.tool_count,
+      tools_seen_at: site.tools_seen_at,
+      solved: site_questions(site, "solved"),
+      open: site_questions(site, "unanswered")
+    }
+  end
+
+  defp site_questions(site, scope) do
+    {:ok, filters} =
+      PatchbayWeb.Forum.Discussions.filters(%{"site" => site.origin, "scope" => scope})
+
+    page =
+      Forum.list_feed_reports!(
+        query: Patchbay.Forum.Feed.query(filters),
+        page: [limit: 3, count: true],
+        load: [:site]
+      )
+
+    %{count: page.count, threads: page.results}
+  end
+
+  @doc """
+  The answer a thread leads with, and whose word made it the answer: the
+  reply the asker marked, else the reply the most others say worked. None
+  while neither exists.
+  """
+  @spec answer(Report.t()) :: {:asker | :others, Reply.t()} | nil
+  def answer(%Report{solution_reply: %Reply{} = reply}), do: {:asker, reply}
+
+  def answer(%Report{id: id}) do
+    case Forum.most_worked_reply!(id, load: [:author]) do
+      %Reply{} = reply -> {:others, reply}
+      nil -> nil
     end
   end
 

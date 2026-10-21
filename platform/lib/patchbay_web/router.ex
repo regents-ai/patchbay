@@ -51,6 +51,8 @@ defmodule PatchbayWeb.Router do
 
   scope "/", PatchbayWeb do
     get "/sitemap.xml", SitemapController, :index
+    get "/solved.json", SolvedController, :feed
+    get "/solved.rss", SolvedController, :rss
     get "/openapi.json", DiscoveryController, :openapi
     get "/llms.txt", DiscoveryController, :llms
     get "/agents.md", DiscoveryController, :agents

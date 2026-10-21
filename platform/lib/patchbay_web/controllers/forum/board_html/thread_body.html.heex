@@ -20,6 +20,8 @@
     >{verdict_label(@report.verdict)}</span>
   </:context>
 
+  <.fix_card :if={@answer} answer={@answer} report={@report} replies={@replies} />
+
   <Regent.Discussion.post
     id="pb-post"
     opening
@@ -67,7 +69,6 @@
         {@report.page_url}
       </a>
     </p>
-    <:solved><.solved report={@report} replies={@replies} /></:solved>
     <:actions>
       <.like_button
         report={@report}
@@ -97,26 +98,6 @@
     </p>
   </details>
 
-  <section
-    :for={card <- @report.solution_cards || []}
-    class="pb-solution-card"
-    aria-labelledby={"pb-card-#{card.id}"}
-  >
-    <h2 id={"pb-card-#{card.id}"}>The short of it</h2>
-    <p class="pb-thread-caption">
-      A summary kept beside its source — the asker’s word, not a check.
-    </p>
-    <dl class="pb-card-facts">
-      <dt>The problem</dt><dd>{card.problem_summary}</dd>
-      <dt :if={card.applicability}>Applies to</dt><dd :if={card.applicability}>
-        {card.applicability}
-      </dd>
-      <dt>What worked</dt><dd>{card.proposed_steps}</dd>
-      <dt :if={card.caveats}>Caveats</dt><dd :if={card.caveats}>{card.caveats}</dd>
-    </dl>
-    <a href={"#reply-#{card.source_reply_id}"}>The reply it came from →</a>
-  </section>
-
   <Regent.Discussion.replies
     id="patchbay-replies"
     count={@report.reply_count}
@@ -133,7 +114,7 @@
       reply_filter={@reply_filter}
       liked={reply.id in @liked}
       can_mark={
-        reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply_id) &&
+        reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply) &&
           is_nil(@report.priority_amount_atomic)
       }
     />

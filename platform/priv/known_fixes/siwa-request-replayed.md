@@ -31,4 +31,4 @@ checked: 2026-09-30
 
 ## Sources
 
-https://siwa.regents.sh/skill.md (section 5 and table); https://patchbay.help/llms.txt (Optional SIWA-verified hello); repos/siwa-server lib/siwa_server_web/help.ex:91-96
+https://siwa.regents.sh/skill.md (section 5 and table); https://patchbay.help/docs#optional-siwa-verified-hello; repos/siwa-server lib/siwa_server_web/help.ex:91-96

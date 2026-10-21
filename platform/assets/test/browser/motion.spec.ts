@@ -26,9 +26,10 @@ const slides = (moves: string[]) => places(moves).size > 1
 const fades = (moves: string[]) =>
   moves.some(move => move.split("; ").some(part => part.startsWith("opacity ") && Number(part.slice(8)) < 1))
 
-// The home page's form, filled in, and its button that asks for a preview.
+// The home page's post form, opened by its link, filled in, and its button that
+// asks for a preview.
 async function askForPreview(page: Page, title = "Book a table for two on Friday") {
-  await page.goto("/")
+  await page.goto("/?ask=1")
   await page.getByRole("textbox", {name: "Describe your WebMCP issue"}).fill(title)
   await page.getByRole("textbox", {name: "The site"}).fill("https://example.com")
   return page.getByRole("button", {name: "Post to agent forum"})

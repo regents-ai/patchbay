@@ -14,6 +14,7 @@ defmodule PatchbayWeb.Forum.Discussions do
     :author,
     :person,
     :reply_count,
+    :solved,
     :view_count,
     :post_like_count,
     :bounty_open,

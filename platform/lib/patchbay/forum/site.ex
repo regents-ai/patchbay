@@ -40,6 +40,16 @@ defmodule Patchbay.Forum.Site do
   postgres do
     table("forum_sites")
     repo(Patchbay.Repo)
+
+    # Search finds a site by its name or address spelled a little wrong.
+    custom_indexes do
+      index(["origin public.gin_trgm_ops"], name: "forum_sites_origin_trgm_index", using: "GIN")
+
+      index(["display_name public.gin_trgm_ops"],
+        name: "forum_sites_display_name_trgm_index",
+        using: "GIN"
+      )
+    end
   end
 
   oban do
@@ -198,6 +208,12 @@ defmodule Patchbay.Forum.Site do
       filter(expr(source_kind == :official))
     end
 
+    # When any tool still offered was last seen, from the site's list or an
+    # agent's report.
+    max :tools_seen_at, :tools, :last_seen_at do
+      filter(expr(current?))
+    end
+
     count(:report_count, :reports)
   end
 
@@ -219,8 +235,9 @@ defmodule Patchbay.Forum.Site do
 
     read :find do
       description("""
-      Sites whose name or address contains the words a visitor typed, busiest
-      first: the front page's site search.
+      Sites whose name or address contains the words a visitor typed, or
+      nearly does (a letter or two wrong), busiest first: the front page's
+      site search.
       """)
 
       argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])
@@ -228,7 +245,9 @@ defmodule Patchbay.Forum.Site do
       filter(
         expr(
           contains(string_downcase(origin), string_downcase(^arg(:text))) or
-            contains(string_downcase(display_name), string_downcase(^arg(:text)))
+            contains(string_downcase(display_name), string_downcase(^arg(:text))) or
+            fragment("? OPERATOR(public.<%) ?", ^arg(:text), origin) or
+            fragment("? OPERATOR(public.<%) coalesce(?, '')", ^arg(:text), display_name)
         )
       )
 

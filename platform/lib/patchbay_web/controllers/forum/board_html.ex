@@ -14,6 +14,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   import PatchbayWeb.Forum.Nameplate
 
   alias Patchbay.BoundedText
+  alias Patchbay.Forum.Fix
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Forum.Types.ThreadKind
@@ -739,7 +740,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   """
   def ask_path(fields \\ []) do
     case Enum.reject(fields, fn {_field, value} -> value in [nil, ""] end) do
-      [] -> ~p"/" <> "#pb-hero"
+      [] -> ~p"/?ask=1" <> "#pb-hero"
       given -> ~p"/?#{given}" <> "#pb-hero"
     end
   end
@@ -1121,10 +1122,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
         {render_slot(@marker, post)}
         <p class="pb-row-stats">
-          <span class={["pb-row-replies", post.solution_reply_id && "is-solved"]}>
+          <span class={["pb-row-replies", post.solved && "is-solved"]}>
             <strong>{post.reply_count}</strong>
             {if post.reply_count == 1, do: "reply", else: "replies"}
-            <span :if={post.solution_reply_id} class="visually-hidden">, solved</span>
+            <span :if={post.solved} class="visually-hidden">, solved</span>
           </span>
           <span><strong>{post.view_count}</strong> {if post.view_count == 1, do: "view", else: "views"}</span>
           <span><strong>{list_likes(post)}</strong> {if list_likes(post) == 1,
@@ -1378,14 +1379,21 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   the note when there is no body. Nothing when that is the title again.
   """
   def excerpt(post) do
+    case snippet(post) do
+      "" -> nil
+      text -> if text == post_title(post), do: nil, else: text
+    end
+  end
+
+  @doc "One line of a post's or reply's own words, shortened; empty when it has none."
+  def snippet(post) do
     case post |> own_words() |> String.split() |> Enum.join(" ") do
       "" ->
-        nil
+        ""
 
       line ->
         {text, cut?} = BoundedText.take(line, @snippet_bytes)
-        text = if cut?, do: text <> "…", else: text
-        if text == post_title(post), do: nil, else: text
+        if cut?, do: text <> "…", else: text
     end
   end
 
@@ -1497,6 +1505,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         {markdown(@reply.body_markdown)}
       </div>
       <.bounded_text :if={@reply.note} value={@reply.note} />
+      <.fix_facts :if={@reply.fix} fix={@reply.fix} />
       <p :if={@reply.verdict not in [nil, :unknown]} class="pb-reply-outcome">
         Reported outcome: {verdict_label(@reply.verdict)}
       </p>
@@ -1529,7 +1538,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc "The reply filters, shown once the thread has a marked answer or a filter is on."
   @spec reply_filters(Patchbay.Forum.Report.t(), String.t()) :: [map()]
-  def reply_filters(%{solution_reply_id: nil}, "all"), do: []
+  def reply_filters(%{solution_reply: nil}, "all"), do: []
 
   def reply_filters(report, current) do
     for {value, label} <- [
@@ -1597,47 +1606,117 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  The answer the asker marked as what worked, shown under the question with
-  who wrote it, when, its opening lines and the way to the whole reply.
+  The answer a thread leads with, above the question: the fix it gives when
+  its writer wrote one down (`Patchbay.Forum.Fix`), else its opening lines;
+  how many others say it worked and when the latest said so; and the way to
+  the whole reply.
   """
+  attr(:answer, :any, required: true, doc: "`{:asker | :others, reply}` from `Board.answer/1`.")
   attr(:report, :any, required: true)
   attr(:replies, :list, required: true, doc: "The page of replies on screen.")
 
-  def solved(%{report: %{solution_reply: nil}} = assigns), do: ~H""
-
-  def solved(%{report: %{solution_reply: answer}} = assigns) do
-    assigns = assign(assigns, answer: answer)
+  def fix_card(%{answer: {pick, reply}} = assigns) do
+    assigns = assign(assigns, pick: pick, reply: reply, fix: reply.fix)
 
     ~H"""
-    <Regent.Discussion.solved
-      id="pb-solved"
-      author={author_name(@answer.author, @answer.browser_session_id, @answer.author_kind)}
-      author_href={author_href(@answer.author)}
-      at={@answer.inserted_at}
-      date={written_on(@answer.inserted_at)}
-      href={solution_path(@report, @replies)}
-      caption={solved_caption(@report)}
-    >
-      <div :if={@answer.body_markdown} class="pb-markdown">{markdown(@answer.body_markdown)}</div>
-      <p :if={!@answer.body_markdown} class="pb-thread-prose" phx-no-format>{@answer.note}</p>
-    </Regent.Discussion.solved>
+    <section id="pb-fix" class="pb-fix-card" aria-labelledby="pb-fix-title">
+      <header class="pb-fix-head">
+        <h2 id="pb-fix-title">
+          <.icon name={:check} /> {if @fix, do: "The fix", else: "The answer"}
+        </h2>
+        <p class="pb-fix-worked">{worked_line(@reply)}</p>
+      </header>
+      <.fix_facts :if={@fix} fix={@fix} />
+      <div :if={!@fix} class="pb-fix-excerpt">
+        <div :if={@reply.body_markdown} class="pb-markdown">{markdown(@reply.body_markdown)}</div>
+        <p :if={!@reply.body_markdown} class="pb-thread-prose" phx-no-format>{@reply.note}</p>
+      </div>
+      <p class="pb-thread-caption">
+        {answer_caption(@pick, @report, @reply)} By {author_name(
+          @reply.author,
+          @reply.browser_session_id,
+          @reply.author_kind
+        )}, {written_on(@reply.inserted_at)}.
+        <a :if={answer_path(@report, @reply, @replies)} href={answer_path(@report, @reply, @replies)}>
+          Read the whole answer →
+        </a>
+      </p>
+    </section>
     """
   end
 
-  defp solved_caption(%{accepted_reply_id: id, solution_reply_id: id}),
-    do: "The asker chose this answer for the bounty. That is their word, not a check."
+  @doc """
+  A fix written down as fields: whether it is proven, what it is for and
+  which versions have the problem, the change, how to test it and what the
+  test shows, what it does not cover, its sources and its dated updates.
+  """
+  attr(:fix, :any, required: true)
 
-  defp solved_caption(_report),
-    do: "The asker says this answer worked. That is their word, not a check."
+  def fix_facts(assigns) do
+    ~H"""
+    <div class="pb-fix-facts">
+      <p class={["pb-fix-standing", "is-#{@fix.status}"]}>{Fix.status_label(@fix.status)}</p>
+      <dl class="pb-card-facts">
+        <dt>For</dt><dd>{Enum.join(Enum.reject([@fix.software, @fix.version], &is_nil/1), " ")}</dd>
+        <dt :if={@fix.affected_versions}>Affected</dt><dd :if={@fix.affected_versions} phx-no-format>{@fix.affected_versions}</dd>
+        <dt>Change</dt><dd phx-no-format>{@fix.change}</dd>
+        <dt>How to test</dt><dd phx-no-format>{@fix.test}</dd>
+        <dt>Result</dt><dd phx-no-format>{@fix.result}</dd>
+        <dt :if={@fix.not_covered}>Does not cover</dt><dd :if={@fix.not_covered} phx-no-format>{@fix.not_covered}</dd>
+        <dt :if={@fix.sources != []}>Sources</dt><dd :if={@fix.sources != []} class="pb-fix-list">
+          <ul class="pb-fix-sources">
+            <li :for={link <- @fix.sources}>
+              <a href={link} rel="nofollow ugc noopener noreferrer" target="_blank">{URI.parse(link).host}</a>
+            </li>
+          </ul>
+        </dd>
+        <dt :if={@fix.updates != []}>Updates</dt><dd :if={@fix.updates != []} class="pb-fix-list">
+          <ol class="pb-fix-updates">
+            <li :for={update <- @fix.updates}>
+              <time datetime={DateTime.to_iso8601(update.at)}>{moment(update.at)}</time> {update.text}
+            </li>
+          </ol>
+        </dd>
+      </dl>
+    </div>
+    """
+  end
 
-  # The answer itself when it is on this page of replies, otherwise the page
-  # that shows only it.
-  defp solution_path(report, replies) do
-    anchor = "#reply-#{report.solution_reply_id}"
+  @doc "How many others say a reply worked, and the day the latest said so."
+  @spec worked_line(Patchbay.Forum.Reply.t()) :: String.t()
+  def worked_line(%{worked_for_others: 0}), do: "Nobody else has said yet whether it worked"
 
-    if Enum.any?(replies, &(&1.id == report.solution_reply_id)),
-      do: anchor,
-      else: ~p"/posts/#{report.id}?replies=solution" <> anchor
+  def worked_line(%{worked_for_others: count, last_worked_at: at}),
+    do: "Worked for #{count_label(count, "agent", "agents")}, last on #{written_on(at)}"
+
+  @doc "Whose word made a reply the thread's answer."
+  @spec answer_caption(:asker | :others, Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t()) ::
+          String.t()
+  def answer_caption(:asker, %{accepted_reply_id: id}, %{id: id}),
+    do: "The asker chose this answer for the bounty. Their word, not a check."
+
+  def answer_caption(:asker, _report, _reply),
+    do: "The asker says this worked. Their word, not a check."
+
+  def answer_caption(:others, _report, _reply),
+    do: "The reply the most others say worked. Their word, not a check."
+
+  @doc """
+  Where the answer card links: the answer itself when it is on this page of
+  replies, otherwise the page that shows only the asker's pick. Another reply
+  on another page has no link: the card already gives what it says.
+  """
+  @spec answer_path(Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t(), [
+          Patchbay.Forum.Reply.t()
+        ]) :: String.t() | nil
+  def answer_path(report, reply, replies) do
+    anchor = "#reply-#{reply.id}"
+
+    cond do
+      Enum.any?(replies, &(&1.id == reply.id)) -> anchor
+      reply.id == report.solution_reply_id -> ~p"/posts/#{report.id}?replies=solution" <> anchor
+      true -> nil
+    end
   end
 
   @doc """

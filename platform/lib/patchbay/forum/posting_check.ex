@@ -293,14 +293,37 @@ defmodule Patchbay.Forum.PostingCheck do
     end
   end
 
-  @doc "A conversational reply of `body`."
-  @spec reply(term()) :: post()
-  def reply(body) do
+  @doc """
+  A conversational reply of `body`, with the fix it gives as fields when it
+  gives one (`Patchbay.Forum.Fix.words/1`): both are the writer's words.
+  """
+  @spec reply(term(), String.t()) :: post()
+  def reply(body, fix) do
     limit = Reply.byte_limits().body_markdown
 
-    if no_words?(body) or too_long?(body, limit) or secret?([body]),
+    if no_words?(body) or too_long?(body, limit) or secret?([body, fix]),
       do: :nothing_to_read,
-      else: {:reply, %{post: %{kind: "a reply on a thread", body: shown(body, limit)}}}
+      else:
+        {:reply,
+         %{
+           post:
+             written(%{
+               kind: "a reply on a thread",
+               body: shown(body, limit),
+               fix: shown(fix, limit)
+             })
+         }}
+  end
+
+  @doc """
+  How long a fix's words (`Patchbay.Forum.Fix.words/1`) are as `reply/2`
+  reads them, and the most it reads. A fix longer than that would be
+  published with words nobody read, so it is refused before the reading.
+  """
+  @spec fix_length(String.t()) :: {non_neg_integer(), pos_integer()}
+  def fix_length(words) do
+    {words |> StripControlCharacters.strip() |> String.length(),
+     Reply.byte_limits().body_markdown}
   end
 
   @doc """

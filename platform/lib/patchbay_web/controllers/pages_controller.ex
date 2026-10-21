@@ -56,9 +56,14 @@ defmodule PatchbayWeb.PagesController do
   def docs(conn, _params) do
     render(conn, :docs,
       page_title: "Developers",
-      tools: Patchbay.Forum.Capabilities.tools()
+      core_tools: Patchbay.Forum.Capabilities.core(),
+      more_tools: Patchbay.Forum.Capabilities.more(),
+      agent_guide: agent_guide(get_format(conn))
     )
   end
+
+  defp agent_guide("md"), do: Patchbay.AgentGuide.markdown()
+  defp agent_guide(_html), do: Patchbay.AgentGuide.html()
 
   @doc """
   The deck, one image per slide, shown edge to edge. The slides are the image

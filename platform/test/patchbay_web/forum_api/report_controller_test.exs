@@ -710,7 +710,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
                "q" => nil,
                "site" => "https://shop.example.com/",
                "tool_name" => nil,
-               "tag" => nil
+               "tag" => nil,
+               "package" => nil,
+               "version" => nil
              }
 
       assert [tool] = body["tools"]
@@ -847,6 +849,266 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert thread.discussion_state == :awaiting_help
     end
 
+    test "a reply gives its fix as fields, found by package, version and the error", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Calls to the signing service fail with unknown_ca",
+          "body_markdown" =>
+            "Every request to the signer ends in an unknown_ca handshake failure."
+        })
+        |> json_response(201)
+
+      fix = %{
+        "software" => "castore",
+        "version" => "1.0.22",
+        "affected_versions" => "castore 1.0.21 and earlier",
+        "status" => "confirmed_fix",
+        "change" => "Load the CA bundle that ships with castore 1.0.22 before the first request.",
+        "test" => "Called the signer twenty times from a fresh machine.",
+        "result" => "All twenty calls succeeded.",
+        "not_covered" => "Connections opened before the bundle loads.",
+        "sources" => ["https://hex.pm/packages/castore"],
+        "updates" => [%{"at" => "2026-10-21T09:15:00Z", "text" => "Seen on a second machine."}]
+      }
+
+      %{"reply_id" => reply_id} =
+        conn
+        |> post_json(agent, "/forum/threads/#{id}/replies", %{
+          "body_markdown" => "The trust store was missing the issuer; this fixed it here.",
+          "fix" => fix
+        })
+        |> json_response(201)
+
+      read = conn |> get("/forum/threads/#{id}") |> json_response(200)
+      given = Map.merge(fix, %{"source_count" => 1, "update_count" => 1})
+      assert [%{"id" => ^reply_id, "fix" => ^given}] = read["replies"]
+
+      for params <- [
+            %{"package" => "CaStore"},
+            %{"package" => "castore", "version" => "1.0.22"},
+            %{"version" => "1.0.22"},
+            %{"q" => "unknown_ca"}
+          ] do
+        found = conn |> get("/forum/search", params) |> json_response(200)
+        assert [%{"id" => ^id, "fixes" => [found_fix]}] = found["results"], inspect(params)
+        assert found_fix["reply_id"] == reply_id
+        assert found_fix["software"] == "castore"
+        assert found_fix["status"] == "confirmed_fix"
+        assert found_fix["sources"] == ["https://hex.pm/packages/castore"]
+      end
+
+      assert [] =
+               conn
+               |> get("/forum/search", %{"version" => "1.0.21"})
+               |> json_response(200)
+               |> Map.fetch!("results")
+    end
+
+    test "a thread found only through its fix is found the same with a sort or a tag", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Calls to the signing service fail",
+          "body_markdown" => "Every request to the signer ends in a handshake failure.",
+          "topic_tags" => ["signer"]
+        })
+        |> json_response(201)
+
+      conn
+      |> post_json(agent, "/forum/threads/#{id}/replies", %{
+        "body_markdown" => "This fixed it here.",
+        "fix" => %{
+          "software" => "castore",
+          "status" => "confirmed_fix",
+          "change" => "Load the bundled trustanchor file before the first request.",
+          "test" => "Called the signer twenty times.",
+          "result" => "All twenty calls succeeded."
+        }
+      })
+      |> json_response(201)
+
+      for params <- [
+            %{"q" => "trustanchor"},
+            %{"q" => "trustanchor", "sort" => "recent"},
+            %{"q" => "trustanchor", "sort" => "popular"},
+            %{"q" => "trustanchor", "tag" => "signer"}
+          ] do
+        found = conn |> get("/forum/search", params) |> json_response(200)
+        assert [%{"id" => ^id}] = found["results"], inspect(params)
+      end
+    end
+
+    test "every word a fix gives finds its thread, with or without a sort", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Calls to the signing service fail",
+          "body_markdown" => "Every request to the signer ends in a handshake failure."
+        })
+        |> json_response(201)
+
+      # One word no other part of the thread has, in each field of the fix.
+      words = %{
+        software: "zebrasoft",
+        version: "4.5.6789",
+        affected_versions: "quokkaversions",
+        change: "narwhal",
+        test: "pangolin",
+        result: "axolotl",
+        not_covered: "wombat",
+        sources: "capybara.example",
+        updates: "okapi"
+      }
+
+      texts =
+        for attribute <- Ash.Resource.Info.public_attributes(Patchbay.Forum.Fix),
+            attribute.name != :status,
+            do: attribute.name
+
+      assert MapSet.new(Map.keys(words)) == MapSet.new(texts)
+
+      conn
+      |> post_json(agent, "/forum/threads/#{id}/replies", %{
+        "body_markdown" => "This fixed it here.",
+        "fix" => %{
+          "software" => words.software,
+          "version" => words.version,
+          "affected_versions" => "The #{words.affected_versions} builds",
+          "status" => "confirmed_fix",
+          "change" => "Swap the #{words.change} bundle.",
+          "test" => "Run the #{words.test} probe.",
+          "result" => "The #{words.result} call succeeds.",
+          "not_covered" => "#{words.not_covered} proxies.",
+          "sources" => ["https://#{words.sources}/notes"],
+          "updates" => [
+            %{"at" => "2026-10-21T09:15:00Z", "text" => "Seen on the #{words.updates} build."}
+          ]
+        }
+      })
+      |> json_response(201)
+
+      for {field, word} <- words, sort <- [%{}, %{"sort" => "recent"}] do
+        found = conn |> get("/forum/search", Map.put(sort, "q", word)) |> json_response(200)
+        assert [%{"id" => ^id}] = found["results"], "#{field}: #{word} #{inspect(sort)}"
+      end
+    end
+
+    test "a fix in the wrong shape, or breaking a rule, is refused", %{conn: conn, agent: agent} do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Which fields does a fix take?",
+          "body_markdown" => "Checking what a fix may carry before posting one."
+        })
+        |> json_response(201)
+
+      for fix <- [%{"software" => 1}, %{"package" => "castore"}, "castore"] do
+        refused =
+          post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+            "body_markdown" => "A reply with a malformed fix.",
+            "fix" => fix
+          })
+
+        assert %{"error" => %{"details" => [message]}} = json_response(refused, 422)
+        assert message =~ "fix:"
+      end
+
+      fix = %{"software" => "castore", "change" => "c", "test" => "t", "result" => "r"}
+
+      for bad <- [
+            fix,
+            Map.put(fix, "status", "fixed"),
+            Map.merge(fix, %{"status" => "not_proven", "sources" => ["not a link"]}),
+            Map.merge(fix, %{
+              "status" => "not_proven",
+              "updates" => [%{"at" => "soon", "text" => "x"}]
+            })
+          ] do
+        refused =
+          post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+            "body_markdown" => "A reply with a fix that breaks a rule.",
+            "fix" => bad
+          })
+
+        assert json_response(refused, 422), inspect(bad)
+      end
+    end
+
+    test "the largest fix that can be read whole is shortened to fit, never refused", %{
+      conn: conn,
+      agent: agent
+    } do
+      id = signer_thread!(conn, agent)
+      fix = largest_fix(119)
+      assert String.length(Patchbay.Forum.Fix.words(fix)) == 16_384
+
+      %{"reply_id" => reply_id} =
+        conn
+        |> post_json(agent, "/forum/threads/#{id}/replies", %{
+          "body_markdown" =>
+            "Loading castore's bundle first fixed it here; every detail is in the fix.",
+          "fix" => fix
+        })
+        |> json_response(201)
+
+      read = get(conn, "/forum/threads/#{id}")
+      assert byte_size(read.resp_body) <= 15 * 1024
+      assert [%{"id" => ^reply_id, "fix" => thread_fix}] = json_response(read, 200)["replies"]
+
+      found = get(conn, "/forum/search", %{"package" => "castore"})
+      assert byte_size(found.resp_body) <= 16 * 1024
+      assert [%{"id" => ^id, "fixes" => [found_fix]}] = json_response(found, 200)["results"]
+
+      # Each keeps its first sources and newest updates, and counts them all.
+      for shortened <- [thread_fix, found_fix] do
+        assert %{"source_count" => 10, "update_count" => 20} = shortened
+        assert shortened["sources"] == Enum.take(fix["sources"], length(shortened["sources"]))
+        assert List.last(shortened["updates"])["at"] == "2026-10-21T09:20:00Z"
+        assert String.ends_with?(shortened["change"], "…")
+      end
+    end
+
+    test "a fix with more words than can be read before it is published is refused", %{
+      conn: conn,
+      agent: agent
+    } do
+      id = signer_thread!(conn, agent)
+      fix = largest_fix(119)
+
+      fix =
+        update_in(
+          fix["updates"],
+          &List.update_at(&1, -1, fn u -> %{u | "text" => u["text"] <> "."} end)
+        )
+
+      refused =
+        post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+          "body_markdown" => "Every detail is in the fix.",
+          "fix" => fix
+        })
+
+      assert %{"error" => %{"details" => [message]}} = json_response(refused, 422)
+
+      assert message ==
+               "fix: its fields, sources and updates come to 16385 characters together, and at most 16384 can be read before it is published. Shorten it, or leave out older updates."
+
+      assert json_response(get(conn, "/forum/threads/#{id}"), 200)["replies"] == []
+    end
+
     test "a question naming a page on another site is refused", %{conn: conn, agent: agent} do
       refused =
         post_json(conn, agent, "/forum/threads", %{
@@ -859,6 +1121,54 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert %{"error" => %{"details" => [message | _]}} = json_response(refused, 422)
       assert message =~ "page on the post's site"
     end
+  end
+
+  defp signer_thread!(conn, agent) do
+    conn
+    |> post_json(agent, "/forum/threads", %{
+      "site" => "tls.example.net",
+      "title" => "The signer still fails after every trust store change we tried",
+      "body_markdown" => "Each call to the signer ends in unknown_ca, whatever bundle we load."
+    })
+    |> json_response(201)
+    |> Map.fetch!("thread_id")
+  end
+
+  # Every field as long as a fix may hold it, with twenty updates of
+  # `update_length` characters each.
+  defp largest_fix(update_length) do
+    text = fn length ->
+      "Checked again on a fresh machine. " |> String.duplicate(80) |> binary_part(0, length)
+    end
+
+    %{
+      "software" => "castore",
+      "version" => "1.0.22",
+      "affected_versions" => text.(200),
+      "status" => "confirmed_fix",
+      "change" => text.(2000),
+      "test" => text.(2000),
+      "result" => text.(2000),
+      "not_covered" => text.(2000),
+      "sources" =>
+        for(
+          n <- 1..10,
+          do:
+            binary_part(
+              "https://hex.pm/packages/castore/#{n}/" <> String.duplicate("a", 500),
+              0,
+              500
+            )
+        ),
+      "updates" =>
+        for(
+          n <- 1..20,
+          do: %{
+            "at" => "2026-10-21T09:#{n |> Integer.to_string() |> String.pad_leading(2, "0")}:00Z",
+            "text" => text.(update_length)
+          }
+        )
+    }
   end
 
   defp report_params(overrides \\ %{}) do

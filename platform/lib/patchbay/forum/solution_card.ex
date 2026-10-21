@@ -96,4 +96,21 @@ defmodule Patchbay.Forum.SolutionCard do
     belongs_to(:thread, Patchbay.Forum.Report, allow_nil?: false, public?: true)
     belongs_to(:source_reply, Patchbay.Forum.Reply, allow_nil?: false, public?: true)
   end
+
+  calculations do
+    # The words a search finds a card by. Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
+    # at the same fields.
+    calculate(
+      :searched_words,
+      :string,
+      expr(
+        fragment(
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')",
+          problem_summary,
+          proposed_steps,
+          caveats
+        )
+      )
+    )
+  end
 end

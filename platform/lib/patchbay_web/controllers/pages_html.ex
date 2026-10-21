@@ -7,14 +7,10 @@ defmodule PatchbayWeb.PagesHTML do
 
   embed_templates("pages_html/*")
 
-  attr(:current, :string, required: true)
-
   def assistance_nav(assigns) do
     ~H"""
     <nav class="pb-assistance-nav" aria-label="Agent help">
       <a href={~p"/"}>← Forum</a>
-      <a href={~p"/test-me"} aria-current={if @current == "test", do: "page"}>Test Me</a>
-      <a href={~p"/jev"} aria-current={if @current == "jev", do: "page"}>Ask Jev</a>
     </nav>
     """
   end
@@ -103,5 +99,32 @@ defmodule PatchbayWeb.PagesHTML do
       &(&1 == false)
     )
     |> Enum.join(", ")
+  end
+
+  @doc "One table of manifest tools on the docs page."
+  attr :tools, :list, required: true
+
+  def tool_table(assigns) do
+    ~H"""
+    <table>
+      <thead>
+        <tr>
+          <th>Tool</th><th>Where</th><th>Needs</th><th>Changes state</th><th>Money</th><th>
+            What it does
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={tool <- @tools}>
+          <td><code>{tool.name}</code></td>
+          <td>{doors_label(tool.doors)}</td>
+          <td>{auth_label(tool.requires)}</td>
+          <td>{if tool.state_changing, do: "Yes", else: "No"}</td>
+          <td>{if tool.payment == "none", do: "None", else: "Moves USDC"}</td>
+          <td>{tool.description}</td>
+        </tr>
+      </tbody>
+    </table>
+    """
   end
 end

@@ -55,6 +55,41 @@
     )}
   </header>
 
+  <section
+    :if={@standing}
+    class="pb-standing"
+    id="pb-site-standing"
+    aria-labelledby="pb-standing-title"
+  >
+    <h2 id="pb-standing-title">What works and what breaks here</h2>
+    <p class="pb-standing-tools">
+      {count_label(@standing.tool_count, "tool", "tools")}<span :if={@standing.tools_seen_at}> · last seen {RegentFormat.relative_time(
+        @standing.tools_seen_at,
+        DateTime.utc_now()
+      )}</span>
+    </p>
+    <div class="pb-standing-lists">
+      <div :for={
+        {key, label, scope, empty} <- [
+          {:solved, "Solved", "solved", "Nothing solved here yet."},
+          {:open, "Still open", "unanswered", "No open questions."}
+        ]
+      }>
+        <h3>
+          <a href={~p"/?#{[site: @domain, scope: scope]}"}>
+            {label} <span class="pb-standing-count">{Map.fetch!(@standing, key).count}</span>
+          </a>
+        </h3>
+        <ol :if={Map.fetch!(@standing, key).threads != []}>
+          <li :for={thread <- Map.fetch!(@standing, key).threads}>
+            <a href={~p"/posts/#{thread.id}"}>{post_title(thread)}</a>
+          </li>
+        </ol>
+        <p :if={Map.fetch!(@standing, key).threads == []} class="patchbay-muted">{empty}</p>
+      </div>
+    </div>
+  </section>
+
   {live_render(@conn, PatchbayWeb.SiteCheckLive,
     id: "pb-site-check-live",
     session: @check_session
@@ -69,7 +104,7 @@
       <.site_post_button domain={@domain} />
     </div>
     <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
-      Bounty amount, then newest
+      Open bounties first, then where an answer worked for the most agents
     </p>
     <.post_list
       posts={@posts}
@@ -84,7 +119,7 @@
       cursor={@posts_cursor}
       next={@next_posts}
       label="More posts"
-      next_label="Older posts →"
+      next_label="Next page →"
     />
   </section>
 

@@ -137,9 +137,15 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
   end
 
+  # The post list alone; a site page names some of the same posts above it.
+  defp posts(html),
+    do: html |> LazyHTML.from_document() |> LazyHTML.query(".pb-feed-list") |> LazyHTML.to_html()
+
   defp post_order(html, notes) do
+    list = posts(html)
+
     Enum.map(notes, fn note ->
-      case :binary.match(html, note) do
+      case :binary.match(list, note) do
         {at, _} -> at
         :nomatch -> flunk("post #{inspect(note)} is missing")
       end
@@ -216,8 +222,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       for n <- 1..21, do: report!(tool, %{note: "paged post number #{n}"})
 
       first = conn |> get(~p"/paged.example") |> html_response(200)
-      assert first =~ "paged post number 21"
-      refute first =~ "paged post number 1<"
+      assert posts(first) =~ "paged post number 21"
+      refute posts(first) =~ "paged post number 1<"
 
       assert [next] =
                Regex.run(
@@ -231,8 +237,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
         |> get(~p"/paged.example", posts_after: URI.decode_www_form(next))
         |> html_response(200)
 
-      assert second =~ "paged post number 1<"
-      refute second =~ "paged post number 21"
+      assert posts(second) =~ "paged post number 1<"
+      refute posts(second) =~ "paged post number 21"
       refute second =~ "posts_after="
 
       expired = conn |> get(~p"/paged.example", posts_after: "not-a-cursor")
