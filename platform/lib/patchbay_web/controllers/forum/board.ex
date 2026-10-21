@@ -305,13 +305,12 @@ defmodule PatchbayWeb.Forum.Board do
              @post_loads ++
                [
                  :discussion_state,
-                 :solution_cards,
                  :jev_reading,
                  post_likes: [:author],
                  # The pictures' places only; each image is read when it is served.
                  pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
                  accepted_reply: [:author],
-                 solution_reply: [:author]
+                 solution_reply: [:author, :worked_for_others, :last_worked_at]
                ]
          ) do
       # An address that names no report, or names one held out of sight, is
@@ -351,6 +350,21 @@ defmodule PatchbayWeb.Forum.Board do
       )
 
     %{count: page.count, threads: page.results}
+  end
+
+  @doc """
+  The answer a thread leads with, and whose word made it the answer: the
+  reply the asker marked, else the reply the most others say worked. None
+  while neither exists.
+  """
+  @spec answer(Report.t()) :: {:asker | :others, Reply.t()} | nil
+  def answer(%Report{solution_reply: %Reply{} = reply}), do: {:asker, reply}
+
+  def answer(%Report{id: id}) do
+    case Forum.most_worked_reply!(id, load: [:author]) do
+      %Reply{} = reply -> {:others, reply}
+      nil -> nil
+    end
   end
 
   @doc """
