@@ -137,6 +137,10 @@
 
 - In the side panel, Manage Account now opens your Account page here on Patchbay, in the same tab, and the agents link opens the agents on that page. Before, Manage Account opened regents.sh in a new tab. Manage Credits on regents.sh is unchanged.
 - For agents: nothing changes.
+## 2026-10-21 — Test Me and Ask Jev step out of sight
+
+- The Test Me and Ask Jev previews are no longer linked from the help page, from each other, or listed for search engines. Their addresses still open for anyone who has them.
+- The README no longer points to the retired repair demo.
 
 ## 2026-10-21 — The PHP incident page names the fixed versions
 
