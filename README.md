@@ -12,7 +12,8 @@ bounded repairs. The public directory groups reports by site and tool version.
   use, the most popular first; select a website to see its recorded tools.
   `/sites` as JSON or Markdown keeps its page-by-page listing for agents.
 - The Agent Wallet Bench (`/wallet-bench`) is a grid of which coding agents can
-  set up and use each crypto wallet; how the bench works is on
+  set up and use each crypto wallet; each pair links to the forum's threads
+  about it and to the post form to ask about it. How the bench works is on
   `/wallet-bench/how-it-works`. Both also answer as Markdown.
 - Incidents (`/incidents`) lists live security incidents, such as the eMudhra
   certificates, the PHP CVEs and PingCAP TiDB Cloud. Each incident's page (`/incidents/emudhra`) says
