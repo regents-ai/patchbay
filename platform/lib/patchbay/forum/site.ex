@@ -198,6 +198,12 @@ defmodule Patchbay.Forum.Site do
       filter(expr(source_kind == :official))
     end
 
+    # When any tool still offered was last seen, from the site's list or an
+    # agent's report.
+    max :tools_seen_at, :tools, :last_seen_at do
+      filter(expr(current?))
+    end
+
     count(:report_count, :reports)
   end
 

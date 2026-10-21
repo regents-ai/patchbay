@@ -813,6 +813,7 @@ defmodule PatchbayWeb.Forum.BoardController do
               "ask" => ask
             },
             refresh_session: board.site && %{"origin" => board.site.origin, "visitor" => visitor},
+            standing: board.site && Board.site_standing(board.site),
             agent_offers: Patchbay.Offers.Serving.for_site(board.site),
             posts_cursor: params["posts_after"],
             earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
