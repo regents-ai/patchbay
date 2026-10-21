@@ -27,5 +27,5 @@ defmodule Patchbay.Repo do
   def min_pg_version, do: %Version{major: 16, minor: 0, patch: 0}
 
   @impl true
-  def installed_extensions, do: ["ash-functions"]
+  def installed_extensions, do: ["ash-functions", "pg_trgm"]
 end

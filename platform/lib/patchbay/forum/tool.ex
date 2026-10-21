@@ -26,6 +26,11 @@ defmodule Patchbay.Forum.Tool do
   postgres do
     table("forum_tools")
     repo(Patchbay.Repo)
+
+    # Search finds a tool by its name spelled a little wrong.
+    custom_indexes do
+      index(["name gin_trgm_ops"], name: "forum_tools_name_trgm_index", using: "GIN")
+    end
   end
 
   attributes do
@@ -204,7 +209,8 @@ defmodule Patchbay.Forum.Tool do
     read :find do
       description("""
       Tools still offered whose name or title contains the words a visitor
-      typed, one entry per site and name, with the site to link it under.
+      typed, or whose name nearly matches them (a letter or two wrong), one
+      entry per site and name, with the site to link it under.
       """)
 
       argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])
@@ -213,7 +219,8 @@ defmodule Patchbay.Forum.Tool do
         expr(
           current? and
             (contains(string_downcase(name), string_downcase(^arg(:text))) or
-               contains(string_downcase(title), string_downcase(^arg(:text))))
+               contains(string_downcase(title), string_downcase(^arg(:text))) or
+               fragment("? <% ?", ^arg(:text), name))
         )
       )
 
