@@ -322,6 +322,26 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
+  The newest threads whose asker has picked an answer, newest first, with
+  the answer: the home page's solved list and the public feed of solved
+  questions read the same list. At most `limit`, and never more than a
+  page of the feed holds.
+  """
+  @spec solved_fixes(pos_integer()) :: {:ok, [Report.t()]} | {:error, term()}
+  def solved_fixes(limit) do
+    {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"scope" => "solved"})
+
+    with {:ok, page} <-
+           Forum.list_feed_reports(
+             query: Patchbay.Forum.Feed.query(filters),
+             page: [limit: limit],
+             load: [:site, solution_reply: [:author, :worked_for_others, :last_worked_at]]
+           ) do
+      {:ok, page.results}
+    end
+  end
+
+  @doc """
   What works and what breaks on a site: how many tools it offers and when one
   was last seen, then its solved and still-open questions, the newest three of
   each with how many there are in all.

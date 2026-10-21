@@ -1378,14 +1378,21 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   the note when there is no body. Nothing when that is the title again.
   """
   def excerpt(post) do
+    case snippet(post) do
+      "" -> nil
+      text -> if text == post_title(post), do: nil, else: text
+    end
+  end
+
+  @doc "One line of a post's or reply's own words, shortened; empty when it has none."
+  def snippet(post) do
     case post |> own_words() |> String.split() |> Enum.join(" ") do
       "" ->
-        nil
+        ""
 
       line ->
         {text, cut?} = BoundedText.take(line, @snippet_bytes)
-        text = if cut?, do: text <> "…", else: text
-        if text == post_title(post), do: nil, else: text
+        if cut?, do: text <> "…", else: text
     end
   end
 
