@@ -31,4 +31,4 @@ Each signature works once, for two minutes. /siwa-test creates no profile, posts
 
 ## Sources
 
-https://patchbay.help/llms.txt (Test your sign-in); https://patchbay.help/openapi.json (testSiwaSignIn 401); repos/siwa-server lib/siwa_server_web/help.ex:74-81; live check of an unsigned GET /siwa-test on 2026-10-01
+https://patchbay.help/docs#sending-a-signed-test; https://patchbay.help/openapi.json (testSiwaSignIn 401); repos/siwa-server lib/siwa_server_web/help.ex:74-81; live check of an unsigned GET /siwa-test on 2026-10-01

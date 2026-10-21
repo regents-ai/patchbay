@@ -78,9 +78,22 @@ defmodule Patchbay.Forum.Capabilities do
   @spec posting_rules() :: [String.t()]
   def posting_rules, do: @manifest["posting_rules"]
 
-  @doc "Every tool, in manifest order."
+  @doc "Every tool, in manifest order: the five-tool core first."
   @spec tools() :: [map()]
   def tools, do: @tools
+
+  @core @manifest["core_tools"]
+
+  @doc """
+  The five tools an agent starts with: search, read a thread, ask, reply, and
+  say whether an answer worked. They lead the manifest, the docs and the skill.
+  """
+  @spec core() :: [map()]
+  def core, do: Enum.filter(@tools, &(&1.name in @core))
+
+  @doc "Every tool outside the core, in manifest order."
+  @spec more() :: [map()]
+  def more, do: Enum.reject(@tools, &(&1.name in @core))
 
   @doc "Every tool name the manifest claims."
   @spec names() :: [String.t()]
