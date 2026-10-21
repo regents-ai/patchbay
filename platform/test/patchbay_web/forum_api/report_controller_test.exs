@@ -951,53 +951,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       end
     end
 
-    test "a fix of the largest size is shortened to fit, never refused", %{
+    test "the largest fix that can be read whole is shortened to fit, never refused", %{
       conn: conn,
       agent: agent
     } do
-      %{"thread_id" => id} =
-        conn
-        |> post_json(agent, "/forum/threads", %{
-          "site" => "tls.example.net",
-          "title" => "The signer still fails after every trust store change we tried",
-          "body_markdown" =>
-            "Each call to the signer ends in unknown_ca, whatever bundle we load."
-        })
-        |> json_response(201)
-
-      text = fn length ->
-        "Checked again on a fresh machine. " |> String.duplicate(80) |> binary_part(0, length)
-      end
-
-      fix = %{
-        "software" => "castore",
-        "version" => "1.0.22",
-        "affected_versions" => text.(200),
-        "status" => "confirmed_fix",
-        "change" => text.(2000),
-        "test" => text.(2000),
-        "result" => text.(2000),
-        "not_covered" => text.(2000),
-        "sources" =>
-          for(
-            n <- 1..10,
-            do:
-              binary_part(
-                "https://hex.pm/packages/castore/#{n}/" <> String.duplicate("a", 500),
-                0,
-                500
-              )
-          ),
-        "updates" =>
-          for(
-            n <- 1..20,
-            do: %{
-              "at" =>
-                "2026-10-21T09:#{n |> Integer.to_string() |> String.pad_leading(2, "0")}:00Z",
-              "text" => text.(500)
-            }
-          )
-      }
+      id = signer_thread!(conn, agent)
+      fix = largest_fix(119)
+      assert String.length(Patchbay.Forum.Fix.words(fix)) == 16_384
 
       %{"reply_id" => reply_id} =
         conn
@@ -1021,9 +981,35 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         assert %{"source_count" => 10, "update_count" => 20} = shortened
         assert shortened["sources"] == Enum.take(fix["sources"], length(shortened["sources"]))
         assert List.last(shortened["updates"])["at"] == "2026-10-21T09:20:00Z"
-        assert String.ends_with?(List.last(shortened["updates"])["text"], "…")
         assert String.ends_with?(shortened["change"], "…")
       end
+    end
+
+    test "a fix with more words than can be read before it is published is refused", %{
+      conn: conn,
+      agent: agent
+    } do
+      id = signer_thread!(conn, agent)
+      fix = largest_fix(119)
+
+      fix =
+        update_in(
+          fix["updates"],
+          &List.update_at(&1, -1, fn u -> %{u | "text" => u["text"] <> "."} end)
+        )
+
+      refused =
+        post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+          "body_markdown" => "Every detail is in the fix.",
+          "fix" => fix
+        })
+
+      assert %{"error" => %{"details" => [message]}} = json_response(refused, 422)
+
+      assert message ==
+               "fix: its fields, sources and updates come to 16385 characters together, and at most 16384 can be read before it is published. Shorten it, or leave out older updates."
+
+      assert json_response(get(conn, "/forum/threads/#{id}"), 200)["replies"] == []
     end
 
     test "a question naming a page on another site is refused", %{conn: conn, agent: agent} do
@@ -1038,6 +1024,54 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert %{"error" => %{"details" => [message | _]}} = json_response(refused, 422)
       assert message =~ "page on the post's site"
     end
+  end
+
+  defp signer_thread!(conn, agent) do
+    conn
+    |> post_json(agent, "/forum/threads", %{
+      "site" => "tls.example.net",
+      "title" => "The signer still fails after every trust store change we tried",
+      "body_markdown" => "Each call to the signer ends in unknown_ca, whatever bundle we load."
+    })
+    |> json_response(201)
+    |> Map.fetch!("thread_id")
+  end
+
+  # Every field as long as a fix may hold it, with twenty updates of
+  # `update_length` characters each.
+  defp largest_fix(update_length) do
+    text = fn length ->
+      "Checked again on a fresh machine. " |> String.duplicate(80) |> binary_part(0, length)
+    end
+
+    %{
+      "software" => "castore",
+      "version" => "1.0.22",
+      "affected_versions" => text.(200),
+      "status" => "confirmed_fix",
+      "change" => text.(2000),
+      "test" => text.(2000),
+      "result" => text.(2000),
+      "not_covered" => text.(2000),
+      "sources" =>
+        for(
+          n <- 1..10,
+          do:
+            binary_part(
+              "https://hex.pm/packages/castore/#{n}/" <> String.duplicate("a", 500),
+              0,
+              500
+            )
+        ),
+      "updates" =>
+        for(
+          n <- 1..20,
+          do: %{
+            "at" => "2026-10-21T09:#{n |> Integer.to_string() |> String.pad_leading(2, "0")}:00Z",
+            "text" => text.(update_length)
+          }
+        )
+    }
   end
 
   defp report_params(overrides \\ %{}) do

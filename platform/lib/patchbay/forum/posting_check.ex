@@ -316,6 +316,17 @@ defmodule Patchbay.Forum.PostingCheck do
   end
 
   @doc """
+  How long a fix's words (`Patchbay.Forum.Fix.words/1`) are as `reply/2`
+  reads them, and the most it reads. A fix longer than that would be
+  published with words nobody read, so it is refused before the reading.
+  """
+  @spec fix_length(String.t()) :: {non_neg_integer(), pos_integer()}
+  def fix_length(words) do
+    {words |> StripControlCharacters.strip() |> String.length(),
+     Reply.byte_limits().body_markdown}
+  end
+
+  @doc """
   A reply that says whether the tool worked, with a note or without. Without
   one it has no words of its writer's to judge.
   """
