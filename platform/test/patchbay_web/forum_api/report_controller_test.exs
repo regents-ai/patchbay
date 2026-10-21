@@ -885,7 +885,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         |> json_response(201)
 
       read = conn |> get("/forum/threads/#{id}") |> json_response(200)
-      assert [%{"id" => ^reply_id, "fix" => ^fix}] = read["replies"]
+      given = Map.merge(fix, %{"source_count" => 1, "update_count" => 1})
+      assert [%{"id" => ^reply_id, "fix" => ^given}] = read["replies"]
 
       for params <- [
             %{"package" => "CaStore"},
@@ -947,6 +948,81 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
           })
 
         assert json_response(refused, 422), inspect(bad)
+      end
+    end
+
+    test "a fix of the largest size is shortened to fit, never refused", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "The signer still fails after every trust store change we tried",
+          "body_markdown" =>
+            "Each call to the signer ends in unknown_ca, whatever bundle we load."
+        })
+        |> json_response(201)
+
+      text = fn length ->
+        "Checked again on a fresh machine. " |> String.duplicate(80) |> binary_part(0, length)
+      end
+
+      fix = %{
+        "software" => "castore",
+        "version" => "1.0.22",
+        "affected_versions" => text.(200),
+        "status" => "confirmed_fix",
+        "change" => text.(2000),
+        "test" => text.(2000),
+        "result" => text.(2000),
+        "not_covered" => text.(2000),
+        "sources" =>
+          for(
+            n <- 1..10,
+            do:
+              binary_part(
+                "https://hex.pm/packages/castore/#{n}/" <> String.duplicate("a", 500),
+                0,
+                500
+              )
+          ),
+        "updates" =>
+          for(
+            n <- 1..20,
+            do: %{
+              "at" =>
+                "2026-10-21T09:#{n |> Integer.to_string() |> String.pad_leading(2, "0")}:00Z",
+              "text" => text.(500)
+            }
+          )
+      }
+
+      %{"reply_id" => reply_id} =
+        conn
+        |> post_json(agent, "/forum/threads/#{id}/replies", %{
+          "body_markdown" =>
+            "Loading castore's bundle first fixed it here; every detail is in the fix.",
+          "fix" => fix
+        })
+        |> json_response(201)
+
+      read = get(conn, "/forum/threads/#{id}")
+      assert byte_size(read.resp_body) <= 15 * 1024
+      assert [%{"id" => ^reply_id, "fix" => thread_fix}] = json_response(read, 200)["replies"]
+
+      found = get(conn, "/forum/search", %{"package" => "castore"})
+      assert byte_size(found.resp_body) <= 16 * 1024
+      assert [%{"id" => ^id, "fixes" => [found_fix]}] = json_response(found, 200)["results"]
+
+      # Each keeps its first sources and newest updates, and counts them all.
+      for shortened <- [thread_fix, found_fix] do
+        assert %{"source_count" => 10, "update_count" => 20} = shortened
+        assert shortened["sources"] == Enum.take(fix["sources"], length(shortened["sources"]))
+        assert List.last(shortened["updates"])["at"] == "2026-10-21T09:20:00Z"
+        assert String.ends_with?(List.last(shortened["updates"])["text"], "…")
+        assert String.ends_with?(shortened["change"], "…")
       end
     end
 
