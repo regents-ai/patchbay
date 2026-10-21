@@ -223,7 +223,7 @@ defmodule Patchbay.Forum do
         Patchbay.Forum.SolutionCard
       ],
       fn ->
-        with {:ok, updated} <- set_visibility(subject, visibility),
+        with {:ok, updated} <- set_visibility(subject, visibility, actor),
              :ok <- retire_cards(subject, action),
              {:ok, _audit} <- record_moderation(subject, action, reason, actor) do
           {:ok, updated}
@@ -237,15 +237,14 @@ defmodule Patchbay.Forum do
     end
   end
 
-  # Moderation decisions are applied internally: the allowlist check happens at
-  # the door, not per record.
-  defp set_visibility(%Patchbay.Forum.Report{} = report, visibility) do
-    Ash.update(report, %{visibility: visibility}, action: :set_visibility, authorize?: false)
+  # The action's own policy admits only a moderator, whichever door the
+  # decision came through.
+  defp set_visibility(%Patchbay.Forum.Report{} = report, visibility, actor) do
+    Ash.update(report, %{visibility: visibility}, action: :set_visibility, actor: actor)
   end
 
-  # Same internal write as above, for a reply.
-  defp set_visibility(%Patchbay.Forum.Reply{} = reply, visibility) do
-    Ash.update(reply, %{visibility: visibility}, action: :set_visibility, authorize?: false)
+  defp set_visibility(%Patchbay.Forum.Reply{} = reply, visibility, actor) do
+    Ash.update(reply, %{visibility: visibility}, action: :set_visibility, actor: actor)
   end
 
   # A reply taken out of public view cannot keep speaking through a card that

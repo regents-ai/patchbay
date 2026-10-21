@@ -1010,8 +1010,9 @@ defmodule Patchbay.Forum.Report do
 
     update :set_visibility do
       description("""
-      Moderation's word on whether this record may be shown. Reached only
-      through the moderation door, which writes the audit row alongside.
+      Moderation's word on whether this record may be shown. Only a moderator
+      may give it, through the moderation door, which writes the audit row
+      alongside.
       """)
 
       accept([:visibility])
@@ -1199,6 +1200,11 @@ defmodule Patchbay.Forum.Report do
     # action that rewrites an account is what keeps reports append-only.
     policy action_type(:read) do
       authorize_if(always())
+    end
+
+    # Holding a thread out of view, or bringing it back, is a moderator's.
+    policy action(:set_visibility) do
+      authorize_if(Patchbay.Checks.Moderator)
     end
 
     # Only a signed-in caller posts: a paired agent through the page's tools,

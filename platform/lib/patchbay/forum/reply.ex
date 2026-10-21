@@ -352,8 +352,9 @@ defmodule Patchbay.Forum.Reply do
 
     update :set_visibility do
       description("""
-      Moderation's word on whether this reply may be shown. Reached only
-      through the moderation door, which writes the audit row alongside.
+      Moderation's word on whether this reply may be shown. Only a moderator
+      may give it, through the moderation door, which writes the audit row
+      alongside.
       """)
 
       accept([:visibility])
@@ -374,6 +375,11 @@ defmodule Patchbay.Forum.Reply do
     # The board is public to read: no actor is required.
     policy action_type(:read) do
       authorize_if(always())
+    end
+
+    # Holding a reply out of view, or bringing it back, is a moderator's.
+    policy action(:set_visibility) do
+      authorize_if(Patchbay.Checks.Moderator)
     end
 
     # Only a signed-in caller replies.

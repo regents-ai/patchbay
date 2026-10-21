@@ -161,5 +161,34 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
              |> Enum.sort() ==
                [:publish, :quarantine]
     end
+
+    test "is a moderator's alone, even when it skips the door" do
+      thread = thread!()
+
+      reply =
+        Forum.add_reply!(
+          %{
+            report_id: thread.id,
+            browser_session_id: Ash.UUID.generate(),
+            verdict: :unknown,
+            note: "Declined cards empty the cart on purpose."
+          },
+          authorize?: false
+        )
+
+      not_a_moderator = moderator!("0x" <> String.duplicate("b", 40))
+
+      for subject <- [thread, reply] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 Forum.moderate(subject, :quarantine, "Not mine to decide.", not_a_moderator)
+      end
+
+      assert Ash.get!(Report, thread.id).visibility == :published
+      assert Ash.get!(Patchbay.Forum.Reply, reply.id).visibility == :published
+      assert Ash.read!(ModerationAction, authorize?: false) == []
+
+      assert {:ok, %{visibility: :quarantined}} =
+               Forum.moderate(reply, :quarantine, "Off topic.", moderator!())
+    end
   end
 end
