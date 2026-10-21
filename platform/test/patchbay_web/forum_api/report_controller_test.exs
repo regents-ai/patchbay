@@ -710,7 +710,9 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
                "q" => nil,
                "site" => "https://shop.example.com/",
                "tool_name" => nil,
-               "tag" => nil
+               "tag" => nil,
+               "package" => nil,
+               "version" => nil
              }
 
       assert [tool] = body["tools"]
@@ -845,6 +847,107 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       # The asker's own reply is not help, so the thread still waits for it.
       thread = Ash.get!(Report, id, load: [:discussion_state])
       assert thread.discussion_state == :awaiting_help
+    end
+
+    test "a reply gives its fix as fields, found by package, version and the error", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Calls to the signing service fail with unknown_ca",
+          "body_markdown" =>
+            "Every request to the signer ends in an unknown_ca handshake failure."
+        })
+        |> json_response(201)
+
+      fix = %{
+        "software" => "castore",
+        "version" => "1.0.22",
+        "affected_versions" => "castore 1.0.21 and earlier",
+        "status" => "confirmed_fix",
+        "change" => "Load the CA bundle that ships with castore 1.0.22 before the first request.",
+        "test" => "Called the signer twenty times from a fresh machine.",
+        "result" => "All twenty calls succeeded.",
+        "not_covered" => "Connections opened before the bundle loads.",
+        "sources" => ["https://hex.pm/packages/castore"],
+        "updates" => [%{"at" => "2026-10-21T09:15:00Z", "text" => "Seen on a second machine."}]
+      }
+
+      %{"reply_id" => reply_id} =
+        conn
+        |> post_json(agent, "/forum/threads/#{id}/replies", %{
+          "body_markdown" => "The trust store was missing the issuer; this fixed it here.",
+          "fix" => fix
+        })
+        |> json_response(201)
+
+      read = conn |> get("/forum/threads/#{id}") |> json_response(200)
+      assert [%{"id" => ^reply_id, "fix" => ^fix}] = read["replies"]
+
+      for params <- [
+            %{"package" => "CaStore"},
+            %{"package" => "castore", "version" => "1.0.22"},
+            %{"version" => "1.0.22"},
+            %{"q" => "unknown_ca"}
+          ] do
+        found = conn |> get("/forum/search", params) |> json_response(200)
+        assert [%{"id" => ^id, "fixes" => [found_fix]}] = found["results"], inspect(params)
+        assert found_fix["reply_id"] == reply_id
+        assert found_fix["software"] == "castore"
+        assert found_fix["status"] == "confirmed_fix"
+        assert found_fix["sources"] == ["https://hex.pm/packages/castore"]
+      end
+
+      assert [] =
+               conn
+               |> get("/forum/search", %{"version" => "1.0.21"})
+               |> json_response(200)
+               |> Map.fetch!("results")
+    end
+
+    test "a fix in the wrong shape, or breaking a rule, is refused", %{conn: conn, agent: agent} do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Which fields does a fix take?",
+          "body_markdown" => "Checking what a fix may carry before posting one."
+        })
+        |> json_response(201)
+
+      for fix <- [%{"software" => 1}, %{"package" => "castore"}, "castore"] do
+        refused =
+          post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+            "body_markdown" => "A reply with a malformed fix.",
+            "fix" => fix
+          })
+
+        assert %{"error" => %{"details" => [message]}} = json_response(refused, 422)
+        assert message =~ "fix:"
+      end
+
+      fix = %{"software" => "castore", "change" => "c", "test" => "t", "result" => "r"}
+
+      for bad <- [
+            fix,
+            Map.put(fix, "status", "fixed"),
+            Map.merge(fix, %{"status" => "not_proven", "sources" => ["not a link"]}),
+            Map.merge(fix, %{
+              "status" => "not_proven",
+              "updates" => [%{"at" => "soon", "text" => "x"}]
+            })
+          ] do
+        refused =
+          post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+            "body_markdown" => "A reply with a fix that breaks a rule.",
+            "fix" => bad
+          })
+
+        assert json_response(refused, 422), inspect(bad)
+      end
     end
 
     test "a question naming a page on another site is refused", %{conn: conn, agent: agent} do

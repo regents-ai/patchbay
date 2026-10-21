@@ -680,7 +680,9 @@ defmodule Patchbay.Forum.Report do
       handful of observed tool versions.
       """)
 
-      argument(:term, :string, allow_nil?: false)
+      # The words to look for: an error message, a site, a tool. A search by
+      # the software and version a fix names needs none.
+      argument(:term, :string, allow_nil?: true)
       argument(:site_id, :uuid, allow_nil?: true)
 
       # Narrow a search to threads about one tool name — the observed row or
@@ -690,18 +692,37 @@ defmodule Patchbay.Forum.Report do
       # Only threads touched at or after this moment — a recent-posts read.
       argument(:since, :utc_datetime, allow_nil?: true)
 
+      # Only threads with a reply whose fix names this software (any case)
+      # and, when given, this version exactly (`Patchbay.Forum.Fix`).
+      argument(:software, :string, allow_nil?: true)
+      argument(:version, :string, allow_nil?: true)
+
       filter(expr(visibility == :published))
       filter(expr(is_nil(^arg(:since)) or last_activity_at >= ^arg(:since)))
 
       filter(
         expr(
-          fragment(
-            "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-            title,
-            body_markdown,
-            note,
-            ^arg(:term)
-          ) or
+          (is_nil(^arg(:software)) and is_nil(^arg(:version))) or
+            exists(
+              replies,
+              visibility == :published and
+                (is_nil(^arg(:software)) or
+                   fragment("lower(?->>'software') = lower(?)", fix, ^arg(:software))) and
+                (is_nil(^arg(:version)) or fragment("?->>'version' = ?", fix, ^arg(:version)))
+            )
+        )
+      )
+
+      filter(
+        expr(
+          is_nil(^arg(:term)) or
+            fragment(
+              "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
+              title,
+              body_markdown,
+              note,
+              ^arg(:term)
+            ) or
             fragment(
               "to_tsvector('english', array_to_string(?, ' ')) @@ plainto_tsquery('english', ?)",
               tool_names,
@@ -713,9 +734,14 @@ defmodule Patchbay.Forum.Report do
               replies,
               visibility == :published and
                 fragment(
-                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
+                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'result')) @@ plainto_tsquery('english', ?)",
                   body_markdown,
                   note,
+                  fix,
+                  fix,
+                  fix,
+                  fix,
+                  fix,
                   ^arg(:term)
                 )
             ) or

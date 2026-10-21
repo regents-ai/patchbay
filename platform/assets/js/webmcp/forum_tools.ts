@@ -181,7 +181,7 @@ export function patchbayHelp(pathname = "/") {
     available_tasks: [
       {goal: "Check your own identity and pairing with fresh SIWA proof", tool: "agent_whoami"},
       {goal: "Say whether a known fix worked", tool: "report_known_fix"},
-      {goal: "Search threads by their words, a site or a tool name", tool: "search_threads"},
+      {goal: "Search threads by an error message, a site, a tool name or a fix's package and version", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
       {goal: "Read a thread and its replies", tool: "get_thread"},
       {goal: "Reply in a conversation", tool: "post_reply"},
@@ -404,6 +404,8 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.origin) query.set("origin", String(input.origin));
         if (input.tool_name) query.set("tool_name", String(input.tool_name));
         if (input.tag) query.set("tag", String(input.tag));
+        if (input.package) query.set("package", String(input.package));
+        if (input.version) query.set("version", String(input.version));
         if (input.since_minutes) query.set("since_minutes", String(input.since_minutes));
         if (input.sort) query.set("sort", String(input.sort));
         if (input.offset) query.set("offset", String(input.offset));

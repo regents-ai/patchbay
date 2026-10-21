@@ -256,6 +256,80 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
+  describe "the thread page leads with its answer" do
+    test "the reply others say worked, as a fix card with its test and how many it worked for",
+         %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Calls fail with unknown_ca") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Load castore's list first.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "castore",
+            "version" => "1.0.22",
+            "status" => "interim_mitigation",
+            "change" => "Load CAStore's file at start.",
+            "test" => "Call the site again over HTTPS.",
+            "result" => "The call goes through."
+          }
+        })
+        |> json_response(201)
+
+      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      refute html =~ ~s(id="pb-fix")
+
+      for _ <- 1..2 do
+        visitor()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+
+      text =
+        html
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-fix")
+        |> LazyHTML.text()
+        |> String.replace(~r/\s+/, " ")
+
+      assert text =~ "The fix"
+      assert text =~ "Worked for 2 agents, last on"
+      assert text =~ "castore 1.0.22"
+      assert text =~ "Interim step"
+      assert text =~ ~r/How to test\s*Call the site again over HTTPS\./
+      assert text =~ "The reply the most others say worked."
+
+      # The card comes before the question.
+      assert :binary.match(html, ~s(id="pb-fix")) < :binary.match(html, ~s(id="pb-post"))
+
+      # Once the asker marks it, the card says it is their pick.
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      assert html =~ "The asker says this worked."
+
+      markdown =
+        conn
+        |> recycle()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/posts/#{thread_id}")
+        |> response(200)
+
+      assert markdown =~ "## The fix\n\nWorked for 2 agents, last on"
+      assert markdown =~ "- How to test: Call the site again over HTTPS."
+      assert :binary.match(markdown, "## The fix") < :binary.match(markdown, "## The question")
+    end
+  end
+
   describe "a site page" do
     test "leads with what works and what breaks there, above the agent panel", %{conn: conn} do
       asker = visitor()
@@ -310,71 +384,8 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
-  describe "the thread page leads with its answer" do
-    test "the reply others say worked, with how many it worked for", %{conn: conn} do
-      asker = visitor()
-      %{"thread_id" => thread_id} = ask(asker, "Calls fail with unknown_ca") |> json_response(201)
-
-      %{"reply_id" => reply_id} =
-        visitor()
-        |> post_json("/forum/threads/#{thread_id}/replies", %{
-          "body_markdown" => "Load castore's list first.",
-          "client_request_id" => Ecto.UUID.generate()
-        })
-        |> json_response(201)
-
-      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
-      refute html =~ ~s(id="pb-fix")
-
-      for _ <- 1..2 do
-        visitor()
-        |> post_json("/forum/replies/#{reply_id}/uses", %{
-          "outcome" => "worked",
-          "task_token" => Ecto.UUID.generate()
-        })
-        |> json_response(201)
-      end
-
-      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
-
-      text =
-        html
-        |> LazyHTML.from_document()
-        |> LazyHTML.query("#pb-fix")
-        |> LazyHTML.text()
-        |> String.replace(~r/\s+/, " ")
-
-      assert text =~ "The answer"
-      assert text =~ "Worked for 2 agents, last on"
-      assert text =~ "Load castore's list first."
-      assert text =~ "The reply the most others say worked."
-
-      # The card comes before the question.
-      assert :binary.match(html, ~s(id="pb-fix")) < :binary.match(html, ~s(id="pb-post"))
-
-      # Once the asker marks it, the card says it is their pick.
-      asker
-      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
-      |> json_response(201)
-
-      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
-      assert html =~ "The asker says this worked."
-
-      markdown =
-        conn
-        |> recycle()
-        |> put_req_header("accept", "text/markdown")
-        |> get("/posts/#{thread_id}")
-        |> response(200)
-
-      assert markdown =~ "## The answer\n\nWorked for 2 agents, last on"
-      assert markdown =~ "Load castore's list first."
-      assert :binary.match(markdown, "## The answer") < :binary.match(markdown, "## The question")
-    end
-  end
-
-  describe "the public feed of solved questions" do
-    test "lists answered threads with their answer as JSON and RSS, without signing in", %{
+  describe "the public feed of solved fixes" do
+    test "lists answered threads with their fix as JSON and RSS, without signing in", %{
       conn: conn
     } do
       asker = visitor()
@@ -385,7 +396,14 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         visitor()
         |> post_json("/forum/threads/#{solved}/replies", %{
           "body_markdown" => "Retry with a fresh cart.",
-          "client_request_id" => Ecto.UUID.generate()
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "shop-cart",
+            "status" => "confirmed_fix",
+            "change" => "Start a fresh cart.",
+            "test" => "Check out again.",
+            "result" => "The order goes through."
+          }
         })
         |> json_response(201)
 
@@ -398,7 +416,8 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert [%{"id" => ^solved, "site" => "example.com", "answer" => answer}] = items
       refute Enum.any?(items, &(&1["id"] == open))
       assert answer["reply_id"] == reply_id
-      assert answer["excerpt"] == "Retry with a fresh cart."
+      assert answer["fix"]["status"] == "confirmed_fix"
+      assert answer["fix"]["change"] == "Start a fresh cart."
       assert answer["worked_for_others"] == 0
 
       rss = conn |> recycle() |> get("/solved.rss")
@@ -406,7 +425,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       body = response(rss, 200)
       assert body =~ "<title>Checkout &lt;fails&gt; &amp; hangs</title>"
       assert body =~ "/posts/#{solved}</link>"
-      assert body =~ "<description>Retry with a fresh cart.</description>"
+      assert body =~ "<description>Confirmed fix. Start a fresh cart.</description>"
       refute body =~ open
     end
   end
