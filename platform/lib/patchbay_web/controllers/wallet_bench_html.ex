@@ -55,6 +55,29 @@ defmodule PatchbayWeb.WalletBenchHTML do
     for entry <- [harness, wallet], domain = ProgramSites.domain(entry), do: {entry.name, domain}
   end
 
+  @doc """
+  The forum's threads about a pair: the wallet's site searched for the
+  agent's name, or the whole forum searched for both names when the wallet
+  has no site.
+  """
+  def threads_path(harness, wallet) do
+    case ProgramSites.domain(wallet) do
+      nil -> ~p"/?#{[q: harness.name <> " " <> wallet.name]}"
+      domain -> ~p"/?#{[site: domain, q: harness.name]}"
+    end
+  end
+
+  @doc """
+  The post form, opened with the wallet's site and a title naming the pair,
+  for asking about it.
+  """
+  def ask_about_path(harness, wallet) do
+    PatchbayWeb.Forum.BoardHTML.ask_path(
+      site_url: ProgramSites.domain(wallet),
+      goal: harness.name <> " with " <> wallet.name
+    )
+  end
+
   attr(:test, :string, required: true)
   attr(:filters, :map, default: %{})
   attr(:pair, :boolean, default: false)
@@ -605,6 +628,8 @@ defmodule PatchbayWeb.WalletBenchHTML do
         </p>
       </section>
       <nav aria-label="Pair forums" class="pb-wb-detail-links">
+        <a href={threads_path(@harness, @wallet)}>Threads about this pair</a>
+        <a href={ask_about_path(@harness, @wallet)}>Ask about this</a>
         <a :for={{name, domain} <- forums(@harness, @wallet)} href={~p"/#{domain}"}>
           {name} forum
         </a>

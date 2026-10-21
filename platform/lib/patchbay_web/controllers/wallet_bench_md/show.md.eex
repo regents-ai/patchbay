@@ -25,7 +25,9 @@ The whole run, as Techtree published it: <%= Patchbay.WalletBench.PublicRun.sour
 The whole run did not load from Techtree just now; the results below are unchanged. [Read it on Techtree](<%= Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id) %>).
 <% end %><% end %>
 
-<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %><%= for {name, domain} <- forums(@harness, @wallet) do %>- [<%= line(name) %> forum](/<%= domain %>)
+<%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %>- [Threads about this pair](<%= threads_path(@harness, @wallet) %>)
+- [Ask about this](<%= ask_about_path(@harness, @wallet) %>)
+<%= for {name, domain} <- forums(@harness, @wallet) do %>- [<%= line(name) %> forum](/<%= domain %>)
 <% end %><%= if @shown do %>
 Selected set: <%= line(Sets.label(@shown)) %>
 <%= for {label, value} <- set_facts(@shown.summary) do %>

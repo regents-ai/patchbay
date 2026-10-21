@@ -17,6 +17,8 @@ defmodule PatchbayWeb.WalletBenchMD do
       check_said: 1,
       versions: 1,
       forums: 2,
+      threads_path: 2,
+      ask_about_path: 2,
       square_path: 5,
       square_summary: 2,
       dot_answer: 1,
