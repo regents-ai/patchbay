@@ -81,7 +81,8 @@ config :patchbay, Patchbay.Agents.ActivityReading,
   gc_interval: :timer.minutes(10),
   max_size: 10_000
 
-# Background jobs, in Patchbay's own schema (set in config/runtime.exs). Each
+# Background jobs, in Patchbay's own schema (set in config/runtime.exs). Queues
+# hear about new jobs through Erlang process groups. Each
 # queue is added here with the jobs it runs: a run of an assist, four at once
 # (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
 # forwarded to the staking contract, and the escrow's 10% pushed there, one at
@@ -103,6 +104,7 @@ config :patchbay, Patchbay.Agents.ActivityReading,
 # Ethereum node holds up nothing else.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
+  notifier: Oban.Notifiers.PG,
   queues: [
     assist: 4,
     lost_runs: 1,
