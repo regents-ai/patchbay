@@ -182,6 +182,27 @@ defmodule PatchbayWeb.AgentReadinessTest do
                ["code", "message", "hint"]
     end
 
+    test "a fix is sent as text fields only and read back with every field and its counts", %{
+      conn: conn
+    } do
+      schemas =
+        conn |> get("/openapi.json") |> json_response(200) |> get_in(["components", "schemas"])
+
+      sent = schemas["NewFix"]
+      read = schemas["Fix"]
+
+      assert get_in(schemas, ["NewReply", "properties", "fix", "$ref"]) ==
+               "#/components/schemas/NewFix"
+
+      assert sent["additionalProperties"] == false
+      refute Enum.any?(sent["properties"], fn {_field, field} -> is_list(field["type"]) end)
+
+      assert Map.keys(read["properties"]) --
+               Map.keys(sent["properties"]) == ["source_count", "update_count"]
+
+      assert read["required"] |> Enum.sort() == read["properties"] |> Map.keys() |> Enum.sort()
+    end
+
     test "sitemap.xml lists the fixed pages, articles, bench pairs, sites, tools and posts with last-change times",
          %{conn: conn} do
       site = site!("shop.example")

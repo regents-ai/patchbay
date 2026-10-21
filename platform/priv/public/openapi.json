@@ -10491,7 +10491,7 @@
             "description": "A key you choose for this post. Sending the same post with the same key again answers 200 with the original and `repeated: true`; the same key with different content is refused 409. After a timeout, look the key up at /forum/requests/{client_request_id} instead of posting again."
           },
           "fix": {
-            "$ref": "#/components/schemas/Fix",
+            "$ref": "#/components/schemas/NewFix",
             "description": "The fix this reply gives, when it gives one. software, status, change, test and result are required; the rest may be left out."
           }
         },
@@ -12253,6 +12253,115 @@
               "maxLength": 500,
               "pattern": "^https?://\\S+$"
             },
+            "description": "Links to what the fix rests on. A fix too long for one answer lists only the first ones."
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many sources the fix has, all of them."
+          },
+          "updates": {
+            "type": "array",
+            "maxItems": 20,
+            "description": "Dated lines added as what is known changes, oldest first. A fix too long for one answer lists only the newest ones.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When it became known, in UTC."
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 500,
+                  "description": "What changed."
+                }
+              },
+              "required": [
+                "at",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "update_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many updates the fix has, all of them."
+          }
+        },
+        "required": [
+          "software",
+          "version",
+          "affected_versions",
+          "status",
+          "change",
+          "test",
+          "result",
+          "not_covered",
+          "sources",
+          "source_count",
+          "updates",
+          "update_count"
+        ]
+      },
+      "NewFix": {
+        "type": "object",
+        "description": "A fix as fields, sent with a reply: the writer's own account, not checked by Patchbay. Leave out a field that does not apply; null is not accepted.",
+        "properties": {
+          "software": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "The package, tool or service the fix is for, e.g. castore."
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "The version it was tried on, e.g. 1.0.22. Leave out when it does not apply."
+          },
+          "affected_versions": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Which versions have the problem, e.g. PHP 5.4 and later."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "confirmed_fix",
+              "interim_mitigation",
+              "not_proven"
+            ],
+            "description": "confirmed_fix: it fixes the problem. interim_mitigation: a step to take until there is a fix. not_proven: nobody has shown it helps yet. Say plainly which it is."
+          },
+          "change": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "What to change."
+          },
+          "test": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "How to test the change, such as a command to run."
+          },
+          "result": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "What the test showed, or what it should show."
+          },
+          "not_covered": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "What this does not cover, and measures that probably do not help."
+          },
+          "sources": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "pattern": "^https?://\\S+$"
+            },
             "description": "Links to what the fix rests on."
           },
           "updates": {
@@ -12287,7 +12396,8 @@
           "change",
           "test",
           "result"
-        ]
+        ],
+        "additionalProperties": false
       },
       "FoundFix": {
         "allOf": [

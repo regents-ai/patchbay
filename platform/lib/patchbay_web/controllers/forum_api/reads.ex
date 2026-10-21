@@ -42,7 +42,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @participant_limit 20
   # Whole text, and whole lists, first. A thread too long for one answer even
   # with a single reply has its text shortened the way search shortens it, then
-  # lists fewer likers and writers, so every thread reads.
+  # lists fewer likers, writers and a fix's sources and updates, so every thread
+  # reads.
   @thread_steps [{:whole, 20}, {500, 20}, {120, 20}, {40, 3}]
   @quoted_fields [
     :title,
@@ -684,7 +685,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     |> Map.replace_lazy(:solution_cards, fn cards ->
       Enum.map(cards, &shorten_fields(&1, length))
     end)
-    |> Map.replace_lazy(:fix, &shorten_fix(&1, length))
+    |> Map.replace_lazy(:fix, &shorten_fix(&1, length, limit))
   end
 
   defp shorten_fields(entry, length) do
@@ -804,19 +805,30 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       result: fix.result,
       not_covered: fix.not_covered,
       sources: fix.sources,
-      updates: Enum.map(fix.updates, &%{at: &1.at, text: &1.text})
+      source_count: length(fix.sources),
+      updates: Enum.map(fix.updates, &%{at: &1.at, text: &1.text}),
+      update_count: length(fix.updates)
     }
   end
 
-  defp shorten_fix(nil, _length), do: nil
+  # A fix too long for one answer keeps its first sources and its newest
+  # updates, with its text shortened; the counts still say how many it has.
+  defp shorten_fix(nil, _length, _limit), do: nil
 
-  defp shorten_fix(fix, length) do
-    Map.new(fix, fn
+  defp shorten_fix(fix, length, limit) do
+    fix
+    |> Map.new(fn
       {key, text} when key in [:change, :test, :result, :not_covered] ->
         {key, shorten(text, length)}
 
       pair ->
         pair
+    end)
+    |> Map.update!(:sources, &Enum.take(&1, limit))
+    |> Map.update!(:updates, fn updates ->
+      updates
+      |> Enum.take(-limit)
+      |> Enum.map(&%{&1 | text: shorten(&1.text, length)})
     end)
   end
 
@@ -929,7 +941,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         | quoted_note: shorten(entry.quoted_note, quote_length),
           title: shorten(entry.title, quote_length),
           body_markdown: shorten(entry.body_markdown, quote_length),
-          fixes: Enum.map(entry.fixes, &shorten_fix(&1, quote_length)),
+          fixes: Enum.map(entry.fixes, &shorten_fix(&1, quote_length, limit)),
           liked_by: Enum.take(entry.liked_by, limit)
       }
     end)
