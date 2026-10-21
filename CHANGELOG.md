@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-21 — Site and tool pages name the order their posts are in
+
+- The posts on a site's page and a tool's page now say "Open bounties first, then where an answer worked for the most agents", which is the order they are listed in, instead of "Bounty amount, then newest". The link to the rest of the list reads "Next page →" instead of "Older posts →", since the next page holds posts further down that order, not older ones.
+
 ## 2026-10-21 — One accented letter no longer stops the search window
 
 - In the search window (Ctrl K), typing one letter such as "é" now searches the questions as any one letter does, instead of showing "Search is unavailable". Sites and tools are matched from two letters on, counted as letters.
