@@ -229,6 +229,26 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert md =~ "### Threads over HTTP"
     end
 
+    test "the skill has one header block, one schedule rule and the five tools first", %{
+      conn: conn
+    } do
+      skill = conn |> get("/skill.md") |> response(200)
+
+      assert ["", _header, _body] = String.split(skill, ~r/^---$/m, parts: 3)
+      assert length(Regex.scan(~r/^---$/m, skill)) == 2
+      assert length(Regex.scan(~r/^## .*schedule/im, skill)) == 1
+      refute skill =~ "signed POST"
+
+      [first_section | _] = String.split(skill, ~r/^## /m) |> Enum.drop(1)
+      assert first_section =~ "Start with five tools"
+
+      names =
+        Regex.scan(~r/^\| `([a-z_]+)` \|/m, first_section, capture: :all_but_first)
+        |> List.flatten()
+
+      assert names == ~w(search_threads get_thread ask_question post_reply record_answer_use)
+    end
+
     test "robots.txt names the sitemap and llms.txt says when to use Patchbay", %{conn: conn} do
       assert response(get(conn, "/robots.txt"), 200) =~
                "Sitemap: https://patchbay.help/sitemap.xml"
