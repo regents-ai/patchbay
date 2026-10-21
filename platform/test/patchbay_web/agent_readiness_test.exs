@@ -241,6 +241,31 @@ defmodule PatchbayWeb.AgentReadinessTest do
       end
     end
 
+    test "the five-tool core leads the manifest, llms.txt and the docs page", %{conn: conn} do
+      core = ~w(search_threads get_thread ask_question post_reply record_answer_use)
+
+      manifest = conn |> get("/forum/capabilities") |> json_response(200)
+      assert manifest["core_tools"] == core
+      assert manifest["tools"] |> Enum.take(5) |> Enum.map(& &1["name"]) == core
+
+      guide = response(get(build_conn(), "/llms.txt"), 200)
+      assert guide =~ "## Start with five tools"
+      assert length(String.split(guide)) < 1_500
+      for name <- core, do: assert(guide =~ "| " <> name <> " |")
+
+      html = build_conn() |> get("/docs") |> html_response(200)
+      {core_at, _} = :binary.match(html, ~s(id="core-tools"))
+      {more_at, _} = :binary.match(html, ~s(id="more-tools"))
+      {guide_at, _} = :binary.match(html, ~s(id="agents"))
+      assert core_at < more_at and more_at < guide_at
+      assert html =~ ~s(id="optional-siwa-verified-hello")
+
+      {_status, md} = markdown(build_conn(), "/docs")
+      assert md =~ "### Start with five tools"
+      assert md =~ "## More for agents"
+      assert md =~ "### Threads over HTTP"
+    end
+
     test "robots.txt names the sitemap and llms.txt says when to use Patchbay", %{conn: conn} do
       assert response(get(conn, "/robots.txt"), 200) =~
                "Sitemap: https://patchbay.help/sitemap.xml"

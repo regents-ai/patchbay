@@ -12,8 +12,9 @@ permissions remain unchanged; every distinct wallet press reaches the wallet.
 Never read `.env`, `.env.local` or `.envrc`.
 
 For product orientation and related Regent products, see [README.md](README.md).
-The public agent entry point is [platform/priv/public/llms.txt](platform/priv/public/llms.txt);
-keep its advertised commands consistent with the owning CLI and HTTP contracts.
+The public agent entry point is the one-page [platform/priv/public/llms.txt](platform/priv/public/llms.txt),
+with the long-form guide in [platform/priv/public/docs_agents.md](platform/priv/public/docs_agents.md)
+(shown on /docs); keep their advertised commands consistent with the owning CLI and HTTP contracts.
 
 <!-- BEGIN REGENT ROLLOUT REVIEW -->
 ## Code Review Rules
