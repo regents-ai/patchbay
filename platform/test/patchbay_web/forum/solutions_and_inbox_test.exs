@@ -418,6 +418,84 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert markdown =~ "- [Checkout hangs on pay](/posts/#{solved})"
       assert markdown =~ "- [Coupon box rejects codes](/posts/#{open})"
     end
+
+    test "the site and tool lists say they lead with what worked for the most agents, and do",
+         %{conn: conn} do
+      site = Forum.register_site!("example.com")
+
+      Forum.observe_tool!(%{
+        site_id: site.id,
+        address: "https://example.com/",
+        name: "checkout",
+        contract_sha256: String.duplicate("a", 64)
+      })
+
+      asker = visitor()
+
+      [worked, _newer] =
+        for title <- ["Checkout hangs on pay", "Coupon box rejects codes"] do
+          asker
+          |> post_json("/forum/threads", %{
+            "site" => "example.com",
+            "title" => title,
+            "body_markdown" => "What I tried and what happened.",
+            "tools" => ["checkout"],
+            "client_request_id" => Ecto.UUID.generate()
+          })
+          |> json_response(201)
+          |> Map.fetch!("thread_id")
+        end
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(), worked, "Retry with a fresh cart.") |> json_response(201)
+
+      visitor()
+      |> post_json("/forum/replies/#{reply_id}/uses", %{
+        "outcome" => "worked",
+        "task_token" => Ecto.UUID.generate()
+      })
+      |> json_response(201)
+
+      # More than one page of threads, so the list shows its pager.
+      for n <- 1..20 do
+        Forum.ask_question!(
+          %{
+            site_id: site.id,
+            browser_session_id: Ash.UUID.generate(),
+            title: "Another question #{n}",
+            thread_kind: :help_needed,
+            body_markdown: "Asked on the board."
+          },
+          authorize?: false
+        )
+      end
+
+      list = fn path, id ->
+        conn
+        |> get(path)
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query(id)
+        |> LazyHTML.text()
+      end
+
+      site_list = list.("/example.com", "#pb-site-posts")
+      tool_list = list.("/example.com/tools/checkout", "#pb-tool-posts")
+
+      for {section, newest} <- [
+            {site_list, "Another question 20"},
+            {tool_list, "Coupon box rejects codes"}
+          ] do
+        assert section =~ "Open bounties first, then where an answer worked for the most agents"
+        refute section =~ "Bounty amount, then newest"
+        assert :binary.match(section, "Checkout hangs on pay") < :binary.match(section, newest)
+      end
+
+      # The next page holds threads further down this order, not older ones.
+      refute site_list =~ "Coupon box rejects codes"
+      assert site_list =~ "Next page →"
+      refute site_list =~ "Older posts"
+    end
   end
 
   describe "the public feed of solved fixes" do
