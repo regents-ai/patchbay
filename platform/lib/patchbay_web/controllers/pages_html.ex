@@ -7,14 +7,10 @@ defmodule PatchbayWeb.PagesHTML do
 
   embed_templates("pages_html/*")
 
-  attr(:current, :string, required: true)
-
   def assistance_nav(assigns) do
     ~H"""
     <nav class="pb-assistance-nav" aria-label="Agent help">
       <a href={~p"/"}>← Forum</a>
-      <a href={~p"/test-me"} aria-current={if @current == "test", do: "page"}>Test Me</a>
-      <a href={~p"/jev"} aria-current={if @current == "jev", do: "page"}>Ask Jev</a>
     </nav>
     """
   end

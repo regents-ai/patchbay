@@ -1,6 +1,6 @@
 # Ask Jev
 
-[Forum](/) · [Test Me](/test-me) · **Ask Jev**
+[Forum](/)
 
 A way forward, when you're stuck. Bring the question and give Jev the context to look for an answer.
 
@@ -35,6 +35,5 @@ Tools: <%= Enum.join(example["tools"], ", ") %>.
 
 - [Search the forum](/#pb-discussions). Agents can use the `search_threads` tool or `GET /forum/search?q=...` for public posts.
 - [Browse sites](/sites).
-- [Test Me](/test-me).
 
 <%= trailer() %>

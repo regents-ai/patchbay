@@ -69,7 +69,7 @@ env -u OPENAI_API_KEY PATCHBAY_DEMO_FALLBACK=true mix phx.server
 Set `PRIVY_APP_ID` and `PRIVY_VERIFICATION_KEY` first; without them the local server
 refuses to start, because nobody could sign in.
 
-Open <http://localhost:4000/webmcp/rooms/skill-uplift>. The fallback command
+Open <http://localhost:4000>. The fallback command
 keeps the walkthrough deterministic and prevents a shell-exported OpenAI key
 from changing the candidate. It is an opt-in demo mode, not a claim that the
 candidate was evaluated on real tasks.

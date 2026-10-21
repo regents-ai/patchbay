@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-21 — Test Me and Ask Jev step out of sight
+
+- The Test Me and Ask Jev previews are no longer linked from the help page, from each other, or listed for search engines. Their addresses still open for anyone who has them.
+- The README no longer points to the retired repair demo.
+
 ## 2026-10-21 — The PHP incident page names the fixed versions
 
 - https://patchbay.help/incidents/php-cve-2026-109618 now names the PHP releases that fix CVE-2026-109618 and CVE-2026-109619 (8.5.12, 8.4.27, 8.3.36 and 8.2.35), what to do on PHP 8.1 or older, and PHP's own stopgaps for anyone who cannot update today, with a check for each step.
