@@ -255,6 +255,111 @@ defmodule Patchbay.ReleaseTest do
     assert query!(config, "SELECT version FROM patchbay.schema_migrations").rows == []
   end
 
+  test "under production's schema the search change applies and finds words spelled a little wrong" do
+    # Production imported its tables and their migration ledger into
+    # patchbay_app and migrates from there. Here: every migration before the
+    # search change in public, the tables moved, then the rest under the prefix.
+    # Oban's jobs stay in public, where this test run's Oban reads them.
+    public = disposable_database()
+
+    config =
+      Keyword.merge(public,
+        default_prefix: "patchbay_app",
+        migration_default_prefix: "patchbay_app"
+      )
+
+    with_repo(public, fn _repo -> LocalDatabaseFixture.create_shared_tables!() end)
+    capture_io(fn -> Release.migrate_shared(config: public) end)
+
+    with_repo(public, fn repo ->
+      Ecto.Migrator.run(repo, [release_migrations_path()], :up, to: 20_261_021_091_842)
+      Ecto.Adapters.SQL.query!(repo, "CREATE SCHEMA patchbay_app", [])
+
+      for [name, kind] <-
+            Ecto.Adapters.SQL.query!(
+              repo,
+              "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v') AND c.relname NOT LIKE 'oban_%' ORDER BY c.relkind",
+              []
+            ).rows do
+        object = if kind == "v", do: "VIEW", else: "TABLE"
+
+        Ecto.Adapters.SQL.query!(
+          repo,
+          ~s(ALTER #{object} public."#{name}" SET SCHEMA patchbay_app),
+          []
+        )
+      end
+    end)
+
+    with_repo(config, fn repo ->
+      Ecto.Migrator.run(repo, [release_migrations_path()], :up, all: true, prefix: "patchbay_app")
+    end)
+
+    assert query!(
+             config,
+             "SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm'"
+           ).rows == [["public"]]
+
+    assert trigram_indexes(config) == [
+             "forum_reports_title_trgm_index",
+             "forum_sites_display_name_trgm_index",
+             "forum_sites_origin_trgm_index",
+             "forum_tools_name_trgm_index"
+           ]
+
+    with_repo(config, fn _repo ->
+      site = Patchbay.Forum.register_site!("kettlebell.example")
+
+      Patchbay.Forum.observe_tool!(%{
+        site_id: site.id,
+        address: "https://kettlebell.example/",
+        name: "empty_basket",
+        contract_sha256: String.duplicate("a", 64)
+      })
+
+      question =
+        Patchbay.Forum.ask_question!(
+          %{
+            site_id: site.id,
+            browser_session_id: Ash.UUID.generate(),
+            title: "The kettlebell basket never empties",
+            thread_kind: :help_needed,
+            body_markdown: "Asked on the board."
+          },
+          authorize?: false
+        )
+
+      assert [%{id: site_id}] = Patchbay.Forum.find_sites!("ketlebell")
+      assert site_id == site.id
+      assert [%{name: "empty_basket"}] = Patchbay.Forum.find_tools!("empty_baskt")
+      assert [%{id: question_id}] = Patchbay.Forum.search_threads!("ketlebell").results
+      assert question_id == question.id
+    end)
+
+    # Undoing the search change drops only Patchbay's own indexes: other sites
+    # on the shared database may use the extension.
+    with_repo(config, fn repo ->
+      Ecto.Migrator.run(repo, [release_migrations_path()], :down,
+        to: 20_261_021_094_934,
+        prefix: "patchbay_app"
+      )
+    end)
+
+    assert trigram_indexes(config) == []
+
+    assert query!(config, "SELECT count(*) FROM pg_extension WHERE extname = 'pg_trgm'").rows ==
+             [[1]]
+  end
+
+  defp trigram_indexes(config) do
+    config
+    |> query!(
+      "SELECT indexname FROM pg_indexes WHERE schemaname = 'patchbay_app' AND indexname LIKE '%trgm%' ORDER BY indexname"
+    )
+    |> Map.fetch!(:rows)
+    |> List.flatten()
+  end
+
   defp staging_getenv do
     fn
       @role -> "staging"

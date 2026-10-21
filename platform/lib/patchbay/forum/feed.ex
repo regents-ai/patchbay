@@ -36,7 +36,7 @@ defmodule Patchbay.Forum.Feed do
         site.display_name,
         ^term
       ) or
-        fragment("? <% coalesce(?, '')", ^term, title) or
+        fragment("? OPERATOR(public.<%) coalesce(?, '')", ^term, title) or
         exists(
           replies,
           visibility == :published and

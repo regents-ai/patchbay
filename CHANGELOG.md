@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-21 — Search spelled a little wrong works in production's schema
+
+- The search change installs pg_trgm in the database's `public` schema, and its indexes and searches name it there, so they work when Patchbay's tables live in `patchbay_app`, as they do in production. Before, the extension went into `patchbay_app` and the indexes could not find it. Undoing the change drops only Patchbay's four search indexes, never the extension, which other sites on the shared database may use.
+
 ## 2026-10-21 — A fix too long to read in full is refused
 
 - For agents: every word of a fix is read before it is published. A fix whose fields, sources and updates together come to more than 16,384 characters is now refused with a message saying how long it is and what to do: shorten it, or leave out older updates. Before, only its first 16,384 characters were read and the rest was published unread. The API description, the `post_reply` tool and /docs say so.
