@@ -134,6 +134,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
                :author,
                :site,
                :discussion_state,
+               :solved,
                :solution_cards,
                tool: [:site],
                post_likes: [:author]
@@ -372,6 +373,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     :author,
     :site,
     :discussion_state,
+    :solved,
     :worked_count,
     :last_worked_at,
     tool: [:site],
@@ -752,7 +754,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       discussion_state: report.discussion_state,
       topic_tags: report.topic_tags,
       last_activity_at: report.last_activity_at,
-      solution_reply_id: report.solution_reply_id,
+      solution_reply_id: if(report.solved, do: report.solution_reply_id),
       solution_cards:
         case report.solution_cards do
           %Ash.NotLoaded{} -> []

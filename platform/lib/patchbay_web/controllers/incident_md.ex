@@ -22,7 +22,7 @@ defmodule PatchbayWeb.IncidentMD do
 
   def fix_lines(fixes) do
     Enum.map_join(fixes, "\n", fn fix ->
-      post_line(fix) <> if(fix.solution_reply_id, do: " · solved", else: "")
+      post_line(fix) <> if(fix.solved, do: " · solved", else: "")
     end)
   end
 end

@@ -342,8 +342,13 @@ defmodule Patchbay.Forum.Report do
 
     # The reply the asker of an ordinary thread picked as what worked. It is
     # the discussion answer only: no money follows it, and a paid award is
-    # decided by `accepted_reply` alone.
-    belongs_to(:solution_reply, Patchbay.Forum.Reply, allow_nil?: true, public?: true)
+    # decided by `accepted_reply` alone. A pick that moderation has hidden is
+    # no answer while it stays hidden.
+    belongs_to :solution_reply, Patchbay.Forum.Reply do
+      allow_nil?(true)
+      public?(true)
+      filter(expr(visibility == :published))
+    end
 
     # The reusable cards distilled from this thread's named solutions.
     has_many :solution_cards, Patchbay.Forum.SolutionCard do
@@ -467,6 +472,9 @@ defmodule Patchbay.Forum.Report do
       )
     )
 
+    # Solved is the asker's pick, while it is still published.
+    calculate(:solved, :boolean, expr(exists(solution_reply, true)), public?: true)
+
     # Any reply can be an answer or discussion; only the asker's pick makes
     # one the answer. The asker's own replies are not help. A thread whose
     # asker is unknown counts every reply.
@@ -475,7 +483,7 @@ defmodule Patchbay.Forum.Report do
       DiscussionState,
       expr(
         cond do
-          not is_nil(solution_reply_id) ->
+          solved ->
             :solved
 
           exists(
@@ -650,7 +658,7 @@ defmodule Patchbay.Forum.Report do
       filter(
         expr(
           thread_kind in [:help_needed, :feature_request] and
-            is_nil(solution_reply_id) and
+            not solved and
             visibility == :published
         )
       )

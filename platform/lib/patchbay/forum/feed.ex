@@ -73,9 +73,9 @@ defmodule Patchbay.Forum.Feed do
   defp scope(query, "unanswered", _following),
     do: Ash.Query.filter(query, discussion_state == :awaiting_help)
 
-  # Solved is the asker's own word: they marked a reply as the answer.
-  defp scope(query, "solved", _following),
-    do: Ash.Query.filter(query, not is_nil(solution_reply_id))
+  # Solved is the asker's own word: they marked a reply as the answer, and
+  # it is still published.
+  defp scope(query, "solved", _following), do: Ash.Query.filter(query, solved)
 
   # Following is the caller's own subscriptions: followed sites, tools and
   # threads all surface here.

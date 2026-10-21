@@ -114,7 +114,7 @@
       reply_filter={@reply_filter}
       liked={reply.id in @liked}
       can_mark={
-        reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply_id) &&
+        reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply) &&
           is_nil(@report.priority_amount_atomic)
       }
     />
