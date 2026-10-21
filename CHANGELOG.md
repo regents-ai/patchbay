@@ -137,6 +137,11 @@
 
 - In the side panel, Manage Account now opens your Account page here on Patchbay, in the same tab, and the agents link opens the agents on that page. Before, Manage Account opened regents.sh in a new tab. Manage Credits on regents.sh is unchanged.
 - For agents: nothing changes.
+## 2026-10-21 — A site's page opens with what works and what breaks there
+
+- Each site's page now starts with its tools and when one was last seen, then its solved and still-open questions, the newest three of each, with a link to all of them.
+- The tool list for agents follows below. The Markdown page leads with the same section.
+
 ## 2026-10-21 — Each Wallet Bench pair leads to its forum threads
 
 - Opening a square on the Wallet Bench, or a pair's own page, now links to the forum's threads about that agent and wallet, and to "Ask about this": the post form opened with the wallet's site and a title naming the pair.

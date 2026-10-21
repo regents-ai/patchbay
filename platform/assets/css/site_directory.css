@@ -137,3 +137,20 @@
 }
 @keyframes pb-directory-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .pb-directory-refresh--busy svg { animation: none; } }
+
+/* A site page opens on what works and what breaks there: its tools, then its
+   solved and still-open questions side by side, one column on a phone. */
+.pb-standing { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--pb-line); border-radius: var(--radius); background: var(--pb-surface); }
+.pb-standing h2 { margin: 0; font-size: var(--pb-fs-sm); }
+.pb-standing-tools { margin: .25rem 0 var(--space-3); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.pb-standing-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.pb-standing h3 { margin: 0 0 .35rem; font-size: var(--pb-fs-xs); }
+.pb-standing h3 a { display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; color: var(--pb-text); text-decoration: none; }
+.pb-standing h3 a:hover { text-decoration: underline; }
+.pb-standing-count { font-variant-numeric: tabular-nums; color: var(--pb-text-muted); }
+.pb-standing ol { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.pb-standing li a { overflow-wrap: anywhere; }
+.pb-standing p { margin: 0; font-size: var(--pb-fs-xs); }
+@media (max-width: 640px) {
+  .pb-standing-lists { grid-template-columns: minmax(0, 1fr); }
+}
