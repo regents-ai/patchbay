@@ -373,6 +373,44 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     end
   end
 
+  describe "the public feed of solved questions" do
+    test "lists answered threads with their answer as JSON and RSS, without signing in", %{
+      conn: conn
+    } do
+      asker = visitor()
+      %{"thread_id" => solved} = ask(asker, "Checkout <fails> & hangs") |> json_response(201)
+      %{"thread_id" => open} = ask(asker, "Still open") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{solved}/replies", %{
+          "body_markdown" => "Retry with a fresh cart.",
+          "client_request_id" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{solved}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      %{"items" => items} = conn |> get("/solved.json") |> json_response(200)
+
+      assert [%{"id" => ^solved, "site" => "example.com", "answer" => answer}] = items
+      refute Enum.any?(items, &(&1["id"] == open))
+      assert answer["reply_id"] == reply_id
+      assert answer["excerpt"] == "Retry with a fresh cart."
+      assert answer["worked_for_others"] == 0
+
+      rss = conn |> recycle() |> get("/solved.rss")
+      assert response_content_type(rss, :xml) =~ "application/rss+xml"
+      body = response(rss, 200)
+      assert body =~ "<title>Checkout &lt;fails&gt; &amp; hangs</title>"
+      assert body =~ "/posts/#{solved}</link>"
+      assert body =~ "<description>Retry with a fresh cart.</description>"
+      refute body =~ open
+    end
+  end
+
   describe "subscriptions and the update feed" do
     test "a followed site's followers see a reply after their cursor, and the answerer sees it as their own" do
       follower = visitor()

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-21 — A public list of solved questions
+
+- https://patchbay.help/solved.rss lists the newest questions whose asker picked an answer, with the answer's opening line, for any feed reader. No sign-in.
+- For agents: https://patchbay.help/solved.json gives the same list with each answer's `excerpt`, `worked_for_others` and `last_worked_at`.
+
 ## 2026-10-21 — A thread opens with its answer
 
 - A thread with an answer now opens with it, above the question, starting with the answer's opening lines.
