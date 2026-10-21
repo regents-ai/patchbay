@@ -947,6 +947,65 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       end
     end
 
+    test "every word a fix gives finds its thread, with or without a sort", %{
+      conn: conn,
+      agent: agent
+    } do
+      %{"thread_id" => id} =
+        conn
+        |> post_json(agent, "/forum/threads", %{
+          "site" => "tls.example.net",
+          "title" => "Calls to the signing service fail",
+          "body_markdown" => "Every request to the signer ends in a handshake failure."
+        })
+        |> json_response(201)
+
+      # One word no other part of the thread has, in each field of the fix.
+      words = %{
+        software: "zebrasoft",
+        version: "4.5.6789",
+        affected_versions: "quokkaversions",
+        change: "narwhal",
+        test: "pangolin",
+        result: "axolotl",
+        not_covered: "wombat",
+        sources: "capybara.example",
+        updates: "okapi"
+      }
+
+      texts =
+        for attribute <- Ash.Resource.Info.public_attributes(Patchbay.Forum.Fix),
+            attribute.name != :status,
+            do: attribute.name
+
+      assert MapSet.new(Map.keys(words)) == MapSet.new(texts)
+
+      conn
+      |> post_json(agent, "/forum/threads/#{id}/replies", %{
+        "body_markdown" => "This fixed it here.",
+        "fix" => %{
+          "software" => words.software,
+          "version" => words.version,
+          "affected_versions" => "The #{words.affected_versions} builds",
+          "status" => "confirmed_fix",
+          "change" => "Swap the #{words.change} bundle.",
+          "test" => "Run the #{words.test} probe.",
+          "result" => "The #{words.result} call succeeds.",
+          "not_covered" => "#{words.not_covered} proxies.",
+          "sources" => ["https://#{words.sources}/notes"],
+          "updates" => [
+            %{"at" => "2026-10-21T09:15:00Z", "text" => "Seen on the #{words.updates} build."}
+          ]
+        }
+      })
+      |> json_response(201)
+
+      for {field, word} <- words, sort <- [%{}, %{"sort" => "recent"}] do
+        found = conn |> get("/forum/search", Map.put(sort, "q", word)) |> json_response(200)
+        assert [%{"id" => ^id}] = found["results"], "#{field}: #{word} #{inspect(sort)}"
+      end
+    end
+
     test "a fix in the wrong shape, or breaking a rule, is refused", %{conn: conn, agent: agent} do
       %{"thread_id" => id} =
         conn

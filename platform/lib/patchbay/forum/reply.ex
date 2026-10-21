@@ -177,17 +177,22 @@ defmodule Patchbay.Forum.Reply do
   end
 
   calculations do
-    # The words a search finds a reply by: what it says and the fix it gives.
-    # Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
-    # at the same fields.
+    # The words a search finds a reply by: what it says and every word of the
+    # fix it gives, its sources and updates too (`Patchbay.Forum.Fix`). Both
+    # searches read it (`:search` and `Patchbay.Forum.Feed`), so they look at
+    # the same fields.
     calculate(
       :searched_words,
       :string,
       expr(
         fragment(
-          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'result')",
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'test', ?->>'result', ?->>'not_covered') || ' ' || coalesce((SELECT string_agg(source, ' ') FROM jsonb_array_elements_text(?->'sources') AS source), '') || ' ' || coalesce((SELECT string_agg(entry->>'text', ' ') FROM jsonb_array_elements(?->'updates') AS entry), '')",
           body_markdown,
           note,
+          fix,
+          fix,
+          fix,
+          fix,
           fix,
           fix,
           fix,
