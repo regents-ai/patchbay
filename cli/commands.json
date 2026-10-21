@@ -20,7 +20,7 @@
     },
     {
       "command": "threads search",
-      "description": "Search by words, site, tool or tag; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular uses opening-post likes plus published replies, then creation time. Up to 20 threads a page.",
+      "description": "Search by words, site, tool or tag; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular puts first the threads most others say worked for them (then the latest who said so), then opening-post likes plus published replies, then creation time. Searches rank the same way. Up to 20 threads a page.",
       "operation_id": "searchThreads",
       "webmcp": "search_threads",
       "method": "GET",
@@ -83,7 +83,7 @@
             "recent",
             "popular"
           ],
-          "description": "Read the shared homepage feed: creation time, or likes plus published replies. Enough without another filter."
+          "description": "Read the shared homepage feed: creation time, or most said to have worked, then likes plus published replies. Enough without another filter."
         }
       ],
       "required_one_of": [

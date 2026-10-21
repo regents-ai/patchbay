@@ -365,6 +365,34 @@ defmodule Patchbay.Forum.Report do
     # Every like on the thread, across all its pages of replies.
     count(:thread_like_count, :likes)
     count(:post_like_count, :post_likes)
+
+    # How many others say a published reply here worked for them: never a
+    # reply's own writer, never the asker. Their word, not a check. With the
+    # latest such word, it ranks search results and thread lists.
+    count :worked_count, [:replies, :answer_uses] do
+      field(:principal)
+      uniq?(true)
+
+      filter(
+        expr(
+          outcome == :worked and not same_author and reply.visibility == :published and
+            (is_nil(parent(principal)) or principal != parent(principal))
+        )
+      )
+
+      public?(true)
+    end
+
+    max :last_worked_at, [:replies, :answer_uses], :updated_at do
+      filter(
+        expr(
+          outcome == :worked and not same_author and reply.visibility == :published and
+            (is_nil(parent(principal)) or principal != parent(principal))
+        )
+      )
+
+      public?(true)
+    end
   end
 
   calculations do
@@ -540,8 +568,9 @@ defmodule Patchbay.Forum.Report do
       description("""
       Every published thread about one named tool on a site — posts filed
       against any version of it, and questions that only name it — open
-      bounties first: largest funded, unanswered bounty, then newest. The rest
-      follow, newest first.
+      bounties first: largest funded, unanswered bounty. The rest follow by
+      how many say a reply worked for them, then the latest who said so, then
+      newest.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
@@ -555,7 +584,18 @@ defmodule Patchbay.Forum.Report do
       )
 
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(sort: [open_bounty_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+
+      prepare(
+        build(
+          sort: [
+            open_bounty_usdc_atomic: :desc,
+            worked_count: :desc,
+            last_worked_at: :desc_nils_last,
+            inserted_at: :desc,
+            id: :desc
+          ]
+        )
+      )
     end
 
     read :for_site do
@@ -574,14 +614,26 @@ defmodule Patchbay.Forum.Report do
       description("""
       Every published thread on one site — site-wide questions and posts about
       any of its tools — open bounties first: largest funded, unanswered
-      bounty, then newest. The rest follow, newest first. Pending, failed,
-      refunded or paid-out escrow does not promote a thread.
+      bounty. The rest follow by how many say a reply worked for them, then
+      the latest who said so, then newest. Pending, failed, refunded or
+      paid-out escrow does not promote a thread.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       filter(expr(site_id == ^arg(:site_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(sort: [open_bounty_usdc_atomic: :desc, inserted_at: :desc, id: :desc]))
+
+      prepare(
+        build(
+          sort: [
+            open_bounty_usdc_atomic: :desc,
+            worked_count: :desc,
+            last_worked_at: :desc_nils_last,
+            inserted_at: :desc,
+            id: :desc
+          ]
+        )
+      )
     end
 
     read :open_questions do
@@ -687,12 +739,15 @@ defmodule Patchbay.Forum.Report do
 
       pagination(offset?: true, default_limit: 10, max_page_size: 50)
 
-      # Relevance first — the thread's own words rank it — then what moved
+      # What others say worked first: how many, then the latest who said so.
+      # Then relevance — the thread's own words rank it — then what moved
       # last and a stable id, so two equally relevant threads never reorder.
       prepare(fn query, _context ->
         term = Ash.Query.get_argument(query, :term)
 
         Ash.Query.sort(query, [
+          {:worked_count, :desc},
+          {:last_worked_at, :desc_nils_last},
           {calc(
              fragment(
                "ts_rank(to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')), plainto_tsquery('english', ?))",
