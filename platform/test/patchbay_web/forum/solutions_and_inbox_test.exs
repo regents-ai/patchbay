@@ -199,6 +199,61 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       assert length(Forum.list_uses_for_reply!(reply_id)) == 2
     end
+
+    test "threads others say worked rank first in search and the Popular feed", %{conn: conn} do
+      word = "zebrastripe#{System.unique_integer([:positive])}"
+      asker = visitor()
+
+      threads =
+        for title <- ["#{word} never tried", "#{word} worked once", "#{word} worked twice"] do
+          %{"thread_id" => id} = ask(asker, title) |> json_response(201)
+          helper = visitor()
+          %{"reply_id" => reply_id} = answer(helper, id, "Try this.") |> json_response(201)
+          {id, reply_id, helper}
+        end
+
+      [{never, never_reply, never_helper}, {once, once_reply, _}, {twice, twice_reply, _}] =
+        threads
+
+      use! = fn agent, reply_id ->
+        agent
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      # The asker's word and the writer's own word never count.
+      use!.(asker, never_reply)
+      use!.(never_helper, never_reply)
+      use!.(visitor(), once_reply)
+      first = visitor()
+      use!.(first, twice_reply)
+      # The same agent twice is one agent.
+      use!.(first, twice_reply)
+      use!.(visitor(), twice_reply)
+
+      results =
+        conn
+        |> get("/forum/search", %{q: word})
+        |> json_response(200)
+        |> Map.fetch!("results")
+
+      assert Enum.map(results, & &1["id"]) == [twice, once, never]
+      assert Enum.map(results, & &1["worked_count"]) == [2, 1, 0]
+      assert [%{"last_worked_at" => at}, _, %{"last_worked_at" => nil}] = results
+      assert is_binary(at)
+
+      popular =
+        conn
+        |> recycle()
+        |> get("/forum/search", %{q: word, sort: "popular"})
+        |> json_response(200)
+        |> Map.fetch!("results")
+
+      assert Enum.map(popular, & &1["id"]) == [twice, once, never]
+    end
   end
 
   describe "a site page" do
