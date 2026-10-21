@@ -4,7 +4,10 @@ defmodule PatchbayWeb.Telemetry do
   dashboard draws (`metrics/0`), and their Prometheus export on the private
   metrics listener (`PatchbayWeb.Metrics`), which Fly Sentinel's site watch
   reads. The export keeps the names every Regent site shares: Ecto's
-  `[:patchbay, :repo, :query]` (`queue_time` is the wait for a connection),
+  `[:patchbay, :repo, :query]` (`queue_time` is the wait for a connection and
+  `total_time` the query's whole time), each request the router sends to a page
+  or controller by its route pattern (`[:phoenix, :router_dispatch, :stop]`),
+  never by its path,
   each background job's outcome and time from Oban's own events,
   `[:patchbay, :jobs, :oldest_unfinished]` (`age_ms` of the oldest available,
   running or retrying job in each running `queue`, 0 when there is none,
@@ -19,29 +22,29 @@ defmodule PatchbayWeb.Telemetry do
   (`Patchbay.Assist.ModelCalls`), and each post turned away whose words
   were not kept because the day's count of them was reached
   (`Patchbay.Forum.PostingCheck`).
+
+  The reporter, Peep, keeps a fixed set of counters for each series and holds
+  no observation between scrapes. It adds each observation to a running total
+  as a whole number, so times are measured in whole microseconds and model
+  charges in billionths of a dollar, and every total stays exact.
   """
 
-  use Supervisor
   import Ecto.Query, only: [from: 2]
   import Telemetry.Metrics
 
+  alias PatchbayWeb.Telemetry.Buckets
+
   require Logger
 
-  def start_link(arg) do
-    Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
+  @reporter :patchbay_prometheus
+
+  def child_spec(_arg) do
+    Peep.child_spec(metrics: prometheus_metrics(), name: @reporter)
   end
 
-  @impl true
-  def init(_arg) do
-    children = [
-      {TelemetryMetricsPrometheus.Core,
-       metrics: prometheus_metrics(), name: prometheus_reporter(), start_async: false}
-    ]
-
-    Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  def prometheus_reporter, do: :patchbay_prometheus
+  @doc "Every measurement as Prometheus text, as the metrics listener answers it."
+  def scrape,
+    do: @reporter |> Peep.get_all_metrics() |> Peep.Prometheus.export() |> IO.iodata_to_binary()
 
   @doc "The poller for the measurements the site takes itself, started after Oban."
   def site_poller,
@@ -107,12 +110,42 @@ defmodule PatchbayWeb.Telemetry do
   # only queue and worker names and the fixed outcomes.
   defp prometheus_metrics do
     [
-      distribution("health.db_queue.seconds",
+      distribution("health.db_queue.microseconds",
         event_name: [:patchbay, :repo, :query],
         measurement: :queue_time,
-        unit: {:native, :second},
-        description: "Seconds a query waited for a database connection",
-        reporter_options: [buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]]
+        unit: {:native, :microsecond},
+        description: "Microseconds a query waited for a database connection",
+        reporter_options: [
+          peep_bucket_calculator: Buckets,
+          buckets:
+            [1_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000] ++
+              [1_000_000, 2_500_000, 5_000_000]
+        ]
+      ),
+      distribution("patchbay.repo.query.microseconds",
+        event_name: [:patchbay, :repo, :query],
+        measurement: :total_time,
+        unit: {:native, :microsecond},
+        description: "Microseconds each query took, waiting for a connection included",
+        reporter_options: [
+          peep_bucket_calculator: Buckets,
+          buckets:
+            [1_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000] ++
+              [1_000_000, 2_500_000, 5_000_000]
+        ]
+      ),
+      distribution("patchbay.request.duration.microseconds",
+        event_name: [:phoenix, :router_dispatch, :stop],
+        measurement: :duration,
+        unit: {:native, :microsecond},
+        tags: [:route],
+        description: "Microseconds each request took, by its route pattern",
+        reporter_options: [
+          peep_bucket_calculator: Buckets,
+          buckets:
+            [5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000] ++
+              [2_500_000, 5_000_000, 10_000_000]
+        ]
       ),
       last_value("health.job.oldest_age.seconds",
         event_name: [:patchbay, :jobs, :oldest_unfinished],
@@ -137,12 +170,24 @@ defmodule PatchbayWeb.Telemetry do
         tags: [:queue, :worker, :state],
         description: "Job runs that failed; state says whether the job will retry"
       ),
-      distribution("patchbay.jobs.duration.seconds",
+      distribution("patchbay.jobs.duration.microseconds",
         event_name: [:oban, :job, :stop],
         measurement: :duration,
-        unit: {:native, :second},
+        unit: {:native, :microsecond},
         tags: [:queue, :worker],
-        reporter_options: [buckets: [0.01, 0.05, 0.1, 0.5, 1, 5, 15, 60]]
+        reporter_options: [
+          peep_bucket_calculator: Buckets,
+          buckets: [
+            10_000,
+            50_000,
+            100_000,
+            500_000,
+            1_000_000,
+            5_000_000,
+            15_000_000,
+            60_000_000
+          ]
+        ]
       ),
       counter("patchbay.jev.questions.total",
         event_name: [:patchbay, :model_call, :stop],
@@ -159,13 +204,16 @@ defmodule PatchbayWeb.Telemetry do
         measurement: :completion_tokens,
         description: "Output tokens the questions were billed for"
       ),
-      # A Prometheus sum adds whole numbers only, so the dollars are a histogram;
-      # its `_sum` series is the running total.
-      distribution("patchbay.jev.cost.usd",
+      # The dollars are a histogram, so its `_sum` series is the running total.
+      # A question reports a float of dollars; billionths keep that total exact.
+      distribution("patchbay.jev.cost.nanodollars",
         event_name: [:patchbay, :model_call, :stop],
-        measurement: :cost_usd,
-        description: "US dollars OpenRouter charged per question",
-        reporter_options: [buckets: [0.00001, 0.0001, 0.001, 0.01, 0.1]]
+        measurement: &round(&1.cost_usd * 1_000_000_000),
+        description: "Billionths of a US dollar OpenRouter charged per question",
+        reporter_options: [
+          peep_bucket_calculator: Buckets,
+          buckets: [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]
+        ]
       ),
       counter("patchbay.post_readings.half_spent.total",
         event_name: [:patchbay, :post_readings, :half_spent],

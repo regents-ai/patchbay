@@ -30,7 +30,7 @@ defmodule PatchbayWeb.MetricsTest do
     assert answer.resp_body =~ ~r/^patchbay_post_readings_words_not_kept_total \d+$/m
     assert answer.resp_body =~ ~s(patchbay_jev_questions_total{outcome="answered"})
     assert answer.resp_body =~ "patchbay_jev_input_tokens_total"
-    assert answer.resp_body =~ "patchbay_jev_cost_usd_sum"
+    assert answer.resp_body =~ ~r/^patchbay_jev_cost_nanodollars_sum 200000$/m
     # Nothing a caller chose is a label: the purpose and the model stay out.
     refute answer.resp_body =~ "check_post"
 

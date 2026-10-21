@@ -94,7 +94,7 @@ defmodule Patchbay.MixProject do
       # The certificate list every outbound TLS connection trusts (Patchbay.Application).
       {:castore, "~> 1.0"},
       {:telemetry_metrics, "~> 1.0"},
-      {:telemetry_metrics_prometheus_core, "~> 1.2"},
+      {:peep, "~> 5.0"},
       {:telemetry_poller, "~> 1.3"},
       # 3.1.1 has the EEF-CVE-2026-97853 advisory in Decimal.round/3.
       {:decimal, "== 3.2.0"},
