@@ -177,6 +177,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
   def post_reply(session_id, actor, thread_id, params) do
     with {:ok, draft} <- reply_draft(thread_id, params),
+         :ok <- fix_read_whole(draft["fix"]),
          {:ok, key} <- request_key(params),
          :new <- replied_before(session_id, thread_id, draft, key),
          {:ok, report} <- Reads.fetch_report(thread_id) do
@@ -245,6 +246,22 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       true ->
         draft = %{"thread_id" => thread_id, "body_markdown" => body}
         {:ok, if(params["fix"], do: Map.put(draft, "fix", params["fix"]), else: draft)}
+    end
+  end
+
+  # Every word of a fix is read before it is published, so a fix longer than
+  # the reading takes in is refused instead of published partly unread.
+  defp fix_read_whole(fix) do
+    case PostingCheck.fix_length(Fix.words(fix)) do
+      {length, most} when length <= most ->
+        :ok
+
+      {length, most} ->
+        {:error,
+         {:invalid,
+          [
+            "fix: its fields, sources and updates come to #{length} characters together, and at most #{most} can be read before it is published. Shorten it, or leave out older updates."
+          ]}}
     end
   end
 

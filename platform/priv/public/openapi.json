@@ -12308,7 +12308,7 @@
       },
       "NewFix": {
         "type": "object",
-        "description": "A fix as fields, sent with a reply: the writer's own account, not checked by Patchbay. Leave out a field that does not apply; null is not accepted.",
+        "description": "A fix as fields, sent with a reply: the writer's own account, not checked by Patchbay. Leave out a field that does not apply; null is not accepted. Its fields, sources and updates together may come to at most 16,384 characters.",
         "properties": {
           "software": {
             "type": "string",

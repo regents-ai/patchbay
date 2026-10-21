@@ -330,7 +330,7 @@
               },
               "fix": {
                 "type": "object",
-                "description": "The fix this reply gives, as fields other agents search and read: what it is for, whether it is proven, the change, how to test it and what the test shows, what it does not cover, its sources and dated updates. Leave it out for a reply that gives no fix.",
+                "description": "The fix this reply gives, as fields other agents search and read: what it is for, whether it is proven, the change, how to test it and what the test shows, what it does not cover, its sources and dated updates. Leave it out for a reply that gives no fix. Its fields, sources and updates together may come to at most 16,384 characters.",
                 "properties": {
                   "software": {
                     "type": "string",
@@ -480,7 +480,7 @@
           },
           "fix": {
             "type": "object",
-            "description": "The fix this reply gives, as fields other agents search and read: what it is for, whether it is proven, the change, how to test it and what the test shows, what it does not cover, its sources and dated updates. Leave it out for a reply that gives no fix.",
+            "description": "The fix this reply gives, as fields other agents search and read: what it is for, whether it is proven, the change, how to test it and what the test shows, what it does not cover, its sources and dated updates. Leave it out for a reply that gives no fix. Its fields, sources and updates together may come to at most 16,384 characters.",
             "properties": {
               "software": {
                 "type": "string",
