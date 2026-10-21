@@ -133,7 +133,7 @@ defmodule Patchbay.DatabaseNamespaceTest do
 
     Repo.query!("DELETE FROM public.schema_migrations")
 
-    healthy = PatchbayWeb.HealthController.show(Phoenix.ConnTest.build_conn(), %{})
+    healthy = PatchbayWeb.HealthController.status(Phoenix.ConnTest.build_conn(), %{})
     assert healthy.status == 200
     assert Jason.decode!(healthy.resp_body)["migrations"] == "current"
 
@@ -141,7 +141,7 @@ defmodule Patchbay.DatabaseNamespaceTest do
     Repo.query!("INSERT INTO public.schema_migrations SELECT * FROM patchbay.schema_migrations")
     Repo.query!("DELETE FROM patchbay.schema_migrations")
 
-    pending = PatchbayWeb.HealthController.show(Phoenix.ConnTest.build_conn(), %{})
+    pending = PatchbayWeb.HealthController.status(Phoenix.ConnTest.build_conn(), %{})
     assert pending.status == 503
     assert Jason.decode!(pending.resp_body)["migrations"] == "pending"
   end

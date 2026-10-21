@@ -54,7 +54,7 @@ kill_timeout = "60s"
     grace_period = "15s"
     interval = "30s"
     method = "GET"
-    path = "/webmcp/health"
+    path = "/healthz"
     protocol = "http"
     timeout = "5s"
     # Names the site's own host so the check never depends on Fly's default.

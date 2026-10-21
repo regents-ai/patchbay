@@ -104,9 +104,9 @@ ENV MIX_ENV="prod"
 COPY --from=builder --chown=nobody:root /app/platform/_build/${MIX_ENV}/rel/patchbay ./
 
 # The commit this image is built from, reported by /webmcp/health. Build with
-# --build-arg PATCHBAY_COMMIT=<full commit>; a release without it does not start.
-ARG PATCHBAY_COMMIT
-ENV PATCHBAY_COMMIT="${PATCHBAY_COMMIT}"
+# --build-arg SOURCE_COMMIT=<full commit>; a release without it does not start.
+ARG SOURCE_COMMIT
+ENV SOURCE_COMMIT="${SOURCE_COMMIT}"
 
 USER nobody
 

@@ -494,7 +494,12 @@ defmodule PatchbayWeb.Router do
   scope "/webmcp", PatchbayWeb do
     pipe_through :api
 
-    get "/health", HealthController, :show
+    get "/health", HealthController, :status
+  end
+
+  # Fly's check, in plain text, as on every Regent site.
+  scope "/", PatchbayWeb do
+    get "/healthz", HealthController, :show
   end
 
   # Only a new payment draws on the share. Paying it and reading it back do

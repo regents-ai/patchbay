@@ -8,7 +8,7 @@
 # to main first. The build context is `git archive` of this commit with
 # platform/fly.toml beside it, as the Dockerfile copies from the whole
 # repository. Fly's remote builder builds the image without cached layers,
-# labelled candidate-<short commit>, and runs /app/bin/migrate before the new
+# labelled with the short commit, and runs /app/bin/migrate before the new
 # machine takes traffic (platform/docs/DEPLOY.md). An earlier image goes back
 # with `fly deploy --app patchbay-regents --image <previous image>`.
 set -euo pipefail
@@ -38,5 +38,5 @@ cp "$context/platform/fly.toml" "$context/fly.toml"
 echo "==> Deploying ${commit:0:7} to patchbay-regents"
 cd "$context"
 fly deploy --config fly.toml --app patchbay-regents --remote-only --ha=false --no-cache \
-  --build-arg PATCHBAY_COMMIT="$commit" \
-  --image-label "candidate-${commit:0:7}"
+  --build-arg SOURCE_COMMIT="$commit" \
+  --image-label "${commit:0:7}"

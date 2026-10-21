@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-20 — A plain health check, as on every Regents site
+
+- https://patchbay.help/healthz answers `ok` while the site and its database are up, and `unavailable` with a 503 when the database isn't answering, the same way every Regents site does.
+- For agents: `/webmcp/health` still answers in JSON with the running commit, the database and migrations, as before.
+
 ## 2026-10-20 — A new share picture in Patchbay's colours
 
 - A shared Patchbay link now shows a picture in Patchbay's porcelain and cobalt, with the corner marks the site's buttons wear. Before, it still showed the older cream and orange picture.

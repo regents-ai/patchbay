@@ -139,7 +139,7 @@ scripts/deploy.sh
 ```
 
 It refuses a checkout with any change and a commit that `origin/main` does not
-contain. It builds `git archive` of the commit, so `PATCHBAY_COMMIT` is always
+contain. It builds `git archive` of the commit, so `SOURCE_COMMIT` is always
 the full commit the image is built from; `/webmcp/health` reports it as `commit`. A release built without it
 does not start, so the migration step fails and the previous release keeps
 serving.
@@ -154,7 +154,8 @@ serving.
 
 Deploys are blue-green (`strategy = "bluegreen"` in `platform/fly.toml`): Fly
 starts a new machine beside the running one and moves traffic to it only once
-it answers `/webmcp/health`. A new release that never answers is removed and
+it answers `/healthz` with `ok`, which needs its database to answer. A new
+release that never answers is removed and
 the previous one keeps serving. Open rooms reconnect when traffic moves.
 
 ## 5. Verify

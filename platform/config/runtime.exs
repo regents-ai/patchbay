@@ -276,14 +276,14 @@ if config_env() == :prod do
       """
 
   # The commit the image was built from, baked in by the Dockerfile's
-  # PATCHBAY_COMMIT build argument and reported by /webmcp/health. A release
+  # SOURCE_COMMIT build argument and reported by /webmcp/health. A release
   # built without it does not start, so its migration step fails the deploy.
-  release_commit = System.get_env("PATCHBAY_COMMIT")
+  release_commit = System.get_env("SOURCE_COMMIT")
 
   unless is_binary(release_commit) and release_commit =~ ~r/\A[0-9a-f]{40}\z/ do
     raise """
-    environment variable PATCHBAY_COMMIT must be the full 40-character commit
-    the image was built from. Build with --build-arg PATCHBAY_COMMIT=<commit>.
+    environment variable SOURCE_COMMIT must be the full 40-character commit
+    the image was built from. Build with --build-arg SOURCE_COMMIT=<commit>.
     """
   end
 

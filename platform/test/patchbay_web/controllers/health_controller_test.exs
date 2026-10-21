@@ -103,6 +103,23 @@ defmodule PatchbayWeb.HealthControllerTest do
     assert log =~ "health check: database is unreachable"
   end
 
+  test "/healthz answers ok in plain text, uncached, once the database answers", %{conn: conn} do
+    conn = get(conn, ~p"/healthz")
+
+    assert response(conn, 200) == "ok"
+    assert response_content_type(conn, :text) =~ "text/plain"
+    assert get_resp_header(conn, "cache-control") == ["no-store"]
+  end
+
+  test "/healthz answers 503 and logs when the database cannot be reached", %{conn: conn} do
+    Ecto.Adapters.SQL.Sandbox.mode(Patchbay.Repo, :manual)
+
+    {conn, log} = with_log(fn -> get(conn, ~p"/healthz") end)
+
+    assert response(conn, 503) == "unavailable"
+    assert log =~ "health check: database is unreachable"
+  end
+
   defp restore_env(name, nil), do: System.delete_env(name)
   defp restore_env(name, value), do: System.put_env(name, value)
 end

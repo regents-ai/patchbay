@@ -1,12 +1,13 @@
 defmodule PatchbayWeb.HealthController do
   @moduledoc """
-  Unauthenticated deployment probe.
+  Whether the site and its own database answer: `/healthz` in plain text for the
+  host's health check, as on every Regent site, and `/webmcp/health` in JSON for
+  agents and the command line.
 
-  Answers 200 only when the database responds and every migration has run, so a
-  broken release fails its platform health check instead of serving a room it
-  cannot read. Everything else it reports is operational context: the commit
-  the running release was built from and which generation mode this machine is
-  in. The API key is never read into the response.
+  `/webmcp/health` answers 200 only when the database responds and every
+  migration has run. Everything else it reports is operational context: the
+  commit the running release was built from and which generation mode this
+  machine is in. The API key is never read into the response.
   """
 
   use PatchbayWeb, :controller
@@ -22,6 +23,16 @@ defmodule PatchbayWeb.HealthController do
   @migrations_cache_key {__MODULE__, :migrations_status}
 
   def show(conn, _params) do
+    {status, body} =
+      if database_status() == "ok", do: {:ok, "ok"}, else: {:service_unavailable, "unavailable"}
+
+    conn
+    |> put_resp_header("cache-control", "no-store")
+    |> put_resp_content_type("text/plain")
+    |> send_resp(status, body)
+  end
+
+  def status(conn, _params) do
     database = database_status()
     migrations = migrations_status(database)
     healthy? = database == "ok" and migrations == "current"

@@ -22,7 +22,7 @@ image="patchbay:${commit:0:12}"
 echo "==> Building $image from commit $commit"
 git archive --format=tar "$commit" |
   docker build --no-cache --file platform/Dockerfile \
-    --build-arg PATCHBAY_COMMIT="$commit" \
+    --build-arg SOURCE_COMMIT="$commit" \
     --label "org.opencontainers.image.revision=$commit" --tag "$image" -
 digest="$(docker image inspect --format '{{.Id}}' "$image")"
 
