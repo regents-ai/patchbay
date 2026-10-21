@@ -59,6 +59,27 @@ defmodule PatchbayWeb.AgentReadinessTest do
     Jason.decode!(json)["@graph"]
   end
 
+  # A schema without its descriptions: the names, types and limits only.
+  defp undescribed(%{} = schema),
+    do:
+      for({key, value} <- schema, key != "description", into: %{}, do: {key, undescribed(value)})
+
+  defp undescribed(list) when is_list(list), do: Enum.map(list, &undescribed/1)
+  defp undescribed(value), do: value
+
+  # "{a, b?, c}" as the docs write a body: each field, and whether it may be left out.
+  defp fields_listed(listed) do
+    for field <- String.split(listed, ", "), into: MapSet.new() do
+      {String.trim_trailing(field, "?"), String.ends_with?(field, "?")}
+    end
+  end
+
+  defp fields_of(schema) do
+    for field <- Map.keys(schema["properties"]), into: MapSet.new() do
+      {field, field not in schema["required"]}
+    end
+  end
+
   defp markdown(conn, path) do
     conn = conn |> put_req_header("accept", "text/markdown") |> get(path)
     assert response_content_type(conn, :md) =~ "text/markdown"
@@ -322,6 +343,96 @@ defmodule PatchbayWeb.AgentReadinessTest do
           ~r/--([a-z-]+)/ |> Regex.scan(listed, capture: :all_but_first) |> List.flatten()
 
         assert MapSet.new(flags_named) == names, listed
+      end
+
+      llms = build_conn() |> get("/llms.txt") |> response(200)
+
+      [row] =
+        Regex.run(~r/\| search_threads \| GET \/forum\/search\?(\S+) \|/, llms,
+          capture: :all_but_first
+        )
+
+      [api] = Regex.run(~r/GET \/forum\/search\?(\S+) searches/, docs, capture: :all_but_first)
+
+      for query <- [row, api] do
+        named = query |> String.split("&") |> Enum.map(&(&1 |> String.split("=") |> hd()))
+        assert MapSet.new(named) == fields, query
+      end
+    end
+
+    test "a reply and its fix have the same fields in openapi.json, the tools, the command list and the docs",
+         %{conn: conn} do
+      schemas =
+        conn |> get("/openapi.json") |> json_response(200) |> get_in(["components", "schemas"])
+
+      reply = schemas["NewReply"]
+      fix = schemas["NewFix"]
+
+      manifest = build_conn() |> get("/forum/capabilities") |> json_response(200)
+      tool = Enum.find(manifest["tools"], &(&1["name"] == "post_reply"))
+      sent = tool["operation_input_schema"]
+
+      assert Map.keys(sent["properties"]) -- ["thread_id"] == Map.keys(reply["properties"])
+      assert Enum.sort(sent["required"] -- ["thread_id"]) == Enum.sort(reply["required"])
+      assert tool["input_schema"]["properties"]["input"] == sent
+      assert undescribed(sent["properties"]["fix"]) == undescribed(fix)
+
+      %{"commands" => commands} =
+        "../../../cli/commands.json" |> Path.expand(__DIR__) |> File.read!() |> Jason.decode!()
+
+      %{"stdin_fields" => stdin} = Enum.find(commands, &(&1["command"] == "threads reply <id>"))
+
+      assert stdin |> Enum.map(& &1["field"]) |> Enum.sort() ==
+               Enum.sort(Map.keys(reply["properties"]))
+
+      assert stdin |> Enum.filter(& &1["required"]) |> Enum.map(& &1["field"]) |> Enum.sort() ==
+               Enum.sort(reply["required"])
+
+      cli_fix = Enum.find(stdin, &(&1["field"] == "fix"))
+      assert cli_fix["type"] == "object"
+      for field <- Map.keys(fix["properties"]), do: assert(cli_fix["description"] =~ field, field)
+
+      {_status, docs} = markdown(build_conn(), "/docs")
+      llms = build_conn() |> get("/llms.txt") |> response(200)
+      skill = build_conn() |> get("/skill.md") |> response(200)
+
+      [docs_reply] =
+        Regex.run(~r/POST \/forum\/threads\/:id\/replies with \{([^}]+)\}/, docs,
+          capture: :all_but_first
+        )
+
+      [docs_fix] = Regex.run(~r/ fix is \{([^}]+)\}/, docs, capture: :all_but_first)
+
+      llms_row =
+        ~r/\| post_reply \| POST \/forum\/threads\/\{id\}\/replies \| Answer: \{([^}]+)\}/
+
+      [llms_reply] = Regex.run(llms_row, llms, capture: :all_but_first)
+
+      assert fields_listed(docs_reply) == fields_of(reply)
+      assert fields_listed(llms_reply) == fields_of(reply)
+      assert fields_listed(docs_fix) == fields_of(fix)
+
+      [_before, advice] = String.split(skill, "## Reply\n", parts: 2)
+      [advice | _later] = String.split(advice, "\n## ", parts: 2)
+      for field <- Map.keys(fix["properties"]), do: assert(advice =~ "`#{field}`", field)
+
+      [required] =
+        Regex.run(~r/((?:`\w+`(?:, | and ))+`\w+`) are required/, advice, capture: :all_but_first)
+
+      assert ~r/`(\w+)`/
+             |> Regex.scan(required, capture: :all_but_first)
+             |> List.flatten()
+             |> Enum.sort() ==
+               Enum.sort(fix["required"])
+
+      for described <- [
+            fix["description"],
+            sent["properties"]["fix"]["description"],
+            cli_fix["description"],
+            docs,
+            advice
+          ] do
+        assert described =~ "16,384 characters"
       end
     end
 

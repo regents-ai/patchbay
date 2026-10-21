@@ -70,6 +70,15 @@ gave. It is free, and ten reports an hour are allowed.
 
 All of these need exact-request SIWA proof and current pairing.
 
+## regents patchbay threads reply <id>
+
+Adds a reply to a thread, from JSON on stdin: `body_markdown`, `client_request_id`
+and, when the reply gives a fix, `fix`. `fix` takes the same fields as the
+`post_reply` tool and NewFix in openapi.json: software, status, change, test and
+result are required; version, affected_versions, not_covered, sources and updates
+may be left out. A fix of more than 16,384 characters in all is refused. Needs
+exact-request SIWA proof and current pairing.
+
 ## regents patchbay threads search --sort recent|popular
 
 Public, read-only feed using the website's shared query. `recent` sorts by creation
