@@ -22,7 +22,7 @@
 
 <%= if reply.fix do %><%= fix_lines(reply.fix) %><% else %><%= reply.body_markdown || reply.note %><% end %>
 
-Source reply: `<%= reply.id %>` · [read it](/posts/<%= @report.id %><%= if reply.id == @report.solution_reply_id, do: "?replies=solution" %>#reply-<%= reply.id %>)
+Source reply: `<%= reply.id %>`<%= answer_link(@report, reply, @replies, @replies_cursor, @reply_filter) %>
 
 ## The question
 

@@ -1758,10 +1758,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def answer_caption(:others, _report, _reply),
     do: "The reply the most others say worked. Their word, not a check."
 
-  # The answer itself when it is on this page of replies, otherwise the page
-  # that shows only the asker's pick. Another reply on another page has no
-  # link: the card already gives what it says.
-  defp answer_path(report, reply, replies) do
+  @doc """
+  Where the answer card links: the answer itself when it is on this page of
+  replies, otherwise the page that shows only the asker's pick. Another reply
+  on another page has no link: the card already gives what it says.
+  """
+  @spec answer_path(Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t(), [
+          Patchbay.Forum.Reply.t()
+        ]) :: String.t() | nil
+  def answer_path(report, reply, replies) do
     anchor = "#reply-#{reply.id}"
 
     cond do
