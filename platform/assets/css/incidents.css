@@ -46,6 +46,16 @@
 .pb-incident-text li::marker { color: var(--pb-text-muted); }
 .pb-incident-text a, .pb-incident-empty a, .pb-incident-more a { color: var(--pb-text); text-decoration: underline; text-underline-offset: 2px; }
 .pb-incident-text code { font-family: var(--font-family-mono); font-size: .9em; overflow-wrap: anywhere; }
+/* A command, even inside a list, wraps inside the card instead of widening the page. */
+.pb-incident-text li { min-width: 0; }
+.pb-incident-text pre {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--pb-card-line);
+  background: var(--pb-canvas);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .pb-incident-text blockquote {
   margin: 0 0 var(--space-2);
   padding: var(--space-2);

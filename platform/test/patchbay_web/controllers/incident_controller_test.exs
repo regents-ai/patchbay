@@ -9,6 +9,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
   use PatchbayWeb.ConnCase, async: true
 
   alias Patchbay.Forum
+  alias Patchbay.Incidents
 
   # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
   defp ask!(site, title, tags) do
@@ -30,16 +31,17 @@ defmodule PatchbayWeb.IncidentControllerTest do
     fix = ask!(site, "Node 24 refuses the eMudhra test host after an update", ["emudhra"])
     other = ask!(site, "Node 24 streams stop after a minute", ["streams"])
 
+    emudhra = Incidents.get("emudhra")
     html = conn |> get(~p"/incidents/emudhra") |> html_response(200)
 
-    assert html =~ "eMudhra certificates"
+    assert html =~ emudhra.title
     assert html =~ "Do this now"
     assert html =~ ~s(href="/incidents/emudhra.md")
     assert html =~ ~s(href="/posts/#{fix.id}")
     refute html =~ ~s(href="/posts/#{other.id}")
 
     markdown = conn |> get("/incidents/emudhra.md") |> response(200)
-    assert markdown =~ "# eMudhra certificates"
+    assert markdown =~ "# #{emudhra.title}"
     assert markdown =~ "## Do this now"
     assert markdown =~ "(/posts/#{fix.id})"
     refute markdown =~ "(/posts/#{other.id})"
@@ -101,42 +103,60 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     texts = Enum.map(rows, &(&1 |> LazyHTML.text() |> String.split() |> Enum.join(" ")))
 
-    assert [_php, emudhra, drill] = texts
-    assert emudhra =~ "eMudhra certificates Live 20 October 2026 1 thread"
+    title = Incidents.get("emudhra").title
+
+    assert [_php, emudhra, _pingcap, drill] = texts
+    assert emudhra =~ "#{title} Live 20 October 2026 1 thread"
     assert drill =~ "A closed drill Closed 15 January 2026 0 threads"
 
     markdown = conn |> get("/incidents.md") |> response(200)
-    assert markdown =~ "[eMudhra certificates](/incidents/emudhra.md) — Live"
+    assert markdown =~ "[#{title}](/incidents/emudhra.md) — Live"
     assert markdown =~ "1 thread"
 
     # A closed incident keeps its page.
     assert conn |> get(~p"/incidents/drill") |> html_response(200) =~ "Closed"
   end
 
-  test "the home page points at the incidents while any is live, and leaves the closed ones out",
+  test "the home page has a line for each live incident, linking to its page, and one to them all",
        %{conn: conn} do
-    html = conn |> get(~p"/") |> html_response(200)
+    live = Incidents.active()
+    assert live != []
 
-    [line] =
-      html |> LazyHTML.from_document() |> LazyHTML.query(".pb-home-incident") |> Enum.to_list()
+    home = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
+    lines = home |> LazyHTML.query(".pb-home-incident") |> Enum.to_list()
 
-    line_html = LazyHTML.to_html(line)
+    assert length(lines) == length(live)
 
-    assert line_html =~ "Live incidents"
-    assert line_html =~ ~s(href="/incidents")
-    assert line_html =~ "eMudhra certificates"
-    refute line_html =~ "A closed drill"
+    for {line, incident} <- Enum.zip(lines, live) do
+      assert [_mark] = line |> LazyHTML.query(".rg-tone--warning") |> Enum.to_list()
+
+      assert [href] = line |> LazyHTML.query("a") |> LazyHTML.attribute("href")
+      assert href == "/incidents/#{incident.name}"
+      assert LazyHTML.text(line) =~ incident.title
+    end
+
+    assert ["/incidents"] =
+             home
+             |> LazyHTML.query(~s(.pb-home-incidents a[href="/incidents"]))
+             |> LazyHTML.attribute("href")
+
+    refute LazyHTML.to_html(home) =~ "/incidents/drill"
 
     markdown = conn |> put_req_header("accept", "text/markdown") |> get(~p"/") |> response(200)
-    assert markdown =~ "**Live incidents:**"
-    assert markdown =~ "(/incidents/emudhra.md)"
+    assert markdown =~ "(/incidents.md)"
+
+    for incident <- live do
+      assert markdown =~ "- Live: [#{incident.title}](/incidents/#{incident.name}.md)"
+    end
+
     refute markdown =~ "/incidents/drill"
   end
 
   test "the sitemap lists the incidents and each one's page", %{conn: conn} do
     xml = conn |> get(~p"/sitemap.xml") |> response(200)
 
-    for path <- ~w(/incidents /incidents/emudhra /incidents/php-cve-2026-109618 /incidents/drill) do
+    for path <-
+          ~w(/incidents /incidents/emudhra /incidents/php-cve-2026-109618 /incidents/pingcap-tidb-cloud /incidents/drill) do
       assert xml =~ "<loc>#{PatchbayWeb.Endpoint.url()}#{path}</loc>"
     end
   end

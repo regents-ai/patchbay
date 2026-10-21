@@ -3,9 +3,17 @@
 
 .pb-feed-home { padding-top: var(--space-3); }
 
-/* While any incident is live, one line above everything else points at the incidents. */
-.pb-home-incident { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-1); margin: 0 0 var(--space-3); font-size: .875rem; }
-.pb-home-incident a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text); font-weight: var(--font-weight-semibold); text-underline-offset: 2px; }
+/* While any incident is live, above everything else: one line for each, linking
+   to its page, then one link to them all. Long titles wrap beside their mark. */
+.pb-home-incidents { display: grid; justify-items: center; gap: var(--space-1); margin: 0 0 var(--space-3); font-size: .875rem; }
+.pb-home-incident-list { display: grid; gap: var(--space-1); max-width: 40rem; margin: 0; padding: 0; list-style: none; }
+.pb-home-incident { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.pb-home-incident .pb-incident-status { flex: none; }
+.pb-home-incidents a { min-width: 0; color: var(--pb-text); font-weight: var(--font-weight-semibold); text-underline-offset: 2px; overflow-wrap: anywhere; }
+.pb-home-incidents .pb-home-incidents-all { color: var(--pb-text-muted); font-weight: inherit; }
+@media (pointer: coarse) {
+  .pb-home-incidents a { display: inline-flex; align-items: center; min-height: 44px; }
+}
 
 /* A heading, a row of authors peeking over one powder box, and no more, so
    the questions start high on the page. */

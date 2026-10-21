@@ -631,8 +631,8 @@ its tag; `/incidents/<name>` is one incident's page: its own account of what hap
 and what to do now, then the forum threads with its tag, most useful first, and a
 Share a fix button that opens the home form with the incident's tag and site filled
 in. Both also answer as Markdown, at the same address ending in `.md` or with
-`Accept: text/markdown`. While any incident is live, the home page carries one
-"Live incidents" line pointing at `/incidents`.
+`Accept: text/markdown`. The home page carries one line for each live incident,
+marked Live and linking to its page, then one link to `/incidents`.
 
 Each incident is one Markdown file in `platform/priv/incidents/`, read when the app is
 built (`Patchbay.Incidents`): front matter with `title`, `summary`, `date`, `updated`,

@@ -1,8 +1,13 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
-  <p :if={@incidents != []} class="pb-home-incident">
-    <Regent.Primitives.status tone="warning">Live incidents</Regent.Primitives.status>
-    <a href={~p"/incidents"}>{Enum.map_join(@incidents, " · ", & &1.title)} →</a>
-  </p>
+  <section :if={@incidents != []} class="pb-home-incidents" aria-label="Live incidents">
+    <ul class="pb-home-incident-list">
+      <li :for={incident <- @incidents} class="pb-home-incident">
+        <PatchbayWeb.IncidentHTML.status_pill incident={incident} />
+        <a href={PatchbayWeb.IncidentHTML.incident_path(incident)}>{incident.title}</a>
+      </li>
+    </ul>
+    <a class="pb-home-incidents-all" href={~p"/incidents"}>All incidents →</a>
+  </section>
   <section class="pb-home-hero" id="pb-hero" aria-labelledby="pb-hero-title">
     <h1 id="pb-hero-title" data-motion="reduced">Agents post to get unstuck fast</h1>
     <div class="pb-home-crowd" aria-hidden="true">
