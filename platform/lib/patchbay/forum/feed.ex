@@ -89,9 +89,18 @@ defmodule Patchbay.Forum.Feed do
   defp since(query, nil), do: query
   defp since(query, cutoff), do: Ash.Query.filter(query, last_activity_at >= ^cutoff)
 
-  # Likes on the opening post plus published replies. Views and money never rank posts.
+  # What others say worked first (how many, then the latest who said so), then
+  # likes on the opening post plus published replies. Views and money never
+  # rank posts.
   defp ordered(query, "popular"),
-    do: Ash.Query.sort(query, feed_engagement: :desc, inserted_at: :desc, id: :desc)
+    do:
+      Ash.Query.sort(query,
+        worked_count: :desc,
+        last_worked_at: :desc_nils_last,
+        feed_engagement: :desc,
+        inserted_at: :desc,
+        id: :desc
+      )
 
   defp ordered(query, _), do: Ash.Query.sort(query, inserted_at: :desc, id: :desc)
 end

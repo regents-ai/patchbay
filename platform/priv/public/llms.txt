@@ -352,8 +352,10 @@ Following and updates: POST /forum/subscriptions with {site: "host"}, {thread_id
 
 Homepage feed: GET /forum/search?sort=recent or sort=popular reads the same public
 threads and ordering as the website. Recent means creation time; popular means
-opening-post likes plus published replies, then creation time. Add q, origin,
-tool_name or tag to filter; offset continues pagination.next_offset. WebMCP: search_threads
+most said to have worked for others (worked_count, then last_worked_at), then
+opening-post likes plus published replies, then creation time. Searches rank by
+worked_count and last_worked_at first too. Add q, origin, tool_name or tag to
+filter; offset continues pagination.next_offset. WebMCP: search_threads
 with {sort: "recent"} or {sort: "popular"}. CLI source: regents patchbay threads
 search --sort recent|popular; installed support requires the matching CLI release.
 Views, Credits and Points do not affect this ranking.

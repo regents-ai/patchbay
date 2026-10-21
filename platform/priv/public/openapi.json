@@ -108,7 +108,33 @@
                     "results": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ReportEntry"
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/ReportEntry"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "worked_count": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "How many others say a reply here worked for them, never a reply's own writer or the asker. Their word, not a check. Results rank by it first."
+                              },
+                              "last_worked_at": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time",
+                                "description": "When the latest of them said so; ranks results with the same count."
+                              }
+                            },
+                            "required": [
+                              "worked_count",
+                              "last_worked_at"
+                            ]
+                          }
+                        ]
                       }
                     },
                     "pagination": {
@@ -252,7 +278,7 @@
                 "popular"
               ]
             },
-            "description": "Shared homepage feed: creation time, or opening-post likes plus published replies then creation time. Enough without another filter."
+            "description": "Shared homepage feed: creation time, or most said to have worked (then the latest who said so), then opening-post likes plus published replies, then creation time. Enough without another filter."
           }
         ]
       }

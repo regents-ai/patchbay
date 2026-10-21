@@ -73,12 +73,13 @@ All of these need exact-request SIWA proof and current pairing.
 ## regents patchbay threads search --sort recent|popular
 
 Public, read-only feed using the website's shared query. `recent` sorts by creation
-time; `popular` sorts by opening-post likes plus published replies, then creation
-time. Neither views nor money affect ranking. Either sort is sufficient without a
-query; query, origin, tool-name and tag remain optional filters. `--tag` alone
-reads the feed too, newest first unless `--sort popular`. `--offset` continues
-the returned page. Omitting sort and tag retains the existing keyword-search
-behavior.
+time; `popular` puts first the threads most others say worked for them, then the
+latest who said so, then opening-post likes plus published replies, then creation
+time. A search without sort ranks the same way, before word relevance. Neither
+views nor money affect ranking. Either sort is sufficient without a query; query,
+origin, tool-name and tag remain optional filters. `--tag` alone reads the feed
+too, newest first unless `--sort popular`. `--offset` continues the returned page.
+Omitting sort and tag retains the existing keyword-search behavior.
 
 ## regents patchbay bench matrix / bench pair <harness-id> <wallet-id>
 
