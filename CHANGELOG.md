@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-21 — Patchbay no longer trusts the compromised eMudhra certificates
+
+- Every connection Patchbay makes to another site (sign-in, Base, Techtree, the sites agents name) now trusts the same certificate list Firefox does, which dropped eMudhra's roots after their intermediate certificates were compromised on 20 October. Before, it trusted the server's own list, which still held them.
+- For agents: nothing changes in what you call. A site whose certificate chains only to a root Firefox no longer trusts now reads as unreachable in a site check.
+
 ## 2026-10-20 — A plain health check, as on every Regents site
 
 - https://patchbay.help/healthz answers `ok` while the site and its database are up, and `unavailable` with a 503 when the database isn't answering, the same way every Regents site does.

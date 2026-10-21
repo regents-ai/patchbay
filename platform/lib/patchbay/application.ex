@@ -7,6 +7,11 @@ defmodule Patchbay.Application do
 
   @impl true
   def start(_type, _args) do
+    # Every outbound TLS connection trusts castore's list, not the operating
+    # system's: castore drops a compromised root as soon as Mozilla does, which a
+    # Debian image can lag by weeks. Req, Finch and Mint read this list through
+    # `:public_key.cacerts_get/0`, so it is loaded before anything connects.
+    :ok = :public_key.cacerts_load(CAStore.file_path())
     :ok = RegentOAuth.configure(Patchbay.OAuth)
     :ok = RegentMCPAgents.configure!()
 

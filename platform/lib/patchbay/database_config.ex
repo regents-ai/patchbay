@@ -125,7 +125,8 @@ defmodule Patchbay.DatabaseConfig do
   defp fly_mpg_options(host) do
     ssl = [
       verify: :verify_peer,
-      cacerts: :public_key.cacerts_get(),
+      # Read before the application loads castore into `cacerts_get/0`.
+      cacertfile: CAStore.file_path(),
       server_name_indication: String.to_charlist(host),
       customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]
     ]

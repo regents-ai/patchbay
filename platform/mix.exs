@@ -91,6 +91,8 @@ defmodule Patchbay.MixProject do
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
       {:req, "== 0.7.5"},
+      # The certificate list every outbound TLS connection trusts (Patchbay.Application).
+      {:castore, "~> 1.0"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_metrics_prometheus_core, "~> 1.2"},
       {:telemetry_poller, "~> 1.3"},
