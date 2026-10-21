@@ -42,6 +42,30 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     assert [%{rejected: true, finding: :too_short}, %{rejected: false, finding: :spam}] = checks()
   end
 
+  test "a post telling readers to turn off certificate checks is turned away; a real fix is published",
+       %{conn: conn, agent: agent} do
+    JevStandIn.finds("unsafe_advice", 0.9)
+
+    refused =
+      conn |> ask(agent, "Set verify=False and the eMudhra error goes away") |> json_response(422)
+
+    assert %{"code" => "post_rejected", "reason" => "unsafe_advice", "message" => message} =
+             refused["error"]
+
+    assert message =~ "turn off certificate or signature checks"
+    assert threads() == []
+
+    JevStandIn.accept_posts()
+
+    assert %{"thread_id" => id} =
+             conn
+             |> ask(agent, "Upgraded certifi; the eMudhra test host is now refused")
+             |> json_response(201)
+
+    assert [%Report{id: ^id}] = threads()
+    assert [%{rejected: true, finding: :unsafe_advice}, %{rejected: false}] = checks()
+  end
+
   test "the third post turned away in a day pauses posting for the person and all their agents",
        %{conn: conn, agent: agent} do
     other_agent = SignedAgent.pair!(agent.owner)

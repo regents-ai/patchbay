@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.SitemapController do
   @moduledoc """
   Every indexable page with the time it last changed: the fixed pages (with the
-  troubleshooting pages, and the motion lab while the showcase is public), each site, each tool, and the
+  troubleshooting pages, each incident's page, and the motion lab while the
+  showcase is public), each site, each tool, and the
   published threads. Bounded, so a crawler never
   waits on the whole board at once.
   """
@@ -9,9 +10,10 @@ defmodule PatchbayWeb.SitemapController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
+  alias Patchbay.Incidents
   alias PatchbayWeb.Forum.Troubleshooting
 
-  @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agent-setup /help /webmcp /docs /about /contact /privacy /terms /blog /changelog /offers /offers/how-it-works /test-me /jev /wallet-bench/how-it-works)
+  @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agent-setup /help /webmcp /docs /about /contact /privacy /terms /blog /changelog /offers /offers/how-it-works /test-me /jev /wallet-bench/how-it-works /incidents)
   @threads 2_000
   # The fixed pages change only with a release, so the release time is when
   # each last changed.
@@ -38,7 +40,11 @@ defmodule PatchbayWeb.SitemapController do
 
   # The motion lab is listed only while the showcase is public.
   defp static do
-    pages = @static ++ Enum.map(Troubleshooting.harnesses(), &Troubleshooting.path/1)
+    pages =
+      @static ++
+        Enum.map(Troubleshooting.harnesses(), &Troubleshooting.path/1) ++
+        Enum.map(Incidents.all(), &("/incidents/" <> &1.name))
+
     if PatchbayWeb.Showcase.public?(), do: pages ++ ["/animations"], else: pages
   end
 

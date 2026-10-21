@@ -26,6 +26,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SiteDirectory
+  alias Patchbay.Incidents
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
   alias PatchbayWeb.Forum.Board
@@ -45,8 +46,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   @agent_page_posts 8
 
   @doc """
-  The home page. A link can open its form with the site, a tool and what
-  to ask about filled in.
+  The home page. A link can open its form with the site, a tool, what to
+  ask about and tags filled in.
   """
   def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
 
@@ -165,7 +166,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           current_page: forum_params["after"],
           matches: section(Board.matches(filters.q), "Search matches"),
           directory: FixCheck.directory?(conn),
-          hero: hero
+          hero: hero,
+          incidents: Incidents.active()
         )
     end
   end

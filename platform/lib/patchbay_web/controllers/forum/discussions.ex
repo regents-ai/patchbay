@@ -112,6 +112,10 @@ defmodule PatchbayWeb.Forum.Discussions do
     end
   end
 
+  @doc "How many threads a question list holds, across all its pages."
+  @spec count(map()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def count(filters), do: filters |> Patchbay.Forum.Feed.query() |> Ash.count()
+
   defp on_record(""), do: :ok
 
   defp on_record(domain) do

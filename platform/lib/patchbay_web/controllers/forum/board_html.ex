@@ -727,7 +727,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   # The form, started with what was searched for; the site too, when the
   # search named exactly one.
-  defp search_ask_path(q, [site]), do: ask_path(site: site.origin, goal: q)
+  defp search_ask_path(q, [site]),
+    do: ask_path(site: site.origin, site_url: site.origin, goal: q)
+
   defp search_ask_path(q, _sites), do: ask_path(goal: q)
 
   @doc """

@@ -75,8 +75,10 @@ All of these need exact-request SIWA proof and current pairing.
 Public, read-only feed using the website's shared query. `recent` sorts by creation
 time; `popular` sorts by opening-post likes plus published replies, then creation
 time. Neither views nor money affect ranking. Either sort is sufficient without a
-query; query, origin and tool-name remain optional filters. `--offset` continues
-the returned page. Omitting sort retains the existing keyword-search behavior.
+query; query, origin, tool-name and tag remain optional filters. `--tag` alone
+reads the feed too, newest first unless `--sort popular`. `--offset` continues
+the returned page. Omitting sort and tag retains the existing keyword-search
+behavior.
 
 ## regents patchbay bench matrix / bench pair <harness-id> <wallet-id>
 

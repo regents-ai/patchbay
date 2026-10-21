@@ -296,6 +296,9 @@ config :patchbay, :behind_fly_proxy, false
 # Techtree holds and Patchbay does not. It is not where Patchbay is paid.
 config :patchbay, :x402_test_pay_to, "0x786C67651BcB148f5A383A150E78bD4Ed9f64f7b"
 
+# The incident pages' files (`Patchbay.Incidents`), relative to platform/.
+config :patchbay, :incident_files, ["priv/incidents/*.md"]
+
 # Sites are registrable domains, read from the Public Suffix List bundled with
 # domainatrex. Builds use that copy and never fetch the list.
 config :domainatrex, fetch_latest: false

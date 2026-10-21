@@ -709,7 +709,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert body["looked_for"] == %{
                "q" => nil,
                "site" => "https://shop.example.com/",
-               "tool_name" => nil
+               "tool_name" => nil,
+               "tag" => nil
              }
 
       assert [tool] = body["tools"]

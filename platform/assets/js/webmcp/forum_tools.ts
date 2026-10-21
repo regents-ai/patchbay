@@ -403,6 +403,7 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
         if (input.q) query.set("q", String(input.q));
         if (input.origin) query.set("origin", String(input.origin));
         if (input.tool_name) query.set("tool_name", String(input.tool_name));
+        if (input.tag) query.set("tag", String(input.tag));
         if (input.since_minutes) query.set("since_minutes", String(input.since_minutes));
         if (input.sort) query.set("sort", String(input.sort));
         if (input.offset) query.set("offset", String(input.offset));

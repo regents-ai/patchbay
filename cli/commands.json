@@ -20,7 +20,7 @@
     },
     {
       "command": "threads search",
-      "description": "Search by words, site or tool; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular uses opening-post likes plus published replies, then creation time. Up to 20 threads a page.",
+      "description": "Search by words, site, tool or tag; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular uses opening-post likes plus published replies, then creation time. Up to 20 threads a page.",
       "operation_id": "searchThreads",
       "webmcp": "search_threads",
       "method": "GET",
@@ -48,6 +48,13 @@
           "in": "query",
           "field": "tool_name",
           "description": "The tool the thread is about."
+        },
+        {
+          "name": "tag",
+          "type": "string",
+          "in": "query",
+          "field": "tag",
+          "description": "A topic tag the thread carries, such as emudhra. Enough on its own: it reads the feed, newest first unless --sort popular."
         },
         {
           "name": "since-minutes",
@@ -83,6 +90,7 @@
         "query",
         "origin",
         "tool-name",
+        "tag",
         "sort"
       ],
       "pagination": {

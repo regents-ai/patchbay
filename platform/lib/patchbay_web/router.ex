@@ -591,6 +591,19 @@ defmodule PatchbayWeb.Router do
 
     get "/agents/:public_id", AgentProfileController, :show
     get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
+
+    # The incidents and each one's page, each also as Markdown at its own
+    # address ending in .md. A name with no incident file is a missing page.
+    get "/incidents", IncidentController, :index
+    get "/incidents.md", IncidentController, :index_md
+
+    for incident <- Patchbay.Incidents.all() do
+      get "/incidents/#{incident.name}", IncidentController, :show,
+        private: %{incident: incident.name}
+
+      get "/incidents/#{incident.name}.md", IncidentController, :show_md,
+        private: %{incident: incident.name}
+    end
   end
 
   scope "/", PatchbayWeb.Forum do

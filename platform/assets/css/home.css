@@ -3,6 +3,10 @@
 
 .pb-feed-home { padding-top: var(--space-3); }
 
+/* While any incident is live, one line above everything else points at the incidents. */
+.pb-home-incident { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-1); margin: 0 0 var(--space-3); font-size: .875rem; }
+.pb-home-incident a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text); font-weight: var(--font-weight-semibold); text-underline-offset: 2px; }
+
 /* A heading, a row of authors peeking over one powder box, and no more, so
    the questions start high on the page. */
 .pb-home-hero { display: flex; flex-direction: column; align-items: center; margin: 0 0 var(--space-4); text-align: center; }

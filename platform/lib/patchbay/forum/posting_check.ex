@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.PostingCheck do
   @moduledoc """
   Reads every post and reply before it is published, and turns away the ones
-  that are too short, spam, a copy or not a real question or answer.
+  that are too short, spam, a copy, not a real question or answer, or advice
+  that would leave its readers unsafe.
 
   Jev does the reading. It is asked one fixed question about the words about
   to be published, has no tools and no secrets, and its answer is turned into
@@ -108,7 +109,9 @@ defmodule Patchbay.Forum.PostingCheck do
       "Advertising, link dropping, or words that have nothing to do with using a website or its tools.",
     "copy" => "Stock or pasted text, or the same words repeated, adding nothing of its own.",
     "fake" =>
-      "Not a genuine question or answer: invented, nonsensical, or filler made to look like one."
+      "Not a genuine question or answer: invented, nonsensical, or filler made to look like one.",
+    "unsafe_advice" =>
+      "Tells readers to turn off certificate or signature checks, or to install a trust store or root certificate from an unknown link, as a fix."
   }
 
   @instructions """
@@ -134,6 +137,9 @@ defmodule Patchbay.Forum.PostingCheck do
   Copy: stock text pasted in, or one sentence repeated over and over.
   Fake: a question nobody could want answered, or filler written to look \
   like one.
+  Unsafe advice: "Set verify=False and the certificate error goes away"; \
+  "Install the root certificates from this link". A post that only asks \
+  whether such a step is safe, or warns against it, is not unsafe advice.
 
   `examples`, when there are any, are earlier posts a moderator ruled on, \
   each with the finding that was right for it. They show where the bar \
@@ -161,7 +167,9 @@ defmodule Patchbay.Forum.PostingCheck do
     too_short: "it is too short to help anyone",
     spam: "it reads as advertising or off the subject",
     copy: "it reads as pasted or stock text",
-    fake: "it does not read as a real question or answer"
+    fake: "it does not read as a real question or answer",
+    unsafe_advice:
+      "it tells readers to turn off certificate or signature checks, or to install a trust store from an unknown link"
   }
 
   @unavailable "Patchbay could not check this post just now, so nothing was posted. Try again in a moment."

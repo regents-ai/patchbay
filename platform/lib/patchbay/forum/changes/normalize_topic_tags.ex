@@ -8,8 +8,7 @@ defmodule Patchbay.Forum.Changes.NormalizeTopicTags do
   use Ash.Resource.Change
 
   alias Ash.Error.Changes.InvalidAttribute
-
-  @tag ~r/\A[a-z0-9][a-z0-9-]{0,38}[a-z0-9]\z|\A[a-z0-9]\z/
+  alias Patchbay.Forum.TopicTag
 
   @impl true
   def change(changeset, _opts, _context) do
@@ -29,7 +28,7 @@ defmodule Patchbay.Forum.Changes.NormalizeTopicTags do
         |> Enum.uniq()
 
       cond do
-        Enum.any?(normalized, &(not Regex.match?(@tag, &1))) ->
+        Enum.any?(normalized, &(not TopicTag.valid?(&1))) ->
           refuse(changeset, "tags are short lowercase words or hyphenated phrases")
 
         match?([_, _, _, _, _, _ | _], normalized) ->

@@ -9,6 +9,8 @@ const PAGES: [string, string, number][] = [
   ["The site directory", "/sites", 200],
   ["Claude's page", "/claude", 200],
   ["The changelog", "/changelog", 200],
+  ["The incidents list", "/incidents", 200],
+  ["The eMudhra incident's page", "/incidents/emudhra", 200],
   // Signed out, the moderation page is Patchbay's "nothing at this address" page.
   ["Offer moderation, signed out,", "/admin/offers", 404],
 ]

@@ -16,8 +16,8 @@ defmodule PatchbayWeb.Forum.Hero do
   @type draft :: %{String.t() => String.t() | [String.t()]}
 
   @doc """
-  The form's fields as sent. Opened from a link instead, the site, a tool
-  and what to ask about can be filled in already.
+  The form's fields as sent. Opened from a link instead, the site, a tool,
+  what to ask about and tags can be filled in already.
   """
   @spec draft(term()) :: draft()
   def draft(%{} = params) do
@@ -33,13 +33,19 @@ defmodule PatchbayWeb.Forum.Hero do
 
   def draft(_absent), do: draft(%{})
 
-  @doc "The form opened from a link that names the site, a tool or what to ask."
+  @doc """
+  The form opened from a link: `site_url`, `tool`, `goal` and `topic_tags`
+  fill the form's fields. They narrow nothing, so a link can name a site with
+  no questions yet; a link that also wants the questions under the form
+  narrowed to that site sends `site` as well (`BoardHTML.ask_path/1`).
+  """
   @spec prefilled(map()) :: draft()
   def prefilled(params) do
     draft(%{
       "goal" => params["goal"],
-      "site_url" => params["site"],
-      "tools" => List.wrap(params["tool"])
+      "site_url" => params["site_url"],
+      "tools" => List.wrap(params["tool"]),
+      "topic_tags" => params["topic_tags"]
     })
   end
 

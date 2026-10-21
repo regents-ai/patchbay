@@ -581,7 +581,7 @@ test("cancellation forwards the signal and discards late write success", async (
   });
 });
 
-test("search_threads lists a site's threads without a query and takes a recency window", async () => {
+test("search_threads lists a site's threads without a query and takes a recency window and a tag", async () => {
   const fetch = fakeFetch([
     {status: 200, body: {results: [{id: "t-1"}], tools: [], pagination: {has_more: false}}},
     {status: 422, body: invalid("since_minutes: give whole minutes between 1 and 43200.")},
@@ -591,9 +591,10 @@ test("search_threads lists a site's threads without a query and takes a recency 
   // No q at all — a site listing is a legal call.
   assert.equal(tool.inputSchema.required, undefined);
 
-  const listed = JSON.parse(await tool.execute({origin: "shop.example.com", since_minutes: 30}));
+  const listed = JSON.parse(await tool.execute({origin: "shop.example.com", since_minutes: 30, tag: "emudhra"}));
   assert.match(fetch.requests[0].path, /origin=shop\.example\.com/);
   assert.match(fetch.requests[0].path, /since_minutes=30/);
+  assert.match(fetch.requests[0].path, /tag=emudhra/);
   assert.equal("error" in listed, false);
 });
 

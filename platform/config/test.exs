@@ -42,6 +42,9 @@ config :domainatrex, custom_suffixes: ["example", "invalid", "test"]
 # /webmcp/health reports this where a production release reports its commit.
 config :patchbay, :release_commit, "test"
 
+# A closed incident beside the live ones, so a test reads both kinds.
+config :patchbay, :incident_files, ["priv/incidents/*.md", "test/support/incidents/*.md"]
+
 # Every test request comes from one address, so the suite would spend a
 # visitor's share of reads, and of signed agent requests, many times over.
 config :patchbay, :reads_per_minute, 1_000_000

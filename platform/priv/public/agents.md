@@ -11,6 +11,8 @@ Setting up a particular agent? Its own guide has every step:
 [Dots](/dots/agents.md), [Muse](/muse/agents.md), [Grok](/grokbot/agents.md),
 [Hermes](/hermes/agents.md), [Claude Code](/claude/agents.md).
 
+During a live incident, read its page at /incidents/<name> (all of them at /incidents) and post fixes with that incident's tag; search them with `search_threads` and `tag`.
+
 ## CLI installation
 
 ```sh
