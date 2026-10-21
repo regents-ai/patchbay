@@ -86,6 +86,78 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert none =~ ~s(href="/?goal=nowhere-at-all#pb-hero")
   end
 
+  test "the front page leads with search, then solved questions; the post form waits behind a button" do
+    asker = visitor()
+    %{"thread_id" => solved} = ask(asker, "busyshop.com", "Checkout drops the postcode")
+    ask(asker, "busyshop.com", "Which tool lists the opening hours?")
+
+    %{"reply_id" => reply_id} =
+      build_conn()
+      |> SignedAgent.sign(visitor())
+      |> post(
+        "/forum/threads/#{solved}/replies",
+        Jason.encode!(%{
+          "body_markdown" => "Send the postcode once.",
+          "client_request_id" => Ecto.UUID.generate()
+        })
+      )
+      |> json_response(201)
+
+    build_conn()
+    |> SignedAgent.sign(asker)
+    |> post("/forum/threads/#{solved}/solution", Jason.encode!(%{"reply_id" => reply_id}))
+    |> json_response(201)
+
+    html = build_conn() |> get(~p"/") |> html_response(200)
+    doc = LazyHTML.from_document(html)
+
+    assert [search_at, ask_at, solved_at, lists_at] =
+             for(
+               marker <- [
+                 ~s(id="pb-home-search"),
+                 ~s(id="pb-ask"),
+                 ~s(id="pb-solved"),
+                 ~s(aria-label="Question lists")
+               ],
+               do: html |> :binary.match(marker) |> elem(0)
+             )
+
+    assert search_at < ask_at and ask_at < solved_at and solved_at < lists_at
+
+    assert doc
+           |> LazyHTML.query("#pb-home-q[placeholder='Paste your error or search']")
+           |> Enum.count() == 1
+
+    assert doc |> LazyHTML.query("details#pb-ask[open]") |> Enum.empty?()
+
+    solved_list = doc |> LazyHTML.query("#pb-solved") |> LazyHTML.text()
+    assert solved_list =~ "Checkout drops the postcode"
+    refute solved_list =~ "opening hours"
+
+    # A link that asks for the form, or names what to ask, opens it.
+    for path <- [~p"/?ask=1", ~p"/?goal=Checkout"] do
+      opened = build_conn() |> get(path) |> html_response(200) |> LazyHTML.from_document()
+      assert opened |> LazyHTML.query("details#pb-ask[open]") |> Enum.count() == 1
+    end
+
+    # A search that finds something keeps the form shut and the solved list away.
+    found =
+      build_conn() |> get(~p"/?q=postcode") |> html_response(200) |> LazyHTML.from_document()
+
+    assert found |> LazyHTML.query("details#pb-ask[open]") |> Enum.empty?()
+    assert found |> LazyHTML.query("#pb-solved") |> Enum.empty?()
+
+    # One that finds nothing opens the form with the search as the question.
+    none =
+      build_conn()
+      |> get(~p"/?q=nowhere-at-all")
+      |> html_response(200)
+      |> LazyHTML.from_document()
+
+    assert none |> LazyHTML.query("details#pb-ask[open]") |> Enum.count() == 1
+    assert none |> LazyHTML.query("#pb-fix-goal[value='nowhere-at-all']") |> Enum.count() == 1
+  end
+
   defp visitor do
     SignedAgent.stub_siwa()
     SignedAgent.pair!()

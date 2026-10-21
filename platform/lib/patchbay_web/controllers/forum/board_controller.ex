@@ -161,6 +161,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         unknown_site(conn)
 
       {reports, next_page} ->
+        matches = section(Board.matches(filters.q), "Search matches")
+        found_nothing? = filters.q != "" and reports == [] and matches == %{sites: [], tools: []}
+
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
         |> merge_assigns(PatchbayWeb.PublicDocuments.page("/"))
@@ -169,13 +172,35 @@ defmodule PatchbayWeb.Forum.BoardController do
           reports: reports,
           next_page: next_page,
           current_page: forum_params["after"],
-          matches: section(Board.matches(filters.q), "Search matches"),
+          matches: matches,
+          solved: solved(filters, forum_params["after"]),
+          ask_open: found_nothing? or ask_open?(forum_params, hero),
           directory: FixCheck.directory?(conn),
-          hero: hero,
+          hero: if(found_nothing?, do: ask_about(hero, filters.q), else: hero),
           incidents: Incidents.active()
         )
     end
   end
+
+  # The newest solved questions lead the plain front page only: a search,
+  # a filtered list or a later page shows the list it asked for.
+  defp solved(%{q: "", site: "", tool: "", tag: "", scope: "newest", sort: "recent"}, nil),
+    do: section(Board.solved_fixes(5), "Solved questions")
+
+  defp solved(_filters, _after), do: nil
+
+  # The post form opens when a link asks for it, when it comes back with
+  # what was typed, or when it was opened with a field already filled in.
+  defp ask_open?(params, hero) do
+    params["ask"] == "1" or not is_nil(hero.problem) or not is_nil(hero.preview) or
+      hero.draft != Hero.draft(%{})
+  end
+
+  # A search that found nothing opens the form with the search as its question.
+  defp ask_about(%{draft: %{"goal" => ""} = draft} = hero, q),
+    do: %{hero | draft: %{draft | "goal" => q}}
+
+  defp ask_about(hero, _q), do: hero
 
   # The "following" feed is read from the follow list, so it cannot be shown
   # when the follow list could not be read; every other feed does not need it.

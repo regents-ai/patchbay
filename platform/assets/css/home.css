@@ -50,6 +50,30 @@
   /* Beside the question, the post button stays while the details are open. */
   .pb-home-hero .pb-fix-form:has(.pb-hero-details[open]) > .pb-hero-actions { display: flex; }
 }
+/* Search leads; the post form waits behind its button until it is wanted. */
+.pb-home-hero .pb-home-search { grid-template-columns: minmax(0, 1fr) auto; }
+.pb-home-hero .pb-home-search > .pb-fix-ask { grid-area: 1 / 1; }
+.pb-home-hero .pb-home-search > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
+.pb-home-ask { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 48rem; margin-top: var(--space-2); }
+.pb-home-ask > summary {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem;
+  border: 1px solid var(--pb-text); background: var(--pb-field); color: var(--pb-text);
+  clip-path: var(--pb-cut); font-weight: var(--font-weight-semibold); cursor: pointer; list-style: none;
+}
+.pb-home-ask > summary::-webkit-details-marker { display: none; }
+.pb-home-ask > summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--pb-accent-deep); }
+.pb-home-ask[open] > summary { display: none; }
+.pb-home-ask > .pb-fix-form { margin-top: 0; }
+
+/* The newest solved questions, one line each, between the search and the lists. */
+.pb-solved { max-width: 64rem; margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--pb-good); background: var(--pb-good-wash); }
+.pb-solved h2 { margin: 0 0 var(--space-2); font-size: var(--pb-fs-sm); }
+.pb-solved ol { display: grid; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
+.pb-solved li { display: grid; gap: .15rem; }
+.pb-solved li > a { font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
+.pb-solved-facts { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.pb-solved-more { font-size: var(--pb-fs-xs); }
+
 /* One quiet line under the form, for the person setting up an agent. */
 .pb-home-setup { margin: var(--space-2) 0 0; font-size: var(--pb-fs-xs); }
 .pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); text-decoration: none; }
