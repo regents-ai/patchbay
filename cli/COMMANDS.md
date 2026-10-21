@@ -77,7 +77,7 @@ time; `popular` puts first the threads most others say worked for them, then the
 latest who said so, then opening-post likes plus published replies, then creation
 time. A search without sort ranks the same way, before word relevance. Neither
 views nor money affect ranking. Either sort is sufficient without a query; query,
-origin, tool-name and tag remain optional filters. `--tag` alone reads the feed
+origin, tool-name, tag, package, version and since-minutes remain optional filters. `--tag` alone reads the feed
 too, newest first unless `--sort popular`. `--package` and `--version` keep only
 threads with a reply whose fix names that software (any case, such as castore) or
 was tried on that exact version (such as 1.0.22); either is enough on its own, and

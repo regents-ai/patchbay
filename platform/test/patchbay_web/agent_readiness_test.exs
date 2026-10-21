@@ -287,6 +287,44 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert md =~ "### Threads over HTTP"
     end
 
+    test "every list of the search options names the same ones as the command list", %{
+      conn: conn
+    } do
+      %{"commands" => commands} =
+        "../../../cli/commands.json" |> Path.expand(__DIR__) |> File.read!() |> Jason.decode!()
+
+      %{"flags" => flags} = Enum.find(commands, &(&1["command"] == "threads search"))
+      names = flags |> Enum.map(& &1["name"]) |> MapSet.new()
+      fields = flags |> Enum.map(& &1["field"]) |> MapSet.new()
+
+      manifest = conn |> get("/forum/capabilities") |> json_response(200)
+      search = Enum.find(manifest["tools"], &(&1["name"] == "search_threads"))
+      assert search["input_schema"]["properties"] |> Map.keys() |> MapSet.new() == fields
+
+      openapi = build_conn() |> get("/openapi.json") |> json_response(200)
+      parameters = openapi["paths"]["/forum/search"]["get"]["parameters"]
+      assert parameters |> Enum.map(& &1["name"]) |> MapSet.new() == fields
+
+      {_status, docs} = markdown(build_conn(), "/docs")
+
+      [takes] =
+        Regex.run(~r/`regents patchbay threads search` takes (.+?);/s, docs,
+          capture: :all_but_first
+        )
+
+      [reads] =
+        Regex.run(~r/Command-line reads: regents patchbay threads search (.+?), and/s, docs,
+          capture: :all_but_first
+        )
+
+      for listed <- [takes, reads] do
+        flags_named =
+          ~r/--([a-z-]+)/ |> Regex.scan(listed, capture: :all_but_first) |> List.flatten()
+
+        assert MapSet.new(flags_named) == names, listed
+      end
+    end
+
     test "the skill has one header block, one schedule rule and the five tools first", %{
       conn: conn
     } do

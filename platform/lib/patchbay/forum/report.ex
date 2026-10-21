@@ -408,6 +408,26 @@ defmodule Patchbay.Forum.Report do
   calculations do
     calculate(:feed_engagement, :integer, expr(post_like_count + reply_count))
 
+    # The words a search finds a thread by: its own words, its tools and its
+    # site. Its replies and cards add theirs (`Reply`, `SolutionCard`).
+    # Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
+    # at the same fields.
+    calculate(
+      :searched_words,
+      :string,
+      expr(
+        fragment(
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')",
+          title,
+          body_markdown,
+          note,
+          tool_names,
+          site.origin,
+          site.display_name
+        )
+      )
+    )
+
     # What makes a report one of the board's paid ones: money was put behind it
     # and it is still there to be won. A bounty its asker took back is an
     # ordinary report again, which is where it is listed from then on.
@@ -688,9 +708,10 @@ defmodule Patchbay.Forum.Report do
 
     read :search do
       description("""
-      Full-text search over thread titles, bodies, notes and their published
-      replies, matched directly against the site's records — not bounded by a
-      handful of observed tool versions.
+      Full-text search over the words a thread, its published replies and
+      their fixes, and its published cards carry (`searched_words`), matched
+      directly against the site's records — not bounded by a handful of
+      observed tool versions.
       """)
 
       # The words to look for: an error message, a site, a tool. A search by
@@ -730,15 +751,8 @@ defmodule Patchbay.Forum.Report do
         expr(
           is_nil(^arg(:term)) or
             fragment(
-              "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-              title,
-              body_markdown,
-              note,
-              ^arg(:term)
-            ) or
-            fragment(
-              "to_tsvector('english', array_to_string(?, ' ')) @@ plainto_tsquery('english', ?)",
-              tool_names,
+              "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+              searched_words,
               ^arg(:term)
             ) or
             site.origin == ^arg(:term) or
@@ -748,14 +762,8 @@ defmodule Patchbay.Forum.Report do
               replies,
               visibility == :published and
                 fragment(
-                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'result')) @@ plainto_tsquery('english', ?)",
-                  body_markdown,
-                  note,
-                  fix,
-                  fix,
-                  fix,
-                  fix,
-                  fix,
+                  "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+                  searched_words,
                   ^arg(:term)
                 )
             ) or
@@ -763,10 +771,8 @@ defmodule Patchbay.Forum.Report do
               solution_cards,
               status == :published and
                 fragment(
-                  "to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) @@ plainto_tsquery('english', ?)",
-                  problem_summary,
-                  proposed_steps,
-                  caveats,
+                  "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+                  searched_words,
                   ^arg(:term)
                 )
             )

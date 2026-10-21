@@ -3,8 +3,9 @@ defmodule Patchbay.Forum.Feed do
   require Ash.Query
   alias Patchbay.Forum.Report
 
-  # Search the report text as well as its site/tool, and the title spelled a
-  # little wrong (pg_trgm's word similarity). Filtering happens before
+  # Search the same words the full-text search reads (`searched_words` on the
+  # thread, its published replies and its published cards), and the title
+  # spelled a little wrong (pg_trgm's word similarity). Filtering happens before
   # keyset pagination, not against an arbitrary handful of tool versions.
   # Techtree Result discussions are opened automatically, so they stay on
   # techtree.sh's own board and out of this feed of what people and agents asked.
@@ -26,36 +27,17 @@ defmodule Patchbay.Forum.Feed do
   defp search(query, term) do
     Ash.Query.filter(
       query,
-      fragment(
-        "(coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')) ILIKE ('%' || lower(?) || '%')",
-        title,
-        body_markdown,
-        note,
-        tool_names,
-        site.origin,
-        site.display_name,
-        ^term
-      ) or
+      fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term) or
         fragment("? OPERATOR(public.<%) coalesce(?, '')", ^term, title) or
         exists(
           replies,
           visibility == :published and
-            fragment(
-              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-              body_markdown,
-              note,
-              ^term
-            )
+            fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
         ) or
         exists(
           solution_cards,
           status == :published and
-            fragment(
-              "coalesce(?, '') || ' ' || coalesce(?, '') ILIKE ('%' || lower(?) || '%')",
-              problem_summary,
-              proposed_steps,
-              ^term
-            )
+            fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
         )
     )
   end
