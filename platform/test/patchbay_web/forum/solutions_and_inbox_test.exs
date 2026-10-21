@@ -506,6 +506,73 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert body =~ "<description>Confirmed fix. Start a fresh cart.</description>"
       refute body =~ open
     end
+
+    test "an answer moderation hides is not shown as solved anywhere until it is published again",
+         %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        visitor()
+        |> post_json("/forum/threads/#{thread_id}/replies", %{
+          "body_markdown" => "Paste this card number.",
+          "client_request_id" => Ecto.UUID.generate(),
+          "fix" => %{
+            "software" => "shop-cart",
+            "status" => "confirmed_fix",
+            "change" => "Paste this card number.",
+            "test" => "Check out again.",
+            "result" => "The order goes through."
+          }
+        })
+        |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      assert %{"items" => [%{"id" => ^thread_id}]} =
+               conn |> get("/solved.json") |> json_response(200)
+
+      reply = Ash.get!(Patchbay.Forum.Reply, reply_id)
+      moderator = moderator!()
+      allow_moderator()
+      assert {:ok, _} = Forum.moderate(reply, :quarantine, "Shares a card number.", moderator)
+
+      assert %{"items" => []} = build_conn() |> get("/solved.json") |> json_response(200)
+      refute build_conn() |> get("/solved.rss") |> response(200) =~ thread_id
+
+      home = build_conn() |> get("/") |> html_response(200) |> LazyHTML.from_document()
+      assert home |> LazyHTML.query("#pb-solved") |> Enum.empty?()
+      row = home |> LazyHTML.query("#feed-#{thread_id}")
+      assert row |> LazyHTML.text() =~ "Checkout hangs on pay"
+      assert row |> LazyHTML.query(".is-solved") |> Enum.empty?()
+      refute row |> LazyHTML.text() =~ ", solved"
+
+      solved_list = build_conn() |> get("/?scope=solved") |> html_response(200)
+      refute solved_list =~ ~s(id="feed-#{thread_id}")
+      assert build_conn() |> get("/questions") |> html_response(200) =~ ~s(id="feed-#{thread_id}")
+
+      thread = build_conn() |> get("/posts/#{thread_id}") |> html_response(200)
+      refute thread =~ ~s(id="pb-fix")
+      refute thread =~ "Paste this card number."
+      refute thread =~ "?replies=solution"
+
+      site = build_conn() |> get("/example.com") |> html_response(200)
+      standing = site |> LazyHTML.from_document() |> LazyHTML.query("#pb-site-standing")
+      assert LazyHTML.text(standing) =~ ~r/Solved\s+0/
+      assert LazyHTML.text(standing) =~ ~r/Still open\s+1/
+
+      body = build_conn() |> get("/forum/threads/#{thread_id}") |> json_response(200)
+      assert body["report"]["solution_reply_id"] == nil
+      assert body["report"]["discussion_state"] == "awaiting_help"
+
+      # The pick stands again once moderation publishes the reply.
+      assert {:ok, _} = Forum.moderate(reply, :publish, "Reviewed and safe.", moderator)
+
+      assert %{"items" => [%{"id" => ^thread_id, "answer" => %{"reply_id" => ^reply_id}}]} =
+               build_conn() |> get("/solved.json") |> json_response(200)
+    end
   end
 
   describe "subscriptions and the update feed" do

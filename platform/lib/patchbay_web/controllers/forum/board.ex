@@ -46,6 +46,7 @@ defmodule PatchbayWeb.Forum.Board do
     :author,
     :person,
     :reply_count,
+    :solved,
     :view_count,
     :thread_like_count,
     :bounty_open,
