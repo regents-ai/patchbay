@@ -1,15 +1,18 @@
 /* The side panel the signed-in name opens, on every page (PatchbayWeb.SidePanelLive),
    as in the Regent template. Whether it is open is the visitor's, on
-   <html data-aside>. It slides in at the right edge and the page, header
-   included, gives way; only on a phone, too narrow for both, does it drop down
-   under the header and cover the page. */
+   <html data-aside>. The header runs the whole width, over the panel: the panel
+   opens under the header's bottom line, never beside it, and is wiped in from
+   the right edge so the closed panel never sits beside the page. On a wide screen
+   it is a column at the frame's right edge and the page gives way; only on a
+   phone, too narrow for both, does it take the whole width and cover the page. */
 
 :root { --pb-aside-width: 20rem; }
 
 /* A size container, so the agents list can take a quarter of its height. */
 #shell-aside {
-  position: fixed;
-  inset-block: 0;
+  /* Just under the header's bottom line (its row's rule), so the line shows whole. */
+  position: absolute;
+  inset-block: calc(100% + var(--rg-rule-width)) auto;
   inset-inline-end: 0;
   z-index: 30;
   container-type: size;
@@ -17,6 +20,7 @@
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
   inline-size: var(--pb-aside-width);
+  block-size: calc(100dvh - 100% - var(--rg-rule-width) - var(--rg-page-gutter));
   overflow: hidden auto;
   overscroll-behavior: contain;
   border-inline-start: 1px solid var(--pb-line);
@@ -24,18 +28,22 @@
   color: var(--pb-text);
   font-family: var(--font-family-ui);
   line-height: 1.55;
-  /* Hidden only once it has slid shut. */
-  transition: transform var(--duration-slow) var(--ease-out), visibility var(--duration-slow);
+  clip-path: inset(0);
+  /* Hidden only once it has been wiped shut. */
+  transition: clip-path var(--duration-slow) var(--ease-out), visibility var(--duration-slow);
 }
 #shell-aside:focus { outline: none; }
 
 /* Shown at once on opening, so focus can move into it. */
-:root[data-aside="open"] #shell-aside { transition: transform var(--duration-slow) var(--ease-out); }
+:root[data-aside="open"] #shell-aside { transition: clip-path var(--duration-slow) var(--ease-out); }
 
-:root:not([data-aside="open"]) #shell-aside { visibility: hidden; transform: translateX(100%); }
+:root:not([data-aside="open"]) #shell-aside { visibility: hidden; clip-path: inset(0 0 0 100%); }
 
+/* The page under the header gives way to the open panel; the header does not. */
 @media (min-width: 48rem) {
-  :root[data-aside="open"]:has(#shell-aside) body { padding-inline-end: var(--pb-aside-width); }
+  :root[data-aside="open"]:has(#shell-aside) .pb-frame > :not(:first-child) {
+    padding-inline-end: var(--pb-aside-width);
+  }
 }
 
 /* Sign out and Manage Account share one short row; the name in the header closes
@@ -71,25 +79,14 @@
 
 
 @media (max-width: 47.99rem) {
-  /* Under the header, which keeps the name that closes it, the full width of the
-     screen past the page's margins, and opened only on this page, never on
-     arrival. It is wiped in from the right edge rather than slid, so the closed
-     panel never sits beside the screen and the page never scrolls sideways. */
+  /* The full width of the screen past the page's margins, and opened only on this
+     page, never on arrival. */
   #shell-aside {
-    position: absolute;
-    inset-block: 100% auto;
     inset-inline: calc(-1 * (var(--rg-page-gutter) + var(--rg-rule-width)));
     inline-size: auto;
-    block-size: calc(100dvh - 100% - var(--rg-page-gutter));
     border-inline-start: 0;
-    border-block-start: 1px solid var(--pb-line);
-    clip-path: inset(0);
-    transform: none;
-    transition: clip-path var(--duration-slow) var(--ease-out), visibility var(--duration-slow);
   }
-  :root[data-aside="open"] #shell-aside { transition: clip-path var(--duration-slow) var(--ease-out); }
-  :root:not([data-aside="open"]) #shell-aside,
-  :root:not([data-aside-here]) #shell-aside { visibility: hidden; transform: none; clip-path: inset(0 0 0 100%); }
+  :root:not([data-aside-here]) #shell-aside { visibility: hidden; clip-path: inset(0 0 0 100%); }
 }
 
 @media (prefers-reduced-motion: reduce) {

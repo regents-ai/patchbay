@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-22 — The side panel opens under the header
+
+- The panel your name opens now sits under the header instead of beside it, so the header keeps its full width and its line runs unbroken. On a wide screen the page gives way to the panel; on a phone the panel covers the page under the header, as before.
+- For agents: nothing changes.
+
 ## 2026-10-22 — Pairing names your Regents Labs account
 
 - The message you paste to your agent when you pair it now opens "Pair with my Regents Labs account on patchbay.help", so your agent learns it is pairing with your one Regents Labs account, and on which site. ChatGPT's steps open "Connect ChatGPT to my existing Regents Labs account on patchbay.help".
