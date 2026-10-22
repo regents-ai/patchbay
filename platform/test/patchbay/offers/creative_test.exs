@@ -6,8 +6,6 @@ defmodule Patchbay.Offers.CreativeTest do
   alias Patchbay.Identity
   alias Patchbay.Offers
 
-  require Ash.Query
-
   test "saving an Offer keeps its first wording, normalized, waiting for screening" do
     owner = person()
 

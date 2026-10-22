@@ -1,8 +1,6 @@
 defmodule Patchbay.Patchbay.RepairServicesTest do
   use Patchbay.DataCase, async: false
 
-  require Ash.Query
-
   alias Elixir.Patchbay.Patchbay
 
   alias Elixir.Patchbay.Patchbay.{

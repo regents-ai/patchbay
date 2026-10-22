@@ -7,8 +7,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
   use PatchbayWeb.ConnCase, async: false
 
-  require Ash.Query
-
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.SolutionCard

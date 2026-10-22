@@ -1,8 +1,6 @@
 defmodule Patchbay.Patchbay.ModelBudgetTest do
   use Patchbay.DataCase, async: false
 
-  require Ash.Query
-
   alias Patchbay.Patchbay, as: Domain
 
   alias Patchbay.Patchbay.{
