@@ -4,6 +4,27 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v265, 22 Oct 2026
+
+- Commit: d9f0d2a916dec3543da0cfc01f9b844bdad1db8f (image `d9f0d2a`).
+- Contains: Elixir 1.20.4 on OTP 29.1.2 and Node 26.12.0 (images pinned by
+  digest); elixir-utils 3ffd1647 and updated libraries (ash_postgres stays
+  2.13.0); vgpu's MCP library 2.3.1; Manage links in the side panel stay on
+  this site; Oban hears about new jobs through Erlang process groups; Peep
+  metrics under the standard names; the pairing message names the Regents Labs
+  account and this site's address; the side panel opens under the header; new
+  list items only fade in (dd405c6d); the browser walk lifts its own reads
+  budget.
+- Checks: fresh copy, 741 tests, 105 script tests, 88 browser checks (6 skipped
+  by design), 15 contract tests, all passing.
+- Live: /webmcp/health names the commit with migrations current and the
+  database ok; /healthz answers ok; /, /offers, /sites, /changelog, /incidents,
+  /account, /claude and /llms.txt answer 200; the changelog shows the three new
+  entries at 1280 and 390 wide with no page errors.
+- Migrations: none of Patchbay's own; the shared regent_credits holds index
+  (20261019011753) was already applied on 19 Oct. Rollback: redeploy v264
+  (db7e6ca4).
+
 ## v264, 21 Oct 2026
 
 - Commit: db7e6ca4b0ee6f399260dd13b236690ae3b2ecc0 (image `db7e6ca`).
