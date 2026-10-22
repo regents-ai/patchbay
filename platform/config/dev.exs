@@ -37,6 +37,9 @@ if walk? do
   # No background work runs during a walk: its scheduled site scans, pictures and
   # source refreshes reach outside the machine, and no walk check waits on one.
   config :patchbay, Oban, testing: :manual
+  # Every walk check reads from one address, many pages a minute; the reads
+  # budget has its own tests (config/test.exs lifts it the same way).
+  config :patchbay, :reads_per_minute, 1_000_000
 end
 
 config :patchbay, PatchbayWeb.Endpoint,
