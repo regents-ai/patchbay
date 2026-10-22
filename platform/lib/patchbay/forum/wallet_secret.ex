@@ -115,8 +115,11 @@ defmodule Patchbay.Forum.WalletSecret do
     bits = for index <- indexes, into: <<>>, do: <<index::11>>
     checksum_size = div(bit_size(bits), 33)
     entropy_size = bit_size(bits) - checksum_size
-    <<entropy::bitstring-size(entropy_size), checksum::bitstring-size(checksum_size)>> = bits
-    <<expected::bitstring-size(checksum_size), _rest::bitstring>> = :crypto.hash(:sha256, entropy)
+    <<entropy::bitstring-size(^entropy_size), checksum::bitstring-size(^checksum_size)>> = bits
+
+    <<expected::bitstring-size(^checksum_size), _rest::bitstring>> =
+      :crypto.hash(:sha256, entropy)
+
     checksum == expected
   end
 
@@ -140,7 +143,7 @@ defmodule Patchbay.Forum.WalletSecret do
   defp checked(candidate) do
     with {:ok, bytes} when byte_size(bytes) > 4 <- base58(candidate) do
       payload_size = byte_size(bytes) - 4
-      <<payload::binary-size(payload_size), checksum::binary-4>> = bytes
+      <<payload::binary-size(^payload_size), checksum::binary-4>> = bytes
 
       <<expected::binary-4, _rest::binary>> =
         :crypto.hash(:sha256, :crypto.hash(:sha256, payload))

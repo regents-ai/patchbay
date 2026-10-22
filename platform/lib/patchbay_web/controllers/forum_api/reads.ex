@@ -265,7 +265,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         case Forum.get_report(uuid, opts) do
           {:ok, %{visibility: :published} = report} -> {:ok, report}
           {:ok, _held} -> {:error, :not_found}
-          other -> found_or_missing(other)
+          {:error, error} -> missing_or_error(error)
         end
 
       :error ->
@@ -273,10 +273,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
-  defp found_or_missing({:ok, nil}), do: {:error, :not_found}
-  defp found_or_missing({:ok, record}), do: {:ok, record}
-
-  defp found_or_missing({:error, error}) do
+  defp missing_or_error(error) do
     if missing?(error), do: {:error, :not_found}, else: {:error, error}
   end
 

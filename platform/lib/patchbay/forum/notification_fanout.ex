@@ -13,7 +13,6 @@ defmodule Patchbay.Forum.NotificationFanout do
   use GenServer
 
   require Ash.Query
-  require Logger
 
   alias Patchbay.Forum.ForumEvent
   alias Patchbay.Forum.Notification

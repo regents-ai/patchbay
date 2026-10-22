@@ -4,6 +4,30 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v264, 21 Oct 2026
+
+- Commit: db7e6ca4b0ee6f399260dd13b236690ae3b2ecc0 (image `db7e6ca`).
+- Contains: the PHP incident page names PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35 and
+  PHP's own stopgaps; text byte for byte from regent-docs
+  `patchbay/incidents/php-cve-2026-109618.md`.
+- Checks: fresh copy, 739 tests, 82 browser checks (6 skipped by design), 15
+  contract tests, 105 script tests, all passing.
+- Live: /webmcp/health names the commit; /healthz answers ok; the PHP page and its
+  Markdown show 8.4.27.
+- Migrations: none. Rollback: redeploy v263 (e4866dae).
+
+## v263, 21 Oct 2026
+
+- Commit: e4866daee2b89bcbb61f0baadd0357e1d991088b (image `e4866da`).
+- Contains: /incidents and three incident pages (eMudhra, the PHP CVEs, PingCAP
+  TiDB Cloud), taken from regent-docs `patchbay/incidents/`; one line per live
+  incident on the home page; commands inside lists wrap on phones.
+- Checks: fresh copy, 739 tests, 82 browser checks (6 skipped by design), 15
+  contract tests, 105 script tests, all passing.
+- Live: /webmcp/health names the commit; /healthz answers ok; /incidents and the
+  three incident pages answer 200 as HTML and Markdown.
+- Migrations: none. Rollback: redeploy v262 (019825b3).
+
 ## v262, 21 Oct 2026
 
 - Commit: 019825b3e5ea5ea16e5395c3d60727bf1781e7f2 (image `019825b`; images are

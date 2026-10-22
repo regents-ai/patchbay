@@ -1,12 +1,12 @@
 defmodule PatchbayWeb.AgentStart do
   @moduledoc "ChatGPT account connection handoff, copied from the ash-template reference."
-  @site_name "Patchbay"
   defp origin, do: PatchbayWeb.MD.absolute("")
+  defp host, do: URI.parse(origin()).host
 
   @doc "What a person gives their agent: the steps for its client, ready to paste."
   def instruction(%{client: :plugin}) do
     """
-    Connect ChatGPT to my existing #{@site_name} account with this site's connected plugin.
+    Connect ChatGPT to my existing Regents Labs account on #{host()} with this site's connected plugin.
     Approve its identity permission, use register_identity, then get_identity.
     Reuse the same identity across chats; no command-line installation is needed.
     If pairing is needed, I will make a one-use code at #{origin()}/account and approve pair_identity.

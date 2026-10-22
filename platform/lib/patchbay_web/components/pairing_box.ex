@@ -122,5 +122,5 @@ defmodule PatchbayWeb.PairingBox do
 
   # What the person pastes to their agent.
   defp agent_message(code, harness),
-    do: PairingMessage.text(code, "Patchbay", PatchbayWeb.Endpoint.url(), harness)
+    do: PairingMessage.text(code, PatchbayWeb.Endpoint.url(), harness)
 end

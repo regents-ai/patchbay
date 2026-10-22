@@ -154,9 +154,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
             %{status: "unknown"}
           )
         )
-
-      {:error, failure} ->
-        send_failure(conn, failure)
     end
   end
 

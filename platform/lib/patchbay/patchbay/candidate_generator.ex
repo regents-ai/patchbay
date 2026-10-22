@@ -245,16 +245,13 @@ defmodule Patchbay.Patchbay.CandidateGenerator do
   defp cached_result_valid?(_cached, _source, _generation_key, _input_sha256, _cache_variant),
     do: false
 
-  defp provenance_valid?(cached, generation_key, input_sha256, cache_variant)
-       when is_map(cached) do
+  defp provenance_valid?(cached, generation_key, input_sha256, cache_variant) do
     candidate = cached[:candidate_markdown]
 
     is_binary(candidate) and Digest.sha256(candidate) == cached[:candidate_sha256] and
       cached[:generation_key] == generation_key and cached[:input_sha256] == input_sha256 and
       cached[:cache_variant] == cache_variant
   end
-
-  defp provenance_valid?(_cached, _generation_key, _input_sha256, _cache_variant), do: false
 
   defp cache_variant(mode, model, prompt_version) do
     Digest.sha256(

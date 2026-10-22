@@ -117,7 +117,7 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   def entry(seed, check) do
     snapshot = snapshot(seed, (check && check.findings) || %{})
-    observed = snapshot && snapshot["tools"]
+    observed = snapshot["tools"]
     tools = Enum.uniq_by(observed || seed["tools"], & &1["name"])
 
     %{
@@ -132,7 +132,7 @@ defmodule Patchbay.Forum.SiteDirectory do
       reported_observation: seed["reported_observation"],
       forum_posts: nil,
       logo_path: Map.get(@logos, domain(seed)),
-      checked_at: snapshot && snapshot["checked_at"],
+      checked_at: snapshot["checked_at"],
       failed?: failed?(snapshot, check),
       pending?: pending?(check),
       due?: SiteCheck.due?(check, :directory),

@@ -1,26 +1,15 @@
-# Find eligible builder and runner images on Docker Hub. We use Ubuntu/Debian
-# instead of Alpine to avoid DNS resolution issues in production.
-#
-#   https://hub.docker.com/r/hexpm/elixir/tags?page=1&name=ubuntu
-#   https://hub.docker.com/_/ubuntu?tab=tags
-#
-# This file is based on these images:
-#
-#   - https://hub.docker.com/r/hexpm/elixir/tags - for the build image
-#   - https://hub.docker.com/_/debian?tab=tags&page=1&name=bookworm-20260824-slim - for the release image
-#   - https://pkgs.org/ - resource for finding needed packages
-#   - Ex: hexpm/elixir:1.19.5-erlang-28.2-debian-bookworm-20260824-slim
-#
-ARG ELIXIR_VERSION=1.19.5
-ARG OTP_VERSION=28.2
-ARG DEBIAN_VERSION=bookworm-20260824-slim
+# Base images are pinned by digest; each comment names the tag it was taken from.
+# They match ash-template's platform/Dockerfile.
 
-ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
-ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
+# hexpm/elixir:1.20.4-erlang-29.1.2-debian-bookworm-20261020-slim
+ARG BUILDER_IMAGE="docker.io/hexpm/elixir@sha256:11ab449084960993491cdc3493be292464c5a63e8f753ed2afe351486471b69a"
+# debian:bookworm-20261020-slim
+ARG RUNNER_IMAGE="docker.io/library/debian@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8"
 
 # The asset build installs the Privy bridge's npm packages, so the builder needs
 # a Node of its own; the release image below never sees it.
-FROM node:24-bookworm-slim AS node
+# node:26.12.0-bookworm-slim
+FROM docker.io/library/node@sha256:298992629d69bbd5b2b03ad57094d8e4fcb3a8eeb7c4e25d29de656519568913 AS node
 
 FROM ${BUILDER_IMAGE} AS builder
 

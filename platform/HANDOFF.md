@@ -55,7 +55,7 @@ the page's signed session. Tips and room actions remain browser flows.
 
 | Layer | Choice |
 |---|---|
-| Language and runtime | Elixir 1.19.5, OTP 28.2 (Debian bookworm image) |
+| Language and runtime | Elixir 1.20.4, OTP 29.1.2, Node 26.12.0 (Debian bookworm image) |
 | Web | Phoenix 1.8, LiveView 1.2, Bandit |
 | Data | Ash 3.32 with AshPostgres 2.12 at the time; the current versions are recorded in `mix.lock` and README.md |
 | Front end | Strict TypeScript ES modules and the Regent design system's styles bundled with esbuild, WebMCP tool registration |

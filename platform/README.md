@@ -368,8 +368,9 @@ every route, every tool, and what each kind of visitor can do.
 
 ### Backend and runtime
 
-- Elixir 1.19.5
-- Erlang/OTP 28.2
+- Elixir 1.20.4
+- Erlang/OTP 29.1.2
+- Node 26.12.0 for the asset build (versions in `platform/.tool-versions`)
 - Debian Bookworm runtime image
 - Phoenix 1.8
 - Phoenix LiveView 1.2

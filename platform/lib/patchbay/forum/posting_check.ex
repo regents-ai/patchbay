@@ -58,7 +58,6 @@ defmodule Patchbay.Forum.PostingCheck do
   through here.
   """
 
-  require Ash.Query
   require Logger
 
   alias Patchbay.Agents.Actor
