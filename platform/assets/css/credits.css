@@ -27,24 +27,17 @@
   }
 }
 
-/* The page resets every margin; a modal dialog centres itself with auto. */
+/* The shared window frame (Regent.Structure.dialog) draws the box, its corners
+   and the dim behind it; its inner area scrolls. */
 .pb-credits-dialog {
   --pb-credits-pad-top: var(--space-4);
   --pb-credits-pad-side: var(--space-4);
-  box-sizing: border-box;
-  margin: auto;
-  width: min(30rem, calc(100% - 2rem));
-  max-height: calc(100dvh - 4rem);
-  padding: var(--pb-credits-pad-top) var(--pb-credits-pad-side) var(--space-3);
-  border: 1px solid var(--pb-line-strong);
-  border-radius: 1.25rem;
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  overflow-y: auto;
+  --rg-dialog-size: 30rem;
+  max-block-size: calc(100dvh - 4rem);
 }
 
-.pb-credits-dialog::backdrop {
-  background: color-mix(in oklch, var(--pb-text) 30%, transparent);
+.pb-credits-dialog .rg-dialog__body {
+  padding: var(--pb-credits-pad-top) var(--pb-credits-pad-side) var(--space-3);
 }
 
 /* The close button sits in the dialog's top right corner and stays there while
@@ -68,7 +61,6 @@
   height: 2.75rem;
   padding: 0;
   border: 0;
-  border-radius: 0 calc(1.25rem - 1px) 0 0.75rem;
   background: transparent;
   color: var(--pb-text);
   cursor: pointer;
@@ -327,10 +319,12 @@
 
 @media (max-width: 47.99rem) {
   .pb-credits-dialog {
-    width: calc(100% - 1rem);
     --pb-credits-pad-top: var(--space-3);
     --pb-credits-pad-side: var(--space-2);
-    max-height: calc(100dvh - 1rem);
+    max-block-size: calc(100dvh - 1rem);
+  }
+
+  .pb-credits-dialog .rg-dialog__body {
     padding-block-end: var(--space-2);
   }
 

@@ -4,7 +4,7 @@ type PairState = {wbPair: string; title: string}
 
 /**
  * The Agent Wallet Bench grid. Opening a square shows that pair's runs in a
- * full-screen dialog over the grid, and the address becomes the pair's own
+ * screen-tall window over the grid, and the address becomes the pair's own
  * page, so Back closes it and a reload or a shared link opens the page itself.
  * Each square stays an ordinary link: a new tab, or a page without scripts,
  * opens the pair's page.
@@ -22,6 +22,8 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
   const body = dialog.querySelector<HTMLElement>("[data-wb-body]")!
   const error = dialog.querySelector<HTMLElement>("[data-wb-error]")!
   const page = dialog.querySelector<HTMLAnchorElement>("[data-wb-page]")!
+  // The shared window frame scrolls its inner area, under the bar.
+  const scroller = dialog.querySelector<HTMLElement>(".rg-dialog__body")!
   let inFlight: AbortController | null = null
 
   const show = async ({wbPair, title: name}: PairState) => {
@@ -32,7 +34,7 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
     error.hidden = true
     page.href = wbPair
     if (!dialog.open) dialog.showModal()
-    dialog.scrollTop = 0
+    scroller.scrollTop = 0
 
     try {
       const response = await fetcher(wbPair, {
@@ -51,7 +53,7 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
       // The square's own grid starts just under the dialog's bar.
       const grid = new URL(wbPair, doc.baseURI).hash.slice(1)
       const section = grid ? body.querySelector(`#${CSS.escape(grid)}`) : null
-      if (section) dialog.scrollTop += section.getBoundingClientRect().top - bar.getBoundingClientRect().bottom
+      if (section) scroller.scrollTop += section.getBoundingClientRect().top - bar.getBoundingClientRect().bottom
     } catch (reason) {
       if (!(reason instanceof DOMException && reason.name === "AbortError")) error.hidden = false
     }

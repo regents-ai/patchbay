@@ -100,7 +100,7 @@
   <PatchbayWeb.AgentOffers.panel section={@agent_offers} />
   <%!-- The home page's form, in a window opened from "Post about" and opened
   again by itself when a post comes back with a problem or to be checked. --%>
-  <dialog
+  <Regent.Structure.dialog
     id="pb-site-post"
     class="pb-site-post-dialog"
     aria-labelledby="pb-site-post-title"
@@ -120,5 +120,5 @@
       hero={@hero}
       goal_hint="Or the result you expect, e.g. a booking reference for a table for two on Friday at 9."
     />
-  </dialog>
+  </Regent.Structure.dialog>
 </main>

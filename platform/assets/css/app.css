@@ -1703,19 +1703,8 @@ body:has(#patchbay-home),
    its close button in the corner. */
 .pb-site-post-button { flex: none; }
 .pb-site-posts-order { margin: calc(-1 * var(--space-1)) 0 var(--space-1); }
-.pb-site-post-dialog {
-  box-sizing: border-box;
-  width: min(44rem, calc(100% - 2rem));
-  max-height: calc(100dvh - 2rem);
-  margin: auto;
-  padding: var(--space-3);
-  border: 1px solid var(--pb-line-strong);
-  background: var(--pb-canvas);
-  color: var(--pb-text);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.pb-site-post-dialog::backdrop { background: color-mix(in oklch, var(--pb-text) 30%, transparent); }
+.pb-site-post-dialog { --rg-dialog-size: 44rem; }
+.pb-site-post-dialog .rg-dialog__body { padding: var(--space-3); }
 html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 .pb-site-post-dialog h2 { margin: 0 3rem var(--space-2) 0; font-family: var(--font-family-title); font-size: var(--pb-fs-lg); font-weight: 400; overflow-wrap: anywhere; }
 .pb-site-post-close { position: sticky; top: 0; z-index: 1; display: flex; justify-content: flex-end; height: 0; }
@@ -1727,7 +1716,8 @@ html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 @media (hover: hover) { .pb-site-post-close button:hover { background: var(--pb-surface-sunk); } }
 .pb-site-post-close button:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
 @media (max-width: 479px) {
-  .pb-site-post-dialog { width: 100%; max-width: 100%; max-height: 100dvh; height: 100dvh; padding: var(--space-2); }
+  .pb-site-post-dialog { max-block-size: calc(100dvh - 1rem); }
+  .pb-site-post-dialog .rg-dialog__body { padding: var(--space-2); }
 }
 .pb-posts-nav { display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-2); font-size: .8125rem; }
 .pb-posts-nav a:only-child { margin-left: auto; }
@@ -1910,17 +1900,8 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offers-tip-text { position: absolute; top: calc(100% + var(--space-1)); left: 0; z-index: 10; display: none; width: max-content; max-width: min(18rem, calc(100vw - 2 * var(--space-3))); padding: var(--space-1) var(--space-2); border: 1px solid var(--pb-line-strong); background: var(--pb-card); color: var(--pb-text); font-size: .8125rem; font-weight: 400; line-height: 1.4; text-transform: none; letter-spacing: normal; white-space: normal; }
 .pb-offers-tip:hover .pb-offers-tip-text,
 .pb-offers-tip:focus-within .pb-offers-tip-text { display: block; }
-.pb-offers-result {
-  margin: auto;
-  width: min(30rem, calc(100% - 2rem));
-  max-height: calc(100dvh - 2rem);
-  padding: var(--space-3);
-  border: 1px solid var(--pb-line-strong);
-  background: var(--pb-card);
-  color: var(--pb-text);
-  overflow-y: auto;
-}
-.pb-offers-result::backdrop { background: color-mix(in srgb, var(--pb-text) 30%, transparent); }
+.pb-offers-result { --rg-dialog-size: 30rem; }
+.pb-offers-result .rg-dialog__body { padding: var(--space-3); }
 .pb-offers-result h2 { margin: 0 0 var(--space-3); }
 .pb-offers-empty { display: none; }
 .pb-offers-empty:only-child { display: block; }
@@ -2368,12 +2349,15 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-step h4, .pb-wb-checks-title { margin: 0; font-size: var(--pb-fs-sm); }
 .pb-wb-step.is-deciding { margin-left: calc(-1 * var(--space-2) - 2px); padding-left: var(--space-2); border-left: 2px solid var(--pb-text); }
 
-/* One pair's runs over the grid, the whole window, scrolling on its own. */
-.pb-wb-dialog {
-  width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0;
-  overflow-y: auto; overscroll-behavior: contain; color: var(--pb-text); background: var(--pb-surface);
+/* One pair's runs over the grid, in the shared window frame as tall as the
+   screen allows; its inner area scrolls under the bar. The area stands just
+   inside the frame's edge and is cut at its corners, so the bar never covers
+   the frame's marks. */
+.pb-wb-dialog { --rg-dialog-size: 64rem; block-size: calc(100dvh - 2rem); }
+.pb-wb-dialog .rg-dialog__body {
+  flex: 1 1 auto; margin: 2px; padding: 0;
+  clip-path: polygon(var(--rg-dialog-cut) 0, 100% 0, 100% calc(100% - var(--rg-dialog-cut)), calc(100% - var(--rg-dialog-cut)) 100%, 0 100%, 0 var(--rg-dialog-cut));
 }
-.pb-wb-dialog::backdrop { background: color-mix(in srgb, var(--palette-charcoal) 50%, transparent); }
 html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-wb-dialog-bar {
   position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);

@@ -75,7 +75,7 @@ defmodule PatchbayWeb.CreditsLive do
       >
         <.amount credits={@credits} />
       </button>
-      <dialog
+      <Regent.Structure.dialog
         id="pb-credits"
         class="pb-credits-dialog"
         phx-hook="PatchbayCreditsDialog"
@@ -95,7 +95,7 @@ defmodule PatchbayWeb.CreditsLive do
           lease={@session_lease}
           credits={@credits}
         />
-      </dialog>
+      </Regent.Structure.dialog>
     </div>
     """
   end
