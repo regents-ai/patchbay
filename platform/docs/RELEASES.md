@@ -4,6 +4,19 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v269, 23 Oct 2026
+
+- Commit: 7f06338a76d1ef766d2bc5690f3d244553a241f2 (image `7f06338`).
+- Contains: design-system cbf12f8d, so an agent of kind ChatGPT draws
+  OpenAI's mark instead of crashing the agents list. The ChatGPT pairing
+  switch stays off.
+- Checks: fresh copy, 742 tests, 91 browser checks (6 skipped by design), 15
+  contract tests, all passing. Live: health shows the commit with migrations
+  current and the database ok; /healthz ok; /, /offers, /sites, /changelog,
+  /account and /help answer 200; the ChatGPT picture answers 200; the
+  changelog shows the new entry.
+- Rollback: v268 (4a236484).
+
 ## v268, 23 Oct 2026
 
 - Commit: 4a236484638679a7e92eb57903ef6eb1cbfc7564 (image `4a23648`).
