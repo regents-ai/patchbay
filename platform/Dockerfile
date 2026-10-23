@@ -89,9 +89,10 @@ RUN mix release
 FROM ${RUNNER_IMAGE}
 
 # Outbound TLS needs no CA bundle from the image: the release trusts castore's
-# list (Patchbay.Application).
+# list (Patchbay.Application). OTP opens libsctp when it starts and prints a
+# warning on every boot, migration and `bin/patchbay rpc` without it.
 RUN apt-get update -y && \
-    apt-get install -y libstdc++6 openssl libncurses5 locales \
+    apt-get install -y libstdc++6 openssl libncurses5 locales libsctp1 \
     && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # Set the locale
