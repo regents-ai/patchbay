@@ -91,30 +91,40 @@ function Bridge() {
   return null
 }
 
-const profileFor = () => createProfileClient({
-  async acquireProof({signal}) {
-    const state = await waitFor(one => one.ready, 10_000)
-    signal.throwIfAborted()
-    if (!state.authenticated || !state.user?.id) return null
-    const generation = identityGeneration
-    const subject = state.user.id
-    const identityToken = await getIdentityToken()
-    const accessToken = await state.getAccessToken()
-    const isCurrent = () => (current?.authenticated && current.user?.id === subject && identityGeneration === generation) as boolean
-    return {accessToken: accessToken as string, identityToken: identityToken as string, subject, isCurrent}
-  },
-})
+type ProfileProof = {accessToken: string; identityToken: string; subject: string; isCurrent: () => boolean}
 
-// These capabilities return profile data, never credentials. Reading does not
-// open login or establish a product session.
-export function profile(
-  appId: string,
-  operation: Parameters<ProfileAction>[0],
-  input?: Parameters<ProfileAction>[1],
-  options?: Parameters<ProfileAction>[2],
-): ReturnType<ProfileAction> {
+// One change to the shared profile belongs to the person signed in when it was
+// opened, at the press of Save: a proof for anyone else is never handed on, so a
+// switch of account before or part way through it sends nothing. As in ash-template.
+export function oneSignIn(
+  subject: string | null,
+  acquireProof: () => Promise<ProfileProof | null>,
+): () => Promise<ProfileProof | null> {
+  return async () => {
+    const proof = await acquireProof()
+    return proof && proof.subject === subject ? proof : null
+  }
+}
+
+// One change to the shared profile, read and saved with this sign-in's own proof,
+// which is never handed to the page. It opens once Privy is ready and belongs to
+// whoever is signed in then, so all of its calls belong to one person. It returns
+// profile data, never credentials, and never opens login or a product session.
+export async function openProfile(appId: string): Promise<ProfileAction> {
   start(appId)
-  return profileFor()(operation, input, options)
+  const opened = await waitFor(one => one.ready, 10_000)
+  return createProfileClient({
+    acquireProof: oneSignIn(opened.authenticated ? opened.user?.id ?? null : null, async () => {
+      const state = current
+      if (!state?.ready || !state.authenticated || !state.user?.id) return null
+      const generation = identityGeneration
+      const subject = state.user.id
+      const identityToken = await getIdentityToken()
+      const accessToken = await state.getAccessToken()
+      const isCurrent = () => (current?.authenticated && current.user?.id === subject && identityGeneration === generation) as boolean
+      return {accessToken: accessToken as string, identityToken: identityToken as string, subject, isCurrent}
+    }),
+  })
 }
 
 function start(appId: string) {

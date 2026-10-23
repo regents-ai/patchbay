@@ -1,5 +1,5 @@
 import {mountProfile} from "../../vendor/regent_ui/profile.mjs"
-import {profile} from "../shared_profile.ts"
+import {openProfile} from "../shared_profile.ts"
 import type {Hook} from "../hook_composition.ts"
 
 type PublicNameHook = {
@@ -14,7 +14,7 @@ type PublicNameHook = {
 export const PublicName: Hook = {
   mounted(this: PublicNameHook) {
     this.stop = mountProfile(this.el, {
-      openProfile: () => profile,
+      openProfile: () => openProfile(document),
       onSaved: () => this.pushEvent("public_name_saved", {}),
     })
   },

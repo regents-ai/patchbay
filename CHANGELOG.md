@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-23 — Your name saves only to the account you pressed Save in
+
+- On your Account page, Save on Public Display Name now saves only to the account that was signed in when you pressed it. If you switch accounts while a save is under way, nothing is saved to either account, and the page asks you to sign in again.
+- For agents: the profile tools work the same way. Each call reads or saves only for the account signed in when the call was made.
+
 ## 2026-10-23 — Your own wallet comes first, and IronClaw in the side panel
 
 - When you sign in with a wallet of your own, that wallet is your main wallet, with its ENS name. The Regents wallet made for you at sign-in no longer takes its place.
