@@ -4,6 +4,31 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v268, 23 Oct 2026
+
+- Commit: 4a236484638679a7e92eb57903ef6eb1cbfc7564 (image `4a23648`).
+- Approved: Sean "1. a" (pb-v268) in the Patchbay thread, and "1/ a" in the
+  design thread, about 20:50Z on 23 Oct.
+- Contains: elixir-utils e600ed34 (a person's own wallet stays their main
+  wallet and, from their next sign-in, their payout address; IronClaw in the
+  side panel; the Hermes pairing line; Credits deposits read every 5 minutes)
+  and design-system 30d16360 (tip figures, last-read icon); Pair New Agent
+  sent with no agent chosen no longer crashes the side panel (be87966a); each
+  profile save belongs to the person signed in when it opened (9d64c7da);
+  native code fetched around GitHub's long download headers, as in
+  ash-template 7745906 (4a236484).
+- Checks: fresh copy, 742 tests, 91 browser checks (6 skipped by design), 15
+  contract tests, all passing; Fly build-only run succeeded. Sentinel clear
+  with one note: a person's own wallet also becomes their verified payout
+  address. Live: health shows the commit with migrations current and the
+  database ok; /healthz ok; /, /offers, /sites, /changelog, /account,
+  /account/profile, /wallet-bench, /target.com and /help answer 200;
+  /account/profile asks a signed-out visitor to sign in; the changelog shows
+  the two new entries; no page errors.
+- A first try at 9d64c7da stopped in the build (GitHub's long download
+  headers) and deployed nothing.
+- Rollback: v267 (71fe6f71).
+
 ## v267, 23 Oct 2026
 
 - Commit: 71fe6f71bdb82eff21972799fbb6a6902ae6b98c (image `71fe6f7`).
