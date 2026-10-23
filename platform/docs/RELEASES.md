@@ -4,6 +4,21 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v266, 23 Oct 2026
+
+- Commit: e8a28c234dce396ec5f1724406cd5874cd0f3a9a (image `e8a28c2`).
+- Contains: design-system 5dd12626 (hover tips, the one-field Public Display
+  Name form, the agents list's Manage link, a card that no longer tilts);
+  search in the shared window frame with page and action pictures; the
+  unused X-linking code leaves the sign-in bridge; plug_crypto 2.2.1
+  (EEF-CVE-2026-105963); Account tabs never grow past a phone's width.
+- Checks: fresh copy, 741 tests, 91 browser checks (6 skipped by design), 15
+  contract tests, all passing. Live: health shows the commit with migrations
+  current and the database ok; search opens in the shared frame on
+  https://patchbay.help/offers in light, dark and on a phone, with no page
+  errors.
+- Rollback: v265 (d9f0d2a9).
+
 ## v265, 22 Oct 2026
 
 - Commit: d9f0d2a916dec3543da0cfc01f9b844bdad1db8f (image `d9f0d2a`).
