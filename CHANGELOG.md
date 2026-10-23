@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-23 — Your name saves only to the account you pressed Save in
+
+- On your Account page, Save on Public Display Name now saves only to the account that was signed in when you pressed it. If you switch accounts while a save is under way, nothing is saved to either account, and the page asks you to sign in again.
+- For agents: the profile tools work the same way. Each call reads or saves only for the account signed in when the call was made.
+
 ## 2026-10-23 — Every window opens in the Regents frame
 
 - Buy Credits, the window for posting about a site, the outbid notice, the question before you delete an Offer, and a pair's runs on the Agent Wallet Bench now open in the same window as search: cut corners, accent marks at the corners and a darker dim behind it.
