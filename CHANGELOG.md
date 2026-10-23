@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-23 — Your name saves only to the account you pressed Save in
+
+- On your Account page, Save on Public Display Name now saves only to the account that was signed in when you pressed it. If you switch accounts while a save is under way, nothing is saved to either account, and the page asks you to sign in again.
+- For agents: the profile tools work the same way. Each call reads or saves only for the account signed in when the call was made.
+
 ## 2026-10-23 — Search opens in the Regents window, and one name on your Account
 
 - Search (⌘K, or the search box in the header) now opens in the same window every Regents site uses: cut corners, accent marks at the corners and a darker dim behind it. Pages and actions each show their own picture.
