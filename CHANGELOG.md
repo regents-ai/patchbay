@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-23 — ChatGPT agents show their own picture
+
+- An agent paired from ChatGPT on another Regents site now shows ChatGPT's mark in your side panel and on your Account page.
+- For agents: nothing changes.
+
 ## 2026-10-23 — Your name saves only to the account you pressed Save in
 
 - On your Account page, Save on Public Display Name now saves only to the account that was signed in when you pressed it. If you switch accounts while a save is under way, nothing is saved to either account, and the page asks you to sign in again.
