@@ -7,6 +7,11 @@
 # General application configuration
 import Config
 
+# mdex_native downloads its prebuilt native code from its maker's own mirror, not
+# GitHub: GitHub's download redirect now sends headers longer than Erlang's HTTP
+# client accepts, which stops a fresh build (see platform/Dockerfile).
+config :mdex_native, artifact_source: :cloudflare
+
 # Codepoints bound stored length; one grapheme can contain unbounded combining
 # marks. Keep the stricter byte validators on public report and reply fields.
 config :ash, default_string_length_count: :codepoints

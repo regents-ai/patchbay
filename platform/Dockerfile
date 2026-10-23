@@ -31,6 +31,20 @@ RUN mix local.hex --force && \
 # set build ENV
 ENV MIX_ENV="prod"
 
+# GitHub's download redirect sends headers longer than Erlang's HTTP client
+# accepts, so rustler_precompiled cannot fetch prebuilt native code from GitHub.
+# mdex_native uses its maker's mirror (config/config.exs); ex_keccak and
+# ex_secp256k1 publish only on GitHub, so curl fetches the files this build
+# uses into the shared cache first, where rustler_precompiled checks each one
+# against the package's own checksums before using it. The versions follow
+# mix.lock. Remove this when GitHub or rustler_precompiled fixes the limit.
+ENV RUSTLER_PRECOMPILED_GLOBAL_CACHE_PATH=/root/rustler_precompiled
+RUN mkdir -p /root/rustler_precompiled && cd /root/rustler_precompiled && \
+  curl --fail --silent --show-error --location --remote-name \
+    https://github.com/exWeb3/ex_keccak/releases/download/v0.7.8/libexkeccak-v0.7.8-nif-2.16-x86_64-unknown-linux-gnu.so.tar.gz && \
+  curl --fail --silent --show-error --location --remote-name \
+    https://github.com/ayrat555/ex_secp256k1/releases/download/v0.8.0/libex_secp256k1-v0.8.0-nif-2.16-x86_64-unknown-linux-gnu.so.tar.gz
+
 # install mix dependencies; the shared Regent libraries come from GitHub at the
 # commits mix.exs pins
 COPY platform/mix.exs platform/mix.lock ./
