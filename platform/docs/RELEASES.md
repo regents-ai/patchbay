@@ -4,6 +4,21 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v267, 23 Oct 2026
+
+- Commit: 71fe6f71bdb82eff21972799fbb6a6902ae6b98c (image `71fe6f7`).
+- Contains: Buy Credits, the site post window, the outbid notice, the delete
+  question and the wallet bench pair window open in the shared
+  Regent.Structure.dialog frame; regents-cli pin 773f8a67.
+- Checks: fresh copy, 741 tests, 91 browser checks (6 skipped by design), 15
+  contract tests, all passing. Live: health shows the commit with migrations
+  current and the database ok; /healthz ok; /, /offers, /sites, /changelog,
+  /account, /wallet-bench, /offers/create, /target.com and /help answer 200;
+  the wallet bench pair window and the target.com post window open in the
+  shared frame at 1280, 390 and 320 wide with no page errors and no sideways
+  scroll; Escape on the pair window returns to /wallet-bench.
+- Rollback: v266 (e8a28c23).
+
 ## v266, 23 Oct 2026
 
 - Commit: e8a28c234dce396ec5f1724406cd5874cd0f3a9a (image `e8a28c2`).
