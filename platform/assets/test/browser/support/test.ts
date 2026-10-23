@@ -9,7 +9,6 @@ const bridge = /^\/assets\/js\/privy_bridge(-[0-9a-f]+)?\.js$/
 const signedOut = {ok: false, reason: "signed_out"}
 const standIn = `
 export async function profile() { return ${JSON.stringify({ok: false, status: null, error: {code: "authentication_required", outcome_unknown: false}})} }
-export async function linkProfileX() {}
 export async function signIn() { return ${JSON.stringify(signedOut)} }
 export async function signOut() {}
 export async function activeWallet() { return ${JSON.stringify(signedOut)} }

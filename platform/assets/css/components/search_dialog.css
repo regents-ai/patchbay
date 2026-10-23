@@ -1,25 +1,19 @@
-/* Search presentation from ash-template d5fe886; Patchbay palette, reset and full-results link. */
+/* Search presentation from ash-template, in the shared window frame
+   (Regent.Structure.dialog); Patchbay palette and full-results link. */
 /* ---- Search ---- */
 
 .shell-search {
-  width: min(40rem, calc(100% - 2rem));
-  max-height: min(34rem, calc(100dvh - 6rem));
+  --rg-dialog-size: 40rem;
+  max-block-size: min(34rem, calc(100dvh - 6rem));
   margin-block-start: 12vh;
-  margin-inline: auto;
-  padding: 0;
-  border: 1px solid var(--pb-line-strong);
-  background: var(--color-surface);
-  color: var(--color-fg);
-  box-shadow: 0 1.5rem 3rem -1rem color-mix(in oklch, var(--palette-charcoal) 35%, transparent);
 }
 
-.shell-search[open] {
+.shell-search .rg-dialog__body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-}
-
-.shell-search::backdrop {
-  background: color-mix(in oklch, var(--palette-charcoal) 30%, transparent);
+  padding: 0;
+  overflow: hidden;
 }
 
 .shell-search__browse {
@@ -264,10 +258,8 @@
    closes with a word. */
 @media (max-width: 47.99rem) {
   .shell-search {
-    width: calc(100% - 1rem);
-    max-width: none;
-    max-height: calc(100dvh - 1rem);
-    margin-block-start: 0.5rem;
+    max-block-size: calc(100dvh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin-block-start: calc(0.5rem + env(safe-area-inset-top));
   }
 
   .shell-search .shell-search__esc,

@@ -3,6 +3,7 @@ import "./theme.ts"
 import "../vendor/regent_ui/blog.mjs"
 import "../vendor/regent_ui/discussion.mjs"
 import "../vendor/regent_ui/pill_select.mjs"
+import "../vendor/regent_ui/tip.mjs"
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`
 // to get started and then uncomment the line below.
 // import "./user_socket.js"
@@ -40,6 +41,7 @@ import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
 import {SearchDialog} from "./hooks/search_dialog.ts"
 import {SidePanel} from "./hooks/side_panel.ts"
 import {PanelAgents} from "./hooks/panel_agents.ts"
+import {PublicName} from "./hooks/public_name.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
@@ -75,6 +77,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     SearchDialog,
     SidePanel,
     PanelAgents,
+    PublicName,
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
   },

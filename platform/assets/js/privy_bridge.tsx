@@ -1,12 +1,11 @@
 import {createElement, useEffect} from "react"
 import type {ComponentProps} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useIdentityToken, useLinkAccount, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useIdentityToken, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
-import {createXLinkIntent} from "../vendor/regent_identity/x_link_intent.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
 import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
@@ -30,7 +29,6 @@ type BridgeState = {
   logout: ReturnType<typeof usePrivy>["logout"]
   identityToken: string | null
   login: ReturnType<typeof useLogin>["login"]
-  linkTwitter: ReturnType<typeof useLinkAccount>["linkTwitter"]
   wallets: ConnectedWallet[]
   walletsReady: boolean
   activeWallet: ReturnType<typeof useActiveWallet>["wallet"]
@@ -45,22 +43,13 @@ let mounted: {container: HTMLDivElement, root: Root} | null = null
 let current: BridgeState | null = null
 let settleLogin: ((outcome: LoginOutcome) => void) | null = null
 let identityGeneration = 0
-let linkNonce: string | null = null
 let mountedAppId: string | null = null
-const linkIntent = () => {
-  let storage: Storage | null = null
-  try { storage = window.sessionStorage } catch {}
-  return createXLinkIntent(storage, mountedAppId!)
-}
 const waiters = new Set<(state: BridgeState) => void>()
 
 function publish(state: BridgeState) {
   const changed = current?.user?.id !== state.user?.id || current?.authenticated !== state.authenticated
   current = state
-  if (changed) {
-    identityGeneration += 1
-    window.dispatchEvent(new Event("regent:profile-identity"))
-  }
+  if (changed) identityGeneration += 1
   for (const waiter of Array.from(waiters)) waiter(state)
 }
 
@@ -82,21 +71,6 @@ function Bridge() {
     onComplete: () => finishLogin({ok: true}),
     onError: code => finishLogin({ok: false, code}),
   })
-  const {linkTwitter} = useLinkAccount({
-    onSuccess: payload => {
-      const expectedSubject = linkIntent().claim(payload)
-      if (!expectedSubject) return
-      linkNonce = null
-      void profileFor(expectedSubject)("sync").then(result => {
-        window.dispatchEvent(new CustomEvent("regent:profile-link", {detail: {ok: result.ok}}))
-      })
-    },
-    onError: () => {
-      linkIntent().cancel(linkNonce)
-      linkNonce = null
-      window.dispatchEvent(new CustomEvent("regent:profile-link", {detail: {ok: false}}))
-    },
-  })
 
   useEffect(() => {
     publish({
@@ -107,7 +81,6 @@ function Bridge() {
       logout: privy.logout,
       identityToken,
       login,
-      linkTwitter,
       wallets,
       walletsReady,
       activeWallet,
@@ -118,9 +91,9 @@ function Bridge() {
   return null
 }
 
-const profileFor = (expectedSubject?: string) => createProfileClient({
+const profileFor = () => createProfileClient({
   async acquireProof({signal}) {
-    const state = await waitFor(one => one.ready && (!expectedSubject || one.user?.id === expectedSubject), 10_000)
+    const state = await waitFor(one => one.ready, 10_000)
     signal.throwIfAborted()
     if (!state.authenticated || !state.user?.id) return null
     const generation = identityGeneration
@@ -142,17 +115,6 @@ export function profile(
 ): ReturnType<ProfileAction> {
   start(appId)
   return profileFor()(operation, input, options)
-}
-
-export async function linkProfileX(appId: string): Promise<void> {
-  start(appId)
-  const state = await waitFor(one => one.ready, READY_TIMEOUT_MS)
-  if (!state.authenticated) throw new Error("authentication_required")
-  if (!state.user?.id) throw new Error("authentication_required")
-  const nonce = linkIntent().begin(state.user.id)
-  linkNonce = nonce
-  try { await state.linkTwitter() }
-  catch (error) { linkIntent().cancel(nonce); throw error }
 }
 
 function start(appId: string) {

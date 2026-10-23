@@ -151,6 +151,7 @@
   .pb-start-steps .pb-onboarding-steps { padding-inline: 1.5rem; }
   .pb-thread-page { margin: 1rem; }
   .pb-inbox-head, .pb-inbox-section { padding-inline: 1.25rem; }
+  .pb-inbox-section .rg-empty { padding-inline: 0; }
   .pb-inbox-section .pb-post-row { grid-template-columns: minmax(0, 1fr); }
   .pb-inbox-ack { grid-column: 1; grid-row: auto; margin-top: .5rem; }
   .pb-thread { padding: 1.25rem 0; }

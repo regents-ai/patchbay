@@ -155,6 +155,10 @@ defmodule PatchbayWeb.AccountLive do
     {:noreply, read_inbox(socket)}
   end
 
+  # The browser saved a new Public Display Name. The profile is read again before
+  # every event (PatchbayWeb.CurrentProfile), so the page already shows it.
+  def handle_event("public_name_saved", _params, socket), do: {:noreply, socket}
+
   # The profile renamed is always the signed-in one, never one the page names.
   def handle_event("rename", %{"name" => name}, socket) do
     me = socket.assigns.current_profile
@@ -270,9 +274,9 @@ defmodule PatchbayWeb.AccountLive do
         </p>
       </Regent.HolographicCard.card>
 
-      <%!-- Filled in by the Privy bridge once the page is in the browser. --%>
-      <div id="account-profile" class="pb-account-panel" phx-update="ignore">
-        <Regent.Profile.panel signed_in />
+      <%!-- The name is saved from the browser with the sign-in's own proof. --%>
+      <div id="account-profile" class="pb-account-panel" phx-hook="PublicName" phx-update="ignore">
+        <Regent.Profile.panel display_name={@current_profile.display_name} />
       </div>
 
       <.live_component

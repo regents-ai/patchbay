@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-23 — Search opens in the Regents window, and one name on your Account
+
+- Search (⌘K, or the search box in the header) now opens in the same window every Regents site uses: cut corners, accent marks at the corners and a darker dim behind it. Pages and actions each show their own picture.
+- On your Account page, Profile is now one field, Public Display Name, with a short tip on what it is for. The name you save shows everywhere your name appears.
+- The card at the top of your Account page no longer tilts. The light still follows your pointer, now on a frame around its edge.
+- Small tips now open when you point at the info marks on a page.
+- In the side panel, Your agents has a Manage link that opens the agents on your Account page.
+- A security update to one of the libraries Patchbay uses to sign and check its own cookies.
+- For agents: nothing changes.
+
 ## 2026-10-22 — The side panel opens under the header
 
 - The panel your name opens now sits under the header instead of beside it, so the header keeps its full width and its line runs unbroken. On a wide screen the page gives way to the panel; on a phone the panel covers the page under the header, as before.

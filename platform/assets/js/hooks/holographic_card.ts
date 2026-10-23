@@ -23,9 +23,8 @@ const channels = (color: string): readonly [number, number, number] => {
 /**
  * What the markup asks of the foil. `data-holo-crown="false"` leaves the crown
  * off a face and `"beside"` keeps it only where it stands clear of the content,
- * `data-holo-tilt` and `data-holo-shine` scale the turn and the
- * light against the account card's, and `data-holo-ink` makes the foil the ink
- * of the line drawing beside the canvas.
+ * `data-holo-shine` scales the light against the account card's, and
+ * `data-holo-ink` makes the foil the ink of the line drawing beside the canvas.
  */
 const browserLoadCard =
   (root: HTMLElement): LoadRenderer<HolographicCardRenderer> =>
@@ -33,10 +32,9 @@ const browserLoadCard =
     const {createHolographicCardRenderer, holographicInkMask} = await import(
       "../../vendor/regent_ui/holographic_card.mjs"
     )
-    const {holoCrown, holoTilt, holoShine} = root.dataset
+    const {holoCrown, holoShine} = root.dataset
     const look: HolographicCardLook = {
       crown: holoCrown === "beside" ? "beside" : holoCrown !== "false",
-      tilt: holoTilt === undefined ? 1 : Number(holoTilt),
       shine: holoShine === undefined ? 1 : Number(holoShine),
     }
     if ("holoInk" in root.dataset) {
@@ -52,13 +50,10 @@ const browserLoadCard =
   }
 
 /**
- * The shared holographic foil: the foil is drawn on the island's canvas and the
- * card itself turns with the pointer.
- *
- * The turn is the renderer's eased tilt written back to the card as CSS custom
- * properties, so the text on the face stays real DOM text and moves with the
- * foil beneath it. A picture that moves is never drawn for a visitor who asked
- * for less of it, and a pointer that cannot hover never lights the foil.
+ * The shared holographic foil, drawn on the island's canvas. The card never
+ * moves: the light on its foil follows the pointer. A picture that moves is
+ * never drawn for a visitor who asked for less of it, and a pointer that cannot
+ * hover never lights the foil.
  */
 export const createHolographicCardController = (
   root: HTMLElement,
@@ -71,32 +66,13 @@ export const createHolographicCardController = (
     readyFlag: "holoReady",
     browserLoad: browserLoadCard(root),
     motionSensitive: true,
-    interact({root: card, canvas, renderer, nudge, onReady}) {
-      // Every frame the island draws is followed by the tilt the renderer settled
-      // on, so the card keeps turning for exactly as long as the foil eases.
-      onReady(() => {
-        const current = renderer()
-        if (!current) return
-        const draw = current.present.bind(current)
-        current.present = () => {
-          draw()
-          const [x, y] = current.tilt()
-          card.style.setProperty("--rg-holo-tilt-x", `${x}rad`)
-          card.style.setProperty("--rg-holo-tilt-y", `${y}rad`)
-        }
-      })
+    interact({root: card, canvas, renderer, nudge}) {
+      // The light falls where the pointer stands against the foil, which may be
+      // only part of the card.
       const onPointerMove = (event: PointerEvent) => {
         if (event.isPrimary === false) return
-        // The card turns about its own box; the light falls where the pointer
-        // stands against the foil, which may be only part of the card.
-        const within = ({left, top, width, height}: DOMRect): [number, number] => [
-          (event.clientX - left) / width,
-          (event.clientY - top) / height,
-        ]
-        renderer()?.point(
-          within(card.getBoundingClientRect()),
-          within(canvas().getBoundingClientRect()),
-        )
+        const {left, top, width, height} = canvas().getBoundingClientRect()
+        renderer()?.point([(event.clientX - left) / width, (event.clientY - top) / height])
         nudge()
       }
       const onPointerLeave = () => {
@@ -115,8 +91,6 @@ export const createHolographicCardController = (
           card.removeEventListener("pointermove", onPointerMove)
           card.removeEventListener("pointerleave", onPointerLeave)
         }
-        card.style.removeProperty("--rg-holo-tilt-x")
-        card.style.removeProperty("--rg-holo-tilt-y")
       }
     },
   })

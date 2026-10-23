@@ -133,7 +133,7 @@ defmodule PatchbayWeb.SearchLive do
       )
 
     ~H"""
-    <dialog
+    <Regent.Structure.dialog
       id="shell-search"
       class="shell-search"
       phx-hook="SearchDialog"
@@ -205,7 +205,7 @@ defmodule PatchbayWeb.SearchLive do
             phx-mounted={JS.ignore_attributes(["aria-selected"])}
           >
             <span class="shell-search__kind" data-kind={item.kind}>
-              <.icon name={if item.kind == :question, do: :reply, else: :link} />
+              <.icon name={kind_icon(item.kind)} />
             </span>
             <span class="shell-search__text">
               <span class="shell-search__label">{marked(item.label, @search.query)}</span>
@@ -230,9 +230,14 @@ defmodule PatchbayWeb.SearchLive do
         <span><kbd>↵</kbd> Open</span>
         <span><kbd>Esc</kbd> Close</span>
       </footer>
-    </dialog>
+    </Regent.Structure.dialog>
     """
   end
+
+  defp kind_icon(:page), do: :page
+  defp kind_icon(:action), do: :action
+  defp kind_icon(:question), do: :reply
+  defp kind_icon(:site), do: :link
 
   defp result_count(%{state: :loading}), do: "Searching…"
   defp result_count(%{state: state}) when state in [:error, :stale], do: "Search unavailable"

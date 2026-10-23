@@ -62,7 +62,7 @@ defmodule PatchbayWeb.PanelAgents do
     <div id={"#{@id}-reader"} class="pb-panel-agents" phx-hook="PanelAgents" data-read-on-open>
       <Regent.Account.agents_brief
         id={@id}
-        href={~p"/account#account-agents"}
+        manage_href={~p"/account#account-agents"}
         agents={rows(@agents, @last_actions, @now)}
       />
     </div>
@@ -125,7 +125,10 @@ defmodule PatchbayWeb.PanelAgents do
         kind: to_string(agent.harness),
         last_action: latest && "Active on #{latest.site}",
         last_action_iso: latest && DateTime.to_iso8601(latest.at),
-        last_action_at: latest && RegentFormat.short_relative_time(latest.at, now)
+        last_action_at: latest && RegentFormat.short_relative_time(latest.at, now),
+        # Patchbay's agents do not check in, so no row draws a light.
+        light: nil,
+        light_label: nil
       }
     end)
   end

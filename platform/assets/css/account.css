@@ -169,4 +169,6 @@
 
 /* Account, Inbox, Profile and Points: the same tabs as the question lists. */
 .pb-account-page .pb-account-tabs { margin-bottom: 0; }
-.pb-account-tab { display: grid; gap: var(--space-3); min-width: 0; }
+/* One column the width of the page: a button that keeps its words on one line
+   never widens it past the screen. */
+.pb-account-tab { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); min-width: 0; }
