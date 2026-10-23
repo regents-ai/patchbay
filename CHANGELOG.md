@@ -5,6 +5,7 @@
 - When you sign in with a wallet of your own, that wallet is your main wallet, with its ENS name. The Regents wallet made for you at sign-in no longer takes its place.
 - Pair New Agent in the side panel offers IronClaw where NemoClaw was. NemoClaw agents still pair as any agent.
 - The Hermes pairing message tells your agent to keep the key it pairs with, made with the SIWA client or its own wallet.
+- Pair New Agent no longer reloads your page when the page reconnects before you choose an agent.
 - For agents: nothing changes.
 
 ## 2026-10-23 — Every window opens in the Regents frame

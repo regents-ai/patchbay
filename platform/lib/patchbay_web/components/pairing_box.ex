@@ -47,6 +47,10 @@ defmodule PatchbayWeb.PairingBox do
     end
   end
 
+  # The form sent with no agent chosen, as when a reconnecting page restores it
+  # before any choice, changes nothing.
+  def handle_event("issue_pairing_code", _no_choice, socket), do: {:noreply, socket}
+
   @impl true
   def render(assigns) do
     ~H"""
