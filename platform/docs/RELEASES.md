@@ -4,6 +4,24 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v271, 24 Oct 2026
+
+- Commit: fd02d34ba7c5e9998ba08339d4961c69e23e738b (image `fd02d34`).
+- Contains: native code comes straight from GitHub again, as in ash-template
+  150c8a7: the Dockerfile's curl prefetch of ex_keccak and ex_secp256k1 and
+  the mdex_native mirror setting are gone. Nothing for people changes.
+- Checks: fresh copy, 770 tests (10 doctests, 3 properties), 91 browser
+  checks (6 skipped by design), 15 contract tests, all passing; Fly
+  build-only run with no cache downloaded all three native files from GitHub.
+  The build logs a few TLS notices about 30 seconds after each download
+  (Erlang's HTTP client closing idle connections); the image is unaffected.
+  Live: health shows the commit with migrations current and the database ok;
+  /healthz ok; /, /offers, /sites, /changelog, /wallet-bench,
+  /wallet-bench/how-it-works, /wallet-bench/H10/W03, /api/wallet-bench,
+  /llms.txt and /help answer 200; the H10/W03 report is available; no error
+  lines in the boot log.
+- Rollback: v270 (7d4338f1).
+
 ## v270, 24 Oct 2026
 
 - Commit: 7d4338f1ed1694ed1a22b2bc84c3fcd903e230ad (image `7d4338f`).
