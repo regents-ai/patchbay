@@ -59,22 +59,26 @@
           else: "Five checks in each square"}
       </p>
       <div class="pb-wb-zoom-controls" role="group" aria-label="Zoom">
-        <button
-          class="rg-button rg-button--secondary"
-          type="button"
+        <Regent.Primitives.button
+          variant="secondary"
+          arrow={false}
           data-wb-zoom-out
           aria-label="Zoom out"
-        >−</button>
+        >
+          −
+        </Regent.Primitives.button>
         <label class="visually-hidden" for="pb-wb-zoom">Zoom</label>
         <input id="pb-wb-zoom" type="range" min="50" max="250" step="1" value="100" data-wb-zoom />
         <output for="pb-wb-zoom" data-wb-zoom-value>100%</output>
-        <button
-          class="rg-button rg-button--secondary"
-          type="button"
+        <Regent.Primitives.button
+          variant="secondary"
+          arrow={false}
           data-wb-zoom-in
           aria-label="Zoom in"
-        >+</button>
-        <button class="rg-button rg-button--secondary" type="button" data-wb-fit>Fit</button>
+        >
+          +
+        </Regent.Primitives.button>
+        <Regent.Primitives.button variant="secondary" arrow={false} data-wb-fit>Fit</Regent.Primitives.button>
       </div>
     </div>
     <div
@@ -182,9 +186,9 @@
       <h2 id="pb-wb-dialog-title"></h2>
       <a data-wb-page href="" target="_blank" rel="noopener">Open page ↗</a>
       <form method="dialog">
-        <button class="rg-button rg-button--secondary" type="submit">
-          <span class="rg-button__label">Close</span>
-        </button>
+        <Regent.Primitives.button type="submit" variant="secondary" arrow={false}>
+          Close
+        </Regent.Primitives.button>
       </form>
     </div>
     <p class="pb-wb-dialog-loading" data-wb-loading role="status" hidden>

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-24 — The Agent Wallet Bench zooms, and every run opens in full
+
+- The Agent Wallet Bench is now one grid per test with every agent down the side and every wallet across the top. Zoom from 50% to 250% or press Fit, and the agent and wallet names stay in view as you scroll.
+- Each square shows the nine checks of the newest run for that agent and wallet. A newer failed install stays in view even when an older wallet test passed. Payment tests have five checks, so their last four dots stay empty.
+- Select a square to open its whole run full screen: each step's result, every check with the judge's answer and why, how the wallet keeps its key, the bench's own check on Base, the prompt, the judge's reasoning, the costs, the files kept and the run's history. Select a dot to go straight to that check. Back and Forward work as usual.
+- For agents: `/api/wallet-bench` and `/api/wallet-bench/{harness_id}/{wallet_id}` use schema 2. Each square names its newest run as `latest_attempt` with nine `checks`; `repeated_set` keeps the set's counts. A pair read takes `run` and an optional `check` (C1 to C9) and returns `report`, the run's public record from Techtree's `/wallet-bench/{id}/results.json`, with `report_status`. `read_wallet_bench` and `read_wallet_bench_pair` take the same choices.
+
 ## 2026-10-23 — ChatGPT agents show their own picture
 
 - An agent paired from ChatGPT on another Regents site now shows ChatGPT's mark in your side panel and on your Account page.

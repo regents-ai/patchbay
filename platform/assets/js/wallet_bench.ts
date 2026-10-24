@@ -124,10 +124,27 @@ export function mountWalletBench(options: WalletBenchOptions = {}) {
     returnFocus?.focus({preventScroll: true})
     closingFromHistory = false
   })
+  showPair = state => {
+    if (!state?.wbPair || !pairURL(state.wbPair)) return false
+    void show(state)
+    return true
+  }
+  view.addEventListener("popstate", () => {
+    if (dialog.open) { closingFromHistory = true; dialog.close() }
+  })
+}
+
+let showPair: ((state: PairState | null) => boolean) | null = null
+
+/**
+ * The history entries the bench's dialog pushes are its own. LiveView loads
+ * any other address reached by Back or Forward as a new page, so this has to
+ * be listening before LiveView connects: listeners on the window run in the
+ * order they were added, and LiveView never hears about these entries.
+ */
+export function claimWalletBenchHistory(view: Window) {
   view.addEventListener("popstate", event => {
-    const state = event.state as PairState | null
-    if (state?.wbPair && pairURL(state.wbPair)) void show(state)
-    else if (dialog.open) { closingFromHistory = true; dialog.close() }
+    if (showPair?.(event.state as PairState | null)) event.stopImmediatePropagation()
   })
 }
 
@@ -168,8 +185,9 @@ function mountZoom(bench: HTMLElement) {
   bench.querySelector("[data-wb-zoom-in]")?.addEventListener("click", () => resize(zoom + 25))
   bench.querySelector("[data-wb-fit]")?.addEventListener("click", () => {
     const columns = (table.tHead?.rows[0]?.cells.length || 1) - 1
-    const labelWidth = table.tHead?.rows[0]?.cells[0]?.getBoundingClientRect().width || 0
-    if (columns > 0) resize((viewport.clientWidth - labelWidth - 2) / (columns * base) * 100)
+    // The label column and the borders keep their size at every zoom.
+    const fixed = table.getBoundingClientRect().width - columns * base * zoom / 100
+    if (columns > 0) resize(Math.floor((viewport.clientWidth - fixed) / (columns * base) * 100))
     viewport.scrollLeft = 0
     viewport.scrollTop = 0
   })
@@ -184,7 +202,7 @@ function mountZoom(bench: HTMLElement) {
     const element = target as Element | null
     const dot = element?.closest?.<HTMLElement>("[data-wb-dot-label]")
     const cell = element?.closest?.<HTMLAnchorElement>("a.pb-wb-square")
-    if (status) status.textContent = dot?.dataset.wbDotLabel || cell?.dataset.wbSummary || "Select a square to inspect its recorded run."
+    if (status) status.textContent = dot?.dataset.wbDotLabel || cell?.dataset.wbSummary || "Select a square to see its run."
   }
   viewport.addEventListener("pointerover", event => describe(event.target))
   viewport.addEventListener("focusin", event => describe(event.target))

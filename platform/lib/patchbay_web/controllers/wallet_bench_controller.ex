@@ -54,10 +54,7 @@ defmodule PatchbayWeb.WalletBenchController do
     results = Sets.filter(results, filters)
     sets = Sets.build(results, summaries)
     selection = Map.take(params, ~w(set baseline compare))
-
-    Enum.each(selection, fn {_key, id} ->
-      unless id == "" or Enum.any?(sets, &(&1.id == id)), do: raise(NotFoundError)
-    end)
+    validate_selection!(selection, sets)
 
     comparison = Sets.compare(sets, selection["baseline"], selection["compare"], checks)
 
@@ -70,47 +67,15 @@ defmodule PatchbayWeb.WalletBenchController do
 
     selected_run = selected_run!(results, test, params["run"])
     check = params["check"]
-    defined_checks = if test in ["install", "wallet"], do: 9, else: 5
-
-    unless is_nil(check) or check in Enum.map(1..defined_checks, &"C#{&1}"),
-      do: raise(NotFoundError)
-
-    {report, report_error} =
-      if selected_run do
-        case PublicRun.fetch(selected_run) do
-          {:ok, report} -> {report, false}
-          {:error, _reason} -> {nil, true}
-        end
-      else
-        {nil, false}
-      end
-
-    focus =
-      if check && selected_run && selected_run.decided_by,
-        do: "wb-check-#{selected_run.decided_by}-#{check}",
-        else: "recorded-run"
-
-    checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
-
-    grids =
-      Enum.map(Matrix.grids(), fn grid ->
-        %{
-          grid: grid,
-          stopped: if(grid == "wallet", do: stopped),
-          fixed: Matrix.fixed_for(fixed, grid, harness_id, wallet_id),
-          runs:
-            for run <- results, run.grid == grid do
-              %{result: run, checks: Map.get(checks, {grid, run.attempt_id}, [])}
-            end
-        }
-      end)
+    validate_check!(check, test)
+    {report, report_error} = report(selected_run)
 
     render(conn, :show,
       page_title: "#{harness.name} with #{wallet.name}",
       harness: harness,
       wallet: wallet,
       notes: Matrix.notes(notes),
-      grids: grids,
+      grids: grids(results, checks, fixed, stopped, harness_id, wallet_id),
       sets: sets,
       shown: shown,
       selection: selection,
@@ -124,8 +89,51 @@ defmodule PatchbayWeb.WalletBenchController do
       report: report,
       report_error: report_error,
       selected_check: check,
-      focus: focus
+      focus: focus(check, selected_run)
     )
+  end
+
+  defp validate_selection!(selection, sets) do
+    Enum.each(selection, fn {_key, id} ->
+      unless id == "" or Enum.any?(sets, &(&1.id == id)), do: raise(NotFoundError)
+    end)
+  end
+
+  defp validate_check!(nil, _test), do: :ok
+
+  defp validate_check!(check, test) do
+    defined_checks = if test in ["install", "wallet"], do: 9, else: 5
+    unless check in Enum.map(1..defined_checks, &"C#{&1}"), do: raise(NotFoundError)
+  end
+
+  defp report(nil), do: {nil, false}
+
+  defp report(run) do
+    case PublicRun.fetch(run) do
+      {:ok, report} -> {report, false}
+      {:error, _reason} -> {nil, true}
+    end
+  end
+
+  defp focus(check, %{decided_by: decided_by}) when is_binary(check) and is_binary(decided_by),
+    do: "wb-check-#{decided_by}-#{check}"
+
+  defp focus(_check, _run), do: "recorded-run"
+
+  defp grids(results, checks, fixed, stopped, harness_id, wallet_id) do
+    checks = Enum.group_by(checks, &{&1.grid, &1.attempt_id})
+
+    Enum.map(Matrix.grids(), fn grid ->
+      %{
+        grid: grid,
+        stopped: if(grid == "wallet", do: stopped),
+        fixed: Matrix.fixed_for(fixed, grid, harness_id, wallet_id),
+        runs:
+          for run <- results, run.grid == grid do
+            %{result: run, checks: Map.get(checks, {grid, run.attempt_id}, [])}
+          end
+      }
+    end)
   end
 
   defp selected_run!(results, test, nil) do

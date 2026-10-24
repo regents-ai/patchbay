@@ -65,15 +65,15 @@ explicit `checks` describe the matrix; `repeated_set` contains the independent
 current/newest matching set's aggregate counts. Pair JSON returns `selected_run`,
 `selected_check`, `report_status` and nullable `report`.
 
-The full report requires Techtree's `GET /api/wallet-bench/:id` schema-1 export.
-`Patchbay.WalletBench.PublicRun` makes a fixed-origin anonymous GET with no redirects
-or retries, finite timeouts and a 2 MB response limit. It verifies the run, pair and
-report shape before rendering. An unavailable export is shown as a read error while
-published outcomes remain visible. The export contains public prompts, judge
-reasoning, verifier observations, recorded measurements and artifact fingerprints.
-Question wording and configured limits are labelled as current catalog definitions;
-unknown historical readings stay unknown. Evidence links use the canonical producer
-origin; prompts and other recorded text are escaped by HEEx.
+The full report is the run's public record on Techtree,
+`GET https://techtree.sh/wallet-bench/:id/results.json` (the first file of its results
+download). `Patchbay.WalletBench.PublicRun` makes a fixed-origin anonymous GET with
+no redirects or retries, finite timeouts and a 2 MB response limit, and checks the
+run id, pair and the fields the report shows before rendering. When Techtree does not
+answer, the page says so and the published outcomes stay visible. The record holds
+each step's prompt, the judge's checks and reasoning, the bench's own check, costs,
+the files kept with their SHA-256, the funding and the run's history. File links use
+Techtree's fixed origin; recorded text is escaped by HEEx.
 
 The WebMCP contract remains a public read and refuses responses above 128 KiB intact.
 Its version-2 manifest and CLI descriptors must ship with this schema cutover.

@@ -4,7 +4,7 @@ What each test checks, what each result means, and how Techtree runs every test.
 
 ## The checks
 
-A judge records yes, no or unclear for each check. Missing answers remain unrecorded. A square has nine fixed positions, read left to right; money tests use five checks and four not-applicable positions.
+A judge answers each check yes, no or unclear. A square's dots are its test's checks, read left to right. Payment tests have five checks, so their last four dots stay empty.
 <%= for grid <- @matrix.grids do %>
 ### <%= grid_title(grid.grid) %>
 <%= if grid.criteria == [] do %>
@@ -22,7 +22,7 @@ The bench tests coding agents on two questions: can each one install a crypto wa
 
 The original survey ran each of the 36 pairs three times, for 108 runs in the full grid, which started 7 October at 07:00 UTC. Later reruns are added alongside that history. Cline takes only the install tests, because it can’t continue a conversation from a script. Eight more wallets were not run: six need a person to sign in, one can’t run on a server, and one makes no keys. Their records remain on their own pages.
 
-In the first survey, every agent used gpt-6-luna at high effort, installed as it shipped with approval prompts turned off. A separate judge model, gpt-5.6-sol, read what the agent did and ruled on it. Later runs can use different models and versions; each full report identifies what was actually recorded. The bench itself also checks every wallet address and signature directly on Base, so the judge never has to take the agent’s word for them.
+In the first survey, every agent used gpt-6-luna at high effort, installed as it shipped with approval prompts turned off. A separate judge model, gpt-5.6-sol, read what the agent did and ruled on it. Later runs can use other models and versions, and each run names its own. The bench itself also checks every wallet address and signature directly on Base, so the judge never has to take the agent’s word for them.
 
 ## What each test checks
 
@@ -52,9 +52,9 @@ A safety failure in any test decides the run, even if a later test put things ri
 
 ## How Patchbay shows it
 
-Techtree publishes the results in its database for Patchbay to read. The matrix shows the nine criterion positions from one latest matching attempt per agent and wallet pair. A newer failed install stays visible even when an older wallet attempt passed. Model, version and protocol filters narrow the same records in HTML, Markdown and JSON. Earlier runs and repeated-set comparisons remain available in the full-screen report. Each result keeps its recorded checks, reasons and versions.
+Techtree publishes the results for Patchbay to read. Each square shows the newest run for that agent and wallet. A newer failed install stays in view even when an older wallet test passed. The filters choose which agent, wallet and model versions are shown. Earlier runs and comparisons between sets stay on the pair's page.
 
-The HTML matrix supports 50%–250% zoom, fit-to-width, scrolling, and a full-screen report. Each pair URL selects an exact `run` and optional `check`; the same selection is available as JSON. The report includes prompts, judge reasoning, verifier observations, recorded costs and artifact digests from [Techtree](https://techtree.sh/wallet-bench). A missing export produces a read-error message while the published outcomes remain available.
+Each pair's address takes a `run` and an optional `check` (C1 to C9), on the page, as Markdown and as JSON. The run shows each prompt, the judge's reasoning, the bench's own checks, the costs and the files kept, from [Techtree](https://techtree.sh/wallet-bench).
 
 Results come from Techtree as each run finishes. The first survey is on [the blog](/blog/agent-wallet-bench-v7).
 <%= trailer() %>

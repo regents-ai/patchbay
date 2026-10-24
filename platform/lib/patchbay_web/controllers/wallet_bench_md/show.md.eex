@@ -8,22 +8,21 @@ Roster versions are last seen; each run records the versions actually tested. Un
 Run ID: `<%= @selected_run.attempt_id %>`; test: `<%= @test %>`; outcome: `<%= @selected_run.outcome %>`.
 
 <%= if @report do %>
-The full recorded report is available in this page's HTML and JSON representations. It includes the exact public prompts, stage durations, recorded costs, judge reasoning, verifier observations and artifact fingerprints. [Source run](<%= Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id) %>).
+The whole run, as Techtree published it: <%= Patchbay.WalletBench.PublicRun.source_url(@report["id"]) %>. Its results are in this page's JSON as `report`, with each step's prompt, the judge's reasoning and the files kept.
 
-<%= for stage <- @report["stages"] do %>
-### <%= line(stage["name"]) %> — <%= line(stage["outcome_label"]) %>
+<%= for step <- @report["tests"] do %>
+### <%= line(step["test"]) %> — <%= line((step["ruling"] && step["ruling"]["outcome"]) || step["state"]) %>
 
-<%= line(stage["summary"] || "No summary recorded.") %>
-<%= if stage["plain_file"], do: "Storage finding: " <> line(stage["plain_file"]) <> "\n" %>
-- Observed duration: <%= stage["timing"]["duration_seconds"] || "not recorded" %> seconds
-- Model cost, USD: <%= stage["costs"]["model"] || "not recorded" %>
-- Judge cost, USD: <%= stage["costs"]["judge"] || "not recorded" %>
-- Defined checks: <%= stage["criterion_count"] %>; question wording from the current published rubric
-<%= for check <- stage["criteria"] do %>
-- <%= check["id"] %>: <%= line(check["criterion"]) %> — <%= dot_answer(check["result"]) %>. <%= line(check["reason"] || "No reason recorded.") %><% end %>
+<%= line((step["ruling"] && step["ruling"]["summary"]) || "No summary recorded.") %>
+<%= if step["storage_finding"], do: "How the wallet keeps its key: " <> line(step["storage_finding"]) <> "\n" %><%= if step["base_check"], do: "The bench's own check: " <> line(step["base_check"]) <> "\n" %>
+- Time taken: <%= step["seconds"] || "not recorded" %> seconds
+- Model cost, USD: <%= step["model_cost_usd"] || "not recorded" %>
+- Judge cost, USD: <%= step["judge_cost_usd"] || "not recorded" %>
+<%= for {check, number} <- Enum.with_index((step["ruling"] && step["ruling"]["checks"]) || [], 1) do %>
+- C<%= number %>: <%= line(check["check"]) %> — <%= dot_answer(PatchbayWeb.WalletBenchRunHTML.answer_result(check["answer"])) %>. <%= line(check["why"] || "No reason recorded.") %><% end %>
 <% end %>
 <% else %>
-Full evidence unavailable: the public run export could not be read. This read error does not change the published outcome. [Read the source run](<%= Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id) %>).
+The whole run did not load from Techtree just now; the results below are unchanged. [Read it on Techtree](<%= Patchbay.WalletBench.PublicRun.source_url(@selected_run.attempt_id) %>).
 <% end %><% end %>
 
 <%= if @harness.version, do: "- " <> line(@harness.name) <> ": " <> line(@harness.version) <> "\n" %><%= if @wallet.version, do: "- " <> line(@wallet.name) <> ": " <> line(@wallet.version) <> "\n" %><%= for {name, domain} <- forums(@harness, @wallet) do %>- [<%= line(name) %> forum](/<%= domain %>)

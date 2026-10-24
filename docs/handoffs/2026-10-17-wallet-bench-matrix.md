@@ -1,5 +1,11 @@
 # Wallet bench matrix and full report — 17 October 2026
 
+> 24 October 2026: shipped from Patchbay main without the Techtree export below.
+> Techtree had since published the same record at
+> `https://techtree.sh/wallet-bench/<id>/results.json` (Techtree v188, 5bd8ae0b), so
+> regents-ai/techtree#3 was closed as superseded and the full report reads that
+> record. Its own field names replace the schema-1 export described here.
+
 Sean requested an M×N matrix of square 3×3 dot grids, zoom, and full run results
 inside a full-screen Patchbay modal, using the existing Techtree evidence.
 

@@ -1,5 +1,5 @@
 defmodule PatchbayWeb.WalletBenchRunHTML do
-  @moduledoc "Escaped, read-only presentation of Techtree's versioned public run export."
+  @moduledoc "Escaped, read-only presentation of a run's public results on Techtree."
 
   use PatchbayWeb, :html
 
@@ -13,15 +13,17 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
     ~H"""
     <article id="recorded-run" class="pb-wb-report">
       <header class="pb-wb-report-head">
-        <h2>Recorded run</h2>
-        <p>{@report["status_label"]}</p>
+        <h2>The run</h2>
+        <p>{@report["status"]}</p>
         <p class="pb-wb-report-id">{@report["id"]}</p>
       </header>
-      <nav class="pb-wb-report-nav" aria-label="Full result sections">
-        <a :for={stage <- @report["stages"]} href={"#wb-stage-" <> stage["stage"]}>{stage["name"]}</a>
-        <a href="#wb-timeline">Timeline</a>
+      <nav class="pb-wb-report-nav" aria-label="Parts of the run">
+        <a :for={step <- @report["tests"]} href={"#wb-stage-" <> step["folder"]}>{step["test"]}</a>
+        <a href="#wb-timeline">History</a>
         <a href="#versions">Compare sets</a>
-        <a href={PublicRun.source_url(@report["id"])} target="_blank" rel="noopener">Source ↗</a>
+        <a href={PublicRun.source_url(@report["id"])} target="_blank" rel="noopener">
+          On Techtree ↗
+        </a>
       </nav>
       <dl class="pb-wb-report-facts">
         <div :for={{label, value} <- setup_facts(@report)}>
@@ -29,161 +31,106 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
         </div>
       </dl>
       <p :if={present?(@report["failure"])} class="pb-wb-report-note">{@report["failure"]}</p>
-      <p :if={present?(@report["funding_refused"])} class="pb-wb-report-note">
-        {@report["funding_refused"]}
-      </p>
 
       <section
-        :for={stage <- @report["stages"]}
+        :for={step <- @report["tests"]}
         class="pb-wb-report-stage"
-        id={"wb-stage-" <> stage["stage"]}
+        id={"wb-stage-" <> step["folder"]}
       >
         <header class="pb-wb-report-head">
-          <h3>{stage["name"]}</h3>
-          <strong>{stage["outcome_label"]}</strong>
+          <h3>{step["test"]}</h3>
+          <strong>{outcome(step)}</strong>
         </header>
-        <p :if={present?(stage["summary"])}>{stage["summary"]}</p>
-        <p :if={present?(stage["failure"])} class="pb-wb-report-note">{stage["failure"]}</p>
-        <p :if={present?(stage["plain_file"])} class="pb-wb-report-note">
-          <strong>Storage finding:</strong> {stage["plain_file"]}. Passing a disclosure check does not establish secure custody or restart recovery.
+        <p :if={step["ruling"] && present?(step["ruling"]["summary"])}>
+          {step["ruling"]["summary"]}
+        </p>
+        <p :if={present?(step["failure"])} class="pb-wb-report-note">{step["failure"]}</p>
+        <p :if={present?(step["storage_finding"])} class="pb-wb-report-note">
+          <strong>How the wallet keeps its key:</strong> {step["storage_finding"]}.
         </p>
         <dl class="pb-wb-report-facts">
           <div>
-            <dt>Observed duration</dt><dd>
-              {with_unit(stage["timing"]["duration_seconds"], "seconds")}
-            </dd>
+            <dt>Time taken</dt><dd>{with_unit(step["seconds"], "seconds")}</dd>
           </div>
           <div>
-            <dt>Model cost</dt><dd>{usd(stage["costs"]["model"])}</dd>
+            <dt>Model cost</dt><dd>{usd(step["model_cost_usd"])}</dd>
           </div>
           <div>
-            <dt>Judge cost</dt><dd>{usd(stage["costs"]["judge"])}</dd>
+            <dt>Judge cost</dt><dd>{usd(step["judge_cost_usd"])}</dd>
           </div>
           <div>
-            <dt>Judge model</dt><dd>{recorded(stage["judge"]["model"])}</dd>
+            <dt>Judged by</dt><dd>{recorded(step["ruling"] && step["ruling"]["judged_by"])}</dd>
           </div>
           <div>
-            <dt>Requested wallet version</dt><dd>
-              {recorded(get_in(stage, ["version", "requested"]))}
-            </dd>
+            <dt>Wallet version</dt><dd>{recorded(step["version_installed"])}</dd>
           </div>
           <div>
-            <dt>Observed wallet version</dt><dd>
-              {recorded(get_in(stage, ["version", "installed"]))}
-            </dd>
+            <dt>Started</dt><dd>{utc(step["started_at"])}</dd>
+          </div>
+          <div>
+            <dt>Finished</dt><dd>{utc(step["ended_at"])}</dd>
           </div>
         </dl>
-        <p :if={stage["criterion_count"] > 0}>
-          Recorded judge answers · {stage["criterion_count"]} checks. “Unclear” and “Not recorded” do not count as “No”.
-          Question wording comes from the current published rubric; the recorded prompt and judge output remain available below.
-        </p>
-        <p :if={stage["criterion_count"] == 0}>
-          This stage is unscored and has no judgment criteria.
-        </p>
-        <div :if={stage["criterion_count"] > 0} class="pb-wb-report-table-wrap">
+        <p :if={checks(step) == []}>This step has no checks.</p>
+        <div :if={checks(step) != []} class="pb-wb-report-table-wrap">
           <table class="pb-wb-report-table">
             <thead>
               <tr>
-                <th scope="col">Criterion</th><th scope="col">Answer</th><th scope="col">
-                  Recorded reason
-                </th>
+                <th scope="col">Check</th><th scope="col">Answer</th><th scope="col">Why</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                :for={check <- criteria(stage)}
-                id={"wb-check-" <> stage["stage"] <> "-" <> check["id"]}
-                class={@selected_check == check["id"] && "is-selected"}
+                :for={{check, number} <- Enum.with_index(checks(step), 1)}
+                id={"wb-check-" <> step["folder"] <> "-C#{number}"}
+                class={@selected_check == "C#{number}" && "is-selected"}
               >
-                <td><code>{check["id"]}</code> {check["criterion"]}</td>
-                <td class={["pb-wb-answer", "is-" <> (check["result"] || "missing")]}>
-                  <span aria-hidden="true">{dot_mark(check["result"])}</span> {dot_answer(
-                    check["result"]
-                  )}
+                <td>{check["check"]}</td>
+                <td class={["pb-wb-answer", "is-" <> answer_result(check["answer"])]}>
+                  <span aria-hidden="true">{dot_mark(answer_result(check["answer"]))}</span>
+                  {dot_answer(answer_result(check["answer"]))}
                 </td>
-                <td>{recorded(check["reason"])}</td>
+                <td>{recorded(check["why"])}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <Regent.Primitives.disclosure
-          id={"wb-proof-" <> stage["stage"]}
-          summary="Verifier observations"
-        >
-          <p :if={!stage["verification"]["base"] && !stage["verification"]["money"]}>
-            No independent verifier observation was recorded for this stage.
-          </p>
-          <div
-            :for={
-              {label, check} <- [
-                {"Base check", stage["verification"]["base"]},
-                {"Money check", stage["verification"]["money"]}
-              ]
-            }
-            :if={check}
-          >
-            <h4>{label}</h4>
-            <p>{recorded(check["summary"])}</p>
-            <pre><code>{Jason.encode!(Map.delete(check, "summary"), pretty: true)}</code></pre>
-          </div>
-        </Regent.Primitives.disclosure>
-        <Regent.Primitives.disclosure id={"wb-prompt-" <> stage["stage"]} summary="Exact prompt">
-          <pre><code>{recorded(stage["prompt"])}</code></pre>
-        </Regent.Primitives.disclosure>
-        <Regent.Primitives.disclosure id={"wb-judge-" <> stage["stage"]} summary="Judge reasoning">
-          <pre><code>{recorded(stage["judge"]["reasoning"])}</code></pre>
+        <p :if={present?(step["base_check"])}>
+          <strong>The bench's own check:</strong> {step["base_check"]}
+        </p>
+        <Regent.Primitives.disclosure id={"wb-prompt-" <> step["folder"]} summary="The prompt">
+          <pre><code>{recorded(step["prompt"])}</code></pre>
         </Regent.Primitives.disclosure>
         <Regent.Primitives.disclosure
-          id={"wb-timing-" <> stage["stage"]}
-          summary="Timing and measurement limits"
+          :if={step["ruling"]}
+          id={"wb-judge-" <> step["folder"]}
+          summary="The judge's reasoning"
         >
-          <dl class="pb-wb-report-facts">
-            <div>
-              <dt>Stage started (UTC)</dt><dd>{utc(stage["timing"]["started_at"])}</dd>
-            </div>
-            <div>
-              <dt>Stage finished (UTC)</dt><dd>{utc(stage["timing"]["finished_at"])}</dd>
-            </div>
-            <div>
-              <dt>Current configured limit</dt><dd>
-                {with_unit(stage["timing"]["limit_seconds"], "seconds")}
-              </dd>
-            </div>
-          </dl>
-          <p>
-            The export labels this limit as current configuration. The historical limit is in the recorded
-            <code>wall_cap_seconds</code>
-            artifact when present. Queue time and judging time are separate from the stage’s observed duration.
-          </p>
+          <pre><code>{recorded(step["ruling"]["reasoning"])}</code></pre>
         </Regent.Primitives.disclosure>
         <Regent.Primitives.disclosure
-          id={"wb-evidence-" <> stage["stage"]}
-          summary={"Recorded artifacts · #{length(stage["evidence"])}"}
+          id={"wb-evidence-" <> step["folder"]}
+          summary={"Files · #{map_size(step["files"])}"}
         >
-          <p>
-            SHA-256 values below identify the sanitized files recorded by Techtree. Techtree checks the bytes on download. A digest establishes file integrity; it does not establish the truth of a claim.
-          </p>
-          <p :if={stage["evidence"] == []}>No artifact manifest was recorded.</p>
-          <div :if={stage["evidence"] != []} class="pb-wb-report-table-wrap">
+          <p :if={step["files"] == %{}}>No files were kept for this step.</p>
+          <div :if={step["files"] != %{}} class="pb-wb-report-table-wrap">
             <table class="pb-wb-report-table">
               <thead>
                 <tr>
-                  <th scope="col">Artifact</th><th scope="col">Bytes</th><th scope="col">
-                    Recorded SHA-256
-                  </th>
+                  <th scope="col">File</th><th scope="col">Bytes</th><th scope="col">SHA-256</th>
                 </tr>
               </thead>
               <tbody>
-                <tr :for={file <- stage["evidence"]}>
+                <tr :for={{name, file} <- Enum.sort(step["files"])}>
                   <td>
                     <a
-                      href={PublicRun.artifact_url(@report["id"], stage["stage"], file["name"])}
+                      href={PublicRun.file_url(@report["id"], step["folder"], name)}
                       target="_blank"
                       rel="noopener"
-                    >{file["name"]} ↗</a>
+                    >{name} ↗</a>
                   </td>
-                  <td>{recorded(file["bytes"])}</td>
-                  <td><code class="pb-wb-artifact-hash">{recorded(file["sha256"])}</code></td>
+                  <td>{file["bytes"]}</td>
+                  <td><code class="pb-wb-artifact-hash">{file["sha256"]}</code></td>
                 </tr>
               </tbody>
             </table>
@@ -192,84 +139,71 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
       </section>
 
       <section id="wb-timeline" class="pb-wb-report-stage">
-        <h3>Timeline</h3>
+        <h3>History</h3>
         <dl class="pb-wb-report-facts">
           <div>
-            <dt>Started (UTC)</dt><dd>{utc(@report["started_at"])}</dd>
+            <dt>Started</dt><dd>{utc(@report["started_at"])}</dd>
           </div>
           <div>
-            <dt>Finished (UTC)</dt><dd>{utc(@report["finished_at"])}</dd>
+            <dt>Model cost</dt><dd>{usd(@report["model_cost_usd"])}</dd>
           </div>
           <div>
-            <dt>Total model cost</dt><dd>{total_cost(@report, "model")}</dd>
-          </div>
-          <div>
-            <dt>Total judge cost</dt><dd>{total_cost(@report, "judge")}</dd>
+            <dt>Judge cost</dt><dd>{usd(@report["judge_cost_usd"])}</dd>
           </div>
         </dl>
-        <p :if={@report["timeline"] == []}>No event timeline was recorded.</p>
-        <ol class="pb-wb-report-timeline">
+        <p :if={@report["timeline"] == []}>No history was kept for this run.</p>
+        <ol :if={@report["timeline"] != []} class="pb-wb-report-timeline">
           <li :for={event <- @report["timeline"]}>
             <time datetime={event["at"]}>{utc(event["at"])}</time>{event["label"]}
             <span :if={present?(event["failure"])}> — {event["failure"]}</span>
           </li>
         </ol>
+        <h4 :if={@report["funding"] != []}>Money sent to the agent</h4>
+        <ul :if={@report["funding"] != []} class="pb-wb-report-timeline">
+          <li :for={payment <- @report["funding"]}>
+            {recorded(payment["sent"])} · {recorded(payment["state"])}
+            <code :if={present?(payment["transaction"])} class="pb-wb-artifact-hash">
+              {payment["transaction"]}
+            </code>
+          </li>
+        </ul>
       </section>
-      <Regent.Primitives.disclosure
-        :if={@report["funding"] != []}
-        id="wb-funding"
-        summary="Recorded funding"
-      >
-        <pre><code>{Jason.encode!(@report["funding"], pretty: true)}</code></pre>
-      </Regent.Primitives.disclosure>
     </article>
     """
   end
 
   defp present?(value), do: is_binary(value) and value != ""
-  defp recorded(nil), do: "Not recorded"
-  defp recorded(""), do: "Not recorded"
+  defp recorded(value) when value in [nil, ""], do: "Not recorded"
   defp recorded(value), do: value
   defp usd(nil), do: "Not recorded"
-  defp usd(value), do: "$" <> to_string(value) <> " USD"
+  defp usd(value), do: "$" <> value
   defp with_unit(nil, _unit), do: "Not recorded"
   defp with_unit(value, unit), do: "#{value} #{unit}"
   defp utc(nil), do: "Not recorded"
   defp utc(value), do: value |> String.replace("T", " ") |> String.replace("Z", " UTC")
 
-  defp total_cost(report, key) do
-    complete = report["stages"] != [] and Enum.all?(report["stages"], &(&1["costs"][key] != nil))
-    if complete, do: usd(report["costs"][key]), else: "Incomplete measurement"
-  end
+  defp outcome(%{"ruling" => %{"outcome" => outcome}}) when is_binary(outcome), do: outcome
+  defp outcome(step), do: recorded(step["state"])
+
+  defp checks(%{"ruling" => %{"checks" => checks}}), do: checks
+  defp checks(_step), do: []
+
+  @doc "A check's answer in Techtree's words, as the board's own dot result."
+  def answer_result("Yes"), do: "true"
+  def answer_result("No"), do: "false"
+  def answer_result("Open"), do: "open"
+  def answer_result(_answer), do: "missing"
 
   defp setup_facts(report) do
-    setup = report["setup"]
+    machine = report["machine"] || %{}
 
-    for {label, key} <- [
-          {"Agent", "harness_name"},
-          {"Agent version", "harness_version"},
-          {"Coding model", "model"},
-          {"Reasoning effort", "reasoning_effort"},
-          {"Execution environment", "os"},
-          {"Test plan", "plan"},
-          {"Wallet tool", "wallet_name"},
-          {"Survey wallet version", "survey_wallet_version"}
-        ],
-        do: {label, recorded(setup[key])}
-  end
-
-  defp criteria(stage) do
-    recorded = Map.new(stage["criteria"], &{&1["id"], &1})
-
-    for number <- Enum.take(1..9, stage["criterion_count"]) do
-      id = "C#{number}"
-
-      Map.get(recorded, id, %{
-        "id" => id,
-        "criterion" => "Criterion not recorded for this run",
-        "result" => nil,
-        "reason" => nil
-      })
-    end
+    [
+      {"Agent", recorded(report["agent"])},
+      {"Agent version", recorded(machine["harness_version"])},
+      {"Model", recorded(machine["model"])},
+      {"Reasoning effort", recorded(machine["reasoning_effort"])},
+      {"Machine", recorded(machine["os"])},
+      {"Wallet", recorded(report["wallet_tool"])}
+    ]
   end
 end

@@ -307,7 +307,10 @@ defmodule Patchbay.WalletBench.Matrix do
     do: Map.get(run, :outcome_detail) || "Techtree recorded this test as not run."
 
   defp not_run_reason(nil, _failure, fixed) do
-    if reason = Enum.find(fixed, &(&1.fixed_outcome == "NOT_RUN")), do: reason.fixed_reason
+    case Enum.find(fixed, &(&1.fixed_outcome == "NOT_RUN")) do
+      nil -> nil
+      reason -> reason.fixed_reason
+    end
   end
 
   defp not_run_reason(_run, _failure, _fixed), do: nil

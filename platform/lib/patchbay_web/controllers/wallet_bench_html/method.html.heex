@@ -15,7 +15,7 @@
       <article class="pb-wb-card" aria-labelledby="pb-wb-checks-title">
         <h2 id="pb-wb-checks-title">The checks</h2>
         <p>
-          A judge records yes, no or unclear for each check. Missing answers remain unrecorded. A square has nine fixed positions, read left to right; money tests use five checks and four not-applicable positions.
+          A judge answers each check yes, no or unclear. A square's dots are its test's checks, read left to right. Payment tests have five checks, so their last four dots stay empty.
         </p>
         <div :for={grid <- @matrix.grids} class="pb-wb-check-test">
           <h3>{grid_title(grid.grid)}</h3>
@@ -66,7 +66,7 @@
           The original survey ran each of the 36 pairs three times, for 108 runs in the full grid, which started 7 October at 07:00 UTC. Later reruns are added alongside that history. Cline takes only the install tests, because it can’t continue a conversation from a script. Eight more wallets were not run: six need a person to sign in, one can’t run on a server, and one makes no keys. Their records remain on their own pages.
         </p>
         <p>
-          In the first survey, every agent used gpt-6-luna at high effort, installed as it shipped with approval prompts turned off. A separate judge model, gpt-5.6-sol, read what the agent did and ruled on it. Later runs can use different models and versions; each full report identifies what was actually recorded. The bench itself also checks every wallet address and signature directly on <.out href="https://www.base.org">Base</.out>, so the judge never has to take the agent’s word for them.
+          In the first survey, every agent used gpt-6-luna at high effort, installed as it shipped with approval prompts turned off. A separate judge model, gpt-5.6-sol, read what the agent did and ruled on it. Later runs can use other models and versions, and each run names its own. The bench itself also checks every wallet address and signature directly on <.out href="https://www.base.org">Base</.out>, so the judge never has to take the agent’s word for them.
         </p>
       </article>
 
@@ -157,10 +157,10 @@
       <article class="patchbay-card pb-wb-method-card is-wide" aria-labelledby="wb-shows-title">
         <h3 id="wb-shows-title">How Patchbay shows it</h3>
         <p>
-          Techtree publishes the results in its database for Patchbay to read. The matrix shows the nine criterion positions from one latest matching attempt per agent and wallet pair. A newer failed install stays visible even when an older wallet attempt passed. Model, version and protocol filters narrow the same records in HTML, Markdown and JSON. Earlier runs and repeated-set comparisons remain available in the full-screen report. Each result keeps its recorded checks, reasons and versions.
+          Techtree publishes the results for Patchbay to read. Each square shows the newest run for that agent and wallet. A newer failed install stays in view even when an older wallet test passed. The filters choose which agent, wallet and model versions are shown. Earlier runs and comparisons between sets stay on the pair's page.
         </p>
         <p>
-          Zoom from 50% to 250%, or fit the columns to the viewport. Click a square to open its full-screen report; click an applicable dot to inspect that criterion. The report includes prompts, judge reasoning, independent observations, recorded costs and artifact digests from <.out href="https://techtree.sh/wallet-bench">Techtree</.out>. A missing export produces a read-error message while the published outcomes remain available.
+          Zoom from 50% to 250%, or press Fit to see every column. Select a square to open its whole run full screen, or select a dot to go straight to that check. The run shows each prompt, the judge's reasoning, the bench's own checks, the costs and the files kept, from <.out href="https://techtree.sh/wallet-bench">Techtree</.out>.
         </p>
       </article>
     </div>

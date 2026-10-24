@@ -50,7 +50,7 @@ import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountSitePost} from "./site_post.ts"
-import {mountWalletBench} from "./wallet_bench.ts"
+import {claimWalletBenchHistory, mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
@@ -89,6 +89,10 @@ const accent = getComputedStyle(document.documentElement).getPropertyValue("--pb
 topbar.config({barColors: {0: accent}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+
+// The Wallet Bench dialog's Back and Forward steps are not page visits, so
+// its listener goes in before LiveView's.
+claimWalletBenchHistory(window)
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()

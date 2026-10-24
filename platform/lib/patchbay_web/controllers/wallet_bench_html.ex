@@ -208,7 +208,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
         Enum.map_join(square.fixed, "; ", &word(notes, &1.fixed_outcome))
 
       true ->
-        "No recorded attempt"
+        "Not run yet"
     end
   end
 
@@ -481,7 +481,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
         {cond do
           @square.newer_install_failure -> "Install stopped"
           @square.display_run -> "Run #{@square.display_run.run}"
-          true -> "Unrecorded"
+          true -> "Not run yet"
         end}
       </span>
     </a>
@@ -574,10 +574,9 @@ defmodule PatchbayWeb.WalletBenchHTML do
         selected_check={@selected_check}
       />
       <section :if={@report_error && @selected_run} id="recorded-run" class="pb-wb-report">
-        <h2>Full evidence unavailable</h2>
+        <h2>The whole run did not load</h2>
         <p class="pb-wb-report-note">
-          Techtree’s full run export could not be read. The recorded outcomes below remain available.
-          This is a read error, not a failed benchmark result.
+          Techtree did not answer just now. The results below are unchanged, and the run itself did not fail.
         </p>
         <p>
           <a
@@ -775,7 +774,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
             <a :if={ExtraNotes.for_runs(@extra_notes, [run]) != []} href="#pair-extra-notes">
               Release observations
             </a>
-            <a href={run_path(run, @harness, @wallet, @context)} data-wb-open-run>Inspect full run →</a>
+            <a href={run_path(run, @harness, @wallet, @context)} data-wb-open-run>See the whole run →</a>
           </li>
         </ol>
       </section>
