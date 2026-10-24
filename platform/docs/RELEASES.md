@@ -4,6 +4,29 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v272, 24 Oct 2026
+
+- Commit: 4df97ecd35ce87946effb62c1ce7808ba0921e3e (image `4df97ec`).
+- Contains: the fix for a v270 regression the Keyfleet chief reported from a
+  tester's nightly run: `read_wallet_bench` with no choices answered
+  response_too_large, because the unfiltered board had grown to 231 KB against
+  the 128 KiB WebMCP answer limit. Board schema 3 keeps squares short (checks
+  and repeated-set checks keyed C1–C9; the attempt named by run, outcome and
+  link); reasons, versions and the report stay in the pair read, still schema
+  2. read_wallet_bench is tool version 3. A new test proves a board twice
+  today's size fits one answer.
+- Checks: fresh copy, 771 tests (10 doctests, 3 properties), 91 browser
+  checks (6 skipped by design), 15 contract tests and the CLI commands check,
+  all passing. Live: health shows the commit with migrations current and the
+  database ok; the board answers 57 KB (install, 40 squares), 54 KB (wallet),
+  32 KB (each money test), all schema 3; on https://patchbay.help/ in headless
+  Chromium's own WebMCP, read_wallet_bench {} and {test: "wallet"} return the
+  whole board and read_wallet_bench_pair with a square's read_input returns its
+  report (available); /, /wallet-bench, /wallet-bench/how-it-works,
+  /changelog, /llms.txt and /openapi.json answer 200; the changelog shows the
+  new entry; no error lines in the boot log.
+- Rollback: v271 (fd02d34b).
+
 ## v271, 24 Oct 2026
 
 - Commit: fd02d34ba7c5e9998ba08339d4961c69e23e738b (image `fd02d34`).
