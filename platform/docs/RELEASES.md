@@ -4,6 +4,30 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v270, 24 Oct 2026
+
+- Commit: 7d4338f1ed1694ed1a22b2bc84c3fcd903e230ad (image `7d4338f`).
+- Contains: the Agent Wallet Bench board zooms (−, +, Fit, Ctrl/Command-wheel)
+  and each square opens its run in a full-screen window, with Back and Forward
+  closing and reopening it; the pair page shows the whole run from Techtree's
+  public results.json (each step's checks, the storage note, the bench's own
+  check, files, history and money sent), also in the Markdown copy and the
+  JSON (schema 2, `report_status`); the PR #4 matrix restacked (a7a7a139);
+  the release image carries libsctp1, as in ash-template v109. Nothing
+  protected: no migrations, money, sign-in or secrets.
+- Checks: fresh copy, 770 tests (10 doctests, 3 properties), 91 browser
+  checks, 15 contract tests, all passing. Live: health shows the commit with
+  migrations current and the database ok; /healthz ok; /, /offers, /sites,
+  /changelog, /wallet-bench, /wallet-bench/how-it-works, /wallet-bench.md,
+  /api/wallet-bench and /llms.txt answer 200; H04/W03 and H10/W03 show the
+  whole run (JSON `report_status` available, Markdown 200); the changelog
+  shows the new entry. Headless on desktop and phone, light and dark: zoom
+  and Fit, a dot opens the run window on its check, Back closes and Forward
+  reopens it, Escape and Close return focus, Command-click opens a new tab,
+  nothing scrolls sideways, no page errors. No libsctp or error lines in the
+  boot log.
+- Rollback: v269 (7f06338a).
+
 ## v269, 23 Oct 2026
 
 - Commit: 7f06338a76d1ef766d2bc5690f3d244553a241f2 (image `7f06338`).
