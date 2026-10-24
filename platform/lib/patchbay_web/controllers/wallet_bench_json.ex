@@ -8,11 +8,11 @@ defmodule PatchbayWeb.WalletBenchJSON do
 
   def index(%{matrix: matrix, test: test}) do
     %{
-      schema_version: 2,
+      schema_version: 3,
       data_only: @data_only,
       test: test.grid,
       selection:
-        "One latest matching attempt across all sets. A newer unsuccessful install supersedes an older wallet attempt. Checks are from that attempt only; unused money-test positions are not_applicable. Repeated-set counts remain separate. Follow pair_url or read_input for this exact selection.",
+        "One latest matching attempt across all sets. A newer unsuccessful install supersedes an older wallet attempt. Checks are from that attempt only, by criterion ID; unused money-test positions are not_applicable. repeated_set counts the current matching set, otherwise the newest matching set, independent of the latest attempt. Each check's reason, the attempt's versions and its full report are in the pair read: follow pair_url or read_input.",
       filters: matrix.filters,
       filter_options: matrix.options,
       harnesses: Enum.map(test.harnesses, &entry/1),
@@ -70,18 +70,17 @@ defmodule PatchbayWeb.WalletBenchJSON do
       harness_id: harness.id,
       wallet_id: wallet.id,
       selected_test: if(selected, do: selected.grid, else: test),
-      latest_attempt: attempt(selected),
-      previous_test_attempt: if(square.newer_install_failure, do: attempt(square.display_run)),
-      checks: square.display_dots,
+      latest_attempt: attempt_summary(selected),
+      previous_test_attempt:
+        if(square.newer_install_failure, do: attempt_summary(square.display_run)),
+      checks: Map.new(square.display_dots, &{&1.criterion.id, &1.result}),
       set_count: square.set_count,
       repeated_set: %{
         id: square.set_id,
-        selection:
-          "Current matching set, otherwise newest matching set; independent of the latest-attempt display.",
         runs: square.runs,
         judged: square.judged,
         outcomes: Map.new(square.tally),
-        checks: Enum.map(square.dots, &%{criterion: &1.criterion, held: &1.held})
+        checks: Map.new(square.dots, &{&1.criterion.id, &1.held})
       },
       fixed: Enum.map(square.fixed, &Map.take(&1, [:fixed_outcome, :fixed_reason])),
       stopped_at_install: square.newer_install_failure != nil,
@@ -94,6 +93,23 @@ defmodule PatchbayWeb.WalletBenchJSON do
         |> Map.merge(%{"harness_id" => harness.id, "wallet_id" => wallet.id})
     }
   end
+
+  # The board names each attempt; the pair read carries its detail and versions.
+  defp attempt_summary(nil), do: nil
+
+  defp attempt_summary(result),
+    do:
+      Map.take(result, [
+        :attempt_id,
+        :grid,
+        :set_id,
+        :run,
+        :outcome,
+        :plain_file,
+        :decided_by,
+        :finished_at,
+        :run_url
+      ])
 
   defp attempt(nil), do: nil
 

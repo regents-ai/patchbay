@@ -60,10 +60,12 @@ Pair pages use `?test=wallet&set=<64-hex-id>&run=<uuid>&check=C1`. The selected 
 must belong to that test; the run must belong to the filtered set. An optional
 check must be defined for the test. Set comparisons and historical runs remain
 available. JSON routes `/api/wallet-bench` and
-`/api/wallet-bench/:harness_id/:wallet_id` use schema 2: `latest_attempt` and nine
-explicit `checks` describe the matrix; `repeated_set` contains the independent
-current/newest matching set's aggregate counts. Pair JSON returns `selected_run`,
-`selected_check`, `report_status` and nullable `report`.
+`/api/wallet-bench/:harness_id/:wallet_id` use schemas 3 and 2. The board keeps
+each square short so the whole of it fits one agent tool answer: `latest_attempt`
+names the attempt, `checks` maps C1–C9 to their states and `repeated_set` holds the
+independent current/newest matching set's counts, its `checks` keyed the same way.
+Reasons, versions and the report come from the pair read. Pair JSON returns
+`selected_run`, `selected_check`, `report_status` and nullable `report`.
 
 The full report is the run's public record on Techtree,
 `GET https://techtree.sh/wallet-bench/:id/results.json` (the first file of its results

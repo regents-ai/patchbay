@@ -7850,7 +7850,7 @@
       "get": {
         "operationId": "readWalletBench",
         "summary": "Read the Agent Wallet Bench",
-        "description": "Read the public benchmark matrix and the latest matching attempt across all matching sets for each roster pair. A newer unsuccessful install supersedes an older wallet result. Each square has nine explicit check states; unused money-test positions are not_applicable. Repeated-set totals stay in repeated_set. Copy a square’s read_input into read_wallet_bench_pair to retain its exact test, set, run and filters. A stopped wallet square selects its unsuccessful install. Free public read; no signing, reruns or money movement.",
+        "description": "Read the public benchmark board: for each roster pair, the latest matching attempt across all matching sets (its run, outcome and link), its nine check states keyed C1–C9, and repeated-set totals. A newer unsuccessful install supersedes an older wallet result; unused money-test positions are not_applicable. Each check’s reason, the attempt’s versions and its full report are in read_wallet_bench_pair: copy a square’s read_input there to keep its exact test, set, run and filters. A stopped wallet square selects its unsuccessful install. Free public read; no signing, reruns or money movement.",
         "tags": [
           "Operations"
         ],
@@ -7919,7 +7919,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Schema 2 public matrix with one latest matching attempt across all matching sets per square, nine explicit check states and separate repeated_set aggregates. pair_url and read_input select the exact attempt used by the website. A newer unsuccessful install supersedes an older wallet attempt.",
+            "description": "Schema 3 public board with one latest matching attempt across all matching sets per square, nine check states keyed C1–C9 and separate repeated_set totals. Reasons, versions and the full report are in the pair read. pair_url and read_input select the exact attempt used by the website. A newer unsuccessful install supersedes an older wallet attempt.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7932,7 +7932,7 @@
                   "properties": {
                     "schema_version": {
                       "type": "integer",
-                      "const": 2
+                      "const": 3
                     },
                     "data_only": {
                       "type": "string"
@@ -7967,7 +7967,7 @@
                               "object",
                               "null"
                             ],
-                            "description": "One latest matching attempt; the newer unsuccessful install for a stopped wallet square. Null when no matching attempt exists."
+                            "description": "One latest matching attempt (attempt_id, grid, set_id, run, outcome, plain_file, decided_by, finished_at, run_url); the newer unsuccessful install for a stopped wallet square. Null when no matching attempt exists."
                           },
                           "previous_test_attempt": {
                             "type": [
@@ -7977,33 +7977,22 @@
                             "description": "The preceding wallet attempt only when a newer unsuccessful install supersedes it."
                           },
                           "checks": {
-                            "type": "array",
-                            "minItems": 9,
-                            "maxItems": 9,
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "criterion": {
-                                  "type": "object"
-                                },
-                                "result": {
-                                  "type": "string",
-                                  "enum": [
-                                    "true",
-                                    "false",
-                                    "open",
-                                    "not_run",
-                                    "missing",
-                                    "not_applicable"
-                                  ]
-                                },
-                                "reason": {
-                                  "type": [
-                                    "string",
-                                    "null"
-                                  ]
-                                }
-                              }
+                            "type": "object",
+                            "propertyNames": {
+                              "pattern": "^C[1-9]$"
+                            },
+                            "minProperties": 9,
+                            "maxProperties": 9,
+                            "additionalProperties": {
+                              "type": "string",
+                              "enum": [
+                                "true",
+                                "false",
+                                "open",
+                                "not_run",
+                                "missing",
+                                "not_applicable"
+                              ]
                             },
                             "description": "C1–C9 for this test and attempt; a stopped wallet test is not_run, absent evidence is missing and money-test C6–C9 are not_applicable."
                           },
@@ -8021,9 +8010,6 @@
                                   "null"
                                 ]
                               },
-                              "selection": {
-                                "type": "string"
-                              },
                               "runs": {
                                 "type": "integer",
                                 "minimum": 0
@@ -8036,19 +8022,15 @@
                                 "type": "object"
                               },
                               "checks": {
-                                "type": "array",
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "criterion": {
-                                      "type": "object"
-                                    },
-                                    "held": {
-                                      "type": "integer",
-                                      "minimum": 0
-                                    }
-                                  }
-                                }
+                                "type": "object",
+                                "propertyNames": {
+                                  "pattern": "^C[1-9]$"
+                                },
+                                "additionalProperties": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "description": "Runs in this set that held each criterion."
                               }
                             }
                           },

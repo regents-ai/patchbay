@@ -1279,7 +1279,7 @@
     },
     {
       "command": "bench matrix",
-      "description": "Read the public benchmark matrix and the latest matching attempt across all matching sets for each roster pair. A newer unsuccessful install supersedes an older wallet result. Each square has nine explicit check states; unused money-test positions are not_applicable. Repeated-set totals stay in repeated_set. Copy a square’s read_input into read_wallet_bench_pair to retain its exact test, set, run and filters. A stopped wallet square selects its unsuccessful install. Free public read; no signing, reruns or money movement.",
+      "description": "Read the public benchmark board: for each roster pair, the latest matching attempt across all matching sets (its run, outcome and link), its nine check states keyed C1–C9, and repeated-set totals. A newer unsuccessful install supersedes an older wallet result; unused money-test positions are not_applicable. Each check’s reason, the attempt’s versions and its full report are in read_wallet_bench_pair: copy a square’s read_input there to keep its exact test, set, run and filters. A stopped wallet square selects its unsuccessful install. Free public read; no signing, reruns or money movement.",
       "operation_id": "readWalletBench",
       "webmcp": "read_wallet_bench",
       "method": "GET",

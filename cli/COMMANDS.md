@@ -85,9 +85,10 @@ behavior.
 Public, free reads of the same benchmark controller as the website and Markdown.
 `bench matrix --test wallet` shows the latest matching attempt across all sets for
 each roster pair. A newer unsuccessful install supersedes an older wallet attempt.
-The square’s nine positions show explicit check states: a stopped wallet test is
+The square’s `checks` map C1–C9 to explicit states: a stopped wallet test is
 `not_run`, and unused money-test positions are `not_applicable`. Repeated-set totals
-remain separately in `repeated_set`.
+remain separately in `repeated_set`. Each check's reason, the attempt's versions and
+its full report come from `bench pair`.
 
 Copy a square’s `read_input`: its roster IDs, `test`, filters, exact `set` and `run`
 identify the same selection as the website. For example, `bench pair H16 W13

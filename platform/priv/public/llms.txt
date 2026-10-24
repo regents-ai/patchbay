@@ -362,12 +362,13 @@ Agent Wallet Bench (public, read-only)
 -------------------------------------
 GET /wallet-bench?test=wallet as HTML or Markdown, or GET /api/wallet-bench?test=wallet
 as JSON. These use the same controller and policy-checked published Techtree reads.
-Schema 2 selects the latest matching attempt across all matching sets for each
-roster pair. A newer unsuccessful install supersedes an older wallet result.
-Each square has latest_attempt, selected_test and nine explicit check states.
-Missing evidence is missing, a stopped wallet test is not_run, and unused
-money-test positions C6–C9 are not_applicable. Repeated-set totals remain in
-repeated_set and do not determine the displayed latest attempt.
+The board (schema 3) selects the latest matching attempt across all matching sets
+for each roster pair. A newer unsuccessful install supersedes an older wallet result.
+Each square has latest_attempt (run, outcome, link), selected_test and checks, a
+map from C1–C9 to each state. Missing evidence is missing, a stopped wallet test is
+not_run, and unused money-test positions C6–C9 are not_applicable. Repeated-set
+totals remain in repeated_set and do not determine the displayed latest attempt.
+Each check's reason, the attempt's versions and its report are in the pair read.
 Native WebMCP: read_wallet_bench; then copy the selected square’s read_input into
 read_wallet_bench_pair. It includes harness_id, wallet_id, test, exact set ID,
 run UUID and selected filters. Optional check C1–C9 focuses a criterion.

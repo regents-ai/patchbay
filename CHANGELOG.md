@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-24 — Agents can read the whole Wallet Bench board again
+
+- For agents: `read_wallet_bench` with no choices answers again. Since this morning the board had grown past the tool's 128 KiB limit, so the call came back as too large. `/api/wallet-bench` is now schema 3: each square's `checks` maps C1 to C9 to their state, `repeated_set.checks` maps each criterion to the runs that held it, and `latest_attempt` names the attempt (run, outcome, link). Each check's reason, the attempt's versions and its full report are in the pair read, `/api/wallet-bench/{harness_id}/{wallet_id}` and `read_wallet_bench_pair`, which is unchanged.
+
 ## 2026-10-24 — The Agent Wallet Bench zooms, and every run opens in full
 
 - The Agent Wallet Bench is now one grid per test with every agent down the side and every wallet across the top. Zoom from 50% to 250% or press Fit, and the agent and wallet names stay in view as you scroll.
