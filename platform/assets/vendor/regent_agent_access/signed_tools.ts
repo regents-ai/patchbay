@@ -111,6 +111,9 @@ export function signedTools(config: {
   audience: string
   operations: readonly SignedOperation[]
   proofHeaders: readonly string[]
+  // The host's own labels for a call, such as which tool sent it; never part of
+  // the proof and never authority. Lowercase `x-` names only.
+  requestHeaders: (operation: string) => Record<string, string>
 }) {
   const origin = new URL(config.origin).origin
   if (origin !== config.origin || !config.trustedOrigins.includes(origin)) throw new Error("untrusted_origin")
@@ -178,6 +181,12 @@ export function signedTools(config: {
     if (!signed.proof || typeof signed.proof !== "object" || Array.isArray(signed.proof)) throw new Error("proof_required")
     const allowed = new Set(config.proofHeaders)
     const headers: Record<string, string> = {accept: "application/json"}
+    for (const [key, value] of Object.entries(config.requestHeaders(name))) {
+      if (!/^x-[a-z0-9-]+$/.test(key) || allowed.has(key) || typeof value !== "string" || /[\r\n]/.test(value)) {
+        throw new Error("invalid_request_header")
+      }
+      headers[key] = value
+    }
     for (const [key, value] of Object.entries(signed.proof)) {
       const name = key.toLowerCase()
       if (!allowed.has(name)) continue
