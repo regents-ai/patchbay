@@ -19,5 +19,7 @@ export function signedTransport() {
   return signedTools({origin: window.location.origin,
     trustedOrigins: [document.querySelector<HTMLMetaElement>('meta[name="agent-request-origin"]')?.content ?? ""],
     audience: manifest.audience, proofHeaders: manifest.proof_headers, operations: OPERATIONS,
+    // Patchbay labels no calls of its own yet.
+    requestHeaders: () => ({}),
   });
 }

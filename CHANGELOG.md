@@ -1,9 +1,9 @@
 # Changelog
 
-## 2026-10-26 — Database library security update
+## 2026-10-26 — Database and sign-in library security update
 
-- The database library (ash_postgres) moves from 2.13.0 to Regent's copy of 2.15.2, as in ash-template 07b9188. It clears the two advisories on 2.13.0, and its one change from the release keeps upserts and bulk updates in Patchbay's own schema on the shared database. The shared Regent libraries move to elixir-utils 56fa86bd, which use the same copy. Nothing changes on the pages.
-- One migration redefines the database helper that reports a missing required value, so it raises its own error under the new library. No table or row changes.
+- The database library (ash_postgres) moves from 2.13.0 to Regent's copy of 2.15.2, as in ash-template. It clears the two advisories on 2.13.0, and its one change from the release keeps upserts and bulk updates in Patchbay's own schema on the shared database. The shared Regent libraries move to elixir-utils e796a9d, which use the same copy. The token library behind sign-in (jose) moves to 1.11.13, which fixes two weaknesses in how it checks signatures. Nothing changes on the pages.
+- One migration replaces the database helper that reports a missing required value, in `public`, where every site on the shared database finds it. The old one failed with "function does not exist" instead of the error it was meant to raise. No table or row changes.
 
 ## 2026-10-26 — Web server and Ash security update
 

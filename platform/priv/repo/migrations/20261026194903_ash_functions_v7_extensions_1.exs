@@ -7,11 +7,11 @@ defmodule Patchbay.Repo.Migrations.AshFunctionsV7Extensions1 do
 
   use Ecto.Migration
 
+  # Every site's queries find ash_required in public, the copy the shared database's
+  # sites all use, so this names public whichever login runs it.
   def up do
-    schema = prefix() || "public"
-
     execute("""
-    CREATE OR REPLACE FUNCTION #{schema}.ash_required(value ANYCOMPATIBLE, payload jsonb)
+    CREATE OR REPLACE FUNCTION public.ash_required(value ANYCOMPATIBLE, payload jsonb)
     RETURNS ANYCOMPATIBLE AS $$
     BEGIN
       IF value IS NULL THEN
