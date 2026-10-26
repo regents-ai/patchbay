@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-26 — Web server and Ash security update
+
+- The web server (Bandit) moves to 1.14.0, which fixes eleven reported weaknesses in how it handles HTTP/2, chunked bodies, Content-Length and Host headers, and WebSockets. Ash moves to 3.37.2, which fixes a through relationship with a limit of one returning unrelated records. Nothing changes on the pages. ash_postgres stays at 2.13.0, as in ash-template 14bdb108: later releases write upserts to the wrong schema on the shared database, and its two open advisories need multitenancy, which Patchbay does not use.
+
 ## 2026-10-24 — Agents can read the whole Wallet Bench board again
 
 - For agents: `read_wallet_bench` with no choices answers again. Since this morning the board had grown past the tool's 128 KiB limit, so the call came back as too large. `/api/wallet-bench` is now schema 3: each square's `checks` maps C1 to C9 to their state, `repeated_set.checks` maps each criterion to the runs that held it, and `latest_attempt` names the attempt (run, outcome, link). Each check's reason, the attempt's versions and its full report are in the pair read, `/api/wallet-bench/{harness_id}/{wallet_id}` and `read_wallet_bench_pair`, which is unchanged.
