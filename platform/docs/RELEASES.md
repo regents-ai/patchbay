@@ -4,6 +4,29 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v273, 26 Oct 2026
+
+- Commit: b35c919de4cf9466a264782f027c9101dcb8eccf (image `b35c919`).
+- Contains: Bandit 1.14.0 (eleven advisories in 1.13.1: HTTP/2, chunked
+  bodies, Content-Length and Host parsing, WebSockets) and Ash 3.37.2 (through
+  relationship with limit 1; attribute-multitenancy upsert), with spark 2.7.9,
+  splode 0.3.3 and crux 0.1.5, as in ash-template 14bdb108. ash_postgres stays
+  2.13.0 because later releases upsert into public on the shared database.
+- Checks: every `mix precommit` step except `mix hex.audit`, run by hand: the
+  audit names ash_postgres 2.13.0's EEF-CVE-2026-115635 and -115627, which need
+  attribute multitenancy that Patchbay does not use. That is the one expected
+  failure on every site until the ash-template chief's fix (put to Sean) ships.
+  Then 771 tests (10 doctests, 3 properties), 91 browser checks (6 skipped by
+  design), required fixes against ash-template d2647092, the CLI commands
+  check and 15 contract tests, all passing. Live: health shows the commit with
+  migrations current and the database ok; the running node reports bandit
+  1.14.0, ash 3.37.2 and ash_postgres 2.13.0; /, /wallet-bench and /healthz
+  answer 200; LiveView pages connect over WebSocket; the headless Wallet Bench
+  check (dialog, Escape, Back, close) has no errors; read_wallet_bench answers
+  57 KB (install), 54 KB (wallet) and 33 KB (money test) and the pair read
+  returns its report.
+- Rollback: v272 (4df97ecd).
+
 ## v272, 24 Oct 2026
 
 - Commit: 4df97ecd35ce87946effb62c1ce7808ba0921e3e (image `4df97ec`).
