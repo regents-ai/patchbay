@@ -4,7 +4,7 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "e600ed34ff9e388511798ffde0999b04cd4ec9e5"
+  @elixir_utils_ref "56fa86bd6aee5efe7ac7c8b7b698e82d8fdcfe29"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "cbf12f8d69a355ab7bd83769c37f9d15759d4fa3"
 
@@ -76,7 +76,13 @@ defmodule Patchbay.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2.6", override: true},
       {:ash, "~> 3.37"},
-      {:ash_postgres, "== 2.13.0"},
+      # Regent's copy of 2.15.2 with ash-project/ash_postgres#910: upserts use the
+      # repo's prefix, which picks each site's schema on the shared database. It
+      # stands in for the Hex release that ash_money and ash_double_entry ask for.
+      {:ash_postgres,
+       git: "https://github.com/regents-ai/ash_postgres.git",
+       ref: "cc886ab3efc8b05d51b7b1f57e609341fb6a0873",
+       override: true},
       {:ash_phoenix, "~> 2.3.25"},
       {:oban, "~> 2.24"},
       {:nebulex, "~> 3.0"},

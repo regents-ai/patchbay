@@ -25,7 +25,8 @@ defmodule PatchbayWeb.EnsIdentityTest do
     Application.put_env(:patchbay, :ethereum_read_rpc_url, "https://ethereum.test")
     on_exit(fn -> Application.delete_env(:patchbay, :ethereum_read_rpc_url) end)
 
-    assert {:ok, ^account} = Accounts.establish(session(person))
+    assert {:ok, again} = Accounts.establish(session(person))
+    assert again.id == account.id
     assert_enqueued(worker: EnsIdentity.Workers.LookUp, queue: :ens)
 
     assert [%{lookup_state: :pending, human_account_id: id, wallet_address: wallet}] =

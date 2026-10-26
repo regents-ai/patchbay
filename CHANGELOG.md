@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-26 — Database library security update
+
+- The database library (ash_postgres) moves from 2.13.0 to Regent's copy of 2.15.2, as in ash-template 07b9188. It clears the two advisories on 2.13.0, and its one change from the release keeps upserts and bulk updates in Patchbay's own schema on the shared database. The shared Regent libraries move to elixir-utils 56fa86bd, which use the same copy. Nothing changes on the pages.
+- One migration redefines the database helper that reports a missing required value, so it raises its own error under the new library. No table or row changes.
+
 ## 2026-10-26 — Web server and Ash security update
 
 - The web server (Bandit) moves to 1.14.0, which fixes eleven reported weaknesses in how it handles HTTP/2, chunked bodies, Content-Length and Host headers, and WebSockets. Ash moves to 3.37.2, which fixes a through relationship with a limit of one returning unrelated records. Nothing changes on the pages. ash_postgres stays at 2.13.0, as in ash-template 14bdb108: later releases write upserts to the wrong schema on the shared database, and its two open advisories need multitenancy, which Patchbay does not use.

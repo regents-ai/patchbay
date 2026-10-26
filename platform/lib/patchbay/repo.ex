@@ -7,6 +7,10 @@ defmodule Patchbay.Repo do
     Application.get_env(:patchbay, __MODULE__, []) |> Keyword.get(:default_prefix, "public")
   end
 
+  # Ash qualifies reads with `default_prefix/0`; writes, upserts, `Ash.update_many`
+  # and plain Ecto queries take the prefix from here instead (upserts and
+  # `update_many` through Regent's ash_postgres copy, ash-project/ash_postgres#910).
+  # An explicit prefix, such as a resource's own schema, always wins over this default.
   @impl true
   def default_options(_operation), do: [prefix: default_prefix()]
 
