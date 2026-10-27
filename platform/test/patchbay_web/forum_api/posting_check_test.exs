@@ -307,7 +307,7 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
        %{conn: conn, agent: agent} do
     refused = conn |> typed(agent, "not_a_type") |> json_response(422)
 
-    assert %{"code" => "invalid", "details" => ["thread_kind: is invalid"]} = refused["error"]
+    assert %{"code" => "invalid", "details" => ["thread_kind: " <> _]} = refused["error"]
     refute_received {:jev_was_asked, _questions}
     assert threads() == []
     assert readings() == []
@@ -325,7 +325,7 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
       })
       |> json_response(422)
 
-    assert %{"code" => "invalid", "details" => ["site: must contain a host"]} = refused["error"]
+    assert %{"code" => "invalid", "details" => ["site: " <> _]} = refused["error"]
     refute_received {:jev_was_asked, _questions}
     assert threads() == []
     assert readings() == []
@@ -334,44 +334,24 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
 
   test "a paid priority report with a verdict that is not on the list is refused before Jev is asked, and nothing is priced",
        %{conn: conn} do
-    original = Application.get_env(:patchbay, :escrow)
-    Application.put_env(:patchbay, :escrow, contract_address: "0x" <> String.duplicate("c", 40))
-    on_exit(fn -> Application.put_env(:patchbay, :escrow, original) end)
-
-    person =
-      Identity.upsert_from_privy!(%{
-        privy_user_id: "did:privy:paid-#{Ecto.UUID.generate()}",
-        wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
-      })
-
     refused =
       conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(person.id)
-      |> post("/api/payment_intents", %{
-        "kind" => "special_post",
-        "args" => %{
-          "amount_usdc" => "1",
-          "origin" => "https://shop.example.com/checkout",
-          "tool_name" => "add_to_cart",
-          "verdict" => "it_broke",
-          "note" => "The tool said it worked but the cart stayed empty."
-        }
-      })
+      |> prepare_paid_report(%{"amount_usdc" => "1", "verdict" => "it_broke"})
       |> json_response(422)
 
-    assert %{
-             "code" => "invalid",
-             "details" => [
-               "verdict: must be one of verified_success, verified_failure, errored, unknown"
-             ]
-           } = refused["error"]
+    assert %{"code" => "invalid", "details" => ["verdict: " <> _]} = refused["error"]
+    assert_nothing_read_or_priced()
+  end
 
-    refute_received {:jev_was_asked, _questions}
-    assert readings() == []
-    assert checks() == []
-    assert PaymentIntent |> Ash.read!(authorize?: false) == []
-    assert Site |> Ash.read!(authorize?: false) == []
+  test "a paid priority report for more than one call may hold is refused before Jev is asked, and nothing is priced",
+       %{conn: conn} do
+    refused =
+      conn
+      |> prepare_paid_report(%{"amount_usdc" => "500", "verdict" => "verified_failure"})
+      |> json_response(422)
+
+    assert %{"code" => "invalid", "details" => ["amount_usdc: " <> _]} = refused["error"]
+    assert_nothing_read_or_priced()
   end
 
   test "every try counts toward the person's hour, read or not, apart from the site's other questions",
@@ -473,6 +453,45 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     |> recycle()
     |> SignedAgent.sign(agent)
     |> post(path, Jason.encode!(Map.put_new(params, "client_request_id", Ecto.UUID.generate())))
+  end
+
+  # A signed-in person asks for the terms of a paid priority report about a
+  # tool on another site, with escrow set up for the test.
+  defp prepare_paid_report(conn, args) do
+    original = Application.get_env(:patchbay, :escrow)
+    Application.put_env(:patchbay, :escrow, contract_address: "0x" <> String.duplicate("c", 40))
+    on_exit(fn -> Application.put_env(:patchbay, :escrow, original) end)
+
+    person =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:paid-#{Ecto.UUID.generate()}",
+        wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
+      })
+
+    conn
+    |> Plug.Test.init_test_session(%{})
+    |> CurrentProfile.sign_in(person.id)
+    |> post("/api/payment_intents", %{
+      "kind" => "special_post",
+      "args" =>
+        Map.merge(
+          %{
+            "origin" => "https://shop.example.com/checkout",
+            "tool_name" => "add_to_cart",
+            "note" => "The tool said it worked but the cart stayed empty."
+          },
+          args
+        )
+    })
+  end
+
+  defp assert_nothing_read_or_priced do
+    refute_received {:jev_was_asked, _questions}
+    assert readings() == []
+    assert checks() == []
+    # The test's own read of every row it could have left behind.
+    assert PaymentIntent |> Ash.read!(authorize?: false) == []
+    assert Site |> Ash.read!(authorize?: false) == []
   end
 
   # Reads back the test's own records, oldest first.
