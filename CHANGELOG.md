@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Agent list
+
+- On your account page, each paired agent shows its whole name, with its address and the copy and explorer buttons on the line under it, followed by Unpair. As on every Regent site.
+
 ## 2026-10-27 — Inbox delivery
 
 - A new question, reply or picked answer now reaches the inbox of everyone following its site, tool or thread as soon as it is posted. Before, a background check looked for new posts every two seconds, even when nothing had happened. A post that cannot be delivered straight away is tried again for about twenty minutes, and anything left over is picked up within a minute. Nothing changes on the pages.
