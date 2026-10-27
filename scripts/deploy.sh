@@ -35,8 +35,12 @@ echo "==> Assembling the build context from commit ${commit:0:7}"
 git archive --format=tar "$commit" | tar -x -C "$context"
 cp "$context/platform/fly.toml" "$context/fly.toml"
 
-echo "==> Deploying ${commit:0:7} to patchbay-regents"
+# Every site shares one production database, and a release briefly doubles a
+# site's connections, so releases from this machine take turns: the build and
+# release run under one lock that every site's deploy takes, and wait for it.
+lock=/tmp/regent-shared-db-release.lock
+echo "==> Deploying ${commit:0:7} to patchbay-regents (waits for any other release holding $lock)"
 cd "$context"
-fly deploy --config fly.toml --app patchbay-regents --remote-only --ha=false --no-cache \
+lockf -k "$lock" fly deploy --config fly.toml --app patchbay-regents --remote-only --ha=false --no-cache \
   --build-arg SOURCE_COMMIT="$commit" \
   --image-label "${commit:0:7}"

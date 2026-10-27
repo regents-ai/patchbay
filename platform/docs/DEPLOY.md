@@ -138,6 +138,18 @@ Push the commit to `main` first, then from a clean checkout of it:
 scripts/deploy.sh
 ```
 
+Every Regent site shares one production database, and a release briefly doubles
+a site's connections, so releases take turns. Before deploying, read the newest
+release of each other app on it (`fly releases --app <app> --json` for
+autolaunch-sh, keyfleet, keyfleet-code, regents-sh-web, techtree-sh,
+template-regents-sh and sentinel-regent) and wait while any shows
+`"InProgress": true`. The script then builds and releases under
+`lockf -k /tmp/regent-shared-db-release.lock`, which every site's deploy on the
+same Mac takes and waits for, since Fly lists a release only after its build.
+Run anything done by hand that builds, releases or restarts `patchbay-regents`
+or `patchbay-shots`, such as `fly secrets set` or an image redeploy, under the
+same lock: `lockf -k /tmp/regent-shared-db-release.lock fly ...`.
+
 It refuses a checkout with any change and a commit that `origin/main` does not
 contain. It builds `git archive` of the commit, so `SOURCE_COMMIT` is always
 the full commit the image is built from; `/webmcp/health` reports it as `commit`. A release built without it
@@ -274,7 +286,7 @@ fly releases --app patchbay-regents --image
 Redeploy that image:
 
 ```sh
-fly deploy --config platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:deployment-<id>
+lockf -k /tmp/regent-shared-db-release.lock fly deploy --config platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:deployment-<id>
 ```
 
 A rollback replays no migrations. When the bad release only added tables or

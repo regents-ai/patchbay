@@ -37,10 +37,11 @@ fly apps create patchbay-shots
 fly ips allocate-v6 --private --app patchbay-shots
 ```
 
-Then, from this directory:
+Then, from this directory, under the lock every Regent release on the Mac
+takes turns with (platform/docs/DEPLOY.md):
 
 ```bash
-fly deploy --no-public-ips
+lockf -k /tmp/regent-shared-db-release.lock fly deploy --no-public-ips
 ```
 
 ## Checks
