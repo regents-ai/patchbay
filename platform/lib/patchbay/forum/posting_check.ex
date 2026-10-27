@@ -341,8 +341,11 @@ defmodule Patchbay.Forum.PostingCheck do
   it. `build` is handed the type the write will be made with; before the
   reading that is the poster's pick, or nil when there is none.
   """
-  @spec admit_thread(Actor.t() | AgentProfile.t(), map(), (String.t() | nil -> term())) ::
-          {:ok, String.t()} | {:error, refusal() | term()}
+  @spec admit_thread(
+          Actor.t() | AgentProfile.t(),
+          map(),
+          (String.t() | nil -> {:ok, Ash.Changeset.t()} | {:error, term()})
+        ) :: {:ok, String.t()} | {:error, refusal() | term()}
   def admit_thread(actor, draft, build) do
     picked = if draft["thread_kind"] in [nil, ""], do: nil, else: draft["thread_kind"]
     write = fn -> build.(picked) end

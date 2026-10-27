@@ -63,8 +63,7 @@ defmodule Patchbay.Payments.SpecialPost do
   """
   @impl true
   def freeze(%{tool: tool, draft: draft, amount_atomic: amount_atomic}, actor) do
-    with :ok <- Offer.amount_between(amount_atomic, @min_atomic, @max_atomic),
-         {:ok, escrow_address} <- escrow_address(),
+    with {:ok, escrow_address} <- escrow_address(),
          :ok <- files?(filing(draft, tool, amount_atomic, actor)) do
       # The report does not exist yet, so its id is minted here and frozen
       # with the rest.
@@ -196,14 +195,15 @@ defmodule Patchbay.Payments.SpecialPost do
 
   @doc """
   The forum's own filing action for a paid priority report of `draft` about
-  `tool`, built and not written. The ids and the session it is built with
-  stand in for the ones the settlement will carry; none of them is what the
-  forum's rules are about.
+  `tool`, built and not written, refusing an amount outside what one report
+  may hold beside every reason the forum gives. The ids and the session it is
+  built with stand in for the ones the settlement will carry; none of them is
+  what the forum's rules are about.
   """
   @spec filing(map(), Tool.t(), pos_integer(), struct()) :: Ash.Changeset.t()
   def filing(draft, tool, amount_atomic, actor) do
-    Ash.Changeset.for_create(
-      Report,
+    Report
+    |> Ash.Changeset.for_create(
       :file_priority_report,
       draft
       |> OtherSiteReport.report_attributes(tool.id)
@@ -216,6 +216,14 @@ defmodule Patchbay.Payments.SpecialPost do
       }),
       actor: actor
     )
+    |> held(amount_atomic)
+  end
+
+  defp held(filing, amount_atomic) do
+    case Offer.amount_between(amount_atomic, @min_atomic, @max_atomic) do
+      :ok -> filing
+      {:error, out_of_bounds} -> Ash.Changeset.add_error(filing, out_of_bounds)
+    end
   end
 
   defp escrow_address do
@@ -233,9 +241,9 @@ defmodule Patchbay.Payments.SpecialPost do
   defp author_origin(payload, _actor), do: payload
 
   # The draft is run through the forum's own filing action, without being
-  # written, and every reason the forum gives is handed back as a reason of
-  # these terms, so the report published after settlement is one the forum
-  # would have accepted.
+  # written, and every reason it gives, the amount's included, is handed back
+  # as a reason of these terms, so the report published after settlement is
+  # one the forum would have accepted.
   defp files?(filing), do: if(filing.valid?, do: :ok, else: {:error, filing.errors})
 
   defp send_credit(report, intent, receipt) do
