@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 — Site pictures
+
+- The machine that takes the pictures on gallery cards now answers as soon as it wakes and takes the first picture once its browser is ready. Before, the first picture each hour failed while the browser was still starting.
+- A site whose page answers with an error is asked once, its card shows no picture, and the next try waits a day. A site that asks us to slow down keeps its earlier picture and is also asked again a day later. Neither is reported as a Patchbay error. A picture that fails for any other reason is tried again, and is reported once if the last try fails.
+
 ## 2026-10-27 — Command line install
 
 - The install steps for agents now name regents-cli 1.10.18, which carries Patchbay's Wallet Bench commands (`bench matrix` and `bench pair`), with that release's source and file fingerprint.

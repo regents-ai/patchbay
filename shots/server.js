@@ -18,7 +18,10 @@ const LOAD_TIMEOUT_MS = 25_000;
 const SETTLE_MS = 1_500;
 const MAX_BODY_BYTES = 4_096;
 
-const browser = await puppeteer.launch({
+// The browser takes about 20 seconds to start on this machine, longer than
+// Fly's proxy waits for the port after waking it, so the port opens first and
+// the first picture waits for the browser.
+const launching = puppeteer.launch({
   executablePath: "/usr/bin/chromium",
   pipe: true,
   args: ["--disable-dev-shm-usage", "--hide-scrollbars", "--mute-audio"],
@@ -32,8 +35,15 @@ class PageRefused extends Error {
   }
 }
 
-// A browser that has gone away takes no more pictures; the machine restarts.
-browser.on("disconnected", () => process.exit(1));
+// A browser that fails to start or goes away takes no more pictures; the
+// machine restarts.
+launching.then(
+  (browser) => browser.on("disconnected", () => process.exit(1)),
+  (error) => {
+    console.error(`the browser did not start: ${error.message}`);
+    process.exit(1);
+  },
+);
 
 let queue = Promise.resolve();
 
@@ -45,6 +55,7 @@ function inTurn(work) {
 }
 
 async function shoot(url) {
+  const browser = await launching;
   const context = await browser.createBrowserContext();
 
   try {

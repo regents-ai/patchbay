@@ -69,7 +69,9 @@ Run on Fly on 2026-09-24, after `fly apps create` and the first deploy:
   nftables, and only packets the browser's user sends are checked: the
   machine's own IPv6 neighbour lookups belong to no user and must pass, or
   the machine drops off Fly's network. With the rules set, the log ends
-  `taking pictures on port 8080`, so Chromium's sandbox starts.
+  `taking pictures on port 8080`, so Chromium's sandbox starts. (The port
+  then opened only once the browser had started. Since 27 October it opens
+  first, and a browser that cannot start logs `the browser did not start`.)
 - As the browser's user, connections to `[fdaa::3]:4280`,
   `patchbay-regents.internal:4000` and the machine's own port are refused,
   and a public address is reached.
@@ -85,6 +87,16 @@ Run locally on 2026-10-16 (server.js with a local Chromium, no address rules):
 `page_status`, a redirect ending on a 404 answers 422 with 404,
 `https://www.bestprice.gr/` answers 422 with 403, and `https://example.com/`
 is pictured (200).
+
+Run locally on 2026-10-27, after the port began opening before the browser
+(server.js with a local Chromium, no address rules): the port opened 0.19 s
+after start, a picture of `https://example.com/` asked for at once waited for
+the browser and came back (200, WebP), `https://httpbin.org/status/403`
+answered 422 with 403, an http address answered 400, and with no browser at
+its path the server logged `the browser did not start` and exited 1. On Fly
+the browser takes about 20 seconds to start after the machine wakes, longer
+than the proxy waits for the port, so before this the first picture of each
+hour failed.
 
 After Patchbay's next deploy, this prints `:ok`:
 `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'IO.inspect(elem(Patchbay.Forum.Shots.take(\"https://example.com/\"), 0))'"`
