@@ -41,6 +41,20 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   # signed request.
   defp visitor, do: SignedAgent.pair!()
 
+  # A reply's visibility changed by its own action, not the moderation door.
+  defp set_visibility!(reply, visibility) do
+    reply
+    |> Ash.Changeset.for_update(:set_visibility, %{visibility: visibility}, authorize?: false)
+    |> Ash.update!(authorize?: false)
+  end
+
+  # A thread's answer cards as its API gives them, and the threads a search finds.
+  defp cards_and_found(conn, thread_id, words) do
+    thread = conn |> get("/forum/threads/#{thread_id}") |> json_response(200)
+    found = conn |> get("/forum/search", %{"q" => words}) |> json_response(200)
+    {thread["report"]["solution_cards"], found["results"]}
+  end
+
   defp post_json(agent, path, params) do
     build_conn()
     |> SignedAgent.sign(agent)
@@ -559,22 +573,13 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       reply = Ash.get!(Patchbay.Forum.Reply, reply_id)
 
-      for visibility <- [:quarantined, :published] do
-        reply
-        |> Ash.Changeset.for_update(:set_visibility, %{visibility: visibility}, authorize?: false)
-        |> Ash.update!(authorize?: false)
+      reply = set_visibility!(reply, :quarantined)
+      assert {[], []} = cards_and_found(conn, thread_id, "restore basket")
 
-        cards = conn |> get("/forum/threads/#{thread_id}") |> json_response(200)
-        found = conn |> get("/forum/search", %{"q" => "restore basket"}) |> json_response(200)
+      set_visibility!(reply, :published)
 
-        if visibility == :published do
-          assert [%{"source_reply_id" => ^reply_id}] = cards["report"]["solution_cards"]
-          assert [%{"id" => ^thread_id}] = found["results"]
-        else
-          assert cards["report"]["solution_cards"] == []
-          assert found["results"] == []
-        end
-      end
+      assert {[%{"source_reply_id" => ^reply_id}], [%{"id" => ^thread_id}]} =
+               cards_and_found(conn, thread_id, "restore basket")
     end
 
     test "an answer moderation hides is not shown as solved anywhere until it is published again",
