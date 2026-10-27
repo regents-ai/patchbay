@@ -257,6 +257,11 @@ case config_env() do
 end
 
 if config_env() == :prod do
+  # One JSON object a line, which Fly Sentinel reads, carrying only the visit
+  # fields (PatchbayWeb.VisitLog). Release commands write the same shape.
+  config :logger, :default_handler,
+    formatter: LoggerJSON.Formatters.Basic.new(metadata: PatchbayWeb.VisitLog.fields())
+
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
   # want to use a different value for prod and you most likely don't want

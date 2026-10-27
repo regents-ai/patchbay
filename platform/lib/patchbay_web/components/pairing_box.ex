@@ -13,7 +13,7 @@ defmodule PatchbayWeb.PairingBox do
   """
   use PatchbayWeb, :live_component
 
-  alias PatchbayWeb.CurrentProfile
+  alias PatchbayWeb.{CurrentProfile, VisitLog}
   alias RegentAgents.{Harness, PairingCode, PairingMessage, Person}
 
   @impl true
@@ -106,6 +106,7 @@ defmodule PatchbayWeb.PairingBox do
        ) do
     with {:ok, agents} <- RegentAgents.list_my_agents(actor: socket.assigns.person),
          %{} = agent <- Enum.find(agents, &(DateTime.compare(&1.paired_at, issued_at) != :lt)) do
+      VisitLog.step("agent_paired", to_string(shown.harness))
       assign(socket, pairing: %{shown | code: {:paired, agent}})
     else
       _unchanged -> socket
@@ -117,8 +118,12 @@ defmodule PatchbayWeb.PairingBox do
   defp issue(socket, harness) do
     code =
       case RegentAgents.issue_pairing_code(actor: socket.assigns.person) do
-        {:ok, issued} -> issued
-        {:error, _error} -> :unavailable
+        {:ok, issued} ->
+          VisitLog.step("pairing_code_shown", to_string(harness))
+          issued
+
+        {:error, _error} ->
+          :unavailable
       end
 
     assign(socket, pairing: %{harness: harness, code: code})

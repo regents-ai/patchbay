@@ -31,6 +31,12 @@ defmodule PatchbayWeb.MCPController do
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.MCP.Tools
+  alias PatchbayWeb.VisitLog
+
+  # Every method `handle/3` answers, and the notification a client sends after
+  # initialize, so a visit line names only these.
+  @methods ~w(initialize server/discover ping events/list events/subscribe events/unsubscribe
+              resources/list resources/read tools/list tools/call notifications/initialized)
 
   # Newest first. A client naming one of these is answered in it; any other
   # client is offered the newest and decides for itself whether to go on.
@@ -98,7 +104,11 @@ defmodule PatchbayWeb.MCPController do
       surface: :chatgpt_agent
     }
 
-    json(conn, reply(handle("tools/call", request["params"], caller), id))
+    result = handle("tools/call", request["params"], caller)
+
+    conn
+    |> logged("tools/call", request["params"], result)
+    |> json(reply(result, id))
   end
 
   def signed_message(conn, _request), do: invalid_request(conn)
@@ -164,20 +174,22 @@ defmodule PatchbayWeb.MCPController do
   defp answer(conn, method, request, caller) do
     case Map.fetch(request, "id") do
       {:ok, id} when is_binary(id) or is_integer(id) ->
+        params = Map.get(request, "params", %{})
+        result = handle(method, params, caller)
+
         conn
         |> issue_session(method)
-        |> json(
-          handle(method, Map.get(request, "params", %{}), caller)
-          |> protocol_result(method, modern_request?(conn, request))
-          |> reply(id)
-        )
+        |> logged(method, params, result)
+        |> json(result |> protocol_result(method, modern_request?(conn, request)) |> reply(id))
 
       {:ok, _other} ->
         invalid_request(conn)
 
       # A notification asks for nothing back.
       :error ->
-        send_resp(conn, :accepted, "")
+        conn
+        |> logged(method, %{}, {:ok, %{}})
+        |> send_resp(:accepted, "")
     end
   end
 
@@ -236,6 +248,28 @@ defmodule PatchbayWeb.MCPController do
         :unknown_session
     end
   end
+
+  # The call's visit line names it by the method this server answers, or by the
+  # tool for a call one of its tools answered, never by the caller's own words;
+  # a refusal ends it with the refusal's code.
+  defp logged(conn, method, params, result) do
+    called =
+      case {method, params, result} do
+        {"tools/call", %{"name" => name}, {:ok, _answered}} -> name
+        {method, _params, _result} when method in @methods -> method
+        _unknown -> "other"
+      end
+
+    VisitLog.name_call(conn, conn.request_path <> ":" <> called, outcome(result))
+  end
+
+  defp outcome({:ok, %{"isError" => true, "structuredContent" => %{error: %{code: code}}}}),
+    do: to_string(code)
+
+  defp outcome({:ok, _result}), do: "ok"
+  defp outcome({:error, -32_601, _message}), do: "method_not_found"
+  defp outcome({:error, -32_602, _message}), do: "invalid_params"
+  defp outcome(_error), do: "error"
 
   defp handle("initialize", params, caller) do
     requested = is_map(params) && params["protocolVersion"]

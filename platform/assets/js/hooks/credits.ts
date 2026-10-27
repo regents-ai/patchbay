@@ -10,6 +10,7 @@
 import type {Hook, HookInterface} from "phoenix_live_view"
 
 import {loadPrivyBridge, privyAppId} from "../privy/account.ts"
+import {report} from "../visit_log.ts"
 import type {MetaDocument, PrivyBridgeModule} from "../privy/account.ts"
 import {sendFailure, sendStep} from "../wallet_actions/send_step.ts"
 import type {SelectedWallet, StepChain, TransactionStep} from "../wallet_actions/send_step.ts"
@@ -178,8 +179,12 @@ async function pressed(hook: CreditsPanel & HookInterface, name: string, push: P
   if (current(hook.review, wallet, form)) return press(hook.review, name, wallet, push)
 
   const [result] = await hook.pushEventTo(hook.el, "prepare_and_send", {form, step: name})
-  // The server never heard the press, so it cannot say why; the page does.
-  if (result?.status !== "fulfilled") return lost(hook.el, true)
+  // The server never heard the press, so it cannot say why; the page does, and
+  // reports it.
+  if (result?.status !== "fulfilled") {
+    lost(hook.el, true)
+    return report({name: "press.unsent", where: name, outcome: "lost"})
+  }
   const reply = result.value.reply as {review?: Review; send?: string}
   if (reply.review && reply.send) return press(reply.review, reply.send, wallet, push)
   push("step_failed", {step: name, reason: "step_unknown"})

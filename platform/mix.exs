@@ -105,6 +105,7 @@ defmodule Patchbay.MixProject do
       # 3.1.1 has the EEF-CVE-2026-97853 advisory in Decimal.round/3.
       {:decimal, "== 3.2.0"},
       {:jason, "~> 1.2"},
+      {:logger_json, "~> 7.0"},
       {:error_tracker, "~> 0.9"},
       {:mdex, "== 0.14.2"},
       {:domainatrex, "~> 3.2"},

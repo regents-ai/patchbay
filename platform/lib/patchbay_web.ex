@@ -100,6 +100,8 @@ defmodule PatchbayWeb do
     quote do
       use Phoenix.LiveView
 
+      on_mount PatchbayWeb.VisitLog
+
       unquote(html_helpers())
     end
   end

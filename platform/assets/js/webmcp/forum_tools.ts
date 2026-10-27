@@ -16,6 +16,7 @@ import type {ReadinessOptions} from "./payment_readiness.ts";
 import {createToolScope} from "./webmcpify.ts";
 import type {ModelContext} from "./webmcpify.ts";
 import {boundedJson} from "./tool_definitions.ts";
+import {report, visitId} from "../visit_log.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 const REPORTS_PATH = "/forum/reports";
@@ -117,6 +118,9 @@ export type ForumToolOptions = ReadinessOptions & {
   proofHeaders?: readonly string[];
   payForIntent?: typeof payForIntent;
   onError?: (error: unknown) => void;
+  /** The tool a call is made for, and whether it only reads (`buildForumTools`). */
+  tool?: string;
+  readOnly?: boolean;
 };
 
 export type ForumTool = {
@@ -223,8 +227,9 @@ export function patchbayHelp(pathname = "/") {
  * Public help omits browser credentials. Protected agent operations use their
  * own SIWA proof; owner-only actions stay on the human website.
  */
-export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
-  const executors = new Map(([
+export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[] {
+  // Each call's options name its tool, so its requests carry it (`call`).
+  const executors = (options: ForumToolOptions) => new Map(([
     {
       name: "hello",
       execute: async (input = {}, {signal} = {}) => {
@@ -739,7 +744,8 @@ export function buildForumTools(options: ForumToolOptions = {}): ForumTool[] {
           return boundedJson(body, tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
         } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
       }
-      return executors.get(tool.name)!(input, execution);
+      const options = {...toolOptions, tool: tool.name, readOnly: tool.annotations.readOnlyHint === true};
+      return executors(options).get(tool.name)!(input, execution);
     },
   })).map(tool => SIGNING_TOOLS.has(tool.name) ? tool : cancellableTool(tool));
 }
@@ -1050,9 +1056,14 @@ async function call(options: ForumToolOptions, path: string, request: RequestIni
   }
 
   try {
-    const response = await fetchImpl(path, {credentials: "same-origin", ...request, signal: options.signal});
+    const headers = {...request.headers as Record<string, string>, ...named(options)};
+    const response = await fetchImpl(path, {credentials: "same-origin", ...request, headers, signal: options.signal});
     return {ok: response.ok === true, status: response.status ?? 0, body: await readBody(response)};
   } catch (error) {
+    // The site never heard this call, so the page reports it.
+    if (options.tool && !options.signal?.aborted) {
+      report({name: "tool.unsent", where: options.tool, outcome: options.readOnly ? "unreachable" : "outcome_unknown"});
+    }
     return {
       ok: false,
       status: 0,
@@ -1061,6 +1072,13 @@ async function call(options: ForumToolOptions, path: string, request: RequestIni
       ),
     };
   }
+}
+
+// Every call names its tool and this visit, so the site's log can put the call
+// beside the rest of the visit (PatchbayWeb.VisitLog). Neither is a credential.
+function named(options: ForumToolOptions): Record<string, string> {
+  const visit = visitId();
+  return {...(options.tool && {"x-regent-client": `webmcp/${options.tool}`}), ...(visit && {"x-regent-visit": visit})};
 }
 
 // A board that could not be reached at all never answered, so this page

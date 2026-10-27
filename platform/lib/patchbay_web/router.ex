@@ -289,7 +289,9 @@ defmodule PatchbayWeb.Router do
   scope "/webmcp", PatchbayWeb.WebMCP do
     pipe_through [:browser, :html_only]
 
-    live_session :webmcp, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+    live_session :webmcp,
+      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/rooms/:slug", RoomLive.Show, :show
     end
   end
@@ -299,7 +301,9 @@ defmodule PatchbayWeb.Router do
   scope "/offers", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
-    live_session :offers, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+    live_session :offers,
+      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/", OffersLive.List, :index
       live "/how-it-works", OffersLive.Index, :index
       live "/bid", OffersLive.Bid, :index
@@ -315,7 +319,9 @@ defmodule PatchbayWeb.Router do
   scope "/admin", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
-    live_session :offer_moderation, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+    live_session :offer_moderation,
+      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/offers", OfferModerationLive, :index
     end
   end
@@ -360,7 +366,9 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through [:motion_lab, :browser, :html_only]
 
-    live_session :motion_lab, on_mount: [{PatchbayWeb.Showcase, :motion_lab}] do
+    live_session :motion_lab,
+      on_mount: [{PatchbayWeb.Showcase, :motion_lab}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/animations", AnimationsLive, :index
     end
   end
@@ -370,7 +378,9 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through [:browser, :html_only, :no_store]
 
-    live_session :account, on_mount: [{PatchbayWeb.CurrentProfile, :account}] do
+    live_session :account,
+      on_mount: [{PatchbayWeb.CurrentProfile, :account}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/account", AccountLive, :show
       live "/account/inbox", AccountLive, :inbox
       live "/account/profile", AccountLive, :profile
@@ -382,9 +392,18 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
-    live_session :fixes, on_mount: [{PatchbayWeb.CurrentProfile, :default}] do
+    live_session :fixes,
+      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/fixes/:id", FixLive.Show, :show
     end
+  end
+
+  # The few visit lines only the browser can see (PatchbayWeb.VisitLogController).
+  scope "/", PatchbayWeb do
+    pipe_through :browser
+
+    post "/visit-log", VisitLogController, :create, log: false
   end
 
   scope "/auth/privy", PatchbayWeb do

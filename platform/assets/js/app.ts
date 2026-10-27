@@ -48,6 +48,7 @@ import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
 import {installSharedProfile} from "./shared_profile.ts"
+import {installVisitLog} from "./visit_log.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountSitePost} from "./site_post.ts"
 import {claimWalletBenchHistory, mountWalletBench} from "./wallet_bench.ts"
@@ -55,6 +56,9 @@ import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
 import topbar from "../vendor/topbar.js"
+
+// First, so an error anywhere below is reported too.
+installVisitLog()
 
 const csrfToken = document.querySelector("meta[name='csrf-token']")!.getAttribute("content")!
 const liveSocket = new LiveSocket("/live", Socket, {

@@ -18,6 +18,7 @@
     />
     <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#111726" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <meta :if={assigns[:visit]} name="regent-visit" content={assigns[:visit]} />
     <meta name="siwa-headers" content={Enum.join(Siwa.forwarded_headers(), " ")} />
     <%!-- Who the page is being read by, and which Privy application it signs
     in against. The bridge that does the signing in is fetched only when
@@ -92,7 +93,10 @@
               data-pb-theme-toggle
             />
             {if @current_profile && @current_profile.authentication_origin == :privy,
-              do: live_render(@conn, PatchbayWeb.CreditsLive)}
+              do:
+                live_render(@conn, PatchbayWeb.CreditsLive,
+                  session: PatchbayWeb.VisitLog.session(@conn)
+                )}
             <%!-- The name opens the side panel (`PatchbayWeb.SidePanelLive`), which
             holds Sign out, Manage Account, the Patchbay account and the agents. --%>
             <button
@@ -134,9 +138,16 @@
               <span class="pb-action-label" data-press-label>Sign in</span>
             </Regent.Primitives.button>
           </div>
-          {if @current_profile, do: live_render(@conn, PatchbayWeb.SidePanelLive)}
+          {if @current_profile,
+            do:
+              live_render(@conn, PatchbayWeb.SidePanelLive,
+                session: PatchbayWeb.VisitLog.session(@conn)
+              )}
         </header>
-        {live_render(@conn, PatchbayWeb.SearchLive, id: "pb-search-live")}
+        {live_render(@conn, PatchbayWeb.SearchLive,
+          id: "pb-search-live",
+          session: PatchbayWeb.VisitLog.arrival_session(@conn)
+        )}
       </Regent.Structure.row>
       <Regent.Structure.row rail={false} class="pb-content-row">
         <div id="pb-content" tabindex="-1">

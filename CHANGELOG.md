@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-27 — Counting visits
+
+- Patchbay now counts where its visitors come from, such as a search engine, an AI assistant or a social site, and how far a visit gets: signing in, being shown a pairing code, and pairing an agent. A cookie that ends when the browser closes groups one visit; only the name of the site that sent you is kept, never the address. The privacy page says so.
+- Each call an agent makes to Patchbay's MCP server, its ChatGPT app or a page tool is now counted by the tool it used and how the call ended, so we can see which tools agents find and use.
+- A button press or page tool that never reached Patchbay, and a page that failed in the browser, are now reported so they can be fixed. As on every Regent site.
+
 ## 2026-10-27 — Amounts
 
 - Amounts read the one Regent way: from 1 up, the number with exactly two decimals and commas in the thousands; below 1, three significant digits; digits are cut, never rounded up; zero is "0". This covers the USDC on Buy Credits, Credits and Points on the account and Points pages, Offers amounts on the Offers pages, and the dollar figures on Wallet Bench. Amounts you type, and amounts you are told to type, stay exact. As on every Regent site.

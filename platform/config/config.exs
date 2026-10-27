@@ -271,7 +271,7 @@ config :esbuild,
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
-  metadata: [:request_id, :error_type]
+  metadata: [:request_id, :error_type, :visit, :actor, :surface, :event]
 
 # Failed requests, pages and jobs are saved in the site's own schema (set in
 # config/runtime.exs) and shown to Credits admins at /admin/errors. Only server

@@ -62,6 +62,8 @@ defmodule PatchbayWeb.Endpoint do
     cookie_key: "request_logger"
 
   plug Plug.RequestId
+  # Which visit, and which kind of caller, each line of this request belongs to.
+  plug PatchbayWeb.VisitLog
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   # Before the body is parsed, so a body that cannot be read is refused in

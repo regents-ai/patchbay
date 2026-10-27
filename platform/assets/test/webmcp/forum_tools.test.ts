@@ -82,6 +82,22 @@ function fakeFetch(answers: FakeAnswer[]) {
 /** The page a signed request is prepared on, and the origin it trusts. */
 const PAGE_ORIGIN = "http://localhost:4000";
 
+/** The visit the page's `regent-visit` tag names. */
+const VISIT = "visit-aaaaaaaaaaaaaaaa";
+
+/**
+ * Every tool runs on a page: this one names VISIT and sends its visit reports
+ * at once (`js/visit_log.ts`), on whatever `fetch` the test has put in place.
+ */
+test.beforeEach(() => {
+  globalThis.document = {querySelector: () => ({content: VISIT})} as unknown as Document;
+  globalThis.window = {
+    location: {origin: PAGE_ORIGIN, pathname: "/"},
+    setTimeout: (send: () => void) => globalThis.setTimeout(send, 0),
+    clearTimeout: (timer: number) => globalThis.clearTimeout(timer),
+  } as unknown as Window & typeof globalThis;
+});
+
 /** Proof headers as an agent's own SIWA signer hands them over. */
 const PROOF = Object.fromEntries(manifest.proof_headers.map(name => [name, `signed-${name}`]));
 
@@ -361,6 +377,32 @@ test("a board that never answered is named as unreachable, not refused", async (
   const tools = toolsByName({fetch: () => Promise.reject(new Error("network down"))});
   const result = JSON.parse(await tools.get("search_threads")!.execute({origin: "shop.example.com"}));
   assert.equal(result.error.code, "unreachable");
+});
+
+test("each call names its tool and visit, and one the site never heard is reported", async () => {
+  const fetch = fakeFetch([{status: 200, body: {tools: [], reports: []}}]);
+  await toolsByName({fetch}).get("search_threads")!.execute({origin: "shop.example.com"});
+  assert.equal(fetch.requests[0].request.headers["x-regent-client"], "webmcp/search_threads");
+  assert.equal(fetch.requests[0].request.headers["x-regent-visit"], VISIT);
+
+  const reports = fakeFetch([{status: 204}]);
+  const previous = globalThis.fetch;
+  globalThis.fetch = reports;
+  try {
+    const tools = toolsByName({fetch: () => Promise.reject(new Error("network down"))});
+    await tools.get("search_threads")!.execute({origin: "shop.example.com"});
+    await new Promise(sent => globalThis.setTimeout(sent, 5));
+  } finally {
+    globalThis.fetch = previous;
+  }
+
+  // Reports wait together, so an earlier test's may share the post.
+  assert.equal(reports.requests[0].path, "/visit-log");
+  assert.deepEqual(JSON.parse(reports.requests[0].request.body).lines.at(-1), {
+    name: "tool.unsent",
+    where: "search_threads",
+    outcome: "unreachable",
+  });
 });
 
 test("every board result opens with one sentence about what happened", async () => {

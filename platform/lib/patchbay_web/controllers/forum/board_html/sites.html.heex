@@ -8,6 +8,10 @@
 
   {live_render(@conn, PatchbayWeb.SiteDirectoryLive,
     id: "site-directory-live",
-    session: %{"filters" => @directory_filters, "visitor" => @directory_visitor}
+    session:
+      Map.merge(PatchbayWeb.VisitLog.session(@conn), %{
+        "filters" => @directory_filters,
+        "visitor" => @directory_visitor
+      })
   )}
 </main>

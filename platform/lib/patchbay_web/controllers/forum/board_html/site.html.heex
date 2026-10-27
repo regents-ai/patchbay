@@ -50,14 +50,14 @@
     </div>
     {live_render(@conn, PatchbayWeb.SiteRefreshLive,
       id: "pb-site-refresh-live",
-      session: @refresh_session,
+      session: Map.merge(PatchbayWeb.VisitLog.session(@conn), @refresh_session),
       container: {:div, class: "pb-entry-refresh"}
     )}
   </header>
 
   {live_render(@conn, PatchbayWeb.SiteCheckLive,
     id: "pb-site-check-live",
-    session: @check_session
+    session: Map.merge(PatchbayWeb.VisitLog.session(@conn), @check_session)
   )}
 
   <section :if={@site} class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
