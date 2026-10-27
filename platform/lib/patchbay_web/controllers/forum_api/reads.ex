@@ -91,10 +91,10 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   """
   @spec search(map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
   def search(params, audience) do
-    q = presence(params["q"])
     origin = presence(params["origin"])
 
-    with :ok <- feed_sort(params["sort"]),
+    with {:ok, q} <- searched(params, "q", 200),
+         :ok <- feed_sort(params["sort"]),
          {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
          {:ok, tag} <- searchable_tag(presence(params["tag"])),
          {:ok, fixed} <- fixed_in(params),
@@ -396,18 +396,30 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # The package a fix names and the version it was tried on, each up to the
   # length a fix may give it.
   defp fixed_in(params) do
-    package = presence(params["package"])
-    version = presence(params["version"])
-
-    cond do
-      not short_text?(package, 80) -> {:error, {:invalid, ["package: up to 80 characters."]}}
-      not short_text?(version, 40) -> {:error, {:invalid, ["version: up to 40 characters."]}}
-      true -> {:ok, %{software: package, version: version}}
-    end
+    with {:ok, package} <- searched(params, "package", 80),
+         {:ok, version} <- searched(params, "version", 40),
+         do: {:ok, %{software: package, version: version}}
   end
 
-  defp short_text?(nil, _limit), do: true
-  defp short_text?(text, limit), do: String.length(text) <= limit
+  # Words to look for, as text the database can compare and short enough to
+  # search quickly.
+  defp searched(params, field, limit) do
+    text = params[field]
+
+    cond do
+      not is_binary(text) ->
+        {:ok, nil}
+
+      not String.valid?(text) or String.contains?(text, <<0>>) ->
+        {:error, {:invalid, ["#{field}: must be UTF-8 text without a null character."]}}
+
+      String.length(text) > limit ->
+        {:error, {:invalid, ["#{field}: up to #{limit} characters."]}}
+
+      true ->
+        {:ok, presence(text)}
+    end
+  end
 
   defp feed_sort(value) when value in [nil, "recent", "popular"], do: :ok
   defp feed_sort(_), do: {:error, {:invalid, ["sort: use recent or popular."]}}

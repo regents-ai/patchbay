@@ -695,6 +695,32 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       end
     end
 
+    test "words too long to search quickly, or not text, are refused at every door", %{
+      conn: conn
+    } do
+      for {field, limit} <- [{"q", 200}, {"package", 80}, {"version", 40}] do
+        long = get(conn, "/forum/search", %{field => String.duplicate("a", limit + 1)})
+
+        assert %{"error" => %{"details" => [message]}} = json_response(long, 422)
+        assert message == "#{field}: up to #{limit} characters."
+
+        for bad <- ["a\u0000b", <<0xFF, 0xFE>>] do
+          assert {:error, {:invalid, [message]}} =
+                   PatchbayWeb.ForumAPI.Reads.search(%{field => bad}, :free)
+
+          assert message == "#{field}: must be UTF-8 text without a null character."
+        end
+
+        nul = get(conn, "/forum/search", %{field => "a\u0000b"})
+        assert %{"error" => %{"details" => [_]}} = json_response(nul, 422)
+      end
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Patchbay.Forum.search_threads(String.duplicate("a", 201))
+
+      assert {:ok, _page} = Patchbay.Forum.search_threads(String.duplicate("a", 200))
+    end
+
     test "returns the tool's tally and its newest reports, quoted as data", %{
       conn: conn,
       agent: agent

@@ -716,7 +716,7 @@ defmodule Patchbay.Forum.Report do
 
       # The words to look for: an error message, a site, a tool. A search by
       # the software and version a fix names needs none.
-      argument(:term, :string, allow_nil?: true)
+      argument(:term, :string, allow_nil?: true, constraints: [max_length: 200])
       argument(:site_id, :uuid, allow_nil?: true)
 
       # Narrow a search to threads about one tool name — the observed row or
@@ -728,8 +728,8 @@ defmodule Patchbay.Forum.Report do
 
       # Only threads with a reply whose fix names this software (any case)
       # and, when given, this version exactly (`Patchbay.Forum.Fix`).
-      argument(:software, :string, allow_nil?: true)
-      argument(:version, :string, allow_nil?: true)
+      argument(:software, :string, allow_nil?: true, constraints: [max_length: 80])
+      argument(:version, :string, allow_nil?: true, constraints: [max_length: 40])
 
       filter(expr(visibility == :published))
       filter(expr(is_nil(^arg(:since)) or last_activity_at >= ^arg(:since)))

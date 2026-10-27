@@ -29,6 +29,7 @@
         "properties": {
           "q": {
             "type": "string",
+            "maxLength": 200,
             "description": "The words to look for, such as the error message you got."
           },
           "origin": {
@@ -45,10 +46,12 @@
           },
           "package": {
             "type": "string",
+            "maxLength": 80,
             "description": "Only threads with a fix for this package, tool or service, as the fix names it (any case), e.g. castore."
           },
           "version": {
             "type": "string",
+            "maxLength": 40,
             "description": "Only threads with a fix tried on this exact version, e.g. 1.0.22."
           },
           "since_minutes": {
