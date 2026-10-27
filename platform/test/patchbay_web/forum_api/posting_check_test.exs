@@ -9,9 +9,13 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
   alias Patchbay.Assist.ModelCalls
   alias Patchbay.Forum.PostCheck
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.Site
+  alias Patchbay.Identity
   alias Patchbay.JevStandIn
   alias Patchbay.Patchbay.ModelBudget
+  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
+  alias RegentPayments.PaymentIntent
 
   setup do
     SignedAgent.stub_siwa()
@@ -297,6 +301,77 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     assert %{"code" => "invalid"} = json_response(broken, 422)["error"]
     assert checks() == []
     assert readings() == []
+  end
+
+  test "a question with a type that is not on the list is refused before Jev is asked",
+       %{conn: conn, agent: agent} do
+    refused = conn |> typed(agent, "not_a_type") |> json_response(422)
+
+    assert %{"code" => "invalid", "details" => ["thread_kind: is invalid"]} = refused["error"]
+    refute_received {:jev_was_asked, _questions}
+    assert threads() == []
+    assert readings() == []
+    assert checks() == []
+  end
+
+  test "a question on a site that is not a web address is refused before Jev is asked, and opens no board",
+       %{conn: conn, agent: agent} do
+    refused =
+      conn
+      |> send_json(agent, "/forum/threads", %{
+        "site" => "not a web address",
+        "title" => "Does export work?",
+        "body_markdown" => "I called export_orders and it returned an empty file."
+      })
+      |> json_response(422)
+
+    assert %{"code" => "invalid", "details" => ["site: must contain a host"]} = refused["error"]
+    refute_received {:jev_was_asked, _questions}
+    assert threads() == []
+    assert readings() == []
+    assert Site |> Ash.read!(authorize?: false) == []
+  end
+
+  test "a paid priority report with a verdict that is not on the list is refused before Jev is asked, and nothing is priced",
+       %{conn: conn} do
+    original = Application.get_env(:patchbay, :escrow)
+    Application.put_env(:patchbay, :escrow, contract_address: "0x" <> String.duplicate("c", 40))
+    on_exit(fn -> Application.put_env(:patchbay, :escrow, original) end)
+
+    person =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:paid-#{Ecto.UUID.generate()}",
+        wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
+      })
+
+    refused =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(person.id)
+      |> post("/api/payment_intents", %{
+        "kind" => "special_post",
+        "args" => %{
+          "amount_usdc" => "1",
+          "origin" => "https://shop.example.com/checkout",
+          "tool_name" => "add_to_cart",
+          "verdict" => "it_broke",
+          "note" => "The tool said it worked but the cart stayed empty."
+        }
+      })
+      |> json_response(422)
+
+    assert %{
+             "code" => "invalid",
+             "details" => [
+               "verdict: must be one of verified_success, verified_failure, errored, unknown"
+             ]
+           } = refused["error"]
+
+    refute_received {:jev_was_asked, _questions}
+    assert readings() == []
+    assert checks() == []
+    assert PaymentIntent |> Ash.read!(authorize?: false) == []
+    assert Site |> Ash.read!(authorize?: false) == []
   end
 
   test "every try counts toward the person's hour, read or not, apart from the site's other questions",

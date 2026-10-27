@@ -501,24 +501,26 @@ defmodule PatchbayWeb.Forum.BoardController do
         draft,
         fn type ->
           with {:ok, site} <- ask_site(draft["site"]) do
-            %{
-              site_id: site.id,
-              browser_session_id: session_id,
-              title: draft["title"],
-              body_markdown: draft["body_markdown"],
-              tool_names: draft["tools"],
-              page_url: draft["page_url"],
-              topic_tags: draft["topic_tags"],
-              thread_kind: type,
-              pictures: pictures
-            }
-            |> without_nils()
-            |> Forum.ask_question(
-              actor: conn.assigns.current_profile,
-              private_arguments: %{author_kind: :human}
-            )
+            {:ok,
+             %{
+               site_id: site.id,
+               browser_session_id: session_id,
+               title: draft["title"],
+               body_markdown: draft["body_markdown"],
+               tool_names: draft["tools"],
+               page_url: draft["page_url"],
+               topic_tags: draft["topic_tags"],
+               thread_kind: type,
+               pictures: pictures
+             }
+             |> without_nils()
+             |> Forum.changeset_to_ask_question(
+               actor: conn.assigns.current_profile,
+               private_arguments: %{author_kind: :human}
+             )}
           end
-        end
+        end,
+        &Ash.create/1
       )
 
     case admitted do
@@ -617,14 +619,16 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn.assigns.current_profile,
         PostingCheck.reply(draft["body_markdown"], ""),
         fn ->
-          %{
-            report_id: report.id,
-            browser_session_id: session_id,
-            body_markdown: draft["body_markdown"]
-          }
-          |> without_nils()
-          |> Forum.post_human_reply(actor: conn.assigns.current_profile)
-        end
+          {:ok,
+           %{
+             report_id: report.id,
+             browser_session_id: session_id,
+             body_markdown: draft["body_markdown"]
+           }
+           |> without_nils()
+           |> Forum.changeset_to_post_human_reply(actor: conn.assigns.current_profile)}
+        end,
+        &Ash.create/1
       )
 
     case admitted do
@@ -1172,8 +1176,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn.assigns.current_profile,
         PostingCheck.verdict_reply(draft["verdict"], draft["note"]),
         fn ->
-          Forum.add_human_reply(input, actor: conn.assigns.current_profile)
-        end
+          {:ok, Forum.changeset_to_add_human_reply(input, actor: conn.assigns.current_profile)}
+        end,
+        &Ash.create/1
       )
 
     case admitted do

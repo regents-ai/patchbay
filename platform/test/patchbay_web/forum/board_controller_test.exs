@@ -3,6 +3,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.Site
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
   alias PatchbayWeb.SignedAgent
@@ -1143,6 +1144,34 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       shown = build_conn() |> get(~p"/post-pictures/#{picture_id}")
       assert response(shown, 200) =~ "a small picture"
       assert get_resp_header(shown, "content-type") == ["image/png"]
+    end
+
+    test "a question on a site that is not a web address is refused before Jev is asked, and opens no board",
+         %{conn: conn} do
+      conn = signed_in(conn, person!("aaa"))
+
+      typed = %{
+        "goal" => "Where does a declined card go?",
+        "site_url" => "not a web address",
+        "details" => "I tried twice and the cart stayed empty."
+      }
+
+      preview =
+        conn
+        |> post(~p"/threads", %{"ask" => typed, "step" => "preview"})
+        |> html_response(200)
+
+      [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, preview)
+
+      body =
+        conn
+        |> post(~p"/threads", %{"ask" => typed, "step" => "post", "previewed" => digest})
+        |> html_response(200)
+
+      assert body =~ "Site: must contain a host"
+      refute_received {:jev_was_asked, _questions}
+      assert Forum.list_recent_reports!().results == []
+      assert Site |> Ash.read!(authorize?: false) == []
     end
 
     test "a visitor is told to sign in, keeping what they typed", %{conn: conn} do

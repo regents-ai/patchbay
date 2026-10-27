@@ -363,15 +363,15 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp file_report(session_id, %Patchbay.Agents.Actor{} = actor, params) do
     with {:ok, request} <- request(params),
          :new <- sent_before(:report, session_id, request),
-         {:ok, post, file} <- filing(session_id, actor, Map.merge(params, request)) do
-      PostingBudget.admit_report(actor, post, fn -> file_once(session_id, request, file) end)
+         {:ok, post, filing} <- filing(session_id, actor, Map.merge(params, request)) do
+      PostingBudget.admit_report(actor, post, filing, &file_once(session_id, request, &1))
     end
   end
 
   # Under the share's lock: the report this key already stands for, if one
   # landed while this one was being read, or the report itself.
-  defp file_once(session_id, request, file) do
-    with :new <- sent_before(:report, session_id, request), do: file.()
+  defp file_once(session_id, request, report) do
+    with :new <- sent_before(:report, session_id, request), do: Ash.create(report)
   end
 
   defp filing(session_id, actor, %{"receipt" => receipt} = params) do
@@ -426,14 +426,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp file_other_site_report(session_id, actor, draft, params) do
     with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
-      store_report(tool, session_id, actor, draft, params)
+      {:ok, other_site_filing(tool, session_id, actor, draft, params)}
     end
   end
 
   defp file_receipt_report(session_id, actor, call, params) do
     with {:ok, site} <- Forum.register_site(RoomMirror.origin()),
          {:ok, tool} <- observe_called_tool(site, call) do
-      store_call_report(tool, session_id, actor, call, params)
+      {:ok, call_filing(tool, session_id, actor, call, params)}
     end
   end
 
@@ -479,8 +479,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # the forum's own write action reads again before it stamps the report. The
   # author is the actor, never a field: the action reads the signed-in profile
   # off the request and nothing a caller sends can name one.
-  defp store_call_report(tool, session_id, actor, call, params) do
-    Forum.file_report(
+  defp call_filing(tool, session_id, actor, call, params) do
+    Forum.changeset_to_file_report(
       %{
         tool_id: tool.id,
         browser_session_id: session_id,
@@ -512,15 +512,18 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
          :new <- replied_before(session_id, report, request) do
       post = PostingCheck.verdict_reply(params["verdict"], params["note"])
 
-      PostingBudget.admit_reply(actor, post, fn ->
-        reply_once(session_id, report, actor, Map.merge(params, request), request)
-      end)
+      PostingBudget.admit_reply(
+        actor,
+        post,
+        fn -> reply(report, session_id, actor, Map.merge(params, request)) end,
+        &reply_once(session_id, report, request, &1)
+      )
     end
   end
 
-  defp reply_once(session_id, report, actor, params, request) do
+  defp reply_once(session_id, report, request, reply) do
     with :new <- replied_before(session_id, report, request),
-         {:ok, reply} <- add_reply(report, session_id, actor, params) do
+         {:ok, reply} <- Ash.create(reply) do
       {:ok, {report, reply}}
     end
   end
@@ -530,7 +533,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
          do: {:repeated, {report, reply}}
   end
 
-  defp store_report(tool, session_id, actor, draft, params) do
+  defp other_site_filing(tool, session_id, actor, draft, params) do
     draft
     |> OtherSiteReport.report_attributes(tool.id)
     |> Map.put(:browser_session_id, session_id)
@@ -538,26 +541,27 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       client_request_id: params["client_request_id"],
       request_digest: params["request_digest"]
     })
-    |> Forum.file_report(actor: actor)
+    |> Forum.changeset_to_file_report(actor: actor)
   end
 
   # Ash strings also cast booleans and numbers; the HTTP contract accepts text
   # only. Refuse malformed fields before a coercion can turn them into a post.
-  defp add_reply(report, session_id, actor, params) do
+  defp reply(report, session_id, actor, params) do
     case {params["verdict"], params["note"]} do
       {verdict, note}
       when (is_binary(verdict) or is_nil(verdict)) and (is_binary(note) or is_nil(note)) ->
-        Forum.add_reply(
-          %{
-            report_id: report.id,
-            browser_session_id: session_id,
-            verdict: verdict,
-            note: note,
-            client_request_id: params["client_request_id"],
-            request_digest: params["request_digest"]
-          },
-          actor: actor
-        )
+        {:ok,
+         Forum.changeset_to_add_reply(
+           %{
+             report_id: report.id,
+             browser_session_id: session_id,
+             verdict: verdict,
+             note: note,
+             client_request_id: params["client_request_id"],
+             request_digest: params["request_digest"]
+           },
+           actor: actor
+         )}
 
       _not_text ->
         {:error, {:invalid, ["Reply verdict and note must be text."]}}

@@ -46,12 +46,17 @@ defmodule Patchbay.Forum.PostingCheck do
   spent, or Jev cannot be asked or answers oddly, nothing is published and
   nothing is counted as turned away: the poster is told to try again.
 
-  Three things are published without a reading. A post with no words of its
+  Two things are published without a reading. A post with no words of its
   writer's to judge, such as a reply that only says whether the tool worked
-  or a report without a note. A post the write's own rules are certain to
-  refuse, which is never published at all. And what is not the writer's
-  words: a thread's pictures, the page address it names, and the site's
-  words a report of a tool call carries.
+  or a report without a note. And what is not the writer's words: a thread's
+  pictures, the page address it names, and the site's words a report of a
+  tool call carries.
+
+  A post the write's own rules refuse is never read and never published.
+  Before Jev is asked, the write is built as it would be made, in a
+  transaction that is always undone, and the write's own refusal is the
+  answer. A board or tool the write would open to check the post against is
+  undone with it.
 
   The check asks another service, so it runs before the write's transaction
   is opened, never inside it. Patchbay's own automatic posts do not come
@@ -68,11 +73,9 @@ defmodule Patchbay.Forum.PostingCheck do
   alias Patchbay.Forum.PostCheck
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
-  alias Patchbay.Forum.ToolName
   alias Patchbay.Forum.Types.PostFinding
   alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Forum.Validations.BoundedMap
-  alias Patchbay.Forum.WalletSecret
   alias Patchbay.Identity.AgentProfile
 
   # How sure Jev must be of a fault before the post is turned away for it.
@@ -178,7 +181,7 @@ defmodule Patchbay.Forum.PostingCheck do
   @typedoc """
   What is about to be published, as Jev is shown it, and whether it counts as
   a report or a reply; or `:nothing_to_read`, a post with no words of its
-  writer's to judge, or one the write's own rules are certain to refuse.
+  writer's to judge.
   """
   @type post :: {:report | :reply, map()} | :nothing_to_read
 
@@ -203,26 +206,19 @@ defmodule Patchbay.Forum.PostingCheck do
   @spec question(map()) :: post()
   def question(draft) do
     limits = Report.byte_limits()
-    title = draft["title"]
-    body = draft["body_markdown"]
 
-    if no_words?(title) or too_long?(title, limits.title) or
-         too_long?(body, limits.body_markdown) or secret?([title, body]) do
-      :nothing_to_read
-    else
-      {:report,
-       %{
-         post:
-           written(%{
-             kind: "a new thread",
-             site: shown(draft["site"], @name_characters),
-             title: shown(title, limits.title),
-             body: shown(body, limits.body_markdown),
-             tools: shown(draft["tools"], @name_characters),
-             tags: shown(draft["topic_tags"], @name_characters)
-           })
-       }}
-    end
+    {:report,
+     %{
+       post:
+         written(%{
+           kind: "a new thread",
+           site: shown(draft["site"], @name_characters),
+           title: shown(draft["title"], limits.title),
+           body: shown(draft["body_markdown"], limits.body_markdown),
+           tools: shown(draft["tools"], @name_characters),
+           tags: shown(draft["topic_tags"], @name_characters)
+         })
+     }}
   end
 
   @doc """
@@ -230,7 +226,7 @@ defmodule Patchbay.Forum.PostingCheck do
   sent: which site and tool, whether it worked and the note are the caller's
   words, and a report without a note has none to judge. The tool is named
   only as a tool can be named, so the name carries no sentence; any other
-  name the write refuses. The tool's title and
+  name the write refuses before the report is read. The tool's title and
   description, what it returned and what the page showed are the site's
   words carried in: Jev is told only that the last two are attached.
   """
@@ -239,13 +235,9 @@ defmodule Patchbay.Forum.PostingCheck do
     limits = Report.byte_limits()
     note = params["note"]
 
-    with false <- no_words?(note),
-         true <- ToolName.valid?(params["tool_name"]),
-         false <- too_long?(note, limits.note),
-         false <- secret?([note]),
-         false <- too_long?(params["failure_code"], limits.failure_code),
-         {:ok, returned} <- evidence(params["handler_result"], limits.evidence),
-         {:ok, seen} <- evidence(params["observed"], limits.evidence) do
+    if no_words?(note) do
+      :nothing_to_read
+    else
       {:report,
        %{
          post:
@@ -256,12 +248,10 @@ defmodule Patchbay.Forum.PostingCheck do
              verdict: shown(params["verdict"], @name_characters),
              failure_code: shown(params["failure_code"], limits.failure_code),
              note: shown(note, limits.note),
-             tool_returned: returned,
-             page_showed: seen
+             tool_returned: evidence(params["handler_result"]),
+             page_showed: evidence(params["observed"])
            })
        }}
-    else
-      _nothing -> :nothing_to_read
     end
   end
 
@@ -275,7 +265,7 @@ defmodule Patchbay.Forum.PostingCheck do
     limit = Report.byte_limits().note
     note = params["note"]
 
-    if no_words?(note) or too_long?(note, limit) or secret?([note]) do
+    if no_words?(note) do
       :nothing_to_read
     else
       {:report,
@@ -294,24 +284,22 @@ defmodule Patchbay.Forum.PostingCheck do
 
   @doc """
   A conversational reply of `body`, with the fix it gives as fields when it
-  gives one (`Patchbay.Forum.Fix.words/1`): both are the writer's words.
+  gives one (`Patchbay.Forum.Fix.words/1`): both are the writer's words. A
+  wallet's secret in either is the write's refusal, given before the reading.
   """
   @spec reply(term(), String.t()) :: post()
   def reply(body, fix) do
     limit = Reply.byte_limits().body_markdown
 
-    if no_words?(body) or too_long?(body, limit) or secret?([body, fix]),
-      do: :nothing_to_read,
-      else:
-        {:reply,
-         %{
-           post:
-             written(%{
-               kind: "a reply on a thread",
-               body: shown(body, limit),
-               fix: shown(fix, limit)
-             })
-         }}
+    {:reply,
+     %{
+       post:
+         written(%{
+           kind: "a reply on a thread",
+           body: shown(body, limit),
+           fix: shown(fix, limit)
+         })
+     }}
   end
 
   @doc """
@@ -333,7 +321,7 @@ defmodule Patchbay.Forum.PostingCheck do
   def verdict_reply(verdict, note) do
     limit = Reply.byte_limits().note
 
-    if no_words?(note) or too_long?(note, limit) or secret?([note]) do
+    if no_words?(note) do
       :nothing_to_read
     else
       {:reply,
@@ -348,37 +336,72 @@ defmodule Patchbay.Forum.PostingCheck do
     end
   end
 
-  @doc """
-  Lets `post` through for `actor`, or says why not. Everything a person and
-  their paired agents send is counted together, and a pause holds back every
-  post of theirs, read or not.
+  @typedoc """
+  The write a post would make, built and not made: the changeset of its
+  action, or the refusal its door gives before there is one to build, such
+  as a site it cannot name.
   """
-  @spec admit(Actor.t() | AgentProfile.t(), post()) :: :ok | {:error, refusal()}
-  def admit(actor, post) do
-    with {:ok, _reading} <- checked(actor, post, %{}), do: :ok
+  @type write :: (-> {:ok, Ash.Changeset.t()} | {:error, term()})
+
+  @doc """
+  Lets `post` through for `actor`, or says why not. The write `build` would
+  make is built first, and a write that refuses the post answers with its own
+  refusal before Jev is asked. Everything a person and their paired agents
+  send is counted together, and a pause holds back every post of theirs,
+  read or not.
+  """
+  @spec admit(Actor.t() | AgentProfile.t(), post(), write()) ::
+          :ok | {:error, refusal() | term()}
+  def admit(actor, post, build) do
+    with :ok <- writable(build),
+         {:ok, _reading} <- checked(actor, post, %{}),
+         do: :ok
   end
 
   @doc """
-  Lets the new thread `draft` makes through as `admit/2` does, and says its
+  Lets the new thread `draft` makes through as `admit/3` does, and says its
   type: the poster's pick when the draft carries one, and otherwise what Jev
   read the words as, asked in the same reading as the check and apart from
-  it. A thread with no pick and nothing to read has no type; the write
-  refuses it for its words.
+  it. `build` is handed the type the write will be made with; before the
+  reading that is the poster's pick, or nil when there is none.
   """
-  @spec admit_thread(Actor.t() | AgentProfile.t(), map()) ::
-          {:ok, String.t() | nil} | {:error, refusal()}
-  def admit_thread(actor, draft) do
-    case draft["thread_kind"] do
-      none when none in [nil, ""] ->
+  @spec admit_thread(Actor.t() | AgentProfile.t(), map(), (String.t() | nil -> term())) ::
+          {:ok, String.t()} | {:error, refusal() | term()}
+  def admit_thread(actor, draft, build) do
+    picked = if draft["thread_kind"] in [nil, ""], do: nil, else: draft["thread_kind"]
+    write = fn -> build.(picked) end
+
+    case picked do
+      nil ->
         type = %{type: "choice", instructions: @type_instructions, criteria: @types}
 
-        with {:ok, reading} <- checked(actor, question(draft), %{type: type}),
-             do: {:ok, reading[:type]}
+        with :ok <- writable(write),
+             {:ok, reading} <- checked(actor, question(draft), %{type: type}),
+             do: {:ok, reading.type}
 
       picked ->
-        with :ok <- admit(actor, question(draft)), do: {:ok, picked}
+        with :ok <- admit(actor, question(draft), write), do: {:ok, picked}
     end
   end
+
+  # The write's own refusal of a post, if it has one, from building the write
+  # in a transaction that is always undone: a board or tool it opens to check
+  # the post against is undone with it, and so is anything that board or tool
+  # would have announced. Nothing in it asks another service. The answer is
+  # thrown out of the transaction, which undoes it, because a rollback through
+  # Ash would turn the answer into an error of Ash's own.
+  defp writable(build) do
+    Ash.transact([Report, Reply], fn -> throw({:writable, refused(build.())}) end)
+  catch
+    {:writable, answer} -> answer
+  end
+
+  defp refused({:ok, %Ash.Changeset{valid?: true}}), do: :ok
+
+  defp refused({:ok, %Ash.Changeset{} = invalid}),
+    do: {:error, Ash.Error.to_error_class(invalid.errors, changeset: invalid)}
+
+  defp refused({:error, _refusal} = refused), do: refused
 
   # `also` is what Jev is asked beside the check itself.
   defp checked(actor, post, also) do
@@ -615,31 +638,15 @@ defmodule Patchbay.Forum.PostingCheck do
 
   defp at(moment), do: Calendar.strftime(moment, "%-d %b %Y, %H:%M UTC")
 
-  # Whether the write is certain to refuse `text` for its length. The write
-  # may first clean the text as `StripControlCharacters` does, which keeps
-  # its newlines and tabs, so the text is measured cleaned the same way:
-  # longer than the limit even so, and no write accepts it.
-  defp too_long?(text, limit) when is_binary(text) and byte_size(text) > limit,
-    do: text |> StripControlCharacters.strip() |> byte_size() > limit
-
-  defp too_long?(_text, _limit), do: false
-
-  # Whether the write is certain to refuse the post for holding a wallet's
-  # secret (`Validations.NoWalletSecret`), which Jev must never be shown.
-  defp secret?(texts), do: Enum.any?(texts, &WalletSecret.find/1)
-
   # What the tool returned or the page showed is the site's, not the
   # writer's, so Jev is told that it is attached and how large, never what it
-  # says. Larger than the write keeps, measured as the write measures it, and
-  # the write refuses the report.
-  defp evidence(value, limit) when is_map(value) do
-    case BoundedMap.encoded_bytes(value) do
-      {:ok, bytes} when bytes <= limit -> {:ok, "attached, #{bytes} bytes, not shown"}
-      _too_large -> :too_large
-    end
+  # says.
+  defp evidence(value) when is_map(value) do
+    {:ok, bytes} = BoundedMap.encoded_bytes(value)
+    "attached, #{bytes} bytes, not shown"
   end
 
-  defp evidence(_none, _limit), do: {:ok, nil}
+  defp evidence(_none), do: nil
 
   defp no_words?(value), do: shown(value, 1) in [nil, "", []]
 

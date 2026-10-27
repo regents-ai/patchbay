@@ -57,36 +57,40 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, key} <- request_key(params),
          :new <- repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
       admitted =
-        PostingBudget.admit_thread(actor, draft, fn type ->
-          open_or_repeat(session_id, actor, draft, key, type)
-        end)
+        PostingBudget.admit_thread(
+          actor,
+          draft,
+          &thread(session_id, actor, draft, key, &1),
+          &open_or_repeat(session_id, draft, key, &1)
+        )
 
       thread_refusal(admitted)
     end
   end
 
-  defp open_or_repeat(session_id, actor, draft, key, type) do
+  defp open_or_repeat(session_id, draft, key, thread) do
     case repeated(key, draft, fn -> Forum.get_thread_for_request(session_id, key) end) do
-      :new -> open_thread(session_id, actor, draft, key, type)
+      :new -> Ash.create(thread)
       answer -> answer
     end
   end
 
-  defp open_thread(session_id, actor, draft, key, type) do
+  defp thread(session_id, actor, draft, key, type) do
     with {:ok, site} <- thread_site(draft["site"]) do
-      %{
-        site_id: site.id,
-        tool_names: draft["tools"],
-        page_url: draft["page_url"],
-        title: draft["title"],
-        body_markdown: draft["body_markdown"],
-        topic_tags: draft["topic_tags"],
-        browser_session_id: session_id,
-        thread_kind: type
-      }
-      |> Map.merge(request_fields(key, draft))
-      |> without_nils()
-      |> Forum.ask_question(actor: actor)
+      {:ok,
+       %{
+         site_id: site.id,
+         tool_names: draft["tools"],
+         page_url: draft["page_url"],
+         title: draft["title"],
+         body_markdown: draft["body_markdown"],
+         topic_tags: draft["topic_tags"],
+         browser_session_id: session_id,
+         thread_kind: type
+       }
+       |> Map.merge(request_fields(key, draft))
+       |> without_nils()
+       |> Forum.changeset_to_ask_question(actor: actor)}
     end
   end
 
@@ -181,20 +185,21 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, key} <- request_key(params),
          :new <- replied_before(session_id, thread_id, draft, key),
          {:ok, report} <- Reads.fetch_report(thread_id) do
-      post = PostingCheck.reply(draft["body_markdown"], Fix.words(draft["fix"]))
-
-      PostingBudget.admit_reply(actor, post, fn ->
-        reply_once(report, session_id, actor, draft, key)
-      end)
+      PostingBudget.admit_reply(
+        actor,
+        PostingCheck.reply(draft["body_markdown"], Fix.words(draft["fix"])),
+        fn -> conversation_reply(report, session_id, actor, draft, key) end,
+        &reply_once(report, session_id, draft, key, &1)
+      )
     end
   end
 
   # Under the share's lock: the reply this key already stands for, if one
   # landed while this one was being read, or the reply itself.
-  defp reply_once(report, session_id, actor, draft, key) do
+  defp reply_once(report, session_id, draft, key, reply) do
     key
     |> repeated(draft, fn -> Forum.get_reply_for_request(session_id, key) end)
-    |> reply_answer(report, session_id, actor, draft, key)
+    |> reply_answer(report, reply)
   end
 
   defp replied_before(session_id, thread_id, draft, key) do
@@ -204,27 +209,24 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          do: {:repeated, {report, reply}}
   end
 
-  defp reply_answer(:new, report, session_id, actor, draft, key),
-    do: conversation_reply(report, session_id, actor, draft, key)
+  defp reply_answer(:new, report, reply) do
+    with {:ok, reply} <- Ash.create(reply), do: {:ok, {report, reply}}
+  end
 
-  defp reply_answer({:repeated, reply}, report, _session_id, _actor, _draft, _key),
-    do: {:repeated, {report, reply}}
-
-  defp reply_answer(refused, _report, _session_id, _actor, _draft, _key), do: refused
+  defp reply_answer({:repeated, reply}, report, _reply), do: {:repeated, {report, reply}}
+  defp reply_answer(refused, _report, _reply), do: refused
 
   defp conversation_reply(report, session_id, actor, draft, key) do
-    with {:ok, reply} <-
-           %{
-             report_id: report.id,
-             browser_session_id: session_id,
-             body_markdown: draft["body_markdown"],
-             fix: draft["fix"]
-           }
-           |> Map.merge(request_fields(key, draft))
-           |> without_nils()
-           |> Forum.post_reply(actor: actor) do
-      {:ok, {report, reply}}
-    end
+    {:ok,
+     %{
+       report_id: report.id,
+       browser_session_id: session_id,
+       body_markdown: draft["body_markdown"],
+       fix: draft["fix"]
+     }
+     |> Map.merge(request_fields(key, draft))
+     |> without_nils()
+     |> Forum.changeset_to_post_reply(actor: actor)}
   end
 
   # The reply's words and the fix it gives, with the thread they answer, so a
