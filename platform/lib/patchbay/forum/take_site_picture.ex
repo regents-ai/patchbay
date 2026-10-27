@@ -53,6 +53,7 @@ defmodule Patchbay.Forum.TakeSitePicture do
     end
   end
 
+  # As in keep/2: Patchbay's own job, with no actor for policies to check.
   defp refused(site, reason) do
     warn(site, reason)
 
@@ -65,6 +66,7 @@ defmodule Patchbay.Forum.TakeSitePicture do
     |> Ash.update(authorize?: false)
   end
 
+  # As in keep/2.
   defp slowed(site, reason) do
     warn(site, reason)
 
