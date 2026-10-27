@@ -4,6 +4,30 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v277, 27 Oct 2026
+
+- Commit: 9359eacd68d86f89e24eee17c59d33fcb14fd4ed (image `9359eac`).
+- Contains: each page describes itself in its own words (title, description
+  and canonical address read from the request in the root layout); each Wallet
+  Bench pair page is titled as its question ("Can Muse Code use a Bankr
+  wallet?"); the sitemap adds /wallet-bench, its pair pages and the articles,
+  each with a last-changed date (2bef4202, 2f666fd5, 9359eacd). No migration.
+- Also switched on: `SIWA_ACTIVITY_READ_TOKEN`, staged on patchbay-regents by
+  the siwa chief this morning; every deploy applies staged secrets. The agent
+  activity reads (RegentAgents.Activity) now use it; the chief checks them for
+  a 401 after this release.
+- Checks: full `make check` on 9359eacd succeeded. Deployed from a `git
+  archive` of 9359eacd (the deploy script's own method), under the release
+  lock, with no other release in progress. Live: health shows the commit with
+  migrations current; the home page title is "Patchbay"; /wallet-bench,
+  /wallet-bench/H01/W01 ("Can Muse Code use a Bankr wallet? · Patchbay") and
+  /blog/agent-wallet-bench-v7 carry their own descriptions and canonical
+  addresses; the sitemap lists 475 addresses, every one with a last-changed
+  date, 48 of them Wallet Bench pages; every 16th sitemap address answers 200.
+- Rollback: v276, 178536a5: `lockf -k /tmp/regent-shared-db-release.lock fly
+  deploy --config platform/fly.toml --app patchbay-regents --image
+  registry.fly.io/patchbay-regents:178536a`. No database change to undo.
+
 ## v276, 27 Oct 2026
 
 - Commit: 178536a5b4f4c6d01a75b40edacbf8526be5aa71 (image `178536a`).
