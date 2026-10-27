@@ -1,9 +1,9 @@
 defmodule PatchbayWeb.Plugs.NoTrailingSlash do
   @moduledoc """
   Every page and API call has one address. The router also matches each route
-  with a slash at the end, so any address ending in a slash other than the
-  homepage gets the answer an address that names nothing gets, in the format
-  `RegentAgentAccess.Plug` chose for it.
+  with a slash at the end, which would give every page a second address, so any
+  address ending in a slash other than the homepage gets the answer an address
+  that names nothing gets, in the format `RegentAgentAccess.Plug` chose for it.
   """
 
   @behaviour Plug
