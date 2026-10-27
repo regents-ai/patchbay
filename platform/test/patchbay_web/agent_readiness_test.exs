@@ -244,6 +244,11 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert description == PatchbayWeb.Forum.BoardHTML.post_description(report)
       assert description =~ "Checkout worked"
+
+      # A thread answers at two addresses and names the same one from both.
+      address = ~s(<link rel="canonical" href="#{PatchbayWeb.Endpoint.url()}/posts/#{report.id}">)
+      assert thread =~ address
+      assert conn |> get("/reports/#{report.id}") |> html_response(200) =~ address
     end
 
     test "carries a canonical address, a share image and structured data", %{conn: conn} do

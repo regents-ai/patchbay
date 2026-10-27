@@ -1187,6 +1187,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       render(conn, :report,
         page_title: PatchbayWeb.Forum.BoardHTML.post_title(report),
         page_description: PatchbayWeb.Forum.BoardHTML.post_description(report),
+        # The thread answers at /posts/:id and /reports/:id; the first is its address.
+        canonical_path: ~p"/posts/#{report.id}",
         report: report,
         agent_offers: Patchbay.Offers.Serving.for_site(report.site),
         following: followed_sites(conn),
