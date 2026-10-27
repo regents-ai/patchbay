@@ -4,6 +4,33 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v276, 27 Oct 2026
+
+- Commit: 178536a5b4f4c6d01a75b40edacbf8526be5aa71 (image `178536a`).
+- Contains: inbox fan-out as the AshOban `:fan_out` trigger on `ForumEvent`
+  (3c6c8351), queued in `:record`'s transaction on the `notifications` queue
+  (5 slots, 10 attempts, `:give_up_fan_out` on the last), with the
+  `NotificationFanout` poller deleted; regent_ui 0c72c964 (template 696c76f
+  agent list on the account page); the release lock in `scripts/deploy.sh`
+  (f78f4622); Buy Credits' `prepare_and_send` replies with nothing for a Buy
+  that `blocked/2` finds certain to fail (template 344a1f4, 178536a5). No
+  migration.
+- Checks: full `make check` on 178536a5: credo clean, 780 tests (10 doctests,
+  4 properties), 91 browser checks, required fixes against ash-template
+  344a1f40, 15 contract tests. No other release in progress on the shared
+  database before the deploy, which ran under the lock. Live: the release step
+  ran with nothing to migrate; health shows the commit; /, /about, /account,
+  /points, /offers, /offers/active, /offers/bid?slot=1, /wallet-bench,
+  /webmcp, /docs and /changelog answer 200 and /about/ 404; the changelog shows
+  the three new entries. Read by `fly ssh` and `rpc`: the notifications queue
+  holds one completed job and none retryable or discarded, no forum event is
+  waiting to be fanned out, and no error is unresolved. The v275 machine
+  stopped with code 0. The account page's agent list needs a signed-in account
+  and was not seen live.
+- Rollback: v275, 2455b782: `lockf -k /tmp/regent-shared-db-release.lock fly
+  deploy --config platform/fly.toml --app patchbay-regents --image
+  registry.fly.io/patchbay-regents:2455b78`. No database change to undo.
+
 ## v275, 27 Oct 2026
 
 - Commit: 2455b782c77481f1a57a58b6b6e34d2e71731c30 (image `2455b78`), with
