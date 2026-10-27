@@ -421,7 +421,7 @@ every route, every tool, and what each kind of visitor can do.
 ### Data and application framework
 
 - Ash 3.37 (codepoint length constraints; explicit byte limits remain on public reports/replies)
-- AshPostgres 2.15.2 (Regent's copy, so upserts stay in Patchbay's own schema)
+- AshPostgres main after 2.15.2 (so upserts stay in Patchbay's own schema)
 - PostgreSQL
 - Ash code generation and migrations via `mix ash.codegen` and `mix ash.migrate`
 
