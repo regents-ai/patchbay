@@ -117,7 +117,10 @@ config :patchbay, Patchbay.Agents.ActivityReading,
 # question at a time per engine (`Patchbay.AnswerWatch.Ask`), on a queue of
 # their own so a slow answer holds up nothing else. The Patchbay Agent repairs
 # its own tools on reports tied to calls it ran (`Patchbay.Forum.Report`'s
-# `:repair_by_agent`), one repair at a time.
+# `:repair_by_agent`), one repair at a time. Base is asked whether each bounty
+# is confirmed and whether it has been refunded (`:read_escrow_credit` and
+# `:read_escrow_refund`) on a queue of their own, so a slow Base node holds up
+# nothing else.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -140,7 +143,8 @@ config :patchbay, Oban,
     notifications: 5,
     answer_watch: 2,
     outside_calls: 2,
-    patchbay_agent: 1
+    patchbay_agent: 1,
+    escrow_reads: 2
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [

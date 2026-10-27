@@ -10,7 +10,10 @@ defmodule Patchbay.Forum.Report do
   settled it, and what Jev made of it: Jev reads each published one once, as
   a job (`:read_by_jev`) queued when the report is filed. Once its bounty has
   paid out or gone back to the asker, a job (`:push_escrow_revenue`) sends the
-  10% the escrow kept to REGENT staking.
+  10% the escrow kept to REGENT staking. Base is asked about each bounty
+  still waiting to be confirmed, every minute (`:read_escrow_credit`), and about
+  each one the board believes is held, every five minutes
+  (`:read_escrow_refund`), by `Patchbay.Escrow.Watch`.
 
   A report that quotes a receipt for a call Patchbay ran is repaired by the
   Patchbay Agent, as a job (`:repair_by_agent`) queued when it is filed.
@@ -97,6 +100,36 @@ defmodule Patchbay.Forum.Report do
         lock_for_update?(false)
         worker_module_name(Patchbay.Forum.Report.Workers.PushEscrowRevenue)
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.PushEscrowRevenue)
+      end
+
+      # Base asked whether a bounty handed to it is recorded yet, once a minute
+      # while it waits (`Patchbay.Escrow.Watch`). One try each sweep: a read
+      # that fails changes nothing and the next sweep asks again, and a late
+      # confirmation still counts.
+      trigger :read_escrow_credit do
+        action(:read_escrow_credit)
+        queue(:escrow_reads)
+        where(expr(escrow_status == :credit_submitted))
+        sort(inserted_at: :asc)
+        max_attempts(1)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowCredit)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowCredit)
+      end
+
+      # Base asked whether a bounty the board believes is held has gone back,
+      # every five minutes, since after thirty days anybody can refund one
+      # without Patchbay in the middle. One try each sweep, as above.
+      trigger :read_escrow_refund do
+        action(:read_escrow_refund)
+        queue(:escrow_reads)
+        where(expr(escrow_status == :credited))
+        sort(escrow_funded_at: :asc)
+        scheduler_cron("*/5 * * * *")
+        max_attempts(1)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowRefund)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowRefund)
       end
 
       # Patchbay repairing its own tool on a report tied to a call it ran
@@ -763,28 +796,6 @@ defmodule Patchbay.Forum.Report do
       filter(expr(techtree_digest == ^arg(:techtree_digest)))
     end
 
-    read :bounties_to_reconcile do
-      description("""
-      Bounties the board still believes are held, oldest first. Anybody can
-      refund one on Base once thirty days have passed, so these are the reports
-      whose money may have moved without Patchbay being told.
-      """)
-
-      filter(expr(escrow_status == :credited))
-      prepare(build(sort: [escrow_funded_at: :asc, id: :asc], limit: 200))
-    end
-
-    read :credits_to_confirm do
-      description("""
-      Bounties whose record was handed to Base and not yet confirmed by it,
-      oldest first. A paid report is filed and its credit handed over in one
-      request, so its filing time is when the request went out.
-      """)
-
-      filter(expr(escrow_status == :credit_submitted))
-      prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 200))
-    end
-
     create :file_report do
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       description("Files one agent's account of calling this tool.")
@@ -1198,6 +1209,32 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:jev_gave_up_at, &DateTime.utc_now/0))
     end
 
+    update :read_escrow_credit do
+      description("""
+      Asks Base whether this bounty's money is recorded in escrow, from the
+      wallet and for the amount that paid, and confirms it if so. The question
+      goes out to Base, so nothing here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual({Patchbay.Escrow.Watch, read: :credit})
+    end
+
+    update :read_escrow_refund do
+      description("""
+      Asks Base whether this bounty has already been refunded, and records the
+      refund if so. The question goes out to Base, so nothing here holds a
+      transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual({Patchbay.Escrow.Watch, read: :refund})
+    end
+
     update :repair_by_agent do
       description("""
       The Patchbay Agent repairs the tool this report's call failed on, or
@@ -1287,10 +1324,11 @@ defmodule Patchbay.Forum.Report do
 
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
     # `record_escrow_release`, `record_escrow_refund`, `push_escrow_revenue`,
-    # `record_escrow_revenue_pushed`, `read_by_jev`, `give_up_on_jev`,
-    # `repair_by_agent` and `give_up_agent_repair` are named by no policy, so
-    # nothing that arrives over HTTP can reach them. The settlement,
-    # confirmation, acceptance, refund and push paths skip authorization to
+    # `record_escrow_revenue_pushed`, `read_escrow_credit`,
+    # `read_escrow_refund`, `read_by_jev`, `give_up_on_jev`, `repair_by_agent`
+    # and `give_up_agent_repair` are named by no policy, so nothing that
+    # arrives over HTTP can reach them. The settlement, confirmation,
+    # acceptance, refund, push and escrow-watch paths skip authorization to
     # write what the escrow said, Jev's job to write what Jev said, and the
     # Patchbay Agent's job to repair Patchbay's own tools.
   end
