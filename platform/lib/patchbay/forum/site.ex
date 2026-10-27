@@ -59,8 +59,9 @@ defmodule Patchbay.Forum.Site do
       end
 
       # A new picture of every site's page once a week, and as soon as a
-      # site's first post asks for one. A picture that could not be taken
-      # after three tries is tried again the next day.
+      # site's first post asks for one. A page that refuses the picture, or a
+      # picture that could not be taken after three tries, is tried again the
+      # next day.
       trigger :take_picture do
         action(:take_picture)
         queue(:site_pictures)
@@ -305,12 +306,13 @@ defmodule Patchbay.Forum.Site do
 
     update :forget_picture do
       description(
-        "A job's last try found the site's page answering with an error status, so its card shows no picture."
+        "The site's page answered with an error status, so its card shows no picture and the next try waits a day."
       )
 
       accept([])
       change(set_attribute(:screenshot_path, nil))
       change(set_attribute(:screenshot_captured_at, nil))
+      change(set_attribute(:picture_failed_at, &DateTime.utc_now/0))
     end
 
     update :picture_failed do

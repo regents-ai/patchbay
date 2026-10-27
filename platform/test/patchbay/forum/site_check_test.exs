@@ -4,7 +4,8 @@ defmodule Patchbay.Forum.SiteCheckTest do
   page's tools and a picture is taken. Every day each site is checked again,
   and its official source is verified again while it still mentions WebMCP.
   A picture that fails is tried three times, then again a day later, so an
-  outage of the screenshot machine leaves no site without a card for good. A check names only what is real, and says which code and packages
+  outage of the screenshot machine leaves no site without a card for good. A
+  page that refuses the picture is asked once and tried again a day later. A check names only what is real, and says which code and packages
   come from the site and which only share its name.
   """
 
@@ -118,6 +119,36 @@ defmodule Patchbay.Forum.SiteCheckTest do
 
     assert_received {:shot, "https://example.com/"}
     assert {:ok, %{image: @picture}} = Forum.get_site_screenshot(site.id)
+  end
+
+  # Regression: a page that blocks screenshot bots (403) was asked three times
+  # and each refusal was saved as one of Patchbay's own errors.
+  test "a page that refuses the picture is asked once, and its card shows none for a day" do
+    PageSite.serve(%{"/" => PageSite.with_tool("search_docs")})
+    site = Forum.register_site!("docs.example.com")
+    post!(site)
+    run_jobs()
+    assert_received {:shot, _}
+    assert {:ok, _picture} = Forum.get_site_screenshot(site.id)
+
+    shots_answer(422, Jason.encode!(%{page_status: 403}))
+
+    Patchbay.Repo.query!(
+      "UPDATE forum_sites SET screenshot_captured_at = now() - interval '8 days' WHERE id = $1",
+      [Ecto.UUID.dump!(site.id)]
+    )
+
+    assert %{failure: 0} = schedule_and_run_triggers({Site, :take_picture})
+    assert_received {:shot, "https://example.com/"}
+    refute_received {:shot, _}
+
+    assert {:error, _forgotten} = Forum.get_site_screenshot(site.id)
+    {:ok, refused} = Forum.get_site_by_origin("example.com", authorize?: false)
+    assert refused.screenshot_path == nil
+    assert refused.picture_failed_at
+
+    assert %{failure: 0} = schedule_and_run_triggers({Site, :take_picture})
+    refute_received {:shot, _}
   end
 
   test "the daily refresh verifies a source again only while it still mentions WebMCP" do
