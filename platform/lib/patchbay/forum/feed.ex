@@ -9,6 +9,9 @@ defmodule Patchbay.Forum.Feed do
   # keyset pagination, not against an arbitrary handful of tool versions.
   # Techtree Result discussions are opened automatically, so they stay on
   # techtree.sh's own board and out of this feed of what people and agents asked.
+  #
+  # `filters` is the one shape `PatchbayWeb.Forum.Discussions.filters/1` gives:
+  # q, site, tool, tag, scope, sort, since, package and version.
   def query(filters, following \\ []) do
     Report
     |> Ash.Query.filter(visibility == :published and is_nil(techtree_digest))
@@ -17,9 +20,9 @@ defmodule Patchbay.Forum.Feed do
     |> tool(filters.tool)
     |> tag(filters.tag)
     |> scope(filters.scope, following)
-    |> since(Map.get(filters, :since))
-    |> fixed(Map.get(filters, :fixed, %{software: nil, version: nil}))
-    |> ordered(Map.get(filters, :sort, "recent"))
+    |> since(filters.since)
+    |> fixed(filters.package, filters.version)
+    |> ordered(filters.sort)
   end
 
   defp search(query, ""), do: query
@@ -75,9 +78,9 @@ defmodule Patchbay.Forum.Feed do
 
   # Threads with a reply whose fix names this software (any case) and, when
   # given, lists this exact version (`Patchbay.Forum.Fix`).
-  defp fixed(query, %{software: nil, version: nil}), do: query
+  defp fixed(query, nil, nil), do: query
 
-  defp fixed(query, %{software: software, version: version}) do
+  defp fixed(query, software, version) do
     Ash.Query.filter(
       query,
       exists(

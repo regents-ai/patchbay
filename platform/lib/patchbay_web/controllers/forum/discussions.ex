@@ -39,7 +39,12 @@ defmodule PatchbayWeb.Forum.Discussions do
          tool: text(params["tool"], 64),
          tag: text(params["tag"], 64),
          scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest"),
-         sort: if(params["sort"] == "popular", do: "popular", else: "recent")
+         sort: if(params["sort"] == "popular", do: "popular", else: "recent"),
+         # The page has no time, package or version filter; the search
+         # endpoint reads the same feed with them.
+         since: nil,
+         package: nil,
+         version: nil
        }}
     end
   end

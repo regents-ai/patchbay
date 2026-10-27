@@ -444,7 +444,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       scope: "newest",
       sort: sort,
       since: search.since,
-      fixed: search.fixed
+      package: search.fixed.software,
+      version: search.fixed.version
     }
 
     with {:ok, page} <-
