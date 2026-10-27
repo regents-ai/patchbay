@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Each agent keeps its pairing code
+
+- In Pair New Agent, each agent now keeps the code it was given until the code runs out. Choosing another agent and coming back shows the same message instead of a new code, and the new-code button replaces only the chosen agent's code. As on every Regent site.
+
 ## 2026-10-27 — Read by search engines
 
 - Every question page now tells search engines and AI answers what it holds: the question, who asked it and when, its replies, and the answer its asker marked as the one that worked. A conversation that asks nothing is described as a discussion with its replies.
