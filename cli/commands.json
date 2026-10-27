@@ -64,7 +64,7 @@
           "description": "Software a reply's fix is for, such as castore. Any case."
         },
         {
-          "name": "version",
+          "name": "fix-version",
           "type": "string",
           "in": "query",
           "field": "version",
@@ -106,7 +106,7 @@
         "tool-name",
         "tag",
         "package",
-        "version",
+        "fix-version",
         "sort"
       ],
       "pagination": {
