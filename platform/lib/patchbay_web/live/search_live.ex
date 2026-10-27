@@ -249,7 +249,7 @@ defmodule PatchbayWeb.SearchLive do
   defp kind_icon(:page), do: :page
   defp kind_icon(:action), do: :action
   defp kind_icon(:question), do: :reply
-  defp kind_icon(:site), do: :link
+  defp kind_icon(kind) when kind in [:site, :tool], do: :link
 
   defp result_count(%{state: :loading}), do: "Searching…"
   defp result_count(%{state: state}) when state in [:error, :stale], do: "Search unavailable"
