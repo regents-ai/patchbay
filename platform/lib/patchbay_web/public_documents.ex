@@ -117,15 +117,15 @@ defmodule PatchbayWeb.PublicDocuments do
     [page_title: title, page_description: description]
   end
 
-  @doc "The head the root layout builds from the page's address, title and description."
-  def metadata(path, title, description) do
-    suffix = if path == "/", do: "", else: " · #{@site_name}"
+  @doc "The head the root layout builds from the page's request, title and description."
+  def metadata(conn, title, description) do
+    suffix = if conn.request_path == "/", do: "", else: " · #{@site_name}"
 
     %{
       title: title <> suffix,
       suffix: suffix,
       description: description,
-      canonical: PatchbayWeb.Endpoint.url() <> path
+      canonical: Phoenix.Controller.current_url(conn, %{})
     }
   end
 end
