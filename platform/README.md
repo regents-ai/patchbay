@@ -134,7 +134,7 @@ Regent site.
 2. Ask the browser agent to call the active `uplift_current_skill_v1` tool with a short `instructions` string.
 3. Confirm the page shows raw handler `success`, effective `Verified failure`, `CANDIDATE_EMPTY`, and an empty Candidate editor.
 4. Ask the agent to call `report_tool_problem`, passing the `patchbay_receipt` from that result as `receipt`. The receipt alone files a verified report: it is the only field the tool needs, and Patchbay reads the site, the tool, its version and the arguments from its own record of the call. Confirm the report is filed as verified.
-5. Wait. Within `PATCHBAY_AGENT_POLL_SECONDS` (default 15) the worker claims the report, proposes a repair, reproduces the recorded failure against the live revision, publishes `v2` as **Patchbay Agent**, and replies on the report. The open page hot-swaps without a reload; **Reports about this room's tool** at the bottom shows the exchange.
+5. Wait. Filing the report queues the worker's job, which starts the repair, proposes it, reproduces the recorded failure against the live revision, publishes `v2` as **Patchbay Agent**, and replies on the report. The open page hot-swaps without a reload; **Reports about this room's tool** at the bottom shows the exchange.
 6. Confirm the browser registry shows **Observed G2**, then click **Retry uplift** or ask the same agent to call `uplift_current_skill_v2`.
 7. Confirm **Verification passed**, the improved candidate and its SHA-256 digest, and the durable timeline. **Reset demo** returns the room to generation 1.
 8. For the manual path, reset and repeat steps 2–3, then use `request_patchbay_repair` or **Diagnose & propose repair**, inspect the contract diff and deterministic canary, and click **Approve & hot-swap**.
@@ -145,11 +145,16 @@ the real LiveView event boundary without requiring an experimental browser.
 
 ## The repair worker
 
-`Patchbay.Forum.PatchbayAgent` is a GenServer under the application supervisor.
-Each pass reads `Patchbay.Forum.Report.verified_awaiting_repair` — verified
-reports on this deployment's own origin with no `RepairAttempt` row — oldest
-first, and takes one. It claims a `RepairAttempt` (unique on `report_id`) before
-any work starts, so a report is worked exactly once, then runs
+`Patchbay.Forum.PatchbayAgent` is the `:repair_by_agent` action of
+`Patchbay.Forum.Report`, run by the AshOban trigger of the same name on the
+`patchbay_agent` queue, one repair at a time. The trigger matches verified
+reports (only a report on this deployment's own tools can be verified) with no
+`RepairAttempt` row, oldest first. Filing a report queues its job, and the
+minute sweep takes up any still waiting. The trigger runs one job per report at
+a time, and the job writes a `RepairAttempt` (unique on `report_id`) when it
+starts, so a report is worked exactly once. A job that raises before the repair
+starts is tried three times; after the last, `:give_up_agent_repair` answers the
+report as one Patchbay could not finish. The job runs
 `Patchbay.Patchbay.begin_diagnosis!` and `RepairPlanner.propose!` (so
 `ModelBudget` applies on the worker path too), gates publication on
 `Patchbay.Patchbay.FailureReproduction.check/3`, and publishes through
@@ -159,13 +164,11 @@ and broadcasts on `Room.topic/1` so an open LiveView hot-swaps and refreshes.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `PATCHBAY_AGENT_REPAIRS` | on | `false` or `0` stops the loop entirely; the human controls still work |
-| `PATCHBAY_AGENT_POLL_SECONDS` | `15` | how often it looks for a report |
-| `PATCHBAY_AGENT_DAILY_REPAIRS` | `50` | attempts allowed in a rolling 24 hours |
+| `PATCHBAY_AGENT_REPAIRS` | on | `false` or `0` stops the worker; a waiting report is left for the next sweep, and the human controls still work |
+| `PATCHBAY_AGENT_DAILY_REPAIRS` | `50` | attempts allowed in a rolling 24 hours; past it, reports wait for the next sweep |
 
-The worker is not started under `MIX_ENV=test` (`config :patchbay,
-start_patchbay_agent: false`); tests call `PatchbayAgent.sweep/0` directly or
-start their own instance. Passes are logged as `agent.repair_start` and
+Tests run the sweep and its jobs through `Patchbay.PatchbayAgentRun.run!/0`
+(`test/support`). Repairs are logged as `agent.repair_start` and
 `agent.repair_stop` with `report`, `attempt`, `outcome` and `contract` columns.
 
 Nothing in a report's text is read as an instruction, quoted into a reply, or

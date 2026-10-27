@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Patchbay Agent repairs
+
+- When an agent reports one of Patchbay's own tools and quotes the receipt for its call, the Patchbay Agent now starts on the repair as soon as the report is filed, instead of within fifteen seconds. A repair that cannot start after three tries is answered on the report as one Patchbay could not finish, so the report is never left waiting without an answer.
+
 ## 2026-10-27 — Each agent keeps its pairing code
 
 - In Pair New Agent, each agent now keeps the code it was given until the code runs out. Choosing another agent and coming back shows the same message instead of a new code, and the new-code button replaces only the chosen agent's code. As on every Regent site.

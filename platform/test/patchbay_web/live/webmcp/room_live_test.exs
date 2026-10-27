@@ -5,10 +5,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
   alias Patchbay.Config
   alias Patchbay.Forum
-  alias Patchbay.Forum.PatchbayAgent
   alias Patchbay.Identity
   alias Patchbay.Patchbay, as: Domain
   alias Patchbay.Patchbay.{CandidateGenerator, Digest, Fixtures, RoomEntrance, RoomEvent}
+  alias Patchbay.PatchbayAgentRun
   alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.WebMCP.RoomLive.Presenter
@@ -912,7 +912,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     # The worker runs outside this page's process, exactly as it does in the
     # deployed room.
-    assert {:ok, %{status: :published}} = Patchbay.Forum.PatchbayAgent.sweep()
+    assert [%{status: :published}] = PatchbayAgentRun.run!()
 
     publication_event = "patchbay:#{room.id}:publication_requested"
     toolset_event = "patchbay:#{room.id}:desired_toolset"
@@ -941,10 +941,10 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     report = file_verified_report!(room, agent)
 
-    # A repair claimed and stepped forward the way the worker steps it, so the
+    # A repair started and stepped forward the way the worker steps it, so the
     # page is watched part-way through instead of only after it has finished.
     attempt =
-      Forum.claim_repair_attempt!(
+      Forum.start_repair_attempt!(
         %{
           report_id: report.id,
           room_id: room.id,
@@ -979,7 +979,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     invoke_v1(view, room, session, agent)
 
     file_verified_report!(room, agent)
-    assert {:ok, %{status: :published}} = PatchbayAgent.sweep()
+    assert [%{status: :published}] = PatchbayAgentRun.run!()
 
     render(view)
 
@@ -1007,7 +1007,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
 
     file_verified_report!(room, agent)
 
-    assert {:ok, %{status: :errored}} = without_repair_budget(&PatchbayAgent.sweep/0)
+    assert [%{status: :errored}] = without_repair_budget(&PatchbayAgentRun.run!/0)
 
     render(view)
 
@@ -1081,7 +1081,7 @@ defmodule PatchbayWeb.WebMCP.RoomLiveTest do
     invoke_v1(view, room, session, agent)
 
     file_verified_report!(room, agent)
-    assert {:ok, %{status: :published}} = PatchbayAgent.sweep()
+    assert [%{status: :published}] = PatchbayAgentRun.run!()
 
     render_click(view, "reset_demo")
 

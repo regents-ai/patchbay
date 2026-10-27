@@ -94,7 +94,6 @@ defmodule Patchbay.Forum do
       define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
       define(:list_ranked_posts_for_tool, action: :ranked_for_tool, args: [:site_id, :tool_name])
-      define(:list_reports_awaiting_repair, action: :verified_awaiting_repair, args: [:origin])
       define(:claim_escrow_credit, action: :claim_escrow_credit)
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:confirm_escrow_credit, action: :confirm_escrow_credit)
@@ -150,7 +149,7 @@ defmodule Patchbay.Forum do
     end
 
     resource Patchbay.Forum.RepairAttempt do
-      define(:claim_repair_attempt, action: :claim)
+      define(:start_repair_attempt, action: :start)
       define(:get_repair_attempt, action: :read, get_by: [:id])
       define(:list_repair_attempts, action: :read)
 
@@ -159,7 +158,6 @@ defmodule Patchbay.Forum do
         args: [:invocation_id]
       )
 
-      define(:mark_repair_attempt_running, action: :mark_running)
       define(:mark_repair_attempt_phase, action: :mark_phase, args: [:phase])
       define(:record_repair_attempt_outcome, action: :record_outcome)
     end

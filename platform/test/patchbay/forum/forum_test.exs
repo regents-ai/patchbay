@@ -317,7 +317,6 @@ defmodule Patchbay.ForumTest do
                  {:posted_by_author, :read},
                  {:recent, :read},
                  {:feed, :read},
-                 {:verified_awaiting_repair, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},
                  {:claim_escrow_credit, :update},
@@ -343,7 +342,9 @@ defmodule Patchbay.ForumTest do
                  {:mark_solution, :update},
                  {:touch, :update},
                  {:read_by_jev, :update},
-                 {:give_up_on_jev, :update}
+                 {:give_up_on_jev, :update},
+                 {:repair_by_agent, :update},
+                 {:give_up_agent_repair, :update}
                ])
 
       assert action_names(Reply) ==

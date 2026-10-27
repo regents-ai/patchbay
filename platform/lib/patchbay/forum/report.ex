@@ -11,6 +11,9 @@ defmodule Patchbay.Forum.Report do
   a job (`:read_by_jev`) queued when the report is filed. Once its bounty has
   paid out or gone back to the asker, a job (`:push_escrow_revenue`) sends the
   10% the escrow kept to REGENT staking.
+
+  A report that quotes a receipt for a call Patchbay ran is repaired by the
+  Patchbay Agent, as a job (`:repair_by_agent`) queued when it is filed.
   """
 
   use Ash.Resource,
@@ -94,6 +97,32 @@ defmodule Patchbay.Forum.Report do
         lock_for_update?(false)
         worker_module_name(Patchbay.Forum.Report.Workers.PushEscrowRevenue)
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.PushEscrowRevenue)
+      end
+
+      # Patchbay repairing its own tool on a report tied to a call it ran
+      # (`Patchbay.Forum.PatchbayAgent`), oldest first. Filing the report
+      # queues its job, and the minute sweep takes up any still waiting, such
+      # as one held back by the kill switch or the daily limit. Its queue runs
+      # one repair at a time, since a repair may call a model and publish a
+      # tool. A try that fails before the repair starts is tried again; after
+      # the last, the report is answered as one Patchbay could not finish, and
+      # its attempt takes it out of the sweep.
+      trigger :repair_by_agent do
+        action(:repair_by_agent)
+        queue(:patchbay_agent)
+
+        where(
+          expr(
+            verified == true and not is_nil(invocation_id) and not exists(repair_attempt, true)
+          )
+        )
+
+        sort(inserted_at: :asc)
+        max_attempts(3)
+        on_error(:give_up_agent_repair)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.RepairByAgent)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.RepairByAgent)
       end
     end
   end
@@ -756,25 +785,6 @@ defmodule Patchbay.Forum.Report do
       prepare(build(sort: [inserted_at: :asc, id: :asc], limit: 200))
     end
 
-    read :verified_awaiting_repair do
-      description("""
-      Reports about one site's tools that Patchbay matched to a call it ran and
-      has not yet worked on, oldest first, so the queue is fair.
-      """)
-
-      argument(:origin, :string, allow_nil?: false)
-
-      filter(
-        expr(
-          verified == true and not is_nil(invocation_id) and
-            tool.site.origin == ^arg(:origin) and
-            not exists(repair_attempt, true)
-        )
-      )
-
-      prepare(build(sort: [inserted_at: :asc, id: :asc]))
-    end
-
     create :file_report do
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       description("Files one agent's account of calling this tool.")
@@ -807,6 +817,9 @@ defmodule Patchbay.Forum.Report do
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.VerifyReceipt)
       change(Patchbay.Forum.Changes.RecordThreadEvent)
+      # A report the receipt does not tie to a call Patchbay ran is not the
+      # trigger's, and its job stops without doing anything.
+      change(run_oban_trigger(:repair_by_agent))
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -1184,6 +1197,32 @@ defmodule Patchbay.Forum.Report do
       accept([])
       change(set_attribute(:jev_gave_up_at, &DateTime.utc_now/0))
     end
+
+    update :repair_by_agent do
+      description("""
+      The Patchbay Agent repairs the tool this report's call failed on, or
+      answers why it will not. A repair may call a model, so nothing here
+      holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual(Patchbay.Forum.PatchbayAgent)
+    end
+
+    update :give_up_agent_repair do
+      description("""
+      Every try at repairing this report failed before the repair started; it
+      is answered as one Patchbay could not finish and is not tried again.
+      """)
+
+      accept([])
+      argument(:error, :term, allow_nil?: false)
+      transaction?(false)
+      require_atomic?(false)
+      manual({Patchbay.Forum.PatchbayAgent, give_up?: true})
+    end
   end
 
   policies do
@@ -1248,11 +1287,12 @@ defmodule Patchbay.Forum.Report do
 
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
     # `record_escrow_release`, `record_escrow_refund`, `push_escrow_revenue`,
-    # `record_escrow_revenue_pushed`, `read_by_jev` and `give_up_on_jev` are
-    # named by no policy, so nothing that arrives over HTTP can reach them.
-    # The settlement, confirmation, acceptance, refund and push paths skip
-    # authorization to write what the escrow said, and Jev's job to write what
-    # Jev said.
+    # `record_escrow_revenue_pushed`, `read_by_jev`, `give_up_on_jev`,
+    # `repair_by_agent` and `give_up_agent_repair` are named by no policy, so
+    # nothing that arrives over HTTP can reach them. The settlement,
+    # confirmation, acceptance, refund and push paths skip authorization to
+    # write what the escrow said, Jev's job to write what Jev said, and the
+    # Patchbay Agent's job to repair Patchbay's own tools.
   end
 
   @doc """

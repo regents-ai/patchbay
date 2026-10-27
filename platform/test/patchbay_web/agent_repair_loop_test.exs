@@ -13,7 +13,6 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.PatchbayAgent
   alias Patchbay.Forum.RepairAttempt
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
@@ -81,8 +80,8 @@ defmodule PatchbayWeb.AgentRepairLoopTest do
     assert report.tool.contract_sha256 == revision.contract_sha256
     assert report.arguments_sha256 == latest_invocation(room).arguments_sha256
 
-    # One pass of the worker that reads the board.
-    assert {:ok, %RepairAttempt{} = attempt} = PatchbayAgent.sweep()
+    # The job filing the report queued, run as a deployment runs it.
+    assert [%RepairAttempt{} = attempt] = Patchbay.PatchbayAgentRun.run!()
     assert attempt.status == :published
     assert attempt.report_id == report.id
 
