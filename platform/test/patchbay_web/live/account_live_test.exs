@@ -42,7 +42,8 @@ defmodule PatchbayWeb.AccountLiveTest do
       authorize?: false
     )
 
-    Forum.NotificationFanout.process_events()
+    # The question queued its own fan-out job; running it fills the inbox.
+    assert %{success: 1, failure: 0} = Oban.drain_queue(queue: :notifications)
 
     {:ok, view, html} = live(conn, ~p"/account/inbox")
 

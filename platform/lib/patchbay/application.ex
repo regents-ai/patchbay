@@ -38,7 +38,6 @@ defmodule Patchbay.Application do
         PatchbayWeb.Plugs.X402Test.replays(),
         {Finch, name: Patchbay.Assist.Target.finch()},
         Patchbay.Escrow.Watch,
-        Patchbay.Forum.NotificationFanout,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},

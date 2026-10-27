@@ -1,8 +1,8 @@
 defmodule Patchbay.Forum.Subscription do
   @moduledoc """
   A principal's standing interest in one scope: a site, a tool family, or a
-  single thread. Subscriptions are what the notification worker delivers new
-  board events to; each is idempotent by (principal, scope).
+  single thread. Subscriptions are what each event's fan-out job delivers
+  new board events to; each is idempotent by (principal, scope).
   """
 
   use Ash.Resource,

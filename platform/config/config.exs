@@ -120,7 +120,8 @@ config :patchbay, Oban,
     points_chain: 2,
     errors: 1,
     post_checks: 1,
-    ens: 3
+    ens: 3,
+    notifications: 5
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Inbox delivery
+
+- A new question, reply or picked answer now reaches the inbox of everyone following its site, tool or thread as soon as it is posted. Before, a background check looked for new posts every two seconds, even when nothing had happened. A post that cannot be delivered straight away is tried again for about twenty minutes, and anything left over is picked up within a minute. Nothing changes on the pages.
+
 ## 2026-10-27 — Site pictures
 
 - The machine that takes the pictures on gallery cards now answers as soon as it wakes and takes the first picture once its browser is ready. Before, the first picture each hour failed while the browser was still starting.
