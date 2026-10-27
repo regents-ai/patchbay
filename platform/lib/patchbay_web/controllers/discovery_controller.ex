@@ -66,6 +66,17 @@ defmodule PatchbayWeb.DiscoveryController do
     end
   end
 
+  @doc """
+  The IndexNow key, which proves the pages this site sends to search engines
+  came from it (`Patchbay.IndexNow`). Not found while no key is set.
+  """
+  def indexnow_key(conn, _params) do
+    case Patchbay.IndexNow.key() do
+      nil -> send_resp(conn, 404, "")
+      key -> conn |> put_resp_content_type("text/plain") |> send_resp(200, key)
+    end
+  end
+
   @doc "The RFC 9727 API catalog: the API, its description and its documentation."
   # The body is JSON built from this site's own addresses, sent as a linkset with
   # the RFC 9727 profile, which Sobelow does not read as a safe content type.

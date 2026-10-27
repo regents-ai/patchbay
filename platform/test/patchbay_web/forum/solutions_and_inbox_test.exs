@@ -113,6 +113,44 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
                body["report"]["solution_cards"]
     end
 
+    test "search engines read the marked answer as the question's accepted answer", %{
+      conn: conn
+    } do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Can a cart be restored?") |> json_response(201)
+      helper = visitor()
+
+      %{"reply_id" => other_id} =
+        answer(helper, thread_id, "Try clearing the cookies.") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(helper, thread_id, "POST /cart/restore does it.") |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+
+      [json] =
+        Regex.run(~r{<script type="application/ld\+json">\s*(.*?)\s*</script>}s, html,
+          capture: :all_but_first
+        )
+
+      %{"@graph" => graph} = Jason.decode!(json)
+      %{"mainEntity" => question} = Enum.find(graph, &(&1["@type"] == "QAPage"))
+      thread = "#{PatchbayWeb.Endpoint.url()}/posts/#{thread_id}"
+
+      assert question["name"] == "Can a cart be restored?"
+      assert question["answerCount"] == 2
+      assert question["acceptedAnswer"]["url"] == thread <> "#reply-" <> reply_id
+      assert question["acceptedAnswer"]["text"] == "POST /cart/restore does it."
+
+      assert Enum.map(question["suggestedAnswer"], & &1["url"]) == [
+               thread <> "#reply-" <> other_id
+             ]
+    end
+
     test "nobody but the asker can name the answer" do
       asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "A question") |> json_response(201)

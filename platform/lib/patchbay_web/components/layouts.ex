@@ -66,11 +66,17 @@ defmodule PatchbayWeb.Layouts do
   end
 
   @doc """
-  Who Patchbay is, for a reader that speaks schema.org: the website, the
-  application and the organization behind both. There is no postal address by
-  decision.
+  Who Patchbay is, for a reader that speaks schema.org (the website, the
+  application and the organization behind both; no postal address, by
+  decision), then the nodes the page holds: a page's `page_data` assign, built
+  with `Regent.StructuredData`.
   """
-  def structured_data do
+  def structured_data(page_nodes), do: Regent.StructuredData.graph(site_graph(), page_nodes)
+
+  @doc "The `@id` of the organization behind Patchbay, a blog post's publisher."
+  def organization_id, do: "https://regents.sh/#organization"
+
+  defp site_graph do
     url = PatchbayWeb.Endpoint.url()
 
     %{
@@ -81,7 +87,7 @@ defmodule PatchbayWeb.Layouts do
           "@id" => url <> "/#website",
           "name" => "Patchbay",
           "url" => url,
-          "publisher" => %{"@id" => "https://regents.sh/#organization"}
+          "publisher" => %{"@id" => organization_id()}
         },
         %{
           "@type" => "SoftwareApplication",
@@ -93,11 +99,11 @@ defmodule PatchbayWeb.Layouts do
           "applicationCategory" => "DeveloperApplication",
           "operatingSystem" => "Web",
           "offers" => %{"@type" => "Offer", "price" => "0", "priceCurrency" => "USD"},
-          "publisher" => %{"@id" => "https://regents.sh/#organization"}
+          "publisher" => %{"@id" => organization_id()}
         },
         %{
           "@type" => "Organization",
-          "@id" => "https://regents.sh/#organization",
+          "@id" => organization_id(),
           "name" => "Regents Labs",
           "url" => "https://regents.sh",
           "logo" => url <> "/images/og-image.png",

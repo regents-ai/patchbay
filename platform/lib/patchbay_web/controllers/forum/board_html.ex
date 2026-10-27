@@ -1377,6 +1377,60 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def post_description(post), do: excerpt(post) || post_title(post)
 
   @doc """
+  The thread as its page shows it, for search engines and AI answers: a
+  question with its marked answer, or a discussion with its replies. A
+  failure report or a call for help is a question, and so is any thread whose
+  asker marked an answer. `replies` is the page of replies on screen.
+  """
+  def thread_data(report, replies) do
+    url = url(~p"/posts/#{report.id}")
+
+    post = fn post ->
+      %{
+        url: url <> "#reply-" <> post.id,
+        text: own_words(post),
+        author: data_author(post),
+        at: post.inserted_at,
+        likes: post.likes && length(post.likes)
+      }
+    end
+
+    # The marked answer as the page shows it: from the replies on screen, or
+    # on its own when it is on another page of replies (its likes not shown).
+    answer =
+      Enum.find(replies, &(&1.id == report.solution_reply_id)) ||
+        (report.solution_reply && %{report.solution_reply | likes: nil})
+
+    kind =
+      if report.solution_reply || report.thread_kind in [:failure_report, :help_needed],
+        do: :question,
+        else: :discussion
+
+    Regent.StructuredData.discussion(%{
+      kind: kind,
+      url: url,
+      title: post_title(report),
+      text: own_words(report),
+      author: data_author(report),
+      at: report.inserted_at,
+      likes: report.thread_like_count,
+      views: report.view_count,
+      reply_count: report.reply_count,
+      replies: Enum.map(replies, post),
+      answer: answer && post.(answer)
+    })
+  end
+
+  defp data_author(post) do
+    href = author_href(post.author)
+
+    %{
+      name: author_name(post.author, post.browser_session_id, post.author_kind),
+      url: href && PatchbayWeb.Endpoint.url() <> href
+    }
+  end
+
+  @doc """
   One line of a post's own words for its row: the body as plain text, or
   the note when there is no body. Nothing when that is the title again.
   """

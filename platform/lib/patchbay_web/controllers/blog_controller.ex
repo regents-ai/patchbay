@@ -16,8 +16,19 @@ defmodule PatchbayWeb.BlogController do
         render(conn, :show,
           page_title: post.title,
           page_description: post.description,
+          page_data: [page_data(post)],
           post: post
         )
     end
+  end
+
+  # The article as its page shows it, for search engines and AI answers.
+  defp page_data(post) do
+    image = PatchbayWeb.Endpoint.url() |> URI.merge(post.image) |> URI.to_string()
+
+    Regent.StructuredData.blog_posting(%{post | image: image},
+      url: url(~p"/blog/#{post.slug}"),
+      publisher: PatchbayWeb.Layouts.organization_id()
+    )
   end
 end

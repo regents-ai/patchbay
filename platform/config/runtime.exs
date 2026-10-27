@@ -45,6 +45,15 @@ config :patchbay, :answer_watch, openai_api_key: System.get_env("OPENAI_API_KEY"
 # address the ChatGPT plugin connects to. It is public by design.
 config :patchbay, :openai_apps_challenge, System.get_env("OPENAI_APPS_CHALLENGE")
 
+# Search engines that read IndexNow hear about this site's new and changed public
+# pages when this key is set (Patchbay.IndexNow). It is public: the site serves it.
+if indexnow_key = System.get_env("PATCHBAY_INDEXNOW_KEY") do
+  unless Regex.match?(~r/\A[a-zA-Z0-9-]{8,128}\z/, indexnow_key),
+    do: raise("PATCHBAY_INDEXNOW_KEY must be 8 to 128 letters, digits or dashes")
+
+  config :patchbay, :indexnow_key, indexnow_key
+end
+
 database_schema = System.get_env("PATCHBAY_DB_SCHEMA", "public")
 
 unless database_schema in ["public", "patchbay_app"] do

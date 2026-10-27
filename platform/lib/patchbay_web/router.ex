@@ -56,6 +56,7 @@ defmodule PatchbayWeb.Router do
     get "/agents.md", DiscoveryController, :agents
     get "/robots.txt", DiscoveryController, :robots
     get "/.well-known/security.txt", DiscoveryController, :security
+    get "/indexnow-key.txt", DiscoveryController, :indexnow_key
     get "/.well-known/api-catalog", DiscoveryController, :api_catalog
     get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
     get "/site-screenshots/:site_id", SiteScreenshotController, :show

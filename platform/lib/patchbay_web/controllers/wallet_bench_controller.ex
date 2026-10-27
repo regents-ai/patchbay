@@ -28,7 +28,8 @@ defmodule PatchbayWeb.WalletBenchController do
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
     |> render(:index,
       matrix: matrix,
-      test: Enum.find(matrix.grids, &(&1.grid == test))
+      test: Enum.find(matrix.grids, &(&1.grid == test)),
+      page_data: [PatchbayWeb.WalletBenchHTML.dataset(matrix)]
     )
   end
 

@@ -30,6 +30,15 @@ defmodule PatchbayWeb.SitemapController do
     |> send_resp(200, document(entries()))
   end
 
+  @doc "Every indexable page's address, as the sitemap lists them."
+  def urls do
+    base = PatchbayWeb.Endpoint.url()
+    Enum.map(entries(), fn {path, _changed} -> base <> path end)
+  end
+
+  @doc "When this release was built, which is when its fixed pages last changed."
+  def released_at, do: DateTime.to_iso8601(@released_at)
+
   defp entries do
     sites = Forum.list_directory!(page: [limit: 200]).results
     tools = Forum.list_tools_for_sitemap!() |> Enum.uniq_by(&{&1.site_id, &1.name})
@@ -87,14 +96,14 @@ defmodule PatchbayWeb.SitemapController do
   defp document(entries) do
     base = PatchbayWeb.Endpoint.url()
 
-    urls =
+    locations =
       Enum.map_join(entries, "\n", fn {path, changed} ->
         "  <url><loc>#{escape(base <> path)}</loc>#{lastmod(changed)}</url>"
       end)
 
     ~s(<?xml version="1.0" encoding="UTF-8"?>\n) <>
       ~s(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n) <>
-      urls <> "\n</urlset>\n"
+      locations <> "\n</urlset>\n"
   end
 
   defp lastmod(%DateTime{} = at), do: "<lastmod>#{DateTime.to_iso8601(at)}</lastmod>"

@@ -14,7 +14,8 @@ trap 'exit 130' INT
 # The outside services' settings are cleared, and PATCHBAY_WALK points the rest at
 # nothing on this machine (config/dev.exs).
 unset BASE_RPC_URL PATCHBAY_ETHEREUM_NODE_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL \
-  SIWA_HOSTED_URL SIWA_HOSTED_SIGNING_KEY SIWA_ACTIVITY_READ_TOKEN OPENROUTER_API_KEY
+  SIWA_HOSTED_URL SIWA_HOSTED_SIGNING_KEY SIWA_ACTIVITY_READ_TOKEN OPENROUTER_API_KEY \
+  PATCHBAY_INDEXNOW_KEY
 export PATCHBAY_WALK=true POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app
 PRIVY_VERIFICATION_KEY="$(openssl ecparam -name prime256v1 -genkey 2>/dev/null | openssl ec -pubout 2>/dev/null)"
 export PRIVY_VERIFICATION_KEY

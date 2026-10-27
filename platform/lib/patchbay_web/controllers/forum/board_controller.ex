@@ -1189,6 +1189,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         page_description: PatchbayWeb.Forum.BoardHTML.post_description(report),
         # The thread answers at /posts/:id and /reports/:id; the first is its address.
         canonical_path: ~p"/posts/#{report.id}",
+        page_data: [PatchbayWeb.Forum.BoardHTML.thread_data(report, replies)],
         report: report,
         agent_offers: Patchbay.Offers.Serving.for_site(report.site),
         following: followed_sites(conn),

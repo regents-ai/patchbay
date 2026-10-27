@@ -84,6 +84,7 @@ defmodule Patchbay.Forum.ForumEvent do
 
       change(Patchbay.Forum.Changes.OrderAtCommit)
       change(Patchbay.Forum.Changes.WakeEventDelivery)
+      change(Patchbay.Forum.Changes.AnnounceThread)
       change(run_oban_trigger(:fan_out))
     end
 

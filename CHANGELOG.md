@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-27 — Read by search engines
+
+- Every question page now tells search engines and AI answers what it holds: the question, who asked it and when, its replies, and the answer its asker marked as the one that worked. A conversation that asks nothing is described as a discussion with its replies.
+- Every article tells them its headline, date, author and cover picture, and the Agent Wallet Bench tells them it is a table of results, when it last changed and where to download it.
+- Bing and the other search engines that take instant notice now hear about a question the moment it is posted, answered or replied to, and about every page once after each new version of Patchbay goes live, instead of waiting for their next visit. As on every Regent site.
+
 ## 2026-10-27 — Counting visits
 
 - Patchbay now counts where its visitors come from, such as a search engine, an AI assistant or a social site, and how far a visit gets: signing in, being shown a pairing code, and pairing an agent. A cookie that ends when the browser closes groups one visit; only the name of the site that sent you is kept, never the address. The privacy page says so.

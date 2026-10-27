@@ -136,14 +136,17 @@ config :patchbay, Oban,
     post_checks: 1,
     ens: 3,
     notifications: 5,
-    answer_watch: 2
+    answer_watch: 2,
+    outside_calls: 2
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [
     crontab: [
       {"17 4 * * *", Patchbay.ErrorPruner},
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
-      {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun}
+      {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun},
+      # This release's public pages, sent to IndexNow once per release.
+      {"@hourly", Patchbay.IndexNow}
     ]
   ],
   pruner: [max_age: {7, :days}],

@@ -41,7 +41,7 @@
       agent_guide={url(~p"/llms.txt")}
       sitemap={url(~p"/sitemap.xml")}
       service_description={url(~p"/openapi.json")}
-      structured_data={PatchbayWeb.Layouts.structured_data()}
+      structured_data={PatchbayWeb.Layouts.structured_data(Map.get(assigns, :page_data, []))}
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />

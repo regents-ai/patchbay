@@ -25,6 +25,29 @@ defmodule PatchbayWeb.WalletBenchHTML do
   embed_templates("wallet_bench_html/*")
 
   @doc """
+  The board as a table of data, for search engines and AI answers: what it
+  is, the newest run its squares show, and the same results as JSON.
+  """
+  def dataset(matrix) do
+    [page_title: name, page_description: description] =
+      PatchbayWeb.PublicDocuments.page("/wallet-bench")
+
+    newest =
+      for grid <- matrix.grids,
+          {_pair, %{display_run: %{finished_at: %DateTime{} = at}}} <- grid.squares,
+          do: DateTime.to_date(at)
+
+    Regent.StructuredData.dataset(%{
+      name: name,
+      description: description,
+      url: url(~p"/wallet-bench"),
+      creator: PatchbayWeb.Layouts.organization_id(),
+      date_modified: Enum.max(newest, Date, fn -> nil end),
+      downloads: [%{url: url(~p"/api/wallet-bench"), format: "application/json"}]
+    })
+  end
+
+  @doc """
   A pair's forums, each a name and its site's domain: the agent's and the
   wallet's, for each that has a website on record.
   """

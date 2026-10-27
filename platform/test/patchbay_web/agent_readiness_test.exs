@@ -49,6 +49,16 @@ defmodule PatchbayWeb.AgentReadinessTest do
     )
   end
 
+  # The page's schema.org nodes, as a crawler reads them from its head.
+  defp structured_data(html) do
+    [json] =
+      Regex.run(~r{<script type="application/ld\+json">\s*(.*?)\s*</script>}s, html,
+        capture: :all_but_first
+      )
+
+    Jason.decode!(json)["@graph"]
+  end
+
   defp markdown(conn, path) do
     conn = conn |> put_req_header("accept", "text/markdown") |> get(path)
     assert response_content_type(conn, :md) =~ "text/markdown"
@@ -264,14 +274,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert File.exists?(Path.join(:code.priv_dir(:patchbay), "static/images/og-image.png"))
 
-      [json] =
-        Regex.run(
-          ~r{<script type="application/ld\+json">\s*(.*?)\s*</script>}s,
-          html,
-          capture: :all_but_first
-        )
-
-      %{"@graph" => [website, application, organization]} = Jason.decode!(json)
+      [website, application, organization] = structured_data(html)
 
       assert website["@type"] == "WebSite"
       assert website["publisher"] == %{"@id" => organization["@id"]}
@@ -281,6 +284,102 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert organization["@type"] == "Organization"
       assert organization["contactPoint"]["email"] == "build@regents.sh"
       refute Map.has_key?(organization, "address")
+    end
+  end
+
+  describe "what a page holds, for search engines and AI answers" do
+    test "a thread is a question, named and dated as the page shows it", %{conn: conn} do
+      report = "shop.example" |> site!() |> tool!() |> report!()
+      html = conn |> get("/reports/#{report.id}") |> html_response(200)
+
+      [_website, _application, _organization, page] = structured_data(html)
+      question = page["mainEntity"]
+
+      assert page["@type"] == "QAPage"
+      assert page["url"] == "#{PatchbayWeb.Endpoint.url()}/posts/#{report.id}"
+      assert question["name"] == PatchbayWeb.Forum.BoardHTML.post_title(report)
+      assert question["text"] =~ "once the cart had an item"
+      assert question["datePublished"] == DateTime.to_iso8601(report.inserted_at)
+      assert question["answerCount"] == 0
+      refute Map.has_key?(question, "acceptedAnswer")
+    end
+
+    test "an article names its headline, date, cover and publisher", %{conn: conn} do
+      url = PatchbayWeb.Endpoint.url()
+      html = conn |> get("/blog/agent-wallet-bench-v7") |> html_response(200)
+
+      [_website, _application, organization, article] = structured_data(html)
+
+      assert article["@type"] == "BlogPosting"
+      assert article["url"] == "#{url}/blog/agent-wallet-bench-v7"
+      assert article["headline"] == PatchbayWeb.Blog.get("agent-wallet-bench-v7").title
+      assert article["image"] == "#{url}/images/blog/agent-wallet-bench-v7-t2.svg"
+      assert article["publisher"] == %{"@id" => organization["@id"]}
+    end
+
+    test "the Agent Wallet Bench is a table of data with its newest run and its JSON" do
+      url = PatchbayWeb.Endpoint.url()
+
+      roster = [
+        %{id: "H1", kind: "harness", name: "Agent"},
+        %{id: "W1", kind: "wallet", name: "Wallet"}
+      ]
+
+      run = fn attempt_id, finished_at ->
+        %{
+          attempt_id: attempt_id,
+          grid: "install",
+          harness_id: "H1",
+          wallet_id: "W1",
+          run: 1,
+          outcome: "PASS",
+          decided_by: nil,
+          set_id: "set",
+          set_versions: %{},
+          finished_at: finished_at
+        }
+      end
+
+      results = [
+        run.(Ash.UUID.generate(), ~U[2026-10-18 09:00:00Z]),
+        run.(Ash.UUID.generate(), ~U[2026-10-20 12:00:00Z])
+      ]
+
+      summary = %{
+        set_id: "set",
+        harness_id: "H1",
+        wallet_id: "W1",
+        current: true,
+        last_run_at: ~U[2026-10-20 12:00:00Z]
+      }
+
+      dataset =
+        Patchbay.WalletBench.Matrix.build(roster, [], [], results, [summary], [])
+        |> PatchbayWeb.WalletBenchHTML.dataset()
+
+      assert dataset["@type"] == "Dataset"
+      assert dataset["url"] == "#{url}/wallet-bench"
+      assert dataset["creator"] == %{"@id" => PatchbayWeb.Layouts.organization_id()}
+      assert dataset["dateModified"] == "2026-10-20"
+
+      assert dataset["distribution"] == [
+               %{
+                 "@type" => "DataDownload",
+                 "contentUrl" => "#{url}/api/wallet-bench",
+                 "encodingFormat" => "application/json"
+               }
+             ]
+
+      # An empty board has no newest run, so it names none.
+      empty = Patchbay.WalletBench.Matrix.build(roster, [], [], [], [], [])
+      refute Map.has_key?(PatchbayWeb.WalletBenchHTML.dataset(empty), "dateModified")
+    end
+
+    test "a fixed page carries only the site's own graph", %{conn: conn} do
+      html = conn |> get("/about") |> html_response(200)
+
+      assert ["WebSite", "SoftwareApplication", "Organization"] ==
+               Enum.map(structured_data(html), & &1["@type"])
     end
   end
 
