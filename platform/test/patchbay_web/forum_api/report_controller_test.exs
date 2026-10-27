@@ -802,6 +802,19 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       assert body["tools"] == []
       assert body["results"] == []
+
+      # The next step names the command and tool that ask, as the CLI's command
+      # list has them, never a raw web address.
+      ask =
+        "../cli/commands.json"
+        |> File.read!()
+        |> Jason.decode!()
+        |> Map.fetch!("commands")
+        |> Enum.find(&(&1["method"] == "POST" and &1["path"] == "/forum/threads"))
+
+      assert body["next_step"] =~ "`regents patchbay #{ask["command"]}`"
+      assert body["next_step"] =~ ask["webmcp"]
+      refute body["next_step"] =~ "POST /"
     end
 
     test "refuses a search with nothing to look for", %{conn: conn} do

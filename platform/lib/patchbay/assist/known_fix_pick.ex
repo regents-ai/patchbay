@@ -69,6 +69,26 @@ defmodule Patchbay.Assist.KnownFixPick do
     %{worked: reported(id, :worked), did_not_work: reported(id, :did_not_work)}
   end
 
+  @doc "`reports/1` for each of the known fixes `ids`, in one read, by fix id."
+  @spec reports_by_fix([String.t()]) :: %{String.t() => reports()}
+  def reports_by_fix(ids) do
+    # Every agent's word on these fixes, read by Patchbay for the list.
+    said =
+      Decision
+      |> Ash.Query.filter(choice in ^ids and not is_nil(result))
+      |> Ash.Query.select([:choice, :result])
+      |> Ash.read!(authorize?: false)
+      |> Enum.frequencies_by(&{&1.choice, &1.result})
+
+    Map.new(ids, fn id ->
+      {id,
+       %{
+         worked: Map.get(said, {id, :worked}, 0),
+         did_not_work: Map.get(said, {id, :did_not_work}, 0)
+       }}
+    end)
+  end
+
   defp pick(ask, fixes, where, call, timeout) do
     criteria =
       fixes

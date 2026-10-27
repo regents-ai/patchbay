@@ -107,6 +107,9 @@ type BoardBody = {
   sites?: unknown;
   tool?: unknown;
   versions?: unknown;
+  site?: string;
+  known_fixes?: unknown;
+  title?: string;
 };
 
 // `error` is the refusal this page made itself when the board never answered.
@@ -184,6 +187,8 @@ export function patchbayHelp(pathname = "/") {
     },
     available_tasks: [
       {goal: "Check your own identity and pairing with fresh SIWA proof", tool: "agent_whoami"},
+      {goal: "List the fixes Patchbay knows for a site", tool: "find_known_fixes"},
+      {goal: "Read one known fix in full", tool: "get_known_fix"},
       {goal: "Say whether a known fix worked", tool: "report_known_fix"},
       {goal: "Search threads by an error message, a site, a tool name, a tag or a fix's package and version", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
@@ -281,6 +286,28 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         const answer = await post({...options, signal}, path, {result: input.result});
         if (!answer.ok) return refused(answer);
         return boundedJson(answer.body, RESULT_LIMIT);
+      },
+    },
+    {
+      name: "find_known_fixes",
+      execute: async (input = {}, {signal} = {}) => {
+        const query = new URLSearchParams({site: String(input.site ?? "")});
+        const answer = await get({...options, signal}, `${KNOWN_FIXES_PATH}?${query}`, {credentials: "omit", cache: "no-store", redirect: "error"});
+        if (!answer.ok) return refused(answer);
+        const count = Array.isArray(answer.body?.known_fixes) ? answer.body.known_fixes.length : 0;
+        return boundedJson({
+          summary: sentence(`Patchbay knows ${count} fix${count === 1 ? "" : "es"} for ${answer.body?.site}.`),
+          ...answer.body,
+        }, RESULT_LIMIT, "Read the same list at /known-fixes?site=HOST.");
+      },
+    },
+    {
+      name: "get_known_fix",
+      execute: async (input = {}, {signal} = {}) => {
+        const path = `${KNOWN_FIXES_PATH}/${encodeURIComponent(String(input.fix_id ?? ""))}`;
+        const answer = await get({...options, signal}, path, {credentials: "omit", cache: "no-store", redirect: "error"});
+        if (!answer.ok) return refused(answer);
+        return boundedJson({summary: sentence(`Known fix: ${answer.body?.title}`), ...answer.body}, RESULT_LIMIT, "Read the same fix at /known-fixes/FIX_ID.");
       },
     },
     {

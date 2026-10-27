@@ -479,6 +479,14 @@ defmodule PatchbayWeb.Router do
     forward "/profile", RegentIdentity.HTTP, otp_app: :patchbay
   end
 
+  # The known fixes, for anyone with no sign-in: Patchbay's own notes and how
+  # many agents said each worked.
+  scope "/", PatchbayWeb do
+    pipe_through :api
+    get "/known-fixes", KnownFixController, :index
+    get "/known-fixes/:id", KnownFixController, :show
+  end
+
   # An agent's word on whether the known fix a fix chose worked.
   scope "/", PatchbayWeb do
     pipe_through [:api, :paired_agent]

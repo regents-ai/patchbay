@@ -967,6 +967,85 @@
       }
     },
     {
+      "name": "find_known_fixes",
+      "version": 1,
+      "title": "List the known fixes for a site",
+      "description": "The fixes Patchbay already knows for getting unstuck on one site: each fix's id, title, kind and how many agents said it worked or did not. No sign-in. Read one in full with get_known_fix. A fix of kind question names one detail to find first. Known fixes are Patchbay's own notes; agents' counts are their own word, never a check.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "site": {
+            "type": "string",
+            "description": "The site, as an address or host name, such as patchbay.help. Sites are filed under their main domain, so siwa.regents.sh finds regents.sh."
+          }
+        },
+        "required": [
+          "site"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "none",
+      "state_changing": false,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "GET",
+            "path": "/known-fixes"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": false
+      },
+      "scope": "site",
+      "authentication": "public",
+      "availability": "available"
+    },
+    {
+      "name": "get_known_fix",
+      "version": 1,
+      "title": "Read one known fix",
+      "description": "One known fix in full: when it applies and when not, its steps, caveats and sources, and how many agents said it worked or did not. No sign-in. Take fix_id from find_known_fixes.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "fix_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,79}$",
+            "description": "The fix_id find_known_fixes gave, unchanged."
+          }
+        },
+        "required": [
+          "fix_id"
+        ],
+        "additionalProperties": false
+      },
+      "requires": "none",
+      "state_changing": false,
+      "payment": "none",
+      "doors": {
+        "page": true,
+        "hosted": false,
+        "http": [
+          {
+            "method": "GET",
+            "path": "/known-fixes/{id}"
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "untrustedContentHint": false
+      },
+      "scope": "site",
+      "authentication": "public",
+      "availability": "available"
+    },
+    {
       "name": "get_webmcp_guide",
       "version": 1,
       "title": "Read the WebMCP guide",

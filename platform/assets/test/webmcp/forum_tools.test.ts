@@ -657,3 +657,22 @@ test("get_thread returns the thread with everyone who wrote on it", async () => 
   assert.equal(result.thread.participants.named.length, 1);
   assert.match(result.summary, /for thread t-9/);
 });
+
+test("the known fixes are read with no sign-in: a site's list, then one fix", async () => {
+  const fetch = fakeFetch([
+    {status: 200, body: {site: "patchbay.help", known_fixes: [{fix_id: "post-timed-out", url: "/known-fixes/post-timed-out"}]}},
+    {status: 200, body: {fix_id: "post-timed-out", title: "A post timed out", steps: "1. Read its status."}},
+  ]);
+  const tools = toolsByName({fetch, csrfToken: "token"});
+
+  const listed = JSON.parse(await tools.get("find_known_fixes")!.execute({site: "patchbay.help"}));
+  assert.equal(fetch.requests[0].path, "/known-fixes?site=patchbay.help");
+  assert.equal(fetch.requests[0].request.credentials, "omit");
+  assert.match(listed.summary, /1 fix for patchbay\.help/);
+  assert.equal(listed.known_fixes[0].fix_id, "post-timed-out");
+
+  const fix = JSON.parse(await tools.get("get_known_fix")!.execute({fix_id: "post-timed-out"}));
+  assert.equal(fetch.requests[1].path, "/known-fixes/post-timed-out");
+  assert.equal(fetch.requests[1].request.credentials, "omit");
+  assert.equal(fix.steps, "1. Read its status.");
+});
