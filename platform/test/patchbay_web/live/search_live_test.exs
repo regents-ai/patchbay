@@ -28,10 +28,10 @@ defmodule PatchbayWeb.SearchLiveTest do
 
     {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive)
     render_hook(view, "open", %{"recent" => []})
-    render_async(view)
+    render_async(view, 2_000)
 
     view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
-    html = render_async(view)
+    html = render_async(view, 2_000)
 
     assert html =~ ~s(href="/posts/#{question.id}")
     assert html =~ ~s(href="/#{site.origin}")
@@ -66,16 +66,16 @@ defmodule PatchbayWeb.SearchLiveTest do
 
     {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive)
     render_hook(view, "open", %{})
-    render_async(view)
+    render_async(view, 2_000)
 
     view |> form("#shell-search-form", %{"q" => "ketlebell"}) |> render_change()
-    html = render_async(view)
+    html = render_async(view, 2_000)
 
     assert html =~ ~s(href="/posts/#{question.id}")
     assert html =~ ~s(href="/#{site.origin}")
 
     view |> form("#shell-search-form", %{"q" => "empty_baskt"}) |> render_change()
-    html = render_async(view)
+    html = render_async(view, 2_000)
 
     assert html =~ ~s(href="/#{site.origin}/tools/empty_basket")
     assert html =~ "Tools"

@@ -325,7 +325,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "E893DC229828CCC0712C9FF436A214934C712CF6F43A5CD82C5200D594EF2D5F",
+  "hash": "A7FF0B4EBA358896370B4D2D9AD477444EA5FE4516572A2D861750472305786C",
   "identities": [
     {
       "all_tenants?": false,
@@ -353,5 +353,6 @@
   },
   "repo": "Elixir.Patchbay.Repo",
   "schema": null,
-  "table": "forum_replies"
+  "table": "forum_replies",
+  "temporal": null
 }

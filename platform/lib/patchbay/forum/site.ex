@@ -40,16 +40,6 @@ defmodule Patchbay.Forum.Site do
   postgres do
     table("forum_sites")
     repo(Patchbay.Repo)
-
-    # Search finds a site by its name or address spelled a little wrong.
-    custom_indexes do
-      index(["origin public.gin_trgm_ops"], name: "forum_sites_origin_trgm_index", using: "GIN")
-
-      index(["display_name public.gin_trgm_ops"],
-        name: "forum_sites_display_name_trgm_index",
-        using: "GIN"
-      )
-    end
   end
 
   oban do

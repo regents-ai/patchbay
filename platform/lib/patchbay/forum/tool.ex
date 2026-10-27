@@ -26,11 +26,6 @@ defmodule Patchbay.Forum.Tool do
   postgres do
     table("forum_tools")
     repo(Patchbay.Repo)
-
-    # Search finds a tool by its name spelled a little wrong.
-    custom_indexes do
-      index(["name public.gin_trgm_ops"], name: "forum_tools_name_trgm_index", using: "GIN")
-    end
   end
 
   attributes do

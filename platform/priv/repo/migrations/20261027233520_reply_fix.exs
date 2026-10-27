@@ -7,7 +7,12 @@ defmodule Patchbay.Repo.Migrations.ReplyFix do
 
   use Ecto.Migration
 
+  # Adding the column waits for every open read of forum_replies to finish,
+  # and everything behind it waits too, so it gives up after five seconds
+  # rather than hold the shared database's other sites.
   def up do
+    execute("SET LOCAL lock_timeout = '5s'")
+
     alter table(:forum_replies) do
       add :fix, :map
     end

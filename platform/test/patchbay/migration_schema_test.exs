@@ -7,8 +7,9 @@ defmodule Patchbay.MigrationSchemaTest do
   names no schema works here and stops the release there, so every such
   statement has the schema put into it, and its migration takes that schema
   from `prefix()`. The database helpers and extensions every site shares live
-  in `public`, so a statement for one of them names `public` itself, and every
-  use of an extension names it there.
+  in `public`, so a statement for one of them names `public` itself
+  (`public.ash_required`, `WITH SCHEMA public`). A setting for the
+  migration's own transaction (`SET LOCAL`) names nothing to put a schema in.
   """
 
   use ExUnit.Case, async: true
@@ -29,6 +30,7 @@ defmodule Patchbay.MigrationSchemaTest do
           {line, statement} <- hand_written(source),
           not (String.contains?(source, "prefix()") and value_put_in?(statement)),
           not names_public?(statement),
+          not transaction_setting?(statement),
           do: "#{Path.basename(path)}:#{line}"
 
     assert names_no_schema == []
@@ -55,8 +57,15 @@ defmodule Patchbay.MigrationSchemaTest do
   defp value_put_in?({:<<>>, _meta, _parts}), do: true
   defp value_put_in?(_statement), do: false
 
-  defp names_public?(statement) when is_binary(statement), do: statement =~ ~r/\bpublic\b/
+  defp names_public?(statement) when is_binary(statement),
+    do: statement =~ ~r/\bpublic\.|\bSCHEMA public\b/
+
   defp names_public?(_statement), do: false
+
+  defp transaction_setting?(statement) when is_binary(statement),
+    do: statement =~ ~r/\ASET LOCAL \w+ = '[^']*'\z/
+
+  defp transaction_setting?(_statement), do: false
 
   defp version(path) do
     {version, _name} = path |> Path.basename() |> Integer.parse()

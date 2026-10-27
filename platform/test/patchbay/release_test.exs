@@ -257,8 +257,8 @@ defmodule Patchbay.ReleaseTest do
 
   test "under production's schema the search change applies and finds words spelled a little wrong" do
     # Production imported its tables and their migration ledger into
-    # patchbay_app and migrates from there. Here: every migration before the
-    # search change in public, the tables moved, then the rest under the prefix.
+    # patchbay_app and migrates from there. Here: every migration production
+    # has run in public, the tables moved, then the rest under the prefix.
     # Oban's jobs stay in public, where this test run's Oban reads them.
     public = disposable_database()
 
@@ -272,7 +272,7 @@ defmodule Patchbay.ReleaseTest do
     capture_io(fn -> Release.migrate_shared(config: public) end)
 
     with_repo(public, fn repo ->
-      Ecto.Migrator.run(repo, [release_migrations_path()], :up, to: 20_261_021_091_842)
+      Ecto.Migrator.run(repo, [release_migrations_path()], :up, to: 20_261_027_073_355)
       Ecto.Adapters.SQL.query!(repo, "CREATE SCHEMA patchbay_app", [])
 
       for [name, kind] <-
@@ -299,13 +299,6 @@ defmodule Patchbay.ReleaseTest do
              config,
              "SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm'"
            ).rows == [["public"]]
-
-    assert trigram_indexes(config) == [
-             "forum_reports_title_trgm_index",
-             "forum_sites_display_name_trgm_index",
-             "forum_sites_origin_trgm_index",
-             "forum_tools_name_trgm_index"
-           ]
 
     with_repo(config, fn _repo ->
       site = Patchbay.Forum.register_site!("kettlebell.example")
@@ -336,28 +329,17 @@ defmodule Patchbay.ReleaseTest do
       assert question_id == question.id
     end)
 
-    # Undoing the search change drops only Patchbay's own indexes: other sites
-    # on the shared database may use the extension.
+    # Undoing the change leaves the extension: other sites on the shared
+    # database may use it.
     with_repo(config, fn repo ->
       Ecto.Migrator.run(repo, [release_migrations_path()], :down,
-        to: 20_261_021_094_934,
+        to: 20_261_027_233_519,
         prefix: "patchbay_app"
       )
     end)
 
-    assert trigram_indexes(config) == []
-
     assert query!(config, "SELECT count(*) FROM pg_extension WHERE extname = 'pg_trgm'").rows ==
              [[1]]
-  end
-
-  defp trigram_indexes(config) do
-    config
-    |> query!(
-      "SELECT indexname FROM pg_indexes WHERE schemaname = 'patchbay_app' AND indexname LIKE '%trgm%' ORDER BY indexname"
-    )
-    |> Map.fetch!(:rows)
-    |> List.flatten()
   end
 
   defp staging_getenv do

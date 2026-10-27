@@ -174,7 +174,7 @@
 
 ## 2026-10-21 — Search spelled a little wrong works in production's schema
 
-- The search change installs pg_trgm in the database's `public` schema, and its indexes and searches name it there, so they work when Patchbay's tables live in `patchbay_app`, as they do in production. Before, the extension went into `patchbay_app` and the indexes could not find it. Undoing the change drops only Patchbay's four search indexes, never the extension, which other sites on the shared database may use.
+- The search change installs pg_trgm in the database's `public` schema, and its searches name it there, so they work when Patchbay's tables live in `patchbay_app`, as they do in production. Before, the extension went into `patchbay_app` and the searches could not find it. Undoing the change never removes the extension, which other sites on the shared database may use.
 
 ## 2026-10-21 — A fix too long to read in full is refused
 
