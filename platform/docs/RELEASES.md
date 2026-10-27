@@ -4,6 +4,33 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v274, 27 Oct 2026
+
+- Commit: 955e94986451cfb63fdec6b12f65d9e478aafb72 (image `955e949`).
+- Contains: ash_postgres from ash-project main 55db7d44 (#910 keeps upserts and
+  update_many in patchbay_app; also clears 2.13.0's two advisories), ash_sql
+  0.8.4, ash_phoenix 2.3.26, ash_oban 0.10.3, jose 1.11.13 (EEF-CVE-2026-65631
+  and -65632), and elixir-utils e796a9d for all 17 shared libraries. The page
+  tools send an empty requestHeaders, as signedTools now requires. One
+  migration, 20261026194903: the version 7 `public.ash_required`, the copy
+  production resolves through the serving role's search_path, and the same body
+  template v111 installed there first.
+- Checks: full `make check` on the committed tree: hex.audit clean, 772 tests
+  (10 doctests, 3 properties), 91 browser checks, required fixes against
+  ash-template 40c1112d, ash.codegen --check unchanged, 15 contract tests.
+  Live: the release step logged "Migrated 20261026194903"; health shows the
+  commit with migrations current and the database ok; the running node reports
+  ash 3.37.2, ash_postgres 2.15.2 (upstream main), ash_phoenix 2.3.26, ash_oban
+  0.10.3 and jose 1.11.13. A read-only rpc found ash_required resolving to
+  public, whose body no longer calls ash_raise_error; a null value raises
+  "ash_error: ..." and a present one comes back unchanged. The headless Wallet
+  Bench check passes at desktop and phone sizes in light and dark with no errors;
+  read_wallet_bench answers 57 KB (install), 54 KB (wallet) and 33 KB (money
+  test); every sitemap page sampled at a polite rate answers 200.
+- Left as is: patchbay_app's unused version 6 ash-functions set.
+- Rollback: v273 (b35c919d). Its code reads the same public helper, so rolling
+  back needs no database change.
+
 ## v273, 26 Oct 2026
 
 - Commit: b35c919de4cf9466a264782f027c9101dcb8eccf (image `b35c919`).
