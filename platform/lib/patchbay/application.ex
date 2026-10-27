@@ -25,14 +25,13 @@ defmodule Patchbay.Application do
         if(RegentOAuth.enabled?(), do: RegentOAuth.Repo),
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
-        RegentAgents.Listener,
         # Each paired agent's sign-in service reading, kept five minutes.
         Patchbay.Agents.ActivityReading,
         # Each agent's reading for an open side panel, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
-        # After the repository and PubSub: a Credits balance changed on any
-        # Regent site reaches the pages showing it.
-        RegentCredits.Listener,
+        # After the repository and PubSub: a Credits balance changed or a
+        # pairing made or ended on any Regent site reaches the pages showing it.
+        Patchbay.SharedChanges,
         RegentPayments.Supervisor,
         # The paid-call test page's record of payments it has already seen.
         PatchbayWeb.Plugs.X402Test.replays(),

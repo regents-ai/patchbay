@@ -627,12 +627,12 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       assert replaced =~ "Replaced by a higher bid"
       assert replaced =~ "ran for 1 d 0 h"
       assert replaced =~ "Paid 10.00 Credits · used 7.00 Credits · returned 3.00 Credits"
-      assert replaced =~ "forfeited 0.00 Credits"
+      assert replaced =~ "forfeited 0 Credits"
       assert replaced =~ "Cost in the end: 7.00 Credits"
 
       removed = text_of(view, "#pb-offers-ended-list li", "Removed three")
       assert removed =~ "Removed by a moderator"
-      assert removed =~ "used 3.00 Credits · returned 0.00 Credits · forfeited 2.00 Credits"
+      assert removed =~ "used 3.00 Credits · returned 0 Credits · forfeited 2.00 Credits"
       assert removed =~ "Cost in the end: 5.00 Credits"
 
       beaten = text_of(view, "#pb-offers-returned-list li", "Beaten next")

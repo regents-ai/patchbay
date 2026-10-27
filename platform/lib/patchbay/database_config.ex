@@ -34,6 +34,17 @@ defmodule Patchbay.DatabaseConfig do
     end
   end
 
+  @doc """
+  The connection the site's listeners share (`Patchbay.SharedChanges`): the
+  repository's login and address, without its pool or its serving limits, named
+  apart in pg_stat_activity.
+  """
+  def notifications_config(repo_options) do
+    repo_options
+    |> Keyword.drop([:name, :pool, :pool_size, :parameters])
+    |> Keyword.merge(auto_reconnect: true, parameters: [application_name: "patchbay-listen"])
+  end
+
   def release_config!(getenv \\ &System.get_env/1) do
     :production = deployment_role!(getenv)
     require_production_target!(getenv)

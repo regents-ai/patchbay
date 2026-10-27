@@ -52,6 +52,17 @@ defmodule Patchbay.Offers.CreditAmount do
   end
 
   @doc """
+  The amount as people read it, the one Regent way (`RegentFormat.amount/1`).
+  An amount a person types, or is told to type, stays as `format/1` writes it.
+
+      iex> Patchbay.Offers.CreditAmount.shown(1_265_050)
+      "12,650.50"
+  """
+  @spec shown(non_neg_integer()) :: String.t()
+  def shown(minor) when is_integer(minor) and minor >= 0,
+    do: minor |> to_credits() |> RegentFormat.amount()
+
+  @doc """
   The same amount in whole Credits, exactly, as the Credits ledger takes it.
 
       iex> Patchbay.Offers.CreditAmount.to_credits(1102)

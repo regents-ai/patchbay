@@ -52,7 +52,7 @@ defmodule PatchbayWeb.OffersLive.Markets do
   end
 
   @doc "An amount of Credits in words."
-  def credits(minor), do: "#{CreditAmount.format(minor)} Credits"
+  def credits(minor), do: "#{CreditAmount.shown(minor)} Credits"
 
   @doc "How long is left until `expires_at`, in words."
   def time_left(expires_at, now) do

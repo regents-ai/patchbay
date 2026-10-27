@@ -81,7 +81,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidding do
 
           {:ok,
            %{
-             summary: "Bid placed. #{CreditAmount.format(placed.amount_minor)} Credits are held.",
+             summary: "Bid placed. #{CreditAmount.shown(placed.amount_minor)} Credits are held.",
              bid: bid_entry(placed)
            }}
 

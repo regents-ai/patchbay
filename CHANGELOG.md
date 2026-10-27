@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-27 — Amounts
+
+- Amounts read the one Regent way: from 1 up, the number with exactly two decimals and commas in the thousands; below 1, three significant digits; digits are cut, never rounded up; zero is "0". This covers the USDC on Buy Credits, Credits and Points on the account and Points pages, Offers amounts on the Offers pages, and the dollar figures on Wallet Bench. Amounts you type, and amounts you are told to type, stay exact. As on every Regent site.
+- A Credits balance changed or an agent paired or unpaired on another Regent site now reaches Patchbay over one database connection instead of two. Nothing changes on the pages.
+
 ## 2026-10-27 — Found in search
 
 - Every page now describes itself to search engines and AI answers in its own words. An article uses its own summary, a question uses its opening words, an incident uses its summary, and each site, tool, agent guide and troubleshooting page says what it covers. Before, every page carried the same description of Patchbay.

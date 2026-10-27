@@ -312,12 +312,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
   defp per_success(_summary, nil, _said), do: "Not recorded"
   defp per_success(_summary, value, said), do: said.(value)
 
-  # Whole cents where that says it all, and up to four places for less.
-  defp dollars(amount) do
-    amount = Decimal.normalize(amount)
-    amount = if Decimal.scale(amount) < 2, do: Decimal.round(amount, 2), else: amount
-    "$" <> Decimal.to_string(amount, :normal)
-  end
+  defp dollars(amount), do: "$" <> RegentFormat.amount(amount)
 
   defp duration(seconds) do
     case seconds |> Decimal.round() |> Decimal.to_integer() do

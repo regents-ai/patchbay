@@ -25,7 +25,7 @@ defmodule PatchbayWeb.OffersLive.Index do
      |> assign(
        max_code_points: CreativeText.max_code_points(),
        hours: div(Terms.duration_us(), 3_600_000_000),
-       minimum: CreditAmount.format(Offers.default_minimum_minor())
+       minimum: CreditAmount.shown(Offers.default_minimum_minor())
      )}
   end
 end
