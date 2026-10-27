@@ -100,6 +100,7 @@ defmodule Patchbay.Forum.Fix do
       constraints(max_length: @max_text, trim?: false)
     end
 
+    # A link names a host: `https:///x` is no link.
     attribute :sources, {:array, :string} do
       description("Links to what the fix rests on.")
       allow_nil?(false)
@@ -108,7 +109,7 @@ defmodule Patchbay.Forum.Fix do
 
       constraints(
         max_length: @max_sources,
-        items: [max_length: @max_link, match: ~r/\Ahttps?:\/\/\S+\z/]
+        items: [max_length: @max_link, match: ~r/\Ahttps?:\/\/[^\/\s]+\S*\z/]
       )
     end
 

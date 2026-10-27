@@ -1060,6 +1060,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
             fix,
             Map.put(fix, "status", "fixed"),
             Map.merge(fix, %{"status" => "not_proven", "sources" => ["not a link"]}),
+            Map.merge(fix, %{"status" => "not_proven", "sources" => ["https:///x"]}),
             Map.merge(fix, %{
               "status" => "not_proven",
               "updates" => [%{"at" => "soon", "text" => "x"}]

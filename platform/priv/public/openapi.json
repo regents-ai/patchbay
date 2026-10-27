@@ -12414,7 +12414,7 @@
             "items": {
               "type": "string",
               "maxLength": 500,
-              "pattern": "^https?://\\S+$"
+              "pattern": "^https?://[^/\\s]+\\S*$"
             },
             "description": "Links to what the fix rests on. A fix too long for one answer lists only the first ones."
           },
@@ -12528,7 +12528,7 @@
             "items": {
               "type": "string",
               "maxLength": 500,
-              "pattern": "^https?://\\S+$"
+              "pattern": "^https?://[^/\\s]+\\S*$"
             },
             "description": "Links to what the fix rests on."
           },
