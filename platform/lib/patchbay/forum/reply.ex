@@ -186,7 +186,7 @@ defmodule Patchbay.Forum.Reply do
       :string,
       expr(
         fragment(
-          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'version', ?->>'affected_versions', ?->>'change', ?->>'test', ?->>'result', ?->>'not_covered') || ' ' || coalesce((SELECT string_agg(source, ' ') FROM jsonb_array_elements_text(?->'sources') AS source), '') || ' ' || coalesce((SELECT string_agg(entry->>'text', ' ') FROM jsonb_array_elements(?->'updates') AS entry), '')",
+          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'affected_versions', ?->>'change', ?->>'test', ?->>'result', ?->>'not_covered') || ' ' || coalesce((SELECT string_agg(version, ' ') FROM jsonb_array_elements_text(?->'versions') AS version), '') || ' ' || coalesce((SELECT string_agg(source, ' ') FROM jsonb_array_elements_text(?->'sources') AS source), '') || ' ' || coalesce((SELECT string_agg(entry->>'text', ' ') FROM jsonb_array_elements(?->'updates') AS entry), '')",
           body_markdown,
           note,
           fix,

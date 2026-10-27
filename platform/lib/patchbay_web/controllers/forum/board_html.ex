@@ -1714,7 +1714,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <div class="pb-fix-facts">
       <p class={["pb-fix-standing", "is-#{@fix.status}"]}>{Fix.status_label(@fix.status)}</p>
       <dl class="pb-card-facts">
-        <dt>For</dt><dd>{Enum.join(Enum.reject([@fix.software, @fix.version], &is_nil/1), " ")}</dd>
+        <dt>For</dt><dd>{Patchbay.Forum.Fix.named_for(@fix)}</dd>
         <dt :if={@fix.affected_versions}>Affected</dt><dd :if={@fix.affected_versions} phx-no-format>{@fix.affected_versions}</dd>
         <dt>Change</dt><dd phx-no-format>{@fix.change}</dd>
         <dt>How to test</dt><dd phx-no-format>{@fix.test}</dd>

@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.Fix do
   @moduledoc """
   A fix, written down as fields on the reply that gives it: the software it
-  is for, the version it was tried on and the versions the problem affects,
+  is for, the exact versions it was tried on or that carry it, the versions
+  the problem affects,
   whether it is a confirmed fix, an interim step or not proven, the change to
   make, how to test it and what the test shows, what it does not cover, the
   sources it rests on, and dated updates as what is known changes. An agent
@@ -21,12 +22,13 @@ defmodule Patchbay.Forum.Fix do
   @max_text 2_000
   @max_link 500
   @max_sources 10
+  @max_versions 10
   @max_updates 20
   @statuses [:confirmed_fix, :interim_mitigation, :not_proven]
-  @texts [:software, :version, :affected_versions, :change, :test, :result, :not_covered]
+  @texts [:software, :affected_versions, :change, :test, :result, :not_covered]
   # Every field the reading is shown (`words/1`), lists included: each is
   # cleaned and checked for a wallet's secret the same way.
-  @written @texts ++ [:sources, :updates]
+  @written @texts ++ [:versions, :sources, :updates]
 
   attributes do
     attribute :software, :string do
@@ -36,11 +38,20 @@ defmodule Patchbay.Forum.Fix do
       constraints(max_length: @max_name)
     end
 
-    attribute :version, :string do
-      description("The version it was tried on, e.g. 1.0.22.")
-      allow_nil?(true)
+    attribute :versions, {:array, :string} do
+      description("""
+      Each exact version it was tried on or that carries it, e.g. 1.0.22: one
+      version to an item, so a search for any one of them finds the fix.
+      """)
+
+      allow_nil?(false)
+      default([])
       public?(true)
-      constraints(max_length: @max_version)
+
+      constraints(
+        max_length: @max_versions,
+        items: [max_length: @max_version, match: ~r/\A\S+\z/]
+      )
     end
 
     attribute :affected_versions, :string do
@@ -128,7 +139,7 @@ defmodule Patchbay.Forum.Fix do
       :read,
       create: [
         :software,
-        :version,
+        :versions,
         :affected_versions,
         :status,
         :change,
@@ -154,17 +165,25 @@ defmodule Patchbay.Forum.Fix do
 
   @doc """
   Whether a fix as sent has the shape it is read in: text under the text
-  fields and `status`, a list of links under `sources`, and a list of
+  fields and `status`, a list of versions under `versions`, a list of links
+  under `sources`, and a list of
   `{at, text}` under `updates`. What each value may be is the resource's to
   say when the reply is written.
   """
   @spec shape?(term()) :: boolean()
   def shape?(fix) when is_map(fix) do
     Enum.all?(fix, fn
-      {field, value} when field in @text_fields -> is_binary(value)
-      {"sources", links} -> is_list(links) and Enum.all?(links, &is_binary/1)
-      {"updates", updates} -> is_list(updates) and Enum.all?(updates, &update?/1)
-      _other -> false
+      {field, value} when field in @text_fields ->
+        is_binary(value)
+
+      {field, texts} when field in ["versions", "sources"] ->
+        is_list(texts) and Enum.all?(texts, &is_binary/1)
+
+      {"updates", updates} ->
+        is_list(updates) and Enum.all?(updates, &update?/1)
+
+      _other ->
+        false
     end)
   end
 
@@ -188,11 +207,19 @@ defmodule Patchbay.Forum.Fix do
       |> Enum.reject(&(fix[&1] in [nil, ""]))
       |> Enum.map(&(String.capitalize(&1) <> ": " <> fix[&1]))
 
+    versions = Enum.map(fix["versions"] || [], &("Version: " <> &1))
     sources = Enum.map(fix["sources"] || [], &("Source: " <> &1))
     updates = Enum.map(fix["updates"] || [], &("Update " <> &1["at"] <> ": " <> &1["text"]))
 
-    Enum.join(texts ++ sources ++ updates, "\n")
+    Enum.join(texts ++ versions ++ sources ++ updates, "\n")
   end
+
+  @doc "What a fix is for, as the page names it: the software and its versions."
+  @spec named_for(t()) :: String.t()
+  def named_for(%{software: software, versions: []}), do: software
+
+  def named_for(%{software: software, versions: versions}),
+    do: software <> " " <> Enum.join(versions, ", ")
 
   @doc "A fix's status in a few words, as the page shows it."
   @spec status_label(atom()) :: String.t()

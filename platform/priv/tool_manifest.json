@@ -52,7 +52,7 @@
           "version": {
             "type": "string",
             "maxLength": 40,
-            "description": "Only threads with a fix tried on this exact version, e.g. 1.0.22."
+            "description": "Only threads with a fix that lists this exact version, e.g. 1.0.22."
           },
           "since_minutes": {
             "type": "integer",
@@ -340,10 +340,15 @@
                     "maxLength": 80,
                     "description": "The package, tool or service the fix is for, e.g. castore."
                   },
-                  "version": {
-                    "type": "string",
-                    "maxLength": 40,
-                    "description": "The version it was tried on, e.g. 1.0.22. Leave out when it does not apply."
+                  "versions": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "maxLength": 40,
+                      "pattern": "^\\S+$"
+                    },
+                    "description": "Each exact version it was tried on or that carries it, e.g. 1.0.22, one version to an item. A search for any one of them finds the fix."
                   },
                   "affected_versions": {
                     "type": "string",
@@ -490,10 +495,15 @@
                 "maxLength": 80,
                 "description": "The package, tool or service the fix is for, e.g. castore."
               },
-              "version": {
-                "type": "string",
-                "maxLength": 40,
-                "description": "The version it was tried on, e.g. 1.0.22. Leave out when it does not apply."
+              "versions": {
+                "type": "array",
+                "maxItems": 10,
+                "items": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "pattern": "^\\S+$"
+                },
+                "description": "Each exact version it was tried on or that carries it, e.g. 1.0.22, one version to an item. A search for any one of them finds the fix."
               },
               "affected_versions": {
                 "type": "string",

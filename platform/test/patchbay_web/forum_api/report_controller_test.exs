@@ -891,7 +891,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       fix = %{
         "software" => "castore",
-        "version" => "1.0.22",
+        "versions" => ["1.0.22", "1.0.23"],
         "affected_versions" => "castore 1.0.21 and earlier",
         "status" => "confirmed_fix",
         "change" => "Load the CA bundle that ships with castore 1.0.22 before the first request.",
@@ -918,6 +918,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
             %{"package" => "CaStore"},
             %{"package" => "castore", "version" => "1.0.22"},
             %{"version" => "1.0.22"},
+            %{"version" => "1.0.23"},
             %{"q" => "unknown_ca"}
           ] do
         found = conn |> get("/forum/search", params) |> json_response(200)
@@ -989,7 +990,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       # One word no other part of the thread has, in each field of the fix.
       words = %{
         software: "zebrasoft",
-        version: "4.5.6789",
+        versions: "4.5.6789",
         affected_versions: "quokkaversions",
         change: "narwhal",
         test: "pangolin",
@@ -1011,7 +1012,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         "body_markdown" => "This fixed it here.",
         "fix" => %{
           "software" => words.software,
-          "version" => words.version,
+          "versions" => [words.versions],
           "affected_versions" => "The #{words.affected_versions} builds",
           "status" => "confirmed_fix",
           "change" => "Swap the #{words.change} bundle.",
@@ -1211,7 +1212,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
     %{
       "software" => "castore",
-      "version" => "1.0.22",
+      "versions" => ["1.0.22"],
       "affected_versions" => text.(200),
       "status" => "confirmed_fix",
       "change" => text.(2000),

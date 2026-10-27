@@ -74,7 +74,7 @@ defmodule Patchbay.Forum.Feed do
   defp since(query, cutoff), do: Ash.Query.filter(query, last_activity_at >= ^cutoff)
 
   # Threads with a reply whose fix names this software (any case) and, when
-  # given, this version exactly (`Patchbay.Forum.Fix`).
+  # given, lists this exact version (`Patchbay.Forum.Fix`).
   defp fixed(query, %{software: nil, version: nil}), do: query
 
   defp fixed(query, %{software: software, version: version}) do
@@ -84,7 +84,8 @@ defmodule Patchbay.Forum.Feed do
         replies,
         visibility == :published and
           (is_nil(^software) or fragment("lower(?->>'software') = lower(?)", fix, ^software)) and
-          (is_nil(^version) or fragment("?->>'version' = ?", fix, ^version))
+          (is_nil(^version) or
+             fragment("?->'versions' @> jsonb_build_array(?::text)", fix, ^version))
       )
     )
   end

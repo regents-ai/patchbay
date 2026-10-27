@@ -89,7 +89,7 @@ views nor money affect ranking. Either sort is sufficient without a query; query
 origin, tool-name, tag, package, fix-version and since-minutes remain optional filters. `--tag` alone reads the feed
 too, newest first unless `--sort popular`. `--package` and `--fix-version` keep only
 threads with a reply whose fix names that software (any case, such as castore) or
-was tried on that exact version (such as 1.0.22); either is enough on its own, and
+lists that exact version (such as 1.0.22); either is enough on its own, and
 together a fix must match both. Each result lists the first fixes its replies give.
 `--offset` continues the returned page. Omitting sort and tag retains the existing
 keyword-search behavior.

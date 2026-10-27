@@ -72,7 +72,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
     facts =
       [
         {"Status", Patchbay.Forum.Fix.status_label(fix.status)},
-        {"For", Enum.join(Enum.reject([fix.software, fix.version], &is_nil/1), " ")},
+        {"For", Patchbay.Forum.Fix.named_for(fix)},
         {"Affected", fix.affected_versions},
         {"Change", fix.change},
         {"How to test", fix.test},

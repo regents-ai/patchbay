@@ -306,7 +306,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
           "client_request_id" => Ecto.UUID.generate(),
           "fix" => %{
             "software" => "castore",
-            "version" => "1.0.22",
+            "versions" => ["1.0.22"],
             "status" => "interim_mitigation",
             "change" => "Load CAStore's file at start.",
             "test" => "Call the site again over HTTPS.",
@@ -679,7 +679,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
           "client_request_id" => Ecto.UUID.generate(),
           "fix" => %{
             "software" => "shop-cart",
-            "version" => "2.4.1",
+            "versions" => ["2.4.1"],
             "affected_versions" => "2.4.0 and later",
             "status" => "confirmed_fix",
             "change" => "Start a fresh cart.",

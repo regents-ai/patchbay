@@ -240,7 +240,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
         {:error,
          {:invalid,
           [
-            "fix: an object with software, version, affected_versions, status, change, test, result and not_covered as text, sources as a list of links, and updates as a list of {at, text}"
+            "fix: an object with software, affected_versions, status, change, test, result and not_covered as text, versions as a list of versions, sources as a list of links, and updates as a list of {at, text}"
           ]}}
 
       true ->

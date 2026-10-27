@@ -393,7 +393,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     [{:replies, fixes} | @thread_search_loads]
   end
 
-  # The package a fix names and the version it was tried on, each up to the
+  # The package a fix names and one version it lists, each up to the
   # length a fix may give it.
   defp fixed_in(params) do
     with {:ok, package} <- searched(params, "package", 80),
@@ -811,7 +811,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   def fix_entry(fix) do
     %{
       software: fix.software,
-      version: fix.version,
+      versions: fix.versions,
       affected_versions: fix.affected_versions,
       status: fix.status,
       change: fix.change,

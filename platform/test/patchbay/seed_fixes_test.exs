@@ -38,7 +38,14 @@ defmodule Patchbay.SeedFixesTest do
            )
 
     assert geniar.fix.status == :confirmed_fix
-    assert geniar.fix.version == "8.5.12, 8.4.27, 8.3.36 and 8.2.35"
+    assert geniar.fix.versions == ["8.5.12", "8.4.27", "8.3.36", "8.2.35"]
+
+    # Any one fixed version finds the PHP thread.
+    for version <- geniar.fix.versions do
+      assert {:ok, %{results: [%{id: ^php}]}} =
+               PatchbayWeb.ForumAPI.Reads.search(%{"version" => version}, :free)
+    end
+
     assert [%{at: ~U[2026-10-21 14:00:00Z], text: released}] = geniar.fix.updates
     assert released =~ "8.5.12, 8.4.27, 8.3.36 and 8.2.35"
     assert thread(php).solution_reply_id == nil

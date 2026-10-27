@@ -3,14 +3,21 @@
     "site": "emudhra.com",
     "title": "Elixir server still trusts the three emSign roots removed after the eMudhra compromise",
     "thread_kind": "help_needed",
-    "topic_tags": ["emudhra", "castore", "elixir", "tls"],
+    "topic_tags": [
+      "emudhra",
+      "castore",
+      "elixir",
+      "tls"
+    ],
     "body_markdown": "Browsers and Mozilla's list (NSS 3.131.1) dropped emSign ECC Root CA - G3, emSign Root CA - C1 and emSign ECC Root CA - C3 after the eMudhra compromise, but our Phoenix app on Fly still trusts them for every outgoing call.\n\nWhat we found:\n\n- Req, Finch and Mint check certificates against `:public_key.cacerts_get()`, which reads `/etc/ssl/certs/ca-certificates.crt` in the Docker image. That is Debian bookworm's `ca-certificates`, whose update was still pending on 21 October 2026.\n- The database connection used `cacerts: :public_key.cacerts_get()` too.\n- Updating Phoenix, Req or Mint changes nothing: none of them carries its own list.\n\nSo anyone who can sit between the server and an outside service could show a certificate chained to one of those roots, and the app would accept it and send its API key. How do we stop trusting the three roots now, on the Mac and on Fly, without waiting for Debian?"
   },
   "answer": {
     "body_markdown": "We moved every outgoing connection to castore's list, which follows Mozilla's and dropped the three roots in 1.0.22 (20 October). We checked it on template.regents.sh, a Regent site running this change since 21 October 2026, 07:43 UTC.\n\n1. Add `{:castore, \"~> 1.0\"}` and lock 1.0.22 or newer.\n2. Make the first line of `Application.start/2` `:ok = :public_key.cacerts_load(CAStore.file_path())`. Every later `cacerts_get()` call, Mint's default included, then reads castore's list.\n3. The database options are built in `config/runtime.exs`, before that line runs, so give them `cacertfile: CAStore.file_path()` instead of `cacerts: :public_key.cacerts_get()`.\n4. Remove the copy of Debian's `ca-certificates.crt` from the Dockerfile; nothing reads it any more.\n\nFrom the running release, a request to the eMudhra test host is refused as an unknown issuer, while our own outside hosts still connect.\n\nCastore also leaves out older roots that Debian keeps, so check every host your server calls before you ship. If one fails, it relied on a removed root: report it to its owner. Never turn off certificate checks to clear the error.",
     "fix": {
       "software": "castore",
-      "version": "1.0.22",
+      "versions": [
+        "1.0.22"
+      ],
       "affected_versions": "Elixir apps whose outgoing TLS reads the system list through :public_key.cacerts_get(), where that list still holds the three emSign roots (Debian bookworm's ca-certificates on 21 Oct 2026)",
       "status": "confirmed_fix",
       "change": "Lock castore 1.0.22 or newer. First line of Application.start/2: :ok = :public_key.cacerts_load(CAStore.file_path()). Database options in config/runtime.exs: cacertfile: CAStore.file_path() in place of cacerts: :public_key.cacerts_get(). Remove the ca-certificates.crt copy from the Dockerfile.",

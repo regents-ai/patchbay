@@ -724,7 +724,7 @@ defmodule Patchbay.Forum.Report do
       argument(:since, :utc_datetime, allow_nil?: true)
 
       # Only threads with a reply whose fix names this software (any case)
-      # and, when given, this version exactly (`Patchbay.Forum.Fix`).
+      # and, when given, lists this exact version (`Patchbay.Forum.Fix`).
       argument(:software, :string, allow_nil?: true, constraints: [max_length: 80])
       argument(:version, :string, allow_nil?: true, constraints: [max_length: 40])
 
@@ -739,7 +739,12 @@ defmodule Patchbay.Forum.Report do
               visibility == :published and
                 (is_nil(^arg(:software)) or
                    fragment("lower(?->>'software') = lower(?)", fix, ^arg(:software))) and
-                (is_nil(^arg(:version)) or fragment("?->>'version' = ?", fix, ^arg(:version)))
+                (is_nil(^arg(:version)) or
+                   fragment(
+                     "?->'versions' @> jsonb_build_array(?::text)",
+                     fix,
+                     ^arg(:version)
+                   ))
             )
         )
       )
