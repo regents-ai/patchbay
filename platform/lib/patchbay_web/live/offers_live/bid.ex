@@ -51,8 +51,9 @@ defmodule PatchbayWeb.OffersLive.Bid do
     end
 
     {:ok,
-     assign(socket,
-       page_title: "Bid on an Offer slot",
+     socket
+     |> assign(PatchbayWeb.PublicDocuments.page("/offers/bid"))
+     |> assign(
        problem: nil,
        outbid?: false,
        short?: false,

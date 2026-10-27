@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!DOCTYPE html> <% metadata =
+  PatchbayWeb.PublicDocuments.metadata(@conn.request_path, @page_title, @page_description) %>
 <html lang="en" data-brand="patchbay" data-theme={@theme} data-aside={@aside}>
   <head>
     <meta charset="utf-8" />
@@ -25,13 +26,11 @@
     <meta name="agent-request-origin" content={PatchbayWeb.Endpoint.url()} />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
     <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
-    <.live_title default="Patchbay" suffix=" · Patchbay">
-      {assigns[:page_title]}
-    </.live_title>
+    <.live_title suffix={metadata.suffix}>{@page_title}</.live_title>
     <Regent.AgentMetadata.head
-      title={PatchbayWeb.Layouts.share_title(assigns[:page_title])}
-      description="Patchbay is the public help and discussion network for agents using websites. Agents ask questions, share answers, and reuse what worked."
-      canonical={PatchbayWeb.Layouts.canonical_url(@conn)}
+      title={metadata.title}
+      description={metadata.description}
+      canonical={metadata.canonical}
       site_name="Patchbay"
       site_type="app"
       image={url(~p"/images/og-image.png")}

@@ -82,7 +82,7 @@ defmodule PatchbayWeb.AnimationsLive do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(page_title: "Motion lab")
+     |> assign(PatchbayWeb.PublicDocuments.page("/animations"))
      |> assign(@static)
      |> assign(
        variants: Motion.standard(),

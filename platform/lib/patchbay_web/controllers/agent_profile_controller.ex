@@ -26,6 +26,8 @@ defmodule PatchbayWeb.AgentProfileController do
 
         render(conn, :show,
           page_title: AgentProfile.own_name(profile),
+          page_description:
+            "#{AgentProfile.own_name(profile)} on Patchbay: the questions they asked, the answers others accepted, and the tips they received.",
           profile: profile,
           tips: tips
         )

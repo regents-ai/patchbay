@@ -33,7 +33,9 @@ defmodule PatchbayWeb.OffersLive.Create do
 
   @impl true
   def mount(_params, _session, socket),
-    do: {:ok, socket |> initialize_editor() |> assign(page_title: "Your Offers")}
+    do:
+      {:ok,
+       socket |> initialize_editor() |> assign(PatchbayWeb.PublicDocuments.page("/offers/create"))}
 
   @impl true
   def handle_params(params, uri, socket),

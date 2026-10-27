@@ -30,8 +30,9 @@ defmodule PatchbayWeb.Forum.ModerationController do
   plug PatchbayWeb.Plugs.RequireModerator
 
   def index(conn, _params) do
-    render(conn, :index,
-      page_title: "Moderation",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/moderation"))
+    |> render(:index,
       quarantined: load_quarantined(),
       turned_away: PostReview.turned_away(),
       latest: load_latest(),

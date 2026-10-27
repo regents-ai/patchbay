@@ -24,7 +24,7 @@ defmodule PatchbayWeb.OAuthController do
       conn
       |> put_status(:unauthorized)
       |> put_resp_header("cache-control", "no-store")
-      |> render(:sign_in, page_title: "Connected apps")
+      |> render(:sign_in, PatchbayWeb.PublicDocuments.page("/oauth/connections"))
     else
       RegentOAuth.Consent.connections(conn)
     end

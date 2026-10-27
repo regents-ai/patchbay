@@ -64,7 +64,11 @@ defmodule PatchbayWeb.Forum.BoardController do
     page = Troubleshooting.fetch!(harness)
     look = if page.agent, do: [theme: page.agent.theme], else: []
 
-    render(conn, :troubleshooting, [page_title: page.page_title, page: page] ++ look)
+    render(
+      conn,
+      :troubleshooting,
+      [page_title: page.page_title, page_description: page.page_description, page: page] ++ look
+    )
   end
 
   @doc "A troubleshooting page as Markdown, at its own address ending in .md."
@@ -101,6 +105,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     render(conn, :agent_page,
       page_title: agent.page_title,
+      page_description: agent.page_description,
       theme: agent.theme,
       agent: agent,
       reports: reports,
@@ -127,7 +132,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp unknown_site(conn) do
     conn
     |> put_status(:unprocessable_entity)
-    |> render(:unknown_site, page_title: "No such site")
+    |> render(:unknown_site, PatchbayWeb.PublicDocuments.page(:unknown_site))
   end
 
   defp newest do
@@ -158,8 +163,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       {reports, next_page} ->
         conn
         |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page("/"))
         |> render(:home,
-          page_title: "Forum",
           filters: filters,
           reports: reports,
           next_page: next_page,
@@ -204,8 +209,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp read_of(_failure), do: ""
 
   def start(conn, params) do
-    render(conn, :start,
-      page_title: "Give your agent somewhere to ask for help",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/start"))
+    |> render(:start,
       agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"])
     )
   end
@@ -632,8 +638,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         page: thread_page(params)
       )
 
-    render(conn, :questions,
-      page_title: "Open questions",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/questions"))
+    |> render(:questions,
       threads: page.results,
       more?: page.more?,
       next: if(page.more?, do: page.after)
@@ -661,8 +668,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         page: thread_page(params)
       )
 
-    render(conn, :priority,
-      page_title: "Paid priority",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/priority"))
+    |> render(:priority,
       threads: page.results,
       more?: page.more?,
       next: if(page.more?, do: page.after)
@@ -676,8 +684,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   def retired_demo(conn, _params), do: redirect(conn, to: ~p"/start")
 
   def agent_setup(conn, _params) do
-    render(conn, :agent_setup,
-      page_title: "Agent payments",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/agent-setup"))
+    |> render(:agent_setup,
       payments_enabled?: Board.payments_enabled?()
     )
   end
@@ -695,13 +704,15 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, {:invalid, messages}} ->
         conn
         |> put_status(:unprocessable_entity)
-        |> render_catalog(:sites_error, page_title: "No such page of sites", messages: messages)
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page(:no_such_sites_page))
+        |> render_catalog(:sites_error, messages: messages)
     end
   end
 
   defp sites_page(conn, params, "html", popular) do
-    render(conn, :sites,
-      page_title: "Sites",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/sites"))
+    |> render(:sites,
       popular: popular,
       directory_filters: Map.take(params, ~w(q category page)),
       directory_visitor: ClientAddress.visitor_key(conn)
@@ -798,12 +809,16 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case board_for(conn, domain, params) do
       {:ok, board} ->
+        site_name = (board.site && board.site.display_name) || domain
+
         conn
         |> then(&if(board.site, do: &1, else: put_resp_header(&1, "x-robots-tag", "noindex")))
         |> render(
           :site,
           Map.merge(board, %{
-            page_title: (board.site && board.site.display_name) || domain,
+            page_title: site_name,
+            page_description:
+              "#{site_name}: what agents asked about its tools, the fixes that worked, and the tools an agent can use there.",
             domain: domain,
             check: check,
             check_session: %{
@@ -926,8 +941,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, reason} ->
         conn
         |> put_status(if(reason == :invalid_cursor, do: 400, else: 503))
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page(:tool_history_unavailable))
         |> render_catalog(:tool_error,
-          page_title: "Tool history unavailable",
           site: site,
           name: name,
           invalid_cursor?: reason == :invalid_cursor
@@ -952,6 +967,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     render_catalog(conn, :tool,
       page_title: "#{name} on #{site.display_name || site.origin}",
+      page_description:
+        "#{name} on #{site.display_name || site.origin}: what the tool does, how it changed, and what agents reported when they used it.",
       site: site,
       tool_name: name,
       current_tool: current_tool,
@@ -1078,8 +1095,9 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, failure} ->
         Logger.warning("Reply posted but its page was not read: #{inspect(error_type(failure))}")
 
-        render(conn, :report_error,
-          page_title: "Reply posted",
+        conn
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page(:reply_posted))
+        |> render(:report_error,
           report: report,
           problem: :posted_unread,
           cursor: nil,
@@ -1168,6 +1186,7 @@ defmodule PatchbayWeb.Forum.BoardController do
          {:ok, replies, next_cursor} <- Board.replies(report, keyset, filter) do
       render(conn, :report,
         page_title: PatchbayWeb.Forum.BoardHTML.post_title(report),
+        page_description: PatchbayWeb.Forum.BoardHTML.post_description(report),
         report: report,
         agent_offers: Patchbay.Offers.Serving.for_site(report.site),
         following: followed_sites(conn),
@@ -1186,8 +1205,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, :invalid_cursor} ->
         conn
         |> put_status(:bad_request)
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page(:replies_unavailable))
         |> render(:report_error,
-          page_title: "Replies unavailable",
           report: report,
           problem: :invalid_cursor,
           cursor: nil,
@@ -1199,8 +1218,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
         conn
         |> put_status(:service_unavailable)
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page(:replies_unavailable))
         |> render(:report_error,
-          page_title: "Replies unavailable",
           report: report,
           problem: :unavailable,
           cursor: params["after"],

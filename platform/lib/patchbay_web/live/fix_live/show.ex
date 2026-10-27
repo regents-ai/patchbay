@@ -76,18 +76,20 @@ defmodule PatchbayWeb.FixLive.Show do
     known_fix = KnownFixAnswer.for_run(run)
     headline = Panel.headline(run)
     offers = PatchbayWeb.AssistAPI.Runs.offers(run)
+    host = URI.parse(run.site_url).host
 
     socket
     |> assign_new(:reported, fn -> known_fix && KnownFixAnswer.reported(known_fix.decision_id) end)
     |> assign(
       run: run,
       page_title: headline,
+      page_description: "How Patchbay worked out a fix for an agent stuck on #{host}.",
       headline: headline,
       working?: Panel.working?(run),
       lines: Panel.lines(run),
       known_fix: known_fix,
       answer: Panel.answer(run, known_fix, url(~p"/fixes/#{run.id}"), offers),
-      host: URI.parse(run.site_url).host
+      host: host
     )
   end
 

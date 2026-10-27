@@ -67,8 +67,9 @@ defmodule PatchbayWeb.CreditsHelpController do
     profile = conn.assigns.current_profile
     {page, cursor} = list_posts(profile, params["after"])
 
-    render(conn, :index,
-      page_title: "Credits help",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/credits-help"))
+    |> render(:index,
       admin?: Moderator.moderator?(profile),
       posts: (page && page.results) || [],
       cursor: cursor,
@@ -81,6 +82,7 @@ defmodule PatchbayWeb.CreditsHelpController do
   defp render_post(conn, post, draft, problem) do
     render(conn, :show,
       page_title: post.title,
+      page_description: "A private question to the Regents team about Regent Credits.",
       post: post,
       admin?: Moderator.moderator?(conn.assigns.current_profile),
       draft: draft,

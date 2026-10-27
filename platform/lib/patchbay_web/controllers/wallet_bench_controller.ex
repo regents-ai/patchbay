@@ -24,8 +24,9 @@ defmodule PatchbayWeb.WalletBenchController do
 
     unless Sets.valid_filters?(filters, matrix.options), do: raise(NotFoundError)
 
-    render(conn, :index,
-      page_title: "Agent Wallet Bench",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
+    |> render(:index,
       matrix: matrix,
       test: Enum.find(matrix.grids, &(&1.grid == test))
     )
@@ -33,7 +34,12 @@ defmodule PatchbayWeb.WalletBenchController do
 
   def method(conn, _params) do
     {:ok, matrix} = Matrix.read()
-    render(conn, :method, page_title: "How the Agent Wallet Bench works", matrix: matrix)
+
+    render(
+      conn,
+      :method,
+      [matrix: matrix] ++ PatchbayWeb.PublicDocuments.page("/wallet-bench/how-it-works")
+    )
   end
 
   def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
@@ -71,7 +77,9 @@ defmodule PatchbayWeb.WalletBenchController do
     {report, report_error} = report(selected_run)
 
     render(conn, :show,
-      page_title: "#{harness.name} with #{wallet.name}",
+      page_title: "Can #{harness.name} use a #{wallet.name} wallet?",
+      page_description:
+        "How #{harness.name} did with #{wallet.name} on the Agent Wallet Bench: test by test, each run on a fresh machine.",
       harness: harness,
       wallet: wallet,
       notes: Matrix.notes(notes),

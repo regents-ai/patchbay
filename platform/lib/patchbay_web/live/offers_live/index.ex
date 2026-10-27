@@ -20,8 +20,9 @@ defmodule PatchbayWeb.OffersLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
-     assign(socket,
-       page_title: "Agent Offers",
+     socket
+     |> assign(PatchbayWeb.PublicDocuments.page("/offers/how-it-works"))
+     |> assign(
        max_code_points: CreativeText.max_code_points(),
        hours: div(Terms.duration_us(), 3_600_000_000),
        minimum: CreditAmount.format(Offers.default_minimum_minor())

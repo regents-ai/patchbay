@@ -19,8 +19,9 @@ defmodule PatchbayWeb.PointsLive do
   @impl true
   def mount(_params, _session, socket) do
     socket =
-      assign(socket,
-        page_title: "Points",
+      socket
+      |> assign(PatchbayWeb.PublicDocuments.page("/points"))
+      |> assign(
         points: %Read{},
         bonus: %Read{},
         earning: Rules.active(),

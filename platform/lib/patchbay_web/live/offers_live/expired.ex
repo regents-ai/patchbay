@@ -27,10 +27,8 @@ defmodule PatchbayWeb.OffersLive.Expired do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(
-        page_title: "Offer history",
-        signed_in?: not is_nil(socket.assigns.current_profile)
-      )
+      |> assign(PatchbayWeb.PublicDocuments.page("/offers/history"))
+      |> assign(signed_in?: not is_nil(socket.assigns.current_profile))
       |> stream(:ended, [])
       |> stream(:lost_bids, [])
 

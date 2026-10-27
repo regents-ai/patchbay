@@ -33,7 +33,7 @@ defmodule PatchbayWeb.OffersLive.Active do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(profile.privy_user_id))
     end
 
-    {:ok, socket |> assign(page_title: "Active Offers") |> read()}
+    {:ok, socket |> assign(PatchbayWeb.PublicDocuments.page("/offers/active")) |> read()}
   end
 
   # A slot that moved on, or the advertiser's Credits moving (a new bid held,

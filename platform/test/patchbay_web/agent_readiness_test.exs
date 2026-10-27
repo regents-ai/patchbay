@@ -37,6 +37,18 @@ defmodule PatchbayWeb.AgentReadinessTest do
     )
   end
 
+  # One published Agent Wallet Bench run, as Techtree records it.
+  defp bench_run!(harness_id, wallet_id, finished_at) do
+    Patchbay.Repo.query!(
+      """
+      INSERT INTO techtree_app.wallet_bench_results
+        (attempt_id, grid, harness_id, wallet_id, run, turns, run_url, set_versions, set_id, finished_at)
+      VALUES ($1, 'install', $2, $3, 1, '[]', 'https://techtree.sh/runs/example', '{}', 'set-1', $4)
+      """,
+      [Ecto.UUID.dump!(Ecto.UUID.generate()), harness_id, wallet_id, finished_at]
+    )
+  end
+
   defp markdown(conn, path) do
     conn = conn |> put_req_header("accept", "text/markdown") |> get(path)
     assert response_content_type(conn, :md) =~ "text/markdown"
@@ -160,12 +172,14 @@ defmodule PatchbayWeb.AgentReadinessTest do
                ["code", "message", "hint"]
     end
 
-    test "sitemap.xml lists the fixed pages, sites, tools and posts with last-change times", %{
-      conn: conn
-    } do
+    test "sitemap.xml lists the fixed pages, articles, bench pairs, sites, tools and posts with last-change times",
+         %{conn: conn} do
       site = site!("shop.example")
       tool = tool!(site)
       report = report!(tool)
+      bench_run!("claude-code", "bankr", ~N[2026-10-20 12:00:00])
+      bench_run!("claude-code", "bankr", ~N[2026-10-18 09:00:00])
+      bench_run!("codex", "privy", ~N[2026-10-21 08:30:00])
 
       url = PatchbayWeb.Endpoint.url()
       conn = get(conn, "/sitemap.xml")
@@ -180,6 +194,20 @@ defmodule PatchbayWeb.AgentReadinessTest do
                "<loc>#{url}/shop.example/tools/checkout</loc><lastmod>#{DateTime.to_iso8601(tool.last_seen_at)}</lastmod>"
 
       assert xml =~ "<loc>#{url}/posts/#{report.id}</loc><lastmod>"
+
+      assert xml =~
+               "<loc>#{url}/blog/agent-wallet-bench-v7</loc><lastmod>2026-10-05T00:00:00Z</lastmod>"
+
+      refute xml =~ "example-post"
+
+      assert xml =~
+               "<loc>#{url}/wallet-bench</loc><lastmod>2026-10-21T08:30:00.000000Z</lastmod>"
+
+      assert xml =~
+               "<loc>#{url}/wallet-bench/claude-code/bankr</loc><lastmod>2026-10-20T12:00:00.000000Z</lastmod>"
+
+      assert xml =~
+               "<loc>#{url}/wallet-bench/codex/privy</loc><lastmod>2026-10-21T08:30:00.000000Z</lastmod>"
     end
 
     test "robots.txt names the sitemap and llms.txt says when to use Patchbay", %{conn: conn} do
@@ -194,6 +222,30 @@ defmodule PatchbayWeb.AgentReadinessTest do
   end
 
   describe "the document head" do
+    test "each page describes itself in its own words", %{conn: conn} do
+      report = "shop.example" |> site!() |> tool!() |> report!()
+
+      about = conn |> get("/about") |> html_response(200)
+
+      assert about =~
+               ~s(<meta name="description" content="What Patchbay is, who runs it, and how agents use it to ask for help and share what worked.">)
+
+      article = conn |> get("/blog/agent-wallet-bench-v7") |> html_response(200)
+
+      assert article =~
+               ~s(<meta name="description" content="We asked 13 coding agents to install 18 wallet tools, make a wallet, sign a message and explain who holds the keys. Here is what happened.">)
+
+      thread = conn |> get("/posts/#{report.id}") |> html_response(200)
+
+      [description] =
+        Regex.run(~r/<meta name="description" content="([^"]*)">/, thread,
+          capture: :all_but_first
+        )
+
+      assert description == PatchbayWeb.Forum.BoardHTML.post_description(report)
+      assert description =~ "Checkout worked"
+    end
+
     test "carries a canonical address, a share image and structured data", %{conn: conn} do
       url = PatchbayWeb.Endpoint.url()
       html = conn |> get("/sites") |> html_response(200)

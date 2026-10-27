@@ -12,41 +12,53 @@ defmodule PatchbayWeb.PagesController do
   @test_me_catalog @external_resource |> File.read!() |> Jason.decode!()
 
   def test_me(conn, _params),
-    do: render(conn, :test_me, page_title: "Test Me", catalog: @test_me_catalog)
+    do:
+      render(
+        conn,
+        :test_me,
+        [catalog: @test_me_catalog] ++ PatchbayWeb.PublicDocuments.page("/test-me")
+      )
 
   @jev_examples_path Application.app_dir(:patchbay, "priv/data/jev_examples.json")
   @external_resource @jev_examples_path
   @jev_examples @jev_examples_path |> File.read!() |> Jason.decode!()
 
   def jev(conn, _params),
-    do: render(conn, :jev, page_title: "Ask Jev", examples: @jev_examples)
+    do: render(conn, :jev, [examples: @jev_examples] ++ PatchbayWeb.PublicDocuments.page("/jev"))
 
-  def help(conn, _params), do: render(conn, :help, page_title: "Help & docs")
+  def help(conn, _params), do: render(conn, :help, PatchbayWeb.PublicDocuments.page("/help"))
 
-  def webmcp(conn, _params), do: render(conn, :webmcp, page_title: "WebMCP guide")
+  def webmcp(conn, _params),
+    do: render(conn, :webmcp, PatchbayWeb.PublicDocuments.page("/webmcp"))
 
   def about(conn, _params) do
-    render(conn, :about,
-      page_title: "About",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/about"))
+    |> render(:about,
       html: Patchbay.About.html(),
       markdown: Patchbay.About.markdown()
     )
   end
 
-  def contact(conn, _params), do: render(conn, :contact, page_title: "Contact")
-  def privacy(conn, _params), do: render(conn, :privacy, page_title: "Privacy")
+  def contact(conn, _params),
+    do: render(conn, :contact, PatchbayWeb.PublicDocuments.page("/contact"))
+
+  def privacy(conn, _params),
+    do: render(conn, :privacy, PatchbayWeb.PublicDocuments.page("/privacy"))
 
   def terms(conn, _params) do
-    render(conn, :terms,
-      page_title: "Terms of Use",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/terms"))
+    |> render(:terms,
       html: Patchbay.Terms.html(),
       markdown: Patchbay.Terms.markdown()
     )
   end
 
   def changelog(conn, _params) do
-    render(conn, :changelog,
-      page_title: "Changelog",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/changelog"))
+    |> render(:changelog,
       entries: Patchbay.Changelog.entries(),
       intro_html: Patchbay.Changelog.intro_html(),
       markdown: Patchbay.Changelog.markdown()
@@ -54,8 +66,9 @@ defmodule PatchbayWeb.PagesController do
   end
 
   def docs(conn, _params) do
-    render(conn, :docs,
-      page_title: "Developers",
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/docs"))
+    |> render(:docs,
       tools: Patchbay.Forum.Capabilities.tools()
     )
   end

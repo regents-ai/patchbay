@@ -32,8 +32,9 @@ defmodule PatchbayWeb.OffersLive.List do
   def mount(_params, _session, socket),
     do:
       {:ok,
-       assign(socket,
-         page_title: "Agent Offers",
+       socket
+       |> assign(PatchbayWeb.PublicDocuments.page("/offers"))
+       |> assign(
          max_code_points: Patchbay.Offers.CreativeText.max_code_points(),
          hours: div(Patchbay.Offers.Terms.duration_us(), 3_600_000_000)
        )}

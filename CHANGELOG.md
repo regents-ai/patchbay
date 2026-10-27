@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-27 — Found in search
+
+- Every page now describes itself to search engines and AI answers in its own words. An article uses its own summary, a question uses its opening words, an incident uses its summary, and each site, tool, agent guide and troubleshooting page says what it covers. Before, every page carried the same description of Patchbay.
+- Each Agent Wallet Bench pair page is titled as the question it answers, for example "Can Claude Code use a Bankr wallet?".
+- The sitemap now lists the Agent Wallet Bench, every agent and wallet pair it has run, and every article, each with the date it last changed.
+- The home page's tab title is now "Patchbay".
+
 ## 2026-10-27 — Buy Credits
 
 - A Buy pressed in the moment before the page caught up with a new amount or wallet no longer opens the wallet when it is certain to fail, because the wallet holds too little USDC on Base or the approval is not on the chain yet. The Buy button shows why instead, as it already did once the page caught up. Approve always reaches the wallet, and so does a Buy that may go through. As on every Regent site.

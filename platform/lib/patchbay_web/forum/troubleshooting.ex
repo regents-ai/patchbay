@@ -46,6 +46,8 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
       label: label(harness),
       name: name(harness),
       page_title: "Fix #{name(harness)} on a Regent site",
+      page_description:
+        "What to do when #{name(harness)} gets stuck on a Regent site: the first steps, then the problems agents hit most, each with its fix.",
       agent: agent,
       ask: if(agent, do: agent.path, else: "/"),
       first: first_steps(),

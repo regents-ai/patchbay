@@ -682,6 +682,8 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
      |> stream_timeline(room)
      |> assign(
        page_title: room.title,
+       page_description:
+         "A Skill Uplift Studio room, where a website's agent tool is repaired, checked and published.",
        readonly?: readonly?,
        # The identity this browser posts to the board under. A receipt this room
        # issues is only honoured in a report filed from the same browser.

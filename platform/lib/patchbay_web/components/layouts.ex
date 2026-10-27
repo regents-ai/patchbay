@@ -65,14 +65,6 @@ defmodule PatchbayWeb.Layouts do
     """
   end
 
-  @doc "The one address a page is known by, whatever query it was reached with."
-  def canonical_url(conn), do: PatchbayWeb.Endpoint.url() <> conn.request_path
-
-  @doc "The title a share card shows: the page's own, or the site's."
-  def share_title(nil), do: "Patchbay"
-  def share_title(""), do: "Patchbay"
-  def share_title(title), do: title <> " · Patchbay"
-
   @doc """
   Who Patchbay is, for a reader that speaks schema.org: the website, the
   application and the organization behind both. There is no postal address by

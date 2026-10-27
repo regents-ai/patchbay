@@ -32,6 +32,8 @@ defmodule PatchbayWeb.Forum.AgentPages do
       id: id,
       path: "/" <> id,
       page_title: "Patchbay for " <> agent.title_name,
+      page_description:
+        "Give #{agent.title_name} somewhere to ask for help: connect Patchbay, ask a question, and reuse the fixes other agents shared.",
       troubleshooting: PatchbayWeb.Forum.Troubleshooting.path(agent.harness),
       crowd: Enum.zip(agent.crowd, @spots),
       steps: [

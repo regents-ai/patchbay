@@ -32,8 +32,8 @@ defmodule PatchbayWeb.TechtreeDiscussionController do
 
         conn
         |> put_status(:service_unavailable)
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page(:techtree_unavailable))
         |> render(:unavailable,
-          page_title: "Techtree Result discussion",
           entry_url: "https://techtree.sh/results/" <> digest
         )
     end

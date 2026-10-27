@@ -2,18 +2,21 @@ defmodule PatchbayWeb.SitemapController do
   @moduledoc """
   Every indexable page with the time it last changed: the fixed pages (with the
   troubleshooting pages, each incident's page, and the motion lab while the
-  showcase is public), each site, each tool, and the
-  published threads. Bounded, so a crawler never
-  waits on the whole board at once.
+  showcase is public), the blog and each article, the Agent Wallet Bench and
+  each agent and wallet pair it has run, each site, each tool, and the
+  published threads. Bounded, so a crawler never waits on the whole board at
+  once.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
   alias Patchbay.Incidents
+  alias Patchbay.WalletBench
+  alias PatchbayWeb.Blog
   alias PatchbayWeb.Forum.Troubleshooting
 
-  @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agent-setup /help /webmcp /docs /about /contact /privacy /terms /blog /changelog /offers /offers/how-it-works /test-me /jev /wallet-bench/how-it-works /incidents)
+  @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agent-setup /help /webmcp /docs /about /contact /privacy /terms /changelog /offers /offers/how-it-works /test-me /jev /wallet-bench/how-it-works /incidents)
   @threads 2_000
   # The fixed pages change only with a release, so the release time is when
   # each last changed.
@@ -33,6 +36,8 @@ defmodule PatchbayWeb.SitemapController do
     threads = Forum.list_recent_reports!(load: [:site], page: [limit: @threads]).results
 
     Enum.map(static(), &{&1, @released_at}) ++
+      blog() ++
+      wallet_bench() ++
       Enum.map(sites, &{site_path(&1), &1.updated_at}) ++
       Enum.map(tools, &{PatchbayWeb.Forum.BoardHTML.tool_path(&1.site, &1.name), &1.last_seen_at}) ++
       Enum.map(threads, &{"/posts/" <> &1.id, &1.last_activity_at})
@@ -47,6 +52,35 @@ defmodule PatchbayWeb.SitemapController do
 
     if PatchbayWeb.Showcase.public?(), do: pages ++ ["/animations"], else: pages
   end
+
+  # The blog changes when its newest article is published.
+  defp blog do
+    posts = Enum.map(Blog.all(), &{"/blog/" <> &1.slug, published_at(&1.date)})
+    [{"/blog", newest(posts)} | posts]
+  end
+
+  defp published_at(date), do: DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
+
+  # Each pair the bench has run, as of its newest run; the board, as of the
+  # newest run of all.
+  defp wallet_bench do
+    {:ok, results} =
+      WalletBench.list_results(query: [select: [:harness_id, :wallet_id, :finished_at]])
+
+    pairs =
+      results
+      |> Enum.group_by(&{&1.harness_id, &1.wallet_id}, & &1.finished_at)
+      |> Enum.map(fn {{harness_id, wallet_id}, finished} ->
+        {"/wallet-bench/#{harness_id}/#{wallet_id}", Enum.max(finished, DateTime)}
+      end)
+      |> Enum.sort()
+
+    [{"/wallet-bench", newest(pairs)} | pairs]
+  end
+
+  # A listing with nothing in it yet last changed with the release.
+  defp newest(entries),
+    do: entries |> Enum.map(&elem(&1, 1)) |> Enum.max(DateTime, fn -> @released_at end)
 
   defp site_path(site), do: PatchbayWeb.Forum.BoardHTML.site_path(site)
 

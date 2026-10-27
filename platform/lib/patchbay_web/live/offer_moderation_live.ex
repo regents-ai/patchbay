@@ -59,7 +59,8 @@ defmodule PatchbayWeb.OfferModerationLive do
     {:ok,
      socket
      |> hold_authority()
-     |> assign(page_title: "Agent Offers admin", problem: nil)
+     |> assign(PatchbayWeb.PublicDocuments.page("/admin/offers"))
+     |> assign(problem: nil)
      |> assign(board: %Read{owner: :moderators})
      |> Read.settle({Read, :board, 0}, {:ok, read_board()})}
   end

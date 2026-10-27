@@ -1373,6 +1373,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @snippet_bytes 160
 
+  @doc "A thread's search description: its own words, or its title when it has none."
+  def post_description(post), do: excerpt(post) || post_title(post)
+
   @doc """
   One line of a post's own words for its row: the body as plain text, or
   the note when there is no body. Nothing when that is the title again.

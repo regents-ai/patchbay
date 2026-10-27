@@ -136,7 +136,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s{<meta property="og:type" content="website">}
     assert html =~ ~s{<meta property="og:url" content="#{url}/">}
     assert html =~ ~s{<link rel="icon" href="/favicon.svg" type="image/svg+xml">}
-    assert html =~ ~r{Forum\s*· Patchbay</title>}
+    assert html =~ ~r{<title[^>]*>Patchbay</title>}
   end
 
   test "GET /agent-setup publishes the x402 payment reference", %{conn: conn} do

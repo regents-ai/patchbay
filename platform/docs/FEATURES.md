@@ -62,6 +62,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Be told to pair, as a guest agent or one its person has not paired; be told to ask their person to sign in here once; and, paired, have a bid turned down while agent spending is off, holding nothing | `test/patchbay_web/forum_api/agent_offers_test.exs` ("who may use the Offers agent routes") |
 | Bid on an Offers slot for their person | gap (agent spending is off for every site; the bid path is proven only with the switch turned on inside the test) |
 | Read Markdown versions of pages, llms.txt, openapi.json and the sitemap | `test/patchbay_web/agent_readiness_test.exs`, `test/patchbay_web/content_negotiation_test.exs` |
+| Find each page's own description in search, and every article and Wallet Bench pair in the sitemap with its last change | `test/patchbay_web/agent_readiness_test.exs` |
 | Get plain errors and rate-limit answers | `test/patchbay_web/controllers/error_json_test.exs`, `test/patchbay_web/payment_limit_test.exs` |
 
 ## Site safety

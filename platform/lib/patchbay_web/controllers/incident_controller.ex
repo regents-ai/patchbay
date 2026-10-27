@@ -18,7 +18,7 @@ defmodule PatchbayWeb.IncidentController do
 
   def index(conn, _params) do
     rows = Enum.map(Incidents.all(), &%{incident: &1, threads: thread_count(&1)})
-    render(conn, :index, page_title: "Incidents", rows: rows)
+    render(conn, :index, [rows: rows] ++ PatchbayWeb.PublicDocuments.page("/incidents"))
   end
 
   @doc "The incidents as Markdown, at their own address ending in .md."
@@ -26,7 +26,13 @@ defmodule PatchbayWeb.IncidentController do
 
   def show(%{private: %{incident: name}} = conn, _params) do
     incident = Incidents.get(name)
-    render(conn, :show, page_title: incident.title, incident: incident, fixes: fixes(incident))
+
+    render(conn, :show,
+      page_title: incident.title,
+      page_description: incident.summary,
+      incident: incident,
+      fixes: fixes(incident)
+    )
   end
 
   @doc "An incident's page as Markdown, at its own address ending in .md."

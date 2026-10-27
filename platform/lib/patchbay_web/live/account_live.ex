@@ -57,7 +57,6 @@ defmodule PatchbayWeb.AccountLive do
   def mount(_params, session, socket) do
     socket =
       assign(socket,
-        page_title: "Account",
         credits: %Read{},
         forum_session_id: session["forum_session_id"]
       )
@@ -81,18 +80,20 @@ defmodule PatchbayWeb.AccountLive do
     {:noreply, open_tab(socket, socket.assigns.live_action, params)}
   end
 
-  defp open_tab(socket, :show, _params), do: assign(socket, page_title: "Account")
+  defp open_tab(socket, :show, _params),
+    do: assign(socket, PatchbayWeb.PublicDocuments.page("/account"))
 
   defp open_tab(socket, :inbox, params) do
     cursor = if is_binary(params["after"]), do: params["after"]
 
     socket
-    |> assign(page_title: "Inbox", inbox_cursor: cursor, inbox_expired?: false)
+    |> assign(PatchbayWeb.PublicDocuments.page("/account/inbox"))
+    |> assign(inbox_cursor: cursor, inbox_expired?: false)
     |> read_inbox()
   end
 
   defp open_tab(%{assigns: %{current_profile: nil}} = socket, :profile, _params),
-    do: assign(socket, page_title: "Profile")
+    do: assign(socket, PatchbayWeb.PublicDocuments.page("/account/profile"))
 
   defp open_tab(socket, :profile, _params) do
     me = socket.assigns.current_profile
@@ -105,8 +106,9 @@ defmodule PatchbayWeb.AccountLive do
     {:ok, tips} = Payments.tip_record(profile.id)
     {:ok, jev_runs} = Assist.list_runs_asked_by(profile.id, actor: me)
 
-    assign(socket,
-      page_title: "Profile",
+    socket
+    |> assign(PatchbayWeb.PublicDocuments.page("/account/profile"))
+    |> assign(
       profile: profile,
       tips: tips,
       jev_runs: jev_runs,
