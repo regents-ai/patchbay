@@ -94,15 +94,23 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   @doc """
   Freezes the terms of a paid priority report drafted by `actor` from the
   report's fields and its `amount_usdc`. The draft is read like any other
-  post first, so nobody is asked to pay for a report that would be turned
-  away.
+  post first, and refused before it is read when the forum would refuse it,
+  so nobody is asked to pay for a report that would be turned away.
   """
   @spec prepare_special_post(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
   def prepare_special_post(actor, args) do
     with {:ok, draft, amount_atomic} <- special_post_terms(args),
-         :ok <- PostingCheck.admit(actor, PostingCheck.tool_report(draft)) do
+         :ok <-
+           PostingCheck.admit(actor, PostingCheck.tool_report(draft), fn ->
+             filing(actor, draft, amount_atomic)
+           end) do
       prepare(actor, draft, amount_atomic)
     end
+  end
+
+  defp filing(actor, draft, amount_atomic) do
+    with {:ok, tool} <- OtherSiteReport.resolve_tool(draft),
+         do: {:ok, SpecialPost.filing(draft, tool, amount_atomic, actor)}
   end
 
   defp special_post_terms(args) do

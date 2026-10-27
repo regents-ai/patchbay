@@ -13,12 +13,16 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   `Patchbay.Forum.PostingCheck`. A share that one door counted and another
   did not would be no share at all, and the same goes for the reading.
 
-  The reading asks another service, so it happens before the transaction
-  opens. The count and the write then happen under one lock per share, inside
-  one transaction, so a burst of parallel posts cannot all read the same
-  count and all get through, even when one account sends them from several
-  places. What each door writes, and under whose name, is the door's own
-  business: this module admits a write, it does not shape it.
+  A post the write refuses for its own fields is refused before the reading,
+  with the write's own words: each door hands over how its write is built,
+  and the same build is checked first and made under the lock
+  (`Patchbay.Forum.PostingCheck.admit/3`). The reading asks another service,
+  so it happens before the transaction opens. The count and the write then
+  happen under one lock per share, inside one transaction, so a burst of
+  parallel posts cannot all read the same count and all get through, even
+  when one account sends them from several places. What each door writes,
+  and under whose name, is the door's own business: this module admits a
+  write, it does not shape it.
 
   An account's window rolls: a post leaves the count an hour after it was
   made.
@@ -55,39 +59,58 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   @typedoc "What a write hands back once admitted, or why it was not admitted."
   @type answer :: {:ok, term()} | {:error, term()}
 
-  @doc """
-  Runs `write` once `post`, the words about to be published, has been read
-  and let through, and `actor` is within its share of reports.
+  @typedoc "Makes the write a `t:Patchbay.Forum.PostingCheck.write/0` built."
+  @type write :: (Ash.Changeset.t() -> answer())
 
-  The answer is the write's own; `{:error, {:rate_limited, :account, words,
-  seconds}}` when the hourly share is used up, with the seconds until the
-  account may post again; or one of `t:Patchbay.Forum.PostingCheck.refusal/0`
-  when the reading turned the post away, posting is paused, or the reading
-  could not be done. A write that fails with an exception is rolled back
-  whole, so a refused report leaves no board or thread behind it.
+  @doc """
+  Builds the write with `build` and makes it with `write` once three things
+  hold: the write, built first, does not refuse the post; `post`, the words
+  about to be published, has been read and let through; and `actor` is
+  within its share of reports.
+
+  The answer is the write's own, or the write's own refusal of the post
+  before it was read; `{:error, {:rate_limited, :account, words, seconds}}`
+  when the hourly share is used up, with the seconds until the account may
+  post again; or one of `t:Patchbay.Forum.PostingCheck.refusal/0` when the
+  reading turned the post away, posting is paused, or the reading could not
+  be done. A write that fails with an exception is rolled back whole, so a
+  refused report leaves no board or thread behind it.
   """
-  @spec admit_report(Actor.t() | AgentProfile.t(), PostingCheck.post(), (-> answer())) ::
-          answer()
-  def admit_report(actor, post, write), do: admit(:reports, actor, post, write)
+  @spec admit_report(
+          Actor.t() | AgentProfile.t(),
+          PostingCheck.post(),
+          PostingCheck.write(),
+          write()
+        ) :: answer()
+  def admit_report(actor, post, build, write), do: admit(:reports, actor, post, build, write)
 
   @doc """
-  The same for the new thread `draft` makes, whose write is handed the
+  The same for the new thread `draft` makes, whose write is built with the
   thread's type: the poster's pick, or what the reading made of the words
-  when they picked none (`Patchbay.Forum.PostingCheck.admit_thread/2`).
+  when they picked none (`Patchbay.Forum.PostingCheck.admit_thread/3`).
   """
-  @spec admit_thread(Actor.t() | AgentProfile.t(), map(), (String.t() | nil -> answer())) ::
-          answer()
-  def admit_thread(actor, draft, write) do
+  @spec admit_thread(
+          Actor.t() | AgentProfile.t(),
+          map(),
+          (String.t() | nil -> {:ok, Ash.Changeset.t()} | {:error, term()}),
+          write()
+        ) :: answer()
+  def admit_thread(actor, draft, build, write) do
     account = account(actor)
 
     with :ok <- within_limit(:reports, account),
-         {:ok, type} <- PostingCheck.admit_thread(actor, draft),
-         do: under_lock(:reports, account, fn -> write.(type) end)
+         {:ok, type} <- PostingCheck.admit_thread(actor, draft, build),
+         do: under_lock(:reports, account, fn -> build.(type) end, write)
   end
 
   @doc "The same for a reply, within the account's share of replies."
-  @spec admit_reply(Actor.t() | AgentProfile.t(), PostingCheck.post(), (-> answer())) :: answer()
-  def admit_reply(actor, post, write), do: admit(:replies, actor, post, write)
+  @spec admit_reply(
+          Actor.t() | AgentProfile.t(),
+          PostingCheck.post(),
+          PostingCheck.write(),
+          write()
+        ) :: answer()
+  def admit_reply(actor, post, build, write), do: admit(:replies, actor, post, build, write)
 
   @doc "The standard rate-limit headers for the signed-in account's share of `kind`."
   @spec add_headers(Plug.Conn.t(), kind(), Actor.t() | AgentProfile.t()) :: Plug.Conn.t()
@@ -130,16 +153,16 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   # The share is looked at once before the reading, so an account that has
   # used it up is told so without Jev being asked, and counted again under
   # the lock, which is the count that admits the write.
-  defp admit(kind, actor, post, write) do
+  defp admit(kind, actor, post, build, write) do
     account = account(actor)
 
     with :ok <- within_limit(kind, account),
-         :ok <- PostingCheck.admit(actor, post),
-         do: under_lock(kind, account, write)
+         :ok <- PostingCheck.admit(actor, post, build),
+         do: under_lock(kind, account, build, write)
   end
 
-  defp under_lock(kind, account, write) do
-    case Ash.transact([Report, Reply], fn -> locked(kind, account, write) end) do
+  defp under_lock(kind, account, build, write) do
+    case Ash.transact([Report, Reply], fn -> locked(kind, account, build, write) end) do
       {:ok, {:settled, answer}} -> answer
       {:error, failed_write} -> {:error, failed_write}
     end
@@ -149,12 +172,15 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   # burst of parallel posts cannot all read the same count and all get through.
   # The lock is asked of Postgres directly because the forum has no action for
   # it; it lasts exactly as long as the transaction around this function.
-  defp locked(kind, account, write) do
+  defp locked(kind, account, build, write) do
     Patchbay.Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
       Principal.for_profile(account)
     ])
 
-    answer = with :ok <- within_limit(kind, account), do: write.()
+    answer =
+      with :ok <- within_limit(kind, account),
+           {:ok, changeset} <- build.(),
+           do: write.(changeset)
 
     case answer do
       # A write that failed is handed back as an error, which is what undoes

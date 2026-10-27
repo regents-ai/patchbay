@@ -31,6 +31,7 @@ defmodule Patchbay.Payments.SpecialPost do
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.Tool
   alias Patchbay.Payments.Completion
   alias RegentPayments.Offer
   alias RegentPayments.USDC
@@ -64,7 +65,7 @@ defmodule Patchbay.Payments.SpecialPost do
   def freeze(%{tool: tool, draft: draft, amount_atomic: amount_atomic}, actor) do
     with :ok <- Offer.amount_between(amount_atomic, @min_atomic, @max_atomic),
          {:ok, escrow_address} <- escrow_address(),
-         :ok <- files?(draft, tool, amount_atomic, actor) do
+         :ok <- files?(filing(draft, tool, amount_atomic, actor)) do
       # The report does not exist yet, so its id is minted here and frozen
       # with the rest.
       report_id = Ash.UUID.generate()
@@ -193,6 +194,30 @@ defmodule Patchbay.Payments.SpecialPost do
   @spec attention_after_minutes() :: pos_integer()
   def attention_after_minutes, do: @attention_after_minutes
 
+  @doc """
+  The forum's own filing action for a paid priority report of `draft` about
+  `tool`, built and not written. The ids and the session it is built with
+  stand in for the ones the settlement will carry; none of them is what the
+  forum's rules are about.
+  """
+  @spec filing(map(), Tool.t(), pos_integer(), struct()) :: Ash.Changeset.t()
+  def filing(draft, tool, amount_atomic, actor) do
+    Ash.Changeset.for_create(
+      Report,
+      :file_priority_report,
+      draft
+      |> OtherSiteReport.report_attributes(tool.id)
+      |> Map.merge(%{
+        id: Ash.UUID.generate(),
+        browser_session_id:
+          if(actor.authentication_origin == :wallet, do: nil, else: Ash.UUID.generate()),
+        priority_amount_atomic: amount_atomic,
+        payment_intent_id: Ash.UUID.generate()
+      }),
+      actor: actor
+    )
+  end
+
   defp escrow_address do
     case Escrow.contract_address() do
       nil -> {:error, InvalidChanges.exception(message: @not_set_up)}
@@ -210,28 +235,8 @@ defmodule Patchbay.Payments.SpecialPost do
   # The draft is run through the forum's own filing action, without being
   # written, and every reason the forum gives is handed back as a reason of
   # these terms, so the report published after settlement is one the forum
-  # would have accepted. The ids and the session it is built with stand in
-  # for the ones the settlement will carry; none of them is what the forum's
-  # rules are about.
-  defp files?(draft, tool, amount_atomic, actor) do
-    filing =
-      Ash.Changeset.for_create(
-        Report,
-        :file_priority_report,
-        draft
-        |> OtherSiteReport.report_attributes(tool.id)
-        |> Map.merge(%{
-          id: Ash.UUID.generate(),
-          browser_session_id:
-            if(actor.authentication_origin == :wallet, do: nil, else: Ash.UUID.generate()),
-          priority_amount_atomic: amount_atomic,
-          payment_intent_id: Ash.UUID.generate()
-        }),
-        actor: actor
-      )
-
-    if filing.valid?, do: :ok, else: {:error, filing.errors}
-  end
+  # would have accepted.
+  defp files?(filing), do: if(filing.valid?, do: :ok, else: {:error, filing.errors})
 
   defp send_credit(report, intent, receipt) do
     {status, tx_hash} =

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Posts with a mistake in them
+
+- A question, report, reply or paid priority report with a mistake in its fields, such as a type that is not on the list, a site that is not a web address or a verdict that is not one of the four, is now turned back with the same words as before, but before it is read for spam. It no longer uses up one of the day's readings, and sending it again costs nothing. A paid priority report with a mistake is turned back before any price is set.
+
 ## 2026-10-27 — Each agent keeps its pairing code
 
 - In Pair New Agent, each agent now keeps the code it was given until the code runs out. Choosing another agent and coming back shows the same message instead of a new code, and the new-code button replaces only the chosen agent's code. As on every Regent site.
