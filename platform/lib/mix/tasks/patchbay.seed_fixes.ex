@@ -27,19 +27,26 @@ defmodule Mix.Tasks.Patchbay.SeedFixes do
   @person_wallet "0x" <> String.duplicate("5e", 20)
   @agent_wallet "0x" <> String.duplicate("5a", 20)
 
+  # The environment this module was built for. A release is built for prod,
+  # so its copy refuses to post even when called with eval.
+  @env Mix.env()
+
   @impl true
   def run(_args) do
-    unless Mix.env() in [:dev, :test], do: Mix.raise("seeding is for local databases only")
-    Patchbay.LocalDatabaseFixture.validate_target!(Mix.env(), Patchbay.Repo.config())
-
     for {id, outcome} <- post_all() do
       Mix.shell().info("#{id}: #{describe(outcome)}")
     end
   end
 
-  @doc "Posts every seed file and says what became of each, by the file's name."
+  @doc """
+  Posts every seed file and says what became of each, by the file's name.
+  Only on a local development or test database.
+  """
   @spec post_all() :: [{String.t(), term()}]
   def post_all do
+    unless @env in [:dev, :test], do: raise("seeding is for local databases only")
+    Patchbay.LocalDatabaseFixture.validate_target!(@env, Patchbay.Repo.config())
+
     {actor, session_id} = agent!()
 
     :patchbay
