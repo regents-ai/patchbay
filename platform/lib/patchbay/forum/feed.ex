@@ -4,7 +4,7 @@ defmodule Patchbay.Forum.Feed do
   alias Patchbay.Forum.Report
 
   # Search the same words the full-text search reads (`searched_words` on the
-  # thread, its published replies and its published cards), and the title
+  # thread, its published replies and its cards), and the title
   # spelled a little wrong (pg_trgm's word similarity). Filtering happens before
   # keyset pagination, not against an arbitrary handful of tool versions.
   # Techtree Result discussions are opened automatically, so they stay on
@@ -36,8 +36,7 @@ defmodule Patchbay.Forum.Feed do
         ) or
         exists(
           solution_cards,
-          status == :published and
-            fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
+          fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
         )
     )
   end

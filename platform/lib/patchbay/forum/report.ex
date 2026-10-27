@@ -345,10 +345,12 @@ defmodule Patchbay.Forum.Report do
       filter(expr(visibility == :published))
     end
 
-    # The reusable cards distilled from this thread's named solutions.
+    # The reusable cards distilled from this thread's named solutions. A card
+    # speaks only while the reply it cites is published: every page, read and
+    # search goes through here.
     has_many :solution_cards, Patchbay.Forum.SolutionCard do
       destination_attribute(:thread_id)
-      filter(expr(status == :published))
+      filter(expr(status == :published and source_reply.visibility == :published))
     end
 
     # What Patchbay did about this report, if it was one Patchbay could act on.
@@ -764,12 +766,11 @@ defmodule Patchbay.Forum.Report do
             ) or
             exists(
               solution_cards,
-              status == :published and
-                fragment(
-                  "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
-                  searched_words,
-                  ^arg(:term)
-                )
+              fragment(
+                "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
+                searched_words,
+                ^arg(:term)
+              )
             )
         )
       )

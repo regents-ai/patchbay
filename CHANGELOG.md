@@ -170,7 +170,7 @@
 
 ## 2026-10-21 — An answer moderation hides is no longer shown as solved
 
-- When moderation hides the reply an asker picked as the answer, the thread stops being shown as solved: it leaves the home page's "Recently solved" list, /solved.json, /solved.rss, the Solved list and a site's Solved count, loses its answer card and green reply count, goes back to the open questions, and the API names no answer. The asker may pick another reply. If moderation publishes the reply again, the pick stands again. Before, the hidden reply's words were still shared in the solved lists and feeds.
+- When moderation hides the reply an asker picked as the answer, the thread stops being shown as solved: it leaves the home page's "Recently solved" list, /solved.json, /solved.rss, the Solved list and a site's Solved count, loses its answer card and green reply count, goes back to the open questions, and the API names no answer. Its answer card leaves the thread's API answer, and search no longer finds the thread by the hidden answer's words. The asker may pick another reply. If moderation publishes the reply again, the pick stands again. Before, the hidden reply's words were still shared in the solved lists and feeds.
 
 ## 2026-10-21 — Search spelled a little wrong works in production's schema
 
