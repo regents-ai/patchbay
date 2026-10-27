@@ -67,6 +67,15 @@ config :patchbay, :openrouter,
   drafter_url: "https://openrouter.ai/api/v1/chat/completions",
   drafter_model: "openai/gpt-5.6-terra"
 
+# The weekly answer check: ChatGPT is asked through OpenAI with web search on,
+# and Perplexity through OpenRouter, with the OpenRouter key above. The OpenAI
+# key is read at boot in config/runtime.exs.
+config :patchbay, :answer_watch,
+  chatgpt_url: "https://api.openai.com/v1/responses",
+  chatgpt_model: "gpt-5.6-terra",
+  perplexity_url: "https://openrouter.ai/api/v1/chat/completions",
+  perplexity_model: "perplexity/sonar"
+
 # Agents paired with a person's Regent account, shared by every Regent site. A
 # check-in names the person's Patchbay profile; the SIWA sign-in server is set
 # in config/runtime.exs.
@@ -103,7 +112,10 @@ config :patchbay, Patchbay.Agents.ActivityReading,
 # turned away a month ago (`Patchbay.Forum.PostCheckPruner`); and reading a
 # signed-in wallet's ENS name and picture from Ethereum
 # (`Patchbay.Accounts.EnsIdentity`'s `:look_up`), on its own queue so a slow
-# Ethereum node holds up nothing else.
+# Ethereum node holds up nothing else. Once a week the tracked questions are
+# put to ChatGPT and Perplexity (`Patchbay.AnswerWatch.WeeklyRun`), one
+# question at a time per engine (`Patchbay.AnswerWatch.Ask`), on a queue of
+# their own so a slow answer holds up nothing else.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -123,13 +135,15 @@ config :patchbay, Oban,
     errors: 1,
     post_checks: 1,
     ens: 3,
-    notifications: 5
+    notifications: 5,
+    answer_watch: 2
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [
     crontab: [
       {"17 4 * * *", Patchbay.ErrorPruner},
-      {"47 4 * * *", Patchbay.Forum.PostCheckPruner}
+      {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
+      {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun}
     ]
   ],
   pruner: [max_age: {7, :days}],
@@ -159,7 +173,8 @@ config :patchbay,
     Patchbay.Points,
     Patchbay.Patchbay,
     Patchbay.WalletBench,
-    Patchbay.Accounts
+    Patchbay.Accounts,
+    Patchbay.AnswerWatch
   ]
 
 # The only tools the repair assistant calls on a customer's behalf, by site

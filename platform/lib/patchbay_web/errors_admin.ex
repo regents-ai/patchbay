@@ -1,6 +1,7 @@
 defmodule PatchbayWeb.ErrorsAdmin do
   @moduledoc """
-  Keeps the saved errors at /admin/errors for Credits admins: a signed-in
+  Keeps the saved errors at /admin/errors, and the weekly answer check's
+  download at /admin/ai-answers.csv, for Credits admins: a signed-in
   profile whose Privy account the Credits `:admins` setting names
   (REGENT_CREDITS_ADMINS). Anyone else gets the site's ordinary not-found page,
   so the page's existence is not shown either.

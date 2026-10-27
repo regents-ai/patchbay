@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.PrivateDoorsTest do
-  # Two doors that must never open to the wrong person: the saved errors
-  # answer only Credits admins, and the account tools answer an agent with its
+  # Two doors that must never open to the wrong person: the saved errors and
+  # the answer check download answer only Credits admins, and the account tools answer an agent with its
   # own person's account, never another's.
   #
   # The Credits admin list is application-wide, so this file runs alone.
@@ -11,7 +11,8 @@ defmodule PatchbayWeb.PrivateDoorsTest do
   alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
-  test "the saved errors are not found for anyone but a Credits admin", %{conn: conn} do
+  test "the saved errors and the answer check are not found for anyone but a Credits admin",
+       %{conn: conn} do
     admin = SignedAgent.pair!().owner
     visitor = SignedAgent.pair!().owner
 
@@ -19,10 +20,16 @@ defmodule PatchbayWeb.PrivateDoorsTest do
     Application.put_env(:regent_credits, :admins, [admin.privy_user_id])
     on_exit(fn -> Application.put_env(:regent_credits, :admins, admins) end)
 
-    assert conn |> get("/admin/errors") |> html_response(404)
-    assert conn |> signed_in(visitor) |> get("/admin/errors") |> html_response(404)
+    for path <- ["/admin/errors", "/admin/ai-answers.csv"] do
+      assert conn |> get(path) |> html_response(404)
+      assert conn |> signed_in(visitor) |> get(path) |> html_response(404)
+    end
 
     assert conn |> signed_in(admin) |> get("/admin/errors") |> html_response(200)
+
+    download = conn |> signed_in(admin) |> get("/admin/ai-answers.csv")
+    assert response_content_type(download, :csv)
+    assert response(download, 200) =~ ~s("week","engine","persona")
   end
 
   test "an agent's account tools show its own person's account and nobody else's",

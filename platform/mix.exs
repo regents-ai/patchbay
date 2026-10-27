@@ -207,8 +207,9 @@ defmodule Patchbay.MixProject do
         # and Credits help policies that name it add none. The bench's set
         # summaries are one more resource its domain must name, which adds one,
         # and so are the forum's record of each post Jev read, the bench's
-        # extra notes and an account's ENS name and picture.
-        "xref graph --label compile-connected --fail-above 64",
+        # extra notes and an account's ENS name and picture. The weekly answer
+        # check's answers are one more resource, in a domain of their own.
+        "xref graph --label compile-connected --fail-above 65",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",

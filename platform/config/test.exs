@@ -93,3 +93,6 @@ config :regent_agents, siwa: [url: "https://siwa.test", audience: "patchbay"]
 # Jev answers from each test's own stand-in (`Patchbay.JevStandIn`), never
 # the internet.
 config :patchbay, :jev_req_options, plug: {Req.Test, Patchbay.Forum.Jev}
+
+# The weekly answer check asks each test's own stand-in, never the internet.
+config :patchbay, :answer_watch_req_options, plug: {Req.Test, Patchbay.AnswerWatch}
