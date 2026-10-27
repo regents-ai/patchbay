@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 350" width="820" height="350" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<rect width="820" height="350" fill="#ffffff"/>
+<text x="20" y="34" font-size="20" font-weight="600" fill="#1a202c">Claude Code with four wallets</text>
+<text x="20" y="58" font-size="13" fill="#4a5568">Fresh machine for every run, 14 October 2026</text>
+<text x="20" y="120" font-size="15" fill="#1a202c">Bankr</text>
+<rect x="170" y="100" width="98" height="28" rx="3" fill="#2f855a"/><text x="274" y="119" font-size="12" fill="#2d3748">installed, 61 s</text>
+<rect x="378" y="100" width="212" height="28" rx="3" fill="#276749"/><text x="596" y="119" font-size="12" fill="#2d3748">made a wallet, 177 s</text>
+<text x="20" y="178" font-size="15" fill="#1a202c">MoonPay</text>
+<rect x="170" y="158" width="122" height="28" rx="3" fill="#2f855a"/><text x="298" y="177" font-size="12" fill="#2d3748">installed, 76 s</text>
+<rect x="402" y="158" width="84" height="28" rx="3" fill="#276749"/><text x="492" y="177" font-size="12" fill="#2d3748">made a wallet, 70 s</text>
+<text x="20" y="236" font-size="15" fill="#1a202c">Foundry Cast</text>
+<rect x="170" y="216" width="106" height="28" rx="3" fill="#2f855a"/><text x="282" y="235" font-size="12" fill="#2d3748">installed, 66 s</text>
+<rect x="386" y="216" width="98" height="28" rx="3" fill="#276749"/><text x="490" y="235" font-size="12" fill="#2d3748">made a wallet, 82 s</text>
+<text x="20" y="294" font-size="15" fill="#1a202c">Zerion</text>
+<rect x="170" y="274" width="133" height="28" rx="3" fill="#2f855a"/><text x="309" y="293" font-size="12" fill="#2d3748">installed, 83 s</text>
+<rect x="413" y="274" width="242" height="28" rx="3" fill="#276749"/><text x="661" y="293" font-size="12" fill="#2d3748">made a wallet, 202 s</text>
+</svg>

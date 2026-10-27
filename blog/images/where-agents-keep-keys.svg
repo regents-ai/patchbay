@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 310" width="720" height="310" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<rect width="720" height="310" fill="#ffffff"/>
+<text x="20" y="34" font-size="20" font-weight="600" fill="#1a202c">Where agents kept what controls their wallet</text>
+<text x="20" y="58" font-size="13" fill="#4a5568">34 wallets made by coding agents, Agent Wallet Bench, October 2026</text>
+<rect x="20" y="86" width="330" height="200" rx="6" fill="#f7fafc" stroke="#cbd5e0"/>
+<text x="38" y="118" font-size="16" font-weight="600" fill="#1a202c">Held by the wallet service (Bankr)</text>
+<text x="38" y="140" font-size="13" fill="#4a5568">8 wallets</text>
+<rect x="38" y="158" width="294" height="30" rx="3" fill="#e6fffa"/><text x="50" y="178" font-size="13" fill="#1a202c">Wallet key: on Bankr's service</text>
+<rect x="38" y="198" width="294" height="30" rx="3" fill="#fed7d7"/><text x="50" y="218" font-size="13" fill="#1a202c">Login key: plain file</text>
+<rect x="38" y="238" width="294" height="30" rx="3" fill="#fed7d7"/><text x="50" y="258" font-size="13" fill="#1a202c">Access key: plain file</text>
+<rect x="370" y="86" width="330" height="200" rx="6" fill="#f7fafc" stroke="#cbd5e0"/>
+<text x="388" y="118" font-size="16" font-weight="600" fill="#1a202c">Kept on the machine</text>
+<text x="388" y="140" font-size="13" fill="#4a5568">26 wallets</text>
+<rect x="388" y="158" width="294" height="30" rx="3" fill="#e6fffa"/><text x="400" y="178" font-size="13" fill="#1a202c">Wallet: encrypted file</text>
+<rect x="388" y="198" width="294" height="30" rx="3" fill="#fed7d7"/><text x="400" y="218" font-size="13" fill="#1a202c">Password: plain file</text>
+</svg>

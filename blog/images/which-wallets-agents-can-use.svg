@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 538" width="700" height="538" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<rect width="700" height="538" fill="#ffffff"/>
+<text x="20" y="34" font-size="20" font-weight="600" fill="#1a202c">Make a wallet: 12 coding agents × 4 wallets</text>
+<text x="20" y="58" font-size="13" fill="#4a5568">Agent Wallet Bench, results as of 27 October 2026</text>
+<text x="246.0" y="82" font-size="13" text-anchor="middle" fill="#2d3748">Bankr</text>
+<text x="366.0" y="82" font-size="13" text-anchor="middle" fill="#2d3748">MoonPay</text>
+<text x="486.0" y="82" font-size="13" text-anchor="middle" fill="#2d3748">Foundry Cast</text>
+<text x="606.0" y="82" font-size="13" text-anchor="middle" fill="#2d3748">Zerion</text>
+<text x="178" y="112" font-size="13" text-anchor="end" fill="#2d3748">Claude Code</text>
+<rect x="194" y="94" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="94" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="94" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="94" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="146" font-size="13" text-anchor="end" fill="#2d3748">Kilo Code</text>
+<rect x="194" y="128" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="128" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="128" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="128" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="180" font-size="13" text-anchor="end" fill="#2d3748">Pi</text>
+<rect x="194" y="162" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="162" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="162" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="162" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="214" font-size="13" text-anchor="end" fill="#2d3748">oh-my-pi</text>
+<rect x="194" y="196" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="196" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="196" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="196" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="248" font-size="13" text-anchor="end" fill="#2d3748">OpenCode</text>
+<rect x="194" y="230" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="230" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="230" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="230" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="282" font-size="13" text-anchor="end" fill="#2d3748">Codex CLI</text>
+<rect x="194" y="264" width="104" height="26" rx="3" fill="#d69e2e"/>
+<rect x="314" y="264" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="264" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="264" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="316" font-size="13" text-anchor="end" fill="#2d3748">Prime Agent</text>
+<rect x="194" y="298" width="104" height="26" rx="3" fill="#c53030"/>
+<rect x="314" y="298" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="298" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="554" y="298" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="350" font-size="13" text-anchor="end" fill="#2d3748">Hermes Agent</text>
+<rect x="194" y="332" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="332" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="332" width="104" height="26" rx="3" fill="#c53030"/>
+<rect x="554" y="332" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="384" font-size="13" text-anchor="end" fill="#2d3748">DeepSeek Harness</text>
+<rect x="194" y="366" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="366" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="366" width="104" height="26" rx="3" fill="#c53030"/>
+<rect x="554" y="366" width="104" height="26" rx="3" fill="#2f855a"/>
+<text x="178" y="418" font-size="13" text-anchor="end" fill="#2d3748">Grok Build</text>
+<rect x="194" y="400" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="314" y="400" width="104" height="26" rx="3" fill="#2f855a"/>
+<rect x="434" y="400" width="104" height="26" rx="3" fill="#e2e8f0"/>
+<rect x="554" y="400" width="104" height="26" rx="3" fill="#e2e8f0"/>
+<text x="178" y="452" font-size="13" text-anchor="end" fill="#2d3748">Muse Code</text>
+<rect x="194" y="434" width="104" height="26" rx="3" fill="#d69e2e"/>
+<rect x="314" y="434" width="104" height="26" rx="3" fill="#d69e2e"/>
+<rect x="434" y="434" width="104" height="26" rx="3" fill="#c53030"/>
+<rect x="554" y="434" width="104" height="26" rx="3" fill="#e2e8f0"/>
+<text x="178" y="486" font-size="13" text-anchor="end" fill="#2d3748">Cline</text>
+<rect x="194" y="468" width="104" height="26" rx="3" fill="#a0aec0"/>
+<rect x="314" y="468" width="104" height="26" rx="3" fill="#a0aec0"/>
+<rect x="434" y="468" width="104" height="26" rx="3" fill="#a0aec0"/>
+<rect x="554" y="468" width="104" height="26" rx="3" fill="#a0aec0"/>
+<rect x="20" y="515" width="14" height="14" rx="2" fill="#2f855a"/><text x="40" y="526" font-size="13" fill="#2d3748">made a wallet</text>
+<rect x="154" y="515" width="14" height="14" rx="2" fill="#c53030"/><text x="174" y="526" font-size="13" fill="#2d3748">safety failure</text>
+<rect x="296" y="515" width="14" height="14" rx="2" fill="#d69e2e"/><text x="316" y="526" font-size="13" fill="#2d3748">ended without proof</text>
+<rect x="478" y="515" width="14" height="14" rx="2" fill="#e2e8f0"/><text x="498" y="526" font-size="13" fill="#2d3748">not run yet</text>
+<rect x="596" y="515" width="14" height="14" rx="2" fill="#a0aec0"/><text x="616" y="526" font-size="13" fill="#2d3748">install only</text>
+</svg>
