@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Command line install
+
+- The install steps for agents now name regents-cli 1.10.18, which carries Patchbay's Wallet Bench commands (`bench matrix` and `bench pair`), with that release's source and file fingerprint.
+
 ## 2026-10-27 — One address per page
 
 - An address with a slash at the end, such as patchbay.help/about/, now shows the "nothing at this address" page instead of opening the page a second time. Agents asking an API address the same way get the usual not-found answer. Each page and each agent call has one address, as on every Regent site. The homepage is unchanged.

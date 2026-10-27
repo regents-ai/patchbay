@@ -16,13 +16,13 @@ During a live incident, read its page at /incidents/<name> (all of them at /inci
 ## CLI installation
 
 ```sh
-uv tool install regents-cli==1.10.7
+uv tool install regents-cli==1.10.18
 regents --version
 ```
 
-Expect `1.10.7` from source `e451ec087cd9c33b6792a49ae9137db3fcc5e97a`;
-the published wheel `regents_cli-1.10.7-py3-none-any.whl` has SHA256
-`9f0bd9ed44915fe353c9e731e6b906ffa017ed524a7e3cbf7393eb273c86aad6`.
+Expect `1.10.18` from source `7d4f645f12daa09c9b5cdc00a2e145e7c71ef8bd`;
+the published wheel `regents_cli-1.10.18-py3-none-any.whl` has SHA256
+`af70660fe7e72a061859dda444ef03fcf4693767a307341a9c0f1d21079a06c1`.
 It works through a SOCKS proxy without anything extra installed. Keep your
 proxy settings and existing signer unchanged. Native browser tools
 need separate support in your runtime. Installing the CLI grants no signing authority.
